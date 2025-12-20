@@ -155,86 +155,98 @@ public class ElliottWaveAnalysis {
      *             default dataset is loaded from resources.
      */
     public static void main(String[] args) {
-        BarSeries series = null;
-        ElliottDegree degree = DEFAULT_DEGREE;
-
-        // If 5 or 6 args provided, use them to load from datasource
-        if (args.length >= 5) {
-            try {
-                String dataSource = args[0];
-                String ticker = args[1];
-                String barDurationStr = args[2];
-                String degreeStr = args[3];
-                String startEpochStr = args[4];
-                String endEpochStr = args.length >= 6 ? args[5] : null;
-
-                // Parse bar duration
-                Duration barDuration = Duration.parse(barDurationStr);
-
-                // Parse start time
-                long startEpochSeconds = Long.parseLong(startEpochStr);
-                Instant startTime = Instant.ofEpochSecond(startEpochSeconds);
-
-                // Parse end time (or use current time if not provided)
-                Instant endTime = endEpochStr != null ? Instant.ofEpochSecond(Long.parseLong(endEpochStr))
-                        : Instant.now();
-
-                // Parse degree
-                degree = ElliottDegree.valueOf(degreeStr.toUpperCase());
-
-                // Load series from datasource
-                series = loadSeriesFromDataSource(dataSource, ticker, barDuration, startTime, endTime);
-                if (series == null) {
-                    LOG.error("Failed to retrieve bar series from {} for ticker {} with duration {} from {} to {}",
-                            dataSource, ticker, barDurationStr, startTime, endTime);
-                    System.exit(1);
-                    return; // Never reached, but satisfies compiler
-                }
-            } catch (Exception ex) {
-                LOG.error("Error parsing arguments or loading series: {}", ex.getMessage(), ex);
-                System.exit(1);
-                return; // Never reached, but satisfies compiler
+        BarSeries series = loadBarSeries(args);
+        if (series == null || series.isEmpty()) {
+            if (series == null) {
+                LOG.error("Bar series was null");
+            } else {
+                LOG.error("Series is empty, nothing to analyse.");
             }
-        } else {
-            // Use defaults
-            series = loadSeries(DEFAULT_OHLCV_RESOURCE);
-        }
-
-        Objects.requireNonNull(series, "Bar series was null");
-        if (series.isEmpty()) {
-            LOG.error("Series is empty, nothing to analyse.");
+            System.exit(1);
             return;
         }
+
+        ElliottDegree degree = parseDegreeFromArgs(args);
         new ElliottWaveAnalysis().analyze(series, degree, DEFAULT_FIB_TOLERANCE);
+    }
+
+    /**
+     * Loads a bar series based on command-line arguments or defaults.
+     * <p>
+     * If 5-6 arguments are provided, loads from an external data source. Otherwise,
+     * loads the default ossified dataset from classpath resources.
+     *
+     * @param args command-line arguments
+     * @return the loaded bar series, or {@code null} if loading fails
+     */
+    private static BarSeries loadBarSeries(String[] args) {
+        if (args.length >= 5) {
+            return loadBarSeriesFromArgs(args);
+        } else {
+            return loadSeries(DEFAULT_OHLCV_RESOURCE);
+        }
+    }
+
+    /**
+     * Parses command-line arguments and loads a bar series from an external data
+     * source.
+     *
+     * @param args command-line arguments (must have at least 5 elements)
+     * @return the loaded bar series, or {@code null} if parsing or loading fails
+     */
+    private static BarSeries loadBarSeriesFromArgs(String[] args) {
+        try {
+            String dataSource = args[0];
+            String ticker = args[1];
+            String barDurationStr = args[2];
+            String startEpochStr = args[4];
+            String endEpochStr = args.length >= 6 ? args[5] : null;
+
+            Duration barDuration = Duration.parse(barDurationStr);
+            Instant startTime = Instant.ofEpochSecond(Long.parseLong(startEpochStr));
+            Instant endTime = endEpochStr != null ? Instant.ofEpochSecond(Long.parseLong(endEpochStr)) : Instant.now();
+
+            BarSeries series = loadSeriesFromDataSource(dataSource, ticker, barDuration, startTime, endTime);
+            if (series == null) {
+                LOG.error("Failed to retrieve bar series from {} for ticker {} with duration {} from {} to {}",
+                        dataSource, ticker, barDurationStr, startTime, endTime);
+            }
+            return series;
+        } catch (Exception ex) {
+            LOG.error("Error parsing arguments or loading series: {}", ex.getMessage(), ex);
+            return null;
+        }
+    }
+
+    /**
+     * Parses the Elliott degree from command-line arguments, or returns the
+     * default.
+     *
+     * @param args command-line arguments
+     * @return the parsed Elliott degree, or {@link #DEFAULT_DEGREE} if not provided
+     */
+    private static ElliottDegree parseDegreeFromArgs(String[] args) {
+        if (args.length >= 4) {
+            try {
+                return ElliottDegree.valueOf(args[3].toUpperCase());
+            } catch (IllegalArgumentException ex) {
+                LOG.warn("Invalid degree '{}', using default: {}", args[3], DEFAULT_DEGREE);
+                return DEFAULT_DEGREE;
+            }
+        }
+        return DEFAULT_DEGREE;
     }
 
     /**
      * Performs comprehensive Elliott Wave analysis on the provided bar series.
      * <p>
-     * This method:
+     * This method orchestrates the complete analysis workflow:
      * <ol>
-     * <li>Creates a swing compressor for filtered wave counting (1% of current
-     * price, minimum 2 bars)</li>
-     * <li>Initializes an {@link ElliottWaveFacade} with custom Fibonacci tolerance
-     * and compressor configuration</li>
-     * <li>Retrieves all Elliott Wave indicators from the facade</li>
-     * <li>Logs analysis results including phase, ratios, channels, confluence, and
-     * scenario-based analysis with confidence scores</li>
-     * <li>Generates chart visualizations for the primary scenario and alternative
-     * scenarios, including wave pivot labels</li>
+     * <li>Sets up the Elliott Wave analysis framework (compressor and facade)</li>
+     * <li>Retrieves all analysis indicators</li>
+     * <li>Logs analysis results and scenario details</li>
+     * <li>Generates chart visualizations</li>
      * </ol>
-     * <p>
-     * The analysis includes:
-     * <ul>
-     * <li>Swing detection and counting (both raw and filtered)</li>
-     * <li>Phase identification (WAVE1-5 for impulses, CORRECTIVE_A-C for
-     * corrections)</li>
-     * <li>Fibonacci ratio validation</li>
-     * <li>Channel boundaries (upper, lower, median)</li>
-     * <li>Confluence scoring</li>
-     * <li>Invalidation levels</li>
-     * <li>Scenario-based analysis with confidence scoring</li>
-     * </ul>
      * <p>
      * Charts are saved to {@code temp/charts/} directory and displayed if running
      * in a non-headless environment.
@@ -246,52 +258,10 @@ public class ElliottWaveAnalysis {
      *                     ratios. Default is 0.25 (25%).
      */
     public void analyze(BarSeries series, ElliottDegree degree, double fibTolerance) {
-        // Create compressor for filtered wave counting to reduce noise in Elliott Wave
-        // analysis.
-        //
-        // The compressor uses two thresholds:
-        // 1. Minimum amplitude: 1% of current price (relative threshold)
-        // - This filters out minor price fluctuations that don't represent meaningful
-        // swings in Elliott Wave terms. The relative nature (percentage of current
-        // price) ensures the threshold scales appropriately with the asset's price
-        // level (e.g., $300 for BTC at $30k, $600 for BTC at $60k).
-        // - Without this threshold, the analysis would include very small price
-        // movements
-        // that are market noise rather than structural waves, leading to false signals
-        // and degraded pattern recognition.
-        // 2. Minimum length: 2 bars
-        // - Swings must span at least 2 bars to be retained. This ensures swings
-        // represent actual price movements over time rather than single-bar spikes
-        // or data artifacts that don't reflect genuine market structure.
-        //
-        // Significance vs default (no filtering):
-        // - Default behavior (ElliottSwingCompressor with no parameters) retains ALL
-        // swings,
-        // including single-bar movements and tiny price fluctuations. This can produce
-        // hundreds of swings that obscure the underlying Elliott Wave structure.
-        // - With 1% + 2 bars filtering, only meaningful swings that represent actual
-        // price
-        // structure are retained, making the Elliott Wave analysis more reliable and
-        // less prone to false signals from noise. This is especially important for
-        // higher-degree analysis (PRIMARY, INTERMEDIATE) where we want to identify
-        // major trend structures, not minor intraday fluctuations.
-        //
-        // Alternative values:
-        // - Lower amplitude (e.g., 0.5%): More sensitive, captures smaller swings but
-        // includes more noise. Useful for lower-degree analysis or very volatile
-        // assets.
-        // - Higher amplitude (e.g., 2-5%): More conservative, only captures significant
-        // movements. May miss valid smaller waves in less volatile markets.
-        // - Higher minimum length (e.g., 3-5 bars): More stringent time requirement,
-        // useful for longer timeframes but may filter out valid short-term swings.
-        ElliottSwingCompressor compressor = new ElliottSwingCompressor(series);
+        ElliottWaveFacade facade = createElliottWaveFacade(series, degree, fibTolerance);
         int endIndex = series.getEndIndex();
 
-        // Create facade with custom Fibonacci tolerance and compressor
-        ElliottWaveFacade facade = ElliottWaveFacade.zigZag(series, degree,
-                Optional.of(series.numFactory().numOf(fibTolerance)), Optional.of(compressor));
-
-        // Get all indicators from facade
+        // Extract all indicators from facade
         ElliottPhaseIndicator phaseIndicator = facade.phase();
         ElliottInvalidationIndicator invalidationIndicator = facade.invalidation();
         ElliottChannelIndicator channelIndicator = facade.channel();
@@ -300,9 +270,71 @@ public class ElliottWaveAnalysis {
         ElliottWaveCountIndicator swingCount = facade.waveCount();
         ElliottWaveCountIndicator filteredSwingCount = facade.filteredWaveCount();
         ElliottScenarioIndicator scenarioIndicator = facade.scenarios();
-        ElliottSwingMetadata snapshot = ElliottSwingMetadata.of(facade.swing().getValue(endIndex), series.numFactory());
-        LOG.info("Elliott swing snapshot valid={}, swings={}, high={}, low={}", snapshot.isValid(), snapshot.size(),
-                snapshot.highestPrice(), snapshot.lowestPrice());
+        ElliottSwingMetadata swingMetadata = ElliottSwingMetadata.of(facade.swing().getValue(endIndex),
+                series.numFactory());
+
+        logAnalysisResults(phaseIndicator, invalidationIndicator, channelIndicator, ratioIndicator, confluenceIndicator,
+                swingMetadata, endIndex);
+        logScenarioAnalysis(scenarioIndicator, endIndex);
+
+        // Create chart indicators
+        Indicator<Num> channelUpper = new ChannelBoundaryIndicator(series, channelIndicator, ChannelBoundary.UPPER);
+        Indicator<Num> channelLower = new ChannelBoundaryIndicator(series, channelIndicator, ChannelBoundary.LOWER);
+        Indicator<Num> channelMedian = new ChannelBoundaryIndicator(series, channelIndicator, ChannelBoundary.MEDIAN);
+        Indicator<Num> ratioValue = new RatioValueIndicator(series, ratioIndicator, "Elliott ratio value");
+        Indicator<Num> swingCountAsNum = new IntegerAsNumIndicator(series, swingCount, "Swings (raw)");
+        Indicator<Num> filteredSwingCountAsNum = new IntegerAsNumIndicator(series, filteredSwingCount,
+                "Swings (compressed)");
+
+        displayCharts(series, degree, scenarioIndicator, channelUpper, channelLower, channelMedian, ratioValue,
+                swingCountAsNum, filteredSwingCountAsNum, confluenceIndicator, endIndex);
+    }
+
+    /**
+     * Creates a swing compressor and Elliott Wave facade for analysis.
+     * <p>
+     * The compressor filters out noise by requiring:
+     * <ul>
+     * <li>Minimum amplitude: 1% of current price (relative threshold that scales
+     * with asset price)</li>
+     * <li>Minimum length: 2 bars (ensures swings represent actual price movements
+     * over time)</li>
+     * </ul>
+     * <p>
+     * This filtering is essential for higher-degree analysis (PRIMARY,
+     * INTERMEDIATE) where we want to identify major trend structures, not minor
+     * intraday fluctuations.
+     *
+     * @param series       the bar series to analyze
+     * @param degree       the Elliott wave degree
+     * @param fibTolerance the Fibonacci tolerance for phase validation
+     * @return the configured Elliott Wave facade
+     */
+    private static ElliottWaveFacade createElliottWaveFacade(BarSeries series, ElliottDegree degree,
+            double fibTolerance) {
+        ElliottSwingCompressor compressor = new ElliottSwingCompressor(series);
+        return ElliottWaveFacade.zigZag(series, degree, Optional.of(series.numFactory().numOf(fibTolerance)),
+                Optional.of(compressor));
+    }
+
+    /**
+     * Logs the swing snapshot and latest analysis results (phase, ratio, channel,
+     * confluence, invalidation).
+     *
+     * @param phaseIndicator        the phase indicator
+     * @param invalidationIndicator the invalidation indicator
+     * @param channelIndicator      the channel indicator
+     * @param ratioIndicator        the ratio indicator
+     * @param confluenceIndicator   the confluence indicator
+     * @param swingMetadata         the swing metadata
+     * @param endIndex              the index to evaluate (typically the last bar)
+     */
+    private static void logAnalysisResults(ElliottPhaseIndicator phaseIndicator,
+            ElliottInvalidationIndicator invalidationIndicator, ElliottChannelIndicator channelIndicator,
+            ElliottRatioIndicator ratioIndicator, ElliottConfluenceIndicator confluenceIndicator,
+            ElliottSwingMetadata swingMetadata, int endIndex) {
+        LOG.info("Elliott swing snapshot valid={}, swings={}, high={}, low={}", swingMetadata.isValid(),
+                swingMetadata.size(), swingMetadata.highestPrice(), swingMetadata.lowestPrice());
 
         ElliottRatio latestRatio = ratioIndicator.getValue(endIndex);
         ElliottChannel latestChannel = channelIndicator.getValue(endIndex);
@@ -314,8 +346,16 @@ public class ElliottWaveAnalysis {
         LOG.info("Latest confluence score={} confluent={}", confluenceIndicator.getValue(endIndex),
                 confluenceIndicator.isConfluent(endIndex));
         LOG.info("Latest invalidation={}", invalidationIndicator.getValue(endIndex));
+    }
 
-        // Log scenario-based analysis with confidence percentages
+    /**
+     * Logs detailed scenario analysis including primary scenario confidence scores
+     * and alternative scenarios.
+     *
+     * @param scenarioIndicator the scenario indicator
+     * @param endIndex          the index to evaluate (typically the last bar)
+     */
+    private static void logScenarioAnalysis(ElliottScenarioIndicator scenarioIndicator, int endIndex) {
         ElliottScenarioSet scenarioSet = scenarioIndicator.getValue(endIndex);
         LOG.info("=== Elliott Wave Scenario Analysis ===");
         LOG.info("Scenario summary: {}", scenarioSet.summary());
@@ -323,69 +363,147 @@ public class ElliottWaveAnalysis {
                 scenarioSet.consensus());
 
         if (scenarioSet.primary().isPresent()) {
-            ElliottScenario primary = scenarioSet.primary().get();
-            ElliottConfidence confidence = primary.confidence();
-            LOG.info("PRIMARY SCENARIO: {} ({})", primary.currentPhase(), primary.type());
-            LOG.info("  Overall confidence: {}% ({})", String.format("%.1f", confidence.asPercentage()),
-                    confidence.isHighConfidence() ? "HIGH" : confidence.isLowConfidence() ? "LOW" : "MEDIUM");
-            LOG.info("  Factor scores: Fibonacci={}% | Time={}% | Alternation={}% | Channel={}% | Completeness={}%",
-                    String.format("%.1f", confidence.fibonacciScore().doubleValue() * 100),
-                    String.format("%.1f", confidence.timeProportionScore().doubleValue() * 100),
-                    String.format("%.1f", confidence.alternationScore().doubleValue() * 100),
-                    String.format("%.1f", confidence.channelScore().doubleValue() * 100),
-                    String.format("%.1f", confidence.completenessScore().doubleValue() * 100));
-            LOG.info("  Primary reason: {}", confidence.primaryReason());
-            LOG.info("  Weakest factor: {}", confidence.weakestFactor());
-            LOG.info("  Direction: {} | Invalidation: {} | Target: {}", primary.isBullish() ? "BULLISH" : "BEARISH",
-                    primary.invalidationPrice(), primary.primaryTarget());
+            logPrimaryScenario(scenarioSet.primary().get());
         }
 
-        // Log alternative scenarios
         List<ElliottScenario> alternatives = scenarioSet.alternatives();
         if (!alternatives.isEmpty()) {
-            LOG.info("ALTERNATIVE SCENARIOS ({}):", alternatives.size());
-            for (int i = 0; i < Math.min(alternatives.size(), 3); i++) {
-                ElliottScenario alt = alternatives.get(i);
-                LOG.info("  {}. {} ({}) - {}% confidence", i + 1, alt.currentPhase(), alt.type(),
-                        String.format("%.1f", alt.confidence().asPercentage()));
-            }
+            logAlternativeScenarios(alternatives);
         }
         LOG.info("======================================");
+    }
 
-        Indicator<Num> channelUpper = new ChannelBoundaryIndicator(series, channelIndicator, ChannelBoundary.UPPER);
-        Indicator<Num> channelLower = new ChannelBoundaryIndicator(series, channelIndicator, ChannelBoundary.LOWER);
-        Indicator<Num> channelMedian = new ChannelBoundaryIndicator(series, channelIndicator, ChannelBoundary.MEDIAN);
-        Indicator<Num> ratioValue = new RatioValueIndicator(series, ratioIndicator, "Elliott ratio value");
-        Indicator<Num> swingCountAsNum = new IntegerAsNumIndicator(series, swingCount, "Swings (raw)");
-        Indicator<Num> filteredSwingCountAsNum = new IntegerAsNumIndicator(series, filteredSwingCount,
-                "Swings (compressed)");
+    /**
+     * Logs detailed information about the primary scenario.
+     *
+     * @param primary the primary scenario
+     */
+    private static void logPrimaryScenario(ElliottScenario primary) {
+        ElliottConfidence confidence = primary.confidence();
+        LOG.info("PRIMARY SCENARIO: {} ({})", primary.currentPhase(), primary.type());
+        LOG.info("  Overall confidence: {}% ({})", String.format("%.1f", confidence.asPercentage()),
+                confidence.isHighConfidence() ? "HIGH" : confidence.isLowConfidence() ? "LOW" : "MEDIUM");
+        LOG.info("  Factor scores: Fibonacci={}% | Time={}% | Alternation={}% | Channel={}% | Completeness={}%",
+                String.format("%.1f", confidence.fibonacciScore().doubleValue() * 100),
+                String.format("%.1f", confidence.timeProportionScore().doubleValue() * 100),
+                String.format("%.1f", confidence.alternationScore().doubleValue() * 100),
+                String.format("%.1f", confidence.channelScore().doubleValue() * 100),
+                String.format("%.1f", confidence.completenessScore().doubleValue() * 100));
+        LOG.info("  Primary reason: {}", confidence.primaryReason());
+        LOG.info("  Weakest factor: {}", confidence.weakestFactor());
+        LOG.info("  Direction: {} | Invalidation: {} | Target: {}", primary.isBullish() ? "BULLISH" : "BEARISH",
+                primary.invalidationPrice(), primary.primaryTarget());
+    }
 
+    /**
+     * Logs information about alternative scenarios (up to 3).
+     *
+     * @param alternatives the list of alternative scenarios
+     */
+    private static void logAlternativeScenarios(List<ElliottScenario> alternatives) {
+        LOG.info("ALTERNATIVE SCENARIOS ({}):", alternatives.size());
+        for (int i = 0; i < Math.min(alternatives.size(), 3); i++) {
+            ElliottScenario alt = alternatives.get(i);
+            LOG.info("  {}. {} ({}) - {}% confidence", i + 1, alt.currentPhase(), alt.type(),
+                    String.format("%.1f", alt.confidence().asPercentage()));
+        }
+    }
+
+    /**
+     * Orchestrates the display and saving of charts for all scenarios.
+     *
+     * @param series                  the bar series
+     * @param degree                  the Elliott degree (for chart titles)
+     * @param scenarioIndicator       the scenario indicator
+     * @param channelUpper            indicator for upper channel boundary
+     * @param channelLower            indicator for lower channel boundary
+     * @param channelMedian           indicator for median channel boundary
+     * @param ratioValue              indicator for Elliott ratio values
+     * @param swingCountAsNum         indicator for raw swing count (as numeric)
+     * @param filteredSwingCountAsNum indicator for filtered swing count (as
+     *                                numeric)
+     * @param confluenceIndicator     indicator for confluence scores
+     * @param endIndex                the index to evaluate (typically the last bar)
+     */
+    private static void displayCharts(BarSeries series, ElliottDegree degree,
+            ElliottScenarioIndicator scenarioIndicator, Indicator<Num> channelUpper, Indicator<Num> channelLower,
+            Indicator<Num> channelMedian, Indicator<Num> ratioValue, Indicator<Num> swingCountAsNum,
+            Indicator<Num> filteredSwingCountAsNum, ElliottConfluenceIndicator confluenceIndicator, int endIndex) {
+        ElliottScenarioSet scenarioSet = scenarioIndicator.getValue(endIndex);
         ChartWorkflow chartWorkflow = new ChartWorkflow();
         boolean isHeadless = GraphicsEnvironment.isHeadless();
 
-        // Display chart for primary scenario
         if (scenarioSet.primary().isPresent()) {
-            ElliottScenario primary = scenarioSet.primary().get();
-            String primaryTitle = String.format("Elliott Wave (%s) - %s - PRIMARY: %s (%s) - %.1f%% confidence", degree,
-                    series.getName(), primary.currentPhase(), primary.type(), primary.confidence().asPercentage());
-            String primaryWindowTitle = String.format("PRIMARY: %s (%s) - %.1f%% - %s", primary.currentPhase(),
-                    primary.type(), primary.confidence().asPercentage(), series.getName());
-
-            // Build scenario-specific wave labels from the scenario's swings
-            BarSeriesLabelIndicator primaryWaveLabels = buildWaveLabelsFromScenario(series, primary);
-
-            ChartPlan primaryPlan = buildChartPlan(chartWorkflow, series, degree, channelUpper, channelLower,
-                    channelMedian, primaryWaveLabels, swingCountAsNum, filteredSwingCountAsNum, ratioValue,
-                    confluenceIndicator, primaryTitle);
-
-            if (!isHeadless) {
-                chartWorkflow.display(primaryPlan, primaryWindowTitle);
-            }
-            chartWorkflow.save(primaryPlan, "temp/charts", "elliott-wave-analysis-" + series.getName().toLowerCase()
-                    + "-" + degree.name().toLowerCase() + "-primary");
+            displayPrimaryScenarioChart(series, degree, scenarioSet.primary().get(), channelUpper, channelLower,
+                    channelMedian, ratioValue, swingCountAsNum, filteredSwingCountAsNum, confluenceIndicator,
+                    chartWorkflow, isHeadless);
         }
 
-        // Display charts for alternative scenarios
+        List<ElliottScenario> alternatives = scenarioSet.alternatives();
+        displayAlternativeScenarioCharts(series, degree, alternatives, channelUpper, channelLower, channelMedian,
+                ratioValue, swingCountAsNum, filteredSwingCountAsNum, confluenceIndicator, chartWorkflow, isHeadless);
+    }
+
+    /**
+     * Displays and saves the chart for the primary scenario.
+     *
+     * @param series                  the bar series
+     * @param degree                  the Elliott degree (for chart title)
+     * @param primary                 the primary scenario
+     * @param channelUpper            indicator for upper channel boundary
+     * @param channelLower            indicator for lower channel boundary
+     * @param channelMedian           indicator for median channel boundary
+     * @param ratioValue              indicator for Elliott ratio values
+     * @param swingCountAsNum         indicator for raw swing count (as numeric)
+     * @param filteredSwingCountAsNum indicator for filtered swing count (as
+     *                                numeric)
+     * @param confluenceIndicator     indicator for confluence scores
+     * @param chartWorkflow           the chart workflow instance
+     * @param isHeadless              whether running in headless mode
+     */
+    private static void displayPrimaryScenarioChart(BarSeries series, ElliottDegree degree, ElliottScenario primary,
+            Indicator<Num> channelUpper, Indicator<Num> channelLower, Indicator<Num> channelMedian,
+            Indicator<Num> ratioValue, Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
+            ElliottConfluenceIndicator confluenceIndicator, ChartWorkflow chartWorkflow, boolean isHeadless) {
+        String primaryTitle = String.format("Elliott Wave (%s) - %s - PRIMARY: %s (%s) - %.1f%% confidence", degree,
+                series.getName(), primary.currentPhase(), primary.type(), primary.confidence().asPercentage());
+        String primaryWindowTitle = String.format("PRIMARY: %s (%s) - %.1f%% - %s", primary.currentPhase(),
+                primary.type(), primary.confidence().asPercentage(), series.getName());
+
+        BarSeriesLabelIndicator primaryWaveLabels = buildWaveLabelsFromScenario(series, primary);
+        ChartPlan primaryPlan = buildChartPlan(chartWorkflow, series, degree, channelUpper, channelLower, channelMedian,
+                primaryWaveLabels, swingCountAsNum, filteredSwingCountAsNum, ratioValue, confluenceIndicator,
+                primaryTitle);
+
+        if (!isHeadless) {
+            chartWorkflow.display(primaryPlan, primaryWindowTitle);
+        }
+        chartWorkflow.save(primaryPlan, "temp/charts", "elliott-wave-analysis-" + series.getName().toLowerCase() + "-"
+                + degree.name().toLowerCase() + "-primary");
+    }
+
+    /**
+     * Displays and saves charts for alternative scenarios.
+     *
+     * @param series                  the bar series
+     * @param degree                  the Elliott degree (for chart titles)
+     * @param alternatives            the list of alternative scenarios
+     * @param channelUpper            indicator for upper channel boundary
+     * @param channelLower            indicator for lower channel boundary
+     * @param channelMedian           indicator for median channel boundary
+     * @param ratioValue              indicator for Elliott ratio values
+     * @param swingCountAsNum         indicator for raw swing count (as numeric)
+     * @param filteredSwingCountAsNum indicator for filtered swing count (as
+     *                                numeric)
+     * @param confluenceIndicator     indicator for confluence scores
+     * @param chartWorkflow           the chart workflow instance
+     * @param isHeadless              whether running in headless mode
+     */
+    private static void displayAlternativeScenarioCharts(BarSeries series, ElliottDegree degree,
+            List<ElliottScenario> alternatives, Indicator<Num> channelUpper, Indicator<Num> channelLower,
+            Indicator<Num> channelMedian, Indicator<Num> ratioValue, Indicator<Num> swingCountAsNum,
+            Indicator<Num> filteredSwingCountAsNum, ElliottConfluenceIndicator confluenceIndicator,
+            ChartWorkflow chartWorkflow, boolean isHeadless) {
         for (int i = 0; i < alternatives.size(); i++) {
             ElliottScenario alt = alternatives.get(i);
             String altTitle = String.format("Elliott Wave (%s) - %s - ALTERNATIVE %d: %s (%s) - %.1f%% confidence",
@@ -393,9 +511,7 @@ public class ElliottWaveAnalysis {
             String altWindowTitle = String.format("ALTERNATIVE %d: %s (%s) - %.1f%% - %s", i + 1, alt.currentPhase(),
                     alt.type(), alt.confidence().asPercentage(), series.getName());
 
-            // Build scenario-specific wave labels from the scenario's swings
             BarSeriesLabelIndicator altWaveLabels = buildWaveLabelsFromScenario(series, alt);
-
             ChartPlan altPlan = buildChartPlan(chartWorkflow, series, degree, channelUpper, channelLower, channelMedian,
                     altWaveLabels, swingCountAsNum, filteredSwingCountAsNum, ratioValue, confluenceIndicator, altTitle);
 
@@ -405,7 +521,6 @@ public class ElliottWaveAnalysis {
             chartWorkflow.save(altPlan, "temp/charts", "elliott-wave-analysis-" + series.getName().toLowerCase() + "-"
                     + degree.name().toLowerCase() + "-alternative-" + (i + 1));
         }
-
     }
 
     /**
@@ -611,52 +726,76 @@ public class ElliottWaveAnalysis {
         List<BarLabel> labels = new ArrayList<>();
         ScenarioType type = scenario.type();
 
+        addFirstSwingLabel(swings, labels);
+
         if (type.isImpulse()) {
-            // For impulse patterns, label swings as 1, 2, 3, 4, 5
-            if (!swings.isEmpty()) {
-                ElliottSwing first = swings.get(0);
-                labels.add(
-                        new BarLabel(first.fromIndex(), first.fromPrice(), "", placementForPivot(!first.isRising())));
-            }
-
-            for (int i = 0; i < swings.size(); i++) {
-                ElliottSwing swing = swings.get(i);
-                labels.add(new BarLabel(swing.toIndex(), swing.toPrice(), String.valueOf(i + 1),
-                        placementForPivot(swing.isRising())));
-            }
+            addImpulseWaveLabels(swings, labels);
         } else if (type.isCorrective()) {
-            // For corrective patterns, label swings as A, B, C
-            if (!swings.isEmpty()) {
-                ElliottSwing first = swings.get(0);
-                labels.add(
-                        new BarLabel(first.fromIndex(), first.fromPrice(), "", placementForPivot(!first.isRising())));
-            }
-
-            for (int i = 0; i < swings.size(); i++) {
-                ElliottSwing swing = swings.get(i);
-                String label = switch (i) {
-                case 0 -> "A";
-                case 1 -> "B";
-                default -> "C";
-                };
-                labels.add(new BarLabel(swing.toIndex(), swing.toPrice(), label, placementForPivot(swing.isRising())));
-            }
+            addCorrectiveWaveLabels(swings, labels);
         } else {
-            // For unknown types, just label with indices
-            if (!swings.isEmpty()) {
-                ElliottSwing first = swings.get(0);
-                labels.add(
-                        new BarLabel(first.fromIndex(), first.fromPrice(), "", placementForPivot(!first.isRising())));
-            }
-
-            for (int i = 0; i < swings.size(); i++) {
-                ElliottSwing swing = swings.get(i);
-                labels.add(new BarLabel(swing.toIndex(), swing.toPrice(), String.valueOf(i + 1),
-                        placementForPivot(swing.isRising())));
-            }
+            addSequentialWaveLabels(swings, labels);
         }
 
         return new BarSeriesLabelIndicator(series, labels);
+    }
+
+    /**
+     * Adds a label for the first swing's starting point (typically unlabeled).
+     *
+     * @param swings the list of swings
+     * @param labels the list of labels to append to
+     */
+    private static void addFirstSwingLabel(List<ElliottSwing> swings, List<BarLabel> labels) {
+        if (!swings.isEmpty()) {
+            ElliottSwing first = swings.get(0);
+            labels.add(new BarLabel(first.fromIndex(), first.fromPrice(), "", placementForPivot(!first.isRising())));
+        }
+    }
+
+    /**
+     * Adds labels for impulse wave pattern (numbered 1, 2, 3, 4, 5).
+     *
+     * @param swings the list of swings
+     * @param labels the list of labels to append to
+     */
+    private static void addImpulseWaveLabels(List<ElliottSwing> swings, List<BarLabel> labels) {
+        for (int i = 0; i < swings.size(); i++) {
+            ElliottSwing swing = swings.get(i);
+            labels.add(new BarLabel(swing.toIndex(), swing.toPrice(), String.valueOf(i + 1),
+                    placementForPivot(swing.isRising())));
+        }
+    }
+
+    /**
+     * Adds labels for corrective wave pattern (lettered A, B, C).
+     *
+     * @param swings the list of swings
+     * @param labels the list of labels to append to
+     */
+    private static void addCorrectiveWaveLabels(List<ElliottSwing> swings, List<BarLabel> labels) {
+        for (int i = 0; i < swings.size(); i++) {
+            ElliottSwing swing = swings.get(i);
+            String label = switch (i) {
+            case 0 -> "A";
+            case 1 -> "B";
+            default -> "C";
+            };
+            labels.add(new BarLabel(swing.toIndex(), swing.toPrice(), label, placementForPivot(swing.isRising())));
+        }
+    }
+
+    /**
+     * Adds labels for unknown pattern types (numbered sequentially 1, 2, 3, ...).
+     *
+     * @param swings the list of swings
+     * @param labels the list of labels to append to
+     */
+    private static void addSequentialWaveLabels(List<ElliottSwing> swings, List<BarLabel> labels) {
+        for (int i = 0; i < swings.size(); i++) {
+            ElliottSwing swing = swings.get(i);
+            labels.add(new BarLabel(swing.toIndex(), swing.toPrice(), String.valueOf(i + 1),
+                    placementForPivot(swing.isRising())));
+        }
     }
 
     /**

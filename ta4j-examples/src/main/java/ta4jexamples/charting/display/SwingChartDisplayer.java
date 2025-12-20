@@ -129,8 +129,8 @@ public final class SwingChartDisplayer implements ChartDisplayer {
     private static final int CASCADE_OFFSET_Y = 30;
 
     /**
-     * Set of all open chart windows. Used to track when all windows are closed
-     * so the program can exit.
+     * Set of all open chart windows. Used to track when all windows are closed so
+     * the program can exit.
      */
     private static final Set<JFrame> openWindows = ConcurrentHashMap.newKeySet();
 

@@ -57,20 +57,55 @@ class SwingChartDisplayerTest {
     }
 
     @AfterEach
-    @SuppressWarnings("removal")
     void tearDown() {
         // Clean up properties
         System.clearProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY);
         System.clearProperty(SwingChartDisplayer.HOVER_DELAY_PROPERTY);
         System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
         // Restore default security manager if one was set
-        System.setSecurityManager(null);
+        safeSetSecurityManager(null);
         // Clean up any remaining frames
         Frame[] frames = Frame.getFrames();
         for (Frame frame : frames) {
             if (frame instanceof JFrame) {
                 frame.dispose();
             }
+        }
+    }
+
+    /**
+     * Safely sets the SecurityManager, handling UnsupportedOperationException that
+     * occurs in Java 17+ where SecurityManager is removed.
+     *
+     * @param manager the SecurityManager to set, or null to clear
+     * @return true if SecurityManager was successfully set, false if it's not
+     *         supported
+     */
+    @SuppressWarnings("removal")
+    private static boolean safeSetSecurityManager(SecurityManager manager) {
+        try {
+            System.setSecurityManager(manager);
+            return true;
+        } catch (UnsupportedOperationException e) {
+            // SecurityManager is not supported in Java 17+
+            // This is expected and can be safely ignored
+            return false;
+        }
+    }
+
+    /**
+     * Checks if SecurityManager is supported in this JVM.
+     *
+     * @return true if SecurityManager is supported, false otherwise
+     */
+    @SuppressWarnings("removal")
+    private static boolean isSecurityManagerSupported() {
+        try {
+            SecurityManager current = System.getSecurityManager();
+            System.setSecurityManager(current);
+            return true;
+        } catch (UnsupportedOperationException e) {
+            return false;
         }
     }
 
@@ -459,8 +494,11 @@ class SwingChartDisplayerTest {
     @SuppressWarnings("removal")
     void testExitCalledWhenAllWindowsClosed() {
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+        Assume.assumeTrue("SecurityManager not supported", isSecurityManagerSupported());
         ExitSecurityManager securityManager = new ExitSecurityManager();
-        System.setSecurityManager(securityManager);
+        if (!safeSetSecurityManager(securityManager)) {
+            return; // Skip test if SecurityManager not supported
+        }
 
         try {
             JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
@@ -484,16 +522,14 @@ class SwingChartDisplayerTest {
             testFrame.dispatchEvent(closedEvent);
 
             // Verify exit was called
-            assertTrue(securityManager.wasExitCalled(),
-                    "System.exit should be called when all windows are closed");
-            assertEquals(0, securityManager.getExitCode(),
-                    "Exit code should be 0");
+            assertTrue(securityManager.wasExitCalled(), "System.exit should be called when all windows are closed");
+            assertEquals(0, securityManager.getExitCode(), "Exit code should be 0");
         } catch (SecurityException e) {
             // Expected when System.exit is called
             assertTrue(e.getMessage().contains("System.exit"),
                     "SecurityException should indicate System.exit was called");
         } finally {
-            System.setSecurityManager(null);
+            safeSetSecurityManager(null);
             // Clean up any remaining frames
             Frame[] frames = Frame.getFrames();
             for (Frame frame : frames) {
@@ -508,8 +544,11 @@ class SwingChartDisplayerTest {
     @SuppressWarnings("removal")
     void testExitNotCalledWhenSomeWindowsRemain() {
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+        Assume.assumeTrue("SecurityManager not supported", isSecurityManagerSupported());
         ExitSecurityManager securityManager = new ExitSecurityManager();
-        System.setSecurityManager(securityManager);
+        if (!safeSetSecurityManager(securityManager)) {
+            return; // Skip test if SecurityManager not supported
+        }
 
         try {
             JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
@@ -539,13 +578,12 @@ class SwingChartDisplayerTest {
             firstFrame.dispatchEvent(closedEvent);
 
             // Verify exit was NOT called (since one window remains)
-            assertFalse(securityManager.wasExitCalled(),
-                    "System.exit should NOT be called when windows remain open");
+            assertFalse(securityManager.wasExitCalled(), "System.exit should NOT be called when windows remain open");
 
             // Clean up remaining window
             secondFrame.dispose();
         } finally {
-            System.setSecurityManager(null);
+            safeSetSecurityManager(null);
             // Clean up any remaining frames
             Frame[] frames = Frame.getFrames();
             for (Frame frame : frames) {
@@ -560,8 +598,11 @@ class SwingChartDisplayerTest {
     @SuppressWarnings("removal")
     void testExitCalledAfterAllMultipleWindowsClosed() {
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+        Assume.assumeTrue("SecurityManager not supported", isSecurityManagerSupported());
         ExitSecurityManager securityManager = new ExitSecurityManager();
-        System.setSecurityManager(securityManager);
+        if (!safeSetSecurityManager(securityManager)) {
+            return; // Skip test if SecurityManager not supported
+        }
 
         try {
             JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
@@ -598,24 +639,21 @@ class SwingChartDisplayerTest {
             WindowEvent closedEvent2 = new WindowEvent(window2, WindowEvent.WINDOW_CLOSED);
             window2.dispatchEvent(closedEvent2);
 
-            assertFalse(securityManager.wasExitCalled(),
-                    "System.exit should NOT be called when windows remain open");
+            assertFalse(securityManager.wasExitCalled(), "System.exit should NOT be called when windows remain open");
 
             // Close the last window (exit should be called)
             WindowEvent closedEvent3 = new WindowEvent(window3, WindowEvent.WINDOW_CLOSED);
             window3.dispatchEvent(closedEvent3);
 
             // Verify exit was called
-            assertTrue(securityManager.wasExitCalled(),
-                    "System.exit should be called when the last window is closed");
-            assertEquals(0, securityManager.getExitCode(),
-                    "Exit code should be 0");
+            assertTrue(securityManager.wasExitCalled(), "System.exit should be called when the last window is closed");
+            assertEquals(0, securityManager.getExitCode(), "Exit code should be 0");
         } catch (SecurityException e) {
             // Expected when System.exit is called
             assertTrue(e.getMessage().contains("System.exit"),
                     "SecurityException should indicate System.exit was called");
         } finally {
-            System.setSecurityManager(null);
+            safeSetSecurityManager(null);
             // Clean up any remaining frames
             Frame[] frames = Frame.getFrames();
             for (Frame frame : frames) {
