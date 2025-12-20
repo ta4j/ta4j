@@ -30,13 +30,13 @@ Build, test, and deploy trading bots in Java. With 200+ (and counting) technical
 
 **Build, test, and deploy trading strategies in Java** without leaving your preferred language, toolchain, or mental model. Ta4j provides the building blocks needed to explore markets, validate ideas, and move from curiosity to production-grade systems.
 
-Ta4j treats technical analysis for what it is: a structured way to reason about uncertainty using historical price data. As often stated, past performance is no guarantee of future results. History doesn't repeat, but it often rhymes. Technical indicators are about probabilities rather than predictions. They help us understand the art of the possible and, when used well, extract alpha from the probable. 
+Ta4j treats technical analysis for what it is: a structured way to reason about uncertainty using historical price data. As often stated, past performance is no guarantee of future results. History doesn't repeat, but it often rhymes. Technical indicators are about probabilities rather than predictions. They help us understand the art of the possible and, when used well, the art of extracting alpha from the probable. 
 
 > **⚡ Performance Advantage**: Native multi-threading gives ta4j a significant comparative advantage over Python-based libraries. Backtest hundreds of strategies in parallel, process years of market data in seconds, and saturate all CPU cores. No GIL bottleneck, no multiprocessing workarounds, just straightforward parallel execution.
 
 Because Ta4j runs on the JVM, strategies scale naturally from a single backtest on a laptop to large parameter sweeps, portfolio simulations, and research pipelines. Strong typing and explicit models make strategies easier to reason about, harder to misuse, and less likely to quietly do the wrong thing.
 
-Ta4j does not promise profitable strategies. It promises reproducible experiments. If a strategy looks good, Ta4j helps you verify it. If it stops working, Ta4j helps you understand why. And if a backtest looks too good to be true, it's on you to exercise skepticism.
+Ta4j does not promise profitable strategies. It promises reproducible experiments. If a strategy looks good, Ta4j helps you verify it. If it stops working, Ta4j helps you understand why. And if a backtest looks too good to be true, it's on you to choose skepticism over motivated thinking.
 
 
 ### What can you build?
