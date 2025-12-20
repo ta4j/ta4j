@@ -653,7 +653,7 @@ Just kidding.
 
 Ta4j is open-source software released under the MIT License. There is no warranty, express, implied, imaginary, or otherwise. Ta4j is provided as-is. Use it, fork it, break it, improve it, or walk away entirely.
 
-Ta4j is built and maintained by developers contributing on their own time, at their own expense, and for reasons as varied as the markets themselves. For some, it’s a hobby. For others, a labor of love. Some run Ta4j inside proprietary trading stacks and choose to give back. Others contribute to open-source to offset certain download habits that, in practice, look a lot like downloading north of a thousand terabytes of movies, TV shows, software installers, cracked plug-ins, ROM sets, **The.Sims.3.Complete.Collection-RELOADED**, and e-books, while maintaining a lifetime upload ratio of 0. Who can say?
+Ta4j is built and maintained by developers contributing on their own time, at their own expense, and for reasons as varied as the markets themselves. For some, it’s a hobby. For others, a labor of love. Some run Ta4j inside proprietary trading stacks and choose to give back. Others contribute to open-source to offset certain download habits that, in practice, look a lot like torrenting north of a thousand terabytes of movies, TV shows, software installers, cracked plug-ins, ROM sets, **The.Sims.3.Complete.Collection-RELOADED**, and e-books, while maintaining a lifetime upload ratio of 0. Who can say?
 
 What *is* certain is this: whoever they are, and whatever motivates them, they don’t owe you anything. If Ta4j helps you learn, experiment, or even make money, great. If it doesn’t, that’s the risk you accepted.
 
