@@ -31,6 +31,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Facade class that creates and coordinates a complete set of Elliott Wave
@@ -59,11 +60,14 @@ public final class ElliottWaveFacade {
     private final BarSeries series;
     private final ElliottSwingIndicator swingIndicator;
     private final Indicator<Num> priceIndicator;
+    private final Optional<Num> fibTolerance;
+    private final Optional<ElliottSwingCompressor> compressor;
 
     private ElliottPhaseIndicator phaseIndicator;
     private ElliottRatioIndicator ratioIndicator;
     private ElliottChannelIndicator channelIndicator;
     private ElliottWaveCountIndicator waveCountIndicator;
+    private ElliottWaveCountIndicator filteredWaveCountIndicator;
     private ElliottConfluenceIndicator confluenceIndicator;
     private ElliottInvalidationIndicator invalidationIndicator;
     private ElliottScenarioIndicator scenarioIndicator;
@@ -71,10 +75,13 @@ public final class ElliottWaveFacade {
     private ElliottInvalidationLevelIndicator invalidationLevelIndicator;
 
     private ElliottWaveFacade(final BarSeries series, final ElliottSwingIndicator swingIndicator,
-            final Indicator<Num> priceIndicator) {
+            final Indicator<Num> priceIndicator, final Optional<Num> fibTolerance,
+            final Optional<ElliottSwingCompressor> compressor) {
         this.series = Objects.requireNonNull(series, "series");
         this.swingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator");
         this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
+        this.fibTolerance = Objects.requireNonNull(fibTolerance, "fibTolerance");
+        this.compressor = Objects.requireNonNull(compressor, "compressor");
     }
 
     /**
@@ -87,11 +94,28 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public static ElliottWaveFacade fractal(final BarSeries series, final int window, final ElliottDegree degree) {
+        return fractal(series, window, degree, Optional.empty(), Optional.empty());
+    }
+
+    /**
+     * Creates an Elliott Wave facade using fractal-based swing detection with
+     * optional custom configuration.
+     *
+     * @param series       source bar series
+     * @param window       number of bars to inspect before and after a pivot
+     * @param degree       swing degree metadata
+     * @param fibTolerance optional custom Fibonacci tolerance (default: 0.05)
+     * @param compressor   optional swing compressor for filtered wave counting
+     * @return configured Elliott Wave facade
+     * @since 0.22.0
+     */
+    public static ElliottWaveFacade fractal(final BarSeries series, final int window, final ElliottDegree degree,
+            final Optional<Num> fibTolerance, final Optional<ElliottSwingCompressor> compressor) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(degree, "degree");
         var swingIndicator = new ElliottSwingIndicator(series, window, degree);
         var priceIndicator = new ClosePriceIndicator(series);
-        return new ElliottWaveFacade(series, swingIndicator, priceIndicator);
+        return new ElliottWaveFacade(series, swingIndicator, priceIndicator, fibTolerance, compressor);
     }
 
     /**
@@ -107,11 +131,30 @@ public final class ElliottWaveFacade {
      */
     public static ElliottWaveFacade fractal(final BarSeries series, final int lookbackLength,
             final int lookforwardLength, final ElliottDegree degree) {
+        return fractal(series, lookbackLength, lookforwardLength, degree, Optional.empty(), Optional.empty());
+    }
+
+    /**
+     * Creates an Elliott Wave facade using fractal-based swing detection with
+     * asymmetric lookback/lookforward and optional custom configuration.
+     *
+     * @param series            source bar series
+     * @param lookbackLength    bars inspected before a pivot candidate
+     * @param lookforwardLength bars inspected after a pivot candidate
+     * @param degree            swing degree metadata
+     * @param fibTolerance      optional custom Fibonacci tolerance (default: 0.05)
+     * @param compressor        optional swing compressor for filtered wave counting
+     * @return configured Elliott Wave facade
+     * @since 0.22.0
+     */
+    public static ElliottWaveFacade fractal(final BarSeries series, final int lookbackLength,
+            final int lookforwardLength, final ElliottDegree degree, final Optional<Num> fibTolerance,
+            final Optional<ElliottSwingCompressor> compressor) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(degree, "degree");
         var swingIndicator = new ElliottSwingIndicator(series, lookbackLength, lookforwardLength, degree);
         var priceIndicator = new ClosePriceIndicator(series);
-        return new ElliottWaveFacade(series, swingIndicator, priceIndicator);
+        return new ElliottWaveFacade(series, swingIndicator, priceIndicator, fibTolerance, compressor);
     }
 
     /**
@@ -124,11 +167,27 @@ public final class ElliottWaveFacade {
      * @since 0.22.0
      */
     public static ElliottWaveFacade zigZag(final BarSeries series, final ElliottDegree degree) {
+        return zigZag(series, degree, Optional.empty(), Optional.empty());
+    }
+
+    /**
+     * Creates an Elliott Wave facade using ZigZag-based swing detection with
+     * ATR(14) reversal threshold and optional custom configuration.
+     *
+     * @param series       source bar series
+     * @param degree       swing degree metadata
+     * @param fibTolerance optional custom Fibonacci tolerance (default: 0.05)
+     * @param compressor   optional swing compressor for filtered wave counting
+     * @return configured Elliott Wave facade
+     * @since 0.22.0
+     */
+    public static ElliottWaveFacade zigZag(final BarSeries series, final ElliottDegree degree,
+            final Optional<Num> fibTolerance, final Optional<ElliottSwingCompressor> compressor) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(degree, "degree");
         var swingIndicator = ElliottSwingIndicator.zigZag(series, degree);
         var priceIndicator = new ClosePriceIndicator(series);
-        return new ElliottWaveFacade(series, swingIndicator, priceIndicator);
+        return new ElliottWaveFacade(series, swingIndicator, priceIndicator, fibTolerance, compressor);
     }
 
     /**
@@ -141,9 +200,27 @@ public final class ElliottWaveFacade {
      */
     public static ElliottWaveFacade from(final ElliottSwingIndicator swingIndicator,
             final Indicator<Num> priceIndicator) {
+        return from(swingIndicator, priceIndicator, Optional.empty(), Optional.empty());
+    }
+
+    /**
+     * Creates an Elliott Wave facade from a custom swing indicator with optional
+     * custom configuration.
+     *
+     * @param swingIndicator custom swing indicator
+     * @param priceIndicator price reference for confluence analysis
+     * @param fibTolerance   optional custom Fibonacci tolerance (default: 0.05)
+     * @param compressor     optional swing compressor for filtered wave counting
+     * @return configured Elliott Wave facade
+     * @since 0.22.0
+     */
+    public static ElliottWaveFacade from(final ElliottSwingIndicator swingIndicator,
+            final Indicator<Num> priceIndicator, final Optional<Num> fibTolerance,
+            final Optional<ElliottSwingCompressor> compressor) {
         Objects.requireNonNull(swingIndicator, "swingIndicator");
         Objects.requireNonNull(priceIndicator, "priceIndicator");
-        return new ElliottWaveFacade(swingIndicator.getBarSeries(), swingIndicator, priceIndicator);
+        return new ElliottWaveFacade(swingIndicator.getBarSeries(), swingIndicator, priceIndicator, fibTolerance,
+                compressor);
     }
 
     /**
@@ -168,7 +245,14 @@ public final class ElliottWaveFacade {
      */
     public ElliottPhaseIndicator phase() {
         if (phaseIndicator == null) {
-            phaseIndicator = new ElliottPhaseIndicator(swingIndicator);
+            if (fibTolerance.isPresent()) {
+                final NumFactory numFactory = series.numFactory();
+                final ElliottFibonacciValidator validator = new ElliottFibonacciValidator(numFactory,
+                        fibTolerance.get());
+                phaseIndicator = new ElliottPhaseIndicator(swingIndicator, validator);
+            } else {
+                phaseIndicator = new ElliottPhaseIndicator(swingIndicator);
+            }
         }
         return phaseIndicator;
     }
@@ -196,7 +280,7 @@ public final class ElliottWaveFacade {
     }
 
     /**
-     * @return the wave count indicator (lazily created)
+     * @return the wave count indicator (lazily created, without compression)
      * @since 0.22.0
      */
     public ElliottWaveCountIndicator waveCount() {
@@ -204,6 +288,23 @@ public final class ElliottWaveFacade {
             waveCountIndicator = new ElliottWaveCountIndicator(swingIndicator);
         }
         return waveCountIndicator;
+    }
+
+    /**
+     * @return the filtered wave count indicator (lazily created, with compression
+     *         if compressor is configured)
+     * @since 0.22.0
+     */
+    public ElliottWaveCountIndicator filteredWaveCount() {
+        if (filteredWaveCountIndicator == null) {
+            if (compressor.isPresent()) {
+                filteredWaveCountIndicator = new ElliottWaveCountIndicator(swingIndicator, compressor.get());
+            } else {
+                // If no compressor configured, return basic wave count
+                filteredWaveCountIndicator = waveCount();
+            }
+        }
+        return filteredWaveCountIndicator;
     }
 
     /**

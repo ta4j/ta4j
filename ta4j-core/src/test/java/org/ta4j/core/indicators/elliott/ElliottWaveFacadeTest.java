@@ -25,6 +25,8 @@ package org.ta4j.core.indicators.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.Optional;
+
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
@@ -104,5 +106,63 @@ class ElliottWaveFacadeTest {
         assertThat(suite.channel().getSwingIndicator()).isSameAs(swing);
         assertThat(suite.waveCount().getSwingIndicator()).isSameAs(swing);
         assertThat(suite.scenarios().getSwingIndicator()).isSameAs(swing);
+    }
+
+    @Test
+    void customFibToleranceShouldBeUsed() {
+        var series = new MockBarSeriesBuilder().build();
+        double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
+        for (double close : closes) {
+            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
+        }
+
+        var customTolerance = series.numFactory().numOf(0.25);
+        var suite = ElliottWaveFacade.fractal(series, 1, ElliottDegree.MINOR, Optional.of(customTolerance),
+                Optional.empty());
+
+        // Phase indicator should use custom validator with custom tolerance
+        assertThat(suite.phase()).isNotNull();
+        assertThat(suite.phase().getValue(series.getEndIndex())).isNotNull();
+    }
+
+    @Test
+    void customCompressorShouldBeUsedForFilteredWaveCount() {
+        var series = new MockBarSeriesBuilder().build();
+        double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6, 16, 5, 17, 4 };
+        for (double close : closes) {
+            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
+        }
+
+        var compressor = new ElliottSwingCompressor(series.numFactory().numOf(6), 0);
+        var suite = ElliottWaveFacade.fractal(series, 1, ElliottDegree.MINOR, Optional.empty(),
+                Optional.of(compressor));
+
+        var basicCount = suite.waveCount();
+        var filteredCount = suite.filteredWaveCount();
+
+        // Filtered count should use compressor and may differ from basic count
+        assertThat(filteredCount).isNotNull();
+        assertThat(basicCount).isNotNull();
+        // Filtered count should be less than or equal to basic count
+        assertThat(filteredCount.getValue(series.getEndIndex()))
+                .isLessThanOrEqualTo(basicCount.getValue(series.getEndIndex()));
+    }
+
+    @Test
+    void bothCustomConfigurationsShouldWorkTogether() {
+        var series = new MockBarSeriesBuilder().build();
+        double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6, 16, 5, 17, 4 };
+        for (double close : closes) {
+            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
+        }
+
+        var customTolerance = series.numFactory().numOf(0.25);
+        var compressor = new ElliottSwingCompressor(series.numFactory().numOf(6), 0);
+        var suite = ElliottWaveFacade.zigZag(series, ElliottDegree.MINOR, Optional.of(customTolerance),
+                Optional.of(compressor));
+
+        assertThat(suite.phase()).isNotNull();
+        assertThat(suite.filteredWaveCount()).isNotNull();
+        assertThat(suite.waveCount()).isNotNull();
     }
 }

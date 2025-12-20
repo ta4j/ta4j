@@ -31,6 +31,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -43,7 +44,6 @@ import org.ta4j.core.indicators.elliott.ElliottChannelIndicator;
 import org.ta4j.core.indicators.elliott.ElliottConfidence;
 import org.ta4j.core.indicators.elliott.ElliottConfluenceIndicator;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
-import org.ta4j.core.indicators.elliott.ElliottFibonacciValidator;
 import org.ta4j.core.indicators.elliott.ElliottInvalidationIndicator;
 import org.ta4j.core.indicators.elliott.ElliottPhaseIndicator;
 import org.ta4j.core.indicators.elliott.ElliottRatio;
@@ -54,9 +54,9 @@ import org.ta4j.core.indicators.elliott.ElliottScenarioSet;
 import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottSwingCompressor;
-import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
 import org.ta4j.core.indicators.elliott.ElliottSwingMetadata;
 import org.ta4j.core.indicators.elliott.ElliottWaveCountIndicator;
+import org.ta4j.core.indicators.elliott.ElliottWaveFacade;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
@@ -137,29 +137,27 @@ public class ElliottWaveAnalysis {
     }
 
     public void analyze(BarSeries series, ElliottDegree degree, double fibTolerance) {
+        // Create compressor for filtered wave counting (1% of current price, minimum 2
+        // bars)
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-
-        ElliottSwingIndicator swingIndicator = ElliottSwingIndicator.zigZag(series, degree);
-        ElliottFibonacciValidator validator = new ElliottFibonacciValidator(series.numFactory(),
-                series.numFactory().numOf(fibTolerance));
-        ElliottPhaseIndicator phaseIndicator = new ElliottPhaseIndicator(swingIndicator, validator);
-        ElliottInvalidationIndicator invalidationIndicator = new ElliottInvalidationIndicator(phaseIndicator);
-
-        ElliottChannelIndicator channelIndicator = new ElliottChannelIndicator(swingIndicator);
-        ElliottRatioIndicator ratioIndicator = new ElliottRatioIndicator(swingIndicator);
-        ElliottConfluenceIndicator confluenceIndicator = new ElliottConfluenceIndicator(closePrice, ratioIndicator,
-                channelIndicator);
-
-        ElliottWaveCountIndicator swingCount = new ElliottWaveCountIndicator(swingIndicator);
-        ElliottSwingCompressor compressor = new ElliottSwingCompressor(
-                closePrice.getValue(series.getEndIndex()).multipliedBy(series.numFactory().numOf(0.01)), 2);
-        ElliottWaveCountIndicator filteredSwingCount = new ElliottWaveCountIndicator(swingIndicator, compressor);
-
-        // Scenario-based analysis with confidence scoring
-        ElliottScenarioIndicator scenarioIndicator = new ElliottScenarioIndicator(swingIndicator, channelIndicator);
-
         int endIndex = series.getEndIndex();
-        ElliottSwingMetadata snapshot = ElliottSwingMetadata.of(swingIndicator.getValue(endIndex), series.numFactory());
+        ElliottSwingCompressor compressor = new ElliottSwingCompressor(
+                closePrice.getValue(endIndex).multipliedBy(series.numFactory().numOf(0.01)), 2);
+
+        // Create facade with custom Fibonacci tolerance and compressor
+        ElliottWaveFacade facade = ElliottWaveFacade.zigZag(series, degree,
+                Optional.of(series.numFactory().numOf(fibTolerance)), Optional.of(compressor));
+
+        // Get all indicators from facade
+        ElliottPhaseIndicator phaseIndicator = facade.phase();
+        ElliottInvalidationIndicator invalidationIndicator = facade.invalidation();
+        ElliottChannelIndicator channelIndicator = facade.channel();
+        ElliottRatioIndicator ratioIndicator = facade.ratio();
+        ElliottConfluenceIndicator confluenceIndicator = facade.confluence();
+        ElliottWaveCountIndicator swingCount = facade.waveCount();
+        ElliottWaveCountIndicator filteredSwingCount = facade.filteredWaveCount();
+        ElliottScenarioIndicator scenarioIndicator = facade.scenarios();
+        ElliottSwingMetadata snapshot = ElliottSwingMetadata.of(facade.swing().getValue(endIndex), series.numFactory());
         LOG.info("Elliott swing snapshot valid={}, swings={}, high={}, low={}", snapshot.isValid(), snapshot.size(),
                 snapshot.highestPrice(), snapshot.lowestPrice());
 
