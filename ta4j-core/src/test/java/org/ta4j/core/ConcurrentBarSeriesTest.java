@@ -160,6 +160,176 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         });
     }
 
+    // ==================== getName() and numFactory() Tests ====================
+
+    @Test
+    public void testGetName() {
+        ConcurrentBarSeries series = new ConcurrentBarSeries("MySeries", testBars);
+        assertEquals("MySeries", series.getName());
+    }
+
+    @Test
+    public void testGetNameWithEmptySeries() {
+        ConcurrentBarSeries series = new ConcurrentBarSeries("EmptySeries", Collections.emptyList());
+        assertEquals("EmptySeries", series.getName());
+    }
+
+    @Test
+    public void testGetNameConcurrentAccess() throws Exception {
+        ConcurrentBarSeries series = new ConcurrentBarSeries("ConcurrentSeries", testBars);
+
+        final int readerCount = 10;
+        final int operationsPerReader = 100;
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch endLatch = new CountDownLatch(readerCount);
+        final AtomicInteger successCount = new AtomicInteger(0);
+
+        for (int i = 0; i < readerCount; i++) {
+            executorService.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int j = 0; j < operationsPerReader; j++) {
+                        String name = series.getName();
+                        assertEquals("ConcurrentSeries", name);
+                    }
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    System.err.println("getName() operation failed: " + e.getMessage());
+                    e.printStackTrace();
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        assertTrue("All getName() operations should complete within timeout", endLatch.await(10, TimeUnit.SECONDS));
+        assertEquals(readerCount, successCount.get());
+    }
+
+    @Test
+    public void testNumFactory() {
+        ConcurrentBarSeries series = new ConcurrentBarSeries("TestSeries", testBars, 0, 4, false, numFactory,
+                barBuilderFactory);
+        assertSame(numFactory, series.numFactory());
+    }
+
+    @Test
+    public void testNumFactoryWithDifferentFactories() {
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+
+        // Create test bars compatible with each factory
+        List<Bar> decimalBars = new ArrayList<>();
+        List<Bar> doubleBars = new ArrayList<>();
+        Instant baseTime = Instant.parse("2024-01-01T00:00:00Z");
+
+        for (int i = 0; i < 5; i++) {
+            Bar decimalBar = new TimeBarBuilder(decimalFactory).timePeriod(Duration.ofDays(1))
+                    .endTime(baseTime.plus(Duration.ofDays(i)))
+                    .openPrice(decimalFactory.numOf(i + 1))
+                    .highPrice(decimalFactory.numOf(i + 2))
+                    .lowPrice(decimalFactory.numOf(i))
+                    .closePrice(decimalFactory.numOf(i + 1.5))
+                    .volume(decimalFactory.numOf(i * 100))
+                    .amount(decimalFactory.numOf(i * 1000))
+                    .trades(i * 10)
+                    .build();
+            decimalBars.add(decimalBar);
+
+            Bar doubleBar = new TimeBarBuilder(doubleFactory).timePeriod(Duration.ofDays(1))
+                    .endTime(baseTime.plus(Duration.ofDays(i)))
+                    .openPrice(doubleFactory.numOf(i + 1))
+                    .highPrice(doubleFactory.numOf(i + 2))
+                    .lowPrice(doubleFactory.numOf(i))
+                    .closePrice(doubleFactory.numOf(i + 1.5))
+                    .volume(doubleFactory.numOf(i * 100))
+                    .amount(doubleFactory.numOf(i * 1000))
+                    .trades(i * 10)
+                    .build();
+            doubleBars.add(doubleBar);
+        }
+
+        ConcurrentBarSeries decimalSeries = new ConcurrentBarSeries("DecimalSeries", decimalBars, 0, 4, false,
+                decimalFactory, barBuilderFactory);
+        ConcurrentBarSeries doubleSeries = new ConcurrentBarSeries("DoubleSeries", doubleBars, 0, 4, false,
+                doubleFactory, barBuilderFactory);
+
+        assertSame(decimalFactory, decimalSeries.numFactory());
+        assertSame(doubleFactory, doubleSeries.numFactory());
+        assertNotSame(decimalSeries.numFactory(), doubleSeries.numFactory());
+    }
+
+    @Test
+    public void testNumFactoryConcurrentAccess() throws Exception {
+        ConcurrentBarSeries series = new ConcurrentBarSeries("ConcurrentSeries", testBars, 0, 4, false, numFactory,
+                barBuilderFactory);
+
+        final int readerCount = 10;
+        final int operationsPerReader = 100;
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch endLatch = new CountDownLatch(readerCount);
+        final AtomicInteger successCount = new AtomicInteger(0);
+
+        for (int i = 0; i < readerCount; i++) {
+            executorService.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int j = 0; j < operationsPerReader; j++) {
+                        NumFactory factory = series.numFactory();
+                        assertSame(numFactory, factory);
+                    }
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    System.err.println("numFactory() operation failed: " + e.getMessage());
+                    e.printStackTrace();
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        assertTrue("All numFactory() operations should complete within timeout", endLatch.await(10, TimeUnit.SECONDS));
+        assertEquals(readerCount, successCount.get());
+    }
+
+    @Test
+    public void testGetNameAndNumFactoryTogether() throws Exception {
+        ConcurrentBarSeries series = new ConcurrentBarSeries("TestSeries", testBars, 0, 4, false, numFactory,
+                barBuilderFactory);
+
+        final int readerCount = 5;
+        final int operationsPerReader = 50;
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch endLatch = new CountDownLatch(readerCount);
+        final AtomicInteger successCount = new AtomicInteger(0);
+
+        for (int i = 0; i < readerCount; i++) {
+            executorService.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int j = 0; j < operationsPerReader; j++) {
+                        String name = series.getName();
+                        NumFactory factory = series.numFactory();
+                        assertEquals("TestSeries", name);
+                        assertSame(numFactory, factory);
+                    }
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    System.err.println("Combined getName()/numFactory() operation failed: " + e.getMessage());
+                    e.printStackTrace();
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        assertTrue("All combined operations should complete within timeout", endLatch.await(10, TimeUnit.SECONDS));
+        assertEquals(readerCount, successCount.get());
+    }
+
     // ==================== Thread Safety Tests for Read Operations
     // ====================
 
@@ -182,6 +352,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     startLatch.await();
                     for (int j = 0; j < operationsPerReader; j++) {
                         // Test various read operations
+                        series.getName();
+                        series.numFactory();
                         series.getBarCount();
                         series.getBeginIndex();
                         series.getEndIndex();

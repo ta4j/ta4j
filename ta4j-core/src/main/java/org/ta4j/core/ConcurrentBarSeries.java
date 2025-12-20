@@ -71,9 +71,9 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      */
     public record StreamingBarIngestResult(StreamingBarIngestAction action, int index) {
         public StreamingBarIngestResult {
-            Objects.requireNonNull(action, "action");
+            Objects.requireNonNull(action, "action cannot be null");
             if (index < 0) {
-                throw new IllegalArgumentException("index must be >= 0");
+                throw new IllegalArgumentException("index cannot be negative");
             }
         }
     }
@@ -107,12 +107,11 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         this.readLock.lock();
         try {
             if (startIndex < 0) {
-                throw new IllegalArgumentException(
-                        String.format("the startIndex: %s must not be negative", startIndex));
+                throw new IllegalArgumentException(String.format("startIndex: %s cannot be negative", startIndex));
             }
             if (startIndex >= endIndex) {
                 throw new IllegalArgumentException(
-                        String.format("the endIndex: %s must be greater than startIndex: %s", endIndex, startIndex));
+                        String.format("endIndex: %s must be greater than startIndex: %s", endIndex, startIndex));
             }
             final List<Bar> bars = super.getBarData();
             if (!bars.isEmpty()) {
@@ -134,6 +133,26 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         this.readLock.lock();
         try {
             return super.barBuilder();
+        } finally {
+            this.readLock.unlock();
+        }
+    }
+
+    @Override
+    public String getName() {
+        this.readLock.lock();
+        try {
+            return super.getName();
+        } finally {
+            this.readLock.unlock();
+        }
+    }
+
+    @Override
+    public NumFactory numFactory() {
+        this.readLock.lock();
+        try {
+            return super.numFactory();
         } finally {
             this.readLock.unlock();
         }
