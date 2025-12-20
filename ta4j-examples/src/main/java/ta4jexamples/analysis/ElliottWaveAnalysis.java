@@ -51,6 +51,7 @@ import org.ta4j.core.indicators.elliott.ElliottRatioIndicator;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottScenarioIndicator;
 import org.ta4j.core.indicators.elliott.ElliottScenarioSet;
+import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottSwingCompressor;
 import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
@@ -210,8 +211,6 @@ public class ElliottWaveAnalysis {
         }
         LOG.info("======================================");
 
-        BarSeriesLabelIndicator waveLabels = buildWaveLabels(series, phaseIndicator);
-
         Indicator<Num> channelUpper = new ChannelBoundaryIndicator(series, channelIndicator, ChannelBoundary.UPPER);
         Indicator<Num> channelLower = new ChannelBoundaryIndicator(series, channelIndicator, ChannelBoundary.LOWER);
         Indicator<Num> channelMedian = new ChannelBoundaryIndicator(series, channelIndicator, ChannelBoundary.MEDIAN);
@@ -221,49 +220,50 @@ public class ElliottWaveAnalysis {
                 "Swings (compressed)");
 
         ChartWorkflow chartWorkflow = new ChartWorkflow();
-        ChartPlan plan = chartWorkflow.builder()
-                .withTitle("Elliott Wave (" + degree + ") - " + series.getName())
-                .withSeries(series)
-                .withIndicatorOverlay(channelUpper)
-                .withLineColor(new Color(0xF05454))
-                .withLineWidth(1.4f)
-                .withOpacity(0.85f)
-                .withLabel("Elliott channel upper")
-                .withIndicatorOverlay(channelLower)
-                .withLineColor(new Color(0x26A69A))
-                .withLineWidth(1.4f)
-                .withOpacity(0.85f)
-                .withLabel("Elliott channel lower")
-                .withIndicatorOverlay(channelMedian)
-                .withLineColor(Color.LIGHT_GRAY)
-                .withLineWidth(1.2f)
-                .withOpacity(0.55f)
-                .withLabel("Elliott channel median")
-                .withIndicatorOverlay(waveLabels)
-                .withLineColor(new Color(0x03DAC6))
-                .withLineWidth(2.0f)
-                .withOpacity(0.9f)
-                .withLabel("Wave pivots")
-                .withSubChart(swingCountAsNum)
-                .withIndicatorOverlay(filteredSwingCountAsNum)
-                .withLineColor(new Color(0x90CAF9))
-                .withOpacity(0.85f)
-                .withLabel("Swings (compressed)")
-                .withSubChart(ratioValue)
-                .withHorizontalMarker(1.0)
-                .withLineColor(Color.GRAY)
-                .withOpacity(0.3f)
-                .withSubChart(confluenceIndicator)
-                .withHorizontalMarker(2.0)
-                .withLineColor(Color.GRAY)
-                .withOpacity(0.3f)
-                .toPlan();
+        boolean isHeadless = GraphicsEnvironment.isHeadless();
 
-        if (!GraphicsEnvironment.isHeadless()) {
-            chartWorkflow.display(plan);
+        // Display chart for primary scenario
+        if (scenarioSet.primary().isPresent()) {
+            ElliottScenario primary = scenarioSet.primary().get();
+            String primaryTitle = String.format("Elliott Wave (%s) - %s - PRIMARY: %s (%s) - %.1f%% confidence", degree,
+                    series.getName(), primary.currentPhase(), primary.type(), primary.confidence().asPercentage());
+            String primaryWindowTitle = String.format("PRIMARY: %s (%s) - %.1f%% - %s", primary.currentPhase(),
+                    primary.type(), primary.confidence().asPercentage(), series.getName());
+
+            // Build scenario-specific wave labels from the scenario's swings
+            BarSeriesLabelIndicator primaryWaveLabels = buildWaveLabelsFromScenario(series, primary);
+
+            ChartPlan primaryPlan = buildChartPlan(chartWorkflow, series, degree, channelUpper, channelLower,
+                    channelMedian, primaryWaveLabels, swingCountAsNum, filteredSwingCountAsNum, ratioValue,
+                    confluenceIndicator, primaryTitle);
+
+            if (!isHeadless) {
+                chartWorkflow.display(primaryPlan, primaryWindowTitle);
+            }
+            chartWorkflow.save(primaryPlan, "temp/charts", "elliott-wave-analysis-" + series.getName().toLowerCase()
+                    + "-" + degree.name().toLowerCase() + "-primary");
         }
-        chartWorkflow.save(plan, "temp/charts",
-                "elliott-wave-analysis-" + series.getName().toLowerCase() + "-" + degree.name().toLowerCase());
+
+        // Display charts for alternative scenarios
+        for (int i = 0; i < alternatives.size(); i++) {
+            ElliottScenario alt = alternatives.get(i);
+            String altTitle = String.format("Elliott Wave (%s) - %s - ALTERNATIVE %d: %s (%s) - %.1f%% confidence",
+                    degree, series.getName(), i + 1, alt.currentPhase(), alt.type(), alt.confidence().asPercentage());
+            String altWindowTitle = String.format("ALTERNATIVE %d: %s (%s) - %.1f%% - %s", i + 1, alt.currentPhase(),
+                    alt.type(), alt.confidence().asPercentage(), series.getName());
+
+            // Build scenario-specific wave labels from the scenario's swings
+            BarSeriesLabelIndicator altWaveLabels = buildWaveLabelsFromScenario(series, alt);
+
+            ChartPlan altPlan = buildChartPlan(chartWorkflow, series, degree, channelUpper, channelLower, channelMedian,
+                    altWaveLabels, swingCountAsNum, filteredSwingCountAsNum, ratioValue, confluenceIndicator, altTitle);
+
+            if (!isHeadless) {
+                chartWorkflow.display(altPlan, altWindowTitle);
+            }
+            chartWorkflow.save(altPlan, "temp/charts", "elliott-wave-analysis-" + series.getName().toLowerCase() + "-"
+                    + degree.name().toLowerCase() + "-alternative-" + (i + 1));
+        }
 
     }
 
@@ -322,31 +322,101 @@ public class ElliottWaveAnalysis {
         }
     }
 
-    private static BarSeriesLabelIndicator buildWaveLabels(BarSeries series, ElliottPhaseIndicator phaseIndicator) {
-        int endIndex = series.getEndIndex();
-        List<ElliottSwing> impulse = phaseIndicator.impulseSwings(endIndex);
-        List<ElliottSwing> correction = phaseIndicator.correctiveSwings(endIndex);
+    private static ChartPlan buildChartPlan(ChartWorkflow chartWorkflow, BarSeries series, ElliottDegree degree,
+            Indicator<Num> channelUpper, Indicator<Num> channelLower, Indicator<Num> channelMedian,
+            BarSeriesLabelIndicator waveLabels, Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
+            Indicator<Num> ratioValue, Indicator<Num> confluenceIndicator, String title) {
+        return chartWorkflow.builder()
+                .withTitle(title)
+                .withSeries(series)
+                .withIndicatorOverlay(channelUpper)
+                .withLineColor(new Color(0xF05454))
+                .withLineWidth(1.4f)
+                .withOpacity(0.85f)
+                .withLabel("Elliott channel upper")
+                .withIndicatorOverlay(channelLower)
+                .withLineColor(new Color(0x26A69A))
+                .withLineWidth(1.4f)
+                .withOpacity(0.85f)
+                .withLabel("Elliott channel lower")
+                .withIndicatorOverlay(channelMedian)
+                .withLineColor(Color.LIGHT_GRAY)
+                .withLineWidth(1.2f)
+                .withOpacity(0.55f)
+                .withLabel("Elliott channel median")
+                .withIndicatorOverlay(waveLabels)
+                .withLineColor(new Color(0x40FFFF)) // Brighter cyan for better visibility
+                .withLineWidth(2.0f)
+                .withOpacity(1.0f) // Full opacity for maximum visibility
+                .withLabel("Wave pivots")
+                .withSubChart(swingCountAsNum)
+                .withIndicatorOverlay(filteredSwingCountAsNum)
+                .withLineColor(new Color(0x90CAF9))
+                .withOpacity(0.85f)
+                .withLabel("Swings (compressed)")
+                .withSubChart(ratioValue)
+                .withHorizontalMarker(1.0)
+                .withLineColor(Color.GRAY)
+                .withOpacity(0.3f)
+                .withSubChart(confluenceIndicator)
+                .withHorizontalMarker(2.0)
+                .withLineColor(Color.GRAY)
+                .withOpacity(0.3f)
+                .toPlan();
+    }
+
+    private static BarSeriesLabelIndicator buildWaveLabelsFromScenario(BarSeries series, ElliottScenario scenario) {
+        List<ElliottSwing> swings = scenario.swings();
+        if (swings.isEmpty()) {
+            return new BarSeriesLabelIndicator(series, new ArrayList<>());
+        }
 
         List<BarLabel> labels = new ArrayList<>();
-        if (!impulse.isEmpty()) {
-            ElliottSwing first = impulse.get(0);
-            labels.add(new BarLabel(first.fromIndex(), first.fromPrice(), "", placementForPivot(!first.isRising())));
-        }
+        ScenarioType type = scenario.type();
 
-        for (int i = 0; i < impulse.size(); i++) {
-            ElliottSwing swing = impulse.get(i);
-            labels.add(new BarLabel(swing.toIndex(), swing.toPrice(), String.valueOf(i + 1),
-                    placementForPivot(swing.isRising())));
-        }
+        if (type.isImpulse()) {
+            // For impulse patterns, label swings as 1, 2, 3, 4, 5
+            if (!swings.isEmpty()) {
+                ElliottSwing first = swings.get(0);
+                labels.add(
+                        new BarLabel(first.fromIndex(), first.fromPrice(), "", placementForPivot(!first.isRising())));
+            }
 
-        for (int i = 0; i < correction.size(); i++) {
-            ElliottSwing swing = correction.get(i);
-            String label = switch (i) {
-            case 0 -> "A";
-            case 1 -> "B";
-            default -> "C";
-            };
-            labels.add(new BarLabel(swing.toIndex(), swing.toPrice(), label, placementForPivot(swing.isRising())));
+            for (int i = 0; i < swings.size(); i++) {
+                ElliottSwing swing = swings.get(i);
+                labels.add(new BarLabel(swing.toIndex(), swing.toPrice(), String.valueOf(i + 1),
+                        placementForPivot(swing.isRising())));
+            }
+        } else if (type.isCorrective()) {
+            // For corrective patterns, label swings as A, B, C
+            if (!swings.isEmpty()) {
+                ElliottSwing first = swings.get(0);
+                labels.add(
+                        new BarLabel(first.fromIndex(), first.fromPrice(), "", placementForPivot(!first.isRising())));
+            }
+
+            for (int i = 0; i < swings.size(); i++) {
+                ElliottSwing swing = swings.get(i);
+                String label = switch (i) {
+                case 0 -> "A";
+                case 1 -> "B";
+                default -> "C";
+                };
+                labels.add(new BarLabel(swing.toIndex(), swing.toPrice(), label, placementForPivot(swing.isRising())));
+            }
+        } else {
+            // For unknown types, just label with indices
+            if (!swings.isEmpty()) {
+                ElliottSwing first = swings.get(0);
+                labels.add(
+                        new BarLabel(first.fromIndex(), first.fromPrice(), "", placementForPivot(!first.isRising())));
+            }
+
+            for (int i = 0; i < swings.size(); i++) {
+                ElliottSwing swing = swings.get(i);
+                labels.add(new BarLabel(swing.toIndex(), swing.toPrice(), String.valueOf(i + 1),
+                        placementForPivot(swing.isRising())));
+            }
         }
 
         return new BarSeriesLabelIndicator(series, labels);

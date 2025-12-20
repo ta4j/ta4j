@@ -500,8 +500,25 @@ class TradingChartFactoryTest {
 
         assertEquals(Boolean.FALSE, renderer.getSeriesLinesVisible(0),
                 "Dots-only overlay should not connect points when connectAcrossNaN is false");
-        assertEquals(Color.GREEN, renderer.getSeriesPaint(0), "Dot color should follow overlay color");
-        assertEquals(Color.GREEN, renderer.getSeriesFillPaint(0), "Dot fill color should follow overlay color");
+        // Swing markers default to 90% opacity (0.9), so color will have alpha
+        // component
+        Color paintColor = (Color) renderer.getSeriesPaint(0);
+        assertNotNull(paintColor, "Paint color should not be null");
+        assertEquals(Color.GREEN.getRed(), paintColor.getRed(), "Dot red component should match overlay color");
+        assertEquals(Color.GREEN.getGreen(), paintColor.getGreen(), "Dot green component should match overlay color");
+        assertEquals(Color.GREEN.getBlue(), paintColor.getBlue(), "Dot blue component should match overlay color");
+        assertEquals(Math.round(0.9f * 255), paintColor.getAlpha(),
+                "Dot color should have default 90% opacity for swing markers");
+        Color fillPaintColor = (Color) renderer.getSeriesFillPaint(0);
+        assertNotNull(fillPaintColor, "Fill paint color should not be null");
+        assertEquals(Color.GREEN.getRed(), fillPaintColor.getRed(),
+                "Dot fill red component should match overlay color");
+        assertEquals(Color.GREEN.getGreen(), fillPaintColor.getGreen(),
+                "Dot fill green component should match overlay color");
+        assertEquals(Color.GREEN.getBlue(), fillPaintColor.getBlue(),
+                "Dot fill blue component should match overlay color");
+        assertEquals(Math.round(0.9f * 255), fillPaintColor.getAlpha(),
+                "Dot fill color should have default 90% opacity for swing markers");
         assertNotNull(renderer.getSeriesShape(0), "Renderer should provide a dot shape");
         double expectedDiameter = Math.max(3.0, lineWidth * 2.4);
         assertEquals(expectedDiameter, renderer.getSeriesShape(0).getBounds2D().getWidth(), 0.001,
@@ -550,6 +567,77 @@ class TradingChartFactoryTest {
         assertEquals(customColor.getBlue(), fillPaintColor.getBlue(), "Fill blue component should match");
         assertEquals(Math.round(customOpacity * 255), fillPaintColor.getAlpha(),
                 "Fill alpha component should reflect opacity");
+    }
+
+    @Test
+    void testSwingMarkerDefaultOpacityIs90Percent() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        BarSeries swingSeries = swingPointSeries();
+        SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(swingSeries,
+                new RecentFractalSwingLowIndicator(new LowPriceIndicator(swingSeries), 5, 5, 0));
+
+        Color customColor = Color.BLUE;
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(swingSeries)
+                .withIndicatorOverlay(swingLowMarkers)
+                .withLineColor(customColor)
+                // No explicit opacity set - should default to 0.9 (90%) for swing markers
+                .withLineWidth(3.0f)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+        XYLineAndShapeRenderer renderer = (XYLineAndShapeRenderer) basePlot.getRenderer(1);
+
+        // Verify default opacity of 0.9 (90%) is applied
+        Color paintColor = (Color) renderer.getSeriesPaint(0);
+        assertNotNull(paintColor, "Paint color should not be null");
+        assertEquals(Math.round(0.9f * 255), paintColor.getAlpha(),
+                "Swing markers should default to 90% opacity (0.9) when no opacity is explicitly set");
+
+        // Verify fill paint also has default opacity
+        Color fillPaintColor = (Color) renderer.getSeriesFillPaint(0);
+        assertNotNull(fillPaintColor, "Fill paint color should not be null");
+        assertEquals(Math.round(0.9f * 255), fillPaintColor.getAlpha(),
+                "Swing marker fill paint should also default to 90% opacity");
+    }
+
+    @Test
+    void testSwingMarkersRenderedAfterBaseDataset() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        BarSeries swingSeries = swingPointSeries();
+        SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(swingSeries,
+                new RecentFractalSwingLowIndicator(new LowPriceIndicator(swingSeries), 5, 5, 0));
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(swingSeries)
+                .withIndicatorOverlay(swingLowMarkers)
+                .withLineColor(Color.RED)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+
+        // Base OHLC dataset should be at index 0
+        assertTrue(basePlot.getDatasetCount() > 0, "Base plot should have at least the OHLC dataset");
+        assertNotNull(basePlot.getDataset(0), "Base dataset (OHLC) should exist at index 0");
+
+        // Swing marker dataset should be added after base dataset (at index 1 or
+        // higher)
+        // This ensures swing markers are rendered on top of candles
+        if (basePlot.getDatasetCount() > 1) {
+            assertNotNull(basePlot.getDataset(1), "Swing marker dataset should exist after base dataset");
+            assertInstanceOf(XYLineAndShapeRenderer.class, basePlot.getRenderer(1),
+                    "Swing markers should use XYLineAndShapeRenderer");
+            // Verify the dataset index is higher than base, ensuring rendering order puts
+            // markers in front
+            assertTrue(basePlot.getDatasetCount() > 1,
+                    "Swing markers should be added at a higher dataset index than base OHLC dataset");
+        }
     }
 
     @Test

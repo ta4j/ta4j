@@ -87,6 +87,7 @@ public final class TradingChartFactory {
     private static final Color GRIDLINE_COLOR = new Color(0x232323);
     private static final Color BUY_MARKER_COLOR = new Color(0x26A69A);
     private static final Color SELL_MARKER_COLOR = new Color(0xEF5350);
+    private static final float SWING_MARKER_DEFAULT_OPACITY = 0.9f;
     private static final Color TRADE_LABEL_BACKGROUND = new Color(0, 0, 0, 170);
     private static final float POSITION_BAND_ALPHA = 0.14f;
     private static final int TRADE_MARKER_SIZE = 7;
@@ -517,6 +518,9 @@ public final class TradingChartFactory {
         } else {
             dataset = createTimeSeriesDataset(series, indicator, label, connectGaps);
         }
+        // Add dataset at the next available index (after base OHLC dataset)
+        // This ensures overlays (including swing markers) are rendered on top of
+        // candles
         int datasetIndex = plot.getDatasetCount();
         plot.setDataset(datasetIndex, dataset);
 
@@ -524,6 +528,8 @@ public final class TradingChartFactory {
             plot.setRenderer(datasetIndex, createBarSeriesLabelRenderer(dataset, overlay));
             attachBarSeriesLabelAnnotations(plot, series, labelIndicator, overlay);
         } else if (indicator instanceof SwingPointMarkerIndicator) {
+            // Swing markers are rendered after the base dataset, ensuring they appear in
+            // front of candles
             plot.setRenderer(datasetIndex, createSwingMarkerRenderer(dataset, overlay));
         } else {
             plot.setRenderer(datasetIndex, createStandardOverlayRenderer(dataset, overlay));
@@ -556,7 +562,11 @@ public final class TradingChartFactory {
         boolean connectLines = overlay.style().connectGaps();
         XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(connectLines, true);
         Color baseColor = overlay.style().color();
+        // Swing markers default to 90% opacity (0.9) if using default opacity (1.0)
         float opacity = overlay.style().opacity();
+        if (opacity == 1.0f) {
+            opacity = SWING_MARKER_DEFAULT_OPACITY; // Default to 90% opacity for swing markers
+        }
         Color colorWithOpacity = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
                 Math.round(opacity * 255));
         double diameter = Math.max(3.0, overlay.style().lineWidth() * 2.4);
@@ -1078,6 +1088,8 @@ public final class TradingChartFactory {
             annotation.setPaint(colorWithOpacity);
             annotation.setBackgroundPaint(TRADE_LABEL_BACKGROUND);
             annotation.setTextAnchor(resolveBarLabelAnchor(label, series));
+            // Annotations are automatically rendered on top of data series in JFreeChart
+            // Adding them after the data series ensures they appear in front
             plot.addAnnotation(annotation);
         }
     }

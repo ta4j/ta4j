@@ -114,6 +114,14 @@ public final class SwingChartDisplayer implements ChartDisplayer {
 
     private static final Logger LOG = LogManager.getLogger(SwingChartDisplayer.class);
 
+    /**
+     * Static counter to track window positions for cascading multiple chart
+     * windows.
+     */
+    private static int windowCounter = 0;
+    private static final int CASCADE_OFFSET_X = 30;
+    private static final int CASCADE_OFFSET_Y = 30;
+
     @Override
     public void display(JFreeChart chart) {
         display(chart, "Ta4j-examples");
@@ -190,6 +198,28 @@ public final class SwingChartDisplayer implements ChartDisplayer {
         frame.pack();
         frame.setAlwaysOnTop(false);
         frame.setAutoRequestFocus(false);
+
+        // Cascade windows by offsetting each new window
+        int windowIndex = windowCounter++;
+        try {
+            Rectangle screenBounds = GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
+            if (screenBounds != null) {
+                int x = screenBounds.x + (windowIndex * CASCADE_OFFSET_X);
+                int y = screenBounds.y + (windowIndex * CASCADE_OFFSET_Y);
+                // Ensure window stays within screen bounds
+                Dimension frameSize = frame.getSize();
+                if (x + frameSize.width > screenBounds.width) {
+                    x = screenBounds.x + ((windowIndex % 10) * CASCADE_OFFSET_X);
+                }
+                if (y + frameSize.height > screenBounds.height) {
+                    y = screenBounds.y + ((windowIndex % 10) * CASCADE_OFFSET_Y);
+                }
+                frame.setLocation(x, y);
+            }
+        } catch (Exception ex) {
+            LOG.debug("Unable to set window position for cascading, using default", ex);
+        }
+
         frame.setVisible(true);
     }
 

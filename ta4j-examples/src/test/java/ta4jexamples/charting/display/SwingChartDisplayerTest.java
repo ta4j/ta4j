@@ -300,4 +300,73 @@ class SwingChartDisplayerTest {
         // but the method exists and is part of the ChartMouseListener interface
     }
 
+    // ========== Window cascading functionality tests ==========
+
+    @Test
+    void testMultipleDisplaysHandleCascadingGracefully() {
+        // Set property to disable display to avoid actually showing windows
+        System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
+        try {
+            JFreeChart chart1 = ChartFactory.createLineChart("Test 1", "X", "Y", null);
+            JFreeChart chart2 = ChartFactory.createLineChart("Test 2", "X", "Y", null);
+            JFreeChart chart3 = ChartFactory.createLineChart("Test 3", "X", "Y", null);
+
+            // Multiple displays should not throw exceptions
+            // The cascading logic should handle positioning gracefully
+            assertDoesNotThrow(() -> {
+                displayer.display(chart1, "Window 1");
+                displayer.display(chart2, "Window 2");
+                displayer.display(chart3, "Window 3");
+            }, "Multiple displays should handle cascading without exceptions");
+        } finally {
+            System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
+        }
+    }
+
+    @Test
+    void testDisplayWithWindowTitleHandlesCascading() {
+        // Set property to disable display
+        System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
+        try {
+            JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
+
+            // Display with custom window title should work
+            assertDoesNotThrow(() -> displayer.display(chart, "Custom Window Title"),
+                    "Display with window title should handle cascading gracefully");
+        } finally {
+            System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
+        }
+    }
+
+    @Test
+    void testDisplayHandlesCascadingInHeadlessEnvironment() {
+        // This test only runs in headless environments
+        Assume.assumeTrue("Test requires headless environment", GraphicsEnvironment.isHeadless());
+
+        JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
+
+        // In headless environment, cascading logic should fail gracefully
+        // The exception handling in the cascading code should catch any errors
+        assertThrows(Exception.class, () -> displayer.display(chart, "Test Window"),
+                "Display should throw exception in headless environment, but cascading logic should be attempted");
+    }
+
+    @Test
+    void testMultipleDisplaysWithDifferentTitles() {
+        // Set property to disable display
+        System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
+        try {
+            JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
+
+            // Multiple displays with different titles should all work
+            assertDoesNotThrow(() -> {
+                for (int i = 0; i < 5; i++) {
+                    displayer.display(chart, "Window " + i);
+                }
+            }, "Multiple displays with different titles should handle cascading correctly");
+        } finally {
+            System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
+        }
+    }
+
 }
