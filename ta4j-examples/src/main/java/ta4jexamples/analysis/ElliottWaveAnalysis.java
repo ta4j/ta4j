@@ -26,6 +26,8 @@ package ta4jexamples.analysis;
 import java.awt.Color;
 import java.awt.GraphicsEnvironment;
 import java.io.InputStream;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -61,7 +63,10 @@ import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.LabelPlacement;
 import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.charting.workflow.ChartWorkflow;
+import ta4jexamples.datasources.BarSeriesDataSource;
+import ta4jexamples.datasources.CoinbaseHttpBarSeriesDataSource;
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
+import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource;
 
 /**
  * Demonstrates the Elliott Wave indicator suite (swings, phases, Fibonacci
@@ -72,24 +77,70 @@ public class ElliottWaveAnalysis {
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveAnalysis.class);
 
-    private static final String DAILY_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
-
-    private static final ElliottDegree DEGREE = ElliottDegree.PRIMARY;
-    private static final double FIB_TOLERANCE = 0.25;
+    private static final String DEFAULT_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
+    private static final ElliottDegree DEFAULT_DEGREE = ElliottDegree.PRIMARY;
+    private static final double DEFAULT_FIB_TOLERANCE = 0.25;
 
     public static void main(String[] args) {
-        BarSeries series = loadSeries();
+        BarSeries series = null;
+        ElliottDegree degree = DEFAULT_DEGREE;
+
+        // If 5 or 6 args provided, use them to load from datasource
+        if (args.length >= 5) {
+            try {
+                String dataSource = args[0];
+                String ticker = args[1];
+                String barDurationStr = args[2];
+                String degreeStr = args[3];
+                String startEpochStr = args[4];
+                String endEpochStr = args.length >= 6 ? args[5] : null;
+
+                // Parse bar duration
+                Duration barDuration = Duration.parse(barDurationStr);
+
+                // Parse start time
+                long startEpochSeconds = Long.parseLong(startEpochStr);
+                Instant startTime = Instant.ofEpochSecond(startEpochSeconds);
+
+                // Parse end time (or use current time if not provided)
+                Instant endTime = endEpochStr != null ? Instant.ofEpochSecond(Long.parseLong(endEpochStr))
+                        : Instant.now();
+
+                // Parse degree
+                degree = ElliottDegree.valueOf(degreeStr.toUpperCase());
+
+                // Load series from datasource
+                series = loadSeriesFromDataSource(dataSource, ticker, barDuration, startTime, endTime);
+                if (series == null) {
+                    LOG.error("Failed to retrieve bar series from {} for ticker {} with duration {} from {} to {}",
+                            dataSource, ticker, barDurationStr, startTime, endTime);
+                    System.exit(1);
+                    return; // Never reached, but satisfies compiler
+                }
+            } catch (Exception ex) {
+                LOG.error("Error parsing arguments or loading series: {}", ex.getMessage(), ex);
+                System.exit(1);
+                return; // Never reached, but satisfies compiler
+            }
+        } else {
+            // Use defaults
+            series = loadSeries(DEFAULT_OHLCV_RESOURCE);
+        }
+
         Objects.requireNonNull(series, "Bar series was null");
         if (series.isEmpty()) {
             LOG.error("Series is empty, nothing to analyse.");
             return;
         }
+        new ElliottWaveAnalysis().analyze(series, degree, DEFAULT_FIB_TOLERANCE);
+    }
 
+    public void analyze(BarSeries series, ElliottDegree degree, double fibTolerance) {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
 
-        ElliottSwingIndicator swingIndicator = ElliottSwingIndicator.zigZag(series, DEGREE);
+        ElliottSwingIndicator swingIndicator = ElliottSwingIndicator.zigZag(series, degree);
         ElliottFibonacciValidator validator = new ElliottFibonacciValidator(series.numFactory(),
-                series.numFactory().numOf(FIB_TOLERANCE));
+                series.numFactory().numOf(fibTolerance));
         ElliottPhaseIndicator phaseIndicator = new ElliottPhaseIndicator(swingIndicator, validator);
         ElliottInvalidationIndicator invalidationIndicator = new ElliottInvalidationIndicator(phaseIndicator);
 
@@ -171,7 +222,7 @@ public class ElliottWaveAnalysis {
 
         ChartWorkflow chartWorkflow = new ChartWorkflow();
         ChartPlan plan = chartWorkflow.builder()
-                .withTitle("Elliott Wave (" + DEGREE + ") - BTC-USD (Coinbase, Daily)")
+                .withTitle("Elliott Wave (" + degree + ") - " + series.getName())
                 .withSeries(series)
                 .withIndicatorOverlay(channelUpper)
                 .withLineColor(new Color(0xF05454))
@@ -211,14 +262,15 @@ public class ElliottWaveAnalysis {
         if (!GraphicsEnvironment.isHeadless()) {
             chartWorkflow.display(plan);
         }
-        chartWorkflow.save(plan, "temp/charts", "elliott-wave-btc-usd-primary");
+        chartWorkflow.save(plan, "temp/charts",
+                "elliott-wave-analysis-" + series.getName().toLowerCase() + "-" + degree.name().toLowerCase());
+
     }
 
-    private static BarSeries loadSeries() {
-        try (InputStream stream = ElliottWaveAnalysis.class.getClassLoader()
-                .getResourceAsStream(DAILY_OHLCV_RESOURCE)) {
+    private static BarSeries loadSeries(String resource) {
+        try (InputStream stream = ElliottWaveAnalysis.class.getClassLoader().getResourceAsStream(resource)) {
             if (stream == null) {
-                LOG.error("Missing resource: {}", DAILY_OHLCV_RESOURCE);
+                LOG.error("Missing resource: {}", resource);
                 return null;
             }
             BarSeries loaded = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(stream);
@@ -233,6 +285,39 @@ public class ElliottWaveAnalysis {
             return series;
         } catch (Exception ex) {
             LOG.error("Failed to load Elliott wave dataset: {}", ex.getMessage(), ex);
+            return null;
+        }
+    }
+
+    static BarSeries loadSeriesFromDataSource(String dataSource, String ticker, Duration barDuration, Instant startTime,
+            Instant endTime) {
+        try {
+            BarSeriesDataSource source;
+            if ("YahooFinance".equalsIgnoreCase(dataSource)) {
+                source = new YahooFinanceHttpBarSeriesDataSource(true);
+            } else if ("Coinbase".equalsIgnoreCase(dataSource)) {
+                source = new CoinbaseHttpBarSeriesDataSource(true);
+            } else {
+                LOG.error("Unsupported data source: {}. Supported sources: YahooFinance, Coinbase", dataSource);
+                return null;
+            }
+
+            BarSeries series = source.loadSeries(ticker, barDuration, startTime, endTime);
+            if (series == null) {
+                LOG.error("Data source returned null for ticker {} with duration {} from {} to {}", ticker, barDuration,
+                        startTime, endTime);
+                return null;
+            }
+
+            if (series.isEmpty()) {
+                LOG.error("Data source returned empty series for ticker {} with duration {} from {} to {}", ticker,
+                        barDuration, startTime, endTime);
+                return null;
+            }
+
+            return series;
+        } catch (Exception ex) {
+            LOG.error("Exception while loading series from {}: {}", dataSource, ex.getMessage(), ex);
             return null;
         }
     }
