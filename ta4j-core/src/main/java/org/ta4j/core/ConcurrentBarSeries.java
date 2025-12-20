@@ -25,17 +25,19 @@ package org.ta4j.core;
 
 import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
-import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.Num;
 
-import java.util.ArrayList;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.Lock;
+import java.util.function.Supplier;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.List;
+import java.util.ArrayList;
 import java.util.Objects;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.time.Instant;
+import java.util.List;
 
 /**
  * Thread-safe {@link BarSeries} implementation for concurrent read/write use
@@ -49,6 +51,32 @@ public class ConcurrentBarSeries extends BaseBarSeries {
 
     private final Lock readLock;
     private final Lock writeLock;
+
+    /**
+     * Indicates how a streaming bar was applied to the series.
+     *
+     * @since 0.19
+     */
+    public enum StreamingBarIngestAction {
+        APPENDED, REPLACED_LAST, REPLACED_HISTORICAL
+    }
+
+    /**
+     * Describes the outcome of ingesting a streaming bar.
+     *
+     * @param action indicates how the bar was applied
+     * @param index  the affected series index
+     *
+     * @since 0.19
+     */
+    public record StreamingBarIngestResult(StreamingBarIngestAction action, int index) {
+        public StreamingBarIngestResult {
+            Objects.requireNonNull(action, "action");
+            if (index < 0) {
+                throw new IllegalArgumentException("index must be >= 0");
+            }
+        }
+    }
 
     ConcurrentBarSeries(final String name, final List<Bar> bars) {
         this(name, bars, 0, bars.size() - 1, false, DecimalNumFactory.getInstance(), new TimeBarBuilderFactory(),
@@ -116,6 +144,26 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         this.readLock.lock();
         try {
             return super.getBar(i);
+        } finally {
+            this.readLock.unlock();
+        }
+    }
+
+    @Override
+    public Bar getFirstBar() {
+        this.readLock.lock();
+        try {
+            return super.getBar(super.getBeginIndex());
+        } finally {
+            this.readLock.unlock();
+        }
+    }
+
+    @Override
+    public Bar getLastBar() {
+        this.readLock.lock();
+        try {
+            return super.getBar(super.getEndIndex());
         } finally {
             this.readLock.unlock();
         }
@@ -191,6 +239,78 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         }
     }
 
+    /**
+     * Runs the supplied action while holding the read lock.
+     *
+     * @param action read-only action to execute
+     *
+     * @since 0.19
+     */
+    public void withReadLock(final Runnable action) {
+        Objects.requireNonNull(action, "action");
+        this.readLock.lock();
+        try {
+            action.run();
+        } finally {
+            this.readLock.unlock();
+        }
+    }
+
+    /**
+     * Runs the supplied action while holding the read lock.
+     *
+     * @param action read-only action to execute
+     * @param <T>    return type
+     * @return the action result
+     *
+     * @since 0.19
+     */
+    public <T> T withReadLock(final Supplier<T> action) {
+        Objects.requireNonNull(action, "action");
+        this.readLock.lock();
+        try {
+            return action.get();
+        } finally {
+            this.readLock.unlock();
+        }
+    }
+
+    /**
+     * Runs the supplied action while holding the write lock.
+     *
+     * @param action mutating action to execute
+     *
+     * @since 0.19
+     */
+    public void withWriteLock(final Runnable action) {
+        Objects.requireNonNull(action, "action");
+        this.writeLock.lock();
+        try {
+            action.run();
+        } finally {
+            this.writeLock.unlock();
+        }
+    }
+
+    /**
+     * Runs the supplied action while holding the write lock.
+     *
+     * @param action mutating action to execute
+     * @param <T>    return type
+     * @return the action result
+     *
+     * @since 0.19
+     */
+    public <T> T withWriteLock(final Supplier<T> action) {
+        Objects.requireNonNull(action, "action");
+        this.writeLock.lock();
+        try {
+            return action.get();
+        } finally {
+            this.writeLock.unlock();
+        }
+    }
+
     @Override
     public void addBar(final Bar bar, final boolean replace) {
         this.writeLock.lock();
@@ -240,14 +360,15 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * when exchanges replay snapshots that include prior intervals.
      *
      * @param bar streaming bar payload
+     * @return the applied action and affected series index
      *
      * @since 0.19
      */
-    public void ingestStreamingBar(final Bar bar) {
+    public StreamingBarIngestResult ingestStreamingBar(final Bar bar) {
         Objects.requireNonNull(bar, "bar");
         this.writeLock.lock();
         try {
-            addStreamingBarUnsafe(bar);
+            return addStreamingBarUnsafe(bar);
         } finally {
             this.writeLock.unlock();
         }
@@ -259,55 +380,85 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * intervals first.
      *
      * @param bars streaming bars to ingest
+     * @return applied actions in ascending end-time order
      *
      * @since 0.19
      */
-    public void ingestStreamingBars(final Collection<Bar> bars) {
+    public List<StreamingBarIngestResult> ingestStreamingBars(final Collection<Bar> bars) {
         if (bars == null || bars.isEmpty()) {
-            return;
+            return List.of();
         }
         final List<Bar> ordered = new ArrayList<>(bars);
         ordered.removeIf(Objects::isNull);
         if (ordered.isEmpty()) {
-            return;
+            return List.of();
         }
         ordered.sort(Comparator.comparing(Bar::getEndTime));
         this.writeLock.lock();
         try {
-            ordered.forEach(this::addStreamingBarUnsafe);
+            final List<StreamingBarIngestResult> results = new ArrayList<>(ordered.size());
+            for (Bar bar : ordered) {
+                results.add(addStreamingBarUnsafe(bar));
+            }
+            return List.copyOf(results);
         } finally {
             this.writeLock.unlock();
         }
     }
 
-    private void addStreamingBarUnsafe(final Bar newBar) {
+    private StreamingBarIngestResult addStreamingBarUnsafe(final Bar newBar) {
+        validateBarMatchesSeries(newBar);
         final List<Bar> internal = super.getBarData();
         if (internal.isEmpty()) {
             super.addBar(newBar, false);
-            return;
+            return new StreamingBarIngestResult(StreamingBarIngestAction.APPENDED, super.getEndIndex());
         }
+        final Instant newEndTime = newBar.getEndTime();
         final Bar lastBar = internal.get(internal.size() - 1);
-        if (lastBar.getEndTime().equals(newBar.getEndTime())) {
+        int endTimeComparison = newEndTime.compareTo(lastBar.getEndTime());
+        if (endTimeComparison == 0) {
             super.addBar(newBar, true);
-            return;
+            return new StreamingBarIngestResult(StreamingBarIngestAction.REPLACED_LAST, super.getEndIndex());
         }
-        if (lastBar.getEndTime().isBefore(newBar.getEndTime())) {
+        if (endTimeComparison > 0) {
             super.addBar(newBar, false);
-            return;
+            return new StreamingBarIngestResult(StreamingBarIngestAction.APPENDED, super.getEndIndex());
         }
-        for (int idx = internal.size() - 2; idx >= 0; idx--) {
-            final Bar candidate = internal.get(idx);
-            if (candidate.getEndTime().equals(newBar.getEndTime())) {
-                internal.set(idx, newBar);
-                return;
-            }
-            if (candidate.getEndTime().isBefore(newBar.getEndTime())) {
-                break;
-            }
+        final int internalIndex = findBarIndexByEndTime(internal, newEndTime);
+        if (internalIndex >= 0) {
+            internal.set(internalIndex, newBar);
+            final int seriesIndex = internalIndex + super.getRemovedBarsCount();
+            return new StreamingBarIngestResult(StreamingBarIngestAction.REPLACED_HISTORICAL, seriesIndex);
         }
         throw new IllegalArgumentException(
                 String.format("Cannot insert streaming bar ending at %s because series end time is %s",
                         newBar.getEndTime(), lastBar.getEndTime()));
+    }
+
+    private void validateBarMatchesSeries(final Bar bar) {
+        if (!super.numFactory().produces(bar.getClosePrice())) {
+            throw new IllegalArgumentException(
+                    String.format("Cannot add Bar with data type: %s to series with datatype: %s",
+                            bar.getClosePrice().getClass(), super.numFactory().one().getClass()));
+        }
+    }
+
+    private static int findBarIndexByEndTime(final List<Bar> bars, final Instant endTime) {
+        int low = 0;
+        int high = bars.size() - 1;
+        while (low <= high) {
+            int mid = (low + high) >>> 1;
+            final Instant midTime = bars.get(mid).getEndTime();
+            int comparison = midTime.compareTo(endTime);
+            if (comparison < 0) {
+                low = mid + 1;
+            } else if (comparison > 0) {
+                high = mid - 1;
+            } else {
+                return mid;
+            }
+        }
+        return -1;
     }
 
     @Override

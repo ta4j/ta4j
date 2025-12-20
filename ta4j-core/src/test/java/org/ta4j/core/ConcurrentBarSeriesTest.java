@@ -53,6 +53,8 @@ import org.junit.Test;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -578,6 +580,32 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertTrue("All operations should succeed", success.get());
     }
 
+    @Test
+    public void withReadLockSupportsRunnableAndSupplier() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        series.withReadLock(() -> assertEquals(0, series.getBarCount()));
+        int count = series.withReadLock(series::getBarCount);
+        assertEquals(0, count);
+    }
+
+    @Test
+    public void withWriteLockSupportsRunnableAndSupplier() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+        var period = Duration.ofSeconds(60);
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        series.withWriteLock(() -> series.addBar(streamingBar(period, start, 100, 110, 90, 105, 5)));
+
+        int count = series.withWriteLock(series::getBarCount);
+        assertEquals(1, count);
+        assertEquals(1, series.getBarCount());
+    }
+
     // ==================== Edge Cases and Error Conditions ====================
 
     @Test
@@ -771,9 +799,11 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         var period = Duration.ofSeconds(60);
         var start = Instant.parse("2024-01-01T00:00:00Z");
 
-        series.ingestStreamingBar(streamingBar(period, start, 100, 110, 90, 105, 5));
+        var result = series.ingestStreamingBar(streamingBar(period, start, 100, 110, 90, 105, 5));
 
         assertEquals(1, series.getBarCount());
+        assertEquals(ConcurrentBarSeries.StreamingBarIngestAction.APPENDED, result.action());
+        assertEquals(0, result.index());
         var bar = series.getLastBar();
         assertEquals(start.plus(period), bar.getEndTime());
         assertEquals(numOf(105), bar.getClosePrice());
@@ -790,9 +820,11 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         var start = Instant.parse("2024-01-01T00:00:00Z");
 
         series.ingestStreamingBar(streamingBar(period, start, 100, 110, 90, 105, 5));
-        series.ingestStreamingBar(streamingBar(period, start, 105, 120, 95, 115, 8));
+        var result = series.ingestStreamingBar(streamingBar(period, start, 105, 120, 95, 115, 8));
 
         assertEquals(1, series.getBarCount());
+        assertEquals(ConcurrentBarSeries.StreamingBarIngestAction.REPLACED_LAST, result.action());
+        assertEquals(0, result.index());
         var bar = series.getLastBar();
         assertEquals(numOf(115), bar.getClosePrice());
         assertEquals(numOf(8), bar.getVolume());
@@ -810,9 +842,11 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         series.ingestStreamingBar(streamingBar(period, start, 100, 110, 90, 105, 5));
         series.ingestStreamingBar(streamingBar(period, second, 105, 120, 95, 115, 8));
 
-        series.ingestStreamingBar(streamingBar(period, start, 200, 210, 190, 205, 15));
+        var result = series.ingestStreamingBar(streamingBar(period, start, 200, 210, 190, 205, 15));
 
         assertEquals(2, series.getBarCount());
+        assertEquals(ConcurrentBarSeries.StreamingBarIngestAction.REPLACED_HISTORICAL, result.action());
+        assertEquals(0, result.index());
         assertEquals(numOf(205), series.getBar(0).getClosePrice());
         assertEquals(numOf(115), series.getBar(1).getClosePrice());
     }
@@ -829,11 +863,60 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         var newestFirst = List.of(streamingBar(period, second, 105, 115, 95, 110, 8),
                 streamingBar(period, first, 100, 110, 90, 105, 5));
 
-        series.ingestStreamingBars(newestFirst);
+        var results = series.ingestStreamingBars(newestFirst);
 
         assertEquals(2, series.getBarCount());
+        assertEquals(2, results.size());
+        assertEquals(ConcurrentBarSeries.StreamingBarIngestAction.APPENDED, results.get(0).action());
+        assertEquals(0, results.get(0).index());
+        assertEquals(ConcurrentBarSeries.StreamingBarIngestAction.APPENDED, results.get(1).action());
+        assertEquals(1, results.get(1).index());
         assertEquals(first.plus(period), series.getBar(0).getEndTime());
         assertEquals(second.plus(period), series.getBar(1).getEndTime());
+    }
+
+    @Test
+    public void ingestStreamingBarReportsSeriesIndexAfterEviction() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withMaxBarCount(2)
+                .build();
+        var period = Duration.ofSeconds(60);
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        series.ingestStreamingBar(streamingBar(period, start, 100, 110, 90, 105, 5));
+        series.ingestStreamingBar(streamingBar(period, start.plus(period), 105, 115, 95, 110, 6));
+        series.ingestStreamingBar(streamingBar(period, start.plus(period).plus(period), 110, 120, 100, 115, 7));
+
+        var result = series.ingestStreamingBar(streamingBar(period, start.plus(period), 200, 210, 190, 205, 8));
+
+        assertEquals(2, series.getBarCount());
+        assertEquals(ConcurrentBarSeries.StreamingBarIngestAction.REPLACED_HISTORICAL, result.action());
+        assertEquals(1, result.index());
+        assertEquals(numOf(205), series.getBar(1).getClosePrice());
+    }
+
+    @Test
+    public void ingestStreamingBarRejectsMismatchedNumFactory() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+        var period = Duration.ofSeconds(60);
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        var foreignFactory = numFactory instanceof DoubleNumFactory ? DecimalNumFactory.getInstance()
+                : DoubleNumFactory.getInstance();
+        var foreignBar = new TimeBarBuilder(foreignFactory).timePeriod(period)
+                .beginTime(start)
+                .endTime(start.plus(period))
+                .openPrice(1)
+                .highPrice(2)
+                .lowPrice(0)
+                .closePrice(1)
+                .volume(1)
+                .build();
+
+        assertThrows(IllegalArgumentException.class, () -> series.ingestStreamingBar(foreignBar));
     }
 
     // ==================== Legacy Tests (from original implementation)
