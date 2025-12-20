@@ -57,7 +57,6 @@ import org.ta4j.core.indicators.elliott.ElliottSwingCompressor;
 import org.ta4j.core.indicators.elliott.ElliottSwingMetadata;
 import org.ta4j.core.indicators.elliott.ElliottWaveCountIndicator;
 import org.ta4j.core.indicators.elliott.ElliottWaveFacade;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
@@ -247,12 +246,46 @@ public class ElliottWaveAnalysis {
      *                     ratios. Default is 0.25 (25%).
      */
     public void analyze(BarSeries series, ElliottDegree degree, double fibTolerance) {
-        // Create compressor for filtered wave counting (1% of current price, minimum 2
-        // bars)
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        // Create compressor for filtered wave counting to reduce noise in Elliott Wave
+        // analysis.
+        //
+        // The compressor uses two thresholds:
+        // 1. Minimum amplitude: 1% of current price (relative threshold)
+        // - This filters out minor price fluctuations that don't represent meaningful
+        // swings in Elliott Wave terms. The relative nature (percentage of current
+        // price) ensures the threshold scales appropriately with the asset's price
+        // level (e.g., $300 for BTC at $30k, $600 for BTC at $60k).
+        // - Without this threshold, the analysis would include very small price
+        // movements
+        // that are market noise rather than structural waves, leading to false signals
+        // and degraded pattern recognition.
+        // 2. Minimum length: 2 bars
+        // - Swings must span at least 2 bars to be retained. This ensures swings
+        // represent actual price movements over time rather than single-bar spikes
+        // or data artifacts that don't reflect genuine market structure.
+        //
+        // Significance vs default (no filtering):
+        // - Default behavior (ElliottSwingCompressor with no parameters) retains ALL
+        // swings,
+        // including single-bar movements and tiny price fluctuations. This can produce
+        // hundreds of swings that obscure the underlying Elliott Wave structure.
+        // - With 1% + 2 bars filtering, only meaningful swings that represent actual
+        // price
+        // structure are retained, making the Elliott Wave analysis more reliable and
+        // less prone to false signals from noise. This is especially important for
+        // higher-degree analysis (PRIMARY, INTERMEDIATE) where we want to identify
+        // major trend structures, not minor intraday fluctuations.
+        //
+        // Alternative values:
+        // - Lower amplitude (e.g., 0.5%): More sensitive, captures smaller swings but
+        // includes more noise. Useful for lower-degree analysis or very volatile
+        // assets.
+        // - Higher amplitude (e.g., 2-5%): More conservative, only captures significant
+        // movements. May miss valid smaller waves in less volatile markets.
+        // - Higher minimum length (e.g., 3-5 bars): More stringent time requirement,
+        // useful for longer timeframes but may filter out valid short-term swings.
+        ElliottSwingCompressor compressor = new ElliottSwingCompressor(series);
         int endIndex = series.getEndIndex();
-        ElliottSwingCompressor compressor = new ElliottSwingCompressor(
-                closePrice.getValue(endIndex).multipliedBy(series.numFactory().numOf(0.01)), 2);
 
         // Create facade with custom Fibonacci tolerance and compressor
         ElliottWaveFacade facade = ElliottWaveFacade.zigZag(series, degree,

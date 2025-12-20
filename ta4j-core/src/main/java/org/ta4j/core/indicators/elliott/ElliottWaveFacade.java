@@ -59,8 +59,11 @@ import org.ta4j.core.num.NumFactory;
  * <pre>
  * // Custom Fibonacci tolerance and swing compressor
  * Num customTolerance = series.numFactory().numOf(0.25);
- * ElliottSwingCompressor compressor = new ElliottSwingCompressor(
- *         closePrice.getValue(endIndex).multipliedBy(series.numFactory().numOf(0.01)), 2);
+ * // Convenience constructor: 1% of current price, 2 bars minimum
+ * ElliottSwingCompressor compressor = new ElliottSwingCompressor(series);
+ * // Or use main constructor with explicit values:
+ * // ElliottSwingCompressor compressor = new ElliottSwingCompressor(
+ * //         closePrice.getValue(endIndex).multipliedBy(series.numFactory().numOf(0.01)), 2);
  *
  * ElliottWaveFacade facade = ElliottWaveFacade.zigZag(series, degree, Optional.of(customTolerance),
  *         Optional.of(compressor));
@@ -99,11 +102,11 @@ public final class ElliottWaveFacade {
     private ElliottWaveFacade(final BarSeries series, final ElliottSwingIndicator swingIndicator,
             final Indicator<Num> priceIndicator, final Optional<Num> fibTolerance,
             final Optional<ElliottSwingCompressor> compressor) {
-        this.series = Objects.requireNonNull(series, "series");
-        this.swingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator");
-        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
-        this.fibTolerance = Objects.requireNonNull(fibTolerance, "fibTolerance");
-        this.compressor = Objects.requireNonNull(compressor, "compressor");
+        this.series = Objects.requireNonNull(series, "series cannot be null");
+        this.swingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator cannot be null");
+        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator cannot be null");
+        this.fibTolerance = Objects.requireNonNull(fibTolerance, "fibTolerance cannot be null");
+        this.compressor = Objects.requireNonNull(compressor, "compressor cannot be null");
     }
 
     /**
@@ -140,8 +143,8 @@ public final class ElliottWaveFacade {
      */
     public static ElliottWaveFacade fractal(final BarSeries series, final int window, final ElliottDegree degree,
             final Optional<Num> fibTolerance, final Optional<ElliottSwingCompressor> compressor) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(degree, "degree");
+        Objects.requireNonNull(series, "series cannot be null");
+        Objects.requireNonNull(degree, "degree cannot be null");
         var swingIndicator = new ElliottSwingIndicator(series, window, degree);
         var priceIndicator = new ClosePriceIndicator(series);
         return new ElliottWaveFacade(series, swingIndicator, priceIndicator, fibTolerance, compressor);
@@ -188,8 +191,8 @@ public final class ElliottWaveFacade {
     public static ElliottWaveFacade fractal(final BarSeries series, final int lookbackLength,
             final int lookforwardLength, final ElliottDegree degree, final Optional<Num> fibTolerance,
             final Optional<ElliottSwingCompressor> compressor) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(degree, "degree");
+        Objects.requireNonNull(series, "series cannot be null");
+        Objects.requireNonNull(degree, "degree cannot be null");
         var swingIndicator = new ElliottSwingIndicator(series, lookbackLength, lookforwardLength, degree);
         var priceIndicator = new ClosePriceIndicator(series);
         return new ElliottWaveFacade(series, swingIndicator, priceIndicator, fibTolerance, compressor);
@@ -228,8 +231,8 @@ public final class ElliottWaveFacade {
      */
     public static ElliottWaveFacade zigZag(final BarSeries series, final ElliottDegree degree,
             final Optional<Num> fibTolerance, final Optional<ElliottSwingCompressor> compressor) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(degree, "degree");
+        Objects.requireNonNull(series, "series cannot be null");
+        Objects.requireNonNull(degree, "degree cannot be null");
         var swingIndicator = ElliottSwingIndicator.zigZag(series, degree);
         var priceIndicator = new ClosePriceIndicator(series);
         return new ElliottWaveFacade(series, swingIndicator, priceIndicator, fibTolerance, compressor);
@@ -270,8 +273,8 @@ public final class ElliottWaveFacade {
     public static ElliottWaveFacade from(final ElliottSwingIndicator swingIndicator,
             final Indicator<Num> priceIndicator, final Optional<Num> fibTolerance,
             final Optional<ElliottSwingCompressor> compressor) {
-        Objects.requireNonNull(swingIndicator, "swingIndicator");
-        Objects.requireNonNull(priceIndicator, "priceIndicator");
+        Objects.requireNonNull(swingIndicator, "swingIndicator cannot be null");
+        Objects.requireNonNull(priceIndicator, "priceIndicator cannot be null");
         return new ElliottWaveFacade(swingIndicator.getBarSeries(), swingIndicator, priceIndicator, fibTolerance,
                 compressor);
     }

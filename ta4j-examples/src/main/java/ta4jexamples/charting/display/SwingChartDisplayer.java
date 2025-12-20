@@ -42,10 +42,14 @@ import java.awt.HeadlessException;
 import java.awt.Rectangle;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -61,7 +65,8 @@ import javax.swing.event.AncestorListener;
  * capabilities. The display size can be configured via the
  * {@link #DISPLAY_SCALE_PROPERTY system property}. Each window closes
  * independently using {@link JFrame#DISPOSE_ON_CLOSE} to prevent closing one
- * window from affecting others.
+ * window from affecting others. When all chart windows are closed, the program
+ * automatically exits.
  * </p>
  *
  * @since 0.19
@@ -122,6 +127,12 @@ public final class SwingChartDisplayer implements ChartDisplayer {
     private static int windowCounter = 0;
     private static final int CASCADE_OFFSET_X = 30;
     private static final int CASCADE_OFFSET_Y = 30;
+
+    /**
+     * Set of all open chart windows. Used to track when all windows are closed
+     * so the program can exit.
+     */
+    private static final Set<JFrame> openWindows = ConcurrentHashMap.newKeySet();
 
     @Override
     public void display(JFreeChart chart) {
@@ -203,6 +214,50 @@ public final class SwingChartDisplayer implements ChartDisplayer {
         frame.setAutoRequestFocus(false);
         // Set to DISPOSE_ON_CLOSE so closing one window doesn't close all windows
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+
+        // Track this window and add listener to exit when all windows are closed
+        openWindows.add(frame);
+        frame.addWindowListener(new WindowListener() {
+            @Override
+            public void windowOpened(WindowEvent e) {
+                // No action needed
+            }
+
+            @Override
+            public void windowClosing(WindowEvent e) {
+                // No action needed - DISPOSE_ON_CLOSE handles the closing
+            }
+
+            @Override
+            public void windowClosed(WindowEvent e) {
+                openWindows.remove(frame);
+                // If all windows are closed, exit the program
+                if (openWindows.isEmpty()) {
+                    LOG.debug("All chart windows closed, exiting program");
+                    System.exit(0);
+                }
+            }
+
+            @Override
+            public void windowIconified(WindowEvent e) {
+                // No action needed
+            }
+
+            @Override
+            public void windowDeiconified(WindowEvent e) {
+                // No action needed
+            }
+
+            @Override
+            public void windowActivated(WindowEvent e) {
+                // No action needed
+            }
+
+            @Override
+            public void windowDeactivated(WindowEvent e) {
+                // No action needed
+            }
+        });
 
         // Cascade windows by offsetting each new window
         int windowIndex = windowCounter++;
