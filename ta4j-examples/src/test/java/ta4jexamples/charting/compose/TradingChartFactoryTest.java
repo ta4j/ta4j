@@ -836,6 +836,119 @@ class TradingChartFactoryTest {
     }
 
     @Test
+    void testLongAxisLabelsAreTruncatedWithEllipsis() {
+        // Create an indicator with a very long name that exceeds the truncation limit
+        Indicator<Num> longNameIndicator = new AbstractIndicator<Num>(barSeries) {
+            @Override
+            public Num getValue(int index) {
+                return barSeries.numFactory().numOf(100.0);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            public String toString() {
+                return "ThisIsAVeryLongIndicatorNameThatExceedsThirtyCharacters";
+            }
+        };
+
+        JFreeChart chart = factory.createIndicatorChart(barSeries, longNameIndicator);
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        assertNotNull(combinedPlot, "Chart should have combined plot");
+
+        // Find the indicator subplot
+        XYPlot indicatorPlot = null;
+        for (XYPlot subplot : combinedPlot.getSubplots()) {
+            if (subplot.getRangeAxis() != null
+                    && subplot.getRangeAxis().getLabel().contains("ThisIsAVeryLongIndicator")) {
+                indicatorPlot = subplot;
+                break;
+            }
+        }
+
+        assertNotNull(indicatorPlot, "Should have indicator subplot");
+        NumberAxis rangeAxis = (NumberAxis) indicatorPlot.getRangeAxis();
+        assertNotNull(rangeAxis, "Range axis should exist");
+        String axisLabel = rangeAxis.getLabel();
+
+        // Verify label is truncated
+        assertTrue(axisLabel.length() <= 30, "Label should be truncated to 30 characters or less");
+        assertTrue(axisLabel.endsWith("..."), "Truncated label should end with ellipsis");
+        // substring(0, 27) gives 27 chars, plus "..." = 30 chars total
+        assertEquals(30, axisLabel.length(), "Truncated label should be exactly 30 characters");
+        assertEquals("ThisIsAVeryLongIndicatorNam...", axisLabel, "Label should be truncated correctly");
+    }
+
+    @Test
+    void testShortAxisLabelsAreNotTruncated() {
+        // Create an indicator with a short name that should not be truncated
+        Indicator<Num> shortNameIndicator = new AbstractIndicator<Num>(barSeries) {
+            @Override
+            public Num getValue(int index) {
+                return barSeries.numFactory().numOf(100.0);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            public String toString() {
+                return "ShortIndicator";
+            }
+        };
+
+        JFreeChart chart = factory.createIndicatorChart(barSeries, shortNameIndicator);
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        assertNotNull(combinedPlot, "Chart should have combined plot");
+
+        // Find the indicator subplot
+        XYPlot indicatorPlot = null;
+        for (XYPlot subplot : combinedPlot.getSubplots()) {
+            if (subplot.getRangeAxis() != null && subplot.getRangeAxis().getLabel().equals("ShortIndicator")) {
+                indicatorPlot = subplot;
+                break;
+            }
+        }
+
+        assertNotNull(indicatorPlot, "Should have indicator subplot");
+        NumberAxis rangeAxis = (NumberAxis) indicatorPlot.getRangeAxis();
+        assertNotNull(rangeAxis, "Range axis should exist");
+        String axisLabel = rangeAxis.getLabel();
+
+        // Verify label is not truncated
+        assertEquals("ShortIndicator", axisLabel, "Short labels should not be truncated");
+        assertFalse(axisLabel.endsWith("..."), "Short labels should not have ellipsis");
+    }
+
+    @Test
+    void testSecondaryAxisLabelsAreTruncated() {
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        AnalysisCriterionIndicator indicator = new AnalysisCriterionIndicator(barSeries, new NetProfitCriterion(),
+                tradingRecord);
+
+        // Use a very long label that exceeds the truncation limit
+        String longLabel = "ThisIsAVeryLongAnalysisCriterionLabelThatExceedsThirtyCharacters";
+        factory.addAnalysisCriterionToChart(chart, barSeries, indicator, longLabel);
+
+        XYPlot plot = (XYPlot) chart.getPlot();
+        NumberAxis axis = (NumberAxis) plot.getRangeAxis(1);
+        assertNotNull(axis, "Secondary axis should be added");
+        String axisLabel = axis.getLabel();
+
+        // Verify label is truncated
+        assertTrue(axisLabel.length() <= 30, "Secondary axis label should be truncated to 30 characters or less");
+        assertTrue(axisLabel.endsWith("..."), "Truncated secondary axis label should end with ellipsis");
+        // substring(0, 27) gives 27 chars, plus "..." = 30 chars total
+        assertEquals(30, axisLabel.length(), "Truncated secondary axis label should be exactly 30 characters");
+        assertEquals("ThisIsAVeryLongAnalysisCrit...", axisLabel, "Secondary axis label should be truncated correctly");
+    }
+
+    @Test
     void testPositionMarkerNearEndUsesRightAlignedLabel() {
         BaseTradingRecord record = new BaseTradingRecord();
         Num amount = barSeries.numFactory().numOf(1);

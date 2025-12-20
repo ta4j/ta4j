@@ -95,7 +95,7 @@ public final class SwingChartDisplayer implements ChartDisplayer {
      *
      * @since 0.19
      */
-    static final double DEFAULT_DISPLAY_SCALE = 0.75;
+    static final double DEFAULT_DISPLAY_SCALE = 0.85;
     private static final int DEFAULT_DISPLAY_WIDTH = 1920;
     private static final int DEFAULT_DISPLAY_HEIGHT = 1200;
     private static final int MIN_DISPLAY_WIDTH = 800;

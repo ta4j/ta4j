@@ -61,9 +61,10 @@ import ta4jexamples.charting.renderer.BaseCandleStickRenderer;
 import java.awt.*;
 import java.io.Serializable;
 import java.math.RoundingMode;
+import java.text.DateFormat;
 import java.text.DecimalFormat;
-import java.text.SimpleDateFormat;
 import java.time.Duration;
+import java.util.Locale;
 import java.time.Instant;
 import java.awt.geom.Ellipse2D;
 import java.util.ArrayList;
@@ -97,14 +98,47 @@ public final class TradingChartFactory {
     private static final Font POSITION_LABEL_FONT = new Font(Font.SANS_SERIF, Font.PLAIN, 11);
     private static final Font OVERLAY_LABEL_FONT = new Font(Font.SANS_SERIF, Font.BOLD, 12);
     private static final int LABEL_EDGE_BARS = 5;
+    private static final int MAX_AXIS_LABEL_LENGTH = 30;
     private static final ThreadLocal<DecimalFormat> PRICE_FORMAT = ThreadLocal.withInitial(() -> {
         DecimalFormat decimalFormat = new DecimalFormat("#,##0.00###");
         decimalFormat.setRoundingMode(RoundingMode.HALF_UP);
         return decimalFormat;
     });
 
-    private static final String DATE_FORMAT_DAILY = "yyyy-MM-dd";
-    private static final String DATE_FORMAT_INTRADAY = "yyyy-MM-dd HH:mm:ss";
+    /**
+     * Returns a locale-aware date formatter for daily charts. Uses the default
+     * locale's date format preferences.
+     *
+     * @return DateFormat instance for daily date formatting
+     */
+    private static DateFormat getDailyDateFormat() {
+        return DateFormat.getDateInstance(DateFormat.MEDIUM, Locale.getDefault());
+    }
+
+    /**
+     * Returns a locale-aware date-time formatter for intraday charts. Uses the
+     * default locale's date and time format preferences.
+     *
+     * @return DateFormat instance for intraday date-time formatting
+     */
+    private static DateFormat getIntradayDateFormat() {
+        return DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.MEDIUM, Locale.getDefault());
+    }
+
+    /**
+     * Truncates a label to fit within the maximum axis label length, adding
+     * ellipsis if needed. This prevents axis labels from overlapping in
+     * multi-subplot charts.
+     *
+     * @param label the original label text
+     * @return truncated label with ellipsis if needed, or original label if it fits
+     */
+    private static String truncateAxisLabel(String label) {
+        if (label == null || label.length() <= MAX_AXIS_LABEL_LENGTH) {
+            return label;
+        }
+        return label.substring(0, MAX_AXIS_LABEL_LENGTH - 3) + "...";
+    }
 
     public JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord) {
         DefaultOHLCDataset data = createChartDataset(series);
@@ -160,9 +194,9 @@ public final class TradingChartFactory {
         DateAxis domainAxis = new DateAxis("Date");
         Duration duration = series.getFirstBar().getTimePeriod();
         if (duration.toDays() >= 1) {
-            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_DAILY));
+            domainAxis.setDateFormatOverride(getDailyDateFormat());
         } else {
-            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_INTRADAY));
+            domainAxis.setDateFormatOverride(getIntradayDateFormat());
         }
         domainAxis.setAutoRange(true);
         domainAxis.setLowerMargin(0.03);
@@ -358,9 +392,9 @@ public final class TradingChartFactory {
         DateAxis domainAxis = (DateAxis) plot.getDomainAxis();
 
         if (duration.toDays() >= 1) {
-            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_DAILY));
+            domainAxis.setDateFormatOverride(getDailyDateFormat());
         } else {
-            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_INTRADAY));
+            domainAxis.setDateFormatOverride(getIntradayDateFormat());
         }
         domainAxis.setAutoRange(true);
         domainAxis.setLowerMargin(0.03);
@@ -400,9 +434,9 @@ public final class TradingChartFactory {
         DateAxis domainAxis = new DateAxis("Date");
         Duration duration = series.getFirstBar().getTimePeriod();
         if (duration.toDays() >= 1) {
-            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_DAILY));
+            domainAxis.setDateFormatOverride(getDailyDateFormat());
         } else {
-            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_INTRADAY));
+            domainAxis.setDateFormatOverride(getIntradayDateFormat());
         }
         domainAxis.setAutoRange(true);
         domainAxis.setLowerMargin(0.02);
@@ -456,9 +490,9 @@ public final class TradingChartFactory {
         Duration duration = series.getFirstBar().getTimePeriod();
         DateAxis domainAxis = new DateAxis("Date");
         if (duration.toDays() >= 1) {
-            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_DAILY));
+            domainAxis.setDateFormatOverride(getDailyDateFormat());
         } else {
-            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_INTRADAY));
+            domainAxis.setDateFormatOverride(getIntradayDateFormat());
         }
         domainAxis.setAutoRange(true);
         domainAxis.setLowerMargin(0.02);
@@ -617,7 +651,8 @@ public final class TradingChartFactory {
         if (plot.getRangeAxisCount() > 1 && plot.getRangeAxis(1) != null) {
             return;
         }
-        NumberAxis secondaryAxis = new NumberAxis(label != null ? label : "Value");
+        String axisLabel = label != null ? truncateAxisLabel(label) : "Value";
+        NumberAxis secondaryAxis = new NumberAxis(axisLabel);
         secondaryAxis.setAutoRangeIncludesZero(false);
         secondaryAxis.setTickLabelPaint(Color.LIGHT_GRAY);
         secondaryAxis.setLabelPaint(Color.LIGHT_GRAY);
@@ -861,9 +896,9 @@ public final class TradingChartFactory {
         // Configure domain axis
         DateAxis domainAxis = new DateAxis("Date");
         if (duration.toDays() >= 1) {
-            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_DAILY));
+            domainAxis.setDateFormatOverride(getDailyDateFormat());
         } else {
-            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_INTRADAY));
+            domainAxis.setDateFormatOverride(getIntradayDateFormat());
         }
         domainAxis.setAutoRange(true);
         domainAxis.setLowerMargin(0.02);
@@ -897,9 +932,9 @@ public final class TradingChartFactory {
         DateAxis domainAxis = new DateAxis();
         Duration duration = series.getFirstBar().getTimePeriod();
         if (duration.toDays() >= 1) {
-            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_DAILY));
+            domainAxis.setDateFormatOverride(getDailyDateFormat());
         } else {
-            domainAxis.setDateFormatOverride(new SimpleDateFormat(DATE_FORMAT_INTRADAY));
+            domainAxis.setDateFormatOverride(getIntradayDateFormat());
         }
         domainAxis.setAutoRange(true);
         domainAxis.setLowerMargin(0.02);
@@ -908,8 +943,8 @@ public final class TradingChartFactory {
         domainAxis.setLabelPaint(Color.LIGHT_GRAY);
         plot.setDomainAxis(domainAxis);
 
-        // Configure range axis with indicator label
-        String indicatorLabel = indicator.toString();
+        // Configure range axis with indicator label (truncated to prevent overlap)
+        String indicatorLabel = truncateAxisLabel(indicator.toString());
         NumberAxis rangeAxis = new NumberAxis(indicatorLabel);
         rangeAxis.setAutoRangeIncludesZero(false);
         rangeAxis.setTickLabelPaint(Color.LIGHT_GRAY);
@@ -920,8 +955,7 @@ public final class TradingChartFactory {
         StandardXYItemRenderer renderer = new StandardXYItemRenderer();
         // Set tooltip generator to show series name, date, and value
         // For XYSeriesCollection with epoch milliseconds, use a custom format
-        SimpleDateFormat dateFormat = duration.toDays() >= 1 ? new SimpleDateFormat(DATE_FORMAT_DAILY)
-                : new SimpleDateFormat(DATE_FORMAT_INTRADAY);
+        DateFormat dateFormat = duration.toDays() >= 1 ? getDailyDateFormat() : getIntradayDateFormat();
         renderer.setDefaultToolTipGenerator(new XYSeriesToolTipGenerator(dateFormat));
         plot.setRenderer(0, renderer);
         configurePlotAppearance(plot);
@@ -1145,7 +1179,8 @@ public final class TradingChartFactory {
         }
 
         if (secondaryAxis == null) {
-            secondaryAxis = new NumberAxis(label);
+            String axisLabel = label != null ? truncateAxisLabel(label) : "Value";
+            secondaryAxis = new NumberAxis(axisLabel);
             secondaryAxis.setAutoRangeIncludesZero(false);
             secondaryAxis.setTickLabelPaint(Color.LIGHT_GRAY);
             secondaryAxis.setLabelPaint(Color.LIGHT_GRAY);
@@ -1209,9 +1244,9 @@ public final class TradingChartFactory {
     private static final class XYSeriesToolTipGenerator implements XYToolTipGenerator, Serializable {
 
         private static final long serialVersionUID = 1L;
-        private final SimpleDateFormat dateFormat;
+        private final DateFormat dateFormat;
 
-        XYSeriesToolTipGenerator(SimpleDateFormat dateFormat) {
+        XYSeriesToolTipGenerator(DateFormat dateFormat) {
             this.dateFormat = dateFormat;
         }
 
