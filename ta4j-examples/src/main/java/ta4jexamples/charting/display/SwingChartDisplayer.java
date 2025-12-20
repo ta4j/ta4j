@@ -29,7 +29,6 @@ import org.jfree.chart.ChartPanel;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.entity.ChartEntity;
 import org.jfree.chart.entity.XYItemEntity;
-import org.jfree.chart.ui.ApplicationFrame;
 import org.jfree.data.xy.XYDataset;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -47,6 +46,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.Timer;
@@ -54,13 +54,14 @@ import javax.swing.event.AncestorEvent;
 import javax.swing.event.AncestorListener;
 
 /**
- * Swing-based {@link ChartDisplayer} that renders charts in an
- * {@link ApplicationFrame}.
+ * Swing-based {@link ChartDisplayer} that renders charts in a {@link JFrame}.
  *
  * <p>
  * This implementation displays charts in a Swing window with zoom and pan
  * capabilities. The display size can be configured via the
- * {@link #DISPLAY_SCALE_PROPERTY system property}.
+ * {@link #DISPLAY_SCALE_PROPERTY system property}. Each window closes
+ * independently using {@link JFrame#DISPOSE_ON_CLOSE} to prevent closing one
+ * window from affecting others.
  * </p>
  *
  * @since 0.19
@@ -193,11 +194,15 @@ public final class SwingChartDisplayer implements ChartDisplayer {
         });
 
         String title = windowTitle != null && !windowTitle.trim().isEmpty() ? windowTitle : "Ta4j-examples";
-        ApplicationFrame frame = new ApplicationFrame(title);
+        // Use JFrame instead of ApplicationFrame to avoid EXIT_ON_CLOSE behavior
+        // ApplicationFrame sets EXIT_ON_CLOSE which closes all windows
+        JFrame frame = new JFrame(title);
         frame.setContentPane(containerPanel);
         frame.pack();
         frame.setAlwaysOnTop(false);
         frame.setAutoRequestFocus(false);
+        // Set to DISPOSE_ON_CLOSE so closing one window doesn't close all windows
+        frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
         // Cascade windows by offsetting each new window
         int windowIndex = windowCounter++;
