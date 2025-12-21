@@ -160,7 +160,7 @@ public class ElliottWaveAnalysis {
             if (series == null) {
                 LOG.error("Bar series was null");
             } else {
-                LOG.error("Series is empty, nothing to analyse.");
+                LOG.error("Series is empty, nothing to analyze.");
             }
             System.exit(1);
             return;
