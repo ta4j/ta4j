@@ -471,7 +471,7 @@ public class ElliottWaveAnalysis {
                 primary.type(), primary.confidence().asPercentage(), series.getName());
 
         BarSeriesLabelIndicator primaryWaveLabels = buildWaveLabelsFromScenario(series, primary);
-        ChartPlan primaryPlan = buildChartPlan(chartWorkflow, series, degree, channelUpper, channelLower, channelMedian,
+        ChartPlan primaryPlan = buildChartPlan(chartWorkflow, series, channelUpper, channelLower, channelMedian,
                 primaryWaveLabels, swingCountAsNum, filteredSwingCountAsNum, ratioValue, confluenceIndicator,
                 primaryTitle);
 
@@ -512,7 +512,7 @@ public class ElliottWaveAnalysis {
                     alt.type(), alt.confidence().asPercentage(), series.getName());
 
             BarSeriesLabelIndicator altWaveLabels = buildWaveLabelsFromScenario(series, alt);
-            ChartPlan altPlan = buildChartPlan(chartWorkflow, series, degree, channelUpper, channelLower, channelMedian,
+            ChartPlan altPlan = buildChartPlan(chartWorkflow, series, channelUpper, channelLower, channelMedian,
                     altWaveLabels, swingCountAsNum, filteredSwingCountAsNum, ratioValue, confluenceIndicator, altTitle);
 
             if (!isHeadless) {
@@ -637,7 +637,6 @@ public class ElliottWaveAnalysis {
      * @param chartWorkflow           the chart workflow instance for building
      *                                charts
      * @param series                  the bar series to chart
-     * @param degree                  the Elliott degree (used for title display)
      * @param channelUpper            indicator for upper channel boundary
      * @param channelLower            indicator for lower channel boundary
      * @param channelMedian           indicator for median channel boundary
@@ -651,10 +650,10 @@ public class ElliottWaveAnalysis {
      * @param title                   the chart title
      * @return a configured chart plan ready for display or saving
      */
-    private static ChartPlan buildChartPlan(ChartWorkflow chartWorkflow, BarSeries series, ElliottDegree degree,
-            Indicator<Num> channelUpper, Indicator<Num> channelLower, Indicator<Num> channelMedian,
-            BarSeriesLabelIndicator waveLabels, Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
-            Indicator<Num> ratioValue, Indicator<Num> confluenceIndicator, String title) {
+    private static ChartPlan buildChartPlan(ChartWorkflow chartWorkflow, BarSeries series, Indicator<Num> channelUpper,
+            Indicator<Num> channelLower, Indicator<Num> channelMedian, BarSeriesLabelIndicator waveLabels,
+            Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum, Indicator<Num> ratioValue,
+            Indicator<Num> confluenceIndicator, String title) {
         return chartWorkflow.builder()
                 .withTitle(title)
                 .withSeries(series)
