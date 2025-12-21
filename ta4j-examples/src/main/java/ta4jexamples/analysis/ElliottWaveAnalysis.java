@@ -195,17 +195,136 @@ public class ElliottWaveAnalysis {
      * @return the loaded bar series, or {@code null} if parsing or loading fails
      */
     private static BarSeries loadBarSeriesFromArgs(String[] args) {
+        // Validate argument count
+        if (args.length < 5) {
+            LOG.error(
+                    "Insufficient arguments: expected at least 5, but got {}. Required: [dataSource] [ticker] [barDuration] [degree] [startEpoch] [endEpoch?]",
+                    args.length);
+            return null;
+        }
+
+        // Extract and validate dataSource (args[0])
+        String dataSource = args[0];
+        if (dataSource == null || dataSource.trim().isEmpty()) {
+            LOG.error(
+                    "Invalid dataSource argument: cannot be null or empty. Provided value: '{}'. Supported sources: YahooFinance, Coinbase",
+                    dataSource);
+            return null;
+        }
+        dataSource = dataSource.trim();
+        if (!"YahooFinance".equalsIgnoreCase(dataSource) && !"Coinbase".equalsIgnoreCase(dataSource)) {
+            LOG.error("Unsupported dataSource: '{}'. Supported sources: YahooFinance, Coinbase", dataSource);
+            return null;
+        }
+
+        // Extract and validate ticker (args[1])
+        String ticker = args[1];
+        if (ticker == null || ticker.trim().isEmpty()) {
+            LOG.error("Invalid ticker argument: cannot be null or empty. Provided value: '{}'", ticker);
+            return null;
+        }
+        ticker = ticker.trim();
+
+        // Extract and validate barDuration (args[2])
+        String barDurationStr = args[2];
+        if (barDurationStr == null || barDurationStr.trim().isEmpty()) {
+            LOG.error(
+                    "Invalid barDuration argument: cannot be null or empty. Provided value: '{}'. Expected ISO-8601 duration format (e.g., PT1D, PT4H, PT5M)",
+                    barDurationStr);
+            return null;
+        }
+        barDurationStr = barDurationStr.trim();
+
+        // Normalize duration string: Java's Duration.parse() doesn't support days
+        // (PT1D),
+        // so convert days to hours (PT1D -> PT24H, PT2D -> PT48H, etc.)
+        String normalizedDurationStr = normalizeDurationString(barDurationStr);
+
+        Duration barDuration;
         try {
-            String dataSource = args[0];
-            String ticker = args[1];
-            String barDurationStr = args[2];
-            String startEpochStr = args[4];
-            String endEpochStr = args.length >= 6 ? args[5] : null;
+            barDuration = Duration.parse(normalizedDurationStr);
+            if (barDuration.isZero() || barDuration.isNegative()) {
+                LOG.error("Invalid barDuration: '{}' must be a positive duration. Parsed value: {}", barDurationStr,
+                        barDuration);
+                return null;
+            }
+        } catch (Exception ex) {
+            LOG.error(
+                    "Failed to parse barDuration '{}' as ISO-8601 duration. Error: {}. Expected format: PT1D (daily), PT4H (4-hour), PT5M (5-minute), etc. Note: Java Duration.parse() converts days to hours (PT1D becomes PT24H)",
+                    barDurationStr, ex.getMessage());
+            return null;
+        }
 
-            Duration barDuration = Duration.parse(barDurationStr);
-            Instant startTime = Instant.ofEpochSecond(Long.parseLong(startEpochStr));
-            Instant endTime = endEpochStr != null ? Instant.ofEpochSecond(Long.parseLong(endEpochStr)) : Instant.now();
+        // Extract and validate startEpoch (args[4], args[3] is degree)
+        String startEpochStr = args[4];
+        if (startEpochStr == null || startEpochStr.trim().isEmpty()) {
+            LOG.error(
+                    "Invalid startEpoch argument: cannot be null or empty. Provided value: '{}'. Expected Unix timestamp in seconds",
+                    startEpochStr);
+            return null;
+        }
+        startEpochStr = startEpochStr.trim();
+        Instant startTime;
+        try {
+            long startEpochSeconds = Long.parseLong(startEpochStr);
+            if (startEpochSeconds < 0) {
+                LOG.error(
+                        "Invalid startEpoch: '{}' must be a non-negative Unix timestamp (seconds since 1970-01-01). Provided value: {}",
+                        startEpochStr, startEpochSeconds);
+                return null;
+            }
+            startTime = Instant.ofEpochSecond(startEpochSeconds);
+        } catch (NumberFormatException ex) {
+            LOG.error(
+                    "Failed to parse startEpoch '{}' as a long integer. Error: {}. Expected Unix timestamp in seconds (e.g., 1686960000)",
+                    startEpochStr, ex.getMessage());
+            return null;
+        } catch (Exception ex) {
+            LOG.error("Failed to create Instant from startEpoch '{}'. Error: {}", startEpochStr, ex.getMessage());
+            return null;
+        }
 
+        // Extract and validate endEpoch (args[5], optional)
+        String endEpochStr = args.length >= 6 ? args[5] : null;
+        Instant endTime;
+        if (endEpochStr != null) {
+            if (endEpochStr.trim().isEmpty()) {
+                LOG.warn("endEpoch argument is empty, using current time");
+                endTime = Instant.now();
+            } else {
+                endEpochStr = endEpochStr.trim();
+                try {
+                    long endEpochSeconds = Long.parseLong(endEpochStr);
+                    if (endEpochSeconds < 0) {
+                        LOG.error(
+                                "Invalid endEpoch: '{}' must be a non-negative Unix timestamp (seconds since 1970-01-01). Provided value: {}",
+                                endEpochStr, endEpochSeconds);
+                        return null;
+                    }
+                    endTime = Instant.ofEpochSecond(endEpochSeconds);
+                } catch (NumberFormatException ex) {
+                    LOG.error(
+                            "Failed to parse endEpoch '{}' as a long integer. Error: {}. Expected Unix timestamp in seconds (e.g., 1697040000)",
+                            endEpochStr, ex.getMessage());
+                    return null;
+                } catch (Exception ex) {
+                    LOG.error("Failed to create Instant from endEpoch '{}'. Error: {}", endEpochStr, ex.getMessage());
+                    return null;
+                }
+            }
+        } else {
+            endTime = Instant.now();
+        }
+
+        // Validate time range
+        if (!startTime.isBefore(endTime)) {
+            LOG.error("Invalid time range: startTime ({}) must be before endTime ({}). startEpoch: {}, endEpoch: {}",
+                    startTime, endTime, startEpochStr, endEpochStr != null ? endEpochStr : "now");
+            return null;
+        }
+
+        // Load series from data source
+        try {
             BarSeries series = loadSeriesFromDataSource(dataSource, ticker, barDuration, startTime, endTime);
             if (series == null) {
                 LOG.error("Failed to retrieve bar series from {} for ticker {} with duration {} from {} to {}",
@@ -213,9 +332,48 @@ public class ElliottWaveAnalysis {
             }
             return series;
         } catch (Exception ex) {
-            LOG.error("Error parsing arguments or loading series: {}", ex.getMessage(), ex);
+            LOG.error("Exception while loading series from data source: {}", ex.getMessage(), ex);
             return null;
         }
+    }
+
+    /**
+     * Normalizes an ISO-8601 duration string for Java's Duration.parse().
+     * <p>
+     * Java's {@link Duration#parse(String)} doesn't support days (D) in the
+     * ISO-8601 format, only hours (H), minutes (M), and seconds (S). This method
+     * converts day-based durations to hour-based durations (e.g., PT1D -> PT24H,
+     * PT2D -> PT48H).
+     * <p>
+     * If the duration string doesn't contain days, it's returned unchanged.
+     *
+     * @param durationStr the ISO-8601 duration string (e.g., "PT1D", "PT4H",
+     *                    "PT5M")
+     * @return the normalized duration string that can be parsed by
+     *         {@link Duration#parse(String)}
+     */
+    private static String normalizeDurationString(String durationStr) {
+        if (durationStr == null || durationStr.trim().isEmpty()) {
+            return durationStr;
+        }
+
+        // Check if the duration contains days (D)
+        // Pattern: PT followed by number and D (e.g., PT1D, PT2D)
+        // Java's Duration.parse() doesn't support days, so convert to hours
+        if (durationStr.contains("D") && durationStr.startsWith("PT")) {
+            java.util.regex.Pattern dayPattern = java.util.regex.Pattern.compile("PT(\\d+)D");
+            java.util.regex.Matcher matcher = dayPattern.matcher(durationStr);
+
+            if (matcher.find()) {
+                int days = Integer.parseInt(matcher.group(1));
+                int hours = days * 24;
+                // Replace PT(\d+)D with PT(\d+)H
+                return durationStr.replaceFirst("PT\\d+D", "PT" + hours + "H");
+            }
+        }
+
+        // No days found or pattern doesn't match, return as-is
+        return durationStr;
     }
 
     /**
