@@ -109,4 +109,25 @@ public class TickBarBuilderTest {
         assertEquals(numFactory.numOf(24), bar2.getAmount());
         assertEquals(100, bar2.getTrades());
     }
+
+    @Test
+    public void addTradeBuildsTickBars() {
+        final var series = new BaseBarSeriesBuilder().withBarBuilderFactory(new TickBarBuilderFactory(2)).build();
+        final var numFactory = DecimalNumFactory.getInstance();
+        final var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        series.barBuilder().addTrade(start, numFactory.numOf(1), numFactory.numOf(100));
+        assertEquals(0, series.getBarCount());
+
+        series.barBuilder().addTrade(start.plusSeconds(30), numFactory.numOf(2), numFactory.numOf(110));
+        assertEquals(1, series.getBarCount());
+
+        final var bar = series.getBar(0);
+        assertEquals(start, bar.getBeginTime());
+        assertEquals(start.plusSeconds(30), bar.getEndTime());
+        assertNumEquals(3, bar.getVolume());
+        assertNumEquals(100, bar.getOpenPrice());
+        assertNumEquals(110, bar.getClosePrice());
+        assertEquals(2, bar.getTrades());
+    }
 }

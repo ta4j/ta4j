@@ -175,6 +175,19 @@ public interface BarBuilder {
     BarBuilder trades(String trades);
 
     /**
+     * Updates the builder with a trade event and adds or updates bars as needed.
+     *
+     * @param time        the trade timestamp (UTC)
+     * @param tradeVolume the traded volume
+     * @param tradePrice  the traded price
+     *
+     * @since 0.22.0
+     */
+    default void addTrade(Instant time, Num tradeVolume, Num tradePrice) {
+        throw new UnsupportedOperationException("Trade ingestion not supported by " + getClass().getSimpleName());
+    }
+
+    /**
      * @param barSeries the series used for bar addition
      * @return {@code this}
      */

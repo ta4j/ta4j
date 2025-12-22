@@ -43,7 +43,13 @@ import java.util.List;
  * Thread-safe {@link BarSeries} implementation for concurrent read/write use
  * cases.
  *
- * @since 0.19
+ * <p>
+ * For real-time data feeds, prefer {@link #ingestTrade(Instant, Num, Num)} and
+ * {@link #ingestTrade(Instant, Number, Number)} to let the configured
+ * {@link BarBuilder} handle bar rollovers. Direct bar mutations remain
+ * available for reconciliation and data correction workflows.
+ *
+ * @since 0.22.0
  */
 public class ConcurrentBarSeries extends BaseBarSeries {
 
@@ -52,10 +58,12 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     private final Lock readLock;
     private final Lock writeLock;
 
+    private transient BarBuilder tradeBarBuilder;
+
     /**
      * Indicates how a streaming bar was applied to the series.
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public enum StreamingBarIngestAction {
         APPENDED, REPLACED_LAST, REPLACED_HISTORICAL
@@ -67,7 +75,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @param action indicates how the bar was applied
      * @param index  the affected series index
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public record StreamingBarIngestResult(StreamingBarIngestAction action, int index) {
         public StreamingBarIngestResult {
@@ -96,6 +104,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         ReadWriteLock rwLock = Objects.requireNonNull(readWriteLock, "readWriteLock");
         this.readLock = rwLock.readLock();
         this.writeLock = rwLock.writeLock();
+        this.tradeBarBuilder = Objects.requireNonNull(super.barBuilder(), "barBuilder");
     }
 
     private static List<Bar> cut(final List<Bar> bars, final int startIndex, final int endIndex) {
@@ -259,11 +268,40 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     }
 
     /**
+     * Returns the builder used for streaming trade ingestion. Configure it (for
+     * example, set the time period) before calling
+     * {@link #ingestTrade(Instant, Num, Num)}.
+     *
+     * @return the trade bar builder
+     *
+     * @since 0.22.0
+     */
+    public BarBuilder tradeBarBuilder() {
+        this.readLock.lock();
+        try {
+            if (tradeBarBuilder != null) {
+                return tradeBarBuilder;
+            }
+        } finally {
+            this.readLock.unlock();
+        }
+        this.writeLock.lock();
+        try {
+            if (tradeBarBuilder == null) {
+                tradeBarBuilder = Objects.requireNonNull(super.barBuilder(), "barBuilder");
+            }
+            return tradeBarBuilder;
+        } finally {
+            this.writeLock.unlock();
+        }
+    }
+
+    /**
      * Runs the supplied action while holding the read lock.
      *
      * @param action read-only action to execute
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public void withReadLock(final Runnable action) {
         Objects.requireNonNull(action, "action");
@@ -282,7 +320,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @param <T>    return type
      * @return the action result
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public <T> T withReadLock(final Supplier<T> action) {
         Objects.requireNonNull(action, "action");
@@ -299,7 +337,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      *
      * @param action mutating action to execute
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public void withWriteLock(final Runnable action) {
         Objects.requireNonNull(action, "action");
@@ -318,7 +356,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @param <T>    return type
      * @return the action result
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public <T> T withWriteLock(final Supplier<T> action) {
         Objects.requireNonNull(action, "action");
@@ -371,6 +409,52 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     }
 
     /**
+     * Ingests a trade event into the series using the configured bar builder.
+     *
+     * @param tradeTime   the trade timestamp (UTC)
+     * @param tradeVolume the traded volume
+     * @param tradePrice  the traded price
+     *
+     * @since 0.22.0
+     */
+    public void ingestTrade(final Instant tradeTime, final Number tradeVolume, final Number tradePrice) {
+        Objects.requireNonNull(tradeTime, "tradeTime");
+        Objects.requireNonNull(tradeVolume, "tradeVolume");
+        Objects.requireNonNull(tradePrice, "tradePrice");
+        final NumFactory factory = super.numFactory();
+        ingestTrade(tradeTime, factory.numOf(tradeVolume), factory.numOf(tradePrice));
+    }
+
+    /**
+     * Ingests a trade event into the series using the configured bar builder.
+     *
+     * @param tradeTime   the trade timestamp (UTC)
+     * @param tradeVolume the traded volume
+     * @param tradePrice  the traded price
+     *
+     * @since 0.22.0
+     */
+    public void ingestTrade(final Instant tradeTime, final Num tradeVolume, final Num tradePrice) {
+        Objects.requireNonNull(tradeTime, "tradeTime");
+        Objects.requireNonNull(tradeVolume, "tradeVolume");
+        Objects.requireNonNull(tradePrice, "tradePrice");
+        if (!super.numFactory().produces(tradeVolume) || !super.numFactory().produces(tradePrice)) {
+            throw new IllegalArgumentException(
+                    String.format("Cannot ingest trade with data types: %s/%s into series with datatype: %s",
+                            tradeVolume.getClass(), tradePrice.getClass(), super.numFactory().one().getClass()));
+        }
+        this.writeLock.lock();
+        try {
+            if (tradeBarBuilder == null) {
+                tradeBarBuilder = Objects.requireNonNull(super.barBuilder(), "barBuilder");
+            }
+            tradeBarBuilder.addTrade(tradeTime, tradeVolume, tradePrice);
+        } finally {
+            this.writeLock.unlock();
+        }
+    }
+
+    /**
      * Ingests a single streaming bar (e.g., one emitted from an exchange WebSocket
      * candles) and appends or replaces the matching interval.
      *
@@ -381,7 +465,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @param bar streaming bar payload
      * @return the applied action and affected series index
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public StreamingBarIngestResult ingestStreamingBar(final Bar bar) {
         Objects.requireNonNull(bar, "bar");
@@ -401,7 +485,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @param bars streaming bars to ingest
      * @return applied actions in ascending end-time order
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public List<StreamingBarIngestResult> ingestStreamingBars(final Collection<Bar> bars) {
         if (bars == null || bars.isEmpty()) {

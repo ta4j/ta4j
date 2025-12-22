@@ -23,14 +23,42 @@
  */
 package org.ta4j.core.bars;
 
+import java.time.Duration;
+
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarBuilderFactory;
 import org.ta4j.core.BarSeries;
 
 public class TimeBarBuilderFactory implements BarBuilderFactory {
 
+    private final Duration timePeriod;
+
+    /**
+     * Constructor.
+     *
+     * @since 0.22.0
+     */
+    public TimeBarBuilderFactory() {
+        this(null);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param timePeriod the default time period for time bars
+     *
+     * @since 0.22.0
+     */
+    public TimeBarBuilderFactory(final Duration timePeriod) {
+        this.timePeriod = timePeriod;
+    }
+
     @Override
     public BarBuilder createBarBuilder(BarSeries series) {
-        return new TimeBarBuilder(series.numFactory()).bindTo(series);
+        BarBuilder builder = new TimeBarBuilder(series.numFactory()).bindTo(series);
+        if (timePeriod != null) {
+            builder.timePeriod(timePeriod);
+        }
+        return builder;
     }
 }

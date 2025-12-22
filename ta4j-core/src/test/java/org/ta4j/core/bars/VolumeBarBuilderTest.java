@@ -116,4 +116,29 @@ public class VolumeBarBuilderTest {
         assertEquals(numFactory.numOf(12), bar2.getAmount());
         assertEquals(5, bar2.getTrades());
     }
+
+    @Test
+    public void addTradeBuildsVolumeBars() {
+        final var series = new BaseBarSeriesBuilder().withBarBuilderFactory(new VolumeBarBuilderFactory(3)).build();
+        final var numFactory = DecimalNumFactory.getInstance();
+        final var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        series.barBuilder().addTrade(start, numFactory.numOf(1), numFactory.numOf(10));
+        series.barBuilder().addTrade(start.plusSeconds(10), numFactory.numOf(1), numFactory.numOf(12));
+        assertEquals(0, series.getBarCount());
+
+        series.barBuilder().addTrade(start.plusSeconds(20), numFactory.numOf(1), numFactory.numOf(11));
+        assertEquals(1, series.getBarCount());
+
+        final var bar = series.getBar(0);
+        assertEquals(start, bar.getBeginTime());
+        assertEquals(start.plusSeconds(20), bar.getEndTime());
+        assertNumEquals(3, bar.getVolume());
+        assertNumEquals(10, bar.getOpenPrice());
+        assertNumEquals(12, bar.getHighPrice());
+        assertNumEquals(10, bar.getLowPrice());
+        assertNumEquals(11, bar.getClosePrice());
+        assertEquals(numFactory.numOf(33), bar.getAmount());
+        assertEquals(3, bar.getTrades());
+    }
 }

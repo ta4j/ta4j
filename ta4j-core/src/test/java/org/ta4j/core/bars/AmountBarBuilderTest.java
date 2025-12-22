@@ -273,4 +273,30 @@ class AmountBarBuilderTest {
         assertEquals(numFactory.numOf(12), bar2.getAmount()); // amountThreshold = 12
         assertEquals(5, bar2.getTrades());
     }
+
+    @Test
+    void addTradeBuildsAmountBars() {
+        final var series = new BaseBarSeriesBuilder().withBarBuilderFactory(new AmountBarBuilderFactory(10, true))
+                .build();
+        final var numFactory = DecimalNumFactory.getInstance();
+        final var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        series.barBuilder().addTrade(start, numFactory.numOf(2), numFactory.numOf(2));
+        series.barBuilder().addTrade(start.plusSeconds(10), numFactory.numOf(1), numFactory.numOf(3));
+        assertEquals(0, series.getBarCount());
+
+        series.barBuilder().addTrade(start.plusSeconds(20), numFactory.numOf(1), numFactory.numOf(3));
+        assertEquals(1, series.getBarCount());
+
+        final var bar = series.getBar(0);
+        assertEquals(start, bar.getBeginTime());
+        assertEquals(start.plusSeconds(20), bar.getEndTime());
+        assertNumEquals(4, bar.getVolume());
+        assertNumEquals(2, bar.getOpenPrice());
+        assertNumEquals(3, bar.getClosePrice());
+        assertNumEquals(3, bar.getHighPrice());
+        assertNumEquals(2, bar.getLowPrice());
+        assertEquals(numFactory.numOf(10), bar.getAmount());
+        assertEquals(3, bar.getTrades());
+    }
 }

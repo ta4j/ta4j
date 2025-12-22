@@ -211,6 +211,41 @@ public class TimeBarBuilder implements BarBuilder {
         return this;
     }
 
+    /**
+     * Ingests a trade into the current time bar and adds/replaces the bar in the
+     * bound series. Bars are aligned to UTC epoch boundaries based on the current
+     * {@link #timePeriod}.
+     *
+     * @param time        the trade timestamp (UTC)
+     * @param tradeVolume the traded volume
+     * @param tradePrice  the traded price
+     *
+     * @since 0.22.0
+     */
+    @Override
+    public void addTrade(final Instant time, final Num tradeVolume, final Num tradePrice) {
+        Objects.requireNonNull(time, "time");
+        Objects.requireNonNull(tradeVolume, "tradeVolume");
+        Objects.requireNonNull(tradePrice, "tradePrice");
+        if (timePeriod == null) {
+            throw new IllegalStateException("Time period must be set before ingesting trades");
+        }
+        Objects.requireNonNull(baseBarSeries, "barSeries");
+        ensureTimeRange(time);
+        if (time.isBefore(beginTime)) {
+            throw new IllegalArgumentException(
+                    String.format("Trade time %s is before current bar begin time %s", time, beginTime));
+        }
+        while (!time.isBefore(endTime)) {
+            resetTradeState();
+            beginTime = endTime;
+            endTime = beginTime.plus(timePeriod);
+        }
+        boolean replace = openPrice != null;
+        recordTrade(tradeVolume, tradePrice);
+        baseBarSeries.addBar(build(), replace);
+    }
+
     @Override
     public Bar build() {
         return new BaseBar(this.timePeriod, this.beginTime, this.endTime, this.openPrice, this.highPrice, this.lowPrice,
@@ -224,6 +259,62 @@ public class TimeBarBuilder implements BarBuilder {
         }
 
         this.baseBarSeries.addBar(build());
+    }
+
+    private void ensureTimeRange(final Instant time) {
+        if (beginTime == null && endTime == null) {
+            beginTime = alignToTimePeriodStart(time);
+            endTime = beginTime.plus(timePeriod);
+            return;
+        }
+        if (beginTime == null) {
+            beginTime = endTime.minus(timePeriod);
+        } else if (endTime == null) {
+            endTime = beginTime.plus(timePeriod);
+        }
+    }
+
+    private Instant alignToTimePeriodStart(final Instant time) {
+        try {
+            final long periodNanos = timePeriod.toNanos();
+            if (periodNanos <= 0) {
+                throw new IllegalStateException("Time period must be positive");
+            }
+            final long timeNanos = Math.addExact(Math.multiplyExact(time.getEpochSecond(), 1_000_000_000L),
+                    time.getNano());
+            final long alignedNanos = timeNanos - Math.floorMod(timeNanos, periodNanos);
+            final long alignedSeconds = Math.floorDiv(alignedNanos, 1_000_000_000L);
+            final int alignedNanoPart = (int) Math.floorMod(alignedNanos, 1_000_000_000L);
+            return Instant.ofEpochSecond(alignedSeconds, alignedNanoPart);
+        } catch (ArithmeticException ex) {
+            throw new IllegalStateException("Time period too large to align trade time", ex);
+        }
+    }
+
+    private void recordTrade(final Num tradeVolume, final Num tradePrice) {
+        if (openPrice == null) {
+            openPrice = tradePrice;
+            highPrice = tradePrice;
+            lowPrice = tradePrice;
+        } else {
+            highPrice = highPrice == null ? tradePrice : highPrice.max(tradePrice);
+            lowPrice = lowPrice == null ? tradePrice : lowPrice.min(tradePrice);
+        }
+        closePrice = tradePrice;
+        volume = volume == null ? tradeVolume : volume.plus(tradeVolume);
+        Num tradeAmount = tradePrice.multipliedBy(tradeVolume);
+        amount = amount == null ? tradeAmount : amount.plus(tradeAmount);
+        trades++;
+    }
+
+    private void resetTradeState() {
+        openPrice = null;
+        highPrice = null;
+        lowPrice = null;
+        closePrice = null;
+        volume = null;
+        amount = null;
+        trades = 0;
     }
 
 }

@@ -217,6 +217,35 @@ public class TickBarBuilder implements BarBuilder {
     }
 
     /**
+     * Ingests a trade into the current tick bar and appends the bar once the tick
+     * threshold is met.
+     *
+     * @param time        the trade timestamp (UTC)
+     * @param tradeVolume the traded volume
+     * @param tradePrice  the traded price
+     *
+     * @since 0.22.0
+     */
+    @Override
+    public void addTrade(final Instant time, final Num tradeVolume, final Num tradePrice) {
+        Objects.requireNonNull(time, "time");
+        Objects.requireNonNull(tradeVolume, "tradeVolume");
+        Objects.requireNonNull(tradePrice, "tradePrice");
+        if (endTime != null && time.isBefore(endTime)) {
+            throw new IllegalArgumentException(
+                    String.format("Trade time %s is before current bar end time %s", time, endTime));
+        }
+        if (beginTime == null) {
+            beginTime = time;
+        }
+        endTime = time;
+        closePrice(tradePrice);
+        volume(tradeVolume);
+        trades(1);
+        add();
+    }
+
+    /**
      * Builds bar from current state that is modified for each tick.
      *
      * @return snapshot of current state
@@ -242,6 +271,8 @@ public class TickBarBuilder implements BarBuilder {
     private void reset() {
         final var zero = numFactory.zero();
         timePeriod = null;
+        beginTime = null;
+        endTime = null;
         openPrice = null;
         highPrice = zero;
         lowPrice = numFactory.numOf(Integer.MAX_VALUE);

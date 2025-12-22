@@ -51,6 +51,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.bars.TimeBarBuilder;
+import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
@@ -1089,6 +1090,70 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 .build();
 
         assertThrows(IllegalArgumentException.class, () -> series.ingestStreamingBar(foreignBar));
+    }
+
+    // ==================== Streaming Trade Integration Tests ====================
+
+    @Test
+    public void ingestTradeBuildsTimeBarFromTrades() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory())
+                .build();
+        var period = Duration.ofSeconds(60);
+        var start = Instant.parse("2024-01-01T00:00:30Z");
+        var alignedStart = Instant.parse("2024-01-01T00:00:00Z");
+
+        series.tradeBarBuilder().timePeriod(period);
+
+        series.ingestTrade(start, 1, 100);
+        series.ingestTrade(start.plusSeconds(10), 2, 105);
+        series.ingestTrade(start.plusSeconds(20), 1, 95);
+
+        assertEquals(1, series.getBarCount());
+        var bar = series.getLastBar();
+        assertEquals(alignedStart, bar.getBeginTime());
+        assertEquals(alignedStart.plus(period), bar.getEndTime());
+        assertEquals(numOf(100), bar.getOpenPrice());
+        assertEquals(numOf(105), bar.getHighPrice());
+        assertEquals(numOf(95), bar.getLowPrice());
+        assertEquals(numOf(95), bar.getClosePrice());
+        assertEquals(numOf(4), bar.getVolume());
+        assertEquals(numOf(405), bar.getAmount());
+        assertEquals(3, bar.getTrades());
+    }
+
+    @Test
+    public void ingestTradeRollsOverTimePeriods() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory())
+                .build();
+        var period = Duration.ofSeconds(60);
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        series.tradeBarBuilder().timePeriod(period);
+
+        series.ingestTrade(start, 1, 100);
+        series.ingestTrade(start.plusSeconds(70), 2, 110);
+
+        assertEquals(2, series.getBarCount());
+        var first = series.getBar(0);
+        assertEquals(start, first.getBeginTime());
+        assertEquals(start.plus(period), first.getEndTime());
+        var second = series.getBar(1);
+        assertEquals(start.plus(period), second.getBeginTime());
+        assertEquals(start.plus(period.multipliedBy(2)), second.getEndTime());
+        assertEquals(numOf(110), second.getClosePrice());
+        assertEquals(numOf(2), second.getVolume());
+    }
+
+    @Test
+    public void ingestTradeRequiresTimePeriod() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory())
+                .build();
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        assertThrows(IllegalStateException.class, () -> series.ingestTrade(start, 1, 100));
     }
 
     // ==================== Legacy Tests (from original implementation)
