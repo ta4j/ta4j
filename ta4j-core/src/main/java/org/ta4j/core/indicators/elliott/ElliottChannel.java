@@ -23,9 +23,8 @@
  */
 package org.ta4j.core.indicators.elliott;
 
+import org.ta4j.core.indicators.PriceChannel;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NaN;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Encapsulates a projected Elliott price channel for the current bar.
@@ -35,50 +34,5 @@ import org.ta4j.core.num.NumFactory;
  * @param median arithmetic midline between upper and lower bounds
  * @since 0.22.0
  */
-public record ElliottChannel(Num upper, Num lower, Num median) {
-
-    /**
-     * @return {@code true} when both channel boundaries are valid numbers.
-     * @since 0.22.0
-     */
-    public boolean isValid() {
-        return Num.isValid(upper) && Num.isValid(lower);
-    }
-
-    /**
-     * Returns the channel width (distance between upper and lower boundaries).
-     *
-     * @return {@code upper - lower}, or NaN if the channel is invalid
-     * @since 0.22.0
-     */
-    public Num width() {
-        if (!isValid()) {
-            return NaN.NaN;
-        }
-        return upper.minus(lower);
-    }
-
-    /**
-     * Checks whether a price is contained within the channel, optionally extended
-     * by a symmetric tolerance.
-     *
-     * @param price     price to test
-     * @param tolerance optional symmetric tolerance around the boundaries
-     * @return {@code true} if the price lies between {@code lower - tolerance} and
-     *         {@code upper + tolerance}
-     * @since 0.22.0
-     */
-    public boolean contains(final Num price, final Num tolerance) {
-        if (!isValid() || Num.isNaNOrNull(price)) {
-            return false;
-        }
-        final NumFactory factory = lower.getNumFactory();
-        final Num effectiveTolerance = tolerance == null ? factory.zero() : tolerance;
-        if (Num.isNaNOrNull(effectiveTolerance)) {
-            return false;
-        }
-        final Num min = lower.minus(effectiveTolerance);
-        final Num max = upper.plus(effectiveTolerance);
-        return price.isGreaterThanOrEqual(min) && price.isLessThanOrEqual(max);
-    }
+public record ElliottChannel(Num upper, Num lower, Num median) implements PriceChannel {
 }

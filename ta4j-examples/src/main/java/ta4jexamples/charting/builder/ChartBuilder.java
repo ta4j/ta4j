@@ -23,28 +23,29 @@
  */
 package ta4jexamples.charting.builder;
 
+import java.util.Collections;
+import java.util.ArrayList;
+import java.nio.file.Path;
+import java.util.Optional;
+import java.util.Objects;
+import java.awt.Color;
+import java.util.List;
+
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jfree.chart.JFreeChart;
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.Bar;
+import org.ta4j.core.TradingRecord;
+import org.jfree.chart.JFreeChart;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.Trade;
+import org.ta4j.core.Bar;
 
-import java.awt.Color;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-
-import ta4jexamples.charting.AnalysisCriterionIndicator;
 import ta4jexamples.charting.compose.TradingChartFactory;
+import ta4jexamples.charting.AnalysisCriterionIndicator;
+import ta4jexamples.charting.ChannelBoundaryIndicator;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 
 /**
@@ -162,6 +163,12 @@ public final class ChartBuilder {
         return addIndicatorOverlay(context, indicator, type, false);
     }
 
+    private StyledOverlayStage addChannelBoundaryOverlay(PlotContext context, Indicator<Num> indicator) {
+        StyledOverlayStage stage = addIndicatorOverlay(context, indicator, OverlayType.INDICATOR);
+        applyChannelBoundaryDefaults(stage, indicator);
+        return stage;
+    }
+
     private StyledOverlayStage addIndicatorOverlay(PlotContext context, Indicator<Num> indicator, OverlayType type,
             boolean preferSecondaryAxis) {
         Objects.requireNonNull(indicator, "Indicator cannot be null");
@@ -175,6 +182,20 @@ public final class ChartBuilder {
         OverlayContext overlay = OverlayContext.indicator(type, indicator, slot, colorPalette.nextColor(), null);
         context.overlays.add(overlay);
         return new StyledOverlayStageImpl(context, overlay);
+    }
+
+    private void applyChannelBoundaryDefaults(StyledOverlayStage stage, Indicator<Num> indicator) {
+        if (!(indicator instanceof ChannelBoundaryIndicator boundaryIndicator)) {
+            return;
+        }
+        if (stage instanceof StyledOverlayStageImpl styledStage && styledStage.overlay == null) {
+            return;
+        }
+        switch (boundaryIndicator.boundary()) {
+        case UPPER -> stage.withLineColor(new Color(0xF05454)).withLineWidth(1.4f).withOpacity(0.85f);
+        case LOWER -> stage.withLineColor(new Color(0x26A69A)).withLineWidth(1.4f).withOpacity(0.85f);
+        case MEDIAN -> stage.withLineColor(Color.LIGHT_GRAY).withLineWidth(1.2f).withOpacity(0.55f);
+        }
     }
 
     private ChartStage addTradingRecordOverlay(PlotContext context, TradingRecord tradingRecord) {
@@ -340,6 +361,26 @@ public final class ChartBuilder {
          * @return a styled overlay stage for configuring the overlay appearance
          */
         StyledOverlayStage withIndicatorOverlay(Indicator<Num> indicator);
+
+        /**
+         * Adds upper and lower channel boundaries as overlays on the current chart.
+         *
+         * @param upper the upper boundary indicator
+         * @param lower the lower boundary indicator
+         * @return this chart stage for further configuration
+         */
+        ChartStage withChannelOverlay(Indicator<Num> upper, Indicator<Num> lower);
+
+        /**
+         * Adds upper, median, and lower channel boundaries as overlays on the current
+         * chart.
+         *
+         * @param upper  the upper boundary indicator
+         * @param median the median boundary indicator
+         * @param lower  the lower boundary indicator
+         * @return this chart stage for further configuration
+         */
+        ChartStage withChannelOverlay(Indicator<Num> upper, Indicator<Num> median, Indicator<Num> lower);
 
         /**
          * Adds a trading record overlay to the current chart, displaying buy/sell
@@ -594,6 +635,23 @@ public final class ChartBuilder {
         public StyledOverlayStage withIndicatorOverlay(Indicator<Num> indicator) {
             ensureActive();
             return addIndicatorOverlay(context, indicator, OverlayType.INDICATOR);
+        }
+
+        @Override
+        public ChartStage withChannelOverlay(Indicator<Num> upper, Indicator<Num> lower) {
+            ensureActive();
+            addChannelBoundaryOverlay(context, upper);
+            addChannelBoundaryOverlay(context, lower);
+            return this;
+        }
+
+        @Override
+        public ChartStage withChannelOverlay(Indicator<Num> upper, Indicator<Num> median, Indicator<Num> lower) {
+            ensureActive();
+            addChannelBoundaryOverlay(context, upper);
+            addChannelBoundaryOverlay(context, median);
+            addChannelBoundaryOverlay(context, lower);
+            return this;
         }
 
         @Override

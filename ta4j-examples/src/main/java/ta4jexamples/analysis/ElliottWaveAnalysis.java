@@ -23,50 +23,55 @@
  */
 package ta4jexamples.analysis;
 
-import java.awt.Color;
 import java.awt.GraphicsEnvironment;
 import java.io.InputStream;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
+import java.time.Duration;
 import java.util.Optional;
+import java.time.Instant;
+import java.util.Objects;
+import java.awt.Color;
+import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.elliott.ElliottChannel;
-import org.ta4j.core.indicators.elliott.ElliottChannelIndicator;
-import org.ta4j.core.indicators.elliott.ElliottConfidence;
-import org.ta4j.core.indicators.elliott.ElliottConfluenceIndicator;
-import org.ta4j.core.indicators.elliott.ElliottDegree;
+
 import org.ta4j.core.indicators.elliott.ElliottInvalidationIndicator;
-import org.ta4j.core.indicators.elliott.ElliottPhaseIndicator;
-import org.ta4j.core.indicators.elliott.ElliottRatio;
-import org.ta4j.core.indicators.elliott.ElliottRatioIndicator;
-import org.ta4j.core.indicators.elliott.ElliottScenario;
+import org.ta4j.core.indicators.elliott.ElliottConfluenceIndicator;
+import org.ta4j.core.indicators.elliott.ElliottWaveCountIndicator;
 import org.ta4j.core.indicators.elliott.ElliottScenarioIndicator;
+import org.ta4j.core.indicators.elliott.ElliottChannelIndicator;
+import org.ta4j.core.indicators.elliott.ElliottSwingCompressor;
+import org.ta4j.core.indicators.elliott.ElliottPhaseIndicator;
+import org.ta4j.core.indicators.elliott.ElliottRatioIndicator;
+import org.ta4j.core.indicators.elliott.ElliottSwingMetadata;
 import org.ta4j.core.indicators.elliott.ElliottScenarioSet;
+import org.ta4j.core.indicators.elliott.ElliottConfidence;
+import org.ta4j.core.indicators.elliott.ElliottWaveFacade;
+import org.ta4j.core.indicators.elliott.ElliottScenario;
+import org.ta4j.core.indicators.elliott.ElliottChannel;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
+import org.ta4j.core.indicators.elliott.ElliottRatio;
 import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
-import org.ta4j.core.indicators.elliott.ElliottSwingCompressor;
-import org.ta4j.core.indicators.elliott.ElliottSwingMetadata;
-import org.ta4j.core.indicators.elliott.ElliottWaveCountIndicator;
-import org.ta4j.core.indicators.elliott.ElliottWaveFacade;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.PriceChannel;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
-import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
-import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
+
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.LabelPlacement;
-import ta4jexamples.charting.builder.ChartPlan;
+import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
+import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
+import ta4jexamples.charting.ChannelBoundaryIndicator;
 import ta4jexamples.charting.workflow.ChartWorkflow;
-import ta4jexamples.datasources.BarSeriesDataSource;
+import ta4jexamples.charting.builder.ChartPlan;
+
+import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource;
 import ta4jexamples.datasources.CoinbaseHttpBarSeriesDataSource;
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
-import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource;
+import ta4jexamples.datasources.BarSeriesDataSource;
 
 /**
  * Demonstrates the Elliott Wave indicator suite (swings, phases, Fibonacci
@@ -436,16 +441,13 @@ public class ElliottWaveAnalysis {
         logScenarioAnalysis(scenarioIndicator, endIndex);
 
         // Create chart indicators
-        Indicator<Num> channelUpper = new ChannelBoundaryIndicator(series, channelIndicator, ChannelBoundary.UPPER);
-        Indicator<Num> channelLower = new ChannelBoundaryIndicator(series, channelIndicator, ChannelBoundary.LOWER);
-        Indicator<Num> channelMedian = new ChannelBoundaryIndicator(series, channelIndicator, ChannelBoundary.MEDIAN);
         Indicator<Num> ratioValue = new RatioValueIndicator(series, ratioIndicator, "Elliott ratio value");
         Indicator<Num> swingCountAsNum = new IntegerAsNumIndicator(series, swingCount, "Swings (raw)");
         Indicator<Num> filteredSwingCountAsNum = new IntegerAsNumIndicator(series, filteredSwingCount,
                 "Swings (compressed)");
 
-        displayCharts(series, degree, scenarioIndicator, channelUpper, channelLower, channelMedian, ratioValue,
-                swingCountAsNum, filteredSwingCountAsNum, confluenceIndicator, endIndex);
+        displayCharts(series, degree, scenarioIndicator, channelIndicator, ratioValue, swingCountAsNum,
+                filteredSwingCountAsNum, confluenceIndicator, endIndex);
     }
 
     /**
@@ -573,9 +575,7 @@ public class ElliottWaveAnalysis {
      * @param series                  the bar series
      * @param degree                  the Elliott degree (for chart titles)
      * @param scenarioIndicator       the scenario indicator
-     * @param channelUpper            indicator for upper channel boundary
-     * @param channelLower            indicator for lower channel boundary
-     * @param channelMedian           indicator for median channel boundary
+     * @param channelIndicator        indicator providing channel boundaries
      * @param ratioValue              indicator for Elliott ratio values
      * @param swingCountAsNum         indicator for raw swing count (as numeric)
      * @param filteredSwingCountAsNum indicator for filtered swing count (as
@@ -584,22 +584,21 @@ public class ElliottWaveAnalysis {
      * @param endIndex                the index to evaluate (typically the last bar)
      */
     private static void displayCharts(BarSeries series, ElliottDegree degree,
-            ElliottScenarioIndicator scenarioIndicator, Indicator<Num> channelUpper, Indicator<Num> channelLower,
-            Indicator<Num> channelMedian, Indicator<Num> ratioValue, Indicator<Num> swingCountAsNum,
-            Indicator<Num> filteredSwingCountAsNum, ElliottConfluenceIndicator confluenceIndicator, int endIndex) {
+            ElliottScenarioIndicator scenarioIndicator, Indicator<? extends PriceChannel> channelIndicator,
+            Indicator<Num> ratioValue, Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
+            ElliottConfluenceIndicator confluenceIndicator, int endIndex) {
         ElliottScenarioSet scenarioSet = scenarioIndicator.getValue(endIndex);
         ChartWorkflow chartWorkflow = new ChartWorkflow();
         boolean isHeadless = GraphicsEnvironment.isHeadless();
 
         if (scenarioSet.primary().isPresent()) {
-            displayPrimaryScenarioChart(series, degree, scenarioSet.primary().get(), channelUpper, channelLower,
-                    channelMedian, ratioValue, swingCountAsNum, filteredSwingCountAsNum, confluenceIndicator,
-                    chartWorkflow, isHeadless);
+            displayPrimaryScenarioChart(series, degree, scenarioSet.primary().get(), channelIndicator, ratioValue,
+                    swingCountAsNum, filteredSwingCountAsNum, confluenceIndicator, chartWorkflow, isHeadless);
         }
 
         List<ElliottScenario> alternatives = scenarioSet.alternatives();
-        displayAlternativeScenarioCharts(series, degree, alternatives, channelUpper, channelLower, channelMedian,
-                ratioValue, swingCountAsNum, filteredSwingCountAsNum, confluenceIndicator, chartWorkflow, isHeadless);
+        displayAlternativeScenarioCharts(series, degree, alternatives, channelIndicator, ratioValue, swingCountAsNum,
+                filteredSwingCountAsNum, confluenceIndicator, chartWorkflow, isHeadless);
     }
 
     /**
@@ -608,9 +607,7 @@ public class ElliottWaveAnalysis {
      * @param series                  the bar series
      * @param degree                  the Elliott degree (for chart title)
      * @param primary                 the primary scenario
-     * @param channelUpper            indicator for upper channel boundary
-     * @param channelLower            indicator for lower channel boundary
-     * @param channelMedian           indicator for median channel boundary
+     * @param channelIndicator        indicator providing channel boundaries
      * @param ratioValue              indicator for Elliott ratio values
      * @param swingCountAsNum         indicator for raw swing count (as numeric)
      * @param filteredSwingCountAsNum indicator for filtered swing count (as
@@ -620,8 +617,8 @@ public class ElliottWaveAnalysis {
      * @param isHeadless              whether running in headless mode
      */
     private static void displayPrimaryScenarioChart(BarSeries series, ElliottDegree degree, ElliottScenario primary,
-            Indicator<Num> channelUpper, Indicator<Num> channelLower, Indicator<Num> channelMedian,
-            Indicator<Num> ratioValue, Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
+            Indicator<? extends PriceChannel> channelIndicator, Indicator<Num> ratioValue,
+            Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
             ElliottConfluenceIndicator confluenceIndicator, ChartWorkflow chartWorkflow, boolean isHeadless) {
         String primaryTitle = String.format("Elliott Wave (%s) - %s - PRIMARY: %s (%s) - %.1f%% confidence", degree,
                 series.getName(), primary.currentPhase(), primary.type(), primary.confidence().asPercentage());
@@ -629,9 +626,8 @@ public class ElliottWaveAnalysis {
                 primary.type(), primary.confidence().asPercentage(), series.getName());
 
         BarSeriesLabelIndicator primaryWaveLabels = buildWaveLabelsFromScenario(series, primary);
-        ChartPlan primaryPlan = buildChartPlan(chartWorkflow, series, channelUpper, channelLower, channelMedian,
-                primaryWaveLabels, swingCountAsNum, filteredSwingCountAsNum, ratioValue, confluenceIndicator,
-                primaryTitle);
+        ChartPlan primaryPlan = buildChartPlan(chartWorkflow, series, channelIndicator, primaryWaveLabels,
+                swingCountAsNum, filteredSwingCountAsNum, ratioValue, confluenceIndicator, primaryTitle);
 
         if (!isHeadless) {
             chartWorkflow.display(primaryPlan, primaryWindowTitle);
@@ -646,9 +642,7 @@ public class ElliottWaveAnalysis {
      * @param series                  the bar series
      * @param degree                  the Elliott degree (for chart titles)
      * @param alternatives            the list of alternative scenarios
-     * @param channelUpper            indicator for upper channel boundary
-     * @param channelLower            indicator for lower channel boundary
-     * @param channelMedian           indicator for median channel boundary
+     * @param channelIndicator        indicator providing channel boundaries
      * @param ratioValue              indicator for Elliott ratio values
      * @param swingCountAsNum         indicator for raw swing count (as numeric)
      * @param filteredSwingCountAsNum indicator for filtered swing count (as
@@ -658,10 +652,9 @@ public class ElliottWaveAnalysis {
      * @param isHeadless              whether running in headless mode
      */
     private static void displayAlternativeScenarioCharts(BarSeries series, ElliottDegree degree,
-            List<ElliottScenario> alternatives, Indicator<Num> channelUpper, Indicator<Num> channelLower,
-            Indicator<Num> channelMedian, Indicator<Num> ratioValue, Indicator<Num> swingCountAsNum,
-            Indicator<Num> filteredSwingCountAsNum, ElliottConfluenceIndicator confluenceIndicator,
-            ChartWorkflow chartWorkflow, boolean isHeadless) {
+            List<ElliottScenario> alternatives, Indicator<? extends PriceChannel> channelIndicator,
+            Indicator<Num> ratioValue, Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
+            ElliottConfluenceIndicator confluenceIndicator, ChartWorkflow chartWorkflow, boolean isHeadless) {
         for (int i = 0; i < alternatives.size(); i++) {
             ElliottScenario alt = alternatives.get(i);
             String altTitle = String.format("Elliott Wave (%s) - %s - ALTERNATIVE %d: %s (%s) - %.1f%% confidence",
@@ -670,8 +663,8 @@ public class ElliottWaveAnalysis {
                     alt.type(), alt.confidence().asPercentage(), series.getName());
 
             BarSeriesLabelIndicator altWaveLabels = buildWaveLabelsFromScenario(series, alt);
-            ChartPlan altPlan = buildChartPlan(chartWorkflow, series, channelUpper, channelLower, channelMedian,
-                    altWaveLabels, swingCountAsNum, filteredSwingCountAsNum, ratioValue, confluenceIndicator, altTitle);
+            ChartPlan altPlan = buildChartPlan(chartWorkflow, series, channelIndicator, altWaveLabels, swingCountAsNum,
+                    filteredSwingCountAsNum, ratioValue, confluenceIndicator, altTitle);
 
             if (!isHeadless) {
                 chartWorkflow.display(altPlan, altWindowTitle);
@@ -795,9 +788,7 @@ public class ElliottWaveAnalysis {
      * @param chartWorkflow           the chart workflow instance for building
      *                                charts
      * @param series                  the bar series to chart
-     * @param channelUpper            indicator for upper channel boundary
-     * @param channelLower            indicator for lower channel boundary
-     * @param channelMedian           indicator for median channel boundary
+     * @param channelIndicator        indicator providing channel boundaries
      * @param waveLabels              indicator providing wave pivot labels (1-5 for
      *                                impulses, A-B-C for corrections)
      * @param swingCountAsNum         indicator for raw swing count (as numeric)
@@ -808,28 +799,20 @@ public class ElliottWaveAnalysis {
      * @param title                   the chart title
      * @return a configured chart plan ready for display or saving
      */
-    private static ChartPlan buildChartPlan(ChartWorkflow chartWorkflow, BarSeries series, Indicator<Num> channelUpper,
-            Indicator<Num> channelLower, Indicator<Num> channelMedian, BarSeriesLabelIndicator waveLabels,
+    private static ChartPlan buildChartPlan(ChartWorkflow chartWorkflow, BarSeries series,
+            Indicator<? extends PriceChannel> channelIndicator, BarSeriesLabelIndicator waveLabels,
             Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum, Indicator<Num> ratioValue,
             Indicator<Num> confluenceIndicator, String title) {
+        ChannelBoundaryIndicator channelUpper = new ChannelBoundaryIndicator(channelIndicator,
+                PriceChannel.Boundary.UPPER, "Elliott channel upper");
+        ChannelBoundaryIndicator channelLower = new ChannelBoundaryIndicator(channelIndicator,
+                PriceChannel.Boundary.LOWER, "Elliott channel lower");
+        ChannelBoundaryIndicator channelMedian = new ChannelBoundaryIndicator(channelIndicator,
+                PriceChannel.Boundary.MEDIAN, "Elliott channel median");
         return chartWorkflow.builder()
                 .withTitle(title)
                 .withSeries(series)
-                .withIndicatorOverlay(channelUpper)
-                .withLineColor(new Color(0xF05454))
-                .withLineWidth(1.4f)
-                .withOpacity(0.85f)
-                .withLabel("Elliott channel upper")
-                .withIndicatorOverlay(channelLower)
-                .withLineColor(new Color(0x26A69A))
-                .withLineWidth(1.4f)
-                .withOpacity(0.85f)
-                .withLabel("Elliott channel lower")
-                .withIndicatorOverlay(channelMedian)
-                .withLineColor(Color.LIGHT_GRAY)
-                .withLineWidth(1.2f)
-                .withOpacity(0.55f)
-                .withLabel("Elliott channel median")
+                .withChannelOverlay(channelUpper, channelMedian, channelLower)
                 .withIndicatorOverlay(waveLabels)
                 .withLineColor(new Color(0x40FFFF)) // Brighter cyan for better visibility
                 .withLineWidth(2.0f)
@@ -966,65 +949,6 @@ public class ElliottWaveAnalysis {
      */
     private static LabelPlacement placementForPivot(boolean isHighPivot) {
         return isHighPivot ? LabelPlacement.ABOVE : LabelPlacement.BELOW;
-    }
-
-    /**
-     * Enumeration of Elliott channel boundary types.
-     */
-    private enum ChannelBoundary {
-        /** Upper channel boundary (resistance level). */
-        UPPER,
-        /** Lower channel boundary (support level). */
-        LOWER,
-        /** Median channel boundary (midpoint between upper and lower). */
-        MEDIAN
-    }
-
-    /**
-     * Indicator that extracts a specific boundary value from an Elliott channel
-     * indicator.
-     * <p>
-     * This wrapper indicator allows individual channel boundaries (upper, lower, or
-     * median) to be used as separate indicators for charting purposes.
-     */
-    private static final class ChannelBoundaryIndicator extends CachedIndicator<Num> {
-
-        private final ElliottChannelIndicator channelIndicator;
-        private final ChannelBoundary boundary;
-
-        /**
-         * Creates a channel boundary indicator.
-         *
-         * @param series           the bar series
-         * @param channelIndicator the Elliott channel indicator to extract boundaries
-         *                         from
-         * @param boundary         the boundary type to extract (UPPER, LOWER, or
-         *                         MEDIAN)
-         */
-        private ChannelBoundaryIndicator(BarSeries series, ElliottChannelIndicator channelIndicator,
-                ChannelBoundary boundary) {
-            super(series);
-            this.channelIndicator = Objects.requireNonNull(channelIndicator, "channelIndicator");
-            this.boundary = Objects.requireNonNull(boundary, "boundary");
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            ElliottChannel channel = channelIndicator.getValue(index);
-            if (channel == null) {
-                return getBarSeries().numFactory().numOf(Double.NaN);
-            }
-            return switch (boundary) {
-            case UPPER -> channel.upper();
-            case LOWER -> channel.lower();
-            case MEDIAN -> channel.median();
-            };
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return channelIndicator.getCountOfUnstableBars();
-        }
     }
 
     /**

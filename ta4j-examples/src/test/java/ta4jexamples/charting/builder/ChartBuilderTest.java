@@ -83,6 +83,32 @@ class ChartBuilderTest {
     }
 
     @Test
+    void withChannelOverlayAddsUpperMedianLowerOverlays() {
+        ConstantIndicator upper = constantIndicator(110, "upper");
+        ConstantIndicator median = constantIndicator(100, "median");
+        ConstantIndicator lower = constantIndicator(90, "lower");
+
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withChannelOverlay(upper, median, lower)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        assertEquals(4, basePlot.getDatasetCount(), "Channel overlays should add three datasets");
+    }
+
+    @Test
+    void withChannelOverlayAddsUpperAndLowerOverlays() {
+        ConstantIndicator upper = constantIndicator(110, "upper");
+        ConstantIndicator lower = constantIndicator(90, "lower");
+
+        JFreeChart chart = chartWorkflow.builder().withSeries(series).withChannelOverlay(upper, lower).toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        assertEquals(3, basePlot.getDatasetCount(), "Channel overlays should add two datasets");
+    }
+
+    @Test
     void supportsIndicatorBaseChartsWithSubplot() {
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
         RSIIndicator rsiIndicator = new RSIIndicator(closePrice, 14);
