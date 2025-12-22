@@ -43,6 +43,8 @@ import org.ta4j.core.num.Num;
  */
 public class ElliottScenarioIndicator extends CachedIndicator<ElliottScenarioSet> {
 
+    private static final int SCENARIO_SWING_WINDOW = 5;
+
     private final ElliottSwingIndicator swingIndicator;
     private final ElliottChannelIndicator channelIndicator;
     private final ElliottScenarioGenerator generator;
@@ -103,8 +105,22 @@ public class ElliottScenarioIndicator extends CachedIndicator<ElliottScenarioSet
             return ElliottScenarioSet.empty(index);
         }
 
+        // Scenario generation inspects leading swings; keep the window aligned to the
+        // latest structure.
+        final List<ElliottSwing> recentSwings = recentSwings(swings);
+        if (recentSwings.isEmpty()) {
+            return ElliottScenarioSet.empty(index);
+        }
+
         final ElliottChannel channel = channelIndicator.getValue(index);
-        return generator.generate(swings, degree, channel, index);
+        return generator.generate(recentSwings, degree, channel, index);
+    }
+
+    private List<ElliottSwing> recentSwings(final List<ElliottSwing> swings) {
+        if (swings.size() <= SCENARIO_SWING_WINDOW) {
+            return swings;
+        }
+        return List.copyOf(swings.subList(swings.size() - SCENARIO_SWING_WINDOW, swings.size()));
     }
 
     @Override

@@ -165,6 +165,34 @@ class ElliottScenarioIndicatorTest {
     }
 
     @Test
+    void scenariosTrackMostRecentSwings() {
+        BarSeries series = new MockBarSeriesBuilder().withData(100, 101, 102, 103, 104, 105, 106).build();
+        var factory = series.numFactory();
+        List<ElliottSwing> swings = List.of(
+                new ElliottSwing(0, 1, factory.numOf(90), factory.numOf(100), ElliottDegree.MINOR),
+                new ElliottSwing(1, 2, factory.numOf(100), factory.numOf(110), ElliottDegree.MINOR),
+                new ElliottSwing(2, 3, factory.numOf(110), factory.numOf(104), ElliottDegree.MINOR),
+                new ElliottSwing(3, 4, factory.numOf(104), factory.numOf(120), ElliottDegree.MINOR),
+                new ElliottSwing(4, 5, factory.numOf(120), factory.numOf(114), ElliottDegree.MINOR),
+                new ElliottSwing(5, 6, factory.numOf(114), factory.numOf(124), ElliottDegree.MINOR));
+
+        ElliottSwingIndicator swingIndicator = new StubSwingIndicator(series, List.of(swings), ElliottDegree.MINOR);
+        ElliottChannelIndicator channelIndicator = new ElliottChannelIndicator(swingIndicator);
+        ElliottScenarioGenerator generator = new ElliottScenarioGenerator(factory, 0.0, 20);
+        ElliottScenarioIndicator indicator = new ElliottScenarioIndicator(swingIndicator, channelIndicator, generator);
+
+        ElliottScenarioSet set = indicator.getValue(series.getEndIndex());
+
+        assertThat(set.isEmpty()).isFalse();
+        int lastSwingToIndex = swings.get(swings.size() - 1).toIndex();
+        boolean includesLastSwing = set.all()
+                .stream()
+                .flatMap(scenario -> scenario.swings().stream())
+                .anyMatch(swing -> swing.toIndex() == lastSwingToIndex);
+        assertThat(includesLastSwing).isTrue();
+    }
+
+    @Test
     void singleBarSeriesReturnsEmptyScenarioSet() {
         // A single bar cannot produce swings, so no scenarios are generated
         BarSeries series = new MockBarSeriesBuilder().build();
