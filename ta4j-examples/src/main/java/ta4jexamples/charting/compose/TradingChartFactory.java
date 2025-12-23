@@ -631,7 +631,7 @@ public final class TradingChartFactory {
                 Math.round(opacity * 255));
         for (int i = 0; i < dataset.getSeriesCount(); i++) {
             renderer.setSeriesPaint(i, colorWithOpacity);
-            renderer.setSeriesStroke(i, new BasicStroke(overlay.style().lineWidth()));
+            renderer.setSeriesStroke(i, createStroke(overlay.style()));
         }
         renderer.setDefaultToolTipGenerator(new TimeSeriesToolTipGenerator());
         return renderer;
@@ -656,7 +656,7 @@ public final class TradingChartFactory {
             renderer.setSeriesPaint(i, colorWithOpacity);
             renderer.setSeriesFillPaint(i, colorWithOpacity);
             renderer.setSeriesShape(i, shape);
-            renderer.setSeriesStroke(i, new BasicStroke(overlay.style().lineWidth()));
+            renderer.setSeriesStroke(i, createStroke(overlay.style()));
             renderer.setSeriesLinesVisible(i, connectLines);
         }
         renderer.setDefaultToolTipGenerator(new TimeSeriesToolTipGenerator());
@@ -680,7 +680,7 @@ public final class TradingChartFactory {
             renderer.setSeriesPaint(i, colorWithOpacity);
             renderer.setSeriesFillPaint(i, colorWithOpacity);
             renderer.setSeriesShape(i, shape);
-            renderer.setSeriesStroke(i, new BasicStroke(overlay.style().lineWidth()));
+            renderer.setSeriesStroke(i, createStroke(overlay.style()));
             renderer.setSeriesShapesVisible(i, true);
             renderer.setSeriesShapesFilled(i, true);
             renderer.setSeriesLinesVisible(i, true);
@@ -691,6 +691,14 @@ public final class TradingChartFactory {
         renderer.setUseFillPaint(true);
         renderer.setUseOutlinePaint(false);
         return renderer;
+    }
+
+    private BasicStroke createStroke(ChartBuilder.OverlayStyle style) {
+        float[] dash = style.dashPattern();
+        if (dash != null && dash.length > 0) {
+            return new BasicStroke(style.lineWidth(), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1.0f, dash, 0.0f);
+        }
+        return new BasicStroke(style.lineWidth());
     }
 
     private void ensureSecondaryAxisExists(XYPlot plot, String label) {

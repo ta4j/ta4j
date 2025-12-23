@@ -123,6 +123,34 @@ class ChartBuilderTest {
     }
 
     @Test
+    void channelOverlayMedianDefaultsToDashedLowerOpacity() {
+        ConstantIndicator upper = constantIndicator(110, "upper");
+        ConstantIndicator median = constantIndicator(100, "median");
+        ConstantIndicator lower = constantIndicator(90, "lower");
+
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withChannelOverlay(upper, median, lower)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        int medianDatasetIndex = -1;
+        for (int i = 0; i < basePlot.getDatasetCount(); i++) {
+            if (basePlot.getDataset(i) instanceof TimeSeriesCollection collection && collection.getSeriesCount() > 0
+                    && "median".equals(collection.getSeriesKey(0))) {
+                medianDatasetIndex = i;
+                break;
+            }
+        }
+
+        assertTrue(medianDatasetIndex >= 0, "Median dataset should be present");
+        StandardXYItemRenderer renderer = (StandardXYItemRenderer) basePlot.getRenderer(medianDatasetIndex);
+        BasicStroke stroke = (BasicStroke) renderer.getSeriesStroke(0);
+        assertNotNull(stroke.getDashArray(), "Median stroke should be dashed by default");
+        assertTrue(stroke.getLineWidth() < 1.2f, "Median stroke should be thinner than default channel lines");
+    }
+
+    @Test
     void channelOverlayStylingUpdatesLinesAndFill() {
         ConstantIndicator upper = constantIndicator(110, "upper");
         ConstantIndicator lower = constantIndicator(90, "lower");

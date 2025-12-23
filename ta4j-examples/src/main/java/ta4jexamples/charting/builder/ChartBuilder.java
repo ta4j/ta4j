@@ -74,8 +74,10 @@ public final class ChartBuilder {
     private static final Color DEFAULT_CHANNEL_LINE_COLOR = new Color(0x8FA3AD);
     private static final float DEFAULT_CHANNEL_LINE_OPACITY = 0.5f;
     private static final float DEFAULT_CHANNEL_MEDIAN_OPACITY = 0.35f;
+    private static final float DEFAULT_CHANNEL_MEDIAN_WIDTH = 0.9f;
     private static final float DEFAULT_CHANNEL_LINE_WIDTH = 1.2f;
     private static final float DEFAULT_CHANNEL_FILL_OPACITY = 0.25f;
+    private static final float[] DEFAULT_CHANNEL_MEDIAN_DASH = { 4.5f, 4.5f };
 
     private final ChartWorkflow chartWorkflow;
     private final TradingChartFactory chartFactory;
@@ -233,13 +235,18 @@ public final class ChartBuilder {
         OverlayStyle lineStyle = OverlayStyle.defaultStyle(DEFAULT_CHANNEL_LINE_COLOR);
         lineStyle.setLineWidth(DEFAULT_CHANNEL_LINE_WIDTH);
         lineStyle.setOpacity(DEFAULT_CHANNEL_LINE_OPACITY);
+
+        OverlayStyle medianStyle = OverlayStyle.defaultStyle(DEFAULT_CHANNEL_LINE_COLOR);
+        medianStyle.setLineWidth(DEFAULT_CHANNEL_MEDIAN_WIDTH);
+        medianStyle.setOpacity(DEFAULT_CHANNEL_MEDIAN_OPACITY);
+        medianStyle.setDashPattern(DEFAULT_CHANNEL_MEDIAN_DASH);
         ChannelFillStyle fillStyle = ChannelFillStyle.defaultStyle(DEFAULT_CHANNEL_LINE_COLOR,
                 DEFAULT_CHANNEL_FILL_OPACITY);
 
         OverlayContext upperOverlay = OverlayContext.indicator(OverlayType.INDICATOR, upper, slot, lineStyle, null);
         OverlayContext lowerOverlay = OverlayContext.indicator(OverlayType.INDICATOR, lower, slot, lineStyle, null);
         OverlayContext medianOverlay = median != null
-                ? OverlayContext.indicator(OverlayType.INDICATOR, median, slot, lineStyle, null)
+                ? OverlayContext.indicator(OverlayType.INDICATOR, median, slot, medianStyle, null)
                 : null;
 
         context.overlays.add(upperOverlay);
@@ -249,7 +256,7 @@ public final class ChartBuilder {
         context.overlays.add(lowerOverlay);
 
         ChannelOverlayContext channelContext = new ChannelOverlayContext(upper, lower, median, slot, lineStyle,
-                fillStyle);
+                medianStyle, fillStyle);
         context.channelOverlays.add(channelContext);
         return new StyledChannelStageImpl(context, channelContext);
     }
@@ -283,9 +290,14 @@ public final class ChartBuilder {
         case LOWER -> stage.withLineColor(DEFAULT_CHANNEL_LINE_COLOR)
                 .withLineWidth(DEFAULT_CHANNEL_LINE_WIDTH)
                 .withOpacity(DEFAULT_CHANNEL_LINE_OPACITY);
-        case MEDIAN -> stage.withLineColor(DEFAULT_CHANNEL_LINE_COLOR)
-                .withLineWidth(DEFAULT_CHANNEL_LINE_WIDTH)
-                .withOpacity(DEFAULT_CHANNEL_MEDIAN_OPACITY);
+        case MEDIAN -> {
+            stage.withLineColor(DEFAULT_CHANNEL_LINE_COLOR)
+                    .withLineWidth(DEFAULT_CHANNEL_MEDIAN_WIDTH)
+                    .withOpacity(DEFAULT_CHANNEL_MEDIAN_OPACITY);
+            if (stage instanceof StyledOverlayStageImpl styledStage) {
+                styledStage.overlay.style.setDashPattern(DEFAULT_CHANNEL_MEDIAN_DASH);
+            }
+        }
         }
     }
 
@@ -1416,21 +1428,25 @@ public final class ChartBuilder {
         private final Indicator<Num> medianIndicator;
         private final AxisSlot axisSlot;
         private final OverlayStyle lineStyle;
+        private final OverlayStyle medianStyle;
         private final ChannelFillStyle fillStyle;
         private boolean fillColorCustom;
 
         private ChannelOverlayContext(Indicator<Num> upperIndicator, Indicator<Num> lowerIndicator,
-                Indicator<Num> medianIndicator, AxisSlot axisSlot, OverlayStyle lineStyle, ChannelFillStyle fillStyle) {
+                Indicator<Num> medianIndicator, AxisSlot axisSlot, OverlayStyle lineStyle, OverlayStyle medianStyle,
+                ChannelFillStyle fillStyle) {
             this.upperIndicator = upperIndicator;
             this.lowerIndicator = lowerIndicator;
             this.medianIndicator = medianIndicator;
             this.axisSlot = axisSlot;
             this.lineStyle = lineStyle;
+            this.medianStyle = medianStyle;
             this.fillStyle = fillStyle;
         }
 
         private void setLineColor(Color color) {
             lineStyle.setColor(color);
+            medianStyle.setColor(color);
             if (!fillColorCustom) {
                 fillStyle.setColor(color);
             }
@@ -1438,10 +1454,12 @@ public final class ChartBuilder {
 
         private void setLineWidth(float width) {
             lineStyle.setLineWidth(width);
+            medianStyle.setLineWidth(width);
         }
 
         private void setLineOpacity(float opacity) {
             lineStyle.setOpacity(opacity);
+            medianStyle.setOpacity(opacity);
         }
 
         private void setFillColor(Color color) {
@@ -1715,16 +1733,18 @@ public final class ChartBuilder {
         private float lineWidth;
         private boolean connectGaps;
         private float opacity;
+        private float[] dashPattern;
 
-        private OverlayStyle(Color color, float lineWidth, boolean connectGaps, float opacity) {
+        private OverlayStyle(Color color, float lineWidth, boolean connectGaps, float opacity, float[] dashPattern) {
             this.color = color;
             this.lineWidth = lineWidth;
             this.connectGaps = connectGaps;
             this.opacity = opacity;
+            this.dashPattern = dashPattern == null ? null : dashPattern.clone();
         }
 
         static OverlayStyle defaultStyle(Color color) {
-            return new OverlayStyle(color, 1.6f, false, 1.0f);
+            return new OverlayStyle(color, 1.6f, false, 1.0f, null);
         }
 
         /**
@@ -1762,6 +1782,15 @@ public final class ChartBuilder {
          */
         public float opacity() {
             return opacity;
+        }
+
+        /**
+         * Returns the dash pattern for the overlay line, or null for solid lines.
+         *
+         * @return the dash pattern, or null
+         */
+        public float[] dashPattern() {
+            return dashPattern == null ? null : dashPattern.clone();
         }
 
         /**
@@ -1809,6 +1838,15 @@ public final class ChartBuilder {
                 throw new IllegalArgumentException("Opacity must be between 0.0 and 1.0");
             }
             this.opacity = opacity;
+        }
+
+        /**
+         * Sets a dash pattern for the overlay line.
+         *
+         * @param dashPattern the dash pattern (null for solid lines)
+         */
+        public void setDashPattern(float[] dashPattern) {
+            this.dashPattern = dashPattern == null ? null : dashPattern.clone();
         }
     }
 
