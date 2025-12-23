@@ -26,12 +26,14 @@ package ta4jexamples.charting.builder;
 import java.util.Collections;
 import java.util.ArrayList;
 import java.nio.file.Path;
+import java.util.EnumSet;
 import java.util.Optional;
 import java.util.Objects;
 import java.awt.Color;
 import java.util.List;
 
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.PriceChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.AnalysisCriterion;
@@ -138,6 +140,7 @@ public final class ChartBuilder {
         if (consumed) {
             throw new IllegalStateException("This builder has already been consumed by a terminal operation.");
         }
+        validateChannelOverlays();
     }
 
     private void markConsumed() {
@@ -150,13 +153,32 @@ public final class ChartBuilder {
         }
     }
 
-    private BarSeries requireIndicatorSeries(Indicator<Num> indicator) {
+    private BarSeries requireIndicatorSeries(Indicator<?> indicator) {
         BarSeries series = indicator.getBarSeries();
         if (series == null) {
             throw new IllegalArgumentException("Indicator " + indicator + " is not attached to a BarSeries");
         }
         validateSeriesHasBars(series);
         return series;
+    }
+
+    private void validateChannelOverlays() {
+        for (PlotContext plot : plots) {
+            EnumSet<PriceChannel.Boundary> boundaries = EnumSet.noneOf(PriceChannel.Boundary.class);
+            boolean hasChannelBoundary = false;
+            for (OverlayContext overlay : plot.overlays) {
+                Indicator<Num> indicator = overlay.indicator;
+                if (indicator instanceof ChannelBoundaryIndicator boundaryIndicator) {
+                    hasChannelBoundary = true;
+                    boundaries.add(boundaryIndicator.boundary());
+                }
+            }
+            if (hasChannelBoundary && (!boundaries.contains(PriceChannel.Boundary.UPPER)
+                    || !boundaries.contains(PriceChannel.Boundary.LOWER))) {
+                throw new IllegalStateException(
+                        "Channel overlays require both upper and lower boundaries before charting.");
+            }
+        }
     }
 
     private StyledOverlayStage addIndicatorOverlay(PlotContext context, Indicator<Num> indicator, OverlayType type) {
@@ -381,6 +403,15 @@ public final class ChartBuilder {
          * @return this chart stage for further configuration
          */
         ChartStage withChannelOverlay(Indicator<Num> upper, Indicator<Num> median, Indicator<Num> lower);
+
+        /**
+         * Adds upper, median, and lower channel boundaries by wrapping a channel
+         * indicator.
+         *
+         * @param channelIndicator the indicator providing channel boundary values
+         * @return this chart stage for further configuration
+         */
+        ChartStage withChannelOverlay(Indicator<? extends PriceChannel> channelIndicator);
 
         /**
          * Adds a trading record overlay to the current chart, displaying buy/sell
@@ -648,6 +679,22 @@ public final class ChartBuilder {
         @Override
         public ChartStage withChannelOverlay(Indicator<Num> upper, Indicator<Num> median, Indicator<Num> lower) {
             ensureActive();
+            addChannelBoundaryOverlay(context, upper);
+            addChannelBoundaryOverlay(context, median);
+            addChannelBoundaryOverlay(context, lower);
+            return this;
+        }
+
+        @Override
+        public ChartStage withChannelOverlay(Indicator<? extends PriceChannel> channelIndicator) {
+            ensureActive();
+            Objects.requireNonNull(channelIndicator, "Channel indicator cannot be null");
+            ChannelBoundaryIndicator upper = new ChannelBoundaryIndicator(channelIndicator,
+                    PriceChannel.Boundary.UPPER);
+            ChannelBoundaryIndicator median = new ChannelBoundaryIndicator(channelIndicator,
+                    PriceChannel.Boundary.MEDIAN);
+            ChannelBoundaryIndicator lower = new ChannelBoundaryIndicator(channelIndicator,
+                    PriceChannel.Boundary.LOWER);
             addChannelBoundaryOverlay(context, upper);
             addChannelBoundaryOverlay(context, median);
             addChannelBoundaryOverlay(context, lower);

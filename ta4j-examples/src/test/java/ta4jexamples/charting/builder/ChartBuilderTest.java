@@ -39,6 +39,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.indicators.PriceChannel;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -48,6 +49,7 @@ import java.awt.Color;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import ta4jexamples.charting.ChannelBoundaryIndicator;
 import ta4jexamples.charting.ChartingTestFixtures;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 
@@ -106,6 +108,46 @@ class ChartBuilderTest {
 
         XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
         assertEquals(3, basePlot.getDatasetCount(), "Channel overlays should add two datasets");
+    }
+
+    @Test
+    void withChannelOverlayWrapsPriceChannelIndicator() {
+        ConstantChannelIndicator channelIndicator = new ConstantChannelIndicator(series, 110, 90, 100, "Test Channel");
+
+        JFreeChart chart = chartWorkflow.builder().withSeries(series).withChannelOverlay(channelIndicator).toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        assertEquals(4, basePlot.getDatasetCount(),
+                "Channel overlays should add upper, median, and lower datasets when wrapping a channel indicator");
+    }
+
+    @Test
+    void channelOverlaysRequireUpperAndLowerBoundaries() {
+        ConstantChannelIndicator channelIndicator = new ConstantChannelIndicator(series, 110, 90, 100,
+                "Partial Channel");
+        ChannelBoundaryIndicator upperBoundary = new ChannelBoundaryIndicator(channelIndicator,
+                PriceChannel.Boundary.UPPER);
+
+        ChartBuilder.ChartStage stage = chartWorkflow.builder().withSeries(series).withIndicatorOverlay(upperBoundary);
+
+        assertThrows(IllegalStateException.class, stage::toChart,
+                "Channel overlays should require both upper and lower boundaries before charting");
+    }
+
+    @Test
+    void channelOverlaysAllowUpperAndLowerBoundariesTogether() {
+        ConstantChannelIndicator channelIndicator = new ConstantChannelIndicator(series, 110, 90, 100, "Full Channel");
+        ChannelBoundaryIndicator upperBoundary = new ChannelBoundaryIndicator(channelIndicator,
+                PriceChannel.Boundary.UPPER);
+        ChannelBoundaryIndicator lowerBoundary = new ChannelBoundaryIndicator(channelIndicator,
+                PriceChannel.Boundary.LOWER);
+
+        ChartBuilder.ChartStage stage = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(upperBoundary)
+                .withIndicatorOverlay(lowerBoundary);
+
+        assertDoesNotThrow(stage::toChart, "Upper and lower boundaries should satisfy channel overlay validation");
     }
 
     @Test
@@ -783,6 +825,42 @@ class ChartBuilderTest {
         @Override
         public String toString() {
             return "TestIndicatorWithNaN";
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return series;
+        }
+    }
+
+    private record TestChannel(Num upper, Num lower, Num median) implements PriceChannel {
+    }
+
+    private static final class ConstantChannelIndicator implements Indicator<PriceChannel> {
+        private final BarSeries series;
+        private final PriceChannel channel;
+        private final String name;
+
+        private ConstantChannelIndicator(BarSeries series, double upper, double lower, double median, String name) {
+            this.series = series;
+            this.channel = new TestChannel(series.numFactory().numOf(upper), series.numFactory().numOf(lower),
+                    series.numFactory().numOf(median));
+            this.name = name;
+        }
+
+        @Override
+        public PriceChannel getValue(int index) {
+            return channel;
+        }
+
+        @Override
+        public String toString() {
+            return name;
         }
 
         @Override
