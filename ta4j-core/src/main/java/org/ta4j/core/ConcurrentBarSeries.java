@@ -87,7 +87,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     }
 
     ConcurrentBarSeries(final String name, final List<Bar> bars) {
-        this(name, bars, 0, bars.size() - 1, false, DecimalNumFactory.getInstance(), new TimeBarBuilderFactory(),
+        this(name, bars, 0, bars.size() - 1, false, DecimalNumFactory.getInstance(), new TimeBarBuilderFactory(true),
                 new ReentrantReadWriteLock());
     }
 
@@ -418,11 +418,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @since 0.22.0
      */
     public void ingestTrade(final Instant tradeTime, final Number tradeVolume, final Number tradePrice) {
-        Objects.requireNonNull(tradeTime, "tradeTime");
-        Objects.requireNonNull(tradeVolume, "tradeVolume");
-        Objects.requireNonNull(tradePrice, "tradePrice");
-        final NumFactory factory = super.numFactory();
-        ingestTrade(tradeTime, factory.numOf(tradeVolume), factory.numOf(tradePrice));
+        ingestTrade(tradeTime, tradeVolume, tradePrice, null, null);
     }
 
     /**
@@ -435,6 +431,42 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @since 0.22.0
      */
     public void ingestTrade(final Instant tradeTime, final Num tradeVolume, final Num tradePrice) {
+        ingestTrade(tradeTime, tradeVolume, tradePrice, null, null);
+    }
+
+    /**
+     * Ingests a trade event into the series using the configured bar builder.
+     *
+     * @param tradeTime   the trade timestamp (UTC)
+     * @param tradeVolume the traded volume
+     * @param tradePrice  the traded price
+     * @param side        aggressor side (optional)
+     * @param liquidity   liquidity classification (optional)
+     *
+     * @since 0.22.0
+     */
+    public void ingestTrade(final Instant tradeTime, final Number tradeVolume, final Number tradePrice,
+            final RealtimeBar.Side side, final RealtimeBar.Liquidity liquidity) {
+        Objects.requireNonNull(tradeTime, "tradeTime");
+        Objects.requireNonNull(tradeVolume, "tradeVolume");
+        Objects.requireNonNull(tradePrice, "tradePrice");
+        final NumFactory factory = super.numFactory();
+        ingestTrade(tradeTime, factory.numOf(tradeVolume), factory.numOf(tradePrice), side, liquidity);
+    }
+
+    /**
+     * Ingests a trade event into the series using the configured bar builder.
+     *
+     * @param tradeTime   the trade timestamp (UTC)
+     * @param tradeVolume the traded volume
+     * @param tradePrice  the traded price
+     * @param side        aggressor side (optional)
+     * @param liquidity   liquidity classification (optional)
+     *
+     * @since 0.22.0
+     */
+    public void ingestTrade(final Instant tradeTime, final Num tradeVolume, final Num tradePrice,
+            final RealtimeBar.Side side, final RealtimeBar.Liquidity liquidity) {
         Objects.requireNonNull(tradeTime, "tradeTime");
         Objects.requireNonNull(tradeVolume, "tradeVolume");
         Objects.requireNonNull(tradePrice, "tradePrice");
@@ -448,7 +480,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
             if (tradeBarBuilder == null) {
                 tradeBarBuilder = Objects.requireNonNull(super.barBuilder(), "barBuilder");
             }
-            tradeBarBuilder.addTrade(tradeTime, tradeVolume, tradePrice);
+            tradeBarBuilder.addTrade(tradeTime, tradeVolume, tradePrice, side, liquidity);
         } finally {
             this.writeLock.unlock();
         }

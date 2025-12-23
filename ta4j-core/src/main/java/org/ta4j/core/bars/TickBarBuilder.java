@@ -31,6 +31,8 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseRealtimeBar;
+import org.ta4j.core.RealtimeBar;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -41,6 +43,7 @@ import org.ta4j.core.num.NumFactory;
 public class TickBarBuilder implements BarBuilder {
 
     private final NumFactory numFactory;
+    private final boolean realtimeBars;
     private final int tickCount;
     private int passedTicksCount;
     private BarSeries barSeries;
@@ -54,6 +57,20 @@ public class TickBarBuilder implements BarBuilder {
     private Num lowPrice;
     private Num amount;
     private long trades;
+    private Num buyVolume;
+    private Num sellVolume;
+    private Num buyAmount;
+    private Num sellAmount;
+    private long buyTrades;
+    private long sellTrades;
+    private boolean hasSideData;
+    private Num makerVolume;
+    private Num takerVolume;
+    private Num makerAmount;
+    private Num takerAmount;
+    private long makerTrades;
+    private long takerTrades;
+    private boolean hasLiquidityData;
 
     /**
      * A builder to build a new {@link BaseBar} with {@link DoubleNumFactory}
@@ -61,7 +78,7 @@ public class TickBarBuilder implements BarBuilder {
      * @param tickCount the number of ticks at which a new bar should be created
      */
     public TickBarBuilder(final int tickCount) {
-        this(DoubleNumFactory.getInstance(), tickCount);
+        this(DoubleNumFactory.getInstance(), tickCount, false);
     }
 
     /**
@@ -71,7 +88,21 @@ public class TickBarBuilder implements BarBuilder {
      * @param tickCount  the number of ticks at which a new bar should be created
      */
     public TickBarBuilder(final NumFactory numFactory, final int tickCount) {
+        this(numFactory, tickCount, false);
+    }
+
+    /**
+     * A builder to build a new {@link BaseBar} or {@link BaseRealtimeBar}
+     *
+     * @param numFactory
+     * @param tickCount    the number of ticks at which a new bar should be created
+     * @param realtimeBars {@code true} to build {@link BaseRealtimeBar} instances
+     *
+     * @since 0.22.0
+     */
+    public TickBarBuilder(final NumFactory numFactory, final int tickCount, final boolean realtimeBars) {
         this.numFactory = numFactory;
+        this.realtimeBars = realtimeBars;
         this.tickCount = tickCount;
         reset();
     }
@@ -228,9 +259,28 @@ public class TickBarBuilder implements BarBuilder {
      */
     @Override
     public void addTrade(final Instant time, final Num tradeVolume, final Num tradePrice) {
+        addTrade(time, tradeVolume, tradePrice, null, null);
+    }
+
+    /**
+     * Ingests a trade into the current tick bar and appends the bar once the tick
+     * threshold is met.
+     *
+     * @param time        the trade timestamp (UTC)
+     * @param tradeVolume the traded volume
+     * @param tradePrice  the traded price
+     * @param side        aggressor side (optional)
+     * @param liquidity   liquidity classification (optional)
+     *
+     * @since 0.22.0
+     */
+    @Override
+    public void addTrade(final Instant time, final Num tradeVolume, final Num tradePrice, final RealtimeBar.Side side,
+            final RealtimeBar.Liquidity liquidity) {
         Objects.requireNonNull(time, "time");
         Objects.requireNonNull(tradeVolume, "tradeVolume");
         Objects.requireNonNull(tradePrice, "tradePrice");
+        ensureRealtimeTracking(side, liquidity);
         if (endTime != null && time.isBefore(endTime)) {
             throw new IllegalArgumentException(
                     String.format("Trade time %s is before current bar end time %s", time, endTime));
@@ -242,6 +292,7 @@ public class TickBarBuilder implements BarBuilder {
         closePrice(tradePrice);
         volume(tradeVolume);
         trades(1);
+        recordRealtimeTrade(tradeVolume, tradePrice, side, liquidity);
         add();
     }
 
@@ -252,6 +303,12 @@ public class TickBarBuilder implements BarBuilder {
      */
     @Override
     public Bar build() {
+        if (realtimeBars) {
+            return new BaseRealtimeBar(timePeriod, beginTime, endTime, openPrice, highPrice, lowPrice, closePrice,
+                    volume, amount, trades, buyVolume, sellVolume, buyAmount, sellAmount, buyTrades, sellTrades,
+                    makerVolume, takerVolume, makerAmount, takerAmount, makerTrades, takerTrades, hasSideData,
+                    hasLiquidityData, numFactory);
+        }
         return new BaseBar(timePeriod, beginTime, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount,
                 trades);
     }
@@ -280,5 +337,56 @@ public class TickBarBuilder implements BarBuilder {
         amount = null;
         trades = 0;
         volume = zero;
+        buyVolume = null;
+        sellVolume = null;
+        buyAmount = null;
+        sellAmount = null;
+        buyTrades = 0;
+        sellTrades = 0;
+        hasSideData = false;
+        makerVolume = null;
+        takerVolume = null;
+        makerAmount = null;
+        takerAmount = null;
+        makerTrades = 0;
+        takerTrades = 0;
+        hasLiquidityData = false;
+    }
+
+    private void recordRealtimeTrade(final Num tradeVolume, final Num tradePrice, final RealtimeBar.Side side,
+            final RealtimeBar.Liquidity liquidity) {
+        if (side != null) {
+            hasSideData = true;
+            final Num tradeAmount = tradePrice.multipliedBy(tradeVolume);
+            if (side == RealtimeBar.Side.BUY) {
+                buyVolume = buyVolume == null ? tradeVolume : buyVolume.plus(tradeVolume);
+                buyAmount = buyAmount == null ? tradeAmount : buyAmount.plus(tradeAmount);
+                buyTrades++;
+            } else {
+                sellVolume = sellVolume == null ? tradeVolume : sellVolume.plus(tradeVolume);
+                sellAmount = sellAmount == null ? tradeAmount : sellAmount.plus(tradeAmount);
+                sellTrades++;
+            }
+        }
+
+        if (liquidity != null) {
+            hasLiquidityData = true;
+            final Num tradeAmount = tradePrice.multipliedBy(tradeVolume);
+            if (liquidity == RealtimeBar.Liquidity.MAKER) {
+                makerVolume = makerVolume == null ? tradeVolume : makerVolume.plus(tradeVolume);
+                makerAmount = makerAmount == null ? tradeAmount : makerAmount.plus(tradeAmount);
+                makerTrades++;
+            } else {
+                takerVolume = takerVolume == null ? tradeVolume : takerVolume.plus(tradeVolume);
+                takerAmount = takerAmount == null ? tradeAmount : takerAmount.plus(tradeAmount);
+                takerTrades++;
+            }
+        }
+    }
+
+    private void ensureRealtimeTracking(final RealtimeBar.Side side, final RealtimeBar.Liquidity liquidity) {
+        if (!realtimeBars && (side != null || liquidity != null)) {
+            throw new IllegalStateException("Realtime trade data requires a realtime bar builder");
+        }
     }
 }

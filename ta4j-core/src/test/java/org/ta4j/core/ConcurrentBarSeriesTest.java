@@ -63,7 +63,7 @@ import org.ta4j.core.num.NumFactory;
  * Comprehensive unit tests for {@link ConcurrentBarSeries} focusing on the
  * incremental, new logic that provides thread safety through ReadWriteLock.
  *
- * @since 0.19
+ * @since 0.22.0
  */
 public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -1147,6 +1147,100 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     }
 
     @Test
+    public void ingestTradeCapturesSideAndLiquidity() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(true))
+                .build();
+        var period = Duration.ofSeconds(60);
+        var start = Instant.parse("2024-01-01T00:00:30Z");
+        var alignedStart = Instant.parse("2024-01-01T00:00:00Z");
+
+        series.tradeBarBuilder().timePeriod(period);
+
+        series.ingestTrade(start, 1, 100, RealtimeBar.Side.BUY, RealtimeBar.Liquidity.MAKER);
+        series.ingestTrade(start.plusSeconds(10), 2, 110, RealtimeBar.Side.SELL, RealtimeBar.Liquidity.TAKER);
+
+        assertEquals(1, series.getBarCount());
+        var bar = series.getLastBar();
+        assertTrue(bar instanceof RealtimeBar);
+        var realtimeBar = (RealtimeBar) bar;
+        assertEquals(alignedStart, realtimeBar.getBeginTime());
+        assertEquals(alignedStart.plus(period), realtimeBar.getEndTime());
+        assertTrue(realtimeBar.hasSideData());
+        assertTrue(realtimeBar.hasLiquidityData());
+        assertEquals(numOf(1), realtimeBar.getBuyVolume());
+        assertEquals(numOf(2), realtimeBar.getSellVolume());
+        assertEquals(numOf(100), realtimeBar.getBuyAmount());
+        assertEquals(numOf(220), realtimeBar.getSellAmount());
+        assertEquals(1, realtimeBar.getBuyTrades());
+        assertEquals(1, realtimeBar.getSellTrades());
+        assertEquals(numOf(1), realtimeBar.getMakerVolume());
+        assertEquals(numOf(2), realtimeBar.getTakerVolume());
+        assertEquals(numOf(100), realtimeBar.getMakerAmount());
+        assertEquals(numOf(220), realtimeBar.getTakerAmount());
+        assertEquals(1, realtimeBar.getMakerTrades());
+        assertEquals(1, realtimeBar.getTakerTrades());
+    }
+
+    @Test
+    public void ingestTradeSupportsOptionalSideAndLiquidity() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(true))
+                .build();
+        var period = Duration.ofSeconds(60);
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        series.tradeBarBuilder().timePeriod(period);
+
+        series.ingestTrade(start, 1, 100, null, RealtimeBar.Liquidity.MAKER);
+        series.ingestTrade(start.plusSeconds(10), 2, 110, RealtimeBar.Side.BUY, null);
+
+        var bar = (RealtimeBar) series.getLastBar();
+        assertTrue(bar.hasSideData());
+        assertTrue(bar.hasLiquidityData());
+        assertEquals(numOf(2), bar.getBuyVolume());
+        assertEquals(numOf(0), bar.getSellVolume());
+        assertEquals(numOf(220), bar.getBuyAmount());
+        assertEquals(numOf(0), bar.getSellAmount());
+        assertEquals(1, bar.getBuyTrades());
+        assertEquals(0, bar.getSellTrades());
+        assertEquals(numOf(1), bar.getMakerVolume());
+        assertEquals(numOf(0), bar.getTakerVolume());
+        assertEquals(numOf(100), bar.getMakerAmount());
+        assertEquals(numOf(0), bar.getTakerAmount());
+        assertEquals(1, bar.getMakerTrades());
+        assertEquals(0, bar.getTakerTrades());
+    }
+
+    @Test
+    public void ingestTradeResetsSideAndLiquidityAcrossBars() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(true))
+                .build();
+        var period = Duration.ofSeconds(60);
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        series.tradeBarBuilder().timePeriod(period);
+
+        series.ingestTrade(start, 1, 100, RealtimeBar.Side.BUY, RealtimeBar.Liquidity.MAKER);
+        series.ingestTrade(start.plusSeconds(70), 2, 110, null, null);
+
+        assertEquals(2, series.getBarCount());
+        var first = (RealtimeBar) series.getBar(0);
+        assertTrue(first.hasSideData());
+        assertTrue(first.hasLiquidityData());
+
+        var second = (RealtimeBar) series.getBar(1);
+        assertFalse(second.hasSideData());
+        assertFalse(second.hasLiquidityData());
+        assertEquals(numOf(0), second.getBuyVolume());
+        assertEquals(numOf(0), second.getMakerVolume());
+        assertEquals(numOf(2), second.getVolume());
+        assertEquals(numOf(220), second.getAmount());
+        assertEquals(1, second.getTrades());
+    }
+
+    @Test
     public void ingestTradeRequiresTimePeriod() {
         var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory())
@@ -1154,6 +1248,52 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         var start = Instant.parse("2024-01-01T00:00:00Z");
 
         assertThrows(IllegalStateException.class, () -> series.ingestTrade(start, 1, 100));
+    }
+
+    @Test
+    public void ingestTradeRejectsMismatchedNumFactoryWithSide() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(true))
+                .build();
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        var foreignFactory = numFactory instanceof DoubleNumFactory ? DecimalNumFactory.getInstance()
+                : DoubleNumFactory.getInstance();
+        var foreignVolume = foreignFactory.numOf(1);
+        var foreignPrice = foreignFactory.numOf(100);
+
+        assertThrows(IllegalArgumentException.class, () -> series.ingestTrade(start, foreignVolume, foreignPrice,
+                RealtimeBar.Side.BUY, RealtimeBar.Liquidity.MAKER));
+    }
+
+    @Test
+    public void ingestTradeRejectsNullArgumentsWithSide() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(true))
+                .build();
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        assertThrows(NullPointerException.class,
+                () -> series.ingestTrade(null, 1, 100, RealtimeBar.Side.BUY, RealtimeBar.Liquidity.MAKER));
+        assertThrows(NullPointerException.class,
+                () -> series.ingestTrade(start, (Number) null, 100, RealtimeBar.Side.BUY, null));
+        assertThrows(NullPointerException.class,
+                () -> series.ingestTrade(start, 1, (Number) null, null, RealtimeBar.Liquidity.MAKER));
+    }
+
+    @Test
+    public void ingestTradeRejectsOutOfOrderTimestamp() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(true))
+                .build();
+        var period = Duration.ofSeconds(60);
+        var start = Instant.parse("2024-01-01T00:01:30Z");
+
+        series.tradeBarBuilder().timePeriod(period);
+
+        series.ingestTrade(start, 1, 100);
+
+        assertThrows(IllegalArgumentException.class, () -> series.ingestTrade(start.minusSeconds(120), 1, 100));
     }
 
     // ==================== Legacy Tests (from original implementation)

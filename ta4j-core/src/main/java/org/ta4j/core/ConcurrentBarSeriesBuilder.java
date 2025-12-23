@@ -33,7 +33,7 @@ import org.ta4j.core.num.NumFactory;
 /**
  * Builder for {@link ConcurrentBarSeries} instances.
  *
- * @since 0.19
+ * @since 0.22.0
  */
 public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
 
@@ -44,12 +44,12 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
     private boolean constrained;
     private int maxBarCount;
     private NumFactory numFactory = DecimalNumFactory.getInstance();
-    private BarBuilderFactory barBuilderFactory = new TimeBarBuilderFactory();
+    private BarBuilderFactory barBuilderFactory = new TimeBarBuilderFactory(true);
 
     /**
      * Creates a builder for {@link ConcurrentBarSeries}.
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public ConcurrentBarSeriesBuilder() {
         initValues();
@@ -65,7 +65,7 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
     /**
      * {@inheritDoc}
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     @Override
     public ConcurrentBarSeries build() {
@@ -86,7 +86,7 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
      * @param constrained whether the resulting series is constrained
      * @return {@code this}
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public ConcurrentBarSeriesBuilder setConstrained(boolean constrained) {
         this.constrained = constrained;
@@ -97,7 +97,7 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
      * @param numFactory {@link NumFactory} to back the series
      * @return {@code this}
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public ConcurrentBarSeriesBuilder withNumFactory(NumFactory numFactory) {
         this.numFactory = numFactory;
@@ -108,7 +108,7 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
      * @param name name of the series
      * @return {@code this}
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public ConcurrentBarSeriesBuilder withName(String name) {
         this.name = name;
@@ -119,7 +119,7 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
      * @param bars initial bars for the series
      * @return {@code this}
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public ConcurrentBarSeriesBuilder withBars(List<Bar> bars) {
         this.bars = new ArrayList<>(bars);
@@ -130,7 +130,7 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
      * @param maxBarCount maximum retained bars
      * @return {@code this}
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public ConcurrentBarSeriesBuilder withMaxBarCount(int maxBarCount) {
         this.maxBarCount = maxBarCount;
@@ -141,7 +141,7 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
      * @param barBuilderFactory builder factory for bars
      * @return {@code this}
      *
-     * @since 0.19
+     * @since 0.22.0
      */
     public ConcurrentBarSeriesBuilder withBarBuilderFactory(BarBuilderFactory barBuilderFactory) {
         this.barBuilderFactory = barBuilderFactory;

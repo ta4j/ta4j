@@ -24,6 +24,8 @@
 package org.ta4j.core.bars;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -32,6 +34,7 @@ import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.RealtimeBar;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -146,5 +149,84 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         series.barBuilder().timePeriod(duration).endTime(endTime).beginTime(beginTime).closePrice(10).volume(20).add();
 
         assertEquals(numOf(200), series.getBar(0).getAmount());
+    }
+
+    @Test
+    public void addTradeBuildsRealtimeBarWhenEnabled() {
+        final var period = Duration.ofMinutes(1);
+        final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(period, true))
+                .build();
+        final var start = Instant.parse("2024-01-01T00:00:30Z");
+
+        final var builder = series.barBuilder();
+        builder.addTrade(start, numOf(1), numOf(100), RealtimeBar.Side.BUY, RealtimeBar.Liquidity.MAKER);
+        builder.addTrade(start.plusSeconds(10), numOf(2), numOf(110), RealtimeBar.Side.SELL,
+                RealtimeBar.Liquidity.TAKER);
+
+        assertEquals(1, series.getBarCount());
+        final var bar = series.getBar(0);
+        assertTrue(bar instanceof RealtimeBar);
+        final var realtimeBar = (RealtimeBar) bar;
+        assertTrue(realtimeBar.hasSideData());
+        assertTrue(realtimeBar.hasLiquidityData());
+        assertEquals(numOf(1), realtimeBar.getBuyVolume());
+        assertEquals(numOf(2), realtimeBar.getSellVolume());
+        assertEquals(numOf(100), realtimeBar.getBuyAmount());
+        assertEquals(numOf(220), realtimeBar.getSellAmount());
+        assertEquals(1, realtimeBar.getBuyTrades());
+        assertEquals(1, realtimeBar.getSellTrades());
+        assertEquals(numOf(1), realtimeBar.getMakerVolume());
+        assertEquals(numOf(2), realtimeBar.getTakerVolume());
+        assertEquals(numOf(100), realtimeBar.getMakerAmount());
+        assertEquals(numOf(220), realtimeBar.getTakerAmount());
+        assertEquals(1, realtimeBar.getMakerTrades());
+        assertEquals(1, realtimeBar.getTakerTrades());
+    }
+
+    @Test
+    public void addTradeRejectsSideDataWhenRealtimeDisabled() {
+        final var period = Duration.ofMinutes(1);
+        final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(period))
+                .build();
+        final var start = Instant.parse("2024-01-01T00:00:30Z");
+
+        assertThrows(IllegalStateException.class,
+                () -> series.barBuilder().addTrade(start, numOf(1), numOf(100), RealtimeBar.Side.BUY, null));
+    }
+
+    @Test
+    public void timePeriodFromFactoryIsApplied() {
+        final var period = Duration.ofMinutes(5);
+        final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(period, true))
+                .build();
+        final var tradeTime = Instant.parse("2024-01-01T00:07:30Z");
+        final var alignedStart = Instant.parse("2024-01-01T00:05:00Z");
+
+        series.barBuilder().addTrade(tradeTime, numOf(1), numOf(100), null, null);
+
+        assertEquals(1, series.getBarCount());
+        final var bar = series.getBar(0);
+        assertTrue(bar instanceof RealtimeBar);
+        assertEquals(period, bar.getTimePeriod());
+        assertEquals(alignedStart, bar.getBeginTime());
+        assertEquals(alignedStart.plus(period), bar.getEndTime());
+    }
+
+    @Test
+    public void addTradeRejectsOutOfOrderTimestamp() {
+        final var period = Duration.ofMinutes(5);
+        final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(period, true))
+                .build();
+        final var start = Instant.parse("2024-01-01T00:07:30Z");
+        final var builder = series.barBuilder();
+
+        builder.addTrade(start, numOf(1), numOf(100), null, null);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> builder.addTrade(start.minusSeconds(200), numOf(1), numOf(100), null, null));
     }
 }

@@ -31,6 +31,8 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseRealtimeBar;
+import org.ta4j.core.RealtimeBar;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -42,6 +44,8 @@ import org.ta4j.core.num.NumFactory;
 public class VolumeBarBuilder implements BarBuilder {
 
     private final NumFactory numFactory;
+    private final RemainderCarryOverPolicy carryOverPolicy;
+    private final boolean realtimeBars;
     private final Num volumeThreshold;
     private BarSeries barSeries;
     private Duration timePeriod;
@@ -54,6 +58,24 @@ public class VolumeBarBuilder implements BarBuilder {
     private Num lowPrice;
     private Num amount;
     private long trades;
+    private Num buyVolume;
+    private Num sellVolume;
+    private Num buyAmount;
+    private Num sellAmount;
+    private long buyTrades;
+    private long sellTrades;
+    private boolean hasSideData;
+    private Num makerVolume;
+    private Num takerVolume;
+    private Num makerAmount;
+    private Num takerAmount;
+    private long makerTrades;
+    private long takerTrades;
+    private boolean hasLiquidityData;
+    private Num lastTradeVolume;
+    private Num lastTradePrice;
+    private RealtimeBar.Side lastTradeSide;
+    private RealtimeBar.Liquidity lastTradeLiquidity;
 
     /**
      * A builder to build a new {@link BaseBar} with {@link DoubleNumFactory}
@@ -61,7 +83,7 @@ public class VolumeBarBuilder implements BarBuilder {
      * @param volumeThreshold the threshold at which a new bar should be created
      */
     public VolumeBarBuilder(final int volumeThreshold) {
-        this(DoubleNumFactory.getInstance(), volumeThreshold);
+        this(DoubleNumFactory.getInstance(), volumeThreshold, false, RemainderCarryOverPolicy.NONE);
     }
 
     /**
@@ -71,7 +93,39 @@ public class VolumeBarBuilder implements BarBuilder {
      * @param volumeThreshold the threshold at which a new bar should be created
      */
     public VolumeBarBuilder(final NumFactory numFactory, final int volumeThreshold) {
+        this(numFactory, volumeThreshold, false, RemainderCarryOverPolicy.NONE);
+    }
+
+    /**
+     * A builder to build a new {@link BaseBar} or {@link BaseRealtimeBar}
+     *
+     * @param numFactory
+     * @param volumeThreshold the threshold at which a new bar should be created
+     * @param realtimeBars    {@code true} to build {@link BaseRealtimeBar}
+     *                        instances
+     *
+     * @since 0.22.0
+     */
+    public VolumeBarBuilder(final NumFactory numFactory, final int volumeThreshold, final boolean realtimeBars) {
+        this(numFactory, volumeThreshold, realtimeBars, RemainderCarryOverPolicy.NONE);
+    }
+
+    /**
+     * A builder to build a new {@link BaseBar} or {@link BaseRealtimeBar}
+     *
+     * @param numFactory      the backing number factory
+     * @param volumeThreshold the threshold at which a new bar should be created
+     * @param realtimeBars    {@code true} to build {@link BaseRealtimeBar}
+     *                        instances
+     * @param carryOverPolicy policy for handling side/liquidity remainder splits
+     *
+     * @since 0.22.0
+     */
+    public VolumeBarBuilder(final NumFactory numFactory, final int volumeThreshold, final boolean realtimeBars,
+            final RemainderCarryOverPolicy carryOverPolicy) {
         this.numFactory = numFactory;
+        this.carryOverPolicy = carryOverPolicy == null ? RemainderCarryOverPolicy.NONE : carryOverPolicy;
+        this.realtimeBars = realtimeBars;
         this.volumeThreshold = numFactory.numOf(volumeThreshold);
         reset();
     }
@@ -228,9 +282,28 @@ public class VolumeBarBuilder implements BarBuilder {
      */
     @Override
     public void addTrade(final Instant time, final Num tradeVolume, final Num tradePrice) {
+        addTrade(time, tradeVolume, tradePrice, null, null);
+    }
+
+    /**
+     * Ingests a trade into the current volume bar and appends the bar once the
+     * volume threshold is met.
+     *
+     * @param time        the trade timestamp (UTC)
+     * @param tradeVolume the traded volume
+     * @param tradePrice  the traded price
+     * @param side        aggressor side (optional)
+     * @param liquidity   liquidity classification (optional)
+     *
+     * @since 0.22.0
+     */
+    @Override
+    public void addTrade(final Instant time, final Num tradeVolume, final Num tradePrice, final RealtimeBar.Side side,
+            final RealtimeBar.Liquidity liquidity) {
         Objects.requireNonNull(time, "time");
         Objects.requireNonNull(tradeVolume, "tradeVolume");
         Objects.requireNonNull(tradePrice, "tradePrice");
+        ensureRealtimeTracking(side, liquidity);
         if (endTime != null && time.isBefore(endTime)) {
             throw new IllegalArgumentException(
                     String.format("Trade time %s is before current bar end time %s", time, endTime));
@@ -242,6 +315,11 @@ public class VolumeBarBuilder implements BarBuilder {
         closePrice(tradePrice);
         volume(tradeVolume);
         trades(1);
+        lastTradeVolume = tradeVolume;
+        lastTradePrice = tradePrice;
+        lastTradeSide = side;
+        lastTradeLiquidity = liquidity;
+        recordRealtimeTrade(tradeVolume, tradePrice, side, liquidity);
         add();
     }
 
@@ -252,6 +330,12 @@ public class VolumeBarBuilder implements BarBuilder {
      */
     @Override
     public Bar build() {
+        if (realtimeBars) {
+            return new BaseRealtimeBar(timePeriod, beginTime, endTime, openPrice, highPrice, lowPrice, closePrice,
+                    volume, amount, trades, buyVolume, sellVolume, buyAmount, sellAmount, buyTrades, sellTrades,
+                    makerVolume, takerVolume, makerAmount, takerAmount, makerTrades, takerTrades, hasSideData,
+                    hasLiquidityData, numFactory);
+        }
         return new BaseBar(timePeriod, beginTime, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount,
                 trades);
     }
@@ -261,10 +345,15 @@ public class VolumeBarBuilder implements BarBuilder {
         if (volume.isGreaterThanOrEqual(volumeThreshold)) {
             // move volume remainder to next bar
             var volumeRemainder = numFactory.zero();
+            CarryOverSnapshot carryOverSnapshot = null;
             if (volume.isGreaterThan(volumeThreshold)) {
                 volumeRemainder = volume.minus(volumeThreshold);
                 // cap currently built bar, volume is then restored to volumeRemainder
                 volume = volumeThreshold;
+                if (carryOverPolicy == RemainderCarryOverPolicy.PROPORTIONAL
+                        || carryOverPolicy == RemainderCarryOverPolicy.PROPORTIONAL_WITH_TRADE_COUNT) {
+                    carryOverSnapshot = applyProportionalCarryOver(volumeRemainder);
+                }
             }
 
             if (amount == null) {
@@ -275,6 +364,9 @@ public class VolumeBarBuilder implements BarBuilder {
             volume = volumeRemainder;
 
             reset();
+            if (carryOverSnapshot != null) {
+                carryOverSnapshot.applyTo(this);
+            }
         }
     }
 
@@ -288,5 +380,172 @@ public class VolumeBarBuilder implements BarBuilder {
         amount = null;
         trades = 0;
         closePrice = null;
+        buyVolume = null;
+        sellVolume = null;
+        buyAmount = null;
+        sellAmount = null;
+        buyTrades = 0;
+        sellTrades = 0;
+        hasSideData = false;
+        makerVolume = null;
+        takerVolume = null;
+        makerAmount = null;
+        takerAmount = null;
+        makerTrades = 0;
+        takerTrades = 0;
+        hasLiquidityData = false;
+        lastTradeVolume = null;
+        lastTradePrice = null;
+        lastTradeSide = null;
+        lastTradeLiquidity = null;
+    }
+
+    private CarryOverSnapshot applyProportionalCarryOver(final Num volumeRemainder) {
+        if (volumeRemainder == null || volumeRemainder.isZero() || lastTradeVolume == null || lastTradePrice == null) {
+            return null;
+        }
+        final CarryOverSnapshot snapshot = new CarryOverSnapshot();
+        final Num remainderAmount = lastTradePrice.multipliedBy(volumeRemainder);
+        final boolean carryTradeCount = shouldCarryTradeCount(volumeRemainder);
+        if (lastTradeSide != null) {
+            if (lastTradeSide == RealtimeBar.Side.BUY) {
+                buyVolume = subtractOrNull(buyVolume, volumeRemainder);
+                buyAmount = subtractOrNull(buyAmount, remainderAmount);
+                snapshot.buyVolume = volumeRemainder;
+                snapshot.buyAmount = remainderAmount;
+                if (carryTradeCount) {
+                    buyTrades = Math.max(0, buyTrades - 1);
+                    snapshot.buyTrades = 1;
+                }
+            } else {
+                sellVolume = subtractOrNull(sellVolume, volumeRemainder);
+                sellAmount = subtractOrNull(sellAmount, remainderAmount);
+                snapshot.sellVolume = volumeRemainder;
+                snapshot.sellAmount = remainderAmount;
+                if (carryTradeCount) {
+                    sellTrades = Math.max(0, sellTrades - 1);
+                    snapshot.sellTrades = 1;
+                }
+            }
+        }
+        if (lastTradeLiquidity != null) {
+            if (lastTradeLiquidity == RealtimeBar.Liquidity.MAKER) {
+                makerVolume = subtractOrNull(makerVolume, volumeRemainder);
+                makerAmount = subtractOrNull(makerAmount, remainderAmount);
+                snapshot.makerVolume = volumeRemainder;
+                snapshot.makerAmount = remainderAmount;
+                if (carryTradeCount) {
+                    makerTrades = Math.max(0, makerTrades - 1);
+                    snapshot.makerTrades = 1;
+                }
+            } else {
+                takerVolume = subtractOrNull(takerVolume, volumeRemainder);
+                takerAmount = subtractOrNull(takerAmount, remainderAmount);
+                snapshot.takerVolume = volumeRemainder;
+                snapshot.takerAmount = remainderAmount;
+                if (carryTradeCount) {
+                    takerTrades = Math.max(0, takerTrades - 1);
+                    snapshot.takerTrades = 1;
+                }
+            }
+        }
+        if (carryTradeCount) {
+            trades = Math.max(0, trades - 1);
+            snapshot.trades = 1;
+        }
+        snapshot.hasSideData = snapshot.buyVolume != null || snapshot.sellVolume != null;
+        snapshot.hasLiquidityData = snapshot.makerVolume != null || snapshot.takerVolume != null;
+        return snapshot;
+    }
+
+    private boolean shouldCarryTradeCount(final Num volumeRemainder) {
+        if (carryOverPolicy != RemainderCarryOverPolicy.PROPORTIONAL_WITH_TRADE_COUNT) {
+            return false;
+        }
+        if (lastTradeVolume == null || lastTradeVolume.isZero()) {
+            return false;
+        }
+        return volumeRemainder.multipliedBy(numFactory.numOf(2)).isGreaterThanOrEqual(lastTradeVolume);
+    }
+
+    private Num subtractOrNull(final Num current, final Num remainder) {
+        if (current == null) {
+            return null;
+        }
+        final Num updated = current.minus(remainder);
+        return updated.isZero() ? null : updated;
+    }
+
+    private static final class CarryOverSnapshot {
+        private Num buyVolume;
+        private Num sellVolume;
+        private Num buyAmount;
+        private Num sellAmount;
+        private Num makerVolume;
+        private Num takerVolume;
+        private Num makerAmount;
+        private Num takerAmount;
+        private long trades;
+        private long buyTrades;
+        private long sellTrades;
+        private long makerTrades;
+        private long takerTrades;
+        private boolean hasSideData;
+        private boolean hasLiquidityData;
+
+        private void applyTo(final VolumeBarBuilder builder) {
+            builder.buyVolume = buyVolume;
+            builder.sellVolume = sellVolume;
+            builder.buyAmount = buyAmount;
+            builder.sellAmount = sellAmount;
+            builder.makerVolume = makerVolume;
+            builder.takerVolume = takerVolume;
+            builder.makerAmount = makerAmount;
+            builder.takerAmount = takerAmount;
+            builder.trades = trades;
+            builder.buyTrades = buyTrades;
+            builder.sellTrades = sellTrades;
+            builder.makerTrades = makerTrades;
+            builder.takerTrades = takerTrades;
+            builder.hasSideData = hasSideData;
+            builder.hasLiquidityData = hasLiquidityData;
+        }
+    }
+
+    private void recordRealtimeTrade(final Num tradeVolume, final Num tradePrice, final RealtimeBar.Side side,
+            final RealtimeBar.Liquidity liquidity) {
+        if (side != null) {
+            hasSideData = true;
+            final Num tradeAmount = tradePrice.multipliedBy(tradeVolume);
+            if (side == RealtimeBar.Side.BUY) {
+                buyVolume = buyVolume == null ? tradeVolume : buyVolume.plus(tradeVolume);
+                buyAmount = buyAmount == null ? tradeAmount : buyAmount.plus(tradeAmount);
+                buyTrades++;
+            } else {
+                sellVolume = sellVolume == null ? tradeVolume : sellVolume.plus(tradeVolume);
+                sellAmount = sellAmount == null ? tradeAmount : sellAmount.plus(tradeAmount);
+                sellTrades++;
+            }
+        }
+
+        if (liquidity != null) {
+            hasLiquidityData = true;
+            final Num tradeAmount = tradePrice.multipliedBy(tradeVolume);
+            if (liquidity == RealtimeBar.Liquidity.MAKER) {
+                makerVolume = makerVolume == null ? tradeVolume : makerVolume.plus(tradeVolume);
+                makerAmount = makerAmount == null ? tradeAmount : makerAmount.plus(tradeAmount);
+                makerTrades++;
+            } else {
+                takerVolume = takerVolume == null ? tradeVolume : takerVolume.plus(tradeVolume);
+                takerAmount = takerAmount == null ? tradeAmount : takerAmount.plus(tradeAmount);
+                takerTrades++;
+            }
+        }
+    }
+
+    private void ensureRealtimeTracking(final RealtimeBar.Side side, final RealtimeBar.Liquidity liquidity) {
+        if (!realtimeBars && (side != null || liquidity != null)) {
+            throw new IllegalStateException("Realtime trade data requires a realtime bar builder");
+        }
     }
 }
