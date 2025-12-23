@@ -778,12 +778,8 @@ public class ElliottWaveAnalysis {
      * 2.0</li>
      * </ul>
      * <p>
-     * Channel boundaries are color-coded:
-     * <ul>
-     * <li>Upper channel: Red (#F05454)</li>
-     * <li>Lower channel: Teal (#26A69A)</li>
-     * <li>Median channel: Light gray (semi-transparent)</li>
-     * </ul>
+     * Channel boundaries use a muted shared color with semi-transparent strokes,
+     * and the channel interior is lightly shaded to match.
      *
      * @param chartWorkflow           the chart workflow instance for building
      *                                charts

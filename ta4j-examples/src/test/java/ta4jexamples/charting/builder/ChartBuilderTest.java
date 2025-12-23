@@ -27,6 +27,7 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
+import org.jfree.chart.renderer.xy.XYDifferenceRenderer;
 import org.jfree.chart.ui.Layer;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.XYDataset;
@@ -96,7 +97,7 @@ class ChartBuilderTest {
                 .toChart();
 
         XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
-        assertEquals(4, basePlot.getDatasetCount(), "Channel overlays should add three datasets");
+        assertEquals(5, basePlot.getDatasetCount(), "Channel overlays should add fill plus three datasets");
     }
 
     @Test
@@ -107,7 +108,7 @@ class ChartBuilderTest {
         JFreeChart chart = chartWorkflow.builder().withSeries(series).withChannelOverlay(upper, lower).toChart();
 
         XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
-        assertEquals(3, basePlot.getDatasetCount(), "Channel overlays should add two datasets");
+        assertEquals(4, basePlot.getDatasetCount(), "Channel overlays should add fill plus two datasets");
     }
 
     @Test
@@ -117,8 +118,55 @@ class ChartBuilderTest {
         JFreeChart chart = chartWorkflow.builder().withSeries(series).withChannelOverlay(channelIndicator).toChart();
 
         XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
-        assertEquals(4, basePlot.getDatasetCount(),
-                "Channel overlays should add upper, median, and lower datasets when wrapping a channel indicator");
+        assertEquals(5, basePlot.getDatasetCount(),
+                "Channel overlays should add fill plus upper, median, and lower datasets when wrapping a channel indicator");
+    }
+
+    @Test
+    void channelOverlayStylingUpdatesLinesAndFill() {
+        ConstantIndicator upper = constantIndicator(110, "upper");
+        ConstantIndicator lower = constantIndicator(90, "lower");
+        Color lineColor = new Color(0x607D8B);
+        Color fillColor = new Color(0x90A4AE);
+        float lineOpacity = 0.6f;
+        float fillOpacity = 0.2f;
+        float lineWidth = 2.2f;
+
+        JFreeChart chart = chartWorkflow.builder()
+                .withSeries(series)
+                .withChannelOverlay(upper, lower)
+                .withLineColor(lineColor)
+                .withOpacity(lineOpacity)
+                .withLineWidth(lineWidth)
+                .withFillColor(fillColor)
+                .withFillOpacity(fillOpacity)
+                .toChart();
+
+        XYPlot basePlot = ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().get(0);
+        XYDifferenceRenderer fillRenderer = null;
+        int standardRendererCount = 0;
+        for (int i = 0; i < basePlot.getRendererCount(); i++) {
+            if (basePlot.getRenderer(i) instanceof XYDifferenceRenderer differenceRenderer) {
+                fillRenderer = differenceRenderer;
+            } else if (basePlot.getRenderer(i) instanceof StandardXYItemRenderer standardRenderer) {
+                Color paint = (Color) standardRenderer.getSeriesPaint(0);
+                assertEquals(lineColor.getRed(), paint.getRed(), "Channel line red should match");
+                assertEquals(lineColor.getGreen(), paint.getGreen(), "Channel line green should match");
+                assertEquals(lineColor.getBlue(), paint.getBlue(), "Channel line blue should match");
+                assertEquals(Math.round(lineOpacity * 255), paint.getAlpha(), "Channel line opacity should match");
+                BasicStroke stroke = (BasicStroke) standardRenderer.getSeriesStroke(0);
+                assertEquals(lineWidth, stroke.getLineWidth(), "Channel line width should match");
+                standardRendererCount++;
+            }
+        }
+
+        assertNotNull(fillRenderer, "Channel fill renderer should be present");
+        Color fillPaint = (Color) fillRenderer.getPositivePaint();
+        assertEquals(fillColor.getRed(), fillPaint.getRed(), "Channel fill red should match");
+        assertEquals(fillColor.getGreen(), fillPaint.getGreen(), "Channel fill green should match");
+        assertEquals(fillColor.getBlue(), fillPaint.getBlue(), "Channel fill blue should match");
+        assertEquals(Math.round(fillOpacity * 255), fillPaint.getAlpha(), "Channel fill opacity should match");
+        assertEquals(2, standardRendererCount, "Channel should render two line overlays");
     }
 
     @Test

@@ -37,6 +37,7 @@ import org.jfree.chart.plot.ValueMarker;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.labels.XYToolTipGenerator;
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
+import org.jfree.chart.renderer.xy.XYDifferenceRenderer;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.ui.Layer;
 import org.jfree.chart.ui.RectangleAnchor;
@@ -460,6 +461,7 @@ public final class TradingChartFactory {
         case INDICATOR -> buildIndicatorPlot(definition);
         case TRADING_RECORD -> buildTradingRecordPlot(definition);
         };
+        attachChannelFills(plot, definition);
         attachOverlays(plot, definition);
         attachHorizontalMarkers(plot, definition);
         return plot;
@@ -514,6 +516,34 @@ public final class TradingChartFactory {
         configurePlotAppearance(plot);
         addTradingRecordToChart(plot, series, tradingRecord);
         return plot;
+    }
+
+    private void attachChannelFills(XYPlot plot, ChartBuilder.PlotDefinition definition) {
+        for (ChartBuilder.ChannelOverlayDefinition channel : definition.channelOverlays()) {
+            Indicator<Num> upper = channel.upper();
+            Indicator<Num> lower = channel.lower();
+            if (upper == null || lower == null) {
+                continue;
+            }
+            BarSeries series = upper.getBarSeries() != null ? upper.getBarSeries() : definition.series();
+            if (series == null || series.getBarCount() == 0) {
+                continue;
+            }
+            TimeSeriesCollection dataset = createChannelFillDataset(series, upper, lower);
+            if (dataset.getSeriesCount() == 0) {
+                continue;
+            }
+
+            int datasetIndex = plot.getDatasetCount();
+            plot.setDataset(datasetIndex, dataset);
+            plot.setRenderer(datasetIndex, createChannelFillRenderer(channel));
+
+            int axisIndex = channel.axisSlot() == ChartBuilder.AxisSlot.SECONDARY ? 1 : 0;
+            if (axisIndex == 1) {
+                ensureSecondaryAxisExists(plot, upper.toString());
+            }
+            plot.mapDatasetToRangeAxis(datasetIndex, axisIndex);
+        }
     }
 
     private void attachOverlays(XYPlot plot, ChartBuilder.PlotDefinition definition) {
@@ -574,6 +604,22 @@ public final class TradingChartFactory {
             ensureSecondaryAxisExists(plot, label);
         }
         plot.mapDatasetToRangeAxis(datasetIndex, axisIndex);
+    }
+
+    private XYDifferenceRenderer createChannelFillRenderer(ChartBuilder.ChannelOverlayDefinition channel) {
+        XYDifferenceRenderer renderer = new XYDifferenceRenderer();
+        Color baseColor = channel.fillColor();
+        float opacity = channel.fillOpacity();
+        Color fillColor = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
+                Math.round(opacity * 255));
+        Color transparent = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), 0);
+        renderer.setPositivePaint(fillColor);
+        renderer.setNegativePaint(fillColor);
+        renderer.setSeriesPaint(0, transparent);
+        renderer.setSeriesPaint(1, transparent);
+        renderer.setSeriesVisibleInLegend(0, false);
+        renderer.setSeriesVisibleInLegend(1, false);
+        return renderer;
     }
 
     private StandardXYItemRenderer createStandardOverlayRenderer(TimeSeriesCollection dataset,
@@ -1029,6 +1075,30 @@ public final class TradingChartFactory {
             collection.addSeries(currentSegment);
         }
 
+        return collection;
+    }
+
+    private TimeSeriesCollection createChannelFillDataset(BarSeries series, Indicator<Num> upper,
+            Indicator<Num> lower) {
+        TimeSeriesCollection collection = new TimeSeriesCollection();
+        TimeSeries upperSeries = new TimeSeries("Channel upper");
+        TimeSeries lowerSeries = new TimeSeries("Channel lower");
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            Bar bar = series.getBar(i);
+            Date barDate = Date.from(bar.getEndTime());
+            Num upperValue = upper.getValue(i);
+            Num lowerValue = lower.getValue(i);
+            if (Num.isValid(upperValue) && Num.isValid(lowerValue)) {
+                upperSeries.add(new Minute(barDate), upperValue.doubleValue());
+                lowerSeries.add(new Minute(barDate), lowerValue.doubleValue());
+            }
+        }
+
+        if (upperSeries.getItemCount() > 0 && lowerSeries.getItemCount() > 0) {
+            collection.addSeries(upperSeries);
+            collection.addSeries(lowerSeries);
+        }
         return collection;
     }
 
