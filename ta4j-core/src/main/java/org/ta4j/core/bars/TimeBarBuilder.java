@@ -31,6 +31,8 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
+import org.ta4j.core.BaseRealtimeBar;
+import org.ta4j.core.RealtimeBar;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -41,6 +43,7 @@ import org.ta4j.core.num.NumFactory;
 public class TimeBarBuilder implements BarBuilder {
 
     private final NumFactory numFactory;
+    private final boolean realtimeBars;
     Duration timePeriod;
     Instant beginTime;
     Instant endTime;
@@ -52,10 +55,24 @@ public class TimeBarBuilder implements BarBuilder {
     Num amount;
     long trades;
     private BarSeries baseBarSeries;
+    private Num buyVolume;
+    private Num sellVolume;
+    private Num buyAmount;
+    private Num sellAmount;
+    private long buyTrades;
+    private long sellTrades;
+    private boolean hasSideData;
+    private Num makerVolume;
+    private Num takerVolume;
+    private Num makerAmount;
+    private Num takerAmount;
+    private long makerTrades;
+    private long takerTrades;
+    private boolean hasLiquidityData;
 
     /** A builder to build a new {@link BaseBar} with {@link DoubleNumFactory} */
     public TimeBarBuilder() {
-        this(DoubleNumFactory.getInstance());
+        this(DoubleNumFactory.getInstance(), false);
     }
 
     /**
@@ -64,7 +81,20 @@ public class TimeBarBuilder implements BarBuilder {
      * @param numFactory
      */
     public TimeBarBuilder(final NumFactory numFactory) {
+        this(numFactory, false);
+    }
+
+    /**
+     * A builder to build a new {@link BaseBar} or {@link BaseRealtimeBar}
+     *
+     * @param numFactory
+     * @param realtimeBars {@code true} to build {@link BaseRealtimeBar} instances
+     *
+     * @since 0.22.0
+     */
+    public TimeBarBuilder(final NumFactory numFactory, final boolean realtimeBars) {
         this.numFactory = numFactory;
+        this.realtimeBars = realtimeBars;
     }
 
     @Override
@@ -211,8 +241,69 @@ public class TimeBarBuilder implements BarBuilder {
         return this;
     }
 
+    /**
+     * Ingests a trade into the current time bar and adds/replaces the bar in the
+     * bound series. Bars are aligned to UTC epoch boundaries based on the current
+     * {@link #timePeriod}.
+     *
+     * @param time        the trade timestamp (UTC)
+     * @param tradeVolume the traded volume
+     * @param tradePrice  the traded price
+     *
+     * @since 0.22.0
+     */
+    @Override
+    public void addTrade(final Instant time, final Num tradeVolume, final Num tradePrice) {
+        addTrade(time, tradeVolume, tradePrice, null, null);
+    }
+
+    /**
+     * Ingests a trade into the current time bar and adds/replaces the bar in the
+     * bound series. Bars are aligned to UTC epoch boundaries based on the current
+     * {@link #timePeriod}.
+     *
+     * @param time        the trade timestamp (UTC)
+     * @param tradeVolume the traded volume
+     * @param tradePrice  the traded price
+     * @param side        aggressor side (optional)
+     * @param liquidity   liquidity classification (optional)
+     *
+     * @since 0.22.0
+     */
+    @Override
+    public void addTrade(final Instant time, final Num tradeVolume, final Num tradePrice, final RealtimeBar.Side side,
+            final RealtimeBar.Liquidity liquidity) {
+        Objects.requireNonNull(time, "time");
+        Objects.requireNonNull(tradeVolume, "tradeVolume");
+        Objects.requireNonNull(tradePrice, "tradePrice");
+        ensureRealtimeTracking(side, liquidity);
+        if (timePeriod == null) {
+            throw new IllegalStateException("Time period must be set before ingesting trades");
+        }
+        Objects.requireNonNull(baseBarSeries, "barSeries");
+        ensureTimeRange(time);
+        if (time.isBefore(beginTime)) {
+            throw new IllegalArgumentException(
+                    String.format("Trade time %s is before current bar begin time %s", time, beginTime));
+        }
+        while (!time.isBefore(endTime)) {
+            resetTradeState();
+            beginTime = endTime;
+            endTime = beginTime.plus(timePeriod);
+        }
+        boolean replace = openPrice != null;
+        recordTrade(tradeVolume, tradePrice, side, liquidity);
+        baseBarSeries.addBar(build(), replace);
+    }
+
     @Override
     public Bar build() {
+        if (realtimeBars) {
+            return new BaseRealtimeBar(this.timePeriod, this.beginTime, this.endTime, this.openPrice, this.highPrice,
+                    this.lowPrice, this.closePrice, this.volume, this.amount, this.trades, buyVolume, sellVolume,
+                    buyAmount, sellAmount, buyTrades, sellTrades, makerVolume, takerVolume, makerAmount, takerAmount,
+                    makerTrades, takerTrades, hasSideData, hasLiquidityData, numFactory);
+        }
         return new BaseBar(this.timePeriod, this.beginTime, this.endTime, this.openPrice, this.highPrice, this.lowPrice,
                 this.closePrice, this.volume, this.amount, this.trades);
     }
@@ -224,6 +315,109 @@ public class TimeBarBuilder implements BarBuilder {
         }
 
         this.baseBarSeries.addBar(build());
+    }
+
+    private void ensureTimeRange(final Instant time) {
+        if (beginTime == null && endTime == null) {
+            beginTime = alignToTimePeriodStart(time);
+            endTime = beginTime.plus(timePeriod);
+            return;
+        }
+        if (beginTime == null) {
+            beginTime = endTime.minus(timePeriod);
+        } else if (endTime == null) {
+            endTime = beginTime.plus(timePeriod);
+        }
+    }
+
+    private Instant alignToTimePeriodStart(final Instant time) {
+        try {
+            final long periodNanos = timePeriod.toNanos();
+            if (periodNanos <= 0) {
+                throw new IllegalStateException("Time period must be positive");
+            }
+            final long timeNanos = Math.addExact(Math.multiplyExact(time.getEpochSecond(), 1_000_000_000L),
+                    time.getNano());
+            final long alignedNanos = timeNanos - Math.floorMod(timeNanos, periodNanos);
+            final long alignedSeconds = Math.floorDiv(alignedNanos, 1_000_000_000L);
+            final int alignedNanoPart = (int) Math.floorMod(alignedNanos, 1_000_000_000L);
+            return Instant.ofEpochSecond(alignedSeconds, alignedNanoPart);
+        } catch (ArithmeticException ex) {
+            throw new IllegalStateException("Time period too large to align trade time", ex);
+        }
+    }
+
+    private void recordTrade(final Num tradeVolume, final Num tradePrice, final RealtimeBar.Side side,
+            final RealtimeBar.Liquidity liquidity) {
+        if (openPrice == null) {
+            openPrice = tradePrice;
+            highPrice = tradePrice;
+            lowPrice = tradePrice;
+        } else {
+            highPrice = highPrice == null ? tradePrice : highPrice.max(tradePrice);
+            lowPrice = lowPrice == null ? tradePrice : lowPrice.min(tradePrice);
+        }
+        closePrice = tradePrice;
+        volume = volume == null ? tradeVolume : volume.plus(tradeVolume);
+        Num tradeAmount = tradePrice.multipliedBy(tradeVolume);
+        amount = amount == null ? tradeAmount : amount.plus(tradeAmount);
+        trades++;
+
+        if (side != null) {
+            hasSideData = true;
+            if (side == RealtimeBar.Side.BUY) {
+                buyVolume = buyVolume == null ? tradeVolume : buyVolume.plus(tradeVolume);
+                buyAmount = buyAmount == null ? tradeAmount : buyAmount.plus(tradeAmount);
+                buyTrades++;
+            } else {
+                sellVolume = sellVolume == null ? tradeVolume : sellVolume.plus(tradeVolume);
+                sellAmount = sellAmount == null ? tradeAmount : sellAmount.plus(tradeAmount);
+                sellTrades++;
+            }
+        }
+
+        if (liquidity != null) {
+            hasLiquidityData = true;
+            if (liquidity == RealtimeBar.Liquidity.MAKER) {
+                makerVolume = makerVolume == null ? tradeVolume : makerVolume.plus(tradeVolume);
+                makerAmount = makerAmount == null ? tradeAmount : makerAmount.plus(tradeAmount);
+                makerTrades++;
+            } else {
+                takerVolume = takerVolume == null ? tradeVolume : takerVolume.plus(tradeVolume);
+                takerAmount = takerAmount == null ? tradeAmount : takerAmount.plus(tradeAmount);
+                takerTrades++;
+            }
+        }
+    }
+
+    private void resetTradeState() {
+        openPrice = null;
+        highPrice = null;
+        lowPrice = null;
+        closePrice = null;
+        volume = null;
+        amount = null;
+        trades = 0;
+        buyVolume = null;
+        sellVolume = null;
+        buyAmount = null;
+        sellAmount = null;
+        buyTrades = 0;
+        sellTrades = 0;
+        hasSideData = false;
+        makerVolume = null;
+        takerVolume = null;
+        makerAmount = null;
+        takerAmount = null;
+        makerTrades = 0;
+        takerTrades = 0;
+        hasLiquidityData = false;
+    }
+
+    private void ensureRealtimeTracking(final RealtimeBar.Side side, final RealtimeBar.Liquidity liquidity) {
+        if (!realtimeBars && (side != null || liquidity != null)) {
+            throw new IllegalStateException("Realtime trade data requires a realtime bar builder");
+        }
     }
 
 }
