@@ -23,7 +23,11 @@
  */
 package org.ta4j.core.indicators.elliott;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import java.time.Duration;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
@@ -80,5 +84,35 @@ class ElliottDegreeTest {
         // Navigate back up
         ElliottDegree backUp = twoLower.higherDegree().higherDegree();
         assertThat(backUp).isEqualTo(start);
+    }
+
+    @Test
+    void getRecommendedDegrees_dailyBars_shouldPreferIntermediate() {
+        List<ElliottDegree> degrees = ElliottDegree.getRecommendedDegrees(Duration.ofDays(1), 250);
+
+        assertThat(degrees).containsExactly(ElliottDegree.INTERMEDIATE, ElliottDegree.MINOR, ElliottDegree.PRIMARY);
+    }
+
+    @Test
+    void getRecommendedDegrees_hourlyBars_shouldPreferMinuette() {
+        List<ElliottDegree> degrees = ElliottDegree.getRecommendedDegrees(Duration.ofHours(1), 500);
+
+        assertThat(degrees).containsExactly(ElliottDegree.MINUETTE, ElliottDegree.MINUTE);
+    }
+
+    @Test
+    void getRecommendedDegrees_shouldFallbackWhenHistoryIsSparse() {
+        List<ElliottDegree> degrees = ElliottDegree.getRecommendedDegrees(Duration.ofDays(1), 5);
+
+        assertThat(degrees).containsExactly(ElliottDegree.MINUTE);
+    }
+
+    @Test
+    void getRecommendedDegrees_shouldRejectInvalidInputs() {
+        assertThrows(NullPointerException.class, () -> ElliottDegree.getRecommendedDegrees(null, 10));
+        assertThrows(IllegalArgumentException.class, () -> ElliottDegree.getRecommendedDegrees(Duration.ZERO, 10));
+        assertThrows(IllegalArgumentException.class, () -> ElliottDegree.getRecommendedDegrees(Duration.ofDays(1), 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> ElliottDegree.getRecommendedDegrees(Duration.ofDays(-1), 10));
     }
 }
