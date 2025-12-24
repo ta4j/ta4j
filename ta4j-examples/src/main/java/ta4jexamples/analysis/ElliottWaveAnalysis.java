@@ -96,6 +96,7 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * Command-line usage (optional):
  *
  * <pre>
+ * java ElliottWaveAnalysis [dataSource] [ticker] [barDuration] [startEpoch] [endEpoch]
  * java ElliottWaveAnalysis [dataSource] [ticker] [barDuration] [degree] [startEpoch] [endEpoch]
  * </pre>
  *
@@ -104,7 +105,8 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * <li>{@code dataSource}: "YahooFinance" or "Coinbase"</li>
  * <li>{@code ticker}: Symbol (e.g., "BTC-USD", "AAPL")</li>
  * <li>{@code barDuration}: ISO-8601 duration (e.g., "PT1D" for daily)</li>
- * <li>{@code degree}: Elliott degree (e.g., "PRIMARY", "INTERMEDIATE")</li>
+ * <li>{@code degree}: Elliott degree (optional; if omitted the recommendation
+ * is based on bar duration and bar count)</li>
  * <li>{@code startEpoch}: Start time as Unix epoch seconds</li>
  * <li>{@code endEpoch}: End time as Unix epoch seconds (optional, defaults to
  * now)</li>
@@ -126,7 +128,10 @@ public class ElliottWaveAnalysis {
      * Default OHLCV resource file loaded from classpath when no arguments provided.
      */
     private static final String DEFAULT_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
-    /** Default Elliott wave degree used for analysis. */
+    /**
+     * Default Elliott wave degree used when explicit parsing or auto selection
+     * fails.
+     */
     private static final ElliottDegree DEFAULT_DEGREE = ElliottDegree.PRIMARY;
     /** Default Fibonacci tolerance (0.25 = 25%) for phase validation. */
     private static final double DEFAULT_FIB_TOLERANCE = 0.25;
@@ -136,7 +141,7 @@ public class ElliottWaveAnalysis {
      * <p>
      * Supports two modes of operation:
      * <ol>
-     * <li><b>With arguments (5-6 args):</b> Loads data from an external data source
+     * <li><b>With arguments (4-6 args):</b> Loads data from an external data source
      * (YahooFinance or Coinbase) using the provided parameters.</li>
      * <li><b>Without arguments:</b> Loads a default ossified dataset from the
      * classpath resources.</li>
@@ -149,13 +154,14 @@ public class ElliottWaveAnalysis {
      * <li>Bar duration: ISO-8601 duration string (e.g., "PT1D", "PT4H",
      * "PT5M")</li>
      * <li>Elliott degree: One of the {@link ElliottDegree} enum values
-     * (case-insensitive)</li>
+     * (case-insensitive, optional). If omitted the degree is auto-selected based on
+     * bar duration and bar count.</li>
      * <li>Start epoch: Unix timestamp in seconds</li>
      * <li>End epoch: Unix timestamp in seconds (optional, defaults to current
      * time)</li>
      * </ol>
      *
-     * @param args command-line arguments (optional). If 5-6 arguments are provided,
+     * @param args command-line arguments (optional). If 4-6 arguments are provided,
      *             they are used to load data from an external source. Otherwise, a
      *             default dataset is loaded from resources.
      */
@@ -171,21 +177,21 @@ public class ElliottWaveAnalysis {
             return;
         }
 
-        ElliottDegree degree = parseDegreeFromArgs(args);
+        ElliottDegree degree = resolveDegree(args, series);
         new ElliottWaveAnalysis().analyze(series, degree, DEFAULT_FIB_TOLERANCE);
     }
 
     /**
      * Loads a bar series based on command-line arguments or defaults.
      * <p>
-     * If 5-6 arguments are provided, loads from an external data source. Otherwise,
+     * If 4-6 arguments are provided, loads from an external data source. Otherwise,
      * loads the default ossified dataset from classpath resources.
      *
      * @param args command-line arguments
      * @return the loaded bar series, or {@code null} if loading fails
      */
     private static BarSeries loadBarSeries(String[] args) {
-        if (args.length >= 5) {
+        if (args.length >= 4) {
             return loadBarSeriesFromArgs(args);
         } else {
             return loadSeries(DEFAULT_OHLCV_RESOURCE);
@@ -196,14 +202,14 @@ public class ElliottWaveAnalysis {
      * Parses command-line arguments and loads a bar series from an external data
      * source.
      *
-     * @param args command-line arguments (must have at least 5 elements)
+     * @param args command-line arguments (must have at least 4 elements)
      * @return the loaded bar series, or {@code null} if parsing or loading fails
      */
     private static BarSeries loadBarSeriesFromArgs(String[] args) {
         // Validate argument count
-        if (args.length < 5) {
+        if (args.length < 4) {
             LOG.error(
-                    "Insufficient arguments: expected at least 5, but got {}. Required: [dataSource] [ticker] [barDuration] [degree] [startEpoch] [endEpoch?]",
+                    "Insufficient arguments: expected at least 4, but got {}. Required: [dataSource] [ticker] [barDuration] [startEpoch] [endEpoch?] (optional degree before startEpoch)",
                     args.length);
             return null;
         }
@@ -260,8 +266,18 @@ public class ElliottWaveAnalysis {
             return null;
         }
 
-        // Extract and validate startEpoch (args[4], args[3] is degree)
-        String startEpochStr = args[4];
+        boolean hasDegreeToken = hasDegreeToken(args);
+        if (args.length >= 6 && isEpochSeconds(args[3])) {
+            LOG.error(
+                    "Invalid arguments: expected degree in position 4 when providing 6 arguments. Received epoch value '{}'",
+                    args[3]);
+            return null;
+        }
+
+        int startEpochIndex = hasDegreeToken ? 4 : 3;
+
+        // Extract and validate startEpoch
+        String startEpochStr = args[startEpochIndex];
         if (startEpochStr == null || startEpochStr.trim().isEmpty()) {
             LOG.error(
                     "Invalid startEpoch argument: cannot be null or empty. Provided value: '{}'. Expected Unix timestamp in seconds",
@@ -289,8 +305,8 @@ public class ElliottWaveAnalysis {
             return null;
         }
 
-        // Extract and validate endEpoch (args[5], optional)
-        String endEpochStr = args.length >= 6 ? args[5] : null;
+        // Extract and validate endEpoch (optional)
+        String endEpochStr = args.length > startEpochIndex + 1 ? args[startEpochIndex + 1] : null;
         Instant endTime;
         if (endEpochStr != null) {
             if (endEpochStr.trim().isEmpty()) {
@@ -382,22 +398,88 @@ public class ElliottWaveAnalysis {
     }
 
     /**
-     * Parses the Elliott degree from command-line arguments, or returns the
-     * default.
+     * Resolves the Elliott degree from command-line arguments or auto-selects one
+     * based on the series characteristics.
      *
-     * @param args command-line arguments
-     * @return the parsed Elliott degree, or {@link #DEFAULT_DEGREE} if not provided
+     * @param args   command-line arguments
+     * @param series bar series used for auto-selection
+     * @return the resolved Elliott degree
      */
-    private static ElliottDegree parseDegreeFromArgs(String[] args) {
-        if (args.length >= 4) {
-            try {
-                return ElliottDegree.valueOf(args[3].toUpperCase());
-            } catch (IllegalArgumentException ex) {
-                LOG.warn("Invalid degree '{}', using default: {}", args[3], DEFAULT_DEGREE);
+    private static ElliottDegree resolveDegree(String[] args, BarSeries series) {
+        Optional<ElliottDegree> explicitDegree = parseExplicitDegree(args);
+        if (explicitDegree.isPresent()) {
+            return explicitDegree.get();
+        }
+        return selectRecommendedDegree(series);
+    }
+
+    private static Optional<ElliottDegree> parseExplicitDegree(String[] args) {
+        if (!hasDegreeToken(args)) {
+            return Optional.empty();
+        }
+        String degreeValue = args[3];
+        if (degreeValue == null || degreeValue.trim().isEmpty()) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(ElliottDegree.valueOf(degreeValue.trim().toUpperCase()));
+        } catch (IllegalArgumentException ex) {
+            LOG.warn("Invalid degree '{}', using default: {}", degreeValue, DEFAULT_DEGREE);
+            return Optional.of(DEFAULT_DEGREE);
+        }
+    }
+
+    private static ElliottDegree selectRecommendedDegree(BarSeries series) {
+        if (series == null || series.isEmpty()) {
+            LOG.warn("Series unavailable for degree selection, using default: {}", DEFAULT_DEGREE);
+            return DEFAULT_DEGREE;
+        }
+
+        Duration barDuration = series.getFirstBar().getTimePeriod();
+        if (barDuration == null || barDuration.isZero() || barDuration.isNegative()) {
+            LOG.warn("Invalid bar duration '{}' for degree selection, using default: {}", barDuration, DEFAULT_DEGREE);
+            return DEFAULT_DEGREE;
+        }
+
+        int barCount = series.getBarCount();
+        try {
+            List<ElliottDegree> recommendations = ElliottDegree.getRecommendedDegrees(barDuration, barCount);
+            if (recommendations.isEmpty()) {
+                LOG.warn("No recommended degrees for {} bars at {}, using default: {}", barCount, barDuration,
+                        DEFAULT_DEGREE);
                 return DEFAULT_DEGREE;
             }
+            ElliottDegree selected = recommendations.get(0);
+            LOG.info("Auto-selected Elliott degree {} for {} bars at {}. Candidates: {}", selected, barCount,
+                    barDuration, recommendations);
+            return selected;
+        } catch (Exception ex) {
+            LOG.warn("Failed to auto-select degree for {} bars at {}, using default: {}", barCount, barDuration,
+                    DEFAULT_DEGREE, ex);
+            return DEFAULT_DEGREE;
         }
-        return DEFAULT_DEGREE;
+    }
+
+    private static boolean hasDegreeToken(String[] args) {
+        if (args.length < 5) {
+            return false;
+        }
+        if (args.length >= 6) {
+            return true;
+        }
+        return !isEpochSeconds(args[3]);
+    }
+
+    private static boolean isEpochSeconds(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return false;
+        }
+        try {
+            Long.parseLong(value.trim());
+            return true;
+        } catch (NumberFormatException ex) {
+            return false;
+        }
     }
 
     /**
