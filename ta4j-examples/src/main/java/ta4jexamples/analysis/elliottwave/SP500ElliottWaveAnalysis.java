@@ -23,8 +23,10 @@
  */
 package ta4jexamples.analysis.elliottwave;
 
-import java.time.Instant;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
 import java.time.temporal.ChronoUnit;
+import java.time.Instant;
+import java.time.Duration;
 
 /**
  * Example Elliott Wave analysis for S&P 500 Index (^GSPC) using Yahoo Finance
@@ -70,7 +72,12 @@ public class SP500ElliottWaveAnalysis {
      * @param args command-line arguments (not used)
      */
     public static void main(String[] args) {
-        ElliottWaveAnalysis.main(new String[] { "YahooFinance", "^GSPC", "PT1D",
-                String.valueOf(Instant.now().minus(365, ChronoUnit.DAYS).getEpochSecond()) });
+        String dataSource = "YahooFinance";
+        String ticker = "^GSPC";
+        String barDuration = Duration.ofDays(1).toString();
+        String degree = ElliottDegree.PRIMARY.name();
+        String startEpoch = String.valueOf(Instant.now().minus(365, ChronoUnit.DAYS).getEpochSecond());
+
+        ElliottWaveAnalysis.main(new String[] { dataSource, ticker, barDuration, degree, startEpoch });
     }
 }

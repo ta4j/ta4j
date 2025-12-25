@@ -24,8 +24,13 @@
  */
 package ta4jexamples.analysis.elliottwave;
 
-import java.time.Instant;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
+
+import ta4jexamples.datasources.CoinbaseHttpBarSeriesDataSource;
+
 import java.time.temporal.ChronoUnit;
+import java.time.Duration;
+import java.time.Instant;
 
 /**
  * Example Elliott Wave analysis for Bitcoin (BTC-USD) using Coinbase data.
@@ -70,8 +75,13 @@ public class BTCUSDElliottWaveAnalysis {
      * @param args command-line arguments (not used)
      */
     public static void main(String[] args) {
-        ElliottWaveAnalysis.main(new String[] { "Coinbase", "BTC-USD", "PT1D", "PRIMARY",
-                String.valueOf(Instant.now().minus(365, ChronoUnit.DAYS).getEpochSecond()) });
+        String dataSource = "Coinbase";
+        String ticker = "BTC-USD";
+        String barDuration = Duration.ofDays(1).toString();
+        String degree = ElliottDegree.PRIMARY.name();
+        String startEpoch = String.valueOf(Instant.now().minus(365, ChronoUnit.DAYS).getEpochSecond());
+
+        ElliottWaveAnalysis.main(new String[] { dataSource, ticker, barDuration, degree, startEpoch });
     }
 
 }

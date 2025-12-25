@@ -23,6 +23,11 @@
  */
 package ta4jexamples.analysis.elliottwave;
 
+import org.ta4j.core.indicators.elliott.ElliottDegree;
+import java.time.temporal.ChronoUnit;
+import java.time.Duration;
+import java.time.Instant;
+
 /**
  * Example Elliott Wave analysis for Ethereum (ETH-USD) using Coinbase data.
  * <p>
@@ -66,7 +71,13 @@ public class ETHUSDElliottWaveAnalysis {
      * @param args command-line arguments (not used)
      */
     public static void main(String[] args) {
-        ElliottWaveAnalysis.main(new String[] { "Coinbase", "ETH-USD", "PT1D", "1735779693" });
+        String dataSource = "Coinbase";
+        String ticker = "ETH-USD";
+        String barDuration = Duration.ofDays(1).toString();
+        String degree = ElliottDegree.PRIMARY.name();
+        String startEpoch = String.valueOf(Instant.now().minus(365, ChronoUnit.DAYS).getEpochSecond());
+
+        ElliottWaveAnalysis.main(new String[] { dataSource, ticker, barDuration, degree, startEpoch });
     }
 
 }
