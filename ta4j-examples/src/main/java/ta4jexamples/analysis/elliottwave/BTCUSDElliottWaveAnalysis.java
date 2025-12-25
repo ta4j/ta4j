@@ -30,9 +30,10 @@ import java.time.temporal.ChronoUnit;
 /**
  * Example Elliott Wave analysis for Bitcoin (BTC-USD) using Coinbase data.
  * <p>
- * This class demonstrates a simple usage pattern for analyzing Bitcoin price data
- * with Elliott Wave indicators. It loads the last 365 days of daily (PT1D) data
- * from Coinbase and performs comprehensive Elliott Wave analysis including:
+ * This class demonstrates a simple usage pattern for analyzing Bitcoin price
+ * data with Elliott Wave indicators. It loads the last 365 days of daily (PT1D)
+ * data from Coinbase and performs comprehensive Elliott Wave analysis
+ * including:
  * <ul>
  * <li>Swing detection and wave counting</li>
  * <li>Phase identification (impulse and corrective waves)</li>
@@ -42,8 +43,8 @@ import java.time.temporal.ChronoUnit;
  * <li>Chart visualization with wave pivot labels</li>
  * </ul>
  * <p>
- * The analysis uses the PRIMARY Elliott degree, which is suitable for daily bars
- * with approximately one year of history.
+ * The analysis uses the PRIMARY Elliott degree, which is suitable for daily
+ * bars with approximately one year of history.
  * <p>
  * To run this example:
  *
@@ -63,8 +64,8 @@ public class BTCUSDElliottWaveAnalysis {
     /**
      * Main entry point for BTC-USD Elliott Wave analysis.
      * <p>
-     * Loads 365 days of daily Bitcoin data from Coinbase and performs Elliott
-     * Wave analysis using the PRIMARY degree.
+     * Loads 365 days of daily Bitcoin data from Coinbase and performs Elliott Wave
+     * analysis using the PRIMARY degree.
      *
      * @param args command-line arguments (not used)
      */

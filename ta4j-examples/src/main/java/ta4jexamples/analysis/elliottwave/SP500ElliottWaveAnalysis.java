@@ -27,11 +27,13 @@ import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
 /**
- * Example Elliott Wave analysis for S&P 500 Index (^GSPC) using Yahoo Finance data.
+ * Example Elliott Wave analysis for S&P 500 Index (^GSPC) using Yahoo Finance
+ * data.
  * <p>
- * This class demonstrates a simple usage pattern for analyzing S&P 500 index data
- * with Elliott Wave indicators. It loads the last 365 days of daily (PT1D) data
- * from Yahoo Finance and performs comprehensive Elliott Wave analysis including:
+ * This class demonstrates a simple usage pattern for analyzing S&P 500 index
+ * data with Elliott Wave indicators. It loads the last 365 days of daily (PT1D)
+ * data from Yahoo Finance and performs comprehensive Elliott Wave analysis
+ * including:
  * <ul>
  * <li>Swing detection and wave counting</li>
  * <li>Phase identification (impulse and corrective waves)</li>

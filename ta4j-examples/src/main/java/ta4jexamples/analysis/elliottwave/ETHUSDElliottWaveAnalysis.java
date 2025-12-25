@@ -26,9 +26,10 @@ package ta4jexamples.analysis.elliottwave;
 /**
  * Example Elliott Wave analysis for Ethereum (ETH-USD) using Coinbase data.
  * <p>
- * This class demonstrates a simple usage pattern for analyzing Ethereum price data
- * with Elliott Wave indicators. It loads daily (PT1D) data from Coinbase starting
- * from a specific timestamp and performs comprehensive Elliott Wave analysis including:
+ * This class demonstrates a simple usage pattern for analyzing Ethereum price
+ * data with Elliott Wave indicators. It loads daily (PT1D) data from Coinbase
+ * starting from a specific timestamp and performs comprehensive Elliott Wave
+ * analysis including:
  * <ul>
  * <li>Swing detection and wave counting</li>
  * <li>Phase identification (impulse and corrective waves)</li>

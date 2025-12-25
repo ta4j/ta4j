@@ -122,7 +122,8 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * <li>{@link SP500ElliottWaveAnalysis} - S&P 500 index analysis example</li>
  * </ul>
  * <p>
- * For programmatic usage, see {@link #analyze(BarSeries, ElliottDegree, double)}.
+ * For programmatic usage, see
+ * {@link #analyze(BarSeries, ElliottDegree, double)}.
  *
  * @see org.ta4j.core.indicators.elliott.ElliottWaveFacade
  * @see org.ta4j.core.indicators.elliott.ElliottSwingIndicator
@@ -524,7 +525,7 @@ public class ElliottWaveAnalysis {
      * @param fibTolerance the Fibonacci tolerance (0.0-1.0) for phase validation.
      *                     Higher values allow more deviation from ideal Fibonacci
      *                     ratios. Default is 0.25 (25%).
-     * @throws NullPointerException if series is null
+     * @throws NullPointerException     if series is null
      * @throws IllegalArgumentException if series is empty
      */
     public void analyze(BarSeries series, ElliottDegree degree, double fibTolerance) {
