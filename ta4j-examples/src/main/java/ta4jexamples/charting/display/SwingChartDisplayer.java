@@ -141,6 +141,11 @@ public final class SwingChartDisplayer implements ChartDisplayer {
 
     @Override
     public void display(JFreeChart chart, String windowTitle) {
+        // Validate input parameter
+        if (chart == null) {
+            throw new IllegalArgumentException("Chart cannot be null");
+        }
+
         // Check if display is disabled via system property (useful for automated tests)
         if (isDisplayDisabled()) {
             LOG.debug("Chart display is disabled via system property {}", DISABLE_DISPLAY_PROPERTY);

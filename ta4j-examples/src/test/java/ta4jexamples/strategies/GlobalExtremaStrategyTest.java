@@ -23,18 +23,15 @@
  */
 package ta4jexamples.strategies;
 
-import org.junit.Assume;
 import org.junit.Test;
 import ta4jexamples.charting.display.SwingChartDisplayer;
-
-import java.awt.GraphicsEnvironment;
 
 public class GlobalExtremaStrategyTest {
 
     @Test
     public void test() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         // Disable chart display during tests to prevent windows from popping up
+        // This works in both headless and non-headless environments
         System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
         try {
             GlobalExtremaStrategy.main(null);

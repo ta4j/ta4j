@@ -39,6 +39,8 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -52,6 +54,7 @@ import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.LabelPlacement;
+import ta4jexamples.charting.display.SwingChartDisplayer;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
@@ -59,6 +62,19 @@ class ElliottWaveAnalysisTest {
 
     private static final String OSSIFIED_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
     private static final double FIB_TOLERANCE = 0.25;
+
+    @BeforeEach
+    void setUp() {
+        // Disable chart display to prevent windows from appearing in tests
+        // This allows tests to create charts without failing in headless environments
+        System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
+    }
+
+    @AfterEach
+    void tearDown() {
+        // Clear the property after each test
+        System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
+    }
 
     @Test
     void ossifiedDatasetProducesImpulseAndCorrection() {
@@ -285,7 +301,6 @@ class ElliottWaveAnalysisTest {
      */
     @SuppressWarnings("removal")
     private static class ExitSecurityManager extends SecurityManager {
-        private boolean exitCalled = false;
         private int exitCode = -1;
 
         @Override
@@ -295,13 +310,8 @@ class ElliottWaveAnalysisTest {
 
         @Override
         public void checkExit(int status) {
-            exitCalled = true;
             exitCode = status;
             throw new SecurityException("System.exit(" + status + ") called");
-        }
-
-        boolean wasExitCalled() {
-            return exitCalled;
         }
 
         int getExitCode() {
