@@ -123,7 +123,8 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * </ul>
  * <p>
  * For programmatic usage, see
- * {@link #analyze(BarSeries, ElliottDegree, double)}.
+ * {@link #analyze(BarSeries, ElliottDegree, double)} and
+ * {@link #visualizeAnalysisResult(AnalysisResult)}.
  *
  * @see org.ta4j.core.indicators.elliott.ElliottWaveFacade
  * @see org.ta4j.core.indicators.elliott.ElliottSwingIndicator
@@ -191,7 +192,9 @@ public class ElliottWaveAnalysis {
         }
 
         ElliottDegree degree = resolveDegree(args, series);
-        new ElliottWaveAnalysis().analyze(series, degree, DEFAULT_FIB_TOLERANCE);
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        AnalysisResult result = analysis.analyze(series, degree, DEFAULT_FIB_TOLERANCE);
+        analysis.visualizeAnalysisResult(result);
     }
 
     /**
@@ -503,21 +506,21 @@ public class ElliottWaveAnalysis {
      * <li>Sets up the Elliott Wave analysis framework (compressor and facade)</li>
      * <li>Retrieves all analysis indicators</li>
      * <li>Logs analysis results and scenario details</li>
-     * <li>Generates chart visualizations</li>
+     * <li>Builds chart plans for all scenarios (but does not display them)</li>
      * </ol>
      * <p>
-     * Charts are saved to {@code temp/charts/} directory and displayed if running
-     * in a non-headless environment.
-     * <p>
      * This method can be called programmatically to perform Elliott Wave analysis
-     * on any bar series. For command-line usage, see {@link #main(String[])}.
+     * on any bar series without displaying charts. To visualize the results, call
+     * {@link #visualizeAnalysisResult(AnalysisResult)} with the returned result.
      * <p>
      * Example usage:
      *
      * <pre>
      * BarSeries series = // ... load your bar series
      * ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-     * analysis.analyze(series, ElliottDegree.PRIMARY, 0.25);
+     * AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY, 0.25);
+     * // Optionally visualize
+     * analysis.visualizeAnalysisResult(result);
      * </pre>
      *
      * @param series       the bar series to analyze (must not be null or empty)
@@ -525,10 +528,17 @@ public class ElliottWaveAnalysis {
      * @param fibTolerance the Fibonacci tolerance (0.0-1.0) for phase validation.
      *                     Higher values allow more deviation from ideal Fibonacci
      *                     ratios. Default is 0.25 (25%).
+     * @return an {@link AnalysisResult} containing all analysis findings and chart
+     *         plans
      * @throws NullPointerException     if series is null
      * @throws IllegalArgumentException if series is empty
      */
-    public void analyze(BarSeries series, ElliottDegree degree, double fibTolerance) {
+    public AnalysisResult analyze(BarSeries series, ElliottDegree degree, double fibTolerance) {
+        Objects.requireNonNull(series, "Series cannot be null");
+        if (series.isEmpty()) {
+            throw new IllegalArgumentException("Series cannot be empty");
+        }
+
         ElliottWaveFacade facade = createElliottWaveFacade(series, degree, fibTolerance);
         int endIndex = series.getEndIndex();
 
@@ -543,6 +553,7 @@ public class ElliottWaveAnalysis {
         ElliottScenarioIndicator scenarioIndicator = facade.scenarios();
         ElliottSwingMetadata swingMetadata = ElliottSwingMetadata.of(facade.swing().getValue(endIndex),
                 series.numFactory());
+        ElliottScenarioSet scenarioSet = scenarioIndicator.getValue(endIndex);
 
         logAnalysisResults(phaseIndicator, invalidationIndicator, channelIndicator, ratioIndicator, confluenceIndicator,
                 swingMetadata, endIndex);
@@ -554,8 +565,86 @@ public class ElliottWaveAnalysis {
         Indicator<Num> filteredSwingCountAsNum = new IntegerAsNumIndicator(series, filteredSwingCount,
                 "Swings (compressed)");
 
-        displayCharts(series, degree, scenarioIndicator, channelIndicator, ratioValue, swingCountAsNum,
-                filteredSwingCountAsNum, confluenceIndicator, endIndex);
+        // Build chart plans for all scenarios
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        Optional<ChartPlan> primaryChartPlan = Optional.empty();
+        List<ChartPlan> alternativeChartPlans = new ArrayList<>();
+
+        if (scenarioSet.primary().isPresent()) {
+            ElliottScenario primary = scenarioSet.primary().get();
+            String primaryTitle = String.format("Elliott Wave (%s) - %s - PRIMARY: %s (%s) - %.1f%% confidence", degree,
+                    series.getName(), primary.currentPhase(), primary.type(), primary.confidence().asPercentage());
+            BarSeriesLabelIndicator primaryWaveLabels = buildWaveLabelsFromScenario(series, primary);
+            primaryChartPlan = Optional.of(buildChartPlan(chartWorkflow, series, channelIndicator, primaryWaveLabels,
+                    swingCountAsNum, filteredSwingCountAsNum, ratioValue, confluenceIndicator, primaryTitle));
+        }
+
+        List<ElliottScenario> alternatives = scenarioSet.alternatives();
+        for (int i = 0; i < alternatives.size(); i++) {
+            ElliottScenario alt = alternatives.get(i);
+            String altTitle = String.format("Elliott Wave (%s) - %s - ALTERNATIVE %d: %s (%s) - %.1f%% confidence",
+                    degree, series.getName(), i + 1, alt.currentPhase(), alt.type(), alt.confidence().asPercentage());
+            BarSeriesLabelIndicator altWaveLabels = buildWaveLabelsFromScenario(series, alt);
+            alternativeChartPlans.add(buildChartPlan(chartWorkflow, series, channelIndicator, altWaveLabels,
+                    swingCountAsNum, filteredSwingCountAsNum, ratioValue, confluenceIndicator, altTitle));
+        }
+
+        return new AnalysisResult(series, degree, endIndex, phaseIndicator, invalidationIndicator, channelIndicator,
+                ratioIndicator, confluenceIndicator, swingCount, filteredSwingCount, scenarioIndicator, swingMetadata,
+                scenarioSet, ratioValue, swingCountAsNum, filteredSwingCountAsNum, primaryChartPlan,
+                alternativeChartPlans);
+    }
+
+    /**
+     * Visualizes the analysis results by displaying and saving charts for all
+     * scenarios.
+     * <p>
+     * Charts are saved to {@code temp/charts/} directory and displayed if running
+     * in a non-headless environment.
+     * <p>
+     * This method processes the chart plans contained in the analysis result and
+     * renders them using JFreeChart. The primary scenario chart (if present) is
+     * displayed first, followed by alternative scenario charts.
+     *
+     * @param result the analysis result containing chart plans and analysis data
+     * @throws NullPointerException if result is null
+     */
+    public void visualizeAnalysisResult(AnalysisResult result) {
+        Objects.requireNonNull(result, "Analysis result cannot be null");
+
+        ChartWorkflow chartWorkflow = new ChartWorkflow();
+        boolean isHeadless = GraphicsEnvironment.isHeadless();
+
+        // Display and save primary scenario chart
+        if (result.primaryChartPlan().isPresent()) {
+            ChartPlan primaryPlan = result.primaryChartPlan().get();
+            ElliottScenario primary = result.scenarioSet().primary().orElseThrow();
+            String primaryWindowTitle = String.format("PRIMARY: %s (%s) - %.1f%% - %s", primary.currentPhase(),
+                    primary.type(), primary.confidence().asPercentage(), result.series().getName());
+
+            if (!isHeadless) {
+                chartWorkflow.display(primaryPlan, primaryWindowTitle);
+            }
+            chartWorkflow.save(primaryPlan, "temp/charts",
+                    "elliott-wave-analysis-" + result.series().getName().toLowerCase() + "-"
+                            + result.degree().name().toLowerCase() + "-primary");
+        }
+
+        // Display and save alternative scenario charts
+        List<ElliottScenario> alternatives = result.scenarioSet().alternatives();
+        for (int i = 0; i < result.alternativeChartPlans().size() && i < alternatives.size(); i++) {
+            ChartPlan altPlan = result.alternativeChartPlans().get(i);
+            ElliottScenario alt = alternatives.get(i);
+            String altWindowTitle = String.format("ALTERNATIVE %d: %s (%s) - %.1f%% - %s", i + 1, alt.currentPhase(),
+                    alt.type(), alt.confidence().asPercentage(), result.series().getName());
+
+            if (!isHeadless) {
+                chartWorkflow.display(altPlan, altWindowTitle);
+            }
+            chartWorkflow.save(altPlan, "temp/charts",
+                    "elliott-wave-analysis-" + result.series().getName().toLowerCase() + "-"
+                            + result.degree().name().toLowerCase() + "-alternative-" + (i + 1));
+        }
     }
 
     /**
@@ -674,111 +763,6 @@ public class ElliottWaveAnalysis {
             ElliottScenario alt = alternatives.get(i);
             LOG.info("  {}. {} ({}) - {}% confidence", i + 1, alt.currentPhase(), alt.type(),
                     String.format("%.1f", alt.confidence().asPercentage()));
-        }
-    }
-
-    /**
-     * Orchestrates the display and saving of charts for all scenarios.
-     *
-     * @param series                  the bar series
-     * @param degree                  the Elliott degree (for chart titles)
-     * @param scenarioIndicator       the scenario indicator
-     * @param channelIndicator        indicator providing channel boundaries
-     * @param ratioValue              indicator for Elliott ratio values
-     * @param swingCountAsNum         indicator for raw swing count (as numeric)
-     * @param filteredSwingCountAsNum indicator for filtered swing count (as
-     *                                numeric)
-     * @param confluenceIndicator     indicator for confluence scores
-     * @param endIndex                the index to evaluate (typically the last bar)
-     */
-    private static void displayCharts(BarSeries series, ElliottDegree degree,
-            ElliottScenarioIndicator scenarioIndicator, Indicator<? extends PriceChannel> channelIndicator,
-            Indicator<Num> ratioValue, Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
-            ElliottConfluenceIndicator confluenceIndicator, int endIndex) {
-        ElliottScenarioSet scenarioSet = scenarioIndicator.getValue(endIndex);
-        ChartWorkflow chartWorkflow = new ChartWorkflow();
-        boolean isHeadless = GraphicsEnvironment.isHeadless();
-
-        if (scenarioSet.primary().isPresent()) {
-            displayPrimaryScenarioChart(series, degree, scenarioSet.primary().get(), channelIndicator, ratioValue,
-                    swingCountAsNum, filteredSwingCountAsNum, confluenceIndicator, chartWorkflow, isHeadless);
-        }
-
-        List<ElliottScenario> alternatives = scenarioSet.alternatives();
-        displayAlternativeScenarioCharts(series, degree, alternatives, channelIndicator, ratioValue, swingCountAsNum,
-                filteredSwingCountAsNum, confluenceIndicator, chartWorkflow, isHeadless);
-    }
-
-    /**
-     * Displays and saves the chart for the primary scenario.
-     *
-     * @param series                  the bar series
-     * @param degree                  the Elliott degree (for chart title)
-     * @param primary                 the primary scenario
-     * @param channelIndicator        indicator providing channel boundaries
-     * @param ratioValue              indicator for Elliott ratio values
-     * @param swingCountAsNum         indicator for raw swing count (as numeric)
-     * @param filteredSwingCountAsNum indicator for filtered swing count (as
-     *                                numeric)
-     * @param confluenceIndicator     indicator for confluence scores
-     * @param chartWorkflow           the chart workflow instance
-     * @param isHeadless              whether running in headless mode
-     */
-    private static void displayPrimaryScenarioChart(BarSeries series, ElliottDegree degree, ElliottScenario primary,
-            Indicator<? extends PriceChannel> channelIndicator, Indicator<Num> ratioValue,
-            Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
-            ElliottConfluenceIndicator confluenceIndicator, ChartWorkflow chartWorkflow, boolean isHeadless) {
-        String primaryTitle = String.format("Elliott Wave (%s) - %s - PRIMARY: %s (%s) - %.1f%% confidence", degree,
-                series.getName(), primary.currentPhase(), primary.type(), primary.confidence().asPercentage());
-        String primaryWindowTitle = String.format("PRIMARY: %s (%s) - %.1f%% - %s", primary.currentPhase(),
-                primary.type(), primary.confidence().asPercentage(), series.getName());
-
-        BarSeriesLabelIndicator primaryWaveLabels = buildWaveLabelsFromScenario(series, primary);
-        ChartPlan primaryPlan = buildChartPlan(chartWorkflow, series, channelIndicator, primaryWaveLabels,
-                swingCountAsNum, filteredSwingCountAsNum, ratioValue, confluenceIndicator, primaryTitle);
-
-        if (!isHeadless) {
-            chartWorkflow.display(primaryPlan, primaryWindowTitle);
-        }
-        chartWorkflow.save(primaryPlan, "temp/charts", "elliott-wave-analysis-" + series.getName().toLowerCase() + "-"
-                + degree.name().toLowerCase() + "-primary");
-    }
-
-    /**
-     * Displays and saves charts for alternative scenarios.
-     *
-     * @param series                  the bar series
-     * @param degree                  the Elliott degree (for chart titles)
-     * @param alternatives            the list of alternative scenarios
-     * @param channelIndicator        indicator providing channel boundaries
-     * @param ratioValue              indicator for Elliott ratio values
-     * @param swingCountAsNum         indicator for raw swing count (as numeric)
-     * @param filteredSwingCountAsNum indicator for filtered swing count (as
-     *                                numeric)
-     * @param confluenceIndicator     indicator for confluence scores
-     * @param chartWorkflow           the chart workflow instance
-     * @param isHeadless              whether running in headless mode
-     */
-    private static void displayAlternativeScenarioCharts(BarSeries series, ElliottDegree degree,
-            List<ElliottScenario> alternatives, Indicator<? extends PriceChannel> channelIndicator,
-            Indicator<Num> ratioValue, Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
-            ElliottConfluenceIndicator confluenceIndicator, ChartWorkflow chartWorkflow, boolean isHeadless) {
-        for (int i = 0; i < alternatives.size(); i++) {
-            ElliottScenario alt = alternatives.get(i);
-            String altTitle = String.format("Elliott Wave (%s) - %s - ALTERNATIVE %d: %s (%s) - %.1f%% confidence",
-                    degree, series.getName(), i + 1, alt.currentPhase(), alt.type(), alt.confidence().asPercentage());
-            String altWindowTitle = String.format("ALTERNATIVE %d: %s (%s) - %.1f%% - %s", i + 1, alt.currentPhase(),
-                    alt.type(), alt.confidence().asPercentage(), series.getName());
-
-            BarSeriesLabelIndicator altWaveLabels = buildWaveLabelsFromScenario(series, alt);
-            ChartPlan altPlan = buildChartPlan(chartWorkflow, series, channelIndicator, altWaveLabels, swingCountAsNum,
-                    filteredSwingCountAsNum, ratioValue, confluenceIndicator, altTitle);
-
-            if (!isHeadless) {
-                chartWorkflow.display(altPlan, altWindowTitle);
-            }
-            chartWorkflow.save(altPlan, "temp/charts", "elliott-wave-analysis-" + series.getName().toLowerCase() + "-"
-                    + degree.name().toLowerCase() + "-alternative-" + (i + 1));
         }
     }
 
@@ -1143,4 +1127,45 @@ public class ElliottWaveAnalysis {
             return label;
         }
     }
+
+    /**
+     * Result container for Elliott Wave analysis findings.
+     * <p>
+     * This record holds all analysis indicators, metadata, and chart plans
+     * generated during Elliott Wave analysis. It allows separation of analysis
+     * computation from visualization.
+     *
+     * @param series                  the analyzed bar series
+     * @param degree                  the Elliott wave degree used
+     * @param endIndex                the index at which analysis was evaluated
+     * @param phaseIndicator          the phase indicator
+     * @param invalidationIndicator   the invalidation indicator
+     * @param channelIndicator        the channel indicator
+     * @param ratioIndicator          the ratio indicator
+     * @param confluenceIndicator     the confluence indicator
+     * @param swingCount              the raw swing count indicator
+     * @param filteredSwingCount      the filtered swing count indicator
+     * @param scenarioIndicator       the scenario indicator
+     * @param swingMetadata           the swing metadata snapshot
+     * @param scenarioSet             the scenario set at endIndex
+     * @param ratioValue              indicator for Elliott ratio values (for
+     *                                charting)
+     * @param swingCountAsNum         indicator for raw swing count (as numeric, for
+     *                                charting)
+     * @param filteredSwingCountAsNum indicator for filtered swing count (as
+     *                                numeric, for charting)
+     * @param primaryChartPlan        chart plan for the primary scenario (if
+     *                                present)
+     * @param alternativeChartPlans   chart plans for alternative scenarios
+     */
+    public record AnalysisResult(BarSeries series, ElliottDegree degree, int endIndex,
+            ElliottPhaseIndicator phaseIndicator, ElliottInvalidationIndicator invalidationIndicator,
+            ElliottChannelIndicator channelIndicator, ElliottRatioIndicator ratioIndicator,
+            ElliottConfluenceIndicator confluenceIndicator, ElliottWaveCountIndicator swingCount,
+            ElliottWaveCountIndicator filteredSwingCount, ElliottScenarioIndicator scenarioIndicator,
+            ElliottSwingMetadata swingMetadata, ElliottScenarioSet scenarioSet, Indicator<Num> ratioValue,
+            Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
+            Optional<ChartPlan> primaryChartPlan, List<ChartPlan> alternativeChartPlans) {
+    }
+
 }
