@@ -114,11 +114,23 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * <p>
  * If no arguments are provided, the class loads a default ossified dataset from
  * the classpath resources.
+ * <p>
+ * For simpler usage examples with specific assets, see:
+ * <ul>
+ * <li>{@link BTCUSDElliottWaveAnalysis} - Bitcoin analysis example</li>
+ * <li>{@link ETHUSDElliottWaveAnalysis} - Ethereum analysis example</li>
+ * <li>{@link SP500ElliottWaveAnalysis} - S&P 500 index analysis example</li>
+ * </ul>
+ * <p>
+ * For programmatic usage, see {@link #analyze(BarSeries, ElliottDegree, double)}.
  *
  * @see org.ta4j.core.indicators.elliott.ElliottWaveFacade
  * @see org.ta4j.core.indicators.elliott.ElliottSwingIndicator
  * @see org.ta4j.core.indicators.elliott.ElliottPhaseIndicator
  * @see org.ta4j.core.indicators.elliott.ElliottScenarioIndicator
+ * @see BTCUSDElliottWaveAnalysis
+ * @see ETHUSDElliottWaveAnalysis
+ * @see SP500ElliottWaveAnalysis
  */
 public class ElliottWaveAnalysis {
 
@@ -495,12 +507,25 @@ public class ElliottWaveAnalysis {
      * <p>
      * Charts are saved to {@code temp/charts/} directory and displayed if running
      * in a non-headless environment.
+     * <p>
+     * This method can be called programmatically to perform Elliott Wave analysis
+     * on any bar series. For command-line usage, see {@link #main(String[])}.
+     * <p>
+     * Example usage:
      *
-     * @param series       the bar series to analyze
+     * <pre>
+     * BarSeries series = // ... load your bar series
+     * ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+     * analysis.analyze(series, ElliottDegree.PRIMARY, 0.25);
+     * </pre>
+     *
+     * @param series       the bar series to analyze (must not be null or empty)
      * @param degree       the Elliott wave degree to use for swing detection
      * @param fibTolerance the Fibonacci tolerance (0.0-1.0) for phase validation.
      *                     Higher values allow more deviation from ideal Fibonacci
      *                     ratios. Default is 0.25 (25%).
+     * @throws NullPointerException if series is null
+     * @throws IllegalArgumentException if series is empty
      */
     public void analyze(BarSeries series, ElliottDegree degree, double fibTolerance) {
         ElliottWaveFacade facade = createElliottWaveFacade(series, degree, fibTolerance);

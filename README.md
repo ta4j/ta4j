@@ -564,7 +564,10 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 
 ### Analysis & Backtesting Examples
 - **[StrategyAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/StrategyAnalysis.java)** - Comprehensive strategy performance analysis
-- **[ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/ElliottWaveAnalysis.java)** - Elliott Wave scenario analysis with confidence scoring and annotated charts
+- **[ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWaveAnalysis.java)** - Elliott Wave scenario analysis with confidence scoring and annotated charts. Supports command-line arguments for loading data from Yahoo Finance or Coinbase, or uses a default dataset if no arguments provided.
+- **[BTCUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/BTCUSDElliottWaveAnalysis.java)** - Example Elliott Wave analysis for Bitcoin (BTC-USD) using Coinbase data
+- **[ETHUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ETHUSDElliottWaveAnalysis.java)** - Example Elliott Wave analysis for Ethereum (ETH-USD) using Coinbase data
+- **[SP500ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/SP500ElliottWaveAnalysis.java)** - Example Elliott Wave analysis for S&P 500 Index (^GSPC) using Yahoo Finance data
 - **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
 
