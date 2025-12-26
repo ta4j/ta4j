@@ -227,49 +227,57 @@ public class ElliottWaveAnalysis {
      * @return the loaded bar series, or {@code null} if parsing or loading fails
      */
     private static BarSeries loadBarSeriesFromArgs(String[] args) {
-        // Validate argument count
+        Optional<BarSeriesRequest> request = parseBarSeriesRequest(args);
+        if (request.isEmpty()) {
+            return null;
+        }
+        BarSeriesRequest parsed = request.get();
+        BarSeries series = loadSeriesFromDataSource(parsed.dataSource(), parsed.ticker(), parsed.barDuration(),
+                parsed.startTime(), parsed.endTime());
+        if (series == null) {
+            LOG.error("Failed to retrieve bar series from {} for ticker {} with duration {} from {} to {}",
+                    parsed.dataSource(), parsed.ticker(), parsed.barDuration(), parsed.startTime(), parsed.endTime());
+        }
+        return series;
+    }
+
+    static Optional<BarSeriesRequest> parseBarSeriesRequest(String[] args) {
         if (args.length < 4) {
             LOG.error(
                     "Insufficient arguments: expected at least 4, but got {}. Required: [dataSource] [ticker] [barDuration] [startEpoch] [endEpoch?] (optional degree before startEpoch)",
                     args.length);
-            return null;
+            return Optional.empty();
         }
 
-        // Extract and validate dataSource (args[0])
         String dataSource = args[0];
         if (dataSource == null || dataSource.trim().isEmpty()) {
             LOG.error(
                     "Invalid dataSource argument: cannot be null or empty. Provided value: '{}'. Supported sources: YahooFinance, Coinbase",
                     dataSource);
-            return null;
+            return Optional.empty();
         }
         dataSource = dataSource.trim();
         if (!"YahooFinance".equalsIgnoreCase(dataSource) && !"Coinbase".equalsIgnoreCase(dataSource)) {
             LOG.error("Unsupported dataSource: '{}'. Supported sources: YahooFinance, Coinbase", dataSource);
-            return null;
+            return Optional.empty();
         }
 
-        // Extract and validate ticker (args[1])
         String ticker = args[1];
         if (ticker == null || ticker.trim().isEmpty()) {
             LOG.error("Invalid ticker argument: cannot be null or empty. Provided value: '{}'", ticker);
-            return null;
+            return Optional.empty();
         }
         ticker = ticker.trim();
 
-        // Extract and validate barDuration (args[2])
         String barDurationStr = args[2];
         if (barDurationStr == null || barDurationStr.trim().isEmpty()) {
             LOG.error(
                     "Invalid barDuration argument: cannot be null or empty. Provided value: '{}'. Expected ISO-8601 duration format (e.g., PT1D, PT4H, PT5M)",
                     barDurationStr);
-            return null;
+            return Optional.empty();
         }
         barDurationStr = barDurationStr.trim();
 
-        // Normalize duration string: Java's Duration.parse() doesn't support days
-        // (PT1D),
-        // so convert days to hours (PT1D -> PT24H, PT2D -> PT48H, etc.)
         String normalizedDurationStr = normalizeDurationString(barDurationStr);
 
         Duration barDuration;
@@ -278,13 +286,13 @@ public class ElliottWaveAnalysis {
             if (barDuration.isZero() || barDuration.isNegative()) {
                 LOG.error("Invalid barDuration: '{}' must be a positive duration. Parsed value: {}", barDurationStr,
                         barDuration);
-                return null;
+                return Optional.empty();
             }
         } catch (Exception ex) {
             LOG.error(
                     "Failed to parse barDuration '{}' as ISO-8601 duration. Error: {}. Expected format: PT1D (daily), PT4H (4-hour), PT5M (5-minute), etc. Note: Java Duration.parse() converts days to hours (PT1D becomes PT24H)",
                     barDurationStr, ex.getMessage());
-            return null;
+            return Optional.empty();
         }
 
         boolean hasDegreeToken = hasDegreeToken(args);
@@ -292,18 +300,17 @@ public class ElliottWaveAnalysis {
             LOG.error(
                     "Invalid arguments: expected degree in position 4 when providing 6 arguments. Received epoch value '{}'",
                     args[3]);
-            return null;
+            return Optional.empty();
         }
 
         int startEpochIndex = hasDegreeToken ? 4 : 3;
 
-        // Extract and validate startEpoch
         String startEpochStr = args[startEpochIndex];
         if (startEpochStr == null || startEpochStr.trim().isEmpty()) {
             LOG.error(
                     "Invalid startEpoch argument: cannot be null or empty. Provided value: '{}'. Expected Unix timestamp in seconds",
                     startEpochStr);
-            return null;
+            return Optional.empty();
         }
         startEpochStr = startEpochStr.trim();
         Instant startTime;
@@ -313,20 +320,19 @@ public class ElliottWaveAnalysis {
                 LOG.error(
                         "Invalid startEpoch: '{}' must be a non-negative Unix timestamp (seconds since 1970-01-01). Provided value: {}",
                         startEpochStr, startEpochSeconds);
-                return null;
+                return Optional.empty();
             }
             startTime = Instant.ofEpochSecond(startEpochSeconds);
         } catch (NumberFormatException ex) {
             LOG.error(
                     "Failed to parse startEpoch '{}' as a long integer. Error: {}. Expected Unix timestamp in seconds (e.g., 1686960000)",
                     startEpochStr, ex.getMessage());
-            return null;
+            return Optional.empty();
         } catch (Exception ex) {
             LOG.error("Failed to create Instant from startEpoch '{}'. Error: {}", startEpochStr, ex.getMessage());
-            return null;
+            return Optional.empty();
         }
 
-        // Extract and validate endEpoch (optional)
         String endEpochStr = args.length > startEpochIndex + 1 ? args[startEpochIndex + 1] : null;
         Instant endTime;
         if (endEpochStr != null) {
@@ -341,42 +347,34 @@ public class ElliottWaveAnalysis {
                         LOG.error(
                                 "Invalid endEpoch: '{}' must be a non-negative Unix timestamp (seconds since 1970-01-01). Provided value: {}",
                                 endEpochStr, endEpochSeconds);
-                        return null;
+                        return Optional.empty();
                     }
                     endTime = Instant.ofEpochSecond(endEpochSeconds);
                 } catch (NumberFormatException ex) {
                     LOG.error(
                             "Failed to parse endEpoch '{}' as a long integer. Error: {}. Expected Unix timestamp in seconds (e.g., 1697040000)",
                             endEpochStr, ex.getMessage());
-                    return null;
+                    return Optional.empty();
                 } catch (Exception ex) {
                     LOG.error("Failed to create Instant from endEpoch '{}'. Error: {}", endEpochStr, ex.getMessage());
-                    return null;
+                    return Optional.empty();
                 }
             }
         } else {
             endTime = Instant.now();
         }
 
-        // Validate time range
         if (!startTime.isBefore(endTime)) {
             LOG.error("Invalid time range: startTime ({}) must be before endTime ({}). startEpoch: {}, endEpoch: {}",
                     startTime, endTime, startEpochStr, endEpochStr != null ? endEpochStr : "now");
-            return null;
+            return Optional.empty();
         }
 
-        // Load series from data source
-        try {
-            BarSeries series = loadSeriesFromDataSource(dataSource, ticker, barDuration, startTime, endTime);
-            if (series == null) {
-                LOG.error("Failed to retrieve bar series from {} for ticker {} with duration {} from {} to {}",
-                        dataSource, ticker, barDurationStr, startTime, endTime);
-            }
-            return series;
-        } catch (Exception ex) {
-            LOG.error("Exception while loading series from data source: {}", ex.getMessage(), ex);
-            return null;
-        }
+        return Optional.of(new BarSeriesRequest(dataSource, ticker, barDuration, startTime, endTime));
+    }
+
+    record BarSeriesRequest(String dataSource, String ticker, Duration barDuration, Instant startTime,
+            Instant endTime) {
     }
 
     /**
@@ -432,7 +430,7 @@ public class ElliottWaveAnalysis {
      * @param series bar series used for auto-selection
      * @return the resolved Elliott degree
      */
-    private static ElliottDegree resolveDegree(String[] args, BarSeries series) {
+    static ElliottDegree resolveDegree(String[] args, BarSeries series) {
         Optional<ElliottDegree> explicitDegree = parseExplicitDegree(args);
         if (explicitDegree.isPresent()) {
             return explicitDegree.get();
@@ -822,7 +820,21 @@ public class ElliottWaveAnalysis {
                 LOG.error("Unsupported data source: {}. Supported sources: YahooFinance, Coinbase", dataSource);
                 return null;
             }
+            return loadSeriesFromDataSource(source, ticker, barDuration, startTime, endTime);
+        } catch (Exception ex) {
+            LOG.error("Exception while loading series from {}: {}", dataSource, ex.getMessage(), ex);
+            return null;
+        }
+    }
 
+    static BarSeries loadSeriesFromDataSource(BarSeriesDataSource source, String ticker, Duration barDuration,
+            Instant startTime, Instant endTime) {
+        Objects.requireNonNull(source, "source");
+        String sourceName = source.getSourceName();
+        if (sourceName == null || sourceName.isBlank()) {
+            sourceName = source.getClass().getSimpleName();
+        }
+        try {
             BarSeries series = source.loadSeries(ticker, barDuration, startTime, endTime);
             if (series == null) {
                 LOG.error("Data source returned null for ticker {} with duration {} from {} to {}", ticker, barDuration,
@@ -838,7 +850,7 @@ public class ElliottWaveAnalysis {
 
             return series;
         } catch (Exception ex) {
-            LOG.error("Exception while loading series from {}: {}", dataSource, ex.getMessage(), ex);
+            LOG.error("Exception while loading series from {}: {}", sourceName, ex.getMessage(), ex);
             return null;
         }
     }

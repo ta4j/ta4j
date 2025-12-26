@@ -23,10 +23,11 @@
  */
 package ta4jexamples.analysis.elliottwave;
 
-import java.util.Base64;
-import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
+import java.util.Objects;
+import java.util.Base64;
+import java.io.IOException;
+import java.util.List;
 
 import org.ta4j.core.indicators.elliott.ElliottChannel;
 import org.ta4j.core.indicators.elliott.ElliottChannelIndicator;
@@ -49,10 +50,14 @@ import org.ta4j.core.num.Num;
 import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.google.gson.stream.JsonWriter;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
 import com.google.gson.ExclusionStrategy;
 import com.google.gson.FieldAttributes;
+import com.google.gson.GsonBuilder;
+import com.google.gson.TypeAdapter;
+import com.google.gson.Gson;
 
 /**
  * Domain model capturing all Elliott Wave analysis results currently logged via
@@ -79,6 +84,25 @@ import com.google.gson.FieldAttributes;
 public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, SwingSnapshot swingSnapshot,
         LatestAnalysis latestAnalysis, ScenarioSummary scenarioSummary, BaseCaseScenario baseCase,
         List<AlternativeScenario> alternatives, String baseCaseChartImage, List<String> alternativeChartImages) {
+    private static final TypeAdapter<Double> NULLING_DOUBLE_ADAPTER = new TypeAdapter<>() {
+        @Override
+        public void write(JsonWriter out, Double value) throws IOException {
+            if (value == null || value.isNaN() || value.isInfinite()) {
+                out.nullValue();
+                return;
+            }
+            out.value(value);
+        }
+
+        @Override
+        public Double read(JsonReader in) throws IOException {
+            if (in.peek() == JsonToken.NULL) {
+                in.nextNull();
+                return null;
+            }
+            return in.nextDouble();
+        }
+    };
 
     /**
      * Creates an analysis result from the current analysis state.
@@ -156,7 +180,10 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
      * @return JSON representation of the analysis result
      */
     public String toJson(boolean includeChartData) {
-        GsonBuilder builder = new GsonBuilder().setPrettyPrinting();
+        GsonBuilder builder = new GsonBuilder().setPrettyPrinting()
+                .serializeNulls()
+                .registerTypeAdapter(Double.class, NULLING_DOUBLE_ADAPTER)
+                .registerTypeAdapter(Double.TYPE, NULLING_DOUBLE_ADAPTER);
         if (!includeChartData) {
             builder.setExclusionStrategies(new ExclusionStrategy() {
                 @Override

@@ -26,38 +26,41 @@ package ta4jexamples.analysis.elliottwave;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.io.InputStream;
-import java.security.Permission;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
+import java.io.InputStream;
+import java.time.Duration;
+import java.util.Optional;
+import java.time.Instant;
 import java.util.List;
 
-import org.jfree.chart.JFreeChart;
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.JFreeChart;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottFibonacciValidator;
-import org.ta4j.core.indicators.elliott.ElliottPhase;
-import org.ta4j.core.indicators.elliott.ElliottPhaseIndicator;
-import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
+import org.ta4j.core.indicators.elliott.ElliottPhaseIndicator;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
+import org.ta4j.core.indicators.elliott.ElliottSwing;
+import org.ta4j.core.indicators.elliott.ElliottPhase;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BarSeries;
 
-import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
-import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.LabelPlacement;
+import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
+import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
 import ta4jexamples.charting.display.SwingChartDisplayer;
 import ta4jexamples.charting.workflow.ChartWorkflow;
+
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
+import ta4jexamples.datasources.BarSeriesDataSource;
 
 class ElliottWaveAnalysisTest {
 
@@ -175,6 +178,36 @@ class ElliottWaveAnalysisTest {
         return isHighPivot ? LabelPlacement.ABOVE : LabelPlacement.BELOW;
     }
 
+    private static final class StubBarSeriesDataSource implements BarSeriesDataSource {
+        private final boolean throwOnLoad;
+        private final String sourceName;
+        private final BarSeries series;
+
+        private StubBarSeriesDataSource(String sourceName, BarSeries series, boolean throwOnLoad) {
+            this.throwOnLoad = throwOnLoad;
+            this.sourceName = sourceName;
+            this.series = series;
+        }
+
+        @Override
+        public BarSeries loadSeries(String ticker, Duration interval, Instant start, Instant end) {
+            if (throwOnLoad) {
+                throw new IllegalStateException("Stubbed load failure");
+            }
+            return series;
+        }
+
+        @Override
+        public BarSeries loadSeries(String source) {
+            return series;
+        }
+
+        @Override
+        public String getSourceName() {
+            return sourceName;
+        }
+    }
+
     @Test
     void loadSeriesFromDataSource_withUnsupportedDataSource_returnsNull() {
         String unsupportedDataSource = "UnsupportedSource";
@@ -196,352 +229,124 @@ class ElliottWaveAnalysisTest {
         Instant startTime = Instant.parse("2023-01-01T00:00:00Z");
         Instant endTime = Instant.parse("2023-01-31T23:59:59Z");
 
-        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource(null, ticker, barDuration, startTime, endTime);
+        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource((String) null, ticker, barDuration, startTime,
+                endTime);
 
         assertNull(result, "Should return null for null data source");
     }
 
     @Test
-    void loadSeriesFromDataSource_withYahooFinanceDataSource_createsYahooFinanceSource() {
-        // This test verifies that YahooFinance datasource is created correctly
-        // We can't easily mock it since it's created inside the method, but we can test
-        // that it doesn't throw an exception for valid parameters
-        String dataSource = "YahooFinance";
-        String ticker = "AAPL";
-        Duration barDuration = Duration.ofDays(1);
-        Instant startTime = Instant.parse("2023-01-01T00:00:00Z");
-        Instant endTime = Instant.parse("2023-01-31T23:59:59Z");
+    void loadSeriesFromDataSource_withStubSeries_returnsSeries() {
+        BarSeries series = loadOssifiedSeries();
+        BarSeriesDataSource source = new StubBarSeriesDataSource("Stub", series, false);
 
-        // This will likely return null due to network/API issues in test environment,
-        // but it should not throw an exception
-        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource(dataSource, ticker, barDuration, startTime,
-                endTime);
+        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource(source, "BTC-USD", Duration.ofDays(1),
+                Instant.parse("2023-01-01T00:00:00Z"), Instant.parse("2023-01-31T23:59:59Z"));
 
-        // Result may be null if API call fails, but method should handle it gracefully
-        // The important thing is that it doesn't throw an exception
-        assertTrue(result == null || !result.isEmpty(), "Result should be null or non-empty series");
+        assertEquals(series, result, "Should return the stubbed series");
     }
 
     @Test
-    void loadSeriesFromDataSource_withCoinbaseDataSource_createsCoinbaseSource() {
-        // This test verifies that Coinbase datasource is created correctly
-        String dataSource = "Coinbase";
-        String ticker = "BTC-USD";
-        Duration barDuration = Duration.ofDays(1);
-        Instant startTime = Instant.parse("2023-01-01T00:00:00Z");
-        Instant endTime = Instant.parse("2023-01-31T23:59:59Z");
+    void loadSeriesFromDataSource_withStubReturningNull_returnsNull() {
+        BarSeriesDataSource source = new StubBarSeriesDataSource("Stub", null, false);
 
-        // This will likely return null due to network/API issues in test environment,
-        // but it should not throw an exception
-        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource(dataSource, ticker, barDuration, startTime,
-                endTime);
+        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource(source, "BTC-USD", Duration.ofDays(1),
+                Instant.parse("2023-01-01T00:00:00Z"), Instant.parse("2023-01-31T23:59:59Z"));
 
-        // Result may be null if API call fails, but method should handle it gracefully
-        assertTrue(result == null || !result.isEmpty(), "Result should be null or non-empty series");
+        assertNull(result, "Should return null when the data source returns null");
     }
 
     @Test
-    void loadSeriesFromDataSource_withCaseInsensitiveDataSource_handlesCorrectly() {
-        // Test that data source name matching is case-insensitive
-        String dataSource = "yahoofinance"; // lowercase
-        String ticker = "AAPL";
-        Duration barDuration = Duration.ofDays(1);
-        Instant startTime = Instant.parse("2023-01-01T00:00:00Z");
-        Instant endTime = Instant.parse("2023-01-31T23:59:59Z");
+    void loadSeriesFromDataSource_withStubReturningEmpty_returnsNull() {
+        BarSeries emptySeries = new BaseBarSeriesBuilder().withName("Empty").build();
+        BarSeriesDataSource source = new StubBarSeriesDataSource("Stub", emptySeries, false);
 
-        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource(dataSource, ticker, barDuration, startTime,
-                endTime);
+        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource(source, "BTC-USD", Duration.ofDays(1),
+                Instant.parse("2023-01-01T00:00:00Z"), Instant.parse("2023-01-31T23:59:59Z"));
 
-        // Should not throw exception, may return null if API fails
-        assertTrue(result == null || !result.isEmpty(), "Result should be null or non-empty series");
+        assertNull(result, "Should return null when the data source returns an empty series");
     }
 
     @Test
-    void loadSeriesFromDataSource_withEmptySeries_returnsNull() {
-        // This test uses a mock datasource that returns an empty series
-        // Since we can't easily inject mocks, we'll test with a scenario that
-        // would produce an empty series (very short time range that might not have
-        // data)
-        String dataSource = "Coinbase";
-        String ticker = "BTC-USD";
-        Duration barDuration = Duration.ofDays(1);
-        // Very short time range that might not have data
-        Instant startTime = Instant.parse("2023-01-01T00:00:00Z");
-        Instant endTime = Instant.parse("2023-01-01T01:00:00Z"); // Only 1 hour
+    void loadSeriesFromDataSource_withStubThrowingException_returnsNull() {
+        BarSeriesDataSource source = new StubBarSeriesDataSource("Stub", null, true);
 
-        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource(dataSource, ticker, barDuration, startTime,
-                endTime);
+        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource(source, "BTC-USD", Duration.ofDays(1),
+                Instant.parse("2023-01-01T00:00:00Z"), Instant.parse("2023-01-31T23:59:59Z"));
 
-        // Result may be null or empty, method should handle both gracefully
-        assertTrue(result == null || result.isEmpty() || !result.isEmpty(),
-                "Result should be null, empty, or non-empty series");
+        assertNull(result, "Should return null when the data source throws");
     }
 
     @Test
-    void loadSeriesFromDataSource_withNullTicker_handlesGracefully() {
-        String dataSource = "YahooFinance";
-        String ticker = null;
-        Duration barDuration = Duration.ofDays(1);
-        Instant startTime = Instant.parse("2023-01-01T00:00:00Z");
-        Instant endTime = Instant.parse("2023-01-31T23:59:59Z");
-
-        // Should not throw exception, datasource should handle null ticker
-        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource(dataSource, ticker, barDuration, startTime,
-                endTime);
-
-        // Result should be null when ticker is null
-        assertNull(result, "Should return null for null ticker");
-    }
-
-    /**
-     * Security manager that throws a special exception when System.exit is called,
-     * allowing tests to verify exit behavior without actually terminating the JVM.
-     * <p>
-     * Note: SecurityManager is deprecated in Java 17+, but is still functional for
-     * testing purposes.
-     */
-    @SuppressWarnings("removal")
-    private static class ExitSecurityManager extends SecurityManager {
-        private int exitCode = -1;
-
-        @Override
-        public void checkPermission(Permission perm) {
-            // Allow all permissions except exit
-        }
-
-        @Override
-        public void checkExit(int status) {
-            exitCode = status;
-            throw new SecurityException("System.exit(" + status + ") called");
-        }
-
-        int getExitCode() {
-            return exitCode;
-        }
-    }
-
-    /**
-     * Checks if SecurityManager is supported in the current JVM. SecurityManager is
-     * deprecated and may not be supported in future Java versions.
-     */
-    @SuppressWarnings("removal")
-    private static boolean isSecurityManagerSupported() {
-        try {
-            SecurityManager current = System.getSecurityManager();
-            System.setSecurityManager(new SecurityManager() {
-                @Override
-                public void checkPermission(Permission perm) {
-                }
-            });
-            System.setSecurityManager(current);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    /**
-     * Safely sets the SecurityManager, handling cases where it's not supported.
-     */
-    @SuppressWarnings("removal")
-    private static boolean safeSetSecurityManager(SecurityManager manager) {
-        try {
-            System.setSecurityManager(manager);
-            return true;
-        } catch (Exception e) {
-            return false;
-        }
-    }
-
-    @Test
-    @SuppressWarnings("removal")
-    void main_withDayBasedDuration_normalizesToHours() {
-        // Test that main() handles PT1D duration correctly (normalizes to PT24H
-        // internally)
-        // This tests normalizeDurationString indirectly
+    void parseBarSeriesRequest_withDayBasedDuration_convertsToHours() {
         String[] args = { "Coinbase", "BTC-USD", "PT1D", "1686960000", "1697040000" };
-        ExitSecurityManager securityManager = new ExitSecurityManager();
-        if (!isSecurityManagerSupported() || !safeSetSecurityManager(securityManager)) {
-            // Skip test if SecurityManager not supported
-            return;
-        }
 
-        try {
-            ElliottWaveAnalysis.main(args);
-            // If we get here, main() completed without calling System.exit
-            // This is expected if API call succeeds or fails gracefully
-        } catch (SecurityException e) {
-            // Expected when System.exit is called (e.g., if series is null/empty)
-            assertTrue(e.getMessage().contains("System.exit"),
-                    "SecurityException should indicate System.exit was called");
-        } catch (Exception ex) {
-            // Other exceptions are also acceptable (e.g., network errors)
-            assertNotNull(ex);
-        } finally {
-            safeSetSecurityManager(null);
-        }
+        Optional<ElliottWaveAnalysis.BarSeriesRequest> request = ElliottWaveAnalysis.parseBarSeriesRequest(args);
+
+        assertTrue(request.isPresent(), "Request should parse successfully");
+        assertEquals(Duration.ofDays(1), request.get().barDuration(), "Duration should normalize to 24 hours");
     }
 
     @Test
-    @SuppressWarnings("removal")
-    void main_withInvalidEpoch_exitsGracefully() {
-        // Test that main() handles invalid epoch values correctly
-        // This tests isEpochSeconds indirectly
-        String[] args = { "Coinbase", "BTC-USD", "PT1D", "invalid-epoch", "1697040000" };
-        ExitSecurityManager securityManager = new ExitSecurityManager();
-        if (!isSecurityManagerSupported() || !safeSetSecurityManager(securityManager)) {
-            return;
-        }
+    void parseBarSeriesRequest_withInvalidEpoch_returnsEmpty() {
+        String[] args = { "Coinbase", "BTC-USD", "PT1D", "invalid-epoch" };
 
-        try {
-            ElliottWaveAnalysis.main(args);
-        } catch (SecurityException e) {
-            // Expected - invalid epoch should cause System.exit(1)
-            assertTrue(e.getMessage().contains("System.exit"),
-                    "SecurityException should indicate System.exit was called");
-            assertEquals(1, securityManager.getExitCode(), "Exit code should be 1 for error");
-        } catch (Exception ex) {
-            // Other exceptions are also acceptable
-            assertNotNull(ex);
-        } finally {
-            safeSetSecurityManager(null);
-        }
+        Optional<ElliottWaveAnalysis.BarSeriesRequest> request = ElliottWaveAnalysis.parseBarSeriesRequest(args);
+
+        assertTrue(request.isEmpty(), "Invalid epoch should return empty request");
     }
 
     @Test
-    @SuppressWarnings("removal")
-    void main_withExplicitDegree_usesProvidedDegree() {
-        // Test that main() accepts explicit degree in args
-        // This tests parseExplicitDegree and hasDegreeToken indirectly
-        String[] args = { "Coinbase", "BTC-USD", "PT1D", "PRIMARY", "1686960000", "1697040000" };
-        ExitSecurityManager securityManager = new ExitSecurityManager();
-        if (!isSecurityManagerSupported() || !safeSetSecurityManager(securityManager)) {
-            return;
-        }
-
-        try {
-            ElliottWaveAnalysis.main(args);
-        } catch (SecurityException e) {
-            // Expected if API fails and System.exit is called
-            assertTrue(e.getMessage().contains("System.exit"));
-        } catch (Exception ex) {
-            // Expected if API fails
-            assertNotNull(ex);
-        } finally {
-            safeSetSecurityManager(null);
-        }
-    }
-
-    @Test
-    @SuppressWarnings("removal")
-    void main_withCaseInsensitiveDegree_acceptsDegree() {
-        // Test case-insensitive degree parsing
-        String[] args = { "Coinbase", "BTC-USD", "PT1D", "primary", "1686960000", "1697040000" };
-        ExitSecurityManager securityManager = new ExitSecurityManager();
-        if (!isSecurityManagerSupported() || !safeSetSecurityManager(securityManager)) {
-            return;
-        }
-
-        try {
-            ElliottWaveAnalysis.main(args);
-        } catch (SecurityException e) {
-            assertTrue(e.getMessage().contains("System.exit"));
-        } catch (Exception ex) {
-            assertNotNull(ex);
-        } finally {
-            safeSetSecurityManager(null);
-        }
-    }
-
-    @Test
-    @SuppressWarnings("removal")
-    void main_withoutExplicitDegree_autoSelectsDegree() {
-        // Test that main() auto-selects degree when not provided
-        // This tests selectRecommendedDegree indirectly
-        String[] args = { "Coinbase", "BTC-USD", "PT1D", "1686960000", "1697040000" };
-        ExitSecurityManager securityManager = new ExitSecurityManager();
-        if (!isSecurityManagerSupported() || !safeSetSecurityManager(securityManager)) {
-            return;
-        }
-
-        try {
-            ElliottWaveAnalysis.main(args);
-        } catch (SecurityException e) {
-            assertTrue(e.getMessage().contains("System.exit"));
-        } catch (Exception ex) {
-            assertNotNull(ex);
-        } finally {
-            safeSetSecurityManager(null);
-        }
-    }
-
-    @Test
-    @SuppressWarnings("removal")
-    void main_withInsufficientArgs_loadsDefaultDataset() {
-        // Test that main() loads default dataset when args < 4
-        // This tests loadBarSeries indirectly
-        String[] args = {};
-        ExitSecurityManager securityManager = new ExitSecurityManager();
-        if (!isSecurityManagerSupported() || !safeSetSecurityManager(securityManager)) {
-            return;
-        }
-
-        try {
-            ElliottWaveAnalysis.main(args);
-            // If default dataset loads successfully, main() should complete
-        } catch (SecurityException e) {
-            // Expected if default dataset fails to load
-            assertTrue(e.getMessage().contains("System.exit"));
-        } catch (Exception ex) {
-            // Other exceptions are acceptable
-            assertNotNull(ex);
-        } finally {
-            safeSetSecurityManager(null);
-        }
-    }
-
-    @Test
-    @SuppressWarnings("removal")
-    void main_withInvalidDataSource_exitsGracefully() {
-        // Test that main() handles invalid data source
+    void parseBarSeriesRequest_withInvalidDataSource_returnsEmpty() {
         String[] args = { "InvalidSource", "BTC-USD", "PT1D", "1686960000", "1697040000" };
-        ExitSecurityManager securityManager = new ExitSecurityManager();
-        if (!isSecurityManagerSupported() || !safeSetSecurityManager(securityManager)) {
-            return;
-        }
 
-        try {
-            ElliottWaveAnalysis.main(args);
-        } catch (SecurityException e) {
-            // Expected - invalid data source should cause System.exit(1)
-            assertTrue(e.getMessage().contains("System.exit"));
-            assertEquals(1, securityManager.getExitCode(), "Exit code should be 1 for error");
-        } catch (Exception ex) {
-            assertNotNull(ex);
-        } finally {
-            safeSetSecurityManager(null);
-        }
+        Optional<ElliottWaveAnalysis.BarSeriesRequest> request = ElliottWaveAnalysis.parseBarSeriesRequest(args);
+
+        assertTrue(request.isEmpty(), "Invalid data source should return empty request");
     }
 
     @Test
-    @SuppressWarnings("removal")
-    void main_withInvalidTimeRange_exitsGracefully() {
-        // Test that main() handles invalid time range
+    void parseBarSeriesRequest_withInvalidTimeRange_returnsEmpty() {
         String[] args = { "Coinbase", "BTC-USD", "PT1D", "1697040000", "1686960000" };
-        ExitSecurityManager securityManager = new ExitSecurityManager();
-        if (!isSecurityManagerSupported() || !safeSetSecurityManager(securityManager)) {
-            return;
-        }
 
-        try {
-            ElliottWaveAnalysis.main(args);
-        } catch (SecurityException e) {
-            // Expected - invalid time range may cause System.exit(1)
-            assertTrue(e.getMessage().contains("System.exit"));
-        } catch (Exception ex) {
-            assertNotNull(ex);
-        } finally {
-            safeSetSecurityManager(null);
+        Optional<ElliottWaveAnalysis.BarSeriesRequest> request = ElliottWaveAnalysis.parseBarSeriesRequest(args);
+
+        assertTrue(request.isEmpty(), "Invalid time range should return empty request");
+    }
+
+    @Test
+    void resolveDegree_withExplicitDegree_usesProvidedDegree() {
+        BarSeries series = loadOssifiedSeries();
+        String[] args = { "Coinbase", "BTC-USD", "PT1D", "PRIMARY", "1686960000", "1697040000" };
+
+        ElliottDegree resolved = ElliottWaveAnalysis.resolveDegree(args, series);
+
+        assertEquals(ElliottDegree.PRIMARY, resolved, "Explicit degree should be used");
+    }
+
+    @Test
+    void resolveDegree_withCaseInsensitiveDegree_usesProvidedDegree() {
+        BarSeries series = loadOssifiedSeries();
+        String[] args = { "Coinbase", "BTC-USD", "PT1D", "primary", "1686960000", "1697040000" };
+
+        ElliottDegree resolved = ElliottWaveAnalysis.resolveDegree(args, series);
+
+        assertEquals(ElliottDegree.PRIMARY, resolved, "Degree should be parsed case-insensitively");
+    }
+
+    @Test
+    void resolveDegree_withoutExplicitDegree_usesRecommendation() {
+        BarSeries series = loadOssifiedSeries();
+        String[] args = { "Coinbase", "BTC-USD", "PT1D", "1686960000", "1697040000" };
+
+        List<ElliottDegree> recommendations = ElliottDegree.getRecommendedDegrees(series.getFirstBar().getTimePeriod(),
+                series.getBarCount());
+        ElliottDegree resolved = ElliottWaveAnalysis.resolveDegree(args, series);
+
+        if (recommendations.isEmpty()) {
+            assertEquals(ElliottDegree.PRIMARY, resolved, "Default degree should be used when none recommended");
+        } else {
+            assertEquals(recommendations.get(0), resolved, "Recommended degree should be used");
         }
     }
 
@@ -666,15 +471,11 @@ class ElliottWaveAnalysisTest {
     @Test
     void visualizeAnalysisResult_withNullResult_throwsNullPointerException() {
         ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        try {
-            analysis.visualizeAnalysisResult(null);
-            // Should not reach here
-            assertTrue(false, "Should have thrown NullPointerException");
-        } catch (NullPointerException e) {
-            assertNotNull(e.getMessage(), "Exception message should not be null");
-            assertTrue(e.getMessage().contains("Analysis result cannot be null"),
-                    "Exception message should indicate null result");
-        }
+        NullPointerException exception = assertThrows(NullPointerException.class,
+                () -> analysis.visualizeAnalysisResult(null));
+        assertNotNull(exception.getMessage(), "Exception message should not be null");
+        assertTrue(exception.getMessage().contains("Analysis result cannot be null"),
+                "Exception message should indicate null result");
     }
 
     @Test
@@ -740,28 +541,22 @@ class ElliottWaveAnalysisTest {
         BarSeries emptySeries = new BaseBarSeriesBuilder().withName("Empty").build();
         ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
 
-        try {
-            analysis.analyze(emptySeries, ElliottDegree.PRIMARY, FIB_TOLERANCE);
-            assertTrue(false, "Should have thrown IllegalArgumentException");
-        } catch (IllegalArgumentException e) {
-            assertNotNull(e.getMessage(), "Exception message should not be null");
-            assertTrue(e.getMessage().contains("Series cannot be empty"),
-                    "Exception message should indicate empty series");
-        }
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> analysis.analyze(emptySeries, ElliottDegree.PRIMARY, FIB_TOLERANCE));
+        assertNotNull(exception.getMessage(), "Exception message should not be null");
+        assertTrue(exception.getMessage().contains("Series cannot be empty"),
+                "Exception message should indicate empty series");
     }
 
     @Test
     void analyze_withNullSeries_throwsNullPointerException() {
         ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
 
-        try {
-            analysis.analyze(null, ElliottDegree.PRIMARY, FIB_TOLERANCE);
-            assertTrue(false, "Should have thrown NullPointerException");
-        } catch (NullPointerException e) {
-            assertNotNull(e.getMessage(), "Exception message should not be null");
-            assertTrue(e.getMessage().contains("Series cannot be null"),
-                    "Exception message should indicate null series");
-        }
+        NullPointerException exception = assertThrows(NullPointerException.class,
+                () -> analysis.analyze(null, ElliottDegree.PRIMARY, FIB_TOLERANCE));
+        assertNotNull(exception.getMessage(), "Exception message should not be null");
+        assertTrue(exception.getMessage().contains("Series cannot be null"),
+                "Exception message should indicate null series");
     }
 
     @Test

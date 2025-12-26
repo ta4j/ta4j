@@ -30,18 +30,24 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.InputStream;
+import java.util.Optional;
 import java.util.Base64;
 import java.util.List;
-import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.indicators.elliott.ElliottRatio.RatioType;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
+import org.ta4j.core.indicators.elliott.ElliottPhase;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BarSeries;
 
 import ta4jexamples.charting.display.SwingChartDisplayer;
+
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
+
+import com.google.gson.JsonParser;
+import com.google.gson.JsonObject;
 
 class ElliottWaveAnalysisResultTest {
 
@@ -235,6 +241,28 @@ class ElliottWaveAnalysisResultTest {
         assertTrue(json.contains("\"swingSnapshot\""), "JSON should contain swingSnapshot field");
         assertTrue(json.contains("\"latestAnalysis\""), "JSON should contain latestAnalysis field");
         assertTrue(json.contains("\"scenarioSummary\""), "JSON should contain scenarioSummary field");
+    }
+
+    @Test
+    void toJson_withNaNValues_serializesNulls() {
+        ElliottWaveAnalysisResult.SwingSnapshot snapshot = new ElliottWaveAnalysisResult.SwingSnapshot(false, 0,
+                Double.NaN, Double.NaN);
+        ElliottWaveAnalysisResult.LatestAnalysis latest = new ElliottWaveAnalysisResult.LatestAnalysis(
+                ElliottPhase.NONE, false, false, RatioType.NONE, Double.NaN, null, Double.NaN, false, false);
+        ElliottWaveAnalysisResult.ScenarioSummary summary = new ElliottWaveAnalysisResult.ScenarioSummary("summary",
+                false, ElliottPhase.NONE);
+        ElliottWaveAnalysisResult result = new ElliottWaveAnalysisResult(ElliottDegree.PRIMARY, 0, snapshot, latest,
+                summary, null, List.of(), null, List.of());
+
+        String json = result.toJson();
+
+        JsonObject root = JsonParser.parseString(json).getAsJsonObject();
+        JsonObject swingSnapshot = root.getAsJsonObject("swingSnapshot");
+        JsonObject latestAnalysis = root.getAsJsonObject("latestAnalysis");
+
+        assertTrue(swingSnapshot.get("high").isJsonNull(), "NaN values should serialize as null");
+        assertTrue(latestAnalysis.get("ratioValue").isJsonNull(), "NaN values should serialize as null");
+        assertTrue(latestAnalysis.get("confluenceScore").isJsonNull(), "NaN values should serialize as null");
     }
 
     @Test
