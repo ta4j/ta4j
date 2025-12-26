@@ -567,16 +567,17 @@ public class ElliottWaveAnalysis {
 
         // Build chart plans for all scenarios
         ChartWorkflow chartWorkflow = new ChartWorkflow();
-        Optional<ChartPlan> primaryChartPlan = Optional.empty();
+        Optional<ChartPlan> baseCaseChartPlan = Optional.empty();
         List<ChartPlan> alternativeChartPlans = new ArrayList<>();
 
-        if (scenarioSet.primary().isPresent()) {
-            ElliottScenario primary = scenarioSet.primary().get();
-            String primaryTitle = String.format("Elliott Wave (%s) - %s - PRIMARY: %s (%s) - %.1f%% confidence", degree,
-                    series.getName(), primary.currentPhase(), primary.type(), primary.confidence().asPercentage());
-            BarSeriesLabelIndicator primaryWaveLabels = buildWaveLabelsFromScenario(series, primary);
-            primaryChartPlan = Optional.of(buildChartPlan(chartWorkflow, series, channelIndicator, primaryWaveLabels,
-                    swingCountAsNum, filteredSwingCountAsNum, ratioValue, confluenceIndicator, primaryTitle));
+        if (scenarioSet.base().isPresent()) {
+            ElliottScenario baseCase = scenarioSet.base().get();
+            String baseCaseTitle = String.format("Elliott Wave (%s) - %s - BASE CASE: %s (%s) - %.1f%% confidence",
+                    degree, series.getName(), baseCase.currentPhase(), baseCase.type(),
+                    baseCase.confidence().asPercentage());
+            BarSeriesLabelIndicator baseCaseWaveLabels = buildWaveLabelsFromScenario(series, baseCase);
+            baseCaseChartPlan = Optional.of(buildChartPlan(chartWorkflow, series, channelIndicator, baseCaseWaveLabels,
+                    swingCountAsNum, filteredSwingCountAsNum, ratioValue, confluenceIndicator, baseCaseTitle));
         }
 
         List<ElliottScenario> alternatives = scenarioSet.alternatives();
@@ -591,7 +592,7 @@ public class ElliottWaveAnalysis {
 
         return new AnalysisResult(series, degree, endIndex, phaseIndicator, invalidationIndicator, channelIndicator,
                 ratioIndicator, confluenceIndicator, swingCount, filteredSwingCount, scenarioIndicator, swingMetadata,
-                scenarioSet, ratioValue, swingCountAsNum, filteredSwingCountAsNum, primaryChartPlan,
+                scenarioSet, ratioValue, swingCountAsNum, filteredSwingCountAsNum, baseCaseChartPlan,
                 alternativeChartPlans);
     }
 
@@ -603,7 +604,7 @@ public class ElliottWaveAnalysis {
      * in a non-headless environment.
      * <p>
      * This method processes the chart plans contained in the analysis result and
-     * renders them using JFreeChart. The primary scenario chart (if present) is
+     * renders them using JFreeChart. The base case scenario chart (if present) is
      * displayed first, followed by alternative scenario charts.
      *
      * @param result the analysis result containing chart plans and analysis data
@@ -615,19 +616,20 @@ public class ElliottWaveAnalysis {
         ChartWorkflow chartWorkflow = new ChartWorkflow();
         boolean isHeadless = GraphicsEnvironment.isHeadless();
 
-        // Display and save primary scenario chart
-        if (result.primaryChartPlan().isPresent()) {
-            ChartPlan primaryPlan = result.primaryChartPlan().get();
-            ElliottScenario primary = result.scenarioSet().primary().orElseThrow();
-            String primaryWindowTitle = String.format("PRIMARY: %s (%s) - %.1f%% - %s", primary.currentPhase(),
-                    primary.type(), primary.confidence().asPercentage(), result.series().getName());
+        // Display and save base case scenario chart
+        if (result.baseCaseChartPlan().isPresent()) {
+            ChartPlan baseCasePlan = result.baseCaseChartPlan().get();
+            ElliottScenario baseCase = result.scenarioSet().base().orElseThrow();
+            String baseCaseWindowTitle = String.format("%s - BASE CASE: %s (%s) - %.1f%% - %s", result.degree(),
+                    baseCase.currentPhase(), baseCase.type(), baseCase.confidence().asPercentage(),
+                    result.series().getName());
 
             if (!isHeadless) {
-                chartWorkflow.display(primaryPlan, primaryWindowTitle);
+                chartWorkflow.display(baseCasePlan, baseCaseWindowTitle);
             }
-            chartWorkflow.save(primaryPlan, "temp/charts",
+            chartWorkflow.save(baseCasePlan, "temp/charts",
                     "elliott-wave-analysis-" + result.series().getName().toLowerCase() + "-"
-                            + result.degree().name().toLowerCase() + "-primary");
+                            + result.degree().name().toLowerCase() + "-base-case");
         }
 
         // Display and save alternative scenario charts
@@ -635,8 +637,8 @@ public class ElliottWaveAnalysis {
         for (int i = 0; i < result.alternativeChartPlans().size() && i < alternatives.size(); i++) {
             ChartPlan altPlan = result.alternativeChartPlans().get(i);
             ElliottScenario alt = alternatives.get(i);
-            String altWindowTitle = String.format("ALTERNATIVE %d: %s (%s) - %.1f%% - %s", i + 1, alt.currentPhase(),
-                    alt.type(), alt.confidence().asPercentage(), result.series().getName());
+            String altWindowTitle = String.format("%s - ALTERNATIVE %d: %s (%s) - %.1f%% - %s", result.degree(), i + 1,
+                    alt.currentPhase(), alt.type(), alt.confidence().asPercentage(), result.series().getName());
 
             if (!isHeadless) {
                 chartWorkflow.display(altPlan, altWindowTitle);
@@ -706,8 +708,8 @@ public class ElliottWaveAnalysis {
     }
 
     /**
-     * Logs detailed scenario analysis including primary scenario confidence scores
-     * and alternative scenarios.
+     * Logs detailed scenario analysis including base case scenario confidence
+     * scores and alternative scenarios.
      *
      * @param scenarioIndicator the scenario indicator
      * @param endIndex          the index to evaluate (typically the last bar)
@@ -719,8 +721,8 @@ public class ElliottWaveAnalysis {
         LOG.info("Strong consensus: {} | Consensus phase: {}", scenarioSet.hasStrongConsensus(),
                 scenarioSet.consensus());
 
-        if (scenarioSet.primary().isPresent()) {
-            logPrimaryScenario(scenarioSet.primary().get());
+        if (scenarioSet.base().isPresent()) {
+            logBaseCaseScenario(scenarioSet.base().get());
         }
 
         List<ElliottScenario> alternatives = scenarioSet.alternatives();
@@ -731,13 +733,13 @@ public class ElliottWaveAnalysis {
     }
 
     /**
-     * Logs detailed information about the primary scenario.
+     * Logs detailed information about the base case scenario.
      *
-     * @param primary the primary scenario
+     * @param baseCase the base case scenario
      */
-    private static void logPrimaryScenario(ElliottScenario primary) {
-        ElliottConfidence confidence = primary.confidence();
-        LOG.info("PRIMARY SCENARIO: {} ({})", primary.currentPhase(), primary.type());
+    private static void logBaseCaseScenario(ElliottScenario baseCase) {
+        ElliottConfidence confidence = baseCase.confidence();
+        LOG.info("BASE CASE SCENARIO: {} ({})", baseCase.currentPhase(), baseCase.type());
         LOG.info("  Overall confidence: {}% ({})", String.format("%.1f", confidence.asPercentage()),
                 confidence.isHighConfidence() ? "HIGH" : confidence.isLowConfidence() ? "LOW" : "MEDIUM");
         LOG.info("  Factor scores: Fibonacci={}% | Time={}% | Alternation={}% | Channel={}% | Completeness={}%",
@@ -748,8 +750,8 @@ public class ElliottWaveAnalysis {
                 String.format("%.1f", confidence.completenessScore().doubleValue() * 100));
         LOG.info("  Primary reason: {}", confidence.primaryReason());
         LOG.info("  Weakest factor: {}", confidence.weakestFactor());
-        LOG.info("  Direction: {} | Invalidation: {} | Target: {}", primary.isBullish() ? "BULLISH" : "BEARISH",
-                primary.invalidationPrice(), primary.primaryTarget());
+        LOG.info("  Direction: {} | Invalidation: {} | Target: {}", baseCase.isBullish() ? "BULLISH" : "BEARISH",
+                baseCase.invalidationPrice(), baseCase.primaryTarget());
     }
 
     /**
@@ -1147,14 +1149,16 @@ public class ElliottWaveAnalysis {
      * @param filteredSwingCount      the filtered swing count indicator
      * @param scenarioIndicator       the scenario indicator
      * @param swingMetadata           the swing metadata snapshot
-     * @param scenarioSet             the scenario set at endIndex
+     * @param scenarioSet             the scenario set at endIndex (use
+     *                                {@code scenarioSet.base()} to get the base
+     *                                case scenario)
      * @param ratioValue              indicator for Elliott ratio values (for
      *                                charting)
      * @param swingCountAsNum         indicator for raw swing count (as numeric, for
      *                                charting)
      * @param filteredSwingCountAsNum indicator for filtered swing count (as
      *                                numeric, for charting)
-     * @param primaryChartPlan        chart plan for the primary scenario (if
+     * @param baseCaseChartPlan       chart plan for the base case scenario (if
      *                                present)
      * @param alternativeChartPlans   chart plans for alternative scenarios
      */
@@ -1165,7 +1169,7 @@ public class ElliottWaveAnalysis {
             ElliottWaveCountIndicator filteredSwingCount, ElliottScenarioIndicator scenarioIndicator,
             ElliottSwingMetadata swingMetadata, ElliottScenarioSet scenarioSet, Indicator<Num> ratioValue,
             Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
-            Optional<ChartPlan> primaryChartPlan, List<ChartPlan> alternativeChartPlans) {
+            Optional<ChartPlan> baseCaseChartPlan, List<ChartPlan> alternativeChartPlans) {
     }
 
 }

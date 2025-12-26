@@ -437,10 +437,10 @@ public final class ElliottWaveFacade {
     }
 
     /**
-     * Gets the primary (highest confidence) scenario at the specified index.
+     * Gets the base case (highest confidence) scenario at the specified index.
      *
      * @param index bar index
-     * @return primary scenario, or empty if no scenarios exist
+     * @return base case scenario, or empty if no scenarios exist
      * @since 0.22.0
      */
     public Optional<ElliottScenario> primaryScenario(final int index) {
@@ -448,7 +448,7 @@ public final class ElliottWaveFacade {
     }
 
     /**
-     * Gets alternative scenarios (excluding primary) at the specified index.
+     * Gets alternative scenarios (excluding base case) at the specified index.
      *
      * @param index bar index
      * @return list of alternative scenarios sorted by confidence
@@ -469,7 +469,7 @@ public final class ElliottWaveFacade {
     public Num confidenceForPhase(final int index, final ElliottPhase phase) {
         final ElliottScenarioSet scenarioSet = scenarios().getValue(index);
         return scenarioSet.byPhase(phase)
-                .primary()
+                .base()
                 .map(ElliottScenario::confidenceScore)
                 .orElse(series.numFactory().zero());
     }

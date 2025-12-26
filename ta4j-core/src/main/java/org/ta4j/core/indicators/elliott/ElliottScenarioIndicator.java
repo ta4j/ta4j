@@ -129,18 +129,18 @@ public class ElliottScenarioIndicator extends CachedIndicator<ElliottScenarioSet
     }
 
     /**
-     * Convenience method to get the primary (highest confidence) scenario.
+     * Convenience method to get the base case (highest confidence) scenario.
      *
      * @param index bar index
-     * @return primary scenario, or empty if no scenarios exist
+     * @return base case scenario, or empty if no scenarios exist
      * @since 0.22.0
      */
     public Optional<ElliottScenario> primaryScenario(final int index) {
-        return getValue(index).primary();
+        return getValue(index).base();
     }
 
     /**
-     * Convenience method to get alternative scenarios (excluding primary).
+     * Convenience method to get alternative scenarios (excluding base case).
      *
      * @param index bar index
      * @return list of alternative scenarios sorted by confidence

@@ -44,7 +44,7 @@ class ElliottScenarioSetTest {
         assertThat(set.isEmpty()).isTrue();
         assertThat(set.size()).isZero();
         assertThat(set.barIndex()).isEqualTo(10);
-        assertThat(set.primary()).isEmpty();
+        assertThat(set.base()).isEmpty();
         assertThat(set.alternatives()).isEmpty();
     }
 
@@ -56,8 +56,8 @@ class ElliottScenarioSetTest {
 
         ElliottScenarioSet set = ElliottScenarioSet.of(List.of(low, medium, high), 0);
 
-        assertThat(set.primary()).isPresent();
-        assertThat(set.primary().get().id()).isEqualTo("high");
+        assertThat(set.base()).isPresent();
+        assertThat(set.base().get().id()).isEqualTo("high");
         assertThat(set.alternatives()).hasSize(2);
         assertThat(set.alternatives().get(0).id()).isEqualTo("medium");
         assertThat(set.alternatives().get(1).id()).isEqualTo("low");
@@ -72,7 +72,7 @@ class ElliottScenarioSetTest {
         ElliottScenarioSet filtered = set.byPhase(ElliottPhase.WAVE3);
 
         assertThat(filtered.size()).isEqualTo(1);
-        assertThat(filtered.primary().get().currentPhase()).isEqualTo(ElliottPhase.WAVE3);
+        assertThat(filtered.base().get().currentPhase()).isEqualTo(ElliottPhase.WAVE3);
     }
 
     @Test
@@ -85,7 +85,7 @@ class ElliottScenarioSetTest {
         ElliottScenarioSet impulseOnly = set.byType(ScenarioType.IMPULSE);
 
         assertThat(impulseOnly.size()).isEqualTo(1);
-        assertThat(impulseOnly.primary().get().type()).isEqualTo(ScenarioType.IMPULSE);
+        assertThat(impulseOnly.base().get().type()).isEqualTo(ScenarioType.IMPULSE);
     }
 
     @Test
@@ -173,7 +173,7 @@ class ElliottScenarioSetTest {
 
         ElliottScenarioSet valid = set.validAt(numFactory.numOf(95));
         assertThat(valid.size()).isEqualTo(1);
-        assertThat(valid.primary().get().id()).isEqualTo("s2");
+        assertThat(valid.base().get().id()).isEqualTo("s2");
     }
 
     @Test
@@ -185,7 +185,7 @@ class ElliottScenarioSetTest {
         String summary = set.summary();
 
         assertThat(summary).contains("2 scenario(s)");
-        assertThat(summary).contains("Primary=WAVE3");
+        assertThat(summary).contains("Base case=WAVE3");
         assertThat(summary).contains("1 alternative");
     }
 

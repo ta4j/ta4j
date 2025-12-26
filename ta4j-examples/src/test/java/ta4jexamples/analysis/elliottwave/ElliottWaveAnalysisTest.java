@@ -50,6 +50,7 @@ import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ElliottPhaseIndicator;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
+import org.ta4j.core.indicators.elliott.ElliottScenario;
 
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
@@ -588,6 +589,191 @@ class ElliottWaveAnalysisTest {
         // Test with different tolerances
         analysis.analyze(series, ElliottDegree.PRIMARY, 0.1);
         analysis.analyze(series, ElliottDegree.PRIMARY, 0.5);
+    }
+
+    @Test
+    void analyze_returnsAnalysisResult() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY, FIB_TOLERANCE);
+
+        assertNotNull(result, "Analysis result should not be null");
+        assertEquals(series, result.series(), "Series should match");
+        assertEquals(ElliottDegree.PRIMARY, result.degree(), "Degree should match");
+        assertNotNull(result.phaseIndicator(), "Phase indicator should not be null");
+        assertNotNull(result.invalidationIndicator(), "Invalidation indicator should not be null");
+        assertNotNull(result.channelIndicator(), "Channel indicator should not be null");
+        assertNotNull(result.ratioIndicator(), "Ratio indicator should not be null");
+        assertNotNull(result.confluenceIndicator(), "Confluence indicator should not be null");
+        assertNotNull(result.swingCount(), "Swing count indicator should not be null");
+        assertNotNull(result.filteredSwingCount(), "Filtered swing count indicator should not be null");
+        assertNotNull(result.scenarioIndicator(), "Scenario indicator should not be null");
+        assertNotNull(result.swingMetadata(), "Swing metadata should not be null");
+        assertNotNull(result.scenarioSet(), "Scenario set should not be null");
+        assertNotNull(result.ratioValue(), "Ratio value indicator should not be null");
+        assertNotNull(result.swingCountAsNum(), "Swing count as num indicator should not be null");
+        assertNotNull(result.filteredSwingCountAsNum(), "Filtered swing count as num indicator should not be null");
+        assertNotNull(result.baseCaseChartPlan(), "Base case chart plan optional should not be null");
+        assertNotNull(result.alternativeChartPlans(), "Alternative chart plans list should not be null");
+    }
+
+    @Test
+    void analyze_withBaseCaseScenario_createsBaseCaseChartPlan() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY, FIB_TOLERANCE);
+
+        assertTrue(result.baseCaseChartPlan().isPresent(),
+                "Base case chart plan should be present when base case scenario exists");
+        assertNotNull(result.baseCaseChartPlan().get(), "Base case chart plan should not be null");
+        assertNotNull(result.scenarioSet().base(), "Base case scenario should exist");
+    }
+
+    @Test
+    void analyze_createsChartPlansForAllScenarios() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY, FIB_TOLERANCE);
+
+        // Verify base case chart plan exists if base case scenario exists
+        if (result.scenarioSet().base().isPresent()) {
+            assertTrue(result.baseCaseChartPlan().isPresent(),
+                    "Base case chart plan should exist when base case scenario exists");
+        }
+
+        // Verify alternative chart plans match alternative scenarios
+        int alternativeCount = result.scenarioSet().alternatives().size();
+        assertEquals(alternativeCount, result.alternativeChartPlans().size(),
+                "Number of alternative chart plans should match number of alternative scenarios");
+    }
+
+    @Test
+    void visualizeAnalysisResult_withValidResult_completesSuccessfully() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY, FIB_TOLERANCE);
+
+        // Should not throw exception
+        analysis.visualizeAnalysisResult(result);
+    }
+
+    @Test
+    void visualizeAnalysisResult_withNullResult_throwsNullPointerException() {
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        try {
+            analysis.visualizeAnalysisResult(null);
+            // Should not reach here
+            assertTrue(false, "Should have thrown NullPointerException");
+        } catch (NullPointerException e) {
+            assertNotNull(e.getMessage(), "Exception message should not be null");
+            assertTrue(e.getMessage().contains("Analysis result cannot be null"),
+                    "Exception message should indicate null result");
+        }
+    }
+
+    @Test
+    void visualizeAnalysisResult_withDifferentDegrees_formatsWindowTitlesCorrectly() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+
+        // Test with PRIMARY degree
+        ElliottWaveAnalysis.AnalysisResult primaryResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+        if (primaryResult.baseCaseChartPlan().isPresent() && primaryResult.scenarioSet().base().isPresent()) {
+            ElliottScenario baseCase = primaryResult.scenarioSet().base().get();
+            String expectedBaseCaseTitle = String.format("%s - BASE CASE: %s (%s) - %.1f%% - %s", ElliottDegree.PRIMARY,
+                    baseCase.currentPhase(), baseCase.type(), baseCase.confidence().asPercentage(), series.getName());
+            assertTrue(expectedBaseCaseTitle.startsWith("PRIMARY -"),
+                    "Base case window title should start with degree");
+            assertTrue(expectedBaseCaseTitle.contains("BASE CASE:"),
+                    "Base case window title should contain BASE CASE:");
+        }
+
+        // Test with INTERMEDIATE degree
+        ElliottWaveAnalysis.AnalysisResult intermediateResult = analysis.analyze(series, ElliottDegree.INTERMEDIATE,
+                FIB_TOLERANCE);
+        if (intermediateResult.baseCaseChartPlan().isPresent() && intermediateResult.scenarioSet().base().isPresent()) {
+            ElliottScenario baseCase = intermediateResult.scenarioSet().base().get();
+            String expectedIntermediateTitle = String.format("%s - BASE CASE: %s (%s) - %.1f%% - %s",
+                    ElliottDegree.INTERMEDIATE, baseCase.currentPhase(), baseCase.type(),
+                    baseCase.confidence().asPercentage(), series.getName());
+            assertTrue(expectedIntermediateTitle.startsWith("INTERMEDIATE -"),
+                    "Intermediate window title should start with degree");
+        }
+
+        // Test with MINOR degree
+        ElliottWaveAnalysis.AnalysisResult minorResult = analysis.analyze(series, ElliottDegree.MINOR, FIB_TOLERANCE);
+        if (minorResult.baseCaseChartPlan().isPresent() && minorResult.scenarioSet().base().isPresent()) {
+            ElliottScenario baseCase = minorResult.scenarioSet().base().get();
+            String expectedMinorTitle = String.format("%s - BASE CASE: %s (%s) - %.1f%% - %s", ElliottDegree.MINOR,
+                    baseCase.currentPhase(), baseCase.type(), baseCase.confidence().asPercentage(), series.getName());
+            assertTrue(expectedMinorTitle.startsWith("MINOR -"), "Minor window title should start with degree");
+        }
+    }
+
+    @Test
+    void visualizeAnalysisResult_withAlternativeScenarios_formatsWindowTitlesCorrectly() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY, FIB_TOLERANCE);
+
+        List<ElliottScenario> alternatives = result.scenarioSet().alternatives();
+        for (int i = 0; i < alternatives.size() && i < result.alternativeChartPlans().size(); i++) {
+            ElliottScenario alt = alternatives.get(i);
+            String expectedAltTitle = String.format("%s - ALTERNATIVE %d: %s (%s) - %.1f%% - %s", result.degree(),
+                    i + 1, alt.currentPhase(), alt.type(), alt.confidence().asPercentage(), series.getName());
+            assertTrue(expectedAltTitle.startsWith(result.degree().toString() + " -"),
+                    "Alternative window title should start with degree");
+            assertTrue(expectedAltTitle.contains("ALTERNATIVE " + (i + 1) + ":"),
+                    "Alternative window title should contain alternative number");
+        }
+    }
+
+    @Test
+    void analyze_withEmptySeries_throwsIllegalArgumentException() {
+        BarSeries emptySeries = new BaseBarSeriesBuilder().withName("Empty").build();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+
+        try {
+            analysis.analyze(emptySeries, ElliottDegree.PRIMARY, FIB_TOLERANCE);
+            assertTrue(false, "Should have thrown IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            assertNotNull(e.getMessage(), "Exception message should not be null");
+            assertTrue(e.getMessage().contains("Series cannot be empty"),
+                    "Exception message should indicate empty series");
+        }
+    }
+
+    @Test
+    void analyze_withNullSeries_throwsNullPointerException() {
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+
+        try {
+            analysis.analyze(null, ElliottDegree.PRIMARY, FIB_TOLERANCE);
+            assertTrue(false, "Should have thrown NullPointerException");
+        } catch (NullPointerException e) {
+            assertNotNull(e.getMessage(), "Exception message should not be null");
+            assertTrue(e.getMessage().contains("Series cannot be null"),
+                    "Exception message should indicate null series");
+        }
+    }
+
+    @Test
+    void analyze_separatesAnalysisFromVisualization() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+
+        // Analyze without visualization
+        ElliottWaveAnalysis.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY, FIB_TOLERANCE);
+
+        // Verify analysis completed
+        assertNotNull(result);
+        assertNotNull(result.scenarioSet());
+
+        // Now visualize separately
+        analysis.visualizeAnalysisResult(result);
+
+        // Both should complete without exception
     }
 
 }

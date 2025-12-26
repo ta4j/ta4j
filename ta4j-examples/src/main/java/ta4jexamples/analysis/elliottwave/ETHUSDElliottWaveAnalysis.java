@@ -74,10 +74,9 @@ public class ETHUSDElliottWaveAnalysis {
         String dataSource = "Coinbase";
         String ticker = "ETH-USD";
         String barDuration = Duration.ofDays(1).toString();
-        String degree = ElliottDegree.PRIMARY.name();
         String startEpoch = String.valueOf(Instant.now().minus(365, ChronoUnit.DAYS).getEpochSecond());
 
-        ElliottWaveAnalysis.main(new String[] { dataSource, ticker, barDuration, degree, startEpoch });
+        ElliottWaveAnalysis.main(new String[] { dataSource, ticker, barDuration, startEpoch });
     }
 
 }

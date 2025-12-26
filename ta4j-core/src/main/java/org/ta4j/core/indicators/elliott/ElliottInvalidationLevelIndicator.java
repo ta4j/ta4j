@@ -101,7 +101,7 @@ public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {
     }
 
     private Num calculatePrimaryInvalidation(final ElliottScenarioSet scenarioSet) {
-        return scenarioSet.primary().map(ElliottScenario::invalidationPrice).orElse(NaN);
+        return scenarioSet.base().map(ElliottScenario::invalidationPrice).orElse(NaN);
     }
 
     private Num calculateConservativeInvalidation(final ElliottScenarioSet scenarioSet) {

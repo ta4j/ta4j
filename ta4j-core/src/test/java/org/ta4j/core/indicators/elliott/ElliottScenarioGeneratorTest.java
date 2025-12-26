@@ -144,12 +144,12 @@ class ElliottScenarioGeneratorTest {
 
         ElliottScenarioSet set = generator.generate(swings, ElliottDegree.MINOR, null);
 
-        // Primary scenario should have targets
-        if (set.primary().isPresent()) {
-            ElliottScenario primary = set.primary().get();
+        // Base case scenario should have targets
+        if (set.base().isPresent()) {
+            ElliottScenario baseCase = set.base().get();
             // Scenarios beyond wave 1 should have targets
-            if (primary.waveCount() >= 2) {
-                assertThat(primary.fibonacciTargets()).isNotEmpty();
+            if (baseCase.waveCount() >= 2) {
+                assertThat(baseCase.fibonacciTargets()).isNotEmpty();
             }
         }
     }

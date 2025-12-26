@@ -35,8 +35,8 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * Scenarios are maintained in descending order by confidence score. The
- * {@link #primary()} method returns the highest-confidence interpretation,
- * while {@link #alternatives()} provides all other valid scenarios.
+ * {@link #base()} method returns the highest-confidence interpretation (base
+ * case), while {@link #alternatives()} provides all other valid scenarios.
  *
  * @since 0.22.0
  */
@@ -110,15 +110,17 @@ public final class ElliottScenarioSet {
     }
 
     /**
+     * Returns the base case (highest-confidence) scenario.
+     *
      * @return the highest-confidence scenario, or empty if no scenarios exist
      * @since 0.22.0
      */
-    public Optional<ElliottScenario> primary() {
+    public Optional<ElliottScenario> base() {
         return scenarios.isEmpty() ? Optional.empty() : Optional.of(scenarios.get(0));
     }
 
     /**
-     * @return all scenarios except the primary, sorted by confidence descending
+     * @return all scenarios except the base case, sorted by confidence descending
      * @since 0.22.0
      */
     public List<ElliottScenario> alternatives() {
@@ -129,7 +131,7 @@ public final class ElliottScenarioSet {
     }
 
     /**
-     * @return all scenarios including primary, sorted by confidence descending
+     * @return all scenarios including base case, sorted by confidence descending
      * @since 0.22.0
      */
     public List<ElliottScenario> all() {
@@ -217,7 +219,8 @@ public final class ElliottScenarioSet {
     }
 
     /**
-     * Calculates the confidence spread between the primary and next-best scenario.
+     * Calculates the confidence spread between the base case and next-best
+     * scenario.
      *
      * @return confidence difference, or 0 if fewer than 2 scenarios exist
      * @since 0.22.0
@@ -226,12 +229,12 @@ public final class ElliottScenarioSet {
         if (scenarios.size() < 2) {
             return 0.0;
         }
-        final Num primary = scenarios.get(0).confidenceScore();
+        final Num baseCase = scenarios.get(0).confidenceScore();
         final Num secondary = scenarios.get(1).confidenceScore();
-        if (Num.isNaNOrNull(primary) || Num.isNaNOrNull(secondary)) {
+        if (Num.isNaNOrNull(baseCase) || Num.isNaNOrNull(secondary)) {
             return 0.0;
         }
-        return primary.minus(secondary).abs().doubleValue();
+        return baseCase.minus(secondary).abs().doubleValue();
     }
 
     /**
@@ -309,13 +312,13 @@ public final class ElliottScenarioSet {
         final StringBuilder sb = new StringBuilder();
         sb.append(scenarios.size()).append(" scenario(s): ");
 
-        final Optional<ElliottScenario> primaryOpt = primary();
-        if (primaryOpt.isPresent()) {
-            final ElliottScenario p = primaryOpt.get();
-            sb.append("Primary=")
-                    .append(p.currentPhase())
+        final Optional<ElliottScenario> baseCaseOpt = base();
+        if (baseCaseOpt.isPresent()) {
+            final ElliottScenario bc = baseCaseOpt.get();
+            sb.append("Base case=")
+                    .append(bc.currentPhase())
                     .append(" (")
-                    .append(String.format("%.1f%%", p.confidence().asPercentage()))
+                    .append(String.format("%.1f%%", bc.confidence().asPercentage()))
                     .append(")");
         }
 
