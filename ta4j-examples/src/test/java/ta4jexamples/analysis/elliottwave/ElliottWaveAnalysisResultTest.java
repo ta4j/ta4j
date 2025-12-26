@@ -89,7 +89,7 @@ class ElliottWaveAnalysisResultTest {
             assertTrue(result.baseCase().overallConfidence() >= 0 && result.baseCase().overallConfidence() <= 100,
                     "Confidence should be between 0 and 100");
             assertNotNull(result.baseCase().confidenceLevel(), "Confidence level should not be null");
-            assertTrue(result.baseCase().swings().size() >= 0, "Swings list should not be null");
+            assertNotNull(result.baseCase().swings(), "Swings list should not be null");
         }
     }
 
