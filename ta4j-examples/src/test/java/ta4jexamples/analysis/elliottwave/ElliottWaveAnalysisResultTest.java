@@ -1,0 +1,491 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * authors (see AUTHORS)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+package ta4jexamples.analysis.elliottwave;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.io.InputStream;
+import java.util.Base64;
+import java.util.List;
+import java.util.Optional;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
+
+import ta4jexamples.charting.display.SwingChartDisplayer;
+import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
+
+class ElliottWaveAnalysisResultTest {
+
+    private static final String OSSIFIED_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
+    private static final double FIB_TOLERANCE = 0.25;
+
+    @BeforeEach
+    void setUp() {
+        // Disable chart display to prevent windows from appearing in tests
+        System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
+    }
+
+    @Test
+    void from_withValidInputs_createsResult() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+                analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
+                analysisResult.baseCaseChartPlan(), analysisResult.alternativeChartPlans());
+
+        assertNotNull(result, "Result should not be null");
+        assertEquals(ElliottDegree.PRIMARY, result.degree(), "Degree should match");
+        assertEquals(endIndex, result.endIndex(), "End index should match");
+        assertNotNull(result.swingSnapshot(), "Swing snapshot should not be null");
+        assertNotNull(result.latestAnalysis(), "Latest analysis should not be null");
+        assertNotNull(result.scenarioSummary(), "Scenario summary should not be null");
+        assertNotNull(result.alternatives(), "Alternatives list should not be null");
+    }
+
+    @Test
+    void from_withBaseCaseScenario_includesBaseCase() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+                analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
+                analysisResult.baseCaseChartPlan(), analysisResult.alternativeChartPlans());
+
+        if (analysisResult.scenarioSet().base().isPresent()) {
+            assertNotNull(result.baseCase(), "Base case should not be null when scenario exists");
+            assertNotNull(result.baseCase().currentPhase(), "Base case phase should not be null");
+            assertNotNull(result.baseCase().type(), "Base case type should not be null");
+            assertTrue(result.baseCase().overallConfidence() >= 0 && result.baseCase().overallConfidence() <= 100,
+                    "Confidence should be between 0 and 100");
+            assertNotNull(result.baseCase().confidenceLevel(), "Confidence level should not be null");
+            assertTrue(result.baseCase().swings().size() >= 0, "Swings list should not be null");
+        }
+    }
+
+    @Test
+    void from_withBaseCaseChartPlan_encodesChartImage() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+                analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
+                analysisResult.baseCaseChartPlan(), analysisResult.alternativeChartPlans());
+
+        if (analysisResult.baseCaseChartPlan().isPresent()) {
+            assertNotNull(result.baseCaseChartImage(), "Base case chart image should not be null");
+            assertTrue(result.baseCaseChartImage().length() > 0, "Base case chart image should not be empty");
+            // Verify it's valid base64
+            assertTrue(isValidBase64(result.baseCaseChartImage()), "Base case chart image should be valid base64");
+        } else {
+            assertNull(result.baseCaseChartImage(), "Base case chart image should be null when no chart plan");
+        }
+    }
+
+    @Test
+    void from_withAlternativeChartPlans_encodesChartImages() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+                analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
+                analysisResult.baseCaseChartPlan(), analysisResult.alternativeChartPlans());
+
+        assertEquals(analysisResult.alternativeChartPlans().size(), result.alternativeChartImages().size(),
+                "Number of alternative chart images should match number of chart plans");
+
+        for (String chartImage : result.alternativeChartImages()) {
+            assertNotNull(chartImage, "Alternative chart image should not be null");
+            assertTrue(chartImage.length() > 0, "Alternative chart image should not be empty");
+            assertTrue(isValidBase64(chartImage), "Alternative chart image should be valid base64");
+        }
+    }
+
+    @Test
+    void from_withNullDegree_throwsNullPointerException() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        assertThrows(NullPointerException.class,
+                () -> ElliottWaveAnalysisResult.from(null, analysisResult.swingMetadata(),
+                        analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                        analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                        analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
+                        analysisResult.baseCaseChartPlan(), analysisResult.alternativeChartPlans()));
+    }
+
+    @Test
+    void from_withNullSwingMetadata_throwsNullPointerException() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        assertThrows(NullPointerException.class,
+                () -> ElliottWaveAnalysisResult.from(analysisResult.degree(), null, analysisResult.phaseIndicator(),
+                        analysisResult.ratioIndicator(), analysisResult.channelIndicator(),
+                        analysisResult.confluenceIndicator(), analysisResult.invalidationIndicator(),
+                        analysisResult.scenarioSet(), endIndex, analysisResult.baseCaseChartPlan(),
+                        analysisResult.alternativeChartPlans()));
+    }
+
+    @Test
+    void from_withNullPhaseIndicator_throwsNullPointerException() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        assertThrows(NullPointerException.class,
+                () -> ElliottWaveAnalysisResult.from(analysisResult.degree(), analysisResult.swingMetadata(), null,
+                        analysisResult.ratioIndicator(), analysisResult.channelIndicator(),
+                        analysisResult.confluenceIndicator(), analysisResult.invalidationIndicator(),
+                        analysisResult.scenarioSet(), endIndex, analysisResult.baseCaseChartPlan(),
+                        analysisResult.alternativeChartPlans()));
+    }
+
+    @Test
+    void from_withNullScenarioSet_throwsNullPointerException() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        assertThrows(NullPointerException.class,
+                () -> ElliottWaveAnalysisResult.from(analysisResult.degree(), analysisResult.swingMetadata(),
+                        analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                        analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                        analysisResult.invalidationIndicator(), null, endIndex, analysisResult.baseCaseChartPlan(),
+                        analysisResult.alternativeChartPlans()));
+    }
+
+    @Test
+    void from_withNullChartPlans_throwsNullPointerException() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        assertThrows(NullPointerException.class,
+                () -> ElliottWaveAnalysisResult.from(analysisResult.degree(), analysisResult.swingMetadata(),
+                        analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                        analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                        analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex, null,
+                        analysisResult.alternativeChartPlans()));
+
+        assertThrows(NullPointerException.class,
+                () -> ElliottWaveAnalysisResult.from(analysisResult.degree(), analysisResult.swingMetadata(),
+                        analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                        analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                        analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
+                        analysisResult.baseCaseChartPlan(), null));
+    }
+
+    @Test
+    void toJson_serializesResultToValidJson() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+                analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
+                analysisResult.baseCaseChartPlan(), analysisResult.alternativeChartPlans());
+
+        String json = result.toJson();
+        assertNotNull(json, "JSON should not be null");
+        assertTrue(json.length() > 0, "JSON should not be empty");
+        assertTrue(json.contains("\"degree\""), "JSON should contain degree field");
+        assertTrue(json.contains("\"endIndex\""), "JSON should contain endIndex field");
+        assertTrue(json.contains("\"swingSnapshot\""), "JSON should contain swingSnapshot field");
+        assertTrue(json.contains("\"latestAnalysis\""), "JSON should contain latestAnalysis field");
+        assertTrue(json.contains("\"scenarioSummary\""), "JSON should contain scenarioSummary field");
+    }
+
+    @Test
+    void swingSnapshot_fromMetadata_capturesCorrectData() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+                analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
+                analysisResult.baseCaseChartPlan(), analysisResult.alternativeChartPlans());
+
+        ElliottWaveAnalysisResult.SwingSnapshot snapshot = result.swingSnapshot();
+        assertNotNull(snapshot, "Swing snapshot should not be null");
+        assertEquals(analysisResult.swingMetadata().isValid(), snapshot.valid(), "Valid flag should match");
+        assertEquals(analysisResult.swingMetadata().size(), snapshot.swings(), "Swing count should match");
+        assertTrue(snapshot.high() >= snapshot.low(), "High should be >= low");
+    }
+
+    @Test
+    void latestAnalysis_fromIndicators_capturesCorrectData() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+                analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
+                analysisResult.baseCaseChartPlan(), analysisResult.alternativeChartPlans());
+
+        ElliottWaveAnalysisResult.LatestAnalysis latest = result.latestAnalysis();
+        assertNotNull(latest, "Latest analysis should not be null");
+        assertNotNull(latest.phase(), "Phase should not be null");
+        assertEquals(analysisResult.phaseIndicator().getValue(endIndex), latest.phase(), "Phase should match");
+        assertEquals(analysisResult.phaseIndicator().isImpulseConfirmed(endIndex), latest.impulseConfirmed(),
+                "Impulse confirmed should match");
+        assertEquals(analysisResult.phaseIndicator().isCorrectiveConfirmed(endIndex), latest.correctiveConfirmed(),
+                "Corrective confirmed should match");
+        assertNotNull(latest.ratioType(), "Ratio type should not be null");
+    }
+
+    @Test
+    void scenarioSummary_fromScenarioSet_capturesCorrectData() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+                analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
+                analysisResult.baseCaseChartPlan(), analysisResult.alternativeChartPlans());
+
+        ElliottWaveAnalysisResult.ScenarioSummary summary = result.scenarioSummary();
+        assertNotNull(summary, "Scenario summary should not be null");
+        assertNotNull(summary.summary(), "Summary string should not be null");
+        assertEquals(analysisResult.scenarioSet().hasStrongConsensus(), summary.strongConsensus(),
+                "Strong consensus should match");
+        assertEquals(analysisResult.scenarioSet().consensus(), summary.consensusPhase(),
+                "Consensus phase should match");
+    }
+
+    @Test
+    void baseCaseScenario_fromScenario_capturesCorrectData() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+                analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
+                analysisResult.baseCaseChartPlan(), analysisResult.alternativeChartPlans());
+
+        if (result.baseCase() != null) {
+            ElliottWaveAnalysisResult.BaseCaseScenario baseCase = result.baseCase();
+            assertNotNull(baseCase.currentPhase(), "Current phase should not be null");
+            assertNotNull(baseCase.type(), "Type should not be null");
+            assertTrue(baseCase.overallConfidence() >= 0 && baseCase.overallConfidence() <= 100,
+                    "Overall confidence should be between 0 and 100");
+            assertTrue(
+                    baseCase.confidenceLevel().equals("HIGH") || baseCase.confidenceLevel().equals("MEDIUM")
+                            || baseCase.confidenceLevel().equals("LOW"),
+                    "Confidence level should be HIGH, MEDIUM, or LOW");
+            assertTrue(baseCase.fibonacciScore() >= 0 && baseCase.fibonacciScore() <= 100,
+                    "Fibonacci score should be between 0 and 100");
+            assertTrue(baseCase.timeScore() >= 0 && baseCase.timeScore() <= 100,
+                    "Time score should be between 0 and 100");
+            assertTrue(baseCase.alternationScore() >= 0 && baseCase.alternationScore() <= 100,
+                    "Alternation score should be between 0 and 100");
+            assertTrue(baseCase.channelScore() >= 0 && baseCase.channelScore() <= 100,
+                    "Channel score should be between 0 and 100");
+            assertTrue(baseCase.completenessScore() >= 0 && baseCase.completenessScore() <= 100,
+                    "Completeness score should be between 0 and 100");
+            assertNotNull(baseCase.primaryReason(), "Primary reason should not be null");
+            assertNotNull(baseCase.weakestFactor(), "Weakest factor should not be null");
+            assertTrue(baseCase.direction().equals("BULLISH") || baseCase.direction().equals("BEARISH"),
+                    "Direction should be BULLISH or BEARISH");
+            assertNotNull(baseCase.swings(), "Swings list should not be null");
+        }
+    }
+
+    @Test
+    void alternativeScenario_fromScenario_capturesCorrectData() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+                analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
+                analysisResult.baseCaseChartPlan(), analysisResult.alternativeChartPlans());
+
+        for (ElliottWaveAnalysisResult.AlternativeScenario alt : result.alternatives()) {
+            assertNotNull(alt.currentPhase(), "Current phase should not be null");
+            assertNotNull(alt.type(), "Type should not be null");
+            assertTrue(alt.confidencePercent() >= 0 && alt.confidencePercent() <= 100,
+                    "Confidence percent should be between 0 and 100");
+            assertNotNull(alt.swings(), "Swings list should not be null");
+        }
+    }
+
+    @Test
+    void swingData_fromSwing_capturesCorrectData() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+                analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
+                analysisResult.baseCaseChartPlan(), analysisResult.alternativeChartPlans());
+
+        if (result.baseCase() != null && !result.baseCase().swings().isEmpty()) {
+            ElliottWaveAnalysisResult.SwingData swingData = result.baseCase().swings().get(0);
+            assertTrue(swingData.fromIndex() >= 0, "From index should be non-negative");
+            assertTrue(swingData.toIndex() >= 0, "To index should be non-negative");
+            assertTrue(swingData.toIndex() != swingData.fromIndex(), "To index should differ from from index");
+            assertTrue(swingData.fromPrice() >= 0 || Double.isNaN(swingData.fromPrice()),
+                    "From price should be non-negative or NaN");
+            assertTrue(swingData.toPrice() >= 0 || Double.isNaN(swingData.toPrice()),
+                    "To price should be non-negative or NaN");
+        }
+    }
+
+    @Test
+    void from_withEmptyAlternativeChartPlans_createsEmptyList() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+                analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
+                analysisResult.baseCaseChartPlan(), List.of());
+
+        assertNotNull(result.alternativeChartImages(), "Alternative chart images list should not be null");
+        assertEquals(0, result.alternativeChartImages().size(), "Alternative chart images list should be empty");
+    }
+
+    @Test
+    void from_withEmptyBaseCaseChartPlan_createsNullImage() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        int endIndex = series.getEndIndex();
+        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+                analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
+                analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
+                analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex, Optional.empty(),
+                analysisResult.alternativeChartPlans());
+
+        assertNull(result.baseCaseChartImage(), "Base case chart image should be null when no chart plan");
+    }
+
+    /**
+     * Helper method to load the ossified dataset used in tests.
+     */
+    private static BarSeries loadOssifiedSeries() {
+        try (InputStream stream = ElliottWaveAnalysisResultTest.class.getClassLoader()
+                .getResourceAsStream(OSSIFIED_OHLCV_RESOURCE)) {
+            assertNotNull(stream, "Missing resource: " + OSSIFIED_OHLCV_RESOURCE);
+
+            BarSeries loaded = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(stream);
+            assertNotNull(loaded, "Failed to deserialize BarSeries from resource");
+
+            BarSeries series = new BaseBarSeriesBuilder().withName("BTC-USD_PT1D@Coinbase (ossified)").build();
+            for (int i = 0; i < loaded.getBarCount(); i++) {
+                series.addBar(loaded.getBar(i));
+            }
+            return series;
+        } catch (Exception ex) {
+            throw new AssertionError("Failed to load dataset", ex);
+        }
+    }
+
+    /**
+     * Helper method to validate base64 encoding.
+     */
+    private static boolean isValidBase64(String str) {
+        try {
+            Base64.getDecoder().decode(str);
+            return true;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+}

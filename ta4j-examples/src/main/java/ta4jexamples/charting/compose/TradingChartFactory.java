@@ -42,7 +42,11 @@ import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.ui.Layer;
 import org.jfree.chart.ui.RectangleAnchor;
 import org.jfree.chart.ui.TextAnchor;
+import org.jfree.data.time.Day;
+import org.jfree.data.time.Hour;
 import org.jfree.data.time.Minute;
+import org.jfree.data.time.RegularTimePeriod;
+import org.jfree.data.time.Second;
 import org.jfree.data.time.TimeSeries;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.DefaultOHLCDataset;
@@ -1017,6 +1021,38 @@ public final class TradingChartFactory {
         return plot;
     }
 
+    /**
+     * Creates an appropriate RegularTimePeriod for a given date and bar duration.
+     * <p>
+     * Selects the time unit based on the bar duration to avoid duplicate time
+     * periods:
+     * <ul>
+     * <li>Daily or longer: uses {@link Day}</li>
+     * <li>Hourly (1-23 hours): uses {@link Hour}</li>
+     * <li>Minute-level (1-59 minutes): uses {@link Minute}</li>
+     * <li>Second-level or shorter: uses {@link Second}</li>
+     * </ul>
+     *
+     * @param barDate  the date/time for the time period
+     * @param duration the bar duration
+     * @return an appropriate RegularTimePeriod instance
+     */
+    private RegularTimePeriod createTimePeriod(Date barDate, Duration duration) {
+        long days = duration.toDays();
+        long hours = duration.toHours();
+        long minutes = duration.toMinutes();
+
+        if (days >= 1) {
+            return new Day(barDate);
+        } else if (hours >= 1) {
+            return new Hour(barDate);
+        } else if (minutes >= 1) {
+            return new Minute(barDate);
+        } else {
+            return new Second(barDate);
+        }
+    }
+
     private int calculateMainPlotWeight(int indicatorCount) {
         // Give main plot proportionally more space when there are more indicators
         // Base weight of 50, scale down slightly with more indicators
@@ -1047,6 +1083,7 @@ public final class TradingChartFactory {
         TimeSeriesCollection collection = new TimeSeriesCollection();
         TimeSeries currentSegment = null;
         int segmentIndex = 0;
+        Duration barDuration = series.getFirstBar().getTimePeriod();
 
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             Bar bar = series.getBar(i);
@@ -1062,7 +1099,8 @@ public final class TradingChartFactory {
                     currentSegment = new TimeSeries(segmentName);
                     segmentIndex++;
                 }
-                currentSegment.add(new Minute(barDate), value.doubleValue());
+                RegularTimePeriod timePeriod = createTimePeriod(barDate, barDuration);
+                currentSegment.addOrUpdate(timePeriod, value.doubleValue());
             } else {
                 // NaN encountered
                 if (connectGaps) {
@@ -1091,6 +1129,7 @@ public final class TradingChartFactory {
         TimeSeriesCollection collection = new TimeSeriesCollection();
         TimeSeries upperSeries = new TimeSeries("Channel upper");
         TimeSeries lowerSeries = new TimeSeries("Channel lower");
+        Duration barDuration = series.getFirstBar().getTimePeriod();
 
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             Bar bar = series.getBar(i);
@@ -1098,8 +1137,9 @@ public final class TradingChartFactory {
             Num upperValue = upper.getValue(i);
             Num lowerValue = lower.getValue(i);
             if (Num.isValid(upperValue) && Num.isValid(lowerValue)) {
-                upperSeries.add(new Minute(barDate), upperValue.doubleValue());
-                lowerSeries.add(new Minute(barDate), lowerValue.doubleValue());
+                RegularTimePeriod timePeriod = createTimePeriod(barDate, barDuration);
+                upperSeries.addOrUpdate(timePeriod, upperValue.doubleValue());
+                lowerSeries.addOrUpdate(timePeriod, lowerValue.doubleValue());
             }
         }
 
@@ -1120,6 +1160,7 @@ public final class TradingChartFactory {
         List<Integer> swingIndexes = new ArrayList<>(marker.getSwingPointIndexes());
         Collections.sort(swingIndexes);
         TimeSeries swingSeries = new TimeSeries(seriesName);
+        Duration barDuration = series.getFirstBar().getTimePeriod();
         for (Integer index : swingIndexes) {
             Num value = marker.getPriceIndicator().getValue(index);
             if (Num.isNaNOrNull(value)) {
@@ -1127,7 +1168,8 @@ public final class TradingChartFactory {
             }
             if (Num.isValid(value)) {
                 Date barDate = Date.from(series.getBar(index).getEndTime());
-                swingSeries.add(new Minute(barDate), value.doubleValue());
+                RegularTimePeriod timePeriod = createTimePeriod(barDate, barDuration);
+                swingSeries.addOrUpdate(timePeriod, value.doubleValue());
             }
         }
         if (swingSeries.getItemCount() > 0) {
@@ -1149,6 +1191,7 @@ public final class TradingChartFactory {
         }
 
         TimeSeries labelSeries = new TimeSeries(seriesName);
+        Duration barDuration = series.getFirstBar().getTimePeriod();
         for (BarLabel barLabel : labels) {
             int index = barLabel.barIndex();
             if (index < series.getBeginIndex() || index > series.getEndIndex()) {
@@ -1159,7 +1202,8 @@ public final class TradingChartFactory {
                 continue;
             }
             Date barDate = Date.from(series.getBar(index).getEndTime());
-            labelSeries.add(new Minute(barDate), value.doubleValue());
+            RegularTimePeriod timePeriod = createTimePeriod(barDate, barDuration);
+            labelSeries.addOrUpdate(timePeriod, value.doubleValue());
         }
 
         if (labelSeries.getItemCount() > 0) {
