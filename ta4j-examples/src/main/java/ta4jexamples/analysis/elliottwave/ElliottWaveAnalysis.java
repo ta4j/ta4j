@@ -407,10 +407,16 @@ public class ElliottWaveAnalysis {
             java.util.regex.Matcher matcher = dayPattern.matcher(durationStr);
 
             if (matcher.find()) {
-                int days = Integer.parseInt(matcher.group(1));
-                int hours = days * 24;
-                // Replace PT(\d+)D with PT(\d+)H
-                return durationStr.replaceFirst("PT\\d+D", "PT" + hours + "H");
+                try {
+                    int days = Integer.parseInt(matcher.group(1));
+                    int hours = days * 24;
+                    // Replace PT(\d+)D with PT(\d+)H
+                    return durationStr.replaceFirst("PT\\d+D", "PT" + hours + "H");
+                } catch (NumberFormatException e) {
+                    LOG.warn("Failed to parse day component from duration string '{}'", durationStr, e);
+                    // Fall back to returning the original duration string unchanged
+                    return durationStr;
+                }
             }
         }
 
