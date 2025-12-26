@@ -23,7 +23,6 @@
  */
 package ta4jexamples.analysis.elliottwave;
 
-import org.ta4j.core.indicators.elliott.ElliottDegree;
 import java.time.temporal.ChronoUnit;
 import java.time.Duration;
 import java.time.Instant;
@@ -54,7 +53,8 @@ import java.time.Instant;
  * </pre>
  * <p>
  * Charts will be saved to {@code temp/charts/} and displayed if running in a
- * non-headless environment.
+ * non-headless environment. The analysis results are printed as JSON to
+ * standard output.
  *
  * @see ElliottWaveAnalysis
  * @see org.ta4j.core.indicators.elliott.ElliottWaveFacade

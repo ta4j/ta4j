@@ -51,6 +51,8 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.ExclusionStrategy;
+import com.google.gson.FieldAttributes;
 
 /**
  * Domain model capturing all Elliott Wave analysis results currently logged via
@@ -135,11 +137,40 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
 
     /**
      * Serializes this analysis result to JSON using Gson.
+     * <p>
+     * By default, chart image data is excluded to keep the JSON size manageable.
+     * Use {@link #toJson(boolean)} with {@code true} to include chart images.
      *
-     * @return JSON representation of the analysis result
+     * @return JSON representation of the analysis result (without chart images)
      */
     public String toJson() {
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        return toJson(false);
+    }
+
+    /**
+     * Serializes this analysis result to JSON using Gson.
+     *
+     * @param includeChartData if {@code true}, includes base64-encoded PNG chart
+     *                         images; if {@code false}, excludes chart images to
+     *                         reduce JSON size
+     * @return JSON representation of the analysis result
+     */
+    public String toJson(boolean includeChartData) {
+        GsonBuilder builder = new GsonBuilder().setPrettyPrinting();
+        if (!includeChartData) {
+            builder.setExclusionStrategies(new ExclusionStrategy() {
+                @Override
+                public boolean shouldSkipField(FieldAttributes f) {
+                    return "baseCaseChartImage".equals(f.getName()) || "alternativeChartImages".equals(f.getName());
+                }
+
+                @Override
+                public boolean shouldSkipClass(Class<?> clazz) {
+                    return false;
+                }
+            });
+        }
+        Gson gson = builder.create();
         return gson.toJson(this);
     }
 

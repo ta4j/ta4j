@@ -615,6 +615,12 @@ class ElliottWaveAnalysisTest {
         assertNotNull(result.filteredSwingCountAsNum(), "Filtered swing count as num indicator should not be null");
         assertNotNull(result.baseCaseChartPlan(), "Base case chart plan optional should not be null");
         assertNotNull(result.alternativeChartPlans(), "Alternative chart plans list should not be null");
+        assertNotNull(result.structuredResult(), "Structured result should not be null");
+        assertNotNull(result.structuredResult().swingSnapshot(), "Structured result swing snapshot should not be null");
+        assertNotNull(result.structuredResult().latestAnalysis(),
+                "Structured result latest analysis should not be null");
+        assertNotNull(result.structuredResult().scenarioSummary(),
+                "Structured result scenario summary should not be null");
     }
 
     @Test
