@@ -42,6 +42,8 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.num.Num;
 
+import ta4jexamples.charting.display.SwingChartDisplayer;
+
 import java.awt.*;
 import java.util.Collection;
 import java.util.Comparator;
@@ -223,17 +225,29 @@ public class ChartWorkflowTest {
 
     @Test
     public void testDisplayTradingRecordChartWithIndicatorsRejectsNullVarargs() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.displayTradingRecordChart(barSeries,
-                "Test Strategy", tradingRecord, (Indicator<Num>[]) null));
+        // Disable chart display to prevent windows from appearing (works in both
+        // headless and non-headless)
+        System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
+        try {
+            assertThrows(IllegalArgumentException.class, () -> chartWorkflow.displayTradingRecordChart(barSeries,
+                    "Test Strategy", tradingRecord, (Indicator<Num>[]) null));
+        } finally {
+            System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
+        }
     }
 
     @Test
     public void testDisplayTradingRecordChartWithIndicatorsRejectsNullElement() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
-        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.displayTradingRecordChart(barSeries,
-                "Test Strategy", tradingRecord, closePrice, null));
+        // Disable chart display to prevent windows from appearing (works in both
+        // headless and non-headless)
+        System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
+        try {
+            ClosePriceIndicator closePrice = new ClosePriceIndicator(barSeries);
+            assertThrows(IllegalArgumentException.class, () -> chartWorkflow.displayTradingRecordChart(barSeries,
+                    "Test Strategy", tradingRecord, closePrice, null));
+        } finally {
+            System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
+        }
     }
 
     @Test

@@ -23,28 +23,33 @@
  */
 package ta4jexamples.charting.builder;
 
+import java.util.Collections;
+import java.util.ArrayList;
+import java.nio.file.Path;
+import java.util.EnumSet;
+import java.util.IdentityHashMap;
+import java.util.Optional;
+import java.util.Objects;
+import java.awt.Color;
+import java.util.List;
+import java.util.Set;
+
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.PriceChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.jfree.chart.JFreeChart;
 import org.ta4j.core.AnalysisCriterion;
-import org.ta4j.core.Bar;
+import org.ta4j.core.TradingRecord;
+import org.jfree.chart.JFreeChart;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.Trade;
+import org.ta4j.core.Bar;
 
-import java.awt.Color;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-
-import ta4jexamples.charting.AnalysisCriterionIndicator;
 import ta4jexamples.charting.compose.TradingChartFactory;
+import ta4jexamples.charting.AnalysisCriterionIndicator;
+import ta4jexamples.charting.ChannelBoundaryIndicator;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 
 /**
@@ -66,6 +71,13 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
 public final class ChartBuilder {
 
     private static final Logger LOG = LogManager.getLogger(ChartBuilder.class);
+    private static final Color DEFAULT_CHANNEL_LINE_COLOR = new Color(0x8FA3AD);
+    private static final float DEFAULT_CHANNEL_LINE_OPACITY = 0.5f;
+    private static final float DEFAULT_CHANNEL_MEDIAN_OPACITY = 0.35f;
+    private static final float DEFAULT_CHANNEL_MEDIAN_WIDTH = 0.9f;
+    private static final float DEFAULT_CHANNEL_LINE_WIDTH = 1.2f;
+    private static final float DEFAULT_CHANNEL_FILL_OPACITY = 0.25f;
+    private static final float[] DEFAULT_CHANNEL_MEDIAN_DASH = { 4.5f, 4.5f };
 
     private final ChartWorkflow chartWorkflow;
     private final TradingChartFactory chartFactory;
@@ -137,6 +149,7 @@ public final class ChartBuilder {
         if (consumed) {
             throw new IllegalStateException("This builder has already been consumed by a terminal operation.");
         }
+        validateChannelOverlays();
     }
 
     private void markConsumed() {
@@ -149,7 +162,7 @@ public final class ChartBuilder {
         }
     }
 
-    private BarSeries requireIndicatorSeries(Indicator<Num> indicator) {
+    private BarSeries requireIndicatorSeries(Indicator<?> indicator) {
         BarSeries series = indicator.getBarSeries();
         if (series == null) {
             throw new IllegalArgumentException("Indicator " + indicator + " is not attached to a BarSeries");
@@ -158,8 +171,94 @@ public final class ChartBuilder {
         return series;
     }
 
+    private void validateChannelOverlays() {
+        for (PlotContext plot : plots) {
+            Set<Indicator<?>> channelIndicators = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
+            for (ChannelOverlayContext channelOverlay : plot.channelOverlays) {
+                channelIndicators.add(channelOverlay.upperIndicator);
+                channelIndicators.add(channelOverlay.lowerIndicator);
+                if (channelOverlay.medianIndicator != null) {
+                    channelIndicators.add(channelOverlay.medianIndicator);
+                }
+            }
+            EnumSet<PriceChannel.Boundary> boundaries = EnumSet.noneOf(PriceChannel.Boundary.class);
+            boolean hasChannelBoundary = false;
+            for (OverlayContext overlay : plot.overlays) {
+                Indicator<Num> indicator = overlay.indicator;
+                if (indicator instanceof ChannelBoundaryIndicator boundaryIndicator) {
+                    if (channelIndicators.contains(indicator)) {
+                        continue;
+                    }
+                    hasChannelBoundary = true;
+                    boundaries.add(boundaryIndicator.boundary());
+                }
+            }
+            if (hasChannelBoundary && (!boundaries.contains(PriceChannel.Boundary.UPPER)
+                    || !boundaries.contains(PriceChannel.Boundary.LOWER))) {
+                throw new IllegalStateException(
+                        "Channel overlays require both upper and lower boundaries before charting.");
+            }
+        }
+    }
+
     private StyledOverlayStage addIndicatorOverlay(PlotContext context, Indicator<Num> indicator, OverlayType type) {
         return addIndicatorOverlay(context, indicator, type, false);
+    }
+
+    private StyledOverlayStage addChannelBoundaryOverlay(PlotContext context, Indicator<Num> indicator) {
+        StyledOverlayStage stage = addIndicatorOverlay(context, indicator, OverlayType.INDICATOR);
+        applyChannelBoundaryDefaults(stage, indicator);
+        return stage;
+    }
+
+    private StyledChannelStage addChannelOverlay(PlotContext context, Indicator<Num> upper, Indicator<Num> median,
+            Indicator<Num> lower) {
+        Objects.requireNonNull(upper, "Upper boundary indicator cannot be null");
+        Objects.requireNonNull(lower, "Lower boundary indicator cannot be null");
+        BarSeries upperSeries = requireIndicatorSeries(upper);
+        BarSeries lowerSeries = requireIndicatorSeries(lower);
+        if (!Objects.equals(upperSeries, lowerSeries)) {
+            throw new IllegalArgumentException("Channel boundaries must be attached to the same BarSeries");
+        }
+        if (median != null && !Objects.equals(upperSeries, requireIndicatorSeries(median))) {
+            throw new IllegalArgumentException("Channel median must be attached to the same BarSeries");
+        }
+
+        AxisRange combinedRange = AxisRange.forIndicator(upper).merge(AxisRange.forIndicator(lower));
+        AxisSlot slot = assignAxis(context, combinedRange, "channel", false);
+        if (slot == null) {
+            LOG.warn("Skipping channel overlay because its range does not align with existing axes on {} chart.",
+                    context.type);
+            return new StyledChannelStageImpl(context, null);
+        }
+
+        OverlayStyle lineStyle = OverlayStyle.defaultStyle(DEFAULT_CHANNEL_LINE_COLOR);
+        lineStyle.setLineWidth(DEFAULT_CHANNEL_LINE_WIDTH);
+        lineStyle.setOpacity(DEFAULT_CHANNEL_LINE_OPACITY);
+
+        OverlayStyle medianStyle = OverlayStyle.defaultStyle(DEFAULT_CHANNEL_LINE_COLOR);
+        medianStyle.setLineWidth(DEFAULT_CHANNEL_MEDIAN_WIDTH);
+        medianStyle.setOpacity(DEFAULT_CHANNEL_MEDIAN_OPACITY);
+        medianStyle.setDashPattern(DEFAULT_CHANNEL_MEDIAN_DASH);
+        ChannelFillStyle fillStyle = ChannelFillStyle.defaultStyle(DEFAULT_CHANNEL_LINE_COLOR,
+                DEFAULT_CHANNEL_FILL_OPACITY);
+
+        OverlayContext upperOverlay = OverlayContext.indicator(OverlayType.INDICATOR, upper, slot, lineStyle, null);
+        OverlayContext lowerOverlay = OverlayContext.indicator(OverlayType.INDICATOR, lower, slot, lineStyle, null);
+        OverlayContext medianOverlay = median != null
+                ? OverlayContext.indicator(OverlayType.INDICATOR, median, slot, medianStyle, null)
+                : null;
+
+        context.overlays.add(upperOverlay);
+        if (medianOverlay != null) {
+            context.overlays.add(medianOverlay);
+        }
+        context.overlays.add(lowerOverlay);
+
+        ChannelOverlayContext channelContext = new ChannelOverlayContext(upper, lower, median, slot, lineStyle,
+                medianStyle, fillStyle);
+        context.channelOverlays.add(channelContext);
+        return new StyledChannelStageImpl(context, channelContext);
     }
 
     private StyledOverlayStage addIndicatorOverlay(PlotContext context, Indicator<Num> indicator, OverlayType type,
@@ -175,6 +274,31 @@ public final class ChartBuilder {
         OverlayContext overlay = OverlayContext.indicator(type, indicator, slot, colorPalette.nextColor(), null);
         context.overlays.add(overlay);
         return new StyledOverlayStageImpl(context, overlay);
+    }
+
+    private void applyChannelBoundaryDefaults(StyledOverlayStage stage, Indicator<Num> indicator) {
+        if (!(indicator instanceof ChannelBoundaryIndicator boundaryIndicator)) {
+            return;
+        }
+        if (stage instanceof StyledOverlayStageImpl styledStage && styledStage.overlay == null) {
+            return;
+        }
+        switch (boundaryIndicator.boundary()) {
+        case UPPER -> stage.withLineColor(DEFAULT_CHANNEL_LINE_COLOR)
+                .withLineWidth(DEFAULT_CHANNEL_LINE_WIDTH)
+                .withOpacity(DEFAULT_CHANNEL_LINE_OPACITY);
+        case LOWER -> stage.withLineColor(DEFAULT_CHANNEL_LINE_COLOR)
+                .withLineWidth(DEFAULT_CHANNEL_LINE_WIDTH)
+                .withOpacity(DEFAULT_CHANNEL_LINE_OPACITY);
+        case MEDIAN -> {
+            stage.withLineColor(DEFAULT_CHANNEL_LINE_COLOR)
+                    .withLineWidth(DEFAULT_CHANNEL_MEDIAN_WIDTH)
+                    .withOpacity(DEFAULT_CHANNEL_MEDIAN_OPACITY);
+            if (stage instanceof StyledOverlayStageImpl styledStage) {
+                styledStage.overlay.style.setDashPattern(DEFAULT_CHANNEL_MEDIAN_DASH);
+            }
+        }
+        }
     }
 
     private ChartStage addTradingRecordOverlay(PlotContext context, TradingRecord tradingRecord) {
@@ -340,6 +464,35 @@ public final class ChartBuilder {
          * @return a styled overlay stage for configuring the overlay appearance
          */
         StyledOverlayStage withIndicatorOverlay(Indicator<Num> indicator);
+
+        /**
+         * Adds upper and lower channel boundaries as overlays on the current chart.
+         *
+         * @param upper the upper boundary indicator
+         * @param lower the lower boundary indicator
+         * @return a styled channel stage for configuring channel appearance
+         */
+        StyledChannelStage withChannelOverlay(Indicator<Num> upper, Indicator<Num> lower);
+
+        /**
+         * Adds upper, median, and lower channel boundaries as overlays on the current
+         * chart.
+         *
+         * @param upper  the upper boundary indicator
+         * @param median the median boundary indicator
+         * @param lower  the lower boundary indicator
+         * @return a styled channel stage for configuring channel appearance
+         */
+        StyledChannelStage withChannelOverlay(Indicator<Num> upper, Indicator<Num> median, Indicator<Num> lower);
+
+        /**
+         * Adds upper, median, and lower channel boundaries by wrapping a channel
+         * indicator.
+         *
+         * @param channelIndicator the indicator providing channel boundary values
+         * @return a styled channel stage for configuring channel appearance
+         */
+        StyledChannelStage withChannelOverlay(Indicator<? extends PriceChannel> channelIndicator);
 
         /**
          * Adds a trading record overlay to the current chart, displaying buy/sell
@@ -597,6 +750,32 @@ public final class ChartBuilder {
         }
 
         @Override
+        public StyledChannelStage withChannelOverlay(Indicator<Num> upper, Indicator<Num> lower) {
+            ensureActive();
+            return addChannelOverlay(context, upper, null, lower);
+        }
+
+        @Override
+        public StyledChannelStage withChannelOverlay(Indicator<Num> upper, Indicator<Num> median,
+                Indicator<Num> lower) {
+            ensureActive();
+            return addChannelOverlay(context, upper, median, lower);
+        }
+
+        @Override
+        public StyledChannelStage withChannelOverlay(Indicator<? extends PriceChannel> channelIndicator) {
+            ensureActive();
+            Objects.requireNonNull(channelIndicator, "Channel indicator cannot be null");
+            ChannelBoundaryIndicator upper = new ChannelBoundaryIndicator(channelIndicator,
+                    PriceChannel.Boundary.UPPER);
+            ChannelBoundaryIndicator median = new ChannelBoundaryIndicator(channelIndicator,
+                    PriceChannel.Boundary.MEDIAN);
+            ChannelBoundaryIndicator lower = new ChannelBoundaryIndicator(channelIndicator,
+                    PriceChannel.Boundary.LOWER);
+            return addChannelOverlay(context, upper, median, lower);
+        }
+
+        @Override
         public ChartStage withTradingRecordOverlay(TradingRecord tradingRecord) {
             ensureActive();
             return addTradingRecordOverlay(context, tradingRecord);
@@ -759,6 +938,58 @@ public final class ChartBuilder {
         }
     }
 
+    private final class StyledChannelStageImpl extends PlotStageImpl implements StyledChannelStage {
+
+        private final ChannelOverlayContext channelOverlay;
+
+        private StyledChannelStageImpl(PlotContext context, ChannelOverlayContext channelOverlay) {
+            super(context);
+            this.channelOverlay = channelOverlay;
+        }
+
+        @Override
+        public StyledChannelStage withLineColor(Color color) {
+            ensureChannel();
+            channelOverlay.setLineColor(color);
+            return this;
+        }
+
+        @Override
+        public StyledChannelStage withLineWidth(float width) {
+            ensureChannel();
+            channelOverlay.setLineWidth(width);
+            return this;
+        }
+
+        @Override
+        public StyledChannelStage withOpacity(float opacity) {
+            ensureChannel();
+            channelOverlay.setLineOpacity(opacity);
+            return this;
+        }
+
+        @Override
+        public StyledChannelStage withFillColor(Color color) {
+            ensureChannel();
+            channelOverlay.setFillColor(color);
+            return this;
+        }
+
+        @Override
+        public StyledChannelStage withFillOpacity(float opacity) {
+            ensureChannel();
+            channelOverlay.setFillOpacity(opacity);
+            return this;
+        }
+
+        private void ensureChannel() {
+            if (channelOverlay == null) {
+                throw new IllegalStateException(
+                        "Cannot style channel overlay because the previous channel request was rejected due to axis incompatibility.");
+            }
+        }
+    }
+
     private final class StyledMarkerStageImpl extends PlotStageImpl implements StyledMarkerStage {
 
         private final HorizontalMarkerContext marker;
@@ -797,6 +1028,7 @@ public final class ChartBuilder {
         private final TradingRecord tradingRecord;
         private final AxisModel axisModel;
         private final List<OverlayContext> overlays = new ArrayList<>();
+        private final List<ChannelOverlayContext> channelOverlays = new ArrayList<>();
         private final List<HorizontalMarkerContext> horizontalMarkers = new ArrayList<>();
 
         private PlotContext(PlotType type, BarSeries series, Indicator<Num> baseIndicator, TradingRecord tradingRecord,
@@ -884,16 +1116,18 @@ public final class ChartBuilder {
         private final Indicator<Num> baseIndicator;
         private final TradingRecord tradingRecord;
         private final List<OverlayDefinition> overlays;
+        private final List<ChannelOverlayDefinition> channelOverlays;
         private final List<HorizontalMarkerDefinition> horizontalMarkers;
 
         private PlotDefinition(PlotType type, BarSeries series, Indicator<Num> baseIndicator,
                 TradingRecord tradingRecord, List<OverlayDefinition> overlays,
-                List<HorizontalMarkerDefinition> horizontalMarkers) {
+                List<ChannelOverlayDefinition> channelOverlays, List<HorizontalMarkerDefinition> horizontalMarkers) {
             this.type = type;
             this.series = series;
             this.baseIndicator = baseIndicator;
             this.tradingRecord = tradingRecord;
             this.overlays = overlays;
+            this.channelOverlays = channelOverlays;
             this.horizontalMarkers = horizontalMarkers;
         }
 
@@ -902,12 +1136,17 @@ public final class ChartBuilder {
             for (OverlayContext overlayContext : context.overlays) {
                 overlayDefinitions.add(OverlayDefinition.fromContext(overlayContext));
             }
+            List<ChannelOverlayDefinition> channelDefinitions = new ArrayList<>();
+            for (ChannelOverlayContext channelContext : context.channelOverlays) {
+                channelDefinitions.add(ChannelOverlayDefinition.fromContext(channelContext));
+            }
             List<HorizontalMarkerDefinition> markerDefinitions = new ArrayList<>();
             for (HorizontalMarkerContext markerContext : context.horizontalMarkers) {
                 markerDefinitions.add(HorizontalMarkerDefinition.fromContext(markerContext));
             }
             return new PlotDefinition(context.type, context.series, context.baseIndicator, context.tradingRecord,
-                    Collections.unmodifiableList(overlayDefinitions), Collections.unmodifiableList(markerDefinitions));
+                    Collections.unmodifiableList(overlayDefinitions), Collections.unmodifiableList(channelDefinitions),
+                    Collections.unmodifiableList(markerDefinitions));
         }
 
         /**
@@ -958,12 +1197,144 @@ public final class ChartBuilder {
         }
 
         /**
+         * Returns an immutable list of channel overlay definitions for this plot.
+         *
+         * @return the list of channel overlay definitions
+         */
+        public List<ChannelOverlayDefinition> channelOverlays() {
+            return channelOverlays;
+        }
+
+        /**
          * Returns an immutable list of horizontal marker definitions for this plot.
          *
          * @return the list of horizontal marker definitions
          */
         public List<HorizontalMarkerDefinition> horizontalMarkers() {
             return horizontalMarkers;
+        }
+    }
+
+    /**
+     * Stage returned after adding a channel overlay that supports styling the
+     * channel lines and fill.
+     */
+    public interface StyledChannelStage extends ChartStage {
+
+        /**
+         * Sets the line color for the channel boundaries.
+         *
+         * @param color the color to use for channel lines
+         * @return this styled channel stage for method chaining
+         */
+        StyledChannelStage withLineColor(Color color);
+
+        /**
+         * Sets the line width for the channel boundaries.
+         *
+         * @param width the line width in pixels (must be greater than 0.05)
+         * @return this styled channel stage for method chaining
+         * @throws IllegalArgumentException if width is less than or equal to 0.05
+         */
+        StyledChannelStage withLineWidth(float width);
+
+        /**
+         * Sets the opacity for the channel boundary lines.
+         *
+         * @param opacity the opacity value between 0.0 (fully transparent) and 1.0
+         *                (fully opaque)
+         * @return this styled channel stage for method chaining
+         * @throws IllegalArgumentException if opacity is outside the range [0.0, 1.0]
+         */
+        StyledChannelStage withOpacity(float opacity);
+
+        /**
+         * Sets the fill color for the channel interior.
+         *
+         * @param color the color to use for the channel fill
+         * @return this styled channel stage for method chaining
+         */
+        StyledChannelStage withFillColor(Color color);
+
+        /**
+         * Sets the opacity for the channel fill.
+         *
+         * @param opacity the opacity value between 0.0 (fully transparent) and 1.0
+         *                (fully opaque)
+         * @return this styled channel stage for method chaining
+         * @throws IllegalArgumentException if opacity is outside the range [0.0, 1.0]
+         */
+        StyledChannelStage withFillOpacity(float opacity);
+    }
+
+    /**
+     * Immutable definition of a channel overlay fill between upper and lower
+     * boundaries.
+     */
+    public static final class ChannelOverlayDefinition {
+        private final Indicator<Num> upper;
+        private final Indicator<Num> lower;
+        private final AxisSlot axisSlot;
+        private final Color fillColor;
+        private final float fillOpacity;
+
+        private ChannelOverlayDefinition(Indicator<Num> upper, Indicator<Num> lower, AxisSlot axisSlot, Color fillColor,
+                float fillOpacity) {
+            this.upper = upper;
+            this.lower = lower;
+            this.axisSlot = axisSlot;
+            this.fillColor = fillColor;
+            this.fillOpacity = fillOpacity;
+        }
+
+        static ChannelOverlayDefinition fromContext(ChannelOverlayContext context) {
+            return new ChannelOverlayDefinition(context.upperIndicator, context.lowerIndicator, context.axisSlot,
+                    context.fillStyle.color(), context.fillStyle.opacity());
+        }
+
+        /**
+         * Returns the upper boundary indicator.
+         *
+         * @return the upper boundary indicator
+         */
+        public Indicator<Num> upper() {
+            return upper;
+        }
+
+        /**
+         * Returns the lower boundary indicator.
+         *
+         * @return the lower boundary indicator
+         */
+        public Indicator<Num> lower() {
+            return lower;
+        }
+
+        /**
+         * Returns the axis slot where the channel fill is rendered.
+         *
+         * @return the axis slot
+         */
+        public AxisSlot axisSlot() {
+            return axisSlot;
+        }
+
+        /**
+         * Returns the base fill color for the channel interior.
+         *
+         * @return the fill color
+         */
+        public Color fillColor() {
+            return fillColor;
+        }
+
+        /**
+         * Returns the opacity for the channel fill.
+         *
+         * @return the fill opacity
+         */
+        public float fillOpacity() {
+            return fillOpacity;
         }
     }
 
@@ -1051,6 +1422,56 @@ public final class ChartBuilder {
         }
     }
 
+    private static final class ChannelOverlayContext {
+        private final Indicator<Num> upperIndicator;
+        private final Indicator<Num> lowerIndicator;
+        private final Indicator<Num> medianIndicator;
+        private final AxisSlot axisSlot;
+        private final OverlayStyle lineStyle;
+        private final OverlayStyle medianStyle;
+        private final ChannelFillStyle fillStyle;
+        private boolean fillColorCustom;
+
+        private ChannelOverlayContext(Indicator<Num> upperIndicator, Indicator<Num> lowerIndicator,
+                Indicator<Num> medianIndicator, AxisSlot axisSlot, OverlayStyle lineStyle, OverlayStyle medianStyle,
+                ChannelFillStyle fillStyle) {
+            this.upperIndicator = upperIndicator;
+            this.lowerIndicator = lowerIndicator;
+            this.medianIndicator = medianIndicator;
+            this.axisSlot = axisSlot;
+            this.lineStyle = lineStyle;
+            this.medianStyle = medianStyle;
+            this.fillStyle = fillStyle;
+        }
+
+        private void setLineColor(Color color) {
+            lineStyle.setColor(color);
+            medianStyle.setColor(color);
+            if (!fillColorCustom) {
+                fillStyle.setColor(color);
+            }
+        }
+
+        private void setLineWidth(float width) {
+            lineStyle.setLineWidth(width);
+            medianStyle.setLineWidth(width);
+        }
+
+        private void setLineOpacity(float opacity) {
+            lineStyle.setOpacity(opacity);
+            medianStyle.setOpacity(opacity);
+        }
+
+        private void setFillColor(Color color) {
+            fillStyle.setColor(color);
+            fillColorCustom = true;
+        }
+
+        private void setFillOpacity(float opacity) {
+            fillStyle.setOpacity(opacity);
+        }
+    }
+
     private static final class OverlayContext {
         private final OverlayType type;
         private final Indicator<Num> indicator;
@@ -1072,6 +1493,11 @@ public final class ChartBuilder {
         static OverlayContext indicator(OverlayType type, Indicator<Num> indicator, AxisSlot axis, Color defaultColor,
                 String label) {
             return new OverlayContext(type, indicator, null, axis, OverlayStyle.defaultStyle(defaultColor), label);
+        }
+
+        static OverlayContext indicator(OverlayType type, Indicator<Num> indicator, AxisSlot axis, OverlayStyle style,
+                String label) {
+            return new OverlayContext(type, indicator, null, axis, style, label);
         }
 
         static OverlayContext tradingRecord(TradingRecord tradingRecord) {
@@ -1248,7 +1674,7 @@ public final class ChartBuilder {
             double max = Double.NEGATIVE_INFINITY;
             for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
                 Num value = indicator.getValue(i);
-                if (value == null || value.isNaN()) {
+                if (Num.isNaNOrNull(value)) {
                     continue;
                 }
                 double v = value.doubleValue();
@@ -1262,7 +1688,7 @@ public final class ChartBuilder {
             double min = Double.POSITIVE_INFINITY;
             double max = Double.NEGATIVE_INFINITY;
             for (Trade trade : tradingRecord.getTrades()) {
-                if (trade.getPricePerAsset() == null || trade.getPricePerAsset().isNaN()) {
+                if (Num.isNaNOrNull(trade.getPricePerAsset())) {
                     continue;
                 }
                 double price = trade.getPricePerAsset().doubleValue();
@@ -1307,16 +1733,18 @@ public final class ChartBuilder {
         private float lineWidth;
         private boolean connectGaps;
         private float opacity;
+        private float[] dashPattern;
 
-        private OverlayStyle(Color color, float lineWidth, boolean connectGaps, float opacity) {
+        private OverlayStyle(Color color, float lineWidth, boolean connectGaps, float opacity, float[] dashPattern) {
             this.color = color;
             this.lineWidth = lineWidth;
             this.connectGaps = connectGaps;
             this.opacity = opacity;
+            this.dashPattern = dashPattern == null ? null : dashPattern.clone();
         }
 
         static OverlayStyle defaultStyle(Color color) {
-            return new OverlayStyle(color, 1.6f, false, 1.0f);
+            return new OverlayStyle(color, 1.6f, false, 1.0f, null);
         }
 
         /**
@@ -1354,6 +1782,15 @@ public final class ChartBuilder {
          */
         public float opacity() {
             return opacity;
+        }
+
+        /**
+         * Returns the dash pattern for the overlay line, or null for solid lines.
+         *
+         * @return the dash pattern, or null
+         */
+        public float[] dashPattern() {
+            return dashPattern == null ? null : dashPattern.clone();
         }
 
         /**
@@ -1396,6 +1833,48 @@ public final class ChartBuilder {
          *                (fully opaque)
          * @throws IllegalArgumentException if opacity is outside the range [0.0, 1.0]
          */
+        public void setOpacity(float opacity) {
+            if (opacity < 0.0f || opacity > 1.0f) {
+                throw new IllegalArgumentException("Opacity must be between 0.0 and 1.0");
+            }
+            this.opacity = opacity;
+        }
+
+        /**
+         * Sets a dash pattern for the overlay line.
+         *
+         * @param dashPattern the dash pattern (null for solid lines)
+         */
+        public void setDashPattern(float[] dashPattern) {
+            this.dashPattern = dashPattern == null ? null : dashPattern.clone();
+        }
+    }
+
+    private static final class ChannelFillStyle {
+        private Color color;
+        private float opacity;
+
+        private ChannelFillStyle(Color color, float opacity) {
+            this.color = Objects.requireNonNull(color, "Color cannot be null");
+            setOpacity(opacity);
+        }
+
+        static ChannelFillStyle defaultStyle(Color color, float opacity) {
+            return new ChannelFillStyle(color, opacity);
+        }
+
+        public Color color() {
+            return color;
+        }
+
+        public float opacity() {
+            return opacity;
+        }
+
+        public void setColor(Color color) {
+            this.color = Objects.requireNonNull(color, "Color cannot be null");
+        }
+
         public void setOpacity(float opacity) {
             if (opacity < 0.0f || opacity > 1.0f) {
                 throw new IllegalArgumentException("Opacity must be between 0.0 and 1.0");

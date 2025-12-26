@@ -475,6 +475,7 @@ jobs:
         id: version
         if: steps.parsed.outputs.should_release == 'true'
         run: |
+          set -euo pipefail
           last="${{ steps.lasttag.outputs.last }}"
           current="${{ steps.pom_version.outputs.version }}"
           base="${{ steps.pom_version.outputs.base }}"
@@ -490,6 +491,7 @@ jobs:
           if [[ "$base" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
             base_norm="${base}.0"
           elif [[ "$base" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            : # already normalized
           else
             echo "POM version '$current' (base '$base') is not in a supported SemVer format (major.minor or major.minor.patch)." >&2
             exit 1
@@ -609,10 +611,7 @@ jobs:
     name: Trigger publish workflow (patch/minor)
     needs: analyze
     runs-on: ubuntu-latest
-    if: >
-      ${{ needs.analyze.outputs.should_release == 'true' &&
-         needs.analyze.outputs.bump != 'major'
-      }}
+    if: needs.analyze.outputs.should_release == 'true' && needs.analyze.outputs.bump != 'major'
     steps:
       - name: Trigger publish workflow
         uses: actions/github-script@v8
@@ -643,11 +642,7 @@ jobs:
     name: Trigger publish workflow (major after approval)
     needs: [analyze, approval]
     runs-on: ubuntu-latest
-    if: >
-      ${{ needs.analyze.outputs.should_release == 'true' &&
-         needs.analyze.outputs.bump == 'major' &&
-         needs.approval.result == 'success'
-      }}
+    if: needs.analyze.outputs.should_release == 'true' && needs.analyze.outputs.bump == 'major' && needs.approval.result == 'success'
     steps:
       - name: Trigger publish workflow
         uses: actions/github-script@v8

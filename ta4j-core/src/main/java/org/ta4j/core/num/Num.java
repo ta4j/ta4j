@@ -333,6 +333,21 @@ public interface Num extends Comparable<Num>, Serializable {
     }
 
     /**
+     * Checks if a Num value is valid (not null and not NaN).
+     *
+     * <p>
+     * This is the logical complement of {@link #isNaNOrNull(Num)}. A value is
+     * considered valid if it is non-null and represents a real number (not NaN).
+     *
+     * @param value the value to check, may be null
+     * @return true if the value is non-null and not NaN, false otherwise
+     * @since 0.22.0
+     */
+    static boolean isValid(Num value) {
+        return !isNaNOrNull(value);
+    }
+
+    /**
      * Converts this {@code Num} to a {@code BigDecimal}.
      *
      * @return this {@code Num} converted to a {@code BigDecimal}

@@ -1,0 +1,22 @@
+name: Lint GitHub Actions Workflows
+permissions:
+  contents: read
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+jobs:
+  actionlint:
+    name: actionlint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Run actionlint
+        uses: rhysd/actionlint@v1.7.9
