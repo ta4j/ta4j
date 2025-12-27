@@ -32,6 +32,25 @@ import org.ta4j.core.num.Num;
  * median. Implementations may return {@code NaN} for the median when it is not
  * defined.
  *
+ * <p>
+ * Common implementations include:
+ * <ul>
+ * <li>{@link org.ta4j.core.indicators.elliott.ElliottChannel} - Elliott Wave
+ * price channels for wave validation</li>
+ * <li>Bollinger Bands - Statistical channels based on standard deviation</li>
+ * <li>Keltner Channels - Volatility-based channels using ATR</li>
+ * </ul>
+ *
+ * <p>
+ * The interface provides default implementations for common operations:
+ * <ul>
+ * <li>{@link #isValid()} - Checks if channel boundaries are valid numbers</li>
+ * <li>{@link #width()} - Calculates the distance between upper and lower
+ * boundaries</li>
+ * <li>{@link #contains(Num, Num)} - Tests if a price is within the channel,
+ * optionally with tolerance</li>
+ * </ul>
+ *
  * @since 0.22.0
  */
 public interface PriceChannel {

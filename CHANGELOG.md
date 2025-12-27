@@ -67,6 +67,7 @@
 - Fixed GitHub Actions `release-scheduler.yml` failure in the `Compute new version` step (bash syntax) and hardened job `if:` conditions.
 - Fixed **SuperTrendUpperBandIndicator** NaN contamination by recovering once ATR leaves its unstable window and aligning unstable-bar counts across SuperTrend components so values stabilize after ATR warms up.
 - **Consistent NaN handling across all SuperTrend indicators**: `SuperTrendLowerBandIndicator` and `SuperTrendIndicator` now return NaN during the unstable period (when ATR values are not yet reliable), consistent with `SuperTrendUpperBandIndicator` and the project convention that indicators should return NaN during their unstable period. Previously, these indicators returned zero during the unstable period, which was inconsistent with other indicators and could lead to misleading calculations.
+- **Test improvements for headless environment compatibility**: Updated strategy and charting tests (`RSI2StrategyTest`, `CCICorrectionStrategyTest`, `GlobalExtremaStrategyTest`, `MovingMomentumStrategyTest`, `ChartWorkflowTest`) to use `SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY` instead of `Assume.assumeFalse()` for headless environment checks. This allows tests to run reliably in both headless and non-headless environments without skipping, improving CI/CD compatibility and test coverage.
 
 ## 0.21.0 (2025-11-29) Skipped 0.20.0 due to a double version incrementing bug in the release-scheduler workflow
 
