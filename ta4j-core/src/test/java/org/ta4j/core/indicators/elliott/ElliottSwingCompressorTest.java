@@ -27,8 +27,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
 
 class ElliottSwingCompressorTest {
 
@@ -63,7 +65,7 @@ class ElliottSwingCompressorTest {
         var indicator = new ElliottSwingIndicator(series, 1, ElliottDegree.MINOR);
         var swings = indicator.getValue(series.getEndIndex());
 
-        var compressor = new ElliottSwingCompressor((org.ta4j.core.num.Num) null, 2);
+        var compressor = new ElliottSwingCompressor((Num) null, 2);
         var compressed = compressor.compress(swings);
 
         assertThat(swings).isNotEmpty();
@@ -162,8 +164,7 @@ class ElliottSwingCompressorTest {
 
     @Test
     void barSeriesConstructorRejectsNullSeries() {
-        assertThatThrownBy(() -> new ElliottSwingCompressor((org.ta4j.core.BarSeries) null))
-                .isInstanceOf(NullPointerException.class)
+        assertThatThrownBy(() -> new ElliottSwingCompressor((BarSeries) null)).isInstanceOf(NullPointerException.class)
                 .hasMessageContaining("series cannot be null");
     }
 

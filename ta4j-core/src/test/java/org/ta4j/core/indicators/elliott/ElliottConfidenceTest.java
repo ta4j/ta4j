@@ -28,6 +28,7 @@ import static org.assertj.core.api.Assertions.within;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -94,8 +95,8 @@ class ElliottConfidenceTest {
         ElliottConfidence valid = createConfidence(0.5);
         assertThat(valid.isValid()).isTrue();
 
-        ElliottConfidence invalid = new ElliottConfidence(org.ta4j.core.num.NaN.NaN, numFactory.zero(),
-                numFactory.zero(), numFactory.zero(), numFactory.zero(), numFactory.zero(), "Invalid");
+        ElliottConfidence invalid = new ElliottConfidence(NaN.NaN, numFactory.zero(), numFactory.zero(),
+                numFactory.zero(), numFactory.zero(), numFactory.zero(), "Invalid");
         assertThat(invalid.isValid()).isFalse();
     }
 

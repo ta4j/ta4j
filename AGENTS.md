@@ -51,6 +51,7 @@
 - When adding tests, place them in the mirrored package inside `src/test/java` and use existing test utilities/helpers when available.
 - Group imports, fields, and methods by logical purpose. Within each group, order lines by decreasing length ("reverse Christmas tree": longer lines above shorter ones).
 - **Always use loggers instead of System.out/System.err.** Use `org.apache.logging.log4j.LogManager` and `org.apache.logging.log4j.Logger`. Create a static logger: `private static final Logger LOG = LogManager.getLogger(ClassName.class);`. Use parameterized logging: `LOG.error("Message: {} - {}", param1, param2);` instead of string concatenation.
+- **Avoid fully qualified namespaces in code.** Always use imports instead of fully qualified class names (e.g., use `Num` instead of `org.ta4j.core.num.Num`, `BarSeries` instead of `org.ta4j.core.BarSeries`). This improves readability and maintains consistency with the codebase style. Add the necessary import statements at the top of the file rather than using fully qualified names in variable initializations, method calls, or type casts.
 
 ## Domain Model and DTO class Design
 Favor immutability and simplicity: record > public final fields > private fields + getters/setters.
