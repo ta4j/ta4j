@@ -29,25 +29,32 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.RoundingMode;
+import java.math.BigDecimal;
 import java.io.InputStream;
 import java.util.Optional;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.indicators.elliott.ElliottRatio.RatioType;
+import org.ta4j.core.indicators.elliott.ElliottScenarioSet;
+import org.ta4j.core.indicators.elliott.ElliottConfidence;
+import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
+import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.BarSeries;
 
+import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 import ta4jexamples.charting.display.SwingChartDisplayer;
 
-import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
-
-import com.google.gson.JsonParser;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 class ElliottWaveAnalysisResultTest {
 
@@ -94,6 +101,8 @@ class ElliottWaveAnalysisResultTest {
             assertNotNull(result.baseCase().type(), "Base case type should not be null");
             assertTrue(result.baseCase().overallConfidence() >= 0 && result.baseCase().overallConfidence() <= 100,
                     "Confidence should be between 0 and 100");
+            assertTrue(result.baseCase().scenarioProbability() >= 0 && result.baseCase().scenarioProbability() <= 1.0,
+                    "Scenario probability should be between 0 and 1");
             assertNotNull(result.baseCase().confidenceLevel(), "Confidence level should not be null");
             assertNotNull(result.baseCase().swings(), "Swings list should not be null");
         }
@@ -376,7 +385,80 @@ class ElliottWaveAnalysisResultTest {
             assertNotNull(alt.type(), "Type should not be null");
             assertTrue(alt.confidencePercent() >= 0 && alt.confidencePercent() <= 100,
                     "Confidence percent should be between 0 and 100");
+            assertTrue(alt.scenarioProbability() >= 0 && alt.scenarioProbability() <= 1.0,
+                    "Scenario probability should be between 0 and 1");
             assertNotNull(alt.swings(), "Swings list should not be null");
+        }
+    }
+
+    @Test
+    void scenarioProbabilities_sumToOne() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        ElliottWaveAnalysisResult result = analysisResult.structuredResult();
+        if (result.baseCase() == null) {
+            assertTrue(result.alternatives().isEmpty(), "No base case implies no alternatives");
+            return;
+        }
+
+        double totalProbability = result.baseCase().scenarioProbability();
+        for (ElliottWaveAnalysisResult.AlternativeScenario alt : result.alternatives()) {
+            totalProbability += alt.scenarioProbability();
+        }
+        assertEquals(1.0, totalProbability, 0.0001, "Scenario probabilities should sum to 1");
+    }
+
+    @Test
+    void scenarioProbabilities_preferConsensusOverlap() {
+        ElliottScenario scenarioA = buildScenario("A", 0.8, ElliottPhase.WAVE5, ScenarioType.IMPULSE, true);
+        ElliottScenario scenarioB = buildScenario("B", 0.6, ElliottPhase.WAVE5, ScenarioType.IMPULSE, true);
+        ElliottScenario scenarioC = buildScenario("C", 0.4, ElliottPhase.CORRECTIVE_C, ScenarioType.CORRECTIVE_ZIGZAG,
+                false);
+
+        ElliottScenarioSet scenarioSet = ElliottScenarioSet.of(List.of(scenarioA, scenarioB, scenarioC), 0);
+        Map<String, Double> probabilities = ElliottWaveAnalysisResult.computeScenarioProbabilities(scenarioSet);
+
+        double normalizedConsensus = (0.8 + 0.6) / 1.8;
+        double normalizedOutlier = 0.4 / 1.8;
+
+        double probA = probabilities.get("A");
+        double probB = probabilities.get("B");
+        double probC = probabilities.get("C");
+
+        assertEquals(1.0, probA + probB + probC, 0.0001, "Scenario probabilities should sum to 1");
+        assertTrue(probA > probB, "Higher confidence should remain higher within a consensus group");
+        assertTrue(probA + probB > normalizedConsensus, "Consensus overlap should boost aligned scenarios");
+        assertTrue(probC < normalizedOutlier, "Outlier scenarios should receive less than raw confidence");
+    }
+
+    @Test
+    void toJson_roundsScenarioProbabilityToTwoDecimals() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        ElliottWaveAnalysisResult result = analysisResult.structuredResult();
+        String json = result.toJson();
+        JsonObject root = JsonParser.parseString(json).getAsJsonObject();
+
+        if (result.baseCase() != null) {
+            double expected = roundScenarioProbability(result.baseCase().scenarioProbability());
+            double actual = root.getAsJsonObject("baseCase").get("scenarioProbability").getAsDouble();
+            assertEquals(expected, actual, 0.0001, "Base case scenario probability should be rounded");
+        }
+        if (!result.alternatives().isEmpty()) {
+            ElliottWaveAnalysisResult.AlternativeScenario alt = result.alternatives().get(0);
+            double expected = roundScenarioProbability(alt.scenarioProbability());
+            double actual = root.getAsJsonArray("alternatives")
+                    .get(0)
+                    .getAsJsonObject()
+                    .get("scenarioProbability")
+                    .getAsDouble();
+            assertEquals(expected, actual, 0.0001, "Alternative scenario probability should be rounded");
         }
     }
 
@@ -444,6 +526,28 @@ class ElliottWaveAnalysisResultTest {
                 analysisResult.alternativeChartPlans());
 
         assertNull(result.baseCaseChartImage(), "Base case chart image should be null when no chart plan");
+    }
+
+    /**
+     * Helper method to build synthetic scenarios for probability tests.
+     */
+    private static ElliottScenario buildScenario(String id, double confidence, ElliottPhase phase, ScenarioType type,
+            boolean bullish) {
+        DoubleNum score = DoubleNum.valueOf(confidence);
+        ElliottConfidence confidenceScore = new ElliottConfidence(score, score, score, score, score, score,
+                "Test confidence");
+        return ElliottScenario.builder()
+                .id(id)
+                .currentPhase(phase)
+                .confidence(confidenceScore)
+                .degree(ElliottDegree.PRIMARY)
+                .type(type)
+                .bullishDirection(bullish)
+                .build();
+    }
+
+    private static double roundScenarioProbability(double value) {
+        return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).doubleValue();
     }
 
     /**

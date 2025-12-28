@@ -729,6 +729,7 @@ public class ElliottWaveAnalysis {
             LOG.info("BASE CASE SCENARIO: {} ({})", baseCase.currentPhase(), baseCase.type());
             LOG.info("  Overall confidence: {}% ({})", String.format("%.1f", baseCase.overallConfidence()),
                     baseCase.confidenceLevel());
+            LOG.info("  Scenario probability: {}%", String.format("%.1f", baseCase.scenarioProbability() * 100.0));
             LOG.info("  Factor scores: Fibonacci={}% | Time={}% | Alternation={}% | Channel={}% | Completeness={}%",
                     String.format("%.1f", baseCase.fibonacciScore()), String.format("%.1f", baseCase.timeScore()),
                     String.format("%.1f", baseCase.alternationScore()), String.format("%.1f", baseCase.channelScore()),
@@ -745,8 +746,9 @@ public class ElliottWaveAnalysis {
             LOG.info("ALTERNATIVE SCENARIOS ({}):", alternatives.size());
             for (int i = 0; i < Math.min(alternatives.size(), 3); i++) {
                 ElliottWaveAnalysisResult.AlternativeScenario alt = alternatives.get(i);
-                LOG.info("  {}. {} ({}) - {}% confidence", i + 1, alt.currentPhase(), alt.type(),
-                        String.format("%.1f", alt.confidencePercent()));
+                LOG.info("  {}. {} ({}) - {}% confidence | {}% probability", i + 1, alt.currentPhase(), alt.type(),
+                        String.format("%.1f", alt.confidencePercent()),
+                        String.format("%.1f", alt.scenarioProbability() * 100.0));
             }
         }
         LOG.info("======================================");

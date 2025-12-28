@@ -23,37 +23,43 @@
  */
 package ta4jexamples.analysis.elliottwave;
 
+import java.math.RoundingMode;
+import java.math.BigDecimal;
+import java.io.IOException;
 import java.util.Optional;
+import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.Base64;
-import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
-import org.ta4j.core.indicators.elliott.ElliottChannel;
-import org.ta4j.core.indicators.elliott.ElliottChannelIndicator;
-import org.ta4j.core.indicators.elliott.ElliottConfidence;
-import org.ta4j.core.indicators.elliott.ElliottConfluenceIndicator;
-import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottInvalidationIndicator;
-import org.ta4j.core.indicators.elliott.ElliottPhase;
-import org.ta4j.core.indicators.elliott.ElliottPhaseIndicator;
-import org.ta4j.core.indicators.elliott.ElliottRatio;
+import org.ta4j.core.indicators.elliott.ElliottConfluenceIndicator;
+import org.ta4j.core.indicators.elliott.ElliottChannelIndicator;
 import org.ta4j.core.indicators.elliott.ElliottRatio.RatioType;
+import org.ta4j.core.indicators.elliott.ElliottPhaseIndicator;
 import org.ta4j.core.indicators.elliott.ElliottRatioIndicator;
-import org.ta4j.core.indicators.elliott.ElliottScenario;
-import org.ta4j.core.indicators.elliott.ElliottScenarioSet;
-import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottSwingMetadata;
+import org.ta4j.core.indicators.elliott.ElliottScenarioSet;
+import org.ta4j.core.indicators.elliott.ElliottConfidence;
+import org.ta4j.core.indicators.elliott.ElliottScenario;
+import org.ta4j.core.indicators.elliott.ElliottChannel;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
+import org.ta4j.core.indicators.elliott.ElliottSwing;
+import org.ta4j.core.indicators.elliott.ElliottRatio;
+import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.num.Num;
 
-import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.charting.workflow.ChartWorkflow;
+import ta4jexamples.charting.builder.ChartPlan;
 
-import com.google.gson.stream.JsonWriter;
-import com.google.gson.stream.JsonReader;
-import com.google.gson.stream.JsonToken;
+import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.ExclusionStrategy;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonWriter;
+import com.google.gson.stream.JsonToken;
 import com.google.gson.FieldAttributes;
 import com.google.gson.GsonBuilder;
 import com.google.gson.TypeAdapter;
@@ -84,6 +90,11 @@ import com.google.gson.Gson;
 public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, SwingSnapshot swingSnapshot,
         LatestAnalysis latestAnalysis, ScenarioSummary scenarioSummary, BaseCaseScenario baseCase,
         List<AlternativeScenario> alternatives, String baseCaseChartImage, List<String> alternativeChartImages) {
+    private static final double SCENARIO_TYPE_OVERLAP_WEIGHT = 0.3;
+    private static final double CONSENSUS_ADJUSTMENT_WEIGHT = 0.4;
+    private static final double DIRECTION_OVERLAP_WEIGHT = 0.2;
+    private static final double PHASE_OVERLAP_WEIGHT = 0.5;
+
     private static final TypeAdapter<Double> NULLING_DOUBLE_ADAPTER = new TypeAdapter<>() {
         @Override
         public void write(JsonWriter out, Double value) throws IOException {
@@ -142,10 +153,15 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
         LatestAnalysis latest = LatestAnalysis.from(phaseIndicator, ratioIndicator, channelIndicator,
                 confluenceIndicator, invalidationIndicator, endIndex);
         ScenarioSummary summary = ScenarioSummary.from(scenarioSet);
-        BaseCaseScenario baseCase = scenarioSet.base().map(BaseCaseScenario::from).orElse(null);
+        Map<String, Double> scenarioProbabilities = computeScenarioProbabilities(scenarioSet);
+        BaseCaseScenario baseCase = scenarioSet.base()
+                .map(scenario -> BaseCaseScenario.from(scenario,
+                        scenarioProbabilities.getOrDefault(scenario.id(), 0.0)))
+                .orElse(null);
         List<AlternativeScenario> alternatives = scenarioSet.alternatives()
                 .stream()
-                .map(AlternativeScenario::from)
+                .map(scenario -> AlternativeScenario.from(scenario,
+                        scenarioProbabilities.getOrDefault(scenario.id(), 0.0)))
                 .toList();
 
         ChartWorkflow chartWorkflow = new ChartWorkflow();
@@ -293,28 +309,30 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
     /**
      * Base case scenario details.
      *
-     * @param currentPhase      the phase this scenario assigns to current price
-     *                          action
-     * @param type              pattern type classification
-     * @param overallConfidence overall confidence percentage (0-100)
-     * @param confidenceLevel   confidence level (HIGH, MEDIUM, or LOW)
-     * @param fibonacciScore    Fibonacci proximity score as percentage (0-100)
-     * @param timeScore         time proportion score as percentage (0-100)
-     * @param alternationScore  alternation quality score as percentage (0-100)
-     * @param channelScore      channel adherence score as percentage (0-100)
-     * @param completenessScore structure completeness score as percentage (0-100)
-     * @param primaryReason     human-readable description of dominant factor
-     * @param weakestFactor     description of the weakest scoring factor
-     * @param direction         direction (BULLISH or BEARISH)
-     * @param invalidationPrice price level that would invalidate this count
-     * @param primaryTarget     primary Fibonacci projection target
-     * @param swings            swing sequence for building wave labels
+     * @param currentPhase        the phase this scenario assigns to current price
+     *                            action
+     * @param type                pattern type classification
+     * @param overallConfidence   overall confidence percentage (0-100)
+     * @param scenarioProbability scenario probability ratio (0.0-1.0)
+     * @param confidenceLevel     confidence level (HIGH, MEDIUM, or LOW)
+     * @param fibonacciScore      Fibonacci proximity score as percentage (0-100)
+     * @param timeScore           time proportion score as percentage (0-100)
+     * @param alternationScore    alternation quality score as percentage (0-100)
+     * @param channelScore        channel adherence score as percentage (0-100)
+     * @param completenessScore   structure completeness score as percentage (0-100)
+     * @param primaryReason       human-readable description of dominant factor
+     * @param weakestFactor       description of the weakest scoring factor
+     * @param direction           direction (BULLISH or BEARISH)
+     * @param invalidationPrice   price level that would invalidate this count
+     * @param primaryTarget       primary Fibonacci projection target
+     * @param swings              swing sequence for building wave labels
      */
     public record BaseCaseScenario(ElliottPhase currentPhase, ScenarioType type, double overallConfidence,
-            String confidenceLevel, double fibonacciScore, double timeScore, double alternationScore,
-            double channelScore, double completenessScore, String primaryReason, String weakestFactor, String direction,
+            @JsonAdapter(ScenarioProbabilityAdapter.class) double scenarioProbability, String confidenceLevel,
+            double fibonacciScore, double timeScore, double alternationScore, double channelScore,
+            double completenessScore, String primaryReason, String weakestFactor, String direction,
             double invalidationPrice, double primaryTarget, List<SwingData> swings) {
-        static BaseCaseScenario from(ElliottScenario scenario) {
+        static BaseCaseScenario from(ElliottScenario scenario, double scenarioProbability) {
             ElliottConfidence confidence = scenario.confidence();
             double overallConfidence = confidence.asPercentage();
             String confidenceLevel = confidence.isHighConfidence() ? "HIGH"
@@ -332,28 +350,29 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
 
             List<SwingData> swings = scenario.swings().stream().map(SwingData::from).toList();
 
-            return new BaseCaseScenario(scenario.currentPhase(), scenario.type(), overallConfidence, confidenceLevel,
-                    fibonacciScore, timeScore, alternationScore, channelScore, completenessScore,
-                    confidence.primaryReason(), confidence.weakestFactor(), direction, invalidationPrice, primaryTarget,
-                    swings);
+            return new BaseCaseScenario(scenario.currentPhase(), scenario.type(), overallConfidence,
+                    scenarioProbability, confidenceLevel, fibonacciScore, timeScore, alternationScore, channelScore,
+                    completenessScore, confidence.primaryReason(), confidence.weakestFactor(), direction,
+                    invalidationPrice, primaryTarget, swings);
         }
     }
 
     /**
      * Alternative scenario details.
      *
-     * @param currentPhase      the phase this scenario assigns to current price
-     *                          action
-     * @param type              pattern type classification
-     * @param confidencePercent overall confidence percentage (0-100)
-     * @param swings            swing sequence for building wave labels
+     * @param currentPhase        the phase this scenario assigns to current price
+     *                            action
+     * @param type                pattern type classification
+     * @param confidencePercent   overall confidence percentage (0-100)
+     * @param scenarioProbability scenario probability ratio (0.0-1.0)
+     * @param swings              swing sequence for building wave labels
      */
     public record AlternativeScenario(ElliottPhase currentPhase, ScenarioType type, double confidencePercent,
-            List<SwingData> swings) {
-        static AlternativeScenario from(ElliottScenario scenario) {
+            @JsonAdapter(ScenarioProbabilityAdapter.class) double scenarioProbability, List<SwingData> swings) {
+        static AlternativeScenario from(ElliottScenario scenario, double scenarioProbability) {
             List<SwingData> swings = scenario.swings().stream().map(SwingData::from).toList();
             return new AlternativeScenario(scenario.currentPhase(), scenario.type(),
-                    scenario.confidence().asPercentage(), swings);
+                    scenario.confidence().asPercentage(), scenarioProbability, swings);
         }
     }
 
@@ -374,6 +393,147 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
     }
 
     /**
+     * Computes scenario probabilities by normalizing confidence and tilting toward
+     * overlapping consensus factors (phase, type, and direction).
+     *
+     * @param scenarioSet scenario set to evaluate
+     * @return scenario probability ratios keyed by scenario id
+     */
+    static Map<String, Double> computeScenarioProbabilities(ElliottScenarioSet scenarioSet) {
+        Objects.requireNonNull(scenarioSet, "scenarioSet");
+        List<ElliottScenario> scenarios = scenarioSet.all();
+        if (scenarios.isEmpty()) {
+            return Map.of();
+        }
+
+        EnumMap<ElliottPhase, Integer> phaseCounts = new EnumMap<>(ElliottPhase.class);
+        EnumMap<ScenarioType, Integer> typeCounts = new EnumMap<>(ScenarioType.class);
+        int knownPhaseCount = 0;
+        int knownTypeCount = 0;
+        int bullishCount = 0;
+        int bearishCount = 0;
+        int knownDirectionCount = 0;
+
+        for (ElliottScenario scenario : scenarios) {
+            ElliottPhase phase = scenario.currentPhase();
+            if (phase != ElliottPhase.NONE) {
+                phaseCounts.merge(phase, 1, Integer::sum);
+                knownPhaseCount++;
+            }
+
+            ScenarioType type = scenario.type();
+            if (type != ScenarioType.UNKNOWN) {
+                typeCounts.merge(type, 1, Integer::sum);
+                knownTypeCount++;
+            }
+
+            if (scenario.hasKnownDirection()) {
+                knownDirectionCount++;
+                if (scenario.isBullish()) {
+                    bullishCount++;
+                } else {
+                    bearishCount++;
+                }
+            }
+        }
+
+        int scenarioCount = scenarios.size();
+        double[] baseWeights = new double[scenarioCount];
+        double totalConfidence = 0.0;
+        for (int i = 0; i < scenarioCount; i++) {
+            ElliottScenario scenario = scenarios.get(i);
+            double confidence = safeScoreValue(scenario.confidenceScore());
+            baseWeights[i] = confidence;
+            totalConfidence += confidence;
+        }
+        if (totalConfidence > 0.0) {
+            for (int i = 0; i < scenarioCount; i++) {
+                baseWeights[i] /= totalConfidence;
+            }
+        } else {
+            double equalWeight = 1.0 / scenarioCount;
+            for (int i = 0; i < scenarioCount; i++) {
+                baseWeights[i] = equalWeight;
+            }
+        }
+
+        double[] overlapScores = new double[scenarioCount];
+        double overlapTotal = 0.0;
+        int overlapCount = 0;
+        for (int i = 0; i < scenarioCount; i++) {
+            ElliottScenario scenario = scenarios.get(i);
+            double overlapScore = overlapScoreForScenario(scenario, phaseCounts, knownPhaseCount, typeCounts,
+                    knownTypeCount, bullishCount, bearishCount, knownDirectionCount);
+            overlapScores[i] = overlapScore;
+            if (overlapScore > 0.0) {
+                overlapTotal += overlapScore;
+                overlapCount++;
+            }
+        }
+        double averageOverlap = overlapCount > 0 ? overlapTotal / overlapCount : 0.0;
+
+        double[] adjustedWeights = new double[scenarioCount];
+        double adjustedTotal = 0.0;
+        for (int i = 0; i < scenarioCount; i++) {
+            double overlapScore = overlapScores[i];
+            double multiplier = overlapScore > 0.0
+                    ? 1.0 + (CONSENSUS_ADJUSTMENT_WEIGHT * (overlapScore - averageOverlap))
+                    : 1.0;
+            double adjustedWeight = baseWeights[i] * multiplier;
+            adjustedWeights[i] = adjustedWeight;
+            adjustedTotal += adjustedWeight;
+        }
+
+        Map<String, Double> probabilities = new HashMap<>();
+        if (adjustedTotal <= 0.0) {
+            double fallback = 1.0 / scenarioCount;
+            for (ElliottScenario scenario : scenarios) {
+                probabilities.put(scenario.id(), fallback);
+            }
+            return Map.copyOf(probabilities);
+        }
+
+        for (int i = 0; i < scenarioCount; i++) {
+            ElliottScenario scenario = scenarios.get(i);
+            double probability = adjustedWeights[i] / adjustedTotal;
+            probabilities.put(scenario.id(), probability);
+        }
+        return Map.copyOf(probabilities);
+    }
+
+    private static double overlapScoreForScenario(ElliottScenario scenario, EnumMap<ElliottPhase, Integer> phaseCounts,
+            int knownPhaseCount, EnumMap<ScenarioType, Integer> typeCounts, int knownTypeCount, int bullishCount,
+            int bearishCount, int knownDirectionCount) {
+        double weightedSum = 0.0;
+        double weightTotal = 0.0;
+
+        ElliottPhase phase = scenario.currentPhase();
+        if (phase != ElliottPhase.NONE && knownPhaseCount > 0) {
+            weightedSum += PHASE_OVERLAP_WEIGHT * (phaseCounts.getOrDefault(phase, 0) / (double) knownPhaseCount);
+            weightTotal += PHASE_OVERLAP_WEIGHT;
+        }
+
+        ScenarioType type = scenario.type();
+        if (type != ScenarioType.UNKNOWN && knownTypeCount > 0) {
+            weightedSum += SCENARIO_TYPE_OVERLAP_WEIGHT * (typeCounts.getOrDefault(type, 0) / (double) knownTypeCount);
+            weightTotal += SCENARIO_TYPE_OVERLAP_WEIGHT;
+        }
+
+        if (scenario.hasKnownDirection() && knownDirectionCount > 0) {
+            double directionOverlap = scenario.isBullish() ? (double) bullishCount / knownDirectionCount
+                    : (double) bearishCount / knownDirectionCount;
+            weightedSum += DIRECTION_OVERLAP_WEIGHT * directionOverlap;
+            weightTotal += DIRECTION_OVERLAP_WEIGHT;
+        }
+
+        if (weightTotal <= 0.0) {
+            return 0.0;
+        }
+
+        return weightedSum / weightTotal;
+    }
+
+    /**
      * Encodes a chart plan as a base64-encoded PNG image string.
      *
      * @param chartWorkflow the chart workflow for rendering
@@ -391,6 +551,23 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
     }
 
     /**
+     * Safely converts a Num to a confidence score, treating invalid values as zero.
+     *
+     * @param num the numeric value to convert
+     * @return double value, or 0.0 if null or invalid
+     */
+    private static double safeScoreValue(Num num) {
+        if (num == null || !Num.isValid(num)) {
+            return 0.0;
+        }
+        return num.doubleValue();
+    }
+
+    private static double roundScenarioProbability(double value) {
+        return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).doubleValue();
+    }
+
+    /**
      * Safely converts a Num to double, handling null and NaN cases.
      *
      * @param num the numeric value to convert
@@ -401,5 +578,25 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
             return Double.NaN;
         }
         return num.doubleValue();
+    }
+
+    private static final class ScenarioProbabilityAdapter extends TypeAdapter<Double> {
+        @Override
+        public void write(JsonWriter out, Double value) throws IOException {
+            if (value == null || value.isNaN() || value.isInfinite()) {
+                out.nullValue();
+                return;
+            }
+            out.value(roundScenarioProbability(value));
+        }
+
+        @Override
+        public Double read(JsonReader in) throws IOException {
+            if (in.peek() == JsonToken.NULL) {
+                in.nextNull();
+                return null;
+            }
+            return in.nextDouble();
+        }
     }
 }
