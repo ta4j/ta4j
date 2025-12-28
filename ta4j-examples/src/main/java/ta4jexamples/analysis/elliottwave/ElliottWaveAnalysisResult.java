@@ -564,7 +564,7 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
     }
 
     private static double roundScenarioProbability(double value) {
-        return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).doubleValue();
+        return BigDecimal.valueOf(value).setScale(3, RoundingMode.HALF_UP).doubleValue();
     }
 
     /**

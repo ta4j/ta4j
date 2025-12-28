@@ -435,7 +435,7 @@ class ElliottWaveAnalysisResultTest {
     }
 
     @Test
-    void toJson_roundsScenarioProbabilityToTwoDecimals() {
+    void toJson_roundsScenarioProbabilityToThreeDecimals() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
         ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
@@ -448,7 +448,7 @@ class ElliottWaveAnalysisResultTest {
         if (result.baseCase() != null) {
             double expected = roundScenarioProbability(result.baseCase().scenarioProbability());
             double actual = root.getAsJsonObject("baseCase").get("scenarioProbability").getAsDouble();
-            assertEquals(expected, actual, 0.0001, "Base case scenario probability should be rounded");
+            assertEquals(expected, actual, 0.0001, "Base case scenario probability should be rounded to 3 decimals");
         }
         if (!result.alternatives().isEmpty()) {
             ElliottWaveAnalysisResult.AlternativeScenario alt = result.alternatives().get(0);
@@ -458,7 +458,7 @@ class ElliottWaveAnalysisResultTest {
                     .getAsJsonObject()
                     .get("scenarioProbability")
                     .getAsDouble();
-            assertEquals(expected, actual, 0.0001, "Alternative scenario probability should be rounded");
+            assertEquals(expected, actual, 0.0001, "Alternative scenario probability should be rounded to 3 decimals");
         }
     }
 
@@ -547,7 +547,7 @@ class ElliottWaveAnalysisResultTest {
     }
 
     private static double roundScenarioProbability(double value) {
-        return BigDecimal.valueOf(value).setScale(2, RoundingMode.HALF_UP).doubleValue();
+        return BigDecimal.valueOf(value).setScale(3, RoundingMode.HALF_UP).doubleValue();
     }
 
     /**
