@@ -33,7 +33,6 @@ import org.junit.jupiter.api.Test;
 import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.GraphicsEnvironment;
-import java.awt.event.WindowEvent;
 
 import javax.swing.JFrame;
 
@@ -228,12 +227,19 @@ class SwingChartDisplayerTest {
         // This test only runs in headless environments
         Assume.assumeTrue("Test requires headless environment", GraphicsEnvironment.isHeadless());
 
-        // In headless environment, display should fail gracefully
-        JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
+        // Clear the disable display property so we can test actual headless behavior
+        System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
+        try {
+            // In headless environment, display should fail gracefully
+            JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
 
-        // This will throw HeadlessException in headless environment
-        // but we should handle it gracefully
-        assertThrows(Exception.class, () -> displayer.display(chart));
+            // This will throw HeadlessException in headless environment
+            // but we should handle it gracefully
+            assertThrows(Exception.class, () -> displayer.display(chart));
+        } finally {
+            // Restore the property for cleanup
+            System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
+        }
     }
 
     @Test
@@ -403,12 +409,19 @@ class SwingChartDisplayerTest {
         // This test only runs in headless environments
         Assume.assumeTrue("Test requires headless environment", GraphicsEnvironment.isHeadless());
 
-        JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
+        // Clear the disable display property so we can test actual headless behavior
+        System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
+        try {
+            JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
 
-        // In headless environment, cascading logic should fail gracefully
-        // The exception handling in the cascading code should catch any errors
-        assertThrows(Exception.class, () -> displayer.display(chart, "Test Window"),
-                "Display should throw exception in headless environment, but cascading logic should be attempted");
+            // In headless environment, cascading logic should fail gracefully
+            // The exception handling in the cascading code should catch any errors
+            assertThrows(Exception.class, () -> displayer.display(chart, "Test Window"),
+                    "Display should throw exception in headless environment, but cascading logic should be attempted");
+        } finally {
+            // Restore the property for cleanup
+            System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
+        }
     }
 
     @Test
