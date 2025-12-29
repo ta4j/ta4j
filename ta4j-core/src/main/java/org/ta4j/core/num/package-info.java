@@ -33,5 +33,14 @@
  * {@link org.ta4j.core.Bar Bars}, {@link org.ta4j.core.Indicator Indicators}
  * and {@link org.ta4j.core.criteria.AbstractAnalysisCriterion
  * AnalysisCriterions}.
+ *
+ * <p>
+ * Utility methods for value validation:
+ * <ul>
+ * <li>{@link org.ta4j.core.num.Num#isNaNOrNull(Num)} - Checks if a value is
+ * null or NaN</li>
+ * <li>{@link org.ta4j.core.num.Num#isValid(Num)} - Checks if a value is valid
+ * (not null and not NaN), the logical complement of {@code isNaNOrNull()}</li>
+ * </ul>
  */
 package org.ta4j.core.num;
