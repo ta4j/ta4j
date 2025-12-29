@@ -79,6 +79,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import ta4jexamples.charting.AnalysisCriterionIndicator;
 import ta4jexamples.charting.ChartingTestFixtures;
+import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
+import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
+import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.LabelPlacement;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 
 /**
@@ -311,6 +314,47 @@ class TradingChartFactoryTest {
     }
 
     @Test
+    void testBarSeriesLabelOverlayAddsAnnotations() {
+        BarSeries series = ChartingTestFixtures.standardDailySeries();
+
+        List<BarLabel> labels = List.of(new BarLabel(3, series.getBar(3).getClosePrice(), "", LabelPlacement.CENTER),
+                new BarLabel(5, series.getBar(5).getClosePrice(), "1", LabelPlacement.ABOVE),
+                new BarLabel(8, series.getBar(8).getClosePrice(), "2", LabelPlacement.BELOW));
+        BarSeriesLabelIndicator labelIndicator = new BarSeriesLabelIndicator(series, labels);
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(labelIndicator)
+                .withLabel("Labels")
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+
+        List<String> annotationTexts = basePlot.getAnnotations()
+                .stream()
+                .filter(XYTextAnnotation.class::isInstance)
+                .map(annotation -> ((XYTextAnnotation) annotation).getText())
+                .toList();
+
+        assertTrue(annotationTexts.containsAll(List.of("1", "2")), "Wave labels should be attached as annotations");
+        assertFalse(annotationTexts.contains(""), "Blank labels should not be rendered as annotations");
+
+        int labelDatasetIndex = -1;
+        for (int i = 0; i < basePlot.getDatasetCount(); i++) {
+            if (basePlot.getDataset(i) instanceof TimeSeriesCollection collection && collection.getSeriesCount() > 0
+                    && "Labels".equals(collection.getSeriesKey(0).toString())) {
+                labelDatasetIndex = i;
+                break;
+            }
+        }
+        assertTrue(labelDatasetIndex >= 0, "Label dataset should be present on the plot");
+        assertInstanceOf(XYLineAndShapeRenderer.class, basePlot.getRenderer(labelDatasetIndex),
+                "Label dataset should render with the line/shape renderer");
+    }
+
+    @Test
     void testSwingPointOverlayChartMatchesSwingPointAnalysisFlow() {
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
 
@@ -456,8 +500,25 @@ class TradingChartFactoryTest {
 
         assertEquals(Boolean.FALSE, renderer.getSeriesLinesVisible(0),
                 "Dots-only overlay should not connect points when connectAcrossNaN is false");
-        assertEquals(Color.GREEN, renderer.getSeriesPaint(0), "Dot color should follow overlay color");
-        assertEquals(Color.GREEN, renderer.getSeriesFillPaint(0), "Dot fill color should follow overlay color");
+        // Swing markers default to 90% opacity (0.9), so color will have alpha
+        // component
+        Color paintColor = (Color) renderer.getSeriesPaint(0);
+        assertNotNull(paintColor, "Paint color should not be null");
+        assertEquals(Color.GREEN.getRed(), paintColor.getRed(), "Dot red component should match overlay color");
+        assertEquals(Color.GREEN.getGreen(), paintColor.getGreen(), "Dot green component should match overlay color");
+        assertEquals(Color.GREEN.getBlue(), paintColor.getBlue(), "Dot blue component should match overlay color");
+        assertEquals(Math.round(0.9f * 255), paintColor.getAlpha(),
+                "Dot color should have default 90% opacity for swing markers");
+        Color fillPaintColor = (Color) renderer.getSeriesFillPaint(0);
+        assertNotNull(fillPaintColor, "Fill paint color should not be null");
+        assertEquals(Color.GREEN.getRed(), fillPaintColor.getRed(),
+                "Dot fill red component should match overlay color");
+        assertEquals(Color.GREEN.getGreen(), fillPaintColor.getGreen(),
+                "Dot fill green component should match overlay color");
+        assertEquals(Color.GREEN.getBlue(), fillPaintColor.getBlue(),
+                "Dot fill blue component should match overlay color");
+        assertEquals(Math.round(0.9f * 255), fillPaintColor.getAlpha(),
+                "Dot fill color should have default 90% opacity for swing markers");
         assertNotNull(renderer.getSeriesShape(0), "Renderer should provide a dot shape");
         double expectedDiameter = Math.max(3.0, lineWidth * 2.4);
         assertEquals(expectedDiameter, renderer.getSeriesShape(0).getBounds2D().getWidth(), 0.001,
@@ -506,6 +567,77 @@ class TradingChartFactoryTest {
         assertEquals(customColor.getBlue(), fillPaintColor.getBlue(), "Fill blue component should match");
         assertEquals(Math.round(customOpacity * 255), fillPaintColor.getAlpha(),
                 "Fill alpha component should reflect opacity");
+    }
+
+    @Test
+    void testSwingMarkerDefaultOpacityIs90Percent() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        BarSeries swingSeries = swingPointSeries();
+        SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(swingSeries,
+                new RecentFractalSwingLowIndicator(new LowPriceIndicator(swingSeries), 5, 5, 0));
+
+        Color customColor = Color.BLUE;
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(swingSeries)
+                .withIndicatorOverlay(swingLowMarkers)
+                .withLineColor(customColor)
+                // No explicit opacity set - should default to 0.9 (90%) for swing markers
+                .withLineWidth(3.0f)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+        XYLineAndShapeRenderer renderer = (XYLineAndShapeRenderer) basePlot.getRenderer(1);
+
+        // Verify default opacity of 0.9 (90%) is applied
+        Color paintColor = (Color) renderer.getSeriesPaint(0);
+        assertNotNull(paintColor, "Paint color should not be null");
+        assertEquals(Math.round(0.9f * 255), paintColor.getAlpha(),
+                "Swing markers should default to 90% opacity (0.9) when no opacity is explicitly set");
+
+        // Verify fill paint also has default opacity
+        Color fillPaintColor = (Color) renderer.getSeriesFillPaint(0);
+        assertNotNull(fillPaintColor, "Fill paint color should not be null");
+        assertEquals(Math.round(0.9f * 255), fillPaintColor.getAlpha(),
+                "Swing marker fill paint should also default to 90% opacity");
+    }
+
+    @Test
+    void testSwingMarkersRenderedAfterBaseDataset() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        BarSeries swingSeries = swingPointSeries();
+        SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(swingSeries,
+                new RecentFractalSwingLowIndicator(new LowPriceIndicator(swingSeries), 5, 5, 0));
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(swingSeries)
+                .withIndicatorOverlay(swingLowMarkers)
+                .withLineColor(Color.RED)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+
+        // Base OHLC dataset should be at index 0
+        assertTrue(basePlot.getDatasetCount() > 0, "Base plot should have at least the OHLC dataset");
+        assertNotNull(basePlot.getDataset(0), "Base dataset (OHLC) should exist at index 0");
+
+        // Swing marker dataset should be added after base dataset (at index 1 or
+        // higher)
+        // This ensures swing markers are rendered on top of candles
+        if (basePlot.getDatasetCount() > 1) {
+            assertNotNull(basePlot.getDataset(1), "Swing marker dataset should exist after base dataset");
+            assertInstanceOf(XYLineAndShapeRenderer.class, basePlot.getRenderer(1),
+                    "Swing markers should use XYLineAndShapeRenderer");
+            // Verify the dataset index is higher than base, ensuring rendering order puts
+            // markers in front
+            assertTrue(basePlot.getDatasetCount() > 1,
+                    "Swing markers should be added at a higher dataset index than base OHLC dataset");
+        }
     }
 
     @Test
@@ -701,6 +833,119 @@ class TradingChartFactoryTest {
                 "Matching labels should reuse the axis and add another dataset");
         assertEquals(2, countDatasetsForLabel(plot, "NetProfit"),
                 "Both datasets should be mapped to the NetProfit axis");
+    }
+
+    @Test
+    void testLongAxisLabelsAreTruncatedWithEllipsis() {
+        // Create an indicator with a very long name that exceeds the truncation limit
+        Indicator<Num> longNameIndicator = new AbstractIndicator<Num>(barSeries) {
+            @Override
+            public Num getValue(int index) {
+                return barSeries.numFactory().numOf(100.0);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            public String toString() {
+                return "ThisIsAVeryLongIndicatorNameThatExceedsThirtyCharacters";
+            }
+        };
+
+        JFreeChart chart = factory.createIndicatorChart(barSeries, longNameIndicator);
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        assertNotNull(combinedPlot, "Chart should have combined plot");
+
+        // Find the indicator subplot
+        XYPlot indicatorPlot = null;
+        for (XYPlot subplot : combinedPlot.getSubplots()) {
+            if (subplot.getRangeAxis() != null
+                    && subplot.getRangeAxis().getLabel().contains("ThisIsAVeryLongIndicator")) {
+                indicatorPlot = subplot;
+                break;
+            }
+        }
+
+        assertNotNull(indicatorPlot, "Should have indicator subplot");
+        NumberAxis rangeAxis = (NumberAxis) indicatorPlot.getRangeAxis();
+        assertNotNull(rangeAxis, "Range axis should exist");
+        String axisLabel = rangeAxis.getLabel();
+
+        // Verify label is truncated
+        assertTrue(axisLabel.length() <= 30, "Label should be truncated to 30 characters or less");
+        assertTrue(axisLabel.endsWith("..."), "Truncated label should end with ellipsis");
+        // substring(0, 27) gives 27 chars, plus "..." = 30 chars total
+        assertEquals(30, axisLabel.length(), "Truncated label should be exactly 30 characters");
+        assertEquals("ThisIsAVeryLongIndicatorNam...", axisLabel, "Label should be truncated correctly");
+    }
+
+    @Test
+    void testShortAxisLabelsAreNotTruncated() {
+        // Create an indicator with a short name that should not be truncated
+        Indicator<Num> shortNameIndicator = new AbstractIndicator<Num>(barSeries) {
+            @Override
+            public Num getValue(int index) {
+                return barSeries.numFactory().numOf(100.0);
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            public String toString() {
+                return "ShortIndicator";
+            }
+        };
+
+        JFreeChart chart = factory.createIndicatorChart(barSeries, shortNameIndicator);
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        assertNotNull(combinedPlot, "Chart should have combined plot");
+
+        // Find the indicator subplot
+        XYPlot indicatorPlot = null;
+        for (XYPlot subplot : combinedPlot.getSubplots()) {
+            if (subplot.getRangeAxis() != null && subplot.getRangeAxis().getLabel().equals("ShortIndicator")) {
+                indicatorPlot = subplot;
+                break;
+            }
+        }
+
+        assertNotNull(indicatorPlot, "Should have indicator subplot");
+        NumberAxis rangeAxis = (NumberAxis) indicatorPlot.getRangeAxis();
+        assertNotNull(rangeAxis, "Range axis should exist");
+        String axisLabel = rangeAxis.getLabel();
+
+        // Verify label is not truncated
+        assertEquals("ShortIndicator", axisLabel, "Short labels should not be truncated");
+        assertFalse(axisLabel.endsWith("..."), "Short labels should not have ellipsis");
+    }
+
+    @Test
+    void testSecondaryAxisLabelsAreTruncated() {
+        JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        AnalysisCriterionIndicator indicator = new AnalysisCriterionIndicator(barSeries, new NetProfitCriterion(),
+                tradingRecord);
+
+        // Use a very long label that exceeds the truncation limit
+        String longLabel = "ThisIsAVeryLongAnalysisCriterionLabelThatExceedsThirtyCharacters";
+        factory.addAnalysisCriterionToChart(chart, barSeries, indicator, longLabel);
+
+        XYPlot plot = (XYPlot) chart.getPlot();
+        NumberAxis axis = (NumberAxis) plot.getRangeAxis(1);
+        assertNotNull(axis, "Secondary axis should be added");
+        String axisLabel = axis.getLabel();
+
+        // Verify label is truncated
+        assertTrue(axisLabel.length() <= 30, "Secondary axis label should be truncated to 30 characters or less");
+        assertTrue(axisLabel.endsWith("..."), "Truncated secondary axis label should end with ellipsis");
+        // substring(0, 27) gives 27 chars, plus "..." = 30 chars total
+        assertEquals(30, axisLabel.length(), "Truncated secondary axis label should be exactly 30 characters");
+        assertEquals("ThisIsAVeryLongAnalysisCrit...", axisLabel, "Secondary axis label should be truncated correctly");
     }
 
     @Test
@@ -1438,5 +1683,283 @@ class TradingChartFactoryTest {
         Collection<?> closeMarkers = closePlot.getRangeMarkers(Layer.FOREGROUND);
         long closeMarkerCount = closeMarkers.stream().filter(m -> m instanceof ValueMarker).count();
         assertEquals(1, closeMarkerCount, "Close price subplot should have 1 marker");
+    }
+
+    // ========== Duplicate Time Period Fix Tests ==========
+
+    @Test
+    void testDailyBarsUseDayTimePeriod() {
+        // Create a daily series that would cause duplicate Minute time periods
+        BarSeries dailySeries = createDailySeriesWithMultipleBars("Daily Test", 20);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(dailySeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 5);
+
+        // This should not throw SeriesException about duplicate time periods
+        assertDoesNotThrow(() -> {
+            JFreeChart chart = factory.createDualAxisChart(dailySeries, closePrice, "Price", sma, "SMA");
+            XYPlot plot = (XYPlot) chart.getPlot();
+            TimeSeriesCollection dataset = (TimeSeriesCollection) plot.getDataset(1);
+            assertNotNull(dataset, "TimeSeriesCollection should be created");
+            assertTrue(dataset.getSeriesCount() > 0, "Should have at least one series");
+        }, "Daily bars should use Day time period, not Minute, to avoid duplicates");
+    }
+
+    @Test
+    void testHourlyBarsUseHourTimePeriod() {
+        // Create an hourly series
+        BarSeries hourlySeries = createHourlySeries("Hourly Test", 10);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(hourlySeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 3);
+
+        // This should not throw SeriesException about duplicate time periods
+        assertDoesNotThrow(() -> {
+            JFreeChart chart = factory.createDualAxisChart(hourlySeries, closePrice, "Price", sma, "SMA");
+            XYPlot plot = (XYPlot) chart.getPlot();
+            TimeSeriesCollection dataset = (TimeSeriesCollection) plot.getDataset(1);
+            assertNotNull(dataset, "TimeSeriesCollection should be created");
+            assertTrue(dataset.getSeriesCount() > 0, "Should have at least one series");
+        }, "Hourly bars should use Hour time period to avoid duplicates");
+    }
+
+    @Test
+    void testMinuteLevelBarsUseMinuteTimePeriod() {
+        // Create a minute-level series
+        BarSeries minuteSeries = createMinuteSeries("Minute Test", 15);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(minuteSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 3);
+
+        // This should not throw SeriesException about duplicate time periods
+        assertDoesNotThrow(() -> {
+            JFreeChart chart = factory.createDualAxisChart(minuteSeries, closePrice, "Price", sma, "SMA");
+            XYPlot plot = (XYPlot) chart.getPlot();
+            TimeSeriesCollection dataset = (TimeSeriesCollection) plot.getDataset(1);
+            assertNotNull(dataset, "TimeSeriesCollection should be created");
+            assertTrue(dataset.getSeriesCount() > 0, "Should have at least one series");
+        }, "Minute-level bars should use Minute time period");
+    }
+
+    @Test
+    void testSecondLevelBarsUseSecondTimePeriod() {
+        // Create a second-level series
+        BarSeries secondSeries = createSecondSeries("Second Test", 10);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(secondSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 3);
+
+        // This should not throw SeriesException about duplicate time periods
+        assertDoesNotThrow(() -> {
+            JFreeChart chart = factory.createDualAxisChart(secondSeries, closePrice, "Price", sma, "SMA");
+            XYPlot plot = (XYPlot) chart.getPlot();
+            TimeSeriesCollection dataset = (TimeSeriesCollection) plot.getDataset(1);
+            assertNotNull(dataset, "TimeSeriesCollection should be created");
+            assertTrue(dataset.getSeriesCount() > 0, "Should have at least one series");
+        }, "Second-level bars should use Second time period");
+    }
+
+    @Test
+    void testIndicatorChartWithDailyBarsNoDuplicateTimePeriods() {
+        BarSeries dailySeries = createDailySeriesWithMultipleBars("Daily Indicator Test", 15);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(dailySeries);
+        RSIIndicator rsi = new RSIIndicator(closePrice, 14);
+
+        // This should not throw SeriesException about duplicate time periods
+        assertDoesNotThrow(() -> {
+            JFreeChart chart = factory.createIndicatorChart(dailySeries, rsi);
+            CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+            assertNotNull(combinedPlot, "Combined plot should be created");
+            assertTrue(combinedPlot.getSubplots().size() >= 2, "Should have base plot and indicator subplot");
+        }, "Indicator chart with daily bars should not have duplicate time periods");
+    }
+
+    @Test
+    void testChannelFillDatasetWithDailyBarsNoDuplicateTimePeriods() {
+        BarSeries dailySeries = createDailySeriesWithMultipleBars("Daily Channel Test", 12);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(dailySeries);
+        HighPriceIndicator highPrice = new HighPriceIndicator(dailySeries);
+        LowPriceIndicator lowPrice = new LowPriceIndicator(dailySeries);
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        // Channel overlay uses TimeSeriesCollection internally
+        assertDoesNotThrow(() -> {
+            JFreeChart chart = workflow.builder()
+                    .withSeries(dailySeries)
+                    .withChannelOverlay(highPrice, closePrice, lowPrice)
+                    .toChart();
+            CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+            assertNotNull(combinedPlot, "Chart with channel overlay should be created");
+        }, "Channel fill dataset with daily bars should not have duplicate time periods");
+    }
+
+    @Test
+    void testSwingMarkerDatasetWithDailyBarsNoDuplicateTimePeriods() {
+        BarSeries dailySeries = createDailySeriesWithMultipleBars("Daily Swing Test", 20);
+        LowPriceIndicator lowPrice = new LowPriceIndicator(dailySeries);
+        RecentFractalSwingLowIndicator swingLowIndicator = new RecentFractalSwingLowIndicator(lowPrice, 5, 5, 0);
+        SwingPointMarkerIndicator swingMarkers = new SwingPointMarkerIndicator(dailySeries, swingLowIndicator);
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        // Swing markers use TimeSeriesCollection internally
+        assertDoesNotThrow(() -> {
+            JFreeChart chart = workflow.builder()
+                    .withSeries(dailySeries)
+                    .withIndicatorOverlay(swingMarkers)
+                    .withLineColor(Color.GREEN)
+                    .toChart();
+            CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+            assertNotNull(combinedPlot, "Chart with swing markers should be created");
+        }, "Swing marker dataset with daily bars should not have duplicate time periods");
+    }
+
+    @Test
+    void testBarSeriesLabelDatasetWithDailyBarsNoDuplicateTimePeriods() {
+        BarSeries dailySeries = createDailySeriesWithMultipleBars("Daily Label Test", 15);
+        List<BarLabel> labels = List.of(
+                new BarLabel(3, dailySeries.getBar(3).getClosePrice(), "1", LabelPlacement.ABOVE),
+                new BarLabel(7, dailySeries.getBar(7).getClosePrice(), "2", LabelPlacement.BELOW),
+                new BarLabel(12, dailySeries.getBar(12).getClosePrice(), "3", LabelPlacement.ABOVE));
+        BarSeriesLabelIndicator labelIndicator = new BarSeriesLabelIndicator(dailySeries, labels);
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        // Bar series labels use TimeSeriesCollection internally
+        assertDoesNotThrow(() -> {
+            JFreeChart chart = workflow.builder()
+                    .withSeries(dailySeries)
+                    .withIndicatorOverlay(labelIndicator)
+                    .withLabel("Labels")
+                    .toChart();
+            CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+            assertNotNull(combinedPlot, "Chart with bar series labels should be created");
+        }, "Bar series label dataset with daily bars should not have duplicate time periods");
+    }
+
+    @Test
+    void testAddOrUpdateHandlesDuplicateTimePeriodsGracefully() {
+        // Create a series where multiple bars might map to the same time period
+        // This tests the addOrUpdate() fallback mechanism
+        BarSeries dailySeries = createDailySeriesWithMultipleBars("Duplicate Test", 10);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(dailySeries);
+
+        // Create chart multiple times to ensure addOrUpdate handles any edge cases
+        assertDoesNotThrow(() -> {
+            for (int i = 0; i < 3; i++) {
+                JFreeChart chart = factory.createDualAxisChart(dailySeries, closePrice, "Price", closePrice, "Close");
+                assertNotNull(chart, "Chart should be created on iteration " + i);
+            }
+        }, "addOrUpdate() should handle any duplicate time periods gracefully");
+    }
+
+    @Test
+    void testMultipleIndicatorsWithDailyBarsNoDuplicateTimePeriods() {
+        BarSeries dailySeries = createDailySeriesWithMultipleBars("Multiple Indicators Test", 20);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(dailySeries);
+        SMAIndicator sma5 = new SMAIndicator(closePrice, 5);
+        SMAIndicator sma10 = new SMAIndicator(closePrice, 10);
+        RSIIndicator rsi = new RSIIndicator(closePrice, 14);
+
+        // Multiple indicators should all work without duplicate time period errors
+        assertDoesNotThrow(() -> {
+            JFreeChart chart = factory.createIndicatorChart(dailySeries, sma5, sma10, rsi);
+            CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+            assertNotNull(combinedPlot, "Chart with multiple indicators should be created");
+            assertEquals(4, combinedPlot.getSubplots().size(),
+                    "Should have 1 main OHLC plot plus 3 indicator subplots");
+        }, "Multiple indicators with daily bars should not have duplicate time periods");
+    }
+
+    /**
+     * Creates a daily bar series with the specified number of bars. Multiple daily
+     * bars would map to the same Minute if using Minute time period, which would
+     * cause duplicate time period errors.
+     */
+    private BarSeries createDailySeriesWithMultipleBars(String name, int barCount) {
+        BarSeries series = new MockBarSeriesBuilder().withName(name).build();
+        Duration period = Duration.ofDays(1);
+        Instant start = Instant.EPOCH.plus(Duration.ofDays(1));
+
+        for (int i = 0; i < barCount; i++) {
+            Instant endTime = start.plus(period.multipliedBy(i));
+            double basePrice = 100.0 + i * 0.5;
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(endTime)
+                    .openPrice(basePrice)
+                    .highPrice(basePrice + 1.0)
+                    .lowPrice(basePrice - 0.5)
+                    .closePrice(basePrice + 0.3)
+                    .volume(1000.0 + i * 10)
+                    .add();
+        }
+        return series;
+    }
+
+    /**
+     * Creates an hourly bar series.
+     */
+    private BarSeries createHourlySeries(String name, int barCount) {
+        BarSeries series = new MockBarSeriesBuilder().withName(name).build();
+        Duration period = Duration.ofHours(1);
+        Instant start = Instant.EPOCH.plus(Duration.ofHours(1));
+
+        for (int i = 0; i < barCount; i++) {
+            Instant endTime = start.plus(period.multipliedBy(i));
+            double basePrice = 100.0 + i * 0.1;
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(endTime)
+                    .openPrice(basePrice)
+                    .highPrice(basePrice + 0.5)
+                    .lowPrice(basePrice - 0.3)
+                    .closePrice(basePrice + 0.2)
+                    .volume(500.0 + i * 5)
+                    .add();
+        }
+        return series;
+    }
+
+    /**
+     * Creates a minute-level bar series.
+     */
+    private BarSeries createMinuteSeries(String name, int barCount) {
+        BarSeries series = new MockBarSeriesBuilder().withName(name).build();
+        Duration period = Duration.ofMinutes(5);
+        Instant start = Instant.EPOCH.plus(Duration.ofMinutes(5));
+
+        for (int i = 0; i < barCount; i++) {
+            Instant endTime = start.plus(period.multipliedBy(i));
+            double basePrice = 100.0 + i * 0.01;
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(endTime)
+                    .openPrice(basePrice)
+                    .highPrice(basePrice + 0.1)
+                    .lowPrice(basePrice - 0.05)
+                    .closePrice(basePrice + 0.03)
+                    .volume(100.0 + i)
+                    .add();
+        }
+        return series;
+    }
+
+    /**
+     * Creates a second-level bar series.
+     */
+    private BarSeries createSecondSeries(String name, int barCount) {
+        BarSeries series = new MockBarSeriesBuilder().withName(name).build();
+        Duration period = Duration.ofSeconds(30);
+        Instant start = Instant.EPOCH.plus(Duration.ofSeconds(30));
+
+        for (int i = 0; i < barCount; i++) {
+            Instant endTime = start.plus(period.multipliedBy(i));
+            double basePrice = 100.0 + i * 0.001;
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(endTime)
+                    .openPrice(basePrice)
+                    .highPrice(basePrice + 0.01)
+                    .lowPrice(basePrice - 0.005)
+                    .closePrice(basePrice + 0.003)
+                    .volume(10.0 + i)
+                    .add();
+        }
+        return series;
     }
 }

@@ -7,7 +7,8 @@
 1. ✅ Run the full build script: `scripts/run-full-build-quiet.sh`
    - **This is NOT optional.** Do not skip this step, even for "simple" changes.
    - **When:** After every code change that affects build/test behavior (which is almost always)
-   - **Windows:** Invoke Git Bash or MSYS2 binary directly (never WSL or the CLI’s default `/bin/bash`) for native performance (5x vs WSL). Always call it explicitly, e.g. `& "C:\Program Files\Git\bin\bash.exe" -c "cd /c/Users/David/Workspace/github/ta4j && ./scripts/run-full-build-quiet.sh"` (convert Windows path `C:\...` to `/c/...` format).
+   - **Permissions:** **ALWAYS run with `required_permissions: ['all']`** to avoid Maven repository permission issues. The build script requires full filesystem access to read/write Maven cache and repository files.
+   - **Windows:** Invoke Git Bash or MSYS2 binary directly (never WSL or the CLI's default `/bin/bash`) for native performance (5x vs WSL). Always call it explicitly, e.g. `& "C:\Program Files\Git\bin\bash.exe" -c "cd /c/Users/David/Workspace/github/ta4j && ./scripts/run-full-build-quiet.sh"` (convert Windows path `C:\...` to `/c/...` format).
    - **What it does:** Runs `mvn -B clean license:format formatter:format test install`
    - **Required outcome:** Build must be GREEN (all tests pass, no failures/errors)
    - **Report:** Always include the script's output showing `Tests run / Failures / Errors / Skipped` numbers and the log path
@@ -45,6 +46,7 @@
   - **DO NOT** wrap test code in try-catch blocks that silently skip on exceptions
   - **DO NOT** assume tests can be skipped because "serialization isn't supported" or similar reasons
   - If you encounter a failing test, treat it as a bug that must be fixed, not something to skip
+  - **Note:** Environment-based assumptions (e.g., `Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless())` for GUI tests) are acceptable when tests genuinely cannot run in certain environments. This is different from skipping tests that fail due to code issues.
 - **Never use reflection to access private APIs in tests.** Always test through the nearest public API, even if it requires additional setup. If testing private methods is necessary, refactor the production code to support dependency injection and mocks, or extract the logic into a testable public method. Reflection-based tests are brittle, harder to maintain, and don't reflect real usage patterns.
 - **Use `assertThrows` for exception testing.** Always use `org.junit.jupiter.api.Assertions.assertThrows()` (JUnit 5) or `org.junit.Assert.assertThrows()` (JUnit 4) instead of `@Test(expected = ...)` annotations or try-catch blocks. The `assertThrows` API provides better error messages and allows you to verify exception properties.
 - When adding `assertThrows`, check for an existing `assertThrows` import before adding a new one to avoid duplicates.
@@ -62,6 +64,7 @@
 - When adding tests, place them in the mirrored package inside `src/test/java` and use existing test utilities/helpers when available.
 - Group imports, fields, and methods by logical purpose. Within each group, order lines by decreasing length ("reverse Christmas tree": longer lines above shorter ones).
 - **Always use loggers instead of System.out/System.err.** Use `org.apache.logging.log4j.LogManager` and `org.apache.logging.log4j.Logger`. Create a static logger: `private static final Logger LOG = LogManager.getLogger(ClassName.class);`. Use parameterized logging: `LOG.error("Message: {} - {}", param1, param2);` instead of string concatenation.
+- **Avoid fully qualified namespaces in code.** Always use imports instead of fully qualified class names (e.g., use `Num` instead of `org.ta4j.core.num.Num`, `BarSeries` instead of `org.ta4j.core.BarSeries`). This improves readability and maintains consistency with the codebase style. Add the necessary import statements at the top of the file rather than using fully qualified names in variable initializations, method calls, or type casts.
 
 ## Domain Model and DTO class Design
 Favor immutability and simplicity: record > public final fields > private fields + getters/setters.

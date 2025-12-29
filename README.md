@@ -4,7 +4,7 @@
 
 ![Ta4j main chart](https://raw.githubusercontent.com/ta4j/ta4j-wiki/master/img/ta4j_main_chart.png)
 
-Build, test, and deploy trading bots in Java. With more than 190 (and counting) indicators, readable APIs, and production-minded tooling, you can explore markets, validate trading ideas, visualize signals, and ship automated bots without leaving the JVM.
+Build, test, and deploy trading bots in Java. With 200+ (and counting) technical indicators, intuitive APIs, and production-minded tooling, you can explore markets, validate trading ideas, visualize signals, and ship automated bots without leaving the JVM.
 
 ---
 
@@ -28,7 +28,16 @@ Build, test, and deploy trading bots in Java. With more than 190 (and counting) 
 
 ## Why Ta4j?
 
-**Build, test, and deploy trading bots in Java**—without leaving your favorite language or IDE. Ta4j gives you everything you need to explore markets, validate trading ideas, and ship production-ready automated trading systems.
+**Build, test, and deploy trading strategies in Java** without leaving your preferred language, toolchain, or mental model. Ta4j provides the building blocks needed to explore markets, validate ideas, and move from curiosity to production-grade systems.
+
+Ta4j treats technical analysis for what it is: a structured way to reason about uncertainty using historical price data. As often stated, past performance is no guarantee of future results. History doesn't repeat, but it often rhymes. Technical indicators are about probabilities rather than predictions. They help us understand the art of the possible and, when used well, the art of alpha from the probable. 
+
+> **⚡ Performance Advantage**: Native multi-threading gives ta4j a significant comparative advantage over Python-based libraries. Backtest hundreds of strategies in parallel, process years of market data in seconds, and saturate all CPU cores. No GIL bottleneck, no multiprocessing workarounds, just straightforward parallel execution.
+
+Because Ta4j runs on the JVM, strategies scale naturally from a single backtest on a laptop to large parameter sweeps, portfolio simulations, and research pipelines. Strong typing and explicit models make strategies easier to reason about, harder to misuse, and less likely to quietly do the wrong thing.
+
+Ta4j does not promise profitable strategies. It promises reproducible experiments. If a strategy looks good, Ta4j helps you verify it. If it stops working, Ta4j helps you understand why. And if a backtest looks too good to be true, it's on you to choose skepticism over motivated thinking.
+
 
 ### What can you build?
 
@@ -40,12 +49,11 @@ Build, test, and deploy trading bots in Java. With more than 190 (and counting) 
 
 ### Why Java developers choose Ta4j
 
-- **Pure Java, zero friction**: Works anywhere Java 21+ runs—cloud functions, desktop tools, microservices, or trading bots. No Python bridges or external dependencies.
-- **Type-safe and IDE-friendly**: Full Java type system means autocomplete, refactoring, and compile-time checks work perfectly.
+- **Pure Java, zero friction**: Works anywhere Java 21+ runs - cloud functions, desktop tools, microservices, or trading bots. No Python bridges or external dependencies.
+- **Type-safe, Production-ready**: Ta4j favors explicit models, strong typing, and predictable performance over exploratory scripting. Deterministic outputs, JSON serialization for strategies/indicators, and minimal dependencies make it easy to deploy.
 - **Huge indicator catalog**: Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and 190+ more ready to plug together. New indicators are added regularly based on community needs and contributions.
-- **Composable strategies**: Chain rules fluently using familiar Java patterns—no DSLs or configuration files required.
+- **Composable strategies**: Chain rules fluently using familiar Java patterns - no DSLs or configuration files required.
 - **Backtesting built-in**: Evaluate risk/reward with realistic trading costs and performance metrics in just a few lines.
-- **Production-ready**: Deterministic outputs, JSON serialization for strategies/indicators, and minimal dependencies make it easy to deploy.
 - **MIT licensed**: Use it at work, in research, or inside your next trading product without legal concerns.
 
 ## Install in seconds
@@ -122,7 +130,7 @@ mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
 mvn -pl ta4j-examples exec:java "-Dexec.mainClass=ta4jexamples.Quickstart"
 ```
 
-This will load historical Bitcoin data, run a complete trading strategy, display performance metrics, and show an interactive chart—all in one go!
+This will load historical Bitcoin data, run a complete trading strategy, display performance metrics, and show an interactive chart - all in one go!
 
 **Option 2: Copy the code into your project** (requires `ta4j-core` and `ta4j-examples` dependencies)
 
@@ -182,27 +190,38 @@ System.out.println("Number of positions: " + record.getPositionCount());
 
 ## Sourcing market data
 
-**New to trading and not sure where to get historical price data?** You're not alone! Ta4j makes it easy to get started with real market data.
+**New to trading and not sure where to get historical price data?** You're not alone! Ta4j makes it easy to get started with real market data using the unified `BarSeriesDataSource` interface. All data sources work with the same domain-driven API using business concepts like ticker symbols, intervals, and date ranges.
 
 ### Quick solution: Yahoo Finance (no API key required)
 
-The easiest way to get started is using the built-in `YahooFinanceBarSeriesDataSource` from `ta4j-examples`. It fetches real market data from Yahoo Finance's public API—no registration or API key needed.
+The easiest way to get started is using the built-in `YahooFinanceHttpBarSeriesDataSource` from `ta4j-examples`. It fetches real market data from Yahoo Finance's public API - no registration or API key needed.
 
+**Using the unified interface (recommended):**
 ```java
-import ta4jexamples.datasources.YahooFinanceBarSeriesDataSource;
+import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource;
+import java.time.Duration;
+import java.time.Instant;
 
 // Enable response caching to avoid hitting API limits during development
-YahooFinanceBarSeriesDataSource dataSource = new YahooFinanceBarSeriesDataSource(true);
+YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(true);
 
-// Load data by desired bar count (e.g., 2 years of daily candles)
-BarSeries series = dataSource.loadSeriesInstance("AAPL", 
-    YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1, 730);
-
-// Or load by date range
-BarSeries series = dataSource.loadSeriesInstance("AAPL",
-    YahooFinanceBarSeriesDataSource.YahooFinanceInterval.DAY_1,
+// Load data using the unified interface (works with any data source)
+BarSeries series = dataSource.loadSeries("AAPL", 
+    Duration.ofDays(1),  // Daily bars
     Instant.parse("2023-01-01T00:00:00Z"),
     Instant.parse("2023-12-31T23:59:59Z"));
+```
+
+**Using convenience methods:**
+```java
+// Load by bar count (e.g., 2 years of daily candles)
+BarSeries series = dataSource.loadSeriesInstance("AAPL", 
+    YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.DAY_1, 730);
+
+// Or use static convenience methods
+BarSeries series = YahooFinanceHttpBarSeriesDataSource.loadSeries("AAPL", 365); // 1 year of daily data
+BarSeries series = YahooFinanceHttpBarSeriesDataSource.loadSeries("BTC-USD", 
+    YahooFinanceHttpBarSeriesDataSource.YahooFinanceInterval.HOUR_1, 500); // 500 hourly bars
 ```
 
 **Supported assets:**
@@ -214,7 +233,7 @@ BarSeries series = dataSource.loadSeriesInstance("AAPL",
 - Intraday: `MINUTE_1`, `MINUTE_5`, `MINUTE_15`, `MINUTE_30`, `HOUR_1`, `HOUR_4`
 - Daily/weekly/monthly: `DAY_1`, `WEEK_1`, `MONTH_1`
 
-**💡 Tip:** Enable caching (`new YahooFinanceBarSeriesDataSource(true)`) to cache API responses locally. This speeds up development and reduces API calls. Cached data is automatically reused for the same requests.
+**💡 Tip:** Enable caching (`new YahooFinanceHttpBarSeriesDataSource(true)`) to cache API responses locally. This speeds up development and reduces API calls. Cached data is automatically reused for the same requests.
 
 **See it in action:** Run the complete example with:
 ```bash
@@ -223,16 +242,62 @@ mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.YahooF
 
 This example demonstrates loading data from Yahoo Finance, building an advanced multi-indicator strategy (Bollinger Bands, RSI, ATR stops), running a backtest, and visualizing results.
 
+### Coinbase (cryptocurrency data)
+
+For cryptocurrency data, use `CoinbaseHttpBarSeriesDataSource` which fetches data from Coinbase's public market data API. No authentication required.
+
+```java
+import ta4jexamples.datasources.CoinbaseHttpBarSeriesDataSource;
+import java.time.Duration;
+import java.time.Instant;
+
+// Enable response caching
+CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(true);
+
+// Using the unified interface
+BarSeries series = dataSource.loadSeries("BTC-USD", 
+    Duration.ofDays(1),
+    Instant.parse("2023-01-01T00:00:00Z"),
+    Instant.parse("2023-12-31T23:59:59Z"));
+
+// Or use convenience methods
+BarSeries series = CoinbaseHttpBarSeriesDataSource.loadSeries("BTC-USD", 365); // 1 year of daily data
+BarSeries series = dataSource.loadSeriesInstance("ETH-USD", 
+    CoinbaseHttpBarSeriesDataSource.CoinbaseInterval.ONE_HOUR, 500); // 500 hourly bars
+```
+
+**Supported trading pairs:** All Coinbase trading pairs (e.g., `"BTC-USD"`, `"ETH-USD"`, `"SOL-USD"`)
+
+**API limits:** Coinbase API has a maximum of 350 candles per request. The implementation automatically paginates large requests into multiple API calls and merges the results.
+
+**See it in action:** Run the complete example with:
+```bash
+mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.CoinbaseBacktest
+```
+
 ### Other data sources
 
-Ta4j works with any OHLCV (Open, High, Low, Close, Volume) data. The `ta4j-examples` module includes examples for several data sources:
+Ta4j works with any OHLCV (Open, High, Low, Close, Volume) data. The `ta4j-examples` module includes implementations for several data sources, all using the unified `BarSeriesDataSource` interface:
 
-- **[YahooFinanceBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/YahooFinanceBarSeriesDataSource.java)** - Fetch live data from Yahoo Finance API (stocks, ETFs, crypto)
-- **[CsvFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/CsvFileBarSeriesDataSource.java)** - Load OHLCV data from CSV files
-- **[BitStampCsvTradesFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/BitStampCsvTradesFileBarSeriesDataSource.java)** - Load trade data from Bitstamp CSV and aggregate into bars
-- **[JsonFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/JsonFileBarSeriesDataSource.java)** - Load Coinbase/Binance OHLCV data from json files
+- **[YahooFinanceHttpBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/YahooFinanceHttpBarSeriesDataSource.java)** - Fetch live data from Yahoo Finance API (stocks, ETFs, crypto) with optional response caching
+- **[CoinbaseHttpBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/CoinbaseHttpBarSeriesDataSource.java)** - Load historical crypto data from Coinbase's public API with automatic caching and pagination
+- **[CsvFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/CsvFileBarSeriesDataSource.java)** - Load OHLCV data from CSV files with intelligent filename pattern matching
+- **[JsonFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/JsonFileBarSeriesDataSource.java)** - Load Coinbase/Binance-style JSON bar data with flexible date filtering
+- **[BitStampCsvTradesFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/BitStampCsvTradesFileBarSeriesDataSource.java)** - Aggregate Bitstamp trade-level CSV data into bars on-the-fly
 
-**Create your own data source:** Simply implement a method that returns a `BarSeries`. You can load data from:
+**All data sources share the same interface:**
+```java
+BarSeriesDataSource yahoo = new YahooFinanceHttpBarSeriesDataSource(true);
+BarSeriesDataSource coinbase = new CoinbaseHttpBarSeriesDataSource(true);
+BarSeriesDataSource csv = new CsvFileBarSeriesDataSource();
+
+// Same interface, different implementations
+BarSeries aapl = yahoo.loadSeries("AAPL", Duration.ofDays(1), start, end);
+BarSeries btc = coinbase.loadSeries("BTC-USD", Duration.ofDays(1), start, end);
+BarSeries eth = csv.loadSeries("ETH-USD", Duration.ofDays(1), start, end);
+```
+
+**Create your own data source:** Simply implement the `BarSeriesDataSource` interface. You can load data from:
 - CSV files
 - REST APIs (your broker, exchange, or data provider)
 - Databases (SQL, NoSQL)
@@ -243,7 +308,7 @@ See the [Data Loading Examples](#real-world-examples) section for more details.
 
 ## Evaluate performance with metrics
 
-Turn ideas into numbers. Add trading costs for realism and measure what matters—returns, risk, drawdowns, and more.
+Turn ideas into numbers. Add trading costs for realism and measure what matters: returns, risk, drawdowns, and more.
 
 ```java
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
@@ -312,10 +377,12 @@ topStrategies.forEach(statement -> {
 });
 ```
 
+It’s not uncommon for a first backtest to look promising. Very promising. Resist the urge to extrapolate annualized returns, quit your job, or price out yachts.
+
 
 ## Visualize and share strategies
 
-See your strategies in action. Ta4j includes charting helpers, but you're not locked in—serialize to JSON and use any visualization stack you prefer.
+See your strategies in action. Ta4j includes charting helpers, but you're not locked in - serialize to JSON and use any visualization stack you prefer.
 
 **Built-in Java charting** (using JFreeChart):
 
@@ -393,7 +460,7 @@ JFreeChart chart = chartWorkflow.builder()
 
 ![Strategy Performance Analysis](ta4j-examples/docs/img/strategy-performance-readme.jpg)
 
-This chart shows price action with indicator overlays, trading signals, and a performance subchart displaying maximum drawdown over time—helping you understand risk alongside returns.
+This chart shows price action with indicator overlays, trading signals, and a performance subchart displaying maximum drawdown over time - helping you understand risk alongside returns.
 
 **Advanced multi-indicator analysis** with multiple subcharts:
 <!-- START_SNIPPET: advanced-strategy -->
@@ -496,7 +563,7 @@ Strategy restoredStrategy = Strategy.fromJson(series, strategyJson);
 
 ## From backtest to live trading
 
-The same strategies you backtest can run live. Ta4j's deterministic calculations make it safe to deploy—test thoroughly, then execute with confidence.
+The same strategies you backtest can run live. Ta4j's deterministic calculations make it safe to deploy & test thoroughly, then execute with confidence.
 
 ```java
 import org.ta4j.core.builder.BaseBarSeriesBuilder;
@@ -530,7 +597,7 @@ while (true) {
 
 **Why this works:**
 - **Same code, different data**: Your strategy logic is identical for backtests and live trading
-- **Deterministic**: Same inputs always produce same outputs—critical for testing and debugging
+- **Deterministic**: Same inputs always produce same outputs - critical for testing and debugging
 - **Type-safe**: Compile-time checks catch errors before they cost money
 
 ## Real-world examples
@@ -546,14 +613,20 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[NetMomentumStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/NetMomentumStrategy.java)** - Net momentum calculation with multiple indicators
 
 ### Data Loading Examples
-- **[YahooFinanceBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/YahooFinanceBarSeriesDataSource.java)** - Fetch historical OHLCV data from Yahoo Finance API (stocks, ETFs, crypto). Includes response caching to reduce API calls. See the [Sourcing market data](#sourcing-market-data) section above for a quick start guide.
+- **[YahooFinanceHttpBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/YahooFinanceHttpBarSeriesDataSource.java)** - Fetch historical OHLCV data from Yahoo Finance API (stocks, ETFs, crypto). Includes response caching to reduce API calls. See the [Sourcing market data](#sourcing-market-data) section above for a quick start guide.
 - **[YahooFinanceBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/YahooFinanceBacktest.java)** - Complete example demonstrating Yahoo Finance data loading, advanced multi-indicator strategy (Bollinger Bands, RSI, ATR stops), backtesting, and visualization
+- **[CoinbaseHttpBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/CoinbaseHttpBarSeriesDataSource.java)** - Load historical crypto data from Coinbase's public API with automatic caching and pagination
+- **[CoinbaseBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/CoinbaseBacktest.java)** - Complete example demonstrating Coinbase data loading, advanced multi-indicator strategy (MACD, Keltner Channels, VWAP, MFI), risk management, and transaction cost analysis
 - **[BitStampCsvTradesFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/BitStampCsvTradesFileBarSeriesDataSource.java)** - Load historical trade data from Bitstamp CSV files and aggregate into OHLCV bars
-- **[CsvFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/CsvFileBarSeriesDataSource.java)** - Load OHLCV bar data from CSV
-- **[JsonFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/JsonFileBarSeriesDataSource.java)** - Parse JSON data from Coinbase/Binance APIs
+- **[CsvFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/CsvFileBarSeriesDataSource.java)** - Load OHLCV bar data from CSV files with intelligent filename pattern matching
+- **[JsonFileBarSeriesDataSource](ta4j-examples/src/main/java/ta4jexamples/datasources/JsonFileBarSeriesDataSource.java)** - Parse JSON data from Coinbase/Binance APIs with flexible date filtering
 
 ### Analysis & Backtesting Examples
 - **[StrategyAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/StrategyAnalysis.java)** - Comprehensive strategy performance analysis
+- **[ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWaveAnalysis.java)** - Elliott Wave scenario analysis with confidence scoring and annotated charts. Supports command-line arguments for loading data from Yahoo Finance or Coinbase, or uses a default dataset if no arguments provided.
+- **[BTCUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/BTCUSDElliottWaveAnalysis.java)** - Example Elliott Wave analysis for Bitcoin (BTC-USD) using Coinbase data
+- **[ETHUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ETHUSDElliottWaveAnalysis.java)** - Example Elliott Wave analysis for Ethereum (ETH-USD) using Coinbase data
+- **[SP500ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/SP500ElliottWaveAnalysis.java)** - Example Elliott Wave analysis for S&P 500 Index (^GSPC) using Yahoo Finance data
 - **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
 
@@ -598,7 +671,7 @@ Get help, share ideas, and connect with other Ta4j users:
 
 **New to technical analysis?**
 - Start with the [wiki's Getting Started guide](https://ta4j.github.io/ta4j-wiki/) to learn core concepts
-- Explore the [`ta4j-examples`](ta4j-examples) module—each example is runnable and well-commented
+- Explore the [`ta4j-examples`](ta4j-examples) module - each example is runnable and well-commented
 - Try modifying the quick start example above: change indicator parameters, add new rules, or test different exit conditions
 
 **Ready to go deeper?**
@@ -621,11 +694,7 @@ Ta4j uses automated workflows for publishing both snapshot and stable releases.
 
 ### Snapshots
 
-Every push to `master` triggers a snapshot deployment:
-
-```
-mvn deploy
-```
+Every push to `master` triggers a snapshot deployment via the `snapshot.yml` Github workflow:
 
 Snapshots are available at:
 
@@ -635,7 +704,26 @@ https://central.sonatype.com/repository/maven-snapshots/
 
 ### Stable releases
 
-For detailed information about the release process, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
+Releases are also automated via Github workflows. For detailed information about the release process, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
+
+
+## Warranty
+
+> **🛡️ Ta4j and its developers guarantee your experience to meet or exceed reasonable expectations for correctness and profitability for a minimum period of one (1) year, beginning the moment you run your first ta4j-based backtest\***.
+
+Just kidding.
+
+Ta4j is open-source software released under the MIT License. There is no warranty, express, implied, imaginary, or otherwise. Ta4j is provided as-is. Use it, fork it, break it, improve it, or walk away entirely.
+
+Ta4j is built and maintained by developers contributing on their own time, at their own expense, and for reasons as varied as the markets themselves. For some, it’s a hobby. For others, a labor of love. Some run Ta4j inside proprietary trading stacks and choose to give back. Others contribute to open-source to offset certain download habits that, in practice, look a lot like torrenting north of a thousand terabytes of movies, TV shows, software installers, cracked plug-ins, ROM sets, **The.Sims.3.Complete.Collection-RELOADED**, and e-books, while maintaining a lifetime upload ratio of 0. Who can say?
+
+What *is* certain is this: whoever they are, and whatever motivates them, they don’t owe you anything. If Ta4j helps you learn, experiment, or even make money, great. If it doesn’t, that’s the risk you accepted.
+
+\*Applies only to the Premium Subscription Package, which includes 24/7 technical support, guaranteed alpha, and on-demand feature requests.  
+(Also just kidding. There is no Premium Subscription Package.)
+
+
+
 
 ## Powered by
 
