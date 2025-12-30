@@ -8,10 +8,10 @@ on:
   workflow_dispatch:
     inputs:
       releaseVersion:
-        description: "OPTIONAL: Release version (e.g. 0.19). Leave blank to auto-detect."
+        description: "OPTIONAL: Release version (e.g. 0.20.0). Leave blank to auto-detect."
         required: false
       nextVersion:
-        description: "OPTIONAL: Next snapshot version (e.g. 0.20-SNAPSHOT). Leave blank to auto-generate."
+        description: "OPTIONAL: Next snapshot version (e.g. 0.20.1-SNAPSHOT). Leave blank to auto-generate."
         required: false
       dryRun:
         description: "Run release workflow in dry-run mode (no tag/push/deploy)."
@@ -253,6 +253,11 @@ jobs:
             exit 1
           fi
 
+          if [[ ! "${RELEASE}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Error: releaseVersion must be major.minor.patch (e.g. 0.20.0). Got: ${RELEASE}"
+            exit 1
+          fi
+
           if [[ "${CURRENT}" == *-SNAPSHOT ]]; then
             CURRENT_BASE="${CURRENT%-SNAPSHOT}"
           else
@@ -284,20 +289,13 @@ jobs:
 
           if [[ -z "${INPUT_NEXT}" ]]; then
             BASE="${RELEASE}"
-            # Handle version increment: supports major.minor or major.minor.patch
-            if [[ "${BASE}" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
-              # Format: major.minor -> major.minor+1
-              MAJOR="${BASH_REMATCH[1]}"
-              MINOR="${BASH_REMATCH[2]}"
-              NEXT="${MAJOR}.$((MINOR+1))-SNAPSHOT"
-            elif [[ "${BASE}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-              # Format: major.minor.patch -> major.minor.patch+1
+            if [[ "${BASE}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
               MAJOR="${BASH_REMATCH[1]}"
               MINOR="${BASH_REMATCH[2]}"
               PATCH="${BASH_REMATCH[3]}"
               NEXT="${MAJOR}.${MINOR}.$((PATCH+1))-SNAPSHOT"
             else
-              echo "Error: Unsupported version format '${BASE}'. Expected major.minor or major.minor.patch"
+              echo "Error: Unsupported release version format '${BASE}'. Expected major.minor.patch"
               exit 1
             fi
           else
@@ -307,6 +305,11 @@ jobs:
           # Validate next version ends with SNAPSHOT
           if [[ "${NEXT}" != *-SNAPSHOT ]]; then
             echo "Error: nextVersion must end with -SNAPSHOT. Got: ${NEXT}"
+            exit 1
+          fi
+
+          if [[ ! "${NEXT}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT$ ]]; then
+            echo "Error: nextVersion must be major.minor.patch-SNAPSHOT (e.g. 0.20.1-SNAPSHOT). Got: ${NEXT}"
             exit 1
           fi
 
