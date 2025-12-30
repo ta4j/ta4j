@@ -79,10 +79,33 @@ test_basic_flow() {
 EOF
 
   cat > README.md <<'EOF'
+<!-- TA4J_VERSION_BLOCK:core:stable:begin -->
 <dependency>
   <artifactId>ta4j-core</artifactId>
   <version>0.0.1</version>
 </dependency>
+<!-- TA4J_VERSION_BLOCK:core:stable:end -->
+
+<!-- TA4J_VERSION_BLOCK:core:snapshot:begin -->
+<dependency>
+  <artifactId>ta4j-core</artifactId>
+  <version>0.0.2-SNAPSHOT</version>
+</dependency>
+<!-- TA4J_VERSION_BLOCK:core:snapshot:end -->
+
+<!-- TA4J_VERSION_BLOCK:examples:stable:begin -->
+<dependency>
+  <artifactId>ta4j-examples</artifactId>
+  <version>0.0.1</version>
+</dependency>
+<!-- TA4J_VERSION_BLOCK:examples:stable:end -->
+
+<!-- TA4J_VERSION_BLOCK:examples:snapshot:begin -->
+<dependency>
+  <artifactId>ta4j-examples</artifactId>
+  <version>0.0.2-SNAPSHOT</version>
+</dependency>
+<!-- TA4J_VERSION_BLOCK:examples:snapshot:end -->
 EOF
 
   OUT="$(scripts/prepare-release.sh 1.3.0)"
@@ -100,6 +123,7 @@ EOF
   expect_file_matches release/1.3.0.md "^## 1\\.3\\.0 \\([0-9]{4}-[0-9]{2}-[0-9]{2}\\)" "release notes should have correct header"
 
   expect_file_contains README.md "<version>1.3.0</version>" "README version should be updated"
+  expect_file_contains README.md "<version>1.3.1-SNAPSHOT</version>" "README snapshot version should be incremented and preserved"
 
   finish_test
   pass "test_basic_flow"
@@ -118,7 +142,20 @@ test_missing_unreleased() {
 - Old release
 EOF
 
-  echo "placeholder" > README.md
+  cat > README.md <<'EOF'
+<!-- TA4J_VERSION_BLOCK:core:stable:begin -->
+<version>0.0.1</version>
+<!-- TA4J_VERSION_BLOCK:core:stable:end -->
+<!-- TA4J_VERSION_BLOCK:core:snapshot:begin -->
+<version>0.0.1-SNAPSHOT</version>
+<!-- TA4J_VERSION_BLOCK:core:snapshot:end -->
+<!-- TA4J_VERSION_BLOCK:examples:stable:begin -->
+<version>0.0.1</version>
+<!-- TA4J_VERSION_BLOCK:examples:stable:end -->
+<!-- TA4J_VERSION_BLOCK:examples:snapshot:begin -->
+<version>0.0.1-SNAPSHOT</version>
+<!-- TA4J_VERSION_BLOCK:examples:snapshot:end -->
+EOF
 
   OUT="$(scripts/prepare-release.sh 1.3.0)"
 
@@ -138,7 +175,20 @@ test_empty_changelog() {
   run_test
 
   touch CHANGELOG.md
-  echo "placeholder" > README.md
+  cat > README.md <<'EOF'
+<!-- TA4J_VERSION_BLOCK:core:stable:begin -->
+<version>0.0.1</version>
+<!-- TA4J_VERSION_BLOCK:core:stable:end -->
+<!-- TA4J_VERSION_BLOCK:core:snapshot:begin -->
+<version>0.0.1-SNAPSHOT</version>
+<!-- TA4J_VERSION_BLOCK:core:snapshot:end -->
+<!-- TA4J_VERSION_BLOCK:examples:stable:begin -->
+<version>0.0.1</version>
+<!-- TA4J_VERSION_BLOCK:examples:stable:end -->
+<!-- TA4J_VERSION_BLOCK:examples:snapshot:begin -->
+<version>0.0.1-SNAPSHOT</version>
+<!-- TA4J_VERSION_BLOCK:examples:snapshot:end -->
+EOF
 
   OUT="$(scripts/prepare-release.sh 1.0.0)"
 
@@ -151,10 +201,134 @@ test_empty_changelog() {
 }
 
 # -----------------------------------------------------------------------------
+# TEST 4: Snapshot Version Increment (major.minor.patch)
+# -----------------------------------------------------------------------------
+test_snapshot_patch_increment() {
+  echo "Running test_snapshot_patch_increment"
+
+  run_test
+
+  cat > CHANGELOG.md <<'EOF'
+## Unreleased
+
+- Some change.
+EOF
+
+  cat > README.md <<'EOF'
+<!-- TA4J_VERSION_BLOCK:core:stable:begin -->
+<dependency>
+  <artifactId>ta4j-core</artifactId>
+  <version>0.1</version>
+</dependency>
+<!-- TA4J_VERSION_BLOCK:core:stable:end -->
+
+<!-- TA4J_VERSION_BLOCK:core:snapshot:begin -->
+<dependency>
+  <artifactId>ta4j-core</artifactId>
+  <version>0.2-SNAPSHOT</version>
+</dependency>
+<!-- TA4J_VERSION_BLOCK:core:snapshot:end -->
+
+<!-- TA4J_VERSION_BLOCK:examples:stable:begin -->
+<dependency>
+  <artifactId>ta4j-examples</artifactId>
+  <version>0.1</version>
+</dependency>
+<!-- TA4J_VERSION_BLOCK:examples:stable:end -->
+
+<!-- TA4J_VERSION_BLOCK:examples:snapshot:begin -->
+<dependency>
+  <artifactId>ta4j-examples</artifactId>
+  <version>0.2-SNAPSHOT</version>
+</dependency>
+<!-- TA4J_VERSION_BLOCK:examples:snapshot:end -->
+EOF
+
+  scripts/prepare-release.sh 2.7.4 >/dev/null
+
+  expect_file_contains README.md "<version>2.7.4</version>" "README stable version should be updated"
+  expect_file_contains README.md "<version>2.7.5-SNAPSHOT</version>" "README snapshot version should increment patch and preserve suffix"
+
+  finish_test
+  pass "test_snapshot_patch_increment"
+}
+
+# -----------------------------------------------------------------------------
+# TEST 5: Missing README Sentinel
+# -----------------------------------------------------------------------------
+test_missing_readme_sentinel() {
+  echo "Running test_missing_readme_sentinel"
+
+  run_test
+
+  cat > CHANGELOG.md <<'EOF'
+## Unreleased
+
+- Some change.
+EOF
+
+  cat > README.md <<'EOF'
+<!-- TA4J_VERSION_BLOCK:core:stable:begin -->
+<version>0.1</version>
+<!-- TA4J_VERSION_BLOCK:core:stable:end -->
+EOF
+
+  if scripts/prepare-release.sh 1.0.0 >/dev/null 2>&1; then
+    fail "script should fail when README sentinels are missing"
+  fi
+
+  finish_test
+  pass "test_missing_readme_sentinel"
+}
+
+# -----------------------------------------------------------------------------
+# TEST 6: Invalid Release Version
+# -----------------------------------------------------------------------------
+test_invalid_release_version() {
+  echo "Running test_invalid_release_version"
+
+  run_test
+
+  cat > CHANGELOG.md <<'EOF'
+## Unreleased
+
+- Some change.
+EOF
+
+  cat > README.md <<'EOF'
+<!-- TA4J_VERSION_BLOCK:core:stable:begin -->
+<version>0.1</version>
+<!-- TA4J_VERSION_BLOCK:core:stable:end -->
+<!-- TA4J_VERSION_BLOCK:core:snapshot:begin -->
+<version>0.1-SNAPSHOT</version>
+<!-- TA4J_VERSION_BLOCK:core:snapshot:end -->
+<!-- TA4J_VERSION_BLOCK:examples:stable:begin -->
+<version>0.1</version>
+<!-- TA4J_VERSION_BLOCK:examples:stable:end -->
+<!-- TA4J_VERSION_BLOCK:examples:snapshot:begin -->
+<version>0.1-SNAPSHOT</version>
+<!-- TA4J_VERSION_BLOCK:examples:snapshot:end -->
+EOF
+
+  if scripts/prepare-release.sh 1.3 >/dev/null 2>&1; then
+    fail "script should fail when release version is not major.minor.patch"
+  fi
+
+  expect_file_contains CHANGELOG.md "## Unreleased" "changelog should remain unchanged on version error"
+  expect_file_contains CHANGELOG.md "- Some change." "changelog entries should remain unchanged on version error"
+
+  finish_test
+  pass "test_invalid_release_version"
+}
+
+# -----------------------------------------------------------------------------
 main() {
   test_basic_flow
   test_missing_unreleased
   test_empty_changelog
+  test_snapshot_patch_increment
+  test_missing_readme_sentinel
+  test_invalid_release_version
 
   echo "All tests passed."
 }
