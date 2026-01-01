@@ -98,6 +98,17 @@ jobs:
             echo "present=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Check for GH_TA4J_REPO_TOKEN
+        id: check_repo_token
+        env:
+          GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
+        run: |
+          if [ -z "${GH_TA4J_REPO_TOKEN:-}" ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
+          else
+            echo "present=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Collect missing secrets
         id: collect_missing
         env:
@@ -106,6 +117,7 @@ jobs:
           MAVEN_PASS: ${{ steps.check_maven_pass.outputs.present }}
           GPG_KEY: ${{ steps.check_gpg_key.outputs.present }}
           GPG_PASS: ${{ steps.check_gpg_passphrase.outputs.present }}
+          REPO_TOKEN: ${{ steps.check_repo_token.outputs.present }}
         run: |
           missing=()
           if [ "${MAVEN_USER:-false}" != "true" ]; then
@@ -119,6 +131,9 @@ jobs:
           fi
           if [ "${GPG_PASS:-false}" != "true" ]; then
             missing+=("GPG_PASSPHRASE")
+          fi
+          if [ "${REPO_TOKEN:-false}" != "true" ]; then
+            missing+=("GH_TA4J_REPO_TOKEN")
           fi
 
           if [ "${#missing[@]}" -gt 0 ]; then
@@ -521,6 +536,23 @@ jobs:
           # Push tag only after deploy succeeds to avoid publishing a tag that doesn't match deployed artifacts.
           git push origin "refs/tags/${RELEASE_VERSION}"
 
+      - name: Trigger GitHub Release workflow
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.check_tag.outputs.exists != 'true'
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ secrets.GH_TA4J_REPO_TOKEN }}
+          script: |
+            const tag = "${{ steps.versions.outputs.release }}";
+            const workflowId = "github-release.yml";
+            core.info(`Dispatching ${workflowId} for tag ${tag}`);
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: workflowId,
+              ref: tag,
+              inputs: { tag }
+            });
+
       # -----------------------
       # Apply Next Snapshot Version
       # -----------------------
@@ -545,6 +577,7 @@ jobs:
         if: steps.dry_run.outputs.dryRun != 'true'
         uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ secrets.GH_TA4J_REPO_TOKEN }}
           branch: release/${{ steps.versions.outputs.release }}
           base: master
           title: "Release ${{ steps.versions.outputs.release }}"
