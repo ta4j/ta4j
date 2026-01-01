@@ -15,7 +15,6 @@ set -euo pipefail
 #   - No version bumping
 #   - No tagging
 #   - No Git commits
-#   - No snapshot logic
 #
 # Usage:
 #   scripts/prepare-release.sh <release-version>
@@ -26,7 +25,7 @@ set -euo pipefail
 #
 # =============================================================================
 
-if [[ $# -lt 1 ]]; then
+if [[ $# -ne 1 ]]; then
   echo "Usage: $0 <release-version>" >&2
   exit 1
 fi
@@ -102,25 +101,125 @@ PY
 }
 
 # -----------------------------------------------------------------------------
+# README Sentinel Validation
+# -----------------------------------------------------------------------------
+require_readme_sentinels() {
+  if [[ ! -f README.md ]]; then
+    echo "Error: README.md not found" >&2
+    exit 1
+  fi
+
+  local missing=0
+  local markers=(
+    "TA4J_VERSION_BLOCK:core:stable:begin"
+    "TA4J_VERSION_BLOCK:core:stable:end"
+    "TA4J_VERSION_BLOCK:core:snapshot:begin"
+    "TA4J_VERSION_BLOCK:core:snapshot:end"
+    "TA4J_VERSION_BLOCK:examples:stable:begin"
+    "TA4J_VERSION_BLOCK:examples:stable:end"
+    "TA4J_VERSION_BLOCK:examples:snapshot:begin"
+    "TA4J_VERSION_BLOCK:examples:snapshot:end"
+  )
+
+  for marker in "${markers[@]}"; do
+    if ! grep -Eq "<!--[[:space:]]*${marker}[[:space:]]*-->" README.md; then
+      echo "Error: missing README sentinel <!-- ${marker} -->" >&2
+      missing=1
+    fi
+  done
+
+  if [[ $missing -ne 0 ]]; then
+    exit 1
+  fi
+}
+
+# -----------------------------------------------------------------------------
+# Snapshot Version Calculator
+# -----------------------------------------------------------------------------
+compute_snapshot_version() {
+  local version="$1"
+  python3 - "$version" <<'PY'
+import re
+import sys
+
+version = sys.argv[1]
+m = re.match(r"^(\d+)\.(\d+)\.(\d+)$", version)
+if not m:
+    print(f"Error: invalid release version '{version}' (expected major.minor.patch)", file=sys.stderr)
+    sys.exit(1)
+
+major, minor, patch = map(int, m.groups())
+print(f"{major}.{minor}.{patch + 1}-SNAPSHOT")
+PY
+}
+
+# -----------------------------------------------------------------------------
 # README / Version Reference Updater
 # -----------------------------------------------------------------------------
 update_readme() {
   local version="$1"
+  local snapshot_version="$2"
+
   export VERSION="$version"
+  export SNAPSHOT_VERSION="$snapshot_version"
 
-  # Replace stable versions (no -SNAPSHOT)
-  # Handle ta4j-core and ta4j-examples separately to avoid regex complexity
-  perl -0pi -e 's|(<artifactId>ta4j-core</artifactId>\s*<version>)[^<]+(</version>)|$1$ENV{VERSION}$2|g' README.md
-  perl -0pi -e 's|(<artifactId>ta4j-examples</artifactId>\s*<version>)[^<]+(</version>)|$1$ENV{VERSION}$2|g' README.md
+  perl -0777 -i -pe '
+    sub bump_version_tags {
+      my ($block, $v) = @_;
+      $block =~ s{(<version>)[^<]+(</version>)}{$1$v$2}g;
+      return $block;
+    }
 
-  # Update any display text showing latest stable version
+    # core stable
+    s{
+      (<!--\s*TA4J_VERSION_BLOCK:core:stable:begin\s*-->)
+      (.*?)
+      (<!--\s*TA4J_VERSION_BLOCK:core:stable:end\s*-->)
+    }{$1 . bump_version_tags($2, $ENV{VERSION}) . $3}gsex;
+
+    # core snapshot
+    s{
+      (<!--\s*TA4J_VERSION_BLOCK:core:snapshot:begin\s*-->)
+      (.*?)
+      (<!--\s*TA4J_VERSION_BLOCK:core:snapshot:end\s*-->)
+    }{$1 . bump_version_tags($2, $ENV{SNAPSHOT_VERSION}) . $3}gsex;
+
+    # examples stable
+    s{
+      (<!--\s*TA4J_VERSION_BLOCK:examples:stable:begin\s*-->)
+      (.*?)
+      (<!--\s*TA4J_VERSION_BLOCK:examples:stable:end\s*-->)
+    }{$1 . bump_version_tags($2, $ENV{VERSION}) . $3}gsex;
+
+    # examples snapshot
+    s{
+      (<!--\s*TA4J_VERSION_BLOCK:examples:snapshot:begin\s*-->)
+      (.*?)
+      (<!--\s*TA4J_VERSION_BLOCK:examples:snapshot:end\s*-->)
+    }{$1 . bump_version_tags($2, $ENV{SNAPSHOT_VERSION}) . $3}gsex;
+  ' README.md
+
   perl -0pi -e "s|Current version: \`[0-9]+\\.[0-9]+(\\.[0-9]+)?\`|Current version: \`${version}\`|g" README.md || true
+
+  if ! grep -Fq "<version>${VERSION}</version>" README.md; then
+    echo "Error: expected release version ${VERSION} to appear in README.md" >&2
+    exit 1
+  fi
+
+  if ! grep -Fq "<version>${SNAPSHOT_VERSION}</version>" README.md; then
+    echo "Error: expected snapshot version ${SNAPSHOT_VERSION} to appear in README.md" >&2
+    exit 1
+  fi
+
 }
+
 
 echo "Preparing release: $RELEASE_VERSION"
 
+require_readme_sentinels
+SNAPSHOT_VERSION="$(compute_snapshot_version "$RELEASE_VERSION")"
 update_changelog "$RELEASE_VERSION" "$RELEASE_NOTES_FILE"
-update_readme "$RELEASE_VERSION"
+update_readme "$RELEASE_VERSION" "$SNAPSHOT_VERSION"
 
 echo
 echo "release_version=${RELEASE_VERSION}"

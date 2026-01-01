@@ -16,8 +16,8 @@ management, deployment, and tagging. Contributors only maintain documentation
 **For a typical release:**
 
 1. Update `CHANGELOG.md` with changes under the `Unreleased` section
-2. Run `scripts/prepare-release.sh 0.20` (use `major.minor` format)
-3. Commit and push: `git add CHANGELOG.md README.md release/ && git commit -m "Prepare release 0.20" && git push`
+2. Run `scripts/prepare-release.sh 0.20.0` (use `major.minor.patch` format)
+3. Commit and push: `git add CHANGELOG.md README.md release/ && git commit -m "Prepare release 0.20.0" && git push`
 4. Trigger the release workflow manually or wait for the automated scheduler
 
 **To test the release process without publishing:**
@@ -42,7 +42,7 @@ Ta4j uses five coordinated components:
 1. **prepare-release.sh**  
    Updates CHANGELOG and README, and generates `release/<version>.md` notes.
    Does *not* bump versions or perform SCM operations.
-   - **Input**: Version in `major.minor` format (e.g., `0.20`)
+   - **Input**: Version in `major.minor.patch` format (e.g., `0.20.0`)
    - **Output**: Updated `CHANGELOG.md`, `README.md`, and `release/<version>.md`
 
 2. **Release Scheduler (`release-scheduler.yml`)**  
@@ -61,8 +61,8 @@ Ta4j uses five coordinated components:
    - Verifies the branch is still fast-forwardable, then builds, signs, and deploys to Maven Central (skipped on `dryRun=true`).  
    - Bumps to the next snapshot with the Maven Versions Plugin and commits it (skipped on `dryRun=true`).  
    - Pushes only the tag (after a successful deploy) and opens a pull request (`release/<version>` → `master`) containing both the release commit and the next-snapshot bump. No direct push to `master` is performed.  
-   - **Inputs**: `releaseVersion` (e.g., `0.20.0` or `0.20`, no leading `v`), `nextVersion` (optional), `dryRun` (boolean).
-   - **Version formats supported**: `major.minor` (e.g., `0.20`) or `major.minor.patch` (e.g., `0.20.0`)
+   - **Inputs**: `releaseVersion` (e.g., `0.20.0`, no leading `v`), `nextVersion` (optional), `dryRun` (boolean).
+   - **Version formats supported**: `major.minor.patch` (e.g., `0.20.0`)
 
 4. **GitHub Release Workflow (`github-release.yml`)**  
    - Automatically triggered when a release tag is pushed.
@@ -161,28 +161,29 @@ You can reach the release workflow two ways:
 scripts/prepare-release.sh <version>
 ```
 
-**Version format:** Use `major.minor` format (e.g., `0.20`). The script will handle the rest.
+**Version format:** Use `major.minor.patch` format (e.g., `0.20.0`).
 
 Example:
 
 ```bash
-scripts/prepare-release.sh 0.20
+scripts/prepare-release.sh 0.20.0
 ```
 
 **What the script does:**
 
-- Rolls forward the `Unreleased` entries into a `## 0.20 (YYYY-MM-DD)` section with today's date
+- Rolls forward the `Unreleased` entries into a `## 0.20.0 (YYYY-MM-DD)` section with today's date
 - Resets `Unreleased` to contain a placeholder (`- _No changes yet._`)
+- Validates the README sentinel blocks (`TA4J_VERSION_BLOCK:*`) and fails fast if any are missing
 - Updates version snippets in `README.md` (Maven dependency examples)
-- Generates a standalone release notes file: `release/0.20.md`
+- Generates a standalone release notes file: `release/0.20.0.md`
 
-**Important:** The script accepts `major.minor` format (e.g., `0.20`), but the workflow accepts both `major.minor` and `major.minor.patch` formats (e.g., `0.20` or `0.20.0`). The workflow will normalize as needed.
+**Important:** The script requires `major.minor.patch` (e.g., `0.20.0`). The release workflow now validates patch-formatted release/next versions before running `prepare-release.sh`.
 
 ### **2. Commit the updated documentation**
 
 ```
 git add CHANGELOG.md README.md release/
-git commit -m "Prepare release 0.20"
+git commit -m "Prepare release 0.20.0"
 git push
 ```
 
@@ -193,11 +194,11 @@ git push
 1. Go to **GitHub → Actions → Publish Release to Maven Central → Run Workflow**
 2. Select the `master` branch (releases must be from `master`)
 3. Provide workflow inputs:
-   - **releaseVersion** — e.g., `0.20.0` or `0.20` (no leading `v`)
-     - Supports both `major.minor` and `major.minor.patch` formats
+   - **releaseVersion** — e.g., `0.20.0` (no leading `v`)
+     - Must be `major.minor.patch` to satisfy `prepare-release.sh`
      - If blank, auto-detects from current POM version (must be a SNAPSHOT)
-   - **nextVersion** — e.g., `0.21.0-SNAPSHOT` (optional; auto-computed if blank)
-     - Auto-increments: `0.20` → `0.21-SNAPSHOT`, `0.20.0` → `0.20.1-SNAPSHOT`
+   - **nextVersion** — e.g., `0.20.1-SNAPSHOT` (optional; auto-computed if blank)
+     - Auto-increments: `0.20.0` → `0.20.1-SNAPSHOT`
    - **dryRun** — Set to `true` to validate without tagging/pushing/deploying
      - Recommended for first-time releases or testing changes
 4. Click **Run workflow**
@@ -271,7 +272,7 @@ After triggering a release, verify it completed successfully:
 
 ```bash
 git fetch --tags
-git tag | grep <version>  # e.g., git tag | grep 0.20
+git tag | grep <version>  # e.g., git tag | grep 0.20.0
 ```
 
 The release tag should exist (unless in dry-run mode).
@@ -359,7 +360,7 @@ Also verify the release PR (`release/<version>`) is open and contains both the r
 **Problem:** Workflow fails with version format validation errors.
 
 **Solutions:**
-- Use `major.minor` (e.g., `0.20`) or `major.minor.patch` (e.g., `0.20.0`) format
+- Use `major.minor.patch` (e.g., `0.20.0`) format
 - Do not include `-SNAPSHOT` in the release version
 - Ensure `nextVersion` ends with `-SNAPSHOT` if provided manually
 - Do not include a leading `v` prefix
@@ -429,7 +430,7 @@ Also verify the release PR (`release/<version>`) is open and contains both the r
 
 If RC support is later enabled:
 
-- RCs should be named `0.20-rc1`, `0.20-rc2`, etc.
+- RCs should be named `0.20.0-rc1`, `0.20.0-rc2`, etc.
 - You would run the same workflow but provide the RC version.
 - The workflow supports any version format that Maven accepts.
 

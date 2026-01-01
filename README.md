@@ -60,15 +60,21 @@ Ta4j does not promise profitable strategies. It promises reproducible experiment
 
 Add Ta4j from Maven Central:
 
+<!-- TA4J_VERSION_BLOCK:core:stable:begin -->
+
 ```xml
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.21.0</version>
+  <version>0.22.0</version>
 </dependency>
 ```
 
+<!-- TA4J_VERSION_BLOCK:core:stable:end -->
+
 Prefer living on the edge? Use the snapshot repository and version:
+
+<!-- TA4J_VERSION_BLOCK:core:snapshot:begin -->
 
 ```xml
 <repository>
@@ -79,29 +85,39 @@ Prefer living on the edge? Use the snapshot repository and version:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.22.0-SNAPSHOT</version>
+  <version>0.22.1-SNAPSHOT</version>
 </dependency>
 ```
+
+<!-- TA4J_VERSION_BLOCK:core:snapshot:end -->
 
 Sample applications are also published so you can copy/paste entire flows:
 
+<!-- TA4J_VERSION_BLOCK:examples:stable:begin -->
+
 ```xml
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.21.0</version>
+  <version>0.22.0</version>
 </dependency>
 ```
+
+<!-- TA4J_VERSION_BLOCK:examples:stable:end -->
 
 Like living on the edge? Use the snapshot version of ta4j-examples for the latest experimental/beta features:
 
+<!-- TA4J_VERSION_BLOCK:examples:snapshot:begin -->
+
 ```xml
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.22.0-SNAPSHOT</version>
+  <version>0.22.1-SNAPSHOT</version>
 </dependency>
 ```
+
+<!-- TA4J_VERSION_BLOCK:examples:snapshot:end -->
 
 **💡 Tip**: The `ta4j-examples` module includes runnable demos, data loaders, and charting utilities. It's a great way to see Ta4j in action and learn by example.
 

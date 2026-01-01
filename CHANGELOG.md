@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.22.0 (2025-12-29)
+
 ### Breaking Changes
 - **CachedIndicator and RecursiveCachedIndicator synchronization changes**: `CachedIndicator` and `RecursiveCachedIndicator` no longer use `synchronized` methods. Thread safety is now achieved through internal locking using `ReentrantReadWriteLock`. **Action required**: Code that relied on external synchronization using indicator instances (e.g., `synchronized(indicator) { ... }`) must be updated to use explicit external locks.
 - **SqueezeProIndicator return type change**: `SqueezeProIndicator` return type changed from `Boolean` to `Num`. Use `getSqueezeLevel(int)` or `isInSqueeze(int)` for compression state instead of direct boolean checks.
