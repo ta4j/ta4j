@@ -29,6 +29,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ github.event.inputs.tag || github.ref }}
+          token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
 
       # ------------------------------------------------------------
       # Determine Tag + Validate Release Notes File

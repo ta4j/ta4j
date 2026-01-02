@@ -37,6 +37,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
+          token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
 
       - name: Normalize dry run input
         id: dry_run
@@ -535,23 +536,6 @@ jobs:
         run: |
           # Push tag only after deploy succeeds to avoid publishing a tag that doesn't match deployed artifacts.
           git push origin "refs/tags/${RELEASE_VERSION}"
-
-      - name: Trigger GitHub Release workflow
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.check_tag.outputs.exists != 'true'
-        uses: actions/github-script@v8
-        with:
-          github-token: ${{ secrets.GH_TA4J_REPO_TOKEN }}
-          script: |
-            const tag = "${{ steps.versions.outputs.release }}";
-            const workflowId = "github-release.yml";
-            core.info(`Dispatching ${workflowId} for tag ${tag}`);
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: workflowId,
-              ref: tag,
-              inputs: { tag }
-            });
 
       # -----------------------
       # Apply Next Snapshot Version

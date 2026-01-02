@@ -1,6 +1,14 @@
 ## Unreleased
 
-- _No changes yet._
+### Added
+- **Manual GitHub Release workflow trigger**: Added `workflow_dispatch` support with a required tag input so maintainers can backfill or re-run a GitHub Release directly from the Actions UI.
+
+### Changed
+- **GitHub Release execution path**: Release creation now relies on tag-push triggers (and the manual dispatch option) instead of being invoked directly from `release.yml`, with the workflow checking out the target tag to align notes and artifacts.
+- **Release automation tokens**: Standardized on `GH_TA4J_REPO_TOKEN` for release scheduler dispatch, release workflow checkout/tag push, GitHub Release creation, and release PR creation.
+
+### Fixed
+
 
 ## 0.22.0 (2025-12-29)
 
