@@ -51,7 +51,7 @@ jobs:
         with:
           fetch-depth: 0
           ref: ${{ steps.checkout_ref.outputs.ref }}
-          token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
+          token: ${{ github.token }}
 
       - name: Normalize dry run input
         id: dry_run
@@ -95,8 +95,8 @@ jobs:
 
       - name: Preflight release permissions (dry run)
         if: steps.dry_run.outputs.dryRun == 'true'
+        id: token_preflight
         env:
-          GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
@@ -136,29 +136,27 @@ jobs:
               return permission in ("WRITE", "MAINTAIN", "ADMIN")
 
           def check_token(token, label):
-              if not token:
-                  print(f"{label}:missing")
-                  return None
-              try:
-                  permission = viewer_permission(token)
-                  print(f"{label}:{permission}")
-                  return permission
-              except Exception as exc:
-                  print(f"::warning::{label} permission check failed: {exc}")
-                  return None
+            if not token:
+              print(f"{label}:missing")
+              return None
+            try:
+              permission = viewer_permission(token)
+              print(f"{label}:{permission}")
+              return permission
+            except Exception as exc:
+              print(f"::warning::{label} permission check failed: {exc}")
+              return None
 
-          pat = os.environ.get("GH_TA4J_REPO_TOKEN", "")
           gha = os.environ.get("GITHUB_TOKEN", "")
 
-          pat_perm = check_token(pat, "GH_TA4J_REPO_TOKEN")
           gha_perm = check_token(gha, "GITHUB_TOKEN")
 
-          if pat and pat_perm and not has_write(pat_perm):
-              print(f"::warning::GH_TA4J_REPO_TOKEN lacks write permission (viewerPermission={pat_perm}); workflow will fall back to GITHUB_TOKEN.")
-
-          if not ((pat_perm and has_write(pat_perm)) or (gha_perm and has_write(gha_perm))):
-              print("::error::No GitHub token with write permission available to create a release.")
+          if not (gha_perm and has_write(gha_perm)):
+              print("::error::GITHUB_TOKEN lacks write permission to create a release.")
               sys.exit(1)
+
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
+              fh.write(f"github_token_permission={gha_perm}\n")
           PY
 
       # ------------------------------------------------------------
@@ -216,6 +214,7 @@ jobs:
           echo "DRY RUN ENABLED: build completed; release publish skipped."
           echo "Tag: ${{ steps.version.outputs.tag }}"
           echo "Release notes: ${{ steps.version.outputs.notes_file }}"
+          echo "GITHUB_TOKEN permission: ${{ steps.token_preflight.outputs.github_token_permission }}"
           echo "Artifacts:"
           files="${{ steps.artifacts.outputs.jars }}"
           if [[ -z "${files}" ]]; then
@@ -229,23 +228,8 @@ jobs:
       # ------------------------------------------------------------
       # Upload full artifact set to GitHub Release
       # ------------------------------------------------------------
-      - name: Create GitHub Release (primary token)
-        id: create_release_primary
-        if: steps.dry_run.outputs.dryRun != 'true' && secrets.GH_TA4J_REPO_TOKEN != ''
-        continue-on-error: true
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          body_path: ${{ steps.version.outputs.notes_file }}
-          files: |
-            **/target/*.jar
-            **/target/*-sources.jar
-            **/target/*-javadoc.jar
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
-
-      - name: Create GitHub Release (fallback token)
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.create_release_primary.outcome != 'success'
+      - name: Create GitHub Release
+        if: steps.dry_run.outputs.dryRun != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
