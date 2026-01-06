@@ -4,6 +4,17 @@ on:
   push:
     tags:
       - "*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to publish (e.g. 0.22.0)"
+        required: true
+        type: string
+      dryRun:
+        description: "Run in dry-run mode to preview release creation without publishing."
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: github-release-${{ github.repository }}
@@ -18,10 +29,45 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Determine checkout ref
+        id: checkout_ref
+        run: |
+          INPUT_TAG="${{ github.event.inputs.tag }}"
+          if [[ -n "$INPUT_TAG" ]]; then
+            # For workflow_dispatch, construct tag ref from input
+            if [[ "$INPUT_TAG" == refs/tags/* ]]; then
+              INPUT_TAG="${INPUT_TAG#refs/tags/}"
+            fi
+            CHECKOUT_REF="refs/tags/${INPUT_TAG}"
+            echo "tag=${INPUT_TAG}" >> $GITHUB_OUTPUT
+          else
+            # For tag push events, use the ref directly
+            CHECKOUT_REF="${GITHUB_REF}"
+          fi
+          echo "ref=${CHECKOUT_REF}" >> $GITHUB_OUTPUT
+
       - name: Checkout full history
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
+          ref: ${{ steps.checkout_ref.outputs.ref }}
+          token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
+
+      - name: Normalize dry run input
+        id: dry_run
+        run: |
+          raw="${{ github.event.inputs.dryRun }}"
+          normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+
+          if [ "$normalized" = "true" ] || [ "$raw" = "true" ] || [ "$raw" = true ] || [ "$raw" = "1" ]; then
+            dry_run=true
+          else
+            dry_run=false
+          fi
+
+          echo "audit:dry_run_input_raw='${raw}'"
+          echo "audit:dry_run_normalized=$dry_run"
+          echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
 
       # ------------------------------------------------------------
       # Determine Tag + Validate Release Notes File
@@ -29,7 +75,16 @@ jobs:
       - name: Determine Version
         id: version
         run: |
-          TAG="${GITHUB_REF##*/}"
+          INPUT_TAG="${{ steps.checkout_ref.outputs.tag }}"
+          if [[ -n "$INPUT_TAG" ]]; then
+            TAG="$INPUT_TAG"
+          else
+            if [[ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]]; then
+              echo "Error: 'tag' input is required for workflow_dispatch runs." >&2
+              exit 1
+            fi
+            TAG="${GITHUB_REF##*/}"
+          fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           NOTES_FILE="release/${TAG}.md"
           if [[ ! -f "$NOTES_FILE" ]]; then
@@ -41,6 +96,17 @@ jobs:
       # ------------------------------------------------------------
       # Prepare Release Notes Body
       # ------------------------------------------------------------
+      - name: Dry-run summary
+        if: steps.dry_run.outputs.dryRun == 'true'
+        run: |
+          echo "DRY RUN ENABLED: skipping build and release publish."
+          echo "Tag: ${{ steps.version.outputs.tag }}"
+          echo "Release notes: ${{ steps.version.outputs.notes_file }}"
+          echo "Artifacts (glob patterns):"
+          echo "  - **/target/*.jar"
+          echo "  - **/target/*-sources.jar"
+          echo "  - **/target/*-javadoc.jar"
+
       # ------------------------------------------------------------
       # Build artifacts: core, examples, ALL modules
       # Produces:
@@ -49,18 +115,21 @@ jobs:
       #   - *-sources.jar
       # ------------------------------------------------------------
       - name: Set up JDK 21
+        if: steps.dry_run.outputs.dryRun != 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
 
       - name: Build all module artifacts
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: mvn -B -DskipTests package
 
       # ------------------------------------------------------------
       # Upload full artifact set to GitHub Release
       # ------------------------------------------------------------
       - name: Create GitHub Release
+        if: steps.dry_run.outputs.dryRun != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
@@ -70,4 +139,4 @@ jobs:
             **/target/*-sources.jar
             **/target/*-javadoc.jar
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
