@@ -11,6 +11,7 @@
 
 ### Fixed
 - **GitHub Release artifacts**: Build now uses the production-release profile so javadoc jars are generated and artifact validation succeeds.
+- **GitHub Release asset uploads**: Removed overlapping upload patterns to prevent duplicate asset uploads from failing the release.
 
 
 ## 0.22.0 (2025-12-29)
