@@ -245,7 +245,5 @@ jobs:
           body_path: ${{ steps.version.outputs.notes_file }}
           files: |
             **/target/*.jar
-            **/target/*-sources.jar
-            **/target/*-javadoc.jar
         env:
           GITHUB_TOKEN: ${{ env.GH_TA4J_REPO_TOKEN }}
