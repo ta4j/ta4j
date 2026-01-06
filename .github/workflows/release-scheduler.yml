@@ -616,7 +616,7 @@ jobs:
       - name: Trigger publish workflow
         uses: actions/github-script@v8
         with:
-          github-token: ${{ github.token }}
+          github-token: ${{ secrets.GH_TA4J_REPO_TOKEN }}
           script: |
             const shouldRelease = "${{ needs.analyze.outputs.should_release }}";
             if (shouldRelease !== "true") {
@@ -647,7 +647,7 @@ jobs:
       - name: Trigger publish workflow
         uses: actions/github-script@v8
         with:
-          github-token: ${{ github.token }}
+          github-token: ${{ secrets.GH_TA4J_REPO_TOKEN }}
           script: |
             const shouldRelease = "${{ needs.analyze.outputs.should_release }}";
             if (shouldRelease !== "true") {

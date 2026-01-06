@@ -27,6 +27,8 @@ jobs:
   create_release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
+    env:
+      GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
 
     steps:
       - name: Determine checkout ref
@@ -46,12 +48,19 @@ jobs:
           fi
           echo "ref=${CHECKOUT_REF}" >> $GITHUB_OUTPUT
 
+      - name: Verify GH_TA4J_REPO_TOKEN present
+        run: |
+          if [[ -z "${GH_TA4J_REPO_TOKEN:-}" ]]; then
+            echo "::error::GH_TA4J_REPO_TOKEN is required to create GitHub Releases."
+            exit 1
+          fi
+
       - name: Checkout full history
         uses: actions/checkout@v5
         with:
           fetch-depth: 0
           ref: ${{ steps.checkout_ref.outputs.ref }}
-          token: ${{ github.token }}
+          token: ${{ env.GH_TA4J_REPO_TOKEN }}
 
       - name: Normalize dry run input
         id: dry_run
@@ -97,7 +106,7 @@ jobs:
         if: steps.dry_run.outputs.dryRun == 'true'
         id: token_preflight
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GH_TA4J_REPO_TOKEN: ${{ env.GH_TA4J_REPO_TOKEN }}
         run: |
           set -euo pipefail
           python - <<'PY'
@@ -147,16 +156,16 @@ jobs:
               print(f"::warning::{label} permission check failed: {exc}")
               return None
 
-          gha = os.environ.get("GITHUB_TOKEN", "")
+          pat = os.environ.get("GH_TA4J_REPO_TOKEN", "")
 
-          gha_perm = check_token(gha, "GITHUB_TOKEN")
+          pat_perm = check_token(pat, "GH_TA4J_REPO_TOKEN")
 
-          if not (gha_perm and has_write(gha_perm)):
-              print("::error::GITHUB_TOKEN lacks write permission to create a release.")
+          if not (pat_perm and has_write(pat_perm)):
+              print("::error::GH_TA4J_REPO_TOKEN lacks write permission to create a release.")
               sys.exit(1)
 
           with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as fh:
-              fh.write(f"github_token_permission={gha_perm}\n")
+              fh.write(f"repo_token_permission={pat_perm}\n")
           PY
 
       # ------------------------------------------------------------
@@ -214,7 +223,7 @@ jobs:
           echo "DRY RUN ENABLED: build completed; release publish skipped."
           echo "Tag: ${{ steps.version.outputs.tag }}"
           echo "Release notes: ${{ steps.version.outputs.notes_file }}"
-          echo "GITHUB_TOKEN permission: ${{ steps.token_preflight.outputs.github_token_permission }}"
+          echo "GH_TA4J_REPO_TOKEN permission: ${{ steps.token_preflight.outputs.repo_token_permission }}"
           echo "Artifacts:"
           files="${{ steps.artifacts.outputs.jars }}"
           if [[ -z "${files}" ]]; then
@@ -239,4 +248,4 @@ jobs:
             **/target/*-sources.jar
             **/target/*-javadoc.jar
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ env.GH_TA4J_REPO_TOKEN }}

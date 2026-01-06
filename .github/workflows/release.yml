@@ -37,7 +37,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
-          token: ${{ github.token }}
+          token: ${{ secrets.GH_TA4J_REPO_TOKEN }}
 
       - name: Normalize dry run input
         id: dry_run
@@ -99,6 +99,17 @@ jobs:
             echo "present=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Check for GH_TA4J_REPO_TOKEN
+        id: check_repo_token
+        env:
+          GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
+        run: |
+          if [ -z "${GH_TA4J_REPO_TOKEN:-}" ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
+          else
+            echo "present=true" >> $GITHUB_OUTPUT
+          fi
+
       - name: Collect missing secrets
         id: collect_missing
         env:
@@ -107,6 +118,7 @@ jobs:
           MAVEN_PASS: ${{ steps.check_maven_pass.outputs.present }}
           GPG_KEY: ${{ steps.check_gpg_key.outputs.present }}
           GPG_PASS: ${{ steps.check_gpg_passphrase.outputs.present }}
+          REPO_TOKEN: ${{ steps.check_repo_token.outputs.present }}
         run: |
           missing=()
           if [ "${MAVEN_USER:-false}" != "true" ]; then
@@ -120,6 +132,9 @@ jobs:
           fi
           if [ "${GPG_PASS:-false}" != "true" ]; then
             missing+=("GPG_PASSPHRASE")
+          fi
+          if [ "${REPO_TOKEN:-false}" != "true" ]; then
+            missing+=("GH_TA4J_REPO_TOKEN")
           fi
 
           if [ "${#missing[@]}" -gt 0 ]; then
@@ -154,6 +169,7 @@ jobs:
           echo "::error::  2. MAVEN_CENTRAL_TOKEN_PASS - Maven Central password/token"
           echo "::error::  3. GPG_PRIVATE_KEY - GPG private key for artifact signing"
           echo "::error::  4. GPG_PASSPHRASE - Passphrase for GPG private key"
+          echo "::error::  5. GH_TA4J_REPO_TOKEN - GitHub token for creating releases and PRs"
           echo ""
           echo "::error::Please configure these secrets in:"
           echo "::error::  Repository Settings → Secrets and variables → Actions → New repository secret"
@@ -546,7 +562,7 @@ jobs:
         if: steps.dry_run.outputs.dryRun != 'true'
         uses: peter-evans/create-pull-request@v7
         with:
-          token: ${{ github.token }}
+          token: ${{ secrets.GH_TA4J_REPO_TOKEN }}
           branch: release/${{ steps.versions.outputs.release }}
           base: master
           title: "Release ${{ steps.versions.outputs.release }}"
