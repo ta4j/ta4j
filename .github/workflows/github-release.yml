@@ -93,20 +93,77 @@ jobs:
           fi
           echo "notes_file=$NOTES_FILE" >> $GITHUB_OUTPUT
 
+      - name: Preflight release permissions (dry run)
+        if: steps.dry_run.outputs.dryRun == 'true'
+        env:
+          GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.request
+
+          owner = os.environ.get("GITHUB_REPOSITORY_OWNER")
+          repo = os.environ.get("GITHUB_REPOSITORY", "").split("/", 1)[-1]
+          if not owner or not repo:
+              print("::error::Unable to resolve repository context for permission preflight.")
+              sys.exit(1)
+
+          def viewer_permission(token: str) -> str:
+              query = {
+                  "query": "query($owner:String!,$repo:String!){repository(owner:$owner,name:$repo){viewerPermission}}",
+                  "variables": {"owner": owner, "repo": repo},
+              }
+              req = urllib.request.Request(
+                  "https://api.github.com/graphql",
+                  data=json.dumps(query).encode("utf-8"),
+                  headers={
+                      "Authorization": f"Bearer {token}",
+                      "Content-Type": "application/json",
+                      "User-Agent": "ta4j-release-preflight",
+                  },
+              )
+              with urllib.request.urlopen(req) as resp:
+                  data = json.load(resp)
+              if "errors" in data:
+                  raise RuntimeError(data["errors"])
+              return data["data"]["repository"]["viewerPermission"]
+
+          def has_write(permission: str) -> bool:
+              return permission in ("WRITE", "MAINTAIN", "ADMIN")
+
+          def check_token(token, label):
+              if not token:
+                  print(f"{label}:missing")
+                  return None
+              try:
+                  permission = viewer_permission(token)
+                  print(f"{label}:{permission}")
+                  return permission
+              except Exception as exc:
+                  print(f"::warning::{label} permission check failed: {exc}")
+                  return None
+
+          pat = os.environ.get("GH_TA4J_REPO_TOKEN", "")
+          gha = os.environ.get("GITHUB_TOKEN", "")
+
+          pat_perm = check_token(pat, "GH_TA4J_REPO_TOKEN")
+          gha_perm = check_token(gha, "GITHUB_TOKEN")
+
+          if pat and pat_perm and not has_write(pat_perm):
+              print(f"::warning::GH_TA4J_REPO_TOKEN lacks write permission (viewerPermission={pat_perm}); workflow will fall back to GITHUB_TOKEN.")
+
+          if not ((pat_perm and has_write(pat_perm)) or (gha_perm and has_write(gha_perm))):
+              print("::error::No GitHub token with write permission available to create a release.")
+              sys.exit(1)
+          PY
+
       # ------------------------------------------------------------
       # Prepare Release Notes Body
       # ------------------------------------------------------------
-      - name: Dry-run summary
-        if: steps.dry_run.outputs.dryRun == 'true'
-        run: |
-          echo "DRY RUN ENABLED: skipping build and release publish."
-          echo "Tag: ${{ steps.version.outputs.tag }}"
-          echo "Release notes: ${{ steps.version.outputs.notes_file }}"
-          echo "Artifacts (glob patterns):"
-          echo "  - **/target/*.jar"
-          echo "  - **/target/*-sources.jar"
-          echo "  - **/target/*-javadoc.jar"
-
       # ------------------------------------------------------------
       # Build artifacts: core, examples, ALL modules
       # Produces:
@@ -115,21 +172,67 @@ jobs:
       #   - *-sources.jar
       # ------------------------------------------------------------
       - name: Set up JDK 21
-        if: steps.dry_run.outputs.dryRun != 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 21
 
       - name: Build all module artifacts
-        if: steps.dry_run.outputs.dryRun != 'true'
         run: mvn -B -DskipTests package
+
+      - name: Validate release artifacts
+        id: artifacts
+        run: |
+          set -euo pipefail
+          jars=$(find . -type f -path "*/target/*.jar" | sort || true)
+          sources=$(find . -type f -path "*/target/*-sources.jar" | sort || true)
+          javadocs=$(find . -type f -path "*/target/*-javadoc.jar" | sort || true)
+
+          missing=()
+          if [[ -z "${jars}" ]]; then
+            missing+=("**/target/*.jar")
+          fi
+          if [[ -z "${sources}" ]]; then
+            missing+=("**/target/*-sources.jar")
+          fi
+          if [[ -z "${javadocs}" ]]; then
+            missing+=("**/target/*-javadoc.jar")
+          fi
+
+          if [[ ${#missing[@]} -gt 0 ]]; then
+            echo "::error::Missing release artifacts for patterns: ${missing[*]}"
+            exit 1
+          fi
+
+          {
+            echo "jars<<EOF"
+            echo "${jars}"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+
+      - name: Dry-run summary
+        if: steps.dry_run.outputs.dryRun == 'true'
+        run: |
+          echo "DRY RUN ENABLED: build completed; release publish skipped."
+          echo "Tag: ${{ steps.version.outputs.tag }}"
+          echo "Release notes: ${{ steps.version.outputs.notes_file }}"
+          echo "Artifacts:"
+          files="${{ steps.artifacts.outputs.jars }}"
+          if [[ -z "${files}" ]]; then
+            echo "  (none found)"
+          else
+            while IFS= read -r file; do
+              echo "  - ${file#./}"
+            done <<< "${files}"
+          fi
 
       # ------------------------------------------------------------
       # Upload full artifact set to GitHub Release
       # ------------------------------------------------------------
-      - name: Create GitHub Release
-        if: steps.dry_run.outputs.dryRun != 'true'
+      - name: Create GitHub Release (primary token)
+        id: create_release_primary
+        if: steps.dry_run.outputs.dryRun != 'true' && secrets.GH_TA4J_REPO_TOKEN != ''
+        continue-on-error: true
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.tag }}
@@ -140,3 +243,16 @@ jobs:
             **/target/*-javadoc.jar
         env:
           GITHUB_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
+
+      - name: Create GitHub Release (fallback token)
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.create_release_primary.outcome != 'success'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          body_path: ${{ steps.version.outputs.notes_file }}
+          files: |
+            **/target/*.jar
+            **/target/*-sources.jar
+            **/target/*-javadoc.jar
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
