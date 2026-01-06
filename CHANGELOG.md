@@ -7,9 +7,10 @@
 
 ### Changed
 - **GitHub Release execution path**: Release creation now relies on tag-push triggers (and the manual dispatch option) instead of being invoked directly from `release.yml`, with the workflow checking out the target tag to align notes and artifacts.
-- **Release automation tokens**: Standardized on the `GH_TA4J_REPO_TOKEN` classic PAT for release scheduler dispatch, release workflow checkout/tag push, GitHub Release creation, and release PR creation.
+- **Release automation tokens**: `release-scheduler.yml` and `release.yml` use `GITHUB_TOKEN`, while `github-release.yml` uses the `GH_TA4J_REPO_TOKEN` classic PAT for GitHub Release creation under org token restrictions.
 
 ### Fixed
+- **GitHub Release artifacts**: Build now uses the production-release profile so javadoc jars are generated and artifact validation succeeds.
 
 
 ## 0.22.0 (2025-12-29)

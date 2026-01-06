@@ -185,7 +185,7 @@ jobs:
           java-version: 21
 
       - name: Build all module artifacts
-        run: mvn -B -DskipTests package
+        run: mvn -B -DskipTests -Dgpg.skip=true -Pproduction-release package
 
       - name: Validate release artifacts
         id: artifacts
