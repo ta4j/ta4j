@@ -169,6 +169,7 @@ jobs:
           echo "::error::  2. MAVEN_CENTRAL_TOKEN_PASS - Maven Central password/token"
           echo "::error::  3. GPG_PRIVATE_KEY - GPG private key for artifact signing"
           echo "::error::  4. GPG_PASSPHRASE - Passphrase for GPG private key"
+          echo "::error::  5. GH_TA4J_REPO_TOKEN - GitHub token for creating releases and PRs"
           echo ""
           echo "::error::Please configure these secrets in:"
           echo "::error::  Repository Settings → Secrets and variables → Actions → New repository secret"

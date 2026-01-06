@@ -2,6 +2,7 @@
 
 ### Added
 - **Manual GitHub Release workflow trigger**: Added `workflow_dispatch` support with a required tag input so maintainers can backfill or re-run a GitHub Release directly from the Actions UI.
+- **GitHub Release dry-run option**: Added a `dryRun` flag for manual GitHub Release triggers to preview notes and artifact patterns without publishing.
 
 ### Changed
 - **GitHub Release execution path**: Release creation now relies on tag-push triggers (and the manual dispatch option) instead of being invoked directly from `release.yml`, with the workflow checking out the target tag to align notes and artifacts.
