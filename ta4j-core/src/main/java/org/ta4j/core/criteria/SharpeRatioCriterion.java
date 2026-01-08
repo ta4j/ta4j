@@ -115,7 +115,10 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         if (seconds == 0) {
             return numFactory.zero();
         }
-        var deltaYears = seconds / SECONDS_PER_YEAR;
+        var seconds = Duration.between(endPrev, endNow).toNanos() / 1_000_000_000.0;
+        Num deltaYearsNum = numFactory.numOf(seconds).dividedBy(numFactory.numOf(SECONDS_PER_YEAR));
+        Num per = riskFreeRate.plus(numFactory.one()).pow(deltaYearsNum).minus(numFactory.one());
+        return per;
         var annual = riskFreeRate.doubleValue();
         var per = Math.pow(1.0 + annual, deltaYears) - 1.0;
         return numFactory.numOf(per);
