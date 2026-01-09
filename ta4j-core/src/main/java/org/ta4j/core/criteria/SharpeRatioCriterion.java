@@ -23,7 +23,11 @@
  */
 package org.ta4j.core.criteria;
 
-import java.time.*;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.WeekFields;
 import java.util.Locale;
 import java.util.stream.IntStream;
@@ -48,8 +52,8 @@ import org.ta4j.core.num.NumFactory;
  * of <em>excess returns</em> from the {@link CashFlow} equity curve: for each
  * sampled pair {@code (previousIndex, currentIndex)} it computes:
  * <ul>
- * <li>{@code grossReturn = equity(currentIndex) / equity(previousIndex) - 1}</li>
- * <li>{@code excessReturn = grossReturn - riskFreeReturn(previousIndex, currentIndex)}</li>
+ * <li>{@code return = equity(currentIndex) / equity(previousIndex) - 1}</li>
+ * <li>{@code excessReturn = return - riskFreeReturn(previousIndex, currentIndex)}</li>
  * </ul>
  * It then returns {@code mean(excessReturn) / stdev(excessReturn)} using the
  * sample standard deviation.
@@ -251,8 +255,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     private Num excessReturn(BarSeries series, CashFlow cashFlow, int previousIndex, int currentIndex) {
         var numFactory = series.numFactory();
         var one = numFactory.one();
-        var grossReturn = cashFlow.getValue(currentIndex).dividedBy(cashFlow.getValue(previousIndex)).minus(one);
-        return grossReturn.minus(periodRiskFree(series, previousIndex, currentIndex));
+        var eReturn = cashFlow.getValue(currentIndex).dividedBy(cashFlow.getValue(previousIndex)).minus(one);
+        return eReturn.minus(periodRiskFree(series, previousIndex, currentIndex));
     }
 
     private Num periodRiskFree(BarSeries series, int previousIndex, int currentIndex) {
