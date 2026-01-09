@@ -86,6 +86,8 @@ import org.ta4j.core.num.NumFactory;
  * {@code periodsPerYear} is estimated from observed time deltas (count of
  * positive deltas divided by the sum of deltas in years).
  *
+ * @since 0.22.1
+ *
  */
 public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
