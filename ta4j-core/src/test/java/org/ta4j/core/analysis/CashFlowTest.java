@@ -320,10 +320,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         var exitPrice = numFactory.numOf(90);
         var amount = numFactory.one();
 
-        var tradingRecord = new BaseTradingRecord(
-                Trade.buyAt(0, entryPrice, amount),
-                Trade.sellAt(0, exitPrice, amount)
-        );
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, entryPrice, amount),
+                Trade.sellAt(0, exitPrice, amount));
 
         var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, sampleBarSeries.getEndIndex());
 
