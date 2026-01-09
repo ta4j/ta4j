@@ -145,9 +145,10 @@ public class CashFlow implements Indicator<Num> {
         var zero = numFactory.zero();
         if (values.getLast().isGreaterThan(zero)) {
             var startingIndex = Math.max(begin, 1);
-            var nPeriods = endIndex - entryIndex;
             var holdingCost = position.getHoldingCost(endIndex);
-            var avgCost = holdingCost.dividedBy(numFactory.numOf(nPeriods));
+            var nPeriods = endIndex - entryIndex;
+            var effectivePeriods = Math.max(1, nPeriods);
+            var avgCost = holdingCost.dividedBy(numFactory.numOf(effectivePeriods));
 
             // Add intermediate cash flows during position
             var netEntryPrice = position.getEntry().getNetPrice();

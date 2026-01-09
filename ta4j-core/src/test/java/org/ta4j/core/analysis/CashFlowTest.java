@@ -312,4 +312,23 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(1, cashFlow.getValue(size - 1));
     }
 
+    @Test
+    public void cashFlowBuyExitSameBarShouldNotReturnNaN() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 100d).build();
+
+        var entryPrice = numFactory.hundred();
+        var exitPrice = numFactory.numOf(90);
+        var amount = numFactory.one();
+
+        var tradingRecord = new BaseTradingRecord(
+                Trade.buyAt(0, entryPrice, amount),
+                Trade.sellAt(0, exitPrice, amount)
+        );
+
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, sampleBarSeries.getEndIndex());
+
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(0.9, cashFlow.getValue(1));
+    }
+
 }
