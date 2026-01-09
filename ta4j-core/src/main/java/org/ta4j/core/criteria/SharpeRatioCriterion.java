@@ -1,3 +1,26 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * authors (see AUTHORS)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
 package org.ta4j.core.criteria;
 
 import java.time.*;
@@ -12,21 +35,65 @@ import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+/**
+ * Computes the Sharpe Ratio.
+ *
+ * <p>
+ * <b>Definition.</b> The Sharpe Ratio is defined as {@code SR = μ / σ}, where
+ * {@code μ} is the expected value of excess returns and {@code σ} is the
+ * standard deviation of excess returns.
+ *
+ * <p>
+ * <b>What this criterion measures.</b> This implementation builds a time series
+ * of <em>excess returns</em> from the {@link CashFlow} equity curve: for each
+ * sampled pair {@code (previousIndex, currentIndex)} it computes:
+ * <ul>
+ * <li>{@code grossReturn = equity(currentIndex) / equity(previousIndex) - 1}</li>
+ * <li>{@code excessReturn = grossReturn - riskFreeReturn(previousIndex, currentIndex)}</li>
+ * </ul>
+ * It then returns {@code mean(excessReturn) / stdev(excessReturn)} using the
+ * sample standard deviation.
+ *
+ * <p>
+ * <b>Sampling (aggregation) of returns.</b> The {@link Sampling} parameter
+ * controls how the return series is formed:
+ * <ul>
+ * <li>{@link Sampling#PER_BAR}: one return per bar, using consecutive bar
+ * indices.</li>
+ * <li>{@link Sampling#DAILY}/{@link Sampling#WEEKLY}/{@link Sampling#MONTHLY}:
+ * returns are computed between period endpoints detected from bar
+ * {@code endTime} after converting it to {@link #groupingZoneId}. Period
+ * boundaries follow ISO week semantics for {@code WEEKLY}.</li>
+ * </ul>
+ * The first sampled return is anchored at the series begin index (for
+ * {@link TradingRecord}) or the entry index (for {@link Position}), so the
+ * first period return spans from the anchor to the first period end.
+ *
+ * <p>
+ * <b>Risk-free rate.</b> {@link #annualRiskFreeRate} is interpreted as an
+ * annualized rate (e.g., 0.05 = 5% per year) and converted into a per-period
+ * compounded return using the elapsed time between the two bar end times. If
+ * {@code annualRiskFreeRate} is {@code null}, it is treated as zero.
+ *
+ * <p>
+ * <b>Annualization.</b> When {@link Annualization#PERIOD}, the returned Sharpe
+ * is per sampling period (no scaling). When {@link Annualization#ANNUALIZED},
+ * the per-period Sharpe is multiplied by {@code sqrt(periodsPerYear)} where
+ * {@code periodsPerYear} is estimated from observed time deltas (count of
+ * positive deltas divided by the sum of deltas in years).
+ *
+ */
 public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     private static final double SECONDS_PER_YEAR = 365.2425d * 24 * 3600;
     private static final WeekFields ISO_WEEK_FIELDS = WeekFields.of(Locale.ROOT);
 
     public enum Sampling {
-        PER_BAR,
-        DAILY,
-        WEEKLY,
-        MONTHLY
+        PER_BAR, DAILY, WEEKLY, MONTHLY
     }
 
     public enum Annualization {
-        PERIOD,
-        ANNUALIZED
+        PERIOD, ANNUALIZED
     }
 
     private final Num annualRiskFreeRate;
@@ -34,7 +101,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     private final Annualization annualization;
     private final ZoneId groupingZoneId;
 
-    public SharpeRatioCriterion(Num annualRiskFreeRate, Sampling sampling, Annualization annualization, ZoneId groupingZoneId) {
+    public SharpeRatioCriterion(Num annualRiskFreeRate, Sampling sampling, Annualization annualization,
+            ZoneId groupingZoneId) {
         this.annualRiskFreeRate = annualRiskFreeRate;
         this.sampling = sampling;
         this.annualization = annualization;
@@ -49,7 +117,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         }
         if (!position.isClosed()) {
             // Open positions do not have a complete return distribution (exit not fixed),
-            // so Sharpe would depend on an arbitrary cutoff; returning 0 avoids misleading ranking.
+            // so Sharpe would depend on an arbitrary cutoff; returning 0 avoids misleading
+            // ranking.
             return zero;
         }
 
@@ -91,15 +160,10 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
         var pairs = indexPairs(series, anchorIndex, start, end);
 
-        var acc = pairs.reduce(
-                Acc.empty(zero),
-                (a, p) -> a.add(
-                        excessReturn(series, cashFlow, p.previousIndex(), p.currentIndex()),
-                        deltaYears(series, p.previousIndex(), p.currentIndex()),
-                        numFactory
-                ),
-                (a, b) -> a.merge(b, numFactory)
-        );
+        var acc = pairs.reduce(Acc.empty(zero),
+                (a, p) -> a.add(excessReturn(series, cashFlow, p.previousIndex(), p.currentIndex()),
+                        deltaYears(series, p.previousIndex(), p.currentIndex()), numFactory),
+                (a, b) -> a.merge(b, numFactory));
 
         if (acc.stats().count() < 2) {
             return zero;
@@ -154,10 +218,10 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         var next = endTimeZoned(series, index + 1);
 
         return switch (sampling) {
-            case DAILY -> !now.toLocalDate().equals(next.toLocalDate());
-            case WEEKLY -> !sameIsoWeek(now, next);
-            case MONTHLY -> !YearMonth.from(now).equals(YearMonth.from(next));
-            case PER_BAR -> true;
+        case DAILY -> !now.toLocalDate().equals(next.toLocalDate());
+        case WEEKLY -> !sameIsoWeek(now, next);
+        case MONTHLY -> !YearMonth.from(now).equals(YearMonth.from(next));
+        case PER_BAR -> true;
         };
     }
 
