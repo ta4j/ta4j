@@ -32,6 +32,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.utils.BarUtil;
 
 /**
  * Aggregates a list of {@link BaseBar bars} into another one by
@@ -80,7 +81,7 @@ public class DurationBarAggregator implements BarAggregator {
         if (bars.isEmpty()) {
             return aggregated;
         }
-        final Bar firstBar = bars.get(0);
+        final Bar firstBar = bars.getFirst();
         // get the actual time period
         final Duration actualDur = firstBar.getTimePeriod();
         // check if new timePeriod is a multiplication of actual time period
@@ -91,7 +92,7 @@ public class DurationBarAggregator implements BarAggregator {
         }
 
         int i = 0;
-        final Num zero = firstBar.getOpenPrice().getNumFactory().zero();
+        final Num zero = BarUtil.selectNumFactoryForBar(firstBar).zero();
         while (i < bars.size()) {
             Bar bar = bars.get(i);
             final Instant beginTime = bar.getBeginTime();

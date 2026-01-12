@@ -24,6 +24,7 @@
 package org.ta4j.core.aggregator;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
@@ -217,7 +218,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
         assertEquals(3, bars.size());
 
         // bar 1 must have ohlcv (1, 6, 4, 9, 25)
-        final Bar bar1 = bars.get(0);
+        final Bar bar1 = bars.getFirst();
         final Num num1 = bar1.getOpenPrice();
         assertNumEquals(num1.getNumFactory().numOf(1), bar1.getOpenPrice());
         assertNumEquals(num1.getNumFactory().numOf(6), bar1.getHighPrice());
@@ -256,7 +257,7 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
         assertEquals(1, bars.size());
 
         // bar 1 must have ohlcv (1, 91, 4, 10, 293)
-        final Bar bar1 = bars.get(0);
+        final Bar bar1 = bars.getFirst();
         final Num num1 = bar1.getOpenPrice();
         assertNumEquals(num1.getNumFactory().numOf(1), bar1.getOpenPrice());
         assertNumEquals(num1.getNumFactory().numOf(91), bar1.getHighPrice());
@@ -332,7 +333,31 @@ public class DurationBarAggregatorTest extends AbstractIndicatorTest<BarSeries, 
 
         assertNumEquals(1, aggregated2MinSeries.getBar(1).getVolume());
         assertNumEquals(1, aggregated4MinSeries.getBar(1).getVolume());
+    }
 
+    @Test
+    public void aggregateUsesAvailablePriceForNumFactory() {
+        var barAggregator = new DurationBarAggregator(Duration.ofDays(1), true);
+
+        var bars = new LinkedList<Bar>();
+        bars.add(new MockBarBuilder(numFactory).openPrice((Num) null)
+                .closePrice(2d)
+                .highPrice(3d)
+                .lowPrice(1d)
+                .volume(4d)
+                .build());
+        bars.add(new MockBarBuilder(numFactory).openPrice((Num) null)
+                .closePrice(4d)
+                .highPrice(5d)
+                .lowPrice(2d)
+                .volume(6d)
+                .build());
+
+        var aggregated = barAggregator.aggregate(bars);
+
+        assertEquals(2, aggregated.size());
+        assertNumEquals(4d, aggregated.getFirst().getVolume());
+        assertSame(numFactory.getClass(), aggregated.getFirst().getVolume().getNumFactory().getClass());
     }
 
 }

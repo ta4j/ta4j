@@ -12,7 +12,7 @@
 ### Fixed
 - **GitHub Release artifacts**: Build now uses the production-release profile so javadoc jars are generated and artifact validation succeeds.
 - **GitHub Release asset uploads**: Removed overlapping upload patterns to prevent duplicate asset uploads from failing the release.
-
+- - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 
 ## 0.22.0 (2025-12-29)
 
