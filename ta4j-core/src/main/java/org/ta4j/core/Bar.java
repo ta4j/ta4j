@@ -219,6 +219,16 @@ public interface Bar extends Serializable {
      */
     void addPrice(Num price);
 
+    /**
+     * Returns the {@link NumFactory} associated with the first available price
+     * field on the bar.
+     *
+     * @return the {@link NumFactory} derived from the bar's numeric values
+     * @throws IllegalArgumentException if no price fields are available to
+     *                                  determine a factory
+     *
+     * @since 0.22.0
+     */
     default NumFactory numFactory() {
         var open = getOpenPrice();
         if (open != null) {
