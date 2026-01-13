@@ -34,6 +34,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.function.Function;
 
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * A {@code Bar} is aggregated open/high/low/close/volume/etc. data over a time
@@ -217,4 +218,33 @@ public interface Bar extends Serializable {
      * @param price the actual price per asset
      */
     void addPrice(Num price);
+
+    default NumFactory numFactory() {
+        var open = getOpenPrice();
+        if (open != null) {
+            return open.getNumFactory();
+        }
+        var close = getClosePrice();
+        if (close != null) {
+            return close.getNumFactory();
+        }
+        var high = getHighPrice();
+        if (high != null) {
+            return high.getNumFactory();
+        }
+        var low = getLowPrice();
+        if (low != null) {
+            return low.getNumFactory();
+        }
+        var volume = getVolume();
+        if (volume != null) {
+            return volume.getNumFactory();
+        }
+        var amount = getAmount();
+        if (amount != null) {
+            return amount.getNumFactory();
+        }
+        throw new IllegalArgumentException("Cannot select a NumFactory: no price fields are available on the bar.");
+    }
+
 }

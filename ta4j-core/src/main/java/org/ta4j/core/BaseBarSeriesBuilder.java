@@ -29,7 +29,6 @@ import java.util.List;
 import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NumFactory;
-import org.ta4j.core.utils.BarUtil;
 
 /**
  * A builder to build a new {@link BaseBarSeries}.
@@ -69,7 +68,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
 
             if (!isNumFactoryAssigned) {
                 // use numFactory derived from bars instead of default numFactory
-                numFactory = BarUtil.selectNumFactoryForBar(bars.getFirst());
+                numFactory = bars.getFirst().numFactory();
             }
 
             // check if each bar has the same numFactory as the series numFactory
