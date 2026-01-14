@@ -289,6 +289,41 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         assertEquals(byTradingRecord, byPosition, 1e-12);
     }
 
+    @Test
+    public void samplingHourlyEqualsPerBar_whenBarsAreHourly() {
+        var series = buildHourlySeries(new double[] { 100d, 105d, 110d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+        var tradingRecord = alwaysInvested(series);
+
+        var perBar = criterion(Sampling.PER_BAR, Annualization.PERIOD).calculate(series, tradingRecord).doubleValue();
+        var hourly = criterion(Sampling.HOURLY, Annualization.PERIOD).calculate(series, tradingRecord).doubleValue();
+
+        assertEquals(perBar, hourly, 1e-12);
+    }
+
+    @Test
+    public void samplingMinutelyEqualsPerBar_whenBarsAreMinutely() {
+        var series = buildMinuteSeries(new double[] { 100d, 101d, 102d, 103d }, Instant.parse("2024-01-01T00:00:00Z"));
+        var tradingRecord = alwaysInvested(series);
+
+        var perBar = criterion(Sampling.PER_BAR, Annualization.PERIOD).calculate(series, tradingRecord).doubleValue();
+        var minutely = criterion(Sampling.MINUTELY, Annualization.PERIOD).calculate(series, tradingRecord)
+                .doubleValue();
+
+        assertEquals(perBar, minutely, 1e-12);
+    }
+
+    @Test
+    public void samplingPerSecondEqualsPerBar_whenBarsArePerSecond() {
+        var series = buildSecondSeries(new double[] { 100d, 101d, 103d, 106d }, Instant.parse("2024-01-01T00:00:00Z"));
+        var tradingRecord = alwaysInvested(series);
+
+        var perBar = criterion(Sampling.PER_BAR, Annualization.PERIOD).calculate(series, tradingRecord).doubleValue();
+        var perSecond = criterion(Sampling.PER_SECOND, Annualization.PERIOD).calculate(series, tradingRecord)
+                .doubleValue();
+
+        assertEquals(perBar, perSecond, 1e-12);
+    }
+
     private static BarSeries buildDailySeries(double[] closes, Instant start) {
         var series = new BaseBarSeriesBuilder().withName("daily_series").build();
 
@@ -297,6 +332,66 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
             var close = closes[i];
             series.addBar(series.barBuilder()
                     .timePeriod(Duration.ofDays(1))
+                    .endTime(endTime)
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1)
+                    .build());
+        });
+
+        return series;
+    }
+
+    private static BarSeries buildHourlySeries(double[] closes, Instant start) {
+        var series = new BaseBarSeriesBuilder().withName("hourly_series").build();
+
+        IntStream.range(0, closes.length).forEach(i -> {
+            var endTime = start.plus(Duration.ofHours(i + 1L));
+            var close = closes[i];
+            series.addBar(series.barBuilder()
+                    .timePeriod(Duration.ofHours(1))
+                    .endTime(endTime)
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1)
+                    .build());
+        });
+
+        return series;
+    }
+
+    private static BarSeries buildMinuteSeries(double[] closes, Instant start) {
+        var series = new BaseBarSeriesBuilder().withName("minute_series").build();
+
+        IntStream.range(0, closes.length).forEach(i -> {
+            var endTime = start.plus(Duration.ofMinutes(i + 1L));
+            var close = closes[i];
+            series.addBar(series.barBuilder()
+                    .timePeriod(Duration.ofMinutes(1))
+                    .endTime(endTime)
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1)
+                    .build());
+        });
+
+        return series;
+    }
+
+    private static BarSeries buildSecondSeries(double[] closes, Instant start) {
+        var series = new BaseBarSeriesBuilder().withName("second_series").build();
+
+        IntStream.range(0, closes.length).forEach(i -> {
+            var endTime = start.plus(Duration.ofSeconds(i + 1L));
+            var close = closes[i];
+            series.addBar(series.barBuilder()
+                    .timePeriod(Duration.ofSeconds(1))
                     .endTime(endTime)
                     .openPrice(close)
                     .highPrice(close)

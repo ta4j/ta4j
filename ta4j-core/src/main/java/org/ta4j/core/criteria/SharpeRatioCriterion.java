@@ -23,11 +23,8 @@
  */
 package org.ta4j.core.criteria;
 
-import java.time.Duration;
-import java.time.Instant;
-import java.time.YearMonth;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.WeekFields;
 import java.util.Locale;
 import java.util.stream.IntStream;
@@ -64,7 +61,7 @@ import org.ta4j.core.num.NumFactory;
  * <ul>
  * <li>{@link Sampling#PER_BAR}: one return per bar, using consecutive bar
  * indices.</li>
- * <li>{@link Sampling#DAILY}/{@link Sampling#WEEKLY}/{@link Sampling#MONTHLY}:
+ * <li>{@link Sampling#PER_SECOND}/{@link Sampling#MINUTELY}/{@link Sampling#HOURLY}/{@link Sampling#DAILY}/{@link Sampling#WEEKLY}/{@link Sampling#MONTHLY}:
  * returns are computed between period endpoints detected from bar
  * {@code endTime} after converting it to {@link #groupingZoneId}. Period
  * boundaries follow ISO week semantics for {@code WEEKLY}.</li>
@@ -95,7 +92,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     private static final WeekFields ISO_WEEK_FIELDS = WeekFields.of(Locale.ROOT);
 
     public enum Sampling {
-        PER_BAR, DAILY, WEEKLY, MONTHLY
+        PER_BAR, PER_SECOND, MINUTELY, HOURLY, DAILY, WEEKLY, MONTHLY
     }
 
     public enum Annualization {
@@ -224,11 +221,18 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         var next = endTimeZoned(series, index + 1);
 
         return switch (sampling) {
+        case PER_SECOND -> !sameChronoUnit(now, next, ChronoUnit.SECONDS);
+        case MINUTELY -> !sameChronoUnit(now, next, ChronoUnit.MINUTES);
+        case HOURLY -> !sameChronoUnit(now, next, ChronoUnit.HOURS);
         case DAILY -> !now.toLocalDate().equals(next.toLocalDate());
         case WEEKLY -> !sameIsoWeek(now, next);
         case MONTHLY -> !YearMonth.from(now).equals(YearMonth.from(next));
         case PER_BAR -> true;
         };
+    }
+
+    private boolean sameChronoUnit(ZonedDateTime a, ZonedDateTime b, ChronoUnit chronoUnit) {
+        return a.truncatedTo(chronoUnit).equals(b.truncatedTo(chronoUnit));
     }
 
     private boolean sameIsoWeek(ZonedDateTime a, ZonedDateTime b) {
