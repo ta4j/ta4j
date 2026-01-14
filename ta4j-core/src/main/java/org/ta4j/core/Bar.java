@@ -227,7 +227,7 @@ public interface Bar extends Serializable {
      * @throws IllegalArgumentException if no price fields are available to
      *                                  determine a factory
      *
-     * @since 0.22.0
+     * @since 0.22.1
      */
     default NumFactory numFactory() {
         var open = getOpenPrice();
