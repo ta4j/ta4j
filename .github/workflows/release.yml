@@ -654,7 +654,7 @@ jobs:
             const queryResult = await github.graphql(query, { owner, repo, number });
             const discussionId = queryResult?.repository?.discussion?.id;
             if (!discussionId) {
-              throw new Error(\`Discussion \${number} not found in \${owner}/\${repo}\`);
+              throw new Error(`Discussion ${number} not found in ${owner}/${repo}`);
             }
 
             const mutation = `
