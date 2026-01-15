@@ -147,10 +147,10 @@ public class BaseBarSeries implements BarSeries {
             return new BaseBarSeriesBuilder().withName(getName())
                     .withBars(cut(this.bars, start, end))
                     .withNumFactory(this.numFactory)
+                    .withMaxBarCount(this.maximumBarCount)
                     .build();
         }
         return new BaseBarSeriesBuilder().withNumFactory(this.numFactory).withName(getName()).build();
-
     }
 
     @Override
