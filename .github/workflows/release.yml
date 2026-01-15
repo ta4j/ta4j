@@ -56,6 +56,23 @@ jobs:
           echo "audit:dry_run_normalized=$dry_run"
           echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
 
+      - name: Normalize direct push flag
+        id: direct_push
+        env:
+          DIRECT_PUSH: ${{ vars.RELEASE_DIRECT_PUSH }}
+        run: |
+          raw="${DIRECT_PUSH:-}"
+          normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+
+          if [ "$normalized" = "true" ] || [ "$normalized" = "1" ] || [ "$normalized" = "yes" ]; then
+            enabled=true
+          else
+            enabled=false
+          fi
+
+          echo "audit:release_direct_push=$enabled raw='${raw}'"
+          echo "enabled=$enabled" >> $GITHUB_OUTPUT
+
       - name: Check for MAVEN_CENTRAL_TOKEN_USER
         id: check_maven_user
         env:
@@ -543,8 +560,22 @@ jobs:
         run: |
           git commit -am "Start ${{ steps.versions.outputs.next }}"
 
+      - name: Push release commits directly to default branch
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled == 'true'
+        env:
+          TARGET_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          branch="${TARGET_BRANCH:-}"
+          if [ -z "$branch" ]; then
+            echo "Default branch was not set; refusing to push."
+            exit 1
+          fi
+          echo "Pushing release commits directly to ${branch}."
+          git push origin "HEAD:${branch}"
+
       - name: Create release pull request
-        if: steps.dry_run.outputs.dryRun != 'true'
+        id: create_pr
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true'
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ github.token }}
@@ -560,6 +591,48 @@ jobs:
             - Bump to next snapshot: ${{ steps.versions.outputs.next }}
           labels: release
 
+      - name: Enable auto-merge for release pull request
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true' && steps.create_pr.outputs.pull-request-number != ''
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const prNumber = Number("${{ steps.create_pr.outputs.pull-request-number }}");
+            if (!Number.isFinite(prNumber)) {
+              throw new Error(`Invalid pull request number: ${prNumber}`);
+            }
+
+            const query = `
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  pullRequest(number: $number) {
+                    id
+                  }
+                }
+              }
+            `;
+            const queryResult = await github.graphql(query, { owner, repo, number: prNumber });
+            const pullRequestId = queryResult?.repository?.pullRequest?.id;
+            if (!pullRequestId) {
+              throw new Error(`Release pull request #${prNumber} not found in ${owner}/${repo}`);
+            }
+
+            const mutation = `
+              mutation($pullRequestId: ID!) {
+                enablePullRequestAutoMerge(input: { pullRequestId: $pullRequestId, mergeMethod: MERGE }) {
+                  pullRequest {
+                    url
+                    autoMergeRequest {
+                      enabledAt
+                    }
+                  }
+                }
+              }
+            `;
+            await github.graphql(mutation, { pullRequestId });
+
       # -----------------------
       # Summary
       # -----------------------
@@ -567,11 +640,13 @@ jobs:
         if: always()
         env:
           DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          DIRECT_PUSH: ${{ steps.direct_push.outputs.enabled }}
           RELEASE: ${{ steps.versions.outputs.release }}
           NEXT: ${{ steps.versions.outputs.next }}
           CURRENT: ${{ steps.versions.outputs.current }}
         run: |
           echo "summary: dryRun=${DRY_RUN:-}"
+          echo "summary: directPush=${DIRECT_PUSH:-}"
           echo "summary: release=${RELEASE:-}"
           echo "summary: current=${CURRENT:-}"
           echo "summary: next=${NEXT:-}"
@@ -583,6 +658,7 @@ jobs:
           JOB_STATUS: ${{ job.status }}
           EVENT_NAME: ${{ github.event_name }}
           DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          DIRECT_PUSH: ${{ steps.direct_push.outputs.enabled }}
           RELEASE: ${{ steps.versions.outputs.release }}
           NEXT: ${{ steps.versions.outputs.next }}
           CURRENT: ${{ steps.versions.outputs.current }}
@@ -590,12 +666,14 @@ jobs:
           EXISTING_TAG: ${{ steps.check_tag.outputs.existing_tag }}
           MISSING_SECRETS: ${{ steps.collect_missing.outputs.missing }}
           HAS_MISSING: ${{ steps.collect_missing.outputs.has_missing }}
+          PR_NUMBER: ${{ steps.create_pr.outputs.pull-request-number }}
         run: |
           status="${JOB_STATUS:-unknown}"
           status_upper=$(printf '%s' "$status" | tr '[:lower:]' '[:upper:]')
           run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
           dry_run="${DRY_RUN:-unknown}"
+          direct_push="${DIRECT_PUSH:-unknown}"
           release="${RELEASE:-unknown}"
           next="${NEXT:-unknown}"
           current="${CURRENT:-unknown}"
@@ -603,12 +681,16 @@ jobs:
           existing_tag="${EXISTING_TAG:-}"
           missing_secrets="${MISSING_SECRETS:-}"
           has_missing="${HAS_MISSING:-unknown}"
+          pr_number="${PR_NUMBER:-}"
 
           if [ -z "$existing_tag" ]; then
             existing_tag="(none)"
           fi
           if [ -z "$missing_secrets" ]; then
             missing_secrets="(none)"
+          fi
+          if [ -z "$pr_number" ]; then
+            pr_number="(none)"
           fi
 
           cat > notification-body.txt <<EOF
@@ -621,6 +703,7 @@ jobs:
 
           Release Summary:
           - dryRun: ${dry_run}
+          - direct push: ${direct_push}
           - release version: ${release}
           - next snapshot: ${next}
           - current pom: ${current}
@@ -628,6 +711,7 @@ jobs:
           - existing tag: ${existing_tag}
           - missing secrets: ${missing_secrets}
           - has missing secrets: ${has_missing}
+          - release PR: ${pr_number}
           EOF
 
       - name: Post to Maven Central Releases discussion

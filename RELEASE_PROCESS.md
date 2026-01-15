@@ -47,11 +47,11 @@ Ta4j uses five coordinated components:
 
 2. **Release Scheduler (`release-scheduler.yml`)**  
    - Triggered on a 14-day cron or manual dispatch (`dryRun` supported).  
-   - Collects diff + Unreleased changelog, sanitizes them, and asks GitHub Models for a SemVer bump with a 1–2 sentence rationale.  
+   - Collects binary-impacting changes (`pom.xml` or `src/main/**`) plus the Unreleased changelog, sanitizes them, and asks GitHub Models for a SemVer bump with a 1-2 sentence rationale.  
    - Requires `GH_MODELS_TOKEN` (PAT authorized for GitHub Models). If missing, it short-circuits.  
    - Computes the next tag (no leading `v`), basing the bump on the higher of the current POM base or the last default-branch tag to avoid double-bumping snapshots.  
-   - Always dispatches `release.yml`, passing through `releaseVersion`, `nextVersion` (optional), the AI reasoning, and `dryRun` using `GITHUB_TOKEN`.  
-   - Emits a decision summary (gate, token, AI verdict, bump, version, reason, dryRun).
+   - Dispatches `release.yml` only when `should_release=true` (and after the `major-release` approval for major bumps), passing `releaseVersion` and `dryRun` using `GITHUB_TOKEN`.  
+   - Emits a decision summary (gate, token, AI verdict, bump, version, reason, dryRun) and posts it to the Release Scheduler discussion.  
    - For major releases, requires manual approval via the `major-release` environment.
 
 3. **GitHub Actions Release Workflow (`release.yml`)**  
@@ -60,7 +60,10 @@ Ta4j uses five coordinated components:
    - Creates a release tag (skipped on `dryRun=true`).  
    - Verifies the branch is still fast-forwardable, then builds, signs, and deploys to Maven Central (skipped on `dryRun=true`).  
    - Bumps to the next snapshot with the Maven Versions Plugin and commits it (skipped on `dryRun=true`).  
-   - Pushes only the tag (after a successful deploy) and opens a pull request (`release/<version>` → `master`) containing both the release commit and the next-snapshot bump. No direct push to `master` is performed.  
+   - Pushes only the tag (after a successful deploy) and updates the default branch with the commits:  
+     - Default: opens a pull request (`release/<version>` -> `master`) and enables auto-merge using a merge commit.  
+     - Optional: if `RELEASE_DIRECT_PUSH=true`, pushes the commits directly to the default branch.  
+   - Posts a run summary to the Maven Central Releases discussion.  
    - **Inputs**: `releaseVersion` (e.g., `0.20.0`, no leading `v`), `nextVersion` (optional), `dryRun` (boolean).
    - **Version formats supported**: `major.minor.patch` (e.g., `0.20.0`)
 
@@ -73,6 +76,44 @@ Ta4j uses five coordinated components:
 
 5. **Snapshot Workflow (`snapshot.yml`)**  
    Automatically publishes snapshot builds to Central on every push to `master`.
+
+---
+
+## Play-by-Play (What Happens, Where, and When)
+
+### 1. Release Scheduler Run (`release-scheduler.yml`)
+1. Resolve the last tag reachable from the default branch.
+2. Gather binary-impacting changes (`pom.xml` or `src/main/**`) plus the Unreleased changelog section.
+3. Gate on binary changes: if none, stop and record the decision.
+4. Call GitHub Models for a SemVer bump and reason (requires `GH_MODELS_TOKEN`).
+5. Compute the candidate release version.
+6. If major, wait for the `major-release` approval.
+7. If `should_release=true`, dispatch `release.yml` with `releaseVersion` and `dryRun`.
+8. Post a decision summary to the Release Scheduler discussion.
+
+### 2. Release Workflow Run (`release.yml`)
+1. Validate required secrets and determine the release and next snapshot versions.
+2. Run `scripts/prepare-release.sh` to generate `release/<version>.md`.
+3. Set the POM to the release version and commit the release changes.
+4. Create an annotated tag locally that points at the release commit.
+5. Ensure the branch is still fast-forwardable, then build/sign/deploy to Maven Central.
+6. Push the release tag to the origin. This is what triggers `github-release.yml`.
+7. Set the POM to the next snapshot version and commit that change.
+8. Update the default branch with the two commits created in steps 3 and 7:
+   - Release commit: `pom.xml` set to the release version plus `release/<version>.md`.
+   - Snapshot commit: `pom.xml` set to the next `-SNAPSHOT` version.
+   - Default (PR mode): create a PR (`release/<version>` -> default branch) and request auto-merge via the GitHub API with merge method `MERGE`. Auto-merge only works when the repo setting **Allow auto-merge** is enabled and required checks pass; the merge commit lands on the default branch.
+   - Optional (direct push): if `RELEASE_DIRECT_PUSH=true`, push both commits directly to the default branch and skip the PR.
+9. Post a run summary to the Maven Central Releases discussion.
+
+**Tag visibility note:** the tag is created and pushed before the PR exists and is not part of the PR diff. The tag becomes reachable from the default branch only after the PR merges with a merge commit (or when direct push mode is enabled). Squash merges will make the tag unreachable from the default branch.
+
+### 3. GitHub Release Run (`github-release.yml`)
+1. Triggered by the tag push from `release.yml` (or manually with a tag input).
+2. Checks out the tag, builds artifacts, and creates the GitHub Release from `release/<version>.md`.
+
+### 4. Snapshot Run (`snapshot.yml`)
+Runs on every push to `master` and publishes snapshot artifacts.
 
 ---
 
@@ -98,6 +139,12 @@ The following secrets are **mandatory** for the release workflows to function:
 | Secret Name | Used By | Purpose |
 |------------|---------|---------|
 | `MAVEN_MASTER_PASSPHRASE` | `release.yml`, `snapshot.yml` | Optional Maven master password for `settings-security.xml` encryption. If not set, the workflow skips creating this file. |
+
+### Optional Repository Variables
+
+| Variable Name | Used By | Purpose |
+|---------------|---------|---------|
+| `RELEASE_DIRECT_PUSH` | `release.yml` | When `true`, skip the release PR and push release + snapshot commits directly to the default branch. Defaults to `false`. |
 
 ### Required GitHub Environment
 
