@@ -835,9 +835,32 @@ jobs:
           script: |
             const fs = require("fs");
             const body = fs.readFileSync("notification-body.txt", "utf8");
-            await github.rest.discussions.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              discussion_number: 1414,
-              body
-            });
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const number = 1414;
+
+            const query = `
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  discussion(number: $number) {
+                    id
+                  }
+                }
+              }
+            `;
+            const queryResult = await github.graphql(query, { owner, repo, number });
+            const discussionId = queryResult?.repository?.discussion?.id;
+            if (!discussionId) {
+              throw new Error(\`Discussion \${number} not found in \${owner}/\${repo}\`);
+            }
+
+            const mutation = `
+              mutation($discussionId: ID!, $body: String!) {
+                addDiscussionComment(input: { discussionId: $discussionId, body: $body }) {
+                  comment {
+                    url
+                  }
+                }
+              }
+            `;
+            await github.graphql(mutation, { discussionId, body });
