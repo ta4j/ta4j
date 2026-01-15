@@ -12,7 +12,7 @@
 ### Fixed
 - **GitHub Release artifacts**: Build now uses the production-release profile so javadoc jars are generated and artifact validation succeeds.
 - **GitHub Release asset uploads**: Removed overlapping upload patterns to prevent duplicate asset uploads from failing the release.
-
+- **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 
 ## 0.22.0 (2025-12-29)
 
