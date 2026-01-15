@@ -230,7 +230,7 @@ public final class BarSeriesUtils {
      */
     public static List<Bar> sortBars(List<Bar> bars) {
         if (!bars.isEmpty()) {
-            Collections.sort(bars, BarSeriesUtils.sortBarsByTime);
+            bars.sort(BarSeriesUtils.sortBarsByTime);
         }
         return bars;
     }
