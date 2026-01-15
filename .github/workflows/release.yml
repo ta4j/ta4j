@@ -580,7 +580,7 @@ jobs:
         with:
           token: ${{ github.token }}
           branch: release/${{ steps.versions.outputs.release }}
-          base: master
+          base: ${{ github.event.repository.default_branch }}
           title: "Release ${{ steps.versions.outputs.release }}"
           body: |
             Automated release PR for ${{ steps.versions.outputs.release }}.
