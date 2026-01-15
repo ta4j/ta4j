@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.22.1 (2026-01-15)
+
 ### Added
 - **Manual GitHub Release workflow trigger**: Added `workflow_dispatch` support with a required tag input so maintainers can backfill or re-run a GitHub Release directly from the Actions UI.
 - **GitHub Release dry-run option**: Added a `dryRun` flag for manual GitHub Release triggers to preview notes, validate artifacts, and preflight release token permissions without publishing.
@@ -12,7 +16,6 @@
 ### Fixed
 - **GitHub Release artifacts**: Build now uses the production-release profile so javadoc jars are generated and artifact validation succeeds.
 - **GitHub Release asset uploads**: Removed overlapping upload patterns to prevent duplicate asset uploads from failing the release.
-
 
 ## 0.22.0 (2025-12-29)
 
