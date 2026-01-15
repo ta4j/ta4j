@@ -12,7 +12,7 @@
 ### Fixed
 - **GitHub Release artifacts**: Build now uses the production-release profile so javadoc jars are generated and artifact validation succeeds.
 - **GitHub Release asset uploads**: Removed overlapping upload patterns to prevent duplicate asset uploads from failing the release.
-
+- **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
 
 ## 0.22.0 (2025-12-29)
 
