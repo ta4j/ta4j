@@ -1,8 +1,12 @@
 ## Unreleased
 
+### Added
+- **Release workflow notifications**: Post GitHub Discussion updates for release-scheduler and release runs with decision summaries.
+
 ### Fixed
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
+- **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
 
 ## 0.22.1 (2026-01-15)
 

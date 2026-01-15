@@ -22,6 +22,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  discussions: write
 
 jobs:
   release:
@@ -574,3 +575,72 @@ jobs:
           echo "summary: release=${RELEASE:-}"
           echo "summary: current=${CURRENT:-}"
           echo "summary: next=${NEXT:-}"
+
+      - name: Build discussion comment
+        id: notify_summary
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          EVENT_NAME: ${{ github.event_name }}
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          RELEASE: ${{ steps.versions.outputs.release }}
+          NEXT: ${{ steps.versions.outputs.next }}
+          CURRENT: ${{ steps.versions.outputs.current }}
+          TAG_EXISTS: ${{ steps.check_tag.outputs.exists }}
+          EXISTING_TAG: ${{ steps.check_tag.outputs.existing_tag }}
+          MISSING_SECRETS: ${{ steps.collect_missing.outputs.missing }}
+          HAS_MISSING: ${{ steps.collect_missing.outputs.has_missing }}
+        run: |
+          status="${JOB_STATUS:-unknown}"
+          status_upper=$(printf '%s' "$status" | tr '[:lower:]' '[:upper:]')
+          run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          dry_run="${DRY_RUN:-unknown}"
+          release="${RELEASE:-unknown}"
+          next="${NEXT:-unknown}"
+          current="${CURRENT:-unknown}"
+          tag_exists="${TAG_EXISTS:-unknown}"
+          existing_tag="${EXISTING_TAG:-}"
+          missing_secrets="${MISSING_SECRETS:-}"
+          has_missing="${HAS_MISSING:-unknown}"
+
+          if [ -z "$existing_tag" ]; then
+            existing_tag="(none)"
+          fi
+          if [ -z "$missing_secrets" ]; then
+            missing_secrets="(none)"
+          fi
+
+          cat > notification-body.txt <<EOF
+          @TheCookieLab
+
+          **Maven Central Release Run** (${status_upper})
+          - Repository: ${GITHUB_REPOSITORY}
+          - Run: ${run_url}
+          - Event: ${EVENT_NAME}
+
+          Release Summary:
+          - dryRun: ${dry_run}
+          - release version: ${release}
+          - next snapshot: ${next}
+          - current pom: ${current}
+          - tag exists: ${tag_exists}
+          - existing tag: ${existing_tag}
+          - missing secrets: ${missing_secrets}
+          - has missing secrets: ${has_missing}
+          EOF
+
+      - name: Post to Maven Central Releases discussion
+        if: always()
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const fs = require("fs");
+            const body = fs.readFileSync("notification-body.txt", "utf8");
+            await github.rest.discussions.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              discussion_number: 1415,
+              body
+            });
