@@ -165,7 +165,7 @@ public interface BarSeries extends Serializable {
 
     /**
      * Sets the maximum number of bars that will be retained in the series.
-     *
+     * <p>
      * If a new bar is added to the series such that the number of bars will exceed
      * the maximum bar count, then the FIRST bar in the series is automatically
      * removed, ensuring that the maximum bar count is not exceeded. The indices of
