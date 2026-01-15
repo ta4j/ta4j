@@ -1,7 +1,9 @@
 ## Unreleased
 
 ### Fixed
-- **CashFlow consistency with zero holding costs**: Fixed inconsistent cash flow calculations when using zero-cost models with different bar series granularities. Cash flow values now match at corresponding price points regardless of how many intermediate bars exist between entry and exit, eliminating discrepancies when comparing compressed vs. full-resolution series. The optimization calculates cash flow directly from price ratios when holding costs are zero, avoiding unnecessary iterations through intermediate bars.
+- **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
+- **CashFlow**  Fixed inconsistent cash flow calculations when using zero-cost models with different bar series granularities. Cash flow values now match at corresponding price points regardless of how many intermediate bars exist between entry and exit, eliminating discrepancies when comparing compressed vs. full-resolution series. The optimization calculates cash flow directly from price ratios when holding costs are zero, avoiding unnecessary iterations through intermediate bars.
+- **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE
 
 ## 0.22.1 (2026-01-15)
 
@@ -17,8 +19,7 @@
 ### Fixed
 - **GitHub Release artifacts**: Build now uses the production-release profile so javadoc jars are generated and artifact validation succeeds.
 - **GitHub Release asset uploads**: Removed overlapping upload patterns to prevent duplicate asset uploads from failing the release.
-- **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
-- **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE
+
 
 ## 0.22.0 (2025-12-29)
 

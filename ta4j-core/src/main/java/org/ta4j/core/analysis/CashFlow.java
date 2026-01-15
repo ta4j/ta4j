@@ -162,7 +162,8 @@ public class CashFlow implements Indicator<Num> {
             }
 
             if (avgCost.isZero()) {
-                // Direct calculation: cash flow at index i = price[i] / price[entryIndex] * entryCashFlow
+                // Direct calculation: cash flow at index i = price[i] / price[entryIndex] *
+                // entryCashFlow
                 for (var i = startingIndex; i < endIndex; i++) {
                     var currentPrice = barSeries.getBar(i).getClosePrice();
                     var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, currentPrice);
