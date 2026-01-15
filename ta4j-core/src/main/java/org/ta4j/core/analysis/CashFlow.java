@@ -150,25 +150,40 @@ public class CashFlow implements Indicator<Num> {
             var effectivePeriods = Math.max(1, nPeriods);
             var avgCost = holdingCost.dividedBy(numFactory.numOf(effectivePeriods));
 
-            // Add intermediate cash flows during position
             var netEntryPrice = position.getEntry().getNetPrice();
-            for (var i = startingIndex; i < endIndex; i++) {
-                var intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(i).getClosePrice(), avgCost,
-                        isLongTrade);
-                var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
-                values.add(values.get(entryIndex).multipliedBy(ratio));
-            }
+            var entryCashFlow = values.get(entryIndex);
 
-            // add net cash flow at exit position
+            // Determine exit price once (used in both branches)
             Num exitPrice;
             if (position.getExit() != null) {
                 exitPrice = position.getExit().getNetPrice();
             } else {
                 exitPrice = barSeries.getBar(endIndex).getClosePrice();
             }
-            var netExitPrice = AnalysisUtils.addCost(exitPrice, avgCost, isLongTrade);
-            var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
-            values.add(values.get(entryIndex).multipliedBy(ratio));
+
+            if (avgCost.isZero()) {
+                // Direct calculation: cash flow at index i = price[i] / price[entryIndex] * entryCashFlow
+                for (var i = startingIndex; i < endIndex; i++) {
+                    var currentPrice = barSeries.getBar(i).getClosePrice();
+                    var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, currentPrice);
+                    values.add(entryCashFlow.multipliedBy(ratio));
+                }
+                // Handle exit bar (always add, even if entry and exit are on same bar)
+                var exitRatio = getIntermediateRatio(isLongTrade, netEntryPrice, exitPrice);
+                values.add(entryCashFlow.multipliedBy(exitRatio));
+            } else {
+                // iterate through intermediate bars
+                for (var i = startingIndex; i < endIndex; i++) {
+                    var intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(i).getClosePrice(), avgCost,
+                            isLongTrade);
+                    var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
+                    values.add(entryCashFlow.multipliedBy(ratio));
+                }
+
+                var netExitPrice = AnalysisUtils.addCost(exitPrice, avgCost, isLongTrade);
+                var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
+                values.add(entryCashFlow.multipliedBy(ratio));
+            }
         }
     }
 

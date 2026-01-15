@@ -24,6 +24,7 @@
 package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.Collections;
@@ -327,6 +328,50 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(0.9, cashFlow.getValue(1));
+    }
+
+    @Test
+    public void cashFlowWithZeroCostsProducesConsistentValuesForCompressedSeries() {
+        // Test that CashFlow produces identical values at corresponding indices
+        // when using ZeroCostModel, regardless of the number of intermediate bars
+        var originalPrices = new double[] { 100d, 102d, 104d, 106d, 108d, 110d, 112d, 114d };
+        var originalSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(originalPrices).build();
+
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, originalSeries.getBar(0).getClosePrice(), numFactory.one());
+        tradingRecord.exit(originalSeries.getEndIndex(),
+                originalSeries.getBar(originalSeries.getEndIndex()).getClosePrice(), numFactory.one());
+
+        var originalCashFlow = new CashFlow(originalSeries, tradingRecord);
+
+        // Create compressed series with only first, middle, and last bars
+        var compressedSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(originalPrices[0], originalPrices[3], originalPrices[7])
+                .build();
+
+        var compressedTradingRecord = new BaseTradingRecord();
+        compressedTradingRecord.enter(0, compressedSeries.getBar(0).getClosePrice(), numFactory.one());
+        compressedTradingRecord.exit(compressedSeries.getEndIndex(),
+                compressedSeries.getBar(compressedSeries.getEndIndex()).getClosePrice(), numFactory.one());
+
+        var compressedCashFlow = new CashFlow(compressedSeries, compressedTradingRecord);
+
+        // Cash flow at entry should be 1.0 in both
+        assertNumEquals(1.0, originalCashFlow.getValue(0));
+        assertNumEquals(1.0, compressedCashFlow.getValue(0));
+
+        // Cash flow at corresponding bars should match
+        // Original bar 3 (index 3) should match compressed bar 1 (index 1)
+        // Original: price[3] / price[0] = 106 / 100 = 1.06
+        // Compressed: price[1] / price[0] = 106 / 100 = 1.06
+        var diff1 = originalCashFlow.getValue(3).minus(compressedCashFlow.getValue(1)).abs();
+        assertTrue("Cash flow at corresponding indices should match", diff1.isLessThanOrEqual(numFactory.numOf(1e-10)));
+
+        // Original bar 7 (index 7) should match compressed bar 2 (index 2)
+        // Original: price[7] / price[0] = 114 / 100 = 1.14
+        // Compressed: price[2] / price[0] = 114 / 100 = 1.14
+        var diff2 = originalCashFlow.getValue(7).minus(compressedCashFlow.getValue(2)).abs();
+        assertTrue("Cash flow at corresponding indices should match", diff2.isLessThanOrEqual(numFactory.numOf(1e-10)));
     }
 
 }
