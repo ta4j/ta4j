@@ -61,7 +61,7 @@ Ta4j uses five coordinated components:
    - Verifies the branch is still fast-forwardable, then builds, signs, and deploys to Maven Central (skipped on `dryRun=true`).  
    - Bumps to the next snapshot with the Maven Versions Plugin and commits it (skipped on `dryRun=true`).  
    - Pushes only the tag (after a successful deploy) and updates the default branch with the commits:  
-     - Default: opens a pull request (`release/<version>` -> `master`) and enables auto-merge using a merge commit.  
+     - Default: opens a pull request (`release/<version>` -> `master`) which should be merged as merge commit.  
      - Optional: if `RELEASE_DIRECT_PUSH=true`, pushes the commits directly to the default branch.  
    - Posts a run summary to the Maven Central Releases discussion.  
    - **Inputs**: `releaseVersion` (e.g., `0.20.0`, no leading `v`), `nextVersion` (optional), `dryRun` (boolean).
