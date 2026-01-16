@@ -37,6 +37,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: true
+          token: ${{ github.token }}
 
       - name: Normalize dry run input
         id: dry_run
@@ -545,6 +546,7 @@ jobs:
         if: steps.dry_run.outputs.dryRun != 'true'
         uses: peter-evans/create-pull-request@v7
         with:
+          token: ${{ github.token }}
           branch: release/${{ steps.versions.outputs.release }}
           base: master
           title: "Release ${{ steps.versions.outputs.release }}"

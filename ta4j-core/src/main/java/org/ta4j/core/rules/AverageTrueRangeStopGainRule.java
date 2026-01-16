@@ -83,25 +83,22 @@ public class AverageTrueRangeStopGainRule extends AbstractRule {
      */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        // No trading history or no position opened, no gain
-        if (tradingRecord != null) {
-            Position currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition.isOpened()) {
-
-                Num entryPrice = currentPosition.getEntry().getNetPrice();
-                Num currentPrice = referencePrice.getValue(index);
-                Num gainThreshold = stopGainThreshold.getValue(index);
-
-                if (currentPosition.getEntry().isBuy()) {
-                    satisfied = currentPrice.isGreaterThanOrEqual(entryPrice.plus(gainThreshold));
-                } else {
-                    satisfied = currentPrice.isLessThanOrEqual(entryPrice.minus(gainThreshold));
-                }
-            }
+        // No trading history
+        if (tradingRecord == null) {
+            return false;
+        }
+        // No position opened, no gain
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        if (!currentPosition.isOpened()) {
+            return false;
         }
 
-        return satisfied;
+        Num entryPrice = currentPosition.getEntry().getNetPrice();
+        Num currentPrice = referencePrice.getValue(index);
+        Num gainThreshold = stopGainThreshold.getValue(index);
+
+        return currentPosition.getEntry().isBuy() ? currentPrice.isGreaterThanOrEqual(entryPrice.plus(gainThreshold))
+                : currentPrice.isLessThanOrEqual(entryPrice.minus(gainThreshold));
     }
 
     private Indicator<Num> createStopGainThreshold(BarSeries series) {

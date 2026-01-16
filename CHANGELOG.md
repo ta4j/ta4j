@@ -1,6 +1,24 @@
 ## Unreleased
 
-- _No changes yet._
+### Fixed
+- **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
+- **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
+
+## 0.22.1 (2026-01-15)
+
+### Added
+- **Manual GitHub Release workflow trigger**: Added `workflow_dispatch` support with a required tag input so maintainers can backfill or re-run a GitHub Release directly from the Actions UI.
+- **GitHub Release dry-run option**: Added a `dryRun` flag for manual GitHub Release triggers to preview notes, validate artifacts, and preflight release token permissions without publishing.
+- **Manual actionlint trigger**: Added `workflow_dispatch` support so workflow linting can be run on demand.
+
+### Changed
+- **GitHub Release execution path**: Release creation now relies on tag-push triggers (and the manual dispatch option) instead of being invoked directly from `release.yml`, with the workflow checking out the target tag to align notes and artifacts.
+- **Release automation tokens**: `release-scheduler.yml` and `release.yml` use `GITHUB_TOKEN`, while `github-release.yml` uses the `GH_TA4J_REPO_TOKEN` classic PAT for GitHub Release creation under org token restrictions.
+
+### Fixed
+- **GitHub Release artifacts**: Build now uses the production-release profile so javadoc jars are generated and artifact validation succeeds.
+- **GitHub Release asset uploads**: Removed overlapping upload patterns to prevent duplicate asset uploads from failing the release.
+
 
 ## 0.22.0 (2025-12-29)
 

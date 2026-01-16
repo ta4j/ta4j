@@ -420,12 +420,13 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void subSeriesOfMaxBarCountSeriesTest() {
-        final BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+        var maxBarCount = 20;
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
                 .withName("Series with maxBar count")
-                .withMaxBarCount(20)
+                .withMaxBarCount(maxBarCount)
                 .build();
 
-        final int timespan = 5;
+        var timespan = 5;
         var now = Instant.now();
 
         IntStream.range(0, 100).forEach(i -> {
@@ -438,13 +439,14 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
                     .closePrice(5)
                     .volume(i)
                     .add();
-            int startIndex = Math.max(series.getBeginIndex(), series.getEndIndex() - timespan + 1);
-            int endIndex = i + 1;
-            final BarSeries subSeries = series.getSubSeries(startIndex, endIndex);
+            var startIndex = Math.max(series.getBeginIndex(), series.getEndIndex() - timespan + 1);
+            var endIndex = i + 1;
+            var subSeries = series.getSubSeries(startIndex, endIndex);
             assertEquals(subSeries.getBarCount(), endIndex - startIndex);
+            assertEquals(maxBarCount, subSeries.getMaximumBarCount());
 
-            final Bar subSeriesLastBar = subSeries.getLastBar();
-            final Bar seriesLastBar = series.getLastBar();
+            var subSeriesLastBar = subSeries.getLastBar();
+            var seriesLastBar = series.getLastBar();
             assertEquals(subSeriesLastBar.getVolume(), seriesLastBar.getVolume());
         });
     }

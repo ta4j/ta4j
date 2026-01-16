@@ -3,7 +3,7 @@
 This document explains how the Ta4j release workflow works end-to-end, including
 developer responsibilities, changelog practices, how snapshots are published,
 and how new stable releases are produced and published to Maven Central.
-Automated release gating and scheduling lives in `.github/workflows/release-scheduler.yml`, which evaluates changes, calls GitHub Models (with a short explanation of the decision), and dispatches the main release workflow when criteria are met (or when manually requested with `dryRun`).
+Automated release gating and scheduling lives in `.github/workflows/release-scheduler.yml`, which evaluates changes, calls GitHub Models (with a short explanation of the decision), and dispatches the main release workflow when criteria are met (or when manually requested with `dryRun`). Workflow dispatches use the built-in `GITHUB_TOKEN`, while GitHub Release publishing uses the `GH_TA4J_REPO_TOKEN` classic PAT.
 
 The process is intentionally simple: GitHub Actions performs all version
 management, deployment, and tagging. Contributors only maintain documentation
@@ -50,7 +50,7 @@ Ta4j uses five coordinated components:
    - Collects diff + Unreleased changelog, sanitizes them, and asks GitHub Models for a SemVer bump with a 1–2 sentence rationale.  
    - Requires `GH_MODELS_TOKEN` (PAT authorized for GitHub Models). If missing, it short-circuits.  
    - Computes the next tag (no leading `v`), basing the bump on the higher of the current POM base or the last default-branch tag to avoid double-bumping snapshots.  
-   - Always dispatches `release.yml`, passing through `releaseVersion`, `nextVersion` (optional), the AI reasoning, and `dryRun`.  
+   - Always dispatches `release.yml`, passing through `releaseVersion`, `nextVersion` (optional), the AI reasoning, and `dryRun` using `GITHUB_TOKEN`.  
    - Emits a decision summary (gate, token, AI verdict, bump, version, reason, dryRun).
    - For major releases, requires manual approval via the `major-release` environment.
 
@@ -65,11 +65,11 @@ Ta4j uses five coordinated components:
    - **Version formats supported**: `major.minor.patch` (e.g., `0.20.0`)
 
 4. **GitHub Release Workflow (`github-release.yml`)**  
-   - Automatically triggered when a release tag is pushed.
+   - Automatically triggered when a release tag is pushed. Also supports manual `workflow_dispatch` with a required `tag` input for backfills.
    - Reads `release/<version>.md` for release notes.
    - Builds all module artifacts (JARs, sources, javadoc).
    - Creates a GitHub Release with artifacts attached, preserving the markdown formatting of `release/<version>.md` via `body_path`.
-   - **Note**: This runs automatically after `release.yml` creates a tag.
+   - **Note**: This runs automatically after `release.yml` creates a tag, or can be triggered manually when a tag already exists.
 
 5. **Snapshot Workflow (`snapshot.yml`)**  
    Automatically publishes snapshot builds to Central on every push to `master`.
@@ -91,6 +91,7 @@ The following secrets are **mandatory** for the release workflows to function:
 | `GPG_PRIVATE_KEY` | `release.yml`, `snapshot.yml` | GPG private key (ASCII-armored) for signing artifacts before publishing to Maven Central |
 | `GPG_PASSPHRASE` | `release.yml`, `snapshot.yml` | Passphrase for the GPG private key |
 | `GH_MODELS_TOKEN` | `release-scheduler.yml` | GitHub Models API token (PAT authorized for GitHub Models) for AI-powered semantic versioning decisions |
+| `GH_TA4J_REPO_TOKEN` | `github-release.yml` | Classic PAT used for GitHub Release creation when org policies restrict `GITHUB_TOKEN` |
 
 ### Optional Repository Secrets
 
@@ -119,8 +120,11 @@ The `release.yml` workflow includes a verification step that checks for all requ
 
 1. **Maven Central Credentials**: Create a token in [Sonatype Central](https://central.sonatype.com/) with appropriate permissions for publishing to the `org.ta4j` group.
 2. **GPG Key**: Generate a GPG key pair and export the private key (ASCII-armored) for signing artifacts. The public key must be published to a keyserver.
-3. **GitHub Tokens**: Create Personal Access Tokens (PATs) with appropriate scopes:
+3. **GitHub Tokens**: Create Personal Access Tokens (classic PATs) with appropriate scopes:
    - `GH_MODELS_TOKEN`: Requires authorization for GitHub Models API access (used by the scheduler)
+   - `GH_TA4J_REPO_TOKEN`: Requires `public_repo` (public repos); add `repo` for private repos
+
+**GITHUB_TOKEN permissions:** Ensure repository **Actions → Workflow permissions** is set to **Read and write** so `release-scheduler.yml` and `release.yml` can dispatch workflows, push tags, and open release PRs.
 
 ---
 
@@ -232,6 +236,7 @@ The `release.yml` workflow executes these steps in order:
 **After the tag is created and pushed**, the `github-release.yml` workflow automatically:
 - Creates a GitHub Release using `release/<version>.md` as the description
 - Attaches all built artifacts (JARs, sources, javadoc) to the release
+If the release does not appear, you can manually run **Create GitHub Release** with the `tag` input set to the existing version.
 
 **No local Maven commands are required** — everything happens in GitHub Actions.
 
@@ -292,6 +297,7 @@ Releases appear on Maven Central after a few minutes:
   - Correct version tag
   - Release notes from `release/<version>.md`
   - Attached artifacts (JARs, sources, javadoc)
+- If the release is missing but the tag exists, run **GitHub → Actions → Create GitHub Release → Run workflow** and supply the `tag` input.
 
 ### **5. Check Next Snapshot Version**
 
@@ -345,6 +351,7 @@ Also verify the release PR (`release/<version>`) is open and contains both the r
 - Ensure you ran `scripts/prepare-release.sh <version>` before triggering the release
 - Verify the file exists: `ls release/<version>.md`
 - Commit and push the file before triggering the release workflow
+- Re-run **Create GitHub Release** with the `tag` input after fixing the notes
 
 ### **Branch Advanced During Release**
 
