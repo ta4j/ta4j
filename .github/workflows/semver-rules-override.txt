@@ -2,7 +2,7 @@ MAJOR: Breaking API changes in public/core APIs.
 MINOR: Backward-compatible new features.
 PATCH: Backward-compatible bug fixes.
 
-If diff is empty or changelog-only => should_release=false.
+If binary change list empty or changelog-only => should_release=false.
 NEVER major without explicit breaking change evidence.
 
 Pre-1.0.0: breaking changes can be MINOR (not necessarily MAJOR).
