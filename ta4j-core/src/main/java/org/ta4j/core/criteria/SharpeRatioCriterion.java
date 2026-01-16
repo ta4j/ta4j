@@ -26,7 +26,6 @@ package org.ta4j.core.criteria;
 import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.WeekFields;
-import java.util.Locale;
 import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -104,6 +103,12 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     private final Sampling sampling;
     private final Annualization annualization;
     private final ZoneId groupingZoneId;
+
+    public SharpeRatioCriterion() {
+        // null as annualRiskFreeRate as we don't have a numFactory to get a zero Num. The code below checks if
+        // annualRiskFreeRate is null and use 0.
+        this(null, Sampling.PER_BAR, Annualization.ANNUALIZED, ZoneOffset.UTC);
+    }
 
     public SharpeRatioCriterion(Num annualRiskFreeRate) {
         this(annualRiskFreeRate, Sampling.PER_BAR, Annualization.ANNUALIZED, ZoneOffset.UTC);
@@ -191,12 +196,12 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
             return sharpePerPeriod;
         }
 
-        var annualizationFactor = acc.annualizationFactor();
-        if (annualizationFactor <= 0.0) {
+        var annualizationFactor = acc.annualizationFactor(numFactory);
+        if (annualizationFactor.isLessThanOrEqual(zero)) {
             return sharpePerPeriod;
         }
 
-        return sharpePerPeriod.multipliedBy(numFactory.numOf(annualizationFactor));
+        return sharpePerPeriod.multipliedBy(annualizationFactor);
     }
 
     private Stream<IndexPair> indexPairs(BarSeries series, int anchorIndex, int start, int end) {
@@ -259,11 +264,12 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         return series.getBar(index).getEndTime();
     }
 
-    private double deltaYears(BarSeries series, int previousIndex, int currentIndex) {
+    private Num deltaYears(BarSeries series, int previousIndex, int currentIndex) {
         var endPrev = endTimeInstant(series, previousIndex);
         var endNow = endTimeInstant(series, currentIndex);
         var seconds = Math.max(0, Duration.between(endPrev, endNow).getSeconds());
-        return seconds <= 0 ? 0.0 : seconds / SECONDS_PER_YEAR;
+        var numFactory = series.numFactory();
+        return seconds <= 0 ? numFactory.zero() : numFactory.numOf(seconds).dividedBy(numFactory.numOf(SECONDS_PER_YEAR));
     }
 
     private Num excessReturn(BarSeries series, CashFlow cashFlow, int previousIndex, int currentIndex) {
@@ -275,14 +281,18 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     private Num periodRiskFree(BarSeries series, int previousIndex, int currentIndex) {
         var numFactory = series.numFactory();
+        var zero = numFactory.zero();
+        var one = numFactory.one();
+        var annual = getAnnualRiskFreeRate(zero);
         var deltaYears = deltaYears(series, previousIndex, currentIndex);
-        if (deltaYears <= 0.0) {
-            return numFactory.zero();
+        if (deltaYears.isLessThanOrEqual(zero)) {
+            return zero;
         }
+        return one.plus(annual).pow(deltaYears).minus(one);
+    }
 
-        var annual = (annualRiskFreeRate == null) ? 0.0 : annualRiskFreeRate.doubleValue();
-        var per = Math.pow(1.0 + annual, deltaYears) - 1.0;
-        return numFactory.numOf(per);
+    private Num getAnnualRiskFreeRate(Num zero) {
+        return (annualRiskFreeRate == null) ? zero : annualRiskFreeRate;
     }
 
     @Override
@@ -293,31 +303,31 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     private record IndexPair(int previousIndex, int currentIndex) {
     }
 
-    private record Acc(Stats stats, double deltaYearsSum, int deltaCount) {
+    private record Acc(Stats stats, Num deltaYearsSum, Num deltaCount) {
 
         static Acc empty(Num zero) {
-            return new Acc(Stats.empty(zero), 0.0, 0);
+            return new Acc(Stats.empty(zero), zero, zero);
         }
 
-        Acc add(Num excessReturn, double deltaYears, NumFactory numFactory) {
+        Acc add(Num excessReturn, Num deltaYears, NumFactory numFactory) {
             var nextStats = stats.add(excessReturn, numFactory);
-            if (deltaYears <= 0.0) {
+            if (deltaYears.isLessThanOrEqual(numFactory.zero())) {
                 return new Acc(nextStats, deltaYearsSum, deltaCount);
             }
-            return new Acc(nextStats, deltaYearsSum + deltaYears, deltaCount + 1);
+            return new Acc(nextStats, deltaYearsSum.plus(deltaYears), deltaCount.plus(numFactory.one()));
         }
 
         Acc merge(Acc other, NumFactory numFactory) {
             var mergedStats = stats.merge(other.stats, numFactory);
-            return new Acc(mergedStats, deltaYearsSum + other.deltaYearsSum, deltaCount + other.deltaCount);
+            return new Acc(mergedStats, deltaYearsSum.plus(other.deltaYearsSum), deltaCount.plus(other.deltaCount));
         }
 
-        double annualizationFactor() {
-            if (deltaCount <= 0 || deltaYearsSum <= 0.0) {
-                return 0.0;
+        Num annualizationFactor(NumFactory numFactory) {
+            var zero = numFactory.zero();
+            if (deltaCount.isLessThanOrEqual(zero) || deltaYearsSum.isLessThanOrEqual(zero)) {
+                return zero;
             }
-            var periodsPerYear = deltaCount / deltaYearsSum;
-            return Math.sqrt(periodsPerYear);
+            return deltaCount.dividedBy(deltaYearsSum).sqrt();
         }
     }
 

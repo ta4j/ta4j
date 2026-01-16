@@ -48,7 +48,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void returnsKnownSharpePerPeriod_whenAlwaysInvested() {
-        var series = new BaseBarSeriesBuilder().withName("sr_test").build();
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("sr_test").build();
 
         var start = Instant.parse("2024-01-01T00:00:00Z");
         var closes = new double[] { 100d, 150d, 150d, 225d, 225d };
@@ -131,7 +131,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void groupingZoneIdMakesSharpeZeroInOneZoneButNotTheOther() {
-        var series = new BaseBarSeriesBuilder().withName("zone_test_deterministic").build();
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("zone_test_deterministic").build();
 
         var endTimes = new Instant[] { Instant.parse("2024-01-01T23:30:00Z"), // NY: Jan 1
                 Instant.parse("2024-01-02T00:30:00Z"), // NY: Jan 1 -> day boundary happens between this and next
@@ -324,8 +324,8 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         assertEquals(perBar, perSecond, 1e-12);
     }
 
-    private static BarSeries buildDailySeries(double[] closes, Instant start) {
-        var series = new BaseBarSeriesBuilder().withName("daily_series").build();
+    private BarSeries buildDailySeries(double[] closes, Instant start) {
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("daily_series").build();
 
         IntStream.range(0, closes.length).forEach(i -> {
             var endTime = start.plus(Duration.ofDays(i + 1L));
@@ -344,8 +344,8 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         return series;
     }
 
-    private static BarSeries buildHourlySeries(double[] closes, Instant start) {
-        var series = new BaseBarSeriesBuilder().withName("hourly_series").build();
+    private BarSeries buildHourlySeries(double[] closes, Instant start) {
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("hourly_series").build();
 
         IntStream.range(0, closes.length).forEach(i -> {
             var endTime = start.plus(Duration.ofHours(i + 1L));
@@ -364,8 +364,8 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         return series;
     }
 
-    private static BarSeries buildMinuteSeries(double[] closes, Instant start) {
-        var series = new BaseBarSeriesBuilder().withName("minute_series").build();
+    private BarSeries buildMinuteSeries(double[] closes, Instant start) {
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("minute_series").build();
 
         IntStream.range(0, closes.length).forEach(i -> {
             var endTime = start.plus(Duration.ofMinutes(i + 1L));
@@ -384,8 +384,8 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         return series;
     }
 
-    private static BarSeries buildSecondSeries(double[] closes, Instant start) {
-        var series = new BaseBarSeriesBuilder().withName("second_series").build();
+    private BarSeries buildSecondSeries(double[] closes, Instant start) {
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("second_series").build();
 
         IntStream.range(0, closes.length).forEach(i -> {
             var endTime = start.plus(Duration.ofSeconds(i + 1L));
@@ -404,8 +404,8 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         return series;
     }
 
-    private static BarSeries buildIntradaySeriesWithDailyEnds(double[] dailyEndCloses, Instant day0StartUtc) {
-        var series = new BaseBarSeriesBuilder().withName("intraday_series").build();
+    private BarSeries buildIntradaySeriesWithDailyEnds(double[] dailyEndCloses, Instant day0StartUtc) {
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("intraday_series").build();
 
         var day0EndTime = day0StartUtc.plus(Duration.ofHours(23));
         var day0EndClose = dailyEndCloses[0];
