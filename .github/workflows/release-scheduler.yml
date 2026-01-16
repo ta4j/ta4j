@@ -16,7 +16,7 @@ concurrency:
 
 on:
   schedule:
-    - cron: "0 9 */14 * *"  # every 14 days
+    - cron: "0 9 */14 * *" # every 14 days
   workflow_dispatch:
     inputs:
       dryRun:

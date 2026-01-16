@@ -225,12 +225,12 @@ jobs:
         run: |
           CURRENT=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
           echo "Detected project.version: $CURRENT"
-          
+
           if [[ -z "${CURRENT}" ]]; then
             echo "Error: Failed to read project.version from pom.xml"
             exit 1
           fi
-          
+
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
 
       - name: Capture user input versions
@@ -596,7 +596,6 @@ jobs:
             - Generated release notes: release/${{ steps.versions.outputs.release }}.md
             - Bump to next snapshot: ${{ steps.versions.outputs.next }}
           labels: release
-
 
       # -----------------------
       # Summary
