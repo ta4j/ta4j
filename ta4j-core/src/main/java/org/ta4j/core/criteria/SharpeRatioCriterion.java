@@ -89,7 +89,7 @@ import org.ta4j.core.num.NumFactory;
 public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     private static final double SECONDS_PER_YEAR = 365.2425d * 24 * 3600;
-    private static final WeekFields ISO_WEEK_FIELDS = WeekFields.of(Locale.ROOT);
+    private static final WeekFields ISO_WEEK_FIELDS = WeekFields.ISO;
 
     public enum Sampling {
         PER_BAR, PER_SECOND, MINUTELY, HOURLY, DAILY, WEEKLY, MONTHLY
