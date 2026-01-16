@@ -496,7 +496,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     private static BarSeries compressSeries(BarSeries source, int[] indices, String name) {
-        var series = new BaseBarSeriesBuilder().withName(name).build();
+        var series = new BaseBarSeriesBuilder().withName(name).withNumFactory(source.numFactory()).build();
 
         IntStream.range(0, indices.length).forEach(i -> {
             var sourceBar = source.getBar(indices[i]);
