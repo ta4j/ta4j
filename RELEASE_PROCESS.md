@@ -182,6 +182,9 @@ Tags are created before the PR exists and are not part of PR diffs. They become 
 | Variable Name | Used By | Purpose |
 |---------------|---------|---------|
 | `RELEASE_DIRECT_PUSH` | `release.yml` | When `true`, skip the release PR and push commits directly to `master` |
+| `RELEASE_NOTIFY_USER` | `release.yml`, `release-scheduler.yml` | Optional GitHub username to @mention in discussion summaries (defaults to `TheCookieLab`) |
+| `RELEASE_DISCUSSION_NUMBER` | `release.yml` | Discussion number for release run summaries (defaults to 1415) |
+| `RELEASE_SCHEDULER_DISCUSSION_NUMBER` | `release-scheduler.yml` | Discussion number for scheduler summaries (defaults to 1414) |
 
 ### Required GitHub Environment
 

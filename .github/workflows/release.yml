@@ -489,19 +489,19 @@ jobs:
         if: steps.dry_run.outputs.dryRun != 'true'
         shell: bash
         env:
-          RELEASE_BRANCH: ${{ github.ref_name }}
+          TARGET_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
 
-          branch="${RELEASE_BRANCH}"
+          branch="${TARGET_BRANCH:-}"
           if [[ -z "${branch}" ]]; then
-            echo "Unable to determine branch name (github.ref_name was empty); aborting."
+            echo "Unable to determine default branch name; aborting."
             exit 1
           fi
 
           git fetch origin "${branch}"
           if ! git merge-base --is-ancestor "origin/${branch}" HEAD; then
-            echo "Remote branch '${branch}' advanced while the release workflow was running."
+            echo "Default branch '${branch}' advanced while the release workflow was running."
             echo "Failing before deployment to avoid publishing artifacts without matching commits."
             exit 1
           fi
@@ -565,9 +565,15 @@ jobs:
         env:
           TARGET_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
+          set -euo pipefail
           branch="${TARGET_BRANCH:-}"
           if [ -z "$branch" ]; then
             echo "Default branch was not set; refusing to push."
+            exit 1
+          fi
+          git fetch origin "${branch}"
+          if ! git merge-base --is-ancestor "origin/${branch}" HEAD; then
+            echo "Default branch '${branch}' advanced after deployment; refusing to push."
             exit 1
           fi
           echo "Pushing release commits directly to ${branch}."
@@ -626,6 +632,7 @@ jobs:
           MISSING_SECRETS: ${{ steps.collect_missing.outputs.missing }}
           HAS_MISSING: ${{ steps.collect_missing.outputs.has_missing }}
           PR_NUMBER: ${{ steps.create_pr.outputs.pull-request-number }}
+          RELEASE_NOTIFY_USER: ${{ vars.RELEASE_NOTIFY_USER }}
         run: |
           status="${JOB_STATUS:-unknown}"
           status_upper=$(printf '%s' "$status" | tr '[:lower:]' '[:upper:]')
@@ -652,6 +659,8 @@ jobs:
             pr_number="(none)"
           fi
 
+          notify_user="${RELEASE_NOTIFY_USER:-TheCookieLab}"
+
           if [ "$dry_run" = "true" ]; then
             mode_label="dry-run"
           else
@@ -667,7 +676,7 @@ jobs:
           timestamp=$(date '+%-I:%M:%S %p on %-m.%-d.%Y')
 
           cat > notification-body.txt <<EOF
-          @TheCookieLab
+          @${notify_user}
 
           **Maven Central Release ${mode_label} ${completion_text} at ${timestamp}**
           - Repository: ${GITHUB_REPOSITORY}
@@ -693,12 +702,18 @@ jobs:
         uses: actions/github-script@v8
         with:
           github-token: ${{ github.token }}
+          env:
+            RELEASE_DISCUSSION_NUMBER: ${{ vars.RELEASE_DISCUSSION_NUMBER }}
           script: |
             const fs = require("fs");
             const body = fs.readFileSync("notification-body.txt", "utf8");
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const number = 1415;
+            const rawNumber = process.env.RELEASE_DISCUSSION_NUMBER;
+            const number = rawNumber ? Number(rawNumber) : 1415;
+            if (!Number.isFinite(number)) {
+              throw new Error(`Invalid Release discussion number: ${rawNumber}`);
+            }
 
             const query = `
               query($owner: String!, $repo: String!, $number: Int!) {

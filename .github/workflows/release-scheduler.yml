@@ -742,6 +742,7 @@ jobs:
           LAST_TAG: ${{ needs.analyze.outputs.last_tag }}
           POM_VERSION: ${{ needs.analyze.outputs.pom_version }}
           POM_BASE: ${{ needs.analyze.outputs.pom_base }}
+          RELEASE_NOTIFY_USER: ${{ vars.RELEASE_NOTIFY_USER }}
         run: |
           status="success"
           for result in "$ANALYZE_RESULT" "$APPROVAL_RESULT" "$PUBLISH_RESULT" "$PUBLISH_MAJOR_RESULT" "$DRY_RUN_RESULT"; do
@@ -806,8 +807,10 @@ jobs:
             pom_base="(unknown)"
           fi
 
+          notify_user="${RELEASE_NOTIFY_USER:-TheCookieLab}"
+
           cat > notification-body.txt <<EOF
-          @TheCookieLab
+          @${notify_user}
 
           **Release Scheduler ${mode_label} ${completion_text} at ${timestamp}**
           - Repository: ${GITHUB_REPOSITORY}
@@ -847,12 +850,18 @@ jobs:
         uses: actions/github-script@v8
         with:
           github-token: ${{ github.token }}
+          env:
+            RELEASE_SCHEDULER_DISCUSSION_NUMBER: ${{ vars.RELEASE_SCHEDULER_DISCUSSION_NUMBER }}
           script: |
             const fs = require("fs");
             const body = fs.readFileSync("notification-body.txt", "utf8");
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-            const number = 1414;
+            const rawNumber = process.env.RELEASE_SCHEDULER_DISCUSSION_NUMBER;
+            const number = rawNumber ? Number(rawNumber) : 1414;
+            if (!Number.isFinite(number)) {
+              throw new Error(`Invalid Release Scheduler discussion number: ${rawNumber}`);
+            }
 
             const query = `
               query($owner: String!, $repo: String!, $number: Int!) {

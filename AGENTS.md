@@ -5,9 +5,9 @@
 **CRITICAL: Before completing ANY code changes, you MUST:**
 
 1. ✅ Run the full build script: `scripts/run-full-build-quiet.sh`
-   - **This is NOT optional** for code or documentation changes outside `.github/workflows/`.
-   - **Exception:** If the only modifications are within `.github/workflows/` or the `CHANGELOG.md`, you may skip the full build.
-   - If any non-workflow or purely documentation file changes are included, the full build is still required.
+   - **This is NOT optional** for code or documentation changes outside `.github/workflows/` or `CHANGELOG.md`.
+   - **Exception:** You may skip the full build ONLY when ALL changes are exclusively within `.github/workflows/` or `CHANGELOG.md`.
+   - If any other files are modified (code, docs, configs, etc.), the full build is required.
    - **When:** After every code change that affects build/test behavior (which is almost always)
    - **Permissions:** **ALWAYS run with `required_permissions: ['all']`** to avoid Maven repository permission issues. The build script requires full filesystem access to read/write Maven cache and repository files.
    - **Windows:** Invoke Git Bash or MSYS2 binary directly (never WSL or the CLI's default `/bin/bash`) for native performance (5x vs WSL). Always call it explicitly, e.g. `& "C:\Program Files\Git\bin\bash.exe" -c "cd /c/Users/David/Workspace/github/ta4j && ./scripts/run-full-build-quiet.sh"` (convert Windows path `C:\...` to `/c/...` format).
