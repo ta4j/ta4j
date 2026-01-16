@@ -473,7 +473,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     private static boolean sameIsoWeek(ZonedDateTime a, ZonedDateTime b) {
-        var weekFields = WeekFields.of(Locale.ROOT);
+        var weekFields = WeekFields.ISO;
         var weekA = a.get(weekFields.weekOfWeekBasedYear());
         var weekB = b.get(weekFields.weekOfWeekBasedYear());
         var yearA = a.get(weekFields.weekBasedYear());
