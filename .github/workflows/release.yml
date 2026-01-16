@@ -22,6 +22,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  discussions: write
 
 jobs:
   release:
@@ -54,6 +55,23 @@ jobs:
           echo "audit:dry_run_input_raw='${raw}'"
           echo "audit:dry_run_normalized=$dry_run"
           echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
+
+      - name: Normalize direct push flag
+        id: direct_push
+        env:
+          DIRECT_PUSH: ${{ vars.RELEASE_DIRECT_PUSH }}
+        run: |
+          raw="${DIRECT_PUSH:-}"
+          normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+
+          if [ "$normalized" = "true" ] || [ "$normalized" = "1" ] || [ "$normalized" = "yes" ]; then
+            enabled=true
+          else
+            enabled=false
+          fi
+
+          echo "audit:release_direct_push=$enabled raw='${raw}'"
+          echo "enabled=$enabled" >> $GITHUB_OUTPUT
 
       - name: Check for MAVEN_CENTRAL_TOKEN_USER
         id: check_maven_user
@@ -207,12 +225,12 @@ jobs:
         run: |
           CURRENT=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
           echo "Detected project.version: $CURRENT"
-          
+
           if [[ -z "${CURRENT}" ]]; then
             echo "Error: Failed to read project.version from pom.xml"
             exit 1
           fi
-          
+
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
 
       - name: Capture user input versions
@@ -471,19 +489,19 @@ jobs:
         if: steps.dry_run.outputs.dryRun != 'true'
         shell: bash
         env:
-          RELEASE_BRANCH: ${{ github.ref_name }}
+          TARGET_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
 
-          branch="${RELEASE_BRANCH}"
+          branch="${TARGET_BRANCH:-}"
           if [[ -z "${branch}" ]]; then
-            echo "Unable to determine branch name (github.ref_name was empty); aborting."
+            echo "Unable to determine default branch name; aborting."
             exit 1
           fi
 
           git fetch origin "${branch}"
           if ! git merge-base --is-ancestor "origin/${branch}" HEAD; then
-            echo "Remote branch '${branch}' advanced while the release workflow was running."
+            echo "Default branch '${branch}' advanced while the release workflow was running."
             echo "Failing before deployment to avoid publishing artifacts without matching commits."
             exit 1
           fi
@@ -542,13 +560,33 @@ jobs:
         run: |
           git commit -am "Start ${{ steps.versions.outputs.next }}"
 
+      - name: Push release commits directly to default branch
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled == 'true'
+        env:
+          TARGET_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+          branch="${TARGET_BRANCH:-}"
+          if [ -z "$branch" ]; then
+            echo "Default branch was not set; refusing to push."
+            exit 1
+          fi
+          git fetch origin "${branch}"
+          if ! git merge-base --is-ancestor "origin/${branch}" HEAD; then
+            echo "Default branch '${branch}' advanced after deployment; refusing to push."
+            exit 1
+          fi
+          echo "Pushing release commits directly to ${branch}."
+          git push origin "HEAD:${branch}"
+
       - name: Create release pull request
-        if: steps.dry_run.outputs.dryRun != 'true'
+        id: create_pr
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true'
         uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ github.token }}
           branch: release/${{ steps.versions.outputs.release }}
-          base: master
+          base: ${{ github.event.repository.default_branch }}
           title: "Release ${{ steps.versions.outputs.release }}"
           body: |
             Automated release PR for ${{ steps.versions.outputs.release }}.
@@ -566,11 +604,138 @@ jobs:
         if: always()
         env:
           DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          DIRECT_PUSH: ${{ steps.direct_push.outputs.enabled }}
           RELEASE: ${{ steps.versions.outputs.release }}
           NEXT: ${{ steps.versions.outputs.next }}
           CURRENT: ${{ steps.versions.outputs.current }}
         run: |
           echo "summary: dryRun=${DRY_RUN:-}"
+          echo "summary: directPush=${DIRECT_PUSH:-}"
           echo "summary: release=${RELEASE:-}"
           echo "summary: current=${CURRENT:-}"
           echo "summary: next=${NEXT:-}"
+
+      - name: Build discussion comment
+        id: notify_summary
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          EVENT_NAME: ${{ github.event_name }}
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          DIRECT_PUSH: ${{ steps.direct_push.outputs.enabled }}
+          RELEASE: ${{ steps.versions.outputs.release }}
+          NEXT: ${{ steps.versions.outputs.next }}
+          CURRENT: ${{ steps.versions.outputs.current }}
+          TAG_EXISTS: ${{ steps.check_tag.outputs.exists }}
+          EXISTING_TAG: ${{ steps.check_tag.outputs.existing_tag }}
+          MISSING_SECRETS: ${{ steps.collect_missing.outputs.missing }}
+          HAS_MISSING: ${{ steps.collect_missing.outputs.has_missing }}
+          PR_NUMBER: ${{ steps.create_pr.outputs.pull-request-number }}
+          RELEASE_NOTIFY_USER: ${{ vars.RELEASE_NOTIFY_USER }}
+        run: |
+          status="${JOB_STATUS:-unknown}"
+          status_upper=$(printf '%s' "$status" | tr '[:lower:]' '[:upper:]')
+          run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          dry_run="${DRY_RUN:-unknown}"
+          direct_push="${DIRECT_PUSH:-unknown}"
+          release="${RELEASE:-unknown}"
+          next="${NEXT:-unknown}"
+          current="${CURRENT:-unknown}"
+          tag_exists="${TAG_EXISTS:-unknown}"
+          existing_tag="${EXISTING_TAG:-}"
+          missing_secrets="${MISSING_SECRETS:-}"
+          has_missing="${HAS_MISSING:-unknown}"
+          pr_number="${PR_NUMBER:-}"
+
+          if [ -z "$existing_tag" ]; then
+            existing_tag="(none)"
+          fi
+          if [ -z "$missing_secrets" ]; then
+            missing_secrets="(none)"
+          fi
+          if [ -z "$pr_number" ]; then
+            pr_number="(none)"
+          fi
+
+          notify_user="${RELEASE_NOTIFY_USER:-TheCookieLab}"
+
+          if [ "$dry_run" = "true" ]; then
+            mode_label="dry-run"
+          else
+            mode_label="production"
+          fi
+
+          if [ "$status" = "success" ]; then
+            completion_text="completed successfully"
+          else
+            completion_text="completed with failures"
+          fi
+
+          timestamp=$(date '+%-I:%M:%S %p on %-m.%-d.%Y')
+
+          cat > notification-body.txt <<EOF
+          @${notify_user}
+
+          **Maven Central Release ${mode_label} ${completion_text} at ${timestamp}**
+          - Repository: ${GITHUB_REPOSITORY}
+          - Run: ${run_url}
+          - Event: ${EVENT_NAME}
+          - Status: ${status_upper}
+
+          Release Summary:
+          - dryRun: ${dry_run}
+          - direct push: ${direct_push}
+          - release version: ${release}
+          - next snapshot: ${next}
+          - current pom: ${current}
+          - tag exists: ${tag_exists}
+          - existing tag: ${existing_tag}
+          - missing secrets: ${missing_secrets}
+          - has missing secrets: ${has_missing}
+          - release PR: ${pr_number}
+          EOF
+
+      - name: Post to Maven Central Releases discussion
+        if: always()
+        uses: actions/github-script@v8
+        env:
+          RELEASE_DISCUSSION_NUMBER: ${{ vars.RELEASE_DISCUSSION_NUMBER }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const fs = require("fs");
+            const body = fs.readFileSync("notification-body.txt", "utf8");
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const rawNumber = process.env.RELEASE_DISCUSSION_NUMBER;
+            const number = rawNumber ? Number(rawNumber) : 1415;
+            if (!Number.isFinite(number)) {
+              throw new Error(`Invalid Release discussion number: ${rawNumber}`);
+            }
+
+            const query = `
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  discussion(number: $number) {
+                    id
+                  }
+                }
+              }
+            `;
+            const queryResult = await github.graphql(query, { owner, repo, number });
+            const discussionId = queryResult?.repository?.discussion?.id;
+            if (!discussionId) {
+              throw new Error(`Discussion ${number} not found in ${owner}/${repo}`);
+            }
+
+            const mutation = `
+              mutation($discussionId: ID!, $body: String!) {
+                addDiscussionComment(input: { discussionId: $discussionId, body: $body }) {
+                  comment {
+                    url
+                  }
+                }
+              }
+            `;
+            await github.graphql(mutation, { discussionId, body });

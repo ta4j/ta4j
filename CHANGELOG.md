@@ -1,6 +1,26 @@
 ## Unreleased
 
 ### Added
+- **Release workflow notifications**: Post GitHub Discussion updates for release-scheduler and release runs with decision summaries.
+- **Workflow lint hook**: Added a repo `pre-push` hook to run `actionlint` on workflow changes (see CONTRIBUTING).
+
+### Changed
+- **Release workflow branching**: Auto-merge the release PR by default, with optional direct push to the default branch when `RELEASE_DIRECT_PUSH=true`.
+- **Agent workflow**: Allow skipping the full build when the only changes are within `.github/workflows/`.
+- **Release process docs**: Overhauled with clearer steps, rationale, and example scenarios.
+- **Release scheduler notifications**: Include run mode and timestamp in the discussion header.
+- **Release notifications**: Include run mode and timestamp in the release discussion header.
+- **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
+
+### Fixed
+- **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
+- **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
+- **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
+- **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
+
+## 0.22.1 (2026-01-15)
+
+### Added
 - **Manual GitHub Release workflow trigger**: Added `workflow_dispatch` support with a required tag input so maintainers can backfill or re-run a GitHub Release directly from the Actions UI.
 - **GitHub Release dry-run option**: Added a `dryRun` flag for manual GitHub Release triggers to preview notes, validate artifacts, and preflight release token permissions without publishing.
 - **Manual actionlint trigger**: Added `workflow_dispatch` support so workflow linting can be run on demand.
@@ -12,9 +32,7 @@
 ### Fixed
 - **GitHub Release artifacts**: Build now uses the production-release profile so javadoc jars are generated and artifact validation succeeds.
 - **GitHub Release asset uploads**: Removed overlapping upload patterns to prevent duplicate asset uploads from failing the release.
-- **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
-- **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
-- **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
+
 
 ## 0.22.0 (2025-12-29)
 
