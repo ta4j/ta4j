@@ -106,6 +106,16 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     public SharpeRatioCriterion(Num annualRiskFreeRate, Sampling sampling, Annualization annualization,
             ZoneId groupingZoneId) {
+        this.annualRiskFreeRate = Objects.requireNonNull(annualRiskFreeRate, "annualRiskFreeRate must not be null");
+        this.sampling = Objects.requireNonNull(sampling, "sampling must not be null");
+        this.annualization = Objects.requireNonNull(annualization, "annualization must not be null");
+        this.groupingZoneId = Objects.requireNonNull(groupingZoneId, "groupingZoneId must not be null");
+    }
+
+    public SharpeRatioCriterion(Num annualRiskFreeRate) {
+        this(annualRiskFreeRate, Sampling.PER_BAR, Annualization.ANNUALIZED, ZoneOffset.UTC);
+    }
+            ZoneId groupingZoneId) {
         this.annualRiskFreeRate = annualRiskFreeRate;
         this.sampling = sampling;
         this.annualization = annualization;
