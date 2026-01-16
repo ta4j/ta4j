@@ -699,10 +699,10 @@ jobs:
       - name: Post to Maven Central Releases discussion
         if: always()
         uses: actions/github-script@v8
+        env:
+          RELEASE_DISCUSSION_NUMBER: ${{ vars.RELEASE_DISCUSSION_NUMBER }}
         with:
           github-token: ${{ github.token }}
-          env:
-            RELEASE_DISCUSSION_NUMBER: ${{ vars.RELEASE_DISCUSSION_NUMBER }}
           script: |
             const fs = require("fs");
             const body = fs.readFileSync("notification-body.txt", "utf8");

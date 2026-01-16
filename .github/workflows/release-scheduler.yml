@@ -848,10 +848,10 @@ jobs:
       - name: Post to Release Scheduler discussion
         if: always()
         uses: actions/github-script@v8
+        env:
+          RELEASE_SCHEDULER_DISCUSSION_NUMBER: ${{ vars.RELEASE_SCHEDULER_DISCUSSION_NUMBER }}
         with:
           github-token: ${{ github.token }}
-          env:
-            RELEASE_SCHEDULER_DISCUSSION_NUMBER: ${{ vars.RELEASE_SCHEDULER_DISCUSSION_NUMBER }}
           script: |
             const fs = require("fs");
             const body = fs.readFileSync("notification-body.txt", "utf8");
