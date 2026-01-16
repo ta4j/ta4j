@@ -15,6 +15,7 @@
 - **Release scheduler dispatch**: Route automated releases through `prepare-release.yml` and include the binary change count in the AI prompt, with deterministic no-release outputs for zero binary changes.
 - **Release automation tokens**: Use `GH_TA4J_REPO_TOKEN` for release push operations when available.
 - **Release token preflight**: Fail fast when `GH_TA4J_REPO_TOKEN` lacks write permission (warn-only in dry-run mode).
+- **Release scheduler enablement**: Gate scheduled runs on `RELEASE_SCHEDULER_ENABLED` (defaults to disabled when unset).
 
 ### Fixed
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).

@@ -34,6 +34,7 @@ jobs:
   analyze:
     name: Analyze changes & ask AI
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'schedule' || vars.RELEASE_SCHEDULER_ENABLED == 'true' }}
     outputs:
       should_release: ${{ steps.parsed.outputs.should_release }}
       bump: ${{ steps.parsed.outputs.bump }}
