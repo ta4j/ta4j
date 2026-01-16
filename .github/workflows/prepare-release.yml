@@ -264,7 +264,9 @@ jobs:
           fi
 
           NEXT_BASE="${NEXT%-SNAPSHOT}"
-          if [[ "${NEXT_BASE}" == "${RELEASE}" ]]; then
+          # Verify that nextVersion is actually greater than releaseVersion
+          highest=$(printf '%s\n' "${RELEASE}" "${NEXT_BASE}" | sort -V | tail -n1)
+          if [[ "${highest}" != "${NEXT_BASE}" ]] || [[ "${NEXT_BASE}" == "${RELEASE}" ]]; then
             echo "Error: nextVersion (${NEXT_BASE}) must be greater than releaseVersion (${RELEASE})"
             exit 1
           fi

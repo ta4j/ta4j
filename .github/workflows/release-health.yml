@@ -83,28 +83,28 @@ jobs:
           fi
 
           pom_version=$(python3 - <<'PY'
-import sys
-import xml.etree.ElementTree as ET
+          import sys
+          import xml.etree.ElementTree as ET
 
-def find_version(path):
-    tree = ET.parse(path)
-    root = tree.getroot()
-    def find_first(elem):
-        if elem is None:
-            return None
-        for child in elem:
-            if child.tag.endswith("version"):
-                text = (child.text or "").strip()
-                if text:
-                    return text
-        return None
-    return find_first(root) or find_first(root.find("./{*}parent"))
+          def find_version(path):
+              tree = ET.parse(path)
+              root = tree.getroot()
+              def find_first(elem):
+                  if elem is None:
+                      return None
+                  for child in elem:
+                      if child.tag.endswith("version"):
+                          text = (child.text or "").strip()
+                          if text:
+                              return text
+                  return None
+              return find_first(root) or find_first(root.find("./{*}parent"))
 
-ver = find_version("pom.xml")
-if not ver:
-    sys.exit(1)
-print(ver)
-PY
+          ver = find_version("pom.xml")
+          if not ver:
+              sys.exit(1)
+          print(ver)
+          PY
           ) || { echo "Could not read pom.xml version" >&2; exit 1; }
 
           pom_snapshot=false
