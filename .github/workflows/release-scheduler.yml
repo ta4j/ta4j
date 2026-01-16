@@ -770,6 +770,20 @@ jobs:
           pom_base="${POM_BASE:-}"
           binary_changes="${BINARY_CHANGES:-}"
 
+          if [ "$dry_run" = "true" ]; then
+            mode_label="dry-run"
+          else
+            mode_label="production"
+          fi
+
+          if [ "$status" = "success" ]; then
+            completion_text="completed successfully"
+          else
+            completion_text="completed with failures"
+          fi
+
+          timestamp=$(date '+%-I:%M:%S %p on %-m.%-d.%Y')
+
           if [ -z "$binary_changes" ]; then
             binary_changes="(none)"
           fi
@@ -795,10 +809,11 @@ jobs:
           cat > notification-body.txt <<EOF
           @TheCookieLab
 
-          **Release Scheduler Run** (${status_upper})
+          **Release Scheduler ${mode_label} ${completion_text} at ${timestamp}**
           - Repository: ${GITHUB_REPOSITORY}
           - Run: ${run_url}
           - Event: ${EVENT_NAME}
+          - Status: ${status_upper}
 
           Decision Summary:
           - gate proceed: ${gate_proceed}

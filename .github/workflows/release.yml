@@ -693,13 +693,28 @@ jobs:
             pr_number="(none)"
           fi
 
+          if [ "$dry_run" = "true" ]; then
+            mode_label="dry-run"
+          else
+            mode_label="production"
+          fi
+
+          if [ "$status" = "success" ]; then
+            completion_text="completed successfully"
+          else
+            completion_text="completed with failures"
+          fi
+
+          timestamp=$(date '+%-I:%M:%S %p on %-m.%-d.%Y')
+
           cat > notification-body.txt <<EOF
           @TheCookieLab
 
-          **Maven Central Release Run** (${status_upper})
+          **Maven Central Release ${mode_label} ${completion_text} at ${timestamp}**
           - Repository: ${GITHUB_REPOSITORY}
           - Run: ${run_url}
           - Event: ${EVENT_NAME}
+          - Status: ${status_upper}
 
           Release Summary:
           - dryRun: ${dry_run}
