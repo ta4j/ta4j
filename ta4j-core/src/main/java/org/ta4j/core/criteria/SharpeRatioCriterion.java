@@ -105,7 +105,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     private final ZoneId groupingZoneId;
 
     public SharpeRatioCriterion() {
-        // null as annualRiskFreeRate as we don't have a numFactory to get a zero Num. The code below checks if
+        // null as annualRiskFreeRate as we don't have a numFactory to get a zero Num.
+        // The code below checks if
         // annualRiskFreeRate is null and use 0.
         this(null, Sampling.PER_BAR, Annualization.ANNUALIZED, ZoneOffset.UTC);
     }
@@ -114,10 +115,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         this(annualRiskFreeRate, Sampling.PER_BAR, Annualization.ANNUALIZED, ZoneOffset.UTC);
     }
 
-    public SharpeRatioCriterion(
-            Num annualRiskFreeRate,
-            Sampling sampling,
-            Annualization annualization,
+    public SharpeRatioCriterion(Num annualRiskFreeRate, Sampling sampling, Annualization annualization,
             ZoneId groupingZoneId) {
         this.annualRiskFreeRate = Objects.requireNonNull(annualRiskFreeRate, "annualRiskFreeRate must not be null");
         this.sampling = Objects.requireNonNull(sampling, "sampling must not be null");
@@ -174,7 +172,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
             return zero;
         }
 
-        var pairs = indexPairs(series, anchorIndex, start, end);
+        Stream<IndexPair> pairs = indexPairs(series, anchorIndex, start, end);
 
         var acc = pairs.reduce(Acc.empty(zero),
                 (a, p) -> a.add(excessReturn(series, cashFlow, p.previousIndex(), p.currentIndex()),
@@ -269,7 +267,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         var endNow = endTimeInstant(series, currentIndex);
         var seconds = Math.max(0, Duration.between(endPrev, endNow).getSeconds());
         var numFactory = series.numFactory();
-        return seconds <= 0 ? numFactory.zero() : numFactory.numOf(seconds).dividedBy(numFactory.numOf(SECONDS_PER_YEAR));
+        return seconds <= 0 ? numFactory.zero()
+                : numFactory.numOf(seconds).dividedBy(numFactory.numOf(SECONDS_PER_YEAR));
     }
 
     private Num excessReturn(BarSeries series, CashFlow cashFlow, int previousIndex, int currentIndex) {
