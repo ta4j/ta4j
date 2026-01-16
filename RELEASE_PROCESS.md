@@ -100,14 +100,14 @@ Tags are created before the PR exists and are not part of PR diffs. They become 
 7. **Commit next snapshot**
    - **Why**: Ensures ongoing development is versioned correctly.
 8. **Update `master`**
-   - **Default (PR mode)**: create a PR and request auto-merge with merge method `MERGE`.
-     - **Why**: Keeps a review point and ensures tags become reachable from `master` via a merge commit.
+   - **Default (PR mode)**: create a PR (`release/<version>` -> `master`) and wait for maintainer review/approval.
+     - **Why**: Keeps a required review gate and ensures tags become reachable from `master` via a merge commit.
    - **Direct push (`RELEASE_DIRECT_PUSH=true`)**: push both commits directly to `master`.
      - **Why**: Skips PR friction when org permissions allow it.
 9. **Post discussion summary**
    - **Why**: Provides an audit trail and notifications.
 
-**Auto-merge note:** the workflow requests auto-merge via the API. The repository must have **Allow auto-merge** enabled and required checks must pass. The merge commit lands on `master`.
+**Merge note:** merge the release PR using a merge commit (no squash). Required checks and maintainer approval must pass.
 
 **Tag reachability note:** if the PR is squash-merged, the tag commit will not be reachable from `master`. Use merge commits.
 
@@ -128,8 +128,8 @@ Tags are created before the PR exists and are not part of PR diffs. They become 
 3. Release commit + tag `0.22.2` created, artifacts deployed.
 4. Tag pushed, `github-release.yml` creates the GitHub Release.
 5. Snapshot commit created.
-6. PR `release/0.22.2 -> master` opened and auto-merge requested.
-7. After merge commit lands on `master`, tag `0.22.2` is reachable from `master`.
+6. PR `release/0.22.2 -> master` opened for maintainer review and approval.
+7. After a merge commit lands on `master`, tag `0.22.2` is reachable from `master`.
 
 ### Scenario B: Dry-run (validation only)
 **Context:** You want to verify the pipeline without publishing.
@@ -192,7 +192,6 @@ For major releases, configure the protected environment:
 ### Required Repo Settings
 
 - **Actions → Workflow permissions**: set to **Read and write** for dispatch/tag/PR.
-- **Allow auto-merge**: must be enabled for PR auto-merge to work.
 
 ---
 
@@ -213,10 +212,9 @@ For major releases, configure the protected environment:
 
 ## Troubleshooting
 
-### Auto-merge did not happen
-- Ensure **Allow auto-merge** is enabled.
-- Ensure required checks pass.
-- Merge method must be **merge commit** (not squash/rebase).
+### Release PR is waiting for merge
+- Ensure required checks pass and a maintainer approval is recorded.
+- Merge using a **merge commit** (not squash/rebase) so tags stay reachable.
 
 ### Tag exists error
 - You may be re-running a release for an existing version.

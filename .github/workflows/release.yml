@@ -591,47 +591,6 @@ jobs:
             - Bump to next snapshot: ${{ steps.versions.outputs.next }}
           labels: release
 
-      - name: Enable auto-merge for release pull request
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true' && steps.create_pr.outputs.pull-request-number != ''
-        uses: actions/github-script@v8
-        with:
-          github-token: ${{ github.token }}
-          script: |
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-            const prNumber = Number("${{ steps.create_pr.outputs.pull-request-number }}");
-            if (!Number.isFinite(prNumber)) {
-              throw new Error(`Invalid pull request number: ${prNumber}`);
-            }
-
-            const query = `
-              query($owner: String!, $repo: String!, $number: Int!) {
-                repository(owner: $owner, name: $repo) {
-                  pullRequest(number: $number) {
-                    id
-                  }
-                }
-              }
-            `;
-            const queryResult = await github.graphql(query, { owner, repo, number: prNumber });
-            const pullRequestId = queryResult?.repository?.pullRequest?.id;
-            if (!pullRequestId) {
-              throw new Error(`Release pull request #${prNumber} not found in ${owner}/${repo}`);
-            }
-
-            const mutation = `
-              mutation($pullRequestId: ID!) {
-                enablePullRequestAutoMerge(input: { pullRequestId: $pullRequestId, mergeMethod: MERGE }) {
-                  pullRequest {
-                    url
-                    autoMergeRequest {
-                      enabledAt
-                    }
-                  }
-                }
-              }
-            `;
-            await github.graphql(mutation, { pullRequestId });
 
       # -----------------------
       # Summary
