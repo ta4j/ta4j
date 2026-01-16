@@ -8,7 +8,7 @@
 
 ### Changed
 - **Release workflow branching**: Auto-merge the release PR by default, with optional direct push to the default branch when `RELEASE_DIRECT_PUSH=true`.
-- **Agent workflow**: Allow skipping the full build when the only changes are within `.github/workflows/`.
+- **Agent workflow**: Allow skipping the full build when the only changes are within `.github/workflows/`, `CHANGELOG.md`, or documentation-only files (e.g., `*.md`, `docs/`).
 - **Release process docs**: Overhauled with clearer steps, rationale, and example scenarios.
 - **Release scheduler notifications**: Include run mode and timestamp in the discussion header.
 - **Release notifications**: Include run mode and timestamp in the release discussion header.
@@ -22,6 +22,7 @@
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
+- **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
 
 ## 0.22.1 (2026-01-15)
 
