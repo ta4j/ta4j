@@ -1,37 +1,44 @@
 name: Publish Release to Maven Central
 
 concurrency:
-  group: release-${{ github.repository }}
+  group: publish-release-${{ github.repository }}
   cancel-in-progress: true
 
 on:
+  pull_request:
+    types: [closed]
   workflow_dispatch:
     inputs:
       releaseVersion:
-        description: "OPTIONAL: Release version (e.g. 0.20.0). Leave blank to auto-detect."
-        required: false
-      nextVersion:
-        description: "OPTIONAL: Next snapshot version (e.g. 0.20.1-SNAPSHOT). Leave blank to auto-generate."
-        required: false
+        description: "Release version to publish (e.g. 0.22.2)."
+        required: true
+        type: string
+      releaseCommit:
+        description: "Release commit SHA that already exists on the default branch."
+        required: true
+        type: string
       dryRun:
-        description: "Run release workflow in dry-run mode (no tag/push/deploy)."
+        description: "Run publish workflow in dry-run mode (no tag/push/deploy)."
         required: false
         default: false
         type: boolean
 
 permissions:
   contents: write
-  pull-requests: write
   discussions: write
 
 jobs:
-  release:
+  publish:
     name: Publish Release to Maven Central
     runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       contains(github.event.pull_request.labels.*.name, 'release'))
 
     steps:
       # -----------------------
-      # Setup and Validation
+      # Setup and Metadata
       # -----------------------
       - name: Checkout repository
         uses: actions/checkout@v5
@@ -43,35 +50,21 @@ jobs:
       - name: Normalize dry run input
         id: dry_run
         run: |
-          raw="${{ github.event.inputs.dryRun }}"
-          normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
-
-          if [ "$normalized" = "true" ] || [ "$raw" = "true" ] || [ "$raw" = true ] || [ "$raw" = "1" ]; then
-            dry_run=true
-          else
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
             dry_run=false
+          else
+            raw="${{ github.event.inputs.dryRun }}"
+            normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+
+            if [ "$normalized" = "true" ] || [ "$raw" = "true" ] || [ "$raw" = true ] || [ "$raw" = "1" ]; then
+              dry_run=true
+            else
+              dry_run=false
+            fi
           fi
 
-          echo "audit:dry_run_input_raw='${raw}'"
           echo "audit:dry_run_normalized=$dry_run"
           echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
-
-      - name: Normalize direct push flag
-        id: direct_push
-        env:
-          DIRECT_PUSH: ${{ vars.RELEASE_DIRECT_PUSH }}
-        run: |
-          raw="${DIRECT_PUSH:-}"
-          normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
-
-          if [ "$normalized" = "true" ] || [ "$normalized" = "1" ] || [ "$normalized" = "yes" ]; then
-            enabled=true
-          else
-            enabled=false
-          fi
-
-          echo "audit:release_direct_push=$enabled raw='${raw}'"
-          echo "enabled=$enabled" >> $GITHUB_OUTPUT
 
       - name: Preflight GH_TA4J_REPO_TOKEN permissions
         id: token_preflight
@@ -151,6 +144,138 @@ jobs:
           print(f"audit:repo_token_permission={permission}")
           PY
 
+      - name: Extract release metadata
+        id: meta
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const core = require("@actions/core");
+
+            const eventName = context.eventName;
+            let releaseVersion = "";
+            let releaseCommit = "";
+            let nextVersion = "";
+            let mergeCommit = "";
+            let prNumber = "";
+
+            if (eventName === "workflow_dispatch") {
+              releaseVersion = core.getInput("releaseVersion");
+              releaseCommit = core.getInput("releaseCommit");
+            } else {
+              const pr = context.payload.pull_request;
+              prNumber = pr?.number ? String(pr.number) : "";
+              mergeCommit = pr?.merge_commit_sha || "";
+              const body = pr?.body || "";
+              const match = body.match(/<!--\s*release-meta([\s\S]*?)-->/i);
+              if (!match) {
+                throw new Error("Release metadata block not found in PR body.");
+              }
+              const metaText = match[1];
+              const valueFor = (key) => {
+                const re = new RegExp(`^\\s*${key}\\s*:\\s*(.+)\\s*$`, "mi");
+                const found = metaText.match(re);
+                return found ? found[1].trim() : "";
+              };
+              releaseVersion = valueFor("releaseVersion");
+              nextVersion = valueFor("nextVersion");
+              releaseCommit = valueFor("releaseCommit");
+            }
+
+            if (!releaseVersion || !releaseCommit) {
+              throw new Error("Missing releaseVersion or releaseCommit in metadata.");
+            }
+
+            core.setOutput("release_version", releaseVersion);
+            core.setOutput("release_commit", releaseCommit);
+            core.setOutput("next_version", nextVersion);
+            core.setOutput("merge_commit", mergeCommit);
+            core.setOutput("pr_number", prNumber);
+
+      - name: Verify release commit ancestry
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+          RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
+          MERGE_COMMIT: ${{ steps.meta.outputs.merge_commit }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${RELEASE_VERSION:-}" ] || [ -z "${RELEASE_COMMIT:-}" ]; then
+            echo "Missing release metadata; cannot proceed." >&2
+            exit 1
+          fi
+
+          if [[ "${RELEASE_VERSION}" == *-SNAPSHOT* ]]; then
+            echo "Release version must not include -SNAPSHOT: ${RELEASE_VERSION}" >&2
+            exit 1
+          fi
+
+          if ! git cat-file -e "${RELEASE_COMMIT}^{commit}" 2>/dev/null; then
+            echo "Release commit ${RELEASE_COMMIT} not found." >&2
+            exit 1
+          fi
+
+          if [ -z "${DEFAULT_BRANCH:-}" ]; then
+            echo "Default branch not provided by event." >&2
+            exit 1
+          fi
+
+          git fetch origin "${DEFAULT_BRANCH}" --tags
+          if ! git merge-base --is-ancestor "${RELEASE_COMMIT}" "origin/${DEFAULT_BRANCH}"; then
+            echo "Release commit ${RELEASE_COMMIT} is not on origin/${DEFAULT_BRANCH}." >&2
+            exit 1
+          fi
+
+          if [ "${EVENT_NAME}" = "pull_request" ]; then
+            if [ -z "${MERGE_COMMIT:-}" ]; then
+              echo "Merge commit SHA missing for release PR." >&2
+              exit 1
+            fi
+            parents=$(git cat-file -p "${MERGE_COMMIT}" | awk '/^parent / {count++} END {print count+0}')
+            if [ "${parents:-0}" -lt 2 ]; then
+              echo "Release PR was not merged with a merge commit (parents=${parents})." >&2
+              exit 1
+            fi
+            if ! git merge-base --is-ancestor "${RELEASE_COMMIT}" "${MERGE_COMMIT}"; then
+              echo "Release commit is not an ancestor of the merge commit." >&2
+              exit 1
+            fi
+          fi
+
+      - name: Check if tag already exists
+        id: check_tag
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+        run: |
+          exists=false
+          found=""
+
+          for candidate in "$RELEASE_VERSION" "v$RELEASE_VERSION"; do
+            if git rev-parse "refs/tags/$candidate" >/dev/null 2>&1; then
+              exists=true
+              found="$candidate"
+              break
+            fi
+          done
+
+          echo "exists=$exists" >> $GITHUB_OUTPUT
+          echo "existing_tag=$found" >> $GITHUB_OUTPUT
+
+      - name: Fail if tag exists
+        if: steps.check_tag.outputs.exists == 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+          EXISTING_TAG: ${{ steps.check_tag.outputs.existing_tag }}
+        run: |
+          tag="${EXISTING_TAG:-$RELEASE_VERSION}"
+          echo "Error: tag '$tag' already exists (checked '$RELEASE_VERSION' and 'v$RELEASE_VERSION'). Aborting."
+          exit 1
+
+      # -----------------------
+      # Secrets and Environment
+      # -----------------------
       - name: Check for MAVEN_CENTRAL_TOKEN_USER
         id: check_maven_user
         env:
@@ -252,19 +377,16 @@ jobs:
           echo "::error::  4. GPG_PASSPHRASE - Passphrase for GPG private key"
           echo ""
           echo "::error::Please configure these secrets in:"
-          echo "::error::  Repository Settings → Secrets and variables → Actions → New repository secret"
+          echo "::error::  Repository Settings -> Secrets and variables -> Actions -> New repository secret"
           echo ""
           exit 1
 
       - name: All secrets verified
         if: steps.collect_missing.outputs.has_missing != 'true'
         run: |
-          echo "✓ All required secrets and resources are present"
+          echo "OK: All required secrets and resources are present"
           echo "audit:all_required_secrets_present=true"
 
-      # -----------------------
-      # Environment Setup
-      # -----------------------
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -295,156 +417,12 @@ jobs:
           gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
       # -----------------------
-      # Version Detection
-      # -----------------------
-      - name: Read current version from POM
-        id: read_current
-        shell: bash
-        run: |
-          CURRENT=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
-          echo "Detected project.version: $CURRENT"
-
-          if [[ -z "${CURRENT}" ]]; then
-            echo "Error: Failed to read project.version from pom.xml"
-            exit 1
-          fi
-
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-
-      - name: Capture user input versions
-        id: user_input
-        env:
-          INPUT_RELEASE: ${{ github.event.inputs.releaseVersion }}
-          INPUT_NEXT: ${{ github.event.inputs.nextVersion }}
-        run: |
-          echo "Inputs: release='${INPUT_RELEASE}', next='${INPUT_NEXT}'"
-          echo "release_input=${INPUT_RELEASE:-}" >> $GITHUB_OUTPUT
-          echo "next_input=${INPUT_NEXT:-}" >> $GITHUB_OUTPUT
-
-      - name: Determine release version
-        id: determine_release
-        shell: bash
-        env:
-          CURRENT: ${{ steps.read_current.outputs.current }}
-          INPUT_RELEASE: ${{ steps.user_input.outputs.release_input }}
-        run: |
-          set -euo pipefail
-
-          if [[ -z "${INPUT_RELEASE}" ]]; then
-            # CRITICAL: Validate current version is a SNAPSHOT before stripping
-            if [[ "${CURRENT}" != *-SNAPSHOT ]]; then
-              echo "Error: Current version '${CURRENT}' is not a SNAPSHOT version."
-              echo "Cannot auto-detect release version from a non-SNAPSHOT version."
-              echo "Please provide an explicit releaseVersion input or ensure the POM contains a SNAPSHOT version."
-              exit 1
-            fi
-            RELEASE="${CURRENT%-SNAPSHOT}"
-            echo "Auto-detected release version: ${RELEASE} (from ${CURRENT})"
-          else
-            RELEASE="${INPUT_RELEASE}"
-          fi
-
-          # Validate release version doesn't contain SNAPSHOT
-          if [[ "${RELEASE}" == *-SNAPSHOT* ]]; then
-            echo "Error: releaseVersion must be a stable version (no -SNAPSHOT suffix). Got: ${RELEASE}"
-            exit 1
-          fi
-
-          if [[ ! "${RELEASE}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "Error: releaseVersion must be major.minor.patch (e.g. 0.20.0). Got: ${RELEASE}"
-            exit 1
-          fi
-
-          if [[ "${CURRENT}" == *-SNAPSHOT ]]; then
-            CURRENT_BASE="${CURRENT%-SNAPSHOT}"
-          else
-            CURRENT_BASE="${CURRENT}"
-          fi
-
-          if [[ -z "${CURRENT_BASE}" ]]; then
-            echo "Error: unable to determine current base version from pom.xml"
-            exit 1
-          fi
-
-          # Prevent downgrading the version relative to pom.xml
-          if [[ "$(printf '%s\n' "${CURRENT_BASE}" "${RELEASE}" | sort -V | head -n1)" != "${CURRENT_BASE}" ]]; then
-            echo "Error: releaseVersion (${RELEASE}) is lower than the current pom.xml version (${CURRENT_BASE})."
-            echo "Refusing to release a version lower than the POM."
-            exit 1
-          fi
-
-          echo "release=$RELEASE" >> $GITHUB_OUTPUT
-
-      - name: Determine next snapshot version
-        id: determine_next
-        shell: bash
-        env:
-          RELEASE: ${{ steps.determine_release.outputs.release }}
-          INPUT_NEXT: ${{ steps.user_input.outputs.next_input }}
-        run: |
-          set -euo pipefail
-
-          if [[ -z "${INPUT_NEXT}" ]]; then
-            BASE="${RELEASE}"
-            if [[ "${BASE}" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
-              MAJOR="${BASH_REMATCH[1]}"
-              MINOR="${BASH_REMATCH[2]}"
-              PATCH="${BASH_REMATCH[3]}"
-              NEXT="${MAJOR}.${MINOR}.$((PATCH+1))-SNAPSHOT"
-            else
-              echo "Error: Unsupported release version format '${BASE}'. Expected major.minor.patch"
-              exit 1
-            fi
-          else
-            NEXT="${INPUT_NEXT}"
-          fi
-
-          # Validate next version ends with SNAPSHOT
-          if [[ "${NEXT}" != *-SNAPSHOT ]]; then
-            echo "Error: nextVersion must end with -SNAPSHOT. Got: ${NEXT}"
-            exit 1
-          fi
-
-          if [[ ! "${NEXT}" =~ ^[0-9]+\.[0-9]+\.[0-9]+-SNAPSHOT$ ]]; then
-            echo "Error: nextVersion must be major.minor.patch-SNAPSHOT (e.g. 0.20.1-SNAPSHOT). Got: ${NEXT}"
-            exit 1
-          fi
-
-          # Validate next version is greater than release version
-          NEXT_BASE="${NEXT%-SNAPSHOT}"
-          if [[ "${NEXT_BASE}" == "${RELEASE}" ]]; then
-            echo "Error: nextVersion (${NEXT_BASE}) must be greater than releaseVersion (${RELEASE})"
-            exit 1
-          fi
-
-          echo "next=$NEXT" >> $GITHUB_OUTPUT
-
-      - name: Export version outputs
-        id: versions
-        shell: bash
-        env:
-          RELEASE: ${{ steps.determine_release.outputs.release }}
-          NEXT: ${{ steps.determine_next.outputs.next }}
-          CURRENT: ${{ steps.read_current.outputs.current }}
-        run: |
-          echo "Using release: $RELEASE"
-          echo "Using next snapshot: $NEXT"
-          echo "release=$RELEASE" >> $GITHUB_OUTPUT
-          echo "next=$NEXT" >> $GITHUB_OUTPUT
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
-
-      # -----------------------
-      # Release Preparation
+      # Deployment
       # -----------------------
       - name: Dry-run mode notice
         if: steps.dry_run.outputs.dryRun == 'true'
         run: |
           echo "DRY RUN ENABLED: skipping tag/push/deploy; running validation only."
-
-      - name: Prepare Release Notes
-        run: |
-          chmod +x scripts/prepare-release.sh
-          scripts/prepare-release.sh "${{ steps.versions.outputs.release }}"
 
       - name: Create Maven settings directory
         if: steps.dry_run.outputs.dryRun != 'true'
@@ -498,95 +476,6 @@ jobs:
         run: |
           echo "MAVEN_MASTER_PASSPHRASE not set; skipping settings-security.xml generation"
 
-      # -----------------------
-      # Apply Release Version
-      # -----------------------
-      - name: Set Maven version to release
-        if: steps.dry_run.outputs.dryRun != 'true'
-        env:
-          RELEASE_VERSION: ${{ steps.versions.outputs.release }}
-        run: |
-          mvn -B versions:set -DnewVersion=$RELEASE_VERSION
-
-      - name: Commit Maven version change
-        if: steps.dry_run.outputs.dryRun != 'true'
-        run: |
-          mvn -B versions:commit
-
-      - name: Configure git user
-        if: steps.dry_run.outputs.dryRun != 'true'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-      - name: Commit release version and notes
-        if: steps.dry_run.outputs.dryRun != 'true'
-        run: |
-          git add release/${{ steps.versions.outputs.release }}.md
-          git add -u
-          git commit -am "Release ${{ steps.versions.outputs.release }}"
-
-      - name: Check if tag already exists
-        id: check_tag
-        if: steps.dry_run.outputs.dryRun != 'true'
-        env:
-          RELEASE_VERSION: ${{ steps.versions.outputs.release }}
-        run: |
-          exists=false
-          found=""
-
-          for candidate in "$RELEASE_VERSION" "v$RELEASE_VERSION"; do
-            if git rev-parse "refs/tags/$candidate" >/dev/null 2>&1; then
-              exists=true
-              found="$candidate"
-              break
-            fi
-          done
-
-          echo "exists=$exists" >> $GITHUB_OUTPUT
-          echo "existing_tag=$found" >> $GITHUB_OUTPUT
-
-      - name: Fail if tag exists
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.check_tag.outputs.exists == 'true'
-        env:
-          RELEASE_VERSION: ${{ steps.versions.outputs.release }}
-          EXISTING_TAG: ${{ steps.check_tag.outputs.existing_tag }}
-        run: |
-          tag="${EXISTING_TAG:-$RELEASE_VERSION}"
-          echo "Error: tag '$tag' already exists (checked '$RELEASE_VERSION' and 'v$RELEASE_VERSION'). Aborting before creating a duplicate tag."
-          exit 1
-
-      - name: Create release tag
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.check_tag.outputs.exists != 'true'
-        env:
-          RELEASE_VERSION: ${{ steps.versions.outputs.release }}
-        run: |
-          git tag -a $RELEASE_VERSION -m "Release $RELEASE_VERSION"
-
-      - name: Ensure branch is still fast-forwardable before deploy
-        if: steps.dry_run.outputs.dryRun != 'true'
-        shell: bash
-        env:
-          TARGET_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          set -euo pipefail
-
-          branch="${TARGET_BRANCH:-}"
-          if [[ -z "${branch}" ]]; then
-            echo "Unable to determine default branch name; aborting."
-            exit 1
-          fi
-
-          git fetch origin "${branch}"
-          if ! git merge-base --is-ancestor "origin/${branch}" HEAD; then
-            echo "Default branch '${branch}' advanced while the release workflow was running."
-            echo "Failing before deployment to avoid publishing artifacts without matching commits."
-            exit 1
-          fi
-
-      # -----------------------
-      # Deployment
-      # -----------------------
       - name: Configure GPG for signing
         if: steps.dry_run.outputs.dryRun != 'true'
         shell: bash
@@ -603,6 +492,21 @@ jobs:
           gpgconf --launch gpg-agent 2>/dev/null || true
           echo "gpg.conf and gpg-agent.conf created"
 
+      - name: Check out release commit
+        if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
+        run: |
+          git checkout --detach "${RELEASE_COMMIT}"
+
+      - name: Create release tag
+        if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+          RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
+        run: |
+          git tag -a "${RELEASE_VERSION}" -m "Release ${RELEASE_VERSION}" "${RELEASE_COMMIT}"
+
       - name: Deploy Release to Maven Central
         if: steps.dry_run.outputs.dryRun != 'true'
         env:
@@ -611,69 +515,12 @@ jobs:
         run: mvn -B -Pproduction-release deploy
 
       - name: Push release tag
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.check_tag.outputs.exists != 'true'
+        if: steps.dry_run.outputs.dryRun != 'true'
         env:
-          RELEASE_VERSION: ${{ steps.versions.outputs.release }}
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
         run: |
           # Push tag only after deploy succeeds to avoid publishing a tag that doesn't match deployed artifacts.
           git push origin "refs/tags/${RELEASE_VERSION}"
-
-      # -----------------------
-      # Apply Next Snapshot Version
-      # -----------------------
-      - name: Set Maven version to next snapshot
-        if: steps.dry_run.outputs.dryRun != 'true'
-        env:
-          NEXT_VERSION: ${{ steps.versions.outputs.next }}
-        run: |
-          mvn -B versions:set -DnewVersion=$NEXT_VERSION
-
-      - name: Commit Maven version change for next
-        if: steps.dry_run.outputs.dryRun != 'true'
-        run: |
-          mvn -B versions:commit
-
-      - name: Commit next snapshot version
-        if: steps.dry_run.outputs.dryRun != 'true'
-        run: |
-          git commit -am "Start ${{ steps.versions.outputs.next }}"
-
-      - name: Push release commits directly to default branch
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled == 'true'
-        env:
-          TARGET_BRANCH: ${{ github.event.repository.default_branch }}
-        run: |
-          set -euo pipefail
-          branch="${TARGET_BRANCH:-}"
-          if [ -z "$branch" ]; then
-            echo "Default branch was not set; refusing to push."
-            exit 1
-          fi
-          git fetch origin "${branch}"
-          if ! git merge-base --is-ancestor "origin/${branch}" HEAD; then
-            echo "Default branch '${branch}' advanced after deployment; refusing to push."
-            exit 1
-          fi
-          echo "Pushing release commits directly to ${branch}."
-          git push origin "HEAD:${branch}"
-
-      - name: Create release pull request
-        id: create_pr
-        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true'
-        uses: peter-evans/create-pull-request@v7
-        with:
-          token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
-          branch: release/${{ steps.versions.outputs.release }}
-          base: ${{ github.event.repository.default_branch }}
-          title: "Release ${{ steps.versions.outputs.release }}"
-          body: |
-            Automated release PR for ${{ steps.versions.outputs.release }}.
-
-            Contains:
-            - Set version to ${{ steps.versions.outputs.release }}
-            - Generated release notes: release/${{ steps.versions.outputs.release }}.md
-            - Bump to next snapshot: ${{ steps.versions.outputs.next }}
-          labels: release
 
       # -----------------------
       # Summary
@@ -682,16 +529,18 @@ jobs:
         if: always()
         env:
           DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
-          DIRECT_PUSH: ${{ steps.direct_push.outputs.enabled }}
-          RELEASE: ${{ steps.versions.outputs.release }}
-          NEXT: ${{ steps.versions.outputs.next }}
-          CURRENT: ${{ steps.versions.outputs.current }}
+          RELEASE: ${{ steps.meta.outputs.release_version }}
+          NEXT: ${{ steps.meta.outputs.next_version }}
+          RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
+          MERGE_COMMIT: ${{ steps.meta.outputs.merge_commit }}
+          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
         run: |
           echo "summary: dryRun=${DRY_RUN:-}"
-          echo "summary: directPush=${DIRECT_PUSH:-}"
           echo "summary: release=${RELEASE:-}"
-          echo "summary: current=${CURRENT:-}"
           echo "summary: next=${NEXT:-}"
+          echo "summary: releaseCommit=${RELEASE_COMMIT:-}"
+          echo "summary: mergeCommit=${MERGE_COMMIT:-}"
+          echo "summary: releasePR=${PR_NUMBER:-}"
 
       - name: Build discussion comment
         id: notify_summary
@@ -700,15 +549,15 @@ jobs:
           JOB_STATUS: ${{ job.status }}
           EVENT_NAME: ${{ github.event_name }}
           DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
-          DIRECT_PUSH: ${{ steps.direct_push.outputs.enabled }}
-          RELEASE: ${{ steps.versions.outputs.release }}
-          NEXT: ${{ steps.versions.outputs.next }}
-          CURRENT: ${{ steps.versions.outputs.current }}
+          RELEASE: ${{ steps.meta.outputs.release_version }}
+          NEXT: ${{ steps.meta.outputs.next_version }}
+          RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
+          MERGE_COMMIT: ${{ steps.meta.outputs.merge_commit }}
+          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
           TAG_EXISTS: ${{ steps.check_tag.outputs.exists }}
           EXISTING_TAG: ${{ steps.check_tag.outputs.existing_tag }}
           MISSING_SECRETS: ${{ steps.collect_missing.outputs.missing }}
           HAS_MISSING: ${{ steps.collect_missing.outputs.has_missing }}
-          PR_NUMBER: ${{ steps.create_pr.outputs.pull-request-number }}
           RELEASE_NOTIFY_USER: ${{ vars.RELEASE_NOTIFY_USER }}
         run: |
           status="${JOB_STATUS:-unknown}"
@@ -716,24 +565,27 @@ jobs:
           run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
           dry_run="${DRY_RUN:-unknown}"
-          direct_push="${DIRECT_PUSH:-unknown}"
           release="${RELEASE:-unknown}"
           next="${NEXT:-unknown}"
-          current="${CURRENT:-unknown}"
+          release_commit="${RELEASE_COMMIT:-unknown}"
+          merge_commit="${MERGE_COMMIT:-}"
+          pr_number="${PR_NUMBER:-}"
           tag_exists="${TAG_EXISTS:-unknown}"
           existing_tag="${EXISTING_TAG:-}"
           missing_secrets="${MISSING_SECRETS:-}"
           has_missing="${HAS_MISSING:-unknown}"
-          pr_number="${PR_NUMBER:-}"
 
+          if [ -z "$merge_commit" ]; then
+            merge_commit="(none)"
+          fi
+          if [ -z "$pr_number" ]; then
+            pr_number="(none)"
+          fi
           if [ -z "$existing_tag" ]; then
             existing_tag="(none)"
           fi
           if [ -z "$missing_secrets" ]; then
             missing_secrets="(none)"
-          fi
-          if [ -z "$pr_number" ]; then
-            pr_number="(none)"
           fi
 
           notify_user="${RELEASE_NOTIFY_USER:-TheCookieLab}"
@@ -763,15 +615,15 @@ jobs:
 
           Release Summary:
           - dryRun: ${dry_run}
-          - direct push: ${direct_push}
           - release version: ${release}
           - next snapshot: ${next}
-          - current pom: ${current}
+          - release commit: ${release_commit}
+          - merge commit: ${merge_commit}
+          - release PR: ${pr_number}
           - tag exists: ${tag_exists}
           - existing tag: ${existing_tag}
           - missing secrets: ${missing_secrets}
           - has missing secrets: ${has_missing}
-          - release PR: ${pr_number}
           EOF
 
       - name: Post to Maven Central Releases discussion

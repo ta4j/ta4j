@@ -3,6 +3,8 @@
 ### Added
 - **Release workflow notifications**: Post GitHub Discussion updates for release-scheduler and release runs with decision summaries.
 - **Workflow lint hook**: Added a repo `pre-push` hook to run `actionlint` on workflow changes (see CONTRIBUTING).
+- **Release health workflow**: Added scheduled checks for tag reachability, snapshot version drift, stale release PRs, and missing release notes, with summaries posted to Discussions.
+- **Two-phase release workflows**: Added `prepare-release.yml` and `publish-release.yml` to split release preparation from tagging and deployment.
 
 ### Changed
 - **Release workflow branching**: Auto-merge the release PR by default, with optional direct push to the default branch when `RELEASE_DIRECT_PUSH=true`.
@@ -10,6 +12,9 @@
 - **Release process docs**: Overhauled with clearer steps, rationale, and example scenarios.
 - **Release scheduler notifications**: Include run mode and timestamp in the discussion header.
 - **Release notifications**: Include run mode and timestamp in the release discussion header.
+- **Release scheduler dispatch**: Route automated releases through `prepare-release.yml` and include the binary change count in the AI prompt, with deterministic no-release outputs for zero binary changes.
+- **Release automation tokens**: Use `GH_TA4J_REPO_TOKEN` for release push operations when available.
+- **Release token preflight**: Fail fast when `GH_TA4J_REPO_TOKEN` lacks write permission (warn-only in dry-run mode).
 
 ### Fixed
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
