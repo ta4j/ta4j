@@ -27,6 +27,7 @@ import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.WeekFields;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import org.ta4j.core.BarSeries;
@@ -104,22 +105,19 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     private final Annualization annualization;
     private final ZoneId groupingZoneId;
 
-    public SharpeRatioCriterion(Num annualRiskFreeRate, Sampling sampling, Annualization annualization,
+    public SharpeRatioCriterion(Num annualRiskFreeRate) {
+        this(annualRiskFreeRate, Sampling.PER_BAR, Annualization.ANNUALIZED, ZoneOffset.UTC);
+    }
+
+    public SharpeRatioCriterion(
+            Num annualRiskFreeRate,
+            Sampling sampling,
+            Annualization annualization,
             ZoneId groupingZoneId) {
         this.annualRiskFreeRate = Objects.requireNonNull(annualRiskFreeRate, "annualRiskFreeRate must not be null");
         this.sampling = Objects.requireNonNull(sampling, "sampling must not be null");
         this.annualization = Objects.requireNonNull(annualization, "annualization must not be null");
         this.groupingZoneId = Objects.requireNonNull(groupingZoneId, "groupingZoneId must not be null");
-    }
-
-    public SharpeRatioCriterion(Num annualRiskFreeRate) {
-        this(annualRiskFreeRate, Sampling.PER_BAR, Annualization.ANNUALIZED, ZoneOffset.UTC);
-    }
-            ZoneId groupingZoneId) {
-        this.annualRiskFreeRate = annualRiskFreeRate;
-        this.sampling = sampling;
-        this.annualization = annualization;
-        this.groupingZoneId = groupingZoneId;
     }
 
     @Override
