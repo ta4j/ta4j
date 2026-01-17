@@ -1,8 +1,21 @@
 ## Unreleased
 
+### Added
+- **Release workflow notifications**: Post GitHub Discussion updates for release-scheduler and release runs with decision summaries.
+- **Workflow lint hook**: Added a repo `pre-push` hook to run `actionlint` on workflow changes (see CONTRIBUTING).
+
+### Changed
+- **Release workflow branching**: Auto-merge the release PR by default, with optional direct push to the default branch when `RELEASE_DIRECT_PUSH=true`.
+- **Agent workflow**: Allow skipping the full build when the only changes are within `.github/workflows/`.
+- **Release process docs**: Overhauled with clearer steps, rationale, and example scenarios.
+- **Release scheduler notifications**: Include run mode and timestamp in the discussion header.
+- **Release notifications**: Include run mode and timestamp in the release discussion header.
+
 ### Fixed
+- **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
+- **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
 
 ## 0.22.1 (2026-01-15)
 
