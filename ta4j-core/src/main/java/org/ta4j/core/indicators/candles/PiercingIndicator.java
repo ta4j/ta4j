@@ -63,16 +63,15 @@ public class PiercingIndicator extends CachedIndicator<Boolean> {
         Bar secondBar = getBarSeries().getBar(index);
         Num firstBarPercentage = this.realBodyIndicator.getValue(index - 1).abs().dividedBy(firstBar.getOpenPrice());
         Num secondBarPercentage = this.realBodyIndicator.getValue(index).abs().dividedBy(secondBar.getOpenPrice());
-        Num firstBarMiddlePoint = firstBar.getOpenPrice().minus(firstBar.getClosePrice())
-                .dividedBy(getBarSeries().numFactory().numOf(2)).plus(firstBar.getClosePrice());
+        Num firstBarMiddlePoint = firstBar.getOpenPrice()
+                .minus(firstBar.getClosePrice())
+                .dividedBy(getBarSeries().numFactory().numOf(2))
+                .plus(firstBar.getClosePrice());
 
-        return firstBar.isBearish()
-                && firstBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
-                && secondBar.isBullish()
-                && secondBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
+        return firstBar.isBearish() && firstBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
+                && secondBar.isBullish() && secondBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
                 && secondBar.getOpenPrice().isLessThan(firstBar.getClosePrice())
-                && secondBar.getClosePrice().isGreaterThan(firstBarMiddlePoint)
-                && this.trendIndicator.getValue(index);
+                && secondBar.getClosePrice().isGreaterThan(firstBarMiddlePoint) && this.trendIndicator.getValue(index);
     }
 
     @Override

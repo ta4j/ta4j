@@ -58,10 +58,8 @@ public class ThreeInsideUpIndicator extends CachedIndicator<Boolean> {
         Bar firstBar = getBarSeries().getBar(index - 2);
         Bar thirdBar = getBarSeries().getBar(index);
 
-        return harami.getValue(index - 1)
-                && thirdBar.getClosePrice().isGreaterThan(firstBar.getOpenPrice())
-                && thirdBar.isBullish()
-                && this.trendIndicator.getValue(index);
+        return harami.getValue(index - 1) && thirdBar.getClosePrice().isGreaterThan(firstBar.getOpenPrice())
+                && thirdBar.isBullish() && this.trendIndicator.getValue(index);
     }
 
     @Override

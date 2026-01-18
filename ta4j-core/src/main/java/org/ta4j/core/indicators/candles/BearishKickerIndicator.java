@@ -64,13 +64,10 @@ public class BearishKickerIndicator extends CachedIndicator<Boolean> {
         Num firstBarPercentage = this.realBodyIndicator.getValue(index - 1).abs().dividedBy(firstBar.getOpenPrice());
         Num secondBarPercentage = this.realBodyIndicator.getValue(index).abs().dividedBy(secondBar.getOpenPrice());
 
-        return firstBar.isBullish()
-                && firstBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
-                && secondBar.isBearish()
-                && secondBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
+        return firstBar.isBullish() && firstBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
+                && secondBar.isBearish() && secondBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
                 && secondBar.getOpenPrice().isLessThan(firstBar.getClosePrice())
-                && secondBar.getClosePrice().isLessThan(firstBar.getOpenPrice())
-                && this.trendIndicator.getValue(index);
+                && secondBar.getClosePrice().isLessThan(firstBar.getOpenPrice()) && this.trendIndicator.getValue(index);
     }
 
     @Override

@@ -68,12 +68,10 @@ public class EveningStarIndicator extends CachedIndicator<Boolean> {
         Num secondBarPercentage = this.realBodyIndicator.getValue(index - 1).abs().dividedBy(secondBar.getOpenPrice());
         Num thirdBarPercentage = this.realBodyIndicator.getValue(index).abs().dividedBy(thirdBar.getOpenPrice());
 
-        return firstBar.isBullish()
-                && firstBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
+        return firstBar.isBullish() && firstBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
                 && secondBar.getOpenPrice().isGreaterThan(firstBar.getClosePrice())
                 && secondBarPercentage.isLessThanOrEqual(smallBodyThresholdPercentage)
-                && thirdBar.getClosePrice().isGreaterThan(firstBar.getOpenPrice())
-                && thirdBar.isBearish()
+                && thirdBar.getClosePrice().isGreaterThan(firstBar.getOpenPrice()) && thirdBar.isBearish()
                 && thirdBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
                 && this.trendIndicator.getValue(index);
     }

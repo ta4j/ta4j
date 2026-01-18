@@ -63,16 +63,15 @@ public class DarkCloudIndicator extends CachedIndicator<Boolean> {
         Bar secondBar = getBarSeries().getBar(index);
         Num firstBarPercentage = this.realBodyIndicator.getValue(index - 1).abs().dividedBy(firstBar.getOpenPrice());
         Num secondBarPercentage = this.realBodyIndicator.getValue(index).abs().dividedBy(secondBar.getOpenPrice());
-        Num firstBarMiddlePoint = firstBar.getClosePrice().minus(firstBar.getOpenPrice())
-                .dividedBy(getBarSeries().numFactory().numOf(2)).plus(firstBar.getOpenPrice());
+        Num firstBarMiddlePoint = firstBar.getClosePrice()
+                .minus(firstBar.getOpenPrice())
+                .dividedBy(getBarSeries().numFactory().numOf(2))
+                .plus(firstBar.getOpenPrice());
 
-        return firstBar.isBullish()
-                && firstBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
-                && secondBar.isBearish()
-                && secondBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
+        return firstBar.isBullish() && firstBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
+                && secondBar.isBearish() && secondBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
                 && secondBar.getOpenPrice().isGreaterThan(firstBar.getClosePrice())
-                && secondBar.getClosePrice().isLessThan(firstBarMiddlePoint)
-                && this.trendIndicator.getValue(index);
+                && secondBar.getClosePrice().isLessThan(firstBarMiddlePoint) && this.trendIndicator.getValue(index);
     }
 
     @Override
