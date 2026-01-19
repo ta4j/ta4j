@@ -28,6 +28,8 @@ import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.Num;
 
+import java.io.ObjectInputStream;
+import java.io.IOException;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.Lock;
@@ -55,8 +57,8 @@ public class ConcurrentBarSeries extends BaseBarSeries {
 
     private static final long serialVersionUID = -1868546230609071876L;
 
-    private final Lock readLock;
-    private final Lock writeLock;
+    private transient Lock readLock;
+    private transient Lock writeLock;
 
     private transient BarBuilder tradeBarBuilder;
 
@@ -101,10 +103,20 @@ public class ConcurrentBarSeries extends BaseBarSeries {
             final boolean constrained, final NumFactory numFactory, final BarBuilderFactory barBuilderFactory,
             final ReadWriteLock readWriteLock) {
         super(name, bars, seriesBeginIndex, seriesEndIndex, constrained, numFactory, barBuilderFactory);
+        initLocks(readWriteLock);
+        this.tradeBarBuilder = Objects.requireNonNull(super.barBuilder(), "barBuilder");
+    }
+
+    private void initLocks(final ReadWriteLock readWriteLock) {
         ReadWriteLock rwLock = Objects.requireNonNull(readWriteLock, "readWriteLock");
         this.readLock = rwLock.readLock();
         this.writeLock = rwLock.writeLock();
-        this.tradeBarBuilder = Objects.requireNonNull(super.barBuilder(), "barBuilder");
+    }
+
+    private void readObject(final ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+        initLocks(new ReentrantReadWriteLock());
+        tradeBarBuilder = null;
     }
 
     private static List<Bar> cut(final List<Bar> bars, final int startIndex, final int endIndex) {
@@ -129,9 +141,15 @@ public class ConcurrentBarSeries extends BaseBarSeries {
                 return new ConcurrentBarSeriesBuilder().withName(getName())
                         .withBars(cut(bars, start, end))
                         .withNumFactory(super.numFactory())
+                        .withBarBuilderFactory(super.barBuilderFactory())
+                        .withMaxBarCount(super.getMaximumBarCount())
                         .build();
             }
-            return new ConcurrentBarSeriesBuilder().withNumFactory(super.numFactory()).withName(getName()).build();
+            return new ConcurrentBarSeriesBuilder().withNumFactory(super.numFactory())
+                    .withBarBuilderFactory(super.barBuilderFactory())
+                    .withMaxBarCount(super.getMaximumBarCount())
+                    .withName(getName())
+                    .build();
         } finally {
             this.readLock.unlock();
         }

@@ -3,6 +3,7 @@
 ### Fixed
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
+- **ConcurrentBarSeries** (#0000): Preserve bar builder factories for sub-series and restore serialization round-trips by making bar builder factories serializable and reinitializing locks after deserialization.
 
 ## 0.22.1 (2026-01-15)
 

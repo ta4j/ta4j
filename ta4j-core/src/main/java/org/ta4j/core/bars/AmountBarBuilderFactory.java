@@ -34,7 +34,7 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
     private final boolean setAmountByVolume;
     private final RemainderCarryOverPolicy carryOverPolicy;
     private final boolean realtimeBars;
-    private AmountBarBuilder barBuilder;
+    private transient AmountBarBuilder barBuilder;
 
     /**
      * Constructor.

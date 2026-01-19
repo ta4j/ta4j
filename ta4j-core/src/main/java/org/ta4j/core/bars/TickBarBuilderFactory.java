@@ -32,7 +32,7 @@ public class TickBarBuilderFactory implements BarBuilderFactory {
 
     private final boolean realtimeBars;
     private final int tickCount;
-    private TickBarBuilder barBuilder;
+    private transient TickBarBuilder barBuilder;
 
     /**
      * Constructor.

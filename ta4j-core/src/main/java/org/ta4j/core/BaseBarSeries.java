@@ -185,6 +185,10 @@ public class BaseBarSeries implements BarSeries {
         return barBuilderFactory.createBarBuilder(this);
     }
 
+    protected BarBuilderFactory barBuilderFactory() {
+        return barBuilderFactory;
+    }
+
     @Override
     public String getName() {
         return this.name;

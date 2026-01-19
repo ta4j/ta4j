@@ -32,6 +32,10 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.ByteArrayOutputStream;
+import java.io.ByteArrayInputStream;
+import java.io.ObjectOutputStream;
+import java.io.ObjectInputStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -547,13 +551,37 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 .withBars(new ArrayList<>(testBars))
                 .build();
 
-        BarSeries subSeries = series.getSubSeries(1, 4);
+        int startIndex = series.getBeginIndex();
+        int endIndex = series.getEndIndex() + 1;
+        BarSeries subSeries = series.getSubSeries(startIndex, endIndex);
 
         assertTrue("SubSeries should be ConcurrentBarSeries", subSeries instanceof ConcurrentBarSeries);
         assertEquals(3, subSeries.getBarCount());
         assertEquals(0, subSeries.getBeginIndex());
         assertEquals(2, subSeries.getEndIndex());
         assertEquals(series.getName(), subSeries.getName());
+    }
+
+    @Test
+    public void testGetSubSeriesPreservesMaxBarCountAndBarBuilderFactory() {
+        BarBuilderFactory customFactory = new TimeBarBuilderFactory(false);
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(customFactory)
+                .withMaxBarCount(3)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+
+        BarSeries subSeries = series.getSubSeries(1, 4);
+
+        assertEquals(series.getMaximumBarCount(), subSeries.getMaximumBarCount());
+
+        subSeries.barBuilder()
+                .timePeriod(Duration.ofMinutes(1))
+                .endTime(Instant.parse("2024-01-10T00:00:00Z"))
+                .closePrice(numOf(50))
+                .add();
+
+        assertFalse(subSeries.getLastBar() instanceof RealtimeBar);
     }
 
     @Test
@@ -1296,6 +1324,31 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertThrows(IllegalArgumentException.class, () -> series.ingestTrade(start.minusSeconds(120), 1, 100));
     }
 
+    // ==================== Serialization Tests ====================
+
+    @Test
+    public void serializeAndDeserializeReinitializesLocksAndBuilders() throws Exception {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(true))
+                .build();
+        var period = Duration.ofMinutes(1);
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        series.tradeBarBuilder().timePeriod(period);
+        series.ingestTrade(start, 1, 100);
+
+        ConcurrentBarSeries restored = serializeRoundTrip(series);
+
+        assertNotSame(series, restored);
+        assertEquals(series.getBarCount(), restored.getBarCount());
+        assertEquals(series.getEndIndex(), restored.getEndIndex());
+
+        restored.tradeBarBuilder().timePeriod(period);
+        restored.ingestTrade(start.plusSeconds(60), 1, 110);
+
+        assertEquals(series.getBarCount() + 1, restored.getBarCount());
+    }
+
     // ==================== Legacy Tests (from original implementation)
     // ====================
 
@@ -1399,6 +1452,21 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
         assertEquals(barsToProduce, series.getBarCount());
         assertEquals(series.getBarCount() - 1, series.getEndIndex());
+    }
+
+    private static ConcurrentBarSeries serializeRoundTrip(final ConcurrentBarSeries series) throws Exception {
+        final byte[] payload;
+        try (final var outputStream = new ByteArrayOutputStream()) {
+            try (final var objectOutputStream = new ObjectOutputStream(outputStream)) {
+                objectOutputStream.writeObject(series);
+                payload = outputStream.toByteArray();
+            }
+        }
+        try (final var inputStream = new ByteArrayInputStream(payload)) {
+            try (final var objectInputStream = new ObjectInputStream(inputStream)) {
+                return (ConcurrentBarSeries) objectInputStream.readObject();
+            }
+        }
     }
 
     private Bar streamingBar(final Duration period, final Instant start, final double open, final double high,

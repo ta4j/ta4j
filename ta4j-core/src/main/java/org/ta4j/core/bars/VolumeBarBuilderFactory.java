@@ -33,7 +33,7 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
     private final int volumeThreshold;
     private final RemainderCarryOverPolicy carryOverPolicy;
     private final boolean realtimeBars;
-    private VolumeBarBuilder barBuilder;
+    private transient VolumeBarBuilder barBuilder;
 
     /**
      * Constructor.
