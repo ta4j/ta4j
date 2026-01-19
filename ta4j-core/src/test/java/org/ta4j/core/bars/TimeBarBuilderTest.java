@@ -24,6 +24,7 @@
 package org.ta4j.core.bars;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
@@ -213,6 +214,32 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(period, bar.getTimePeriod());
         assertEquals(alignedStart, bar.getBeginTime());
         assertEquals(alignedStart.plus(period), bar.getEndTime());
+    }
+
+    @Test
+    public void addTradeFillsEmptyTimePeriods() {
+        final var period = Duration.ofHours(1);
+        final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(period))
+                .build();
+        final var builder = series.barBuilder();
+        final var firstTrade = Instant.parse("2024-01-01T10:05:00Z");
+        final var laterTrade = Instant.parse("2024-01-01T12:00:00Z");
+
+        builder.addTrade(firstTrade, numOf(1), numOf(100), null, null);
+        builder.addTrade(laterTrade, numOf(1), numOf(110), null, null);
+
+        assertEquals(3, series.getBarCount());
+        assertEquals(Instant.parse("2024-01-01T10:00:00Z"), series.getBar(0).getBeginTime());
+        assertEquals(Instant.parse("2024-01-01T11:00:00Z"), series.getBar(0).getEndTime());
+        assertEquals(Instant.parse("2024-01-01T11:00:00Z"), series.getBar(1).getBeginTime());
+        assertEquals(Instant.parse("2024-01-01T12:00:00Z"), series.getBar(1).getEndTime());
+        assertEquals(Instant.parse("2024-01-01T12:00:00Z"), series.getBar(2).getBeginTime());
+        assertEquals(Instant.parse("2024-01-01T13:00:00Z"), series.getBar(2).getEndTime());
+
+        final Bar gapBar = series.getBar(1);
+        assertEquals(0, gapBar.getTrades());
+        assertNull(gapBar.getClosePrice());
     }
 
     @Test

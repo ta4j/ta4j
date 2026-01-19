@@ -287,6 +287,9 @@ public class TimeBarBuilder implements BarBuilder {
                     String.format("Trade time %s is before current bar begin time %s", time, beginTime));
         }
         while (!time.isBefore(endTime)) {
+            if (openPrice == null) {
+                baseBarSeries.addBar(build(), false);
+            }
             resetTradeState();
             beginTime = endTime;
             endTime = beginTime.plus(timePeriod);

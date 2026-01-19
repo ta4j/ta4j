@@ -551,9 +551,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 .withBars(new ArrayList<>(testBars))
                 .build();
 
-        int startIndex = series.getBeginIndex();
-        int endIndex = series.getEndIndex() + 1;
-        BarSeries subSeries = series.getSubSeries(startIndex, endIndex);
+        BarSeries subSeries = series.getSubSeries(1, 4);
 
         assertTrue("SubSeries should be ConcurrentBarSeries", subSeries instanceof ConcurrentBarSeries);
         assertEquals(3, subSeries.getBarCount());
@@ -571,7 +569,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 .withBars(new ArrayList<>(testBars))
                 .build();
 
-        BarSeries subSeries = series.getSubSeries(1, 4);
+        int startIndex = series.getBeginIndex();
+        int endIndex = series.getEndIndex() + 1;
+        BarSeries subSeries = series.getSubSeries(startIndex, endIndex);
 
         assertEquals(series.getMaximumBarCount(), subSeries.getMaximumBarCount());
 

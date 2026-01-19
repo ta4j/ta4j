@@ -7,7 +7,7 @@
 1. ✅ Run the full build script: `scripts/run-full-build-quiet.sh`
    - **This is NOT optional.** Do not skip this step, even for "simple" changes.
    - **When:** After every code change that affects build/test behavior (which is almost always)
-   - **Permissions:** **ALWAYS run with `required_permissions: ['all']`** to avoid Maven repository permission issues. The build script requires full filesystem access to read/write Maven cache and repository files.
+   - **Permissions:** **ALWAYS run with `required_permissions: ['all']`** to avoid Maven repository permission issues. The build script requires full filesystem access to read/write Maven cache and repository files. If the environment forbids approval prompts (e.g., approval policy is `never`) but already grants full access, run the script directly without requesting permissions.
    - **Windows:** Invoke Git Bash or MSYS2 binary directly (never WSL or the CLI's default `/bin/bash`) for native performance (5x vs WSL). Always call it explicitly, e.g. `& "C:\Program Files\Git\bin\bash.exe" -c "cd /c/Users/David/Workspace/github/ta4j && ./scripts/run-full-build-quiet.sh"` (convert Windows path `C:\...` to `/c/...` format).
    - **What it does:** Runs `mvn -B clean license:format formatter:format test install`
    - **Required outcome:** Build must be GREEN (all tests pass, no failures/errors)
