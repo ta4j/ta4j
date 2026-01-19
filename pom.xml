@@ -64,7 +64,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- Build -->
-        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.release>25</maven.compiler.release>
         <maven.surefire.version>3.5.4</maven.surefire.version>
 
         <!-- Dependencies -->
@@ -72,9 +72,9 @@
         <commons-math3.version>3.6.1</commons-math3.version>
         <gson.version>2.13.2</gson.version>
         <jfreechart.version>1.5.6</jfreechart.version>
-        <junit-jupiter.version>6.0.0</junit-jupiter.version>
+        <junit-jupiter.version>6.0.2</junit-jupiter.version>
         <log4j2.version>2.25.3</log4j2.version>
-        <mockito.version>5.12.0</mockito.version>
+        <mockito.version>5.21.0</mockito.version>
         <opencsv.version>5.12.0</opencsv.version>
         <poi.version>5.4.1</poi.version>
         <slf4j.version>2.0.17</slf4j.version>
