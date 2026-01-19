@@ -23,18 +23,14 @@
  */
 package org.ta4j.core;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertTrue;
-
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
+import static org.junit.Assert.*;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.bars.TimeBarBuilder;
@@ -204,5 +200,33 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .build();
 
         assertEquals(bar1.hashCode(), bar2.hashCode());
+    }
+
+    @Test
+    public void numFactoryPrefersOpenPrice() {
+        var bar = new TimeBarBuilder(numFactory).timePeriod(Duration.ofSeconds(1))
+                .beginTime(Instant.now())
+                .openPrice(1)
+                .closePrice(2)
+                .build();
+
+        assertSame(bar.getOpenPrice().getClass(), bar.numFactory().one().getClass());
+    }
+
+    @Test
+    public void numFactoryFallsBackToClosePrice() {
+        var bar = new TimeBarBuilder(numFactory).timePeriod(Duration.ofSeconds(1))
+                .beginTime(Instant.now())
+                .closePrice(2)
+                .build();
+
+        assertSame(bar.getClosePrice().getClass(), bar.numFactory().one().getClass());
+    }
+
+    @Test
+    public void numFactoryThrowsWhenNoPricesAvailable() {
+        var bar = new TimeBarBuilder(numFactory).timePeriod(Duration.ofSeconds(1)).beginTime(Instant.now()).build();
+
+        assertThrows(IllegalArgumentException.class, bar::numFactory);
     }
 }
