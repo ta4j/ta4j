@@ -463,6 +463,9 @@ jobs:
               if [ -z "$raw_content" ]; then
                 raw_content="${RAW_FALLBACK:-}"
               fi
+              if [ -z "$raw_content" ]; then
+                raw_content='{"should_release":false,"bump":"patch","warning":"Missing AI response","reason":"AI response content missing"}'
+              fi
 
               if printf '%s' "$raw_content" | jq -e -R 'fromjson' > ai.json 2>/dev/null; then
                 parsed_ok=true
