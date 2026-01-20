@@ -181,7 +181,7 @@ public interface BarBuilder {
      * @param tradeVolume the traded volume
      * @param tradePrice  the traded price
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     default void addTrade(Instant time, Num tradeVolume, Num tradePrice) {
         throw new UnsupportedOperationException("Trade ingestion not supported by " + getClass().getSimpleName());
@@ -196,7 +196,7 @@ public interface BarBuilder {
      * @param side        aggressor side (optional)
      * @param liquidity   liquidity classification (optional)
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     default void addTrade(Instant time, Num tradeVolume, Num tradePrice, RealtimeBar.Side side,
             RealtimeBar.Liquidity liquidity) {

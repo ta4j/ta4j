@@ -58,7 +58,7 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
      * @param realtimeBars      {@code true} to build {@link BaseRealtimeBar}
      *                          instances
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public AmountBarBuilderFactory(final int amountThreshold, final boolean setAmountByVolume,
             final boolean realtimeBars) {
@@ -74,7 +74,7 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
      *                          {@code amount} must be explicitly set
      * @param carryOverPolicy   policy for handling side/liquidity remainder splits
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public AmountBarBuilderFactory(final int amountThreshold, final boolean setAmountByVolume,
             final RemainderCarryOverPolicy carryOverPolicy) {
@@ -92,7 +92,7 @@ public class AmountBarBuilderFactory implements BarBuilderFactory {
      *                          instances
      * @param carryOverPolicy   policy for handling side/liquidity remainder splits
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public AmountBarBuilderFactory(final int amountThreshold, final boolean setAmountByVolume,
             final boolean realtimeBars, final RemainderCarryOverPolicy carryOverPolicy) {

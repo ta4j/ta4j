@@ -49,7 +49,7 @@ public class TickBarBuilderFactory implements BarBuilderFactory {
      * @param tickCount    the number of ticks at which a new bar should be created
      * @param realtimeBars {@code true} to build {@link BaseRealtimeBar} instances
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public TickBarBuilderFactory(final int tickCount, final boolean realtimeBars) {
         this.tickCount = tickCount;

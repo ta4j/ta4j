@@ -38,7 +38,7 @@ public class TimeBarBuilderFactory implements BarBuilderFactory {
     /**
      * Constructor.
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public TimeBarBuilderFactory() {
         this(null, false);
@@ -49,7 +49,7 @@ public class TimeBarBuilderFactory implements BarBuilderFactory {
      *
      * @param realtimeBars {@code true} to build {@link BaseRealtimeBar} instances
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public TimeBarBuilderFactory(final boolean realtimeBars) {
         this(null, realtimeBars);
@@ -72,7 +72,7 @@ public class TimeBarBuilderFactory implements BarBuilderFactory {
      * @param timePeriod   the default time period for time bars
      * @param realtimeBars {@code true} to build {@link BaseRealtimeBar} instances
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public TimeBarBuilderFactory(final Duration timePeriod, final boolean realtimeBars) {
         this.timePeriod = timePeriod;

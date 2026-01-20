@@ -100,7 +100,7 @@ public class TimeBarBuilder implements BarBuilder {
      * @param numFactory
      * @param realtimeBars {@code true} to build {@link BaseRealtimeBar} instances
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public TimeBarBuilder(final NumFactory numFactory, final boolean realtimeBars) {
         this.numFactory = numFactory;
@@ -280,7 +280,7 @@ public class TimeBarBuilder implements BarBuilder {
      * @param side        aggressor side (optional)
      * @param liquidity   liquidity classification (optional)
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     @Override
     public void addTrade(final Instant time, final Num tradeVolume, final Num tradePrice, final RealtimeBar.Side side,

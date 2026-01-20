@@ -51,7 +51,7 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
      * @param realtimeBars    {@code true} to build {@link BaseRealtimeBar}
      *                        instances
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public VolumeBarBuilderFactory(final int volumeThreshold, final boolean realtimeBars) {
         this(volumeThreshold, realtimeBars, RemainderCarryOverPolicy.NONE);
@@ -77,7 +77,7 @@ public class VolumeBarBuilderFactory implements BarBuilderFactory {
      *                        instances
      * @param carryOverPolicy policy for handling side/liquidity remainder splits
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public VolumeBarBuilderFactory(final int volumeThreshold, final boolean realtimeBars,
             final RemainderCarryOverPolicy carryOverPolicy) {

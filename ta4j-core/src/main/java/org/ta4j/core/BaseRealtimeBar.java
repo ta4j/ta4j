@@ -34,7 +34,7 @@ import org.ta4j.core.num.NumFactory;
  * {@link Bar} implementation that tracks realtime side and liquidity
  * breakdowns.
  *
- * @since 0.22.0
+ * @since 0.22.2
  */
 public class BaseRealtimeBar extends BaseBar implements RealtimeBar {
 
@@ -90,7 +90,7 @@ public class BaseRealtimeBar extends BaseBar implements RealtimeBar {
      * @param hasLiquidity {@code true} if liquidity data was provided
      * @param numFactory   the number factory backing this bar
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public BaseRealtimeBar(final Duration timePeriod, final Instant beginTime, final Instant endTime,
             final Num openPrice, final Num highPrice, final Num lowPrice, final Num closePrice, final Num volume,

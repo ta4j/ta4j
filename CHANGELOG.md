@@ -1,5 +1,10 @@
 ## Unreleased
 
+### Added
+- **Concurrent real-time bar series pipeline**: Introduced core support for concurrent, streaming bar ingestion with
+  a dedicated series (`ConcurrentBarSeries`/builder), realtime bar model (`RealtimeBar`/`BaseRealtimeBar`), and
+  streaming-bar ingestion helpers to enable candle reconciliation and side/liquidity-aware trade aggregation.
+
 ### Changed
 - **TimeBarBuilder**: Trade ingestion no longer inserts empty bars for missing periods; gaps remain omitted. Documentation now reflects the gap omission policy and bar series serialization expectations.
 

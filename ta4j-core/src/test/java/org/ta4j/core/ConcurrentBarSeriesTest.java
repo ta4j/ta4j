@@ -67,7 +67,7 @@ import org.ta4j.core.num.NumFactory;
  * Comprehensive unit tests for {@link ConcurrentBarSeries} focusing on the
  * incremental, new logic that provides thread safety through ReadWriteLock.
  *
- * @since 0.22.0
+ * @since 0.22.2
  */
 public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 

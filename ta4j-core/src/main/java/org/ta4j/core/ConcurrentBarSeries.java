@@ -57,7 +57,7 @@ import java.util.List;
  * deserialization, and the trade bar builder is recreated lazily on the next
  * ingestion call.
  *
- * @since 0.22.0
+ * @since 0.22.2
  */
 public class ConcurrentBarSeries extends BaseBarSeries {
 
@@ -71,7 +71,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
     /**
      * Indicates how a streaming bar was applied to the series.
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public enum StreamingBarIngestAction {
         APPENDED, REPLACED_LAST, REPLACED_HISTORICAL
@@ -83,7 +83,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @param action indicates how the bar was applied
      * @param index  the affected series index
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public record StreamingBarIngestResult(StreamingBarIngestAction action, int index) {
         public StreamingBarIngestResult {
@@ -298,7 +298,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      *
      * @return the trade bar builder
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public BarBuilder tradeBarBuilder() {
         this.readLock.lock();
@@ -325,7 +325,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      *
      * @param action read-only action to execute
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public void withReadLock(final Runnable action) {
         Objects.requireNonNull(action, "action");
@@ -344,7 +344,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @param <T>    return type
      * @return the action result
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public <T> T withReadLock(final Supplier<T> action) {
         Objects.requireNonNull(action, "action");
@@ -361,7 +361,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      *
      * @param action mutating action to execute
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public void withWriteLock(final Runnable action) {
         Objects.requireNonNull(action, "action");
@@ -380,7 +380,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @param <T>    return type
      * @return the action result
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public <T> T withWriteLock(final Supplier<T> action) {
         Objects.requireNonNull(action, "action");
@@ -439,7 +439,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @param tradeVolume the traded volume
      * @param tradePrice  the traded price
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public void ingestTrade(final Instant tradeTime, final Number tradeVolume, final Number tradePrice) {
         ingestTrade(tradeTime, tradeVolume, tradePrice, null, null);
@@ -452,7 +452,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @param tradeVolume the traded volume
      * @param tradePrice  the traded price
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public void ingestTrade(final Instant tradeTime, final Num tradeVolume, final Num tradePrice) {
         ingestTrade(tradeTime, tradeVolume, tradePrice, null, null);
@@ -467,7 +467,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @param side        aggressor side (optional)
      * @param liquidity   liquidity classification (optional)
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public void ingestTrade(final Instant tradeTime, final Number tradeVolume, final Number tradePrice,
             final RealtimeBar.Side side, final RealtimeBar.Liquidity liquidity) {
@@ -487,7 +487,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @param side        aggressor side (optional)
      * @param liquidity   liquidity classification (optional)
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public void ingestTrade(final Instant tradeTime, final Num tradeVolume, final Num tradePrice,
             final RealtimeBar.Side side, final RealtimeBar.Liquidity liquidity) {
@@ -521,7 +521,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @param bar streaming bar payload
      * @return the applied action and affected series index
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public StreamingBarIngestResult ingestStreamingBar(final Bar bar) {
         Objects.requireNonNull(bar, "bar");
@@ -541,7 +541,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @param bars streaming bars to ingest
      * @return applied actions in ascending end-time order
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     public List<StreamingBarIngestResult> ingestStreamingBars(final Collection<Bar> bars) {
         if (bars == null || bars.isEmpty()) {

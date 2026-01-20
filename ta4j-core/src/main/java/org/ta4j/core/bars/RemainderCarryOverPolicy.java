@@ -55,28 +55,28 @@ package org.ta4j.core.bars;
  * {@link #PROPORTIONAL_WITH_TRADE_COUNT} is selected; they remain whole-trade
  * counts.
  *
- * @since 0.22.0
+ * @since 0.22.2
  */
 public enum RemainderCarryOverPolicy {
 
     /**
      * Do not carry side/liquidity data with the remainder.
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     NONE,
 
     /**
      * Split side/liquidity volumes and amounts proportionally with the remainder.
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     PROPORTIONAL,
     /**
      * Split side/liquidity volumes and amounts proportionally and allocate the
      * trade count to the remainder if its share is at least 50%.
      *
-     * @since 0.22.0
+     * @since 0.22.2
      */
     PROPORTIONAL_WITH_TRADE_COUNT
 }
