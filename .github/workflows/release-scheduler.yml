@@ -443,6 +443,8 @@ jobs:
         env:
           GATE_PROCEED: ${{ steps.gate.outputs.proceed }}
           MODEL_TOKEN_PRESENT: ${{ steps.model_token.outputs.present }}
+          RAW_CONTENT: ${{ steps.ai.outputs.content }}
+          RAW_FALLBACK: ${{ steps.ai_failure.outputs.content }}
         run: |
           gate_proceed="${GATE_PROCEED:-false}"
           parsed_ok=false
@@ -457,9 +459,9 @@ jobs:
               echo '{"should_release":false,"bump":"patch","warning":"GH_MODELS_TOKEN missing","reason":"GH_MODELS_TOKEN secret missing; cannot call AI"}' > ai.json
               parsed_ok=true
             else
-              raw_content='${{ steps.ai.outputs.content }}'
+              raw_content="${RAW_CONTENT:-}"
               if [ -z "$raw_content" ]; then
-                raw_content='${{ steps.ai_failure.outputs.content }}'
+                raw_content="${RAW_FALLBACK:-}"
               fi
 
               if printf '%s' "$raw_content" | jq -e -R 'fromjson' > ai.json 2>/dev/null; then

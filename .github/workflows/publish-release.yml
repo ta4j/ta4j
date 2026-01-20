@@ -505,6 +505,8 @@ jobs:
           RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
           RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
         run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
           git tag -a "${RELEASE_VERSION}" -m "Release ${RELEASE_VERSION}" "${RELEASE_COMMIT}"
 
       - name: Deploy Release to Maven Central

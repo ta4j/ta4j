@@ -86,7 +86,7 @@ Tags are created only after the release commit is on `master`, so tag reachabili
 6. **Dispatch `prepare-release.yml`**
    - **What**: Starts the prepare workflow with the chosen version.
    - **Why**: Keeps release prep centralized and ready for review.
-7. **Post discussion summary**
+7. **Post-discussion summary**
    - **What**: Writes a decision summary to the Release Scheduler discussion.
    - **Why**: Auditable history and notifications for maintainers.
 
@@ -120,7 +120,7 @@ Tags are created only after the release commit is on `master`, so tag reachabili
    - **Why**: Publish signed artifacts for consumption.
 5. **Push tag**
    - **Why**: Triggers `github-release.yml`.
-6. **Post discussion summary**
+6. **Post-discussion summary**
    - **Why**: Provides an audit trail and notifications.
 
 ### Release Health (`release-health.yml`)
