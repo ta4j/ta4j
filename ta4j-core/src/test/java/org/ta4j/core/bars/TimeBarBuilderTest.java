@@ -333,7 +333,7 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
     public void testDefaultConstructor() {
         TimeBarBuilder builder = new TimeBarBuilder();
         assertNotNull(builder);
-        // Default uses DecimalNumFactory and realtimeBars=false
+        // Default uses DoubleNumFactory and realtimeBars=false
     }
 
     @Test
