@@ -6,7 +6,7 @@
   streaming-bar ingestion helpers to enable candle reconciliation and side/liquidity-aware trade aggregation.
 
 ### Changed
-- **TimeBarBuilder**: Trade ingestion no longer inserts empty bars for missing periods; gaps remain omitted. Documentation now reflects the gap omission policy and bar series serialization expectations.
+- **TimeBarBuilder**: Enhanced with trade ingestion logic, time alignment validation, and RealtimeBar support.
 - **BaseBarSeriesBuilder**: Deprecated `setConstrained` in favor of deriving constrained mode from max-bar-count configuration.
 
 ### Fixed
