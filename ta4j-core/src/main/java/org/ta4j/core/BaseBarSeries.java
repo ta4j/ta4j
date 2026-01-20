@@ -302,6 +302,36 @@ public class BaseBarSeries implements BarSeries {
         removeExceedingBars();
     }
 
+    /**
+     * Replaces a bar at the provided series index without changing bar count or
+     * indices.
+     *
+     * @param index the series index to replace
+     * @param bar   the replacement bar
+     *
+     * @throws NullPointerException      if {@code bar} is {@code null}
+     * @throws IllegalArgumentException  if the bar does not match the series
+     *                                   numFactory
+     * @throws IndexOutOfBoundsException if the index is outside the current series
+     *                                   window
+     */
+    protected void replaceBar(final int index, final Bar bar) {
+        Objects.requireNonNull(bar, "bar must not be null");
+        if (!numFactory.produces(bar.getClosePrice())) {
+            throw new IllegalArgumentException(
+                    String.format("Cannot add Bar with data type: %s to series with datatype: %s",
+                            bar.getClosePrice().getClass(), this.numFactory.one().getClass()));
+        }
+        if (index < this.seriesBeginIndex || index > this.seriesEndIndex || this.bars.isEmpty()) {
+            throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, index));
+        }
+        final int innerIndex = index - this.removedBarsCount;
+        if (innerIndex < 0 || innerIndex >= this.bars.size()) {
+            throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, index));
+        }
+        this.bars.set(innerIndex, bar);
+    }
+
     @Override
     public void addTrade(final Number tradeVolume, final Number tradePrice) {
         addTrade(numFactory().numOf(tradeVolume), numFactory().numOf(tradePrice));

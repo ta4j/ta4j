@@ -576,9 +576,10 @@ public class ConcurrentBarSeries extends BaseBarSeries {
             super.addBar(newBar, false);
             return new StreamingBarIngestResult(StreamingBarIngestAction.APPENDED, super.getEndIndex());
         }
-        final Instant newEndTime = newBar.getEndTime();
+        final Instant newEndTime = Objects.requireNonNull(newBar.getEndTime(), "Bar endTime cannot be null");
         final Bar lastBar = internal.get(internal.size() - 1);
-        int endTimeComparison = newEndTime.compareTo(lastBar.getEndTime());
+        final Instant lastEndTime = Objects.requireNonNull(lastBar.getEndTime(), "Last bar endTime cannot be null");
+        int endTimeComparison = newEndTime.compareTo(lastEndTime);
         if (endTimeComparison == 0) {
             super.addBar(newBar, true);
             return new StreamingBarIngestResult(StreamingBarIngestAction.REPLACED_LAST, super.getEndIndex());
@@ -589,8 +590,10 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         }
         final int internalIndex = findBarIndexByEndTime(internal, newEndTime);
         if (internalIndex >= 0) {
-            internal.set(internalIndex, newBar);
             final int seriesIndex = internalIndex + super.getRemovedBarsCount();
+            // Replacing a historical bar doesn't change bar count or indices, so we bypass
+            // addBar().
+            super.replaceBar(seriesIndex, newBar);
             return new StreamingBarIngestResult(StreamingBarIngestAction.REPLACED_HISTORICAL, seriesIndex);
         }
         throw new IllegalArgumentException(
