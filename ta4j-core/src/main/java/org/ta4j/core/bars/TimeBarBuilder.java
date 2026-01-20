@@ -39,6 +39,10 @@ import org.ta4j.core.num.NumFactory;
 
 /**
  * A time bar is sampled after a fixed time period.
+ *
+ * <p>
+ * When ingesting trades, missing intervals are filled with empty bars. Empty
+ * bars keep null OHLC/volume/amount values and zero trades.
  */
 public class TimeBarBuilder implements BarBuilder {
 
@@ -244,7 +248,9 @@ public class TimeBarBuilder implements BarBuilder {
     /**
      * Ingests a trade into the current time bar and adds/replaces the bar in the
      * bound series. Bars are aligned to UTC epoch boundaries based on the current
-     * {@link #timePeriod}.
+     * {@link #timePeriod}. When the trade time skips one or more full periods,
+     * empty bars are inserted for each missing interval. Empty bars keep null
+     * OHLC/volume/amount values and zero trades.
      *
      * @param time        the trade timestamp (UTC)
      * @param tradeVolume the traded volume
@@ -260,7 +266,9 @@ public class TimeBarBuilder implements BarBuilder {
     /**
      * Ingests a trade into the current time bar and adds/replaces the bar in the
      * bound series. Bars are aligned to UTC epoch boundaries based on the current
-     * {@link #timePeriod}.
+     * {@link #timePeriod}. When the trade time skips one or more full periods,
+     * empty bars are inserted for each missing interval. Empty bars keep null
+     * OHLC/volume/amount values and zero trades.
      *
      * @param time        the trade timestamp (UTC)
      * @param tradeVolume the traded volume

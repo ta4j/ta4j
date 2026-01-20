@@ -51,6 +51,12 @@ import java.util.List;
  * {@link BarBuilder} handle bar rollovers. Direct bar mutations remain
  * available for reconciliation and data correction workflows.
  *
+ * <p>
+ * Java serialization preserves bar data, the {@link NumFactory}, and the
+ * {@link BarBuilderFactory} configuration. Transient locks are reinitialized on
+ * deserialization, and the trade bar builder is recreated lazily on the next
+ * ingestion call.
+ *
  * @since 0.22.0
  */
 public class ConcurrentBarSeries extends BaseBarSeries {

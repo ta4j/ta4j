@@ -238,8 +238,33 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(Instant.parse("2024-01-01T13:00:00Z"), series.getBar(2).getEndTime());
 
         final Bar gapBar = series.getBar(1);
-        assertEquals(0, gapBar.getTrades());
+        assertNull(gapBar.getOpenPrice());
+        assertNull(gapBar.getHighPrice());
+        assertNull(gapBar.getLowPrice());
         assertNull(gapBar.getClosePrice());
+        assertNull(gapBar.getVolume());
+        assertNull(gapBar.getAmount());
+        assertEquals(0, gapBar.getTrades());
+    }
+
+    @Test
+    public void addTradeHandlesLargeGap() {
+        final var period = Duration.ofMinutes(1);
+        final var gapPeriods = 1000L;
+        final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(period))
+                .build();
+        final var builder = series.barBuilder();
+        final var start = Instant.parse("2024-01-01T00:00:00Z");
+        final var later = start.plus(period.multipliedBy(gapPeriods));
+
+        builder.addTrade(start, numOf(1), numOf(100));
+        builder.addTrade(later, numOf(1), numOf(110));
+
+        assertEquals(gapPeriods + 1, series.getBarCount());
+        assertNull(series.getBar(1).getClosePrice());
+        assertEquals(later, series.getBar((int) gapPeriods).getBeginTime());
+        assertEquals(later.plus(period), series.getBar((int) gapPeriods).getEndTime());
     }
 
     @Test

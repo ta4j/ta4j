@@ -566,6 +566,11 @@ Indicator<?> restoredIndicator = Indicator.fromJson(series, indicatorJson);
 Strategy restoredStrategy = Strategy.fromJson(series, strategyJson);
 ```
 
+Bar series serialization (Java):
+- Bar data, the `NumFactory`, and the `BarBuilderFactory` configuration are preserved across the round-trip.
+- `ConcurrentBarSeries` reinitializes its locks after deserialization and recreates the trade bar builder lazily.
+- Builder state (for example, a time period set directly on the builder) must be re-applied after deserialization unless you configured it in the factory.
+
 ## Features at a glance
 
 - **190+ technical indicators (and counting)** - Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and many more. New indicators are added regularly.
@@ -615,6 +620,34 @@ while (true) {
 - **Same code, different data**: Your strategy logic is identical for backtests and live trading
 - **Deterministic**: Same inputs always produce same outputs - critical for testing and debugging
 - **Type-safe**: Compile-time checks catch errors before they cost money
+
+## Streaming trade ingestion (gap handling)
+
+When you need to aggregate raw trades into time bars, use `ConcurrentBarSeries` with a `TimeBarBuilderFactory`:
+
+```java
+import java.time.Duration;
+import java.time.Instant;
+
+import org.ta4j.core.Bar;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConcurrentBarSeriesBuilder;
+import org.ta4j.core.bars.TimeBarBuilderFactory;
+
+ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+        .withName("BTC-USD")
+        .withBarBuilderFactory(new TimeBarBuilderFactory(Duration.ofMinutes(1)))
+        .build();
+
+Instant t0 = Instant.parse("2024-01-01T10:05:00Z");
+series.ingestTrade(t0, 1, 100);
+series.ingestTrade(t0.plusSeconds(70), 2, 105);
+
+Bar gapBar = series.getBar(1);
+LOG.info("Gap bar close: {}", gapBar.getClosePrice()); // null
+```
+
+Time gaps insert empty bars. Empty bars keep null OHLC/volume/amount values and zero trades, so handle them explicitly if your pipeline expects continuous prices.
 
 ## Real-world examples
 

@@ -1,5 +1,8 @@
 ## Unreleased
 
+### Changed
+- **Documentation**: Clarified `TimeBarBuilder` gap handling (empty bars with null OHLC/volume/amount, zero trades) and bar series serialization expectations for factories and locks.
+
 ### Fixed
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
