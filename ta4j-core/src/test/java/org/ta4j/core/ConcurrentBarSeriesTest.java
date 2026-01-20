@@ -1772,6 +1772,32 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         assertThrows(IllegalArgumentException.class, () -> series.getSubSeries(-1, 3));
     }
 
+    @Test
+    public void testGetSubSeriesInheritsConstrainedBehavior() {
+        var bars = new ArrayList<>(testBars.subList(0, 2));
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(bars)
+                .build();
+
+        BarSeries subSeries = series.getSubSeries(0, 2);
+        assertThrows(IllegalStateException.class, () -> subSeries.setMaximumBarCount(10));
+    }
+
+    @Test
+    public void testGetSubSeriesInheritsMaxBarCountConfiguration() {
+        var bars = new ArrayList<>(testBars.subList(0, 2));
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(bars)
+                .withMaxBarCount(10)
+                .build();
+
+        BarSeries subSeries = series.getSubSeries(0, 2);
+        subSeries.setMaximumBarCount(5);
+        assertEquals(5, subSeries.getMaximumBarCount());
+    }
+
     // ==================== tradeBarBuilder() Lazy Initialization Tests
     // ====================
 

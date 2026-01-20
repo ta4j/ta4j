@@ -144,18 +144,22 @@ public class ConcurrentBarSeries extends BaseBarSeries {
             if (!bars.isEmpty()) {
                 final int start = startIndex - super.getRemovedBarsCount();
                 final int end = Math.min(endIndex - super.getRemovedBarsCount(), super.getEndIndex() + 1);
-                return new ConcurrentBarSeriesBuilder().withName(getName())
+                final var builder = new ConcurrentBarSeriesBuilder().withName(getName())
                         .withBars(cut(bars, start, end))
                         .withNumFactory(super.numFactory())
-                        .withBarBuilderFactory(super.barBuilderFactory())
-                        .withMaxBarCount(super.getMaximumBarCount())
-                        .build();
+                        .withBarBuilderFactory(super.barBuilderFactory());
+                if (!isConstrained()) {
+                    builder.withMaxBarCount(super.getMaximumBarCount());
+                }
+                return builder.build();
             }
-            return new ConcurrentBarSeriesBuilder().withNumFactory(super.numFactory())
+            final var builder = new ConcurrentBarSeriesBuilder().withNumFactory(super.numFactory())
                     .withBarBuilderFactory(super.barBuilderFactory())
-                    .withMaxBarCount(super.getMaximumBarCount())
-                    .withName(getName())
-                    .build();
+                    .withName(getName());
+            if (!isConstrained()) {
+                builder.withMaxBarCount(super.getMaximumBarCount());
+            }
+            return builder.build();
         } finally {
             this.readLock.unlock();
         }

@@ -203,6 +203,14 @@ public class ConcurrentBarSeriesBuilderTest extends AbstractIndicatorTest<BarSer
     }
 
     @Test
+    public void testWithMaxBarCountAtMaxValueKeepsSeriesUnconstrained() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withMaxBarCount(Integer.MAX_VALUE).build();
+
+        series.setMaximumBarCount(100);
+        assertEquals(100, series.getMaximumBarCount());
+    }
+
+    @Test
     public void testWithMaxBarCountZero() {
         // Maximum bar count must be strictly positive
         assertThrows(IllegalArgumentException.class, () -> new ConcurrentBarSeriesBuilder().withMaxBarCount(0).build());

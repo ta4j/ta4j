@@ -246,6 +246,10 @@ public class BaseBarSeries implements BarSeries {
         return this.maximumBarCount;
     }
 
+    boolean isConstrained() {
+        return this.constrained;
+    }
+
     @Override
     public void setMaximumBarCount(final int maximumBarCount) {
         if (this.constrained) {
