@@ -100,7 +100,7 @@ public class BaseRealtimeBar extends BaseBar implements RealtimeBar {
             final long takerTrades, final boolean hasSideData, final boolean hasLiquidity,
             final NumFactory numFactory) {
         super(timePeriod, beginTime, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount, trades);
-        this.numFactory = Objects.requireNonNull(numFactory, "numFactory");
+        this.numFactory = Objects.requireNonNull(numFactory, "numFactory cannot be null");
         this.buyVolume = buyVolume;
         this.sellVolume = sellVolume;
         this.buyAmount = buyAmount;

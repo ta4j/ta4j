@@ -41,7 +41,7 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
 
     private List<Bar> bars;
     private String name;
-    private boolean constrained;
+    private boolean maxBarCountConfigured;
     private int maxBarCount;
     private NumFactory numFactory = DecimalNumFactory.getInstance();
     private BarBuilderFactory barBuilderFactory = new TimeBarBuilderFactory(true);
@@ -58,7 +58,7 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
     private void initValues() {
         this.bars = new ArrayList<>();
         this.name = UNNAMED_SERIES_NAME;
-        this.constrained = false;
+        this.maxBarCountConfigured = false;
         this.maxBarCount = Integer.MAX_VALUE;
     }
 
@@ -75,22 +75,16 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
             beginIndex = 0;
             endIndex = bars.size() - 1;
         }
+        // If maxBarCount is configured, the series must be unconstrained to allow
+        // removals.
+        boolean effectiveConstrained = !maxBarCountConfigured;
         var series = new ConcurrentBarSeries(name == null ? UNNAMED_SERIES_NAME : name, bars, beginIndex, endIndex,
-                constrained, numFactory, barBuilderFactory);
-        series.setMaximumBarCount(maxBarCount);
+                effectiveConstrained, numFactory, barBuilderFactory);
+        if (maxBarCountConfigured) {
+            series.setMaximumBarCount(maxBarCount);
+        }
         initValues();
         return series;
-    }
-
-    /**
-     * @param constrained whether the resulting series is constrained
-     * @return {@code this}
-     *
-     * @since 0.22.2
-     */
-    public ConcurrentBarSeriesBuilder setConstrained(boolean constrained) {
-        this.constrained = constrained;
-        return this;
     }
 
     /**
@@ -127,13 +121,15 @@ public class ConcurrentBarSeriesBuilder implements BarSeriesBuilder {
     }
 
     /**
-     * @param maxBarCount maximum retained bars
+     * @param maxBarCount maximum retained bars (also opts the series into
+     *                    pruning/unconstrained mode)
      * @return {@code this}
      *
      * @since 0.22.2
      */
     public ConcurrentBarSeriesBuilder withMaxBarCount(int maxBarCount) {
         this.maxBarCount = maxBarCount;
+        this.maxBarCountConfigured = true;
         return this;
     }
 

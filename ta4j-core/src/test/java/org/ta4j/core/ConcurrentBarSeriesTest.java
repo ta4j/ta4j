@@ -50,6 +50,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Supplier;
 
 import org.junit.After;
 import org.junit.Before;
@@ -395,6 +396,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     public void testConcurrentWriteOperations() throws Exception {
         ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
+                .withMaxBarCount(1000)
                 .build();
 
         // Test concurrent write operations with proper synchronization
@@ -1347,6 +1349,697 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
         restored.ingestTrade(start.plusSeconds(60), 1, 110);
 
         assertEquals(series.getBarCount() + 1, restored.getBarCount());
+    }
+
+    @Test
+    public void serializeAndDeserializePreservesMaxBarCount() throws Exception {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withMaxBarCount(10)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+
+        ConcurrentBarSeries restored = serializeRoundTrip(series);
+
+        assertEquals(series.getMaximumBarCount(), restored.getMaximumBarCount());
+        assertEquals(10, restored.getMaximumBarCount());
+    }
+
+    @Test
+    public void serializeAndDeserializeEmptySeries() throws Exception {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        ConcurrentBarSeries restored = serializeRoundTrip(series);
+
+        assertEquals(0, restored.getBarCount());
+        assertEquals(-1, restored.getBeginIndex());
+        assertEquals(-1, restored.getEndIndex());
+        assertTrue(restored.isEmpty());
+    }
+
+    // ==================== getFirstBar() and getLastBar() Tests
+    // ====================
+
+    @Test
+    public void testGetFirstBar() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+
+        Bar firstBar = series.getFirstBar();
+        assertNotNull(firstBar);
+        assertEquals(testBars.get(0), firstBar);
+        assertEquals(series.getBar(series.getBeginIndex()), firstBar);
+    }
+
+    @Test
+    public void testGetLastBar() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+
+        Bar lastBar = series.getLastBar();
+        assertNotNull(lastBar);
+        assertEquals(testBars.get(testBars.size() - 1), lastBar);
+        assertEquals(series.getBar(series.getEndIndex()), lastBar);
+    }
+
+    @Test
+    public void testGetFirstBarWithEmptySeries() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        assertThrows(IndexOutOfBoundsException.class, () -> series.getFirstBar());
+    }
+
+    @Test
+    public void testGetLastBarWithEmptySeries() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        assertThrows(IndexOutOfBoundsException.class, () -> series.getLastBar());
+    }
+
+    @Test
+    public void testGetFirstBarConcurrentAccess() throws Exception {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+
+        final int readerCount = 10;
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch endLatch = new CountDownLatch(readerCount);
+        final AtomicInteger successCount = new AtomicInteger(0);
+
+        for (int i = 0; i < readerCount; i++) {
+            executorService.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int j = 0; j < 50; j++) {
+                        Bar firstBar = series.getFirstBar();
+                        assertNotNull(firstBar);
+                        assertEquals(testBars.get(0), firstBar);
+                    }
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        assertTrue("All getFirstBar() operations should complete", endLatch.await(10, TimeUnit.SECONDS));
+        assertEquals(readerCount, successCount.get());
+    }
+
+    // ==================== getSeriesPeriodDescription() Tests ====================
+
+    @Test
+    public void testGetSeriesPeriodDescription() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+
+        String description = series.getSeriesPeriodDescription();
+        assertNotNull(description);
+        assertFalse(description.isEmpty());
+    }
+
+    @Test
+    public void testGetSeriesPeriodDescriptionWithEmptySeries() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        String description = series.getSeriesPeriodDescription();
+        assertNotNull(description);
+    }
+
+    @Test
+    public void testGetSeriesPeriodDescriptionInSystemTimeZone() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+
+        String description = series.getSeriesPeriodDescriptionInSystemTimeZone();
+        assertNotNull(description);
+        assertFalse(description.isEmpty());
+    }
+
+    @Test
+    public void testGetSeriesPeriodDescriptionInSystemTimeZoneWithEmptySeries() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        String description = series.getSeriesPeriodDescriptionInSystemTimeZone();
+        assertNotNull(description);
+    }
+
+    @Test
+    public void testGetSeriesPeriodDescriptionConcurrentAccess() throws Exception {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+
+        final int readerCount = 10;
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch endLatch = new CountDownLatch(readerCount);
+        final AtomicInteger successCount = new AtomicInteger(0);
+
+        for (int i = 0; i < readerCount; i++) {
+            executorService.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int j = 0; j < 50; j++) {
+                        String desc1 = series.getSeriesPeriodDescription();
+                        String desc2 = series.getSeriesPeriodDescriptionInSystemTimeZone();
+                        assertNotNull(desc1);
+                        assertNotNull(desc2);
+                    }
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        assertTrue("All period description operations should complete", endLatch.await(10, TimeUnit.SECONDS));
+        assertEquals(readerCount, successCount.get());
+    }
+
+    // ==================== addPrice() Tests ====================
+
+    @Test
+    public void testAddPrice() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        Instant now = Instant.now();
+        series.barBuilder().endTime(now).closePrice(numOf(100)).add();
+
+        series.addPrice(numOf(105));
+        Bar lastBar = series.getLastBar();
+        assertEquals(numOf(105), lastBar.getClosePrice());
+    }
+
+    @Test
+    public void testAddPriceWithEmptySeries() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        assertThrows(IndexOutOfBoundsException.class, () -> series.addPrice(numOf(100)));
+    }
+
+    @Test
+    public void testAddPriceConcurrentAccess() throws Exception {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        Instant now = Instant.now();
+        series.barBuilder().endTime(now).closePrice(numOf(100)).add();
+
+        final int writerCount = 5;
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch endLatch = new CountDownLatch(writerCount);
+        final AtomicInteger successCount = new AtomicInteger(0);
+
+        for (int i = 0; i < writerCount; i++) {
+            final int priceOffset = i;
+            executorService.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int j = 0; j < 10; j++) {
+                        series.addPrice(numOf(100 + priceOffset + j));
+                        Thread.sleep(1);
+                    }
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        assertTrue("All addPrice() operations should complete", endLatch.await(10, TimeUnit.SECONDS));
+        assertEquals(writerCount, successCount.get());
+    }
+
+    // ==================== addBar() with replace flag Tests ====================
+
+    @Test
+    public void testAddBarWithReplace() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        Instant now = Instant.parse("2024-01-01T00:00:00Z");
+        Bar firstBar = new TimeBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
+                .endTime(now)
+                .closePrice(numOf(100))
+                .build();
+
+        series.addBar(firstBar, false);
+        assertEquals(1, series.getBarCount());
+        assertEquals(numOf(100), series.getBar(0).getClosePrice());
+
+        Bar replacementBar = new TimeBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
+                .endTime(now)
+                .closePrice(numOf(200))
+                .build();
+
+        series.addBar(replacementBar, true);
+        assertEquals(1, series.getBarCount());
+        assertEquals(numOf(200), series.getBar(0).getClosePrice());
+    }
+
+    @Test
+    public void testAddBarWithoutReplace() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        Instant now = Instant.parse("2024-01-01T00:00:00Z");
+        Bar firstBar = new TimeBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
+                .endTime(now)
+                .closePrice(numOf(100))
+                .build();
+
+        series.addBar(firstBar, false);
+        assertEquals(1, series.getBarCount());
+
+        Bar secondBar = new TimeBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
+                .endTime(now.plus(Duration.ofMinutes(1)))
+                .closePrice(numOf(200))
+                .build();
+
+        series.addBar(secondBar, false);
+        assertEquals(2, series.getBarCount());
+        assertEquals(numOf(100), series.getBar(0).getClosePrice());
+        assertEquals(numOf(200), series.getBar(1).getClosePrice());
+    }
+
+    // ==================== StreamingBarIngestResult Validation Tests
+    // ====================
+
+    @Test
+    public void testStreamingBarIngestResultRejectsNegativeIndex() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            new ConcurrentBarSeries.StreamingBarIngestResult(ConcurrentBarSeries.StreamingBarIngestAction.APPENDED, -1);
+        });
+    }
+
+    @Test
+    public void testStreamingBarIngestResultRejectsNullAction() {
+        assertThrows(NullPointerException.class, () -> {
+            new ConcurrentBarSeries.StreamingBarIngestResult(null, 0);
+        });
+    }
+
+    @Test
+    public void testStreamingBarIngestResultAcceptsZeroIndex() {
+        var result = new ConcurrentBarSeries.StreamingBarIngestResult(
+                ConcurrentBarSeries.StreamingBarIngestAction.APPENDED, 0);
+        assertEquals(0, result.index());
+        assertEquals(ConcurrentBarSeries.StreamingBarIngestAction.APPENDED, result.action());
+    }
+
+    // ==================== ingestStreamingBars() Edge Cases ====================
+
+    @Test
+    public void testIngestStreamingBarsWithNullCollection() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        List<ConcurrentBarSeries.StreamingBarIngestResult> results = series.ingestStreamingBars(null);
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    public void testIngestStreamingBarsWithEmptyCollection() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        List<ConcurrentBarSeries.StreamingBarIngestResult> results = series
+                .ingestStreamingBars(Collections.emptyList());
+        assertTrue(results.isEmpty());
+    }
+
+    @Test
+    public void testIngestStreamingBarsFiltersNullBars() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+        var period = Duration.ofSeconds(60);
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        var barsWithNulls = new ArrayList<Bar>();
+        barsWithNulls.add(null);
+        barsWithNulls.add(streamingBar(period, start, 100, 110, 90, 105, 5));
+        barsWithNulls.add(null);
+        barsWithNulls.add(streamingBar(period, start.plus(period), 105, 115, 95, 110, 6));
+
+        var results = series.ingestStreamingBars(barsWithNulls);
+
+        assertEquals(2, series.getBarCount());
+        assertEquals(2, results.size());
+    }
+
+    // ==================== getSubSeries() Edge Cases ====================
+
+    @Test
+    public void testGetSubSeriesWithEmptySeries() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        BarSeries subSeries = series.getSubSeries(0, 1);
+        assertTrue(subSeries instanceof ConcurrentBarSeries);
+        assertEquals(0, subSeries.getBarCount());
+        assertEquals(-1, subSeries.getBeginIndex());
+        assertEquals(-1, subSeries.getEndIndex());
+    }
+
+    @Test
+    public void testGetSubSeriesWithStartIndexEqualsEndIndex() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+
+        assertThrows(IllegalArgumentException.class, () -> series.getSubSeries(2, 2));
+    }
+
+    @Test
+    public void testGetSubSeriesWithStartIndexGreaterThanEndIndex() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+
+        assertThrows(IllegalArgumentException.class, () -> series.getSubSeries(3, 2));
+    }
+
+    @Test
+    public void testGetSubSeriesWithNegativeStartIndex() {
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+
+        assertThrows(IllegalArgumentException.class, () -> series.getSubSeries(-1, 3));
+    }
+
+    // ==================== tradeBarBuilder() Lazy Initialization Tests
+    // ====================
+
+    @Test
+    public void testTradeBarBuilderLazyInitialization() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        // First call should initialize
+        BarBuilder builder1 = series.tradeBarBuilder();
+        assertNotNull(builder1);
+
+        // Second call should return same instance
+        BarBuilder builder2 = series.tradeBarBuilder();
+        assertSame(builder1, builder2);
+    }
+
+    @Test
+    public void testTradeBarBuilderConcurrentInitialization() throws Exception {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        final int threadCount = 10;
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch endLatch = new CountDownLatch(threadCount);
+        final List<BarBuilder> builders = Collections.synchronizedList(new ArrayList<>());
+
+        for (int i = 0; i < threadCount; i++) {
+            executorService.submit(() -> {
+                try {
+                    startLatch.await();
+                    BarBuilder builder = series.tradeBarBuilder();
+                    builders.add(builder);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        assertTrue("All tradeBarBuilder() calls should complete", endLatch.await(10, TimeUnit.SECONDS));
+        assertEquals(threadCount, builders.size());
+
+        // All builders should be the same instance (lazy initialization with
+        // double-check)
+        BarBuilder firstBuilder = builders.get(0);
+        for (BarBuilder builder : builders) {
+            assertSame(firstBuilder, builder);
+        }
+    }
+
+    // ==================== withReadLock() and withWriteLock() Null Handling
+    // ====================
+
+    @Test
+    public void testWithReadLockRejectsNullRunnable() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        assertThrows(NullPointerException.class, () -> series.withReadLock((Runnable) null));
+    }
+
+    @Test
+    public void testWithReadLockRejectsNullSupplier() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        Supplier<Integer> nullSupplier = null;
+        assertThrows(NullPointerException.class, () -> series.withReadLock(nullSupplier));
+    }
+
+    @Test
+    public void testWithWriteLockRejectsNullRunnable() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        assertThrows(NullPointerException.class, () -> series.withWriteLock((Runnable) null));
+    }
+
+    @Test
+    public void testWithWriteLockRejectsNullSupplier() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .build();
+
+        Supplier<Integer> nullSupplier = null;
+        assertThrows(NullPointerException.class, () -> series.withWriteLock(nullSupplier));
+    }
+
+    // ==================== setMaximumBarCount() Concurrent Access
+    // ====================
+
+    @Test
+    public void testSetMaximumBarCountConcurrentAccess() throws Exception {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .withMaxBarCount(1000)
+                .build();
+
+        final int writerCount = 5;
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch endLatch = new CountDownLatch(writerCount);
+        final AtomicInteger successCount = new AtomicInteger(0);
+
+        for (int i = 0; i < writerCount; i++) {
+            final int maxCount = 100 + i;
+            executorService.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int j = 0; j < 10; j++) {
+                        series.setMaximumBarCount(maxCount + j);
+                        int currentMax = series.getMaximumBarCount();
+                        assertTrue("Max bar count should be set", currentMax > 0);
+                    }
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        assertTrue("All setMaximumBarCount() operations should complete", endLatch.await(10, TimeUnit.SECONDS));
+        assertEquals(writerCount, successCount.get());
+    }
+
+    // ==================== barBuilder() Concurrent Access ====================
+
+    @Test
+    public void testBarBuilderConcurrentAccess() throws Exception {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .build();
+
+        final int readerCount = 10;
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch endLatch = new CountDownLatch(readerCount);
+        final AtomicInteger successCount = new AtomicInteger(0);
+
+        for (int i = 0; i < readerCount; i++) {
+            executorService.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int j = 0; j < 50; j++) {
+                        BarBuilder builder = series.barBuilder();
+                        assertNotNull(builder);
+                    }
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        assertTrue("All barBuilder() operations should complete", endLatch.await(10, TimeUnit.SECONDS));
+        assertEquals(readerCount, successCount.get());
+    }
+
+    // ==================== getRemovedBarsCount() Concurrent Access
+    // ====================
+
+    @Test
+    public void testGetRemovedBarsCountConcurrentAccess() throws Exception {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(barBuilderFactory)
+                .withBars(new ArrayList<>(testBars))
+                .withMaxBarCount(3)
+                .build();
+
+        // Add more bars to trigger removal
+        Instant now = Instant.parse("2025-01-01T00:00:00Z");
+        for (int i = 0; i < 5; i++) {
+            series.barBuilder().endTime(now.plus(Duration.ofDays(i))).closePrice(numOf(i)).add();
+        }
+
+        final int readerCount = 10;
+        final CountDownLatch startLatch = new CountDownLatch(1);
+        final CountDownLatch endLatch = new CountDownLatch(readerCount);
+        final AtomicInteger successCount = new AtomicInteger(0);
+
+        for (int i = 0; i < readerCount; i++) {
+            executorService.submit(() -> {
+                try {
+                    startLatch.await();
+                    for (int j = 0; j < 50; j++) {
+                        int removedCount = series.getRemovedBarsCount();
+                        assertTrue("Removed count should be non-negative", removedCount >= 0);
+                    }
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                } finally {
+                    endLatch.countDown();
+                }
+            });
+        }
+
+        startLatch.countDown();
+        assertTrue("All getRemovedBarsCount() operations should complete", endLatch.await(10, TimeUnit.SECONDS));
+        assertEquals(readerCount, successCount.get());
+    }
+
+    // ==================== Trade Ingestion Gap Handling Tests ====================
+
+    @Test
+    public void testIngestTradeOmitsGaps() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory())
+                .build();
+        var period = Duration.ofMinutes(1);
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        series.tradeBarBuilder().timePeriod(period);
+
+        // First trade at 00:00:30
+        series.ingestTrade(start.plusSeconds(30), 1, 100);
+        assertEquals(1, series.getBarCount());
+
+        // Second trade at 00:02:30 (skips 00:01:00 bar)
+        series.ingestTrade(start.plusSeconds(150), 2, 110);
+        assertEquals(2, series.getBarCount());
+
+        // Verify no empty bar was inserted
+        Bar firstBar = series.getBar(0);
+        assertEquals(start, firstBar.getBeginTime());
+        assertEquals(start.plus(period), firstBar.getEndTime());
+
+        Bar secondBar = series.getBar(1);
+        assertEquals(start.plus(period.multipliedBy(2)), secondBar.getBeginTime());
+        assertEquals(start.plus(period.multipliedBy(3)), secondBar.getEndTime());
+    }
+
+    @Test
+    public void testIngestTradeHandlesLargeGaps() {
+        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory())
+                .build();
+        var period = Duration.ofMinutes(1);
+        var start = Instant.parse("2024-01-01T00:00:00Z");
+
+        series.tradeBarBuilder().timePeriod(period);
+
+        // First trade at 00:00:30
+        series.ingestTrade(start.plusSeconds(30), 1, 100);
+        assertEquals(1, series.getBarCount());
+
+        // Second trade at 00:10:30 (skips 9 bars)
+        series.ingestTrade(start.plusSeconds(630), 2, 110);
+        assertEquals(2, series.getBarCount());
+
+        // Verify only 2 bars exist, no empty bars inserted
+        assertEquals(2, series.getBarCount());
+        Bar secondBar = series.getBar(1);
+        assertEquals(start.plus(period.multipliedBy(10)), secondBar.getBeginTime());
     }
 
     // ==================== Legacy Tests (from original implementation)

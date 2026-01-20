@@ -98,7 +98,13 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
     /**
      * @param constrained to set
      * @return {@code this}
+     *
+     * @deprecated Constrained mode is being derived from max-bar-count
+     *             configuration instead of being set directly. Prefer configuring
+     *             retention via {@link #withMaxBarCount(int)} (or omit it for the
+     *             default constrained behavior).
      */
+    @Deprecated(since = "0.22.2")
     public BaseBarSeriesBuilder setConstrained(boolean constrained) {
         this.constrained = constrained;
         return this;

@@ -110,11 +110,11 @@ public class ConcurrentBarSeries extends BaseBarSeries {
             final ReadWriteLock readWriteLock) {
         super(name, bars, seriesBeginIndex, seriesEndIndex, constrained, numFactory, barBuilderFactory);
         initLocks(readWriteLock);
-        this.tradeBarBuilder = Objects.requireNonNull(super.barBuilder(), "barBuilder");
+        this.tradeBarBuilder = Objects.requireNonNull(super.barBuilder(), "barBuilder cannot be null");
     }
 
     private void initLocks(final ReadWriteLock readWriteLock) {
-        ReadWriteLock rwLock = Objects.requireNonNull(readWriteLock, "readWriteLock");
+        ReadWriteLock rwLock = Objects.requireNonNull(readWriteLock, "readWriteLock cannot be null");
         this.readLock = rwLock.readLock();
         this.writeLock = rwLock.writeLock();
     }
@@ -312,7 +312,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         this.writeLock.lock();
         try {
             if (tradeBarBuilder == null) {
-                tradeBarBuilder = Objects.requireNonNull(super.barBuilder(), "barBuilder");
+                tradeBarBuilder = Objects.requireNonNull(super.barBuilder(), "barBuilder cannot be null");
             }
             return tradeBarBuilder;
         } finally {
@@ -328,7 +328,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @since 0.22.2
      */
     public void withReadLock(final Runnable action) {
-        Objects.requireNonNull(action, "action");
+        Objects.requireNonNull(action, "action cannot be null");
         this.readLock.lock();
         try {
             action.run();
@@ -347,7 +347,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @since 0.22.2
      */
     public <T> T withReadLock(final Supplier<T> action) {
-        Objects.requireNonNull(action, "action");
+        Objects.requireNonNull(action, "action cannot be null");
         this.readLock.lock();
         try {
             return action.get();
@@ -364,7 +364,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @since 0.22.2
      */
     public void withWriteLock(final Runnable action) {
-        Objects.requireNonNull(action, "action");
+        Objects.requireNonNull(action, "action cannot be null");
         this.writeLock.lock();
         try {
             action.run();
@@ -383,7 +383,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @since 0.22.2
      */
     public <T> T withWriteLock(final Supplier<T> action) {
-        Objects.requireNonNull(action, "action");
+        Objects.requireNonNull(action, "action cannot be null");
         this.writeLock.lock();
         try {
             return action.get();
@@ -471,9 +471,9 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      */
     public void ingestTrade(final Instant tradeTime, final Number tradeVolume, final Number tradePrice,
             final RealtimeBar.Side side, final RealtimeBar.Liquidity liquidity) {
-        Objects.requireNonNull(tradeTime, "tradeTime");
-        Objects.requireNonNull(tradeVolume, "tradeVolume");
-        Objects.requireNonNull(tradePrice, "tradePrice");
+        Objects.requireNonNull(tradeTime, "tradeTime cannot be null");
+        Objects.requireNonNull(tradeVolume, "tradeVolume cannot be null");
+        Objects.requireNonNull(tradePrice, "tradePrice cannot be null");
         final NumFactory factory = super.numFactory();
         ingestTrade(tradeTime, factory.numOf(tradeVolume), factory.numOf(tradePrice), side, liquidity);
     }
@@ -491,9 +491,9 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      */
     public void ingestTrade(final Instant tradeTime, final Num tradeVolume, final Num tradePrice,
             final RealtimeBar.Side side, final RealtimeBar.Liquidity liquidity) {
-        Objects.requireNonNull(tradeTime, "tradeTime");
-        Objects.requireNonNull(tradeVolume, "tradeVolume");
-        Objects.requireNonNull(tradePrice, "tradePrice");
+        Objects.requireNonNull(tradeTime, "tradeTime cannot be null");
+        Objects.requireNonNull(tradeVolume, "tradeVolume cannot be null");
+        Objects.requireNonNull(tradePrice, "tradePrice cannot be null");
         if (!super.numFactory().produces(tradeVolume) || !super.numFactory().produces(tradePrice)) {
             throw new IllegalArgumentException(
                     String.format("Cannot ingest trade with data types: %s/%s into series with datatype: %s",
@@ -524,7 +524,7 @@ public class ConcurrentBarSeries extends BaseBarSeries {
      * @since 0.22.2
      */
     public StreamingBarIngestResult ingestStreamingBar(final Bar bar) {
-        Objects.requireNonNull(bar, "bar");
+        Objects.requireNonNull(bar, "bar cannot be null");
         this.writeLock.lock();
         try {
             return addStreamingBarUnsafe(bar);
