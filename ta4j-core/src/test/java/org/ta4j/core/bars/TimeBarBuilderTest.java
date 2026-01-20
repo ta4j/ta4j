@@ -24,13 +24,21 @@
 package org.ta4j.core.bars;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.io.StringWriter;
 import java.time.Duration;
 import java.time.Instant;
 
+import org.apache.logging.log4j.Level;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Appender;
+import org.apache.logging.log4j.core.LoggerContext;
+import org.apache.logging.log4j.core.appender.WriterAppender;
+import org.apache.logging.log4j.core.config.Configuration;
+import org.apache.logging.log4j.core.config.LoggerConfig;
+import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
@@ -217,7 +225,7 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
-    public void addTradeFillsEmptyTimePeriods() {
+    public void addTradeSkipsEmptyTimePeriods() {
         final var period = Duration.ofHours(1);
         final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory(period))
@@ -229,26 +237,15 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         builder.addTrade(firstTrade, numOf(1), numOf(100), null, null);
         builder.addTrade(laterTrade, numOf(1), numOf(110), null, null);
 
-        assertEquals(3, series.getBarCount());
+        assertEquals(2, series.getBarCount());
         assertEquals(Instant.parse("2024-01-01T10:00:00Z"), series.getBar(0).getBeginTime());
         assertEquals(Instant.parse("2024-01-01T11:00:00Z"), series.getBar(0).getEndTime());
-        assertEquals(Instant.parse("2024-01-01T11:00:00Z"), series.getBar(1).getBeginTime());
-        assertEquals(Instant.parse("2024-01-01T12:00:00Z"), series.getBar(1).getEndTime());
-        assertEquals(Instant.parse("2024-01-01T12:00:00Z"), series.getBar(2).getBeginTime());
-        assertEquals(Instant.parse("2024-01-01T13:00:00Z"), series.getBar(2).getEndTime());
-
-        final Bar gapBar = series.getBar(1);
-        assertNull(gapBar.getOpenPrice());
-        assertNull(gapBar.getHighPrice());
-        assertNull(gapBar.getLowPrice());
-        assertNull(gapBar.getClosePrice());
-        assertNull(gapBar.getVolume());
-        assertNull(gapBar.getAmount());
-        assertEquals(0, gapBar.getTrades());
+        assertEquals(Instant.parse("2024-01-01T12:00:00Z"), series.getBar(1).getBeginTime());
+        assertEquals(Instant.parse("2024-01-01T13:00:00Z"), series.getBar(1).getEndTime());
     }
 
     @Test
-    public void addTradeHandlesLargeGap() {
+    public void addTradeSkipsLargeGap() {
         final var period = Duration.ofMinutes(1);
         final var gapPeriods = 1000L;
         final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
@@ -261,10 +258,53 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         builder.addTrade(start, numOf(1), numOf(100));
         builder.addTrade(later, numOf(1), numOf(110));
 
-        assertEquals(gapPeriods + 1, series.getBarCount());
-        assertNull(series.getBar(1).getClosePrice());
-        assertEquals(later, series.getBar((int) gapPeriods).getBeginTime());
-        assertEquals(later.plus(period), series.getBar((int) gapPeriods).getEndTime());
+        assertEquals(2, series.getBarCount());
+        assertEquals(later, series.getBar(1).getBeginTime());
+        assertEquals(later.plus(period), series.getBar(1).getEndTime());
+    }
+
+    @Test
+    public void addTradeLogsDiscontinuityWarning() {
+        final var period = Duration.ofMinutes(1);
+        final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(period))
+                .withName("TestSeries")
+                .build();
+        final var builder = series.barBuilder();
+        final var start = Instant.parse("2024-01-01T00:00:00Z");
+        final var later = start.plus(period.multipliedBy(3));
+
+        LoggerContext loggerContext = (LoggerContext) LogManager.getContext(false);
+        Configuration config = loggerContext.getConfiguration();
+        LoggerConfig loggerConfig = config.getLoggerConfig(TimeBarBuilder.class.getName());
+        Level originalLevel = loggerConfig.getLevel();
+
+        StringWriter logOutput = new StringWriter();
+        PatternLayout layout = PatternLayout.newBuilder().withPattern("%msg%n").build();
+        Appender appender = WriterAppender.newBuilder()
+                .setTarget(logOutput)
+                .setLayout(layout)
+                .setName("TimeBarBuilderAppender")
+                .build();
+        appender.start();
+
+        loggerConfig.addAppender(appender, Level.WARN, null);
+        loggerConfig.setLevel(Level.WARN);
+        loggerContext.updateLoggers();
+
+        try {
+            builder.addTrade(start, numOf(1), numOf(100));
+            builder.addTrade(later, numOf(1), numOf(110));
+        } finally {
+            loggerConfig.removeAppender(appender.getName());
+            appender.stop();
+            loggerConfig.setLevel(originalLevel);
+            loggerContext.updateLoggers();
+        }
+
+        String logContent = logOutput.toString();
+        assertTrue(logContent.contains("Detected 2 missing bar period(s)"));
+        assertTrue(logContent.contains("for series TestSeries"));
     }
 
     @Test

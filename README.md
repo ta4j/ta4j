@@ -641,13 +641,13 @@ ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
 
 Instant t0 = Instant.parse("2024-01-01T10:05:00Z");
 series.ingestTrade(t0, 1, 100);
-series.ingestTrade(t0.plusSeconds(70), 2, 105);
+series.ingestTrade(t0.plusSeconds(150), 2, 105); // skips the 10:06 bar
 
-Bar gapBar = series.getBar(1);
-LOG.info("Gap bar close: {}", gapBar.getClosePrice()); // null
+LOG.info("Bars: {}", series.getBarCount()); // 2
+LOG.info("Second bar begin: {}", series.getBar(1).getBeginTime()); // 2024-01-01T10:07:00Z
 ```
 
-Time gaps insert empty bars. Empty bars keep null OHLC/volume/amount values and zero trades, so handle them explicitly if your pipeline expects continuous prices.
+Time gaps are omitted; no empty bars are inserted. If your pipeline expects continuous prices, reconcile and backfill OHLCV data upstream before ingestion.
 
 ## Real-world examples
 

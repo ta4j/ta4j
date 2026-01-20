@@ -1,7 +1,7 @@
 ## Unreleased
 
 ### Changed
-- **Documentation**: Clarified `TimeBarBuilder` gap handling (empty bars with null OHLC/volume/amount, zero trades) and bar series serialization expectations for factories and locks.
+- **TimeBarBuilder**: Trade ingestion no longer inserts empty bars for missing periods; gaps remain omitted. Documentation now reflects the gap omission policy and bar series serialization expectations.
 
 ### Fixed
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.

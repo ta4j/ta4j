@@ -27,6 +27,8 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.Objects;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarBuilder;
 import org.ta4j.core.BarSeries;
@@ -41,10 +43,14 @@ import org.ta4j.core.num.NumFactory;
  * A time bar is sampled after a fixed time period.
  *
  * <p>
- * When ingesting trades, missing intervals are filled with empty bars. Empty
- * bars keep null OHLC/volume/amount values and zero trades.
+ * When ingesting trades, missing intervals are omitted. Bars are created only
+ * when a trade arrives within a time period. If you need continuity, reconcile
+ * and backfill OHLCV data upstream (often by fetching a window with overlap and
+ * upserting by bar end time).
  */
 public class TimeBarBuilder implements BarBuilder {
+
+    private static final Logger LOG = LoggerFactory.getLogger(TimeBarBuilder.class);
 
     private final NumFactory numFactory;
     private final boolean realtimeBars;
@@ -249,8 +255,7 @@ public class TimeBarBuilder implements BarBuilder {
      * Ingests a trade into the current time bar and adds/replaces the bar in the
      * bound series. Bars are aligned to UTC epoch boundaries based on the current
      * {@link #timePeriod}. When the trade time skips one or more full periods,
-     * empty bars are inserted for each missing interval. Empty bars keep null
-     * OHLC/volume/amount values and zero trades.
+     * those intervals are omitted; no bars are inserted for the gap.
      *
      * @param time        the trade timestamp (UTC)
      * @param tradeVolume the traded volume
@@ -267,8 +272,7 @@ public class TimeBarBuilder implements BarBuilder {
      * Ingests a trade into the current time bar and adds/replaces the bar in the
      * bound series. Bars are aligned to UTC epoch boundaries based on the current
      * {@link #timePeriod}. When the trade time skips one or more full periods,
-     * empty bars are inserted for each missing interval. Empty bars keep null
-     * OHLC/volume/amount values and zero trades.
+     * those intervals are omitted; no bars are inserted for the gap.
      *
      * @param time        the trade timestamp (UTC)
      * @param tradeVolume the traded volume
@@ -294,13 +298,18 @@ public class TimeBarBuilder implements BarBuilder {
             throw new IllegalArgumentException(
                     String.format("Trade time %s is before current bar begin time %s", time, beginTime));
         }
+        Instant previousEndTime = endTime;
+        long skippedPeriods = 0;
         while (!time.isBefore(endTime)) {
-            if (openPrice == null) {
-                baseBarSeries.addBar(build(), false);
-            }
             resetTradeState();
             beginTime = endTime;
             endTime = beginTime.plus(timePeriod);
+            skippedPeriods++;
+        }
+        if (skippedPeriods > 1) {
+            long missingPeriods = skippedPeriods - 1;
+            LOG.warn("Detected {} missing bar period(s) between {} and {} for series {}", missingPeriods,
+                    previousEndTime, beginTime, baseBarSeries.getName());
         }
         boolean replace = openPrice != null;
         recordTrade(tradeVolume, tradePrice, side, liquidity);
