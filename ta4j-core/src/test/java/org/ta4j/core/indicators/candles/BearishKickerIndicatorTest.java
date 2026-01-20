@@ -48,15 +48,6 @@ public class BearishKickerIndicatorTest extends AbstractIndicatorTest<Indicator<
         super(numFactory);
     }
 
-    @Before
-    public void setUp() {
-        series = new MockBarSeriesBuilder().withNumFactory(numFactory).withBars(generateUptrend()).build();
-        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
-        series.barBuilder().openPrice(18).closePrice(26).highPrice(28).lowPrice(17).add();
-        series.barBuilder().openPrice(24).closePrice(16).highPrice(25).lowPrice(15).add();
-        series.barBuilder().openPrice(19).closePrice(16).highPrice(19).lowPrice(15).add();
-    }
-
     private List<Bar> generateUptrend() {
         List<Bar> bars = new ArrayList<Bar>(30);
         for (int i = 0; i < 17; ++i) {
@@ -67,12 +58,114 @@ public class BearishKickerIndicatorTest extends AbstractIndicatorTest<Indicator<
         return bars;
     }
 
+    @Before
+    public void setUp() {
+        series = new MockBarSeriesBuilder().withNumFactory(numFactory).withBars(generateUptrend()).build();
+    }
+
     @Test
     public void getValue() {
+        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
+        series.barBuilder().openPrice(24).closePrice(16).highPrice(25).lowPrice(15).add();
+        series.barBuilder().openPrice(19).closePrice(16).highPrice(19).lowPrice(15).add();
+
         var bearishKicker = new BearishKickerIndicator(series);
         assertFalse(bearishKicker.getValue(17));
-        assertFalse(bearishKicker.getValue(18));
-        assertTrue(bearishKicker.getValue(19));
-        assertFalse(bearishKicker.getValue(20));
+        assertTrue(bearishKicker.getValue(18));
+        assertFalse(bearishKicker.getValue(19));
     }
+
+    @Test
+    public void getValueWhenIndexBelowUnstableBars() {
+        var bearishKicker = new BearishKickerIndicator(series);
+        assertFalse(bearishKicker.getValue(0));
+    }
+
+    @Test
+    public void getValueWhenFirstBarBodyTooSmall() {
+        series.barBuilder().openPrice(17.5).closePrice(18).highPrice(18).lowPrice(17).add();
+        series.barBuilder().openPrice(19).closePrice(15).highPrice(19).lowPrice(15).add();
+
+        var bearishKicker = new BearishKickerIndicator(series);
+        assertFalse(bearishKicker.getValue(18));
+    }
+
+    @Test
+    public void getValueWhenFirstBarIsBearish() {
+        series.barBuilder().openPrice(25).closePrice(17).highPrice(25).lowPrice(17).add();
+        series.barBuilder().openPrice(16).closePrice(10).highPrice(16).lowPrice(10).add();
+
+        var bearishKicker = new BearishKickerIndicator(series);
+        assertFalse(bearishKicker.getValue(18));
+    }
+
+    @Test
+    public void getValueWhenSecondBarBodyTooSmall() {
+        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
+        series.barBuilder().openPrice(24).closePrice(23.5).highPrice(24).lowPrice(23).add();
+
+        var bearishKicker = new BearishKickerIndicator(series);
+        assertFalse(bearishKicker.getValue(18));
+    }
+
+    @Test
+    public void getValueWhenSecondBarIsBullish() {
+        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
+        series.barBuilder().openPrice(16).closePrice(20).highPrice(20).lowPrice(16).add();
+
+        var bearishKicker = new BearishKickerIndicator(series);
+        assertFalse(bearishKicker.getValue(18));
+    }
+
+    @Test
+    public void getValueWhenSecondBarDoesNotGapDown() {
+        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
+        series.barBuilder().openPrice(26).closePrice(20).highPrice(26).lowPrice(20).add();
+
+        var bearishKicker = new BearishKickerIndicator(series);
+        assertFalse(bearishKicker.getValue(18));
+    }
+
+    @Test
+    public void getValueWhenSecondBarDoesNotCloseBelowFirstOpen() {
+        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
+        series.barBuilder().openPrice(24).closePrice(18).highPrice(24).lowPrice(18).add();
+
+        var bearishKicker = new BearishKickerIndicator(series);
+        assertFalse(bearishKicker.getValue(18));
+    }
+
+    @Test
+    public void getValueWhenPatternAppearsInDowntrend() {
+        BarSeries downtrendSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+
+        for (int i = 46; i > 29; --i) {
+            downtrendSeries.barBuilder().openPrice(i).closePrice(i - 6).highPrice(i).lowPrice(i - 8).add();
+        }
+
+        downtrendSeries.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
+        downtrendSeries.barBuilder().openPrice(24).closePrice(16).highPrice(24).lowPrice(16).add();
+
+        var bearishKicker = new BearishKickerIndicator(downtrendSeries);
+        assertFalse(bearishKicker.getValue(18));
+    }
+
+    @Test
+    public void getValueWhenSecondBarClosesExactlyAtFirstOpen() {
+        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
+        series.barBuilder().openPrice(24).closePrice(17).highPrice(24).lowPrice(17).add();
+
+        var bearishKicker = new BearishKickerIndicator(series);
+        assertFalse(bearishKicker.getValue(18));
+    }
+
+    @Test
+    public void getValueWhenSecondBarClosesBarelyBelowFirstOpen() {
+        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
+        series.barBuilder().openPrice(24).closePrice(16.99).highPrice(24).lowPrice(15).add();
+
+        var bearishKicker = new BearishKickerIndicator(series);
+        assertTrue(bearishKicker.getValue(18));
+    }
+
 }

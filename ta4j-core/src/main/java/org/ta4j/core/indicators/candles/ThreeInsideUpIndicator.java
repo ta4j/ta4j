@@ -33,10 +33,12 @@ import org.ta4j.core.indicators.trend.DownTrendIndicator;
  *
  * @see <a href="https://www.investopedia.com/terms/t/three-inside-updown.asp">
  *      https://www.investopedia.com/terms/t/three-inside-updown.asp</a>
+ * @since 0.22.2
  */
 public class ThreeInsideUpIndicator extends CachedIndicator<Boolean> {
 
     private final DownTrendIndicator trendIndicator;
+    private final BullishHaramiIndicator harami;
 
     /**
      * Constructor.
@@ -46,15 +48,14 @@ public class ThreeInsideUpIndicator extends CachedIndicator<Boolean> {
     public ThreeInsideUpIndicator(final BarSeries series) {
         super(series);
         this.trendIndicator = new DownTrendIndicator(series);
+        this.harami = new BullishHaramiIndicator(series);
     }
 
     @Override
     protected Boolean calculate(int index) {
-        if (index < 2) {
-            // Three inside up is a 3-candle pattern
+        if (index < getCountOfUnstableBars()) {
             return false;
         }
-        BullishHaramiIndicator harami = new BullishHaramiIndicator(getBarSeries());
         Bar firstBar = getBarSeries().getBar(index - 2);
         Bar thirdBar = getBarSeries().getBar(index);
 
@@ -64,6 +65,6 @@ public class ThreeInsideUpIndicator extends CachedIndicator<Boolean> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return 2;
     }
 }

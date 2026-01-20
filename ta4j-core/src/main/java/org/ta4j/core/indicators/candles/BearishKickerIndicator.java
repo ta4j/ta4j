@@ -34,12 +34,13 @@ import org.ta4j.core.num.Num;
  *
  * @see <a href="https://www.investopedia.com/terms/k/kickerpattern.asp">
  *      https://www.investopedia.com/terms/k/kickerpattern.asp</a>
+ * @since 0.22.2
  */
 public class BearishKickerIndicator extends CachedIndicator<Boolean> {
 
     private final UpTrendIndicator trendIndicator;
     private final RealBodyIndicator realBodyIndicator;
-    private Num bigBodyThresholdPercentage;
+    private final Num bigBodyThresholdPercentage;
 
     /**
      * Constructor.
@@ -47,16 +48,26 @@ public class BearishKickerIndicator extends CachedIndicator<Boolean> {
      * @param series the bar series
      */
     public BearishKickerIndicator(final BarSeries series) {
+        this(series, series.numFactory().numOf(0.03));
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param series                     the bar series
+     * @param bigBodyThresholdPercentage percentage to determine whether a candle
+     *                                   has a big body or not
+     */
+    public BearishKickerIndicator(final BarSeries series, final Num bigBodyThresholdPercentage) {
         super(series);
         this.trendIndicator = new UpTrendIndicator(series);
         this.realBodyIndicator = new RealBodyIndicator(series);
-        this.bigBodyThresholdPercentage = series.numFactory().numOf(0.03);
+        this.bigBodyThresholdPercentage = bigBodyThresholdPercentage;
     }
 
     @Override
     protected Boolean calculate(int index) {
-        if (index < 1) {
-            // Kicker is a 2-candle pattern
+        if (index < getCountOfUnstableBars()) {
             return false;
         }
         Bar firstBar = getBarSeries().getBar(index - 1);
@@ -72,6 +83,6 @@ public class BearishKickerIndicator extends CachedIndicator<Boolean> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return 1;
     }
 }

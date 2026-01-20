@@ -34,13 +34,14 @@ import org.ta4j.core.num.Num;
  *
  * @see <a href="https://www.investopedia.com/terms/e/eveningstar.asp">
  *      https://www.investopedia.com/terms/e/eveningstar.asp</a>
+ * @since 0.22.2
  */
 public class EveningStarIndicator extends CachedIndicator<Boolean> {
 
     private final UpTrendIndicator trendIndicator;
     private final RealBodyIndicator realBodyIndicator;
-    private Num smallBodyThresholdPercentage;
-    private Num bigBodyThresholdPercentage;
+    private final Num smallBodyThresholdPercentage;
+    private final Num bigBodyThresholdPercentage;
 
     /**
      * Constructor.
@@ -48,17 +49,30 @@ public class EveningStarIndicator extends CachedIndicator<Boolean> {
      * @param series the bar series
      */
     public EveningStarIndicator(final BarSeries series) {
+        this(series, series.numFactory().numOf(0.015), series.numFactory().numOf(0.03));
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param series                       the bar series
+     * @param smallBodyThresholdPercentage percentage to determine whether a candle
+     *                                     has a small body or not
+     * @param bigBodyThresholdPercentage   percentage to determine whether a candle
+     *                                     has a big body or not
+     */
+    public EveningStarIndicator(final BarSeries series, final Num smallBodyThresholdPercentage,
+            final Num bigBodyThresholdPercentage) {
         super(series);
         this.trendIndicator = new UpTrendIndicator(series);
         this.realBodyIndicator = new RealBodyIndicator(series);
-        this.smallBodyThresholdPercentage = series.numFactory().numOf(0.015);
-        this.bigBodyThresholdPercentage = series.numFactory().numOf(0.03);
+        this.smallBodyThresholdPercentage = smallBodyThresholdPercentage;
+        this.bigBodyThresholdPercentage = bigBodyThresholdPercentage;
     }
 
     @Override
     protected Boolean calculate(int index) {
-        if (index < 2) {
-            // Evening star is a 3-candle pattern
+        if (index < getCountOfUnstableBars()) {
             return false;
         }
         Bar firstBar = getBarSeries().getBar(index - 2);
@@ -67,17 +81,21 @@ public class EveningStarIndicator extends CachedIndicator<Boolean> {
         Num firstBarPercentage = this.realBodyIndicator.getValue(index - 2).abs().dividedBy(firstBar.getOpenPrice());
         Num secondBarPercentage = this.realBodyIndicator.getValue(index - 1).abs().dividedBy(secondBar.getOpenPrice());
         Num thirdBarPercentage = this.realBodyIndicator.getValue(index).abs().dividedBy(thirdBar.getOpenPrice());
+        Num firstBarMiddlePoint = firstBar.getClosePrice()
+                .minus(firstBar.getOpenPrice())
+                .dividedBy(getBarSeries().numFactory().numOf(2))
+                .plus(firstBar.getOpenPrice());
 
         return firstBar.isBullish() && firstBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
                 && secondBar.getOpenPrice().isGreaterThan(firstBar.getClosePrice())
                 && secondBarPercentage.isLessThanOrEqual(smallBodyThresholdPercentage)
-                && thirdBar.getClosePrice().isGreaterThan(firstBar.getOpenPrice()) && thirdBar.isBearish()
+                && thirdBar.getClosePrice().isLessThan(firstBarMiddlePoint) && thirdBar.isBearish()
                 && thirdBarPercentage.isGreaterThanOrEqual(bigBodyThresholdPercentage)
                 && this.trendIndicator.getValue(index);
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return 2;
     }
 }
