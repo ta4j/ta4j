@@ -68,11 +68,7 @@ public class BaseBarSeriesBuilder implements BarSeriesBuilder {
 
             if (!isNumFactoryAssigned) {
                 // use numFactory derived from bars instead of default numFactory
-                var closePrice = bars.get(0).getClosePrice();
-                if (closePrice != null) {
-                    var derivedNumFactory = closePrice.getNumFactory();
-                    numFactory = derivedNumFactory;
-                }
+                numFactory = bars.getFirst().numFactory();
             }
 
             // check if each bar has the same numFactory as the series numFactory

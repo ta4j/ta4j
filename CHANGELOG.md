@@ -10,6 +10,7 @@
 - **Release process docs**: Overhauled with clearer steps, rationale, and example scenarios.
 - **Release scheduler notifications**: Include run mode and timestamp in the discussion header.
 - **Release notifications**: Include run mode and timestamp in the release discussion header.
+- **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 
 ### Fixed
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
