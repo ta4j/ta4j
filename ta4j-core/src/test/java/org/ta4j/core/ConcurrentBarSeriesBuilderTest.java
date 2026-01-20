@@ -521,7 +521,7 @@ public class ConcurrentBarSeriesBuilderTest extends AbstractIndicatorTest<BarSer
                 .closePrice(numOf(index + 1.5))
                 .volume(numOf(index * 100))
                 .amount(numOf(index * 1000))
-                .trades(index * 10)
+                .trades(index * 10L)
                 .build();
     }
 }
