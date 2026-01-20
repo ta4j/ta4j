@@ -35,7 +35,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBar;
 import org.ta4j.core.BaseRealtimeBar;
 import org.ta4j.core.RealtimeBar;
-import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -80,9 +80,9 @@ public class TimeBarBuilder implements BarBuilder {
     private long takerTrades;
     private boolean hasLiquidityData;
 
-    /** A builder to build a new {@link BaseBar} with {@link DoubleNumFactory} */
+    /** A builder to build a new {@link BaseBar} with {@link DecimalNumFactory} */
     public TimeBarBuilder() {
-        this(DoubleNumFactory.getInstance(), false);
+        this(DecimalNumFactory.getInstance(), false);
     }
 
     /**
