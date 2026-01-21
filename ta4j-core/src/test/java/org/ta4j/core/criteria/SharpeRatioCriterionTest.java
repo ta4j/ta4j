@@ -35,7 +35,6 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import static org.ta4j.core.criteria.SharpeRatioCriterion.Annualization;
-import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class SharpeRatioCriterionTest extends AbstractCriterionTest {
@@ -525,16 +524,15 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     private SharpeRatioCriterion criterion(ZoneId zoneId) {
-        return (SharpeRatioCriterion) getCriterion(numOf(0), SamplingFrequency.DAY, Annualization.PERIOD, zoneId);
+        return (SharpeRatioCriterion) getCriterion(0d, SamplingFrequency.DAY, Annualization.PERIOD, zoneId);
     }
 
     private SharpeRatioCriterion criterion(SamplingFrequency samplingFrequency, Annualization annualization) {
-        return (SharpeRatioCriterion) getCriterion(numOf(0), samplingFrequency, annualization, ZoneOffset.UTC);
+        return (SharpeRatioCriterion) getCriterion(0d, samplingFrequency, annualization, ZoneOffset.UTC);
     }
 
     private SharpeRatioCriterion criterion() {
-        return (SharpeRatioCriterion) getCriterion(numOf(0.05), SamplingFrequency.BAR, Annualization.PERIOD,
-                ZoneOffset.UTC);
+        return (SharpeRatioCriterion) getCriterion(0.05d, SamplingFrequency.BAR, Annualization.PERIOD, ZoneOffset.UTC);
     }
 
 }
