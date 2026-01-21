@@ -119,8 +119,8 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
         assertTrue(actual < 0.0d);
     }
 
-    private static BarSeries buildDailySeries(double[] closes) {
-        var series = new BaseBarSeriesBuilder().withName("excess_returns_series").build();
+    private BarSeries buildDailySeries(double[] closes) {
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("excess_returns_series").build();
         var start = Instant.parse("2024-01-01T00:00:00Z");
 
         IntStream.range(0, closes.length).forEach(i -> {
