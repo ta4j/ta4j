@@ -450,4 +450,22 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
             assertEquals(subSeriesLastBar.getVolume(), seriesLastBar.getVolume());
         });
     }
+
+    @Test
+    public void subSeriesOfMaxBarCountSeriesNoBarsTest() {
+        var empty = "empty";
+        var maximumBarCount = 42;
+        var series = new BaseBarSeriesBuilder().withName(empty)
+                .withNumFactory(numFactory)
+                .withMaxBarCount(maximumBarCount)
+                .build();
+        var subSeries = series.getSubSeries(0, 1);
+
+        assertEquals(empty, subSeries.getName());
+        assertSame(numFactory, subSeries.numFactory());
+        assertEquals(0, subSeries.getBarCount());
+        assertEquals(maximumBarCount, subSeries.getMaximumBarCount());
+        assertEquals(maximumBarCount, series.getMaximumBarCount());
+    }
+
 }

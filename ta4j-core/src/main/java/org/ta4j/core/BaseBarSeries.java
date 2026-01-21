@@ -23,6 +23,7 @@
  */
 package org.ta4j.core;
 
+import java.io.Serial;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -38,6 +39,7 @@ import org.ta4j.core.num.NumFactory;
  */
 public class BaseBarSeries implements BarSeries {
 
+    @Serial
     private static final long serialVersionUID = -1878027009398790126L;
 
     /** The logger. */
@@ -92,8 +94,6 @@ public class BaseBarSeries implements BarSeries {
         this.barBuilderFactory = Objects.requireNonNull(barBuilderFactory);
         if (bars.isEmpty()) {
             // Bar list empty
-            this.seriesBeginIndex = -1;
-            this.seriesEndIndex = -1;
             this.constrained = false;
             return;
         }
@@ -124,7 +124,7 @@ public class BaseBarSeries implements BarSeries {
 
     /**
      * @param series a bar series
-     * @param index  an out of bounds bar index
+     * @param index  an out-of-bounds bar index
      * @return a message for an OutOfBoundsException
      */
     private static String buildOutOfBoundsMessage(final BaseBarSeries series, final int index) {
@@ -141,16 +141,16 @@ public class BaseBarSeries implements BarSeries {
             throw new IllegalArgumentException(
                     String.format("the endIndex: %s must be greater than startIndex: %s", endIndex, startIndex));
         }
+        var builder = new BaseBarSeriesBuilder().withName(getName())
+                .withNumFactory(this.numFactory)
+                .withMaxBarCount(this.maximumBarCount);
         if (!this.bars.isEmpty()) {
-            final int start = startIndex - getRemovedBarsCount();
-            final int end = Math.min(endIndex - getRemovedBarsCount(), this.getEndIndex() + 1);
-            return new BaseBarSeriesBuilder().withName(getName())
-                    .withBars(cut(this.bars, start, end))
-                    .withNumFactory(this.numFactory)
-                    .withMaxBarCount(this.maximumBarCount)
-                    .build();
+            var removedBarsCount = getRemovedBarsCount();
+            var start = startIndex - removedBarsCount;
+            var end = Math.min(endIndex - removedBarsCount, this.getEndIndex() + 1);
+            return builder.withBars(cut(this.bars, start, end)).build();
         }
-        return new BaseBarSeriesBuilder().withNumFactory(this.numFactory).withName(getName()).build();
+        return builder.build();
     }
 
     @Override
@@ -296,7 +296,7 @@ public class BaseBarSeries implements BarSeries {
             // Removing old bars
             final int nbBarsToRemove = barCount - this.maximumBarCount;
             if (nbBarsToRemove == 1) {
-                this.bars.remove(0);
+                this.bars.removeFirst();
             } else {
                 this.bars.subList(0, nbBarsToRemove).clear();
             }
