@@ -23,18 +23,22 @@
  */
 package org.ta4j.core.criteria;
 
-import java.time.*;
-import java.time.temporal.ChronoUnit;
-import java.time.temporal.WeekFields;
-import java.util.Objects;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
+import java.time.ZoneOffset;
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.Objects;
+import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
+import org.ta4j.core.analysis.sampling.IndexPairGrouping.Sampling;
+import org.ta4j.core.analysis.sampling.IndexPairGrouping;
+import org.ta4j.core.analysis.ExcessReturns;
+import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.num.Num;
 
 /**
  * Computes the Sharpe Ratio.
@@ -46,14 +50,12 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * <b>What this criterion measures.</b> This implementation builds a time series
- * of <em>excess returns</em> from the {@link CashFlow} equity curve: for each
- * sampled pair {@code (previousIndex, currentIndex)} it computes:
- * <ul>
- * <li>{@code return = equity(currentIndex) / equity(previousIndex) - 1}</li>
- * <li>{@code excessReturn = return - riskFreeReturn(previousIndex, currentIndex)}</li>
- * </ul>
- * It then returns {@code mean(excessReturn) / stdev(excessReturn)} using the
- * sample standard deviation.
+ * of <em>excess returns</em> from the {@link CashFlow} equity curve. For each
+ * sampled pair {@code (previousIndex, currentIndex)}, it compounds per-bar
+ * excess growth factors between the two indices (so mixed in/out-of-market bars
+ * are handled correctly) and converts the compounded growth into an excess
+ * return. It then returns {@code mean(excessReturn) / stdev(excessReturn)} using
+ * the sample standard deviation.
  *
  * <p>
  * <b>Sampling (aggregation) of returns.</b> The {@link Sampling} parameter
@@ -72,9 +74,15 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * <b>Risk-free rate.</b> {@link #annualRiskFreeRate} is interpreted as an
- * annualized rate (e.g., 0.05 = 5% per year) and converted into a per-period
- * compounded return using the elapsed time between the two bar end times. If
+ * annualized rate (e.g., 0.05 = 5% per year) and converted into a per-bar
+ * compounded growth factor using the elapsed time between bar end times. If
  * {@code annualRiskFreeRate} is {@code null}, it is treated as zero.
+ *
+ * <p>
+ * <b>Cash return policy.</b> {@link CashReturnPolicy#CASH_EARNS_RISK_FREE} makes
+ * flat equity intervals benchmark-neutral (approx. zero excess), while
+ * {@link CashReturnPolicy#CASH_EARNS_ZERO} treats flat equity as underperforming
+ * cash and contributes negative excess returns.
  *
  * <p>
  * <b>Annualization.</b> When {@link Annualization#PERIOD}, the returned Sharpe
@@ -89,38 +97,52 @@ import org.ta4j.core.num.NumFactory;
 public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     private static final double SECONDS_PER_YEAR = 365.2425d * 24 * 3600;
-    private static final WeekFields ISO_WEEK_FIELDS = WeekFields.ISO;
-
-    public enum Sampling {
-        PER_BAR, PER_SECOND, MINUTELY, HOURLY, DAILY, WEEKLY, MONTHLY
-    }
-
     public enum Annualization {
         PERIOD, ANNUALIZED
     }
 
-    private final Num annualRiskFreeRate;
-    private final Sampling sampling;
+    private final IndexPairGrouping indexPairGrouping;
     private final Annualization annualization;
+    private final CashReturnPolicy cashReturnPolicy;
+    private final double annualRiskFreeRate;
     private final ZoneId groupingZoneId;
+    private final Sampling sampling;
 
     public SharpeRatioCriterion() {
         // null as annualRiskFreeRate as we don't have a numFactory to get a zero Num.
         // The code below checks if
         // annualRiskFreeRate is null and use 0.
-        this(null, Sampling.PER_BAR, Annualization.ANNUALIZED, ZoneOffset.UTC);
+        this(null, Sampling.PER_BAR, Annualization.ANNUALIZED, ZoneOffset.UTC, CashReturnPolicy.CASH_EARNS_RISK_FREE);
     }
 
     public SharpeRatioCriterion(Num annualRiskFreeRate) {
-        this(annualRiskFreeRate, Sampling.PER_BAR, Annualization.ANNUALIZED, ZoneOffset.UTC);
+        this(annualRiskFreeRate, Sampling.PER_BAR, Annualization.ANNUALIZED, ZoneOffset.UTC,
+                CashReturnPolicy.CASH_EARNS_RISK_FREE);
     }
 
     public SharpeRatioCriterion(Num annualRiskFreeRate, Sampling sampling, Annualization annualization,
             ZoneId groupingZoneId) {
-        this.annualRiskFreeRate = Objects.requireNonNull(annualRiskFreeRate, "annualRiskFreeRate must not be null");
+        this(annualRiskFreeRate, sampling, annualization, groupingZoneId, CashReturnPolicy.CASH_EARNS_RISK_FREE);
+    }
+
+    /**
+     * Creates a Sharpe ratio criterion with explicit cash return handling.
+     *
+     * @param annualRiskFreeRate the annual risk-free rate (e.g. 0.05 for 5%)
+     * @param sampling the sampling granularity
+     * @param annualization the annualization mode
+     * @param groupingZoneId the time zone used to interpret bar end times
+     * @param cashReturnPolicy the policy for flat equity intervals
+     * @since 0.22.2
+     */
+    public SharpeRatioCriterion(Num annualRiskFreeRate, Sampling sampling, Annualization annualization,
+            ZoneId groupingZoneId, CashReturnPolicy cashReturnPolicy) {
+        this.annualRiskFreeRate = annualRiskFreeRate == null ? 0.0d : annualRiskFreeRate.doubleValue();
         this.sampling = Objects.requireNonNull(sampling, "sampling must not be null");
         this.annualization = Objects.requireNonNull(annualization, "annualization must not be null");
         this.groupingZoneId = Objects.requireNonNull(groupingZoneId, "groupingZoneId must not be null");
+        this.cashReturnPolicy = Objects.requireNonNull(cashReturnPolicy, "cashReturnPolicy must not be null");
+        this.indexPairGrouping = new IndexPairGrouping(this.sampling, this.groupingZoneId);
     }
 
     @Override
@@ -172,10 +194,11 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
             return zero;
         }
 
-        Stream<IndexPair> pairs = indexPairs(series, anchorIndex, start, end);
+        var excessReturns = new ExcessReturns(series, annualRiskFreeRate, cashReturnPolicy);
+        Stream<IndexPairGrouping.IndexPair> pairs = indexPairGrouping.sample(series, anchorIndex, start, end);
 
         var acc = pairs.reduce(Acc.empty(zero),
-                (a, p) -> a.add(excessReturn(series, cashFlow, p.previousIndex(), p.currentIndex()),
+                (a, p) -> a.add(excessReturns.excessReturn(cashFlow, p.previousIndex(), p.currentIndex()),
                         deltaYears(series, p.previousIndex(), p.currentIndex()), numFactory),
                 (a, b) -> a.merge(b, numFactory));
 
@@ -202,66 +225,6 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         return sharpePerPeriod.multipliedBy(annualizationFactor);
     }
 
-    private Stream<IndexPair> indexPairs(BarSeries series, int anchorIndex, int start, int end) {
-        if (sampling == Sampling.PER_BAR) {
-            return IntStream.rangeClosed(start, end).mapToObj(i -> new IndexPair(i - 1, i));
-        }
-
-        var periodEndIndices = periodEndIndices(series, start, end).toArray();
-        if (periodEndIndices.length == 0) {
-            return Stream.empty();
-        }
-
-        var firstPair = Stream.of(new IndexPair(anchorIndex, periodEndIndices[0]));
-        var consecutivePairs = IntStream.range(1, periodEndIndices.length)
-                .mapToObj(k -> new IndexPair(periodEndIndices[k - 1], periodEndIndices[k]));
-
-        return Stream.concat(firstPair, consecutivePairs);
-    }
-
-    private IntStream periodEndIndices(BarSeries series, int start, int end) {
-        return IntStream.rangeClosed(start, end).filter(i -> isPeriodEnd(series, i, end));
-    }
-
-    private boolean isPeriodEnd(BarSeries series, int index, int endIndex) {
-        if (index == endIndex) {
-            return true;
-        }
-
-        var now = endTimeZoned(series, index);
-        var next = endTimeZoned(series, index + 1);
-
-        return switch (sampling) {
-        case PER_SECOND -> !sameChronoUnit(now, next, ChronoUnit.SECONDS);
-        case MINUTELY -> !sameChronoUnit(now, next, ChronoUnit.MINUTES);
-        case HOURLY -> !sameChronoUnit(now, next, ChronoUnit.HOURS);
-        case DAILY -> !now.toLocalDate().equals(next.toLocalDate());
-        case WEEKLY -> !sameIsoWeek(now, next);
-        case MONTHLY -> !YearMonth.from(now).equals(YearMonth.from(next));
-        case PER_BAR -> true;
-        };
-    }
-
-    private boolean sameChronoUnit(ZonedDateTime a, ZonedDateTime b, ChronoUnit chronoUnit) {
-        return a.truncatedTo(chronoUnit).equals(b.truncatedTo(chronoUnit));
-    }
-
-    private boolean sameIsoWeek(ZonedDateTime a, ZonedDateTime b) {
-        var weekA = a.get(ISO_WEEK_FIELDS.weekOfWeekBasedYear());
-        var weekB = b.get(ISO_WEEK_FIELDS.weekOfWeekBasedYear());
-        var yearA = a.get(ISO_WEEK_FIELDS.weekBasedYear());
-        var yearB = b.get(ISO_WEEK_FIELDS.weekBasedYear());
-        return weekA == weekB && yearA == yearB;
-    }
-
-    private ZonedDateTime endTimeZoned(BarSeries series, int index) {
-        return endTimeInstant(series, index).atZone(groupingZoneId);
-    }
-
-    private Instant endTimeInstant(BarSeries series, int index) {
-        return series.getBar(index).getEndTime();
-    }
-
     private Num deltaYears(BarSeries series, int previousIndex, int currentIndex) {
         var endPrev = endTimeInstant(series, previousIndex);
         var endNow = endTimeInstant(series, currentIndex);
@@ -271,35 +234,13 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
                 : numFactory.numOf(seconds).dividedBy(numFactory.numOf(SECONDS_PER_YEAR));
     }
 
-    private Num excessReturn(BarSeries series, CashFlow cashFlow, int previousIndex, int currentIndex) {
-        var numFactory = series.numFactory();
-        var one = numFactory.one();
-        var eReturn = cashFlow.getValue(currentIndex).dividedBy(cashFlow.getValue(previousIndex)).minus(one);
-        return eReturn.minus(periodRiskFree(series, previousIndex, currentIndex));
-    }
-
-    private Num periodRiskFree(BarSeries series, int previousIndex, int currentIndex) {
-        var numFactory = series.numFactory();
-        var zero = numFactory.zero();
-        var one = numFactory.one();
-        var annual = getAnnualRiskFreeRate(zero);
-        var deltaYears = deltaYears(series, previousIndex, currentIndex);
-        if (deltaYears.isLessThanOrEqual(zero)) {
-            return zero;
-        }
-        return one.plus(annual).pow(deltaYears).minus(one);
-    }
-
-    private Num getAnnualRiskFreeRate(Num zero) {
-        return (annualRiskFreeRate == null) ? zero : annualRiskFreeRate;
+    private Instant endTimeInstant(BarSeries series, int index) {
+        return series.getBar(index).getEndTime();
     }
 
     @Override
     public boolean betterThan(Num a, Num b) {
         return a.isGreaterThan(b);
-    }
-
-    private record IndexPair(int previousIndex, int currentIndex) {
     }
 
     private record Acc(Stats stats, Num deltaYearsSum, Num deltaCount) {
