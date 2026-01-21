@@ -26,6 +26,7 @@ package org.ta4j.core.analysis;
 import java.util.stream.IntStream;
 import java.time.Duration;
 import java.time.Instant;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
@@ -33,14 +34,21 @@ import org.ta4j.core.BarSeries;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
-public class ExcessReturnsTest {
+public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
+
+    public ExcessReturnsTest(NumFactory numFactory) {
+        super(numFactory);
+    }
 
     private static final double SECONDS_PER_YEAR = 365.2425d * 24 * 3600;
 
     @Test
     public void cashReturnPolicyControlsFlatIntervalExcessGrowth() {
-        var series = new BaseBarSeriesBuilder().withName("excess_returns_series").build();
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("excess_returns_series").build();
         var start = Instant.parse("2024-01-01T00:00:00Z");
         var closes = new double[] { 100d, 110d, 110d, 121d };
 
@@ -58,7 +66,6 @@ public class ExcessReturnsTest {
                     .build());
         });
 
-        var numFactory = series.numFactory();
         var tradingRecord = new BaseTradingRecord();
         tradingRecord.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
         tradingRecord.exit(1, series.getBar(1).getClosePrice(), numFactory.one());
@@ -66,9 +73,9 @@ public class ExcessReturnsTest {
         tradingRecord.exit(3, series.getBar(3).getClosePrice(), numFactory.one());
 
         var cashFlow = new CashFlow(series, tradingRecord);
-        var annualRate = 0.05d;
-        var perBarRiskFree = Math.pow(1.0 + annualRate, Duration.ofDays(1).getSeconds()
-                / SECONDS_PER_YEAR);
+        var annualRate = numFactory.numOf(0.05d);
+        var perBarRiskFree = Math.pow(1.0 + annualRate.doubleValue(),
+                Duration.ofDays(1).getSeconds() / SECONDS_PER_YEAR);
 
         var earnsRiskFree = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_RISK_FREE)
                 .excessReturn(cashFlow, 0, 3)
@@ -99,9 +106,9 @@ public class ExcessReturnsTest {
     public void cashEarnsZeroPenalizesFlatCashAgainstPositiveRiskFree() {
         var series = buildDailySeries(new double[] { 100d, 100d });
         var cashFlow = new CashFlow(series, new BaseTradingRecord());
-        var annualRate = 0.1d;
-        var perBarRiskFree = Math.pow(1.0 + annualRate, Duration.ofDays(1).getSeconds()
-                / SECONDS_PER_YEAR);
+        var annualRate = numFactory.numOf(0.1d);
+        var perBarRiskFree = Math.pow(1.0 + annualRate.doubleValue(),
+                Duration.ofDays(1).getSeconds() / SECONDS_PER_YEAR);
 
         var actual = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO)
                 .excessReturn(cashFlow, 0, 1)
@@ -132,4 +139,5 @@ public class ExcessReturnsTest {
 
         return series;
     }
+
 }

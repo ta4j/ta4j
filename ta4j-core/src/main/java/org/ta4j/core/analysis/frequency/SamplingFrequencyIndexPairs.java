@@ -21,10 +21,11 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis.sampling;
+package org.ta4j.core.analysis.frequency;
 
 import java.time.temporal.WeekFields;
 import java.time.temporal.ChronoUnit;
+import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
 import java.time.ZonedDateTime;
@@ -34,57 +35,50 @@ import java.time.ZoneId;
 import org.ta4j.core.BarSeries;
 
 /**
- * Groups bar indices into sampling periods so return calculations can be aggregated.
+ * Groups bar indices into sampling periods so return calculations can be
+ * aggregated.
  *
  * <p>
- * The grouping logic detects period boundaries from bar end times in the provided
- * {@link ZoneId}. Weekly grouping follows ISO week rules. Each sampling interval
- * is represented by a pair of indices
+ * The grouping logic detects period boundaries from bar end times in the
+ * provided {@link ZoneId}. Weekly grouping follows ISO week rules. Each
+ * sampling interval is represented by a pair of indices
  * {@code (previousIndex, currentIndex)} that spans the period. The first pair
  * always uses the supplied anchor index as its starting point.
  *
  * @since 0.22.2
  */
-public final class IndexPairGrouping {
+public final class SamplingFrequencyIndexPairs {
 
     private static final WeekFields ISO_WEEK_FIELDS = WeekFields.ISO;
 
-    /**
-     * Supported sampling granularities.
-     *
-     * @since 0.22.2
-     */
-    public enum Sampling {
-        PER_BAR, PER_SECOND, MINUTELY, HOURLY, DAILY, WEEKLY, MONTHLY
-    }
-
-    private final Sampling sampling;
+    private final SamplingFrequency samplingFrequency;
     private final ZoneId groupingZoneId;
 
     /**
      * Creates a grouping helper for the chosen aggregation mode and time zone.
      *
-     * @param sampling the sampling granularity
-     * @param groupingZoneId the time zone used to interpret bar end times
+     * @param samplingFrequency the sampling granularity
+     * @param groupingZoneId    the time zone used to interpret bar end times
      * @since 0.22.2
      */
-    public IndexPairGrouping(Sampling sampling, ZoneId groupingZoneId) {
-        this.sampling = sampling;
-        this.groupingZoneId = groupingZoneId;
+    public SamplingFrequencyIndexPairs(SamplingFrequency samplingFrequency, ZoneId groupingZoneId) {
+        this.samplingFrequency = Objects.requireNonNull(samplingFrequency, "sampling must not be null");
+        this.groupingZoneId = Objects.requireNonNull(groupingZoneId, "groupingZoneId must not be null");
+        ;
     }
 
     /**
      * Returns index pairs spanning each sampling period from the provided range.
      *
-     * @param series the bar series
+     * @param series      the bar series
      * @param anchorIndex the starting anchor index for the first sampled pair
-     * @param start the first index eligible for sampling
-     * @param end the last index eligible for sampling
+     * @param start       the first index eligible for sampling
+     * @param end         the last index eligible for sampling
      * @return a stream of index pairs describing each sampling interval
      * @since 0.22.2
      */
     public Stream<IndexPair> sample(BarSeries series, int anchorIndex, int start, int end) {
-        if (sampling == Sampling.PER_BAR) {
+        if (samplingFrequency == SamplingFrequency.BAR) {
             return IntStream.rangeClosed(start, end).mapToObj(i -> new IndexPair(i - 1, i));
         }
 
@@ -112,14 +106,14 @@ public final class IndexPairGrouping {
         var now = endTimeZoned(series, index);
         var next = endTimeZoned(series, index + 1);
 
-        return switch (sampling) {
-        case PER_SECOND -> !sameChronoUnit(now, next, ChronoUnit.SECONDS);
-        case MINUTELY -> !sameChronoUnit(now, next, ChronoUnit.MINUTES);
-        case HOURLY -> !sameChronoUnit(now, next, ChronoUnit.HOURS);
-        case DAILY -> !now.toLocalDate().equals(next.toLocalDate());
-        case WEEKLY -> !sameIsoWeek(now, next);
-        case MONTHLY -> !YearMonth.from(now).equals(YearMonth.from(next));
-        case PER_BAR -> true;
+        return switch (samplingFrequency) {
+        case SECOND -> !sameChronoUnit(now, next, ChronoUnit.SECONDS);
+        case MINUTE -> !sameChronoUnit(now, next, ChronoUnit.MINUTES);
+        case HOUR -> !sameChronoUnit(now, next, ChronoUnit.HOURS);
+        case DAY -> !now.toLocalDate().equals(next.toLocalDate());
+        case WEEK -> !sameIsoWeek(now, next);
+        case MONTH -> !YearMonth.from(now).equals(YearMonth.from(next));
+        case BAR -> true;
         };
     }
 
@@ -147,7 +141,7 @@ public final class IndexPairGrouping {
      * Pair of indices describing a sampled interval.
      *
      * @param previousIndex the interval start index
-     * @param currentIndex the interval end index
+     * @param currentIndex  the interval end index
      * @since 0.22.2
      */
     public record IndexPair(int previousIndex, int currentIndex) {

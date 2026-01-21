@@ -32,8 +32,9 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * For each sampled pair, the excess return is formed by compounding the per-bar
- * excess growth factors between the indices. This ensures mixed in/out-of-market
- * segments within the sampling window contribute proportionally.
+ * excess growth factors between the indices. This ensures mixed
+ * in/out-of-market segments within the sampling window contribute
+ * proportionally.
  *
  * <p>
  * The {@link CashReturnPolicy} defines how flat equity intervals are treated
@@ -47,17 +48,17 @@ public final class ExcessReturns {
     private static final double SECONDS_PER_YEAR = 365.2425d * 24 * 3600;
 
     /**
-     * Describes how flat equity intervals are treated when computing excess returns.
+     * Describes how flat equity intervals are treated when computing excess
+     * returns.
      *
      * @since 0.22.2
      */
     public enum CashReturnPolicy {
-        CASH_EARNS_RISK_FREE,
-        CASH_EARNS_ZERO
+        CASH_EARNS_RISK_FREE, CASH_EARNS_ZERO
     }
 
     private final CashReturnPolicy cashReturnPolicy;
-    private final double annualRiskFreeRate;
+    private final Num annualRiskFreeRate;
     private final BarSeries series;
 
     /**
@@ -68,18 +69,19 @@ public final class ExcessReturns {
      * @since 0.22.2
      */
     public ExcessReturns(BarSeries series) {
-        this(series, 0.0d, CashReturnPolicy.CASH_EARNS_RISK_FREE);
+        this(series, series.numFactory().zero(), CashReturnPolicy.CASH_EARNS_RISK_FREE);
     }
 
     /**
      * Creates an excess return calculator.
      *
-     * @param series the bar series providing time deltas and num factory
+     * @param series             the bar series providing time deltas and num
+     *                           factory
      * @param annualRiskFreeRate the annual risk-free rate (e.g. 0.05 for 5%)
-     * @param cashReturnPolicy the policy for flat equity intervals
+     * @param cashReturnPolicy   the policy for flat equity intervals
      * @since 0.22.2
      */
-    public ExcessReturns(BarSeries series, double annualRiskFreeRate, CashReturnPolicy cashReturnPolicy) {
+    public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy) {
         this.series = series;
         this.annualRiskFreeRate = annualRiskFreeRate;
         this.cashReturnPolicy = cashReturnPolicy;
@@ -88,9 +90,9 @@ public final class ExcessReturns {
     /**
      * Computes the compounded excess return between two sampled indices.
      *
-     * @param cashFlow the equity curve cash flow
+     * @param cashFlow      the equity curve cash flow
      * @param previousIndex the start index
-     * @param currentIndex the end index
+     * @param currentIndex  the end index
      * @return the compounded excess return
      * @since 0.22.2
      */
@@ -127,12 +129,11 @@ public final class ExcessReturns {
     private Num riskFreeGrowth(int previousIndex, int currentIndex, Num one) {
         var numFactory = series.numFactory();
         var zero = numFactory.zero();
-        var annual = numFactory.numOf(annualRiskFreeRate);
         var deltaYears = deltaYears(previousIndex, currentIndex);
         if (deltaYears.isLessThanOrEqual(zero)) {
             return one;
         }
-        return one.plus(annual).pow(deltaYears);
+        return one.plus(annualRiskFreeRate).pow(deltaYears);
     }
 
     private Num deltaYears(int previousIndex, int currentIndex) {

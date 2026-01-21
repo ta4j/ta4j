@@ -32,18 +32,20 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexPairs;
+import org.ta4j.core.analysis.frequency.SamplingFrequency;
 
-public class IndexPairGroupingTest {
+public class SamplingFrequencyIndexPairsTest {
 
     @Test
     public void samplePerBarUsesConsecutivePairs() {
         var series = buildDailySeries();
-        var sampler = new IndexPairGrouping(IndexPairGrouping.Sampling.PER_BAR, ZoneOffset.UTC);
+        var sampler = new SamplingFrequencyIndexPairs(SamplingFrequency.BAR, ZoneOffset.UTC);
 
         var pairs = sampler.sample(series, 0, 1, 3).toList();
 
-        var expected = List.of(new IndexPairGrouping.IndexPair(0, 1), new IndexPairGrouping.IndexPair(1, 2),
-                new IndexPairGrouping.IndexPair(2, 3));
+        var expected = List.of(new SamplingFrequencyIndexPairs.IndexPair(0, 1),
+                new SamplingFrequencyIndexPairs.IndexPair(1, 2), new SamplingFrequencyIndexPairs.IndexPair(2, 3));
 
         assertEquals(expected, pairs);
     }
@@ -51,12 +53,14 @@ public class IndexPairGroupingTest {
     @Test
     public void sampleDailyUsesPeriodEnds() {
         var series = buildDailySeries();
-        var sampler = new IndexPairGrouping(IndexPairGrouping.Sampling.DAILY, ZoneOffset.UTC);
+        var sampler = new SamplingFrequencyIndexPairs(SamplingFrequency.DAY, ZoneOffset.UTC);
 
         var pairs = sampler.sample(series, 0, 1, 3).toList();
 
-        var expected = Stream.of(new IndexPairGrouping.IndexPair(0, 1), new IndexPairGrouping.IndexPair(1, 2),
-                new IndexPairGrouping.IndexPair(2, 3)).toList();
+        var expected = Stream
+                .of(new SamplingFrequencyIndexPairs.IndexPair(0, 1), new SamplingFrequencyIndexPairs.IndexPair(1, 2),
+                        new SamplingFrequencyIndexPairs.IndexPair(2, 3))
+                .toList();
 
         assertEquals(expected, pairs);
     }
@@ -64,11 +68,12 @@ public class IndexPairGroupingTest {
     @Test
     public void sampleDailyAnchorsAtExplicitIndex() {
         var series = buildIntradaySeries();
-        var sampler = new IndexPairGrouping(IndexPairGrouping.Sampling.DAILY, ZoneOffset.UTC);
+        var sampler = new SamplingFrequencyIndexPairs(SamplingFrequency.DAY, ZoneOffset.UTC);
 
         var pairs = sampler.sample(series, 0, 1, 3).toList();
 
-        var expected = List.of(new IndexPairGrouping.IndexPair(0, 1), new IndexPairGrouping.IndexPair(1, 3));
+        var expected = List.of(new SamplingFrequencyIndexPairs.IndexPair(0, 1),
+                new SamplingFrequencyIndexPairs.IndexPair(1, 3));
 
         assertEquals(expected, pairs);
     }
@@ -76,11 +81,12 @@ public class IndexPairGroupingTest {
     @Test
     public void sampleMonthlyUsesMonthBoundary() {
         var series = buildMonthlyBoundarySeries();
-        var sampler = new IndexPairGrouping(IndexPairGrouping.Sampling.MONTHLY, ZoneOffset.UTC);
+        var sampler = new SamplingFrequencyIndexPairs(SamplingFrequency.MONTH, ZoneOffset.UTC);
 
         var pairs = sampler.sample(series, 0, 1, 2).toList();
 
-        var expected = List.of(new IndexPairGrouping.IndexPair(0, 1), new IndexPairGrouping.IndexPair(1, 2));
+        var expected = List.of(new SamplingFrequencyIndexPairs.IndexPair(0, 1),
+                new SamplingFrequencyIndexPairs.IndexPair(1, 2));
 
         assertEquals(expected, pairs);
     }
@@ -132,11 +138,8 @@ public class IndexPairGroupingTest {
 
     private static BarSeries buildMonthlyBoundarySeries() {
         var series = new BaseBarSeriesBuilder().withName("monthly_sampler_series").build();
-        var endTimes = new Instant[] {
-                Instant.parse("2024-01-30T00:00:00Z"),
-                Instant.parse("2024-01-31T00:00:00Z"),
-                Instant.parse("2024-02-01T00:00:00Z")
-        };
+        var endTimes = new Instant[] { Instant.parse("2024-01-30T00:00:00Z"), Instant.parse("2024-01-31T00:00:00Z"),
+                Instant.parse("2024-02-01T00:00:00Z") };
         var closes = new double[] { 100d, 103d, 104d };
 
         for (var i = 0; i < closes.length; i++) {

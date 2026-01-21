@@ -30,8 +30,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.Objects;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
-import org.ta4j.core.analysis.sampling.IndexPairGrouping.Sampling;
-import org.ta4j.core.analysis.sampling.IndexPairGrouping;
+import org.ta4j.core.analysis.frequency.SamplingFrequency;
+import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexPairs;
 import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.TradingRecord;
@@ -54,16 +54,16 @@ import org.ta4j.core.num.Num;
  * sampled pair {@code (previousIndex, currentIndex)}, it compounds per-bar
  * excess growth factors between the two indices (so mixed in/out-of-market bars
  * are handled correctly) and converts the compounded growth into an excess
- * return. It then returns {@code mean(excessReturn) / stdev(excessReturn)} using
- * the sample standard deviation.
+ * return. It then returns {@code mean(excessReturn) / stdev(excessReturn)}
+ * using the sample standard deviation.
  *
  * <p>
- * <b>Sampling (aggregation) of returns.</b> The {@link Sampling} parameter
- * controls how the return series is formed:
+ * <b>Sampling (aggregation) of returns.</b> The {@link SamplingFrequency}
+ * parameter controls how the return series is formed:
  * <ul>
- * <li>{@link Sampling#PER_BAR}: one return per bar, using consecutive bar
+ * <li>{@link SamplingFrequency#BAR}: one return per bar, using consecutive bar
  * indices.</li>
- * <li>{@link Sampling#PER_SECOND}/{@link Sampling#MINUTELY}/{@link Sampling#HOURLY}/{@link Sampling#DAILY}/{@link Sampling#WEEKLY}/{@link Sampling#MONTHLY}:
+ * <li>{@link SamplingFrequency#SECOND}/{@link SamplingFrequency#MINUTE}/{@link SamplingFrequency#HOUR}/{@link SamplingFrequency#DAY}/{@link SamplingFrequency#WEEK}/{@link SamplingFrequency#MONTH}:
  * returns are computed between period endpoints detected from bar
  * {@code endTime} after converting it to {@link #groupingZoneId}. Period
  * boundaries follow ISO week semantics for {@code WEEKLY}.</li>
@@ -79,10 +79,10 @@ import org.ta4j.core.num.Num;
  * {@code annualRiskFreeRate} is {@code null}, it is treated as zero.
  *
  * <p>
- * <b>Cash return policy.</b> {@link CashReturnPolicy#CASH_EARNS_RISK_FREE} makes
- * flat equity intervals benchmark-neutral (approx. zero excess), while
- * {@link CashReturnPolicy#CASH_EARNS_ZERO} treats flat equity as underperforming
- * cash and contributes negative excess returns.
+ * <b>Cash return policy.</b> {@link CashReturnPolicy#CASH_EARNS_RISK_FREE}
+ * makes flat equity intervals benchmark-neutral (approx. zero excess), while
+ * {@link CashReturnPolicy#CASH_EARNS_ZERO} treats flat equity as
+ * underperforming cash and contributes negative excess returns.
  *
  * <p>
  * <b>Annualization.</b> When {@link Annualization#PERIOD}, the returned Sharpe
@@ -97,52 +97,49 @@ import org.ta4j.core.num.Num;
 public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     private static final double SECONDS_PER_YEAR = 365.2425d * 24 * 3600;
+
     public enum Annualization {
         PERIOD, ANNUALIZED
     }
 
-    private final IndexPairGrouping indexPairGrouping;
+    private final SamplingFrequencyIndexPairs samplingFrequencyIndexPairs;
     private final Annualization annualization;
     private final CashReturnPolicy cashReturnPolicy;
     private final double annualRiskFreeRate;
     private final ZoneId groupingZoneId;
-    private final Sampling sampling;
 
     public SharpeRatioCriterion() {
-        // null as annualRiskFreeRate as we don't have a numFactory to get a zero Num.
-        // The code below checks if
-        // annualRiskFreeRate is null and use 0.
-        this(null, Sampling.PER_BAR, Annualization.ANNUALIZED, ZoneOffset.UTC, CashReturnPolicy.CASH_EARNS_RISK_FREE);
+        this(0, SamplingFrequency.BAR, Annualization.ANNUALIZED, ZoneOffset.UTC, CashReturnPolicy.CASH_EARNS_RISK_FREE);
     }
 
-    public SharpeRatioCriterion(Num annualRiskFreeRate) {
-        this(annualRiskFreeRate, Sampling.PER_BAR, Annualization.ANNUALIZED, ZoneOffset.UTC,
+    public SharpeRatioCriterion(double annualRiskFreeRate) {
+        this(annualRiskFreeRate, SamplingFrequency.BAR, Annualization.ANNUALIZED, ZoneOffset.UTC,
                 CashReturnPolicy.CASH_EARNS_RISK_FREE);
     }
 
-    public SharpeRatioCriterion(Num annualRiskFreeRate, Sampling sampling, Annualization annualization,
-            ZoneId groupingZoneId) {
-        this(annualRiskFreeRate, sampling, annualization, groupingZoneId, CashReturnPolicy.CASH_EARNS_RISK_FREE);
+    public SharpeRatioCriterion(double annualRiskFreeRate, SamplingFrequency samplingFrequency,
+            Annualization annualization, ZoneId groupingZoneId) {
+        this(annualRiskFreeRate, samplingFrequency, annualization, groupingZoneId,
+                CashReturnPolicy.CASH_EARNS_RISK_FREE);
     }
 
     /**
      * Creates a Sharpe ratio criterion with explicit cash return handling.
      *
      * @param annualRiskFreeRate the annual risk-free rate (e.g. 0.05 for 5%)
-     * @param sampling the sampling granularity
-     * @param annualization the annualization mode
-     * @param groupingZoneId the time zone used to interpret bar end times
-     * @param cashReturnPolicy the policy for flat equity intervals
+     * @param samplingFrequency  the sampling granularity
+     * @param annualization      the annualization mode
+     * @param groupingZoneId     the time zone used to interpret bar end times
+     * @param cashReturnPolicy   the policy for flat equity intervals
      * @since 0.22.2
      */
-    public SharpeRatioCriterion(Num annualRiskFreeRate, Sampling sampling, Annualization annualization,
-            ZoneId groupingZoneId, CashReturnPolicy cashReturnPolicy) {
-        this.annualRiskFreeRate = annualRiskFreeRate == null ? 0.0d : annualRiskFreeRate.doubleValue();
-        this.sampling = Objects.requireNonNull(sampling, "sampling must not be null");
+    public SharpeRatioCriterion(double annualRiskFreeRate, SamplingFrequency samplingFrequency,
+            Annualization annualization, ZoneId groupingZoneId, CashReturnPolicy cashReturnPolicy) {
+        this.annualRiskFreeRate = annualRiskFreeRate;
         this.annualization = Objects.requireNonNull(annualization, "annualization must not be null");
         this.groupingZoneId = Objects.requireNonNull(groupingZoneId, "groupingZoneId must not be null");
         this.cashReturnPolicy = Objects.requireNonNull(cashReturnPolicy, "cashReturnPolicy must not be null");
-        this.indexPairGrouping = new IndexPairGrouping(this.sampling, this.groupingZoneId);
+        this.samplingFrequencyIndexPairs = new SamplingFrequencyIndexPairs(samplingFrequency, this.groupingZoneId);
     }
 
     @Override
@@ -193,9 +190,9 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         if (end - start + 1 < 2) {
             return zero;
         }
-
-        var excessReturns = new ExcessReturns(series, annualRiskFreeRate, cashReturnPolicy);
-        Stream<IndexPairGrouping.IndexPair> pairs = indexPairGrouping.sample(series, anchorIndex, start, end);
+        var excessReturns = new ExcessReturns(series, series.numFactory().numOf(annualRiskFreeRate), cashReturnPolicy);
+        Stream<SamplingFrequencyIndexPairs.IndexPair> pairs = samplingFrequencyIndexPairs.sample(series, anchorIndex,
+                start, end);
 
         var acc = pairs.reduce(Acc.empty(zero),
                 (a, p) -> a.add(excessReturns.excessReturn(cashFlow, p.previousIndex(), p.currentIndex()),
