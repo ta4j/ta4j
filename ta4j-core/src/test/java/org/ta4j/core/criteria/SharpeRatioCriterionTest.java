@@ -330,6 +330,39 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         assertEquals(perBar, perSecond, 1e-12);
     }
 
+    @Test
+    public void returnsZero_whenOnlyOneClosedPositionIsAvailable() {
+        var series = buildDailySeries(new double[] { 100d, 110d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+
+        var amount = series.numFactory().one();
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(series.getBeginIndex(), series.getBar(series.getBeginIndex()).getClosePrice(), amount);
+        tradingRecord.exit(series.getEndIndex(), series.getBar(series.getEndIndex()).getClosePrice(), amount);
+
+        var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
+        var actual = criterion.calculate(series, tradingRecord);
+
+        assertEquals(series.numFactory().zero(), actual);
+    }
+
+    @Test
+    public void returnsSharpe_whenOneClosedPositionAndOneOpenPositionAreAvailable() {
+        var series = buildDailySeries(new double[] { 100d, 110d, 90d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+
+        var amount = series.numFactory().one();
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(series.getBeginIndex(), series.getBar(series.getBeginIndex()).getClosePrice(), amount);
+        tradingRecord.exit(series.getBeginIndex() + 1, series.getBar(series.getBeginIndex() + 1).getClosePrice(),
+                amount);
+        tradingRecord.enter(series.getBeginIndex() + 2, series.getBar(series.getBeginIndex() + 2).getClosePrice(),
+                amount);
+
+        var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
+        var actual = criterion.calculate(series, tradingRecord);
+
+        assertTrue(actual.isGreaterThan(series.numFactory().zero()));
+    }
+
     private BarSeries buildDailySeries(double[] closes, Instant start) {
         var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("daily_series").build();
 
