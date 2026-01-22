@@ -67,26 +67,6 @@ public final class ExcessReturns {
 
     /**
      * Creates an excess return calculator with invested interval detection from a
-     * cash flow.
-     *
-     * @param series             the bar series providing time deltas and num
-     *                           factory
-     * @param annualRiskFreeRate the annual risk-free rate (e.g. 0.05 for 5%)
-     * @param cashReturnPolicy   the policy for flat equity intervals
-     * @param cashFlow           the equity curve cash flow (nullable)
-     * @since 0.22.2
-     */
-    public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy,
-                         CashFlow cashFlow) {
-        this.series = series;
-        this.annualRiskFreeRate = annualRiskFreeRate;
-        this.cashReturnPolicy = cashReturnPolicy;
-        this.cashFlow = cashFlow;
-        this.investedIntervals = null;
-    }
-
-    /**
-     * Creates an excess return calculator with invested interval detection from a
      * trading record.
      *
      * @param series             the bar series providing time deltas and num
@@ -98,7 +78,7 @@ public final class ExcessReturns {
      * @since 0.22.2
      */
     public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy,
-                         TradingRecord tradingRecord) {
+            TradingRecord tradingRecord) {
         this.series = series;
         this.annualRiskFreeRate = annualRiskFreeRate;
         this.cashReturnPolicy = cashReturnPolicy;

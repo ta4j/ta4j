@@ -91,10 +91,10 @@ import org.ta4j.core.num.Num;
  * positive deltas divided by the sum of deltas in years).
  *
  * <p>
- *  <b>Trading record vs. position.</b> Sharpe ratio requires a distribution of
- *  returns across periods/positions, so it is defined for {@link TradingRecord}.
- *  A single {@link Position} does not provide a return distribution; therefore,
- *  {@link #calculate(BarSeries, Position)} intentionally returns zero.
+ * <b>Trading record vs. position.</b> Sharpe ratio requires a distribution of
+ * returns across periods/positions, so it is defined for {@link TradingRecord}.
+ * A single {@link Position} does not provide a return distribution; therefore,
+ * {@link #calculate(BarSeries, Position)} intentionally returns zero.
  *
  * @since 0.22.1
  *
@@ -123,7 +123,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     }
 
     public SharpeRatioCriterion(double annualRiskFreeRate, SamplingFrequency samplingFrequency,
-                                Annualization annualization, ZoneId groupingZoneId) {
+            Annualization annualization, ZoneId groupingZoneId) {
         this(annualRiskFreeRate, samplingFrequency, annualization, groupingZoneId,
                 CashReturnPolicy.CASH_EARNS_RISK_FREE);
     }
@@ -139,7 +139,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
      * @since 0.22.2
      */
     public SharpeRatioCriterion(double annualRiskFreeRate, SamplingFrequency samplingFrequency,
-                                Annualization annualization, ZoneId groupingZoneId, CashReturnPolicy cashReturnPolicy) {
+            Annualization annualization, ZoneId groupingZoneId, CashReturnPolicy cashReturnPolicy) {
         this.annualRiskFreeRate = annualRiskFreeRate;
         this.annualization = Objects.requireNonNull(annualization, "annualization must not be null");
         this.groupingZoneId = Objects.requireNonNull(groupingZoneId, "groupingZoneId must not be null");
@@ -149,7 +149,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        // Sharpe needs a distribution of returns across periods/positions; a single position
+        // Sharpe needs a distribution of returns across periods/positions; a single
+        // position
         // is intentionally treated as neutral.
         return series.numFactory().zero();
     }

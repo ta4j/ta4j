@@ -107,13 +107,13 @@ public final class SamplingFrequencyIndexPairs {
         var next = endTimeZoned(series, index + 1);
 
         return switch (samplingFrequency) {
-            case SECOND -> crossesChronoUnitBoundary(now, next, ChronoUnit.SECONDS);
-            case MINUTE -> crossesChronoUnitBoundary(now, next, ChronoUnit.MINUTES);
-            case HOUR -> crossesChronoUnitBoundary(now, next, ChronoUnit.HOURS);
-            case DAY -> !now.toLocalDate().equals(next.toLocalDate());
-            case WEEK -> !sameIsoWeek(now, next);
-            case MONTH -> !YearMonth.from(now).equals(YearMonth.from(next));
-            case BAR -> true;
+        case SECOND -> crossesChronoUnitBoundary(now, next, ChronoUnit.SECONDS);
+        case MINUTE -> crossesChronoUnitBoundary(now, next, ChronoUnit.MINUTES);
+        case HOUR -> crossesChronoUnitBoundary(now, next, ChronoUnit.HOURS);
+        case DAY -> !now.toLocalDate().equals(next.toLocalDate());
+        case WEEK -> !sameIsoWeek(now, next);
+        case MONTH -> !YearMonth.from(now).equals(YearMonth.from(next));
+        case BAR -> true;
         };
     }
 
