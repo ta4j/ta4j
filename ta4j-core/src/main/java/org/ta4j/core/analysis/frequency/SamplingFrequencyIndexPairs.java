@@ -23,15 +23,15 @@
  */
 package org.ta4j.core.analysis.frequency;
 
-import java.time.temporal.WeekFields;
+import java.time.Instant;
+import java.time.YearMonth;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.WeekFields;
 import java.util.Objects;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
-import java.time.ZonedDateTime;
-import java.time.YearMonth;
-import java.time.Instant;
-import java.time.ZoneId;
 import org.ta4j.core.BarSeries;
 
 /**
@@ -107,18 +107,18 @@ public final class SamplingFrequencyIndexPairs {
         var next = endTimeZoned(series, index + 1);
 
         return switch (samplingFrequency) {
-        case SECOND -> !sameChronoUnit(now, next, ChronoUnit.SECONDS);
-        case MINUTE -> !sameChronoUnit(now, next, ChronoUnit.MINUTES);
-        case HOUR -> !sameChronoUnit(now, next, ChronoUnit.HOURS);
-        case DAY -> !now.toLocalDate().equals(next.toLocalDate());
-        case WEEK -> !sameIsoWeek(now, next);
-        case MONTH -> !YearMonth.from(now).equals(YearMonth.from(next));
-        case BAR -> true;
+            case SECOND -> crossesChronoUnitBoundary(now, next, ChronoUnit.SECONDS);
+            case MINUTE -> crossesChronoUnitBoundary(now, next, ChronoUnit.MINUTES);
+            case HOUR -> crossesChronoUnitBoundary(now, next, ChronoUnit.HOURS);
+            case DAY -> !now.toLocalDate().equals(next.toLocalDate());
+            case WEEK -> !sameIsoWeek(now, next);
+            case MONTH -> !YearMonth.from(now).equals(YearMonth.from(next));
+            case BAR -> true;
         };
     }
 
-    private boolean sameChronoUnit(ZonedDateTime a, ZonedDateTime b, ChronoUnit chronoUnit) {
-        return a.truncatedTo(chronoUnit).equals(b.truncatedTo(chronoUnit));
+    private boolean crossesChronoUnitBoundary(ZonedDateTime a, ZonedDateTime b, ChronoUnit chronoUnit) {
+        return !a.truncatedTo(chronoUnit).equals(b.truncatedTo(chronoUnit));
     }
 
     private boolean sameIsoWeek(ZonedDateTime a, ZonedDateTime b) {
