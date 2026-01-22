@@ -888,7 +888,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 try {
                     startLatch.await();
                     // Use a fixed base time plus writer offset to ensure chronological order
-                    Instant baseTime = Instant.parse("2025-01-01T00:00:00Z").plus(Duration.ofMinutes(writerId * 100));
+                    Instant baseTime = Instant.parse("2025-01-01T00:00:00Z").plus(Duration.ofMinutes(writerId * 100L));
 
                     for (int j = 0; j < barsPerWriter; j++) {
                         Bar newBar = new TimeBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
