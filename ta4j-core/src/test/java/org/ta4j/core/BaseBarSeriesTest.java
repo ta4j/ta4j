@@ -209,11 +209,13 @@ public class BaseBarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         // Test that it returns a copy (immutability)
         List<Bar> originalData = seriesWithBars.getBarData();
+        int originalSize = originalData.size();
         List<Bar> modifiedData = new ArrayList<>(originalData);
         modifiedData.add(testBars.get(0));
 
-        // Original series should not be affected
-        assertEquals(5, seriesWithBars.getBarData().size());
+        // The copy should be modified, while the original series data remains unchanged
+        assertEquals(originalSize + 1, modifiedData.size());
+        assertEquals(originalSize, seriesWithBars.getBarData().size());
     }
 
     // ==================== Bar Access Tests ====================
