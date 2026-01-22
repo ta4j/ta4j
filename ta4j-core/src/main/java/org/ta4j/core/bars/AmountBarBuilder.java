@@ -380,7 +380,16 @@ public class AmountBarBuilder implements BarBuilder {
             CarryOverSnapshot carryOverSnapshot = null;
             if (amount.isGreaterThan(amountThreshold)) {
                 amountRemainder = amount.minus(amountThreshold);
-                volumeRemainder = amountRemainder.dividedBy(closePrice);
+                // Use closePrice for division, but fall back to lastTradePrice if closePrice is
+                // zero
+                // This prevents division by zero when the current trade has a zero price
+                final Num priceForDivision = (closePrice == null || closePrice.isZero()) && lastTradePrice != null
+                        && !lastTradePrice.isZero() ? lastTradePrice : closePrice;
+                if (priceForDivision == null || priceForDivision.isZero()) {
+                    throw new IllegalStateException(
+                            "Cannot calculate volume remainder: both closePrice and lastTradePrice are zero or null, but amount remainder exists");
+                }
+                volumeRemainder = amountRemainder.dividedBy(priceForDivision);
 
                 // cap currently built bar, amount is then restored to amountRemainder
                 amount = amountThreshold;

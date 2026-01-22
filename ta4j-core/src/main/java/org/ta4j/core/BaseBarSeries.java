@@ -30,6 +30,7 @@ import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+import java.io.Serial;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
