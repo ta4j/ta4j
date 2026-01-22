@@ -23,22 +23,21 @@
  */
 package org.ta4j.core.criteria;
 
+import java.time.ZoneOffset;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.time.ZoneOffset;
-import java.util.Objects;
 import java.util.stream.Stream;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.analysis.ExcessReturns;
+import java.util.Objects;
+import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexPairs;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
-import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexPairs;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
+import org.ta4j.core.num.Num;
 
 /**
  * Computes the Sharpe Ratio.
@@ -168,26 +167,25 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
             return zero;
         }
 
-        var cashFlow = new CashFlow(series, tradingRecord);
         var start = series.getBeginIndex() + 1;
         var end = series.getEndIndex();
         var anchorIndex = series.getBeginIndex();
-
-        return calculateSharpe(series, cashFlow, anchorIndex, start, end);
+        return calculateSharpe(series, tradingRecord, anchorIndex, start, end);
     }
 
-    private Num calculateSharpe(BarSeries series, CashFlow cashFlow, int anchorIndex, int start, int end) {
+    private Num calculateSharpe(BarSeries series, TradingRecord tradingRecord, int anchorIndex, int start, int end) {
         var numFactory = series.numFactory();
         var zero = numFactory.zero();
         if (end - start + 1 < 2) {
             return zero;
         }
-        var excessReturns = new ExcessReturns(series, series.numFactory().numOf(annualRiskFreeRate), cashReturnPolicy);
+        var excessReturns = new ExcessReturns(series, series.numFactory().numOf(annualRiskFreeRate), cashReturnPolicy,
+                tradingRecord);
         Stream<SamplingFrequencyIndexPairs.IndexPair> pairs = samplingFrequencyIndexPairs.sample(series, anchorIndex,
                 start, end);
 
         var acc = pairs.reduce(Acc.empty(zero),
-                (a, p) -> a.add(excessReturns.excessReturn(cashFlow, p.previousIndex(), p.currentIndex()),
+                (a, p) -> a.add(excessReturns.excessReturn(p.previousIndex(), p.currentIndex()),
                         deltaYears(series, p.previousIndex(), p.currentIndex()), numFactory),
                 (a, b) -> a.merge(b, numFactory));
 

@@ -24,7 +24,9 @@
 package org.ta4j.core.analysis;
 
 import java.time.Duration;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
 import org.ta4j.core.num.Num;
 
 /**
@@ -57,9 +59,11 @@ public final class ExcessReturns {
         CASH_EARNS_RISK_FREE, CASH_EARNS_ZERO
     }
 
-    private final CashReturnPolicy cashReturnPolicy;
     private final Num annualRiskFreeRate;
+    private final CashReturnPolicy cashReturnPolicy;
     private final BarSeries series;
+    private final boolean[] investedIntervals;
+    private final CashFlow cashFlow;
 
     /**
      * Creates an excess return calculator with a zero annual risk-free rate and
@@ -69,7 +73,7 @@ public final class ExcessReturns {
      * @since 0.22.2
      */
     public ExcessReturns(BarSeries series) {
-        this(series, series.numFactory().zero(), CashReturnPolicy.CASH_EARNS_RISK_FREE);
+        this(series, series.numFactory().zero(), CashReturnPolicy.CASH_EARNS_RISK_FREE, null);
     }
 
     /**
@@ -82,9 +86,48 @@ public final class ExcessReturns {
      * @since 0.22.2
      */
     public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy) {
+        this(series, annualRiskFreeRate, cashReturnPolicy, null);
+    }
+
+    /**
+     * Creates an excess return calculator with invested interval detection from a
+     * cash flow.
+     *
+     * @param series             the bar series providing time deltas and num
+     *                           factory
+     * @param annualRiskFreeRate the annual risk-free rate (e.g. 0.05 for 5%)
+     * @param cashReturnPolicy   the policy for flat equity intervals
+     * @param cashFlow           the equity curve cash flow (nullable)
+     * @since 0.22.2
+     */
+    public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy,
+                         CashFlow cashFlow) {
         this.series = series;
         this.annualRiskFreeRate = annualRiskFreeRate;
         this.cashReturnPolicy = cashReturnPolicy;
+        this.cashFlow = cashFlow;
+        this.investedIntervals = null;
+    }
+
+    /**
+     * Creates an excess return calculator with invested interval detection from a
+     * trading record.
+     *
+     * @param series             the bar series providing time deltas and num
+     *                           factory
+     * @param annualRiskFreeRate the annual risk-free rate (e.g. 0.05 for 5%)
+     * @param cashReturnPolicy   the policy for flat equity intervals
+     * @param tradingRecord      the trading record used to detect invested
+     *                           intervals (nullable)
+     * @since 0.22.2
+     */
+    public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy,
+                         TradingRecord tradingRecord) {
+        this.series = series;
+        this.annualRiskFreeRate = annualRiskFreeRate;
+        this.cashReturnPolicy = cashReturnPolicy;
+        this.investedIntervals = buildInvestedIntervals(tradingRecord);
+        this.cashFlow = tradingRecord == null ? null : new CashFlow(series, tradingRecord);
     }
 
     /**
@@ -97,10 +140,26 @@ public final class ExcessReturns {
      * @since 0.22.2
      */
     public Num excessReturn(CashFlow cashFlow, int previousIndex, int currentIndex) {
+        return excessReturnInternal(cashFlow, previousIndex, currentIndex);
+    }
+
+    /**
+     * Computes the compounded excess return using the configured cash flow.
+     *
+     * @param previousIndex the start index
+     * @param currentIndex  the end index
+     * @return the compounded excess return
+     * @since 0.22.2
+     */
+    public Num excessReturn(int previousIndex, int currentIndex) {
+        return excessReturnInternal(cashFlow, previousIndex, currentIndex);
+    }
+
+    private Num excessReturnInternal(CashFlow cashFlow, int previousIndex, int currentIndex) {
         var numFactory = series.numFactory();
         var zero = numFactory.zero();
         var one = numFactory.one();
-        if (currentIndex <= previousIndex) {
+        if (currentIndex <= previousIndex || cashFlow == null) {
             return zero;
         }
 
@@ -110,7 +169,8 @@ public final class ExcessReturns {
             var currentEquity = cashFlow.getValue(i);
             var riskFreeGrowth = riskFreeGrowth(i - 1, i, one);
             var isFlat = currentEquity.isEqual(previousEquity);
-            if (cashReturnPolicy == CashReturnPolicy.CASH_EARNS_RISK_FREE && isFlat) {
+            var isInvested = isInvested(i);
+            if (cashReturnPolicy == CashReturnPolicy.CASH_EARNS_RISK_FREE && isFlat && !isInvested) {
                 continue;
             }
 
@@ -143,6 +203,33 @@ public final class ExcessReturns {
         var numFactory = series.numFactory();
         return seconds <= 0 ? numFactory.zero()
                 : numFactory.numOf(seconds).dividedBy(numFactory.numOf(SECONDS_PER_YEAR));
+    }
+
+    private boolean isInvested(int index) {
+        return investedIntervals != null && index >= 0 && index < investedIntervals.length && investedIntervals[index];
+    }
+
+    private boolean[] buildInvestedIntervals(TradingRecord tradingRecord) {
+        if (tradingRecord == null) {
+            return null;
+        }
+        var invested = new boolean[series.getBarCount()];
+        tradingRecord.getPositions().forEach(position -> markInvestedIntervals(position, invested));
+        var currentPosition = tradingRecord.getCurrentPosition();
+        if (currentPosition != null && currentPosition.isOpened()) {
+            markInvestedIntervals(currentPosition, invested);
+        }
+        return invested;
+    }
+
+    private void markInvestedIntervals(Position position, boolean[] invested) {
+        var entryIndex = position.getEntry().getIndex();
+        var exitIndex = position.isClosed() ? position.getExit().getIndex() : series.getEndIndex();
+        var start = Math.max(entryIndex + 1, 1);
+        var end = Math.min(exitIndex, invested.length - 1);
+        for (var i = start; i <= end; i++) {
+            invested[i] = true;
+        }
     }
 
 }
