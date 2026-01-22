@@ -29,6 +29,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.util.stream.Stream;
 import java.util.Objects;
+import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexPairs;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
@@ -150,8 +151,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         // Sharpe needs a distribution of returns across periods/positions; a single
-        // position
-        // is intentionally treated as neutral.
+        // position is intentionally treated as neutral.
         return series.numFactory().zero();
     }
 
@@ -159,12 +159,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         var numFactory = series.numFactory();
         var zero = numFactory.zero();
-        if (tradingRecord == null) {
-            return zero;
-        }
-
-        var hasClosedPositions = tradingRecord.getPositions().stream().anyMatch(Position::isClosed);
-        if (!hasClosedPositions) {
+        if (tradingRecord == null || tradingRecord.getPositionCount() == 0) {
             return zero;
         }
 
