@@ -23,22 +23,22 @@
  */
 package org.ta4j.core.criteria;
 
-import java.util.stream.Stream;
-import java.time.ZoneOffset;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Objects;
+import java.util.stream.Stream;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexPairs;
-import org.ta4j.core.analysis.ExcessReturns;
-import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
-import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Computes the Sharpe Ratio.
@@ -91,6 +91,12 @@ import org.ta4j.core.num.Num;
  * {@code periodsPerYear} is estimated from observed time deltas (count of
  * positive deltas divided by the sum of deltas in years).
  *
+ * <p>
+ *  <b>Trading record vs. position.</b> Sharpe ratio requires a distribution of
+ *  returns across periods/positions, so it is defined for {@link TradingRecord}.
+ *  A single {@link Position} does not provide a return distribution; therefore,
+ *  {@link #calculate(BarSeries, Position)} intentionally returns zero.
+ *
  * @since 0.22.1
  *
  */
@@ -118,7 +124,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     }
 
     public SharpeRatioCriterion(double annualRiskFreeRate, SamplingFrequency samplingFrequency,
-            Annualization annualization, ZoneId groupingZoneId) {
+                                Annualization annualization, ZoneId groupingZoneId) {
         this(annualRiskFreeRate, samplingFrequency, annualization, groupingZoneId,
                 CashReturnPolicy.CASH_EARNS_RISK_FREE);
     }
@@ -134,7 +140,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
      * @since 0.22.2
      */
     public SharpeRatioCriterion(double annualRiskFreeRate, SamplingFrequency samplingFrequency,
-            Annualization annualization, ZoneId groupingZoneId, CashReturnPolicy cashReturnPolicy) {
+                                Annualization annualization, ZoneId groupingZoneId, CashReturnPolicy cashReturnPolicy) {
         this.annualRiskFreeRate = annualRiskFreeRate;
         this.annualization = Objects.requireNonNull(annualization, "annualization must not be null");
         this.groupingZoneId = Objects.requireNonNull(groupingZoneId, "groupingZoneId must not be null");
@@ -144,23 +150,9 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        var zero = series.numFactory().zero();
-        if (position == null) {
-            return zero;
-        }
-        if (!position.isClosed()) {
-            // Open positions do not have a complete return distribution (exit not fixed),
-            // so Sharpe would depend on an arbitrary cutoff; returning 0 avoids misleading
-            // ranking.
-            return zero;
-        }
-
-        var cashFlow = new CashFlow(series, position);
-        var start = Math.max(position.getEntry().getIndex() + 1, series.getBeginIndex() + 1);
-        var end = Math.min(position.getExit().getIndex(), series.getEndIndex());
-        var anchorIndex = position.getEntry().getIndex();
-
-        return calculateSharpe(series, cashFlow, anchorIndex, start, end);
+        // Sharpe needs a distribution of returns across periods/positions; a single position
+        // is intentionally treated as neutral.
+        return series.numFactory().zero();
     }
 
     @Override

@@ -274,7 +274,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void positionCalculateEqualsTradingRecordCalculate_forSingleClosedTrade() {
+    public void returnsZero_whenClosedPositionIsEvaluatedDirectly() {
         var series = buildDailySeries(new double[] { 100d, 150d, 150d, 225d, 225d },
                 Instant.parse("2024-01-01T00:00:00Z"));
 
@@ -286,10 +286,9 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var position = tradingRecord.getPositions().getFirst();
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
 
-        var byTradingRecord = criterion.calculate(series, tradingRecord).doubleValue();
-        var byPosition = criterion.calculate(series, position).doubleValue();
+        var actual = criterion.calculate(series, position);
 
-        assertEquals(byTradingRecord, byPosition, 1e-12);
+        assertEquals(series.numFactory().zero(), actual);
     }
 
     @Test
