@@ -66,30 +66,6 @@ public final class ExcessReturns {
     private final CashFlow cashFlow;
 
     /**
-     * Creates an excess return calculator with a zero annual risk-free rate and
-     * benchmark-neutral cash treatment.
-     *
-     * @param series the bar series providing time deltas and num factory
-     * @since 0.22.2
-     */
-    public ExcessReturns(BarSeries series) {
-        this(series, series.numFactory().zero(), CashReturnPolicy.CASH_EARNS_RISK_FREE, null);
-    }
-
-    /**
-     * Creates an excess return calculator.
-     *
-     * @param series             the bar series providing time deltas and num
-     *                           factory
-     * @param annualRiskFreeRate the annual risk-free rate (e.g. 0.05 for 5%)
-     * @param cashReturnPolicy   the policy for flat equity intervals
-     * @since 0.22.2
-     */
-    public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy) {
-        this(series, annualRiskFreeRate, cashReturnPolicy, null);
-    }
-
-    /**
      * Creates an excess return calculator with invested interval detection from a
      * cash flow.
      *
@@ -127,7 +103,7 @@ public final class ExcessReturns {
         this.annualRiskFreeRate = annualRiskFreeRate;
         this.cashReturnPolicy = cashReturnPolicy;
         this.investedIntervals = buildInvestedIntervals(tradingRecord);
-        this.cashFlow = tradingRecord == null ? null : new CashFlow(series, tradingRecord);
+        this.cashFlow = new CashFlow(series, tradingRecord);
     }
 
     /**
@@ -210,9 +186,6 @@ public final class ExcessReturns {
     }
 
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord) {
-        if (tradingRecord == null) {
-            return null;
-        }
         var invested = new boolean[series.getBarCount()];
         tradingRecord.getPositions().forEach(position -> markInvestedIntervals(position, invested));
         var currentPosition = tradingRecord.getCurrentPosition();
