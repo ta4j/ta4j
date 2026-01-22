@@ -1,0 +1,673 @@
+name: Publish Release to Maven Central
+
+concurrency:
+  group: publish-release-${{ github.repository }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    types: [closed]
+  workflow_dispatch:
+    inputs:
+      releaseVersion:
+        description: "Release version to publish (e.g. 0.22.2)."
+        required: true
+        type: string
+      releaseCommit:
+        description: "Release commit SHA that already exists on the default branch."
+        required: true
+        type: string
+      dryRun:
+        description: "Run publish workflow in dry-run mode (no tag/push/deploy)."
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+  discussions: write
+
+jobs:
+  publish:
+    name: Publish Release to Maven Central
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.pull_request.merged == true &&
+       contains(github.event.pull_request.labels.*.name, 'release'))
+
+    steps:
+      # -----------------------
+      # Setup and Metadata
+      # -----------------------
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
+
+      - name: Normalize dry run input
+        id: dry_run
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            dry_run=false
+          else
+            raw="${{ github.event.inputs.dryRun }}"
+            normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+
+            if [ "$normalized" = "true" ] || [ "$raw" = "true" ] || [ "$raw" = true ] || [ "$raw" = "1" ]; then
+              dry_run=true
+            else
+              dry_run=false
+            fi
+          fi
+
+          echo "audit:dry_run_normalized=$dry_run"
+          echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
+
+      - name: Preflight GH_TA4J_REPO_TOKEN permissions
+        id: token_preflight
+        env:
+          GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          import sys
+          import urllib.request
+
+          token = os.environ.get("GH_TA4J_REPO_TOKEN", "")
+          dry_run = os.environ.get("DRY_RUN", "false").lower() == "true"
+
+          if not token:
+              print("audit:repo_token_present=false")
+              sys.exit(0)
+
+          owner = os.environ.get("GITHUB_REPOSITORY_OWNER")
+          repo = os.environ.get("GITHUB_REPOSITORY", "").split("/", 1)[-1]
+          if not owner or not repo:
+              print("::error::Unable to resolve repository context for permission preflight.")
+              sys.exit(1)
+
+          query = {
+              "query": "query($owner:String!,$repo:String!){repository(owner:$owner,name:$repo){viewerPermission}}",
+              "variables": {"owner": owner, "repo": repo},
+          }
+          req = urllib.request.Request(
+              "https://api.github.com/graphql",
+              data=json.dumps(query).encode("utf-8"),
+              headers={
+                  "Authorization": f"Bearer {token}",
+                  "Content-Type": "application/json",
+                  "User-Agent": "ta4j-release-preflight",
+              },
+          )
+          try:
+              with urllib.request.urlopen(req) as resp:
+                  data = json.load(resp)
+          except Exception as exc:
+              msg = f"GH_TA4J_REPO_TOKEN permission check failed: {exc}"
+              if dry_run:
+                  print(f"::warning::{msg}")
+                  sys.exit(0)
+              print(f"::error::{msg}")
+              sys.exit(1)
+
+          if "errors" in data:
+              msg = f"GH_TA4J_REPO_TOKEN permission check failed: {data['errors']}"
+              if dry_run:
+                  print(f"::warning::{msg}")
+                  sys.exit(0)
+              print(f"::error::{msg}")
+              sys.exit(1)
+
+          permission = data.get("data", {}).get("repository", {}).get("viewerPermission")
+          allowed = permission in ("WRITE", "MAINTAIN", "ADMIN")
+
+          output_path = os.environ.get("GITHUB_OUTPUT")
+          if output_path:
+              with open(output_path, "a", encoding="utf-8") as fh:
+                  fh.write("repo_token_present=true\n")
+                  fh.write(f"repo_token_permission={permission}\n")
+
+          if not allowed:
+              msg = f"GH_TA4J_REPO_TOKEN permission '{permission}' lacks write access."
+              if dry_run:
+                  print(f"::warning::{msg}")
+                  sys.exit(0)
+              print(f"::error::{msg}")
+              sys.exit(1)
+
+          print(f"audit:repo_token_permission={permission}")
+          PY
+
+      - name: Extract release metadata
+        id: meta
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const core = require("@actions/core");
+
+            const eventName = context.eventName;
+            let releaseVersion = "";
+            let releaseCommit = "";
+            let nextVersion = "";
+            let mergeCommit = "";
+            let prNumber = "";
+
+            if (eventName === "workflow_dispatch") {
+              releaseVersion = core.getInput("releaseVersion");
+              releaseCommit = core.getInput("releaseCommit");
+            } else {
+              const pr = context.payload.pull_request;
+              prNumber = pr?.number ? String(pr.number) : "";
+              mergeCommit = pr?.merge_commit_sha || "";
+              const body = pr?.body || "";
+              const match = body.match(/<!--\s*release-meta([\s\S]*?)-->/i);
+              if (!match) {
+                throw new Error("Release metadata block not found in PR body.");
+              }
+              const metaText = match[1];
+              const valueFor = (key) => {
+                const re = new RegExp(`^\\s*${key}\\s*:\\s*(.+)\\s*$`, "mi");
+                const found = metaText.match(re);
+                return found ? found[1].trim() : "";
+              };
+              releaseVersion = valueFor("releaseVersion");
+              nextVersion = valueFor("nextVersion");
+              releaseCommit = valueFor("releaseCommit");
+            }
+
+            if (!releaseVersion || !releaseCommit) {
+              throw new Error("Missing releaseVersion or releaseCommit in metadata.");
+            }
+
+            core.setOutput("release_version", releaseVersion);
+            core.setOutput("release_commit", releaseCommit);
+            core.setOutput("next_version", nextVersion);
+            core.setOutput("merge_commit", mergeCommit);
+            core.setOutput("pr_number", prNumber);
+
+      - name: Verify release commit ancestry
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+          RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
+          MERGE_COMMIT: ${{ steps.meta.outputs.merge_commit }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${RELEASE_VERSION:-}" ] || [ -z "${RELEASE_COMMIT:-}" ]; then
+            echo "Missing release metadata; cannot proceed." >&2
+            exit 1
+          fi
+
+          if [[ "${RELEASE_VERSION}" == *-SNAPSHOT* ]]; then
+            echo "Release version must not include -SNAPSHOT: ${RELEASE_VERSION}" >&2
+            exit 1
+          fi
+
+          if ! git cat-file -e "${RELEASE_COMMIT}^{commit}" 2>/dev/null; then
+            echo "Release commit ${RELEASE_COMMIT} not found." >&2
+            exit 1
+          fi
+
+          if [ -z "${DEFAULT_BRANCH:-}" ]; then
+            echo "Default branch not provided by event." >&2
+            exit 1
+          fi
+
+          git fetch origin "${DEFAULT_BRANCH}" --tags
+          if ! git merge-base --is-ancestor "${RELEASE_COMMIT}" "origin/${DEFAULT_BRANCH}"; then
+            echo "Release commit ${RELEASE_COMMIT} is not on origin/${DEFAULT_BRANCH}." >&2
+            exit 1
+          fi
+
+          if [ "${EVENT_NAME}" = "pull_request" ]; then
+            if [ -z "${MERGE_COMMIT:-}" ]; then
+              echo "Merge commit SHA missing for release PR." >&2
+              exit 1
+            fi
+            parents=$(git cat-file -p "${MERGE_COMMIT}" | awk '/^parent / {count++} END {print count+0}')
+            if [ "${parents:-0}" -lt 2 ]; then
+              echo "Release PR was not merged with a merge commit (parents=${parents})." >&2
+              exit 1
+            fi
+            if ! git merge-base --is-ancestor "${RELEASE_COMMIT}" "${MERGE_COMMIT}"; then
+              echo "Release commit is not an ancestor of the merge commit." >&2
+              exit 1
+            fi
+          fi
+
+      - name: Check if tag already exists
+        id: check_tag
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+        run: |
+          exists=false
+          found=""
+
+          for candidate in "$RELEASE_VERSION" "v$RELEASE_VERSION"; do
+            if git rev-parse "refs/tags/$candidate" >/dev/null 2>&1; then
+              exists=true
+              found="$candidate"
+              break
+            fi
+          done
+
+          echo "exists=$exists" >> $GITHUB_OUTPUT
+          echo "existing_tag=$found" >> $GITHUB_OUTPUT
+
+      - name: Fail if tag exists
+        if: steps.check_tag.outputs.exists == 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+          EXISTING_TAG: ${{ steps.check_tag.outputs.existing_tag }}
+        run: |
+          tag="${EXISTING_TAG:-$RELEASE_VERSION}"
+          echo "Error: tag '$tag' already exists (checked '$RELEASE_VERSION' and 'v$RELEASE_VERSION'). Aborting."
+          exit 1
+
+      # -----------------------
+      # Secrets and Environment
+      # -----------------------
+      - name: Check for MAVEN_CENTRAL_TOKEN_USER
+        id: check_maven_user
+        env:
+          MAVEN_CENTRAL_TOKEN_USER: ${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}
+        run: |
+          if [ -z "${MAVEN_CENTRAL_TOKEN_USER:-}" ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
+          else
+            echo "present=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for MAVEN_CENTRAL_TOKEN_PASS
+        id: check_maven_pass
+        env:
+          MAVEN_CENTRAL_TOKEN_PASS: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}
+        run: |
+          if [ -z "${MAVEN_CENTRAL_TOKEN_PASS:-}" ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
+          else
+            echo "present=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for GPG_PRIVATE_KEY
+        id: check_gpg_key
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.GPG_PRIVATE_KEY }}
+        run: |
+          if [ -z "${GPG_PRIVATE_KEY:-}" ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
+          else
+            echo "present=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Check for GPG_PASSPHRASE
+        id: check_gpg_passphrase
+        env:
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: |
+          if [ -z "${GPG_PASSPHRASE:-}" ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
+          else
+            echo "present=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Collect missing secrets
+        id: collect_missing
+        env:
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          MAVEN_USER: ${{ steps.check_maven_user.outputs.present }}
+          MAVEN_PASS: ${{ steps.check_maven_pass.outputs.present }}
+          GPG_KEY: ${{ steps.check_gpg_key.outputs.present }}
+          GPG_PASS: ${{ steps.check_gpg_passphrase.outputs.present }}
+        run: |
+          missing=()
+          if [ "${MAVEN_USER:-false}" != "true" ]; then
+            missing+=("MAVEN_CENTRAL_TOKEN_USER")
+          fi
+          if [ "${MAVEN_PASS:-false}" != "true" ]; then
+            missing+=("MAVEN_CENTRAL_TOKEN_PASS")
+          fi
+          if [ "${GPG_KEY:-false}" != "true" ]; then
+            missing+=("GPG_PRIVATE_KEY")
+          fi
+          if [ "${GPG_PASS:-false}" != "true" ]; then
+            missing+=("GPG_PASSPHRASE")
+          fi
+
+          if [ "${#missing[@]}" -gt 0 ]; then
+            echo "missing=${missing[*]}" >> $GITHUB_OUTPUT
+            echo "has_missing=true" >> $GITHUB_OUTPUT
+          else
+            echo "missing=" >> $GITHUB_OUTPUT
+            echo "has_missing=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Handle missing secrets in dry-run mode
+        if: steps.collect_missing.outputs.has_missing == 'true' && steps.dry_run.outputs.dryRun == 'true'
+        env:
+          MISSING: ${{ steps.collect_missing.outputs.missing }}
+        run: |
+          echo "::warning::DRY RUN MODE: Missing required secrets/resources detected"
+          echo "::warning::The following required resources are not configured: ${MISSING}"
+          echo "::warning::A real (non-dry-run) execution would fail without these resources."
+          echo "::warning::Please configure these secrets in the repository settings before running a real release."
+          echo "audit:missing_secrets_in_dry_run=${MISSING}"
+
+      - name: Fail if secrets missing in non-dry-run mode
+        if: steps.collect_missing.outputs.has_missing == 'true' && steps.dry_run.outputs.dryRun != 'true'
+        env:
+          MISSING: ${{ steps.collect_missing.outputs.missing }}
+        run: |
+          echo "::error::RELEASE FAILED: Missing required secrets/resources"
+          echo "::error::The following required resources are not configured: ${MISSING}"
+          echo ""
+          echo "::error::REQUIRED SECRETS:"
+          echo "::error::  1. MAVEN_CENTRAL_TOKEN_USER - Maven Central username/token"
+          echo "::error::  2. MAVEN_CENTRAL_TOKEN_PASS - Maven Central password/token"
+          echo "::error::  3. GPG_PRIVATE_KEY - GPG private key for artifact signing"
+          echo "::error::  4. GPG_PASSPHRASE - Passphrase for GPG private key"
+          echo ""
+          echo "::error::Please configure these secrets in:"
+          echo "::error::  Repository Settings -> Secrets and variables -> Actions -> New repository secret"
+          echo ""
+          exit 1
+
+      - name: All secrets verified
+        if: steps.collect_missing.outputs.has_missing != 'true'
+        run: |
+          echo "OK: All required secrets and resources are present"
+          echo "audit:all_required_secrets_present=true"
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set up Java (dry-run without publishing secrets)
+        if: steps.dry_run.outputs.dryRun == 'true' && steps.collect_missing.outputs.has_missing == 'true'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Set up Java with publishing secrets
+        if: steps.dry_run.outputs.dryRun != 'true' || steps.collect_missing.outputs.has_missing != 'true'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+          server-id: central
+          server-username: ${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}
+          server-password: ${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}
+          gpg-private-key: ${{ secrets.GPG_PRIVATE_KEY }}
+          gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
+
+      # -----------------------
+      # Deployment
+      # -----------------------
+      - name: Dry-run mode notice
+        if: steps.dry_run.outputs.dryRun == 'true'
+        run: |
+          echo "DRY RUN ENABLED: skipping tag/push/deploy; running validation only."
+
+      - name: Create Maven settings directory
+        if: steps.dry_run.outputs.dryRun != 'true'
+        run: |
+          mkdir -p ~/.m2
+
+      - name: Write Maven settings.xml
+        if: steps.dry_run.outputs.dryRun != 'true'
+        run: |
+          printf '%s\n' \
+            '<settings>' \
+            '  <servers>' \
+            '    <server>' \
+            '      <id>central</id>' \
+            "      <username>${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}</username>" \
+            "      <password>${{ secrets.MAVEN_CENTRAL_TOKEN_PASS }}</password>" \
+            '    </server>' \
+            '  </servers>' \
+            '</settings>' > ~/.m2/settings.xml
+          echo "settings.xml created"
+
+      - name: Check for MAVEN_MASTER_PASSPHRASE
+        id: check_maven_master
+        if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          MAVEN_SECURITY_MASTER: ${{ secrets.MAVEN_MASTER_PASSPHRASE }}
+        run: |
+          if [ -z "${MAVEN_SECURITY_MASTER:-}" ]; then
+            echo "present=false" >> $GITHUB_OUTPUT
+          else
+            echo "present=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Write Maven settings-security.xml
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.check_maven_master.outputs.present == 'true'
+        shell: bash
+        env:
+          MAVEN_SECURITY_MASTER: ${{ secrets.MAVEN_MASTER_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' \
+            '<?xml version="1.0" encoding="UTF-8"?>' \
+            '<settingsSecurity>' \
+            "  <master>${MAVEN_SECURITY_MASTER}</master>" \
+            '</settingsSecurity>' > ~/.m2/settings-security.xml
+          chmod 600 ~/.m2/settings-security.xml
+          echo "settings-security.xml created"
+
+      - name: Skip Maven security settings (not configured)
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.check_maven_master.outputs.present != 'true'
+        run: |
+          echo "MAVEN_MASTER_PASSPHRASE not set; skipping settings-security.xml generation"
+
+      - name: Configure GPG for signing
+        if: steps.dry_run.outputs.dryRun != 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.gnupg
+          chmod 700 ~/.gnupg
+          echo "pinentry-mode loopback" >> ~/.gnupg/gpg.conf
+          chmod 600 ~/.gnupg/gpg.conf
+          touch ~/.gnupg/gpg-agent.conf
+          echo "allow-loopback-pinentry" >> ~/.gnupg/gpg-agent.conf
+          chmod 600 ~/.gnupg/gpg-agent.conf
+          gpgconf --kill gpg-agent 2>/dev/null || true
+          gpgconf --launch gpg-agent 2>/dev/null || true
+          echo "gpg.conf and gpg-agent.conf created"
+
+      - name: Check out release commit
+        if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
+        run: |
+          git checkout --detach "${RELEASE_COMMIT}"
+
+      - name: Create release tag
+        if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+          RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor }}@users.noreply.github.com"
+          git tag -a "${RELEASE_VERSION}" -m "Release ${RELEASE_VERSION}" "${RELEASE_COMMIT}"
+
+      - name: Deploy Release to Maven Central
+        if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+          GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
+        run: mvn -B -Pproduction-release deploy
+
+      - name: Push release tag
+        if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+        run: |
+          # Push tag only after deploy succeeds to avoid publishing a tag that doesn't match deployed artifacts.
+          git push origin "refs/tags/${RELEASE_VERSION}"
+
+      # -----------------------
+      # Summary
+      # -----------------------
+      - name: Release decision summary
+        if: always()
+        env:
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          RELEASE: ${{ steps.meta.outputs.release_version }}
+          NEXT: ${{ steps.meta.outputs.next_version }}
+          RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
+          MERGE_COMMIT: ${{ steps.meta.outputs.merge_commit }}
+          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
+        run: |
+          echo "summary: dryRun=${DRY_RUN:-}"
+          echo "summary: release=${RELEASE:-}"
+          echo "summary: next=${NEXT:-}"
+          echo "summary: releaseCommit=${RELEASE_COMMIT:-}"
+          echo "summary: mergeCommit=${MERGE_COMMIT:-}"
+          echo "summary: releasePR=${PR_NUMBER:-}"
+
+      - name: Build discussion comment
+        id: notify_summary
+        if: always()
+        env:
+          JOB_STATUS: ${{ job.status }}
+          EVENT_NAME: ${{ github.event_name }}
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          RELEASE: ${{ steps.meta.outputs.release_version }}
+          NEXT: ${{ steps.meta.outputs.next_version }}
+          RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
+          MERGE_COMMIT: ${{ steps.meta.outputs.merge_commit }}
+          PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
+          TAG_EXISTS: ${{ steps.check_tag.outputs.exists }}
+          EXISTING_TAG: ${{ steps.check_tag.outputs.existing_tag }}
+          MISSING_SECRETS: ${{ steps.collect_missing.outputs.missing }}
+          HAS_MISSING: ${{ steps.collect_missing.outputs.has_missing }}
+          RELEASE_NOTIFY_USER: ${{ vars.RELEASE_NOTIFY_USER }}
+        run: |
+          status="${JOB_STATUS:-unknown}"
+          status_upper=$(printf '%s' "$status" | tr '[:lower:]' '[:upper:]')
+          run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          dry_run="${DRY_RUN:-unknown}"
+          release="${RELEASE:-unknown}"
+          next="${NEXT:-unknown}"
+          release_commit="${RELEASE_COMMIT:-unknown}"
+          merge_commit="${MERGE_COMMIT:-}"
+          pr_number="${PR_NUMBER:-}"
+          tag_exists="${TAG_EXISTS:-unknown}"
+          existing_tag="${EXISTING_TAG:-}"
+          missing_secrets="${MISSING_SECRETS:-}"
+          has_missing="${HAS_MISSING:-unknown}"
+
+          if [ -z "$merge_commit" ]; then
+            merge_commit="(none)"
+          fi
+          if [ -z "$pr_number" ]; then
+            pr_number="(none)"
+          fi
+          if [ -z "$existing_tag" ]; then
+            existing_tag="(none)"
+          fi
+          if [ -z "$missing_secrets" ]; then
+            missing_secrets="(none)"
+          fi
+
+          notify_user="${RELEASE_NOTIFY_USER:-TheCookieLab}"
+
+          if [ "$dry_run" = "true" ]; then
+            mode_label="dry-run"
+          else
+            mode_label="production"
+          fi
+
+          if [ "$status" = "success" ]; then
+            completion_text="completed successfully"
+          else
+            completion_text="completed with failures"
+          fi
+
+          timestamp=$(date '+%-I:%M:%S %p on %-m.%-d.%Y')
+
+          cat > notification-body.txt <<EOF
+          @${notify_user}
+
+          **Maven Central Release ${mode_label} ${completion_text} at ${timestamp}**
+          - Repository: ${GITHUB_REPOSITORY}
+          - Run: ${run_url}
+          - Event: ${EVENT_NAME}
+          - Status: ${status_upper}
+
+          Release Summary:
+          - dryRun: ${dry_run}
+          - release version: ${release}
+          - next snapshot: ${next}
+          - release commit: ${release_commit}
+          - merge commit: ${merge_commit}
+          - release PR: ${pr_number}
+          - tag exists: ${tag_exists}
+          - existing tag: ${existing_tag}
+          - missing secrets: ${missing_secrets}
+          - has missing secrets: ${has_missing}
+          EOF
+
+      - name: Post to Maven Central Releases discussion
+        if: always()
+        uses: actions/github-script@v8
+        env:
+          RELEASE_DISCUSSION_NUMBER: ${{ vars.RELEASE_DISCUSSION_NUMBER }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const fs = require("fs");
+            const body = fs.readFileSync("notification-body.txt", "utf8");
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const rawNumber = process.env.RELEASE_DISCUSSION_NUMBER;
+            const number = rawNumber ? Number(rawNumber) : 1415;
+            if (!Number.isFinite(number)) {
+              throw new Error(`Invalid Release discussion number: ${rawNumber}`);
+            }
+
+            const query = `
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  discussion(number: $number) {
+                    id
+                  }
+                }
+              }
+            `;
+            const queryResult = await github.graphql(query, { owner, repo, number });
+            const discussionId = queryResult?.repository?.discussion?.id;
+            if (!discussionId) {
+              throw new Error(`Discussion ${number} not found in ${owner}/${repo}`);
+            }
+
+            const mutation = `
+              mutation($discussionId: ID!, $body: String!) {
+                addDiscussionComment(input: { discussionId: $discussionId, body: $body }) {
+                  comment {
+                    url
+                  }
+                }
+              }
+            `;
+            await github.graphql(mutation, { discussionId, body });
