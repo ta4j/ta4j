@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! command -v actionlint >/dev/null 2>&1; then
+  echo "actionlint not found; install it to validate workflows (e.g., brew install actionlint)." >&2
+  exit 1
+fi
+
+upstream=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null || true)
+if [ -n "$upstream" ]; then
+  changed=$(git diff --name-only --diff-filter=ACM "$upstream"...HEAD | grep -E '^.github/workflows/.*\.ya?ml$' || true)
+else
+  changed=$(git diff --name-only --cached --diff-filter=ACM | grep -E '^.github/workflows/.*\.ya?ml$' || true)
+fi
+
+if [ -z "$changed" ]; then
+  exit 0
+fi
+
+actionlint $changed

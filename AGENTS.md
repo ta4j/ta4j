@@ -5,9 +5,9 @@
 **CRITICAL: Before completing ANY code changes, you MUST:**
 
 1. ✅ Run the full build script: `scripts/run-full-build-quiet.sh`
-   - **This is NOT optional.** Do not skip this step, even for "simple" changes.
-   - **Exception:** If the only edits are to scripts (scripts/* or .github/*), PRD documents (files named `PRD-*.md`), and other documentation files
-     you may skip the full build and note that tests were not run.
+   - **This is NOT optional** for code changes outside `.github/workflows/`.
+   - **Exception:** You may skip the full build ONLY when ALL changes are exclusively within `.github/workflows/`, `CHANGELOG.md`, or documentation-only files (for example: `*.md`, `docs/`).
+   - If any other files are modified (code, docs, configs, etc.), the full build is required.
    - **When:** After every code change that affects build/test behavior (which is almost always)
    - **Permissions:** **ALWAYS run with `required_permissions: ['all']`** to avoid Maven repository permission issues. The build script requires full filesystem access to read/write Maven cache and repository files. If the environment forbids approval prompts (e.g., approval policy is `never`) but already grants full access, run the script directly without requesting permissions.
    - **Windows:** Invoke Git Bash or MSYS2 binary directly (never WSL or the CLI's default `/bin/bash`) for native performance (5x vs WSL). Always call it explicitly, e.g. `& "C:\Program Files\Git\bin\bash.exe" -c "cd /c/Users/David/Workspace/github/ta4j && ./scripts/run-full-build-quiet.sh"` (convert Windows path `C:\...` to `/c/...` format).
@@ -25,8 +25,7 @@
 ### Build and Test Workflow
 
 - **During development:** Use narrow Maven test commands for fast feedback (e.g., `mvn -pl ta4j-core test -Dtest=...`). For focused module testing, you may use `scripts/run-full-build-quiet.sh -pl ta4j-core` to get filtered logs while still validating a single module.
-- **Before completion:** ALWAYS run `scripts/run-full-build-quiet.sh` (without `-pl` flags) - this is mandatory, not optional
-- **PRD-only changes:** If the only edits are scripts, PRD documents (`PRD-*.md`), and other documentation the full build is not required; note that tests were not run.
+- **Before completion:** ALWAYS run `scripts/run-full-build-quiet.sh` (without `-pl` flags), unless the only changes are within `.github/workflows/`, `CHANGELOG.md`, or documentation-only files (for example: `*.md`, `docs/`).
 - The script stores the full log under `.agents/logs/` and prints aggregated test totals
 - Use `git diff -- path/to/file` to keep diffs scoped when full-file output is large
 - When `git status` times out, narrow the scope with `git status --short path` instead of retrying broad commands

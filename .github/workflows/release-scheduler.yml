@@ -16,11 +16,11 @@ concurrency:
 
 on:
   schedule:
-    - cron: "0 9 */14 * *"  # every 14 days
+    - cron: "0 9 */14 * *" # every 14 days
   workflow_dispatch:
     inputs:
       dryRun:
-        description: "Simulate only; trigger release.yml with dryRun=true"
+        description: "Simulate only; trigger prepare-release.yml with dryRun=true"
         required: false
         default: false
         type: boolean
@@ -28,17 +28,29 @@ on:
 permissions:
   contents: write
   actions: write
+  discussions: write
 
 jobs:
   analyze:
     name: Analyze changes & ask AI
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'schedule' || vars.RELEASE_SCHEDULER_ENABLED == 'true' }}
     outputs:
       should_release: ${{ steps.parsed.outputs.should_release }}
       bump: ${{ steps.parsed.outputs.bump }}
       version: ${{ steps.version.outputs.version }}
       reason: ${{ steps.parsed.outputs.reason }}
+      warning: ${{ steps.parsed.outputs.warning }}
       dryRun: ${{ steps.run_meta.outputs.dryRun }}
+      binary_lines: ${{ steps.diff.outputs.lines }}
+      binary_changes: ${{ steps.diff.outputs.binary_changes }}
+      changelog_len: ${{ steps.changelog.outputs.length }}
+      gate_proceed: ${{ steps.gate.outputs.proceed }}
+      token_present: ${{ steps.model_token.outputs.present }}
+      token_gate: ${{ steps.token_gate.outputs.proceed }}
+      last_tag: ${{ steps.lasttag.outputs.last }}
+      pom_version: ${{ steps.pom_version.outputs.version }}
+      pom_base: ${{ steps.pom_version.outputs.base }}
     steps:
       # -----------------------
       # Setup and Discovery
@@ -127,19 +139,22 @@ jobs:
       # -----------------------
       # Change Detection
       # -----------------------
-      - name: Collect diff since last release
+      - name: Collect binary-impacting changes since last release
         id: diff
         env:
           LAST_TAG: ${{ steps.lasttag.outputs.last }}
         run: |
           if [ "$LAST_TAG" = "none" ]; then
-            raw_log=$(git log --no-merges --pretty=format:"%s")
+            changed_files=$(git ls-tree -r --name-only HEAD)
           else
-            raw_log=$(git log "$LAST_TAG"..HEAD --no-merges --pretty=format:"%s")
+            changed_files=$(git diff --name-only "$LAST_TAG"..HEAD)
           fi
 
+          binary_files=$(printf '%s\n' "$changed_files" | grep -E '(^|/)pom\.xml$|(^|/)src/main/' || true)
+          binary_files=$(printf '%s\n' "$binary_files" | sort -u)
+
           # sanitize: mask URLs, common GH tokens, long hex-like strings; truncate to keep payload small
-          sanitized=$(printf '%s\n' "$raw_log" | perl -pe 's#https?://\S+#[REDACTED_URL]#g; s/(gh[oprsu]_[A-Za-z0-9]{20,})/[REDACTED_TOKEN]/g; s/([A-Za-z0-9]{32,})/[REDACTED_SECRET]/g')
+          sanitized=$(printf '%s\n' "$binary_files" | perl -pe 's#https?://\S+#[REDACTED_URL]#g; s/(gh[oprsu]_[A-Za-z0-9]{20,})/[REDACTED_TOKEN]/g; s/([A-Za-z0-9]{32,})/[REDACTED_SECRET]/g')
           # truncate to 2000 chars to stay within model token limits
           sanitized=$(printf '%s' "$sanitized" | cut -c1-2000)
 
@@ -149,10 +164,16 @@ jobs:
             count=$(printf '%s\n' "$sanitized" | wc -l | tr -d ' ')
           fi
 
-          echo "audit:diff_lines=$count sanitized=true truncated=2000"
+          echo "audit:binary_change_lines=$count sanitized=true truncated=2000"
           diff_b64=$(printf '%s' "$sanitized" | base64 -w0)
           echo "diff_b64=$diff_b64" >> $GITHUB_OUTPUT
           echo "lines=$count" >> $GITHUB_OUTPUT
+          delim="BIN_CHANGES_$(date +%s%N)"
+          {
+            echo "binary_changes<<$delim"
+            printf '%s\n' "$sanitized"
+            echo "$delim"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Check if CHANGELOG exists
         id: changelog_exists
@@ -197,22 +218,22 @@ jobs:
       - name: Check if changes detected
         id: gate
         run: |
-          diff_lines=${{ steps.diff.outputs.lines }}
+          binary_lines=${{ steps.diff.outputs.lines }}
           changelog_len=${{ steps.changelog.outputs.length }}
-          diff_lines=${diff_lines:-0}
+          binary_lines=${binary_lines:-0}
           changelog_len=${changelog_len:-0}
 
-          if [ "$diff_lines" -eq 0 ] && [ "$changelog_len" -eq 0 ]; then
+          if [ "$binary_lines" -eq 0 ]; then
             echo "proceed=false" >> $GITHUB_OUTPUT
-            echo "audit:short_circuit=true reason=\"empty diff and changelog\""
+            echo "audit:short_circuit=true reason=\"no binary-impacting changes\""
           else
             echo "proceed=true" >> $GITHUB_OUTPUT
             echo "audit:short_circuit=false"
           fi
 
-      - name: No release - empty diff and changelog
+      - name: No release - no binary-impacting changes
         if: steps.gate.outputs.proceed != 'true'
-        run: echo "No release recommended (empty diff and changelog)."
+        run: echo "No release recommended (no binary-impacting changes)."
 
       - name: Check for GH_MODELS_TOKEN
         id: model_token
@@ -259,8 +280,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          diff_decoded=$(printf '%s' "${{ steps.diff.outputs.diff_b64 }}" | base64 -d 2>/dev/null || true)
+          binary_changes=$(printf '%s' "${{ steps.diff.outputs.diff_b64 }}" | base64 -d 2>/dev/null || true)
           changelog_decoded=$(printf '%s' "${{ steps.changelog.outputs.changelog_b64 }}" | base64 -d 2>/dev/null || true)
+          binary_count="${{ steps.diff.outputs.lines }}"
+          binary_count=${binary_count:-0}
 
           current_version="${{ steps.pom_version.outputs.version }}"
           base_version="${{ steps.pom_version.outputs.base }}"
@@ -272,20 +295,25 @@ jobs:
           fi
           echo "audit:current_version_source=pom.xml value=$current_version base=$base_version last_tag=$last_tag"
 
+          if [ -z "$binary_changes" ]; then
+            binary_changes="(none)"
+          fi
+
           # Read SemVer rules from file if it exists and has content, otherwise use defaults
           semver_rules_file=".github/workflows/semver-rules-override.txt"
           if [ -f "$semver_rules_file" ] && [ -s "$semver_rules_file" ]; then
             semver_rules=$(cat "$semver_rules_file")
             echo "audit:semver_rules_source=file"
           else
-            semver_rules="MAJOR: Breaking API changes in public/core APIs.\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\nIf diff empty or changelog-only => should_release=false.\nPre-1.0.0: breaking changes can be MINOR, not necessarily MAJOR."
+            semver_rules="MAJOR: Breaking API changes in public/core APIs.\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\nIf binary change count is 0 => should_release=false.\nIf binary change list empty or changelog-only => should_release=false.\nPre-1.0.0: breaking changes can be MINOR, not necessarily MAJOR."
             echo "audit:semver_rules_source=default"
           fi
 
           # Build the JSON request using jq and safe string args.
           echo "build.request_json:build.start"
           jq -n \
-            --arg diff "$diff_decoded" \
+            --arg binary_changes "$binary_changes" \
+            --arg binary_count "$binary_count" \
             --arg changelog "$changelog_decoded" \
             --arg current_version "$current_version" \
             --arg semver_rules "$semver_rules" \
@@ -302,8 +330,9 @@ jobs:
                     "Decide release? bump: patch|minor|major.\n" +
                     "Current: " + $current_version + "\n" +
                     "Last tag: " + $last_tag + "\n" +
+                    "Binary change count: " + $binary_count + "\n" +
                     "Rules:\n" + $semver_rules + "\n" +
-                    "Diff: omitted (token budget)\n" +
+                    "Binary-impacting changes (paths):\n" + $binary_changes + "\n" +
                     "Changelog (truncated):\n" + $changelog + "\n" +
                     "Return JSON: {\"should_release\":true|false,\"bump\":\"patch|minor|major\",\"reason\":\"1-2 sentences\"}"
                   )
@@ -327,7 +356,7 @@ jobs:
         run: |
           set -uo pipefail
           echo "audit:request_json_size_bytes=$(wc -c < request.json | tr -d ' ')"
-          echo "audit:diff_truncated_chars=$(printf '%s' "${{ steps.diff.outputs.diff_b64 }}" | base64 -d 2>/dev/null | wc -c | tr -d ' ' || true)"
+          echo "audit:binary_change_truncated_chars=$(printf '%s' "${{ steps.diff.outputs.diff_b64 }}" | base64 -d 2>/dev/null | wc -c | tr -d ' ' || true)"
           echo "audit:changelog_truncated_chars=$(printf '%s' "${{ steps.changelog.outputs.changelog_b64 }}" | base64 -d 2>/dev/null | wc -c | tr -d ' ' || true)"
           echo "audit:external_call target=models.github.ai payload=request.json sanitized=true"
 
@@ -410,41 +439,53 @@ jobs:
 
       - name: Parse AI JSON
         id: parsed
-        if: steps.gate.outputs.proceed == 'true'
+        if: always()
         env:
+          GATE_PROCEED: ${{ steps.gate.outputs.proceed }}
           MODEL_TOKEN_PRESENT: ${{ steps.model_token.outputs.present }}
+          RAW_CONTENT: ${{ steps.ai.outputs.content }}
+          RAW_FALLBACK: ${{ steps.ai_failure.outputs.content }}
         run: |
-          model_token_present="${MODEL_TOKEN_PRESENT:-false}"
+          gate_proceed="${GATE_PROCEED:-false}"
           parsed_ok=false
 
-          if [ "$model_token_present" != "true" ]; then
-            echo "AI call skipped because GH_MODELS_TOKEN is missing." >&2
-            echo '{"should_release":false,"bump":"patch","warning":"GH_MODELS_TOKEN missing","reason":"GH_MODELS_TOKEN secret missing; cannot call AI"}' > ai.json
+          if [ "$gate_proceed" != "true" ]; then
+            echo '{"should_release":false,"bump":"patch","warning":"No binary changes","reason":"No binary-impacting changes detected"}' > ai.json
             parsed_ok=true
           else
-            raw_content='${{ steps.ai.outputs.content }}'
-            if [ -z "$raw_content" ]; then
-              raw_content='${{ steps.ai_failure.outputs.content }}'
-            fi
-
-            if printf '%s' "$raw_content" | jq -e -R 'fromjson' > ai.json 2>/dev/null; then
+            model_token_present="${MODEL_TOKEN_PRESENT:-false}"
+            if [ "$model_token_present" != "true" ]; then
+              echo "AI call skipped because GH_MODELS_TOKEN is missing." >&2
+              echo '{"should_release":false,"bump":"patch","warning":"GH_MODELS_TOKEN missing","reason":"GH_MODELS_TOKEN secret missing; cannot call AI"}' > ai.json
               parsed_ok=true
             else
-              extracted=$(printf '%s' "$raw_content" | perl -0777 -ne 'print $1 if m/(\{(?:.|\n)*\})/s')
-              if [ -n "$extracted" ] && printf '%s' "$extracted" | jq -e '.' > ai.json 2>/dev/null; then
-                parsed_ok=true
+              raw_content="${RAW_CONTENT:-}"
+              if [ -z "$raw_content" ]; then
+                raw_content="${RAW_FALLBACK:-}"
               fi
-            fi
+              if [ -z "$raw_content" ]; then
+                raw_content='{"should_release":false,"bump":"patch","warning":"Missing AI response","reason":"AI response content missing"}'
+              fi
 
-            if ! $parsed_ok; then
-              echo "AI response not valid JSON. Defaulting to no release." >&2
-              err_hint=$(printf '%s' "$raw_content" | head -c 200 | tr '\n' ' ' | sed 's/"/\\"/g')
-              if [ -n "$err_hint" ]; then
-                reason_msg="AI response was not valid JSON: ${err_hint}"
+              if printf '%s' "$raw_content" | jq -e -R 'fromjson' > ai.json 2>/dev/null; then
+                parsed_ok=true
               else
-                reason_msg="AI response was not valid JSON"
+                extracted=$(printf '%s' "$raw_content" | perl -0777 -ne 'print $1 if m/(\{(?:.|\n)*\})/s')
+                if [ -n "$extracted" ] && printf '%s' "$extracted" | jq -e '.' > ai.json 2>/dev/null; then
+                  parsed_ok=true
+                fi
               fi
-              printf '{"should_release":false,"bump":"patch","warning":"Invalid AI JSON","reason":"%s"}' "$reason_msg" > ai.json
+
+              if ! $parsed_ok; then
+                echo "AI response not valid JSON. Defaulting to no release." >&2
+                err_hint=$(printf '%s' "$raw_content" | head -c 200 | tr '\n' ' ' | sed 's/"/\\"/g')
+                if [ -n "$err_hint" ]; then
+                  reason_msg="AI response was not valid JSON: ${err_hint}"
+                else
+                  reason_msg="AI response was not valid JSON"
+                fi
+                printf '{"should_release":false,"bump":"patch","warning":"Invalid AI JSON","reason":"%s"}' "$reason_msg" > ai.json
+              fi
             fi
           fi
 
@@ -626,11 +667,11 @@ jobs:
             const version = "${{ needs.analyze.outputs.version }}";
             const dryRun = "${{ needs.analyze.outputs.dryRun }}";
             const ref = "${{ github.event.repository.default_branch }}";
-            console.log(`audit:dispatch_workflow workflow=release.yml ref=${ref} version=${version} dryRun=${dryRun}`);
+            console.log(`audit:dispatch_workflow workflow=prepare-release.yml ref=${ref} version=${version} dryRun=${dryRun}`);
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: "release.yml",
+              workflow_id: "prepare-release.yml",
               ref,
               inputs: {
                 releaseVersion: version,
@@ -657,11 +698,11 @@ jobs:
             const version = "${{ needs.analyze.outputs.version }}";
             const dryRun = "${{ needs.analyze.outputs.dryRun }}";
             const ref = "${{ github.event.repository.default_branch }}";
-            console.log(`audit:dispatch_workflow workflow=release.yml ref=${ref} version=${version} dryRun=${dryRun}`);
+            console.log(`audit:dispatch_workflow workflow=prepare-release.yml ref=${ref} version=${version} dryRun=${dryRun}`);
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: "release.yml",
+              workflow_id: "prepare-release.yml",
               ref,
               inputs: {
                 releaseVersion: version,
@@ -685,4 +726,182 @@ jobs:
           echo "  bump:    ${{ needs.analyze.outputs.bump }}"
           echo "  version: ${{ needs.analyze.outputs.version }}"
           echo ""
-          echo "(Dry run enabled - propagating dryRun=true to release.yml)"
+          echo "(Dry run enabled - propagating dryRun=true to prepare-release.yml)"
+
+  notify:
+    name: Notify release-scheduler outcome
+    runs-on: ubuntu-latest
+    needs: [analyze, approval, publish, publish_major, dry_run_output]
+    if: always()
+    steps:
+      - name: Build discussion comment
+        id: notify_summary
+        if: always()
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          ANALYZE_RESULT: ${{ needs.analyze.result }}
+          APPROVAL_RESULT: ${{ needs.approval.result }}
+          PUBLISH_RESULT: ${{ needs.publish.result }}
+          PUBLISH_MAJOR_RESULT: ${{ needs.publish_major.result }}
+          DRY_RUN_RESULT: ${{ needs.dry_run_output.result }}
+          SHOULD_RELEASE: ${{ needs.analyze.outputs.should_release }}
+          BUMP: ${{ needs.analyze.outputs.bump }}
+          VERSION: ${{ needs.analyze.outputs.version }}
+          REASON: ${{ needs.analyze.outputs.reason }}
+          WARNING: ${{ needs.analyze.outputs.warning }}
+          DRY_RUN: ${{ needs.analyze.outputs.dryRun }}
+          BINARY_LINES: ${{ needs.analyze.outputs.binary_lines }}
+          BINARY_CHANGES: ${{ needs.analyze.outputs.binary_changes }}
+          CHANGELOG_LEN: ${{ needs.analyze.outputs.changelog_len }}
+          GATE_PROCEED: ${{ needs.analyze.outputs.gate_proceed }}
+          TOKEN_PRESENT: ${{ needs.analyze.outputs.token_present }}
+          TOKEN_GATE: ${{ needs.analyze.outputs.token_gate }}
+          LAST_TAG: ${{ needs.analyze.outputs.last_tag }}
+          POM_VERSION: ${{ needs.analyze.outputs.pom_version }}
+          POM_BASE: ${{ needs.analyze.outputs.pom_base }}
+          RELEASE_NOTIFY_USER: ${{ vars.RELEASE_NOTIFY_USER }}
+        run: |
+          status="success"
+          for result in "$ANALYZE_RESULT" "$APPROVAL_RESULT" "$PUBLISH_RESULT" "$PUBLISH_MAJOR_RESULT" "$DRY_RUN_RESULT"; do
+            if [ "$result" = "failure" ] || [ "$result" = "cancelled" ]; then
+              status="failure"
+              break
+            fi
+          done
+
+          status_upper=$(printf '%s' "$status" | tr '[:lower:]' '[:upper:]')
+          run_url="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          gate_proceed="${GATE_PROCEED:-unknown}"
+          binary_lines="${BINARY_LINES:-0}"
+          changelog_len="${CHANGELOG_LEN:-0}"
+          token_present="${TOKEN_PRESENT:-unknown}"
+          token_gate="${TOKEN_GATE:-unknown}"
+          should_release="${SHOULD_RELEASE:-unknown}"
+          bump="${BUMP:-unknown}"
+          version="${VERSION:-}"
+          reason="${REASON:-}"
+          warning="${WARNING:-}"
+          dry_run="${DRY_RUN:-unknown}"
+          last_tag="${LAST_TAG:-}"
+          pom_version="${POM_VERSION:-}"
+          pom_base="${POM_BASE:-}"
+          binary_changes="${BINARY_CHANGES:-}"
+
+          if [ "$dry_run" = "true" ]; then
+            mode_label="dry-run"
+          else
+            mode_label="production"
+          fi
+
+          if [ "$status" = "success" ]; then
+            completion_text="completed successfully"
+          else
+            completion_text="completed with failures"
+          fi
+
+          timestamp=$(date '+%-I:%M:%S %p on %-m.%-d.%Y')
+
+          if [ -z "$binary_changes" ]; then
+            binary_changes="(none)"
+          fi
+          if [ -z "$version" ]; then
+            version="(none)"
+          fi
+          if [ -z "$reason" ]; then
+            reason="(none)"
+          fi
+          if [ -z "$warning" ]; then
+            warning="(none)"
+          fi
+          if [ -z "$last_tag" ]; then
+            last_tag="(none)"
+          fi
+          if [ -z "$pom_version" ]; then
+            pom_version="(unknown)"
+          fi
+          if [ -z "$pom_base" ]; then
+            pom_base="(unknown)"
+          fi
+
+          notify_user="${RELEASE_NOTIFY_USER:-TheCookieLab}"
+
+          cat > notification-body.txt <<EOF
+          @${notify_user}
+
+          **Release Scheduler ${mode_label} ${completion_text} at ${timestamp}**
+          - Repository: ${GITHUB_REPOSITORY}
+          - Run: ${run_url}
+          - Event: ${EVENT_NAME}
+          - Status: ${status_upper}
+
+          Decision Summary:
+          - gate proceed: ${gate_proceed}
+          - binary change count: ${binary_lines}
+          - changelog length: ${changelog_len}
+          - models token present: ${token_present}
+          - token gate proceed: ${token_gate}
+          - should release: ${should_release}
+          - bump: ${bump}
+          - computed version: ${version}
+          - reason: ${reason}
+          - warning: ${warning}
+          - dryRun: ${dry_run}
+          - last tag: ${last_tag}
+          - pom version: ${pom_version}
+          - pom base: ${pom_base}
+
+          Binary-impacting changes (paths):
+          ${binary_changes}
+
+          Job Results:
+          - analyze: ${ANALYZE_RESULT}
+          - approval: ${APPROVAL_RESULT}
+          - publish: ${PUBLISH_RESULT}
+          - publish_major: ${PUBLISH_MAJOR_RESULT}
+          - dry_run_output: ${DRY_RUN_RESULT}
+          EOF
+
+      - name: Post to Release Scheduler discussion
+        if: always()
+        uses: actions/github-script@v8
+        env:
+          RELEASE_SCHEDULER_DISCUSSION_NUMBER: ${{ vars.RELEASE_SCHEDULER_DISCUSSION_NUMBER }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const fs = require("fs");
+            const body = fs.readFileSync("notification-body.txt", "utf8");
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const rawNumber = process.env.RELEASE_SCHEDULER_DISCUSSION_NUMBER;
+            const number = rawNumber ? Number(rawNumber) : 1414;
+            if (!Number.isFinite(number)) {
+              throw new Error(`Invalid Release Scheduler discussion number: ${rawNumber}`);
+            }
+
+            const query = `
+              query($owner: String!, $repo: String!, $number: Int!) {
+                repository(owner: $owner, name: $repo) {
+                  discussion(number: $number) {
+                    id
+                  }
+                }
+              }
+            `;
+            const queryResult = await github.graphql(query, { owner, repo, number });
+            const discussionId = queryResult?.repository?.discussion?.id;
+            if (!discussionId) {
+              throw new Error(`Discussion ${number} not found in ${owner}/${repo}`);
+            }
+
+            const mutation = `
+              mutation($discussionId: ID!, $body: String!) {
+                addDiscussionComment(input: { discussionId: $discussionId, body: $body }) {
+                  comment {
+                    url
+                  }
+                }
+              }
+            `;
+            await github.graphql(mutation, { discussionId, body });
