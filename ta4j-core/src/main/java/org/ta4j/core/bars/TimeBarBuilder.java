@@ -301,6 +301,7 @@ public class TimeBarBuilder implements BarBuilder {
         Instant previousEndTime = endTime;
         long skippedPeriods = 0;
         while (!time.isBefore(endTime)) {
+            persistCurrentBarIfPresent();
             resetTradeState();
             beginTime = endTime;
             endTime = beginTime.plus(timePeriod);
@@ -311,9 +312,8 @@ public class TimeBarBuilder implements BarBuilder {
             LOG.warn("Detected {} missing bar period(s) between {} and {} for series {}", missingPeriods,
                     previousEndTime, beginTime, baseBarSeries.getName());
         }
-        boolean replace = openPrice != null;
         recordTrade(tradeVolume, tradePrice, side, liquidity);
-        baseBarSeries.addBar(build(), replace);
+        baseBarSeries.addBar(build(), shouldReplaceCurrentBar());
     }
 
     @Override
@@ -408,6 +408,31 @@ public class TimeBarBuilder implements BarBuilder {
                 takerTrades++;
             }
         }
+    }
+
+    private void persistCurrentBarIfPresent() {
+        if (!hasBarData()) {
+            return;
+        }
+        if (amount == null && closePrice != null && volume != null) {
+            amount = closePrice.multipliedBy(volume);
+        }
+        baseBarSeries.addBar(build(), shouldReplaceCurrentBar());
+    }
+
+    private boolean shouldReplaceCurrentBar() {
+        if (baseBarSeries == null || baseBarSeries.isEmpty()) {
+            return false;
+        }
+        return baseBarSeries.getLastBar().getEndTime().equals(endTime);
+    }
+
+    private boolean hasBarData() {
+        return openPrice != null || highPrice != null || lowPrice != null || closePrice != null || volume != null
+                || amount != null || trades > 0 || hasSideData || hasLiquidityData || buyVolume != null
+                || sellVolume != null || buyAmount != null || sellAmount != null || buyTrades > 0 || sellTrades > 0
+                || makerVolume != null || takerVolume != null || makerAmount != null || takerAmount != null
+                || makerTrades > 0 || takerTrades > 0;
     }
 
     private void resetTradeState() {

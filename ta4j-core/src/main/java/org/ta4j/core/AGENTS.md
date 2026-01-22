@@ -4,4 +4,4 @@
 - Extend `BaseBarSeries` for new series implementations to inherit validation logic and to avoid re-implementing removal/index handling.
 - Keep concurrent read access safe by returning immutable snapshots from `getBarData()` (e.g., via `List.copyOf(...)`) instead of exposing internal mutable lists.
 - Guard mutations with `ReentrantReadWriteLock` write locks and wrap read-mostly methods with the read lock; do not rely on synchronized collections.
-- Add `@since 0.19` to every new public class or method introduced in this package.
+- Add `@since <current version sans SNAPSHOT>` to every new public class or method introduced in this package.

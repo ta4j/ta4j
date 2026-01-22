@@ -271,6 +271,44 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void addTradeFlushesSeededBarBeforeSkippingPeriods() {
+        final var period = Duration.ofMinutes(1);
+        final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(period))
+                .build();
+        final var builder = series.barBuilder();
+        final var start = Instant.parse("2024-01-01T00:00:00Z");
+        final var seededEnd = start.plus(period);
+        final var later = start.plus(period.multipliedBy(3));
+
+        builder.beginTime(start)
+                .endTime(seededEnd)
+                .openPrice(numFactory.hundred())
+                .highPrice(numOf(110))
+                .lowPrice(numOf(90))
+                .closePrice(numOf(105))
+                .volume(numOf(10))
+                .amount(numOf(1050))
+                .trades(1);
+
+        builder.addTrade(later, numFactory.one(), numOf(120));
+
+        assertEquals(2, series.getBarCount());
+        final var seededBar = series.getBar(0);
+        assertEquals(start, seededBar.getBeginTime());
+        assertEquals(seededEnd, seededBar.getEndTime());
+        assertEquals(numFactory.hundred(), seededBar.getOpenPrice());
+        assertEquals(numOf(110), seededBar.getHighPrice());
+        assertEquals(numOf(90), seededBar.getLowPrice());
+        assertEquals(numOf(105), seededBar.getClosePrice());
+        assertEquals(numOf(10), seededBar.getVolume());
+        assertEquals(numOf(1050), seededBar.getAmount());
+        assertEquals(1, seededBar.getTrades());
+        assertEquals(later, series.getBar(1).getBeginTime());
+        assertEquals(later.plus(period), series.getBar(1).getEndTime());
+    }
+
+    @Test
     public void addTradeLogsDiscontinuityWarning() {
         final var period = Duration.ofMinutes(1);
         final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
