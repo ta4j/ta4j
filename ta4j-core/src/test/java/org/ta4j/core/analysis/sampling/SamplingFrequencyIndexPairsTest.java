@@ -32,6 +32,7 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import org.ta4j.core.analysis.frequency.IndexPair;
 import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexPairs;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 
@@ -44,8 +45,7 @@ public class SamplingFrequencyIndexPairsTest {
 
         var pairs = sampler.sample(series, 0, 1, 3).toList();
 
-        var expected = List.of(new SamplingFrequencyIndexPairs.IndexPair(0, 1),
-                new SamplingFrequencyIndexPairs.IndexPair(1, 2), new SamplingFrequencyIndexPairs.IndexPair(2, 3));
+        var expected = List.of(new IndexPair(0, 1), new IndexPair(1, 2), new IndexPair(2, 3));
 
         assertEquals(expected, pairs);
     }
@@ -57,10 +57,7 @@ public class SamplingFrequencyIndexPairsTest {
 
         var pairs = sampler.sample(series, 0, 1, 3).toList();
 
-        var expected = Stream
-                .of(new SamplingFrequencyIndexPairs.IndexPair(0, 1), new SamplingFrequencyIndexPairs.IndexPair(1, 2),
-                        new SamplingFrequencyIndexPairs.IndexPair(2, 3))
-                .toList();
+        var expected = Stream.of(new IndexPair(0, 1), new IndexPair(1, 2), new IndexPair(2, 3)).toList();
 
         assertEquals(expected, pairs);
     }
@@ -72,8 +69,7 @@ public class SamplingFrequencyIndexPairsTest {
 
         var pairs = sampler.sample(series, 0, 1, 3).toList();
 
-        var expected = List.of(new SamplingFrequencyIndexPairs.IndexPair(0, 1),
-                new SamplingFrequencyIndexPairs.IndexPair(1, 3));
+        var expected = List.of(new IndexPair(0, 1), new IndexPair(1, 3));
 
         assertEquals(expected, pairs);
     }
@@ -85,8 +81,7 @@ public class SamplingFrequencyIndexPairsTest {
 
         var pairs = sampler.sample(series, 0, 1, 2).toList();
 
-        var expected = List.of(new SamplingFrequencyIndexPairs.IndexPair(0, 1),
-                new SamplingFrequencyIndexPairs.IndexPair(1, 2));
+        var expected = List.of(new IndexPair(0, 1), new IndexPair(1, 2));
 
         assertEquals(expected, pairs);
     }
