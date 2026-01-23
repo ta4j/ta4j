@@ -48,7 +48,7 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
     public void cashReturnPolicyControlsFlatIntervalExcessGrowth() {
         var series = getBarSeries("excess_returns_series");
         var start = Instant.parse("2024-01-01T00:00:00Z");
-        var closes = new double[]{100d, 110d, 110d, 121d};
+        var closes = new double[] { 100d, 110d, 110d, 121d };
 
         IntStream.range(0, closes.length).forEach(i -> {
             var endTime = start.plus(Duration.ofDays(i + 1L));
@@ -92,7 +92,7 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void defaultPolicyKeepsFlatCashNeutralWhenRiskFreeIsZero() {
-        var series = buildDailySeries(new double[]{100d, 100d, 100d});
+        var series = buildDailySeries(new double[] { 100d, 100d, 100d });
         var tradingRecord = new BaseTradingRecord();
 
         var actual = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord)
@@ -103,7 +103,7 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void cashEarnsZeroPenalizesFlatCashAgainstPositiveRiskFree() {
-        var series = buildDailySeries(new double[]{100d, 100d});
+        var series = buildDailySeries(new double[] { 100d, 100d });
         var tradingRecord = new BaseTradingRecord();
         var annualRate = numFactory.numOf(0.1d);
         var perBarRiskFree = Math.pow(1.0 + annualRate.doubleValue(),

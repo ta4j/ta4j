@@ -23,24 +23,24 @@
  */
 package org.ta4j.core.criteria;
 
-import java.util.stream.Stream;
-import java.time.ZoneOffset;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Objects;
-
-import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexPairs;
-import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
-import org.ta4j.core.analysis.frequency.SamplingFrequency;
-import org.ta4j.core.analysis.ExcessReturns;
-import org.ta4j.core.utils.TimeConstants;
-import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.num.NumFactory;
+import java.util.stream.Stream;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.ExcessReturns;
+import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
+import org.ta4j.core.analysis.frequency.IndexPair;
+import org.ta4j.core.analysis.frequency.SamplingFrequency;
+import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexPairs;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.utils.TimeConstants;
 
 /**
  * Computes the Sharpe Ratio.
@@ -145,6 +145,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         this.annualization = Objects.requireNonNull(annualization, "annualization must not be null");
         this.groupingZoneId = Objects.requireNonNull(groupingZoneId, "groupingZoneId must not be null");
         this.cashReturnPolicy = Objects.requireNonNull(cashReturnPolicy, "cashReturnPolicy must not be null");
+        Objects.requireNonNull(samplingFrequency, "samplingFrequency must not be null");
         this.samplingFrequencyIndexPairs = new SamplingFrequencyIndexPairs(samplingFrequency, this.groupingZoneId);
     }
 
@@ -184,8 +185,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         }
         var excessReturns = new ExcessReturns(series, series.numFactory().numOf(annualRiskFreeRate), cashReturnPolicy,
                 tradingRecord);
-        Stream<SamplingFrequencyIndexPairs.IndexPair> pairs = samplingFrequencyIndexPairs.sample(series, anchorIndex,
-                start, end);
+        Stream<IndexPair> pairs = samplingFrequencyIndexPairs.sample(series, anchorIndex, start, end);
 
         var acc = pairs.reduce(Acc.empty(zero),
                 (a, p) -> a.add(excessReturns.excessReturn(p.previousIndex(), p.currentIndex()),

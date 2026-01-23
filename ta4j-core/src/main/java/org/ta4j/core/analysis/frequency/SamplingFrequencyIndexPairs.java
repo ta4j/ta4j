@@ -62,7 +62,7 @@ public final class SamplingFrequencyIndexPairs {
      * @since 0.22.2
      */
     public SamplingFrequencyIndexPairs(SamplingFrequency samplingFrequency, ZoneId groupingZoneId) {
-        this.samplingFrequency = Objects.requireNonNull(samplingFrequency, "sampling must not be null");
+        this.samplingFrequency = Objects.requireNonNull(samplingFrequency, "samplingFrequency must not be null");
         this.groupingZoneId = Objects.requireNonNull(groupingZoneId, "groupingZoneId must not be null");
         ;
     }
@@ -137,13 +137,4 @@ public final class SamplingFrequencyIndexPairs {
         return series.getBar(index).getEndTime();
     }
 
-    /**
-     * Pair of indices describing a sampled interval.
-     *
-     * @param previousIndex the interval start index
-     * @param currentIndex  the interval end index
-     * @since 0.22.2
-     */
-    public record IndexPair(int previousIndex, int currentIndex) {
-    }
 }
