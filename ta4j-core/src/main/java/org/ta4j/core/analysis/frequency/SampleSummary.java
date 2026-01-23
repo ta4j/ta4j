@@ -29,11 +29,15 @@ import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.Num;
 
 /**
- * Summary statistics for a numeric sample series with optional annualization metadata.
+ * Summary statistics for a numeric sample series with optional annualization
+ * metadata.
  *
- * <p>The summary accumulates central moments for mean, variance, skewness, and kurtosis
- * while also tracking the elapsed time between samples (in years). If time deltas are
- * provided, callers can derive an annualization factor for volatility scaling.</p>
+ * <p>
+ * The summary accumulates central moments for mean, variance, skewness, and
+ * kurtosis while also tracking the elapsed time between samples (in years). If
+ * time deltas are provided, callers can derive an annualization factor for
+ * volatility scaling.
+ * </p>
  *
  * @since 0.22.2
  */
@@ -52,7 +56,7 @@ public final class SampleSummary {
     /**
      * Builds a summary from frequency-aware samples.
      *
-     * @param samples the samples to summarize
+     * @param samples    the samples to summarize
      * @param numFactory the numeric factory to use for calculations
      * @return a summary of the provided samples
      */
@@ -67,10 +71,12 @@ public final class SampleSummary {
     /**
      * Builds a summary from raw values with no annualization metadata.
      *
-     * <p>The resulting summary treats all time deltas as zero, so the
-     * {@link #annualizationFactor(NumFactory)} will be empty.</p>
+     * <p>
+     * The resulting summary treats all time deltas as zero, so the
+     * {@link #annualizationFactor(NumFactory)} will be empty.
+     * </p>
      *
-     * @param values the values to summarize
+     * @param values     the values to summarize
      * @param numFactory the numeric factory to use for calculations
      * @return a summary of the provided values
      */
@@ -137,7 +143,8 @@ public final class SampleSummary {
      * Returns the sample skewness.
      *
      * @param numFactory the numeric factory to use for calculations
-     * @return the sample skewness (zero when fewer than three samples or variance is zero)
+     * @return the sample skewness (zero when fewer than three samples or variance
+     *         is zero)
      */
     public Num sampleSkewness(NumFactory numFactory) {
         return moments.sampleSkewness(numFactory);
@@ -147,7 +154,8 @@ public final class SampleSummary {
      * Returns the sample excess kurtosis.
      *
      * @param numFactory the numeric factory to use for calculations
-     * @return the sample kurtosis (zero when fewer than four samples or variance is zero)
+     * @return the sample kurtosis (zero when fewer than four samples or variance is
+     *         zero)
      */
     public Num sampleKurtosis(NumFactory numFactory) {
         return moments.sampleKurtosis(numFactory);
@@ -156,9 +164,11 @@ public final class SampleSummary {
     /**
      * Returns the annualization factor derived from positive time deltas.
      *
-     * <p>The factor is {@code sqrt(count / deltaYearsSum)} and is typically used to
-     * annualize volatility-like measures. If there are no positive deltas, the result
-     * is empty.</p>
+     * <p>
+     * The factor is {@code sqrt(count / deltaYearsSum)} and is typically used to
+     * annualize volatility-like measures. If there are no positive deltas, the
+     * result is empty.
+     * </p>
      *
      * @param numFactory the numeric factory to use for calculations
      * @return the annualization factor, if time deltas are available
