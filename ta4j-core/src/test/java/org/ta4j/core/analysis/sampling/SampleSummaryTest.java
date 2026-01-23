@@ -21,11 +21,13 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.criteria;
+package org.ta4j.core.analysis.sampling;
 
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
-import org.ta4j.core.analysis.SampleSummary;
+import org.ta4j.core.analysis.frequency.Sample;
+import org.ta4j.core.analysis.frequency.SampleSummary;
+import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.num.NumFactory;
 import org.junit.Test;
 
@@ -43,8 +45,9 @@ public class SampleSummaryTest extends AbstractCriterionTest {
         var returns = new double[] { 0.05d, -0.02d, 0.04d, 0.01d, 0.03d };
         var deltas = new double[] { 0.5d, 0.25d, 0.25d, 0.5d, 1.0d };
 
-        var summary = SampleSummary.fromSamples(IntStream.range(0, returns.length)
-                .mapToObj(i -> new SampleSummary.Sample(numOf(returns[i]), numOf(deltas[i]))), numFactory);
+        var summary = SampleSummary.fromSamples(
+                IntStream.range(0, returns.length).mapToObj(i -> new Sample(numOf(returns[i]), numOf(deltas[i]))),
+                numFactory);
 
         var expectedMean = DoubleStream.of(returns).average().orElseThrow();
         var expectedM2 = 0d;
@@ -72,8 +75,7 @@ public class SampleSummaryTest extends AbstractCriterionTest {
         assertEquals(expectedVariance, summary.sampleVariance(numFactory).doubleValue(), 1e-12);
         assertEquals(expectedSkewness, summary.sampleSkewness(numFactory).doubleValue(), 1e-12);
         assertEquals(expectedKurtosis, summary.sampleKurtosis(numFactory).doubleValue(), 1e-12);
-        assertEquals(expectedAnnualization,
-                summary.annualizationFactor(numFactory).orElseThrow().doubleValue(), 1e-12);
+        assertEquals(expectedAnnualization, summary.annualizationFactor(numFactory).orElseThrow().doubleValue(), 1e-12);
     }
 
     @Test
@@ -91,8 +93,8 @@ public class SampleSummaryTest extends AbstractCriterionTest {
 
     @Test
     public void skewnessAndKurtosisRemainZeroWithInsufficientCount() {
-        var summary = SampleSummary.fromSamples(IntStream.range(0, 2)
-                .mapToObj(i -> new SampleSummary.Sample(numOf(i), numOf(0.5d))), numFactory);
+        var summary = SampleSummary.fromSamples(IntStream.range(0, 2).mapToObj(i -> new Sample(numOf(i), numOf(0.5d))),
+                numFactory);
 
         assertEquals(2, summary.count());
         assertEquals(0d, summary.sampleSkewness(numFactory).doubleValue(), 0d);

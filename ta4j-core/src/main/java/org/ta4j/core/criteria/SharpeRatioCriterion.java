@@ -28,18 +28,14 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Objects;
-import java.util.stream.Stream;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.analysis.SampleSummary;
+import org.ta4j.core.analysis.frequency.*;
 import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
-import org.ta4j.core.analysis.frequency.IndexPair;
-import org.ta4j.core.analysis.frequency.SamplingFrequency;
-import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexPairs;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.utils.TimeConstants;
 
@@ -116,7 +112,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         PERIOD, ANNUALIZED
     }
 
-    private final SamplingFrequencyIndexPairs samplingFrequencyIndexPairs;
+    private final SamplingFrequencyIndexes samplingFrequencyIndexes;
     private final Annualization annualization;
     private final CashReturnPolicy cashReturnPolicy;
     private final double annualRiskFreeRate;
@@ -176,7 +172,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         this.openPositionHandling = Objects.requireNonNull(openPositionHandling,
                 "openPositionHandling must not be null");
         Objects.requireNonNull(samplingFrequency, "samplingFrequency must not be null");
-        this.samplingFrequencyIndexPairs = new SamplingFrequencyIndexPairs(samplingFrequency, this.groupingZoneId);
+        this.samplingFrequencyIndexes = new SamplingFrequencyIndexes(samplingFrequency, this.groupingZoneId);
     }
 
     @Override
@@ -215,13 +211,11 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         if (end - start + 1 < 2) {
             return zero;
         }
-        var excessReturns = new ExcessReturns(series, series.numFactory().numOf(annualRiskFreeRate), cashReturnPolicy,
-                tradingRecord, openPositionHandling);
-        Stream<IndexPair> pairs = samplingFrequencyIndexPairs.sample(series, anchorIndex, start, end);
-
-        var summary = SampleSummary.fromSamples(pairs.map(pair -> new SampleSummary.Sample(
-                excessReturns.excessReturn(pair.previousIndex(), pair.currentIndex()),
-                deltaYears(series, pair.previousIndex(), pair.currentIndex()))), numFactory);
+        var annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
+        var excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord, openPositionHandling);
+        var samples = samplingFrequencyIndexes.sample(series, anchorIndex, start, end)
+                .map(pair -> getSample(series, pair, excessReturns));
+        var summary = SampleSummary.fromSamples(samples, numFactory);
 
         if (summary.count() < 2) {
             return zero;
@@ -239,8 +233,15 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         }
 
         return summary.annualizationFactor(numFactory)
-                .map(factor -> sharpePerPeriod.multipliedBy(factor))
+                .map(sharpePerPeriod::multipliedBy)
                 .orElse(sharpePerPeriod);
+    }
+
+    private Sample getSample(BarSeries series, IndexPair pair, ExcessReturns excessReturns) {
+        var previousIndex = pair.previousIndex();
+        var excessReturn = excessReturns.excessReturn(previousIndex, pair.currentIndex());
+        var deltaYears = deltaYears(series, previousIndex, pair.currentIndex());
+        return new Sample(excessReturn, deltaYears);
     }
 
     private Num deltaYears(BarSeries series, int previousIndex, int currentIndex) {

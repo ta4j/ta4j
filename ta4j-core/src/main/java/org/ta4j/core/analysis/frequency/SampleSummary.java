@@ -21,27 +21,20 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.analysis;
+package org.ta4j.core.analysis.frequency;
 
 import java.util.Optional;
-import java.util.Objects;
 import java.util.stream.Stream;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.Num;
 
 /**
- * Summary statistics for a numeric sample series with optional annualization metadata.
+ * Summary statistics for a numeric sample series with optional annualization
+ * metadata.
  *
  * @since 0.22.2
  */
 public final class SampleSummary {
-
-    public record Sample(Num value, Num deltaYears) {
-        public Sample {
-            Objects.requireNonNull(value, "value must not be null");
-            Objects.requireNonNull(deltaYears, "deltaYears must not be null");
-        }
-    }
 
     private final Moments moments;
     private final Num deltaYearsSum;
@@ -175,20 +168,23 @@ public final class SampleSummary {
             var delta3 = delta2.multipliedBy(delta);
             var delta4 = delta2.multipliedBy(delta2);
             var meanNext = mean.plus(delta.multipliedBy(n2Num).dividedBy(nNum));
-            var m2Next = m2.plus(other.m2)
-                    .plus(delta2.multipliedBy(n1Num).multipliedBy(n2Num).dividedBy(nNum));
+            var m2Next = m2.plus(other.m2).plus(delta2.multipliedBy(n1Num).multipliedBy(n2Num).dividedBy(nNum));
             var m3Next = m3.plus(other.m3)
-                    .plus(delta3.multipliedBy(n1Num).multipliedBy(n2Num).multipliedBy(f.numOf(n1 - n2))
+                    .plus(delta3.multipliedBy(n1Num)
+                            .multipliedBy(n2Num)
+                            .multipliedBy(f.numOf(n1 - n2))
                             .dividedBy(nNum.multipliedBy(nNum)))
                     .plus(delta.multipliedBy(f.numOf(3))
                             .multipliedBy(n1Num.multipliedBy(other.m2).minus(n2Num.multipliedBy(m2)))
                             .dividedBy(nNum));
             var m4Next = m4.plus(other.m4)
-                    .plus(delta4.multipliedBy(n1Num).multipliedBy(n2Num)
+                    .plus(delta4.multipliedBy(n1Num)
+                            .multipliedBy(n2Num)
                             .multipliedBy(f.numOf(n1 * n1 - n1 * n2 + n2 * n2))
                             .dividedBy(nNum.multipliedBy(nNum).multipliedBy(nNum)))
                     .plus(delta2.multipliedBy(f.numOf(6))
-                            .multipliedBy(n1Num.multipliedBy(n1Num).multipliedBy(other.m2)
+                            .multipliedBy(n1Num.multipliedBy(n1Num)
+                                    .multipliedBy(other.m2)
                                     .plus(n2Num.multipliedBy(n2Num).multipliedBy(m2)))
                             .dividedBy(nNum.multipliedBy(nNum)))
                     .plus(delta.multipliedBy(f.numOf(4))
@@ -225,8 +221,7 @@ public final class SampleSummary {
             var nMinus2 = f.numOf(count - 2);
             var nMinus3 = f.numOf(count - 3);
             var m2Squared = m2.multipliedBy(m2);
-            var term = n.plus(f.numOf(1)).multipliedBy(m4).dividedBy(m2Squared)
-                    .minus(nMinus1.multipliedBy(f.numOf(3)));
+            var term = n.plus(f.numOf(1)).multipliedBy(m4).dividedBy(m2Squared).minus(nMinus1.multipliedBy(f.numOf(3)));
             return nMinus1.dividedBy(nMinus2.multipliedBy(nMinus3)).multipliedBy(term);
         }
     }

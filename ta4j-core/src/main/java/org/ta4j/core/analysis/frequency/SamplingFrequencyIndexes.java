@@ -47,7 +47,7 @@ import org.ta4j.core.BarSeries;
  *
  * @since 0.22.2
  */
-public final class SamplingFrequencyIndexPairs {
+public final class SamplingFrequencyIndexes {
 
     private static final WeekFields ISO_WEEK_FIELDS = WeekFields.ISO;
 
@@ -61,7 +61,7 @@ public final class SamplingFrequencyIndexPairs {
      * @param groupingZoneId    the time zone used to interpret bar end times
      * @since 0.22.2
      */
-    public SamplingFrequencyIndexPairs(SamplingFrequency samplingFrequency, ZoneId groupingZoneId) {
+    public SamplingFrequencyIndexes(SamplingFrequency samplingFrequency, ZoneId groupingZoneId) {
         this.samplingFrequency = Objects.requireNonNull(samplingFrequency, "samplingFrequency must not be null");
         this.groupingZoneId = Objects.requireNonNull(groupingZoneId, "groupingZoneId must not be null");
         ;

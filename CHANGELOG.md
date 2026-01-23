@@ -5,7 +5,7 @@
 - **Workflow lint hook**: Added a repo `pre-push` hook to run `actionlint` on workflow changes (see CONTRIBUTING).
 - **Release health workflow**: Added scheduled checks for tag reachability, snapshot version drift, stale release PRs, and missing release notes, with summaries posted to Discussions.
 - **Two-phase release workflows**: Added `prepare-release.yml` and `publish-release.yml` to split release preparation from tagging and deployment.
-- **Invested interval**: Added `InvestedInterval` to encapsulate invested interval detection for analysis routines.
+- **Sharpe Ratio**: Added `SharpeRatioCriterion` and its related calculation classes
 
 ### Changed
 - **Release workflow branching**: Auto-merge the release PR by default, with optional direct push to the default branch when `RELEASE_DIRECT_PUSH=true`.
@@ -18,10 +18,6 @@
 - **Release token preflight**: Fail fast when `GH_TA4J_REPO_TOKEN` lacks write permission (warn-only in dry-run mode).
 - **Release scheduler enablement**: Gate scheduled runs on `RELEASE_SCHEDULER_ENABLED` (defaults to disabled when unset).
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
-- **Sharpe Ratio**: Added `SharpeRatioCriterion`
-- **Sharpe Ratio**: Added an option to include or exclude open positions when computing returns.
-- **Sharpe Ratio**: Extracted a generic sample-summary helper (including higher moments) for Sharpe calculations.
-- **Time constants**: Centralized seconds-per-year usage for excess returns and Sharpe ratio calculations.
 
 ### Fixed
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).

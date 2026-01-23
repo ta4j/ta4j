@@ -33,15 +33,15 @@ import org.ta4j.core.BarSeries;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import org.ta4j.core.analysis.frequency.IndexPair;
-import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexPairs;
+import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexes;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 
-public class SamplingFrequencyIndexPairsTest {
+public class SamplingFrequencyIndexesTest {
 
     @Test
     public void samplePerBarUsesConsecutivePairs() {
         var series = buildDailySeries();
-        var sampler = new SamplingFrequencyIndexPairs(SamplingFrequency.BAR, ZoneOffset.UTC);
+        var sampler = new SamplingFrequencyIndexes(SamplingFrequency.BAR, ZoneOffset.UTC);
 
         var pairs = sampler.sample(series, 0, 1, 3).toList();
 
@@ -53,7 +53,7 @@ public class SamplingFrequencyIndexPairsTest {
     @Test
     public void sampleDailyUsesPeriodEnds() {
         var series = buildDailySeries();
-        var sampler = new SamplingFrequencyIndexPairs(SamplingFrequency.DAY, ZoneOffset.UTC);
+        var sampler = new SamplingFrequencyIndexes(SamplingFrequency.DAY, ZoneOffset.UTC);
 
         var pairs = sampler.sample(series, 0, 1, 3).toList();
 
@@ -65,7 +65,7 @@ public class SamplingFrequencyIndexPairsTest {
     @Test
     public void sampleDailyAnchorsAtExplicitIndex() {
         var series = buildIntradaySeries();
-        var sampler = new SamplingFrequencyIndexPairs(SamplingFrequency.DAY, ZoneOffset.UTC);
+        var sampler = new SamplingFrequencyIndexes(SamplingFrequency.DAY, ZoneOffset.UTC);
 
         var pairs = sampler.sample(series, 0, 1, 3).toList();
 
@@ -77,7 +77,7 @@ public class SamplingFrequencyIndexPairsTest {
     @Test
     public void sampleMonthlyUsesMonthBoundary() {
         var series = buildMonthlyBoundarySeries();
-        var sampler = new SamplingFrequencyIndexPairs(SamplingFrequency.MONTH, ZoneOffset.UTC);
+        var sampler = new SamplingFrequencyIndexes(SamplingFrequency.MONTH, ZoneOffset.UTC);
 
         var pairs = sampler.sample(series, 0, 1, 2).toList();
 
