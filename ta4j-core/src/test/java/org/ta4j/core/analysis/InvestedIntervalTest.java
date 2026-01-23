@@ -34,9 +34,9 @@ import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
 
-public class InvestedIntervalIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>, Num> {
+public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolean>, Num> {
 
-    public InvestedIntervalIndicatorTest(NumFactory numFactory) {
+    public InvestedIntervalTest(NumFactory numFactory) {
         super(numFactory);
     }
 
@@ -51,7 +51,7 @@ public class InvestedIntervalIndicatorTest extends AbstractIndicatorTest<Indicat
         tradingRecord.exit(3, price, amount);
         tradingRecord.enter(4, price, amount);
 
-        var indicator = new InvestedIntervalIndicator(series, tradingRecord);
+        var indicator = new InvestedInterval(series, tradingRecord);
 
         assertThat(indicator.getValue(0)).as("first bar interval").isFalse();
         assertThat(indicator.getValue(1)).as("entry bar interval").isFalse();
@@ -66,7 +66,7 @@ public class InvestedIntervalIndicatorTest extends AbstractIndicatorTest<Indicat
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1).build();
         var tradingRecord = new BaseTradingRecord();
 
-        var indicator = new InvestedIntervalIndicator(series, tradingRecord);
+        var indicator = new InvestedInterval(series, tradingRecord);
 
         assertThat(indicator.getValue(0)).isFalse();
         assertThat(indicator.getValue(1)).isFalse();
@@ -82,11 +82,11 @@ public class InvestedIntervalIndicatorTest extends AbstractIndicatorTest<Indicat
         tradingRecord.enter(1, price, amount);
         tradingRecord.exit(2, price, amount);
 
-        var indicator = new InvestedIntervalIndicator(series, tradingRecord);
+        var indicator = new InvestedInterval(series, tradingRecord);
         var json = indicator.toJson();
         var restored = Indicator.fromJson(series, json);
 
-        assertThat(restored).isInstanceOf(InvestedIntervalIndicator.class);
+        assertThat(restored).isInstanceOf(InvestedInterval.class);
         assertThat(restored.toDescriptor()).isEqualTo(indicator.toDescriptor());
     }
 }

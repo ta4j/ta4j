@@ -38,7 +38,7 @@ import org.ta4j.core.indicators.CachedIndicator;
  *
  * @since 0.22.2
  */
-public class InvestedIntervalIndicator extends CachedIndicator<Boolean> {
+public class InvestedInterval extends CachedIndicator<Boolean> {
 
     private final boolean[] investedIntervals;
 
@@ -49,7 +49,7 @@ public class InvestedIntervalIndicator extends CachedIndicator<Boolean> {
      * @param tradingRecord the trading record used to detect invested intervals
      * @since 0.22.2
      */
-    public InvestedIntervalIndicator(BarSeries series, TradingRecord tradingRecord) {
+    public InvestedInterval(BarSeries series, TradingRecord tradingRecord) {
         super(series);
         investedIntervals = buildInvestedIntervals(tradingRecord);
     }

@@ -61,7 +61,7 @@ public final class ExcessReturns {
     private final Num annualRiskFreeRate;
     private final CashReturnPolicy cashReturnPolicy;
     private final BarSeries series;
-    private final InvestedIntervalIndicator investedIntervalIndicator;
+    private final InvestedInterval investedInterval;
     private final CashFlow cashFlow;
 
     /**
@@ -81,7 +81,7 @@ public final class ExcessReturns {
         this.series = series;
         this.annualRiskFreeRate = annualRiskFreeRate;
         this.cashReturnPolicy = cashReturnPolicy;
-        this.investedIntervalIndicator = new InvestedIntervalIndicator(series, tradingRecord);
+        this.investedInterval = new InvestedInterval(series, tradingRecord);
         this.cashFlow = new CashFlow(series, tradingRecord);
     }
 
@@ -161,7 +161,7 @@ public final class ExcessReturns {
     }
 
     private boolean isInvested(int index) {
-        return investedIntervalIndicator.getValue(index);
+        return investedInterval.getValue(index);
     }
 
 }
