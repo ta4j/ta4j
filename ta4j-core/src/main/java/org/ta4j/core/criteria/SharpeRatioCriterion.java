@@ -212,7 +212,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
             return zero;
         }
         var annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
-        var excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord, openPositionHandling);
+        var excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
+                openPositionHandling);
         var samples = samplingFrequencyIndexes.sample(series, anchorIndex, start, end)
                 .map(pair -> getSample(series, pair, excessReturns));
         var summary = SampleSummary.fromSamples(samples, numFactory);
@@ -232,9 +233,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
             return sharpePerPeriod;
         }
 
-        return summary.annualizationFactor(numFactory)
-                .map(sharpePerPeriod::multipliedBy)
-                .orElse(sharpePerPeriod);
+        return summary.annualizationFactor(numFactory).map(sharpePerPeriod::multipliedBy).orElse(sharpePerPeriod);
     }
 
     private Sample getSample(BarSeries series, IndexPair pair, ExcessReturns excessReturns) {
