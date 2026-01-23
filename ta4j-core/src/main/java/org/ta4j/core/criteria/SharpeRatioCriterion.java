@@ -102,8 +102,8 @@ import org.ta4j.core.utils.TimeConstants;
  *
  * <p>
  * <b>Open positions.</b> When {@link #openPositionHandling} is
- * {@link OpenPositionHandling#MARK_TO_MARKET}, the current open position (if any)
- * contributes to both invested intervals and cash-flow accrual. When
+ * {@link OpenPositionHandling#MARK_TO_MARKET}, the current open position (if
+ * any) contributes to both invested intervals and cash-flow accrual. When
  * {@link OpenPositionHandling#IGNORE}, only closed positions are considered for
  * the return series and position count.
  *

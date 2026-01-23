@@ -29,6 +29,5 @@ package org.ta4j.core.analysis;
  * @since 0.22.2
  */
 public enum OpenPositionHandling {
-    MARK_TO_MARKET,
-    IGNORE
+    MARK_TO_MARKET, IGNORE
 }

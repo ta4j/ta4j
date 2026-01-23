@@ -130,8 +130,8 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
         tradingRecord.exit(1, series.getBar(1).getClosePrice(), amount);
         tradingRecord.enter(1, series.getBar(1).getClosePrice(), amount);
 
-        var markToMarket = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO,
-                tradingRecord, OpenPositionHandling.MARK_TO_MARKET).excessReturn(0, 2).doubleValue();
+        var markToMarket = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord,
+                OpenPositionHandling.MARK_TO_MARKET).excessReturn(0, 2).doubleValue();
         var ignore = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord,
                 OpenPositionHandling.IGNORE).excessReturn(0, 2).doubleValue();
 

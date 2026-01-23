@@ -57,7 +57,8 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
      * Creates an indicator that reports invested intervals for the trading record.
      *
      * @param series               the bar series backing the indicator
-     * @param tradingRecord        the trading record used to detect invested intervals
+     * @param tradingRecord        the trading record used to detect invested
+     *                             intervals
      * @param openPositionHandling how open positions should be handled
      * @since 0.22.2
      */
