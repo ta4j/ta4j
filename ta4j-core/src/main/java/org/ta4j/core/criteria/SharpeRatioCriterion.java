@@ -159,7 +159,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         var numFactory = series.numFactory();
         var zero = numFactory.zero();
-        if (extracted(tradingRecord)) {
+        if (hasInsufficientPositions(tradingRecord)) {
             return zero;
         }
 
@@ -169,14 +169,17 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         return calculateSharpe(series, tradingRecord, anchorIndex, start, end);
     }
 
-    private static boolean extracted(TradingRecord tradingRecord) {
-        if (tradingRecord == null) {
+    private static boolean hasInsufficientPositions(TradingRecord tradingRecord) {
+        var tradingRecordMissing = tradingRecord == null;
+        if (tradingRecordMissing) {
             return true;
-        } else {
-            var openPosition = tradingRecord.getCurrentPosition();
-            var openCount = openPosition != null && openPosition.isOpened() ? 1 : 0;
-            return tradingRecord.getPositionCount() + openCount < 2;
         }
+
+        var currentPosition = tradingRecord.getCurrentPosition();
+        var hasOpenPosition = currentPosition != null && currentPosition.isOpened();
+        var totalPositionsCountConsideringOpen = tradingRecord.getPositionCount() + (hasOpenPosition ? 1 : 0);
+
+        return totalPositionsCountConsideringOpen < 2;
     }
 
     private Num calculateSharpe(BarSeries series, TradingRecord tradingRecord, int anchorIndex, int start, int end) {
