@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.analysis;
 
+import java.util.Objects;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
@@ -64,6 +65,9 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
      */
     public InvestedInterval(BarSeries series, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
         super(series);
+        Objects.requireNonNull(series, "series cannot be null");
+        Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
+        Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
         investedIntervals = buildInvestedIntervals(tradingRecord, openPositionHandling);
     }
 

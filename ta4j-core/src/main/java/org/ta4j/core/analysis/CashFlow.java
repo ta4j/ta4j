@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import java.util.Objects;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.BarSeries;
@@ -106,8 +107,11 @@ public class CashFlow implements Indicator<Num> {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
             OpenPositionHandling openPositionHandling) {
-        this.barSeries = barSeries;
+        this.barSeries = Objects.requireNonNull(barSeries, "barSeries cannot be null");
         values = new ArrayList<>(Collections.singletonList(getBarSeries().numFactory().one()));
+
+        Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
+        Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
 
         calculate(tradingRecord, finalIndex, openPositionHandling);
         fillToTheEnd(finalIndex);

@@ -25,6 +25,7 @@ package org.ta4j.core.analysis;
 
 import java.time.Duration;
 
+import java.util.Objects;
 import org.ta4j.core.utils.TimeConstants;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
@@ -90,15 +91,19 @@ public final class ExcessReturns {
      * @param annualRiskFreeRate   the annual risk-free rate (e.g. 0.05 for 5%)
      * @param cashReturnPolicy     the policy for flat equity intervals
      * @param tradingRecord        the trading record used to detect invested
-     *                             intervals (nullable)
+     *                             intervals
      * @param openPositionHandling how open positions should be handled
      * @since 0.22.2
      */
     public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy,
             TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
-        this.series = series;
-        this.annualRiskFreeRate = annualRiskFreeRate;
-        this.cashReturnPolicy = cashReturnPolicy;
+        this.series = Objects.requireNonNull(series, "series cannot be null");
+        this.annualRiskFreeRate = Objects.requireNonNull(annualRiskFreeRate, "annualRiskFreeRate cannot be null");
+        this.cashReturnPolicy = Objects.requireNonNull(cashReturnPolicy, "cashReturnPolicy cannot be null");
+
+        Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
+        Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
+
         this.investedInterval = new InvestedInterval(series, tradingRecord, openPositionHandling);
         this.cashFlow = new CashFlow(series, tradingRecord, openPositionHandling);
     }
