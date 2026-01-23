@@ -31,6 +31,7 @@ import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.frequency.*;
 import org.ta4j.core.analysis.ExcessReturns;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.BarSeriesUtils;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.TradingRecord;
@@ -208,30 +209,15 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        var numFactory = series.numFactory();
+        var zero = numFactory.zero();
         if (hasInsufficientPositions(tradingRecord, openPositionHandling)) {
-            return series.numFactory().zero();
+            return zero;
         }
 
         var start = series.getBeginIndex() + 1;
         var end = series.getEndIndex();
         var anchorIndex = series.getBeginIndex();
-        return calculateSharpe(series, tradingRecord, anchorIndex, start, end);
-    }
-
-    private static boolean hasInsufficientPositions(TradingRecord tradingRecord,
-            OpenPositionHandling openPositionHandling) {
-        var tradingRecordMissing = tradingRecord == null;
-        if (tradingRecordMissing) {
-            return true;
-        }
-        var openPositionCount = openPositionHandling == OpenPositionHandling.MARK_TO_MARKET
-                && tradingRecord.getCurrentPosition().isOpened() ? 1 : 0;
-        return tradingRecord.getPositionCount() + openPositionCount < 2;
-    }
-
-    private Num calculateSharpe(BarSeries series, TradingRecord tradingRecord, int anchorIndex, int start, int end) {
-        var numFactory = series.numFactory();
-        var zero = numFactory.zero();
         if (end - start + 1 < 2) {
             return zero;
         }
@@ -258,6 +244,17 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         }
 
         return summary.annualizationFactor(numFactory).map(sharpePerPeriod::multipliedBy).orElse(sharpePerPeriod);
+    }
+
+    private static boolean hasInsufficientPositions(TradingRecord tradingRecord,
+            OpenPositionHandling openPositionHandling) {
+        var tradingRecordMissing = tradingRecord == null;
+        if (tradingRecordMissing) {
+            return true;
+        }
+        var openPositionCount = openPositionHandling == OpenPositionHandling.MARK_TO_MARKET
+                && tradingRecord.getCurrentPosition().isOpened() ? 1 : 0;
+        return tradingRecord.getPositionCount() + openPositionCount < 2;
     }
 
     private Sample getSample(BarSeries series, IndexPair pair, ExcessReturns excessReturns) {
