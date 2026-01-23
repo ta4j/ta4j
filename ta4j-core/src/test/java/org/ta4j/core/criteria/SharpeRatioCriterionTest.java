@@ -29,10 +29,7 @@ import java.util.stream.IntStream;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.*;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import static org.ta4j.core.criteria.SharpeRatioCriterion.Annualization;
 import org.ta4j.core.num.NumFactory;
@@ -46,7 +43,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void returnsKnownSharpePerPeriod_whenAlwaysInvested() {
-        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("sr_test").build();
+        var series = getTestBarSeries("sr_test");
 
         var start = Instant.parse("2024-01-01T00:00:00Z");
         var closes = new double[] { 100d, 150d, 150d, 225d, 225d };
@@ -132,7 +129,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void groupingZoneIdMakesSharpeZeroInOneZoneButNotTheOther() {
-        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("zone_test_deterministic").build();
+        var series = getTestBarSeries("zone_test_deterministic");
 
         var endTimes = new Instant[] { Instant.parse("2024-01-01T23:30:00Z"), // NY: Jan 1
                 Instant.parse("2024-01-02T00:30:00Z"), // NY: Jan 1 -> day boundary happens between this and next
@@ -364,7 +361,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     private BarSeries buildDailySeries(double[] closes, Instant start) {
-        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("daily_series").build();
+        var series = getTestBarSeries("daily_series");
 
         IntStream.range(0, closes.length).forEach(i -> {
             var endTime = start.plus(Duration.ofDays(i + 1L));
@@ -384,7 +381,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     private BarSeries buildHourlySeries(double[] closes, Instant start) {
-        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("hourly_series").build();
+        var series = getTestBarSeries("hourly_series");
 
         IntStream.range(0, closes.length).forEach(i -> {
             var endTime = start.plus(Duration.ofHours(i + 1L));
@@ -404,7 +401,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     private BarSeries buildMinuteSeries(double[] closes, Instant start) {
-        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("minute_series").build();
+        var series = getTestBarSeries("minute_series");
 
         IntStream.range(0, closes.length).forEach(i -> {
             var endTime = start.plus(Duration.ofMinutes(i + 1L));
@@ -424,7 +421,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     private BarSeries buildSecondSeries(double[] closes, Instant start) {
-        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("second_series").build();
+        var series = getTestBarSeries("second_series");
 
         IntStream.range(0, closes.length).forEach(i -> {
             var endTime = start.plus(Duration.ofSeconds(i + 1L));
@@ -444,7 +441,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     private BarSeries buildIntradaySeriesWithDailyEnds(double[] dailyEndCloses, Instant day0StartUtc) {
-        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("intraday_series").build();
+        var series = getTestBarSeries("intraday_series");
 
         var day0EndTime = day0StartUtc.plus(Duration.ofHours(23));
         var day0EndClose = dailyEndCloses[0];
@@ -534,8 +531,8 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         }).toArray();
     }
 
-    private static BarSeries compressSeries(BarSeries source, int[] indices, String name) {
-        var series = new BaseBarSeriesBuilder().withName(name).withNumFactory(source.numFactory()).build();
+    private BarSeries compressSeries(BarSeries source, int[] indices, String name) {
+        var series = getTestBarSeries(name);
 
         IntStream.range(0, indices.length).forEach(i -> {
             var sourceBar = source.getBar(indices[i]);

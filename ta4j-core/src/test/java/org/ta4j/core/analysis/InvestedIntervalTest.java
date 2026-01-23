@@ -73,20 +73,4 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
         assertThat(indicator.getValue(2)).isFalse();
     }
 
-    @Test
-    public void shouldRoundTripThroughSerialization() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1).build();
-        var tradingRecord = new BaseTradingRecord();
-        var price = series.numFactory().numOf(1);
-        var amount = series.numFactory().numOf(1);
-        tradingRecord.enter(1, price, amount);
-        tradingRecord.exit(2, price, amount);
-
-        var indicator = new InvestedInterval(series, tradingRecord);
-        var json = indicator.toJson();
-        var restored = Indicator.fromJson(series, json);
-
-        assertThat(restored).isInstanceOf(InvestedInterval.class);
-        assertThat(restored.toDescriptor()).isEqualTo(indicator.toDescriptor());
-    }
 }

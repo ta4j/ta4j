@@ -28,6 +28,8 @@ import java.util.List;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.CriterionFactory;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -69,6 +71,10 @@ public abstract class AbstractCriterionTest {
 
     public Num numOf(Number n) {
         return numFactory.numOf(n);
+    }
+
+    public BaseBarSeries getTestBarSeries(String barSeriesName) {
+        return new BaseBarSeriesBuilder().withNumFactory(numFactory).withName(barSeriesName).build();
     }
 
 }
