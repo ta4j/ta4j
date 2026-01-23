@@ -133,6 +133,12 @@ public final class ExcessReturns {
             if (cashReturnPolicy == CashReturnPolicy.CASH_EARNS_RISK_FREE && isFlat && !isInvested) {
                 continue;
             }
+            if (previousEquity.isZero()) {
+                if (!currentEquity.isZero()) {
+                    excessGrowth = zero;
+                }
+                continue;
+            }
 
             if (riskFreeGrowth.isZero()) {
                 excessGrowth = excessGrowth.multipliedBy(currentEquity.dividedBy(previousEquity));

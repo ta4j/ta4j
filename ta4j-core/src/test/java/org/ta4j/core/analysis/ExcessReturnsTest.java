@@ -140,6 +140,19 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
         assertTrue(markToMarket > ignore);
     }
 
+    @Test
+    public void zeroPreviousEquityDoesNotBreakExcessReturn() {
+        var series = buildDailySeries(new double[] { 1d, 0d, 0d });
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+        tradingRecord.exit(1, series.getBar(1).getClosePrice(), numFactory.one());
+
+        var actual = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord)
+                .excessReturn(0, 2);
+
+        assertEquals(numFactory.one().negated(), actual);
+    }
+
     private BarSeries buildDailySeries(double[] closes) {
         var series = getBarSeries("excess_returns_series");
         var start = Instant.parse("2024-01-01T00:00:00Z");
