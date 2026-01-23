@@ -33,6 +33,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.SampleSummary;
 import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
@@ -40,7 +41,6 @@ import org.ta4j.core.analysis.frequency.IndexPair;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexPairs;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.TimeConstants;
 
 /**
@@ -219,32 +219,28 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
                 tradingRecord, openPositionHandling);
         Stream<IndexPair> pairs = samplingFrequencyIndexPairs.sample(series, anchorIndex, start, end);
 
-        var acc = pairs.reduce(Acc.empty(zero),
-                (a, p) -> a.add(excessReturns.excessReturn(p.previousIndex(), p.currentIndex()),
-                        deltaYears(series, p.previousIndex(), p.currentIndex()), numFactory),
-                (a, b) -> a.merge(b, numFactory));
+        var summary = SampleSummary.fromSamples(pairs.map(pair -> new SampleSummary.Sample(
+                excessReturns.excessReturn(pair.previousIndex(), pair.currentIndex()),
+                deltaYears(series, pair.previousIndex(), pair.currentIndex()))), numFactory);
 
-        if (acc.stats().count() < 2) {
+        if (summary.count() < 2) {
             return zero;
         }
 
-        var stdev = acc.stats().sampleVariance(numFactory).sqrt();
+        var stdev = summary.sampleVariance(numFactory).sqrt();
         if (stdev.isZero()) {
             return zero;
         }
 
-        var sharpePerPeriod = acc.stats().mean().dividedBy(stdev);
+        var sharpePerPeriod = summary.mean().dividedBy(stdev);
 
         if (annualization == Annualization.PERIOD) {
             return sharpePerPeriod;
         }
 
-        var annualizationFactor = acc.annualizationFactor(numFactory);
-        if (annualizationFactor.isLessThanOrEqual(zero)) {
-            return sharpePerPeriod;
-        }
-
-        return sharpePerPeriod.multipliedBy(annualizationFactor);
+        return summary.annualizationFactor(numFactory)
+                .map(factor -> sharpePerPeriod.multipliedBy(factor))
+                .orElse(sharpePerPeriod);
     }
 
     private Num deltaYears(BarSeries series, int previousIndex, int currentIndex) {
@@ -263,81 +259,6 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     @Override
     public boolean betterThan(Num a, Num b) {
         return a.isGreaterThan(b);
-    }
-
-    private record Acc(Stats stats, Num deltaYearsSum, Num deltaCount) {
-
-        static Acc empty(Num zero) {
-            return new Acc(Stats.empty(zero), zero, zero);
-        }
-
-        Acc add(Num excessReturn, Num deltaYears, NumFactory numFactory) {
-            var nextStats = stats.add(excessReturn, numFactory);
-            if (deltaYears.isLessThanOrEqual(numFactory.zero())) {
-                return new Acc(nextStats, deltaYearsSum, deltaCount);
-            }
-            return new Acc(nextStats, deltaYearsSum.plus(deltaYears), deltaCount.plus(numFactory.one()));
-        }
-
-        Acc merge(Acc other, NumFactory numFactory) {
-            var mergedStats = stats.merge(other.stats, numFactory);
-            return new Acc(mergedStats, deltaYearsSum.plus(other.deltaYearsSum), deltaCount.plus(other.deltaCount));
-        }
-
-        Num annualizationFactor(NumFactory numFactory) {
-            var zero = numFactory.zero();
-            if (deltaCount.isLessThanOrEqual(zero) || deltaYearsSum.isLessThanOrEqual(zero)) {
-                return zero;
-            }
-            return deltaCount.dividedBy(deltaYearsSum).sqrt();
-        }
-    }
-
-    record Stats(Num mean, Num m2, int count) {
-
-        static Stats empty(Num zero) {
-            return new Stats(zero, zero, 0);
-        }
-
-        Stats add(Num x, NumFactory f) {
-            if (count == 0) {
-                return new Stats(x, f.zero(), 1);
-            }
-            var n = count + 1;
-            var nNum = f.numOf(n);
-            var delta = x.minus(mean);
-            var meanNext = mean.plus(delta.dividedBy(nNum));
-            var delta2 = x.minus(meanNext);
-            var m2Next = m2.plus(delta.multipliedBy(delta2));
-            return new Stats(meanNext, m2Next, n);
-        }
-
-        Stats merge(Stats o, NumFactory f) {
-            if (o.count == 0) {
-                return this;
-            }
-            if (count == 0) {
-                return o;
-            }
-            var n1 = count;
-            var n2 = o.count;
-            var n = n1 + n2;
-            var n1Num = f.numOf(n1);
-            var n2Num = f.numOf(n2);
-            var nNum = f.numOf(n);
-            var delta = o.mean.minus(mean);
-            var meanNext = mean.plus(delta.multipliedBy(n2Num).dividedBy(nNum));
-            var m2Next = m2.plus(o.m2)
-                    .plus(delta.multipliedBy(delta).multipliedBy(n1Num).multipliedBy(n2Num).dividedBy(nNum));
-            return new Stats(meanNext, m2Next, n);
-        }
-
-        Num sampleVariance(NumFactory f) {
-            if (count < 2) {
-                return f.zero();
-            }
-            return m2.dividedBy(f.numOf(count - 1));
-        }
     }
 
 }

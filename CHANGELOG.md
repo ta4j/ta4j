@@ -20,6 +20,7 @@
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **Sharpe Ratio**: Added `SharpeRatioCriterion`
 - **Sharpe Ratio**: Added an option to include or exclude open positions when computing returns.
+- **Sharpe Ratio**: Extracted a generic sample-summary helper (including higher moments) for Sharpe calculations.
 - **Time constants**: Centralized seconds-per-year usage for excess returns and Sharpe ratio calculations.
 
 ### Fixed
