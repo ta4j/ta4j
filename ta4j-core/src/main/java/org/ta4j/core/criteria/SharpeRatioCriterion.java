@@ -174,12 +174,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         if (tradingRecordMissing) {
             return true;
         }
-
-        var currentPosition = tradingRecord.getCurrentPosition();
-        var hasOpenPosition = currentPosition != null && currentPosition.isOpened();
-        var totalPositionsCountConsideringOpen = tradingRecord.getPositionCount() + (hasOpenPosition ? 1 : 0);
-
-        return totalPositionsCountConsideringOpen < 2;
+        var openPositionCount = tradingRecord.getCurrentPosition().isOpened() ? 1 : 0;
+        return tradingRecord.getPositionCount() + openPositionCount < 2;
     }
 
     private Num calculateSharpe(BarSeries series, TradingRecord tradingRecord, int anchorIndex, int start, int end) {
