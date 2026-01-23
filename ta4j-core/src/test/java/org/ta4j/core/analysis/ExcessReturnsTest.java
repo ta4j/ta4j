@@ -26,20 +26,18 @@ package org.ta4j.core.analysis;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.stream.IntStream;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.utils.TimeConstants;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.num.NumFactory;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.utils.TimeConstants;
 
 public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -73,16 +71,15 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
         tradingRecord.enter(2, series.getBar(2).getClosePrice(), numFactory.one());
         tradingRecord.exit(3, series.getBar(3).getClosePrice(), numFactory.one());
 
-        var cashFlow = new CashFlow(series, tradingRecord);
         var annualRate = numFactory.numOf(0.05d);
         var perBarRiskFree = Math.pow(1.0 + annualRate.doubleValue(),
                 Duration.ofDays(1).getSeconds() / TimeConstants.SECONDS_PER_YEAR);
 
         var earnsRiskFree = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_RISK_FREE, tradingRecord)
-                .excessReturn(cashFlow, 0, 3)
+                .excessReturn(0, 3)
                 .doubleValue();
         var earnsZero = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord)
-                .excessReturn(cashFlow, 0, 3)
+                .excessReturn(0, 3)
                 .doubleValue();
 
         var expectedEarnsRiskFree = (1.21d / (perBarRiskFree * perBarRiskFree)) - 1.0d;
@@ -97,10 +94,9 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
     public void defaultPolicyKeepsFlatCashNeutralWhenRiskFreeIsZero() {
         var series = buildDailySeries(new double[] { 100d, 100d, 100d });
         var tradingRecord = new BaseTradingRecord();
-        var cashFlow = new CashFlow(series, tradingRecord);
 
         var actual = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord)
-                .excessReturn(cashFlow, 0, 2);
+                .excessReturn(0, 2);
 
         assertEquals(series.numFactory().zero(), actual);
     }
@@ -109,13 +105,12 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
     public void cashEarnsZeroPenalizesFlatCashAgainstPositiveRiskFree() {
         var series = buildDailySeries(new double[] { 100d, 100d });
         var tradingRecord = new BaseTradingRecord();
-        var cashFlow = new CashFlow(series, tradingRecord);
         var annualRate = numFactory.numOf(0.1d);
         var perBarRiskFree = Math.pow(1.0 + annualRate.doubleValue(),
                 Duration.ofDays(1).getSeconds() / TimeConstants.SECONDS_PER_YEAR);
 
         var actual = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord)
-                .excessReturn(cashFlow, 0, 1)
+                .excessReturn(0, 1)
                 .doubleValue();
         var expected = (1.0d / perBarRiskFree) - 1.0d;
 

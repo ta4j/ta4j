@@ -86,19 +86,6 @@ public final class ExcessReturns {
     }
 
     /**
-     * Computes the compounded excess return between two sampled indices.
-     *
-     * @param cashFlow      the equity curve cash flow
-     * @param previousIndex the start index
-     * @param currentIndex  the end index
-     * @return the compounded excess return
-     * @since 0.22.2
-     */
-    public Num excessReturn(CashFlow cashFlow, int previousIndex, int currentIndex) {
-        return excessReturnInternal(cashFlow, previousIndex, currentIndex);
-    }
-
-    /**
      * Computes the compounded excess return using the configured cash flow.
      *
      * @param previousIndex the start index
@@ -107,14 +94,10 @@ public final class ExcessReturns {
      * @since 0.22.2
      */
     public Num excessReturn(int previousIndex, int currentIndex) {
-        return excessReturnInternal(cashFlow, previousIndex, currentIndex);
-    }
-
-    private Num excessReturnInternal(CashFlow cashFlow, int previousIndex, int currentIndex) {
         var numFactory = series.numFactory();
         var zero = numFactory.zero();
         var one = numFactory.one();
-        if (currentIndex <= previousIndex || cashFlow == null) {
+        if (currentIndex <= previousIndex) {
             return zero;
         }
 
