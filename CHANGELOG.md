@@ -13,6 +13,7 @@
 - **Release notifications**: Include run mode and timestamp in the release discussion header.
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **Sharpe Ratio**: Added `SharpeRatioCriterion`
+- **Time constants**: Centralized seconds-per-year usage for excess returns and Sharpe ratio calculations.
 
 ### Fixed
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).

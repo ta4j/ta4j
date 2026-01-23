@@ -23,19 +23,21 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.stream.Stream;
 import java.time.ZoneOffset;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
-import java.util.stream.Stream;
 import java.util.Objects;
-import org.ta4j.core.analysis.CashFlow;
+
 import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexPairs;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.analysis.ExcessReturns;
-import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.utils.TimeConstants;
+import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.num.Num;
@@ -101,8 +103,6 @@ import org.ta4j.core.num.Num;
  *
  */
 public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
-
-    private static final double SECONDS_PER_YEAR = 365.2425d * 24 * 3600;
 
     public enum Annualization {
         PERIOD, ANNUALIZED
@@ -223,7 +223,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         var seconds = Math.max(0, Duration.between(endPrev, endNow).getSeconds());
         var numFactory = series.numFactory();
         return seconds <= 0 ? numFactory.zero()
-                : numFactory.numOf(seconds).dividedBy(numFactory.numOf(SECONDS_PER_YEAR));
+                : numFactory.numOf(seconds).dividedBy(numFactory.numOf(TimeConstants.SECONDS_PER_YEAR));
     }
 
     private Instant endTimeInstant(BarSeries series, int index) {

@@ -26,25 +26,26 @@ package org.ta4j.core.analysis;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.stream.IntStream;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+
 import org.junit.Test;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.utils.TimeConstants;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.num.Num;
 
 public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     public ExcessReturnsTest(NumFactory numFactory) {
         super(numFactory);
     }
-
-    private static final double SECONDS_PER_YEAR = 365.2425d * 24 * 3600;
 
     @Test
     public void cashReturnPolicyControlsFlatIntervalExcessGrowth() {
@@ -75,7 +76,7 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
         var cashFlow = new CashFlow(series, tradingRecord);
         var annualRate = numFactory.numOf(0.05d);
         var perBarRiskFree = Math.pow(1.0 + annualRate.doubleValue(),
-                Duration.ofDays(1).getSeconds() / SECONDS_PER_YEAR);
+                Duration.ofDays(1).getSeconds() / TimeConstants.SECONDS_PER_YEAR);
 
         var earnsRiskFree = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_RISK_FREE, tradingRecord)
                 .excessReturn(cashFlow, 0, 3)
@@ -111,7 +112,7 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
         var cashFlow = new CashFlow(series, tradingRecord);
         var annualRate = numFactory.numOf(0.1d);
         var perBarRiskFree = Math.pow(1.0 + annualRate.doubleValue(),
-                Duration.ofDays(1).getSeconds() / SECONDS_PER_YEAR);
+                Duration.ofDays(1).getSeconds() / TimeConstants.SECONDS_PER_YEAR);
 
         var actual = new ExcessReturns(series, annualRate, CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord)
                 .excessReturn(cashFlow, 0, 1)

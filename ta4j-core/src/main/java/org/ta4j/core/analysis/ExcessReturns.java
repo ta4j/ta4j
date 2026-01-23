@@ -24,6 +24,8 @@
 package org.ta4j.core.analysis;
 
 import java.time.Duration;
+
+import org.ta4j.core.utils.TimeConstants;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
@@ -45,8 +47,6 @@ import org.ta4j.core.num.Num;
  * @since 0.22.2
  */
 public final class ExcessReturns {
-
-    private static final double SECONDS_PER_YEAR = 365.2425d * 24 * 3600;
 
     /**
      * Describes how flat equity intervals are treated when computing excess
@@ -157,7 +157,7 @@ public final class ExcessReturns {
         var seconds = Math.max(0, Duration.between(endPrev, endNow).getSeconds());
         var numFactory = series.numFactory();
         return seconds <= 0 ? numFactory.zero()
-                : numFactory.numOf(seconds).dividedBy(numFactory.numOf(SECONDS_PER_YEAR));
+                : numFactory.numOf(seconds).dividedBy(numFactory.numOf(TimeConstants.SECONDS_PER_YEAR));
     }
 
     private boolean isInvested(int index) {
