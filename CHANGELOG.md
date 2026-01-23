@@ -19,6 +19,7 @@
 - **Release scheduler enablement**: Gate scheduled runs on `RELEASE_SCHEDULER_ENABLED` (defaults to disabled when unset).
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **Frequency analysis docs**: Expanded Javadoc for `Sample` and `SampleSummary`.
+- **Sharpe ratio docs**: Added missing constructor Javadocs for `SharpeRatioCriterion`.
 
 ### Fixed
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).

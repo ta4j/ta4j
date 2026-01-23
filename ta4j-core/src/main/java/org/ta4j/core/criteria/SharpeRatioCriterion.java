@@ -119,16 +119,38 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     private final ZoneId groupingZoneId;
     private final OpenPositionHandling openPositionHandling;
 
+    /**
+     * Creates a Sharpe ratio criterion using a zero risk-free rate, per-bar sampling, annualized scaling,
+     * UTC grouping, and {@link CashReturnPolicy#CASH_EARNS_RISK_FREE}.
+     *
+     * @since 0.22.2
+     */
     public SharpeRatioCriterion() {
         this(0, SamplingFrequency.BAR, Annualization.ANNUALIZED, ZoneOffset.UTC, CashReturnPolicy.CASH_EARNS_RISK_FREE,
                 OpenPositionHandling.MARK_TO_MARKET);
     }
 
+    /**
+     * Creates a Sharpe ratio criterion with a custom annual risk-free rate, per-bar sampling, annualized
+     * scaling, UTC grouping, and {@link CashReturnPolicy#CASH_EARNS_RISK_FREE}.
+     *
+     * @param annualRiskFreeRate the annual risk-free rate (e.g. 0.05 for 5%)
+     * @since 0.22.2
+     */
     public SharpeRatioCriterion(double annualRiskFreeRate) {
         this(annualRiskFreeRate, SamplingFrequency.BAR, Annualization.ANNUALIZED, ZoneOffset.UTC,
                 CashReturnPolicy.CASH_EARNS_RISK_FREE, OpenPositionHandling.MARK_TO_MARKET);
     }
 
+    /**
+     * Creates a Sharpe ratio criterion with explicit sampling, annualization, and grouping timezone.
+     *
+     * @param annualRiskFreeRate the annual risk-free rate (e.g. 0.05 for 5%)
+     * @param samplingFrequency  the sampling granularity
+     * @param annualization      the annualization mode
+     * @param groupingZoneId     the time zone used to interpret bar end times
+     * @since 0.22.2
+     */
     public SharpeRatioCriterion(double annualRiskFreeRate, SamplingFrequency samplingFrequency,
             Annualization annualization, ZoneId groupingZoneId) {
         this(annualRiskFreeRate, samplingFrequency, annualization, groupingZoneId,
