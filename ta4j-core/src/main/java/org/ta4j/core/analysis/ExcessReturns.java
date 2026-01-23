@@ -24,9 +24,9 @@
 package org.ta4j.core.analysis;
 
 import java.time.Duration;
+import org.ta4j.core.indicators.InvestedIntervalIndicator;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
 import org.ta4j.core.num.Num;
 
 /**
@@ -62,7 +62,7 @@ public final class ExcessReturns {
     private final Num annualRiskFreeRate;
     private final CashReturnPolicy cashReturnPolicy;
     private final BarSeries series;
-    private final boolean[] investedIntervals;
+    private final InvestedIntervalIndicator investedIntervalIndicator;
     private final CashFlow cashFlow;
 
     /**
@@ -82,7 +82,7 @@ public final class ExcessReturns {
         this.series = series;
         this.annualRiskFreeRate = annualRiskFreeRate;
         this.cashReturnPolicy = cashReturnPolicy;
-        this.investedIntervals = buildInvestedIntervals(tradingRecord);
+        this.investedIntervalIndicator = new InvestedIntervalIndicator(series, tradingRecord);
         this.cashFlow = new CashFlow(series, tradingRecord);
     }
 
@@ -162,27 +162,7 @@ public final class ExcessReturns {
     }
 
     private boolean isInvested(int index) {
-        return investedIntervals != null && index >= 0 && index < investedIntervals.length && investedIntervals[index];
-    }
-
-    private boolean[] buildInvestedIntervals(TradingRecord tradingRecord) {
-        var invested = new boolean[series.getBarCount()];
-        tradingRecord.getPositions().forEach(position -> markInvestedIntervals(position, invested));
-        var currentPosition = tradingRecord.getCurrentPosition();
-        if (currentPosition != null && currentPosition.isOpened()) {
-            markInvestedIntervals(currentPosition, invested);
-        }
-        return invested;
-    }
-
-    private void markInvestedIntervals(Position position, boolean[] invested) {
-        var entryIndex = position.getEntry().getIndex();
-        var exitIndex = position.isClosed() ? position.getExit().getIndex() : series.getEndIndex();
-        var start = Math.max(entryIndex + 1, 1);
-        var end = Math.min(exitIndex, invested.length - 1);
-        for (var i = start; i <= end; i++) {
-            invested[i] = true;
-        }
+        return investedIntervalIndicator.getValue(index);
     }
 
 }
