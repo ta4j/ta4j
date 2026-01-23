@@ -43,7 +43,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void returnsKnownSharpePerPeriod_whenAlwaysInvested() {
-        var series = getTestBarSeries("sr_test");
+        var series = getBarSeries("sr_test");
 
         var start = Instant.parse("2024-01-01T00:00:00Z");
         var closes = new double[] { 100d, 150d, 150d, 225d, 225d };
@@ -129,7 +129,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void groupingZoneIdMakesSharpeZeroInOneZoneButNotTheOther() {
-        var series = getTestBarSeries("zone_test_deterministic");
+        var series = getBarSeries("zone_test_deterministic");
 
         var endTimes = new Instant[] { Instant.parse("2024-01-01T23:30:00Z"), // NY: Jan 1
                 Instant.parse("2024-01-02T00:30:00Z"), // NY: Jan 1 -> day boundary happens between this and next
@@ -361,7 +361,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     private BarSeries buildDailySeries(double[] closes, Instant start) {
-        var series = getTestBarSeries("daily_series");
+        var series = getBarSeries("daily_series");
 
         IntStream.range(0, closes.length).forEach(i -> {
             var endTime = start.plus(Duration.ofDays(i + 1L));
@@ -381,7 +381,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     private BarSeries buildHourlySeries(double[] closes, Instant start) {
-        var series = getTestBarSeries("hourly_series");
+        var series = getBarSeries("hourly_series");
 
         IntStream.range(0, closes.length).forEach(i -> {
             var endTime = start.plus(Duration.ofHours(i + 1L));
@@ -401,7 +401,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     private BarSeries buildMinuteSeries(double[] closes, Instant start) {
-        var series = getTestBarSeries("minute_series");
+        var series = getBarSeries("minute_series");
 
         IntStream.range(0, closes.length).forEach(i -> {
             var endTime = start.plus(Duration.ofMinutes(i + 1L));
@@ -421,7 +421,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     private BarSeries buildSecondSeries(double[] closes, Instant start) {
-        var series = getTestBarSeries("second_series");
+        var series = getBarSeries("second_series");
 
         IntStream.range(0, closes.length).forEach(i -> {
             var endTime = start.plus(Duration.ofSeconds(i + 1L));
@@ -441,7 +441,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     private BarSeries buildIntradaySeriesWithDailyEnds(double[] dailyEndCloses, Instant day0StartUtc) {
-        var series = getTestBarSeries("intraday_series");
+        var series = getBarSeries("intraday_series");
 
         var day0EndTime = day0StartUtc.plus(Duration.ofHours(23));
         var day0EndClose = dailyEndCloses[0];
@@ -532,7 +532,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     private BarSeries compressSeries(BarSeries source, int[] indices, String name) {
-        var series = getTestBarSeries(name);
+        var series = getBarSeries(name);
 
         IntStream.range(0, indices.length).forEach(i -> {
             var sourceBar = source.getBar(indices[i]);

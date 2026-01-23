@@ -70,8 +70,8 @@ public abstract class AbstractCriterionTest {
         return numFactory.numOf(n);
     }
 
-    public BarSeries getTestBarSeries(String barSeriesName) {
-        return new BaseBarSeriesBuilder().withNumFactory(numFactory).withName(barSeriesName).build();
+    public BarSeries getBarSeries(String name) {
+        return new BaseBarSeriesBuilder().withNumFactory(numFactory).withName(name).build();
     }
 
 }
