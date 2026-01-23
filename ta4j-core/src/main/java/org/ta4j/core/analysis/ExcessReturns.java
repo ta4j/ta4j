@@ -24,7 +24,6 @@
 package org.ta4j.core.analysis;
 
 import java.time.Duration;
-import org.ta4j.core.indicators.InvestedIntervalIndicator;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;

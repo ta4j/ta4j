@@ -21,11 +21,12 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.analysis;
 
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Indicates whether each bar interval is part of an invested position.
@@ -51,17 +52,6 @@ public class InvestedIntervalIndicator extends CachedIndicator<Boolean> {
     public InvestedIntervalIndicator(BarSeries series, TradingRecord tradingRecord) {
         super(series);
         investedIntervals = buildInvestedIntervals(tradingRecord);
-    }
-
-    /**
-     * Creates an indicator with no invested intervals.
-     *
-     * @param series the bar series backing the indicator
-     * @since 0.22.2
-     */
-    public InvestedIntervalIndicator(BarSeries series) {
-        super(series);
-        investedIntervals = new boolean[series.getBarCount()];
     }
 
     @Override
@@ -93,4 +83,10 @@ public class InvestedIntervalIndicator extends CachedIndicator<Boolean> {
             invested[i] = true;
         }
     }
+
+    @Override
+    public int getCountOfUnstableBars() {
+        return 0;
+    }
+
 }
