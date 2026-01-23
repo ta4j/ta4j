@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       dryRun:
-        description: "Simulate only; trigger release.yml with dryRun=true"
+        description: "Simulate only; trigger prepare-release.yml with dryRun=true"
         required: false
         default: false
         type: boolean
@@ -34,6 +34,7 @@ jobs:
   analyze:
     name: Analyze changes & ask AI
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'schedule' || vars.RELEASE_SCHEDULER_ENABLED == 'true' }}
     outputs:
       should_release: ${{ steps.parsed.outputs.should_release }}
       bump: ${{ steps.parsed.outputs.bump }}
@@ -281,6 +282,8 @@ jobs:
 
           binary_changes=$(printf '%s' "${{ steps.diff.outputs.diff_b64 }}" | base64 -d 2>/dev/null || true)
           changelog_decoded=$(printf '%s' "${{ steps.changelog.outputs.changelog_b64 }}" | base64 -d 2>/dev/null || true)
+          binary_count="${{ steps.diff.outputs.lines }}"
+          binary_count=${binary_count:-0}
 
           current_version="${{ steps.pom_version.outputs.version }}"
           base_version="${{ steps.pom_version.outputs.base }}"
@@ -302,7 +305,7 @@ jobs:
             semver_rules=$(cat "$semver_rules_file")
             echo "audit:semver_rules_source=file"
           else
-            semver_rules="MAJOR: Breaking API changes in public/core APIs.\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\nIf binary change list empty or changelog-only => should_release=false.\nPre-1.0.0: breaking changes can be MINOR, not necessarily MAJOR."
+            semver_rules="MAJOR: Breaking API changes in public/core APIs.\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\nIf binary change count is 0 => should_release=false.\nIf binary change list empty or changelog-only => should_release=false.\nPre-1.0.0: breaking changes can be MINOR, not necessarily MAJOR."
             echo "audit:semver_rules_source=default"
           fi
 
@@ -310,6 +313,7 @@ jobs:
           echo "build.request_json:build.start"
           jq -n \
             --arg binary_changes "$binary_changes" \
+            --arg binary_count "$binary_count" \
             --arg changelog "$changelog_decoded" \
             --arg current_version "$current_version" \
             --arg semver_rules "$semver_rules" \
@@ -326,6 +330,7 @@ jobs:
                     "Decide release? bump: patch|minor|major.\n" +
                     "Current: " + $current_version + "\n" +
                     "Last tag: " + $last_tag + "\n" +
+                    "Binary change count: " + $binary_count + "\n" +
                     "Rules:\n" + $semver_rules + "\n" +
                     "Binary-impacting changes (paths):\n" + $binary_changes + "\n" +
                     "Changelog (truncated):\n" + $changelog + "\n" +
@@ -434,41 +439,53 @@ jobs:
 
       - name: Parse AI JSON
         id: parsed
-        if: steps.gate.outputs.proceed == 'true'
+        if: always()
         env:
+          GATE_PROCEED: ${{ steps.gate.outputs.proceed }}
           MODEL_TOKEN_PRESENT: ${{ steps.model_token.outputs.present }}
+          RAW_CONTENT: ${{ steps.ai.outputs.content }}
+          RAW_FALLBACK: ${{ steps.ai_failure.outputs.content }}
         run: |
-          model_token_present="${MODEL_TOKEN_PRESENT:-false}"
+          gate_proceed="${GATE_PROCEED:-false}"
           parsed_ok=false
 
-          if [ "$model_token_present" != "true" ]; then
-            echo "AI call skipped because GH_MODELS_TOKEN is missing." >&2
-            echo '{"should_release":false,"bump":"patch","warning":"GH_MODELS_TOKEN missing","reason":"GH_MODELS_TOKEN secret missing; cannot call AI"}' > ai.json
+          if [ "$gate_proceed" != "true" ]; then
+            echo '{"should_release":false,"bump":"patch","warning":"No binary changes","reason":"No binary-impacting changes detected"}' > ai.json
             parsed_ok=true
           else
-            raw_content='${{ steps.ai.outputs.content }}'
-            if [ -z "$raw_content" ]; then
-              raw_content='${{ steps.ai_failure.outputs.content }}'
-            fi
-
-            if printf '%s' "$raw_content" | jq -e -R 'fromjson' > ai.json 2>/dev/null; then
+            model_token_present="${MODEL_TOKEN_PRESENT:-false}"
+            if [ "$model_token_present" != "true" ]; then
+              echo "AI call skipped because GH_MODELS_TOKEN is missing." >&2
+              echo '{"should_release":false,"bump":"patch","warning":"GH_MODELS_TOKEN missing","reason":"GH_MODELS_TOKEN secret missing; cannot call AI"}' > ai.json
               parsed_ok=true
             else
-              extracted=$(printf '%s' "$raw_content" | perl -0777 -ne 'print $1 if m/(\{(?:.|\n)*\})/s')
-              if [ -n "$extracted" ] && printf '%s' "$extracted" | jq -e '.' > ai.json 2>/dev/null; then
-                parsed_ok=true
+              raw_content="${RAW_CONTENT:-}"
+              if [ -z "$raw_content" ]; then
+                raw_content="${RAW_FALLBACK:-}"
               fi
-            fi
+              if [ -z "$raw_content" ]; then
+                raw_content='{"should_release":false,"bump":"patch","warning":"Missing AI response","reason":"AI response content missing"}'
+              fi
 
-            if ! $parsed_ok; then
-              echo "AI response not valid JSON. Defaulting to no release." >&2
-              err_hint=$(printf '%s' "$raw_content" | head -c 200 | tr '\n' ' ' | sed 's/"/\\"/g')
-              if [ -n "$err_hint" ]; then
-                reason_msg="AI response was not valid JSON: ${err_hint}"
+              if printf '%s' "$raw_content" | jq -e -R 'fromjson' > ai.json 2>/dev/null; then
+                parsed_ok=true
               else
-                reason_msg="AI response was not valid JSON"
+                extracted=$(printf '%s' "$raw_content" | perl -0777 -ne 'print $1 if m/(\{(?:.|\n)*\})/s')
+                if [ -n "$extracted" ] && printf '%s' "$extracted" | jq -e '.' > ai.json 2>/dev/null; then
+                  parsed_ok=true
+                fi
               fi
-              printf '{"should_release":false,"bump":"patch","warning":"Invalid AI JSON","reason":"%s"}' "$reason_msg" > ai.json
+
+              if ! $parsed_ok; then
+                echo "AI response not valid JSON. Defaulting to no release." >&2
+                err_hint=$(printf '%s' "$raw_content" | head -c 200 | tr '\n' ' ' | sed 's/"/\\"/g')
+                if [ -n "$err_hint" ]; then
+                  reason_msg="AI response was not valid JSON: ${err_hint}"
+                else
+                  reason_msg="AI response was not valid JSON"
+                fi
+                printf '{"should_release":false,"bump":"patch","warning":"Invalid AI JSON","reason":"%s"}' "$reason_msg" > ai.json
+              fi
             fi
           fi
 
@@ -650,11 +667,11 @@ jobs:
             const version = "${{ needs.analyze.outputs.version }}";
             const dryRun = "${{ needs.analyze.outputs.dryRun }}";
             const ref = "${{ github.event.repository.default_branch }}";
-            console.log(`audit:dispatch_workflow workflow=release.yml ref=${ref} version=${version} dryRun=${dryRun}`);
+            console.log(`audit:dispatch_workflow workflow=prepare-release.yml ref=${ref} version=${version} dryRun=${dryRun}`);
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: "release.yml",
+              workflow_id: "prepare-release.yml",
               ref,
               inputs: {
                 releaseVersion: version,
@@ -681,11 +698,11 @@ jobs:
             const version = "${{ needs.analyze.outputs.version }}";
             const dryRun = "${{ needs.analyze.outputs.dryRun }}";
             const ref = "${{ github.event.repository.default_branch }}";
-            console.log(`audit:dispatch_workflow workflow=release.yml ref=${ref} version=${version} dryRun=${dryRun}`);
+            console.log(`audit:dispatch_workflow workflow=prepare-release.yml ref=${ref} version=${version} dryRun=${dryRun}`);
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              workflow_id: "release.yml",
+              workflow_id: "prepare-release.yml",
               ref,
               inputs: {
                 releaseVersion: version,
@@ -709,7 +726,7 @@ jobs:
           echo "  bump:    ${{ needs.analyze.outputs.bump }}"
           echo "  version: ${{ needs.analyze.outputs.version }}"
           echo ""
-          echo "(Dry run enabled - propagating dryRun=true to release.yml)"
+          echo "(Dry run enabled - propagating dryRun=true to prepare-release.yml)"
 
   notify:
     name: Notify release-scheduler outcome

@@ -5,8 +5,8 @@
 **CRITICAL: Before completing ANY code changes, you MUST:**
 
 1. ✅ Run the full build script: `scripts/run-full-build-quiet.sh`
-   - **This is NOT optional** for code or documentation changes outside `.github/workflows/` or `CHANGELOG.md`.
-   - **Exception:** You may skip the full build ONLY when ALL changes are exclusively within `.github/workflows/` or `CHANGELOG.md`.
+   - **This is NOT optional** for code changes outside `.github/workflows/`.
+   - **Exception:** You may skip the full build ONLY when ALL changes are exclusively within `.github/workflows/`, `CHANGELOG.md`, or documentation-only files (for example: `*.md`, `docs/`).
    - If any other files are modified (code, docs, configs, etc.), the full build is required.
    - **When:** After every code change that affects build/test behavior (which is almost always)
    - **Permissions:** **ALWAYS run with `required_permissions: ['all']`** to avoid Maven repository permission issues. The build script requires full filesystem access to read/write Maven cache and repository files.
@@ -25,7 +25,7 @@
 ### Build and Test Workflow
 
 - **During development:** Use narrow Maven test commands for fast feedback (e.g., `mvn -pl ta4j-core test -Dtest=...`). For focused module testing, you may use `scripts/run-full-build-quiet.sh -pl ta4j-core` to get filtered logs while still validating a single module.
-- **Before completion:** ALWAYS run `scripts/run-full-build-quiet.sh` (without `-pl` flags), unless the only changes are within `.github/workflows/`
+- **Before completion:** ALWAYS run `scripts/run-full-build-quiet.sh` (without `-pl` flags), unless the only changes are within `.github/workflows/`, `CHANGELOG.md`, or documentation-only files (for example: `*.md`, `docs/`).
 - The script stores the full log under `.agents/logs/` and prints aggregated test totals
 - All new or changed code from feature work or bug fixes must be covered by comprehensive unit tests that demonstrate correctness and serve as a shield against future regressions.
 - When debugging issues, take every opportunity to create focused unit tests that allow you to tighten the feedback loop. When possible design the tests to also serve as regression bulwarks for future changes.
