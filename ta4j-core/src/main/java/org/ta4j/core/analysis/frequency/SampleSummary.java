@@ -29,8 +29,11 @@ import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.Num;
 
 /**
- * Summary statistics for a numeric sample series with optional annualization
- * metadata.
+ * Summary statistics for a numeric sample series with optional annualization metadata.
+ *
+ * <p>The summary accumulates central moments for mean, variance, skewness, and kurtosis
+ * while also tracking the elapsed time between samples (in years). If time deltas are
+ * provided, callers can derive an annualization factor for volatility scaling.</p>
  *
  * @since 0.22.2
  */
@@ -46,6 +49,13 @@ public final class SampleSummary {
         this.deltaCount = deltaCount;
     }
 
+    /**
+     * Builds a summary from frequency-aware samples.
+     *
+     * @param samples the samples to summarize
+     * @param numFactory the numeric factory to use for calculations
+     * @return a summary of the provided samples
+     */
     public static SampleSummary fromSamples(Stream<Sample> samples, NumFactory numFactory) {
         var zero = numFactory.zero();
         var acc = samples.reduce(Acc.empty(zero),
@@ -54,42 +64,105 @@ public final class SampleSummary {
         return acc.toSummary();
     }
 
+    /**
+     * Builds a summary from raw values with no annualization metadata.
+     *
+     * <p>The resulting summary treats all time deltas as zero, so the
+     * {@link #annualizationFactor(NumFactory)} will be empty.</p>
+     *
+     * @param values the values to summarize
+     * @param numFactory the numeric factory to use for calculations
+     * @return a summary of the provided values
+     */
     public static SampleSummary fromValues(Stream<Num> values, NumFactory numFactory) {
         return fromSamples(values.map(value -> new Sample(value, numFactory.zero())), numFactory);
     }
 
+    /**
+     * Returns the number of samples observed.
+     *
+     * @return the sample count
+     */
     public int count() {
         return moments.count();
     }
 
+    /**
+     * Returns the arithmetic mean of the samples.
+     *
+     * @return the sample mean
+     */
     public Num mean() {
         return moments.mean();
     }
 
+    /**
+     * Returns the second central moment (sum of squared deviations).
+     *
+     * @return the second central moment
+     */
     public Num m2() {
         return moments.m2();
     }
 
+    /**
+     * Returns the third central moment.
+     *
+     * @return the third central moment
+     */
     public Num m3() {
         return moments.m3();
     }
 
+    /**
+     * Returns the fourth central moment.
+     *
+     * @return the fourth central moment
+     */
     public Num m4() {
         return moments.m4();
     }
 
+    /**
+     * Returns the unbiased sample variance.
+     *
+     * @param numFactory the numeric factory to use for calculations
+     * @return the sample variance (zero when fewer than two samples are available)
+     */
     public Num sampleVariance(NumFactory numFactory) {
         return moments.sampleVariance(numFactory);
     }
 
+    /**
+     * Returns the sample skewness.
+     *
+     * @param numFactory the numeric factory to use for calculations
+     * @return the sample skewness (zero when fewer than three samples or variance is zero)
+     */
     public Num sampleSkewness(NumFactory numFactory) {
         return moments.sampleSkewness(numFactory);
     }
 
+    /**
+     * Returns the sample excess kurtosis.
+     *
+     * @param numFactory the numeric factory to use for calculations
+     * @return the sample kurtosis (zero when fewer than four samples or variance is zero)
+     */
     public Num sampleKurtosis(NumFactory numFactory) {
         return moments.sampleKurtosis(numFactory);
     }
 
+    /**
+     * Returns the annualization factor derived from positive time deltas.
+     *
+     * <p>The factor is {@code sqrt(count / deltaYearsSum)} and is typically used to
+     * annualize volatility-like measures. If there are no positive deltas, the result
+     * is empty.</p>
+     *
+     * @param numFactory the numeric factory to use for calculations
+     * @return the annualization factor, if time deltas are available
+     */
     public Optional<Num> annualizationFactor(NumFactory numFactory) {
         var zero = numFactory.zero();
         if (deltaCount.isLessThanOrEqual(zero) || deltaYearsSum.isLessThanOrEqual(zero)) {
