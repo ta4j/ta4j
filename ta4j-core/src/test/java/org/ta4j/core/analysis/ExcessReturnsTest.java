@@ -26,20 +26,17 @@ package org.ta4j.core.analysis;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.stream.IntStream;
-
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-
-import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
-import org.ta4j.core.analysis.OpenPositionHandling;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
-import org.ta4j.core.num.NumFactory;
+import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.BarSeries;
+import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.TimeConstants;
-import org.junit.Test;
 
 public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -98,10 +95,11 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
         var series = buildDailySeries(new double[] { 100d, 100d, 100d });
         var tradingRecord = new BaseTradingRecord();
 
-        var actual = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord)
-                .excessReturn(0, 2);
+        var zero = numFactory.zero();
+        var actual = new ExcessReturns(series, zero, CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord).excessReturn(0,
+                2);
 
-        assertEquals(series.numFactory().zero(), actual);
+        assertEquals(zero, actual);
     }
 
     @Test
@@ -144,13 +142,14 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
     public void zeroPreviousEquityDoesNotBreakExcessReturn() {
         var series = buildDailySeries(new double[] { 1d, 0d, 0d });
         var tradingRecord = new BaseTradingRecord();
-        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
-        tradingRecord.exit(1, series.getBar(1).getClosePrice(), numFactory.one());
+        var one = numFactory.one();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), one);
+        tradingRecord.exit(1, series.getBar(1).getClosePrice(), one);
 
         var actual = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord)
                 .excessReturn(0, 2);
 
-        assertEquals(numFactory.one().negated(), actual);
+        assertEquals(one.negate(), actual);
     }
 
     private BarSeries buildDailySeries(double[] closes) {

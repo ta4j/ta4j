@@ -18,12 +18,10 @@
 - **Release token preflight**: Fail fast when `GH_TA4J_REPO_TOKEN` lacks write permission (warn-only in dry-run mode).
 - **Release scheduler enablement**: Gate scheduled runs on `RELEASE_SCHEDULER_ENABLED` (defaults to disabled when unset).
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
-- **Sharpe ratio time deltas**: Centralized year delta calculations in `BarSeriesUtils` for excess return and Sharpe ratio computations.
 
 ### Fixed
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
-- **ExcessReturns**: Guarded against zero-equity intervals to avoid division errors when compounding excess returns.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.

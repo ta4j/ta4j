@@ -374,7 +374,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         final List<Bar> overlappingBars = BarSeriesUtils.findOverlappingBars(this.series);
 
         // there must be 1 overlapping bars (bar1)
-        assertEquals(overlappingBars.get(0).getBeginTime(), bar1.getBeginTime());
+        assertEquals(overlappingBars.getFirst().getBeginTime(), bar1.getBeginTime());
     }
 
     @Test
@@ -531,5 +531,55 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(bar1.getEndTime(), unsortedBars2.get(1).getEndTime());
         assertEquals(bar2.getEndTime(), unsortedBars2.get(2).getEndTime());
         assertEquals(bar3.getEndTime(), unsortedBars2.get(3).getEndTime());
+    }
+
+    @Test
+    public void deltaYearsClampsNonPositiveDurations() {
+        var zero = this.numFactory.zero();
+        var barSeries = getBarSeries("test");
+
+        var startTime = Instant.parse("2024-01-01T00:00:00Z");
+        var secondsPerYear = (long) TimeConstants.SECONDS_PER_YEAR;
+
+        barSeries.barBuilder()
+                .endTime(startTime)
+                .timePeriod(Duration.ofDays(1))
+                .openPrice(1d)
+                .closePrice(1d)
+                .highPrice(1d)
+                .lowPrice(1d)
+                .amount(1d)
+                .volume(1d)
+                .trades(1)
+                .add();
+
+        barSeries.barBuilder()
+                .endTime(startTime.plusSeconds(secondsPerYear / 2))
+                .timePeriod(Duration.ofDays(1))
+                .openPrice(1d)
+                .closePrice(1d)
+                .highPrice(1d)
+                .lowPrice(1d)
+                .amount(1d)
+                .volume(1d)
+                .trades(1)
+                .add();
+
+        barSeries.barBuilder()
+                .endTime(startTime.plusSeconds(secondsPerYear))
+                .timePeriod(Duration.ofDays(1))
+                .openPrice(1d)
+                .closePrice(1d)
+                .highPrice(1d)
+                .lowPrice(1d)
+                .amount(1d)
+                .volume(1d)
+                .trades(1)
+                .add();
+
+        assertEquals(numFactory.numOf(0.5d), BarSeriesUtils.deltaYears(barSeries, 0, 1));
+        assertEquals(numFactory.numOf(1d), BarSeriesUtils.deltaYears(barSeries, 0, 2));
+        assertEquals(zero, BarSeriesUtils.deltaYears(barSeries, 2, 1));
+        assertEquals(zero, BarSeriesUtils.deltaYears(barSeries, 1, 1));
     }
 }
