@@ -26,17 +26,20 @@ package org.ta4j.core.analysis;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.stream.IntStream;
+
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import org.junit.Test;
-import org.ta4j.core.BarSeries;
+
+import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
+import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
-import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.TimeConstants;
+import org.junit.Test;
 
 public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -116,6 +119,25 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
         assertEquals(expected, actual, 1e-12);
         assertTrue(actual < 0.0d);
+    }
+
+    @Test
+    public void openPositionHandlingControlsExcessReturnForOpenPositions() {
+        var series = buildDailySeries(new double[] { 100d, 120d, 180d });
+        var tradingRecord = new BaseTradingRecord();
+        var amount = numFactory.one();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), amount);
+        tradingRecord.exit(1, series.getBar(1).getClosePrice(), amount);
+        tradingRecord.enter(1, series.getBar(1).getClosePrice(), amount);
+
+        var markToMarket = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO,
+                tradingRecord, OpenPositionHandling.MARK_TO_MARKET).excessReturn(0, 2).doubleValue();
+        var ignore = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord,
+                OpenPositionHandling.IGNORE).excessReturn(0, 2).doubleValue();
+
+        assertEquals(0.8d, markToMarket, 1e-12);
+        assertEquals(0.2d, ignore, 1e-12);
+        assertTrue(markToMarket > ignore);
     }
 
     private BarSeries buildDailySeries(double[] closes) {

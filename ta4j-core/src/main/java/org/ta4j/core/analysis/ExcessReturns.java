@@ -78,11 +78,29 @@ public final class ExcessReturns {
      */
     public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy,
             TradingRecord tradingRecord) {
+        this(series, annualRiskFreeRate, cashReturnPolicy, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Creates an excess return calculator with invested interval detection from a
+     * trading record.
+     *
+     * @param series               the bar series providing time deltas and num
+     *                             factory
+     * @param annualRiskFreeRate   the annual risk-free rate (e.g. 0.05 for 5%)
+     * @param cashReturnPolicy     the policy for flat equity intervals
+     * @param tradingRecord        the trading record used to detect invested
+     *                             intervals (nullable)
+     * @param openPositionHandling how open positions should be handled
+     * @since 0.22.2
+     */
+    public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy,
+            TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
         this.series = series;
         this.annualRiskFreeRate = annualRiskFreeRate;
         this.cashReturnPolicy = cashReturnPolicy;
-        this.investedInterval = new InvestedInterval(series, tradingRecord);
-        this.cashFlow = new CashFlow(series, tradingRecord);
+        this.investedInterval = new InvestedInterval(series, tradingRecord, openPositionHandling);
+        this.cashFlow = new CashFlow(series, tradingRecord, openPositionHandling);
     }
 
     /**

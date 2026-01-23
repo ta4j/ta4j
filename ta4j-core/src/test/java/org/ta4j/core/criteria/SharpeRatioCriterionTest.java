@@ -26,13 +26,17 @@ package org.ta4j.core.criteria;
 import java.time.*;
 import java.time.temporal.WeekFields;
 import java.util.stream.IntStream;
+
+import org.ta4j.core.analysis.frequency.SamplingFrequency;
+import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
+import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.*;
+import org.junit.Test;
+
+import static org.ta4j.core.criteria.SharpeRatioCriterion.Annualization;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
-import org.junit.Test;
-import org.ta4j.core.*;
-import org.ta4j.core.analysis.frequency.SamplingFrequency;
-import static org.ta4j.core.criteria.SharpeRatioCriterion.Annualization;
-import org.ta4j.core.num.NumFactory;
 
 public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
@@ -353,6 +357,25 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var actual = criterion.calculate(series, tradingRecord);
 
         assertTrue(actual.isGreaterThan(series.numFactory().zero()));
+    }
+
+    @Test
+    public void returnsZero_whenOpenPositionIsExcludedFromReturnSeries() {
+        var series = buildDailySeries(new double[] { 100d, 110d, 90d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+
+        var amount = series.numFactory().one();
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(series.getBeginIndex(), series.getBar(series.getBeginIndex()).getClosePrice(), amount);
+        tradingRecord.exit(series.getBeginIndex() + 1, series.getBar(series.getBeginIndex() + 1).getClosePrice(),
+                amount);
+        tradingRecord.enter(series.getBeginIndex() + 2, series.getBar(series.getBeginIndex() + 2).getClosePrice(),
+                amount);
+
+        var criterion = new SharpeRatioCriterion(0d, SamplingFrequency.BAR, Annualization.PERIOD, ZoneOffset.UTC,
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, OpenPositionHandling.IGNORE);
+        var actual = criterion.calculate(series, tradingRecord);
+
+        assertEquals(series.numFactory().zero(), actual);
     }
 
     private BarSeries buildDailySeries(double[] closes, Instant start) {

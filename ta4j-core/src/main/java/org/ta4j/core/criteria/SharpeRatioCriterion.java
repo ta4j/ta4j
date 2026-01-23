@@ -35,6 +35,7 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
+import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.frequency.IndexPair;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexPairs;
@@ -99,6 +100,13 @@ import org.ta4j.core.utils.TimeConstants;
  * A single {@link Position} does not provide a return distribution; therefore,
  * {@link #calculate(BarSeries, Position)} intentionally returns zero.
  *
+ * <p>
+ * <b>Open positions.</b> When {@link #openPositionHandling} is
+ * {@link OpenPositionHandling#MARK_TO_MARKET}, the current open position (if any)
+ * contributes to both invested intervals and cash-flow accrual. When
+ * {@link OpenPositionHandling#IGNORE}, only closed positions are considered for
+ * the return series and position count.
+ *
  * @since 0.22.1
  *
  */
@@ -113,20 +121,22 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     private final CashReturnPolicy cashReturnPolicy;
     private final double annualRiskFreeRate;
     private final ZoneId groupingZoneId;
+    private final OpenPositionHandling openPositionHandling;
 
     public SharpeRatioCriterion() {
-        this(0, SamplingFrequency.BAR, Annualization.ANNUALIZED, ZoneOffset.UTC, CashReturnPolicy.CASH_EARNS_RISK_FREE);
+        this(0, SamplingFrequency.BAR, Annualization.ANNUALIZED, ZoneOffset.UTC, CashReturnPolicy.CASH_EARNS_RISK_FREE,
+                OpenPositionHandling.MARK_TO_MARKET);
     }
 
     public SharpeRatioCriterion(double annualRiskFreeRate) {
         this(annualRiskFreeRate, SamplingFrequency.BAR, Annualization.ANNUALIZED, ZoneOffset.UTC,
-                CashReturnPolicy.CASH_EARNS_RISK_FREE);
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, OpenPositionHandling.MARK_TO_MARKET);
     }
 
     public SharpeRatioCriterion(double annualRiskFreeRate, SamplingFrequency samplingFrequency,
             Annualization annualization, ZoneId groupingZoneId) {
         this(annualRiskFreeRate, samplingFrequency, annualization, groupingZoneId,
-                CashReturnPolicy.CASH_EARNS_RISK_FREE);
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
@@ -141,10 +151,30 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
      */
     public SharpeRatioCriterion(double annualRiskFreeRate, SamplingFrequency samplingFrequency,
             Annualization annualization, ZoneId groupingZoneId, CashReturnPolicy cashReturnPolicy) {
+        this(annualRiskFreeRate, samplingFrequency, annualization, groupingZoneId, cashReturnPolicy,
+                OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Creates a Sharpe ratio criterion with explicit cash return handling.
+     *
+     * @param annualRiskFreeRate   the annual risk-free rate (e.g. 0.05 for 5%)
+     * @param samplingFrequency    the sampling granularity
+     * @param annualization        the annualization mode
+     * @param groupingZoneId       the time zone used to interpret bar end times
+     * @param cashReturnPolicy     the policy for flat equity intervals
+     * @param openPositionHandling how open positions should be handled
+     * @since 0.22.2
+     */
+    public SharpeRatioCriterion(double annualRiskFreeRate, SamplingFrequency samplingFrequency,
+            Annualization annualization, ZoneId groupingZoneId, CashReturnPolicy cashReturnPolicy,
+            OpenPositionHandling openPositionHandling) {
         this.annualRiskFreeRate = annualRiskFreeRate;
         this.annualization = Objects.requireNonNull(annualization, "annualization must not be null");
         this.groupingZoneId = Objects.requireNonNull(groupingZoneId, "groupingZoneId must not be null");
         this.cashReturnPolicy = Objects.requireNonNull(cashReturnPolicy, "cashReturnPolicy must not be null");
+        this.openPositionHandling = Objects.requireNonNull(openPositionHandling,
+                "openPositionHandling must not be null");
         Objects.requireNonNull(samplingFrequency, "samplingFrequency must not be null");
         this.samplingFrequencyIndexPairs = new SamplingFrequencyIndexPairs(samplingFrequency, this.groupingZoneId);
     }
@@ -158,7 +188,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        if (hasInsufficientPositions(tradingRecord)) {
+        if (hasInsufficientPositions(tradingRecord, openPositionHandling)) {
             return series.numFactory().zero();
         }
 
@@ -168,12 +198,14 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         return calculateSharpe(series, tradingRecord, anchorIndex, start, end);
     }
 
-    private static boolean hasInsufficientPositions(TradingRecord tradingRecord) {
+    private static boolean hasInsufficientPositions(TradingRecord tradingRecord,
+            OpenPositionHandling openPositionHandling) {
         var tradingRecordMissing = tradingRecord == null;
         if (tradingRecordMissing) {
             return true;
         }
-        var openPositionCount = tradingRecord.getCurrentPosition().isOpened() ? 1 : 0;
+        var openPositionCount = openPositionHandling == OpenPositionHandling.MARK_TO_MARKET
+                && tradingRecord.getCurrentPosition().isOpened() ? 1 : 0;
         return tradingRecord.getPositionCount() + openPositionCount < 2;
     }
 
@@ -184,7 +216,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
             return zero;
         }
         var excessReturns = new ExcessReturns(series, series.numFactory().numOf(annualRiskFreeRate), cashReturnPolicy,
-                tradingRecord);
+                tradingRecord, openPositionHandling);
         Stream<IndexPair> pairs = samplingFrequencyIndexPairs.sample(series, anchorIndex, start, end);
 
         var acc = pairs.reduce(Acc.empty(zero),

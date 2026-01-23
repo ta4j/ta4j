@@ -23,10 +23,10 @@
  */
 package org.ta4j.core.analysis;
 
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.Position;
-import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
 
 /**
  * Indicates whether each bar interval is part of an invested position.
@@ -50,8 +50,20 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
      * @since 0.22.2
      */
     public InvestedInterval(BarSeries series, TradingRecord tradingRecord) {
+        this(series, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Creates an indicator that reports invested intervals for the trading record.
+     *
+     * @param series               the bar series backing the indicator
+     * @param tradingRecord        the trading record used to detect invested intervals
+     * @param openPositionHandling how open positions should be handled
+     * @since 0.22.2
+     */
+    public InvestedInterval(BarSeries series, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
         super(series);
-        investedIntervals = buildInvestedIntervals(tradingRecord);
+        investedIntervals = buildInvestedIntervals(tradingRecord, openPositionHandling);
     }
 
     @Override
@@ -62,13 +74,15 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
         return investedIntervals[index];
     }
 
-    private boolean[] buildInvestedIntervals(TradingRecord tradingRecord) {
+    private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
         var series = getBarSeries();
         var invested = new boolean[series.getBarCount()];
         tradingRecord.getPositions().forEach(position -> markInvestedIntervals(position, invested));
-        var currentPosition = tradingRecord.getCurrentPosition();
-        if (currentPosition != null && currentPosition.isOpened()) {
-            markInvestedIntervals(currentPosition, invested);
+        if (openPositionHandling == OpenPositionHandling.MARK_TO_MARKET) {
+            var currentPosition = tradingRecord.getCurrentPosition();
+            if (currentPosition != null && currentPosition.isOpened()) {
+                markInvestedIntervals(currentPosition, invested);
+            }
         }
         return invested;
     }

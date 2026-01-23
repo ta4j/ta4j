@@ -28,14 +28,15 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.Collections;
 
-import org.junit.Test;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.Trade;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.Trade;
+import org.junit.Test;
 
 public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -327,6 +328,19 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(0.9, cashFlow.getValue(1));
+    }
+
+    @Test
+    public void cashFlowIgnoresOpenPositionWhenConfigured() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 120d, 180d).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(1, sampleBarSeries),
+                Trade.buyAt(1, sampleBarSeries));
+
+        var markToMarket = new CashFlow(sampleBarSeries, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
+        var ignore = new CashFlow(sampleBarSeries, tradingRecord, OpenPositionHandling.IGNORE);
+
+        assertNumEquals(1.8, markToMarket.getValue(2));
+        assertNumEquals(1.2, ignore.getValue(2));
     }
 
 }

@@ -27,10 +27,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
 import org.ta4j.core.num.Num;
 
 /**
@@ -66,7 +66,20 @@ public class CashFlow implements Indicator<Num> {
      * @param tradingRecord the trading record
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries));
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor for cash flows of positions of a trading record, with optional
+     * inclusion of an open position.
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param openPositionHandling how open positions should be handled
+     * @since 0.22.2
+     */
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), openPositionHandling);
     }
 
     /**
@@ -78,10 +91,25 @@ public class CashFlow implements Indicator<Num> {
      *                      considered
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
+        this(barSeries, tradingRecord, finalIndex, OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param finalIndex           index up until cash flows of open positions are
+     *                             considered
+     * @param openPositionHandling how open positions should be handled
+     * @since 0.22.2
+     */
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
+            OpenPositionHandling openPositionHandling) {
         this.barSeries = barSeries;
         values = new ArrayList<>(Collections.singletonList(getBarSeries().numFactory().one()));
 
-        calculate(tradingRecord, finalIndex);
+        calculate(tradingRecord, finalIndex, openPositionHandling);
         fillToTheEnd(finalIndex);
     }
 
@@ -209,10 +237,15 @@ public class CashFlow implements Indicator<Num> {
      *                      considered
      */
     private void calculate(TradingRecord tradingRecord, int finalIndex) {
+        calculate(tradingRecord, finalIndex, OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    private void calculate(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
         calculate(tradingRecord);
 
         // Add accrued cash flow of open position
-        if (tradingRecord.getCurrentPosition().isOpened()) {
+        if (openPositionHandling == OpenPositionHandling.MARK_TO_MARKET
+                && tradingRecord.getCurrentPosition().isOpened()) {
             calculate(tradingRecord.getCurrentPosition(), finalIndex);
         }
     }
