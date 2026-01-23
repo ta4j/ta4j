@@ -62,12 +62,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
                     .build());
         });
 
-        var amount = series.numFactory().one();
-
-        var tradingRecord = new BaseTradingRecord();
-        tradingRecord.enter(series.getBeginIndex(), series.getBar(series.getBeginIndex()).getClosePrice(), amount);
-        tradingRecord.exit(series.getEndIndex(), series.getBar(series.getEndIndex()).getClosePrice(), amount);
-
+        var tradingRecord = alwaysInvested(series);
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
 
         var actual = criterion.calculate(series, tradingRecord).doubleValue();
@@ -486,10 +481,18 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
     private static TradingRecord alwaysInvested(BarSeries series) {
         var amount = series.numFactory().one();
+        var begin = series.getBeginIndex();
+        var end = series.getEndIndex();
+        var split = begin + (end - begin) / 2;
 
         var tradingRecord = new BaseTradingRecord();
-        tradingRecord.enter(series.getBeginIndex(), series.getBar(series.getBeginIndex()).getClosePrice(), amount);
-        tradingRecord.exit(series.getEndIndex(), series.getBar(series.getEndIndex()).getClosePrice(), amount);
+        tradingRecord.enter(begin, series.getBar(begin).getClosePrice(), amount);
+        tradingRecord.exit(split, series.getBar(split).getClosePrice(), amount);
+
+        if (split < end) {
+            tradingRecord.enter(split, series.getBar(split).getClosePrice(), amount);
+            tradingRecord.exit(end, series.getBar(end).getClosePrice(), amount);
+        }
 
         return tradingRecord;
     }
