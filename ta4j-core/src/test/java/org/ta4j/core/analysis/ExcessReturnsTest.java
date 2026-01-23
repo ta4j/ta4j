@@ -30,7 +30,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
@@ -47,9 +46,9 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void cashReturnPolicyControlsFlatIntervalExcessGrowth() {
-        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("excess_returns_series").build();
+        var series = getBarSeries("excess_returns_series");
         var start = Instant.parse("2024-01-01T00:00:00Z");
-        var closes = new double[] { 100d, 110d, 110d, 121d };
+        var closes = new double[]{100d, 110d, 110d, 121d};
 
         IntStream.range(0, closes.length).forEach(i -> {
             var endTime = start.plus(Duration.ofDays(i + 1L));
@@ -66,10 +65,11 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
         });
 
         var tradingRecord = new BaseTradingRecord();
-        tradingRecord.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
-        tradingRecord.exit(1, series.getBar(1).getClosePrice(), numFactory.one());
-        tradingRecord.enter(2, series.getBar(2).getClosePrice(), numFactory.one());
-        tradingRecord.exit(3, series.getBar(3).getClosePrice(), numFactory.one());
+        var one = numFactory.one();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), one);
+        tradingRecord.exit(1, series.getBar(1).getClosePrice(), one);
+        tradingRecord.enter(2, series.getBar(2).getClosePrice(), one);
+        tradingRecord.exit(3, series.getBar(3).getClosePrice(), one);
 
         var annualRate = numFactory.numOf(0.05d);
         var perBarRiskFree = Math.pow(1.0 + annualRate.doubleValue(),
@@ -92,7 +92,7 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void defaultPolicyKeepsFlatCashNeutralWhenRiskFreeIsZero() {
-        var series = buildDailySeries(new double[] { 100d, 100d, 100d });
+        var series = buildDailySeries(new double[]{100d, 100d, 100d});
         var tradingRecord = new BaseTradingRecord();
 
         var actual = new ExcessReturns(series, numFactory.zero(), CashReturnPolicy.CASH_EARNS_ZERO, tradingRecord)
@@ -103,7 +103,7 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     @Test
     public void cashEarnsZeroPenalizesFlatCashAgainstPositiveRiskFree() {
-        var series = buildDailySeries(new double[] { 100d, 100d });
+        var series = buildDailySeries(new double[]{100d, 100d});
         var tradingRecord = new BaseTradingRecord();
         var annualRate = numFactory.numOf(0.1d);
         var perBarRiskFree = Math.pow(1.0 + annualRate.doubleValue(),
@@ -119,7 +119,7 @@ public class ExcessReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num
     }
 
     private BarSeries buildDailySeries(double[] closes) {
-        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory).withName("excess_returns_series").build();
+        var series = getBarSeries("excess_returns_series");
         var start = Instant.parse("2024-01-01T00:00:00Z");
 
         IntStream.range(0, closes.length).forEach(i -> {
