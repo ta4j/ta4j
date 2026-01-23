@@ -103,7 +103,7 @@ import org.ta4j.core.utils.TimeConstants;
  * {@link OpenPositionHandling#IGNORE}, only closed positions are considered for
  * the return series and position count.
  *
- * @since 0.22.1
+ * @since 0.22.2
  *
  */
 public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
