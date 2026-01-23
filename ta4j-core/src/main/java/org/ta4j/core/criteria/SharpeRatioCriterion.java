@@ -23,21 +23,20 @@
  */
 package org.ta4j.core.criteria;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Objects;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.analysis.frequency.*;
-import org.ta4j.core.analysis.ExcessReturns;
+
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.analysis.frequency.*;
+import org.ta4j.core.analysis.ExcessReturns;
+import org.ta4j.core.utils.BarSeriesUtils;
+import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.utils.TimeConstants;
 
 /**
  * Computes the Sharpe Ratio.
@@ -264,21 +263,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     private Sample getSample(BarSeries series, IndexPair pair, ExcessReturns excessReturns) {
         var previousIndex = pair.previousIndex();
         var excessReturn = excessReturns.excessReturn(previousIndex, pair.currentIndex());
-        var deltaYears = deltaYears(series, previousIndex, pair.currentIndex());
+        var deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, pair.currentIndex());
         return new Sample(excessReturn, deltaYears);
-    }
-
-    private Num deltaYears(BarSeries series, int previousIndex, int currentIndex) {
-        var endPrev = endTimeInstant(series, previousIndex);
-        var endNow = endTimeInstant(series, currentIndex);
-        var seconds = Math.max(0, Duration.between(endPrev, endNow).getSeconds());
-        var numFactory = series.numFactory();
-        return seconds <= 0 ? numFactory.zero()
-                : numFactory.numOf(seconds).dividedBy(numFactory.numOf(TimeConstants.SECONDS_PER_YEAR));
-    }
-
-    private Instant endTimeInstant(BarSeries series, int index) {
-        return series.getBar(index).getEndTime();
     }
 
     @Override

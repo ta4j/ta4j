@@ -23,10 +23,9 @@
  */
 package org.ta4j.core.analysis;
 
-import java.time.Duration;
-
 import java.util.Objects;
-import org.ta4j.core.utils.TimeConstants;
+
+import org.ta4j.core.utils.BarSeriesUtils;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
@@ -150,20 +149,11 @@ public final class ExcessReturns {
     private Num riskFreeGrowth(int previousIndex, int currentIndex, Num one) {
         var numFactory = series.numFactory();
         var zero = numFactory.zero();
-        var deltaYears = deltaYears(previousIndex, currentIndex);
+        var deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, currentIndex);
         if (deltaYears.isLessThanOrEqual(zero)) {
             return one;
         }
         return one.plus(annualRiskFreeRate).pow(deltaYears);
-    }
-
-    private Num deltaYears(int previousIndex, int currentIndex) {
-        var endPrev = series.getBar(previousIndex).getEndTime();
-        var endNow = series.getBar(currentIndex).getEndTime();
-        var seconds = Math.max(0, Duration.between(endPrev, endNow).getSeconds());
-        var numFactory = series.numFactory();
-        return seconds <= 0 ? numFactory.zero()
-                : numFactory.numOf(seconds).dividedBy(numFactory.numOf(TimeConstants.SECONDS_PER_YEAR));
     }
 
     private boolean isInvested(int index) {
