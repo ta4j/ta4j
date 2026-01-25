@@ -155,6 +155,35 @@ public interface BarBuilder {
     BarBuilder trades(String trades);
 
     /**
+     * Updates the builder with a trade event and adds or updates bars as needed.
+     *
+     * @param time        the trade timestamp (UTC)
+     * @param tradeVolume the traded volume
+     * @param tradePrice  the traded price
+     *
+     * @since 0.22.2
+     */
+    default void addTrade(Instant time, Num tradeVolume, Num tradePrice) {
+        throw new UnsupportedOperationException("Trade ingestion not supported by " + getClass().getSimpleName());
+    }
+
+    /**
+     * Updates the builder with a trade event and adds or updates bars as needed.
+     *
+     * @param time        the trade timestamp (UTC)
+     * @param tradeVolume the traded volume
+     * @param tradePrice  the traded price
+     * @param side        aggressor side (optional)
+     * @param liquidity   liquidity classification (optional)
+     *
+     * @since 0.22.2
+     */
+    default void addTrade(Instant time, Num tradeVolume, Num tradePrice, RealtimeBar.Side side,
+            RealtimeBar.Liquidity liquidity) {
+        addTrade(time, tradeVolume, tradePrice);
+    }
+
+    /**
      * @param barSeries the series used for bar addition
      * @return {@code this}
      */

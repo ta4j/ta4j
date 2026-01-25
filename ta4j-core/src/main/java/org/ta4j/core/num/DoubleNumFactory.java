@@ -59,4 +59,8 @@ public class DoubleNumFactory implements NumFactory {
     public static DoubleNumFactory getInstance() {
         return DOUBLE_NUM_FACTORY;
     }
+
+    private Object readResolve() {
+        return DOUBLE_NUM_FACTORY;
+    }
 }
