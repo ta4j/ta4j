@@ -23,7 +23,9 @@
  */
 package org.ta4j.core.num;
 
-public interface NumFactory {
+import java.io.Serializable;
+
+public interface NumFactory extends Serializable {
 
     /**
      * @return the Num of -1
