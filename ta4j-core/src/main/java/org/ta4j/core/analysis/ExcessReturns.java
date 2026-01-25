@@ -55,7 +55,16 @@ public final class ExcessReturns {
      * @since 0.22.2
      */
     public enum CashReturnPolicy {
-        CASH_EARNS_RISK_FREE, CASH_EARNS_ZERO
+        /**
+         * Treats flat equity while out of the market as earning the risk-free rate, so
+         * those intervals do not contribute to excess return underperformance.
+         */
+        CASH_EARNS_RISK_FREE,
+        /**
+         * Treats flat equity while out of the market as earning zero return, so those
+         * intervals underperform the risk-free benchmark.
+         */
+        CASH_EARNS_ZERO
     }
 
     private final Num annualRiskFreeRate;
