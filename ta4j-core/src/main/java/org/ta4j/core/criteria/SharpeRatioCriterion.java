@@ -26,18 +26,16 @@ package org.ta4j.core.criteria;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Objects;
-
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.frequency.*;
-import org.ta4j.core.analysis.ExcessReturns;
-import org.ta4j.core.num.NumFactory;
-import org.ta4j.core.utils.BarSeriesUtils;
-import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Position;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.utils.BarSeriesUtils;
 
 /**
  * Computes the Sharpe Ratio.
@@ -248,8 +246,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     private static boolean hasInsufficientPositions(TradingRecord tradingRecord,
             OpenPositionHandling openPositionHandling) {
-        var tradingRecordMissing = tradingRecord == null;
-        if (tradingRecordMissing) {
+        if (tradingRecord == null) {
             return true;
         }
         var openPositionCount = openPositionHandling == OpenPositionHandling.MARK_TO_MARKET

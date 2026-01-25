@@ -64,7 +64,6 @@ public final class SamplingFrequencyIndexes {
     public SamplingFrequencyIndexes(SamplingFrequency samplingFrequency, ZoneId groupingZoneId) {
         this.samplingFrequency = Objects.requireNonNull(samplingFrequency, "samplingFrequency must not be null");
         this.groupingZoneId = Objects.requireNonNull(groupingZoneId, "groupingZoneId must not be null");
-        ;
     }
 
     /**

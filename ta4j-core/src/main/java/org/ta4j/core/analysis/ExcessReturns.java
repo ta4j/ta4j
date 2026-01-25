@@ -73,7 +73,7 @@ public final class ExcessReturns {
      * @param annualRiskFreeRate the annual risk-free rate (e.g. 0.05 for 5%)
      * @param cashReturnPolicy   the policy for flat equity intervals
      * @param tradingRecord      the trading record used to detect invested
-     *                           intervals (nullable)
+     *                           intervals
      * @since 0.22.2
      */
     public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy,
