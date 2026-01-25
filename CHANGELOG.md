@@ -4,6 +4,7 @@
 - **Concurrent real-time bar series pipeline**: Introduced core support for concurrent, streaming bar ingestion with
   a dedicated series (`ConcurrentBarSeries`/builder), realtime bar model (`RealtimeBar`/`BaseRealtimeBar`), and
   streaming-bar ingestion helpers to enable candle reconciliation and side/liquidity-aware trade aggregation.
+- **Sharpe Ratio**: Added `SharpeRatioCriterion` and its related calculation classes
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
@@ -13,9 +14,6 @@
 - **Workflow lint hook**: Added a repo `pre-push` hook to run `actionlint` on workflow changes (see CONTRIBUTING).
 - **Release health workflow**: Added scheduled checks for tag reachability, snapshot version drift, stale release PRs, and missing release notes, with summaries posted to Discussions.
 - **Two-phase release workflows**: Added `prepare-release.yml` and `publish-release.yml` to split release preparation from tagging and deployment.
-- **Sharpe Ratio**: Added `SharpeRatioCriterion` and its related calculation classes
-
-### Changed
 - **Release workflow branching**: Auto-merge the release PR by default, with optional direct push to the default branch when `RELEASE_DIRECT_PUSH=true`.
 - **Agent workflow**: Allow skipping the full build when the only changes are within `.github/workflows/`, `CHANGELOG.md`, or documentation-only files (e.g., `*.md`, `docs/`).
 - **Release process docs**: Overhauled with clearer steps, rationale, and example scenarios.
@@ -31,7 +29,7 @@
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
-- **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
+- **BarSeries MaxBarCount**: Fixed subseries creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
 
