@@ -77,6 +77,9 @@ public final class SamplingFrequencyIndexes {
      * @since 0.22.2
      */
     public Stream<IndexPair> sample(BarSeries series, int anchorIndex, int start, int end) {
+        if (start > end || end - start < 1) {
+            return Stream.empty();
+        }
         if (samplingFrequency == SamplingFrequency.BAR) {
             return IntStream.rangeClosed(start, end).mapToObj(i -> new IndexPair(i - 1, i));
         }

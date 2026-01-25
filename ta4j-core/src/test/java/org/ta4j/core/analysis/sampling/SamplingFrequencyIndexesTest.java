@@ -86,6 +86,26 @@ public class SamplingFrequencyIndexesTest {
         assertEquals(expected, pairs);
     }
 
+    @Test
+    public void sampleReturnsEmptyWhenRangeHasSingleIndex() {
+        var series = buildDailySeries();
+        var sampler = new SamplingFrequencyIndexes(SamplingFrequency.BAR, ZoneOffset.UTC);
+
+        var pairs = sampler.sample(series, 0, 2, 2).toList();
+
+        assertEquals(List.of(), pairs);
+    }
+
+    @Test
+    public void sampleReturnsEmptyWhenRangeIsReversed() {
+        var series = buildDailySeries();
+        var sampler = new SamplingFrequencyIndexes(SamplingFrequency.DAY, ZoneOffset.UTC);
+
+        var pairs = sampler.sample(series, 0, 3, 1).toList();
+
+        assertEquals(List.of(), pairs);
+    }
+
     private static BarSeries buildDailySeries() {
         var series = new BaseBarSeriesBuilder().withName("sampler_series").build();
         var start = Instant.parse("2024-01-01T00:00:00Z");
