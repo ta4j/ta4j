@@ -208,25 +208,19 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
             return zero;
         }
 
-        var entry = position.getEntry();
-        var tradingRecord = new BaseTradingRecord(position);
-
-        return calculate(series, tradingRecord, entry.getIndex());
+        return calculate(series, new BaseTradingRecord(position));
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        return calculate(series, tradingRecord, series.getBeginIndex());
-    }
-
-    private Num calculate(BarSeries series, TradingRecord tradingRecord, int anchorIndex) {
         var numFactory = series.numFactory();
         var zero = numFactory.zero();
         if (tradingRecord == null) {
             return zero;
         }
 
-        var start = Math.max(anchorIndex + 1, series.getBeginIndex() + 1);
+        int beginIndex = series.getBeginIndex();
+        var start = beginIndex + 1;
         var end = series.getEndIndex();
         if (end - start + 1 < 2) {
             return zero;
@@ -234,7 +228,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         var annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
         var excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
                 openPositionHandling);
-        var samples = samplingFrequencyIndexes.sample(series, anchorIndex, start, end)
+        var samples = samplingFrequencyIndexes.sample(series, beginIndex, start, end)
                 .map(pair -> getSample(series, pair, excessReturns));
         var summary = SampleSummary.fromSamples(samples, numFactory);
 

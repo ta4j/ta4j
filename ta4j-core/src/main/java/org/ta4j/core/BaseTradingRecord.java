@@ -372,7 +372,9 @@ public class BaseTradingRecord implements TradingRecord {
 
     private static Trade[] positionsToTrades(List<Position> positions) {
         Objects.requireNonNull(positions, "positions must not be null");
-        return positions.stream().flatMap(BaseTradingRecord::tradesOf).toArray(Trade[]::new);
+        return positions.stream()
+                .flatMap(BaseTradingRecord::tradesOf)
+                .toArray(Trade[]::new);
     }
 
     @Override
