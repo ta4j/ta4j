@@ -27,6 +27,7 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Objects;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
@@ -90,9 +91,10 @@ import org.ta4j.core.utils.BarSeriesUtils;
  *
  * <p>
  * <b>Trading record vs. position.</b> Sharpe ratio requires a distribution of
- * returns across periods/positions, so it is defined for {@link TradingRecord}.
- * A single {@link Position} does not provide a return distribution; therefore,
- * {@link #calculate(BarSeries, Position)} intentionally returns zero.
+ * returns across periods. A single {@link Position} can still provide multiple
+ * sampled excess returns when the series spans multiple bars, so
+ * {@link #calculate(BarSeries, Position)} now evaluates the position using the
+ * same sampling logic as a trading record.
  *
  * <p>
  * <b>Open positions.</b> When {@link #openPositionHandling} is
@@ -200,22 +202,38 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        // Sharpe needs a distribution of returns across periods/positions; a single
-        // position is intentionally treated as neutral.
-        return series.numFactory().zero();
+        var numFactory = series.numFactory();
+        var zero = numFactory.zero();
+        if (position == null || position.getEntry() == null) {
+            return zero;
+        }
+
+        TradingRecord tradingRecord;
+        var entry = position.getEntry();
+        var exit = position.getExit();
+        if (exit == null) {
+            tradingRecord = new BaseTradingRecord(entry);
+        } else {
+            tradingRecord = new BaseTradingRecord(entry, exit);
+        }
+
+        return calculate(series, tradingRecord, entry.getIndex());
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
+        return calculate(series, tradingRecord, series.getBeginIndex());
+    }
+
+    private Num calculate(BarSeries series, TradingRecord tradingRecord, int anchorIndex) {
         var numFactory = series.numFactory();
         var zero = numFactory.zero();
-        if (hasInsufficientPositions(tradingRecord, openPositionHandling)) {
+        if (tradingRecord == null) {
             return zero;
         }
 
-        var start = series.getBeginIndex() + 1;
+        var start = Math.max(anchorIndex + 1, series.getBeginIndex() + 1);
         var end = series.getEndIndex();
-        var anchorIndex = series.getBeginIndex();
         if (end - start + 1 < 2) {
             return zero;
         }
@@ -242,16 +260,6 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         }
 
         return summary.annualizationFactor(numFactory).map(sharpePerPeriod::multipliedBy).orElse(sharpePerPeriod);
-    }
-
-    private static boolean hasInsufficientPositions(TradingRecord tradingRecord,
-            OpenPositionHandling openPositionHandling) {
-        if (tradingRecord == null) {
-            return true;
-        }
-        var openPositionCount = openPositionHandling == OpenPositionHandling.MARK_TO_MARKET
-                && tradingRecord.getCurrentPosition().isOpened() ? 1 : 0;
-        return tradingRecord.getPositionCount() + openPositionCount < 2;
     }
 
     private Sample getSample(BarSeries series, IndexPair pair, ExcessReturns excessReturns) {

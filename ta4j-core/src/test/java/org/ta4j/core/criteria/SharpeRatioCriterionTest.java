@@ -182,7 +182,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void returnsZero_whenNoClosedPositionsInTradingRecord() {
+    public void returnsSharpe_whenNoClosedPositionsInTradingRecord() {
         var series = buildDailySeries(new double[] { 100d, 110d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
 
         var amount = series.numFactory().one();
@@ -192,11 +192,11 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
         var actual = criterion.calculate(series, tradingRecord);
 
-        assertEquals(series.numFactory().zero(), actual);
+        assertTrue(actual.isGreaterThan(series.numFactory().zero()));
     }
 
     @Test
-    public void returnsZero_whenOpenPositionIsEvaluatedDirectly() {
+    public void returnsSharpe_whenOpenPositionIsEvaluatedDirectly() {
         var series = buildDailySeries(new double[] { 100d, 110d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
 
         var amount = series.numFactory().one();
@@ -208,7 +208,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
         var actual = criterion.calculate(series, openPosition);
 
-        assertEquals(series.numFactory().zero(), actual);
+        assertTrue(actual.isGreaterThan(series.numFactory().zero()));
     }
 
     @Test
