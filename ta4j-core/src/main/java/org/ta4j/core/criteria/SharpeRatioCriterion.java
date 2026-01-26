@@ -202,10 +202,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        var numFactory = series.numFactory();
-        var zero = numFactory.zero();
         if (position == null || position.getEntry() == null) {
-            return zero;
+            return series.numFactory().zero();
         }
 
         return calculate(series, new BaseTradingRecord(position));
