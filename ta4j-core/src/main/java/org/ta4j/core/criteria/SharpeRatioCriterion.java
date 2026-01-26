@@ -208,14 +208,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
             return zero;
         }
 
-        TradingRecord tradingRecord;
         var entry = position.getEntry();
-        var exit = position.getExit();
-        if (exit == null) {
-            tradingRecord = new BaseTradingRecord(entry);
-        } else {
-            tradingRecord = new BaseTradingRecord(entry, exit);
-        }
+        TradingRecord tradingRecord = new BaseTradingRecord(position);
 
         return calculate(series, tradingRecord, entry.getIndex());
     }

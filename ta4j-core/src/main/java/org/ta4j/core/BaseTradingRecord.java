@@ -166,6 +166,26 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
+     * @param position the position to be recorded (entry required)
+     * @since 0.22.2
+     */
+    public BaseTradingRecord(Position position) {
+        this(positionToTrades(position));
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param positions the positions to be recorded (cannot be empty)
+     * @since 0.22.2
+     */
+    public BaseTradingRecord(List<Position> positions) {
+        this(positionsToTrades(positions));
+    }
+
+    /**
+     * Constructor.
+     *
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding the asset (e.g.
      *                             borrowing)
@@ -186,6 +206,42 @@ public class BaseTradingRecord implements TradingRecord {
             Trade newTrade = currentPosition.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
             recordTrade(newTrade, newTradeWillBeAnEntry);
         }
+    }
+
+    private static Trade[] positionToTrades(Position position) {
+        Objects.requireNonNull(position, "position must not be null");
+        Trade entry = position.getEntry();
+        if (entry == null) {
+            throw new IllegalArgumentException("Position entry must not be null");
+        }
+        Trade exit = position.getExit();
+        if (exit == null) {
+            return new Trade[] { entry };
+        }
+        return new Trade[] { entry, exit };
+    }
+
+    private static Trade[] positionsToTrades(List<Position> positions) {
+        Objects.requireNonNull(positions, "positions must not be null");
+        if (positions.isEmpty()) {
+            throw new IllegalArgumentException("Positions must not be empty");
+        }
+        List<Trade> trades = new ArrayList<>();
+        for (Position position : positions) {
+            if (position == null) {
+                throw new IllegalArgumentException("Position must not be null");
+            }
+            Trade entry = position.getEntry();
+            if (entry == null) {
+                throw new IllegalArgumentException("Position entry must not be null");
+            }
+            trades.add(entry);
+            Trade exit = position.getExit();
+            if (exit != null) {
+                trades.add(exit);
+            }
+        }
+        return trades.toArray(new Trade[0]);
     }
 
     @Override
