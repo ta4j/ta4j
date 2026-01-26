@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
@@ -39,30 +40,14 @@ import org.ta4j.core.num.Num;
  */
 public class CashFlow implements Indicator<Num> {
 
-    /**
-     * Supported calculation modes.
-     *
-     * @since 0.22.2
-     */
-    public enum CalculationMode {
-        /**
-         * Computes cash flow by marking open positions to market prices.
-         */
-        MARK_TO_MARKET,
-        /**
-         * Computes cash flow using realized values only.
-         */
-        REALIZED
-    }
-
     /** The bar series. */
     private final BarSeries barSeries;
 
     /** The (accrued) cash flow sequence (without trading costs). */
     private final List<Num> values;
 
-    /** The calculation mode. */
-    private final CalculationMode calculationMode;
+    /** The equity curve calculation mode. */
+    private final EquityCurveMode equityCurveMode;
 
     /**
      * Constructor for cash flows of a closed position.
@@ -71,7 +56,7 @@ public class CashFlow implements Indicator<Num> {
      * @param position  a single position
      */
     public CashFlow(BarSeries barSeries, Position position) {
-        this(barSeries, position, CalculationMode.MARK_TO_MARKET);
+        this(barSeries, position, EquityCurveMode.MARK_TO_MARKET);
     }
 
     /**
@@ -79,13 +64,13 @@ public class CashFlow implements Indicator<Num> {
      *
      * @param barSeries       the bar series
      * @param position        a single position
-     * @param calculationMode the calculation mode
+     * @param equityCurveMode the calculation mode
      *
      * @since 0.22.2
      */
-    public CashFlow(BarSeries barSeries, Position position, CalculationMode calculationMode) {
-        this.barSeries = barSeries;
-        this.calculationMode = calculationMode;
+    public CashFlow(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
+        this.barSeries = Objects.requireNonNull(barSeries);
+        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
         values = new ArrayList<>(Collections.singletonList(barSeries.numFactory().one()));
 
         calculate(position);
@@ -99,20 +84,20 @@ public class CashFlow implements Indicator<Num> {
      * @param tradingRecord the trading record
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), CalculationMode.MARK_TO_MARKET);
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET);
     }
 
     /**
      * Constructor.
      *
-     * @param barSeries     the bar series
-     * @param tradingRecord the trading record
-     * @param calculationMode the calculation mode
+     * @param barSeries       the bar series
+     * @param tradingRecord   the trading record
+     * @param equityCurveMode the calculation mode
      *
      * @since 0.22.2
      */
-    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, CalculationMode calculationMode) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), calculationMode);
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, EquityCurveMode equityCurveMode) {
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), equityCurveMode);
     }
 
     /**
@@ -124,7 +109,7 @@ public class CashFlow implements Indicator<Num> {
      *                      considered
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
-        this(barSeries, tradingRecord, finalIndex, CalculationMode.MARK_TO_MARKET);
+        this(barSeries, tradingRecord, finalIndex, EquityCurveMode.MARK_TO_MARKET);
     }
 
     /**
@@ -134,14 +119,14 @@ public class CashFlow implements Indicator<Num> {
      * @param tradingRecord   the trading record
      * @param finalIndex      index up until cash flows of open positions are
      *                        considered
-     * @param calculationMode the calculation mode
+     * @param equityCurveMode the calculation mode
      *
      * @since 0.22.2
      */
-    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, CalculationMode calculationMode) {
-        this.barSeries = barSeries;
-        this.calculationMode = calculationMode;
-        values = new ArrayList<>(Collections.singletonList(getBarSeries().numFactory().one()));
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, EquityCurveMode equityCurveMode) {
+        this.barSeries = Objects.requireNonNull(barSeries);
+        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
+        values = new ArrayList<>(List.of(getBarSeries().numFactory().one()));
 
         calculate(tradingRecord, finalIndex);
         fillToTheEnd(finalIndex);
@@ -211,7 +196,7 @@ public class CashFlow implements Indicator<Num> {
             var nPeriods = endIndex - entryIndex;
             var effectivePeriods = Math.max(1, nPeriods);
             var netEntryPrice = position.getEntry().getNetPrice();
-            if (calculationMode == CalculationMode.MARK_TO_MARKET) {
+            if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
                 var avgCost = holdingCost.dividedBy(numFactory.numOf(effectivePeriods));
 
                 // Add intermediate cash flows during position
@@ -284,7 +269,7 @@ public class CashFlow implements Indicator<Num> {
         calculate(tradingRecord);
 
         // Add accrued cash flow of open position
-        if (calculationMode == CalculationMode.MARK_TO_MARKET && tradingRecord.getCurrentPosition().isOpened()) {
+        if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET && tradingRecord.getCurrentPosition().isOpened()) {
             calculate(tradingRecord.getCurrentPosition(), finalIndex);
         }
     }
