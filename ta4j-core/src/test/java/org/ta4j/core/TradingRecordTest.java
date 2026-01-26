@@ -142,7 +142,7 @@ public class TradingRecordTest {
     public void createRecordFromSingleClosedPosition() {
         var position = new Position(Trade.buyAt(1, NaN, NaN), Trade.sellAt(4, NaN, NaN));
 
-        TradingRecord record = new BaseTradingRecord(position);
+        var record = new BaseTradingRecord(position);
 
         assertTrue(record.getCurrentPosition().isNew());
         assertTrue(record.isClosed());
@@ -156,7 +156,7 @@ public class TradingRecordTest {
         var position = new Position(Trade.TradeType.BUY);
         position.operate(2, NaN, NaN);
 
-        TradingRecord record = new BaseTradingRecord(position);
+        var record = new BaseTradingRecord(position);
 
         assertTrue(record.getCurrentPosition().isOpened());
         assertEquals(0, record.getPositionCount());
@@ -169,7 +169,7 @@ public class TradingRecordTest {
         var first = new Position(Trade.buyAt(1, NaN, NaN), Trade.sellAt(3, NaN, NaN));
         var second = new Position(Trade.sellAt(5, NaN, NaN), Trade.buyAt(7, NaN, NaN));
 
-        TradingRecord record = new BaseTradingRecord(List.of(first, second));
+        var record = new BaseTradingRecord(List.of(first, second));
 
         assertTrue(record.getCurrentPosition().isNew());
         assertEquals(2, record.getPositionCount());

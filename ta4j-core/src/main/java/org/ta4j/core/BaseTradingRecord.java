@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import java.util.stream.Stream;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -208,42 +209,6 @@ public class BaseTradingRecord implements TradingRecord {
         }
     }
 
-    private static Trade[] positionToTrades(Position position) {
-        Objects.requireNonNull(position, "position must not be null");
-        Trade entry = position.getEntry();
-        if (entry == null) {
-            throw new IllegalArgumentException("Position entry must not be null");
-        }
-        Trade exit = position.getExit();
-        if (exit == null) {
-            return new Trade[] { entry };
-        }
-        return new Trade[] { entry, exit };
-    }
-
-    private static Trade[] positionsToTrades(List<Position> positions) {
-        Objects.requireNonNull(positions, "positions must not be null");
-        if (positions.isEmpty()) {
-            throw new IllegalArgumentException("Positions must not be empty");
-        }
-        List<Trade> trades = new ArrayList<>();
-        for (Position position : positions) {
-            if (position == null) {
-                throw new IllegalArgumentException("Position must not be null");
-            }
-            Trade entry = position.getEntry();
-            if (entry == null) {
-                throw new IllegalArgumentException("Position entry must not be null");
-            }
-            trades.add(entry);
-            Trade exit = position.getExit();
-            if (exit != null) {
-                trades.add(exit);
-            }
-        }
-        return trades.toArray(new Trade[0]);
-    }
-
     @Override
     public String getName() {
         return name;
@@ -384,6 +349,30 @@ public class BaseTradingRecord implements TradingRecord {
             positions.add(currentPosition);
             currentPosition = new Position(startingType, transactionCostModel, holdingCostModel);
         }
+    }
+
+    private static Stream<Trade> tradesOf(Position position) {
+        Objects.requireNonNull(position, "position must not be null");
+
+        var entry = position.getEntry();
+        if (entry == null) {
+            throw new IllegalArgumentException("Position entry must not be null");
+        }
+
+        var exit = position.getExit();
+        if (exit == null) {
+            return Stream.of(entry);
+        }
+        return Stream.of(entry, exit);
+    }
+
+    private static Trade[] positionToTrades(Position position) {
+        return tradesOf(position).toArray(Trade[]::new);
+    }
+
+    private static Trade[] positionsToTrades(List<Position> positions) {
+        Objects.requireNonNull(positions, "positions must not be null");
+        return positions.stream().flatMap(BaseTradingRecord::tradesOf).toArray(Trade[]::new);
     }
 
     @Override

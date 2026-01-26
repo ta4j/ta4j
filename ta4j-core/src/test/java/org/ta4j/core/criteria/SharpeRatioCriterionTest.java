@@ -343,7 +343,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var return2 = 120d / 110d - 1d;
         var mean = (return1 + return2) / 2d;
         var variance = (Math.pow(return1 - mean, 2) + Math.pow(return2 - mean, 2));
-        var stdev = Math.sqrt(variance / 1d);
+        var stdev = Math.sqrt(variance);
         var expected = mean / stdev;
 
         assertEquals(expected, actual.doubleValue(), 1e-12);
