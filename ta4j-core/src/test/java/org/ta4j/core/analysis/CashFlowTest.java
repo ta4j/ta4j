@@ -71,6 +71,31 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void cashFlowRealizedKeepsEntryValueUntilExit() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(2, sampleBarSeries));
+
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, EquityCurveMode.REALIZED);
+
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(1, cashFlow.getValue(1));
+        assertNumEquals(3, cashFlow.getValue(2));
+    }
+
+    @Test
+    public void cashFlowRealizedIgnoresOpenPositions() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries));
+
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, sampleBarSeries.getEndIndex(),
+                EquityCurveMode.REALIZED);
+
+        assertNumEquals(1, cashFlow.getValue(0));
+        assertNumEquals(1, cashFlow.getValue(1));
+        assertNumEquals(1, cashFlow.getValue(2));
+    }
+
+    @Test
     public void cashFlowWithSellAndBuyTrades() {
         var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(2, 1, 3, 5, 6, 3, 20)
