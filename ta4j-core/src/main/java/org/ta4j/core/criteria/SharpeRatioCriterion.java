@@ -69,10 +69,9 @@ import org.ta4j.core.utils.BarSeriesUtils;
  * The first sampled return is anchored at the series begin index, even when
  * evaluating a single {@link Position}, so the first period return spans from
  * the series start to the first period end. Pre-entry intervals are handled by
- * {@link CashReturnPolicy}: {@link CashReturnPolicy#CASH_EARNS_RISK_FREE}
- * keeps flat pre-entry equity neutral, while
- * {@link CashReturnPolicy#CASH_EARNS_ZERO} treats flat pre-entry equity as
- * underperforming cash.
+ * {@link CashReturnPolicy}: {@link CashReturnPolicy#CASH_EARNS_RISK_FREE} keeps
+ * flat pre-entry equity neutral, while {@link CashReturnPolicy#CASH_EARNS_ZERO}
+ * treats flat pre-entry equity as underperforming cash.
  *
  * <p>
  * <b>Risk-free rate.</b> {@link #annualRiskFreeRate} is interpreted as an
