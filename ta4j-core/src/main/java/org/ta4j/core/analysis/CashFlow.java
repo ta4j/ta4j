@@ -35,15 +35,34 @@ import org.ta4j.core.num.Num;
 
 /**
  * Allows to follow the money cash flow involved by a list of positions over a
- * bar series.
+ * bar series, either marked to market or using realized values only.
  */
 public class CashFlow implements Indicator<Num> {
+
+    /**
+     * Supported calculation modes.
+     *
+     * @since 0.22.2
+     */
+    public enum CalculationMode {
+        /**
+         * Computes cash flow by marking open positions to market prices.
+         */
+        MARK_TO_MARKET,
+        /**
+         * Computes cash flow using realized values only.
+         */
+        REALIZED
+    }
 
     /** The bar series. */
     private final BarSeries barSeries;
 
     /** The (accrued) cash flow sequence (without trading costs). */
     private final List<Num> values;
+
+    /** The calculation mode. */
+    private final CalculationMode calculationMode;
 
     /**
      * Constructor for cash flows of a closed position.
@@ -52,7 +71,21 @@ public class CashFlow implements Indicator<Num> {
      * @param position  a single position
      */
     public CashFlow(BarSeries barSeries, Position position) {
+        this(barSeries, position, CalculationMode.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor for cash flows of a closed position.
+     *
+     * @param barSeries       the bar series
+     * @param position        a single position
+     * @param calculationMode the calculation mode
+     *
+     * @since 0.22.2
+     */
+    public CashFlow(BarSeries barSeries, Position position, CalculationMode calculationMode) {
         this.barSeries = barSeries;
+        this.calculationMode = calculationMode;
         values = new ArrayList<>(Collections.singletonList(barSeries.numFactory().one()));
 
         calculate(position);
@@ -66,7 +99,20 @@ public class CashFlow implements Indicator<Num> {
      * @param tradingRecord the trading record
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries));
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), CalculationMode.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param barSeries     the bar series
+     * @param tradingRecord the trading record
+     * @param calculationMode the calculation mode
+     *
+     * @since 0.22.2
+     */
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, CalculationMode calculationMode) {
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), calculationMode);
     }
 
     /**
@@ -78,7 +124,23 @@ public class CashFlow implements Indicator<Num> {
      *                      considered
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
+        this(barSeries, tradingRecord, finalIndex, CalculationMode.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param barSeries       the bar series
+     * @param tradingRecord   the trading record
+     * @param finalIndex      index up until cash flows of open positions are
+     *                        considered
+     * @param calculationMode the calculation mode
+     *
+     * @since 0.22.2
+     */
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, CalculationMode calculationMode) {
         this.barSeries = barSeries;
+        this.calculationMode = calculationMode;
         values = new ArrayList<>(Collections.singletonList(getBarSeries().numFactory().one()));
 
         calculate(tradingRecord, finalIndex);
@@ -148,27 +210,37 @@ public class CashFlow implements Indicator<Num> {
             var holdingCost = position.getHoldingCost(endIndex);
             var nPeriods = endIndex - entryIndex;
             var effectivePeriods = Math.max(1, nPeriods);
-            var avgCost = holdingCost.dividedBy(numFactory.numOf(effectivePeriods));
-
-            // Add intermediate cash flows during position
             var netEntryPrice = position.getEntry().getNetPrice();
-            for (var i = startingIndex; i < endIndex; i++) {
-                var intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(i).getClosePrice(), avgCost,
-                        isLongTrade);
-                var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
-                values.add(values.get(entryIndex).multipliedBy(ratio));
-            }
+            if (calculationMode == CalculationMode.MARK_TO_MARKET) {
+                var avgCost = holdingCost.dividedBy(numFactory.numOf(effectivePeriods));
 
-            // add net cash flow at exit position
-            Num exitPrice;
-            if (position.getExit() != null) {
-                exitPrice = position.getExit().getNetPrice();
-            } else {
-                exitPrice = barSeries.getBar(endIndex).getClosePrice();
+                // Add intermediate cash flows during position
+                for (var i = startingIndex; i < endIndex; i++) {
+                    var intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(i).getClosePrice(), avgCost,
+                            isLongTrade);
+                    var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
+                    values.add(values.get(entryIndex).multipliedBy(ratio));
+                }
+
+                // add net cash flow at exit position
+                Num exitPrice;
+                if (position.getExit() != null) {
+                    exitPrice = position.getExit().getNetPrice();
+                } else {
+                    exitPrice = barSeries.getBar(endIndex).getClosePrice();
+                }
+                var netExitPrice = AnalysisUtils.addCost(exitPrice, avgCost, isLongTrade);
+                var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
+                values.add(values.get(entryIndex).multipliedBy(ratio));
+            } else if (position.getExit() != null && endIndex >= position.getExit().getIndex()) {
+                var entryValue = values.get(entryIndex);
+                for (var i = startingIndex; i < endIndex; i++) {
+                    values.add(entryValue);
+                }
+                var netExitPrice = AnalysisUtils.addCost(position.getExit().getNetPrice(), holdingCost, isLongTrade);
+                var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
+                values.add(entryValue.multipliedBy(ratio));
             }
-            var netExitPrice = AnalysisUtils.addCost(exitPrice, avgCost, isLongTrade);
-            var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
-            values.add(values.get(entryIndex).multipliedBy(ratio));
         }
     }
 
@@ -212,7 +284,7 @@ public class CashFlow implements Indicator<Num> {
         calculate(tradingRecord);
 
         // Add accrued cash flow of open position
-        if (tradingRecord.getCurrentPosition().isOpened()) {
+        if (calculationMode == CalculationMode.MARK_TO_MARKET && tradingRecord.getCurrentPosition().isOpened()) {
             calculate(tradingRecord.getCurrentPosition(), finalIndex);
         }
     }
