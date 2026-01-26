@@ -270,7 +270,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void returnsZero_whenClosedPositionIsEvaluatedDirectly() {
+    public void returnsSharpe_whenClosedPositionIsEvaluatedDirectly() {
         var series = buildDailySeries(new double[] { 100d, 150d, 150d, 225d, 225d },
                 Instant.parse("2024-01-01T00:00:00Z"));
 
@@ -283,8 +283,9 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
 
         var actual = criterion.calculate(series, position);
+        var expected = Math.sqrt(3.0) / 2.0;
 
-        assertEquals(series.numFactory().zero(), actual);
+        assertEquals(expected, actual.doubleValue(), 1e-12);
     }
 
     @Test
@@ -327,7 +328,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void returnsZero_whenOnlyOneClosedPositionIsAvailable() {
+    public void returnsSharpe_whenOnlyOneClosedPositionIsAvailable() {
         var series = buildDailySeries(new double[] { 100d, 110d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
 
         var amount = series.numFactory().one();
@@ -338,7 +339,14 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
         var actual = criterion.calculate(series, tradingRecord);
 
-        assertEquals(series.numFactory().zero(), actual);
+        var return1 = 110d / 100d - 1d;
+        var return2 = 120d / 110d - 1d;
+        var mean = (return1 + return2) / 2d;
+        var variance = (Math.pow(return1 - mean, 2) + Math.pow(return2 - mean, 2));
+        var stdev = Math.sqrt(variance / 1d);
+        var expected = mean / stdev;
+
+        assertEquals(expected, actual.doubleValue(), 1e-12);
     }
 
     @Test
@@ -360,7 +368,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
-    public void returnsZero_whenOpenPositionIsExcludedFromReturnSeries() {
+    public void returnsSharpe_whenOpenPositionIsExcludedFromReturnSeries() {
         var series = buildDailySeries(new double[] { 100d, 110d, 90d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
 
         var amount = series.numFactory().one();
@@ -375,7 +383,13 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
                 CashReturnPolicy.CASH_EARNS_RISK_FREE, OpenPositionHandling.IGNORE);
         var actual = criterion.calculate(series, tradingRecord);
 
-        assertEquals(series.numFactory().zero(), actual);
+        var return1 = 110d / 100d - 1d;
+        var mean = return1 / 3d;
+        var variance = (Math.pow(return1 - mean, 2) + Math.pow(-mean, 2) + Math.pow(-mean, 2));
+        var stdev = Math.sqrt(variance / 2d);
+        var expected = mean / stdev;
+
+        assertEquals(expected, actual.doubleValue(), 1e-12);
     }
 
     private BarSeries buildDailySeries(double[] closes, Instant start) {
