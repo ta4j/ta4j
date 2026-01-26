@@ -10,7 +10,6 @@
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
 - **TimeBarBuilder**: Enhanced with trade ingestion logic, time alignment validation, and RealtimeBar support.
 - **BaseBarSeriesBuilder**: Deprecated `setConstrained` in favor of deriving constrained mode from max-bar-count configuration.
-- **Sharpe Ratio**: Allow single-position Sharpe ratio calculations when multiple sampled excess returns are available.
 - **Release workflow notifications**: Post GitHub Discussion updates for release-scheduler and release runs with decision summaries.
 - **Workflow lint hook**: Added a repo `pre-push` hook to run `actionlint` on workflow changes (see CONTRIBUTING).
 - **Release health workflow**: Added scheduled checks for tag reachability, snapshot version drift, stale release PRs, and missing release notes, with summaries posted to Discussions.
@@ -30,7 +29,6 @@
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
-- **Sharpe Ratio tests**: Align single-position Sharpe ratio expectations with sampled return calculations.
 - **BarSeries MaxBarCount**: Fixed subseries creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
