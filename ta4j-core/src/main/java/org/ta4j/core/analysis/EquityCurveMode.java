@@ -21,66 +21,28 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.num;
+package org.ta4j.core.analysis;
 
-public class DoubleNumFactory implements NumFactory {
+/**
+ * Defines how equity curves are computed.
+ * <p>
+ * {@link #MARK_TO_MARKET} reflects unrealized profit and loss on each bar using
+ * intermediate prices, while {@link #REALIZED} updates the curve only when a
+ * position is closed, keeping interim bars flat.
+ * </p>
+ *
+ * @since 0.22.2
+ */
+public enum EquityCurveMode {
 
-    private static final DoubleNumFactory DOUBLE_NUM_FACTORY = new DoubleNumFactory();
+    /**
+     * Updates the equity curve on every bar, including unrealized gains/losses.
+     */
+    MARK_TO_MARKET,
 
-    private DoubleNumFactory() {
-        // hidden
-    }
-
-    @Override
-    public Num minusOne() {
-        return DoubleNum.MINUS_ONE;
-    }
-
-    @Override
-    public Num zero() {
-        return DoubleNum.ZERO;
-    }
-
-    @Override
-    public Num one() {
-        return DoubleNum.ONE;
-    }
-
-    @Override
-    public Num two() {
-        return DoubleNum.TWO;
-    }
-
-    @Override
-    public Num three() {
-        return DoubleNum.THREE;
-    }
-
-    @Override
-    public Num hundred() {
-        return DoubleNum.HUNDRED;
-    }
-
-    @Override
-    public Num thousand() {
-        return DoubleNum.THOUSAND;
-    }
-
-    @Override
-    public Num numOf(final Number number) {
-        return DoubleNum.valueOf(number);
-    }
-
-    @Override
-    public Num numOf(final String number) {
-        return DoubleNum.valueOf(number);
-    }
-
-    public static DoubleNumFactory getInstance() {
-        return DOUBLE_NUM_FACTORY;
-    }
-
-    private Object readResolve() {
-        return DOUBLE_NUM_FACTORY;
-    }
+    /**
+     * Updates the equity curve only when positions close, reflecting realized
+     * gains/losses.
+     */
+    REALIZED
 }

@@ -23,10 +23,12 @@
  */
 package org.ta4j.core;
 
+import java.io.Serializable;
+
 /**
  * A factory that provides a builder for a bar.
  */
-public interface BarBuilderFactory {
+public interface BarBuilderFactory extends Serializable {
 
     /**
      * Constructor.

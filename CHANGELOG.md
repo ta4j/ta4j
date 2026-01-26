@@ -1,24 +1,39 @@
 ## Unreleased
 
 ### Added
-- **Release workflow notifications**: Post GitHub Discussion updates for release-scheduler and release runs with decision summaries.
-- **Workflow lint hook**: Added a repo `pre-push` hook to run `actionlint` on workflow changes (see CONTRIBUTING).
+- **Concurrent real-time bar series pipeline**: Introduced core support for concurrent, streaming bar ingestion with
+  a dedicated series (`ConcurrentBarSeries`/builder), realtime bar model (`RealtimeBar`/`BaseRealtimeBar`), and
+  streaming-bar ingestion helpers to enable candle reconciliation and side/liquidity-aware trade aggregation.
 
 ### Changed
+- **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
+- **TimeBarBuilder**: Enhanced with trade ingestion logic, time alignment validation, and RealtimeBar support.
+- **BaseBarSeriesBuilder**: Deprecated `setConstrained` in favor of deriving constrained mode from max-bar-count configuration.
+- **Release workflow notifications**: Post GitHub Discussion updates for release-scheduler and release runs with decision summaries.
+- **Workflow lint hook**: Added a repo `pre-push` hook to run `actionlint` on workflow changes (see CONTRIBUTING).
+- **Release health workflow**: Added scheduled checks for tag reachability, snapshot version drift, stale release PRs, and missing release notes, with summaries posted to Discussions.
+- **Two-phase release workflows**: Added `prepare-release.yml` and `publish-release.yml` to split release preparation from tagging and deployment.
 - **Release workflow branching**: Auto-merge the release PR by default, with optional direct push to the default branch when `RELEASE_DIRECT_PUSH=true`.
-- **Agent workflow**: Allow skipping the full build when the only changes are within `.github/workflows/`.
+- **Agent workflow**: Allow skipping the full build when the only changes are within `.github/workflows/`, `CHANGELOG.md`, or documentation-only files (e.g., `*.md`, `docs/`).
 - **Release process docs**: Overhauled with clearer steps, rationale, and example scenarios.
 - **Release scheduler notifications**: Include run mode and timestamp in the discussion header.
 - **Release notifications**: Include run mode and timestamp in the release discussion header.
+- **Release scheduler dispatch**: Route automated releases through `prepare-release.yml` and include the binary change count in the AI prompt, with deterministic no-release outputs for zero binary changes.
+- **Release automation tokens**: Use `GH_TA4J_REPO_TOKEN` for release push operations when available.
+- **Release token preflight**: Fail fast when `GH_TA4J_REPO_TOKEN` lacks write permission (warn-only in dry-run mode).
+- **Release scheduler enablement**: Gate scheduled runs on `RELEASE_SCHEDULER_ENABLED` (defaults to disabled when unset).
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
+- **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
 
 ### Fixed
+- **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 - **CashFlow**  Fixed inconsistent cash flow calculations when using zero-cost models with different bar series granularities. Cash flow values now match at corresponding price points regardless of how many intermediate bars exist between entry and exit, eliminating discrepancies when comparing compressed vs. full-resolution series. The optimization calculates cash flow directly from price ratios when holding costs are zero, avoiding unnecessary iterations through intermediate bars.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
+- **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
 
 ## 0.22.1 (2026-01-15)
 
@@ -80,6 +95,11 @@
 - **Chart annotation support**: Added `BarSeriesLabelIndicator` to the ta4j-examples charting package, enabling sparse bar-index labels for chart annotations. The indicator returns label Y-values (typically prices) at labeled indices and `NaN` elsewhere, with integrated support in `TradingChartFactory` for rendering text annotations on charts. Useful for marking significant events, wave labels, or custom annotations on trading charts.
 - **Channel overlay helpers**: Added a `PriceChannel` interface (upper/lower/median, shared validity/width/contains helpers, and a boundary enum), a `ChannelBoundaryIndicator` charting helper, and `ChartBuilder.withChannelOverlay(...)` convenience methods (including a channel-indicator overload) for plotting channel boundaries like Elliott channels, Bollinger bands, and Keltner channels. Charting now validates that channel overlays include both upper and lower boundaries, provides TradingView-inspired muted defaults with channel fill shading and a dashed, lower-opacity median line, and exposes a fluent channel styling stage including interior fill controls.
 
+- Introduced a thread-safe `ConcurrentBarSeries` with a dedicated builder and comprehensive concurrency tests for simultaneous reads and writes.
+- Added streaming bar ingestion helpers to `ConcurrentBarSeries` so Coinbase WebSocket candles can populate a series without pulling in the XChange projects.
+- Added realtime bar support (`RealtimeBar`/`BaseRealtimeBar`) with optional side/liquidity breakdowns; bar builders can emit realtime bars and `ConcurrentBarSeries` trade ingestion accepts optional side/liquidity metadata.
+- Added configurable remainder carry-over policy for volume/amount bars to control whether side/liquidity splits follow threshold rollovers.
+
 ### Changed
 - **Elliott Wave scenario probability JSON output**: Scenario probability values are now serialized as decimal ratios (0.0-1.0) rounded to two decimals instead of percentages, while log output remains in percent.
 - **CachedIndicator and RecursiveCachedIndicator performance improvements**: Major refactoring to improve indicator caching performance:
@@ -95,6 +115,7 @@
 - **Comprehensive README overhaul**: Completely rewrote the README to make Ta4j more approachable for new users while keeping it useful for experienced developers. Added a dedicated "Sourcing market data" section that walks through getting started with Yahoo Finance (no API key required!), explains all available data source implementations, and shows how to create custom data sources. Reorganized content with clearer navigation, better code examples, and practical tips throughout. The Quickstart example now includes proper error handling and demonstrates real-world data loading patterns. New users can go from zero to running their first backtest in minutes, while experienced quants can quickly find the advanced features they need.
 
 ### Removed
+- **Legacy release workflow**: Removed `release.yml` now that `publish-release.yml` fully replaces it.
 - Deleted `BuyAndSellSignalsToChartTest.java`, `CashFlowToChartTest.java`, `StrategyAnalysisTest.java`, `TradeCostTest.java`, `IndicatorsToChartTest.java`, `IndicatorsToCsvTest.java` from the ta4j-examples project. Despite designated as "tests", they simply launched the main of the associated class.
 - Consolidated `SwingPointAnalysis.java` and `TrendLineAnalysis.java` into `TrendLineAndSwingPointAnalysis.java` to provide a unified analysis example combining both features.
 - Removed `TopStrategiesExampleBacktest.java` and `TrendLineDefaultCapsTest.java` as part of example consolidation and test cleanup.
