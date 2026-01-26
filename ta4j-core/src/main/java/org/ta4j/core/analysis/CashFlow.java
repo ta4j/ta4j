@@ -282,7 +282,7 @@ public class CashFlow implements Indicator<Num> {
     private void fillToTheEnd(int endIndex) {
         if (endIndex >= values.size()) {
             var lastValue = values.getLast();
-            values.addAll(Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, lastValue));
+            values.addAll(Collections.nCopies(endIndex - values.size() + 1, lastValue));
         }
     }
 
