@@ -205,11 +205,13 @@ public class CashFlow implements Indicator<Num> {
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
             var avgCost = holdingCost.dividedBy(numFactory.numOf(effectivePeriods));
             for (var i = startingIndex; i < endIndex; i++) {
-                var intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
+                var intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(i).getClosePrice(), avgCost,
+                        isLongTrade);
                 var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
                 values.add(values.get(entryIndex).multipliedBy(ratio));
             }
-            var exitPrice = position.getExit() != null ? position.getExit().getNetPrice() : barSeries.getBar(endIndex).getClosePrice();
+            var exitPrice = position.getExit() != null ? position.getExit().getNetPrice()
+                    : barSeries.getBar(endIndex).getClosePrice();
             var netExitPrice = AnalysisUtils.addCost(exitPrice, avgCost, isLongTrade);
             var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
             values.add(values.get(entryIndex).multipliedBy(ratio));
