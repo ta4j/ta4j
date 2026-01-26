@@ -4,7 +4,7 @@
 - **Concurrent real-time bar series pipeline**: Introduced core support for concurrent, streaming bar ingestion with
   a dedicated series (`ConcurrentBarSeries`/builder), realtime bar model (`RealtimeBar`/`BaseRealtimeBar`), and
   streaming-bar ingestion helpers to enable candle reconciliation and side/liquidity-aware trade aggregation.
-- **AndWithThresholdRule**: Added and rule that also works backwards with a certain threshold.
+- **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
