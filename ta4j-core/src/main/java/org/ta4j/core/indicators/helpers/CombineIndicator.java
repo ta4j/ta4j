@@ -47,6 +47,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    @Deprecated
     protected Num calculate(int index) {
         return combineFunction.apply(indicatorLeft.getValue(index), indicatorRight.getValue(index));
     }
@@ -108,6 +109,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    @Deprecated
     public String toString() {
         return getClass().getSimpleName();
     }
