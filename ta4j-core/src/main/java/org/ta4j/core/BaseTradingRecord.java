@@ -23,10 +23,12 @@
  */
 package org.ta4j.core;
 
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import java.util.stream.Stream;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -37,6 +39,7 @@ import org.ta4j.core.num.Num;
  */
 public class BaseTradingRecord implements TradingRecord {
 
+    @Serial
     private static final long serialVersionUID = -4436851731855891220L;
 
     /** The name of the trading record. */
@@ -164,6 +167,26 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
+     * @param position the position to be recorded (entry required)
+     * @since 0.22.2
+     */
+    public BaseTradingRecord(Position position) {
+        this(positionToTrades(position));
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param positions the positions to be recorded (cannot be empty)
+     * @since 0.22.2
+     */
+    public BaseTradingRecord(List<Position> positions) {
+        this(positionsToTrades(positions));
+    }
+
+    /**
+     * Constructor.
+     *
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding the asset (e.g.
      *                             borrowing)
@@ -253,7 +276,7 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public Trade getLastTrade() {
         if (!trades.isEmpty()) {
-            return trades.get(trades.size() - 1);
+            return trades.getLast();
         }
         return null;
     }
@@ -261,9 +284,9 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public Trade getLastTrade(TradeType tradeType) {
         if (TradeType.BUY == tradeType && !buyTrades.isEmpty()) {
-            return buyTrades.get(buyTrades.size() - 1);
+            return buyTrades.getLast();
         } else if (TradeType.SELL == tradeType && !sellTrades.isEmpty()) {
-            return sellTrades.get(sellTrades.size() - 1);
+            return sellTrades.getLast();
         }
         return null;
     }
@@ -271,7 +294,7 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public Trade getLastEntry() {
         if (!entryTrades.isEmpty()) {
-            return entryTrades.get(entryTrades.size() - 1);
+            return entryTrades.getLast();
         }
         return null;
     }
@@ -279,7 +302,7 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public Trade getLastExit() {
         if (!exitTrades.isEmpty()) {
-            return exitTrades.get(exitTrades.size() - 1);
+            return exitTrades.getLast();
         }
         return null;
     }
@@ -328,13 +351,38 @@ public class BaseTradingRecord implements TradingRecord {
         }
     }
 
+    private static Stream<Trade> tradesOf(Position position) {
+        Objects.requireNonNull(position, "position must not be null");
+
+        var entry = position.getEntry();
+        if (entry == null) {
+            throw new IllegalArgumentException("Position entry must not be null");
+        }
+
+        var exit = position.getExit();
+        if (exit == null) {
+            return Stream.of(entry);
+        }
+        return Stream.of(entry, exit);
+    }
+
+    private static Trade[] positionToTrades(Position position) {
+        return tradesOf(position).toArray(Trade[]::new);
+    }
+
+    private static Trade[] positionsToTrades(List<Position> positions) {
+        Objects.requireNonNull(positions, "positions must not be null");
+        return positions.stream().flatMap(BaseTradingRecord::tradesOf).toArray(Trade[]::new);
+    }
+
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder().append("BaseTradingRecord: ")
+        var lineSeparator = System.lineSeparator();
+        var sb = new StringBuilder().append("BaseTradingRecord: ")
                 .append(name == null ? "" : name)
-                .append(System.lineSeparator());
-        for (Trade trade : trades) {
-            sb.append(trade.toString()).append(System.lineSeparator());
+                .append(lineSeparator);
+        for (var trade : trades) {
+            sb.append(trade).append(lineSeparator);
         }
         return sb.toString();
     }

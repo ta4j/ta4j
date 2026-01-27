@@ -4,6 +4,11 @@
 - **Concurrent real-time bar series pipeline**: Introduced core support for concurrent, streaming bar ingestion with
   a dedicated series (`ConcurrentBarSeries`/builder), realtime bar model (`RealtimeBar`/`BaseRealtimeBar`), and
   streaming-bar ingestion helpers to enable candle reconciliation and side/liquidity-aware trade aggregation.
+- **Sharpe Ratio**: Added `SharpeRatioCriterion` and its related calculation classes
+- Added **ThreeInsideUpIndicator** and **ThreeInsideDownIndicator**
+- Added **MorningStarIndicator** and **EveningStarIndicator**
+- Added **BullishKickerIndicator** and **BearishKickerIndicator**
+- Added **PiercingIndicator** and **DarkCloudIndicator**
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
@@ -23,6 +28,7 @@
 - **Release token preflight**: Fail fast when `GH_TA4J_REPO_TOKEN` lacks write permission (warn-only in dry-run mode).
 - **Release scheduler enablement**: Gate scheduled runs on `RELEASE_SCHEDULER_ENABLED` (defaults to disabled when unset).
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
+- **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
 
 ### Fixed
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
