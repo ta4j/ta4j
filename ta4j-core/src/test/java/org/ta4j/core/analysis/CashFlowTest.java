@@ -84,8 +84,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries));
 
-        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, sampleBarSeries.getEndIndex(),
-                EquityCurveMode.REALIZED);
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, EquityCurveMode.REALIZED);
 
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(1, cashFlow.getValue(1));
@@ -97,7 +96,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries));
 
-        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, 1, EquityCurveMode.MARK_TO_MARKET);
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, 1, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
 
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(2, cashFlow.getValue(1));
@@ -109,9 +109,8 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries));
 
-        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, sampleBarSeries.getEndIndex(),
-                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE // rename if different
-        );
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.IGNORE);
 
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(1, cashFlow.getValue(1));
@@ -123,8 +122,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries));
 
-        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, sampleBarSeries.getEndIndex(),
-                EquityCurveMode.MARK_TO_MARKET);
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, EquityCurveMode.MARK_TO_MARKET);
 
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(2, cashFlow.getValue(1));
@@ -384,7 +382,7 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, entryPrice, amount),
                 Trade.sellAt(0, exitPrice, amount));
 
-        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, sampleBarSeries.getEndIndex());
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord);
 
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(0.9, cashFlow.getValue(1));

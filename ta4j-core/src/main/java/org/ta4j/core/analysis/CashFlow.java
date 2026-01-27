@@ -69,6 +69,11 @@ public class CashFlow implements Indicator<Num> {
         fillToTheEnd(barSeries.getEndIndex());
     }
 
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), equityCurveMode, openPositionHandling);
+    }
+
     public CashFlow(BarSeries barSeries, Position position) {
         this(barSeries, position, EquityCurveMode.MARK_TO_MARKET);
     }
@@ -86,19 +91,6 @@ public class CashFlow implements Indicator<Num> {
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
         this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET,
                 openPositionHandling);
-    }
-
-    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
-        this(barSeries, tradingRecord, finalIndex, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
-    }
-
-    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, EquityCurveMode equityCurveMode) {
-        this(barSeries, tradingRecord, finalIndex, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
-    }
-
-    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
-            OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, finalIndex, EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
     }
 
     @Override
