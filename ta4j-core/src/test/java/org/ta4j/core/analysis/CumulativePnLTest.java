@@ -74,4 +74,26 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertNumEquals(2, pnl.getValue(2));
     }
 
+    @Test
+    public void realizedModeUsesExitOnly() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 105).build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        var pnl = new CumulativePnL(series, record, EquityCurveMode.REALIZED);
+        assertNumEquals(0, pnl.getValue(0));
+        assertNumEquals(0, pnl.getValue(1));
+        assertNumEquals(5, pnl.getValue(2));
+    }
+
+    @Test
+    public void realizedModeIgnoresOpenPosition() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 102).build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series));
+
+        var pnl = new CumulativePnL(series, record, EquityCurveMode.REALIZED);
+        assertNumEquals(0, pnl.getValue(0));
+        assertNumEquals(0, pnl.getValue(1));
+        assertNumEquals(0, pnl.getValue(2));
+    }
+
 }
