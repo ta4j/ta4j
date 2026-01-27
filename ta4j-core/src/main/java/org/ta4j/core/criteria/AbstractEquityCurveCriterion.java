@@ -31,8 +31,6 @@ import org.ta4j.core.analysis.EquityCurveMode;
  * Shared base for criteria that require an {@link EquityCurveMode}
  * configuration.
  *
- * @param <T> the concrete criterion type
- *
  * @since 0.22.2
  */
 public abstract class AbstractEquityCurveCriterion extends AbstractAnalysisCriterion {
