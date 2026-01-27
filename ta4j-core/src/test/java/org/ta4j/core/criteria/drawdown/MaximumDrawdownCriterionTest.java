@@ -110,6 +110,19 @@ public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
     }
 
     @Test
+    public void calculateWithRealizedModeIgnoresOpenPosition() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 90).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(1, series));
+
+        var markToMarket = new MaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET);
+        var realized = new MaximumDrawdownCriterion(EquityCurveMode.REALIZED);
+
+        assertNumEquals(0.181818d, markToMarket.calculate(series, tradingRecord));
+        assertNumEquals(0d, realized.calculate(series, tradingRecord));
+    }
+
+    @Test
     public void betterThan() {
         AnalysisCriterion criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(0.9), numOf(1.5)));

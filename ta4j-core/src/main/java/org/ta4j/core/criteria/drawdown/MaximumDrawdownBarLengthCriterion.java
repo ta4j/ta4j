@@ -27,7 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.num.Num;
 
 /**
@@ -42,7 +42,28 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.19
  */
-public class MaximumDrawdownBarLengthCriterion extends AbstractAnalysisCriterion {
+public class MaximumDrawdownBarLengthCriterion
+        extends AbstractEquityCurveDrawdownCriterion<MaximumDrawdownBarLengthCriterion> {
+
+    /**
+     * Creates a maximum drawdown length criterion using mark-to-market cash flow.
+     *
+     * @since 0.22.2
+     */
+    public MaximumDrawdownBarLengthCriterion() {
+        super();
+    }
+
+    /**
+     * Creates a maximum drawdown length criterion using the provided equity curve mode.
+     *
+     * @param equityCurveMode the equity curve mode to use
+     *
+     * @since 0.22.2
+     */
+    public MaximumDrawdownBarLengthCriterion(EquityCurveMode equityCurveMode) {
+        super(equityCurveMode);
+    }
 
     /**
      * {@inheritDoc}
@@ -54,7 +75,7 @@ public class MaximumDrawdownBarLengthCriterion extends AbstractAnalysisCriterion
         if (position == null || position.getEntry() == null || position.getExit() == null) {
             return series.numFactory().zero();
         } else {
-            var cashFlow = new CashFlow(series, position);
+            var cashFlow = new CashFlow(series, position, equityCurveMode);
             return Drawdown.length(series, null, cashFlow);
         }
     }
@@ -66,7 +87,7 @@ public class MaximumDrawdownBarLengthCriterion extends AbstractAnalysisCriterion
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var cashFlow = new CashFlow(series, tradingRecord);
+        var cashFlow = new CashFlow(series, tradingRecord, equityCurveMode);
         return Drawdown.length(series, tradingRecord, cashFlow);
     }
 

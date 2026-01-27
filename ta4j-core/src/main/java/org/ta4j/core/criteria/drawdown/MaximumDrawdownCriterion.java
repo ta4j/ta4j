@@ -23,14 +23,11 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
-import java.util.Objects;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
-import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -44,26 +41,26 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "http://en.wikipedia.org/wiki/Drawdown_%28economics%29">https://en.wikipedia.org/wiki/Drawdown_(economics)</a>
  */
-public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
-
-    private final EquityCurveMode equityCurveMode;
+public class MaximumDrawdownCriterion extends AbstractEquityCurveDrawdownCriterion<MaximumDrawdownCriterion> {
 
     /**
-     * Constructor using {@link EquityCurveMode#MARK_TO_MARKET} by default.
+     * Creates a maximum drawdown criterion using mark-to-market cash flow.
+     *
+     * @since 0.22.2
      */
     public MaximumDrawdownCriterion() {
-        this(EquityCurveMode.MARK_TO_MARKET);
+        super();
     }
 
     /**
-     * Constructor using a specific equity curve calculation mode.
+     * Creates a maximum drawdown criterion using the provided equity curve mode.
      *
-     * @param equityCurveMode the equity curve mode to use for drawdown
+     * @param equityCurveMode the equity curve mode to use
      *
      * @since 0.22.2
      */
     public MaximumDrawdownCriterion(EquityCurveMode equityCurveMode) {
-        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
+        super(equityCurveMode);
     }
 
     @Override
