@@ -297,10 +297,11 @@ public class Returns implements Indicator<Num> {
      */
     private void fillToTheEnd(int endIndex) {
         if (endIndex >= rawValues.size()) {
-            int paddingSize = barSeries.getEndIndex() - rawValues.size() + 1;
-            Num zero = barSeries.numFactory().zero();
-            rawValues.addAll(Collections.nCopies(paddingSize, zero));
-            values.addAll(Collections.nCopies(paddingSize, zero));
+            var paddingSize = endIndex - rawValues.size() + 1;
+            var zero = barSeries.numFactory().zero();
+            var c = Collections.nCopies(paddingSize, zero);
+            rawValues.addAll(c);
+            values.addAll(c);
         }
     }
 }
