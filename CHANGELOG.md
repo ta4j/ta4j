@@ -25,6 +25,7 @@
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
 - **Drawdown criteria**: Added equity curve mode constructors to maximum drawdown depth, length, and absolute drawdown criteria so realized or mark-to-market cash flows can be selected explicitly.
+- **CumulativePnL equity curve mode control**: Added constructors to configure `CumulativePnL` with mark-to-market or realized calculation modes.
 
 ### Fixed
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
