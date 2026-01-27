@@ -73,8 +73,8 @@ public final class MaximumAbsoluteDrawdownCriterion extends AbstractEquityCurveC
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var cashFlow = new CumulativePnL(series, tradingRecord, equityCurveMode);
-        return Drawdown.amount(series, tradingRecord, cashFlow, false);
+        var pnl = new CumulativePnL(series, tradingRecord, equityCurveMode);
+        return Drawdown.amount(series, tradingRecord, pnl, false);
     }
 
     /**
@@ -87,8 +87,8 @@ public final class MaximumAbsoluteDrawdownCriterion extends AbstractEquityCurveC
         if (position == null || position.getEntry() == null || position.getExit() == null) {
             return series.numFactory().zero();
         } else {
-            var cashFlow = new CumulativePnL(series, position, equityCurveMode);
-            return Drawdown.amount(series, null, cashFlow, false);
+            var pnl = new CumulativePnL(series, position, equityCurveMode);
+            return Drawdown.amount(series, null, pnl, false);
         }
     }
 
