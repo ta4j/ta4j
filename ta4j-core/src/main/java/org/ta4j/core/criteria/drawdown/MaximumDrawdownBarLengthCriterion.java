@@ -42,28 +42,7 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.19
  */
-public class MaximumDrawdownBarLengthCriterion
-        extends AbstractEquityCurveDrawdownCriterion<MaximumDrawdownBarLengthCriterion> {
-
-    /**
-     * Creates a maximum drawdown length criterion using mark-to-market cash flow.
-     *
-     * @since 0.22.2
-     */
-    public MaximumDrawdownBarLengthCriterion() {
-        super();
-    }
-
-    /**
-     * Creates a maximum drawdown length criterion using the provided equity curve mode.
-     *
-     * @param equityCurveMode the equity curve mode to use
-     *
-     * @since 0.22.2
-     */
-    public MaximumDrawdownBarLengthCriterion(EquityCurveMode equityCurveMode) {
-        super(equityCurveMode);
-    }
+public class MaximumDrawdownBarLengthCriterion extends AbstractEquityCurveDrawdownCriterion{
 
     /**
      * {@inheritDoc}
