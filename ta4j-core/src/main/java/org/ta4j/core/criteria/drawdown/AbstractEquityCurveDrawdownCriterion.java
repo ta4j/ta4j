@@ -35,8 +35,7 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
  *
  * @since 0.22.2
  */
-public abstract class AbstractEquityCurveDrawdownCriterion
-        extends AbstractAnalysisCriterion {
+public abstract class AbstractEquityCurveDrawdownCriterion extends AbstractAnalysisCriterion {
 
     protected final EquityCurveMode equityCurveMode;
 
