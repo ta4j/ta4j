@@ -30,6 +30,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
+import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
@@ -56,7 +57,7 @@ public class MaximumAbsoluteDrawdownCriterionTest extends AbstractCriterionTest 
                 Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
 
         var criterion = getCriterion();
-        assertNumEquals(50, criterion.calculate(series, record));
+        assertNumEquals(0.628571d, criterion.calculate(series, record));
     }
 
     @Test
@@ -65,7 +66,7 @@ public class MaximumAbsoluteDrawdownCriterionTest extends AbstractCriterionTest 
         var record = new BaseTradingRecord(Trade.buyAt(0, series));
 
         var criterion = getCriterion();
-        assertNumEquals(40, criterion.calculate(series, record));
+        assertNumEquals(0.4d, criterion.calculate(series, record));
     }
 
     @Test
@@ -74,7 +75,16 @@ public class MaximumAbsoluteDrawdownCriterionTest extends AbstractCriterionTest 
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(2, series));
 
         var criterion = getCriterion();
-        assertNumEquals(20, criterion.calculate(series, position));
+        assertNumEquals(0.2d, criterion.calculate(series, position));
+    }
+
+    @Test
+    public void calculateWithRealizedModeIgnoresOpenPosition() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 80).build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series));
+
+        var criterion = new MaximumAbsoluteDrawdownCriterion(EquityCurveMode.REALIZED);
+        assertNumEquals(0d, criterion.calculate(series, record));
     }
 
     @Test

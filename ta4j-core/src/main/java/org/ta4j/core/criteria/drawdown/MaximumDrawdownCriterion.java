@@ -27,7 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.num.Num;
 
 /**
@@ -41,20 +41,40 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "http://en.wikipedia.org/wiki/Drawdown_%28economics%29">https://en.wikipedia.org/wiki/Drawdown_(economics)</a>
  */
-public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
+public class MaximumDrawdownCriterion extends AbstractEquityCurveDrawdownCriterion<MaximumDrawdownCriterion> {
+
+    /**
+     * Creates a maximum drawdown criterion using mark-to-market cash flow.
+     *
+     * @since 0.22.2
+     */
+    public MaximumDrawdownCriterion() {
+        super();
+    }
+
+    /**
+     * Creates a maximum drawdown criterion using the provided equity curve mode.
+     *
+     * @param equityCurveMode the equity curve mode to use
+     *
+     * @since 0.22.2
+     */
+    public MaximumDrawdownCriterion(EquityCurveMode equityCurveMode) {
+        super(equityCurveMode);
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position == null || position.getEntry() == null || position.getExit() == null) {
             return series.numFactory().zero();
         }
-        var cashFlow = new CashFlow(series, position);
+        var cashFlow = new CashFlow(series, position, equityCurveMode);
         return Drawdown.amount(series, null, cashFlow);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var cashFlow = new CashFlow(series, tradingRecord);
+        var cashFlow = new CashFlow(series, tradingRecord, equityCurveMode);
         return Drawdown.amount(series, tradingRecord, cashFlow);
     }
 
