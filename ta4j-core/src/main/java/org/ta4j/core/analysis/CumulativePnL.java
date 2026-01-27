@@ -239,7 +239,7 @@ public final class CumulativePnL implements Indicator<Num> {
     private void fillToTheEnd(int endIndex) {
         if (endIndex >= values.size()) {
             var last = values.getLast();
-            values.addAll(Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, last));
+            values.addAll(Collections.nCopies(endIndex - values.size() + 1, last));
         }
     }
 
