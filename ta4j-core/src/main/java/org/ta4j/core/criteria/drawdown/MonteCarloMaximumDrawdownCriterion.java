@@ -107,7 +107,8 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
      *
      * @param iterations      number of random simulations to run
      * @param pathBlocks      number of trades to include in each simulated path
-     *                        ({@code null} = use the number of trades in the sample)
+     *                        ({@code null} = use the number of trades in the
+     *                        sample)
      * @param seed            random seed for reproducibility
      * @param statistic       which summary statistic of the simulated drawdowns to
      *                        return
@@ -142,7 +143,8 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
      *
      * @param iterations      number of random simulations to run
      * @param pathBlocks      number of trades to include in each simulated path
-     *                        ({@code null} = use the number of trades in the sample)
+     *                        ({@code null} = use the number of trades in the
+     *                        sample)
      * @param randomSupplier  supplier of the random generator used for simulations
      * @param statistic       which summary statistic of the simulated drawdowns to
      *                        return
