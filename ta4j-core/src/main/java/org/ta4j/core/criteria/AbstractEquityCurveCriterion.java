@@ -28,7 +28,8 @@ import java.util.Objects;
 import org.ta4j.core.analysis.EquityCurveMode;
 
 /**
- * Shared base for criteria that require an {@link EquityCurveMode} configuration.
+ * Shared base for criteria that require an {@link EquityCurveMode}
+ * configuration.
  *
  * @param <T> the concrete criterion type
  *

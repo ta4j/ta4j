@@ -55,7 +55,8 @@ public class MaximumDrawdownBarLengthCriterion extends AbstractEquityCurveCriter
     }
 
     /**
-     * Creates a maximum drawdown length criterion using the provided equity curve mode.
+     * Creates a maximum drawdown length criterion using the provided equity curve
+     * mode.
      *
      * @param equityCurveMode the equity curve mode to use
      *

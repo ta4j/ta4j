@@ -54,7 +54,8 @@ public final class MaximumAbsoluteDrawdownCriterion extends AbstractEquityCurveC
     }
 
     /**
-     * Creates a maximum absolute drawdown criterion using the provided equity curve mode.
+     * Creates a maximum absolute drawdown criterion using the provided equity curve
+     * mode.
      *
      * @param equityCurveMode the equity curve mode to use
      *
