@@ -4,6 +4,10 @@
 - **Concurrent real-time bar series pipeline**: Introduced core support for concurrent, streaming bar ingestion with
   a dedicated series (`ConcurrentBarSeries`/builder), realtime bar model (`RealtimeBar`/`BaseRealtimeBar`), and
   streaming-bar ingestion helpers to enable candle reconciliation and side/liquidity-aware trade aggregation.
+- Added **ThreeInsideUpIndicator** and **ThreeInsideDownIndicator**
+- Added **MorningStarIndicator** and **EveningStarIndicator**
+- Added **BullishKickerIndicator** and **BearishKickerIndicator**
+- Added **PiercingIndicator** and **DarkCloudIndicator**
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
