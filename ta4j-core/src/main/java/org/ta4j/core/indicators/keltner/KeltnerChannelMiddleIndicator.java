@@ -19,9 +19,7 @@ import org.ta4j.core.num.Num;
  */
 public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
 
-    private final Indicator<Num> indicator;
     private final transient EMAIndicator emaIndicator;
-    private final int barCountEMA;
 
     /**
      * Constructor.
@@ -41,8 +39,6 @@ public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
      */
     public KeltnerChannelMiddleIndicator(Indicator<Num> indicator, int barCountEMA) {
         super(indicator.getBarSeries());
-        this.indicator = indicator;
-        this.barCountEMA = barCountEMA;
         this.emaIndicator = new EMAIndicator(indicator, barCountEMA);
     }
 

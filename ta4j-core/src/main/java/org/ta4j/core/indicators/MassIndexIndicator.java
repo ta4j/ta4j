@@ -21,7 +21,6 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
 
     private final transient EMAIndicator singleEma;
     private final transient EMAIndicator doubleEma;
-    private final int emaBarCount;
     private final int barCount;
 
     /**
@@ -35,7 +34,6 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
         super(series);
         final var highLowDifferential = BinaryOperationIndicator.difference(new HighPriceIndicator(series),
                 new LowPriceIndicator(series));
-        this.emaBarCount = emaBarCount;
         this.barCount = barCount;
         this.singleEma = new EMAIndicator(highLowDifferential, emaBarCount);
         this.doubleEma = new EMAIndicator(singleEma, emaBarCount); // Not the same formula as DoubleEMAIndicator
