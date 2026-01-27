@@ -52,16 +52,6 @@ public class CashFlow implements Indicator<Num> {
     /**
      * Constructor for cash flows of a closed position.
      *
-     * @param barSeries the bar series
-     * @param position  a single position
-     */
-    public CashFlow(BarSeries barSeries, Position position) {
-        this(barSeries, position, EquityCurveMode.MARK_TO_MARKET);
-    }
-
-    /**
-     * Constructor for cash flows of a closed position.
-     *
      * @param barSeries       the bar series
      * @param position        a single position
      * @param equityCurveMode the calculation mode
@@ -71,10 +61,42 @@ public class CashFlow implements Indicator<Num> {
     public CashFlow(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
         this.barSeries = Objects.requireNonNull(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        values = new ArrayList<>(Collections.singletonList(barSeries.numFactory().one()));
+        var aOne = Collections.singletonList(barSeries.numFactory().one());
+        values = new ArrayList<>(aOne);
 
         calculate(position);
         fillToTheEnd(barSeries.getEndIndex());
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param barSeries       the bar series
+     * @param tradingRecord   the trading record
+     * @param finalIndex      index up until cash flows of open positions are
+     *                        considered
+     * @param equityCurveMode the calculation mode
+     *
+     * @since 0.22.2
+     */
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, EquityCurveMode equityCurveMode) {
+        this.barSeries = Objects.requireNonNull(barSeries);
+        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
+        var aOne = Collections.singletonList(barSeries.numFactory().one());
+        values = new ArrayList<>(aOne);
+
+        calculate(tradingRecord, finalIndex);
+        fillToTheEnd(finalIndex);
+    }
+
+    /**
+     * Constructor for cash flows of a closed position.
+     *
+     * @param barSeries the bar series
+     * @param position  a single position
+     */
+    public CashFlow(BarSeries barSeries, Position position) {
+        this(barSeries, position, EquityCurveMode.MARK_TO_MARKET);
     }
 
     /**
@@ -110,26 +132,6 @@ public class CashFlow implements Indicator<Num> {
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
         this(barSeries, tradingRecord, finalIndex, EquityCurveMode.MARK_TO_MARKET);
-    }
-
-    /**
-     * Constructor.
-     *
-     * @param barSeries       the bar series
-     * @param tradingRecord   the trading record
-     * @param finalIndex      index up until cash flows of open positions are
-     *                        considered
-     * @param equityCurveMode the calculation mode
-     *
-     * @since 0.22.2
-     */
-    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, EquityCurveMode equityCurveMode) {
-        this.barSeries = Objects.requireNonNull(barSeries);
-        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        values = new ArrayList<>(List.of(getBarSeries().numFactory().one()));
-
-        calculate(tradingRecord, finalIndex);
-        fillToTheEnd(finalIndex);
     }
 
     /**

@@ -26,7 +26,6 @@ package org.ta4j.core.criteria.drawdown;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.CumulativePnL;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.criteria.AbstractEquityCurveCriterion;
@@ -59,7 +58,6 @@ public final class MaximumAbsoluteDrawdownCriterion extends AbstractEquityCurveC
      * mode.
      *
      * @param equityCurveMode the equity curve mode to use
-     *
      * @since 0.22.2
      */
     public MaximumAbsoluteDrawdownCriterion(EquityCurveMode equityCurveMode) {

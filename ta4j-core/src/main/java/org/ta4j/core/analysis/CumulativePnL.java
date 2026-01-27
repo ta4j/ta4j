@@ -78,11 +78,40 @@ public final class CumulativePnL implements Indicator<Num> {
         if (position.isOpened()) {
             throw new IllegalArgumentException("Position is not closed. Provide a final index if open.");
         }
-        this.barSeries = barSeries;
+        this.barSeries = Objects.requireNonNull(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        this.values = new ArrayList<>(Collections.singletonList(barSeries.numFactory().zero()));
+        var aZero = Collections.singletonList(barSeries.numFactory().zero());
+        this.values = new ArrayList<>(aZero);
         calculate(position, position.getExit().getIndex());
         fillToTheEnd(barSeries.getEndIndex());
+    }
+
+    /**
+     * Constructor for a trading record with a specified final index.
+     *
+     * @param barSeries       the bar series
+     * @param tradingRecord   the trading record
+     * @param finalIndex      the final index to calculate up to
+     * @param equityCurveMode the calculation mode
+     *
+     * @since 0.22.2
+     */
+    public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
+            EquityCurveMode equityCurveMode) {
+        this.barSeries = Objects.requireNonNull(barSeries);
+        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
+        var aZero = Collections.singletonList(barSeries.numFactory().zero());
+        this.values = new ArrayList<>(aZero);
+
+        var positions = tradingRecord.getPositions();
+        for (var position : positions) {
+            var endIndex = AnalysisUtils.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
+            calculate(position, endIndex);
+        }
+        if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET && tradingRecord.getCurrentPosition().isOpened()) {
+            calculate(tradingRecord.getCurrentPosition(), finalIndex);
+        }
+        fillToTheEnd(finalIndex);
     }
 
     /**
@@ -121,33 +150,6 @@ public final class CumulativePnL implements Indicator<Num> {
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
         this(barSeries, tradingRecord, finalIndex, EquityCurveMode.MARK_TO_MARKET);
-    }
-
-    /**
-     * Constructor for a trading record with a specified final index.
-     *
-     * @param barSeries       the bar series
-     * @param tradingRecord   the trading record
-     * @param finalIndex      the final index to calculate up to
-     * @param equityCurveMode the calculation mode
-     *
-     * @since 0.22.2
-     */
-    public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
-            EquityCurveMode equityCurveMode) {
-        this.barSeries = barSeries;
-        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        this.values = new ArrayList<>(Collections.singletonList(barSeries.numFactory().zero()));
-
-        var positions = tradingRecord.getPositions();
-        for (var position : positions) {
-            var endIndex = AnalysisUtils.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
-            calculate(position, endIndex);
-        }
-        if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET && tradingRecord.getCurrentPosition().isOpened()) {
-            calculate(tradingRecord.getCurrentPosition(), finalIndex);
-        }
-        fillToTheEnd(finalIndex);
     }
 
     /**
