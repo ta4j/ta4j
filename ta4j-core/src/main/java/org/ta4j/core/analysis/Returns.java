@@ -26,6 +26,7 @@ package org.ta4j.core.analysis;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -55,6 +56,7 @@ import org.ta4j.core.num.Num;
 public class Returns implements Indicator<Num> {
 
     private final ReturnRepresentation representation;
+    private final EquityCurveMode equityCurveMode;
 
     /** The bar series. */
     private final BarSeries barSeries;
@@ -85,7 +87,22 @@ public class Returns implements Indicator<Num> {
      * @param position  a single position
      */
     public Returns(BarSeries barSeries, Position position) {
-        this(barSeries, position, ReturnRepresentationPolicy.getDefaultRepresentation());
+        this(barSeries, position, ReturnRepresentationPolicy.getDefaultRepresentation(),
+                EquityCurveMode.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor with default representation from
+     * {@link ReturnRepresentationPolicy#getDefaultRepresentation()}.
+     *
+     * @param barSeries       the bar series
+     * @param position        a single position
+     * @param equityCurveMode the calculation mode
+     *
+     * @since 0.22.2
+     */
+    public Returns(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
+        this(barSeries, position, ReturnRepresentationPolicy.getDefaultRepresentation(), equityCurveMode);
     }
 
     /**
@@ -97,14 +114,55 @@ public class Returns implements Indicator<Num> {
      *                       method and output format)
      */
     public Returns(BarSeries barSeries, Position position, ReturnRepresentation representation) {
-        this.barSeries = barSeries;
-        this.representation = representation;
-        // at index 0, there is no return
-        rawValues = new ArrayList<>(Collections.singletonList(NaN.NaN));
-        values = new ArrayList<>(Collections.singletonList(NaN.NaN));
-        calculate(position, barSeries.getEndIndex());
+        this(barSeries, position, representation, EquityCurveMode.MARK_TO_MARKET);
+    }
 
+    /**
+     * Constructor.
+     *
+     * @param barSeries       the bar series
+     * @param position        a single position
+     * @param representation  the return representation (determines both calculation
+     *                        method and output format)
+     * @param equityCurveMode the calculation mode
+     *
+     * @since 0.22.2
+     */
+    public Returns(BarSeries barSeries, Position position, ReturnRepresentation representation,
+            EquityCurveMode equityCurveMode) {
+        this.barSeries = Objects.requireNonNull(barSeries);
+        this.representation = Objects.requireNonNull(representation);
+        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
+        // at index 0, there is no return
+        var aNan = Collections.singletonList(NaN.NaN);
+        rawValues = new ArrayList<>(aNan);
+        values = new ArrayList<>(aNan);
+        calculate(position, barSeries.getEndIndex());
         fillToTheEnd(barSeries.getEndIndex());
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param barSeries       the bar series
+     * @param tradingRecord   the trading record
+     * @param representation  the return representation (determines both calculation
+     *                        method and output format)
+     * @param equityCurveMode the calculation mode
+     *
+     * @since 0.22.2
+     */
+    public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnRepresentation representation,
+            EquityCurveMode equityCurveMode) {
+        this.barSeries = Objects.requireNonNull(barSeries);
+        this.representation = Objects.requireNonNull(representation);
+        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
+        // at index 0, there is no return
+        var aNan = Collections.singletonList(NaN.NaN);
+        rawValues = new ArrayList<>(aNan);
+        values = new ArrayList<>(aNan);
+        calculate(tradingRecord);
+        fillToTheEnd(tradingRecord.getEndIndex(barSeries));
     }
 
     /**
@@ -115,7 +173,22 @@ public class Returns implements Indicator<Num> {
      * @param tradingRecord the trading record
      */
     public Returns(BarSeries barSeries, TradingRecord tradingRecord) {
-        this(barSeries, tradingRecord, ReturnRepresentationPolicy.getDefaultRepresentation());
+        this(barSeries, tradingRecord, ReturnRepresentationPolicy.getDefaultRepresentation(),
+                EquityCurveMode.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor with default representation from
+     * {@link ReturnRepresentationPolicy#getDefaultRepresentation()}.
+     *
+     * @param barSeries       the bar series
+     * @param tradingRecord   the trading record
+     * @param equityCurveMode the calculation mode
+     *
+     * @since 0.22.2
+     */
+    public Returns(BarSeries barSeries, TradingRecord tradingRecord, EquityCurveMode equityCurveMode) {
+        this(barSeries, tradingRecord, ReturnRepresentationPolicy.getDefaultRepresentation(), equityCurveMode);
     }
 
     /**
@@ -127,14 +200,7 @@ public class Returns implements Indicator<Num> {
      *                       method and output format)
      */
     public Returns(BarSeries barSeries, TradingRecord tradingRecord, ReturnRepresentation representation) {
-        this.barSeries = barSeries;
-        this.representation = representation;
-        // at index 0, there is no return
-        rawValues = new ArrayList<>(Collections.singletonList(NaN.NaN));
-        values = new ArrayList<>(Collections.singletonList(NaN.NaN));
-        calculate(tradingRecord);
-
-        fillToTheEnd(tradingRecord.getEndIndex(barSeries));
+        this(barSeries, tradingRecord, representation, EquityCurveMode.MARK_TO_MARKET);
     }
 
     /**
@@ -205,15 +271,40 @@ public class Returns implements Indicator<Num> {
         int startingIndex = Math.max(begin, 1);
         int nPeriods = endIndex - entryIndex;
         Num holdingCost = position.getHoldingCost(endIndex);
-        Num avgCost = holdingCost.dividedBy(getBarSeries().numFactory().numOf(nPeriods));
 
-        // returns are per period (iterative). Base price needs to be updated
-        // accordingly
-        Num lastPrice = position.getEntry().getNetPrice();
-        for (int i = startingIndex; i < endIndex; i++) {
-            Num intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(i).getClosePrice(), avgCost, isLongTrade);
-            Num rawReturn = calculateReturn(intermediateNetPrice, lastPrice);
+        if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
+            Num avgCost = holdingCost.dividedBy(getBarSeries().numFactory().numOf(nPeriods));
 
+            // returns are per period (iterative). Base price needs to be updated
+            // accordingly
+            Num lastPrice = position.getEntry().getNetPrice();
+            for (int i = startingIndex; i < endIndex; i++) {
+                Num intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(i).getClosePrice(), avgCost,
+                        isLongTrade);
+                Num rawReturn = calculateReturn(intermediateNetPrice, lastPrice);
+
+                Num strategyReturn;
+                if (position.getEntry().isBuy()) {
+                    strategyReturn = rawReturn;
+                } else {
+                    strategyReturn = rawReturn.multipliedBy(minusOne);
+                }
+                rawValues.add(strategyReturn);
+                // Format the return according to the configured representation
+                addValue(strategyReturn);
+                // update base price
+                lastPrice = barSeries.getBar(i).getClosePrice();
+            }
+
+            // add net return at exit position
+            Num exitPrice;
+            if (position.getExit() != null) {
+                exitPrice = position.getExit().getNetPrice();
+            } else {
+                exitPrice = barSeries.getBar(endIndex).getClosePrice();
+            }
+
+            Num rawReturn = calculateReturn(AnalysisUtils.addCost(exitPrice, avgCost, isLongTrade), lastPrice);
             Num strategyReturn;
             if (position.getEntry().isBuy()) {
                 strategyReturn = rawReturn;
@@ -221,34 +312,29 @@ public class Returns implements Indicator<Num> {
                 strategyReturn = rawReturn.multipliedBy(minusOne);
             }
             rawValues.add(strategyReturn);
-            // Format the return according to the configured representation
-            if (representation == ReturnRepresentation.LOG) {
-                // Log returns are returned as-is (no conversion needed)
-                values.add(strategyReturn);
-            } else {
-                // Raw return is already in DECIMAL format (arithmetic return)
-                values.add(representation.toRepresentationFromRateOfReturn(strategyReturn));
+            addValue(strategyReturn);
+        } else {
+            Num zero = barSeries.numFactory().zero();
+            for (int i = startingIndex; i < endIndex; i++) {
+                rawValues.add(zero);
+                addValue(zero);
             }
-            // update base price
-            lastPrice = barSeries.getBar(i).getClosePrice();
+            if (position.getExit() != null && endIndex >= position.getExit().getIndex()) {
+                Num entryPrice = position.getEntry().getNetPrice();
+                Num exitPrice = position.getExit().getNetPrice();
+                Num netExit = AnalysisUtils.addCost(exitPrice, holdingCost, isLongTrade);
+                Num rawReturn = calculateReturn(netExit, entryPrice);
+                Num strategyReturn = position.getEntry().isBuy() ? rawReturn : rawReturn.multipliedBy(minusOne);
+                rawValues.add(strategyReturn);
+                addValue(strategyReturn);
+            } else {
+                rawValues.add(zero);
+                addValue(zero);
+            }
         }
+    }
 
-        // add net return at exit position
-        Num exitPrice;
-        if (position.getExit() != null) {
-            exitPrice = position.getExit().getNetPrice();
-        } else {
-            exitPrice = barSeries.getBar(endIndex).getClosePrice();
-        }
-
-        Num rawReturn = calculateReturn(AnalysisUtils.addCost(exitPrice, avgCost, isLongTrade), lastPrice);
-        Num strategyReturn;
-        if (position.getEntry().isBuy()) {
-            strategyReturn = rawReturn;
-        } else {
-            strategyReturn = rawReturn.multipliedBy(minusOne);
-        }
-        rawValues.add(strategyReturn);
+    private void addValue(Num strategyReturn) {
         // Format the return according to the configured representation
         if (representation == ReturnRepresentation.LOG) {
             // Log returns are returned as-is (no conversion needed)

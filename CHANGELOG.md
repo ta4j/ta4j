@@ -24,8 +24,7 @@
 - **Release scheduler enablement**: Gate scheduled runs on `RELEASE_SCHEDULER_ENABLED` (defaults to disabled when unset).
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
-- **CumulativePnL equity curve mode control**: Added constructors to configure `CumulativePnL` with mark-to-market or realized calculation modes.
-- **Drawdown criteria**: Added equity curve mode constructors to maximum drawdown depth, length, and absolute drawdown criteria so realized or mark-to-market cash flows can be selected explicitly.
+- **Equity curve mode control**: Added constructors to select mark-to-market or realized cash-flow calculation for CumulativePnL, Returns, and drawdown criteria (Maximum Absolute Drawdown, Maximum Drawdown Depth, Maximum Drawdown Length).
 
 ### Fixed
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
