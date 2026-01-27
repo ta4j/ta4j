@@ -21,12 +21,11 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.criteria.drawdown;
+package org.ta4j.core.criteria;
 
 import java.util.Objects;
 
 import org.ta4j.core.analysis.EquityCurveMode;
-import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 
 /**
  * Shared base for criteria that require an {@link EquityCurveMode} configuration.
@@ -35,15 +34,15 @@ import org.ta4j.core.criteria.AbstractAnalysisCriterion;
  *
  * @since 0.22.2
  */
-public abstract class AbstractEquityCurveDrawdownCriterion extends AbstractAnalysisCriterion {
+public abstract class AbstractEquityCurveCriterion extends AbstractAnalysisCriterion {
 
-    protected final EquityCurveMode equityCurveMode;
+    protected EquityCurveMode equityCurveMode;
 
-    protected AbstractEquityCurveDrawdownCriterion() {
+    protected AbstractEquityCurveCriterion() {
         this(EquityCurveMode.MARK_TO_MARKET);
     }
 
-    protected AbstractEquityCurveDrawdownCriterion(EquityCurveMode equityCurveMode) {
+    protected AbstractEquityCurveCriterion(EquityCurveMode equityCurveMode) {
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
     }
 }

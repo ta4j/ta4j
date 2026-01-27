@@ -23,11 +23,13 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
+import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.criteria.AbstractEquityCurveCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -41,7 +43,25 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "http://en.wikipedia.org/wiki/Drawdown_%28economics%29">https://en.wikipedia.org/wiki/Drawdown_(economics)</a>
  */
-public class MaximumDrawdownCriterion extends AbstractEquityCurveDrawdownCriterion {
+public class MaximumDrawdownCriterion extends AbstractEquityCurveCriterion {
+
+    /**
+     * Constructor using {@link EquityCurveMode#MARK_TO_MARKET} by default.
+     */
+    public MaximumDrawdownCriterion() {
+        super();
+    }
+
+    /**
+     * Constructor using a specific equity curve calculation mode.
+     *
+     * @param equityCurveMode the equity curve mode to use for drawdown
+     *
+     * @since 0.22.2
+     */
+    public MaximumDrawdownCriterion(EquityCurveMode equityCurveMode) {
+        super(equityCurveMode);
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {

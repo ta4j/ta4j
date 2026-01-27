@@ -28,6 +28,7 @@ import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.criteria.AbstractEquityCurveCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -41,7 +42,27 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.19
  */
-public final class MaximumAbsoluteDrawdownCriterion extends AbstractEquityCurveDrawdownCriterion {
+public final class MaximumAbsoluteDrawdownCriterion extends AbstractEquityCurveCriterion {
+
+    /**
+     * Creates a maximum absolute drawdown criterion using mark-to-market cash flow.
+     *
+     * @since 0.22.2
+     */
+    public MaximumAbsoluteDrawdownCriterion() {
+        super();
+    }
+
+    /**
+     * Creates a maximum absolute drawdown criterion using the provided equity curve mode.
+     *
+     * @param equityCurveMode the equity curve mode to use
+     *
+     * @since 0.22.2
+     */
+    public MaximumAbsoluteDrawdownCriterion(EquityCurveMode equityCurveMode) {
+        super(equityCurveMode);
+    }
 
     /**
      * {@inheritDoc}
