@@ -71,6 +71,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
      *
      * @param indicator the {@link Indicator}
      */
+    @Deprecated
     public DifferencePercentageIndicator(Indicator<Num> indicator) {
         this(indicator, indicator.getBarSeries().numFactory().zero());
     }
@@ -81,6 +82,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
      * @param indicator           the {@link Indicator}
      * @param percentageThreshold the threshold percentage
      */
+    @Deprecated
     public DifferencePercentageIndicator(Indicator<Num> indicator, Number percentageThreshold) {
         this(indicator, indicator.getBarSeries().numFactory().numOf(percentageThreshold));
     }
@@ -91,6 +93,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
      * @param indicator           the {@link Indicator}
      * @param percentageThreshold the threshold percentage
      */
+    @Deprecated
     public DifferencePercentageIndicator(Indicator<Num> indicator, Num percentageThreshold) {
         super(indicator);
         this.indicator = indicator;
@@ -141,6 +144,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    @Deprecated
     public int getCountOfUnstableBars() {
         return 1;
     }

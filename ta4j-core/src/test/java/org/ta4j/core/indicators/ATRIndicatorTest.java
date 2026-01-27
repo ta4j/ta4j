@@ -26,7 +26,6 @@ package org.ta4j.core.indicators;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Instant;

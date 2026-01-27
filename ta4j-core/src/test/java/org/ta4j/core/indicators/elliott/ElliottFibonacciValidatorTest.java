@@ -30,7 +30,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NaN;
-import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**

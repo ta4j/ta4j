@@ -42,6 +42,7 @@ public class JsonBarsSerializer {
 
     private static final Logger LOG = LogManager.getLogger(JsonBarsSerializer.class);
 
+    @Deprecated
     public static void persistSeries(BarSeries series, String filename) {
         GsonBarSeries exportableSeries = GsonBarSeries.from(series);
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -64,6 +65,7 @@ public class JsonBarsSerializer {
         }
     }
 
+    @Deprecated
     public static BarSeries loadSeries(String filename) {
         Gson gson = new Gson();
         FileReader reader = null;

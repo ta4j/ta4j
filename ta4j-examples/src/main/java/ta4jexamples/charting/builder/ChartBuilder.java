@@ -80,7 +80,6 @@ public final class ChartBuilder {
     private static final float[] DEFAULT_CHANNEL_MEDIAN_DASH = { 4.5f, 4.5f };
 
     private final ChartWorkflow chartWorkflow;
-    private final TradingChartFactory chartFactory;
     private final OverlayColorPalette colorPalette = new OverlayColorPalette();
     private final List<PlotContext> plots = new ArrayList<>();
 
@@ -90,7 +89,7 @@ public final class ChartBuilder {
 
     public ChartBuilder(ChartWorkflow chartWorkflow, TradingChartFactory chartFactory) {
         this.chartWorkflow = Objects.requireNonNull(chartWorkflow, "Chart workflow cannot be null");
-        this.chartFactory = Objects.requireNonNull(chartFactory, "Chart factory cannot be null");
+        Objects.requireNonNull(chartFactory, "Chart factory cannot be null");
     }
 
     /**
