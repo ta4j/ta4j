@@ -56,18 +56,6 @@ public final class CumulativePnL implements Indicator<Num> {
     /**
      * Constructor for a single closed position.
      *
-     * @param barSeries the bar series
-     * @param position  the closed position
-     *
-     * @since 0.19
-     */
-    public CumulativePnL(BarSeries barSeries, Position position) {
-        this(barSeries, position, EquityCurveMode.MARK_TO_MARKET);
-    }
-
-    /**
-     * Constructor for a single closed position.
-     *
      * @param barSeries       the bar series
      * @param position        the closed position
      * @param equityCurveMode the calculation mode
@@ -75,6 +63,7 @@ public final class CumulativePnL implements Indicator<Num> {
      * @since 0.22.2
      */
     public CumulativePnL(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
+        Objects.requireNonNull(position);
         if (position.isOpened()) {
             throw new IllegalArgumentException("Position is not closed. Provide a final index if open.");
         }
@@ -103,7 +92,7 @@ public final class CumulativePnL implements Indicator<Num> {
         var aZero = Collections.singletonList(barSeries.numFactory().zero());
         this.values = new ArrayList<>(aZero);
 
-        var positions = tradingRecord.getPositions();
+        var positions = Objects.requireNonNull(tradingRecord).getPositions();
         for (var position : positions) {
             var endIndex = AnalysisUtils.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
             calculate(position, endIndex);
@@ -112,6 +101,18 @@ public final class CumulativePnL implements Indicator<Num> {
             calculate(tradingRecord.getCurrentPosition(), finalIndex);
         }
         fillToTheEnd(finalIndex);
+    }
+
+    /**
+     * Constructor for a single closed position.
+     *
+     * @param barSeries the bar series
+     * @param position  the closed position
+     *
+     * @since 0.19
+     */
+    public CumulativePnL(BarSeries barSeries, Position position) {
+        this(barSeries, position, EquityCurveMode.MARK_TO_MARKET);
     }
 
     /**

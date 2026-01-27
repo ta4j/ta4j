@@ -64,7 +64,7 @@ public class CashFlow implements Indicator<Num> {
         var aOne = Collections.singletonList(barSeries.numFactory().one());
         values = new ArrayList<>(aOne);
 
-        calculate(position);
+        calculate(Objects.requireNonNull(position));
         fillToTheEnd(barSeries.getEndIndex());
     }
 
@@ -85,7 +85,7 @@ public class CashFlow implements Indicator<Num> {
         var aOne = Collections.singletonList(barSeries.numFactory().one());
         values = new ArrayList<>(aOne);
 
-        calculate(tradingRecord, finalIndex);
+        calculate(Objects.requireNonNull(tradingRecord), finalIndex);
         fillToTheEnd(finalIndex);
     }
 

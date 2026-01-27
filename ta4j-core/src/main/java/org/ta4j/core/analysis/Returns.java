@@ -137,7 +137,7 @@ public class Returns implements Indicator<Num> {
         var aNan = Collections.singletonList(NaN.NaN);
         rawValues = new ArrayList<>(aNan);
         values = new ArrayList<>(aNan);
-        calculate(position, barSeries.getEndIndex());
+        calculate(Objects.requireNonNull(position), barSeries.getEndIndex());
         fillToTheEnd(barSeries.getEndIndex());
     }
 
@@ -161,7 +161,7 @@ public class Returns implements Indicator<Num> {
         var aNan = Collections.singletonList(NaN.NaN);
         rawValues = new ArrayList<>(aNan);
         values = new ArrayList<>(aNan);
-        calculate(tradingRecord);
+        calculate(Objects.requireNonNull(tradingRecord));
         fillToTheEnd(tradingRecord.getEndIndex(barSeries));
     }
 
