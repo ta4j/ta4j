@@ -23,10 +23,13 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
+import java.util.Objects;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.Num;
 
@@ -43,18 +46,38 @@ import org.ta4j.core.num.Num;
  */
 public class MaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
+    private final EquityCurveMode equityCurveMode;
+
+    /**
+     * Constructor using {@link EquityCurveMode#MARK_TO_MARKET} by default.
+     */
+    public MaximumDrawdownCriterion() {
+        this(EquityCurveMode.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor using a specific equity curve calculation mode.
+     *
+     * @param equityCurveMode the equity curve mode to use for drawdown
+     *
+     * @since 0.22.2
+     */
+    public MaximumDrawdownCriterion(EquityCurveMode equityCurveMode) {
+        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
+    }
+
     @Override
     public Num calculate(BarSeries series, Position position) {
         if (position == null || position.getEntry() == null || position.getExit() == null) {
             return series.numFactory().zero();
         }
-        var cashFlow = new CashFlow(series, position);
+        var cashFlow = new CashFlow(series, position, equityCurveMode);
         return Drawdown.amount(series, null, cashFlow);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var cashFlow = new CashFlow(series, tradingRecord);
+        var cashFlow = new CashFlow(series, tradingRecord, equityCurveMode);
         return Drawdown.amount(series, tradingRecord, cashFlow);
     }
 

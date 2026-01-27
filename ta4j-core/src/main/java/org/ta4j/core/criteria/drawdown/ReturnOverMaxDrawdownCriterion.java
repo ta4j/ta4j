@@ -27,6 +27,7 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.ReturnRepresentationPolicy;
@@ -80,7 +81,7 @@ import org.ta4j.core.num.Num;
 public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
 
     private final AnalysisCriterion netReturnCriterion;
-    private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
+    private final AnalysisCriterion maxDrawdownCriterion;
     private final ReturnRepresentation returnRepresentation;
 
     /**
@@ -91,7 +92,7 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
      * drawdown). Use the other constructor to specify a different representation.
      */
     public ReturnOverMaxDrawdownCriterion() {
-        this(ReturnRepresentation.DECIMAL);
+        this(ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET);
     }
 
     /**
@@ -108,12 +109,40 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
      *                             {@link ReturnRepresentation#MULTIPLICATIVE})
      */
     public ReturnOverMaxDrawdownCriterion(ReturnRepresentation returnRepresentation) {
+        this(returnRepresentation, EquityCurveMode.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor with explicit equity curve mode.
+     *
+     * @param equityCurveMode the equity curve mode to use for drawdown
+     *
+     * @since 0.22.2
+     */
+    public ReturnOverMaxDrawdownCriterion(EquityCurveMode equityCurveMode) {
+        this(ReturnRepresentation.DECIMAL, equityCurveMode);
+    }
+
+    /**
+     * Constructor with explicit return representation and equity curve mode.
+     *
+     * @param returnRepresentation the return representation to use for the output
+     *                             ratio (e.g.,
+     *                             {@link ReturnRepresentation#DECIMAL},
+     *                             {@link ReturnRepresentation#PERCENTAGE},
+     *                             {@link ReturnRepresentation#MULTIPLICATIVE})
+     * @param equityCurveMode      the equity curve mode to use for drawdown
+     *
+     * @since 0.22.2
+     */
+    public ReturnOverMaxDrawdownCriterion(ReturnRepresentation returnRepresentation, EquityCurveMode equityCurveMode) {
         this.returnRepresentation = returnRepresentation;
         // Always use DECIMAL (0-based) for internal calculation since the formula
         // requires
         // "net return without base" (rate of return). The final ratio will be converted
         // to the desired representation.
         this.netReturnCriterion = new NetReturnCriterion(ReturnRepresentation.DECIMAL);
+        this.maxDrawdownCriterion = new MaximumDrawdownCriterion(equityCurveMode);
     }
 
     @Override

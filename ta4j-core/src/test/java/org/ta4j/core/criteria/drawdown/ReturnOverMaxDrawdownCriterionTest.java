@@ -34,6 +34,7 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -67,6 +68,19 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         var result = returnOverMaxDrawDown.calculate(series, tradingRecord);
 
         assertNumEquals(netProfit / ((peak - low) / peak), result);
+    }
+
+    @Test
+    public void rewardRiskRatioCriterionUsesEquityCurveMode() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 80, 120).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        var markToMarket = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET);
+        var realized = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL, EquityCurveMode.REALIZED);
+
+        assertNumEquals(1.0d, markToMarket.calculate(series, tradingRecord));
+        assertNumEquals(0.2d, realized.calculate(series, tradingRecord));
     }
 
     @Test

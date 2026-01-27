@@ -32,6 +32,7 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
@@ -68,6 +69,18 @@ public class MaximumDrawdownCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(3, series), Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(6, series));
 
         assertNumEquals(.875d, mdd.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void calculateWithRealizedEquityCurveIgnoresInterimDrawdown() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 80, 120).build();
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        AnalysisCriterion markToMarket = new MaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET);
+        AnalysisCriterion realized = new MaximumDrawdownCriterion(EquityCurveMode.REALIZED);
+
+        assertNumEquals(0.2d, markToMarket.calculate(series, tradingRecord));
+        assertNumEquals(0d, realized.calculate(series, tradingRecord));
     }
 
     @Test
