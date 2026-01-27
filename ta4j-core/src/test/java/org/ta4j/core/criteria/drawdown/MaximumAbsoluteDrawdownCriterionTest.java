@@ -57,7 +57,7 @@ public class MaximumAbsoluteDrawdownCriterionTest extends AbstractCriterionTest 
                 Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
 
         var criterion = getCriterion();
-        assertNumEquals(0.628571d, criterion.calculate(series, record));
+        assertNumEquals(50.0, criterion.calculate(series, record));
     }
 
     @Test
@@ -66,7 +66,7 @@ public class MaximumAbsoluteDrawdownCriterionTest extends AbstractCriterionTest 
         var record = new BaseTradingRecord(Trade.buyAt(0, series));
 
         var criterion = getCriterion();
-        assertNumEquals(0.4d, criterion.calculate(series, record));
+        assertNumEquals(40.0, criterion.calculate(series, record));
     }
 
     @Test
@@ -75,7 +75,7 @@ public class MaximumAbsoluteDrawdownCriterionTest extends AbstractCriterionTest 
         var position = new Position(Trade.buyAt(0, series), Trade.sellAt(2, series));
 
         var criterion = getCriterion();
-        assertNumEquals(0.2d, criterion.calculate(series, position));
+        assertNumEquals(20.0, criterion.calculate(series, position));
     }
 
     @Test

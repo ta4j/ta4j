@@ -27,6 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.CumulativePnL;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.criteria.AbstractEquityCurveCriterion;
 import org.ta4j.core.num.Num;
@@ -72,7 +73,7 @@ public final class MaximumAbsoluteDrawdownCriterion extends AbstractEquityCurveC
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var cashFlow = new CashFlow(series, tradingRecord, equityCurveMode);
+        var cashFlow = new CumulativePnL(series, tradingRecord, equityCurveMode);
         return Drawdown.amount(series, tradingRecord, cashFlow, false);
     }
 
@@ -86,7 +87,7 @@ public final class MaximumAbsoluteDrawdownCriterion extends AbstractEquityCurveC
         if (position == null || position.getEntry() == null || position.getExit() == null) {
             return series.numFactory().zero();
         } else {
-            var cashFlow = new CashFlow(series, position, equityCurveMode);
+            var cashFlow = new CumulativePnL(series, position, equityCurveMode);
             return Drawdown.amount(series, null, cashFlow, false);
         }
     }
