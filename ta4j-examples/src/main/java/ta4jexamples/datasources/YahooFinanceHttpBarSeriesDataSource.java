@@ -704,62 +704,6 @@ public class YahooFinanceHttpBarSeriesDataSource extends AbstractHttpBarSeriesDa
      * @param interval the interval to use for truncation
      * @return the truncated timestamp
      */
-    private Instant truncateTimestampForCache(Instant instant, YahooFinanceInterval interval) {
-        ZonedDateTime zdt = instant.atZone(ZoneOffset.UTC);
-        ZonedDateTime truncated;
-
-        switch (interval) {
-        case MINUTE_1:
-            // Truncate to start of minute
-            truncated = zdt.withSecond(0).withNano(0);
-            break;
-        case MINUTE_5:
-            // Truncate to start of 5-minute period (0, 5, 10, 15, etc.)
-            int minute5 = (zdt.getMinute() / 5) * 5;
-            truncated = zdt.withMinute(minute5).withSecond(0).withNano(0);
-            break;
-        case MINUTE_15:
-            // Truncate to start of 15-minute period (0, 15, 30, 45)
-            int minute15 = (zdt.getMinute() / 15) * 15;
-            truncated = zdt.withMinute(minute15).withSecond(0).withNano(0);
-            break;
-        case MINUTE_30:
-            // Truncate to start of 30-minute period (0, 30)
-            int minute30 = (zdt.getMinute() / 30) * 30;
-            truncated = zdt.withMinute(minute30).withSecond(0).withNano(0);
-            break;
-        case HOUR_1:
-            // Truncate to start of hour
-            truncated = zdt.withMinute(0).withSecond(0).withNano(0);
-            break;
-        case HOUR_4:
-            // Truncate to start of 4-hour period (0, 4, 8, 12, 16, 20)
-            int hour4 = (zdt.getHour() / 4) * 4;
-            truncated = zdt.withHour(hour4).withMinute(0).withSecond(0).withNano(0);
-            break;
-        case DAY_1:
-            // Truncate to start of day
-            truncated = zdt.withHour(0).withMinute(0).withSecond(0).withNano(0);
-            break;
-        case WEEK_1:
-            // Truncate to start of week (Monday)
-            int daysFromMonday = zdt.getDayOfWeek().getValue() - java.time.DayOfWeek.MONDAY.getValue();
-            if (daysFromMonday < 0) {
-                daysFromMonday += 7; // Handle Sunday (value 7)
-            }
-            truncated = zdt.minusDays(daysFromMonday).withHour(0).withMinute(0).withSecond(0).withNano(0);
-            break;
-        case MONTH_1:
-            // Truncate to start of month
-            truncated = zdt.withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0);
-            break;
-        default:
-            truncated = zdt;
-            break;
-        }
-
-        return truncated.toInstant();
-    }
 
     /**
      * Generates the cache file path for a given request.

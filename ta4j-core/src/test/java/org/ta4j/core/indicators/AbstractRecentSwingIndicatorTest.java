@@ -217,11 +217,6 @@ public class AbstractRecentSwingIndicatorTest extends AbstractIndicatorTest<Indi
             this.latestSwingIndexes = new ArrayList<>(Arrays.stream(latestSwingIndexes).boxed().toList());
         }
 
-        private void setLatestSwingIndexes(int[] latestSwingIndexes) {
-            this.latestSwingIndexes.clear();
-            this.latestSwingIndexes.addAll(Arrays.stream(latestSwingIndexes).boxed().toList());
-        }
-
         @Override
         protected int detectLatestSwingIndex(int index) {
             if (index < 0) {

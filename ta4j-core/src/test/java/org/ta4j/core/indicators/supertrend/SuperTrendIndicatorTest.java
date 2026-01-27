@@ -393,16 +393,6 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<BarSeries, Nu
         return series;
     }
 
-    private BarSeries buildDowntrendSeries() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        // Build a clear downtrend
-        series.barBuilder().openPrice(100).closePrice(98).highPrice(101).lowPrice(97).add();
-        series.barBuilder().openPrice(98).closePrice(95).highPrice(99).lowPrice(94).add();
-        series.barBuilder().openPrice(95).closePrice(92).highPrice(96).lowPrice(91).add();
-        series.barBuilder().openPrice(92).closePrice(88).highPrice(93).lowPrice(87).add();
-        return series;
-    }
-
     private BarSeries buildStrongDowntrendSeries() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         // Start with a bar that could be in uptrend initially
@@ -428,21 +418,6 @@ public class SuperTrendIndicatorTest extends AbstractIndicatorTest<BarSeries, Nu
         series.barBuilder().openPrice(80).closePrice(95).highPrice(96).lowPrice(79).add();
         series.barBuilder().openPrice(95).closePrice(110).highPrice(111).lowPrice(94).add();
         series.barBuilder().openPrice(110).closePrice(125).highPrice(126).lowPrice(109).add();
-        return series;
-    }
-
-    private BarSeries buildReversalSeries() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        // Start with downtrend
-        series.barBuilder().openPrice(100).closePrice(98).highPrice(101).lowPrice(97).add();
-        series.barBuilder().openPrice(98).closePrice(95).highPrice(99).lowPrice(94).add();
-        series.barBuilder().openPrice(95).closePrice(92).highPrice(96).lowPrice(91).add();
-        series.barBuilder().openPrice(92).closePrice(90).highPrice(93).lowPrice(89).add();
-        // Then sharp reversal up
-        series.barBuilder().openPrice(90).closePrice(95).highPrice(96).lowPrice(89).add();
-        series.barBuilder().openPrice(95).closePrice(100).highPrice(101).lowPrice(94).add();
-        series.barBuilder().openPrice(100).closePrice(105).highPrice(106).lowPrice(99).add();
-        series.barBuilder().openPrice(105).closePrice(110).highPrice(111).lowPrice(104).add();
         return series;
     }
 

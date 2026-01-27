@@ -26,8 +26,6 @@ package ta4jexamples.analysis.elliottwave;
 
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 
-import ta4jexamples.datasources.CoinbaseHttpBarSeriesDataSource;
-
 import java.time.temporal.ChronoUnit;
 import java.time.Duration;
 import java.time.Instant;

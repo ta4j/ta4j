@@ -205,12 +205,6 @@ public final class ChartBuilder {
         return addIndicatorOverlay(context, indicator, type, false);
     }
 
-    private StyledOverlayStage addChannelBoundaryOverlay(PlotContext context, Indicator<Num> indicator) {
-        StyledOverlayStage stage = addIndicatorOverlay(context, indicator, OverlayType.INDICATOR);
-        applyChannelBoundaryDefaults(stage, indicator);
-        return stage;
-    }
-
     private StyledChannelStage addChannelOverlay(PlotContext context, Indicator<Num> upper, Indicator<Num> median,
             Indicator<Num> lower) {
         Objects.requireNonNull(upper, "Upper boundary indicator cannot be null");
@@ -274,31 +268,6 @@ public final class ChartBuilder {
         OverlayContext overlay = OverlayContext.indicator(type, indicator, slot, colorPalette.nextColor(), null);
         context.overlays.add(overlay);
         return new StyledOverlayStageImpl(context, overlay);
-    }
-
-    private void applyChannelBoundaryDefaults(StyledOverlayStage stage, Indicator<Num> indicator) {
-        if (!(indicator instanceof ChannelBoundaryIndicator boundaryIndicator)) {
-            return;
-        }
-        if (stage instanceof StyledOverlayStageImpl styledStage && styledStage.overlay == null) {
-            return;
-        }
-        switch (boundaryIndicator.boundary()) {
-        case UPPER -> stage.withLineColor(DEFAULT_CHANNEL_LINE_COLOR)
-                .withLineWidth(DEFAULT_CHANNEL_LINE_WIDTH)
-                .withOpacity(DEFAULT_CHANNEL_LINE_OPACITY);
-        case LOWER -> stage.withLineColor(DEFAULT_CHANNEL_LINE_COLOR)
-                .withLineWidth(DEFAULT_CHANNEL_LINE_WIDTH)
-                .withOpacity(DEFAULT_CHANNEL_LINE_OPACITY);
-        case MEDIAN -> {
-            stage.withLineColor(DEFAULT_CHANNEL_LINE_COLOR)
-                    .withLineWidth(DEFAULT_CHANNEL_MEDIAN_WIDTH)
-                    .withOpacity(DEFAULT_CHANNEL_MEDIAN_OPACITY);
-            if (stage instanceof StyledOverlayStageImpl styledStage) {
-                styledStage.overlay.style.setDashPattern(DEFAULT_CHANNEL_MEDIAN_DASH);
-            }
-        }
-        }
     }
 
     private ChartStage addTradingRecordOverlay(PlotContext context, TradingRecord tradingRecord) {

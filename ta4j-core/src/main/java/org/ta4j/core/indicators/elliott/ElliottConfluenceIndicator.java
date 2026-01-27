@@ -35,7 +35,6 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.elliott.ElliottRatio.RatioType;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Aggregates Fibonacci ratio and channel alignment checks into a confluence

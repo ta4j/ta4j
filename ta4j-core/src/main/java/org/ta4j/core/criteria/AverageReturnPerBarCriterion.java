@@ -25,7 +25,6 @@ package org.ta4j.core.criteria;
 
 import java.util.Optional;
 
-import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;

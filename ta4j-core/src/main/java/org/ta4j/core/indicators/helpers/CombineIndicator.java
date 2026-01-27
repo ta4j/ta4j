@@ -56,6 +56,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
      * @param combination    a {@link Function} describing the combination function
      *                       to combine the values of the indicators
      */
+    @Deprecated
     public CombineIndicator(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight,
             BinaryOperator<Num> combination) {
         // TODO check both indicators use the same series/num function
@@ -72,6 +73,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
 
     /** @return {@code 0} */
     @Override
+    @Deprecated
     public int getCountOfUnstableBars() {
         return 0;
     }
@@ -79,6 +81,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
     /**
      * Combines the two input indicators by indicatorLeft.plus(indicatorRight).
      */
+    @Deprecated
     public static CombineIndicator plus(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight) {
         return new CombineIndicator(indicatorLeft, indicatorRight, Num::plus);
     }
@@ -86,6 +89,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
     /**
      * Combines the two input indicators by indicatorLeft.minus(indicatorRight).
      */
+    @Deprecated
     public static CombineIndicator minus(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight) {
         return new CombineIndicator(indicatorLeft, indicatorRight, Num::minus);
     }
@@ -93,6 +97,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
     /**
      * Combines the two input indicators by indicatorLeft.dividedBy(indicatorRight).
      */
+    @Deprecated
     public static CombineIndicator divide(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight) {
         return new CombineIndicator(indicatorLeft, indicatorRight, Num::dividedBy);
     }
@@ -101,6 +106,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
      * Combines the two input indicators by
      * indicatorLeft.multipliedBy(indicatorRight).
      */
+    @Deprecated
     public static CombineIndicator multiply(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight) {
         return new CombineIndicator(indicatorLeft, indicatorRight, Num::multipliedBy);
     }
@@ -108,6 +114,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
     /**
      * Combines the two input indicators by indicatorLeft.max(indicatorRight).
      */
+    @Deprecated
     public static CombineIndicator max(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight) {
         return new CombineIndicator(indicatorLeft, indicatorRight, Num::max);
     }
@@ -115,6 +122,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
     /**
      * Combines the two input indicators by indicatorLeft.min(indicatorRight).
      */
+    @Deprecated
     public static CombineIndicator min(Indicator<Num> indicatorLeft, Indicator<Num> indicatorRight) {
         return new CombineIndicator(indicatorLeft, indicatorRight, Num::min);
     }

@@ -39,7 +39,6 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
     private final transient ATRIndicator averageTrueRangeIndicator;
     private final KeltnerChannelMiddleIndicator keltnerMiddleIndicator;
     private final Num ratio;
-    private final int barCountATR;
 
     /**
      * Constructor.
@@ -64,7 +63,6 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
         this.keltnerMiddleIndicator = middle;
         this.averageTrueRangeIndicator = atr;
         this.ratio = getBarSeries().numFactory().numOf(ratio);
-        this.barCountATR = atr.getBarCount();
     }
 
     @Override

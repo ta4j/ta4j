@@ -100,7 +100,6 @@ class FileSystemChartStorageTest {
         Optional<Path> result = storage.save(chart, seriesWithSpecialChars, "Test:Strategy/Path", 800, 600);
 
         assertTrue(result.isPresent());
-        String pathString = result.get().toString();
         // Note: path may contain file system separators, but not special chars in
         // component names
         // The path components themselves should be sanitized

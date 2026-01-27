@@ -48,7 +48,6 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
     private final RSIIndicator priceRsi;
     private final RSIIndicator streakRsi;
     private final PercentRankIndicator percentRankIndicator;
-    private final int percentRankPeriod;
 
     /**
      * Constructor using the original Connors RSI defaults ({@code rsiPeriod}=3,
@@ -76,7 +75,6 @@ public class ConnorsRSIIndicator extends CachedIndicator<Num> {
         if (rsiPeriod < 1 || streakRsiPeriod < 1 || percentRankPeriod < 1) {
             throw new IllegalArgumentException("Connors RSI periods must be positive integers");
         }
-        this.percentRankPeriod = percentRankPeriod;
 
         DifferenceIndicator priceChangeIndicator = new DifferenceIndicator(indicator);
         this.priceRsi = new RSIIndicator(indicator, rsiPeriod);
