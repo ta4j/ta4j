@@ -1,8 +1,32 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2017-2025 Ta4j Organization & respective
+ * authors (see AUTHORS)
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+package org.ta4j.core.analysis;
+
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.analysis.AnalysisUtils;
-import org.ta4j.core.indicators.Indicator;
 import org.ta4j.core.num.Num;
 
 import java.util.ArrayList;
@@ -11,18 +35,15 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Allows to follow the money cash flow involved by a list of positions over a bar series,
- * either marked-to-market or using realized values only. Optionally includes an open position.
+ * Allows to follow the money cash flow involved by a list of positions over a
+ * bar series, either marked-to-market or using realized values only. Optionally
+ * includes an open position.
  */
 public class CashFlow implements Indicator<Num> {
 
     private final BarSeries barSeries;
     private final List<Num> values;
     private final EquityCurveMode equityCurveMode;
-
-    public CashFlow(BarSeries barSeries, Position position) {
-        this(barSeries, position, EquityCurveMode.MARK_TO_MARKET);
-    }
 
     public CashFlow(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
         this.barSeries = Objects.requireNonNull(barSeries, "barSeries must not be null");
@@ -34,37 +55,8 @@ public class CashFlow implements Indicator<Num> {
         fillToTheEnd(barSeries.getEndIndex());
     }
 
-    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
-    }
-
-    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, EquityCurveMode equityCurveMode) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
-    }
-
-    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
-    }
-
-    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
-        this(barSeries, tradingRecord, finalIndex, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
-    }
-
-    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, EquityCurveMode equityCurveMode) {
-        this(barSeries, tradingRecord, finalIndex, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
-    }
-
-    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
-        this(barSeries, tradingRecord, finalIndex, EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
-    }
-
-    public CashFlow(
-            BarSeries barSeries,
-            TradingRecord tradingRecord,
-            int finalIndex,
-            EquityCurveMode equityCurveMode,
-            OpenPositionHandling openPositionHandling
-    ) {
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling) {
         this.barSeries = Objects.requireNonNull(barSeries, "barSeries must not be null");
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode, "equityCurveMode must not be null");
         Objects.requireNonNull(tradingRecord, "tradingRecord must not be null");
@@ -75,6 +67,38 @@ public class CashFlow implements Indicator<Num> {
 
         calculateTradingRecord(tradingRecord, finalIndex, openPositionHandling);
         fillToTheEnd(barSeries.getEndIndex());
+    }
+
+    public CashFlow(BarSeries barSeries, Position position) {
+        this(barSeries, position, EquityCurveMode.MARK_TO_MARKET);
+    }
+
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord) {
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, EquityCurveMode equityCurveMode) {
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), equityCurveMode,
+                OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET,
+                openPositionHandling);
+    }
+
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
+        this(barSeries, tradingRecord, finalIndex, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, EquityCurveMode equityCurveMode) {
+        this(barSeries, tradingRecord, finalIndex, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
+            OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, finalIndex, EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
     }
 
     @Override
@@ -99,17 +123,25 @@ public class CashFlow implements Indicator<Num> {
     private void calculateClosedPosition(Position position) {
         Objects.requireNonNull(position, "position must not be null");
         if (position.isOpened()) {
-            throw new IllegalArgumentException("Position is not closed. Final index of observation needs to be provided.");
+            throw new IllegalArgumentException(
+                    "Position is not closed. Final index of observation needs to be provided.");
         }
         calculatePosition(position, position.getExit().getIndex(), equityCurveMode);
     }
 
-    private void calculateTradingRecord(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
+    private void calculateTradingRecord(TradingRecord tradingRecord, int finalIndex,
+            OpenPositionHandling openPositionHandling) {
         tradingRecord.getPositions().forEach(this::calculateClosedPosition);
+        handleLastPosition(tradingRecord, finalIndex, openPositionHandling);
+    }
 
+    private void handleLastPosition(TradingRecord tradingRecord, int finalIndex,
+            OpenPositionHandling openPositionHandling) {
+        var effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED ? OpenPositionHandling.IGNORE
+                : openPositionHandling;
         var currentPosition = tradingRecord.getCurrentPosition();
-        var shouldIncludeOpenPosition = openPositionHandling == OpenPositionHandling.MARK_TO_MARKET;
-        if (shouldIncludeOpenPosition && currentPosition != null && currentPosition.isOpened()) {
+        if (effectiveOpenPositionHandling == OpenPositionHandling.MARK_TO_MARKET && currentPosition != null
+                && currentPosition.isOpened()) {
             calculatePosition(currentPosition, finalIndex, EquityCurveMode.MARK_TO_MARKET);
         }
     }
@@ -139,13 +171,13 @@ public class CashFlow implements Indicator<Num> {
             var averageHoldingCostPerPeriod = holdingCost.dividedBy(numFactory.numOf(effectivePeriodCount));
 
             for (var barIndex = startingIndex; barIndex < endIndex; barIndex++) {
-                var intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(barIndex).getClosePrice(), averageHoldingCostPerPeriod, isLongTrade);
+                var intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(barIndex).getClosePrice(),
+                        averageHoldingCostPerPeriod, isLongTrade);
                 var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
                 values.add(entryEquity.multipliedBy(ratio));
             }
 
-            var exitPrice = position.getExit() != null
-                    ? position.getExit().getNetPrice()
+            var exitPrice = position.getExit() != null ? position.getExit().getNetPrice()
                     : barSeries.getBar(endIndex).getClosePrice();
 
             var netExitPrice = AnalysisUtils.addCost(exitPrice, averageHoldingCostPerPeriod, isLongTrade);
