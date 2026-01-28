@@ -435,6 +435,21 @@ class ElliottWaveAnalysisResultTest {
     }
 
     @Test
+    void scenarioProbabilities_applyConfidenceContrastForCloseScores() {
+        ElliottScenario scenarioA = buildScenario("A", 0.55, ElliottPhase.WAVE3, ScenarioType.IMPULSE, true);
+        ElliottScenario scenarioB = buildScenario("B", 0.54, ElliottPhase.WAVE3, ScenarioType.IMPULSE, true);
+        ElliottScenario scenarioC = buildScenario("C", 0.53, ElliottPhase.WAVE3, ScenarioType.IMPULSE, true);
+
+        ElliottScenarioSet scenarioSet = ElliottScenarioSet.of(List.of(scenarioA, scenarioB, scenarioC), 0);
+        Map<String, Double> probabilities = ElliottWaveAnalysisResult.computeScenarioProbabilities(scenarioSet);
+
+        double rawRatio = 0.55 / 0.53;
+        double adjustedRatio = probabilities.get("A") / probabilities.get("C");
+
+        assertTrue(adjustedRatio > rawRatio, "Contrast should widen the gap between close confidence scores");
+    }
+
+    @Test
     void toJson_roundsScenarioProbabilityToThreeDecimals() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
