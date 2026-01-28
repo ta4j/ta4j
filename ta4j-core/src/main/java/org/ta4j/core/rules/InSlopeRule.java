@@ -40,6 +40,9 @@ public class InSlopeRule extends AbstractRule {
      */
     private final Indicator<Num> reference;
 
+    /** The number of bars to look back when computing the slope. */
+    private final int nthPrevious;
+
     /** The minimum slope between the reference indicator and its previous value. */
     private final Num minSlope;
 
@@ -118,6 +121,7 @@ public class InSlopeRule extends AbstractRule {
         if (nthPrevious < 1) {
             throw new IllegalArgumentException("nthPrevious must be >= 1");
         }
+        this.nthPrevious = nthPrevious;
         this.minSlope = normalizeSlope(minSlope);
         this.maxSlope = normalizeSlope(maxSlope);
         this.difference = BinaryOperationIndicator.difference(reference,

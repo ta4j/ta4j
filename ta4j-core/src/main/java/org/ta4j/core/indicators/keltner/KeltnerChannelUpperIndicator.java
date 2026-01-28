@@ -16,8 +16,8 @@ import org.ta4j.core.num.Num;
  */
 public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
-    private final transient ATRIndicator averageTrueRangeIndicator;
     private final KeltnerChannelMiddleIndicator keltnerMiddleIndicator;
+    private final ATRIndicator averageTrueRangeIndicator;
     private final Num ratio;
 
     /**
