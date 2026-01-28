@@ -31,6 +31,7 @@
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
 - **Equity curve mode control**: Added constructors to select mark-to-market or realized cash-flow calculation for CumulativePnL, Returns, and all drawdown criteria.
 - **Open position handling**: Added configurable handling for the last open position in CashFlow, CumulativePnL, and Returns.
+- **Drawdown criteria open-position handling**: Added explicit open position handling options for drawdown-based criteria, with realized equity curves still ignoring open trades.
 
 ### Fixed
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.

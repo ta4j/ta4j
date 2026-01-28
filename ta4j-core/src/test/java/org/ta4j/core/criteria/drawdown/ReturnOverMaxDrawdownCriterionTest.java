@@ -35,6 +35,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -81,6 +82,23 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
 
         assertNumEquals(1.0d, markToMarket.calculate(series, tradingRecord));
         assertNumEquals(0.2d, realized.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void rewardRiskRatioCriterionUsesOpenPositionHandling() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 80).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(1, series));
+
+        var markToMarket = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        var ignoreOpen = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
+
+        var markToMarketValue = markToMarket.calculate(series, tradingRecord);
+        var ignoreValue = ignoreOpen.calculate(series, tradingRecord);
+
+        assertTrue(markToMarketValue.isLessThan(ignoreValue));
     }
 
     @Test

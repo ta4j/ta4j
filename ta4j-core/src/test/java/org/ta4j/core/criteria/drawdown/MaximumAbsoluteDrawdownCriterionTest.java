@@ -31,6 +31,7 @@ import org.ta4j.core.Position;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
@@ -85,6 +86,37 @@ public class MaximumAbsoluteDrawdownCriterionTest extends AbstractCriterionTest 
 
         var criterion = new MaximumAbsoluteDrawdownCriterion(EquityCurveMode.REALIZED);
         assertNumEquals(0d, criterion.calculate(series, record));
+    }
+
+    @Test
+    public void calculateWithOpenPositionHandlingChangesAbsoluteDrawdown() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 80).build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series), Trade.buyAt(1, series));
+
+        var markToMarket = new MaximumAbsoluteDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        var ignoreOpen = new MaximumAbsoluteDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.IGNORE);
+
+        var markToMarketValue = markToMarket.calculate(series, record);
+        var ignoreValue = ignoreOpen.calculate(series, record);
+
+        assertTrue(markToMarketValue.isGreaterThan(ignoreValue));
+        assertNumEquals(0d, ignoreValue);
+    }
+
+    @Test
+    public void calculateWithRealizedModeIgnoresOpenHandlingChoice() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 80).build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series), Trade.buyAt(1, series));
+
+        var realizedMarkToMarket = new MaximumAbsoluteDrawdownCriterion(EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+        var realizedIgnore = new MaximumAbsoluteDrawdownCriterion(EquityCurveMode.REALIZED,
+                OpenPositionHandling.IGNORE);
+
+        assertNumEquals(0d, realizedMarkToMarket.calculate(series, record));
+        assertNumEquals(0d, realizedIgnore.calculate(series, record));
     }
 
     @Test

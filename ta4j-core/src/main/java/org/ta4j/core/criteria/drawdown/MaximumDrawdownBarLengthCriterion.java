@@ -28,7 +28,8 @@ import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
-import org.ta4j.core.criteria.AbstractEquityCurveCriterion;
+import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -41,9 +42,22 @@ import org.ta4j.core.num.Num;
  * period.
  * </p>
  *
+ * <p>
+ * <b>Open positions:</b> When using {@link EquityCurveMode#MARK_TO_MARKET}, the
+ * {@link OpenPositionHandling} setting controls whether the last open position
+ * contributes to the drawdown duration. {@link EquityCurveMode#REALIZED} always
+ * ignores open positions regardless of the requested handling.
+ *
+ * <pre>{@code
+ * var markToMarket = new MaximumDrawdownBarLengthCriterion(EquityCurveMode.MARK_TO_MARKET,
+ *         OpenPositionHandling.MARK_TO_MARKET);
+ * var ignoreOpen = new MaximumDrawdownBarLengthCriterion(EquityCurveMode.MARK_TO_MARKET,
+ *         OpenPositionHandling.IGNORE);
+ * }</pre>
+ *
  * @since 0.19
  */
-public class MaximumDrawdownBarLengthCriterion extends AbstractEquityCurveCriterion {
+public class MaximumDrawdownBarLengthCriterion extends AbstractEquityCurveSettingsCriterion {
 
     /**
      * Creates a maximum drawdown length criterion using mark-to-market cash flow.
@@ -64,6 +78,32 @@ public class MaximumDrawdownBarLengthCriterion extends AbstractEquityCurveCriter
      */
     public MaximumDrawdownBarLengthCriterion(EquityCurveMode equityCurveMode) {
         super(equityCurveMode);
+    }
+
+    /**
+     * Creates a maximum drawdown length criterion using the provided open position
+     * handling.
+     *
+     * @param openPositionHandling how to handle the last open position
+     *
+     * @since 0.22.2
+     */
+    public MaximumDrawdownBarLengthCriterion(OpenPositionHandling openPositionHandling) {
+        super(openPositionHandling);
+    }
+
+    /**
+     * Creates a maximum drawdown length criterion using the provided equity curve
+     * mode and open position handling.
+     *
+     * @param equityCurveMode      the equity curve mode to use
+     * @param openPositionHandling how to handle the last open position
+     *
+     * @since 0.22.2
+     */
+    public MaximumDrawdownBarLengthCriterion(EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling) {
+        super(equityCurveMode, openPositionHandling);
     }
 
     /**
@@ -88,7 +128,7 @@ public class MaximumDrawdownBarLengthCriterion extends AbstractEquityCurveCriter
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var cashFlow = new CashFlow(series, tradingRecord, equityCurveMode);
+        var cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
         return Drawdown.length(series, tradingRecord, cashFlow);
     }
 

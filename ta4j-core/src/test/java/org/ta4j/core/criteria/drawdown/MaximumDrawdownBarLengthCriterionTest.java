@@ -30,6 +30,7 @@ import org.ta4j.core.BaseTradingRecord;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
@@ -81,6 +82,39 @@ public class MaximumDrawdownBarLengthCriterionTest extends AbstractCriterionTest
 
         assertNumEquals(1, markToMarket.calculate(series, tradingRecord));
         assertNumEquals(0, realized.calculate(series, tradingRecord));
+    }
+
+    @Test
+    public void calculateWithOpenPositionHandlingChangesDrawdownLength() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 80).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(1, series));
+
+        var markToMarket = new MaximumDrawdownBarLengthCriterion(EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        var ignoreOpen = new MaximumDrawdownBarLengthCriterion(EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.IGNORE);
+
+        var markToMarketValue = markToMarket.calculate(series, tradingRecord);
+        var ignoreValue = ignoreOpen.calculate(series, tradingRecord);
+
+        assertTrue(markToMarketValue.isGreaterThan(ignoreValue));
+        assertNumEquals(0, ignoreValue);
+    }
+
+    @Test
+    public void calculateWithRealizedModeIgnoresOpenHandlingChoice() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 80).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(1, series));
+
+        var realizedMarkToMarket = new MaximumDrawdownBarLengthCriterion(EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+        var realizedIgnore = new MaximumDrawdownBarLengthCriterion(EquityCurveMode.REALIZED,
+                OpenPositionHandling.IGNORE);
+
+        assertNumEquals(0, realizedMarkToMarket.calculate(series, tradingRecord));
+        assertNumEquals(0, realizedIgnore.calculate(series, tradingRecord));
     }
 
     @Test

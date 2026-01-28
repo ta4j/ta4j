@@ -23,32 +23,42 @@
  */
 package org.ta4j.core.criteria;
 
+import java.util.Objects;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 
 /**
- * @deprecated Use {@link AbstractEquityCurveSettingsCriterion} to configure both
- *             {@link EquityCurveMode} and {@link OpenPositionHandling}.
+ * Shared base for criteria that require {@link EquityCurveMode} and
+ * {@link OpenPositionHandling} configuration.
+ *
+ * <p>
+ * Note that {@link EquityCurveMode#REALIZED} ignores open positions regardless of
+ * the requested {@link OpenPositionHandling}. Use
+ * {@link EquityCurveMode#MARK_TO_MARKET} when you want
+ * {@link OpenPositionHandling#MARK_TO_MARKET} to reflect open trades.
  *
  * @since 0.22.2
  */
-@Deprecated(since = "0.22.2", forRemoval = false)
-public abstract class AbstractEquityCurveCriterion extends AbstractEquityCurveSettingsCriterion {
+public abstract class AbstractEquityCurveSettingsCriterion extends AbstractAnalysisCriterion {
 
-    protected AbstractEquityCurveCriterion() {
-        super();
+    protected final EquityCurveMode equityCurveMode;
+    protected final OpenPositionHandling openPositionHandling;
+
+    protected AbstractEquityCurveSettingsCriterion() {
+        this(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
     }
 
-    protected AbstractEquityCurveCriterion(EquityCurveMode equityCurveMode) {
-        super(equityCurveMode);
+    protected AbstractEquityCurveSettingsCriterion(EquityCurveMode equityCurveMode) {
+        this(equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
     }
 
-    protected AbstractEquityCurveCriterion(OpenPositionHandling openPositionHandling) {
-        super(openPositionHandling);
+    protected AbstractEquityCurveSettingsCriterion(OpenPositionHandling openPositionHandling) {
+        this(EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
     }
 
-    protected AbstractEquityCurveCriterion(EquityCurveMode equityCurveMode,
+    protected AbstractEquityCurveSettingsCriterion(EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
-        super(equityCurveMode, openPositionHandling);
+        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
+        this.openPositionHandling = Objects.requireNonNull(openPositionHandling);
     }
 }
