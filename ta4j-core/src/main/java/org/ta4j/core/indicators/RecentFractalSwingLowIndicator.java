@@ -43,6 +43,7 @@ import org.ta4j.core.num.Num;
  *      Low</a>
  * @since 0.20
  */
+@SuppressWarnings("deprecation")
 public class RecentFractalSwingLowIndicator extends AbstractRecentSwingIndicator implements RecentSwingLowIndicator {
 
     private final Indicator<Num> indicator;
