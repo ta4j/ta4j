@@ -171,7 +171,8 @@ public class BaseTradingRecord implements TradingRecord {
      * @since 0.22.2
      */
     public BaseTradingRecord(Position position) {
-        this(positionToTrades(position));
+        this(defaultCostModel(position.getTransactionCostModel()), defaultCostModel(position.getHoldingCostModel()),
+                positionToTrades(position));
     }
 
     /**
@@ -373,6 +374,10 @@ public class BaseTradingRecord implements TradingRecord {
     private static Trade[] positionsToTrades(List<Position> positions) {
         Objects.requireNonNull(positions, "positions must not be null");
         return positions.stream().flatMap(BaseTradingRecord::tradesOf).toArray(Trade[]::new);
+    }
+
+    private static CostModel defaultCostModel(CostModel costModel) {
+        return costModel == null ? new ZeroCostModel() : costModel;
     }
 
     @Override

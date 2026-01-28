@@ -23,10 +23,15 @@
  */
 package org.ta4j.core;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.util.List;
@@ -176,4 +181,32 @@ public class TradingRecordTest {
         assertEquals(second, record.getLastPosition());
         assertEquals(4, record.getTrades().size());
     }
+
+    @Test
+    public void createRecordFromDeserializedPositionDefaultsCostModels() throws Exception {
+        var position = new Position(Trade.buyAt(1, NaN, NaN), Trade.sellAt(2, NaN, NaN));
+
+        var deserialized = roundTrip(position);
+
+        assertNull(deserialized.getTransactionCostModel());
+        assertNull(deserialized.getHoldingCostModel());
+
+        var record = new BaseTradingRecord(deserialized);
+
+        assertTrue(record.getTransactionCostModel() instanceof ZeroCostModel);
+        assertTrue(record.getHoldingCostModel() instanceof ZeroCostModel);
+        assertEquals(1, record.getPositionCount());
+    }
+
+    private Position roundTrip(Position position) throws Exception {
+        var outputStream = new ByteArrayOutputStream();
+        try (var objectOutputStream = new ObjectOutputStream(outputStream)) {
+            objectOutputStream.writeObject(position);
+        }
+
+        try (var objectInputStream = new ObjectInputStream(new ByteArrayInputStream(outputStream.toByteArray()))) {
+            return (Position) objectInputStream.readObject();
+        }
+    }
+
 }

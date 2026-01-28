@@ -23,19 +23,21 @@
  */
 package org.ta4j.core.analysis;
 
+import java.math.MathContext;
+import java.math.RoundingMode;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assume.assumeTrue;
 import org.junit.Test;
-import org.ta4j.core.*;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Position;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import org.ta4j.core.Trade;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.*;
-
-import java.math.MathContext;
-import java.math.RoundingMode;
-
-import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -100,6 +102,31 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(0, returns.getValue(1));
         assertNumEquals(0, returns.getValue(2));
         assertNumEquals(0.3, returns.getValue(3));
+    }
+
+    @Test
+    public void returnsMarkToMarketIncludesOpenPosition() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d, 105d).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries));
+
+        var returns = new Returns(sampleBarSeries, tradingRecord, ReturnRepresentation.DECIMAL);
+
+        assertNumEquals(NaN.NaN, returns.getValue(0));
+        assertNumEquals(0.1, returns.getValue(1));
+        assertNumEquals((105d / 110d) - 1d, returns.getValue(2));
+    }
+
+    @Test
+    public void returnsCanIgnoreOpenPosition() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d, 105d).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries));
+
+        var returns = new Returns(sampleBarSeries, tradingRecord, ReturnRepresentation.DECIMAL,
+                OpenPositionHandling.IGNORE);
+
+        assertNumEquals(NaN.NaN, returns.getValue(0));
+        assertNumEquals(0, returns.getValue(1));
+        assertNumEquals(0, returns.getValue(2));
     }
 
     @Test
@@ -193,6 +220,131 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(1, returns.getValue(1));
         assertNumEquals(1, returns.getValue(2));
         assertNumEquals(1.3, returns.getValue(3));
+    }
+
+    @Test
+    public void realizedModeIgnoresOpenPositionEvenWithMarkToMarketHandling() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d, 105d).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries));
+
+        var returns = new Returns(sampleBarSeries, tradingRecord, sampleBarSeries.getEndIndex(),
+                ReturnRepresentation.DECIMAL, EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(NaN.NaN, returns.getValue(0));
+        assertNumEquals(0, returns.getValue(1));
+        assertNumEquals(0, returns.getValue(2));
+    }
+
+    @Test
+    public void returnsRespectFinalIndexForOpenPositions() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d, 120d).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries));
+
+        var returns = new Returns(sampleBarSeries, tradingRecord, 1, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(NaN.NaN, returns.getValue(0));
+        assertNumEquals(0.1, returns.getValue(1));
+        assertNumEquals(0, returns.getValue(2));
+    }
+
+    @Test
+    public void returnsMarkToMarketIncludesOpenPositionMultiplicative() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d, 105d).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries));
+
+        var returns = new Returns(sampleBarSeries, tradingRecord, ReturnRepresentation.MULTIPLICATIVE);
+
+        assertNumEquals(NaN.NaN, returns.getValue(0));
+        assertNumEquals(1.1, returns.getValue(1));
+        assertNumEquals(105d / 110d, returns.getValue(2));
+    }
+
+    @Test
+    public void returnsCanIgnoreOpenPositionMultiplicative() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 110d, 105d).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries));
+
+        var returns = new Returns(sampleBarSeries, tradingRecord, ReturnRepresentation.MULTIPLICATIVE,
+                OpenPositionHandling.IGNORE);
+
+        assertNumEquals(NaN.NaN, returns.getValue(0));
+        assertNumEquals(0, returns.getValue(1));
+        assertNumEquals(0, returns.getValue(2));
+    }
+
+    @Test
+    public void returnsFromPositionDefaultRepresentationMatchesTradingRecord() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d).build();
+        var position = new Position(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(1, sampleBarSeries));
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(1, sampleBarSeries));
+
+        var positionReturns = new Returns(sampleBarSeries, position);
+        var tradingRecordReturns = new Returns(sampleBarSeries, tradingRecord);
+
+        assertNumEquals(tradingRecordReturns.getValue(0), positionReturns.getValue(0));
+        assertNumEquals(tradingRecordReturns.getValue(1), positionReturns.getValue(1));
+    }
+
+    @Test
+    public void returnsFromPositionDecimalMatchesTradingRecord() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d).build();
+        var position = new Position(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(1, sampleBarSeries));
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(1, sampleBarSeries));
+
+        var positionReturns = new Returns(sampleBarSeries, position, ReturnRepresentation.DECIMAL);
+        var tradingRecordReturns = new Returns(sampleBarSeries, tradingRecord, ReturnRepresentation.DECIMAL);
+
+        assertNumEquals(NaN.NaN, positionReturns.getValue(0));
+        assertNumEquals(1.0, positionReturns.getValue(1));
+        assertNumEquals(tradingRecordReturns.getValue(1), positionReturns.getValue(1));
+    }
+
+    @Test
+    public void openPositionOpenedOnFinalBarYieldsZeroReturn() {
+        var barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 1d).build();
+        var tradingRecord = new BaseTradingRecord();
+
+        var endIndex = barSeries.getEndIndex();
+        tradingRecord.enter(endIndex, barSeries.getBar(endIndex).getClosePrice(), barSeries.numFactory().one());
+
+        var returns = new Returns(barSeries, tradingRecord, endIndex, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        var lastReturn = returns.getValue(endIndex);
+        assertFalse(lastReturn.isNaN());
+        assertNumEquals(0, lastReturn);
+    }
+
+    @Test
+    public void returns_markToMarket_doesNotUseFutureExitPriceWhenExitAfterFinalIndex() {
+        var series = new MockBarSeriesBuilder().withData(10d, 11d, 12d, 13d, 100d).build();
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), series.numFactory().one());
+        tradingRecord.exit(4, series.getBar(4).getClosePrice(), series.numFactory().one());
+
+        var returns = new Returns(series, tradingRecord, 2, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+
+        var one = series.numFactory().one();
+        var expectedAt2 = series.getBar(2).getClosePrice().dividedBy(series.getBar(1).getClosePrice()).minus(one);
+
+        assertNumEquals(returns.getRawValues().get(2), expectedAt2);
+    }
+
+    @Test
+    public void returns_ignore_skipsPositionsThatAreOpenAtFinalIndex() {
+        var series = new MockBarSeriesBuilder().withData(10d, 11d, 12d, 13d, 100d).build();
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), series.numFactory().one());
+        tradingRecord.exit(4, series.getBar(4).getClosePrice(), series.numFactory().one());
+
+        var returns = new Returns(series, tradingRecord, 2, ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
+
+        var zero = series.numFactory().zero();
+        assertNumEquals(returns.getRawValues().get(1), zero);
+        assertNumEquals(returns.getRawValues().get(2), zero);
     }
 
 }

@@ -23,6 +23,7 @@
  */
 package org.ta4j.core;
 
+import java.io.Serial;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.io.Serializable;
@@ -45,6 +46,7 @@ import org.ta4j.core.num.Num;
  */
 public class Position implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = -5484709075767220358L;
 
     /** The entry trade */
@@ -113,7 +115,6 @@ public class Position implements Serializable {
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
     public Position(Trade entry, Trade exit, CostModel transactionCostModel, CostModel holdingCostModel) {
-
         if (entry.getType().equals(exit.getType())) {
             throw new IllegalArgumentException("Both trades must have different types");
         }
@@ -329,7 +330,7 @@ public class Position implements Serializable {
      * price is {@code NaN}, the close price from given {@code barSeries} is used.
      * The gross return excludes any trading costs (and includes the base).
      *
-     * @param barSeries
+     * @param barSeries the bar series
      * @return the gross return in percent with entry and exit prices from the
      *         barSeries
      * @see #getGrossReturn(Num, Num)
@@ -407,6 +408,24 @@ public class Position implements Serializable {
      */
     public Num getHoldingCost(int finalIndex) {
         return holdingCostModel.calculate(this, finalIndex);
+    }
+
+    /**
+     * @return the transaction cost model
+     *
+     * @since 0.22.2
+     */
+    public CostModel getTransactionCostModel() {
+        return transactionCostModel;
+    }
+
+    /**
+     * @return the holding cost model
+     *
+     * @since 0.22.2
+     */
+    public CostModel getHoldingCostModel() {
+        return holdingCostModel;
     }
 
     /**

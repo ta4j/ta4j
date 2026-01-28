@@ -9,6 +9,8 @@
 - Added **MorningStarIndicator** and **EveningStarIndicator**
 - Added **BullishKickerIndicator** and **BearishKickerIndicator**
 - Added **PiercingIndicator** and **DarkCloudIndicator**
+- **Position performance indicator interface**: Added `PositionPerformanceIndicator` to unify trading-record-based performance calculations for CashFlow, CumulativePnL, and Returns.
+
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
@@ -30,11 +32,16 @@
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
 - **Equity curve mode control**: Added constructors to select mark-to-market or realized cash-flow calculation for CumulativePnL, Returns, and all drawdown criteria.
+- **Open position handling**: Added configurable handling for the last open position in CashFlow, CumulativePnL, and Returns.
+- **Performance indicator helpers**: Consolidated analysis helper logic into `PerformanceIndicator` and updated callers/tests accordingly.
+- **PerformanceIndicator defaults**: Added shared helpers for average holding cost per period and exit price resolution in core performance calculations.
+- **Performance indicator padding**: Added reusable padding helpers on `PerformanceIndicator` and aligned CashFlow, CumulativePnL, and Returns with the shared behavior.
 
 ### Fixed
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
+- **CashFlow**: Preserve transaction and holding cost models when creating cash flows from a position.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.

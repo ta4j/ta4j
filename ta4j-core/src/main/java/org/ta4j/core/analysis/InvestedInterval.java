@@ -24,10 +24,10 @@
 package org.ta4j.core.analysis;
 
 import java.util.Objects;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Indicates whether each bar interval is part of an invested position.

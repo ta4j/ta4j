@@ -24,11 +24,10 @@
 package org.ta4j.core.analysis;
 
 import java.util.Objects;
-
-import org.ta4j.core.utils.BarSeriesUtils;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.utils.BarSeriesUtils;
 
 /**
  * Computes compounded excess returns between sampled index pairs.

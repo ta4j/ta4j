@@ -27,10 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
+import org.ta4j.core.*;
 import org.ta4j.core.num.Num;
 
 /**
@@ -47,11 +44,32 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.19
  */
-public final class CumulativePnL implements Indicator<Num> {
+public final class CumulativePnL implements Indicator<Num>, PerformanceIndicator {
 
     private final BarSeries barSeries;
     private final List<Num> values;
     private final EquityCurveMode equityCurveMode;
+
+    /**
+     * Constructor for a trading record with a specified final index.
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param finalIndex           the final index to calculate up to
+     * @param equityCurveMode      the calculation mode
+     * @param openPositionHandling how to handle the last open position
+     * @since 0.22.2
+     */
+    public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        this.barSeries = Objects.requireNonNull(barSeries);
+        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
+        var aZero = Collections.singletonList(barSeries.numFactory().zero());
+        this.values = new ArrayList<>(aZero);
+
+        calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
+        fillToTheEnd(finalIndex);
+    }
 
     /**
      * Constructor for a single closed position.
@@ -59,20 +77,10 @@ public final class CumulativePnL implements Indicator<Num> {
      * @param barSeries       the bar series
      * @param position        the closed position
      * @param equityCurveMode the calculation mode
-     *
      * @since 0.22.2
      */
     public CumulativePnL(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
-        Objects.requireNonNull(position);
-        if (position.isOpened()) {
-            throw new IllegalArgumentException("Position is not closed. Provide a final index if open.");
-        }
-        this.barSeries = Objects.requireNonNull(barSeries);
-        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        var aZero = Collections.singletonList(barSeries.numFactory().zero());
-        this.values = new ArrayList<>(aZero);
-        calculate(position, position.getExit().getIndex());
-        fillToTheEnd(barSeries.getEndIndex());
+        this(barSeries, new BaseTradingRecord(position), barSeries.getEndIndex(), equityCurveMode);
     }
 
     /**
@@ -82,25 +90,11 @@ public final class CumulativePnL implements Indicator<Num> {
      * @param tradingRecord   the trading record
      * @param finalIndex      the final index to calculate up to
      * @param equityCurveMode the calculation mode
-     *
      * @since 0.22.2
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex,
             EquityCurveMode equityCurveMode) {
-        this.barSeries = Objects.requireNonNull(barSeries);
-        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        var aZero = Collections.singletonList(barSeries.numFactory().zero());
-        this.values = new ArrayList<>(aZero);
-
-        var positions = Objects.requireNonNull(tradingRecord).getPositions();
-        for (var position : positions) {
-            var endIndex = AnalysisUtils.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
-            calculate(position, endIndex);
-        }
-        if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET && tradingRecord.getCurrentPosition().isOpened()) {
-            calculate(tradingRecord.getCurrentPosition(), finalIndex);
-        }
-        fillToTheEnd(finalIndex);
+        this(barSeries, tradingRecord, finalIndex, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
@@ -108,7 +102,6 @@ public final class CumulativePnL implements Indicator<Num> {
      *
      * @param barSeries the bar series
      * @param position  the closed position
-     *
      * @since 0.19
      */
     public CumulativePnL(BarSeries barSeries, Position position) {
@@ -120,11 +113,11 @@ public final class CumulativePnL implements Indicator<Num> {
      *
      * @param barSeries     the bar series
      * @param tradingRecord the trading record
-     *
      * @since 0.19
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET);
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
@@ -133,11 +126,25 @@ public final class CumulativePnL implements Indicator<Num> {
      * @param barSeries       the bar series
      * @param tradingRecord   the trading record
      * @param equityCurveMode the calculation mode
-     *
      * @since 0.22.2
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, EquityCurveMode equityCurveMode) {
-        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), equityCurveMode);
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), equityCurveMode,
+                OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor for a trading record.
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param equityCurveMode      the calculation mode
+     * @param openPositionHandling how to handle the last open position
+     * @since 0.22.2
+     */
+    public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), equityCurveMode, openPositionHandling);
     }
 
     /**
@@ -146,11 +153,71 @@ public final class CumulativePnL implements Indicator<Num> {
      * @param barSeries     the bar series
      * @param tradingRecord the trading record
      * @param finalIndex    the final index to calculate up to
-     *
      * @since 0.19
      */
     public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
-        this(barSeries, tradingRecord, finalIndex, EquityCurveMode.MARK_TO_MARKET);
+        this(barSeries, tradingRecord, finalIndex, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor for a trading record.
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param openPositionHandling how to handle the last open position
+     * @since 0.22.2
+     */
+    public CumulativePnL(BarSeries barSeries, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET,
+                openPositionHandling);
+    }
+
+    /**
+     * Calculates the cumulative PnL for a single position.
+     *
+     * @param position   the position
+     * @param finalIndex the final index to calculate up to
+     * @since 0.22.2
+     */
+    @Override
+    public void calculatePosition(Position position, int finalIndex) {
+        var numFactory = barSeries.numFactory();
+        var entry = position.getEntry();
+        var isLong = entry.isBuy();
+        var entryIndex = entry.getIndex();
+        var endIndex = determineEndIndex(position, finalIndex, barSeries.getEndIndex());
+        var begin = entryIndex + 1;
+
+        padToSize(values, begin, values.getLast());
+
+        var baseAtEntry = values.get(entryIndex);
+        var startingIndex = Math.max(begin, 1);
+        var holdingCost = position.getHoldingCost(endIndex);
+        var averageCostPerPeriod = averageHoldingCostPerPeriod(position, endIndex, numFactory);
+        var netEntryPrice = entry.getNetPrice();
+        if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
+            for (var i = startingIndex; i < endIndex; i++) {
+                var close = barSeries.getBar(i).getClosePrice();
+                var netIntermediate = addCost(close, averageCostPerPeriod, isLong);
+                var delta = isLong ? netIntermediate.minus(netEntryPrice) : netEntryPrice.minus(netIntermediate);
+                values.add(baseAtEntry.plus(delta));
+            }
+            var exitRaw = resolveExitPrice(position, endIndex, barSeries);
+            var netExit = addCost(exitRaw, averageCostPerPeriod, isLong);
+            var deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
+            values.add(baseAtEntry.plus(deltaExit));
+        } else {
+            var exit = position.getExit();
+            if (exit != null && endIndex >= exit.getIndex()) {
+                for (var i = startingIndex; i < endIndex; i++) {
+                    values.add(baseAtEntry);
+                }
+                var exitRaw = exit.getNetPrice();
+                var netExit = addCost(exitRaw, holdingCost, isLong);
+                var deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
+                values.add(baseAtEntry.plus(deltaExit));
+            }
+        }
     }
 
     /**
@@ -187,62 +254,20 @@ public final class CumulativePnL implements Indicator<Num> {
      * Returns the number of bars in the underlying series.
      *
      * @return the bar count
-     *
      * @since 0.19
      */
     public int getSize() {
         return barSeries.getBarCount();
     }
 
-    private void calculate(Position position, int finalIndex) {
-        var numFactory = barSeries.numFactory();
-        var zero = numFactory.zero();
-        var isLong = position.getEntry().isBuy();
-        var entryIndex = position.getEntry().getIndex();
-        var endIndex = AnalysisUtils.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
-        var begin = entryIndex + 1;
-
-        if (begin > values.size()) {
-            var last = values.getLast();
-            values.addAll(Collections.nCopies(begin - values.size(), last));
-        }
-
-        var baseAtEntry = values.get(entryIndex);
-        var startingIndex = Math.max(begin, 1);
-
-        var periods = Math.max(0, endIndex - entryIndex);
-        var holdingCost = position.getHoldingCost(endIndex);
-        var averageCostPerPeriod = periods > 0 ? holdingCost.dividedBy(numFactory.numOf(periods)) : zero;
-        var netEntryPrice = position.getEntry().getNetPrice();
-
-        if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
-            for (var i = startingIndex; i < endIndex; i++) {
-                var close = barSeries.getBar(i).getClosePrice();
-                var netIntermediate = AnalysisUtils.addCost(close, averageCostPerPeriod, isLong);
-                var delta = isLong ? netIntermediate.minus(netEntryPrice) : netEntryPrice.minus(netIntermediate);
-                values.add(baseAtEntry.plus(delta));
-            }
-
-            var exitRaw = Objects.nonNull(position.getExit()) ? position.getExit().getNetPrice()
-                    : barSeries.getBar(endIndex).getClosePrice();
-            var netExit = AnalysisUtils.addCost(exitRaw, averageCostPerPeriod, isLong);
-            var deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
-            values.add(baseAtEntry.plus(deltaExit));
-        } else if (position.getExit() != null && endIndex >= position.getExit().getIndex()) {
-            for (var i = startingIndex; i < endIndex; i++) {
-                values.add(baseAtEntry);
-            }
-            var exitRaw = position.getExit().getNetPrice();
-            var netExit = AnalysisUtils.addCost(exitRaw, holdingCost, isLong);
-            var deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
-            values.add(baseAtEntry.plus(deltaExit));
-        }
+    @Override
+    public EquityCurveMode getEquityCurveMode() {
+        return equityCurveMode;
     }
 
     private void fillToTheEnd(int endIndex) {
         if (endIndex >= values.size()) {
-            var last = values.getLast();
-            values.addAll(Collections.nCopies(barSeries.getEndIndex() - values.size() + 1, last));
+            padToEndIndex(values, barSeries.getEndIndex(), values.getLast());
         }
     }
 

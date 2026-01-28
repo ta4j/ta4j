@@ -26,6 +26,7 @@ package org.ta4j.core;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
@@ -263,6 +264,20 @@ public class PositionTest {
     @Test
     public void testCostModelConsistencyTrue() {
         new Position(enter, exitSameType, transactionModel, holdingModel);
+    }
+
+    @Test
+    public void exposesTransactionCostModel() {
+        Position position = new Position(TradeType.BUY, transactionModel, holdingModel);
+
+        assertSame(transactionModel, position.getTransactionCostModel());
+    }
+
+    @Test
+    public void exposesHoldingCostModel() {
+        Position position = new Position(TradeType.BUY, transactionModel, holdingModel);
+
+        assertSame(holdingModel, position.getHoldingCostModel());
     }
 
     @Test(expected = IllegalArgumentException.class)

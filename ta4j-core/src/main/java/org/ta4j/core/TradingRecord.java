@@ -23,6 +23,8 @@
  */
 package org.ta4j.core;
 
+import java.util.Objects;
+import java.util.Optional;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.io.Serializable;
@@ -151,7 +153,7 @@ public interface TradingRecord extends Serializable {
      * @return the last closed position recorded
      */
     default Position getLastPosition() {
-        List<Position> positions = getPositions();
+        var positions = getPositions();
         if (!positions.isEmpty()) {
             return positions.getLast();
         }

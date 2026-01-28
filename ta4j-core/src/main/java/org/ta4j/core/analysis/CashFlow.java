@@ -23,27 +23,54 @@
  */
 package org.ta4j.core.analysis;
 
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.Indicator;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
-import org.ta4j.core.num.Num;
-
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import org.ta4j.core.*;
+import org.ta4j.core.num.Num;
 
 /**
  * Allows to follow the money cash flow involved by a list of positions over a
- * bar series, either marked-to-market or using realized values only. Optionally
- * includes an open position.
+ * bar series, either marked to market or using realized values only.
  */
-public class CashFlow implements Indicator<Num> {
+public class CashFlow implements Indicator<Num>, PerformanceIndicator {
 
+    /**
+     * The bar series.
+     */
     private final BarSeries barSeries;
+
+    /**
+     * The (accrued) cash flow sequence (without trading costs).
+     */
     private final List<Num> values;
+
+    /**
+     * The equity curve calculation mode.
+     */
     private final EquityCurveMode equityCurveMode;
+
+    /**
+     * Constructor.
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param finalIndex           index up until cash flows of open positions are
+     *                             considered
+     * @param equityCurveMode      the calculation mode
+     * @param openPositionHandling how to handle the last open position
+     * @since 0.22.2
+     */
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling) {
+        this.barSeries = Objects.requireNonNull(barSeries);
+        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
+        var aOne = List.of(barSeries.numFactory().one());
+        values = new ArrayList<>(aOne);
+
+        calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
+        fillToTheEnd(barSeries.getEndIndex());
+    }
 
     /**
      * Constructor for cash flows of a closed position.
@@ -51,17 +78,10 @@ public class CashFlow implements Indicator<Num> {
      * @param barSeries       the bar series
      * @param position        a single position
      * @param equityCurveMode the calculation mode
-     *
      * @since 0.22.2
      */
     public CashFlow(BarSeries barSeries, Position position, EquityCurveMode equityCurveMode) {
-        this.barSeries = Objects.requireNonNull(barSeries);
-        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        var aOne = Collections.singletonList(barSeries.numFactory().one());
-        values = new ArrayList<>(aOne);
-
-        calculate(Objects.requireNonNull(position));
-        fillToTheEnd(barSeries.getEndIndex());
+        this(barSeries, new BaseTradingRecord(position), barSeries.getEndIndex(), equityCurveMode);
     }
 
     /**
@@ -72,17 +92,10 @@ public class CashFlow implements Indicator<Num> {
      * @param finalIndex      index up until cash flows of open positions are
      *                        considered
      * @param equityCurveMode the calculation mode
-     *
      * @since 0.22.2
      */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex, EquityCurveMode equityCurveMode) {
-        this.barSeries = Objects.requireNonNull(barSeries);
-        this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        var aOne = Collections.singletonList(barSeries.numFactory().one());
-        values = new ArrayList<>(aOne);
-
-        calculate(Objects.requireNonNull(tradingRecord), finalIndex);
-        fillToTheEnd(finalIndex);
+        this(barSeries, tradingRecord, finalIndex, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
@@ -95,18 +108,123 @@ public class CashFlow implements Indicator<Num> {
         this(barSeries, position, EquityCurveMode.MARK_TO_MARKET);
     }
 
+    /**
+     * Constructor for cash flows of closed positions of a trading record.
+     *
+     * @param barSeries     the bar series
+     * @param tradingRecord the trading record
+     */
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord) {
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param barSeries       the bar series
+     * @param tradingRecord   the trading record
+     * @param equityCurveMode the calculation mode
+     * @since 0.22.2
+     */
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, EquityCurveMode equityCurveMode) {
+        this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), equityCurveMode,
+                OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param equityCurveMode      the calculation mode
+     * @param openPositionHandling how to handle the last open position
+     * @since 0.22.2
+     */
     public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
         this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), equityCurveMode, openPositionHandling);
     }
 
-    public CashFlow(BarSeries barSeries, Position position) {
-        this(barSeries, position, EquityCurveMode.MARK_TO_MARKET);
+    /**
+     * Constructor.
+     *
+     * @param barSeries     the bar series
+     * @param tradingRecord the trading record
+     * @param finalIndex    index up until cash flows of open positions are
+     *                      considered
+     */
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, int finalIndex) {
+        this(barSeries, tradingRecord, finalIndex, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
     }
 
-    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord) {
+    /**
+     * Constructor.
+     *
+     * @param barSeries            the bar series
+     * @param tradingRecord        the trading record
+     * @param openPositionHandling how to handle the last open position
+     * @since 0.22.2
+     */
+    public CashFlow(BarSeries barSeries, TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
         this(barSeries, tradingRecord, tradingRecord.getEndIndex(barSeries), EquityCurveMode.MARK_TO_MARKET,
-                OpenPositionHandling.MARK_TO_MARKET);
+                openPositionHandling);
+    }
+
+    /**
+     * Calculates the cash flow for a single position (including accrued cashflow
+     * for open positions).
+     *
+     * @param position   a single position
+     * @param finalIndex index up until cash flow of open positions is considered
+     * @since 0.22.2
+     */
+    @Override
+    public void calculatePosition(Position position, int finalIndex) {
+        var numFactory = barSeries.numFactory();
+        var entry = position.getEntry();
+        var isLongTrade = entry.isBuy();
+        var endIndex = determineEndIndex(position, finalIndex, barSeries.getEndIndex());
+        var entryIndex = entry.getIndex();
+        var beginIndexExclusive = entryIndex + 1;
+
+        ensureValuesSizeAtLeast(beginIndexExclusive);
+
+        var entryEquity = values.get(entryIndex);
+        if (!entryEquity.isGreaterThan(numFactory.zero())) {
+            return;
+        }
+
+        var startingIndex = Math.max(beginIndexExclusive, 1);
+        var holdingCost = position.getHoldingCost(endIndex);
+        var netEntryPrice = entry.getNetPrice();
+        if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
+            var averageHoldingCostPerPeriod = averageHoldingCostPerPeriod(position, endIndex, numFactory);
+            for (var barIndex = startingIndex; barIndex < endIndex; barIndex++) {
+                var closePrice = barSeries.getBar(barIndex).getClosePrice();
+                var intermediateNetPrice = addCost(closePrice, averageHoldingCostPerPeriod, isLongTrade);
+                var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
+                values.add(entryEquity.multipliedBy(ratio));
+            }
+            var exitPrice = resolveExitPrice(position, endIndex, barSeries);
+            var netExitPrice = addCost(exitPrice, averageHoldingCostPerPeriod, isLongTrade);
+            var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
+            values.add(entryEquity.multipliedBy(ratio));
+        } else {
+            var exit = position.getExit();
+            if (exit != null && endIndex >= exit.getIndex()) {
+                for (var barIndex = startingIndex; barIndex < endIndex; barIndex++) {
+                    values.add(entryEquity);
+                }
+                var netExitPrice = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
+                var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
+                values.add(entryEquity.multipliedBy(ratio));
+            }
+        }
+    }
+
+    private void ensureValuesSizeAtLeast(int requiredSize) {
+        padToSize(values, requiredSize, values.getLast());
     }
 
     /**
@@ -128,102 +246,38 @@ public class CashFlow implements Indicator<Num> {
         return barSeries;
     }
 
+    /**
+     * @return the size of the bar series
+     */
     public int getSize() {
         return barSeries.getBarCount();
     }
 
-    private void calculateClosedPosition(Position position) {
-        Objects.requireNonNull(position, "position must not be null");
-        if (position.isOpened()) {
-            throw new IllegalArgumentException(
-                    "Position is not closed. Final index of observation needs to be provided.");
-        }
-        calculatePosition(position, position.getExit().getIndex(), equityCurveMode);
-    }
-
-    private void calculateTradingRecord(TradingRecord tradingRecord, int finalIndex,
-            OpenPositionHandling openPositionHandling) {
-        tradingRecord.getPositions().forEach(this::calculateClosedPosition);
-        handleLastPosition(tradingRecord, finalIndex, openPositionHandling);
-    }
-
-    private void handleLastPosition(TradingRecord tradingRecord, int finalIndex,
-            OpenPositionHandling openPositionHandling) {
-        var effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED ? OpenPositionHandling.IGNORE
-                : openPositionHandling;
-        var currentPosition = tradingRecord.getCurrentPosition();
-        if (effectiveOpenPositionHandling == OpenPositionHandling.MARK_TO_MARKET && currentPosition != null
-                && currentPosition.isOpened()) {
-            calculatePosition(currentPosition, finalIndex, EquityCurveMode.MARK_TO_MARKET);
-        }
-    }
-
-    private void calculatePosition(Position position, int finalIndex, EquityCurveMode calculationMode) {
-        var numFactory = barSeries.numFactory();
-        var isLongTrade = position.getEntry().isBuy();
-        var endIndex = AnalysisUtils.determineEndIndex(position, finalIndex, barSeries.getEndIndex());
-        var entryIndex = position.getEntry().getIndex();
-        var beginIndexExclusive = entryIndex + 1;
-
-        ensureValuesSizeAtLeast(beginIndexExclusive);
-
-        var zero = numFactory.zero();
-        var entryEquity = values.get(entryIndex);
-        if (!entryEquity.isGreaterThan(zero)) {
-            return;
-        }
-
-        var startingIndex = Math.max(beginIndexExclusive, 1);
-        var holdingCost = position.getHoldingCost(endIndex);
-        var numberOfPeriods = endIndex - entryIndex;
-        var effectivePeriodCount = Math.max(1, numberOfPeriods);
-        var netEntryPrice = position.getEntry().getNetPrice();
-
-        if (calculationMode == EquityCurveMode.MARK_TO_MARKET) {
-            var averageHoldingCostPerPeriod = holdingCost.dividedBy(numFactory.numOf(effectivePeriodCount));
-
-            for (var barIndex = startingIndex; barIndex < endIndex; barIndex++) {
-                var intermediateNetPrice = AnalysisUtils.addCost(barSeries.getBar(barIndex).getClosePrice(),
-                        averageHoldingCostPerPeriod, isLongTrade);
-                var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
-                values.add(entryEquity.multipliedBy(ratio));
-            }
-
-            var exitPrice = position.getExit() != null ? position.getExit().getNetPrice()
-                    : barSeries.getBar(endIndex).getClosePrice();
-
-            var netExitPrice = AnalysisUtils.addCost(exitPrice, averageHoldingCostPerPeriod, isLongTrade);
-            var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
-            values.add(entryEquity.multipliedBy(ratio));
-        } else if (position.getExit() != null && endIndex >= position.getExit().getIndex()) {
-            for (var barIndex = startingIndex; barIndex < endIndex; barIndex++) {
-                values.add(entryEquity);
-            }
-
-            var netExitPrice = AnalysisUtils.addCost(position.getExit().getNetPrice(), holdingCost, isLongTrade);
-            var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
-            values.add(entryEquity.multipliedBy(ratio));
-        }
-    }
-
-    private void ensureValuesSizeAtLeast(int requiredSize) {
-        if (requiredSize > values.size()) {
-            var lastValue = values.getLast();
-            values.addAll(Collections.nCopies(requiredSize - values.size(), lastValue));
-        }
-    }
-
-    private void fillToTheEnd(int endIndex) {
-        if (endIndex >= values.size()) {
-            var lastValue = values.getLast();
-            values.addAll(Collections.nCopies(endIndex - values.size() + 1, lastValue));
-        }
-    }
-
+    /**
+     * Calculates the ratio of intermediate prices.
+     *
+     * @param isLongTrade true, if the entry trade type is BUY
+     * @param entryPrice  price ratio denominator
+     * @param exitPrice   price ratio numerator
+     */
     private static Num getIntermediateRatio(boolean isLongTrade, Num entryPrice, Num exitPrice) {
         if (isLongTrade) {
             return exitPrice.dividedBy(entryPrice);
         }
         return entryPrice.getNumFactory().numOf(2).minus(exitPrice.dividedBy(entryPrice));
+    }
+
+    @Override
+    public EquityCurveMode getEquityCurveMode() {
+        return equityCurveMode;
+    }
+
+    /**
+     * Pads {@link #values} with its last value up until {@code endIndex}.
+     *
+     * @param endIndex the end index
+     */
+    private void fillToTheEnd(int endIndex) {
+        padToEndIndex(values, endIndex, values.getLast());
     }
 }

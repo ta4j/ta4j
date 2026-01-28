@@ -25,8 +25,8 @@ package org.ta4j.core.analysis.frequency;
 
 import java.util.Optional;
 import java.util.stream.Stream;
-import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Summary statistics for a numeric sample series with optional annualization
