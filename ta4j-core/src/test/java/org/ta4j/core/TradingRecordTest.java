@@ -9,6 +9,8 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.util.List;
+
 import org.junit.Before;
 import org.junit.Test;
 
@@ -114,5 +116,44 @@ public class TradingRecordTest {
         assertNull(emptyRecord.getLastExit());
         assertEquals(Trade.sellAt(3, NaN, NaN), openedRecord.getLastExit());
         assertEquals(Trade.sellAt(8, NaN, NaN), closedRecord.getLastExit());
+    }
+
+    @Test
+    public void createRecordFromSingleClosedPosition() {
+        var position = new Position(Trade.buyAt(1, NaN, NaN), Trade.sellAt(4, NaN, NaN));
+
+        var record = new BaseTradingRecord(position);
+
+        assertTrue(record.getCurrentPosition().isNew());
+        assertTrue(record.isClosed());
+        assertEquals(1, record.getPositionCount());
+        assertEquals(position, record.getLastPosition());
+        assertEquals(Trade.sellAt(4, NaN, NaN), record.getLastTrade());
+    }
+
+    @Test
+    public void createRecordFromSingleOpenPosition() {
+        var position = new Position(Trade.TradeType.BUY);
+        position.operate(2, NaN, NaN);
+
+        var record = new BaseTradingRecord(position);
+
+        assertTrue(record.getCurrentPosition().isOpened());
+        assertEquals(0, record.getPositionCount());
+        assertNull(record.getLastPosition());
+        assertEquals(Trade.buyAt(2, NaN, NaN), record.getLastEntry());
+    }
+
+    @Test
+    public void createRecordFromMultiplePositions() {
+        var first = new Position(Trade.buyAt(1, NaN, NaN), Trade.sellAt(3, NaN, NaN));
+        var second = new Position(Trade.sellAt(5, NaN, NaN), Trade.buyAt(7, NaN, NaN));
+
+        var record = new BaseTradingRecord(List.of(first, second));
+
+        assertTrue(record.getCurrentPosition().isNew());
+        assertEquals(2, record.getPositionCount());
+        assertEquals(second, record.getLastPosition());
+        assertEquals(4, record.getTrades().size());
     }
 }

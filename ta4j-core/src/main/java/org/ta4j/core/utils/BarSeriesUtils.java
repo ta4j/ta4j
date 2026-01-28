@@ -6,19 +6,18 @@ package org.ta4j.core.utils;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
-import org.ta4j.core.Bar;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.aggregator.BarAggregator;
-import org.ta4j.core.aggregator.BarSeriesAggregator;
 import org.ta4j.core.aggregator.BaseBarSeriesAggregator;
+import org.ta4j.core.aggregator.BarSeriesAggregator;
 import org.ta4j.core.aggregator.DurationBarAggregator;
-import org.ta4j.core.num.Num;
+import org.ta4j.core.aggregator.BarAggregator;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.Bar;
 
 /**
  * Common utilities and helper methods for {@link BarSeries}.
@@ -213,6 +212,23 @@ public final class BarSeriesUtils {
             bars.sort(BarSeriesUtils.sortBarsByTime);
         }
         return bars;
+    }
+
+    /**
+     * Computes the elapsed time between bar end times in years.
+     *
+     * @param series        the bar series
+     * @param previousIndex the previous index
+     * @param currentIndex  the current index
+     * @return the elapsed time in years, clamped to zero for non-positive deltas
+     */
+    public static Num deltaYears(BarSeries series, int previousIndex, int currentIndex) {
+        var endPrev = series.getBar(previousIndex).getEndTime();
+        var endNow = series.getBar(currentIndex).getEndTime();
+        var seconds = Math.max(0, Duration.between(endPrev, endNow).getSeconds());
+        var numFactory = series.numFactory();
+        return seconds <= 0 ? numFactory.zero()
+                : numFactory.numOf(seconds).dividedBy(numFactory.numOf(TimeConstants.SECONDS_PER_YEAR));
     }
 
 }

@@ -7,6 +7,8 @@ import java.util.List;
 
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.IndicatorFactory;
 import org.ta4j.core.num.DecimalNum;
@@ -79,5 +81,9 @@ public abstract class AbstractIndicatorTest<D, I> {
 
     protected Num numOf(Number n) {
         return numFactory.numOf(n);
+    }
+
+    public BarSeries getBarSeries(String name) {
+        return new BaseBarSeriesBuilder().withNumFactory(numFactory).withName(name).build();
     }
 }
