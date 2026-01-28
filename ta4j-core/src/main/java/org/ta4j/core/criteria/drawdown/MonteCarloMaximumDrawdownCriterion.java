@@ -54,8 +54,7 @@ import org.ta4j.core.num.Num;
  * <pre>{@code
  * var markToMarket = new MonteCarloMaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET,
  *         OpenPositionHandling.MARK_TO_MARKET);
- * var ignoreOpen = new MonteCarloMaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET,
- *         OpenPositionHandling.IGNORE);
+ * var ignoreOpen = new MonteCarloMaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
  * }</pre>
  *
  * @since 0.19
@@ -155,9 +154,8 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
      *
      * @param iterations           number of random simulations to run
      * @param pathBlocks           number of trades to include in each simulated
-     *                             path
-     *                             ({@code null} = use the number of trades in the
-     *                             sample)
+     *                             path ({@code null} = use the number of trades in
+     *                             the sample)
      * @param seed                 random seed for reproducibility
      * @param statistic            which summary statistic of the simulated
      *                             drawdowns to return
@@ -194,14 +192,16 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
     /**
      * Constructor allowing to supply a custom random number generator.
      *
-     * @param iterations      number of random simulations to run
-     * @param pathBlocks      number of trades to include in each simulated path
-     *                        ({@code null} = use the number of trades in the
-     *                        sample)
-     * @param randomSupplier  supplier of the random generator used for simulations
-     * @param statistic       which summary statistic of the simulated drawdowns to
-     *                        return
-     * @param equityCurveMode the equity curve mode to use for drawdown simulation
+     * @param iterations           number of random simulations to run
+     * @param pathBlocks           number of trades to include in each simulated
+     *                             path ({@code null} = use the number of trades in
+     *                             the sample)
+     * @param randomSupplier       supplier of the random generator used for
+     *                             simulations
+     * @param statistic            which summary statistic of the simulated
+     *                             drawdowns to return
+     * @param equityCurveMode      the equity curve mode to use for drawdown
+     *                             simulation
      * @param openPositionHandling how to handle the last open position
      *
      * @since 0.22.2

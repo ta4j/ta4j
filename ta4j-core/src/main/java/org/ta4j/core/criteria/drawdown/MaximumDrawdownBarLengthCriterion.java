@@ -51,8 +51,7 @@ import org.ta4j.core.num.Num;
  * <pre>{@code
  * var markToMarket = new MaximumDrawdownBarLengthCriterion(EquityCurveMode.MARK_TO_MARKET,
  *         OpenPositionHandling.MARK_TO_MARKET);
- * var ignoreOpen = new MaximumDrawdownBarLengthCriterion(EquityCurveMode.MARK_TO_MARKET,
- *         OpenPositionHandling.IGNORE);
+ * var ignoreOpen = new MaximumDrawdownBarLengthCriterion(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
  * }</pre>
  *
  * @since 0.19

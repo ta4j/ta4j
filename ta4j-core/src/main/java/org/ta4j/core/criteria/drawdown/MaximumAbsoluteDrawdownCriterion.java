@@ -50,8 +50,7 @@ import org.ta4j.core.num.Num;
  * <pre>{@code
  * var markToMarket = new MaximumAbsoluteDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET,
  *         OpenPositionHandling.MARK_TO_MARKET);
- * var ignoreOpen = new MaximumAbsoluteDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET,
- *         OpenPositionHandling.IGNORE);
+ * var ignoreOpen = new MaximumAbsoluteDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
  * }</pre>
  *
  * @since 0.19
@@ -90,8 +89,8 @@ public final class MaximumAbsoluteDrawdownCriterion extends AbstractEquityCurveS
     }
 
     /**
-     * Creates a maximum absolute drawdown criterion using the provided equity
-     * curve mode and open position handling.
+     * Creates a maximum absolute drawdown criterion using the provided equity curve
+     * mode and open position handling.
      *
      * @param equityCurveMode      the equity curve mode to use
      * @param openPositionHandling how to handle the last open position

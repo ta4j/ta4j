@@ -47,10 +47,8 @@ import org.ta4j.core.num.Num;
  * open positions regardless of the requested handling.
  *
  * <pre>{@code
- * var markToMarket = new MaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET,
- *         OpenPositionHandling.MARK_TO_MARKET);
- * var ignoreOpen = new MaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET,
- *         OpenPositionHandling.IGNORE);
+ * var markToMarket = new MaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+ * var ignoreOpen = new MaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
  * }</pre>
  *
  * @see <a href=
@@ -95,8 +93,7 @@ public class MaximumDrawdownCriterion extends AbstractEquityCurveSettingsCriteri
      *
      * @since 0.22.2
      */
-    public MaximumDrawdownCriterion(EquityCurveMode equityCurveMode,
-            OpenPositionHandling openPositionHandling) {
+    public MaximumDrawdownCriterion(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         super(equityCurveMode, openPositionHandling);
     }
 

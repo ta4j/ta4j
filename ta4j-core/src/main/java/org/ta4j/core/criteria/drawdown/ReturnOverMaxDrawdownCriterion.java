@@ -79,14 +79,14 @@ import org.ta4j.core.num.Num;
  * <p>
  * <b>Open positions:</b> When using {@link EquityCurveMode#MARK_TO_MARKET}, the
  * {@link OpenPositionHandling} setting controls whether the last open position
- * contributes to the drawdown component. {@link EquityCurveMode#REALIZED} always
- * ignores open positions regardless of the requested handling.
+ * contributes to the drawdown component. {@link EquityCurveMode#REALIZED}
+ * always ignores open positions regardless of the requested handling.
  *
  * <pre>{@code
- * var markToMarket = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL,
- *         EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
- * var ignoreOpen = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL,
- *         EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
+ * var markToMarket = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
+ *         OpenPositionHandling.MARK_TO_MARKET);
+ * var ignoreOpen = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
+ *         OpenPositionHandling.IGNORE);
  * }</pre>
  *
  * @see ReturnRepresentation

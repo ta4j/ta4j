@@ -32,8 +32,8 @@ import org.ta4j.core.analysis.OpenPositionHandling;
  * {@link OpenPositionHandling} configuration.
  *
  * <p>
- * Note that {@link EquityCurveMode#REALIZED} ignores open positions regardless of
- * the requested {@link OpenPositionHandling}. Use
+ * Note that {@link EquityCurveMode#REALIZED} ignores open positions regardless
+ * of the requested {@link OpenPositionHandling}. Use
  * {@link EquityCurveMode#MARK_TO_MARKET} when you want
  * {@link OpenPositionHandling#MARK_TO_MARKET} to reflect open trades.
  *
