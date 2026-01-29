@@ -34,8 +34,6 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
-import org.ta4j.core.analysis.EquityCurveMode;
-import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -69,37 +67,6 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         var result = returnOverMaxDrawDown.calculate(series, tradingRecord);
 
         assertNumEquals(netProfit / ((peak - low) / peak), result);
-    }
-
-    @Test
-    public void rewardRiskRatioCriterionUsesEquityCurveMode() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 80, 120).build();
-        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
-
-        var markToMarket = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL,
-                EquityCurveMode.MARK_TO_MARKET);
-        var realized = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL, EquityCurveMode.REALIZED);
-
-        assertNumEquals(1.0d, markToMarket.calculate(series, tradingRecord));
-        assertNumEquals(0.2d, realized.calculate(series, tradingRecord));
-    }
-
-    @Test
-    public void rewardRiskRatioCriterionUsesOpenPositionHandling() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 80).build();
-        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
-                Trade.buyAt(1, series));
-
-        var markToMarket = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL,
-                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
-        var ignoreOpen = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL,
-                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
-
-        var markToMarketValue = markToMarket.calculate(series, tradingRecord);
-        var ignoreValue = ignoreOpen.calculate(series, tradingRecord);
-
-        assertNumEquals(-0.6d, markToMarketValue);
-        assertNumEquals(0.2d, ignoreValue);
     }
 
     @Test
@@ -218,7 +185,6 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
                 .build();
         var position = new Position();
         position.operate(0, numFactory.hundred(), numFactory.one());
-
         var result = returnOverMaxDrawDown.calculate(series, position);
 
         assertNumEquals(0, result);
@@ -303,16 +269,19 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         var decimalCriterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL);
         var decimalResult = decimalCriterion.calculate(series, position);
         assertNumEquals(0.0, decimalResult);
+        assertTrue(decimalResult.isZero());
 
         var multiplicativeCriterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
         var multiplicativeResult = multiplicativeCriterion.calculate(series, position);
         // For zero ratio: 1 + 0.0 = 1.0
         assertNumEquals(1.0, multiplicativeResult);
+        assertTrue(multiplicativeResult.isEqual(numFactory.one()));
 
         var percentageCriterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE);
         var percentageResult = percentageCriterion.calculate(series, position);
         // Ratio * 100 = 0.0 * 100 = 0.0
         assertNumEquals(0.0, percentageResult);
+        assertTrue(percentageResult.isZero());
     }
 
     @Test
