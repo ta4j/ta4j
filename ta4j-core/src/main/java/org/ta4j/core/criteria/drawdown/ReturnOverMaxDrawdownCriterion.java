@@ -32,6 +32,7 @@ import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.ReturnRepresentationPolicy;
+import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -80,8 +81,10 @@ import org.ta4j.core.num.Num;
  */
 public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
 
-    private final AnalysisCriterion maxDrawdownCriterion;
+    private final AnalysisCriterion netReturnCriterion;
+    private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
     private final ReturnRepresentation returnRepresentation;
+
     /**
      * Constructor with {@link ReturnRepresentation#DECIMAL} as the default (ratios
      * are typically expressed as decimals).
@@ -108,18 +111,20 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
      */
     public ReturnOverMaxDrawdownCriterion(ReturnRepresentation returnRepresentation) {
         this.returnRepresentation = returnRepresentation;
-        // Always use DECIMAL (0-based) for internal calculation since the formula
         // requires "net return without base" (rate of return). The final ratio will be
         // converted to the desired representation.
-        this.maxDrawdownCriterion = new MaximumDrawdownCriterion();
+        this.netReturnCriterion = new NetReturnCriterion(ReturnRepresentation.DECIMAL);
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
         var numFactory = series.numFactory();
+        if (position.isOpened()) {
+            return numFactory.zero();
+        }
         var maxDrawdown = maxDrawdownCriterion.calculate(series, position);
         // Get the net return in DECIMAL (0-based) for the formula calculation
-        var netReturn = calculatePositionNetReturn(series, position);
+        var netReturn = netReturnCriterion.calculate(series, position);
         if (maxDrawdown.isZero()) {
             // If no drawdown, convert the net return to the desired representation
             return returnRepresentation.toRepresentationFromRateOfReturn(netReturn);
@@ -154,7 +159,7 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
         }
         var maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
         // Get the net return in DECIMAL (0-based) for the formula calculation
-        var netReturn = calculateNetReturn(series, tradingRecord);
+        var netReturn = netReturnCriterion.calculate(series, tradingRecord);
         if (maxDrawdown.isZero()) {
             // If no drawdown, convert the net return to the desired representation
             return returnRepresentation.toRepresentationFromRateOfReturn(netReturn);
@@ -179,26 +184,6 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
         }
         // For PERCENTAGE, multiply the ratio by 100
         return rawRatio.multipliedBy(numFactory.numOf(100));
-    }
-
-    private Num calculatePositionNetReturn(BarSeries series, Position position) {
-        var numFactory = series.numFactory();
-        var entry = position.getEntry();
-        var exit = position.getExit();
-        if (entry == null) {
-            return numFactory.zero();
-        }
-        if (exit == null) {
-            return numFactory.zero();
-        }
-        var entryNetPrice = entry.getNetPrice();
-        var exitNetPrice = exit.getNetPrice();
-        var one = numFactory.one();
-        var ratio = exitNetPrice.dividedBy(entryNetPrice);
-        if (entry.isBuy()) {
-            return ratio.minus(one);
-        }
-        return one.minus(ratio);
     }
 
     private Num calculateNetReturn(BarSeries series, TradingRecord tradingRecord) {

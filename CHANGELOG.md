@@ -14,7 +14,6 @@
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
 - **TimeBarBuilder**: Enhanced with trade ingestion logic, time alignment validation, and RealtimeBar support.
 - **BaseBarSeriesBuilder**: Deprecated `setConstrained` in favor of deriving constrained mode from max-bar-count configuration.
-- **Equity-curve-aware net return**: RoMaD now uses equity-curve returns so equity curve modes and open position handling stay consistent.
 - **Release workflow notifications**: Post GitHub Discussion updates for release-scheduler and release runs with decision summaries.
 - **Workflow lint hook**: Added a repo `pre-push` hook to run `actionlint` on workflow changes (see CONTRIBUTING).
 - **Release health workflow**: Added scheduled checks for tag reachability, snapshot version drift, stale release PRs, and missing release notes, with summaries posted to Discussions.
@@ -38,7 +37,6 @@
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
-- **RoMaD single-position return**: Compute net return directly from entry/exit prices to avoid compounded drift in zero-return cases.
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
 

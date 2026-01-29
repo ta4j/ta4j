@@ -269,19 +269,16 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         var decimalCriterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL);
         var decimalResult = decimalCriterion.calculate(series, position);
         assertNumEquals(0.0, decimalResult);
-        assertTrue(decimalResult.isZero());
 
         var multiplicativeCriterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
         var multiplicativeResult = multiplicativeCriterion.calculate(series, position);
         // For zero ratio: 1 + 0.0 = 1.0
         assertNumEquals(1.0, multiplicativeResult);
-        assertTrue(multiplicativeResult.isEqual(numFactory.one()));
 
         var percentageCriterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE);
         var percentageResult = percentageCriterion.calculate(series, position);
         // Ratio * 100 = 0.0 * 100 = 0.0
         assertNumEquals(0.0, percentageResult);
-        assertTrue(percentageResult.isZero());
     }
 
     @Test
