@@ -166,8 +166,6 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
-            const core = require("@actions/core");
-
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const inputDays = process.env.INPUT_STALE_DAYS;
