@@ -23,6 +23,7 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
+import java.util.Optional;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
@@ -80,8 +81,9 @@ import org.ta4j.core.num.Num;
  * <p>
  * <b>Open positions:</b> When using {@link EquityCurveMode#MARK_TO_MARKET}, the
  * {@link OpenPositionHandling} setting controls whether the last open position
- * contributes to the return and drawdown components. {@link EquityCurveMode#REALIZED}
- * always ignores open positions regardless of the requested handling.
+ * contributes to the return and drawdown components.
+ * {@link EquityCurveMode#REALIZED} always ignores open positions regardless of
+ * the requested handling.
  *
  * <pre>{@code
  * var markToMarket = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
@@ -184,9 +186,8 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
             OpenPositionHandling openPositionHandling) {
         this.returnRepresentation = returnRepresentation;
         // Always use DECIMAL (0-based) for internal calculation since the formula
-        // requires
-        // "net return without base" (rate of return). The final ratio will be converted
-        // to the desired representation.
+        // requires "net return without base" (rate of return). The final ratio will be
+        // converted to the desired representation.
         this.equityCurveMode = equityCurveMode;
         this.openPositionHandling = openPositionHandling;
         this.maxDrawdownCriterion = new MaximumDrawdownCriterion(equityCurveMode, openPositionHandling);
@@ -278,8 +279,8 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
     }
 
     @Override
-    public java.util.Optional<ReturnRepresentation> getReturnRepresentation() {
-        return java.util.Optional.of(returnRepresentation);
+    public Optional<ReturnRepresentation> getReturnRepresentation() {
+        return Optional.of(returnRepresentation);
     }
 
     /** The higher the criterion value, the better. */
