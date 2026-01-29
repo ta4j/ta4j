@@ -98,7 +98,8 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         var markToMarketValue = markToMarket.calculate(series, tradingRecord);
         var ignoreValue = ignoreOpen.calculate(series, tradingRecord);
 
-        assertTrue(markToMarketValue.isLessThan(ignoreValue));
+        assertNumEquals(-0.6d, markToMarketValue);
+        assertNumEquals(0.2d, ignoreValue);
     }
 
     @Test
