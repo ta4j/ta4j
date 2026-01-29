@@ -149,7 +149,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
      */
     public SharpeRatioCriterion(double annualRiskFreeRate) {
         this(annualRiskFreeRate, SamplingFrequency.BAR, Annualization.ANNUALIZED, ZoneOffset.UTC,
-                CashReturnPolicy.CASH_EARNS_RISK_FREE, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
@@ -165,7 +166,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     public SharpeRatioCriterion(double annualRiskFreeRate, SamplingFrequency samplingFrequency,
             Annualization annualization, ZoneId groupingZoneId) {
         this(annualRiskFreeRate, samplingFrequency, annualization, groupingZoneId,
-                CashReturnPolicy.CASH_EARNS_RISK_FREE, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
