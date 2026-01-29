@@ -27,9 +27,10 @@ import java.time.*;
 import java.time.temporal.WeekFields;
 import java.util.stream.IntStream;
 
-import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
+import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.*;
 import org.junit.Test;
@@ -390,6 +391,30 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var expected = mean / stdev;
 
         assertEquals(expected, actual.doubleValue(), 1e-12);
+    }
+
+    @Test
+    public void realizedSharpeIgnoresOpenPositionEvenWhenMarkedToMarket() {
+        var series = buildDailySeries(new double[] { 100d, 110d, 90d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+
+        var amount = series.numFactory().one();
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(series.getBeginIndex(), series.getBar(series.getBeginIndex()).getClosePrice(), amount);
+        tradingRecord.exit(series.getBeginIndex() + 1, series.getBar(series.getBeginIndex() + 1).getClosePrice(),
+                amount);
+        tradingRecord.enter(series.getBeginIndex() + 2, series.getBar(series.getBeginIndex() + 2).getClosePrice(),
+                amount);
+
+        var markToMarket = new SharpeRatioCriterion(0d, SamplingFrequency.BAR, Annualization.PERIOD, ZoneOffset.UTC,
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        var realized = new SharpeRatioCriterion(0d, SamplingFrequency.BAR, Annualization.PERIOD, ZoneOffset.UTC,
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET);
+
+        var sharpeMarkToMarket = markToMarket.calculate(series, tradingRecord);
+        var sharpeRealized = realized.calculate(series, tradingRecord);
+
+        assertTrue(sharpeMarkToMarket.isGreaterThan(sharpeRealized));
     }
 
     private BarSeries buildDailySeries(double[] closes, Instant start) {

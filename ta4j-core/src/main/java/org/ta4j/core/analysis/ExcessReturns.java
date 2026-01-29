@@ -104,15 +104,38 @@ public final class ExcessReturns {
      */
     public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy,
             TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
+        this(series, annualRiskFreeRate, cashReturnPolicy, tradingRecord, EquityCurveMode.MARK_TO_MARKET,
+                openPositionHandling);
+    }
+
+    /**
+     * Creates an excess return calculator with invested interval detection from a
+     * trading record.
+     *
+     * @param series               the bar series providing time deltas and num
+     *                             factory
+     * @param annualRiskFreeRate   the annual risk-free rate (e.g. 0.05 for 5%)
+     * @param cashReturnPolicy     the policy for flat equity intervals
+     * @param tradingRecord        the trading record used to detect invested
+     *                             intervals
+     * @param equityCurveMode      the cash flow calculation mode
+     * @param openPositionHandling how open positions should be handled
+     * @since 0.22.2
+     */
+    public ExcessReturns(BarSeries series, Num annualRiskFreeRate, CashReturnPolicy cashReturnPolicy,
+            TradingRecord tradingRecord, EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         this.series = Objects.requireNonNull(series, "series cannot be null");
         this.annualRiskFreeRate = Objects.requireNonNull(annualRiskFreeRate, "annualRiskFreeRate cannot be null");
         this.cashReturnPolicy = Objects.requireNonNull(cashReturnPolicy, "cashReturnPolicy cannot be null");
 
         Objects.requireNonNull(tradingRecord, "tradingRecord cannot be null");
+        Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
 
-        this.investedInterval = new InvestedInterval(series, tradingRecord, openPositionHandling);
-        this.cashFlow = new CashFlow(series, tradingRecord, openPositionHandling);
+        var effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED ? OpenPositionHandling.IGNORE
+                : openPositionHandling;
+        this.investedInterval = new InvestedInterval(series, tradingRecord, effectiveOpenPositionHandling);
+        this.cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
     }
 
     /**
