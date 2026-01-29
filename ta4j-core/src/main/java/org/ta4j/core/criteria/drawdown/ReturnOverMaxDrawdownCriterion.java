@@ -25,14 +25,15 @@ package org.ta4j.core.criteria.drawdown;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.ReturnRepresentationPolicy;
-import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -40,7 +41,7 @@ import org.ta4j.core.num.Num;
  * configured {@link ReturnRepresentation} format.
  *
  * <pre>
- * RoMaD = {@link NetReturnCriterion net return (without base)} / {@link MaximumDrawdownCriterion maximum drawdown}
+ * RoMaD = net return (without base) / {@link MaximumDrawdownCriterion maximum drawdown}
  * </pre>
  *
  * <p>
@@ -79,7 +80,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * <b>Open positions:</b> When using {@link EquityCurveMode#MARK_TO_MARKET}, the
  * {@link OpenPositionHandling} setting controls whether the last open position
- * contributes to the drawdown component. {@link EquityCurveMode#REALIZED}
+ * contributes to the return and drawdown components. {@link EquityCurveMode#REALIZED}
  * always ignores open positions regardless of the requested handling.
  *
  * <pre>{@code
@@ -94,9 +95,10 @@ import org.ta4j.core.num.Num;
  */
 public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
 
-    private final AnalysisCriterion netReturnCriterion;
     private final AnalysisCriterion maxDrawdownCriterion;
     private final ReturnRepresentation returnRepresentation;
+    private final EquityCurveMode equityCurveMode;
+    private final OpenPositionHandling openPositionHandling;
 
     /**
      * Constructor with {@link ReturnRepresentation#DECIMAL} as the default (ratios
@@ -185,7 +187,8 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
         // requires
         // "net return without base" (rate of return). The final ratio will be converted
         // to the desired representation.
-        this.netReturnCriterion = new NetReturnCriterion(ReturnRepresentation.DECIMAL);
+        this.equityCurveMode = equityCurveMode;
+        this.openPositionHandling = openPositionHandling;
         this.maxDrawdownCriterion = new MaximumDrawdownCriterion(equityCurveMode, openPositionHandling);
     }
 
@@ -197,7 +200,7 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
         }
         var maxDrawdown = maxDrawdownCriterion.calculate(series, position);
         // Get the net return in DECIMAL (0-based) for the formula calculation
-        var netReturn = netReturnCriterion.calculate(series, position);
+        var netReturn = calculateNetReturn(series, new BaseTradingRecord(position));
         if (maxDrawdown.isZero()) {
             // If no drawdown, convert the net return to the desired representation
             return returnRepresentation.toRepresentationFromRateOfReturn(netReturn);
@@ -232,7 +235,7 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
         }
         var maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
         // Get the net return in DECIMAL (0-based) for the formula calculation
-        var netReturn = netReturnCriterion.calculate(series, tradingRecord);
+        var netReturn = calculateNetReturn(series, tradingRecord);
         if (maxDrawdown.isZero()) {
             // If no drawdown, convert the net return to the desired representation
             return returnRepresentation.toRepresentationFromRateOfReturn(netReturn);
@@ -257,6 +260,21 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
         }
         // For PERCENTAGE, multiply the ratio by 100
         return rawRatio.multipliedBy(numFactory.numOf(100));
+    }
+
+    private Num calculateNetReturn(BarSeries series, TradingRecord tradingRecord) {
+        var returns = new Returns(series, tradingRecord, ReturnRepresentation.DECIMAL, equityCurveMode,
+                openPositionHandling);
+        var numFactory = series.numFactory();
+        var one = numFactory.one();
+        var totalReturn = one;
+        for (var rawReturn : returns.getRawValues()) {
+            if (Num.isNaNOrNull(rawReturn)) {
+                continue;
+            }
+            totalReturn = totalReturn.multipliedBy(rawReturn.plus(one));
+        }
+        return totalReturn.minus(one);
     }
 
     @Override

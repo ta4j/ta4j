@@ -37,9 +37,17 @@ jobs:
       - name: Resolve default branch
         id: default_branch
         run: |
+          set -euo pipefail
+
           branch="${{ github.event.repository.default_branch }}"
           if [ -z "$branch" ]; then
-            echo "Default branch not provided by event." >&2
+            branch=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || true)
+          fi
+          if [ -z "$branch" ]; then
+            branch=$(git remote show origin 2>/dev/null | awk '/HEAD branch/ {print $NF}' || true)
+          fi
+          if [ -z "$branch" ]; then
+            echo "Default branch not provided by event or git." >&2
             exit 1
           fi
           echo "branch=$branch" >> $GITHUB_OUTPUT
@@ -158,8 +166,6 @@ jobs:
         with:
           github-token: ${{ github.token }}
           script: |
-            const core = require("@actions/core");
-
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const inputDays = process.env.INPUT_STALE_DAYS;
@@ -198,6 +204,7 @@ jobs:
 
       - name: Build health summary
         id: summary
+        if: always()
         env:
           DEFAULT_BRANCH: ${{ steps.default_branch.outputs.branch }}
           LATEST_TAG: ${{ steps.state.outputs.latest_tag }}
@@ -214,6 +221,43 @@ jobs:
           RELEASE_NOTIFY_USER: ${{ vars.RELEASE_NOTIFY_USER }}
         run: |
           set -euo pipefail
+
+          if [ -z "${DEFAULT_BRANCH:-}" ]; then
+            DEFAULT_BRANCH="(unknown)"
+          fi
+          if [ -z "${LATEST_TAG:-}" ]; then
+            LATEST_TAG="(unknown)"
+          fi
+          if [ -z "${LAST_REACHABLE_TAG:-}" ]; then
+            LAST_REACHABLE_TAG="(unknown)"
+          fi
+          if [ -z "${LATEST_TAG_REACHABLE:-}" ]; then
+            LATEST_TAG_REACHABLE="(unknown)"
+          fi
+          if [ -z "${POM_VERSION:-}" ]; then
+            POM_VERSION="(unknown)"
+          fi
+          if [ -z "${POM_BASE:-}" ]; then
+            POM_BASE="(unknown)"
+          fi
+          if [ -z "${POM_SNAPSHOT:-}" ]; then
+            POM_SNAPSHOT="(unknown)"
+          fi
+          if [ -z "${SNAPSHOT_OK:-}" ]; then
+            SNAPSHOT_OK="(unknown)"
+          fi
+          if [ -z "${NOTES_PRESENT:-}" ]; then
+            NOTES_PRESENT="(unknown)"
+          fi
+          if [ -z "${STALE_DAYS:-}" ]; then
+            STALE_DAYS="(unknown)"
+          fi
+          if [ -z "${STALE_COUNT:-}" ]; then
+            STALE_COUNT="0"
+          fi
+          if [ -z "${STALE_LIST:-}" ]; then
+            STALE_LIST="(none)"
+          fi
 
           drift=false
           reasons=()
@@ -289,13 +333,24 @@ jobs:
         uses: actions/github-script@v8
         env:
           RELEASE_SCHEDULER_DISCUSSION_NUMBER: ${{ vars.RELEASE_SCHEDULER_DISCUSSION_NUMBER }}
+          RELEASE_NOTIFY_USER: ${{ vars.RELEASE_NOTIFY_USER }}
         with:
           github-token: ${{ github.token }}
           script: |
             const fs = require("fs");
-            const body = fs.readFileSync("notification-body.txt", "utf8");
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+            const notifyUser = process.env.RELEASE_NOTIFY_USER || "TheCookieLab";
+            const runUrl = process.env.GITHUB_RUN_ID
+              ? `https://github.com/${process.env.GITHUB_REPOSITORY}/actions/runs/${process.env.GITHUB_RUN_ID}`
+              : "(unknown)";
+            let body;
+            if (fs.existsSync("notification-body.txt")) {
+              body = fs.readFileSync("notification-body.txt", "utf8");
+            } else {
+              core.warning("notification-body.txt not found; posting fallback message.");
+              body = `@${notifyUser}\n\n**Release Health Check summary unavailable**\n- Repository: ${process.env.GITHUB_REPOSITORY || `${owner}/${repo}`}\n- Run: ${runUrl}\n\nThe summary step did not produce notification-body.txt. Check earlier steps for failures.`;
+            }
             const rawNumber = process.env.RELEASE_SCHEDULER_DISCUSSION_NUMBER;
             const number = rawNumber ? Number(rawNumber) : 1414;
             if (!Number.isFinite(number)) {
