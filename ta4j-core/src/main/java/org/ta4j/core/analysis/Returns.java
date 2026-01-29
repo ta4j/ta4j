@@ -49,7 +49,7 @@ import org.ta4j.core.num.Num;
  * @see ReturnRepresentation
  * @see ReturnRepresentationPolicy
  */
-public class Returns implements Indicator<Num>, PerformanceIndicator {
+public class Returns implements PerformanceIndicator {
 
     private final ReturnRepresentation representation;
     private final EquityCurveMode equityCurveMode;

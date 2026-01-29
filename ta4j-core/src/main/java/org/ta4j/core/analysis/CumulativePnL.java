@@ -44,7 +44,7 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.19
  */
-public final class CumulativePnL implements Indicator<Num>, PerformanceIndicator {
+public final class CumulativePnL implements PerformanceIndicator {
 
     private final BarSeries barSeries;
     private final List<Num> values;

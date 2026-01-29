@@ -33,7 +33,7 @@ import org.ta4j.core.num.Num;
  * Allows to follow the money cash flow involved by a list of positions over a
  * bar series, either marked to market or using realized values only.
  */
-public class CashFlow implements Indicator<Num>, PerformanceIndicator {
+public class CashFlow implements PerformanceIndicator {
 
     /**
      * The bar series.
