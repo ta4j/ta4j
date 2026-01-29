@@ -24,6 +24,7 @@
 package org.ta4j.core.criteria.drawdown;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 import java.util.random.RandomGenerator;
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
@@ -32,6 +33,7 @@ import org.ta4j.core.BaseTradingRecord;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import static org.ta4j.core.criteria.drawdown.MonteCarloMaximumDrawdownCriterion.*;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -122,9 +124,9 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
             }
         }
         var markToMarket = new MonteCarloMaximumDrawdownCriterion(1, 1, FixedRandom::new, Statistic.MAX,
-                EquityCurveMode.MARK_TO_MARKET);
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
         var realized = new MonteCarloMaximumDrawdownCriterion(1, 1, FixedRandom::new, Statistic.MAX,
-                EquityCurveMode.REALIZED);
+                EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET);
         assertNumEquals(0.5d, markToMarket.calculate(series, record));
         assertNumEquals(0d, realized.calculate(series, record));
     }
