@@ -123,7 +123,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
         }
         var blocksPerPath = pathBlocks != null ? pathBlocks : blocks.size();
         var random = randomSupplier.get();
-        var maxDrawdowns = new double[iterations];
+        var maxDrawdowns = new Num[iterations];
         var numFactory = series.numFactory();
         var one = numFactory.one();
         for (var iteration = 0; iteration < iterations; iteration++) {
@@ -144,10 +144,9 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
                     }
                 }
             }
-            maxDrawdowns[iteration] = maxDrawdown.doubleValue();
+            maxDrawdowns[iteration] = maxDrawdown;
         }
-        var result = statistics.calculate(maxDrawdowns);
-        return numFactory.numOf(result);
+        return statistics.calculate(numFactory, maxDrawdowns);
     }
 
     private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record) {

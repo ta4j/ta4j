@@ -78,10 +78,8 @@ public class PositionDurationCriterion extends AbstractAnalysisCriterion {
                 .stream()
                 .filter(Position::isClosed)
                 .map(position -> calculate(series, position))
-                .mapToDouble(Num::doubleValue)
-                .toArray();
-        var result = statistics.calculate(durations);
-        return series.numFactory().numOf(result);
+                .toArray(Num[]::new);
+        return statistics.calculate(series.numFactory(), durations);
     }
 
     /** The lower the criterion value, the better. */

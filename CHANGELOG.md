@@ -31,6 +31,7 @@
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
 - **Position duration criterion**: implemented to `PositionDurationCriterion` to measure positions duration.
 - **Statistics helper**: Consolidated statistics selection into the `Statistics` enum and removed the separate `Statistic` type.
+- **Statistics helper**: Updated summary calculations to accept and return `Num` values for consistency with core criteria.
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 
 ### Fixed
