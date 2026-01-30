@@ -21,7 +21,7 @@
  * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
  * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-package org.ta4j.core.criteria.helpers;
+package org.ta4j.core.criteria;
 
 import java.util.Arrays;
 
@@ -31,27 +31,21 @@ import java.util.Arrays;
  * @since 0.22.2
  */
 public enum Statistics {
-    MEDIAN,
-    P95,
-    P99,
-    MEAN,
-    MIN,
-    MAX;
+    MEDIAN, P95, P99, MEAN, MIN, MAX;
 
     /**
      * Calculates a summary statistic for the provided values.
      *
-     * @param values    values to summarize
-     * @param statistic statistic to return
+     * @param values values to summarize
      * @return summary statistic result
      *
      * @since 0.22.2
      */
-    public static double calculate(double[] values, Statistics statistic) {
+    public double calculate(double[] values) {
         if (values.length == 0) {
             return 0;
         }
-        return switch (statistic) {
+        return switch (this) {
         case MEDIAN -> percentile(values, 0.5);
         case P95 -> percentile(values, 0.95);
         case P99 -> percentile(values, 0.99);
@@ -61,8 +55,8 @@ public enum Statistics {
         };
     }
 
-    private static double percentile(double[] values, double level) {
-        var sorted = values.clone();
+    private double percentile(double[] values, double level) {
+        var sorted = Arrays.copyOf(values, values.length);
         Arrays.sort(sorted);
         var index = (int) Math.ceil(level * sorted.length) - 1;
         if (index < 0) {

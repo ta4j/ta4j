@@ -31,7 +31,6 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.helpers.Statistics;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
@@ -57,9 +56,7 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateWithNoPositions() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
-                .withData(100, 105, 110)
-                .build();
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
 
         AnalysisCriterion criterion = getCriterion();
         assertNumEquals(0, criterion.calculate(series, new BaseTradingRecord()));
@@ -70,10 +67,8 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 100, 95, 105, 110, 120, 125, 130, 135, 140, 145, 150, 155, 160)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Trade.buyAt(0, series), Trade.sellAt(1, series),
-                Trade.buyAt(2, series), Trade.sellAt(4, series),
-                Trade.buyAt(5, series), Trade.sellAt(15, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(15, series));
 
         AnalysisCriterion criterion = getCriterion();
         long secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
@@ -87,10 +82,8 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 100, 95, 105, 110, 120, 125, 130, 135, 140, 145, 150, 155, 160)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Trade.buyAt(0, series), Trade.sellAt(1, series),
-                Trade.buyAt(2, series), Trade.sellAt(4, series),
-                Trade.buyAt(5, series), Trade.sellAt(15, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(15, series));
 
         AnalysisCriterion criterion = getCriterion(Statistics.MEDIAN);
         long secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
@@ -103,10 +96,8 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 100, 95, 105, 110, 120, 125, 130, 135, 140, 145, 150, 155, 160)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Trade.buyAt(0, series), Trade.sellAt(1, series),
-                Trade.buyAt(2, series), Trade.sellAt(4, series),
-                Trade.buyAt(5, series), Trade.sellAt(15, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(15, series));
 
         AnalysisCriterion criterion = getCriterion(Statistics.P95);
         long secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
@@ -119,10 +110,8 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 100, 95, 105, 110, 120, 125, 130, 135, 140, 145, 150, 155, 160)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(
-                Trade.buyAt(0, series), Trade.sellAt(1, series),
-                Trade.buyAt(2, series), Trade.sellAt(4, series),
-                Trade.buyAt(5, series), Trade.sellAt(15, series));
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(2, series), Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(15, series));
 
         AnalysisCriterion criterion = getCriterion(Statistics.MIN);
         long secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();

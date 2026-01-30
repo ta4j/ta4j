@@ -14,9 +14,6 @@
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
 - **TimeBarBuilder**: Enhanced with trade ingestion logic, time alignment validation, and RealtimeBar support.
 - **BaseBarSeriesBuilder**: Deprecated `setConstrained` in favor of deriving constrained mode from max-bar-count configuration.
-- **Position duration criterion**: Renamed to `PositionDurationCriterion` and added statistic-based summaries via criteria helpers.
-- **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
-- **Statistics helper**: Consolidated statistics selection into the `Statistics` enum and removed the separate `Statistic` type.
 - **Release workflow notifications**: Post GitHub Discussion updates for release-scheduler and release runs with decision summaries.
 - **Workflow lint hook**: Added a repo `pre-push` hook to run `actionlint` on workflow changes (see CONTRIBUTING).
 - **Release health workflow**: Added scheduled checks for tag reachability, snapshot version drift, stale release PRs, and missing release notes, with summaries posted to Discussions.
@@ -32,6 +29,9 @@
 - **Release scheduler enablement**: Gate scheduled runs on `RELEASE_SCHEDULER_ENABLED` (defaults to disabled when unset).
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
+- **Position duration criterion**: implemented to `PositionDurationCriterion` to measure positions duration.
+- **Statistics helper**: Consolidated statistics selection into the `Statistics` enum and removed the separate `Statistic` type.
+- **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 
 ### Fixed
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.

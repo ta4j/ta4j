@@ -26,7 +26,6 @@ package org.ta4j.core.criteria;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.helpers.Statistics;
 import org.ta4j.core.num.Num;
 
 /**
@@ -39,7 +38,7 @@ import org.ta4j.core.num.Num;
  */
 public class PositionDurationCriterion extends AbstractAnalysisCriterion {
 
-    private final Statistics statistic;
+    private final Statistics statistics;
 
     /**
      * Default constructor using the mean duration.
@@ -53,12 +52,12 @@ public class PositionDurationCriterion extends AbstractAnalysisCriterion {
     /**
      * Constructor.
      *
-     * @param statistic statistic to return
+     * @param statistics statistic to return
      *
      * @since 0.22.2
      */
-    public PositionDurationCriterion(Statistics statistic) {
-        this.statistic = statistic;
+    public PositionDurationCriterion(Statistics statistics) {
+        this.statistics = statistics;
     }
 
     @Override
@@ -81,7 +80,7 @@ public class PositionDurationCriterion extends AbstractAnalysisCriterion {
                 .map(position -> calculate(series, position))
                 .mapToDouble(Num::doubleValue)
                 .toArray();
-        var result = Statistics.calculate(durations, statistic);
+        var result = statistics.calculate(durations);
         return series.numFactory().numOf(result);
     }
 
