@@ -26,7 +26,6 @@ package org.ta4j.core.criteria;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.helpers.Statistic;
 import org.ta4j.core.criteria.helpers.Statistics;
 import org.ta4j.core.num.Num;
 
@@ -40,7 +39,7 @@ import org.ta4j.core.num.Num;
  */
 public class PositionDurationCriterion extends AbstractAnalysisCriterion {
 
-    private final Statistic statistic;
+    private final Statistics statistic;
 
     /**
      * Default constructor using the mean duration.
@@ -48,7 +47,7 @@ public class PositionDurationCriterion extends AbstractAnalysisCriterion {
      * @since 0.22.2
      */
     public PositionDurationCriterion() {
-        this(Statistic.MEAN);
+        this(Statistics.MEAN);
     }
 
     /**
@@ -58,7 +57,7 @@ public class PositionDurationCriterion extends AbstractAnalysisCriterion {
      *
      * @since 0.22.2
      */
-    public PositionDurationCriterion(Statistic statistic) {
+    public PositionDurationCriterion(Statistics statistic) {
         this.statistic = statistic;
     }
 

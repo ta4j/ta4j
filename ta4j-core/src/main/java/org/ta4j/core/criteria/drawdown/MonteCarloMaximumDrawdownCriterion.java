@@ -47,21 +47,10 @@ import org.ta4j.core.num.Num;
  */
 public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
-    /**
-     * Defines which summary value to return from the simulated drawdowns.
-     *
-     * @since 0.19
-     *
-     * @deprecated use {@link org.ta4j.core.criteria.helpers.Statistic}
-     */
-    public enum Statistic {
-        MEDIAN, P95, P99, MEAN, MIN, MAX
-    }
-
     private final int iterations;
     private final Integer pathBlocks;
     private final Supplier<RandomGenerator> randomSupplier;
-    private final org.ta4j.core.criteria.helpers.Statistic statistic;
+    private final Statistics statistic;
 
     /**
      * Default constructor returning the 95th percentile.
@@ -69,7 +58,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
      * @since 0.19
      */
     public MonteCarloMaximumDrawdownCriterion() {
-        this(10_000, null, () -> new SplittableRandom(42L), org.ta4j.core.criteria.helpers.Statistic.P95);
+        this(10_000, null, () -> new SplittableRandom(42L), Statistics.P95);
     }
 
     /**
@@ -84,7 +73,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
      *
      * @since 0.19
      */
-    public MonteCarloMaximumDrawdownCriterion(int iterations, Integer pathBlocks, long seed, org.ta4j.core.criteria.helpers.Statistic statistic) {
+    public MonteCarloMaximumDrawdownCriterion(int iterations, Integer pathBlocks, long seed, Statistics statistic) {
         this(iterations, pathBlocks, () -> new SplittableRandom(seed), statistic);
     }
 
@@ -101,7 +90,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
      * @since 0.19
      */
     public MonteCarloMaximumDrawdownCriterion(int iterations, Integer pathBlocks,
-            Supplier<RandomGenerator> randomSupplier, org.ta4j.core.criteria.helpers.Statistic statistic) {
+            Supplier<RandomGenerator> randomSupplier, Statistics statistic) {
         this.iterations = iterations;
         this.pathBlocks = pathBlocks;
         this.randomSupplier = randomSupplier;

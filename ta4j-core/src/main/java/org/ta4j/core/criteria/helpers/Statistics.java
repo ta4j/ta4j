@@ -26,14 +26,17 @@ package org.ta4j.core.criteria.helpers;
 import java.util.Arrays;
 
 /**
- * Utility for summary statistics.
+ * Summary statistics options and helpers.
  *
  * @since 0.22.2
  */
-public final class Statistics {
-
-    private Statistics() {
-    }
+public enum Statistics {
+    MEDIAN,
+    P95,
+    P99,
+    MEAN,
+    MIN,
+    MAX;
 
     /**
      * Calculates a summary statistic for the provided values.
@@ -44,7 +47,7 @@ public final class Statistics {
      *
      * @since 0.22.2
      */
-    public static double calculate(double[] values, Statistic statistic) {
+    public static double calculate(double[] values, Statistics statistic) {
         if (values.length == 0) {
             return 0;
         }

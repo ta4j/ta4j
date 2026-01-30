@@ -31,7 +31,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.helpers.Statistic;
+import org.ta4j.core.criteria.helpers.Statistics;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
@@ -39,7 +39,7 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
 
     public PositionDurationCriterionTest(NumFactory numFactory) {
         super(params -> params.length == 0 ? new PositionDurationCriterion()
-                : new PositionDurationCriterion((Statistic) params[0]), numFactory);
+                : new PositionDurationCriterion((Statistics) params[0]), numFactory);
     }
 
     @Test
@@ -92,7 +92,7 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(2, series), Trade.sellAt(4, series),
                 Trade.buyAt(5, series), Trade.sellAt(15, series));
 
-        AnalysisCriterion criterion = getCriterion(Statistic.MEDIAN);
+        AnalysisCriterion criterion = getCriterion(Statistics.MEDIAN);
         long secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
 
         assertNumEquals(secondsPerBar * 2d, criterion.calculate(series, tradingRecord));
@@ -108,7 +108,7 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(2, series), Trade.sellAt(4, series),
                 Trade.buyAt(5, series), Trade.sellAt(15, series));
 
-        AnalysisCriterion criterion = getCriterion(Statistic.P95);
+        AnalysisCriterion criterion = getCriterion(Statistics.P95);
         long secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
 
         assertNumEquals(secondsPerBar * 10d, criterion.calculate(series, tradingRecord));
@@ -124,7 +124,7 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
                 Trade.buyAt(2, series), Trade.sellAt(4, series),
                 Trade.buyAt(5, series), Trade.sellAt(15, series));
 
-        AnalysisCriterion criterion = getCriterion(Statistic.MIN);
+        AnalysisCriterion criterion = getCriterion(Statistics.MIN);
         long secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
 
         assertNumEquals(secondsPerBar * 1d, criterion.calculate(series, tradingRecord));

@@ -16,6 +16,7 @@
 - **BaseBarSeriesBuilder**: Deprecated `setConstrained` in favor of deriving constrained mode from max-bar-count configuration.
 - **Position duration criterion**: Renamed to `PositionDurationCriterion` and added statistic-based summaries via criteria helpers.
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
+- **Statistics helper**: Consolidated statistics selection into the `Statistics` enum and removed the separate `Statistic` type.
 - **Release workflow notifications**: Post GitHub Discussion updates for release-scheduler and release runs with decision summaries.
 - **Workflow lint hook**: Added a repo `pre-push` hook to run `actionlint` on workflow changes (see CONTRIBUTING).
 - **Release health workflow**: Added scheduled checks for tag reachability, snapshot version drift, stale release PRs, and missing release notes, with summaries posted to Discussions.
