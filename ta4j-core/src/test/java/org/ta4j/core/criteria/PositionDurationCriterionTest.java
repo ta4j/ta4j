@@ -46,9 +46,9 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 100, 95, 105, 110)
                 .build();
-        Position position = new Position(Trade.buyAt(1, series), Trade.sellAt(4, series));
+        var position = new Position(Trade.buyAt(1, series), Trade.sellAt(4, series));
 
-        AnalysisCriterion criterion = getCriterion();
+        var criterion = getCriterion();
         long secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
 
         assertNumEquals(secondsPerBar * 3d, criterion.calculate(series, position));
@@ -58,7 +58,7 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
     public void calculateWithNoPositions() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 105, 110).build();
 
-        AnalysisCriterion criterion = getCriterion();
+        var criterion = getCriterion();
         assertNumEquals(0, criterion.calculate(series, new BaseTradingRecord()));
     }
 
@@ -67,12 +67,12 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 100, 95, 105, 110, 120, 125, 130, 135, 140, 145, 150, 155, 160)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(15, series));
 
-        AnalysisCriterion criterion = getCriterion();
-        long secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
-        double expectedMean = secondsPerBar * (13.0 / 3.0);
+        var criterion = getCriterion();
+        var secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
+        var expectedMean = secondsPerBar * (13.0 / 3.0);
 
         assertNumEquals(expectedMean, criterion.calculate(series, tradingRecord));
     }
@@ -82,11 +82,11 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 100, 95, 105, 110, 120, 125, 130, 135, 140, 145, 150, 155, 160)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(15, series));
 
-        AnalysisCriterion criterion = getCriterion(Statistics.MEDIAN);
-        long secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
+        var criterion = getCriterion(Statistics.MEDIAN);
+        var secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
 
         assertNumEquals(secondsPerBar * 2d, criterion.calculate(series, tradingRecord));
     }
@@ -96,11 +96,11 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 100, 95, 105, 110, 120, 125, 130, 135, 140, 145, 150, 155, 160)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(15, series));
 
-        AnalysisCriterion criterion = getCriterion(Statistics.P95);
-        long secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
+        var criterion = getCriterion(Statistics.P95);
+        var secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
 
         assertNumEquals(secondsPerBar * 10d, criterion.calculate(series, tradingRecord));
     }
@@ -110,11 +110,11 @@ public class PositionDurationCriterionTest extends AbstractCriterionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 100, 95, 105, 110, 120, 125, 130, 135, 140, 145, 150, 155, 160)
                 .build();
-        TradingRecord tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
                 Trade.buyAt(2, series), Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(15, series));
 
-        AnalysisCriterion criterion = getCriterion(Statistics.MIN);
-        long secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
+        var criterion = getCriterion(Statistics.MIN);
+        var secondsPerBar = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
 
         assertNumEquals(secondsPerBar * 1d, criterion.calculate(series, tradingRecord));
     }

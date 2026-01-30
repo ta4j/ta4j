@@ -27,6 +27,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Position duration criterion.
@@ -62,14 +63,15 @@ public class PositionDurationCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
+        var numFactory = series.numFactory();
         if (position == null || !position.isClosed()) {
-            return series.numFactory().zero();
+            return numFactory.zero();
         }
-        int exitIndex = position.getExit().getIndex();
-        int entryIndex = position.getEntry().getIndex();
-        int indexDuration = exitIndex - entryIndex;
-        long secondsPeriod = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
-        return series.numFactory().numOf(indexDuration * secondsPeriod);
+        var exitIndex = position.getExit().getIndex();
+        var entryIndex = position.getEntry().getIndex();
+        var indexDuration = exitIndex - entryIndex;
+        var secondsPeriod = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
+        return numFactory.numOf(indexDuration * secondsPeriod);
     }
 
     @Override
