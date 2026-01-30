@@ -40,7 +40,7 @@ public enum Statistics {
      * Calculates a summary statistic for the provided values.
      *
      * @param numFactory num factory for zero and conversions
-     * @param values values to summarize
+     * @param values     values to summarize
      * @return summary statistic result
      *
      * @since 0.22.2
