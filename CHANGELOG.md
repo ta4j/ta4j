@@ -30,8 +30,7 @@
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
 - **Position duration criterion**: implemented to `PositionDurationCriterion` to measure positions duration.
-- **Statistics helper**: Consolidated statistics selection into the `Statistics` enum and removed the separate `Statistic` type.
-- **Statistics helper**: Updated summary calculations to accept and return `Num` values for consistency with core criteria.
+- **Statistics helper**: Consolidated statistics selection into the `Statistics` enum, with Num calculations.
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 
 ### Fixed
