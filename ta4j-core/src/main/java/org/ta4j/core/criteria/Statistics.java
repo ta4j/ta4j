@@ -46,16 +46,17 @@ public enum Statistics {
      * @since 0.22.2
      */
     public Num calculate(NumFactory numFactory, Num[] values) {
+        var zero = numFactory.zero();
         if (values.length == 0) {
-            return numFactory.zero();
+            return zero;
         }
         return switch (this) {
         case MEDIAN -> percentile(values, 0.5);
         case P95 -> percentile(values, 0.95);
         case P99 -> percentile(values, 0.99);
         case MEAN -> mean(numFactory, values);
-        case MIN -> Arrays.stream(values).min(Num::compareTo).orElse(numFactory.zero());
-        case MAX -> Arrays.stream(values).max(Num::compareTo).orElse(numFactory.zero());
+        case MIN -> Arrays.stream(values).min(Num::compareTo).orElse(zero);
+        case MAX -> Arrays.stream(values).max(Num::compareTo).orElse(zero);
         };
     }
 
