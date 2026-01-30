@@ -23,14 +23,11 @@
  */
 package org.ta4j.core.criteria;
 
-import static org.ta4j.core.TestUtils.assertNumEquals;
-
 import org.junit.Test;
-import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 

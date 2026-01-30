@@ -27,7 +27,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Position duration criterion.
@@ -54,7 +53,6 @@ public class PositionDurationCriterion extends AbstractAnalysisCriterion {
      * Constructor.
      *
      * @param statistics statistic to return
-     *
      * @since 0.22.2
      */
     public PositionDurationCriterion(Statistics statistics) {
@@ -84,7 +82,9 @@ public class PositionDurationCriterion extends AbstractAnalysisCriterion {
         return statistics.calculate(series.numFactory(), durations);
     }
 
-    /** The lower the criterion value, the better. */
+    /**
+     * The lower the criterion value, the better.
+     */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isLessThan(criterionValue2);

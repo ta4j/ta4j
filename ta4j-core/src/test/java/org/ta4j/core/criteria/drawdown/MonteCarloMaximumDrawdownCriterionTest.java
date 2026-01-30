@@ -33,7 +33,6 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.criteria.Statistics;
-import static org.ta4j.core.criteria.Statistics.*;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
