@@ -26,19 +26,47 @@ package org.ta4j.core.criteria;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.num.DecimalNum;
+import org.ta4j.core.criteria.helpers.Statistic;
+import org.ta4j.core.criteria.helpers.Statistics;
 import org.ta4j.core.num.Num;
 
 /**
- * Average position duration criterion.
+ * Position duration criterion.
  *
  * <p>
- * Returns the average position duration in all the positions.
+ * Returns the summary statistic of position durations.
+ *
+ * @since 0.22.2
  */
-public class AveragePositionDurationCriterion extends AbstractAnalysisCriterion {
+public class PositionDurationCriterion extends AbstractAnalysisCriterion {
+
+    private final Statistic statistic;
+
+    /**
+     * Default constructor using the mean duration.
+     *
+     * @since 0.22.2
+     */
+    public PositionDurationCriterion() {
+        this(Statistic.MEAN);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param statistic statistic to return
+     *
+     * @since 0.22.2
+     */
+    public PositionDurationCriterion(Statistic statistic) {
+        this.statistic = statistic;
+    }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
+        if (position == null || !position.isClosed()) {
+            return series.numFactory().zero();
+        }
         int exitIndex = position.getExit().getIndex();
         int entryIndex = position.getEntry().getIndex();
         int indexDuration = exitIndex - entryIndex;
@@ -48,14 +76,14 @@ public class AveragePositionDurationCriterion extends AbstractAnalysisCriterion 
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var average = tradingRecord.getPositions()
+        var durations = tradingRecord.getPositions()
                 .stream()
                 .filter(Position::isClosed)
-                .map(t -> calculate(series, t))
-                .mapToInt(Num::intValue)
-                .average()
-                .orElse(0);
-        return series.numFactory().numOf(average);
+                .map(position -> calculate(series, position))
+                .mapToDouble(Num::doubleValue)
+                .toArray();
+        var result = Statistics.calculate(durations, statistic);
+        return series.numFactory().numOf(result);
     }
 
     /** The lower the criterion value, the better. */

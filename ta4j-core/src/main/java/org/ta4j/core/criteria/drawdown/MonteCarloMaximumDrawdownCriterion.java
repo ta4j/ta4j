@@ -24,7 +24,6 @@
 package org.ta4j.core.criteria.drawdown;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.SplittableRandom;
 import java.util.function.Supplier;
@@ -34,6 +33,7 @@ import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.criteria.helpers.Statistics;
 import org.ta4j.core.num.Num;
 
 /**
@@ -157,31 +157,8 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
             }
             maxDrawdowns[iteration] = maxDrawdown.doubleValue();
         }
-        var result = switch (statistic) {
-        case MEDIAN -> percentile(maxDrawdowns, 0.5);
-        case P95 -> percentile(maxDrawdowns, 0.95);
-        case P99 -> percentile(maxDrawdowns, 0.99);
-        case MEAN -> Arrays.stream(maxDrawdowns).average().orElse(0);
-        case MIN -> Arrays.stream(maxDrawdowns).min().orElse(0);
-        case MAX -> Arrays.stream(maxDrawdowns).max().orElse(0);
-        };
+        var result = Statistics.calculate(maxDrawdowns, statistic);
         return numFactory.numOf(result);
-    }
-
-    private static double percentile(double[] values, double level) {
-        if (values.length == 0) {
-            return 0;
-        }
-        var sorted = values.clone();
-        Arrays.sort(sorted);
-        var index = (int) Math.ceil(level * sorted.length) - 1;
-        if (index < 0) {
-            index = 0;
-        }
-        if (index >= sorted.length) {
-            index = sorted.length - 1;
-        }
-        return sorted[index];
     }
 
     private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record) {
