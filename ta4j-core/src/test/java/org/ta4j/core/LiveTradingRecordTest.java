@@ -38,11 +38,14 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -107,6 +110,7 @@ class LiveTradingRecordTest {
         assertNotNull(net);
         assertEquals(numFactory.three(), net.amount());
         assertEquals(numFactory.numOf(105), net.averageEntryPrice());
+        assertEquals(1, record.getOpenPositions().size());
     }
 
     @Test
@@ -185,6 +189,41 @@ class LiveTradingRecordTest {
         LiveTradingRecord record = new LiveTradingRecord();
         assertThrows(IllegalArgumentException.class,
                 () -> record.recordFill(fill(ExecutionSide.BUY, numFactory.hundred(), numFactory.zero())));
+    }
+
+    @Test
+    void rejectsDefaultEnterOperateWithNaN() {
+        LiveTradingRecord record = new LiveTradingRecord();
+        assertThrows(IllegalArgumentException.class, () -> record.enter(0));
+        assertThrows(IllegalArgumentException.class, () -> record.operate(0));
+    }
+
+    @Test
+    void rejectsExitWithoutOpenLots() {
+        LiveTradingRecord record = new LiveTradingRecord();
+        assertThrows(IllegalStateException.class,
+                () -> record.recordFill(fill(ExecutionSide.SELL, numFactory.hundred(), numFactory.one())));
+    }
+
+    @Test
+    void rejectsNaNPrice() {
+        LiveTradingRecord record = new LiveTradingRecord();
+        assertThrows(IllegalArgumentException.class,
+                () -> record.recordFill(fill(ExecutionSide.BUY, NaN.NaN, numFactory.one())));
+    }
+
+    @Test
+    void cachesTradesAndInvalidatesOnUpdate() {
+        LiveTradingRecord record = new LiveTradingRecord();
+        record.recordFill(fill(ExecutionSide.BUY, numFactory.hundred(), numFactory.one()));
+        List<Trade> first = record.getTrades();
+        List<Trade> second = record.getTrades();
+        assertSame(first, second);
+
+        record.recordFill(fill(ExecutionSide.SELL, numFactory.numOf(120), numFactory.one()));
+        List<Trade> third = record.getTrades();
+        assertNotSame(first, third);
+        assertEquals(2, third.size());
     }
 
     @Test

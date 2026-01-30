@@ -99,6 +99,9 @@ public final class PositionBook implements Serializable {
      * @since 0.22.2
      */
     public void recordEntry(int index, ExecutionFill fill) {
+        if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
+            normalizeAvgCostLots();
+        }
         PositionLot lot = new PositionLot(index, fill.time(), fill.price(), fill.amount(), fill.fee(), fill.orderId(),
                 fill.correlationId());
         if (matchPolicy == ExecutionMatchPolicy.AVG_COST && !openLots.isEmpty()) {
@@ -118,6 +121,9 @@ public final class PositionBook implements Serializable {
      * @since 0.22.2
      */
     public List<Position> recordExit(int index, ExecutionFill fill) {
+        if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
+            normalizeAvgCostLots();
+        }
         Num remaining = fill.amount();
         List<Position> closed = new ArrayList<>();
         while (remaining.isPositive()) {
@@ -220,6 +226,20 @@ public final class PositionBook implements Serializable {
             }
         }
         throw new IllegalStateException("No open lot matches " + key);
+    }
+
+    private void normalizeAvgCostLots() {
+        if (openLots.size() <= 1) {
+            return;
+        }
+        PositionLot merged = null;
+        while (!openLots.isEmpty()) {
+            PositionLot lot = openLots.removeFirst();
+            merged = merged == null ? lot : merged.merge(lot);
+        }
+        if (merged != null) {
+            openLots.addFirst(merged);
+        }
     }
 
     private Position closeLot(PositionLot lot, ExecutionFill fill, int index, Num closeAmount) {

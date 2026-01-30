@@ -60,6 +60,9 @@ public class LiveTradingRecord implements TradingRecord {
     private final Integer endIndex;
     private String name;
     private int nextTradeIndex;
+    private transient List<Trade> tradesCache;
+    private transient long tradesCacheVersion;
+    private long modificationCount;
 
     /**
      * Creates a live trading record with BUY entries and FIFO matching.
@@ -111,6 +114,7 @@ public class LiveTradingRecord implements TradingRecord {
      * Records a live fill using an auto-incremented trade index.
      *
      * @param fill execution fill
+     * @throws IllegalArgumentException when fill price or amount is NaN/invalid
      * @since 0.22.2
      */
     public void recordFill(ExecutionFill fill) {
@@ -122,6 +126,7 @@ public class LiveTradingRecord implements TradingRecord {
      *
      * @param index trade index
      * @param fill  execution fill
+     * @throws IllegalArgumentException when fill price or amount is NaN/invalid
      * @since 0.22.2
      */
     public void recordFill(int index, ExecutionFill fill) {
@@ -138,6 +143,8 @@ public class LiveTradingRecord implements TradingRecord {
             } else {
                 positionBook.recordExit(index, fill);
             }
+            modificationCount++;
+            tradesCache = null;
         } finally {
             lock.writeLock().unlock();
         }
@@ -292,6 +299,9 @@ public class LiveTradingRecord implements TradingRecord {
     public List<Trade> getTrades() {
         lock.readLock().lock();
         try {
+            if (tradesCache != null && tradesCacheVersion == modificationCount) {
+                return tradesCache;
+            }
             List<Trade> trades = new ArrayList<>();
             for (Position position : positionBook.closedPositions()) {
                 trades.add(position.getEntry());
@@ -303,7 +313,9 @@ public class LiveTradingRecord implements TradingRecord {
             }
             trades.sort(Comparator.comparingInt(Trade::getIndex)
                     .thenComparing(trade -> trade.getType() == startingType ? 0 : 1));
-            return List.copyOf(trades);
+            tradesCache = List.copyOf(trades);
+            tradesCacheVersion = modificationCount;
+            return tradesCache;
         } finally {
             lock.readLock().unlock();
         }
@@ -380,5 +392,8 @@ public class LiveTradingRecord implements TradingRecord {
         if (holdingCostModel == null) {
             holdingCostModel = new ZeroCostModel();
         }
+        tradesCache = null;
+        tradesCacheVersion = -1L;
+        modificationCount = 0L;
     }
 }
