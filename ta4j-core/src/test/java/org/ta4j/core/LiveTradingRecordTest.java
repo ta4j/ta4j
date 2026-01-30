@@ -185,6 +185,19 @@ class LiveTradingRecordTest {
     }
 
     @Test
+    void aggregatesTotalFeesAcrossFills() {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+
+        record.recordFill(new ExecutionFill(Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+                numFactory.one(), numFactory.numOf(0.1), ExecutionSide.BUY, null, null));
+        record.recordFill(new ExecutionFill(Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
+                numFactory.one(), numFactory.numOf(0.2), ExecutionSide.SELL, null, null));
+
+        assertEquals(numFactory.numOf(0.3), record.getTotalFees());
+    }
+
+    @Test
     void rejectsInvalidFillAmounts() {
         LiveTradingRecord record = new LiveTradingRecord();
         assertThrows(IllegalArgumentException.class,
@@ -210,6 +223,14 @@ class LiveTradingRecordTest {
         LiveTradingRecord record = new LiveTradingRecord();
         assertThrows(IllegalArgumentException.class,
                 () -> record.recordFill(fill(ExecutionSide.BUY, NaN.NaN, numFactory.one())));
+    }
+
+    @Test
+    void rejectsNaNFee() {
+        LiveTradingRecord record = new LiveTradingRecord();
+        assertThrows(IllegalArgumentException.class,
+                () -> record.recordFill(new ExecutionFill(Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+                        numFactory.one(), NaN.NaN, ExecutionSide.BUY, null, null)));
     }
 
     @Test

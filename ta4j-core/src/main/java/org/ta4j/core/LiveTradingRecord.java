@@ -37,6 +37,8 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Live trading record that supports partial fills and multi-lot positions.
@@ -63,6 +65,8 @@ public class LiveTradingRecord implements TradingRecord {
     private transient List<Trade> tradesCache;
     private transient long tradesCacheVersion;
     private long modificationCount;
+    private Num totalFees;
+    private transient NumFactory numFactory;
 
     /**
      * Creates a live trading record with BUY entries and FIFO matching.
@@ -143,6 +147,13 @@ public class LiveTradingRecord implements TradingRecord {
             } else {
                 positionBook.recordExit(index, fill);
             }
+            if (numFactory == null) {
+                numFactory = fill.price().getNumFactory();
+            }
+            if (totalFees == null) {
+                totalFees = numFactory.zero();
+            }
+            totalFees = totalFees.plus(fill.fee());
             modificationCount++;
             tradesCache = null;
         } finally {
@@ -189,7 +200,8 @@ public class LiveTradingRecord implements TradingRecord {
     public LiveTradingRecordSnapshot snapshot() {
         lock.readLock().lock();
         try {
-            return new LiveTradingRecordSnapshot(getPositions(), getOpenPositions(), getNetOpenPosition(), getTrades());
+            return new LiveTradingRecordSnapshot(getPositions(), getOpenPositions(), getNetOpenPosition(),
+                    List.copyOf(buildTrades()));
         } finally {
             lock.readLock().unlock();
         }
@@ -302,22 +314,19 @@ public class LiveTradingRecord implements TradingRecord {
             if (tradesCache != null && tradesCacheVersion == modificationCount) {
                 return tradesCache;
             }
-            List<Trade> trades = new ArrayList<>();
-            for (Position position : positionBook.closedPositions()) {
-                trades.add(position.getEntry());
-                trades.add(position.getExit());
+        } finally {
+            lock.readLock().unlock();
+        }
+        lock.writeLock().lock();
+        try {
+            if (tradesCache != null && tradesCacheVersion == modificationCount) {
+                return tradesCache;
             }
-            for (PositionLot lot : positionBook.openLots()) {
-                trades.add(new Trade(lot.entryIndex(), startingType, lot.entryPrice(), lot.amount(),
-                        transactionCostModel));
-            }
-            trades.sort(Comparator.comparingInt(Trade::getIndex)
-                    .thenComparing(trade -> trade.getType() == startingType ? 0 : 1));
-            tradesCache = List.copyOf(trades);
+            tradesCache = List.copyOf(buildTrades());
             tradesCacheVersion = modificationCount;
             return tradesCache;
         } finally {
-            lock.readLock().unlock();
+            lock.writeLock().unlock();
         }
     }
 
@@ -375,6 +384,42 @@ public class LiveTradingRecord implements TradingRecord {
         if (fill.price().isNaN()) {
             throw new IllegalArgumentException("Fill price must be set");
         }
+        if (fill.fee().isNaN()) {
+            throw new IllegalArgumentException("Fill fee must be set");
+        }
+    }
+
+    private List<Trade> buildTrades() {
+        List<Trade> trades = new ArrayList<>();
+        for (Position position : positionBook.closedPositions()) {
+            trades.add(position.getEntry());
+            trades.add(position.getExit());
+        }
+        for (PositionLot lot : positionBook.openLots()) {
+            trades.add(new Trade(lot.entryIndex(), startingType, lot.entryPrice(), lot.amount(), transactionCostModel));
+        }
+        trades.sort(Comparator.comparingInt(Trade::getIndex)
+                .thenComparing(trade -> trade.getType() == startingType ? 0 : 1));
+        return trades;
+    }
+
+    /**
+     * Returns the total execution fees recorded by this record.
+     *
+     * @return total fees (zero if no fills)
+     * @since 0.22.2
+     */
+    public Num getTotalFees() {
+        lock.readLock().lock();
+        try {
+            if (totalFees == null) {
+                NumFactory factory = numFactory == null ? DoubleNumFactory.getInstance() : numFactory;
+                return factory.zero();
+            }
+            return totalFees;
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     @Override
@@ -395,5 +440,6 @@ public class LiveTradingRecord implements TradingRecord {
         tradesCache = null;
         tradesCacheVersion = -1L;
         modificationCount = 0L;
+        numFactory = null;
     }
 }
