@@ -68,7 +68,7 @@ public class PositionDurationCriterion extends AbstractAnalysisCriterion {
         var exitIndex = position.getExit().getIndex();
         var entryIndex = position.getEntry().getIndex();
         var indexDuration = exitIndex - entryIndex;
-        var secondsPeriod = series.getBar(series.getBeginIndex()).getTimePeriod().toSeconds();
+        var secondsPeriod = series.getFirstBar().getTimePeriod().toSeconds();
         return numFactory.numOf(indexDuration * secondsPeriod);
     }
 
