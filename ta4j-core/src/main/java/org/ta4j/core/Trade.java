@@ -70,7 +70,10 @@ public class Trade implements Serializable {
     /** The trade amount. */
     private final Num amount;
 
-    /** The cost for executing the trade. */
+    /**
+     * The modeled execution cost for this trade, derived from the configured
+     * {@link CostModel}.
+     */
     private Num cost;
 
     /** The cost model for trade execution. */
@@ -163,7 +166,8 @@ public class Trade implements Serializable {
     }
 
     /**
-     * @return the costs of the trade
+     * @return the modeled costs of the trade as calculated by the configured
+     *         {@link CostModel}
      */
     public Num getCost() {
         return cost;
