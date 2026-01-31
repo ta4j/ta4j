@@ -38,6 +38,7 @@ import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.ui.Layer;
 import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.time.TimeSeriesCollection;
+import org.jfree.data.xy.OHLCDataset;
 import org.jfree.data.xy.XYSeriesCollection;
 import org.junit.Assume;
 import org.junit.jupiter.api.BeforeEach;
@@ -82,6 +83,7 @@ import ta4jexamples.charting.ChartingTestFixtures;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.LabelPlacement;
+import ta4jexamples.charting.builder.TimeAxisMode;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 
 /**
@@ -274,6 +276,47 @@ class TradingChartFactoryTest {
 
         assertNotNull(domainAxis, "Domain axis should be a DateAxis");
         assertTrue(domainAxis.isAutoRange(), "Domain axis should be auto-ranging");
+    }
+
+    @Test
+    void testOhlcDatasetUsesBarEndTimesWithGaps() {
+        BarSeries gapSeries = ChartingTestFixtures.dailySeriesWithWeekendGap("Gap Series");
+        TradingRecord emptyRecord = ChartingTestFixtures.emptyRecord();
+
+        JFreeChart chart = factory.createTradingRecordChart(gapSeries, "Gap Strategy", emptyRecord);
+        XYPlot plot = (XYPlot) chart.getPlot();
+        OHLCDataset dataset = (OHLCDataset) plot.getDataset(0);
+
+        assertNotNull(dataset, "OHLC dataset should be present");
+        assertEquals(2, dataset.getItemCount(0), "OHLC dataset should contain the gap series bars");
+
+        long firstTime = dataset.getX(0, 0).longValue();
+        long secondTime = dataset.getX(0, 1).longValue();
+        assertEquals(gapSeries.getBar(0).getEndTime().toEpochMilli(), firstTime);
+        assertEquals(gapSeries.getBar(1).getEndTime().toEpochMilli(), secondTime);
+        assertEquals(Duration.ofDays(3).toMillis(), secondTime - firstTime,
+                "Gap between bars should be preserved on the time axis");
+    }
+
+    @Test
+    void testBarIndexTimeAxisModeCompressesMissingBars() {
+        BarSeries gapSeries = ChartingTestFixtures.dailySeriesWithWeekendGap("Gap Series");
+        TradingRecord emptyRecord = ChartingTestFixtures.emptyRecord();
+
+        JFreeChart chart = factory.createTradingRecordChart(gapSeries, "Gap Strategy", emptyRecord,
+                TimeAxisMode.BAR_INDEX);
+        XYPlot plot = (XYPlot) chart.getPlot();
+        assertInstanceOf(NumberAxis.class, plot.getDomainAxis(), "Bar-index policy should use a NumberAxis");
+
+        OHLCDataset dataset = (OHLCDataset) plot.getDataset(0);
+        assertNotNull(dataset, "OHLC dataset should be present");
+        assertEquals(2, dataset.getItemCount(0), "OHLC dataset should contain the gap series bars");
+
+        double firstX = dataset.getXValue(0, 0);
+        double secondX = dataset.getXValue(0, 1);
+        assertEquals(gapSeries.getBeginIndex(), firstX, 0.0);
+        assertEquals(gapSeries.getBeginIndex() + 1, secondX, 0.0);
+        assertEquals(1.0, secondX - firstX, 0.0, "Bar-index policy should compress gaps");
     }
 
     @Test
@@ -695,6 +738,21 @@ class TradingChartFactoryTest {
         assertNotNull(chart, "Dual-axis chart should not be null");
         assertNotNull(chart.getTitle(), "Chart should have a title");
         assertEquals("Custom Title", chart.getTitle().getText(), "Chart title should match custom title");
+    }
+
+    @Test
+    void testCreateDualAxisChartWithBarIndexTimeAxisMode() {
+        BarSeries gapSeries = ChartingTestFixtures.dailySeriesWithWeekendGap("Gap Series");
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(gapSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 3);
+
+        JFreeChart chart = factory.createDualAxisChart(gapSeries, closePrice, "Price", sma, "SMA", null,
+                TimeAxisMode.BAR_INDEX);
+        XYPlot plot = (XYPlot) chart.getPlot();
+
+        assertInstanceOf(NumberAxis.class, plot.getDomainAxis());
+        assertInstanceOf(XYSeriesCollection.class, plot.getDataset(0));
+        assertEquals(gapSeries.getBeginIndex(), plot.getDataset(0).getXValue(0, 0), 0.0);
     }
 
     @Test

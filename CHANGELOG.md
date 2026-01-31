@@ -1,6 +1,7 @@
 ## Unreleased
 
 ### Added
+- **Charting time axis mode**: Added `TimeAxisMode` with `BAR_INDEX` support to compress non-trading gaps (weekends/holidays) on charts while keeping bar timestamps intact.
 - **Concurrent real-time bar series pipeline**: Introduced core support for concurrent, streaming bar ingestion with
   a dedicated series (`ConcurrentBarSeries`/builder), realtime bar model (`RealtimeBar`/`BaseRealtimeBar`), and
   streaming-bar ingestion helpers to enable candle reconciliation and side/liquidity-aware trade aggregation.

@@ -40,6 +40,7 @@ import java.util.Objects;
 import java.util.Optional;
 
 import ta4jexamples.charting.builder.ChartBuilder;
+import ta4jexamples.charting.builder.TimeAxisMode;
 import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.charting.compose.TradingChartFactory;
 import ta4jexamples.charting.display.ChartDisplayer;
@@ -227,8 +228,20 @@ public class ChartWorkflow {
      * @since 0.19
      */
     public JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord) {
+        return createTradingRecordChart(series, strategyName, tradingRecord, TimeAxisMode.REAL_TIME);
+    }
+
+    /**
+     * Builds a chart that overlays a trading record on top of OHLC data using the
+     * supplied time axis mode.
+     *
+     * @since 0.23
+     */
+    public JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode) {
         validateTradingInputs(series, strategyName, tradingRecord);
-        return chartFactory.createTradingRecordChart(series, strategyName, tradingRecord);
+        validateTimeAxisMode(timeAxisMode);
+        return chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode);
     }
 
     /**
@@ -240,9 +253,22 @@ public class ChartWorkflow {
     @SafeVarargs
     public final JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             Indicator<Num>... indicators) {
+        return createTradingRecordChart(series, strategyName, tradingRecord, TimeAxisMode.REAL_TIME, indicators);
+    }
+
+    /**
+     * Builds a chart that overlays a trading record on top of OHLC data and appends
+     * indicator subplots using the supplied time axis mode.
+     *
+     * @since 0.23
+     */
+    @SafeVarargs
+    public final JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode, Indicator<Num>... indicators) {
         validateTradingInputs(series, strategyName, tradingRecord);
+        validateTimeAxisMode(timeAxisMode);
         validateIndicators(indicators);
-        return chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, indicators);
+        return chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, indicators);
     }
 
     /**
@@ -252,8 +278,21 @@ public class ChartWorkflow {
      * @since 0.19
      */
     public Optional<Path> saveTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord) {
+        return saveTradingRecordChart(series, strategyName, tradingRecord, TimeAxisMode.REAL_TIME);
+    }
+
+    /**
+     * Persists a trading record chart if persistence is configured, using the
+     * supplied time axis mode.
+     *
+     * @return an optional path to the stored chart
+     * @since 0.23
+     */
+    public Optional<Path> saveTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode) {
         validateTradingInputs(series, strategyName, tradingRecord);
-        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord);
+        validateTimeAxisMode(timeAxisMode);
+        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode);
         String chartTitle = chart.getTitle() != null ? chart.getTitle().getText()
                 : chartFactory.buildChartTitle(series.getName(), strategyName);
         return chartStorage.save(chart, series, chartTitle, DEFAULT_CHART_IMAGE_WIDTH, DEFAULT_CHART_IMAGE_HEIGHT);
@@ -269,9 +308,24 @@ public class ChartWorkflow {
     @SafeVarargs
     public final Optional<Path> saveTradingRecordChart(BarSeries series, String strategyName,
             TradingRecord tradingRecord, Indicator<Num>... indicators) {
+        return saveTradingRecordChart(series, strategyName, tradingRecord, TimeAxisMode.REAL_TIME, indicators);
+    }
+
+    /**
+     * Persists a trading record chart with indicator subplots if persistence is
+     * configured, using the supplied time axis mode.
+     *
+     * @return an optional path to the stored chart
+     * @since 0.23
+     */
+    @SafeVarargs
+    public final Optional<Path> saveTradingRecordChart(BarSeries series, String strategyName,
+            TradingRecord tradingRecord, TimeAxisMode timeAxisMode, Indicator<Num>... indicators) {
         validateTradingInputs(series, strategyName, tradingRecord);
+        validateTimeAxisMode(timeAxisMode);
         validateIndicators(indicators);
-        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, indicators);
+        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode,
+                indicators);
         String chartTitle = chart.getTitle() != null ? chart.getTitle().getText()
                 : chartFactory.buildChartTitle(series.getName(), strategyName);
         return chartStorage.save(chart, series, chartTitle, DEFAULT_CHART_IMAGE_WIDTH, DEFAULT_CHART_IMAGE_HEIGHT);
@@ -283,9 +337,21 @@ public class ChartWorkflow {
      * @since 0.19
      */
     public void displayTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord) {
+        displayTradingRecordChart(series, strategyName, tradingRecord, TimeAxisMode.REAL_TIME);
+    }
+
+    /**
+     * Displays a trading record chart, logging any presentation exceptions, using
+     * the supplied time axis mode.
+     *
+     * @since 0.23
+     */
+    public void displayTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode) {
         validateTradingInputs(series, strategyName, tradingRecord);
+        validateTimeAxisMode(timeAxisMode);
         try {
-            JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord);
+            JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode);
             displayChart(chart);
         } catch (Exception ex) {
             LOG.error("Failed to display trading record chart for {}@{}", strategyName, safeSeriesName(series), ex);
@@ -301,10 +367,24 @@ public class ChartWorkflow {
     @SafeVarargs
     public final void displayTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             Indicator<Num>... indicators) {
+        displayTradingRecordChart(series, strategyName, tradingRecord, TimeAxisMode.REAL_TIME, indicators);
+    }
+
+    /**
+     * Displays a trading record chart with indicator subplots, logging any
+     * presentation exceptions, using the supplied time axis mode.
+     *
+     * @since 0.23
+     */
+    @SafeVarargs
+    public final void displayTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode, Indicator<Num>... indicators) {
         validateTradingInputs(series, strategyName, tradingRecord);
+        validateTimeAxisMode(timeAxisMode);
         validateIndicators(indicators);
         try {
-            JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, indicators);
+            JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode,
+                    indicators);
             displayChart(chart);
         } catch (Exception ex) {
             LOG.error("Failed to display trading record chart for {}@{}", strategyName, safeSeriesName(series), ex);
@@ -317,8 +397,20 @@ public class ChartWorkflow {
      * @since 0.19
      */
     public byte[] createTradingRecordChartBytes(BarSeries series, String strategyName, TradingRecord tradingRecord) {
+        return createTradingRecordChartBytes(series, strategyName, tradingRecord, TimeAxisMode.REAL_TIME);
+    }
+
+    /**
+     * Produces a PNG representation of a trading record chart using the supplied
+     * time axis mode.
+     *
+     * @since 0.23
+     */
+    public byte[] createTradingRecordChartBytes(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode) {
         validateTradingInputs(series, strategyName, tradingRecord);
-        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord);
+        validateTimeAxisMode(timeAxisMode);
+        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode);
         return getChartAsByteArray(chart);
     }
 
@@ -331,9 +423,23 @@ public class ChartWorkflow {
     @SafeVarargs
     public final byte[] createTradingRecordChartBytes(BarSeries series, String strategyName,
             TradingRecord tradingRecord, Indicator<Num>... indicators) {
+        return createTradingRecordChartBytes(series, strategyName, tradingRecord, TimeAxisMode.REAL_TIME, indicators);
+    }
+
+    /**
+     * Produces a PNG representation of a trading record chart with indicator
+     * subplots using the supplied time axis mode.
+     *
+     * @since 0.23
+     */
+    @SafeVarargs
+    public final byte[] createTradingRecordChartBytes(BarSeries series, String strategyName,
+            TradingRecord tradingRecord, TimeAxisMode timeAxisMode, Indicator<Num>... indicators) {
         validateTradingInputs(series, strategyName, tradingRecord);
+        validateTimeAxisMode(timeAxisMode);
         validateIndicators(indicators);
-        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, indicators);
+        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode,
+                indicators);
         return getChartAsByteArray(chart);
     }
 
@@ -345,9 +451,23 @@ public class ChartWorkflow {
      */
     @SafeVarargs
     public final JFreeChart createIndicatorChart(BarSeries series, Indicator<Num>... indicators) {
+        return createIndicatorChart(series, TimeAxisMode.REAL_TIME, indicators);
+    }
+
+    /**
+     * Builds an indicator chart with the bar series in the main section and each
+     * indicator in its own section below, each with its own Y-axis, using the
+     * supplied time axis mode.
+     *
+     * @since 0.23
+     */
+    @SafeVarargs
+    public final JFreeChart createIndicatorChart(BarSeries series, TimeAxisMode timeAxisMode,
+            Indicator<Num>... indicators) {
         validateSeries(series);
+        validateTimeAxisMode(timeAxisMode);
         validateIndicators(indicators);
-        return chartFactory.createIndicatorChart(series, indicators);
+        return chartFactory.createIndicatorChart(series, timeAxisMode, indicators);
     }
 
     /**
@@ -358,8 +478,21 @@ public class ChartWorkflow {
      */
     @SafeVarargs
     public final void displayIndicatorChart(BarSeries series, Indicator<Num>... indicators) {
+        displayIndicatorChart(series, TimeAxisMode.REAL_TIME, indicators);
+    }
+
+    /**
+     * Displays an indicator chart with the bar series in the main section and each
+     * indicator in its own section below, each with its own Y-axis, using the
+     * supplied time axis mode.
+     *
+     * @since 0.23
+     */
+    @SafeVarargs
+    public final void displayIndicatorChart(BarSeries series, TimeAxisMode timeAxisMode, Indicator<Num>... indicators) {
+        validateTimeAxisMode(timeAxisMode);
         try {
-            JFreeChart chart = createIndicatorChart(series, indicators);
+            JFreeChart chart = createIndicatorChart(series, timeAxisMode, indicators);
             displayChart(chart);
         } catch (Exception ex) {
             LOG.error("Failed to display indicator chart for {}", safeSeriesName(series), ex);
@@ -379,7 +512,8 @@ public class ChartWorkflow {
      */
     public JFreeChart createDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
             Indicator<Num> secondaryIndicator, String secondaryLabel) {
-        return createDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator, secondaryLabel, null);
+        return createDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator, secondaryLabel, null,
+                TimeAxisMode.REAL_TIME);
     }
 
     /**
@@ -397,6 +531,27 @@ public class ChartWorkflow {
      */
     public JFreeChart createDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
             Indicator<Num> secondaryIndicator, String secondaryLabel, String chartTitle) {
+        return createDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator, secondaryLabel,
+                chartTitle, TimeAxisMode.REAL_TIME);
+    }
+
+    /**
+     * Builds a dual-axis chart with two indicators, a custom chart title, and a
+     * custom time axis mode.
+     *
+     * @param series             the bar series
+     * @param primaryIndicator   the primary indicator (left axis)
+     * @param primaryLabel       the label for the primary axis
+     * @param secondaryIndicator the secondary indicator (right axis)
+     * @param secondaryLabel     the label for the secondary axis
+     * @param chartTitle         the title for the chart (optional, uses series name
+     *                           if null)
+     * @param timeAxisMode       the time axis mode to use
+     * @return the dual-axis chart
+     * @since 0.23
+     */
+    public JFreeChart createDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
+            Indicator<Num> secondaryIndicator, String secondaryLabel, String chartTitle, TimeAxisMode timeAxisMode) {
         validateSeries(series);
         if (primaryIndicator == null) {
             throw new IllegalArgumentException("Primary indicator cannot be null");
@@ -410,8 +565,9 @@ public class ChartWorkflow {
         if (secondaryLabel == null || secondaryLabel.trim().isEmpty()) {
             throw new IllegalArgumentException("Secondary label cannot be null or empty");
         }
+        validateTimeAxisMode(timeAxisMode);
         return chartFactory.createDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator,
-                secondaryLabel, chartTitle);
+                secondaryLabel, chartTitle, timeAxisMode);
     }
 
     /**
@@ -427,7 +583,24 @@ public class ChartWorkflow {
     public void displayDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
             Indicator<Num> secondaryIndicator, String secondaryLabel) {
         displayDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator, secondaryLabel,
-                safeSeriesName(series), null);
+                safeSeriesName(series), null, TimeAxisMode.REAL_TIME);
+    }
+
+    /**
+     * Displays a dual-axis chart with two indicators and a custom time axis mode.
+     *
+     * @param series             the bar series
+     * @param primaryIndicator   the primary indicator (left axis)
+     * @param primaryLabel       the label for the primary axis
+     * @param secondaryIndicator the secondary indicator (right axis)
+     * @param secondaryLabel     the label for the secondary axis
+     * @param timeAxisMode       the time axis mode to use
+     * @since 0.23
+     */
+    public void displayDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
+            Indicator<Num> secondaryIndicator, String secondaryLabel, TimeAxisMode timeAxisMode) {
+        displayDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator, secondaryLabel,
+                safeSeriesName(series), null, timeAxisMode);
     }
 
     /**
@@ -447,9 +620,32 @@ public class ChartWorkflow {
      */
     public void displayDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
             Indicator<Num> secondaryIndicator, String secondaryLabel, String chartTitle, String windowTitle) {
+        displayDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator, secondaryLabel, chartTitle,
+                windowTitle, TimeAxisMode.REAL_TIME);
+    }
+
+    /**
+     * Displays a dual-axis chart with two indicators, optional chart title,
+     * optional window title, and a custom time axis mode.
+     *
+     * @param series             the bar series
+     * @param primaryIndicator   the primary indicator (left axis)
+     * @param primaryLabel       the label for the primary axis
+     * @param secondaryIndicator the secondary indicator (right axis)
+     * @param secondaryLabel     the label for the secondary axis
+     * @param chartTitle         the title for the chart (optional, uses series name
+     *                           if null)
+     * @param windowTitle        the title for the window/frame (optional, uses
+     *                           default if null)
+     * @param timeAxisMode       the time axis mode to use
+     * @since 0.23
+     */
+    public void displayDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
+            Indicator<Num> secondaryIndicator, String secondaryLabel, String chartTitle, String windowTitle,
+            TimeAxisMode timeAxisMode) {
         try {
             JFreeChart chart = createDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator,
-                    secondaryLabel, chartTitle);
+                    secondaryLabel, chartTitle, timeAxisMode);
             if (windowTitle != null && !windowTitle.trim().isEmpty()) {
                 chartDisplayer.display(chart, windowTitle);
             } else {
@@ -617,6 +813,10 @@ public class ChartWorkflow {
                 throw new IllegalArgumentException("Indicators cannot contain null values");
             }
         }
+    }
+
+    private void validateTimeAxisMode(TimeAxisMode timeAxisMode) {
+        Objects.requireNonNull(timeAxisMode, "Time axis mode cannot be null");
     }
 
     private void validateSeries(BarSeries series) {

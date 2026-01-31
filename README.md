@@ -409,6 +409,7 @@ Basic strategy visualization with indicator overlays:
 ChartWorkflow chartWorkflow = new ChartWorkflow();
 JFreeChart chart = chartWorkflow.builder()
         .withTitle("EMA Crossover Strategy")
+        .withTimeAxisMode(TimeAxisMode.BAR_INDEX) // Optional: compress non-trading gaps (weekends/holidays)
         .withSeries(series) // Price bars (candlesticks)
         .withIndicatorOverlay(fastEma) // Overlay indicators on price chart
         .withIndicatorOverlay(slowEma)
@@ -421,6 +422,7 @@ chartWorkflow.saveChartImage(chart, series, "ema-crossover-strategy", "output/ch
 ![EMA Crossover Strategy Chart](ta4j-examples/docs/img/ema-crossover-readme.jpg)
 
 The chart above shows candlestick price data with EMA lines overlaid and buy/sell signals marked with arrows. This demonstrates basic strategy visualization with indicator overlays.
+Use `TimeAxisMode.BAR_INDEX` when you want to remove visual gaps from weekends or market holidays while keeping the underlying bar timestamps intact.
 
 **Adding indicator subcharts** for indicators with different scales (like RSI, which ranges from 0-100):
 <!-- START_SNIPPET: rsi-strategy -->

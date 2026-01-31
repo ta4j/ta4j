@@ -65,6 +65,13 @@ public final class ChartingTestFixtures {
         return linearSeries(name, HOURLY_PERIOD, 5, 100.0, 0.5, 0.5, 500.0, 50.0);
     }
 
+    public static BarSeries dailySeriesWithWeekendGap(final String name) {
+        final var series = new MockBarSeriesBuilder().withName(name).build();
+        addBar(series, START_TIME, DAILY_PERIOD, 100.0, 102.0, 99.0, 101.0, 1000.0);
+        addBar(series, START_TIME.plus(Duration.ofDays(3)), DAILY_PERIOD, 101.0, 103.0, 100.0, 102.0, 1100.0);
+        return series;
+    }
+
     public static BarSeries problematicSeries() {
         final var series = new MockBarSeriesBuilder().withName("Problematic Series").build();
         addBar(series, START_TIME, DAILY_PERIOD, 0.0, 0.0, 0.0, 0.0, 0.0);

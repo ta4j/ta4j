@@ -87,6 +87,7 @@ public final class ChartBuilder {
     private boolean consumed;
     private String customTitle;
     private BarSeries domainSeries;
+    private TimeAxisMode timeAxisMode = TimeAxisMode.REAL_TIME;
 
     public ChartBuilder(ChartWorkflow chartWorkflow, TradingChartFactory chartFactory) {
         this.chartWorkflow = Objects.requireNonNull(chartWorkflow, "Chart workflow cannot be null");
@@ -101,6 +102,18 @@ public final class ChartBuilder {
      */
     public ChartBuilder withTitle(String title) {
         this.customTitle = title;
+        return this;
+    }
+
+    /**
+     * Sets the time axis mode for the chart domain axis.
+     *
+     * @param timeAxisMode the time axis mode to apply
+     * @return this builder
+     * @since 0.23
+     */
+    public ChartBuilder withTimeAxisMode(TimeAxisMode timeAxisMode) {
+        this.timeAxisMode = Objects.requireNonNull(timeAxisMode, "Time axis mode cannot be null");
         return this;
     }
 
@@ -393,7 +406,7 @@ public final class ChartBuilder {
         } else {
             subplots = Collections.emptyList();
         }
-        return new ChartDefinition(base, subplots, customTitle);
+        return new ChartDefinition(base, subplots, customTitle, timeAxisMode);
     }
 
     private ChartPlan createPlan() {
@@ -548,6 +561,15 @@ public final class ChartBuilder {
          * @return this chart stage for further configuration
          */
         ChartStage withTitle(String title);
+
+        /**
+         * Sets the time axis mode for the chart domain axis.
+         *
+         * @param timeAxisMode the time axis mode to apply
+         * @return this chart stage for further configuration
+         * @since 0.23
+         */
+        ChartStage withTimeAxisMode(TimeAxisMode timeAxisMode);
 
         /**
          * Adds a horizontal marker (reference line) at the specified Y-axis value.
@@ -817,6 +839,13 @@ public final class ChartBuilder {
         }
 
         @Override
+        public ChartStage withTimeAxisMode(TimeAxisMode timeAxisMode) {
+            ensureActive();
+            ChartBuilder.this.withTimeAxisMode(timeAxisMode);
+            return this;
+        }
+
+        @Override
         public StyledMarkerStage withHorizontalMarker(double yValue) {
             ensureActive();
             return addHorizontalMarker(context, yValue);
@@ -1070,11 +1099,14 @@ public final class ChartBuilder {
         private final PlotDefinition basePlot;
         private final List<PlotDefinition> subplots;
         private final String title;
+        private final TimeAxisMode timeAxisMode;
 
-        ChartDefinition(PlotDefinition basePlot, List<PlotDefinition> subplots, String title) {
+        ChartDefinition(PlotDefinition basePlot, List<PlotDefinition> subplots, String title,
+                TimeAxisMode timeAxisMode) {
             this.basePlot = basePlot;
             this.subplots = subplots;
             this.title = title;
+            this.timeAxisMode = timeAxisMode;
         }
 
         /**
@@ -1102,6 +1134,16 @@ public final class ChartBuilder {
          */
         public String title() {
             return title;
+        }
+
+        /**
+         * Returns the time axis mode for the chart domain axis.
+         *
+         * @return the time axis mode
+         * @since 0.23
+         */
+        public TimeAxisMode timeAxisMode() {
+            return timeAxisMode;
         }
     }
 

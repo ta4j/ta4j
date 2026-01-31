@@ -24,12 +24,14 @@
 package ta4jexamples.charting.builder;
 
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.StandardXYItemRenderer;
 import org.jfree.chart.renderer.xy.XYDifferenceRenderer;
 import org.jfree.chart.ui.Layer;
 import org.jfree.data.time.TimeSeriesCollection;
+import org.jfree.data.xy.OHLCDataset;
 import org.jfree.data.xy.XYDataset;
 
 import java.util.Collection;
@@ -83,6 +85,24 @@ class ChartBuilderTest {
         XYPlot basePlot = combined.getSubplots().get(0);
         // Candle dataset + overlay dataset
         assertEquals(2, basePlot.getDatasetCount());
+    }
+
+    @Test
+    void barIndexTimeAxisModeBuildsNumberAxis() {
+        BarSeries gapSeries = ChartingTestFixtures.dailySeriesWithWeekendGap("Gap Series");
+
+        JFreeChart chart = chartWorkflow.builder()
+                .withTimeAxisMode(TimeAxisMode.BAR_INDEX)
+                .withSeries(gapSeries)
+                .toChart();
+
+        CombinedDomainXYPlot combined = (CombinedDomainXYPlot) chart.getPlot();
+        assertInstanceOf(NumberAxis.class, combined.getDomainAxis());
+
+        XYPlot basePlot = combined.getSubplots().get(0);
+        OHLCDataset dataset = (OHLCDataset) basePlot.getDataset(0);
+        assertEquals(gapSeries.getBeginIndex(), dataset.getXValue(0, 0), 0.0);
+        assertEquals(gapSeries.getBeginIndex() + 1, dataset.getXValue(0, 1), 0.0);
     }
 
     @Test
