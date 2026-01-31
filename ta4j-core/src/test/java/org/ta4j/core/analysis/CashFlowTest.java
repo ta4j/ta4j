@@ -351,6 +351,26 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void cashFlowWithZeroCostsProducesConsistentValuesForCompressedSeries() {
+        double[] originalPrices = { 100, 105, 110, 115, 120 };
+        double[] compressedPrices = { 100, 110, 120 };
+
+        var originalSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(originalPrices).build();
+        var compressedSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(compressedPrices).build();
+
+        var originalRecord = new BaseTradingRecord(Trade.buyAt(0, originalSeries),
+                Trade.sellAt(originalSeries.getEndIndex(), originalSeries));
+        var compressedRecord = new BaseTradingRecord(Trade.buyAt(0, compressedSeries),
+                Trade.sellAt(compressedSeries.getEndIndex(), compressedSeries));
+
+        var originalCashFlow = new CashFlow(originalSeries, originalRecord);
+        var compressedCashFlow = new CashFlow(compressedSeries, compressedRecord);
+
+        assertNumEquals(originalCashFlow.getValue(2), compressedCashFlow.getValue(1));
+        assertNumEquals(originalCashFlow.getValue(4), compressedCashFlow.getValue(2));
+    }
+
+    @Test
     public void reallyLongCashFlow() {
         int size = 1000000;
         var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)

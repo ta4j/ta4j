@@ -42,8 +42,8 @@
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
 - **Performance indicators**: `CashFlow`, `CumulativePnL`, and `Returns` now align on bar indices, support explicit
   equity curve/open-position handling, and incorporate multiple open lots from live trading records.
-- **Drawdown criteria**: Maximum drawdown variants and Sharpe ratio now accept equity curve mode/open-position handling
-  so realized-only analysis ignores open positions consistently.
+- **Drawdown criteria**: Maximum drawdown variants, ReturnOverMaxDrawdownCriterion, and Sharpe ratio now accept equity
+  curve mode/open-position handling so realized-only analysis ignores open positions consistently.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
 - **Elliott Wave analysis example**: Scenario probability weighting now applies adaptive confidence contrast so closely scored scenarios separate more clearly.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
