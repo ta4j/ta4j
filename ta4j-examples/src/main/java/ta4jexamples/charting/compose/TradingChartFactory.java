@@ -366,15 +366,7 @@ public final class TradingChartFactory {
             chartTitle = series.getName();
         }
         JFreeChart chart = new JFreeChart(chartTitle, null, combinedPlot, true);
-        chart.setAntiAlias(true);
-        chart.setTextAntiAlias(true);
-        chart.setBackgroundPaint(CHART_BACKGROUND_COLOR);
-        chart.setBackgroundImageAlpha(CHART_BACKGROUND_ALPHA);
-
-        // Style the title to be visible on black background
-        if (chart.getTitle() != null) {
-            chart.getTitle().setPaint(Color.LIGHT_GRAY);
-        }
+        applyChartStyling(chart);
 
         return chart;
     }
@@ -399,9 +391,7 @@ public final class TradingChartFactory {
         String resolvedTitle = definition.title() != null && !definition.title().trim().isEmpty() ? definition.title()
                 : buildChartTitle(baseDefinition.series() != null ? baseDefinition.series().getName() : "", "");
         JFreeChart chart = new JFreeChart(resolvedTitle, JFreeChart.DEFAULT_TITLE_FONT, combinedPlot, true);
-        chart.setBackgroundPaint(CHART_BACKGROUND_COLOR);
-        chart.setAntiAlias(true);
-        chart.setTextAntiAlias(true);
+        applyChartStyling(chart, false);
         return chart;
     }
 
@@ -432,16 +422,7 @@ public final class TradingChartFactory {
 
             JFreeChart chart = ChartFactory.createTimeSeriesChart(effectiveTitle,
                     resolveDomainAxisLabel(resolvedTimeAxisMode), primaryLabel, primaryDataset, true, true, false);
-
-            chart.setAntiAlias(true);
-            chart.setTextAntiAlias(true);
-            chart.setBackgroundPaint(CHART_BACKGROUND_COLOR);
-            chart.setBackgroundImageAlpha(CHART_BACKGROUND_ALPHA);
-
-            // Style the title to be visible on black background
-            if (chart.getTitle() != null) {
-                chart.getTitle().setPaint(Color.LIGHT_GRAY);
-            }
+            applyChartStyling(chart);
 
             XYPlot plot = (XYPlot) chart.getPlot();
             configureDualAxisPlot(plot, series, duration, resolvedTimeAxisMode);
@@ -464,14 +445,7 @@ public final class TradingChartFactory {
         addSecondaryAxis(plot, secondaryDataset, secondaryLabel, resolvedTimeAxisMode, series, duration);
 
         JFreeChart chart = new JFreeChart(effectiveTitle, JFreeChart.DEFAULT_TITLE_FONT, plot, true);
-        chart.setBackgroundPaint(CHART_BACKGROUND_COLOR);
-        chart.setBackgroundImageAlpha(CHART_BACKGROUND_ALPHA);
-        chart.setAntiAlias(true);
-        chart.setTextAntiAlias(true);
-
-        if (chart.getTitle() != null) {
-            chart.getTitle().setPaint(Color.LIGHT_GRAY);
-        }
+        applyChartStyling(chart);
 
         return chart;
     }
@@ -535,16 +509,7 @@ public final class TradingChartFactory {
             TimeAxisMode timeAxisMode) {
         String domainLabel = resolveDomainAxisLabel(timeAxisMode);
         JFreeChart chart = ChartFactory.createCandlestickChart(chartTitle, domainLabel, "Price (USD)", dataSet, true);
-
-        chart.setAntiAlias(true);
-        chart.setTextAntiAlias(true);
-        chart.setBackgroundPaint(CHART_BACKGROUND_COLOR);
-        chart.setBackgroundImageAlpha(CHART_BACKGROUND_ALPHA);
-
-        // Style the title to be visible on black background
-        if (chart.getTitle() != null) {
-            chart.getTitle().setPaint(Color.LIGHT_GRAY);
-        }
+        applyChartStyling(chart);
 
         XYPlot plot = (XYPlot) chart.getPlot();
         plot.setDomainAxis(createDomainAxis(series, duration, timeAxisMode, domainLabel, 0.03, 0.07));
@@ -553,6 +518,20 @@ public final class TradingChartFactory {
         configurePlotAppearance(plot);
 
         return chart;
+    }
+
+    private void applyChartStyling(JFreeChart chart) {
+        applyChartStyling(chart, true);
+    }
+
+    private void applyChartStyling(JFreeChart chart, boolean styleTitle) {
+        chart.setAntiAlias(true);
+        chart.setTextAntiAlias(true);
+        chart.setBackgroundPaint(CHART_BACKGROUND_COLOR);
+        chart.setBackgroundImageAlpha(CHART_BACKGROUND_ALPHA);
+        if (styleTitle && chart.getTitle() != null) {
+            chart.getTitle().setPaint(Color.LIGHT_GRAY);
+        }
     }
 
     private void configureRangeAxis(XYPlot plot) {
