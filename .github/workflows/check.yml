@@ -25,8 +25,10 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Set up Java
-        uses: ./.github/actions/setup-java
+        uses: actions/setup-java@v5
         with:
+          distribution: temurin
+          java-version: 25
           cache: maven
 
       - name: Check license headers

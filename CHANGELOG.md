@@ -34,7 +34,6 @@
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
-- **GitHub Actions Java setup**: Centralized the Java version configuration in a shared setup action for workflows.
 - **JDK**: updated to Java 25
 
 ### Fixed
