@@ -26,12 +26,9 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Set up Java
-        uses: actions/setup-java@v5
+        uses: ./.github/actions/setup-java
         with:
-          distribution: temurin
-          java-version: 25
           cache: maven
 
       - name: Build and run tests with Maven
         run: xvfb-run mvn -B test
-

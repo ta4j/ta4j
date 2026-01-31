@@ -1,0 +1,50 @@
+name: Setup Java
+description: "Set up Java with a centralized version for workflows."
+inputs:
+  java-version:
+    description: "Java version to install"
+    required: false
+    default: "25"
+  distribution:
+    description: "Java distribution"
+    required: false
+    default: "temurin"
+  cache:
+    description: "Dependency cache (e.g., maven)"
+    required: false
+    default: ""
+  server-id:
+    description: "Maven server ID"
+    required: false
+    default: ""
+  server-username:
+    description: "Maven server username"
+    required: false
+    default: ""
+  server-password:
+    description: "Maven server password"
+    required: false
+    default: ""
+  gpg-private-key:
+    description: "GPG private key"
+    required: false
+    default: ""
+  gpg-passphrase:
+    description: "GPG passphrase"
+    required: false
+    default: ""
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up Java
+      uses: actions/setup-java@v5
+      with:
+        distribution: ${{ inputs.distribution }}
+        java-version: ${{ inputs.java-version }}
+        cache: ${{ inputs.cache }}
+        server-id: ${{ inputs.server-id }}
+        server-username: ${{ inputs.server-username }}
+        server-password: ${{ inputs.server-password }}
+        gpg-private-key: ${{ inputs.gpg-private-key }}
+        gpg-passphrase: ${{ inputs.gpg-passphrase }}

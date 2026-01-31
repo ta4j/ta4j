@@ -397,18 +397,14 @@ jobs:
 
       - name: Set up Java (dry-run without publishing secrets)
         if: steps.dry_run.outputs.dryRun == 'true' && steps.collect_missing.outputs.has_missing == 'true'
-        uses: actions/setup-java@v5
+        uses: ./.github/actions/setup-java
         with:
-          distribution: temurin
-          java-version: 25
           cache: maven
 
       - name: Set up Java with publishing secrets
         if: steps.dry_run.outputs.dryRun != 'true' || steps.collect_missing.outputs.has_missing != 'true'
-        uses: actions/setup-java@v5
+        uses: ./.github/actions/setup-java
         with:
-          distribution: temurin
-          java-version: 25
           cache: maven
           server-id: central
           server-username: ${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}
