@@ -1,25 +1,5 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package ta4jexamples.charting;
 
@@ -63,6 +43,13 @@ public final class ChartingTestFixtures {
 
     public static BarSeries hourlySeries(final String name) {
         return linearSeries(name, HOURLY_PERIOD, 5, 100.0, 0.5, 0.5, 500.0, 50.0);
+    }
+
+    public static BarSeries dailySeriesWithWeekendGap(final String name) {
+        final var series = new MockBarSeriesBuilder().withName(name).build();
+        addBar(series, START_TIME, DAILY_PERIOD, 100.0, 102.0, 99.0, 101.0, 1000.0);
+        addBar(series, START_TIME.plus(Duration.ofDays(3)), DAILY_PERIOD, 101.0, 103.0, 100.0, 102.0, 1100.0);
+        return series;
     }
 
     public static BarSeries problematicSeries() {

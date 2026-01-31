@@ -11,17 +11,6 @@
     <url>https://github.com/ta4j/ta4j</url>
     <inceptionYear>2014</inceptionYear>
 
-    <developers>
-        <developer>
-            <id>mdeverdelhan</id>
-            <name>Marc de Verdelhan</name>
-        </developer>
-        <developer>
-            <id>team172011</id>
-            <name>Simon-Justus Wimmer</name>
-        </developer>
-    </developers>
-
     <licenses>
         <license>
             <name>MIT License</name>
@@ -41,10 +30,6 @@
             <url>https://central.sonatype.com/repository/maven-snapshots/</url>
         </snapshotRepository>
     </distributionManagement>
-
-    <ciManagement>
-        <url>https://travis-ci.org/ta4j/ta4j</url>
-    </ciManagement>
 
     <scm>
         <connection>scm:git:git://github.com/ta4j/ta4j.git</connection>
@@ -336,7 +321,7 @@
                 <configuration>
                     <licenseSets>
                         <licenseSet>
-                            <header>${maven.multiModuleProjectDirectory}/LICENSE</header>
+                            <header>${maven.multiModuleProjectDirectory}/license-header.txt</header>
                             <includes>
                                 <include>**/*.java</include>
                             </includes>
