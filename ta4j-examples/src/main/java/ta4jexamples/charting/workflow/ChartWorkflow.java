@@ -36,8 +36,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import ta4jexamples.charting.builder.ChartBuilder;
 import ta4jexamples.charting.builder.TimeAxisMode;
@@ -239,9 +241,7 @@ public class ChartWorkflow {
      */
     public JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode) {
-        validateTradingInputs(series, strategyName, tradingRecord);
-        validateTimeAxisMode(timeAxisMode);
-        return chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode);
+        return buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, null, false);
     }
 
     /**
@@ -265,10 +265,7 @@ public class ChartWorkflow {
     @SafeVarargs
     public final JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode, Indicator<Num>... indicators) {
-        validateTradingInputs(series, strategyName, tradingRecord);
-        validateTimeAxisMode(timeAxisMode);
-        validateIndicators(indicators);
-        return chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, indicators);
+        return buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, indicators, true);
     }
 
     /**
@@ -290,11 +287,8 @@ public class ChartWorkflow {
      */
     public Optional<Path> saveTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode) {
-        validateTradingInputs(series, strategyName, tradingRecord);
-        validateTimeAxisMode(timeAxisMode);
-        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode);
-        String chartTitle = chart.getTitle() != null ? chart.getTitle().getText()
-                : chartFactory.buildChartTitle(series.getName(), strategyName);
+        JFreeChart chart = buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, null, false);
+        String chartTitle = resolveChartTitle(chart, series, strategyName);
         return chartStorage.save(chart, series, chartTitle, DEFAULT_CHART_IMAGE_WIDTH, DEFAULT_CHART_IMAGE_HEIGHT);
     }
 
@@ -321,13 +315,8 @@ public class ChartWorkflow {
     @SafeVarargs
     public final Optional<Path> saveTradingRecordChart(BarSeries series, String strategyName,
             TradingRecord tradingRecord, TimeAxisMode timeAxisMode, Indicator<Num>... indicators) {
-        validateTradingInputs(series, strategyName, tradingRecord);
-        validateTimeAxisMode(timeAxisMode);
-        validateIndicators(indicators);
-        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode,
-                indicators);
-        String chartTitle = chart.getTitle() != null ? chart.getTitle().getText()
-                : chartFactory.buildChartTitle(series.getName(), strategyName);
+        JFreeChart chart = buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, indicators, true);
+        String chartTitle = resolveChartTitle(chart, series, strategyName);
         return chartStorage.save(chart, series, chartTitle, DEFAULT_CHART_IMAGE_WIDTH, DEFAULT_CHART_IMAGE_HEIGHT);
     }
 
@@ -350,12 +339,9 @@ public class ChartWorkflow {
             TimeAxisMode timeAxisMode) {
         validateTradingInputs(series, strategyName, tradingRecord);
         validateTimeAxisMode(timeAxisMode);
-        try {
-            JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode);
-            displayChart(chart);
-        } catch (Exception ex) {
-            LOG.error("Failed to display trading record chart for {}@{}", strategyName, safeSeriesName(series), ex);
-        }
+        displayChartSafely(
+                () -> chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode), null,
+                "Failed to display trading record chart for {}@{}", strategyName, safeSeriesName(series));
     }
 
     /**
@@ -382,13 +368,10 @@ public class ChartWorkflow {
         validateTradingInputs(series, strategyName, tradingRecord);
         validateTimeAxisMode(timeAxisMode);
         validateIndicators(indicators);
-        try {
-            JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode,
-                    indicators);
-            displayChart(chart);
-        } catch (Exception ex) {
-            LOG.error("Failed to display trading record chart for {}@{}", strategyName, safeSeriesName(series), ex);
-        }
+        displayChartSafely(
+                () -> chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode,
+                        indicators),
+                null, "Failed to display trading record chart for {}@{}", strategyName, safeSeriesName(series));
     }
 
     /**
@@ -408,9 +391,7 @@ public class ChartWorkflow {
      */
     public byte[] createTradingRecordChartBytes(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode) {
-        validateTradingInputs(series, strategyName, tradingRecord);
-        validateTimeAxisMode(timeAxisMode);
-        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode);
+        JFreeChart chart = buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, null, false);
         return getChartAsByteArray(chart);
     }
 
@@ -435,11 +416,7 @@ public class ChartWorkflow {
     @SafeVarargs
     public final byte[] createTradingRecordChartBytes(BarSeries series, String strategyName,
             TradingRecord tradingRecord, TimeAxisMode timeAxisMode, Indicator<Num>... indicators) {
-        validateTradingInputs(series, strategyName, tradingRecord);
-        validateTimeAxisMode(timeAxisMode);
-        validateIndicators(indicators);
-        JFreeChart chart = chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode,
-                indicators);
+        JFreeChart chart = buildTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, indicators, true);
         return getChartAsByteArray(chart);
     }
 
@@ -464,10 +441,7 @@ public class ChartWorkflow {
     @SafeVarargs
     public final JFreeChart createIndicatorChart(BarSeries series, TimeAxisMode timeAxisMode,
             Indicator<Num>... indicators) {
-        validateSeries(series);
-        validateTimeAxisMode(timeAxisMode);
-        validateIndicators(indicators);
-        return chartFactory.createIndicatorChart(series, timeAxisMode, indicators);
+        return buildIndicatorChart(series, timeAxisMode, indicators);
     }
 
     /**
@@ -491,12 +465,8 @@ public class ChartWorkflow {
     @SafeVarargs
     public final void displayIndicatorChart(BarSeries series, TimeAxisMode timeAxisMode, Indicator<Num>... indicators) {
         validateTimeAxisMode(timeAxisMode);
-        try {
-            JFreeChart chart = createIndicatorChart(series, timeAxisMode, indicators);
-            displayChart(chart);
-        } catch (Exception ex) {
-            LOG.error("Failed to display indicator chart for {}", safeSeriesName(series), ex);
-        }
+        displayChartSafely(() -> createIndicatorChart(series, timeAxisMode, indicators), null,
+                "Failed to display indicator chart for {}", safeSeriesName(series));
     }
 
     /**
@@ -643,17 +613,10 @@ public class ChartWorkflow {
     public void displayDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
             Indicator<Num> secondaryIndicator, String secondaryLabel, String chartTitle, String windowTitle,
             TimeAxisMode timeAxisMode) {
-        try {
-            JFreeChart chart = createDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator,
-                    secondaryLabel, chartTitle, timeAxisMode);
-            if (windowTitle != null && !windowTitle.trim().isEmpty()) {
-                chartDisplayer.display(chart, windowTitle);
-            } else {
-                chartDisplayer.display(chart);
-            }
-        } catch (Exception ex) {
-            LOG.error("Failed to display dual-axis chart for {}", safeSeriesName(series), ex);
-        }
+        displayChartSafely(
+                () -> createDualAxisChart(series, primaryIndicator, primaryLabel, secondaryIndicator, secondaryLabel,
+                        chartTitle, timeAxisMode),
+                windowTitle, "Failed to display dual-axis chart for {}", safeSeriesName(series));
     }
 
     /**
@@ -792,6 +755,48 @@ public class ChartWorkflow {
             LOG.error("Failed to write chart to byte array", ex);
         }
         return out.toByteArray();
+    }
+
+    private JFreeChart buildTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
+            TimeAxisMode timeAxisMode, Indicator<Num>[] indicators, boolean validateIndicators) {
+        validateTradingInputs(series, strategyName, tradingRecord);
+        validateTimeAxisMode(timeAxisMode);
+        if (validateIndicators) {
+            validateIndicators(indicators);
+        }
+        return chartFactory.createTradingRecordChart(series, strategyName, tradingRecord, timeAxisMode, indicators);
+    }
+
+    @SafeVarargs
+    private final JFreeChart buildIndicatorChart(BarSeries series, TimeAxisMode timeAxisMode,
+            Indicator<Num>... indicators) {
+        validateSeries(series);
+        validateTimeAxisMode(timeAxisMode);
+        validateIndicators(indicators);
+        return chartFactory.createIndicatorChart(series, timeAxisMode, indicators);
+    }
+
+    private String resolveChartTitle(JFreeChart chart, BarSeries series, String strategyName) {
+        return chart.getTitle() != null ? chart.getTitle().getText()
+                : chartFactory.buildChartTitle(series.getName(), strategyName);
+    }
+
+    private void displayChartSafely(Supplier<JFreeChart> chartSupplier, String windowTitle, String message,
+            Object... args) {
+        try {
+            displayChart(chartSupplier.get(), windowTitle);
+        } catch (Exception ex) {
+            LOG.error(message, appendArgs(args, ex));
+        }
+    }
+
+    private static Object[] appendArgs(Object[] args, Object extra) {
+        if (args == null || args.length == 0) {
+            return new Object[] { extra };
+        }
+        Object[] extended = Arrays.copyOf(args, args.length + 1);
+        extended[extended.length - 1] = extra;
+        return extended;
     }
 
     private void validateTradingInputs(BarSeries series, String strategyName, TradingRecord tradingRecord) {

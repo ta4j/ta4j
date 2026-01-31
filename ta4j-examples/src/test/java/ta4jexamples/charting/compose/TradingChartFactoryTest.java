@@ -70,10 +70,13 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.text.DateFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -855,6 +858,22 @@ class TradingChartFactoryTest {
     }
 
     @Test
+    void testAddAnalysisCriterionUsesIndexDatasetForBarIndexMode() {
+        BarSeries gapSeries = ChartingTestFixtures.dailySeriesWithWeekendGap("Gap Series");
+        TradingRecord record = ChartingTestFixtures.emptyRecord();
+        JFreeChart chart = factory.createTradingRecordChart(gapSeries, "Test Strategy", record, TimeAxisMode.BAR_INDEX);
+        AnalysisCriterionIndicator indicator = new AnalysisCriterionIndicator(gapSeries, new NetProfitCriterion(),
+                record);
+
+        factory.addAnalysisCriterionToChart(chart, gapSeries, indicator, indicator.toString());
+
+        XYPlot plot = (XYPlot) chart.getPlot();
+        XYSeriesCollection dataset = findXYSeriesDataset(plot, indicator.toString());
+        assertNotNull(dataset, "Criterion overlay should use XYSeriesCollection in BAR_INDEX mode");
+        assertEquals(gapSeries.getBeginIndex(), dataset.getXValue(0, 0), 0.0);
+    }
+
+    @Test
     void testAddAnalysisCriterionRejectedWhenAxisConfiguredForDifferentLabel() {
         JFreeChart chart = factory.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
         AnalysisCriterionIndicator netProfit = new AnalysisCriterionIndicator(barSeries, new NetProfitCriterion(),
@@ -1118,6 +1137,32 @@ class TradingChartFactoryTest {
         return count;
     }
 
+    private XYSeriesCollection findXYSeriesDataset(XYPlot plot, String seriesName) {
+        for (int i = 0; i < plot.getDatasetCount(); i++) {
+            if (plot.getDataset(i) instanceof XYSeriesCollection collection) {
+                for (int seriesIndex = 0; seriesIndex < collection.getSeriesCount(); seriesIndex++) {
+                    if (seriesName.equals(collection.getSeriesKey(seriesIndex))) {
+                        return collection;
+                    }
+                }
+            }
+        }
+        return null;
+    }
+
+    private int findXYSeriesDatasetIndex(XYPlot plot, String seriesName) {
+        for (int i = 0; i < plot.getDatasetCount(); i++) {
+            if (plot.getDataset(i) instanceof XYSeriesCollection collection) {
+                for (int seriesIndex = 0; seriesIndex < collection.getSeriesCount(); seriesIndex++) {
+                    if (seriesName.equals(collection.getSeriesKey(seriesIndex))) {
+                        return i;
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
     private void addPosition(BaseTradingRecord record, int entryIndex, int exitIndex, Num amount) {
         record.enter(entryIndex, barSeries.getBar(entryIndex).getClosePrice(), amount);
         record.exit(exitIndex, barSeries.getBar(exitIndex).getClosePrice(), amount);
@@ -1356,6 +1401,60 @@ class TradingChartFactoryTest {
             assertNotNull(tooltip, "Tooltip generator should produce tooltip text");
             assertFalse(tooltip.isEmpty(), "Tooltip should not be empty");
         }
+    }
+
+    @Test
+    void testBarIndexDualAxisTooltipIncludesFormattedDate() {
+        BarSeries gapSeries = ChartingTestFixtures.dailySeriesWithWeekendGap("Gap Series");
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(gapSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 3);
+
+        JFreeChart chart = factory.createDualAxisChart(gapSeries, closePrice, "Price", sma, "SMA", null,
+                TimeAxisMode.BAR_INDEX);
+        XYPlot plot = (XYPlot) chart.getPlot();
+
+        StandardXYItemRenderer renderer = (StandardXYItemRenderer) plot.getRenderer(0);
+        XYToolTipGenerator tooltipGenerator = renderer.getDefaultToolTipGenerator();
+        assertNotNull(tooltipGenerator, "Tooltip generator should be set for BAR_INDEX dual-axis charts");
+
+        XYSeriesCollection dataset = (XYSeriesCollection) plot.getDataset(0);
+        String tooltip = tooltipGenerator.generateToolTip(dataset, 0, 0);
+        assertNotNull(tooltip, "Tooltip should not be null");
+
+        DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.MEDIUM, Locale.getDefault());
+        String expectedDate = dateFormat.format(Date.from(gapSeries.getBar(gapSeries.getBeginIndex()).getEndTime()));
+        assertTrue(tooltip.contains(expectedDate), "Tooltip should include formatted bar date");
+    }
+
+    @Test
+    void testBarIndexOverlayTooltipIncludesFormattedDate() {
+        BarSeries gapSeries = ChartingTestFixtures.dailySeriesWithWeekendGap("Gap Series");
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(gapSeries);
+        ChartWorkflow workflow = new ChartWorkflow();
+
+        JFreeChart chart = workflow.builder()
+                .withTimeAxisMode(TimeAxisMode.BAR_INDEX)
+                .withSeries(gapSeries)
+                .withIndicatorOverlay(closePrice)
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+
+        int datasetIndex = findXYSeriesDatasetIndex(basePlot, closePrice.toString());
+        assertTrue(datasetIndex >= 0, "Overlay dataset should be present for BAR_INDEX mode");
+
+        StandardXYItemRenderer renderer = (StandardXYItemRenderer) basePlot.getRenderer(datasetIndex);
+        XYToolTipGenerator tooltipGenerator = renderer.getDefaultToolTipGenerator();
+        assertNotNull(tooltipGenerator, "Overlay tooltip generator should be configured");
+
+        XYSeriesCollection dataset = (XYSeriesCollection) basePlot.getDataset(datasetIndex);
+        String tooltip = tooltipGenerator.generateToolTip(dataset, 0, 0);
+        assertNotNull(tooltip, "Tooltip should not be null");
+
+        DateFormat dateFormat = DateFormat.getDateInstance(DateFormat.MEDIUM, Locale.getDefault());
+        String expectedDate = dateFormat.format(Date.from(gapSeries.getBar(gapSeries.getBeginIndex()).getEndTime()));
+        assertTrue(tooltip.contains(expectedDate), "Tooltip should include formatted bar date");
     }
 
     @Test

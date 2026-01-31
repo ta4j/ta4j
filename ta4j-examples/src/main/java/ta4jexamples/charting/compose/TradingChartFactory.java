@@ -111,11 +111,14 @@ public final class TradingChartFactory {
     private static final int MAX_AXIS_LABEL_LENGTH = 30;
     private static final String DATE_AXIS_LABEL = "Date";
     private static final String BAR_INDEX_AXIS_LABEL = "Bar Index";
+    private static final AxisFactory AXIS_FACTORY = new AxisFactory();
     private static final ThreadLocal<DecimalFormat> PRICE_FORMAT = ThreadLocal.withInitial(() -> {
         DecimalFormat decimalFormat = new DecimalFormat("#,##0.00###");
         decimalFormat.setRoundingMode(RoundingMode.HALF_UP);
         return decimalFormat;
     });
+
+    private final DatasetFactory datasetFactory = new DatasetFactory();
 
     /**
      * Returns a locale-aware date formatter for daily charts. Uses the default
@@ -142,7 +145,7 @@ public final class TradingChartFactory {
     }
 
     private static String resolveDomainAxisLabel(TimeAxisMode timeAxisMode) {
-        return timeAxisMode == TimeAxisMode.BAR_INDEX ? BAR_INDEX_AXIS_LABEL : DATE_AXIS_LABEL;
+        return AXIS_FACTORY.axisLabel(timeAxisMode);
     }
 
     private static double toDomainValue(BarSeries series, int index, TimeAxisMode timeAxisMode) {
@@ -169,26 +172,78 @@ public final class TradingChartFactory {
 
     private ValueAxis createDomainAxis(BarSeries series, Duration duration, TimeAxisMode timeAxisMode, String label,
             double lowerMargin, double upperMargin) {
-        String axisLabel = label;
-        if (timeAxisMode == TimeAxisMode.BAR_INDEX) {
-            NumberAxis axis = new NumberAxis(axisLabel);
-            axis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
-            axis.setNumberFormatOverride(new BarIndexDateFormat(series, resolveDateFormat(duration)));
-            applyDomainAxisStyle(axis, lowerMargin, upperMargin);
-            return axis;
-        }
-        DateAxis axis = new DateAxis(axisLabel);
-        axis.setDateFormatOverride(resolveDateFormat(duration));
-        applyDomainAxisStyle(axis, lowerMargin, upperMargin);
-        return axis;
+        return AXIS_FACTORY.createDomainAxis(series, duration, timeAxisMode, label, lowerMargin, upperMargin);
     }
 
-    private void applyDomainAxisStyle(ValueAxis axis, double lowerMargin, double upperMargin) {
-        axis.setAutoRange(true);
-        axis.setLowerMargin(lowerMargin);
-        axis.setUpperMargin(upperMargin);
-        axis.setTickLabelPaint(Color.LIGHT_GRAY);
-        axis.setLabelPaint(Color.LIGHT_GRAY);
+    private static final class AxisFactory {
+
+        private static final TimeAxisModeStrategy REAL_TIME_AXIS_STRATEGY = new RealTimeAxisModeStrategy();
+        private static final TimeAxisModeStrategy BAR_INDEX_AXIS_STRATEGY = new BarIndexAxisModeStrategy();
+
+        String axisLabel(TimeAxisMode timeAxisMode) {
+            return resolveTimeAxisModeStrategy(timeAxisMode).axisLabel();
+        }
+
+        ValueAxis createDomainAxis(BarSeries series, Duration duration, TimeAxisMode timeAxisMode, String label,
+                double lowerMargin, double upperMargin) {
+            return resolveTimeAxisModeStrategy(timeAxisMode).createAxis(series, duration, label, lowerMargin,
+                    upperMargin);
+        }
+
+        private static TimeAxisModeStrategy resolveTimeAxisModeStrategy(TimeAxisMode timeAxisMode) {
+            return timeAxisMode == TimeAxisMode.BAR_INDEX ? BAR_INDEX_AXIS_STRATEGY : REAL_TIME_AXIS_STRATEGY;
+        }
+
+        private static void applyDomainAxisStyle(ValueAxis axis, double lowerMargin, double upperMargin) {
+            axis.setAutoRange(true);
+            axis.setLowerMargin(lowerMargin);
+            axis.setUpperMargin(upperMargin);
+            axis.setTickLabelPaint(Color.LIGHT_GRAY);
+            axis.setLabelPaint(Color.LIGHT_GRAY);
+        }
+
+        private interface TimeAxisModeStrategy {
+
+            String axisLabel();
+
+            ValueAxis createAxis(BarSeries series, Duration duration, String label, double lowerMargin,
+                    double upperMargin);
+        }
+
+        private static final class RealTimeAxisModeStrategy implements TimeAxisModeStrategy {
+
+            @Override
+            public String axisLabel() {
+                return DATE_AXIS_LABEL;
+            }
+
+            @Override
+            public ValueAxis createAxis(BarSeries series, Duration duration, String label, double lowerMargin,
+                    double upperMargin) {
+                DateAxis axis = new DateAxis(label);
+                axis.setDateFormatOverride(resolveDateFormat(duration));
+                applyDomainAxisStyle(axis, lowerMargin, upperMargin);
+                return axis;
+            }
+        }
+
+        private static final class BarIndexAxisModeStrategy implements TimeAxisModeStrategy {
+
+            @Override
+            public String axisLabel() {
+                return BAR_INDEX_AXIS_LABEL;
+            }
+
+            @Override
+            public ValueAxis createAxis(BarSeries series, Duration duration, String label, double lowerMargin,
+                    double upperMargin) {
+                NumberAxis axis = new NumberAxis(label);
+                axis.setStandardTickUnits(NumberAxis.createIntegerTickUnits());
+                axis.setNumberFormatOverride(new BarIndexDateFormat(series, resolveDateFormat(duration)));
+                applyDomainAxisStyle(axis, lowerMargin, upperMargin);
+                return axis;
+            }
+        }
     }
 
     private TimeAxisMode requireTimeAxisMode(TimeAxisMode timeAxisMode) {
@@ -202,7 +257,7 @@ public final class TradingChartFactory {
     public JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode) {
         TimeAxisMode resolvedTimeAxisMode = requireTimeAxisMode(timeAxisMode);
-        DefaultOHLCDataset data = createChartDataset(series, resolvedTimeAxisMode);
+        DefaultOHLCDataset data = datasetFactory.createChartDataset(series, resolvedTimeAxisMode);
         String chartTitle = buildChartTitle(series.getName(), strategyName);
         JFreeChart chart = buildChart(chartTitle, series, series.getFirstBar().getTimePeriod(), data,
                 resolvedTimeAxisMode);
@@ -258,7 +313,7 @@ public final class TradingChartFactory {
         TimeAxisMode resolvedTimeAxisMode = requireTimeAxisMode(timeAxisMode);
         if (indicators == null || indicators.length == 0) {
             // No indicators, return simple OHLC chart
-            DefaultOHLCDataset data = createChartDataset(series, resolvedTimeAxisMode);
+            DefaultOHLCDataset data = datasetFactory.createChartDataset(series, resolvedTimeAxisMode);
             String chartTitle = series.toString();
             if (series.getName() != null) {
                 chartTitle = series.getName();
@@ -281,7 +336,7 @@ public final class TradingChartFactory {
         combinedPlot.setRangeGridlinePaint(GRIDLINE_COLOR);
 
         // Create main OHLC candlestick plot
-        DefaultOHLCDataset ohlcData = createChartDataset(series, resolvedTimeAxisMode);
+        DefaultOHLCDataset ohlcData = datasetFactory.createChartDataset(series, resolvedTimeAxisMode);
         XYPlot mainPlot = createOHLCPlot(series, duration, ohlcData, resolvedTimeAxisMode);
         combinedPlot.add(mainPlot, calculateMainPlotWeight(indicators.length));
 
@@ -356,10 +411,10 @@ public final class TradingChartFactory {
         Duration duration = series.getFirstBar().getTimePeriod();
 
         if (resolvedTimeAxisMode == TimeAxisMode.REAL_TIME) {
-            TimeSeriesCollection primaryDataset = createTimeSeriesDataset(series, primaryIndicator, primaryLabel,
-                    false);
-            TimeSeriesCollection secondaryDataset = createTimeSeriesDataset(series, secondaryIndicator, secondaryLabel,
-                    false);
+            TimeSeriesCollection primaryDataset = datasetFactory.createTimeSeriesDataset(series, primaryIndicator,
+                    primaryLabel, false);
+            TimeSeriesCollection secondaryDataset = datasetFactory.createTimeSeriesDataset(series, secondaryIndicator,
+                    secondaryLabel, false);
 
             JFreeChart chart = ChartFactory.createTimeSeriesChart(effectiveTitle,
                     resolveDomainAxisLabel(resolvedTimeAxisMode), primaryLabel, primaryDataset, true, true, false);
@@ -381,9 +436,10 @@ public final class TradingChartFactory {
             return chart;
         }
 
-        XYSeriesCollection primaryDataset = createIndexSeriesDataset(series, primaryIndicator, primaryLabel, false);
-        XYSeriesCollection secondaryDataset = createIndexSeriesDataset(series, secondaryIndicator, secondaryLabel,
-                false);
+        XYSeriesCollection primaryDataset = datasetFactory.createIndexSeriesDataset(series, primaryIndicator,
+                primaryLabel, false);
+        XYSeriesCollection secondaryDataset = datasetFactory.createIndexSeriesDataset(series, secondaryIndicator,
+                secondaryLabel, false);
 
         StandardXYItemRenderer primaryRenderer = new StandardXYItemRenderer();
         DateFormat dateFormat = resolveDateFormat(duration);
@@ -441,8 +497,8 @@ public final class TradingChartFactory {
                 : TimeAxisMode.REAL_TIME;
 
         XYDataset criterionDataset = timeAxisMode == TimeAxisMode.BAR_INDEX
-                ? createIndexSeriesDataset(series, criterionIndicator, criterionLabel, false)
-                : createTimeSeriesDataset(series, criterionIndicator, criterionLabel, false);
+                ? datasetFactory.createIndexSeriesDataset(series, criterionIndicator, criterionLabel, false)
+                : datasetFactory.createTimeSeriesDataset(series, criterionIndicator, criterionLabel, false);
 
         addSecondaryAxis(mainPlot, criterionDataset, criterionLabel, timeAxisMode, series,
                 series.getFirstBar().getTimePeriod());
@@ -459,22 +515,6 @@ public final class TradingChartFactory {
             return shortenedBarSeriesName[0];
         }
         return strategyName + "@" + shortenedBarSeriesName[0];
-    }
-
-    private DefaultOHLCDataset createChartDataset(BarSeries series, TimeAxisMode timeAxisMode) {
-        List<OHLCDataItem> dataItems = new ArrayList<>();
-
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            Bar bar = series.getBar(i);
-            Date barDate = timeAxisMode == TimeAxisMode.BAR_INDEX ? new Date((long) i) : Date.from(bar.getEndTime());
-            OHLCDataItem item = new OHLCDataItem(barDate, bar.getOpenPrice().doubleValue(),
-                    bar.getHighPrice().doubleValue(), bar.getLowPrice().doubleValue(),
-                    bar.getClosePrice().doubleValue(), bar.getVolume().doubleValue());
-            dataItems.add(item);
-        }
-
-        String seriesName = series.getName() != null ? series.getName().split(" ")[0] : "Unknown";
-        return new DefaultOHLCDataset(seriesName, dataItems.toArray(new OHLCDataItem[0]));
     }
 
     private JFreeChart buildChart(String chartTitle, BarSeries series, Duration duration, DefaultOHLCDataset dataSet,
@@ -560,7 +600,7 @@ public final class TradingChartFactory {
     }
 
     private XYPlot buildCandlestickPlot(ChartBuilder.PlotDefinition definition, TimeAxisMode timeAxisMode) {
-        DefaultOHLCDataset dataset = createChartDataset(definition.series(), timeAxisMode);
+        DefaultOHLCDataset dataset = datasetFactory.createChartDataset(definition.series(), timeAxisMode);
         return createOHLCPlot(definition.series(), definition.series().getFirstBar().getTimePeriod(), dataset,
                 timeAxisMode);
     }
@@ -578,7 +618,8 @@ public final class TradingChartFactory {
                 "Trading record plots require a BarSeries for context");
 
         XYPlot plot = new XYPlot();
-        XYSeriesCollection dataset = createDataSeriesForIndicator(new ClosePriceIndicator(series), timeAxisMode);
+        XYSeriesCollection dataset = datasetFactory.createDataSeriesForIndicator(new ClosePriceIndicator(series),
+                timeAxisMode);
         plot.setDataset(0, dataset);
 
         // Create and configure domain axis
@@ -612,7 +653,7 @@ public final class TradingChartFactory {
             if (series == null || series.getBarCount() == 0) {
                 continue;
             }
-            XYDataset dataset = createChannelFillDataset(series, upper, lower, timeAxisMode);
+            XYDataset dataset = datasetFactory.createChannelFillDataset(series, upper, lower, timeAxisMode);
             if (dataset.getSeriesCount() == 0) {
                 continue;
             }
@@ -660,15 +701,16 @@ public final class TradingChartFactory {
         XYDataset dataset;
         if (indicator instanceof BarSeriesLabelIndicator labelIndicator) {
             dataset = timeAxisMode == TimeAxisMode.BAR_INDEX
-                    ? createIndexBarSeriesLabelDataset(series, labelIndicator, label)
-                    : createBarSeriesLabelDataset(series, labelIndicator, label);
+                    ? datasetFactory.createIndexBarSeriesLabelDataset(series, labelIndicator, label)
+                    : datasetFactory.createBarSeriesLabelDataset(series, labelIndicator, label);
         } else if (indicator instanceof SwingPointMarkerIndicator swingMarker) {
-            dataset = timeAxisMode == TimeAxisMode.BAR_INDEX ? createIndexSwingMarkerDataset(series, swingMarker, label)
-                    : createSwingMarkerDataset(series, swingMarker, label);
+            dataset = timeAxisMode == TimeAxisMode.BAR_INDEX
+                    ? datasetFactory.createIndexSwingMarkerDataset(series, swingMarker, label)
+                    : datasetFactory.createSwingMarkerDataset(series, swingMarker, label);
         } else {
             dataset = timeAxisMode == TimeAxisMode.BAR_INDEX
-                    ? createIndexSeriesDataset(series, indicator, label, connectGaps)
-                    : createTimeSeriesDataset(series, indicator, label, connectGaps);
+                    ? datasetFactory.createIndexSeriesDataset(series, indicator, label, connectGaps)
+                    : datasetFactory.createTimeSeriesDataset(series, indicator, label, connectGaps);
         }
         // Add dataset at the next available index (after base OHLC dataset)
         // This ensures overlays (including swing markers) are rendered on top of
@@ -1005,52 +1047,6 @@ public final class TradingChartFactory {
                 && (tradeTime.equals(endTime) || tradeTime.isBefore(endTime));
     }
 
-    /**
-     * Creates an XYSeriesCollection from an indicator, treating NaN values as gaps.
-     * When NaN values are encountered, the series is split into multiple segments
-     * to create visual gaps in the chart.
-     *
-     * @param indicator the indicator to convert
-     * @return XYSeriesCollection containing one or more series segments
-     */
-    private XYSeriesCollection createDataSeriesForIndicator(Indicator<Num> indicator, TimeAxisMode timeAxisMode) {
-        XYSeriesCollection collection = new XYSeriesCollection();
-        BarSeries series = indicator.getBarSeries();
-        String baseName = indicator.toString();
-
-        XYSeries currentSegment = null;
-        int segmentIndex = 0;
-
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            Num value = indicator.getValue(i);
-            boolean isValid = Num.isValid(value);
-
-            if (isValid) {
-                // Start a new segment if we don't have one
-                if (currentSegment == null) {
-                    String segmentName = segmentIndex == 0 ? baseName : baseName + " (segment " + segmentIndex + ")";
-                    currentSegment = new XYSeries(segmentName);
-                    segmentIndex++;
-                }
-                double orderDateTime = toDomainValue(series, i, timeAxisMode);
-                currentSegment.add(orderDateTime, value.doubleValue());
-            } else {
-                // NaN encountered - finish current segment if it exists
-                if (currentSegment != null) {
-                    collection.addSeries(currentSegment);
-                    currentSegment = null;
-                }
-            }
-        }
-
-        // Add the last segment if it exists
-        if (currentSegment != null) {
-            collection.addSeries(currentSegment);
-        }
-
-        return collection;
-    }
-
     private XYPlot createOHLCPlot(BarSeries series, Duration duration, DefaultOHLCDataset data,
             TimeAxisMode timeAxisMode) {
         XYPlot plot = new XYPlot();
@@ -1075,7 +1071,7 @@ public final class TradingChartFactory {
     }
 
     private XYPlot createIndicatorSubplot(BarSeries series, Indicator<Num> indicator, TimeAxisMode timeAxisMode) {
-        XYSeriesCollection dataset = createDataSeriesForIndicator(indicator, timeAxisMode);
+        XYSeriesCollection dataset = datasetFactory.createDataSeriesForIndicator(indicator, timeAxisMode);
 
         XYPlot plot = new XYPlot();
         plot.setDataset(0, dataset);
@@ -1148,110 +1144,200 @@ public final class TradingChartFactory {
         return Math.max(10, 40 / indicatorCount);
     }
 
-    /**
-     * Creates a TimeSeriesCollection from an indicator. When connectGaps is false,
-     * NaN values are treated as gaps and the series is split into multiple
-     * segments. When connectGaps is true, NaN values are skipped but non-NaN values
-     * are connected in a single series.
-     *
-     * @param series      the bar series
-     * @param indicator   the indicator to convert
-     * @param seriesName  the base name for the series
-     * @param connectGaps if true, connect non-NaN values across NaN gaps; if false,
-     *                    split on NaN
-     * @return TimeSeriesCollection containing one or more series segments
-     */
-    private TimeSeriesCollection createTimeSeriesDataset(BarSeries series, Indicator<Num> indicator, String seriesName,
-            boolean connectGaps) {
-        TimeSeriesCollection collection = new TimeSeriesCollection();
-        TimeSeries currentSegment = null;
-        int segmentIndex = 0;
-        Duration barDuration = series.getFirstBar().getTimePeriod();
+    private final class DatasetFactory {
 
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            Bar bar = series.getBar(i);
-            Date barDate = Date.from(bar.getEndTime());
-            Num value = indicator.getValue(i);
-            boolean isValid = Num.isValid(value);
+        private DefaultOHLCDataset createChartDataset(BarSeries series, TimeAxisMode timeAxisMode) {
+            List<OHLCDataItem> dataItems = new ArrayList<>();
 
-            if (isValid) {
-                // Start a new segment if we don't have one
-                if (currentSegment == null) {
-                    String segmentName = segmentIndex == 0 ? seriesName
-                            : seriesName + " (segment " + segmentIndex + ")";
-                    currentSegment = new TimeSeries(segmentName);
-                    segmentIndex++;
-                }
-                RegularTimePeriod timePeriod = createTimePeriod(barDate, barDuration);
-                currentSegment.addOrUpdate(timePeriod, value.doubleValue());
-            } else {
-                // NaN encountered
-                if (connectGaps) {
-                    // When connecting gaps, just skip NaN values and continue with current segment
-                    // No action needed - the segment continues
+            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                Bar bar = series.getBar(i);
+                Date barDate = timeAxisMode == TimeAxisMode.BAR_INDEX ? new Date((long) i)
+                        : Date.from(bar.getEndTime());
+                OHLCDataItem item = new OHLCDataItem(barDate, bar.getOpenPrice().doubleValue(),
+                        bar.getHighPrice().doubleValue(), bar.getLowPrice().doubleValue(),
+                        bar.getClosePrice().doubleValue(), bar.getVolume().doubleValue());
+                dataItems.add(item);
+            }
+
+            String seriesName = series.getName() != null ? series.getName().split(" ")[0] : "Unknown";
+            return new DefaultOHLCDataset(seriesName, dataItems.toArray(new OHLCDataItem[0]));
+        }
+
+        /**
+         * Creates an XYSeriesCollection from an indicator, treating NaN values as gaps.
+         * When NaN values are encountered, the series is split into multiple segments
+         * to create visual gaps in the chart.
+         *
+         * @param indicator the indicator to convert
+         * @return XYSeriesCollection containing one or more series segments
+         */
+        private XYSeriesCollection createDataSeriesForIndicator(Indicator<Num> indicator, TimeAxisMode timeAxisMode) {
+            XYSeriesCollection collection = new XYSeriesCollection();
+            BarSeries series = indicator.getBarSeries();
+            String baseName = indicator.toString();
+
+            XYSeries currentSegment = null;
+            int segmentIndex = 0;
+
+            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                Num value = indicator.getValue(i);
+                boolean isValid = Num.isValid(value);
+
+                if (isValid) {
+                    // Start a new segment if we don't have one
+                    if (currentSegment == null) {
+                        String segmentName = segmentIndex == 0 ? baseName
+                                : baseName + " (segment " + segmentIndex + ")";
+                        currentSegment = new XYSeries(segmentName);
+                        segmentIndex++;
+                    }
+                    double orderDateTime = toDomainValue(series, i, timeAxisMode);
+                    currentSegment.add(orderDateTime, value.doubleValue());
                 } else {
-                    // When not connecting gaps, finish current segment if it exists
+                    // NaN encountered - finish current segment if it exists
                     if (currentSegment != null) {
                         collection.addSeries(currentSegment);
                         currentSegment = null;
                     }
                 }
             }
-        }
 
-        // Add the last segment if it exists
-        if (currentSegment != null) {
-            collection.addSeries(currentSegment);
-        }
-
-        return collection;
-    }
-
-    private XYSeriesCollection createIndexSeriesDataset(BarSeries series, Indicator<Num> indicator, String seriesName,
-            boolean connectGaps) {
-        XYSeriesCollection collection = new XYSeriesCollection();
-        XYSeries currentSegment = null;
-        int segmentIndex = 0;
-
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            Num value = indicator.getValue(i);
-            boolean isValid = Num.isValid(value);
-
-            if (isValid) {
-                if (currentSegment == null) {
-                    String segmentName = segmentIndex == 0 ? seriesName
-                            : seriesName + " (segment " + segmentIndex + ")";
-                    currentSegment = new XYSeries(segmentName);
-                    segmentIndex++;
-                }
-                currentSegment.add(toDomainValue(series, i, TimeAxisMode.BAR_INDEX), value.doubleValue());
-            } else if (!connectGaps && currentSegment != null) {
+            // Add the last segment if it exists
+            if (currentSegment != null) {
                 collection.addSeries(currentSegment);
-                currentSegment = null;
             }
+
+            return collection;
         }
 
-        if (currentSegment != null) {
-            collection.addSeries(currentSegment);
-        }
-
-        return collection;
-    }
-
-    private XYDataset createChannelFillDataset(BarSeries series, Indicator<Num> upper, Indicator<Num> lower,
-            TimeAxisMode timeAxisMode) {
-        if (timeAxisMode == TimeAxisMode.BAR_INDEX) {
-            XYSeriesCollection collection = new XYSeriesCollection();
-            XYSeries upperSeries = new XYSeries("Channel upper");
-            XYSeries lowerSeries = new XYSeries("Channel lower");
+        /**
+         * Creates a TimeSeriesCollection from an indicator. When connectGaps is false,
+         * NaN values are treated as gaps and the series is split into multiple
+         * segments. When connectGaps is true, NaN values are skipped but non-NaN values
+         * are connected in a single series.
+         *
+         * @param series      the bar series
+         * @param indicator   the indicator to convert
+         * @param seriesName  the base name for the series
+         * @param connectGaps if true, connect non-NaN values across NaN gaps; if false,
+         *                    split on NaN
+         * @return TimeSeriesCollection containing one or more series segments
+         */
+        private TimeSeriesCollection createTimeSeriesDataset(BarSeries series, Indicator<Num> indicator,
+                String seriesName, boolean connectGaps) {
+            TimeSeriesCollection collection = new TimeSeriesCollection();
+            TimeSeries currentSegment = null;
+            int segmentIndex = 0;
+            Duration barDuration = series.getFirstBar().getTimePeriod();
 
             for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                Bar bar = series.getBar(i);
+                Date barDate = Date.from(bar.getEndTime());
+                Num value = indicator.getValue(i);
+                boolean isValid = Num.isValid(value);
+
+                if (isValid) {
+                    // Start a new segment if we don't have one
+                    if (currentSegment == null) {
+                        String segmentName = segmentIndex == 0 ? seriesName
+                                : seriesName + " (segment " + segmentIndex + ")";
+                        currentSegment = new TimeSeries(segmentName);
+                        segmentIndex++;
+                    }
+                    RegularTimePeriod timePeriod = createTimePeriod(barDate, barDuration);
+                    currentSegment.addOrUpdate(timePeriod, value.doubleValue());
+                } else {
+                    // NaN encountered
+                    if (connectGaps) {
+                        // When connecting gaps, just skip NaN values and continue with current segment
+                        // No action needed - the segment continues
+                    } else {
+                        // When not connecting gaps, finish current segment if it exists
+                        if (currentSegment != null) {
+                            collection.addSeries(currentSegment);
+                            currentSegment = null;
+                        }
+                    }
+                }
+            }
+
+            // Add the last segment if it exists
+            if (currentSegment != null) {
+                collection.addSeries(currentSegment);
+            }
+
+            return collection;
+        }
+
+        private XYSeriesCollection createIndexSeriesDataset(BarSeries series, Indicator<Num> indicator,
+                String seriesName, boolean connectGaps) {
+            XYSeriesCollection collection = new XYSeriesCollection();
+            XYSeries currentSegment = null;
+            int segmentIndex = 0;
+
+            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                Num value = indicator.getValue(i);
+                boolean isValid = Num.isValid(value);
+
+                if (isValid) {
+                    if (currentSegment == null) {
+                        String segmentName = segmentIndex == 0 ? seriesName
+                                : seriesName + " (segment " + segmentIndex + ")";
+                        currentSegment = new XYSeries(segmentName);
+                        segmentIndex++;
+                    }
+                    currentSegment.add(toDomainValue(series, i, TimeAxisMode.BAR_INDEX), value.doubleValue());
+                } else if (!connectGaps && currentSegment != null) {
+                    collection.addSeries(currentSegment);
+                    currentSegment = null;
+                }
+            }
+
+            if (currentSegment != null) {
+                collection.addSeries(currentSegment);
+            }
+
+            return collection;
+        }
+
+        private XYDataset createChannelFillDataset(BarSeries series, Indicator<Num> upper, Indicator<Num> lower,
+                TimeAxisMode timeAxisMode) {
+            if (timeAxisMode == TimeAxisMode.BAR_INDEX) {
+                XYSeriesCollection collection = new XYSeriesCollection();
+                XYSeries upperSeries = new XYSeries("Channel upper");
+                XYSeries lowerSeries = new XYSeries("Channel lower");
+
+                for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                    Num upperValue = upper.getValue(i);
+                    Num lowerValue = lower.getValue(i);
+                    if (Num.isValid(upperValue) && Num.isValid(lowerValue)) {
+                        double x = toDomainValue(series, i, timeAxisMode);
+                        upperSeries.add(x, upperValue.doubleValue());
+                        lowerSeries.add(x, lowerValue.doubleValue());
+                    }
+                }
+
+                if (upperSeries.getItemCount() > 0 && lowerSeries.getItemCount() > 0) {
+                    collection.addSeries(upperSeries);
+                    collection.addSeries(lowerSeries);
+                }
+                return collection;
+            }
+
+            TimeSeriesCollection collection = new TimeSeriesCollection();
+            TimeSeries upperSeries = new TimeSeries("Channel upper");
+            TimeSeries lowerSeries = new TimeSeries("Channel lower");
+            Duration barDuration = series.getFirstBar().getTimePeriod();
+
+            for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+                Bar bar = series.getBar(i);
+                Date barDate = Date.from(bar.getEndTime());
                 Num upperValue = upper.getValue(i);
                 Num lowerValue = lower.getValue(i);
                 if (Num.isValid(upperValue) && Num.isValid(lowerValue)) {
-                    double x = toDomainValue(series, i, timeAxisMode);
-                    upperSeries.add(x, upperValue.doubleValue());
-                    lowerSeries.add(x, lowerValue.doubleValue());
+                    RegularTimePeriod timePeriod = createTimePeriod(barDate, barDuration);
+                    upperSeries.addOrUpdate(timePeriod, upperValue.doubleValue());
+                    lowerSeries.addOrUpdate(timePeriod, lowerValue.doubleValue());
                 }
             }
 
@@ -1262,150 +1348,127 @@ public final class TradingChartFactory {
             return collection;
         }
 
-        TimeSeriesCollection collection = new TimeSeriesCollection();
-        TimeSeries upperSeries = new TimeSeries("Channel upper");
-        TimeSeries lowerSeries = new TimeSeries("Channel lower");
-        Duration barDuration = series.getFirstBar().getTimePeriod();
-
-        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            Bar bar = series.getBar(i);
-            Date barDate = Date.from(bar.getEndTime());
-            Num upperValue = upper.getValue(i);
-            Num lowerValue = lower.getValue(i);
-            if (Num.isValid(upperValue) && Num.isValid(lowerValue)) {
-                RegularTimePeriod timePeriod = createTimePeriod(barDate, barDuration);
-                upperSeries.addOrUpdate(timePeriod, upperValue.doubleValue());
-                lowerSeries.addOrUpdate(timePeriod, lowerValue.doubleValue());
+        private TimeSeriesCollection createSwingMarkerDataset(BarSeries series, SwingPointMarkerIndicator marker,
+                String seriesName) {
+            TimeSeriesCollection collection = new TimeSeriesCollection();
+            if (series == null || series.isEmpty()) {
+                return collection;
             }
-        }
 
-        if (upperSeries.getItemCount() > 0 && lowerSeries.getItemCount() > 0) {
-            collection.addSeries(upperSeries);
-            collection.addSeries(lowerSeries);
-        }
-        return collection;
-    }
-
-    private TimeSeriesCollection createSwingMarkerDataset(BarSeries series, SwingPointMarkerIndicator marker,
-            String seriesName) {
-        TimeSeriesCollection collection = new TimeSeriesCollection();
-        if (series == null || series.isEmpty()) {
+            List<Integer> swingIndexes = new ArrayList<>(marker.getSwingPointIndexes());
+            Collections.sort(swingIndexes);
+            TimeSeries swingSeries = new TimeSeries(seriesName);
+            Duration barDuration = series.getFirstBar().getTimePeriod();
+            for (Integer index : swingIndexes) {
+                Num value = marker.getPriceIndicator().getValue(index);
+                if (Num.isNaNOrNull(value)) {
+                    value = series.getBar(index).getClosePrice();
+                }
+                if (Num.isValid(value)) {
+                    Date barDate = Date.from(series.getBar(index).getEndTime());
+                    RegularTimePeriod timePeriod = createTimePeriod(barDate, barDuration);
+                    swingSeries.addOrUpdate(timePeriod, value.doubleValue());
+                }
+            }
+            if (swingSeries.getItemCount() > 0) {
+                collection.addSeries(swingSeries);
+            }
             return collection;
         }
 
-        List<Integer> swingIndexes = new ArrayList<>(marker.getSwingPointIndexes());
-        Collections.sort(swingIndexes);
-        TimeSeries swingSeries = new TimeSeries(seriesName);
-        Duration barDuration = series.getFirstBar().getTimePeriod();
-        for (Integer index : swingIndexes) {
-            Num value = marker.getPriceIndicator().getValue(index);
-            if (Num.isNaNOrNull(value)) {
-                value = series.getBar(index).getClosePrice();
+        private XYSeriesCollection createIndexSwingMarkerDataset(BarSeries series, SwingPointMarkerIndicator marker,
+                String seriesName) {
+            XYSeriesCollection collection = new XYSeriesCollection();
+            if (series == null || series.isEmpty()) {
+                return collection;
             }
-            if (Num.isValid(value)) {
+
+            List<Integer> swingIndexes = new ArrayList<>(marker.getSwingPointIndexes());
+            Collections.sort(swingIndexes);
+            XYSeries swingSeries = new XYSeries(seriesName);
+            for (Integer index : swingIndexes) {
+                Num value = marker.getPriceIndicator().getValue(index);
+                if (Num.isNaNOrNull(value)) {
+                    value = series.getBar(index).getClosePrice();
+                }
+                if (Num.isValid(value)) {
+                    double x = toDomainValue(series, index, TimeAxisMode.BAR_INDEX);
+                    swingSeries.add(x, value.doubleValue());
+                }
+            }
+            if (swingSeries.getItemCount() > 0) {
+                collection.addSeries(swingSeries);
+            }
+            return collection;
+        }
+
+        private TimeSeriesCollection createBarSeriesLabelDataset(BarSeries series,
+                BarSeriesLabelIndicator labelIndicator, String seriesName) {
+            TimeSeriesCollection collection = new TimeSeriesCollection();
+            if (series == null || series.isEmpty()) {
+                return collection;
+            }
+
+            List<BarLabel> labels = labelIndicator.labels();
+            if (labels.isEmpty()) {
+                return collection;
+            }
+
+            TimeSeries labelSeries = new TimeSeries(seriesName);
+            Duration barDuration = series.getFirstBar().getTimePeriod();
+            for (BarLabel barLabel : labels) {
+                int index = barLabel.barIndex();
+                if (index < series.getBeginIndex() || index > series.getEndIndex()) {
+                    continue;
+                }
+                Num value = barLabel.yValue();
+                if (Num.isNaNOrNull(value)) {
+                    continue;
+                }
                 Date barDate = Date.from(series.getBar(index).getEndTime());
                 RegularTimePeriod timePeriod = createTimePeriod(barDate, barDuration);
-                swingSeries.addOrUpdate(timePeriod, value.doubleValue());
+                labelSeries.addOrUpdate(timePeriod, value.doubleValue());
             }
-        }
-        if (swingSeries.getItemCount() > 0) {
-            collection.addSeries(swingSeries);
-        }
-        return collection;
-    }
 
-    private XYSeriesCollection createIndexSwingMarkerDataset(BarSeries series, SwingPointMarkerIndicator marker,
-            String seriesName) {
-        XYSeriesCollection collection = new XYSeriesCollection();
-        if (series == null || series.isEmpty()) {
+            if (labelSeries.getItemCount() > 0) {
+                collection.addSeries(labelSeries);
+            }
+
             return collection;
         }
 
-        List<Integer> swingIndexes = new ArrayList<>(marker.getSwingPointIndexes());
-        Collections.sort(swingIndexes);
-        XYSeries swingSeries = new XYSeries(seriesName);
-        for (Integer index : swingIndexes) {
-            Num value = marker.getPriceIndicator().getValue(index);
-            if (Num.isNaNOrNull(value)) {
-                value = series.getBar(index).getClosePrice();
+        private XYSeriesCollection createIndexBarSeriesLabelDataset(BarSeries series,
+                BarSeriesLabelIndicator labelIndicator, String seriesName) {
+            XYSeriesCollection collection = new XYSeriesCollection();
+            if (series == null || series.isEmpty()) {
+                return collection;
             }
-            if (Num.isValid(value)) {
+
+            List<BarLabel> labels = labelIndicator.labels();
+            if (labels.isEmpty()) {
+                return collection;
+            }
+
+            XYSeries labelSeries = new XYSeries(seriesName);
+            for (BarLabel barLabel : labels) {
+                int index = barLabel.barIndex();
+                if (index < series.getBeginIndex() || index > series.getEndIndex()) {
+                    continue;
+                }
+                Num value = barLabel.yValue();
+                if (Num.isNaNOrNull(value)) {
+                    continue;
+                }
                 double x = toDomainValue(series, index, TimeAxisMode.BAR_INDEX);
-                swingSeries.add(x, value.doubleValue());
+                labelSeries.add(x, value.doubleValue());
             }
-        }
-        if (swingSeries.getItemCount() > 0) {
-            collection.addSeries(swingSeries);
-        }
-        return collection;
-    }
 
-    private TimeSeriesCollection createBarSeriesLabelDataset(BarSeries series, BarSeriesLabelIndicator labelIndicator,
-            String seriesName) {
-        TimeSeriesCollection collection = new TimeSeriesCollection();
-        if (series == null || series.isEmpty()) {
+            if (labelSeries.getItemCount() > 0) {
+                collection.addSeries(labelSeries);
+            }
+
             return collection;
         }
-
-        List<BarLabel> labels = labelIndicator.labels();
-        if (labels.isEmpty()) {
-            return collection;
-        }
-
-        TimeSeries labelSeries = new TimeSeries(seriesName);
-        Duration barDuration = series.getFirstBar().getTimePeriod();
-        for (BarLabel barLabel : labels) {
-            int index = barLabel.barIndex();
-            if (index < series.getBeginIndex() || index > series.getEndIndex()) {
-                continue;
-            }
-            Num value = barLabel.yValue();
-            if (Num.isNaNOrNull(value)) {
-                continue;
-            }
-            Date barDate = Date.from(series.getBar(index).getEndTime());
-            RegularTimePeriod timePeriod = createTimePeriod(barDate, barDuration);
-            labelSeries.addOrUpdate(timePeriod, value.doubleValue());
-        }
-
-        if (labelSeries.getItemCount() > 0) {
-            collection.addSeries(labelSeries);
-        }
-
-        return collection;
-    }
-
-    private XYSeriesCollection createIndexBarSeriesLabelDataset(BarSeries series,
-            BarSeriesLabelIndicator labelIndicator, String seriesName) {
-        XYSeriesCollection collection = new XYSeriesCollection();
-        if (series == null || series.isEmpty()) {
-            return collection;
-        }
-
-        List<BarLabel> labels = labelIndicator.labels();
-        if (labels.isEmpty()) {
-            return collection;
-        }
-
-        XYSeries labelSeries = new XYSeries(seriesName);
-        for (BarLabel barLabel : labels) {
-            int index = barLabel.barIndex();
-            if (index < series.getBeginIndex() || index > series.getEndIndex()) {
-                continue;
-            }
-            Num value = barLabel.yValue();
-            if (Num.isNaNOrNull(value)) {
-                continue;
-            }
-            double x = toDomainValue(series, index, TimeAxisMode.BAR_INDEX);
-            labelSeries.add(x, value.doubleValue());
-        }
-
-        if (labelSeries.getItemCount() > 0) {
-            collection.addSeries(labelSeries);
-        }
-
-        return collection;
     }
 
     private void attachBarSeriesLabelAnnotations(XYPlot plot, BarSeries series, BarSeriesLabelIndicator labelIndicator,
