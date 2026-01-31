@@ -26,7 +26,7 @@ public final class ChartPlan {
      * Returns the metadata for this chart plan.
      *
      * @return the chart metadata
-     * @since 0.23
+     * @since 0.22.2
      */
     public ChartDefinitionMetadata metadata() {
         return context.metadata();
@@ -36,7 +36,7 @@ public final class ChartPlan {
      * Returns the chart context containing definition and metadata.
      *
      * @return the chart context
-     * @since 0.23
+     * @since 0.22.2
      */
     public ChartContext context() {
         return context;

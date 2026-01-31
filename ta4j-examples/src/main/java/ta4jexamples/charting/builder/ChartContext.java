@@ -11,7 +11,7 @@ import org.ta4j.core.BarSeries;
  * Immutable context describing a chart definition alongside its shared
  * metadata.
  *
- * @since 0.23
+ * @since 0.22.2
  */
 public record ChartContext(ChartBuilder.ChartDefinition definition, ChartBuilder.ChartDefinitionMetadata metadata) {
 
