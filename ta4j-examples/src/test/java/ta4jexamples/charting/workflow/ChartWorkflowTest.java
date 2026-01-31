@@ -5,6 +5,7 @@ package ta4jexamples.charting.workflow;
 
 import org.jfree.chart.annotations.XYTextAnnotation;
 import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.NumberAxis;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.IntervalMarker;
 import org.jfree.chart.plot.XYPlot;
@@ -36,7 +37,9 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import ta4jexamples.charting.ChartingTestFixtures;
 import ta4jexamples.charting.builder.ChartBuilder;
+import ta4jexamples.charting.builder.ChartContext;
 import ta4jexamples.charting.builder.ChartPlan;
+import ta4jexamples.charting.builder.TimeAxisMode;
 import ta4jexamples.charting.compose.TradingChartFactory;
 import ta4jexamples.charting.display.ChartDisplayer;
 import ta4jexamples.charting.storage.ChartStorage;
@@ -111,6 +114,18 @@ public class ChartWorkflowTest {
         assertNotNull(chart, "Chart should not be null");
         assertInstanceOf(CombinedDomainXYPlot.class, chart.getPlot(),
                 "Chart built through builder should use CombinedDomainXYPlot");
+    }
+
+    @Test
+    public void testRenderFromChartContext() {
+        ChartPlan plan = chartWorkflow.builder().withSeries(barSeries).withTradingRecordOverlay(tradingRecord).toPlan();
+
+        ChartContext context = plan.context();
+        JFreeChart chart = chartWorkflow.render(context);
+
+        assertNotNull(chart, "Chart should not be null");
+        assertInstanceOf(CombinedDomainXYPlot.class, chart.getPlot(),
+                "Chart rendered from context should use CombinedDomainXYPlot");
     }
 
     @Test
@@ -496,6 +511,20 @@ public class ChartWorkflowTest {
         assertNotNull(chart, "Dual-axis chart should not be null");
         assertNotNull(chart.getTitle(), "Chart should have a title");
         assertEquals("Custom Chart Title", chart.getTitle().getText(), "Chart title should match custom title");
+    }
+
+    @Test
+    public void testCreateDualAxisChartWithBarIndexTimeAxisMode() {
+        BarSeries gapSeries = ChartingTestFixtures.dailySeriesWithWeekendGap("Gap Series");
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(gapSeries);
+        SMAIndicator sma = new SMAIndicator(closePrice, 3);
+
+        JFreeChart chart = chartWorkflow.createDualAxisChart(gapSeries, closePrice, "Price", sma, "SMA", null,
+                TimeAxisMode.BAR_INDEX);
+
+        XYPlot plot = (XYPlot) chart.getPlot();
+        assertInstanceOf(NumberAxis.class, plot.getDomainAxis());
+        assertEquals(gapSeries.getBeginIndex(), plot.getDataset(0).getXValue(0, 0), 0.0);
     }
 
     @Test
