@@ -119,6 +119,7 @@ public final class TradingChartFactory {
     });
 
     private final DatasetFactory datasetFactory = new DatasetFactory();
+    private final OverlayRendererFactory overlayRendererFactory = new OverlayRendererFactory();
 
     /**
      * Returns a locale-aware date formatter for daily charts. Uses the default
@@ -149,10 +150,7 @@ public final class TradingChartFactory {
     }
 
     private static double toDomainValue(BarSeries series, int index, TimeAxisMode timeAxisMode) {
-        if (timeAxisMode == TimeAxisMode.BAR_INDEX) {
-            return index;
-        }
-        return series.getBar(index).getEndTime().toEpochMilli();
+        return AXIS_FACTORY.domainValue(series, index, timeAxisMode);
     }
 
     /**
@@ -184,6 +182,10 @@ public final class TradingChartFactory {
             return resolveTimeAxisModeStrategy(timeAxisMode).axisLabel();
         }
 
+        double domainValue(BarSeries series, int index, TimeAxisMode timeAxisMode) {
+            return resolveTimeAxisModeStrategy(timeAxisMode).domainValue(series, index);
+        }
+
         ValueAxis createDomainAxis(BarSeries series, Duration duration, TimeAxisMode timeAxisMode, String label,
                 double lowerMargin, double upperMargin) {
             return resolveTimeAxisModeStrategy(timeAxisMode).createAxis(series, duration, label, lowerMargin,
@@ -206,6 +208,8 @@ public final class TradingChartFactory {
 
             String axisLabel();
 
+            double domainValue(BarSeries series, int index);
+
             ValueAxis createAxis(BarSeries series, Duration duration, String label, double lowerMargin,
                     double upperMargin);
         }
@@ -215,6 +219,11 @@ public final class TradingChartFactory {
             @Override
             public String axisLabel() {
                 return DATE_AXIS_LABEL;
+            }
+
+            @Override
+            public double domainValue(BarSeries series, int index) {
+                return series.getBar(index).getEndTime().toEpochMilli();
             }
 
             @Override
@@ -232,6 +241,11 @@ public final class TradingChartFactory {
             @Override
             public String axisLabel() {
                 return BAR_INDEX_AXIS_LABEL;
+            }
+
+            @Override
+            public double domainValue(BarSeries series, int index) {
+                return index;
             }
 
             @Override
@@ -660,7 +674,7 @@ public final class TradingChartFactory {
 
             int datasetIndex = plot.getDatasetCount();
             plot.setDataset(datasetIndex, dataset);
-            plot.setRenderer(datasetIndex, createChannelFillRenderer(channel));
+            plot.setRenderer(datasetIndex, overlayRendererFactory.createChannelFillRenderer(channel));
 
             int axisIndex = channel.axisSlot() == ChartBuilder.AxisSlot.SECONDARY ? 1 : 0;
             if (axisIndex == 1) {
@@ -719,14 +733,17 @@ public final class TradingChartFactory {
         plot.setDataset(datasetIndex, dataset);
 
         if (indicator instanceof BarSeriesLabelIndicator labelIndicator) {
-            plot.setRenderer(datasetIndex, createBarSeriesLabelRenderer(dataset, overlay, series, timeAxisMode));
+            plot.setRenderer(datasetIndex,
+                    overlayRendererFactory.createBarSeriesLabelRenderer(dataset, overlay, series, timeAxisMode));
             attachBarSeriesLabelAnnotations(plot, series, labelIndicator, overlay, timeAxisMode);
         } else if (indicator instanceof SwingPointMarkerIndicator) {
             // Swing markers are rendered after the base dataset, ensuring they appear in
             // front of candles
-            plot.setRenderer(datasetIndex, createSwingMarkerRenderer(dataset, overlay, series, timeAxisMode));
+            plot.setRenderer(datasetIndex,
+                    overlayRendererFactory.createSwingMarkerRenderer(dataset, overlay, series, timeAxisMode));
         } else {
-            plot.setRenderer(datasetIndex, createStandardOverlayRenderer(dataset, overlay, series, timeAxisMode));
+            plot.setRenderer(datasetIndex,
+                    overlayRendererFactory.createStandardOverlayRenderer(dataset, overlay, series, timeAxisMode));
         }
 
         int axisIndex = overlay.axisSlot() == ChartBuilder.AxisSlot.SECONDARY ? 1 : 0;
@@ -736,107 +753,111 @@ public final class TradingChartFactory {
         plot.mapDatasetToRangeAxis(datasetIndex, axisIndex);
     }
 
-    private XYDifferenceRenderer createChannelFillRenderer(ChartBuilder.ChannelOverlayDefinition channel) {
-        XYDifferenceRenderer renderer = new XYDifferenceRenderer();
-        Color baseColor = channel.fillColor();
-        float opacity = channel.fillOpacity();
-        Color fillColor = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
-                Math.round(opacity * 255));
-        Color transparent = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), 0);
-        renderer.setPositivePaint(fillColor);
-        renderer.setNegativePaint(fillColor);
-        renderer.setSeriesPaint(0, transparent);
-        renderer.setSeriesPaint(1, transparent);
-        renderer.setSeriesVisibleInLegend(0, false);
-        renderer.setSeriesVisibleInLegend(1, false);
-        return renderer;
-    }
+    private static final class OverlayRendererFactory {
 
-    private StandardXYItemRenderer createStandardOverlayRenderer(XYDataset dataset,
-            ChartBuilder.OverlayDefinition overlay, BarSeries series, TimeAxisMode timeAxisMode) {
-        StandardXYItemRenderer renderer = new StandardXYItemRenderer();
-        Color baseColor = overlay.style().color();
-        float opacity = overlay.style().opacity();
-        Color colorWithOpacity = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
-                Math.round(opacity * 255));
-        for (int i = 0; i < dataset.getSeriesCount(); i++) {
-            renderer.setSeriesPaint(i, colorWithOpacity);
-            renderer.setSeriesStroke(i, createStroke(overlay.style()));
-        }
-        renderer.setDefaultToolTipGenerator(createOverlayToolTipGenerator(series, timeAxisMode));
-        return renderer;
-    }
-
-    private XYLineAndShapeRenderer createSwingMarkerRenderer(XYDataset dataset, ChartBuilder.OverlayDefinition overlay,
-            BarSeries series, TimeAxisMode timeAxisMode) {
-        boolean connectLines = overlay.style().connectGaps();
-        XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(connectLines, true);
-        Color baseColor = overlay.style().color();
-        // Swing markers default to 90% opacity (0.9) if using default opacity (1.0)
-        float opacity = overlay.style().opacity();
-        if (opacity == 1.0f) {
-            opacity = SWING_MARKER_DEFAULT_OPACITY; // Default to 90% opacity for swing markers
-        }
-        Color colorWithOpacity = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
-                Math.round(opacity * 255));
-        double diameter = Math.max(3.0, overlay.style().lineWidth() * 2.4);
-        Ellipse2D.Double shape = new Ellipse2D.Double(-diameter / 2.0, -diameter / 2.0, diameter, diameter);
-
-        for (int i = 0; i < dataset.getSeriesCount(); i++) {
-            renderer.setSeriesPaint(i, colorWithOpacity);
-            renderer.setSeriesFillPaint(i, colorWithOpacity);
-            renderer.setSeriesShape(i, shape);
-            renderer.setSeriesStroke(i, createStroke(overlay.style()));
-            renderer.setSeriesLinesVisible(i, connectLines);
-        }
-        renderer.setDefaultToolTipGenerator(createOverlayToolTipGenerator(series, timeAxisMode));
-        renderer.setDefaultShapesFilled(true);
-        renderer.setUseFillPaint(true);
-        renderer.setUseOutlinePaint(false);
-        return renderer;
-    }
-
-    private XYLineAndShapeRenderer createBarSeriesLabelRenderer(XYDataset dataset,
-            ChartBuilder.OverlayDefinition overlay, BarSeries series, TimeAxisMode timeAxisMode) {
-        XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(true, true);
-        Color baseColor = overlay.style().color();
-        float opacity = overlay.style().opacity();
-        Color colorWithOpacity = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
-                Math.round(opacity * 255));
-        double diameter = Math.max(4.0, overlay.style().lineWidth() * 2.4);
-        Ellipse2D.Double shape = new Ellipse2D.Double(-diameter / 2.0, -diameter / 2.0, diameter, diameter);
-
-        for (int i = 0; i < dataset.getSeriesCount(); i++) {
-            renderer.setSeriesPaint(i, colorWithOpacity);
-            renderer.setSeriesFillPaint(i, colorWithOpacity);
-            renderer.setSeriesShape(i, shape);
-            renderer.setSeriesStroke(i, createStroke(overlay.style()));
-            renderer.setSeriesShapesVisible(i, true);
-            renderer.setSeriesShapesFilled(i, true);
-            renderer.setSeriesLinesVisible(i, true);
+        private XYDifferenceRenderer createChannelFillRenderer(ChartBuilder.ChannelOverlayDefinition channel) {
+            XYDifferenceRenderer renderer = new XYDifferenceRenderer();
+            Color baseColor = channel.fillColor();
+            float opacity = channel.fillOpacity();
+            Color fillColor = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
+                    Math.round(opacity * 255));
+            Color transparent = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), 0);
+            renderer.setPositivePaint(fillColor);
+            renderer.setNegativePaint(fillColor);
+            renderer.setSeriesPaint(0, transparent);
+            renderer.setSeriesPaint(1, transparent);
+            renderer.setSeriesVisibleInLegend(0, false);
+            renderer.setSeriesVisibleInLegend(1, false);
+            return renderer;
         }
 
-        renderer.setDefaultToolTipGenerator(createOverlayToolTipGenerator(series, timeAxisMode));
-        renderer.setDefaultShapesFilled(true);
-        renderer.setUseFillPaint(true);
-        renderer.setUseOutlinePaint(false);
-        return renderer;
-    }
-
-    private BasicStroke createStroke(ChartBuilder.OverlayStyle style) {
-        float[] dash = style.dashPattern();
-        if (dash != null && dash.length > 0) {
-            return new BasicStroke(style.lineWidth(), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1.0f, dash, 0.0f);
+        private StandardXYItemRenderer createStandardOverlayRenderer(XYDataset dataset,
+                ChartBuilder.OverlayDefinition overlay, BarSeries series, TimeAxisMode timeAxisMode) {
+            StandardXYItemRenderer renderer = new StandardXYItemRenderer();
+            Color baseColor = overlay.style().color();
+            float opacity = overlay.style().opacity();
+            Color colorWithOpacity = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
+                    Math.round(opacity * 255));
+            for (int i = 0; i < dataset.getSeriesCount(); i++) {
+                renderer.setSeriesPaint(i, colorWithOpacity);
+                renderer.setSeriesStroke(i, createStroke(overlay.style()));
+            }
+            renderer.setDefaultToolTipGenerator(createOverlayToolTipGenerator(series, timeAxisMode));
+            return renderer;
         }
-        return new BasicStroke(style.lineWidth());
-    }
 
-    private XYToolTipGenerator createOverlayToolTipGenerator(BarSeries series, TimeAxisMode timeAxisMode) {
-        if (timeAxisMode == TimeAxisMode.BAR_INDEX) {
-            DateFormat dateFormat = resolveDateFormat(series.getFirstBar().getTimePeriod());
-            return new BarIndexToolTipGenerator(series, dateFormat);
+        private XYLineAndShapeRenderer createSwingMarkerRenderer(XYDataset dataset,
+                ChartBuilder.OverlayDefinition overlay, BarSeries series, TimeAxisMode timeAxisMode) {
+            boolean connectLines = overlay.style().connectGaps();
+            XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(connectLines, true);
+            Color baseColor = overlay.style().color();
+            // Swing markers default to 90% opacity (0.9) if using default opacity (1.0)
+            float opacity = overlay.style().opacity();
+            if (opacity == 1.0f) {
+                opacity = SWING_MARKER_DEFAULT_OPACITY; // Default to 90% opacity for swing markers
+            }
+            Color colorWithOpacity = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
+                    Math.round(opacity * 255));
+            double diameter = Math.max(3.0, overlay.style().lineWidth() * 2.4);
+            Ellipse2D.Double shape = new Ellipse2D.Double(-diameter / 2.0, -diameter / 2.0, diameter, diameter);
+
+            for (int i = 0; i < dataset.getSeriesCount(); i++) {
+                renderer.setSeriesPaint(i, colorWithOpacity);
+                renderer.setSeriesFillPaint(i, colorWithOpacity);
+                renderer.setSeriesShape(i, shape);
+                renderer.setSeriesStroke(i, createStroke(overlay.style()));
+                renderer.setSeriesLinesVisible(i, connectLines);
+            }
+            renderer.setDefaultToolTipGenerator(createOverlayToolTipGenerator(series, timeAxisMode));
+            renderer.setDefaultShapesFilled(true);
+            renderer.setUseFillPaint(true);
+            renderer.setUseOutlinePaint(false);
+            return renderer;
         }
-        return new TimeSeriesToolTipGenerator();
+
+        private XYLineAndShapeRenderer createBarSeriesLabelRenderer(XYDataset dataset,
+                ChartBuilder.OverlayDefinition overlay, BarSeries series, TimeAxisMode timeAxisMode) {
+            XYLineAndShapeRenderer renderer = new XYLineAndShapeRenderer(true, true);
+            Color baseColor = overlay.style().color();
+            float opacity = overlay.style().opacity();
+            Color colorWithOpacity = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
+                    Math.round(opacity * 255));
+            double diameter = Math.max(4.0, overlay.style().lineWidth() * 2.4);
+            Ellipse2D.Double shape = new Ellipse2D.Double(-diameter / 2.0, -diameter / 2.0, diameter, diameter);
+
+            for (int i = 0; i < dataset.getSeriesCount(); i++) {
+                renderer.setSeriesPaint(i, colorWithOpacity);
+                renderer.setSeriesFillPaint(i, colorWithOpacity);
+                renderer.setSeriesShape(i, shape);
+                renderer.setSeriesStroke(i, createStroke(overlay.style()));
+                renderer.setSeriesShapesVisible(i, true);
+                renderer.setSeriesShapesFilled(i, true);
+                renderer.setSeriesLinesVisible(i, true);
+            }
+
+            renderer.setDefaultToolTipGenerator(createOverlayToolTipGenerator(series, timeAxisMode));
+            renderer.setDefaultShapesFilled(true);
+            renderer.setUseFillPaint(true);
+            renderer.setUseOutlinePaint(false);
+            return renderer;
+        }
+
+        private BasicStroke createStroke(ChartBuilder.OverlayStyle style) {
+            float[] dash = style.dashPattern();
+            if (dash != null && dash.length > 0) {
+                return new BasicStroke(style.lineWidth(), BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND, 1.0f, dash,
+                        0.0f);
+            }
+            return new BasicStroke(style.lineWidth());
+        }
+
+        private XYToolTipGenerator createOverlayToolTipGenerator(BarSeries series, TimeAxisMode timeAxisMode) {
+            if (timeAxisMode == TimeAxisMode.BAR_INDEX) {
+                DateFormat dateFormat = resolveDateFormat(series.getFirstBar().getTimePeriod());
+                return new BarIndexToolTipGenerator(series, dateFormat);
+            }
+            return new TimeSeriesToolTipGenerator();
+        }
     }
 
     private XYToolTipGenerator createSeriesToolTipGenerator(BarSeries series, Duration duration,
