@@ -38,5 +38,12 @@
 - [x] Extract TimeAxisModeStrategy and migrate one call site.
 - [x] Extract AxisFactory and replace in TradingChartFactory.
 - [x] Extract DatasetFactory (TimeSeries vs XYSeries) and update overlays.
+- [x] Extract OverlayRendererFactory for overlay renderers and tooltips.
+- [x] Route domain value selection through TimeAxisModeStrategy.
 - [x] Centralize ChartWorkflow validation/chart creation into helper methods.
+- [x] Centralize chart styling in TradingChartFactory.
+- [x] Introduce ChartDefinitionMetadata for time axis mode and domain series.
+- [x] Route ChartPlan/compose title handling through ChartDefinitionMetadata.
+- [x] Introduce ChartContext and use it across chart planning/rendering.
+- [x] Document chart metadata/consistent title styling in README.
 - [x] Verify full build after each refactor step (latest: 2026-01-31).
