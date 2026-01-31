@@ -391,7 +391,7 @@ public final class TradingChartFactory {
         String resolvedTitle = definition.title() != null && !definition.title().trim().isEmpty() ? definition.title()
                 : buildChartTitle(baseDefinition.series() != null ? baseDefinition.series().getName() : "", "");
         JFreeChart chart = new JFreeChart(resolvedTitle, JFreeChart.DEFAULT_TITLE_FONT, combinedPlot, true);
-        applyChartStyling(chart, false);
+        applyChartStyling(chart);
         return chart;
     }
 
@@ -521,15 +521,11 @@ public final class TradingChartFactory {
     }
 
     private void applyChartStyling(JFreeChart chart) {
-        applyChartStyling(chart, true);
-    }
-
-    private void applyChartStyling(JFreeChart chart, boolean styleTitle) {
         chart.setAntiAlias(true);
         chart.setTextAntiAlias(true);
         chart.setBackgroundPaint(CHART_BACKGROUND_COLOR);
         chart.setBackgroundImageAlpha(CHART_BACKGROUND_ALPHA);
-        if (styleTitle && chart.getTitle() != null) {
+        if (chart.getTitle() != null) {
             chart.getTitle().setPaint(Color.LIGHT_GRAY);
         }
     }

@@ -406,7 +406,9 @@ public final class ChartBuilder {
         } else {
             subplots = Collections.emptyList();
         }
-        return new ChartDefinition(base, subplots, customTitle, timeAxisMode);
+        ChartDefinitionMetadata metadata = new ChartDefinitionMetadata(
+                Objects.requireNonNull(domainSeries, "Domain series cannot be null"), customTitle, timeAxisMode);
+        return new ChartDefinition(base, subplots, metadata);
     }
 
     private ChartPlan createPlan() {
@@ -1092,21 +1094,18 @@ public final class ChartBuilder {
 
     /**
      * Immutable definition of a complete chart, including the base plot, subplots,
-     * and title. This class is used internally to represent the chart structure
+     * and metadata. This class is used internally to represent the chart structure
      * before rendering.
      */
     public static final class ChartDefinition {
         private final PlotDefinition basePlot;
         private final List<PlotDefinition> subplots;
-        private final String title;
-        private final TimeAxisMode timeAxisMode;
+        private final ChartDefinitionMetadata metadata;
 
-        ChartDefinition(PlotDefinition basePlot, List<PlotDefinition> subplots, String title,
-                TimeAxisMode timeAxisMode) {
+        ChartDefinition(PlotDefinition basePlot, List<PlotDefinition> subplots, ChartDefinitionMetadata metadata) {
             this.basePlot = basePlot;
             this.subplots = subplots;
-            this.title = title;
-            this.timeAxisMode = timeAxisMode;
+            this.metadata = Objects.requireNonNull(metadata, "Chart metadata cannot be null");
         }
 
         /**
@@ -1128,12 +1127,32 @@ public final class ChartBuilder {
         }
 
         /**
+         * Returns the chart metadata (title, domain series, time axis mode).
+         *
+         * @return the chart metadata
+         * @since 0.23
+         */
+        public ChartDefinitionMetadata metadata() {
+            return metadata;
+        }
+
+        /**
          * Returns the chart title, or null if no custom title was set.
          *
          * @return the chart title, or null
          */
         public String title() {
-            return title;
+            return metadata.title();
+        }
+
+        /**
+         * Returns the shared domain series for the chart.
+         *
+         * @return the domain series
+         * @since 0.23
+         */
+        public BarSeries domainSeries() {
+            return metadata.domainSeries();
         }
 
         /**
@@ -1142,6 +1161,36 @@ public final class ChartBuilder {
          * @return the time axis mode
          * @since 0.23
          */
+        public TimeAxisMode timeAxisMode() {
+            return metadata.timeAxisMode();
+        }
+    }
+
+    /**
+     * Metadata about a chart definition, including the shared domain series and
+     * time axis configuration.
+     *
+     * @since 0.23
+     */
+    public static final class ChartDefinitionMetadata {
+        private final BarSeries domainSeries;
+        private final String title;
+        private final TimeAxisMode timeAxisMode;
+
+        ChartDefinitionMetadata(BarSeries domainSeries, String title, TimeAxisMode timeAxisMode) {
+            this.domainSeries = Objects.requireNonNull(domainSeries, "Domain series cannot be null");
+            this.title = title;
+            this.timeAxisMode = Objects.requireNonNull(timeAxisMode, "Time axis mode cannot be null");
+        }
+
+        public BarSeries domainSeries() {
+            return domainSeries;
+        }
+
+        public String title() {
+            return title;
+        }
+
         public TimeAxisMode timeAxisMode() {
             return timeAxisMode;
         }
