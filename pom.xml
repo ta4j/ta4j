@@ -357,6 +357,38 @@
                 </dependencies>
             </plugin>
 
+            <!-- Version plugin -->
+            <!-- mvn versions:display-dependency-updates -->
+            <!-- mvn versions:display-plugin-updates -->
+            <!-- mvn versions:display-property-updates -->
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>versions-maven-plugin</artifactId>
+                <version>2.21.0</version>
+                <configuration>
+                    <ruleSet>
+                        <ignoreVersions>
+                            <ignoreVersion>
+                                <type>regex</type>
+                                <version>(?i).*-SNAPSHOT.*</version>
+                            </ignoreVersion>
+                            <ignoreVersion>
+                                <type>regex</type>
+                                <version>(?i).*(?:-alpha(?:[.-]?\d+)?|-beta(?:[.-]?\d+)?).*</version>
+                            </ignoreVersion>
+                            <ignoreVersion>
+                                <type>regex</type>
+                                <version>(?i).*(?:-milestone(?:[.-]?\d+)?|-m\d+).*</version>
+                            </ignoreVersion>
+                            <ignoreVersion>
+                                <type>regex</type>
+                                <version>(?i).*(?:-rc(?:[.-]?\d+)?|-cr(?:[.-]?\d+)?).*</version>
+                            </ignoreVersion>
+                        </ignoreVersions>
+                    </ruleSet>
+                </configuration>
+            </plugin>
+
         </plugins>
     </build>
 
