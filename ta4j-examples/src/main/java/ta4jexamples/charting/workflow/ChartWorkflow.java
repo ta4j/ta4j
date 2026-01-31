@@ -126,7 +126,7 @@ public class ChartWorkflow {
      *
      * @param context the chart context to render
      * @return the rendered chart
-     * @since 0.23
+     * @since 0.22.2
      */
     public JFreeChart render(ChartContext context) {
         Objects.requireNonNull(context, "Chart context cannot be null");
@@ -230,7 +230,7 @@ public class ChartWorkflow {
      * Builds a chart that overlays a trading record on top of OHLC data using the
      * supplied time axis mode.
      *
-     * @since 0.23
+     * @since 0.22.2
      */
     public JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode) {
@@ -253,7 +253,7 @@ public class ChartWorkflow {
      * Builds a chart that overlays a trading record on top of OHLC data and appends
      * indicator subplots using the supplied time axis mode.
      *
-     * @since 0.23
+     * @since 0.22.2
      */
     @SafeVarargs
     public final JFreeChart createTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
@@ -276,7 +276,7 @@ public class ChartWorkflow {
      * supplied time axis mode.
      *
      * @return an optional path to the stored chart
-     * @since 0.23
+     * @since 0.22.2
      */
     public Optional<Path> saveTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode) {
@@ -303,7 +303,7 @@ public class ChartWorkflow {
      * configured, using the supplied time axis mode.
      *
      * @return an optional path to the stored chart
-     * @since 0.23
+     * @since 0.22.2
      */
     @SafeVarargs
     public final Optional<Path> saveTradingRecordChart(BarSeries series, String strategyName,
@@ -326,7 +326,7 @@ public class ChartWorkflow {
      * Displays a trading record chart, logging any presentation exceptions, using
      * the supplied time axis mode.
      *
-     * @since 0.23
+     * @since 0.22.2
      */
     public void displayTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode) {
@@ -353,7 +353,7 @@ public class ChartWorkflow {
      * Displays a trading record chart with indicator subplots, logging any
      * presentation exceptions, using the supplied time axis mode.
      *
-     * @since 0.23
+     * @since 0.22.2
      */
     @SafeVarargs
     public final void displayTradingRecordChart(BarSeries series, String strategyName, TradingRecord tradingRecord,
@@ -380,7 +380,7 @@ public class ChartWorkflow {
      * Produces a PNG representation of a trading record chart using the supplied
      * time axis mode.
      *
-     * @since 0.23
+     * @since 0.22.2
      */
     public byte[] createTradingRecordChartBytes(BarSeries series, String strategyName, TradingRecord tradingRecord,
             TimeAxisMode timeAxisMode) {
@@ -404,7 +404,7 @@ public class ChartWorkflow {
      * Produces a PNG representation of a trading record chart with indicator
      * subplots using the supplied time axis mode.
      *
-     * @since 0.23
+     * @since 0.22.2
      */
     @SafeVarargs
     public final byte[] createTradingRecordChartBytes(BarSeries series, String strategyName,
@@ -429,7 +429,7 @@ public class ChartWorkflow {
      * indicator in its own section below, each with its own Y-axis, using the
      * supplied time axis mode.
      *
-     * @since 0.23
+     * @since 0.22.2
      */
     @SafeVarargs
     public final JFreeChart createIndicatorChart(BarSeries series, TimeAxisMode timeAxisMode,
@@ -453,7 +453,7 @@ public class ChartWorkflow {
      * indicator in its own section below, each with its own Y-axis, using the
      * supplied time axis mode.
      *
-     * @since 0.23
+     * @since 0.22.2
      */
     @SafeVarargs
     public final void displayIndicatorChart(BarSeries series, TimeAxisMode timeAxisMode, Indicator<Num>... indicators) {
@@ -511,7 +511,7 @@ public class ChartWorkflow {
      *                           if null)
      * @param timeAxisMode       the time axis mode to use
      * @return the dual-axis chart
-     * @since 0.23
+     * @since 0.22.2
      */
     public JFreeChart createDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
             Indicator<Num> secondaryIndicator, String secondaryLabel, String chartTitle, TimeAxisMode timeAxisMode) {
@@ -558,7 +558,7 @@ public class ChartWorkflow {
      * @param secondaryIndicator the secondary indicator (right axis)
      * @param secondaryLabel     the label for the secondary axis
      * @param timeAxisMode       the time axis mode to use
-     * @since 0.23
+     * @since 0.22.2
      */
     public void displayDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
             Indicator<Num> secondaryIndicator, String secondaryLabel, TimeAxisMode timeAxisMode) {
@@ -601,7 +601,7 @@ public class ChartWorkflow {
      * @param windowTitle        the title for the window/frame (optional, uses
      *                           default if null)
      * @param timeAxisMode       the time axis mode to use
-     * @since 0.23
+     * @since 0.22.2
      */
     public void displayDualAxisChart(BarSeries series, Indicator<Num> primaryIndicator, String primaryLabel,
             Indicator<Num> secondaryIndicator, String secondaryLabel, String chartTitle, String windowTitle,

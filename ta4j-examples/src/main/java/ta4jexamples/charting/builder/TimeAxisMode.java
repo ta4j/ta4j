@@ -13,7 +13,7 @@ package ta4jexamples.charting.builder;
  * data unchanged.
  * </p>
  *
- * @since 0.23
+ * @since 0.22.2
  */
 public enum TimeAxisMode {
 

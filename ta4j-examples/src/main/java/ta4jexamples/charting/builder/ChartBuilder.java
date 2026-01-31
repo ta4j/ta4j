@@ -90,7 +90,7 @@ public final class ChartBuilder {
      *
      * @param timeAxisMode the time axis mode to apply
      * @return this builder
-     * @since 0.23
+     * @since 0.22.2
      */
     public ChartBuilder withTimeAxisMode(TimeAxisMode timeAxisMode) {
         this.timeAxisMode = Objects.requireNonNull(timeAxisMode, "Time axis mode cannot be null");
@@ -549,7 +549,7 @@ public final class ChartBuilder {
          *
          * @param timeAxisMode the time axis mode to apply
          * @return this chart stage for further configuration
-         * @since 0.23
+         * @since 0.22.2
          */
         ChartStage withTimeAxisMode(TimeAxisMode timeAxisMode);
 
@@ -1111,7 +1111,7 @@ public final class ChartBuilder {
          * Returns the chart metadata (title, domain series, time axis mode).
          *
          * @return the chart metadata
-         * @since 0.23
+         * @since 0.22.2
          */
         public ChartDefinitionMetadata metadata() {
             return metadata;
@@ -1130,7 +1130,7 @@ public final class ChartBuilder {
          * Returns the shared domain series for the chart.
          *
          * @return the domain series
-         * @since 0.23
+         * @since 0.22.2
          */
         public BarSeries domainSeries() {
             return metadata.domainSeries();
@@ -1140,7 +1140,7 @@ public final class ChartBuilder {
          * Returns the time axis mode for the chart domain axis.
          *
          * @return the time axis mode
-         * @since 0.23
+         * @since 0.22.2
          */
         public TimeAxisMode timeAxisMode() {
             return metadata.timeAxisMode();
@@ -1151,7 +1151,7 @@ public final class ChartBuilder {
      * Metadata about a chart definition, including the shared domain series and
      * time axis configuration.
      *
-     * @since 0.23
+     * @since 0.22.2
      */
     public static final class ChartDefinitionMetadata {
         private final BarSeries domainSeries;
