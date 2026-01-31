@@ -138,10 +138,7 @@ public class ChartWorkflowTest {
 
     @Test
     public void testRenderFromChartContext() {
-        ChartPlan plan = chartWorkflow.builder()
-                .withSeries(barSeries)
-                .withTradingRecordOverlay(tradingRecord)
-                .toPlan();
+        ChartPlan plan = chartWorkflow.builder().withSeries(barSeries).withTradingRecordOverlay(tradingRecord).toPlan();
 
         ChartContext context = plan.context();
         JFreeChart chart = chartWorkflow.render(context);
