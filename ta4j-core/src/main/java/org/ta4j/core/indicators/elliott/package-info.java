@@ -44,7 +44,9 @@
  * {@link org.ta4j.core.indicators.elliott.ElliottConfidenceScorer} calculates
  * confidence from weighted factors, and
  * {@link org.ta4j.core.indicators.elliott.ElliottScenarioSet} holds ranked
- * alternative scenarios.</li>
+ * alternative scenarios.
+ * {@link org.ta4j.core.indicators.elliott.ElliottTrendBiasIndicator} aggregates
+ * directional bias across scenarios.</li>
  * <li><b>Invalidation and projections</b>:
  * {@link org.ta4j.core.indicators.elliott.ElliottInvalidationIndicator} flags
  * when wave counts break canonical invalidation levels,

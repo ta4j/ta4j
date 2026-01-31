@@ -10,6 +10,10 @@
 - Added **MorningStarIndicator** and **EveningStarIndicator**
 - Added **BullishKickerIndicator** and **BearishKickerIndicator**
 - Added **PiercingIndicator** and **DarkCloudIndicator**
+- **Elliott Wave trend bias**: Added `ElliottTrendBias` and `ElliottTrendBiasIndicator` for scenario-weighted
+  bullish/bearish bias, plus `ElliottScenarioSet#trendBias()` and `ElliottWaveFacade#trendBias()` helpers.
+- **Elliott Wave trend backtest demo**: Added `ElliottWaveTrendBacktest` to run backtest and walk-forward
+  evaluations on ossified Coinbase/Yahoo datasets.
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
@@ -34,6 +38,9 @@
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
+- **Elliott Wave confidence scoring**: Extension ratio scoring now penalizes under/over-extended projections to
+  avoid overstating wave 3 confidence on shallow extensions.
+- **Elliott Wave analysis output**: Chart titles and JSON results now include scenario-weighted trend bias.
 
 ### Fixed
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.

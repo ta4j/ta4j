@@ -369,8 +369,17 @@ public final class ElliottConfidenceScorer {
             return 0.0;
         }
 
-        // Base score for being in range
-        double score = 0.7;
+        // Base score scales down when slightly outside the preferred range
+        double score;
+        if (ratio < min) {
+            double minBound = min * 0.8;
+            score = 0.7 * Math.max(0.0, (ratio - minBound) / (min - minBound));
+        } else if (ratio > max) {
+            double maxBound = max * 1.2;
+            score = 0.7 * Math.max(0.0, (maxBound - ratio) / (maxBound - max));
+        } else {
+            score = 0.7;
+        }
 
         // Bonus for being close to ideal
         final double distanceFromIdeal = Math.abs(ratio - ideal);

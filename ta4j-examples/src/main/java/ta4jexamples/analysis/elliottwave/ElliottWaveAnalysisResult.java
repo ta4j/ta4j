@@ -30,6 +30,7 @@ import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottRatio;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ScenarioType;
+import org.ta4j.core.indicators.elliott.ElliottTrendBias;
 import org.ta4j.core.num.Num;
 
 import ta4jexamples.charting.workflow.ChartWorkflow;
@@ -52,8 +53,8 @@ import com.google.gson.Gson;
  * <p>
  * This class provides structured access to analysis results including swing
  * snapshots, phase information, ratio and channel data, confluence scores,
- * scenario summaries, and detailed base case and alternative scenario
- * information.
+ * scenario summaries, trend bias, and detailed base case and alternative
+ * scenario information.
  * <p>
  * The class contains pre-rendered chart images (PNG format, base64-encoded) for
  * all scenarios, allowing charts to be viewed without requiring external data
@@ -68,8 +69,9 @@ import com.google.gson.Gson;
  * @since 0.22.0
  */
 public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, SwingSnapshot swingSnapshot,
-        LatestAnalysis latestAnalysis, ScenarioSummary scenarioSummary, BaseCaseScenario baseCase,
-        List<AlternativeScenario> alternatives, String baseCaseChartImage, List<String> alternativeChartImages) {
+        LatestAnalysis latestAnalysis, ScenarioSummary scenarioSummary, ElliottTrendBias trendBias,
+        BaseCaseScenario baseCase, List<AlternativeScenario> alternatives, String baseCaseChartImage,
+        List<String> alternativeChartImages) {
     private static final double SCENARIO_TYPE_OVERLAP_WEIGHT = 0.3;
     private static final double CONSENSUS_ADJUSTMENT_WEIGHT = 0.4;
     private static final double DIRECTION_OVERLAP_WEIGHT = 0.2;
@@ -133,6 +135,7 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
         LatestAnalysis latest = LatestAnalysis.from(phaseIndicator, ratioIndicator, channelIndicator,
                 confluenceIndicator, invalidationIndicator, endIndex);
         ScenarioSummary summary = ScenarioSummary.from(scenarioSet);
+        ElliottTrendBias trendBias = scenarioSet.trendBias();
         Map<String, Double> scenarioProbabilities = computeScenarioProbabilities(scenarioSet);
         BaseCaseScenario baseCase = scenarioSet.base()
                 .map(scenario -> BaseCaseScenario.from(scenario,
@@ -151,8 +154,8 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
                 .map(plan -> encodeChartAsBase64(chartWorkflow, plan))
                 .toList();
 
-        return new ElliottWaveAnalysisResult(degree, endIndex, snapshot, latest, summary, baseCase, alternatives,
-                baseCaseChartImage, alternativeChartImages);
+        return new ElliottWaveAnalysisResult(degree, endIndex, snapshot, latest, summary, trendBias, baseCase,
+                alternatives, baseCaseChartImage, alternativeChartImages);
     }
 
     /**

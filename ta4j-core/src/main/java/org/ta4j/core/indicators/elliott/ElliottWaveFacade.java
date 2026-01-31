@@ -78,6 +78,7 @@ public final class ElliottWaveFacade {
     private ElliottScenarioIndicator scenarioIndicator;
     private ElliottProjectionIndicator projectionIndicator;
     private ElliottInvalidationLevelIndicator invalidationLevelIndicator;
+    private ElliottTrendBiasIndicator trendBiasIndicator;
 
     private ElliottWaveFacade(final BarSeries series, final ElliottSwingIndicator swingIndicator,
             final Indicator<Num> priceIndicator, final Optional<Num> fibTolerance,
@@ -414,6 +415,17 @@ public final class ElliottWaveFacade {
             invalidationLevelIndicator = new ElliottInvalidationLevelIndicator(scenarios());
         }
         return invalidationLevelIndicator;
+    }
+
+    /**
+     * @return the trend bias indicator derived from scenario direction
+     * @since 0.22.2
+     */
+    public ElliottTrendBiasIndicator trendBias() {
+        if (trendBiasIndicator == null) {
+            trendBiasIndicator = new ElliottTrendBiasIndicator(scenarios());
+        }
+        return trendBiasIndicator;
     }
 
     /**

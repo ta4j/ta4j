@@ -30,6 +30,7 @@ import org.ta4j.core.indicators.elliott.ElliottWaveFacade;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottRatio;
+import org.ta4j.core.indicators.elliott.ElliottTrendBias;
 import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -543,6 +544,7 @@ public class ElliottWaveAnalysis {
         ElliottSwingMetadata swingMetadata = ElliottSwingMetadata.of(facade.swing().getValue(endIndex),
                 series.numFactory());
         ElliottScenarioSet scenarioSet = scenarioIndicator.getValue(endIndex);
+        ElliottTrendBias trendBias = scenarioSet.trendBias();
 
         // Create chart indicators
         Indicator<Num> ratioValue = new RatioValueIndicator(series, ratioIndicator, "Elliott ratio value");
@@ -555,11 +557,11 @@ public class ElliottWaveAnalysis {
         Optional<ChartPlan> baseCaseChartPlan = Optional.empty();
         List<ChartPlan> alternativeChartPlans = new ArrayList<>();
 
+        String trendLabel = formatTrendBiasLabel(trendBias);
         if (scenarioSet.base().isPresent()) {
             ElliottScenario baseCase = scenarioSet.base().get();
-            String baseCaseTitle = String.format("Elliott Wave (%s) - %s - BASE CASE: %s (%s) - %.1f%% confidence",
-                    degree, series.getName(), baseCase.currentPhase(), baseCase.type(),
-                    baseCase.confidence().asPercentage());
+            String baseCaseLabel = "BASE CASE";
+            String baseCaseTitle = buildScenarioTitle(degree, series, trendLabel, baseCaseLabel, baseCase);
             BarSeriesLabelIndicator baseCaseWaveLabels = buildWaveLabelsFromScenario(series, baseCase);
             baseCaseChartPlan = Optional.of(buildChartPlan(chartWorkflow, series, channelIndicator, baseCaseWaveLabels,
                     swingCountAsNum, filteredSwingCountAsNum, ratioValue, confluenceIndicator, baseCaseTitle));
@@ -568,8 +570,8 @@ public class ElliottWaveAnalysis {
         List<ElliottScenario> alternatives = scenarioSet.alternatives();
         for (int i = 0; i < alternatives.size(); i++) {
             ElliottScenario alt = alternatives.get(i);
-            String altTitle = String.format("Elliott Wave (%s) - %s - ALTERNATIVE %d: %s (%s) - %.1f%% confidence",
-                    degree, series.getName(), i + 1, alt.currentPhase(), alt.type(), alt.confidence().asPercentage());
+            String altLabel = String.format("ALTERNATIVE %d", i + 1);
+            String altTitle = buildScenarioTitle(degree, series, trendLabel, altLabel, alt);
             BarSeriesLabelIndicator altWaveLabels = buildWaveLabelsFromScenario(series, alt);
             alternativeChartPlans.add(buildChartPlan(chartWorkflow, series, channelIndicator, altWaveLabels,
                     swingCountAsNum, filteredSwingCountAsNum, ratioValue, confluenceIndicator, altTitle));
@@ -608,13 +610,14 @@ public class ElliottWaveAnalysis {
 
         ChartWorkflow chartWorkflow = new ChartWorkflow();
         boolean isHeadless = GraphicsEnvironment.isHeadless();
+        String trendLabel = formatTrendBiasLabel(result.structuredResult().trendBias());
 
         // Display and save base case scenario chart
         if (result.baseCaseChartPlan().isPresent()) {
             ChartPlan baseCasePlan = result.baseCaseChartPlan().get();
             ElliottScenario baseCase = result.scenarioSet().base().orElseThrow();
-            String baseCaseWindowTitle = String.format("%s - BASE CASE: %s (%s) - %.1f%% - %s", result.degree(),
-                    baseCase.currentPhase(), baseCase.type(), baseCase.confidence().asPercentage(),
+            String baseCaseLabel = "BASE CASE";
+            String baseCaseWindowTitle = buildScenarioWindowTitle(result.degree(), trendLabel, baseCaseLabel, baseCase,
                     result.series().getName());
 
             if (!isHeadless) {
@@ -630,8 +633,9 @@ public class ElliottWaveAnalysis {
         for (int i = 0; i < result.alternativeChartPlans().size() && i < alternatives.size(); i++) {
             ChartPlan altPlan = result.alternativeChartPlans().get(i);
             ElliottScenario alt = alternatives.get(i);
-            String altWindowTitle = String.format("%s - ALTERNATIVE %d: %s (%s) - %.1f%% - %s", result.degree(), i + 1,
-                    alt.currentPhase(), alt.type(), alt.confidence().asPercentage(), result.series().getName());
+            String altLabel = String.format("ALTERNATIVE %d", i + 1);
+            String altWindowTitle = buildScenarioWindowTitle(result.degree(), trendLabel, altLabel, alt,
+                    result.series().getName());
 
             if (!isHeadless) {
                 chartWorkflow.display(altPlan, altWindowTitle);
@@ -702,6 +706,7 @@ public class ElliottWaveAnalysis {
         LOG.info("=== Elliott Wave Scenario Analysis ===");
         LOG.info("Scenario summary: {}", summary.summary());
         LOG.info("Strong consensus: {} | Consensus phase: {}", summary.strongConsensus(), summary.consensusPhase());
+        logTrendBias(result.trendBias());
 
         // Log base case scenario
         if (result.baseCase() != null) {
@@ -1019,6 +1024,46 @@ public class ElliottWaveAnalysis {
      */
     private static LabelPlacement placementForPivot(boolean isHighPivot) {
         return isHighPivot ? LabelPlacement.ABOVE : LabelPlacement.BELOW;
+    }
+
+    private static String buildScenarioTitle(ElliottDegree degree, BarSeries series, String trendLabel,
+            String scenarioLabel, ElliottScenario scenario) {
+        return String.format("Elliott Wave (%s) - %s - %s - %s: %s (%s) - %.1f%% confidence", degree, series.getName(),
+                trendLabel, scenarioLabel, scenario.currentPhase(), scenario.type(),
+                scenario.confidence().asPercentage());
+    }
+
+    private static String buildScenarioWindowTitle(ElliottDegree degree, String trendLabel, String scenarioLabel,
+            ElliottScenario scenario, String seriesName) {
+        return String.format("%s - %s - %s: %s (%s) - %.1f%% - %s", degree, trendLabel, scenarioLabel,
+                scenario.currentPhase(), scenario.type(), scenario.confidence().asPercentage(), seriesName);
+    }
+
+    private static String formatTrendBiasLabel(ElliottTrendBias trendBias) {
+        if (trendBias == null || trendBias.isUnknown()) {
+            return "TREND: UNKNOWN";
+        }
+        if (trendBias.isNeutral()) {
+            return "TREND: NEUTRAL";
+        }
+        double strength = trendBias.strength();
+        if (Double.isNaN(strength)) {
+            return "TREND: " + trendBias.direction();
+        }
+        return String.format("TREND: %s (%.0f%%)", trendBias.direction(), strength * 100.0);
+    }
+
+    private static void logTrendBias(ElliottTrendBias trendBias) {
+        if (trendBias == null) {
+            LOG.info("Trend bias: UNKNOWN");
+            return;
+        }
+        String score = Double.isNaN(trendBias.score()) ? "n/a" : String.format("%.3f", trendBias.score());
+        String strength = Double.isNaN(trendBias.strength()) ? "n/a"
+                : String.format("%.1f%%", trendBias.strength() * 100.0);
+        LOG.info("Trend bias: {} | score={} | strength={} | consensus={} | directionalScenarios={}/{}",
+                trendBias.direction(), score, strength, trendBias.consensus(), trendBias.knownDirectionCount(),
+                trendBias.totalScenarios());
     }
 
     /**

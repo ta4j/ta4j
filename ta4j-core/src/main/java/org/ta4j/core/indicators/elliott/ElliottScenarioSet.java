@@ -199,6 +199,28 @@ public final class ElliottScenarioSet {
     }
 
     /**
+     * Computes the aggregate directional bias across all scenarios.
+     *
+     * @return trend bias snapshot
+     * @since 0.22.2
+     */
+    public ElliottTrendBias trendBias() {
+        return trendBias(ElliottTrendBias.DEFAULT_NEUTRAL_THRESHOLD);
+    }
+
+    /**
+     * Computes the aggregate directional bias across all scenarios using a custom
+     * neutral threshold.
+     *
+     * @param neutralThreshold absolute score below which bias is neutral
+     * @return trend bias snapshot
+     * @since 0.22.2
+     */
+    public ElliottTrendBias trendBias(final double neutralThreshold) {
+        return ElliottTrendBias.fromScenarios(scenarios, neutralThreshold);
+    }
+
+    /**
      * Calculates the confidence spread between the base case and next-best
      * scenario.
      *

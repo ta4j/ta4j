@@ -106,6 +106,26 @@ class ElliottConfidenceScorerTest {
     }
 
     @Test
+    void fibonacciScorePenalizesUnderExtendedWaveThree() {
+        // Ideal wave 3 extension versus a shallow (under-extended) wave 3.
+        List<ElliottSwing> ideal = List.of(
+                new ElliottSwing(0, 5, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),
+                new ElliottSwing(5, 10, numFactory.numOf(120), numFactory.numOf(108), ElliottDegree.MINOR),
+                new ElliottSwing(10, 15, numFactory.numOf(108), numFactory.numOf(140.36), ElliottDegree.MINOR));
+
+        List<ElliottSwing> underExtended = List.of(
+                new ElliottSwing(0, 5, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),
+                new ElliottSwing(5, 10, numFactory.numOf(120), numFactory.numOf(108), ElliottDegree.MINOR),
+                new ElliottSwing(10, 15, numFactory.numOf(108), numFactory.numOf(125), ElliottDegree.MINOR));
+
+        Num idealScore = scorer.scoreFibonacci(ideal, ElliottPhase.WAVE3);
+        Num underScore = scorer.scoreFibonacci(underExtended, ElliottPhase.WAVE3);
+
+        assertThat(idealScore.doubleValue()).isGreaterThan(underScore.doubleValue());
+        assertThat(underScore.doubleValue()).isLessThan(0.7);
+    }
+
+    @Test
     void fibonacciScoreReturnsZeroForNonePhase() {
         // NONE phase should return zero
         List<ElliottSwing> swings = List.of(

@@ -25,6 +25,7 @@ import org.ta4j.core.indicators.elliott.ElliottConfidence;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
+import org.ta4j.core.indicators.elliott.ElliottTrendBias;
 import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNum;
@@ -230,6 +231,7 @@ class ElliottWaveAnalysisResultTest {
         assertTrue(json.contains("\"swingSnapshot\""), "JSON should contain swingSnapshot field");
         assertTrue(json.contains("\"latestAnalysis\""), "JSON should contain latestAnalysis field");
         assertTrue(json.contains("\"scenarioSummary\""), "JSON should contain scenarioSummary field");
+        assertTrue(json.contains("\"trendBias\""), "JSON should contain trendBias field");
     }
 
     @Test
@@ -240,8 +242,9 @@ class ElliottWaveAnalysisResultTest {
                 ElliottPhase.NONE, false, false, RatioType.NONE, Double.NaN, null, Double.NaN, false, false);
         ElliottWaveAnalysisResult.ScenarioSummary summary = new ElliottWaveAnalysisResult.ScenarioSummary("summary",
                 false, ElliottPhase.NONE);
+        ElliottTrendBias trendBias = ElliottTrendBias.unknown();
         ElliottWaveAnalysisResult result = new ElliottWaveAnalysisResult(ElliottDegree.PRIMARY, 0, snapshot, latest,
-                summary, null, List.of(), null, List.of());
+                summary, trendBias, null, List.of(), null, List.of());
 
         String json = result.toJson();
 
