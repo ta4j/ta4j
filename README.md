@@ -424,6 +424,8 @@ chartWorkflow.saveChartImage(chart, series, "ema-crossover-strategy", "output/ch
 The chart above shows candlestick price data with EMA lines overlaid and buy/sell signals marked with arrows. This demonstrates basic strategy visualization with indicator overlays.
 Use `TimeAxisMode.BAR_INDEX` when you want to remove visual gaps from weekends or market holidays while keeping the underlying bar timestamps intact.
 
+If you need to inspect or customize a chart before rendering, call `toPlan()` and review `plan.context()`/`plan.metadata()` for the shared title, domain series, and time axis mode. The same metadata drives consistent title styling across chart types when you render or save charts.
+
 **Adding indicator subcharts** for indicators with different scales (like RSI, which ranges from 0-100):
 <!-- START_SNIPPET: rsi-strategy -->
 ```java

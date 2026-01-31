@@ -62,6 +62,7 @@ import org.ta4j.core.num.Num;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 import ta4jexamples.charting.builder.ChartBuilder;
+import ta4jexamples.charting.builder.ChartContext;
 import ta4jexamples.charting.builder.TimeAxisMode;
 import ta4jexamples.charting.renderer.BaseCandleStickRenderer;
 
@@ -371,12 +372,21 @@ public final class TradingChartFactory {
         return chart;
     }
 
+    public JFreeChart compose(ChartContext context) {
+        Objects.requireNonNull(context, "Chart context cannot be null");
+        return compose(context.definition(), context.metadata());
+    }
+
     public JFreeChart compose(ChartBuilder.ChartDefinition definition) {
         Objects.requireNonNull(definition, "Chart definition cannot be null");
+        return compose(definition, definition.metadata());
+    }
+
+    private JFreeChart compose(ChartBuilder.ChartDefinition definition, ChartBuilder.ChartDefinitionMetadata metadata) {
         ChartBuilder.PlotDefinition baseDefinition = Objects.requireNonNull(definition.basePlot(),
                 "Base plot cannot be null");
 
-        TimeAxisMode timeAxisMode = requireTimeAxisMode(definition.timeAxisMode());
+        TimeAxisMode timeAxisMode = requireTimeAxisMode(metadata.timeAxisMode());
         CombinedDomainXYPlot combinedPlot = createCombinedPlot(baseDefinition.series(), timeAxisMode);
         XYPlot basePlot = buildPlotFromDefinition(baseDefinition, timeAxisMode);
         combinedPlot.add(basePlot, calculateMainPlotWeight(definition.subplots().size()));
@@ -388,7 +398,7 @@ public final class TradingChartFactory {
             }
         }
 
-        String resolvedTitle = definition.title() != null && !definition.title().trim().isEmpty() ? definition.title()
+        String resolvedTitle = metadata.title() != null && !metadata.title().trim().isEmpty() ? metadata.title()
                 : buildChartTitle(baseDefinition.series() != null ? baseDefinition.series().getName() : "", "");
         JFreeChart chart = new JFreeChart(resolvedTitle, JFreeChart.DEFAULT_TITLE_FONT, combinedPlot, true);
         applyChartStyling(chart);

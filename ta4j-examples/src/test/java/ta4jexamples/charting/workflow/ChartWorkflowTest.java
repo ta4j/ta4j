@@ -57,6 +57,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import ta4jexamples.charting.ChartingTestFixtures;
 import ta4jexamples.charting.builder.ChartBuilder;
+import ta4jexamples.charting.builder.ChartContext;
 import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.charting.builder.TimeAxisMode;
 import ta4jexamples.charting.compose.TradingChartFactory;
@@ -133,6 +134,21 @@ public class ChartWorkflowTest {
         assertNotNull(chart, "Chart should not be null");
         assertInstanceOf(CombinedDomainXYPlot.class, chart.getPlot(),
                 "Chart built through builder should use CombinedDomainXYPlot");
+    }
+
+    @Test
+    public void testRenderFromChartContext() {
+        ChartPlan plan = chartWorkflow.builder()
+                .withSeries(barSeries)
+                .withTradingRecordOverlay(tradingRecord)
+                .toPlan();
+
+        ChartContext context = plan.context();
+        JFreeChart chart = chartWorkflow.render(context);
+
+        assertNotNull(chart, "Chart should not be null");
+        assertInstanceOf(CombinedDomainXYPlot.class, chart.getPlot(),
+                "Chart rendered from context should use CombinedDomainXYPlot");
     }
 
     @Test

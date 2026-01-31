@@ -412,7 +412,7 @@ public final class ChartBuilder {
     }
 
     private ChartPlan createPlan() {
-        return new ChartPlan(buildDefinition(), primarySeries());
+        return new ChartPlan(buildDefinition());
     }
 
     private ChartPlan planForTerminal() {
@@ -744,7 +744,8 @@ public final class ChartBuilder {
 
         /**
          * Builds and returns the ChartPlan without rendering it. Useful for
-         * programmatic inspection or custom rendering.
+         * programmatic inspection or custom rendering. Use {@link ChartPlan#context()}
+         * or {@link ChartPlan#metadata()} to inspect shared settings.
          *
          * @return the constructed ChartPlan
          */

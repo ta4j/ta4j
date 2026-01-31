@@ -42,6 +42,7 @@ import java.util.Optional;
 import java.util.function.Supplier;
 
 import ta4jexamples.charting.builder.ChartBuilder;
+import ta4jexamples.charting.builder.ChartContext;
 import ta4jexamples.charting.builder.TimeAxisMode;
 import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.charting.compose.TradingChartFactory;
@@ -137,7 +138,19 @@ public class ChartWorkflow {
      */
     public JFreeChart render(ChartPlan plan) {
         Objects.requireNonNull(plan, "Chart plan cannot be null");
-        return chartFactory.compose(plan.definition());
+        return chartFactory.compose(plan.context());
+    }
+
+    /**
+     * Renders a chart from the provided chart context.
+     *
+     * @param context the chart context to render
+     * @return the rendered chart
+     * @since 0.23
+     */
+    public JFreeChart render(ChartContext context) {
+        Objects.requireNonNull(context, "Chart context cannot be null");
+        return chartFactory.compose(context);
     }
 
     /**
@@ -146,7 +159,7 @@ public class ChartWorkflow {
      * @param plan the chart plan
      */
     public void display(ChartPlan plan) {
-        String windowTitle = plan.definition().title();
+        String windowTitle = plan.metadata().title();
         if (windowTitle != null && !windowTitle.trim().isEmpty()) {
             displayChart(render(plan), windowTitle);
         } else {

@@ -23,51 +23,37 @@
  */
 package ta4jexamples.charting.builder;
 
+import java.util.Objects;
+
 import org.ta4j.core.BarSeries;
 
-import ta4jexamples.charting.builder.ChartBuilder.ChartDefinitionMetadata;
-
 /**
- * Immutable plan describing a chart composition along with shared metadata.
+ * Immutable context describing a chart definition alongside its shared
+ * metadata.
+ *
+ * @since 0.23
  */
-public final class ChartPlan {
+public record ChartContext(ChartBuilder.ChartDefinition definition, ChartBuilder.ChartDefinitionMetadata metadata) {
 
-    private final ChartContext context;
-
-    ChartPlan(ChartBuilder.ChartDefinition definition) {
-        this.context = ChartContext.from(definition);
+    public ChartContext {
+        Objects.requireNonNull(definition, "Chart definition cannot be null");
+        Objects.requireNonNull(metadata, "Chart metadata cannot be null");
     }
 
-    public ChartBuilder.ChartDefinition definition() {
-        return context.definition();
+    public static ChartContext from(ChartBuilder.ChartDefinition definition) {
+        Objects.requireNonNull(definition, "Chart definition cannot be null");
+        return new ChartContext(definition, definition.metadata());
     }
 
-    /**
-     * Returns the metadata for this chart plan.
-     *
-     * @return the chart metadata
-     * @since 0.23
-     */
-    public ChartDefinitionMetadata metadata() {
-        return context.metadata();
+    public BarSeries domainSeries() {
+        return metadata.domainSeries();
     }
 
-    /**
-     * Returns the chart context containing definition and metadata.
-     *
-     * @return the chart context
-     * @since 0.23
-     */
-    public ChartContext context() {
-        return context;
+    public String title() {
+        return metadata.title();
     }
 
-    /**
-     * Returns the primary domain series for this chart plan.
-     *
-     * @return the primary series
-     */
-    public BarSeries primarySeries() {
-        return context.domainSeries();
+    public TimeAxisMode timeAxisMode() {
+        return metadata.timeAxisMode();
     }
 }
