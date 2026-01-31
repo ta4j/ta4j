@@ -57,11 +57,11 @@
         <commons-math3.version>3.6.1</commons-math3.version>
         <gson.version>2.13.2</gson.version>
         <jfreechart.version>1.5.6</jfreechart.version>
-        <junit-jupiter.version>6.0.0</junit-jupiter.version>
+        <junit-jupiter.version>6.0.2</junit-jupiter.version>
         <log4j2.version>2.25.3</log4j2.version>
-        <mockito.version>5.12.0</mockito.version>
+        <mockito.version>5.21.0</mockito.version>
         <opencsv.version>5.12.0</opencsv.version>
-        <poi.version>5.4.1</poi.version>
+        <poi.version>5.5.1</poi.version>
         <slf4j.version>2.0.17</slf4j.version>
     </properties>
 
@@ -157,7 +157,7 @@
                     <plugin>
                         <groupId>org.sonatype.central</groupId>
                         <artifactId>central-publishing-maven-plugin</artifactId>
-                        <version>0.9.0</version>
+                        <version>0.10.0</version>
                         <extensions>true</extensions>
                         <configuration>
                             <publishingServerId>central</publishingServerId>
@@ -302,7 +302,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.4.0</version>
                 <executions>
                     <execution>
                         <id>attach-sources</id>
@@ -344,7 +344,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-release-plugin</artifactId>
-                <version>3.1.1</version>
+                <version>3.3.1</version>
                 <configuration>
                     <tagNameFormat>@{project.version}</tagNameFormat>
                 </configuration>
