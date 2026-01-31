@@ -36,6 +36,14 @@
 - Update or add `AGENTS.md` files in subdirectories when you discover local conventions that are worth making explicit for future agents.
 - When tweaking rule/indicator/strategy serialization tests, prefer canonical comparisons instead of brittle string equality. The helper `RuleSerializationRoundTripTestSupport` already normalizes `ComponentDescriptor`s (sorted children, normalized numeric strings) — reuse it rather than hand-rolled assertions so that constructor inference-induced ordering changes don't break tests.
 
+### Worktrees (non-trivial work)
+
+- Skip worktrees for trivial docs/typos/quick hotfixes (<10 min); otherwise create under `.agents/worktrees/`: `git worktree add -b <branch> .agents/worktrees/<name> <base-branch>`.
+- In the worktree, create and maintain a PRD/TODO/checklist doc (requirements, design notes as needed, implementation checklist, decisions) so work can be resumed with minimal discovery.
+- In-progress PRDs live in `docs/proposed/`. When complete, move the PRD to `docs/archive/`, delete the proposed copy so it is no longer tracked in the working branch/worktree, and commit the final location.
+- Work inside the worktree; merge back when done; remove via `git worktree remove .agents/worktrees/<name>`.
+- Naming: descriptive; branch prefixes `feature/`, `bugfix/`, `refactor/`.
+
 ### Unit Testing Best Practices
 
 - **🚫 NEVER SKIP TESTS WITHOUT EXPLICIT USER APPROVAL.** This is a CRITICAL rule. If a test fails, you MUST:

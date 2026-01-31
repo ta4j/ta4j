@@ -13,7 +13,9 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
-import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
 import org.ta4j.core.num.Num;
 
 /**
@@ -23,9 +25,21 @@ import org.ta4j.core.num.Num;
  * The criterion value is taken from the distribution of simulated drawdowns (by
  * default, the 95th percentile).
  *
+ * <p>
+ * <b>Open positions:</b> When using {@link EquityCurveMode#MARK_TO_MARKET}, the
+ * {@link OpenPositionHandling} setting controls whether open positions
+ * contribute to the simulated drawdowns. {@link EquityCurveMode#REALIZED}
+ * always ignores open positions regardless of the requested handling.
+ *
+ * <pre>{@code
+ * var markToMarket = new MonteCarloMaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET,
+ *         OpenPositionHandling.MARK_TO_MARKET);
+ * var ignoreOpen = new MonteCarloMaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
+ * }</pre>
+ *
  * @since 0.19
  */
-public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterion {
+public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSettingsCriterion {
 
     /**
      * Defines which summary value to return from the simulated drawdowns.
@@ -40,6 +54,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
     private final Integer pathBlocks;
     private final Supplier<RandomGenerator> randomSupplier;
     private final Statistic statistic;
+    private final MaximumDrawdownCriterion maximumDrawdownCriterion;
 
     /**
      * Default constructor returning the 95th percentile.
@@ -47,7 +62,32 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
      * @since 0.19
      */
     public MonteCarloMaximumDrawdownCriterion() {
-        this(10_000, null, () -> new SplittableRandom(42L), Statistic.P95);
+        this(10_000, null, () -> new SplittableRandom(42L), Statistic.P95, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Default constructor returning the 95th percentile using the given equity
+     * curve mode.
+     *
+     * @param equityCurveMode the equity curve mode to use for drawdown simulation
+     * @since 0.22.2
+     */
+    public MonteCarloMaximumDrawdownCriterion(EquityCurveMode equityCurveMode) {
+        this(10_000, null, () -> new SplittableRandom(42L), Statistic.P95, equityCurveMode,
+                OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Default constructor returning the 95th percentile using the given open
+     * position handling.
+     *
+     * @param openPositionHandling how to handle open positions
+     * @since 0.22.2
+     */
+    public MonteCarloMaximumDrawdownCriterion(OpenPositionHandling openPositionHandling) {
+        this(10_000, null, () -> new SplittableRandom(42L), Statistic.P95, EquityCurveMode.MARK_TO_MARKET,
+                openPositionHandling);
     }
 
     /**
@@ -59,11 +99,51 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
      * @param seed       random seed for reproducibility
      * @param statistic  which summary statistic of the simulated drawdowns to
      *                   return
-     *
      * @since 0.19
      */
     public MonteCarloMaximumDrawdownCriterion(int iterations, Integer pathBlocks, long seed, Statistic statistic) {
-        this(iterations, pathBlocks, () -> new SplittableRandom(seed), statistic);
+        this(iterations, pathBlocks, () -> new SplittableRandom(seed), statistic, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param iterations      number of random simulations to run
+     * @param pathBlocks      number of trades to include in each simulated path
+     *                        ({@code null} = use the number of trades in the
+     *                        sample)
+     * @param seed            random seed for reproducibility
+     * @param statistic       which summary statistic of the simulated drawdowns to
+     *                        return
+     * @param equityCurveMode the equity curve mode to use for drawdown simulation
+     * @since 0.22.2
+     */
+    public MonteCarloMaximumDrawdownCriterion(int iterations, Integer pathBlocks, long seed, Statistic statistic,
+            EquityCurveMode equityCurveMode) {
+        this(iterations, pathBlocks, () -> new SplittableRandom(seed), statistic, equityCurveMode,
+                OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param iterations           number of random simulations to run
+     * @param pathBlocks           number of trades to include in each simulated
+     *                             path ({@code null} = use the number of trades in
+     *                             the sample)
+     * @param seed                 random seed for reproducibility
+     * @param statistic            which summary statistic of the simulated
+     *                             drawdowns to return
+     * @param equityCurveMode      the equity curve mode to use for drawdown
+     *                             simulation
+     * @param openPositionHandling how to handle open positions
+     * @since 0.22.2
+     */
+    public MonteCarloMaximumDrawdownCriterion(int iterations, Integer pathBlocks, long seed, Statistic statistic,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        this(iterations, pathBlocks, () -> new SplittableRandom(seed), statistic, equityCurveMode,
+                openPositionHandling);
     }
 
     /**
@@ -75,15 +155,39 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
      * @param randomSupplier supplier of the random generator used for simulations
      * @param statistic      which summary statistic of the simulated drawdowns to
      *                       return
-     *
      * @since 0.19
      */
     public MonteCarloMaximumDrawdownCriterion(int iterations, Integer pathBlocks,
             Supplier<RandomGenerator> randomSupplier, Statistic statistic) {
+        this(iterations, pathBlocks, randomSupplier, statistic, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor allowing to supply a custom random number generator.
+     *
+     * @param iterations           number of random simulations to run
+     * @param pathBlocks           number of trades to include in each simulated
+     *                             path ({@code null} = use the number of trades in
+     *                             the sample)
+     * @param randomSupplier       supplier of the random generator used for
+     *                             simulations
+     * @param statistic            which summary statistic of the simulated
+     *                             drawdowns to return
+     * @param equityCurveMode      the equity curve mode to use for drawdown
+     *                             simulation
+     * @param openPositionHandling how to handle open positions
+     * @since 0.22.2
+     */
+    public MonteCarloMaximumDrawdownCriterion(int iterations, Integer pathBlocks,
+            Supplier<RandomGenerator> randomSupplier, Statistic statistic, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling) {
+        super(equityCurveMode, openPositionHandling);
         this.iterations = iterations;
         this.pathBlocks = pathBlocks;
         this.randomSupplier = randomSupplier;
         this.statistic = statistic;
+        this.maximumDrawdownCriterion = new MaximumDrawdownCriterion(this.equityCurveMode, this.openPositionHandling);
     }
 
     /**
@@ -96,7 +200,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
         if (position == null || !position.isClosed()) {
             return series.numFactory().zero();
         }
-        return new MaximumDrawdownCriterion().calculate(series, position);
+        return maximumDrawdownCriterion.calculate(series, position);
     }
 
     /**
@@ -108,7 +212,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         var blocks = buildBlocks(series, tradingRecord);
         if (blocks.size() < 3) {
-            return new MaximumDrawdownCriterion().calculate(series, tradingRecord);
+            return maximumDrawdownCriterion.calculate(series, tradingRecord);
         }
         var blocksPerPath = pathBlocks != null ? pathBlocks : blocks.size();
         var random = randomSupplier.get();
@@ -164,7 +268,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
 
     private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record) {
         var blocks = new ArrayList<List<Num>>();
-        var cashFlow = new CashFlow(series, record);
+        var cashFlow = new CashFlow(series, record, equityCurveMode, openPositionHandling);
         var one = series.numFactory().one();
         for (var position : record.getPositions()) {
             if (!position.isClosed()) {

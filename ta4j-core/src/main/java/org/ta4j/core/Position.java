@@ -5,6 +5,7 @@ package org.ta4j.core;
 
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 
@@ -25,6 +26,7 @@ import org.ta4j.core.num.Num;
  */
 public class Position implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = -5484709075767220358L;
 
     /** The entry trade */
@@ -387,6 +389,24 @@ public class Position implements Serializable {
      */
     public Num getHoldingCost(int finalIndex) {
         return holdingCostModel.calculate(this, finalIndex);
+    }
+
+    /**
+     * @return the transaction cost model
+     *
+     * @since 0.22.2
+     */
+    public CostModel getTransactionCostModel() {
+        return transactionCostModel;
+    }
+
+    /**
+     * @return the holding cost model
+     *
+     * @since 0.22.2
+     */
+    public CostModel getHoldingCostModel() {
+        return holdingCostModel;
     }
 
     /**

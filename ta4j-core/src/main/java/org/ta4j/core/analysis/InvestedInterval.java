@@ -61,22 +61,24 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
 
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
         var series = getBarSeries();
-        var invested = new boolean[series.getBarCount()];
+        var size = Math.max(series.getEndIndex() + 1, 0);
+        var invested = new boolean[size];
         tradingRecord.getPositions().forEach(position -> markInvestedIntervals(position, invested));
         if (openPositionHandling == OpenPositionHandling.MARK_TO_MARKET) {
-            var currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition != null && currentPosition.isOpened()) {
-                markInvestedIntervals(currentPosition, invested);
-            }
+            var openPositions = AnalysisPositionSupport.openPositions(tradingRecord, series.getEndIndex());
+            openPositions.forEach(position -> markInvestedIntervals(position, invested));
         }
         return invested;
     }
 
     private void markInvestedIntervals(Position position, boolean[] invested) {
         var series = getBarSeries();
+        if (position == null || position.getEntry() == null) {
+            return;
+        }
         var entryIndex = position.getEntry().getIndex();
         var exitIndex = position.isClosed() ? position.getExit().getIndex() : series.getEndIndex();
-        var start = Math.max(entryIndex + 1, 1);
+        var start = Math.max(entryIndex + 1, series.getBeginIndex() + 1);
         var end = Math.min(exitIndex, invested.length - 1);
         for (var i = start; i <= end; i++) {
             invested[i] = true;

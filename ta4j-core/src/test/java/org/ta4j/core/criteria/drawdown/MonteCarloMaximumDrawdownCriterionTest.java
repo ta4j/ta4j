@@ -5,12 +5,15 @@ package org.ta4j.core.criteria.drawdown;
 
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.random.RandomGenerator;
+
 import org.junit.Assert;
 import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
+import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import static org.ta4j.core.criteria.drawdown.MonteCarloMaximumDrawdownCriterion.*;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -63,6 +66,52 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
     }
 
     @Test
+    public void honorsEquityCurveModeInSimulation() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 0.5, 2, 1, 0.5, 2, 1, 0.5, 2)
+                .build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series), Trade.buyAt(3, series),
+                Trade.sellAt(5, series), Trade.buyAt(6, series), Trade.sellAt(8, series));
+        class FixedRandom implements RandomGenerator {
+            @Override
+            public int nextInt() {
+                return 0;
+            }
+
+            @Override
+            public int nextInt(int bound) {
+                return 0;
+            }
+
+            @Override
+            public long nextLong() {
+                return 0L;
+            }
+
+            @Override
+            public boolean nextBoolean() {
+                return false;
+            }
+
+            @Override
+            public float nextFloat() {
+                return 0f;
+            }
+
+            @Override
+            public double nextDouble() {
+                return 0d;
+            }
+        }
+        var markToMarket = new MonteCarloMaximumDrawdownCriterion(1, 1, FixedRandom::new, Statistic.MAX,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        var realized = new MonteCarloMaximumDrawdownCriterion(1, 1, FixedRandom::new, Statistic.MAX,
+                EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET);
+        assertNumEquals(0.5d, markToMarket.calculate(series, record));
+        assertNumEquals(0d, realized.calculate(series, record));
+    }
+
+    @Test
     public void fallbackToHistoricalMaximumDrawdown() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 2, 1).build();
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series), Trade.buyAt(2, series),
@@ -110,5 +159,4 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         criterion.calculate(series, record);
         assertEquals(2, counter.get());
     }
-
 }
