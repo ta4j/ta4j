@@ -4,7 +4,7 @@
 package org.ta4j.core.analysis.cost;
 
 import org.ta4j.core.Position;
-import org.ta4j.core.TradeView;
+import org.ta4j.core.Trade;
 import org.ta4j.core.num.Num;
 
 /**
@@ -13,7 +13,7 @@ import org.ta4j.core.num.Num;
  */
 public class FixedTransactionCostModel implements CostModel {
 
-    /** The fixed fee per {@link TradeView trade}. */
+    /** The fixed fee per {@link Trade trade}. */
     private final double feePerTrade;
 
     /**
@@ -24,7 +24,7 @@ public class FixedTransactionCostModel implements CostModel {
      * Cost of closed {@link Position position}: (fixedFeePerTrade * 2)
      * </pre>
      *
-     * @param feePerTrade the fixed fee per {@link TradeView trade}
+     * @param feePerTrade the fixed fee per {@link Trade trade}
      */
     public FixedTransactionCostModel(double feePerTrade) {
         this.feePerTrade = feePerTrade;

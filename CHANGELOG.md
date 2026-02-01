@@ -47,9 +47,13 @@
   equity curve/open-position handling, and incorporate multiple open lots from live trading records.
 - **Drawdown criteria**: Maximum drawdown variants, ReturnOverMaxDrawdownCriterion, and Sharpe ratio now accept equity
   curve mode/open-position handling so realized-only analysis ignores open positions consistently.
-- **Trade abstraction**: Introduced `TradeView` as the shared trade interface (with optional exchange metadata),
+- **Trade abstraction**: Introduced `Trade` as the shared trade interface (with optional exchange metadata),
   `ModeledTrade` as the default modeled implementation, and `LiveTrade` for live fills (renamed from
-  `ExecutionFill`), with a deprecated `Trade` shim for backward compatibility.
+  `ExecutionFill`), with `TradeView` as a deprecated alias.
+- **Live vs modeled trades**: `BaseTradingRecord` now rejects `LiveTrade` inputs and charting analysis builds
+  partial `LiveTradingRecord` instances when needed so live execution fees are preserved.
+- **Live trading persistence**: Removed `LiveTradingRecordSnapshot`; live record persistence now relies on
+  `LiveTradingRecord` serialization with explicit rehydration of cost models after deserialization.
 - **LiveTrade fees**: Live-trading positions and criteria now use recorded `LiveTrade` fees via a recorded-trade cost
   model so position PnL reflects execution fees.
 - **License headers**: Switch Java source file headers to SPDX identifiers.

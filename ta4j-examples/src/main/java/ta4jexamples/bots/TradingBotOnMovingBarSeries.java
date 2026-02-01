@@ -13,7 +13,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Strategy;
-import org.ta4j.core.TradeView;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.indicators.averages.SMAIndicator;
@@ -146,7 +146,7 @@ public class TradingBotOnMovingBarSeries {
                 LOG.debug("Strategy should ENTER on {}", endIndex);
                 boolean entered = tradingRecord.enter(endIndex, newBar.getClosePrice(), DecimalNum.valueOf(10));
                 if (entered) {
-                    TradeView entry = tradingRecord.getLastEntry();
+                    Trade entry = tradingRecord.getLastEntry();
                     LOG.debug("Entered on {} (price={}, amount={})", entry.getIndex(),
                             entry.getNetPrice().doubleValue(), entry.getAmount().doubleValue());
                 }
@@ -155,7 +155,7 @@ public class TradingBotOnMovingBarSeries {
                 LOG.debug("Strategy should EXIT on {}", endIndex);
                 boolean exited = tradingRecord.exit(endIndex, newBar.getClosePrice(), DecimalNum.valueOf(10));
                 if (exited) {
-                    TradeView exit = tradingRecord.getLastExit();
+                    Trade exit = tradingRecord.getLastExit();
                     LOG.debug("Exited on {} (price={}, amount={})", exit.getIndex(), exit.getNetPrice().doubleValue(),
                             exit.getAmount().doubleValue());
                 }

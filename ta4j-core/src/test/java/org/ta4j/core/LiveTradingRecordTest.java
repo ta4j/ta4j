@@ -144,9 +144,42 @@ class LiveTradingRecordTest {
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
         record.recordFill(fill(ExecutionSide.BUY, numFactory.hundred(), numFactory.one()));
-        LiveTradingRecordSnapshot snapshot = record.snapshot();
-        assertThrows(UnsupportedOperationException.class, () -> snapshot.positions().add(new Position()));
-        assertThrows(UnsupportedOperationException.class, () -> snapshot.openPositions().add(null));
+        var openPositions = record.getOpenPositions();
+        assertThrows(UnsupportedOperationException.class, () -> openPositions.add(null));
+        assertThrows(UnsupportedOperationException.class, () -> openPositions.getFirst().lots().add(null));
+    }
+
+    @Test
+    void openPositionsExposeSnapshotLots() {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.recordFill(new LiveTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+                numFactory.one(), numFactory.zero(), ExecutionSide.BUY, null, null));
+
+        OpenPosition first = record.getOpenPositions().getFirst();
+        OpenPosition second = record.getOpenPositions().getFirst();
+
+        assertTrue(first.lots().getFirst() != second.lots().getFirst());
+    }
+
+    @Test
+    void ordersTradesByIndexThenFillSequence() {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+
+        record.recordFill(new LiveTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+                numFactory.one(), numFactory.zero(), ExecutionSide.BUY, null, null));
+        record.recordFill(new LiveTrade(0, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
+                numFactory.one(), numFactory.zero(), ExecutionSide.BUY, null, null));
+        record.recordFill(new LiveTrade(0, Instant.parse("2025-01-01T00:00:02Z"), numFactory.numOf(120),
+                numFactory.two(), numFactory.zero(), ExecutionSide.SELL, null, null));
+
+        List<Trade> trades = record.getTrades();
+        assertEquals(4, trades.size());
+        assertEquals(TradeType.BUY, trades.get(0).getType());
+        assertEquals(TradeType.BUY, trades.get(1).getType());
+        assertEquals(TradeType.SELL, trades.get(2).getType());
+        assertEquals(TradeType.SELL, trades.get(3).getType());
     }
 
     @Test
@@ -217,12 +250,12 @@ class LiveTradingRecordTest {
     void cachesTradesAndInvalidatesOnUpdate() {
         LiveTradingRecord record = new LiveTradingRecord();
         record.recordFill(fill(ExecutionSide.BUY, numFactory.hundred(), numFactory.one()));
-        List<TradeView> first = record.getTrades();
-        List<TradeView> second = record.getTrades();
+        List<Trade> first = record.getTrades();
+        List<Trade> second = record.getTrades();
         assertSame(first, second);
 
         record.recordFill(fill(ExecutionSide.SELL, numFactory.numOf(120), numFactory.one()));
-        List<TradeView> third = record.getTrades();
+        List<Trade> third = record.getTrades();
         assertNotSame(first, third);
         assertEquals(2, third.size());
     }
@@ -255,8 +288,7 @@ class LiveTradingRecordTest {
             try {
                 startLatch.countDown();
                 for (int i = 0; i < 50; i++) {
-                    LiveTradingRecordSnapshot snapshot = record.snapshot();
-                    assertNotNull(snapshot);
+                    assertNotNull(record.getOpenPositions());
                 }
             } catch (Throwable ex) {
                 failed.set(true);
@@ -271,27 +303,6 @@ class LiveTradingRecordTest {
         assertTrue(executor.awaitTermination(2, TimeUnit.SECONDS));
         if (failed.get()) {
             throw new AssertionError("Concurrent access failed", error.get());
-        }
-    }
-
-    @Test
-    void supportsSnapshotSerializationRoundTrip() throws Exception {
-        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
-                new ZeroCostModel(), null, null);
-        record.recordFill(fill(ExecutionSide.BUY, numFactory.hundred(), numFactory.one()));
-        LiveTradingRecordSnapshot snapshot = record.snapshot();
-
-        byte[] data;
-        try (var output = new ByteArrayOutputStream(); var objectOutput = new ObjectOutputStream(output)) {
-            objectOutput.writeObject(snapshot);
-            objectOutput.flush();
-            data = output.toByteArray();
-        }
-
-        try (var input = new ByteArrayInputStream(data); var objectInput = new ObjectInputStream(input)) {
-            LiveTradingRecordSnapshot rehydrated = (LiveTradingRecordSnapshot) objectInput.readObject();
-            assertNotNull(rehydrated);
-            assertEquals(snapshot.openPositions().size(), rehydrated.openPositions().size());
         }
     }
 
@@ -312,6 +323,8 @@ class LiveTradingRecordTest {
             LiveTradingRecord rehydrated = (LiveTradingRecord) objectInput.readObject();
             rehydrated.recordFill(fill(ExecutionSide.SELL, numFactory.numOf(120), numFactory.one()));
             assertEquals(1, rehydrated.getPositions().size());
+            assertNotNull(rehydrated.getPositions().getFirst().getTransactionCostModel());
+            assertNotNull(rehydrated.getPositions().getFirst().getHoldingCostModel());
         }
     }
 

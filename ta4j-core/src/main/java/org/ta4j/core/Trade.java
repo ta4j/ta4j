@@ -3,30 +3,39 @@
  */
 package org.ta4j.core;
 
-import java.io.Serial;
+import java.io.Serializable;
+import java.time.Instant;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.num.Num;
 
 /**
- * Backwards-compatible shim for modeled trades.
+ * Read-only trade contract shared by modeled trades and live executions.
+ *
+ * <ul>
+ * <li>the index (in the {@link BarSeries bar series}) on which the trade is
+ * executed</li>
+ * <li>a {@link TradeType type} (BUY or SELL)</li>
+ * <li>a price per asset (optional)</li>
+ * <li>a trade amount (optional)</li>
+ * </ul>
  *
  * <p>
- * Use {@link ModeledTrade} for modeled/backtest trades or {@link LiveTrade} for
- * live executions, both of which implement {@link TradeView}.
+ * Metadata fields (timestamp, instrument, ids) are optional and may return
+ * {@code null}. They loosely mirror the attributes in XChange's trade DTO so
+ * adapters can preserve exchange-provided identifiers when available.
+ * </p>
+ *
+ * <p>
+ * Use {@link ModeledTrade} as the default modeled implementation and
+ * {@link LiveTrade} for live fills.
  * </p>
  *
  * @since 0.22.2
- * @deprecated Use {@link ModeledTrade} or {@link LiveTrade} with
- *             {@link TradeView}.
  */
-@Deprecated(since = "0.22.2")
-public class Trade extends ModeledTrade {
+public interface Trade extends Serializable {
 
-    @Serial
-    private static final long serialVersionUID = 3187955097391865935L;
-
-    /** The type of a {@link Trade trade}. */
-    public enum TradeType {
+    /** The type of a trade. */
+    enum TradeType {
 
         /** A BUY corresponds to a <i>BID</i> trade. */
         BUY {
@@ -51,75 +60,115 @@ public class Trade extends ModeledTrade {
     }
 
     /**
-     * Constructor.
-     *
-     * @param index  the index the trade is executed
-     * @param series the bar series
-     * @param type   the trade type
+     * @return the trade type (BUY or SELL)
      */
-    protected Trade(int index, BarSeries series, TradeType type) {
-        super(index, series, type);
+    TradeType getType();
+
+    /**
+     * @return the index the trade is executed
+     */
+    int getIndex();
+
+    /**
+     * @return the trade price per asset
+     */
+    Num getPricePerAsset();
+
+    /**
+     * @param barSeries the bar series
+     * @return the trade price per asset, or, if {@code NaN}, the close price from
+     *         the supplied {@link BarSeries}
+     */
+    default Num getPricePerAsset(BarSeries barSeries) {
+        Num price = getPricePerAsset();
+        if (price.isNaN()) {
+            return barSeries.getBar(getIndex()).getClosePrice();
+        }
+        return price;
     }
 
     /**
-     * Constructor.
-     *
-     * @param index  the index the trade is executed
-     * @param series the bar series
-     * @param type   the trade type
-     * @param amount the trade amount
+     * @return the net price per asset for the trade (i.e.
+     *         {@link #getPricePerAsset()} with trading costs)
      */
-    protected Trade(int index, BarSeries series, TradeType type, Num amount) {
-        super(index, series, type, amount);
+    Num getNetPrice();
+
+    /**
+     * @return the trade amount
+     */
+    Num getAmount();
+
+    /**
+     * @return the modeled costs of the trade as calculated by the configured
+     *         {@link CostModel}
+     */
+    Num getCost();
+
+    /**
+     * @return the cost model for trade execution
+     */
+    CostModel getCostModel();
+
+    /**
+     * @return execution timestamp if available, otherwise {@code null}
+     * @since 0.22.2
+     */
+    default Instant getTime() {
+        return null;
     }
 
     /**
-     * Constructor.
-     *
-     * @param index                the index the trade is executed
-     * @param series               the bar series
-     * @param type                 the trade type
-     * @param amount               the trade amount
-     * @param transactionCostModel the cost model for trade execution cost
+     * @return exchange-provided trade id if available, otherwise {@code null}
+     * @since 0.22.2
      */
-    protected Trade(int index, BarSeries series, TradeType type, Num amount, CostModel transactionCostModel) {
-        super(index, series, type, amount, transactionCostModel);
+    default String getId() {
+        return null;
     }
 
     /**
-     * Constructor.
-     *
-     * @param index         the index the trade is executed
-     * @param type          the trade type
-     * @param pricePerAsset the trade price per asset
+     * @return instrument identifier (symbol/pair) if available, otherwise
+     *         {@code null}
+     * @since 0.22.2
      */
-    protected Trade(int index, TradeType type, Num pricePerAsset) {
-        super(index, type, pricePerAsset);
+    default String getInstrument() {
+        return null;
     }
 
     /**
-     * Constructor.
-     *
-     * @param index         the index the trade is executed
-     * @param type          the trade type
-     * @param pricePerAsset the trade price per asset
-     * @param amount        the trade amount
+     * @return originating order id if available, otherwise {@code null}
+     * @since 0.22.2
      */
-    protected Trade(int index, TradeType type, Num pricePerAsset, Num amount) {
-        super(index, type, pricePerAsset, amount);
+    default String getOrderId() {
+        return null;
     }
 
     /**
-     * Constructor.
-     *
-     * @param index                the index the trade is executed
-     * @param type                 the trade type
-     * @param pricePerAsset        the trade price per asset
-     * @param amount               the trade amount
-     * @param transactionCostModel the cost model for trade execution
+     * @return correlation id if available, otherwise {@code null}
+     * @since 0.22.2
      */
-    protected Trade(int index, TradeType type, Num pricePerAsset, Num amount, CostModel transactionCostModel) {
-        super(index, type, pricePerAsset, amount, transactionCostModel);
+    default String getCorrelationId() {
+        return null;
+    }
+
+    /**
+     * @return true if this is a BUY trade, false otherwise
+     */
+    default boolean isBuy() {
+        return getType() == TradeType.BUY;
+    }
+
+    /**
+     * @return true if this is a SELL trade, false otherwise
+     */
+    default boolean isSell() {
+        return getType() == TradeType.SELL;
+    }
+
+    /**
+     * @return the value of a trade (without transaction cost)
+     */
+    default Num getValue() {
+        return getPricePerAsset().multipliedBy(getAmount());
     }
 
     /**
@@ -127,8 +176,8 @@ public class Trade extends ModeledTrade {
      * @param series the bar series
      * @return a BUY trade
      */
-    public static Trade buyAt(int index, BarSeries series) {
-        return new Trade(index, series, TradeType.BUY);
+    static Trade buyAt(int index, BarSeries series) {
+        return new ModeledTrade(index, series, TradeType.BUY);
     }
 
     /**
@@ -138,8 +187,8 @@ public class Trade extends ModeledTrade {
      * @param transactionCostModel the cost model for trade execution
      * @return a BUY trade
      */
-    public static Trade buyAt(int index, Num price, Num amount, CostModel transactionCostModel) {
-        return new Trade(index, TradeType.BUY, price, amount, transactionCostModel);
+    static Trade buyAt(int index, Num price, Num amount, CostModel transactionCostModel) {
+        return new ModeledTrade(index, TradeType.BUY, price, amount, transactionCostModel);
     }
 
     /**
@@ -148,8 +197,8 @@ public class Trade extends ModeledTrade {
      * @param amount the trade amount
      * @return a BUY trade
      */
-    public static Trade buyAt(int index, Num price, Num amount) {
-        return new Trade(index, TradeType.BUY, price, amount);
+    static Trade buyAt(int index, Num price, Num amount) {
+        return new ModeledTrade(index, TradeType.BUY, price, amount);
     }
 
     /**
@@ -158,8 +207,8 @@ public class Trade extends ModeledTrade {
      * @param amount the trade amount
      * @return a BUY trade
      */
-    public static Trade buyAt(int index, BarSeries series, Num amount) {
-        return new Trade(index, series, TradeType.BUY, amount);
+    static Trade buyAt(int index, BarSeries series, Num amount) {
+        return new ModeledTrade(index, series, TradeType.BUY, amount);
     }
 
     /**
@@ -169,8 +218,8 @@ public class Trade extends ModeledTrade {
      * @param transactionCostModel the cost model for trade execution
      * @return a BUY trade
      */
-    public static Trade buyAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
-        return new Trade(index, series, TradeType.BUY, amount, transactionCostModel);
+    static Trade buyAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
+        return new ModeledTrade(index, series, TradeType.BUY, amount, transactionCostModel);
     }
 
     /**
@@ -178,8 +227,8 @@ public class Trade extends ModeledTrade {
      * @param series the bar series
      * @return a SELL trade
      */
-    public static Trade sellAt(int index, BarSeries series) {
-        return new Trade(index, series, TradeType.SELL);
+    static Trade sellAt(int index, BarSeries series) {
+        return new ModeledTrade(index, series, TradeType.SELL);
     }
 
     /**
@@ -188,8 +237,8 @@ public class Trade extends ModeledTrade {
      * @param amount the trade amount
      * @return a SELL trade
      */
-    public static Trade sellAt(int index, Num price, Num amount) {
-        return new Trade(index, TradeType.SELL, price, amount);
+    static Trade sellAt(int index, Num price, Num amount) {
+        return new ModeledTrade(index, TradeType.SELL, price, amount);
     }
 
     /**
@@ -199,8 +248,8 @@ public class Trade extends ModeledTrade {
      * @param transactionCostModel the cost model for trade execution
      * @return a SELL trade
      */
-    public static Trade sellAt(int index, Num price, Num amount, CostModel transactionCostModel) {
-        return new Trade(index, TradeType.SELL, price, amount, transactionCostModel);
+    static Trade sellAt(int index, Num price, Num amount, CostModel transactionCostModel) {
+        return new ModeledTrade(index, TradeType.SELL, price, amount, transactionCostModel);
     }
 
     /**
@@ -209,8 +258,8 @@ public class Trade extends ModeledTrade {
      * @param amount the trade amount
      * @return a SELL trade
      */
-    public static Trade sellAt(int index, BarSeries series, Num amount) {
-        return new Trade(index, series, TradeType.SELL, amount);
+    static Trade sellAt(int index, BarSeries series, Num amount) {
+        return new ModeledTrade(index, series, TradeType.SELL, amount);
     }
 
     /**
@@ -220,7 +269,7 @@ public class Trade extends ModeledTrade {
      * @param transactionCostModel the cost model for trade execution
      * @return a SELL trade
      */
-    public static Trade sellAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
-        return new Trade(index, series, TradeType.SELL, amount, transactionCostModel);
+    static Trade sellAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
+        return new ModeledTrade(index, series, TradeType.SELL, amount, transactionCostModel);
     }
 }

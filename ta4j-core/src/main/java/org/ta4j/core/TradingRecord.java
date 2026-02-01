@@ -141,28 +141,28 @@ public interface TradingRecord extends Serializable {
     /**
      * @return the trades recorded
      */
-    List<TradeView> getTrades();
+    List<Trade> getTrades();
 
     /**
      * @return the last trade recorded
      */
-    TradeView getLastTrade();
+    Trade getLastTrade();
 
     /**
      * @param tradeType the type of the trade to get the last of
      * @return the last trade (of the provided type) recorded
      */
-    TradeView getLastTrade(TradeType tradeType);
+    Trade getLastTrade(TradeType tradeType);
 
     /**
      * @return the last entry trade recorded
      */
-    TradeView getLastEntry();
+    Trade getLastEntry();
 
     /**
      * @return the last exit trade recorded
      */
-    TradeView getLastExit();
+    Trade getLastExit();
 
     /**
      * @return the start of the recording (included)

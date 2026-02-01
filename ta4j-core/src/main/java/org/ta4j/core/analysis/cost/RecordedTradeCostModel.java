@@ -4,7 +4,7 @@
 package org.ta4j.core.analysis.cost;
 
 import org.ta4j.core.Position;
-import org.ta4j.core.TradeView;
+import org.ta4j.core.Trade;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
@@ -23,8 +23,8 @@ public final class RecordedTradeCostModel implements CostModel {
 
     @Override
     public Num calculate(Position position, int finalIndex) {
-        TradeView entry = position == null ? null : position.getEntry();
-        TradeView exit = position == null ? null : position.getExit();
+        Trade entry = position == null ? null : position.getEntry();
+        Trade exit = position == null ? null : position.getExit();
         Num zero = zeroFor(entry, exit);
         if (entry == null) {
             return zero;
@@ -38,8 +38,8 @@ public final class RecordedTradeCostModel implements CostModel {
 
     @Override
     public Num calculate(Position position) {
-        TradeView entry = position == null ? null : position.getEntry();
-        TradeView exit = position == null ? null : position.getExit();
+        Trade entry = position == null ? null : position.getEntry();
+        Trade exit = position == null ? null : position.getExit();
         Num zero = zeroFor(entry, exit);
         if (entry == null) {
             return zero;
@@ -60,7 +60,7 @@ public final class RecordedTradeCostModel implements CostModel {
         return otherModel instanceof RecordedTradeCostModel;
     }
 
-    private Num zeroFor(TradeView entry, TradeView exit) {
+    private Num zeroFor(Trade entry, Trade exit) {
         if (entry != null) {
             return entry.getCost().getNumFactory().zero();
         }

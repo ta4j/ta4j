@@ -35,6 +35,7 @@
 - **🚫 CRITICAL: Do not ignore build errors even if you think they were pre-existing.** Suppressing/ignoring/assuming or otherwise skipping over the errors is forbidden. **All errors that surface must be investigated and root cause resolved.** Surface to the user any fixes that require complex refactoring or design changes. **Never skip over a failing test without explicit approval from user.**
 - Update or add `AGENTS.md` files in subdirectories when you discover local conventions that are worth making explicit for future agents.
 - When tweaking rule/indicator/strategy serialization tests, prefer canonical comparisons instead of brittle string equality. The helper `RuleSerializationRoundTripTestSupport` already normalizes `ComponentDescriptor`s (sorted children, normalized numeric strings) — reuse it rather than hand-rolled assertions so that constructor inference-induced ordering changes don't break tests.
+- **Public API stability:** Breaking changes are acceptable for public APIs introduced or tagged within 0.1.0 of the current release (including APIs tagged at the current latest version); treat those as not contract-breaking.
 
 ### Worktrees (non-trivial work)
 

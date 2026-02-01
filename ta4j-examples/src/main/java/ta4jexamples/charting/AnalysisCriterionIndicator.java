@@ -6,7 +6,9 @@ package ta4jexamples.charting;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.TradeView;
+import org.ta4j.core.LiveTrade;
+import org.ta4j.core.LiveTradingRecord;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -33,7 +35,7 @@ public class AnalysisCriterionIndicator extends CachedIndicator<Num> {
 
     private final AnalysisCriterion criterion;
     private final TradingRecord fullTradingRecord;
-    private final List<TradeView> allTrades;
+    private final List<Trade> allTrades;
     private final String label;
 
     /**
@@ -76,9 +78,12 @@ public class AnalysisCriterionIndicator extends CachedIndicator<Num> {
      * @return a partial trading record
      */
     private TradingRecord createPartialTradingRecord(int upToIndex) {
+        if (fullTradingRecord instanceof LiveTradingRecord liveRecord) {
+            return createPartialLiveTradingRecord(liveRecord, upToIndex);
+        }
         // Filter trades where trade index <= upToIndex
-        List<TradeView> partialTrades = new ArrayList<>();
-        for (TradeView trade : allTrades) {
+        List<Trade> partialTrades = new ArrayList<>();
+        for (Trade trade : allTrades) {
             if (trade.getIndex() <= upToIndex) {
                 partialTrades.add(trade);
             }
@@ -91,9 +96,26 @@ public class AnalysisCriterionIndicator extends CachedIndicator<Num> {
                     fullTradingRecord.getTransactionCostModel(), fullTradingRecord.getHoldingCostModel());
         }
 
-        TradeView[] tradesArray = partialTrades.toArray(new TradeView[0]);
+        Trade[] tradesArray = partialTrades.toArray(new Trade[0]);
         return new BaseTradingRecord(fullTradingRecord.getTransactionCostModel(),
                 fullTradingRecord.getHoldingCostModel(), tradesArray);
+    }
+
+    private TradingRecord createPartialLiveTradingRecord(LiveTradingRecord liveRecord, int upToIndex) {
+        LiveTradingRecord partialRecord = new LiveTradingRecord(liveRecord.getStartingType(),
+                liveRecord.getMatchPolicy(), liveRecord.getTransactionCostModel(), liveRecord.getHoldingCostModel(),
+                liveRecord.getStartIndex(), liveRecord.getEndIndex());
+        partialRecord.setName(liveRecord.getName());
+        for (Trade trade : allTrades) {
+            if (trade.getIndex() <= upToIndex) {
+                if (trade instanceof LiveTrade liveTrade) {
+                    partialRecord.recordFill(trade.getIndex(), liveTrade);
+                } else {
+                    throw new IllegalArgumentException("LiveTradingRecord must provide LiveTrade trades");
+                }
+            }
+        }
+        return partialRecord;
     }
 
     @Override

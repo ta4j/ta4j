@@ -7,15 +7,18 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.time.Instant;
 import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import static org.ta4j.core.num.NaN.NaN;
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.num.DoubleNumFactory;
 
 public class TradingRecordTest {
 
@@ -174,6 +177,15 @@ public class TradingRecordTest {
         assertTrue(record.getTransactionCostModel() instanceof ZeroCostModel);
         assertTrue(record.getHoldingCostModel() instanceof ZeroCostModel);
         assertEquals(1, record.getPositionCount());
+    }
+
+    @Test
+    public void baseTradingRecordRejectsLiveTrades() {
+        var numFactory = DoubleNumFactory.getInstance();
+        var trade = new LiveTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), null, ExecutionSide.BUY,
+                null, null);
+
+        assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(trade));
     }
 
     private Position roundTrip(Position position) throws Exception {

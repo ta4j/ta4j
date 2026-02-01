@@ -10,7 +10,7 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**
- * Modeled {@link TradeView} implementation backed by a {@link CostModel}.
+ * Modeled {@link Trade} implementation backed by a {@link CostModel}.
  *
  * <ul>
  * <li>the index (in the {@link BarSeries bar series}) on which the trade is
@@ -24,7 +24,7 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.22.2
  */
-public class ModeledTrade implements TradeView {
+public class ModeledTrade implements Trade {
 
     @Serial
     private static final long serialVersionUID = -905474949010114150L;

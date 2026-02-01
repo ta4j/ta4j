@@ -4,7 +4,7 @@
 package org.ta4j.core.analysis.cost;
 
 import org.ta4j.core.Position;
-import org.ta4j.core.TradeView;
+import org.ta4j.core.Trade;
 import org.ta4j.core.num.Num;
 
 /**
@@ -20,7 +20,7 @@ public class LinearTransactionCostModel implements CostModel {
      * Constructor with {@code feePerPosition * x}.
      *
      * @param feePerPosition the feePerPosition coefficient (e.g. 0.005 for 0.5% per
-     *                       {@link TradeView trade})
+     *                       {@link Trade trade})
      */
     public LinearTransactionCostModel(double feePerPosition) {
         this.feePerPosition = feePerPosition;
@@ -40,7 +40,7 @@ public class LinearTransactionCostModel implements CostModel {
     @Override
     public Num calculate(Position position) {
         Num totalPositionCost = null;
-        TradeView entryTrade = position.getEntry();
+        Trade entryTrade = position.getEntry();
         if (entryTrade != null) {
             // transaction costs of the entry trade
             totalPositionCost = entryTrade.getCost();

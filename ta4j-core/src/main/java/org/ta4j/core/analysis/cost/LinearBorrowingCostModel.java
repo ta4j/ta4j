@@ -5,7 +5,7 @@ package org.ta4j.core.analysis.cost;
 
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.TradeView;
+import org.ta4j.core.Trade;
 import org.ta4j.core.num.Num;
 
 /**
@@ -52,8 +52,8 @@ public class LinearBorrowingCostModel implements CostModel {
      */
     @Override
     public Num calculate(Position position, int currentIndex) {
-        TradeView entryTrade = position.getEntry();
-        TradeView exitTrade = position.getExit();
+        Trade entryTrade = position.getEntry();
+        Trade exitTrade = position.getExit();
         Num borrowingCost = position.getEntry().getNetPrice().getNumFactory().zero();
 
         // Borrowing costs only apply to short positions.

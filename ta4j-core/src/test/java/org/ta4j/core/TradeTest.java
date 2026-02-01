@@ -21,7 +21,7 @@ import org.ta4j.core.num.Num;
 
 public class TradeTest {
 
-    TradeView opEquals1, opEquals2, opNotEquals1, opNotEquals2;
+    Trade opEquals1, opEquals2, opNotEquals1, opNotEquals2;
 
     @Before
     public void setUp() {
@@ -72,7 +72,7 @@ public class TradeTest {
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 95, 100, 80, 85, 130)
                 .build();
-        TradeView trade = new ModeledTrade(1, TradeType.BUY, NaN);
+        Trade trade = new ModeledTrade(1, TradeType.BUY, NaN);
         assertNumEquals(DoubleNum.valueOf(95), trade.getPricePerAsset(series));
     }
 }

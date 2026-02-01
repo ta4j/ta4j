@@ -23,6 +23,7 @@ public final class PositionLot implements Serializable {
     private static final Gson GSON = new Gson();
 
     private final int entryIndex;
+    private final long entrySequence;
     private final Instant entryTime;
     private final Num entryPrice;
     private Num amount;
@@ -31,12 +32,13 @@ public final class PositionLot implements Serializable {
     private final String correlationId;
 
     PositionLot(int entryIndex, Instant entryTime, Num entryPrice, Num amount, Num fee, String orderId,
-            String correlationId) {
+            String correlationId, long entrySequence) {
         Objects.requireNonNull(entryTime, "entryTime");
         Objects.requireNonNull(entryPrice, "entryPrice");
         Objects.requireNonNull(amount, "amount");
         Objects.requireNonNull(fee, "fee");
         this.entryIndex = entryIndex;
+        this.entrySequence = entrySequence;
         this.entryTime = entryTime;
         this.entryPrice = entryPrice;
         this.amount = amount;
@@ -51,6 +53,10 @@ public final class PositionLot implements Serializable {
      */
     public int entryIndex() {
         return entryIndex;
+    }
+
+    long entrySequence() {
+        return entrySequence;
     }
 
     /**
@@ -114,7 +120,13 @@ public final class PositionLot implements Serializable {
         Num mergedFee = fee.plus(other.fee);
         int mergedIndex = Math.min(entryIndex, other.entryIndex);
         Instant mergedTime = entryTime.isBefore(other.entryTime) ? entryTime : other.entryTime;
-        return new PositionLot(mergedIndex, mergedTime, mergedPrice, totalAmount, mergedFee, null, null);
+        long mergedSequence = Math.min(entrySequence, other.entrySequence);
+        return new PositionLot(mergedIndex, mergedTime, mergedPrice, totalAmount, mergedFee, null, null,
+                mergedSequence);
+    }
+
+    PositionLot snapshot() {
+        return new PositionLot(entryIndex, entryTime, entryPrice, amount, fee, orderId, correlationId, entrySequence);
     }
 
     @Override

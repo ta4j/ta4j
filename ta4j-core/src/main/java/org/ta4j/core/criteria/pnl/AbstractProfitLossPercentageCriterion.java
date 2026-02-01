@@ -7,7 +7,7 @@ import java.util.Optional;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
-import org.ta4j.core.TradeView;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.criteria.ReturnRepresentation;
@@ -84,7 +84,7 @@ public abstract class AbstractProfitLossPercentageCriterion extends AbstractAnal
                 .stream()
                 .filter(Position::isClosed)
                 .map(Position::getEntry)
-                .map(TradeView::getValue)
+                .map(Trade::getValue)
                 .reduce(zero, Num::plus);
 
         if (totalEntryPrice.isZero()) {

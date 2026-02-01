@@ -25,7 +25,7 @@ import org.ta4j.core.num.Num;
  * @since 0.22.2
  */
 public record LiveTrade(int index, Instant time, Num price, Num amount, Num fee, ExecutionSide side, String orderId,
-        String correlationId) implements TradeView {
+        String correlationId) implements Trade {
 
     @Serial
     private static final long serialVersionUID = 3196554864123769210L;

@@ -32,19 +32,19 @@ public class BaseTradingRecord implements TradingRecord {
     private final Integer endIndex;
 
     /** The recorded trades. */
-    private final List<TradeView> trades = new ArrayList<>();
+    private final List<Trade> trades = new ArrayList<>();
 
     /** The recorded BUY trades. */
-    private final List<TradeView> buyTrades = new ArrayList<>();
+    private final List<Trade> buyTrades = new ArrayList<>();
 
     /** The recorded SELL trades. */
-    private final List<TradeView> sellTrades = new ArrayList<>();
+    private final List<Trade> sellTrades = new ArrayList<>();
 
     /** The recorded entry trades. */
-    private final List<TradeView> entryTrades = new ArrayList<>();
+    private final List<Trade> entryTrades = new ArrayList<>();
 
     /** The recorded exit trades. */
-    private final List<TradeView> exitTrades = new ArrayList<>();
+    private final List<Trade> exitTrades = new ArrayList<>();
 
     /** The entry type (BUY or SELL) in the trading session. */
     private final TradeType startingType;
@@ -140,7 +140,7 @@ public class BaseTradingRecord implements TradingRecord {
      *
      * @param trades the trades to be recorded (cannot be empty)
      */
-    public BaseTradingRecord(TradeView... trades) {
+    public BaseTradingRecord(Trade... trades) {
         this(new ZeroCostModel(), new ZeroCostModel(), trades);
     }
 
@@ -172,10 +172,11 @@ public class BaseTradingRecord implements TradingRecord {
      * @param holdingCostModel     the cost model for holding the asset (e.g.
      *                             borrowing)
      * @param trades               the trades to be recorded (cannot be empty)
+     * @throws IllegalArgumentException if trades contain {@link LiveTrade}
      */
-    public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, TradeView... trades) {
-        this(trades[0].getType(), transactionCostModel, holdingCostModel);
-        for (TradeView o : trades) {
+    public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Trade... trades) {
+        this(validateTrades(trades), transactionCostModel, holdingCostModel);
+        for (Trade o : trades) {
             boolean newTradeWillBeAnEntry = currentPosition.isNew();
             if (newTradeWillBeAnEntry && o.getType() != startingType) {
                 // Special case for entry/exit types reversal
@@ -185,9 +186,19 @@ public class BaseTradingRecord implements TradingRecord {
                 // BUY, SELL
                 currentPosition = new Position(o.getType(), transactionCostModel, holdingCostModel);
             }
-            TradeView newTrade = currentPosition.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
+            Trade newTrade = currentPosition.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
             recordTrade(newTrade, newTradeWillBeAnEntry);
         }
+    }
+
+    private static TradeType validateTrades(Trade... trades) {
+        for (Trade trade : trades) {
+            if (trade instanceof LiveTrade) {
+                throw new IllegalArgumentException("LiveTrade is not supported by BaseTradingRecord. "
+                        + "Use LiveTradingRecord for live executions.");
+            }
+        }
+        return trades[0].getType();
     }
 
     @Override
@@ -212,7 +223,7 @@ public class BaseTradingRecord implements TradingRecord {
             throw new IllegalStateException("Current position should not be closed");
         }
         boolean newTradeWillBeAnEntry = currentPosition.isNew();
-        TradeView newTrade = currentPosition.operate(index, price, amount);
+        Trade newTrade = currentPosition.operate(index, price, amount);
         recordTrade(newTrade, newTradeWillBeAnEntry);
     }
 
@@ -250,12 +261,12 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
-    public List<TradeView> getTrades() {
+    public List<Trade> getTrades() {
         return trades;
     }
 
     @Override
-    public TradeView getLastTrade() {
+    public Trade getLastTrade() {
         if (!trades.isEmpty()) {
             return trades.getLast();
         }
@@ -263,7 +274,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
-    public TradeView getLastTrade(TradeType tradeType) {
+    public Trade getLastTrade(TradeType tradeType) {
         if (TradeType.BUY == tradeType && !buyTrades.isEmpty()) {
             return buyTrades.getLast();
         } else if (TradeType.SELL == tradeType && !sellTrades.isEmpty()) {
@@ -273,7 +284,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
-    public TradeView getLastEntry() {
+    public Trade getLastEntry() {
         if (!entryTrades.isEmpty()) {
             return entryTrades.getLast();
         }
@@ -281,7 +292,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
-    public TradeView getLastExit() {
+    public Trade getLastExit() {
         if (!exitTrades.isEmpty()) {
             return exitTrades.getLast();
         }
@@ -305,7 +316,7 @@ public class BaseTradingRecord implements TradingRecord {
      * @param isEntry true if the trade is an entry, false otherwise (exit)
      * @throws NullPointerException if trade is null
      */
-    private void recordTrade(TradeView trade, boolean isEntry) {
+    private void recordTrade(Trade trade, boolean isEntry) {
         Objects.requireNonNull(trade, "Trade should not be null");
 
         // Storing the new trade in entries/exits lists
@@ -332,7 +343,7 @@ public class BaseTradingRecord implements TradingRecord {
         }
     }
 
-    private static Stream<TradeView> tradesOf(Position position) {
+    private static Stream<Trade> tradesOf(Position position) {
         Objects.requireNonNull(position, "position must not be null");
 
         var entry = position.getEntry();
@@ -347,13 +358,13 @@ public class BaseTradingRecord implements TradingRecord {
         return Stream.of(entry, exit);
     }
 
-    private static TradeView[] positionToTrades(Position position) {
-        return tradesOf(position).toArray(TradeView[]::new);
+    private static Trade[] positionToTrades(Position position) {
+        return tradesOf(position).toArray(Trade[]::new);
     }
 
-    private static TradeView[] positionsToTrades(List<Position> positions) {
+    private static Trade[] positionsToTrades(List<Position> positions) {
         Objects.requireNonNull(positions, "positions must not be null");
-        return positions.stream().flatMap(BaseTradingRecord::tradesOf).toArray(TradeView[]::new);
+        return positions.stream().flatMap(BaseTradingRecord::tradesOf).toArray(Trade[]::new);
     }
 
     private static CostModel defaultCostModel(CostModel costModel) {

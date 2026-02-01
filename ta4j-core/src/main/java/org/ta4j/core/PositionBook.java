@@ -37,7 +37,7 @@ public final class PositionBook implements Serializable, PositionLedger {
     private transient CostModel transactionCostModel;
     private transient CostModel holdingCostModel;
     private final Deque<PositionLot> openLots;
-    private final List<Position> closedPositions;
+    private final List<ClosedPosition> closedPositions;
 
     /**
      * Creates a position book with FIFO matching.
@@ -75,16 +75,17 @@ public final class PositionBook implements Serializable, PositionLedger {
     /**
      * Records an entry trade.
      *
-     * @param index trade index
-     * @param trade live trade
+     * @param index    trade index
+     * @param trade    live trade
+     * @param sequence insertion sequence for ordering
      * @since 0.22.2
      */
-    public void recordEntry(int index, LiveTrade trade) {
+    public void recordEntry(int index, LiveTrade trade, long sequence) {
         if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
             normalizeAvgCostLots();
         }
         PositionLot lot = new PositionLot(index, trade.time(), trade.price(), trade.amount(), trade.fee(),
-                trade.orderId(), trade.correlationId());
+                trade.orderId(), trade.correlationId(), sequence);
         if (matchPolicy == ExecutionMatchPolicy.AVG_COST && !openLots.isEmpty()) {
             PositionLot merged = openLots.removeFirst().merge(lot);
             openLots.addFirst(merged);
@@ -96,12 +97,13 @@ public final class PositionBook implements Serializable, PositionLedger {
     /**
      * Records an exit trade and returns closed positions.
      *
-     * @param index trade index
-     * @param trade live trade
+     * @param index    trade index
+     * @param trade    live trade
+     * @param sequence insertion sequence for ordering
      * @return closed positions
      * @since 0.22.2
      */
-    public List<Position> recordExit(int index, LiveTrade trade) {
+    public List<Position> recordExit(int index, LiveTrade trade, long sequence) {
         if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
             normalizeAvgCostLots();
         }
@@ -120,9 +122,9 @@ public final class PositionBook implements Serializable, PositionLedger {
             Num closeAmount = remaining.isGreaterThan(lotAmount) ? lotAmount : remaining;
             Num exitFeePortion = remainingFee.isZero() ? remainingFee
                     : remainingFee.multipliedBy(closeAmount).dividedBy(remaining);
-            Position position = closeLot(lot, trade, index, closeAmount, exitFeePortion);
-            closed.add(position);
-            closedPositions.add(position);
+            ClosedPosition closedPosition = closeLot(lot, trade, index, closeAmount, exitFeePortion, sequence);
+            closed.add(closedPosition.position());
+            closedPositions.add(closedPosition);
             remaining = remaining.minus(closeAmount);
             remainingFee = remainingFee.minus(exitFeePortion);
         }
@@ -134,7 +136,7 @@ public final class PositionBook implements Serializable, PositionLedger {
      * @since 0.22.2
      */
     public List<PositionLot> openLots() {
-        return List.copyOf(openLots);
+        return openLots.stream().map(PositionLot::snapshot).toList();
     }
 
     /**
@@ -151,7 +153,7 @@ public final class PositionBook implements Serializable, PositionLedger {
      * @since 0.22.2
      */
     public List<Position> closedPositions() {
-        return List.copyOf(closedPositions);
+        return closedPositions.stream().map(ClosedPosition::position).toList();
     }
 
     /**
@@ -173,7 +175,7 @@ public final class PositionBook implements Serializable, PositionLedger {
             Num totalCost = lot.entryPrice().multipliedBy(lot.amount());
             positions.add(new OpenPosition(startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL,
                     lot.amount(), lot.entryPrice(), totalCost, lot.fee(), lot.entryTime(), lot.entryTime(),
-                    List.of(lot)));
+                    List.of(lot.snapshot())));
         }
         return positions;
     }
@@ -202,7 +204,7 @@ public final class PositionBook implements Serializable, PositionLedger {
         Num average = totalAmount == null || totalAmount.isZero() ? totalCost : totalCost.dividedBy(totalAmount);
         return new OpenPosition(startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL, totalAmount,
                 average, totalCost, totalFees == null ? totalCost.getNumFactory().zero() : totalFees, earliest, latest,
-                openLots());
+                snapshotLots());
     }
 
     /**
@@ -254,7 +256,8 @@ public final class PositionBook implements Serializable, PositionLedger {
         }
     }
 
-    private Position closeLot(PositionLot lot, LiveTrade trade, int index, Num closeAmount, Num exitFeePortion) {
+    private ClosedPosition closeLot(PositionLot lot, LiveTrade trade, int index, Num closeAmount, Num exitFeePortion,
+            long exitSequence) {
         Num lotAmount = lot.amount();
         Num entryFeePortion = lot.fee().isZero() ? lot.fee() : lot.fee().multipliedBy(closeAmount).dividedBy(lotAmount);
         if (closeAmount.isEqual(lotAmount)) {
@@ -263,11 +266,35 @@ public final class PositionBook implements Serializable, PositionLedger {
             lot.reduce(closeAmount, entryFeePortion);
         }
         var entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
-        TradeView entry = new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount,
-                entryFeePortion, entrySide, lot.orderId(), lot.correlationId());
-        TradeView exit = new LiveTrade(index, trade.time(), trade.price(), closeAmount, exitFeePortion, trade.side(),
+        Trade entry = new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount, entryFeePortion,
+                entrySide, lot.orderId(), lot.correlationId());
+        Trade exit = new LiveTrade(index, trade.time(), trade.price(), closeAmount, exitFeePortion, trade.side(),
                 trade.orderId(), trade.correlationId());
-        return new Position(entry, exit, transactionCostModel, holdingCostModel);
+        return new ClosedPosition(new Position(entry, exit, transactionCostModel, holdingCostModel),
+                lot.entrySequence(), exitSequence);
+    }
+
+    List<ClosedPosition> closedPositionsWithSequence() {
+        return List.copyOf(closedPositions);
+    }
+
+    void rehydrateCostModels(CostModel transactionCostModel, CostModel holdingCostModel) {
+        this.transactionCostModel = transactionCostModel == null ? RecordedTradeCostModel.INSTANCE
+                : transactionCostModel;
+        this.holdingCostModel = holdingCostModel == null ? new ZeroCostModel() : holdingCostModel;
+        for (int i = 0; i < closedPositions.size(); i++) {
+            ClosedPosition closed = closedPositions.get(i);
+            Position position = closed.position();
+            Position rehydrated = rehydratePosition(position, this.transactionCostModel, this.holdingCostModel);
+            closedPositions.set(i, new ClosedPosition(rehydrated, closed.entrySequence(), closed.exitSequence()));
+        }
+    }
+
+    private List<PositionLot> snapshotLots() {
+        return openLots.stream().map(PositionLot::snapshot).toList();
+    }
+
+    static record ClosedPosition(Position position, long entrySequence, long exitSequence) implements Serializable {
     }
 
     @Override
@@ -284,5 +311,16 @@ public final class PositionBook implements Serializable, PositionLedger {
         if (holdingCostModel == null) {
             holdingCostModel = new ZeroCostModel();
         }
+    }
+
+    private static Position rehydratePosition(Position position, CostModel transactionCostModel,
+            CostModel holdingCostModel) {
+        if (position == null || position.getEntry() == null) {
+            return position;
+        }
+        if (position.getExit() == null) {
+            return new Position(position.getEntry(), transactionCostModel, holdingCostModel);
+        }
+        return new Position(position.getEntry(), position.getExit(), transactionCostModel, holdingCostModel);
     }
 }

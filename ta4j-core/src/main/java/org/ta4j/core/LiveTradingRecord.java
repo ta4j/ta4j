@@ -43,11 +43,12 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     private final Integer endIndex;
     private String name;
     private int nextTradeIndex;
-    private transient List<TradeView> tradesCache;
+    private transient List<Trade> tradesCache;
     private transient long tradesCacheVersion;
     private long modificationCount;
     private Num totalFees;
     private transient NumFactory numFactory;
+    private long nextSequence;
 
     /**
      * Creates a live trading record with BUY entries and FIFO matching.
@@ -131,10 +132,11 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         lock.writeLock().lock();
         try {
             nextTradeIndex = Math.max(nextTradeIndex, index + 1);
+            long sequence = nextSequence++;
             if (resolved.side().toTradeType() == startingType) {
-                positionBook.recordEntry(index, resolved);
+                positionBook.recordEntry(index, resolved, sequence);
             } else {
-                positionBook.recordExit(index, resolved);
+                positionBook.recordExit(index, resolved, sequence);
             }
             if (numFactory == null) {
                 numFactory = resolved.price().getNumFactory();
@@ -182,26 +184,19 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         }
     }
 
-    /**
-     * Returns a best-effort snapshot of the live trading record for serialization
-     * or short-lived inspection.
-     *
-     * @return snapshot
-     * @since 0.22.2
-     */
-    public LiveTradingRecordSnapshot snapshot() {
-        lock.readLock().lock();
-        try {
-            return new LiveTradingRecordSnapshot(getPositions(), getOpenPositions(), getNetOpenPosition(),
-                    List.copyOf(buildTrades()));
-        } finally {
-            lock.readLock().unlock();
-        }
-    }
-
     @Override
     public TradeType getStartingType() {
         return startingType;
+    }
+
+    /**
+     * Returns the execution match policy used by this record.
+     *
+     * @return match policy
+     * @since 0.22.2
+     */
+    public ExecutionMatchPolicy getMatchPolicy() {
+        return matchPolicy;
     }
 
     @Override
@@ -302,7 +297,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     }
 
     @Override
-    public List<TradeView> getTrades() {
+    public List<Trade> getTrades() {
         lock.readLock().lock();
         try {
             if (tradesCache != null && tradesCacheVersion == modificationCount) {
@@ -325,16 +320,16 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     }
 
     @Override
-    public TradeView getLastTrade() {
-        List<TradeView> trades = getTrades();
+    public Trade getLastTrade() {
+        List<Trade> trades = getTrades();
         return trades.isEmpty() ? null : trades.getLast();
     }
 
     @Override
-    public TradeView getLastTrade(TradeType tradeType) {
-        List<TradeView> trades = getTrades();
+    public Trade getLastTrade(TradeType tradeType) {
+        List<Trade> trades = getTrades();
         for (int i = trades.size() - 1; i >= 0; i--) {
-            TradeView trade = trades.get(i);
+            Trade trade = trades.get(i);
             if (trade.getType() == tradeType) {
                 return trade;
             }
@@ -343,12 +338,12 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     }
 
     @Override
-    public TradeView getLastEntry() {
+    public Trade getLastEntry() {
         return getLastTrade(startingType);
     }
 
     @Override
-    public TradeView getLastExit() {
+    public Trade getLastExit() {
         return getLastTrade(startingType.complementType());
     }
 
@@ -383,20 +378,20 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         }
     }
 
-    private List<TradeView> buildTrades() {
-        List<TradeView> trades = new ArrayList<>();
-        for (Position position : positionBook.closedPositions()) {
-            trades.add(position.getEntry());
-            trades.add(position.getExit());
+    private List<Trade> buildTrades() {
+        List<SequencedTrade> trades = new ArrayList<>();
+        for (PositionBook.ClosedPosition closed : positionBook.closedPositionsWithSequence()) {
+            trades.add(new SequencedTrade(closed.position().getEntry(), closed.entrySequence()));
+            trades.add(new SequencedTrade(closed.position().getExit(), closed.exitSequence()));
         }
         for (PositionLot lot : positionBook.openLots()) {
             var entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
-            trades.add(new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(), lot.fee(),
-                    entrySide, lot.orderId(), lot.correlationId()));
+            trades.add(new SequencedTrade(new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(),
+                    lot.amount(), lot.fee(), entrySide, lot.orderId(), lot.correlationId()), lot.entrySequence()));
         }
-        trades.sort(Comparator.comparingInt(TradeView::getIndex)
-                .thenComparing(trade -> trade.getType() == startingType ? 0 : 1));
-        return trades;
+        trades.sort(Comparator.comparingInt((SequencedTrade trade) -> trade.trade().getIndex())
+                .thenComparingLong(SequencedTrade::sequence));
+        return trades.stream().map(SequencedTrade::trade).toList();
     }
 
     /**
@@ -427,15 +422,46 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     private void readObject(ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
         inputStream.defaultReadObject();
         lock = new ReentrantReadWriteLock();
-        if (transactionCostModel == null) {
-            transactionCostModel = RecordedTradeCostModel.INSTANCE;
-        }
-        if (holdingCostModel == null) {
-            holdingCostModel = new ZeroCostModel();
-        }
+        rehydrate(transactionCostModel, holdingCostModel);
         tradesCache = null;
         tradesCacheVersion = -1L;
         modificationCount = 0L;
         numFactory = null;
+    }
+
+    private record SequencedTrade(Trade trade, long sequence) {
+    }
+
+    /**
+     * Rehydrates transient cost models after deserialization.
+     *
+     * @param holdingCostModel holding cost model, null defaults to
+     *                         {@link ZeroCostModel}
+     * @since 0.22.2
+     */
+    public void rehydrate(CostModel holdingCostModel) {
+        rehydrate(null, holdingCostModel);
+    }
+
+    /**
+     * Rehydrates transient cost models after deserialization.
+     *
+     * <p>
+     * Live trading records always use {@link RecordedTradeCostModel} for
+     * transaction costs. Holding costs must be provided explicitly (or default to
+     * {@link ZeroCostModel}).
+     * </p>
+     *
+     * @param transactionCostModel ignored for live trading records
+     * @param holdingCostModel     holding cost model, null defaults to
+     *                             {@link ZeroCostModel}
+     * @since 0.22.2
+     */
+    public void rehydrate(CostModel transactionCostModel, CostModel holdingCostModel) {
+        CostModel resolvedTransaction = RecordedTradeCostModel.INSTANCE;
+        CostModel resolvedHolding = holdingCostModel == null ? new ZeroCostModel() : holdingCostModel;
+        this.transactionCostModel = resolvedTransaction;
+        this.holdingCostModel = resolvedHolding;
+        positionBook.rehydrateCostModels(resolvedTransaction, resolvedHolding);
     }
 }

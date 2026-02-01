@@ -32,7 +32,8 @@ public record OpenPosition(ExecutionSide side, Num amount, Num averageEntryPrice
     private static final Gson GSON = new Gson();
 
     public OpenPosition {
-        lots = lots == null ? List.of() : List.copyOf(lots);
+        List<PositionLot> resolvedLots = lots == null ? List.of() : lots.stream().map(PositionLot::snapshot).toList();
+        lots = List.copyOf(resolvedLots);
     }
 
     @Override
