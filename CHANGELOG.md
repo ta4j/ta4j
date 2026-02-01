@@ -13,8 +13,6 @@
 - **Equity curve controls**: Added `OpenPositionHandling`, a shared `PerformanceIndicator` contract, and drawdown
   settings helpers to standardize mark-to-market vs realized analysis behavior.
 - **Position ledger interface**: Added `PositionLedger` to provide a shared view of closed and open positions.
-- **BCH strategy PnL check example**: Added a backtesting helper that evaluates example strategies on BCH-USD and
-  reports net profit/loss and net return percentages.
 - Added **ThreeInsideUpIndicator** and **ThreeInsideDownIndicator**
 - Added **MorningStarIndicator** and **EveningStarIndicator**
 - Added **BullishKickerIndicator** and **BearishKickerIndicator**
