@@ -8,11 +8,21 @@ import org.junit.jupiter.api.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ExecutionMatchPolicy;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.LiveTrade;
+import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.Trade;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.criteria.ExpectancyCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.num.Num;
+
+import java.time.Instant;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -196,6 +206,58 @@ class AnalysisCriterionIndicatorTest {
         assertEquals(value1, value2, "Cached values should be equal");
         assertEquals(value2, value3, "Cached values should be equal");
         assertSame(value1, value2, "Cached values should be the same instance");
+    }
+
+    @Test
+    void testCreatePartialLiveTradingRecordPreservesMetadata() {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), 1, 9);
+        record.setName("Live Record");
+
+        record.recordFill(
+                new LiveTrade(0, Instant.EPOCH, barSeries.getBar(0).getClosePrice(), barSeries.numFactory().one(),
+                        barSeries.numFactory().numOf(0.1), ExecutionSide.BUY, "order-1", "corr-1"));
+        record.recordFill(
+                new LiveTrade(1, Instant.EPOCH, barSeries.getBar(1).getClosePrice(), barSeries.numFactory().one(),
+                        barSeries.numFactory().numOf(0.1), ExecutionSide.SELL, "order-1", "corr-1"));
+        record.recordFill(
+                new LiveTrade(2, Instant.EPOCH, barSeries.getBar(2).getClosePrice(), barSeries.numFactory().one(),
+                        barSeries.numFactory().numOf(0.1), ExecutionSide.BUY, "order-2", "corr-2"));
+
+        AnalysisCriterion criterion = new NumberOfPositionsCriterion();
+        AnalysisCriterionIndicator indicator = new AnalysisCriterionIndicator(barSeries, criterion, record);
+
+        TradingRecord partialRecord = indicator.createPartialLiveTradingRecord(record, 1);
+
+        assertInstanceOf(LiveTradingRecord.class, partialRecord);
+        LiveTradingRecord partialLive = (LiveTradingRecord) partialRecord;
+        assertEquals(record.getStartingType(), partialLive.getStartingType());
+        assertEquals(record.getMatchPolicy(), partialLive.getMatchPolicy());
+        assertTrue(record.getTransactionCostModel().equals(partialLive.getTransactionCostModel()));
+        assertTrue(record.getHoldingCostModel().equals(partialLive.getHoldingCostModel()));
+        assertEquals(record.getStartIndex(), partialLive.getStartIndex());
+        assertEquals(record.getEndIndex(), partialLive.getEndIndex());
+        assertEquals(record.getName(), partialLive.getName());
+
+        List<Trade> partialTrades = partialLive.getTrades();
+        assertEquals(2, partialTrades.size());
+        assertTrue(partialTrades.stream().allMatch(trade -> trade.getIndex() <= 1));
+    }
+
+    @Test
+    void testCreatePartialLiveTradingRecordRejectsNonLiveTrades() {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null) {
+            @Override
+            public List<Trade> getTrades() {
+                return List.of(Trade.buyAt(0, barSeries.getBar(0).getClosePrice(), barSeries.numFactory().one()));
+            }
+        };
+
+        AnalysisCriterion criterion = new NumberOfPositionsCriterion();
+        AnalysisCriterionIndicator indicator = new AnalysisCriterionIndicator(barSeries, criterion, record);
+
+        assertThrows(IllegalArgumentException.class, () -> indicator.createPartialLiveTradingRecord(record, 1));
     }
 
     @Test

@@ -5,7 +5,6 @@ package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assume.assumeTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.math.MathContext;
@@ -162,8 +161,6 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
     @Test
     public void returnsPrecision() {
-        assumeTrue(numFactory instanceof DoubleNumFactory);
-
         var doubleNumSeries = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(1.2d, 1.1d)
                 .build();
@@ -189,6 +186,11 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
                 .getValue(1);
         var logDouble = new Returns(doubleNumSeries, fullRecordDouble, ReturnRepresentation.LOG).getValue(1);
         var logPrecision = new Returns(precisionSeries, fullRecordPrecision, ReturnRepresentation.LOG).getValue(1);
+
+        assertFalse(arithDouble.isNaN());
+        assertFalse(arithPrecision.isNaN());
+        assertFalse(logDouble.isNaN());
+        assertFalse(logPrecision.isNaN());
 
         assertNumEquals(DoubleNum.valueOf(-0.08333333333333326), arithDouble);
 

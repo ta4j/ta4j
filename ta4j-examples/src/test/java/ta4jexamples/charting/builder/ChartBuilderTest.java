@@ -34,6 +34,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import ta4jexamples.charting.ChannelBoundaryIndicator;
 import ta4jexamples.charting.ChartingTestFixtures;
+import ta4jexamples.charting.compose.TradingChartFactory;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 
 class ChartBuilderTest {
@@ -47,6 +48,18 @@ class ChartBuilderTest {
         chartWorkflow = new ChartWorkflow();
         series = ChartingTestFixtures.standardDailySeries();
         tradingRecord = ChartingTestFixtures.completedTradeRecord(series);
+    }
+
+    @Test
+    void constructorRejectsNullWorkflow() {
+        TradingChartFactory chartFactory = new TradingChartFactory();
+
+        assertThrows(NullPointerException.class, () -> new ChartBuilder(null, chartFactory));
+    }
+
+    @Test
+    void constructorRejectsNullFactory() {
+        assertThrows(NullPointerException.class, () -> new ChartBuilder(new ChartWorkflow(), null));
     }
 
     @Test

@@ -412,21 +412,23 @@ public class Position implements Serializable {
     }
 
     /**
-     * @return the transaction cost model
+     * @return the transaction cost model, or a zero-cost model after
+     *         deserialization when the model is unset
      *
      * @since 0.22.2
      */
     public CostModel getTransactionCostModel() {
-        return transactionCostModel;
+        return transactionCostModel == null ? new ZeroCostModel() : transactionCostModel;
     }
 
     /**
-     * @return the holding cost model
+     * @return the holding cost model, or a zero-cost model after deserialization
+     *         when the model is unset
      *
      * @since 0.22.2
      */
     public CostModel getHoldingCostModel() {
-        return holdingCostModel;
+        return holdingCostModel == null ? new ZeroCostModel() : holdingCostModel;
     }
 
     /**

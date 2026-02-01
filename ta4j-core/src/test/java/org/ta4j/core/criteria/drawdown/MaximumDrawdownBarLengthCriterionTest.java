@@ -99,6 +99,20 @@ public class MaximumDrawdownBarLengthCriterionTest extends AbstractCriterionTest
     }
 
     @Test
+    public void constructorWithOpenPositionHandlingMatchesTwoArgVariant() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 80).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series),
+                Trade.buyAt(1, series));
+
+        for (var handling : OpenPositionHandling.values()) {
+            var singleArg = new MaximumDrawdownBarLengthCriterion(handling);
+            var explicit = new MaximumDrawdownBarLengthCriterion(EquityCurveMode.MARK_TO_MARKET, handling);
+
+            assertNumEquals(explicit.calculate(series, tradingRecord), singleArg.calculate(series, tradingRecord));
+        }
+    }
+
+    @Test
     public void betterThan() {
         var criterion = getCriterion();
         assertTrue(criterion.betterThan(numOf(1), numOf(2)));

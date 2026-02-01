@@ -17,7 +17,8 @@ import org.ta4j.core.num.Num;
 public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
     private final KeltnerChannelMiddleIndicator keltnerMiddleIndicator;
-    private final ATRIndicator averageTrueRangeIndicator;
+    private transient ATRIndicator averageTrueRangeIndicator;
+    private final int atrBarCount;
     private final Num ratio;
 
     /**
@@ -42,23 +43,32 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
         super(middle.getBarSeries());
         this.keltnerMiddleIndicator = middle;
         this.averageTrueRangeIndicator = atr;
+        this.atrBarCount = atr.getBarCount();
         this.ratio = getBarSeries().numFactory().numOf(ratio);
     }
 
     @Override
     protected Num calculate(int index) {
         return keltnerMiddleIndicator.getValue(index)
-                .plus(ratio.multipliedBy(averageTrueRangeIndicator.getValue(index)));
+                .plus(ratio.multipliedBy(getAverageTrueRangeIndicator().getValue(index)));
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return getBarCount();
+        return Math.max(keltnerMiddleIndicator.getCountOfUnstableBars(),
+                getAverageTrueRangeIndicator().getCountOfUnstableBars());
     }
 
     /** @return the bar count of {@link #keltnerMiddleIndicator} */
     public int getBarCount() {
         return keltnerMiddleIndicator.getBarCount();
+    }
+
+    private ATRIndicator getAverageTrueRangeIndicator() {
+        if (averageTrueRangeIndicator == null) {
+            averageTrueRangeIndicator = new ATRIndicator(getBarSeries(), atrBarCount);
+        }
+        return averageTrueRangeIndicator;
     }
 
     @Override

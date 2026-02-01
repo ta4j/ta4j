@@ -101,18 +101,19 @@ public class AnalysisCriterionIndicator extends CachedIndicator<Num> {
                 fullTradingRecord.getHoldingCostModel(), tradesArray);
     }
 
-    private TradingRecord createPartialLiveTradingRecord(LiveTradingRecord liveRecord, int upToIndex) {
+    TradingRecord createPartialLiveTradingRecord(LiveTradingRecord liveRecord, int upToIndex) {
         LiveTradingRecord partialRecord = new LiveTradingRecord(liveRecord.getStartingType(),
                 liveRecord.getMatchPolicy(), liveRecord.getTransactionCostModel(), liveRecord.getHoldingCostModel(),
                 liveRecord.getStartIndex(), liveRecord.getEndIndex());
         partialRecord.setName(liveRecord.getName());
         for (Trade trade : allTrades) {
-            if (trade.getIndex() <= upToIndex) {
-                if (trade instanceof LiveTrade liveTrade) {
-                    partialRecord.recordFill(trade.getIndex(), liveTrade);
-                } else {
-                    throw new IllegalArgumentException("LiveTradingRecord must provide LiveTrade trades");
-                }
+            if (trade.getIndex() > upToIndex) {
+                break;
+            }
+            if (trade instanceof LiveTrade liveTrade) {
+                partialRecord.recordFill(trade.getIndex(), liveTrade);
+            } else {
+                throw new IllegalArgumentException("LiveTradingRecord must provide LiveTrade trades");
             }
         }
         return partialRecord;

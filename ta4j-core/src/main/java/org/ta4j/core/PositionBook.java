@@ -81,6 +81,12 @@ public final class PositionBook implements Serializable, PositionLedger {
      * @since 0.22.2
      */
     public void recordEntry(int index, LiveTrade trade, long sequence) {
+        if (trade == null) {
+            throw new IllegalArgumentException("trade must not be null");
+        }
+        if (trade.amount() == null || !trade.amount().isPositive()) {
+            throw new IllegalArgumentException("trade amount must be positive");
+        }
         if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
             normalizeAvgCostLots();
         }
@@ -104,6 +110,12 @@ public final class PositionBook implements Serializable, PositionLedger {
      * @since 0.22.2
      */
     public List<Position> recordExit(int index, LiveTrade trade, long sequence) {
+        if (trade == null) {
+            throw new IllegalArgumentException("trade must not be null");
+        }
+        if (trade.amount() == null || !trade.amount().isPositive()) {
+            throw new IllegalArgumentException("trade amount must be positive");
+        }
         if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
             normalizeAvgCostLots();
         }

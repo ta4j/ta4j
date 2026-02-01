@@ -310,7 +310,7 @@ public class Returns implements PerformanceIndicator {
                 var rawReturn = calculateReturn(intermediateNetPrice, lastPrice);
                 var strategyReturn = isLongTrade ? rawReturn : rawReturn.multipliedBy(minusOne);
                 combineReturnAtIndex(i, strategyReturn);
-                lastPrice = bar.getClosePrice();
+                lastPrice = intermediateNetPrice;
             }
             var exitPrice = resolveExitPrice(position, endIndex, barSeries);
             var rawReturn = calculateReturn(addCost(exitPrice, avgCost, isLongTrade), lastPrice);

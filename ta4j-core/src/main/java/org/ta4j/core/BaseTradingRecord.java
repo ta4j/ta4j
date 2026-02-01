@@ -192,6 +192,9 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private static TradeType validateTrades(Trade... trades) {
+        if (trades == null || trades.length == 0) {
+            throw new IllegalArgumentException("At least one trade is required");
+        }
         for (Trade trade : trades) {
             if (trade instanceof LiveTrade) {
                 throw new IllegalArgumentException("LiveTrade is not supported by BaseTradingRecord. "

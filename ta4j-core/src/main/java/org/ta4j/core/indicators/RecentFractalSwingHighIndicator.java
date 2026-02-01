@@ -24,6 +24,7 @@ import org.ta4j.core.num.Num;
  *      High</a>
  * @since 0.20
  */
+// Implements deprecated RecentSwingHighIndicator for backward compatibility.
 @SuppressWarnings("deprecation")
 public class RecentFractalSwingHighIndicator extends AbstractRecentSwingIndicator implements RecentSwingHighIndicator {
 

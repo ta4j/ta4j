@@ -201,4 +201,61 @@ public class CumulativePnLTest extends AbstractIndicatorTest<org.ta4j.core.Indic
         assertNumEquals(2, pnl.getValue(1));
         assertNumEquals(6, pnl.getValue(2));
     }
+
+    @Test
+    public void constructorWithFinalIndexDelegatesToMain() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 105).build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        int typicalIndex = series.getEndIndex();
+        int beyondEnd = series.getEndIndex() + 2;
+
+        var expectedTypical = new CumulativePnL(series, record, typicalIndex, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        var actualTypical = new CumulativePnL(series, record, typicalIndex);
+        assertSameValues(expectedTypical, actualTypical);
+
+        var expectedBeyond = new CumulativePnL(series, record, beyondEnd, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        var actualBeyond = new CumulativePnL(series, record, beyondEnd);
+        assertSameValues(expectedBeyond, actualBeyond);
+    }
+
+    @Test
+    public void constructorWithFinalIndexAndModeDelegatesToMain() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 105).build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series));
+
+        int typicalIndex = series.getEndIndex();
+        int beyondEnd = series.getEndIndex() + 2;
+
+        var expectedTypical = new CumulativePnL(series, record, typicalIndex, EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+        var actualTypical = new CumulativePnL(series, record, typicalIndex, EquityCurveMode.REALIZED);
+        assertSameValues(expectedTypical, actualTypical);
+
+        var expectedBeyond = new CumulativePnL(series, record, beyondEnd, EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+        var actualBeyond = new CumulativePnL(series, record, beyondEnd, EquityCurveMode.REALIZED);
+        assertSameValues(expectedBeyond, actualBeyond);
+    }
+
+    @Test
+    public void constructorWithOpenPositionHandlingDelegatesToMain() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 105).build();
+        var record = new BaseTradingRecord(Trade.buyAt(0, series));
+
+        var expected = new CumulativePnL(series, record, record.getEndIndex(series), EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.IGNORE);
+        var actual = new CumulativePnL(series, record, OpenPositionHandling.IGNORE);
+
+        assertSameValues(expected, actual);
+    }
+
+    private void assertSameValues(CumulativePnL expected, CumulativePnL actual) {
+        assertEquals(expected.getSize(), actual.getSize());
+        for (int i = 0; i < expected.getSize(); i++) {
+            assertNumEquals(expected.getValue(i), actual.getValue(i));
+        }
+    }
 }

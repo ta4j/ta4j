@@ -192,6 +192,10 @@ public class ModeledTrade implements Trade {
         this.pricePerAsset = pricePerAsset;
         this.cost = transactionCostModel.calculate(this.pricePerAsset, amount);
 
+        if (amount.isZero()) {
+            this.netPrice = this.pricePerAsset;
+            return;
+        }
         Num costPerAsset = cost.dividedBy(amount);
         // add transaction costs to the pricePerAsset at the trade
         if (type.equals(Trade.TradeType.BUY)) {

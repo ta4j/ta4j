@@ -169,8 +169,8 @@ public class TradingRecordTest {
 
         var deserialized = roundTrip(position);
 
-        assertNull(deserialized.getTransactionCostModel());
-        assertNull(deserialized.getHoldingCostModel());
+        assertTrue(deserialized.getTransactionCostModel() instanceof ZeroCostModel);
+        assertTrue(deserialized.getHoldingCostModel() instanceof ZeroCostModel);
 
         var record = new BaseTradingRecord(deserialized);
 
@@ -186,6 +186,11 @@ public class TradingRecordTest {
                 null, null);
 
         assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(trade));
+    }
+
+    @Test
+    public void baseTradingRecordRejectsEmptyTradesArray() {
+        assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(new Trade[0]));
     }
 
     private Position roundTrip(Position position) throws Exception {
