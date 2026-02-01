@@ -10,7 +10,19 @@ package org.ta4j.core;
  */
 public enum ExecutionSide {
 
-    BUY, SELL;
+    /**
+     * Buy-side execution.
+     *
+     * @since 0.22.2
+     */
+    BUY,
+
+    /**
+     * Sell-side execution.
+     *
+     * @since 0.22.2
+     */
+    SELL;
 
     /**
      * @return the corresponding {@link Trade.TradeType}

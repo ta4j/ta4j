@@ -120,6 +120,28 @@ class LiveTradingRecordTest {
     }
 
     @Test
+    void rejectsSpecificIdExitWithoutMatchingLot() {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.SPECIFIC_ID,
+                new ZeroCostModel(), new ZeroCostModel(), null, null);
+
+        record.recordFill(fillWithIds(ExecutionSide.BUY, numFactory.hundred(), numFactory.one(), "order-1", "corr-1"));
+
+        assertThrows(IllegalStateException.class, () -> record
+                .recordFill(fillWithIds(ExecutionSide.SELL, numFactory.numOf(120), numFactory.one(), null, "corr-2")));
+    }
+
+    @Test
+    void rejectsSpecificIdExitExceedingLotAmount() {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.SPECIFIC_ID,
+                new ZeroCostModel(), new ZeroCostModel(), null, null);
+
+        record.recordFill(fillWithIds(ExecutionSide.BUY, numFactory.hundred(), numFactory.one(), "order-1", "corr-1"));
+
+        assertThrows(IllegalStateException.class, () -> record
+                .recordFill(fillWithIds(ExecutionSide.SELL, numFactory.numOf(120), numFactory.two(), null, "corr-1")));
+    }
+
+    @Test
     void splitsLotWhenExitIsPartial() {
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
@@ -137,6 +159,17 @@ class LiveTradingRecordTest {
         assertNotNull(net);
         assertEquals(numFactory.two(), net.amount());
         assertEquals(numFactory.hundred(), net.averageEntryPrice());
+    }
+
+    @Test
+    void rejectsExitExceedingOpenLots() {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+
+        record.recordFill(fill(ExecutionSide.BUY, numFactory.hundred(), numFactory.one()));
+
+        assertThrows(IllegalStateException.class,
+                () -> record.recordFill(fill(ExecutionSide.SELL, numFactory.numOf(120), numFactory.two())));
     }
 
     @Test
@@ -215,6 +248,13 @@ class LiveTradingRecordTest {
         LiveTradingRecord record = new LiveTradingRecord();
         assertThrows(IllegalArgumentException.class,
                 () -> record.recordFill(fill(ExecutionSide.BUY, numFactory.hundred(), numFactory.zero())));
+    }
+
+    @Test
+    void rejectsNegativeFillAmounts() {
+        LiveTradingRecord record = new LiveTradingRecord();
+        assertThrows(IllegalArgumentException.class,
+                () -> record.recordFill(fill(ExecutionSide.BUY, numFactory.hundred(), numFactory.minusOne())));
     }
 
     @Test
