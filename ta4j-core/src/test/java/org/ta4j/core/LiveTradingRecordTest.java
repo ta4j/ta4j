@@ -154,9 +154,9 @@ class LiveTradingRecordTest {
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
-        record.recordFill(new ExecutionFill(Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+        record.recordFill(new LiveTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
                 numFactory.one(), numFactory.numOf(0.1), ExecutionSide.BUY, null, null));
-        record.recordFill(new ExecutionFill(Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
+        record.recordFill(new LiveTrade(0, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
                 numFactory.one(), numFactory.numOf(0.2), ExecutionSide.BUY, null, null));
 
         OpenPosition net = record.getNetOpenPosition();
@@ -169,9 +169,9 @@ class LiveTradingRecordTest {
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
-        record.recordFill(new ExecutionFill(Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+        record.recordFill(new LiveTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
                 numFactory.one(), numFactory.numOf(0.1), ExecutionSide.BUY, null, null));
-        record.recordFill(new ExecutionFill(Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
+        record.recordFill(new LiveTrade(0, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
                 numFactory.one(), numFactory.numOf(0.2), ExecutionSide.SELL, null, null));
 
         assertEquals(numFactory.numOf(0.3), record.getTotalFees());
@@ -209,7 +209,7 @@ class LiveTradingRecordTest {
     void rejectsNaNFee() {
         LiveTradingRecord record = new LiveTradingRecord();
         assertThrows(IllegalArgumentException.class,
-                () -> record.recordFill(new ExecutionFill(Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+                () -> record.recordFill(new LiveTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
                         numFactory.one(), NaN.NaN, ExecutionSide.BUY, null, null)));
     }
 
@@ -315,12 +315,12 @@ class LiveTradingRecordTest {
         }
     }
 
-    private ExecutionFill fill(ExecutionSide side, Num price, Num amount) {
-        return new ExecutionFill(Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, side, null, null);
+    private LiveTrade fill(ExecutionSide side, Num price, Num amount) {
+        return new LiveTrade(0, Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, side, null, null);
     }
 
-    private ExecutionFill fillWithIds(ExecutionSide side, Num price, Num amount, String orderId, String correlationId) {
-        return new ExecutionFill(Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, side, orderId,
+    private LiveTrade fillWithIds(ExecutionSide side, Num price, Num amount, String orderId, String correlationId) {
+        return new LiveTrade(0, Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, side, orderId,
                 correlationId);
     }
 }

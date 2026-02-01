@@ -12,6 +12,7 @@
 - **Sharpe Ratio**: Added `SharpeRatioCriterion` and its related calculation classes
 - **Equity curve controls**: Added `OpenPositionHandling`, a shared `PerformanceIndicator` contract, and drawdown
   settings helpers to standardize mark-to-market vs realized analysis behavior.
+- **Position ledger interface**: Added `PositionLedger` to provide a shared view of closed and open positions.
 - Added **ThreeInsideUpIndicator** and **ThreeInsideDownIndicator**
 - Added **MorningStarIndicator** and **EveningStarIndicator**
 - Added **BullishKickerIndicator** and **BearishKickerIndicator**
@@ -44,6 +45,8 @@
   equity curve/open-position handling, and incorporate multiple open lots from live trading records.
 - **Drawdown criteria**: Maximum drawdown variants, ReturnOverMaxDrawdownCriterion, and Sharpe ratio now accept equity
   curve mode/open-position handling so realized-only analysis ignores open positions consistently.
+- **Trade abstraction**: `Trade` is now an interface with `BaseTrade` as the default implementation, and live fills use
+  `LiveTrade` (renamed from `ExecutionFill`) so live-trading workflows share the same trade contract.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
 - **Elliott Wave analysis example**: Scenario probability weighting now applies adaptive confidence contrast so closely scored scenarios separate more clearly.
 - **License headers**: Switch Java source file headers to SPDX identifiers.

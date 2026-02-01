@@ -11,7 +11,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.ExecutionFill;
+import org.ta4j.core.LiveTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.LiveTradingRecord;
@@ -33,7 +33,7 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
         var record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
-        record.recordFill(new ExecutionFill(Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+        record.recordFill(new LiveTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
                 numFactory.two(), numFactory.numOf(0.5), ExecutionSide.BUY, null, null));
 
         Num expected = numFactory.numOf(110)
@@ -52,7 +52,7 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
         var record = new LiveTradingRecord(TradeType.SELL, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
-        record.recordFill(new ExecutionFill(Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+        record.recordFill(new LiveTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
                 numFactory.one(), numFactory.numOf(0.2), ExecutionSide.SELL, null, null));
 
         Num expected = numFactory.hundred().minus(numFactory.numOf(90)).minus(numFactory.numOf(0.2));

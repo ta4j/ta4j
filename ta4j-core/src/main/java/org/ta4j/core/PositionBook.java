@@ -24,7 +24,7 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.22.2
  */
-public final class PositionBook implements Serializable {
+public final class PositionBook implements Serializable, PositionLedger {
 
     @Serial
     private static final long serialVersionUID = -6897162194206253952L;
@@ -72,18 +72,18 @@ public final class PositionBook implements Serializable {
     }
 
     /**
-     * Records an entry fill.
+     * Records an entry trade.
      *
      * @param index trade index
-     * @param fill  execution fill
+     * @param trade live trade
      * @since 0.22.2
      */
-    public void recordEntry(int index, ExecutionFill fill) {
+    public void recordEntry(int index, LiveTrade trade) {
         if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
             normalizeAvgCostLots();
         }
-        PositionLot lot = new PositionLot(index, fill.time(), fill.price(), fill.amount(), fill.fee(), fill.orderId(),
-                fill.correlationId());
+        PositionLot lot = new PositionLot(index, trade.time(), trade.price(), trade.amount(), trade.fee(),
+                trade.orderId(), trade.correlationId());
         if (matchPolicy == ExecutionMatchPolicy.AVG_COST && !openLots.isEmpty()) {
             PositionLot merged = openLots.removeFirst().merge(lot);
             openLots.addFirst(merged);
@@ -93,21 +93,21 @@ public final class PositionBook implements Serializable {
     }
 
     /**
-     * Records an exit fill and returns closed positions.
+     * Records an exit trade and returns closed positions.
      *
      * @param index trade index
-     * @param fill  execution fill
+     * @param trade live trade
      * @return closed positions
      * @since 0.22.2
      */
-    public List<Position> recordExit(int index, ExecutionFill fill) {
+    public List<Position> recordExit(int index, LiveTrade trade) {
         if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
             normalizeAvgCostLots();
         }
-        Num remaining = fill.amount();
+        Num remaining = trade.amount();
         List<Position> closed = new ArrayList<>();
         while (remaining.isPositive()) {
-            PositionLot lot = nextLot(fill);
+            PositionLot lot = nextLot(trade);
             if (lot == null) {
                 throw new IllegalStateException("No open lots to close");
             }
@@ -116,7 +116,7 @@ public final class PositionBook implements Serializable {
                 throw new IllegalStateException("Exit amount exceeds matched lot amount");
             }
             Num closeAmount = remaining.isGreaterThan(lotAmount) ? lotAmount : remaining;
-            Position position = closeLot(lot, fill, index, closeAmount);
+            Position position = closeLot(lot, trade, index, closeAmount);
             closed.add(position);
             closedPositions.add(position);
             remaining = remaining.minus(closeAmount);
@@ -136,8 +136,26 @@ public final class PositionBook implements Serializable {
      * @return closed positions
      * @since 0.22.2
      */
+    @Override
+    public List<Position> getPositions() {
+        return closedPositions();
+    }
+
+    /**
+     * @return closed positions
+     * @since 0.22.2
+     */
     public List<Position> closedPositions() {
         return List.copyOf(closedPositions);
+    }
+
+    /**
+     * @return open positions (per-lot)
+     * @since 0.22.2
+     */
+    @Override
+    public List<OpenPosition> getOpenPositions() {
+        return openPositions();
     }
 
     /**
@@ -182,7 +200,16 @@ public final class PositionBook implements Serializable {
                 openLots());
     }
 
-    private PositionLot nextLot(ExecutionFill fill) {
+    /**
+     * @return aggregated net open position
+     * @since 0.22.2
+     */
+    @Override
+    public OpenPosition getNetOpenPosition() {
+        return netOpenPosition();
+    }
+
+    private PositionLot nextLot(LiveTrade trade) {
         if (openLots.isEmpty()) {
             return null;
         }
@@ -190,13 +217,13 @@ public final class PositionBook implements Serializable {
             return openLots.peekLast();
         }
         if (matchPolicy == ExecutionMatchPolicy.SPECIFIC_ID) {
-            return matchSpecificLot(fill);
+            return matchSpecificLot(trade);
         }
         return openLots.peekFirst();
     }
 
-    private PositionLot matchSpecificLot(ExecutionFill fill) {
-        String key = fill.correlationId() == null ? fill.orderId() : fill.correlationId();
+    private PositionLot matchSpecificLot(LiveTrade trade) {
+        String key = trade.correlationId() == null ? trade.orderId() : trade.correlationId();
         if (key == null || key.isBlank()) {
             throw new IllegalStateException("Specific-id matching requires correlationId or orderId");
         }
@@ -222,7 +249,7 @@ public final class PositionBook implements Serializable {
         }
     }
 
-    private Position closeLot(PositionLot lot, ExecutionFill fill, int index, Num closeAmount) {
+    private Position closeLot(PositionLot lot, LiveTrade trade, int index, Num closeAmount) {
         Num lotAmount = lot.amount();
         Num feePortion = lot.fee().isZero() ? lot.fee() : lot.fee().multipliedBy(closeAmount).dividedBy(lotAmount);
         if (closeAmount.isEqual(lotAmount)) {
@@ -230,8 +257,10 @@ public final class PositionBook implements Serializable {
         } else {
             lot.reduce(closeAmount, feePortion);
         }
-        Trade entry = new Trade(lot.entryIndex(), startingType, lot.entryPrice(), closeAmount, transactionCostModel);
-        Trade exit = new Trade(index, startingType.complementType(), fill.price(), closeAmount, transactionCostModel);
+        Trade entry = new BaseTrade(lot.entryIndex(), startingType, lot.entryPrice(), closeAmount,
+                transactionCostModel);
+        Trade exit = new BaseTrade(index, startingType.complementType(), trade.price(), closeAmount,
+                transactionCostModel);
         return new Position(entry, exit, transactionCostModel, holdingCostModel);
     }
 

@@ -25,7 +25,7 @@ import org.ta4j.core.num.NumFactory;
  *
  * @since 0.22.2
  */
-public class LiveTradingRecord implements TradingRecord {
+public class LiveTradingRecord implements TradingRecord, PositionLedger {
 
     @Serial
     private static final long serialVersionUID = 7960596064337713648L;
@@ -95,45 +95,52 @@ public class LiveTradingRecord implements TradingRecord {
     }
 
     /**
-     * Records a live fill using an auto-incremented trade index.
+     * Records a live trade using an auto-incremented trade index.
      *
-     * @param fill execution fill
-     * @throws IllegalArgumentException when fill price or amount is NaN/invalid
+     * <p>
+     * The trade index is overwritten by the record's auto-incremented index. Use
+     * {@link #recordFill(int, LiveTrade)} when you need to preserve a specific
+     * index.
+     * </p>
+     *
+     * @param trade live trade
+     * @throws IllegalArgumentException when trade price or amount is NaN/invalid
      * @since 0.22.2
      */
-    public void recordFill(ExecutionFill fill) {
-        recordFill(nextIndex(), fill);
+    public void recordFill(LiveTrade trade) {
+        recordFill(nextIndex(), trade);
     }
 
     /**
-     * Records a live fill using the provided trade index.
+     * Records a live trade using the provided trade index.
      *
      * @param index trade index
-     * @param fill  execution fill
-     * @throws IllegalArgumentException when fill price or amount is NaN/invalid
+     * @param trade live trade
+     * @throws IllegalArgumentException when trade price or amount is NaN/invalid
      * @since 0.22.2
      */
-    public void recordFill(int index, ExecutionFill fill) {
-        Objects.requireNonNull(fill, "fill");
+    public void recordFill(int index, LiveTrade trade) {
+        Objects.requireNonNull(trade, "trade");
         if (index < 0) {
             throw new IllegalArgumentException("index must be >= 0");
         }
-        validateFill(fill);
+        LiveTrade resolved = trade.index() == index ? trade : trade.withIndex(index);
+        validateFill(resolved);
         lock.writeLock().lock();
         try {
             nextTradeIndex = Math.max(nextTradeIndex, index + 1);
-            if (fill.side().toTradeType() == startingType) {
-                positionBook.recordEntry(index, fill);
+            if (resolved.side().toTradeType() == startingType) {
+                positionBook.recordEntry(index, resolved);
             } else {
-                positionBook.recordExit(index, fill);
+                positionBook.recordExit(index, resolved);
             }
             if (numFactory == null) {
-                numFactory = fill.price().getNumFactory();
+                numFactory = resolved.price().getNumFactory();
             }
             if (totalFees == null) {
                 totalFees = numFactory.zero();
             }
-            totalFees = totalFees.plus(fill.fee());
+            totalFees = totalFees.plus(resolved.fee());
             modificationCount++;
             tradesCache = null;
         } finally {
@@ -147,6 +154,7 @@ public class LiveTradingRecord implements TradingRecord {
      * @return open positions
      * @since 0.22.2
      */
+    @Override
     public List<OpenPosition> getOpenPositions() {
         lock.readLock().lock();
         try {
@@ -162,6 +170,7 @@ public class LiveTradingRecord implements TradingRecord {
      * @return net open position, or null if none
      * @since 0.22.2
      */
+    @Override
     public OpenPosition getNetOpenPosition() {
         lock.readLock().lock();
         try {
@@ -214,7 +223,7 @@ public class LiveTradingRecord implements TradingRecord {
             ExecutionSide side = positionBook.openLots().isEmpty()
                     ? (startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL)
                     : (startingType == TradeType.BUY ? ExecutionSide.SELL : ExecutionSide.BUY);
-            recordFill(index, new ExecutionFill(Instant.EPOCH, price, amount, null, side, null, null));
+            recordFill(index, new LiveTrade(index, Instant.EPOCH, price, amount, null, side, null, null));
         } finally {
             lock.writeLock().unlock();
         }
@@ -227,7 +236,7 @@ public class LiveTradingRecord implements TradingRecord {
             if (!positionBook.openLots().isEmpty()) {
                 return false;
             }
-            recordFill(index, new ExecutionFill(Instant.EPOCH, price, amount, null,
+            recordFill(index, new LiveTrade(index, Instant.EPOCH, price, amount, null,
                     startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL, null, null));
             return true;
         } finally {
@@ -242,7 +251,7 @@ public class LiveTradingRecord implements TradingRecord {
             if (positionBook.openLots().isEmpty()) {
                 return false;
             }
-            recordFill(index, new ExecutionFill(Instant.EPOCH, price, amount, null,
+            recordFill(index, new LiveTrade(index, Instant.EPOCH, price, amount, null,
                     startingType == TradeType.BUY ? ExecutionSide.SELL : ExecutionSide.BUY, null, null));
             return true;
         } finally {
@@ -357,14 +366,14 @@ public class LiveTradingRecord implements TradingRecord {
         }
     }
 
-    private static void validateFill(ExecutionFill fill) {
-        if (fill.amount().isNaN() || fill.amount().isZero() || fill.amount().isNegative()) {
+    private static void validateFill(LiveTrade trade) {
+        if (trade.amount().isNaN() || trade.amount().isZero() || trade.amount().isNegative()) {
             throw new IllegalArgumentException("Fill amount must be positive");
         }
-        if (fill.price().isNaN()) {
+        if (trade.price().isNaN()) {
             throw new IllegalArgumentException("Fill price must be set");
         }
-        if (fill.fee().isNaN()) {
+        if (trade.fee().isNaN()) {
             throw new IllegalArgumentException("Fill fee must be set");
         }
     }
@@ -376,7 +385,8 @@ public class LiveTradingRecord implements TradingRecord {
             trades.add(position.getExit());
         }
         for (PositionLot lot : positionBook.openLots()) {
-            trades.add(new Trade(lot.entryIndex(), startingType, lot.entryPrice(), lot.amount(), transactionCostModel));
+            trades.add(new BaseTrade(lot.entryIndex(), startingType, lot.entryPrice(), lot.amount(),
+                    transactionCostModel));
         }
         trades.sort(Comparator.comparingInt(Trade::getIndex)
                 .thenComparing(trade -> trade.getType() == startingType ? 0 : 1));

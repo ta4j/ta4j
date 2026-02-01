@@ -53,7 +53,8 @@ public class TradeTest {
     @Test
     public void initializeWithCostsTest() {
         var transactionCostModel = new LinearTransactionCostModel(0.05);
-        var trade = new Trade(0, TradeType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(20), transactionCostModel);
+        var trade = new BaseTrade(0, TradeType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(20),
+                transactionCostModel);
         Num expectedCost = DoubleNum.valueOf(100);
         Num expectedValue = DoubleNum.valueOf(2000);
         Num expectedRawPrice = DoubleNum.valueOf(100);
@@ -71,7 +72,7 @@ public class TradeTest {
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 95, 100, 80, 85, 130)
                 .build();
-        Trade trade = new Trade(1, TradeType.BUY, NaN);
+        Trade trade = new BaseTrade(1, TradeType.BUY, NaN);
         assertNumEquals(DoubleNum.valueOf(95), trade.getPricePerAsset(series));
     }
 }

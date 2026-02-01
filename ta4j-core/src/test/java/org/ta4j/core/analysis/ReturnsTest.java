@@ -14,7 +14,7 @@ import java.time.Instant;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.ExecutionFill;
+import org.ta4j.core.LiveTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Indicator;
@@ -348,9 +348,9 @@ public class ReturnsTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         var record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
-        record.recordFill(0, new ExecutionFill(Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
+        record.recordFill(0, new LiveTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.BUY, null, null));
-        record.recordFill(1, new ExecutionFill(Instant.EPOCH, series.getBar(1).getClosePrice(), numFactory.one(), null,
+        record.recordFill(1, new LiveTrade(1, Instant.EPOCH, series.getBar(1).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.BUY, null, null));
 
         var returns = new Returns(series, record, ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
