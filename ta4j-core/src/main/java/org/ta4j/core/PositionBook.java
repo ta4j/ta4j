@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Objects;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
@@ -105,6 +106,7 @@ public final class PositionBook implements Serializable, PositionLedger {
             normalizeAvgCostLots();
         }
         Num remaining = trade.amount();
+        Num remainingFee = trade.fee();
         List<Position> closed = new ArrayList<>();
         while (remaining.isPositive()) {
             PositionLot lot = nextLot(trade);
@@ -116,10 +118,13 @@ public final class PositionBook implements Serializable, PositionLedger {
                 throw new IllegalStateException("Exit amount exceeds matched lot amount");
             }
             Num closeAmount = remaining.isGreaterThan(lotAmount) ? lotAmount : remaining;
-            Position position = closeLot(lot, trade, index, closeAmount);
+            Num exitFeePortion = remainingFee.isZero() ? remainingFee
+                    : remainingFee.multipliedBy(closeAmount).dividedBy(remaining);
+            Position position = closeLot(lot, trade, index, closeAmount, exitFeePortion);
             closed.add(position);
             closedPositions.add(position);
             remaining = remaining.minus(closeAmount);
+            remainingFee = remainingFee.minus(exitFeePortion);
         }
         return List.copyOf(closed);
     }
@@ -249,18 +254,19 @@ public final class PositionBook implements Serializable, PositionLedger {
         }
     }
 
-    private Position closeLot(PositionLot lot, LiveTrade trade, int index, Num closeAmount) {
+    private Position closeLot(PositionLot lot, LiveTrade trade, int index, Num closeAmount, Num exitFeePortion) {
         Num lotAmount = lot.amount();
-        Num feePortion = lot.fee().isZero() ? lot.fee() : lot.fee().multipliedBy(closeAmount).dividedBy(lotAmount);
+        Num entryFeePortion = lot.fee().isZero() ? lot.fee() : lot.fee().multipliedBy(closeAmount).dividedBy(lotAmount);
         if (closeAmount.isEqual(lotAmount)) {
             openLots.remove(lot);
         } else {
-            lot.reduce(closeAmount, feePortion);
+            lot.reduce(closeAmount, entryFeePortion);
         }
-        Trade entry = new BaseTrade(lot.entryIndex(), startingType, lot.entryPrice(), closeAmount,
-                transactionCostModel);
-        Trade exit = new BaseTrade(index, startingType.complementType(), trade.price(), closeAmount,
-                transactionCostModel);
+        var entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        TradeView entry = new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount,
+                entryFeePortion, entrySide, lot.orderId(), lot.correlationId());
+        TradeView exit = new LiveTrade(index, trade.time(), trade.price(), closeAmount, exitFeePortion, trade.side(),
+                trade.orderId(), trade.correlationId());
         return new Position(entry, exit, transactionCostModel, holdingCostModel);
     }
 
@@ -273,7 +279,7 @@ public final class PositionBook implements Serializable, PositionLedger {
     private void readObject(ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
         inputStream.defaultReadObject();
         if (transactionCostModel == null) {
-            transactionCostModel = new ZeroCostModel();
+            transactionCostModel = RecordedTradeCostModel.INSTANCE;
         }
         if (holdingCostModel == null) {
             holdingCostModel = new ZeroCostModel();

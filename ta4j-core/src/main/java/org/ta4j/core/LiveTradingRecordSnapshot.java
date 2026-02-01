@@ -9,7 +9,14 @@ import java.io.Serializable;
 import java.util.List;
 
 /**
- * Immutable snapshot of a live trading record.
+ * Best-effort immutable snapshot of a live trading record, intended for
+ * serialization and short-lived persistence workflows.
+ *
+ * <p>
+ * Collection fields are copied defensively, but nested lot data can still be
+ * shared with the live record. Treat instances as ephemeral snapshots rather
+ * than long-lived objects.
+ * </p>
  *
  * @param positions       closed positions
  * @param openPositions   open position lots
@@ -18,7 +25,7 @@ import java.util.List;
  * @since 0.22.2
  */
 public record LiveTradingRecordSnapshot(List<Position> positions, List<OpenPosition> openPositions,
-        OpenPosition netOpenPosition, List<Trade> trades) implements Serializable {
+        OpenPosition netOpenPosition, List<TradeView> trades) implements Serializable {
 
     @Serial
     private static final long serialVersionUID = -7838090610321477417L;

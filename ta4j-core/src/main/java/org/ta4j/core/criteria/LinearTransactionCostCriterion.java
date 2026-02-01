@@ -5,7 +5,7 @@ package org.ta4j.core.criteria;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
-import org.ta4j.core.Trade;
+import org.ta4j.core.TradeView;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
@@ -31,8 +31,8 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * Constructor. (a * x)
      *
      * @param initialAmount the initially traded amount
-     * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Trade
-     *                      trade})
+     * @param a             the a coefficient (e.g. 0.005 for 0.5% per
+     *                      {@link TradeView trade})
      */
     public LinearTransactionCostCriterion(double initialAmount, double a) {
         this(initialAmount, a, 0);
@@ -42,9 +42,9 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * Constructor. (a * x + b)
      *
      * @param initialAmount the initially traded amount
-     * @param a             the a coefficient (e.g. 0.005 for 0.5% per {@link Trade
-     *                      trade})
-     * @param b             the b constant (e.g. 0.2 for $0.2 per {@link Trade
+     * @param a             the a coefficient (e.g. 0.005 for 0.5% per
+     *                      {@link TradeView trade})
+     * @param b             the b constant (e.g. 0.2 for $0.2 per {@link TradeView
      *                      trade})
      */
     public LinearTransactionCostCriterion(double initialAmount, double a, double b) {
@@ -98,7 +98,7 @@ public class LinearTransactionCostCriterion extends AbstractAnalysisCriterion {
      * @param tradedAmount the amount of the trade
      * @return the absolute trade cost
      */
-    private Num getTradeCost(Trade trade, Num tradedAmount) {
+    private Num getTradeCost(TradeView trade, Num tradedAmount) {
         final var numFactory = tradedAmount.getNumFactory();
         Num tradeCost = numFactory.zero();
         if (trade != null) {

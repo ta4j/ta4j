@@ -8,7 +8,7 @@ import java.io.Serial;
 import java.time.Instant;
 import java.util.Objects;
 import org.ta4j.core.analysis.cost.CostModel;
-import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.num.Num;
 
 /**
@@ -25,14 +25,14 @@ import org.ta4j.core.num.Num;
  * @since 0.22.2
  */
 public record LiveTrade(int index, Instant time, Num price, Num amount, Num fee, ExecutionSide side, String orderId,
-        String correlationId) implements Trade {
+        String correlationId) implements TradeView {
 
     @Serial
     private static final long serialVersionUID = 3196554864123769210L;
 
     private static final Gson GSON = new Gson();
 
-    private static final CostModel NO_COST_MODEL = new ZeroCostModel();
+    private static final CostModel RECORDED_COST_MODEL = RecordedTradeCostModel.INSTANCE;
 
     public LiveTrade {
         if (index < 0) {
@@ -56,7 +56,7 @@ public record LiveTrade(int index, Instant time, Num price, Num amount, Num fee,
     }
 
     @Override
-    public TradeType getType() {
+    public Trade.TradeType getType() {
         return side.toTradeType();
     }
 
@@ -94,7 +94,34 @@ public record LiveTrade(int index, Instant time, Num price, Num amount, Num fee,
 
     @Override
     public CostModel getCostModel() {
-        return NO_COST_MODEL;
+        return RECORDED_COST_MODEL;
+    }
+
+    /**
+     * @return execution timestamp (UTC)
+     * @since 0.22.2
+     */
+    @Override
+    public Instant getTime() {
+        return time;
+    }
+
+    /**
+     * @return the originating order id if available
+     * @since 0.22.2
+     */
+    @Override
+    public String getOrderId() {
+        return orderId;
+    }
+
+    /**
+     * @return the correlation id if available
+     * @since 0.22.2
+     */
+    @Override
+    public String getCorrelationId() {
+        return correlationId;
     }
 
     /**

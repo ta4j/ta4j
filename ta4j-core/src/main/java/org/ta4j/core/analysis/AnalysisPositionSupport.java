@@ -6,11 +6,14 @@ package org.ta4j.core.analysis;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.LiveTrade;
 import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.OpenPosition;
 import org.ta4j.core.Position;
 import org.ta4j.core.PositionLot;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 
@@ -77,13 +80,15 @@ final class AnalysisPositionSupport {
         var transactionCostModel = defaultCostModel(record.getTransactionCostModel());
         var holdingCostModel = defaultCostModel(record.getHoldingCostModel());
         var startingType = record.getStartingType();
+        var entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
         for (OpenPosition openPosition : record.getOpenPositions()) {
             for (PositionLot lot : openPosition.lots()) {
                 if (lot.entryIndex() > finalIndex) {
                     continue;
                 }
-                var position = new Position(startingType, transactionCostModel, holdingCostModel);
-                position.operate(lot.entryIndex(), lot.entryPrice(), lot.amount());
+                var entryTrade = new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
+                        lot.fee(), entrySide, lot.orderId(), lot.correlationId());
+                var position = new Position(entryTrade, transactionCostModel, holdingCostModel);
                 positions.add(position);
             }
         }

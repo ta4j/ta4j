@@ -24,7 +24,7 @@ import org.jfree.chart.JFreeChart;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.Trade;
+import org.ta4j.core.TradeView;
 import org.ta4j.core.Bar;
 
 import ta4jexamples.charting.compose.TradingChartFactory;
@@ -1727,7 +1727,7 @@ public final class ChartBuilder {
         static AxisRange forTradingRecord(TradingRecord tradingRecord) {
             double min = Double.POSITIVE_INFINITY;
             double max = Double.NEGATIVE_INFINITY;
-            for (Trade trade : tradingRecord.getTrades()) {
+            for (TradeView trade : tradingRecord.getTrades()) {
                 if (Num.isNaNOrNull(trade.getPricePerAsset())) {
                     continue;
                 }

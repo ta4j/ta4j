@@ -15,7 +15,7 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**
- * A {@code Position} is a pair of two {@link Trade trades}.
+ * A {@code Position} is a pair of two {@link TradeView trades}.
  *
  * <p>
  * The exit trade has the complement type of the entry trade, i.e.:
@@ -30,10 +30,10 @@ public class Position implements Serializable {
     private static final long serialVersionUID = -5484709075767220358L;
 
     /** The entry trade */
-    private Trade entry;
+    private TradeView entry;
 
     /** The exit trade */
-    private Trade exit;
+    private TradeView exit;
 
     /** The type of the entry trade */
     private final TradeType startingType;
@@ -79,22 +79,22 @@ public class Position implements Serializable {
     /**
      * Constructor.
      *
-     * @param entry the entry {@link Trade trade}
-     * @param exit  the exit {@link Trade trade}
+     * @param entry the entry {@link TradeView trade}
+     * @param exit  the exit {@link TradeView trade}
      */
-    public Position(Trade entry, Trade exit) {
+    public Position(TradeView entry, TradeView exit) {
         this(entry, exit, entry.getCostModel(), new ZeroCostModel());
     }
 
     /**
      * Constructor.
      *
-     * @param entry                the entry {@link Trade trade}
-     * @param exit                 the exit {@link Trade trade}
+     * @param entry                the entry {@link TradeView trade}
+     * @param exit                 the exit {@link TradeView trade}
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
      */
-    public Position(Trade entry, Trade exit, CostModel transactionCostModel, CostModel holdingCostModel) {
+    public Position(TradeView entry, TradeView exit, CostModel transactionCostModel, CostModel holdingCostModel) {
 
         if (entry.getType().equals(exit.getType())) {
             throw new IllegalArgumentException("Both trades must have different types");
@@ -113,16 +113,36 @@ public class Position implements Serializable {
     }
 
     /**
-     * @return the entry {@link Trade trade} of the position
+     * Constructor for an open position.
+     *
+     * @param entry                the entry {@link TradeView trade}
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     * @since 0.22.2
      */
-    public Trade getEntry() {
+    public Position(TradeView entry, CostModel transactionCostModel, CostModel holdingCostModel) {
+        Objects.requireNonNull(entry, "entry");
+        if (!(entry.getCostModel().equals(transactionCostModel))) {
+            throw new IllegalArgumentException("Trades and the position must incorporate the same trading cost model");
+        }
+        this.startingType = entry.getType();
+        this.entry = entry;
+        this.exit = null;
+        this.transactionCostModel = transactionCostModel;
+        this.holdingCostModel = holdingCostModel;
+    }
+
+    /**
+     * @return the entry {@link TradeView trade} of the position
+     */
+    public TradeView getEntry() {
         return entry;
     }
 
     /**
-     * @return the exit {@link Trade trade} of the position
+     * @return the exit {@link TradeView trade} of the position
      */
-    public Trade getExit() {
+    public TradeView getExit() {
         return exit;
     }
 
@@ -147,7 +167,7 @@ public class Position implements Serializable {
      * @return the trade
      * @see #operate(int, Num, Num)
      */
-    public Trade operate(int index) {
+    public TradeView operate(int index) {
         return operate(index, NaN, NaN);
     }
 
@@ -161,16 +181,16 @@ public class Position implements Serializable {
      * @throws IllegalStateException if {@link #isOpened()} and index {@literal <}
      *                               entry.index
      */
-    public Trade operate(int index, Num price, Num amount) {
-        Trade trade = null;
+    public TradeView operate(int index, Num price, Num amount) {
+        TradeView trade = null;
         if (isNew()) {
-            trade = new BaseTrade(index, startingType, price, amount, transactionCostModel);
+            trade = new ModeledTrade(index, startingType, price, amount, transactionCostModel);
             entry = trade;
         } else if (isOpened()) {
             if (index < entry.getIndex()) {
                 throw new IllegalStateException("The index i is less than the entryTrade index");
             }
-            trade = new BaseTrade(index, startingType.complementType(), price, amount, transactionCostModel);
+            trade = new ModeledTrade(index, startingType.complementType(), price, amount, transactionCostModel);
             exit = trade;
         }
         return trade;

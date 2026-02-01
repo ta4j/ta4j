@@ -217,12 +217,12 @@ class LiveTradingRecordTest {
     void cachesTradesAndInvalidatesOnUpdate() {
         LiveTradingRecord record = new LiveTradingRecord();
         record.recordFill(fill(ExecutionSide.BUY, numFactory.hundred(), numFactory.one()));
-        List<Trade> first = record.getTrades();
-        List<Trade> second = record.getTrades();
+        List<TradeView> first = record.getTrades();
+        List<TradeView> second = record.getTrades();
         assertSame(first, second);
 
         record.recordFill(fill(ExecutionSide.SELL, numFactory.numOf(120), numFactory.one()));
-        List<Trade> third = record.getTrades();
+        List<TradeView> third = record.getTrades();
         assertNotSame(first, third);
         assertEquals(2, third.size());
     }

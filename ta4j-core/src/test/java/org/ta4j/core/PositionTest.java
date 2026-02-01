@@ -228,8 +228,8 @@ public class PositionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 105)
                 .build();
-        Position position = new Position(new BaseTrade(0, TradeType.BUY, NaN, NaN),
-                new BaseTrade(1, TradeType.SELL, NaN, NaN));
+        Position position = new Position(new ModeledTrade(0, TradeType.BUY, NaN, NaN),
+                new ModeledTrade(1, TradeType.SELL, NaN, NaN));
         assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series));
     }
 
@@ -238,8 +238,8 @@ public class PositionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 95)
                 .build();
-        Position position = new Position(new BaseTrade(0, TradeType.SELL, NaN, NaN),
-                new BaseTrade(1, TradeType.BUY, NaN, NaN));
+        Position position = new Position(new ModeledTrade(0, TradeType.SELL, NaN, NaN),
+                new ModeledTrade(1, TradeType.BUY, NaN, NaN));
         assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series));
     }
 

@@ -15,6 +15,7 @@ import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -42,7 +43,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     private final Integer endIndex;
     private String name;
     private int nextTradeIndex;
-    private transient List<Trade> tradesCache;
+    private transient List<TradeView> tradesCache;
     private transient long tradesCacheVersion;
     private long modificationCount;
     private Num totalFees;
@@ -72,7 +73,8 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      *
      * @param startingType         entry trade type
      * @param matchPolicy          matching policy
-     * @param transactionCostModel transaction cost model
+     * @param transactionCostModel transaction cost model (ignored in favor of
+     *                             recorded fees)
      * @param holdingCostModel     holding cost model
      * @param startIndex           optional start index
      * @param endIndex             optional end index
@@ -86,9 +88,9 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         Objects.requireNonNull(holdingCostModel, "holdingCostModel");
         this.startingType = startingType;
         this.matchPolicy = matchPolicy;
-        this.transactionCostModel = transactionCostModel;
+        this.transactionCostModel = RecordedTradeCostModel.INSTANCE;
         this.holdingCostModel = holdingCostModel;
-        this.positionBook = new PositionBook(startingType, matchPolicy, transactionCostModel, holdingCostModel);
+        this.positionBook = new PositionBook(startingType, matchPolicy, this.transactionCostModel, holdingCostModel);
         this.startIndex = startIndex;
         this.endIndex = endIndex;
         this.nextTradeIndex = 0;
@@ -181,7 +183,8 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     }
 
     /**
-     * Returns a snapshot of the live trading record.
+     * Returns a best-effort snapshot of the live trading record for serialization
+     * or short-lived inspection.
      *
      * @return snapshot
      * @since 0.22.2
@@ -288,16 +291,18 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
                 return new Position(startingType, transactionCostModel, holdingCostModel);
             }
             int entryIndex = positionBook.openLots().stream().mapToInt(PositionLot::entryIndex).min().orElse(0);
-            Position position = new Position(startingType, transactionCostModel, holdingCostModel);
-            position.operate(entryIndex, net.averageEntryPrice(), net.amount());
-            return position;
+            var entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+            var entryTime = net.earliestEntryTime() == null ? Instant.EPOCH : net.earliestEntryTime();
+            var entryTrade = new LiveTrade(entryIndex, entryTime, net.averageEntryPrice(), net.amount(),
+                    net.totalFees(), entrySide, null, null);
+            return new Position(entryTrade, transactionCostModel, holdingCostModel);
         } finally {
             lock.readLock().unlock();
         }
     }
 
     @Override
-    public List<Trade> getTrades() {
+    public List<TradeView> getTrades() {
         lock.readLock().lock();
         try {
             if (tradesCache != null && tradesCacheVersion == modificationCount) {
@@ -320,16 +325,16 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     }
 
     @Override
-    public Trade getLastTrade() {
-        List<Trade> trades = getTrades();
+    public TradeView getLastTrade() {
+        List<TradeView> trades = getTrades();
         return trades.isEmpty() ? null : trades.getLast();
     }
 
     @Override
-    public Trade getLastTrade(TradeType tradeType) {
-        List<Trade> trades = getTrades();
+    public TradeView getLastTrade(TradeType tradeType) {
+        List<TradeView> trades = getTrades();
         for (int i = trades.size() - 1; i >= 0; i--) {
-            Trade trade = trades.get(i);
+            TradeView trade = trades.get(i);
             if (trade.getType() == tradeType) {
                 return trade;
             }
@@ -338,12 +343,12 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     }
 
     @Override
-    public Trade getLastEntry() {
+    public TradeView getLastEntry() {
         return getLastTrade(startingType);
     }
 
     @Override
-    public Trade getLastExit() {
+    public TradeView getLastExit() {
         return getLastTrade(startingType.complementType());
     }
 
@@ -378,17 +383,18 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         }
     }
 
-    private List<Trade> buildTrades() {
-        List<Trade> trades = new ArrayList<>();
+    private List<TradeView> buildTrades() {
+        List<TradeView> trades = new ArrayList<>();
         for (Position position : positionBook.closedPositions()) {
             trades.add(position.getEntry());
             trades.add(position.getExit());
         }
         for (PositionLot lot : positionBook.openLots()) {
-            trades.add(new BaseTrade(lot.entryIndex(), startingType, lot.entryPrice(), lot.amount(),
-                    transactionCostModel));
+            var entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+            trades.add(new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(), lot.fee(),
+                    entrySide, lot.orderId(), lot.correlationId()));
         }
-        trades.sort(Comparator.comparingInt(Trade::getIndex)
+        trades.sort(Comparator.comparingInt(TradeView::getIndex)
                 .thenComparing(trade -> trade.getType() == startingType ? 0 : 1));
         return trades;
     }
@@ -422,7 +428,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         inputStream.defaultReadObject();
         lock = new ReentrantReadWriteLock();
         if (transactionCostModel == null) {
-            transactionCostModel = new ZeroCostModel();
+            transactionCostModel = RecordedTradeCostModel.INSTANCE;
         }
         if (holdingCostModel == null) {
             holdingCostModel = new ZeroCostModel();

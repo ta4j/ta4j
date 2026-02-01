@@ -7,7 +7,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.OpenPosition;
 import org.ta4j.core.Position;
-import org.ta4j.core.Trade;
+import org.ta4j.core.TradeView;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -33,7 +33,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         if (!position.isOpened()) {
             return factory.zero();
         }
-        Trade entry = position.getEntry();
+        TradeView entry = position.getEntry();
         Num entryPrice = entry.getPricePerAsset(series);
         Num entryCost = entryPrice.multipliedBy(entry.getAmount()).plus(entry.getCost());
         return toSeriesNum(factory, entryCost);
@@ -55,7 +55,7 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
         if (!current.isOpened()) {
             return factory.zero();
         }
-        Trade entry = current.getEntry();
+        TradeView entry = current.getEntry();
         Num entryPrice = entry.getPricePerAsset(series);
         Num entryCost = entryPrice.multipliedBy(entry.getAmount()).plus(entry.getCost());
         return toSeriesNum(factory, entryCost);

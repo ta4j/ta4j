@@ -13,6 +13,8 @@
 - **Equity curve controls**: Added `OpenPositionHandling`, a shared `PerformanceIndicator` contract, and drawdown
   settings helpers to standardize mark-to-market vs realized analysis behavior.
 - **Position ledger interface**: Added `PositionLedger` to provide a shared view of closed and open positions.
+- **BCH strategy PnL check example**: Added a backtesting helper that evaluates example strategies on BCH-USD and
+  reports net profit/loss and net return percentages.
 - Added **ThreeInsideUpIndicator** and **ThreeInsideDownIndicator**
 - Added **MorningStarIndicator** and **EveningStarIndicator**
 - Added **BullishKickerIndicator** and **BearishKickerIndicator**
@@ -45,8 +47,11 @@
   equity curve/open-position handling, and incorporate multiple open lots from live trading records.
 - **Drawdown criteria**: Maximum drawdown variants, ReturnOverMaxDrawdownCriterion, and Sharpe ratio now accept equity
   curve mode/open-position handling so realized-only analysis ignores open positions consistently.
-- **Trade abstraction**: `Trade` is now an interface with `BaseTrade` as the default implementation, and live fills use
-  `LiveTrade` (renamed from `ExecutionFill`) so live-trading workflows share the same trade contract.
+- **Trade abstraction**: Introduced `TradeView` as the shared trade interface (with optional exchange metadata),
+  `ModeledTrade` as the default modeled implementation, and `LiveTrade` for live fills (renamed from
+  `ExecutionFill`), with a deprecated `Trade` shim for backward compatibility.
+- **LiveTrade fees**: Live-trading positions and criteria now use recorded `LiveTrade` fees via a recorded-trade cost
+  model so position PnL reflects execution fees.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
 - **Elliott Wave analysis example**: Scenario probability weighting now applies adaptive confidence contrast so closely scored scenarios separate more clearly.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
@@ -58,6 +63,7 @@
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
+- **Trade interface naming**: Aligned the public `Trade` interface filename with Java conventions to restore compilation.
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
 - **Fixed incorrect @since 0.23** by replacing with 0.22.2

@@ -861,7 +861,7 @@ public final class TradingChartFactory {
             }
 
             if (tradingRecord.getCurrentPosition().isOpened()) {
-                Trade lastTrade = tradingRecord.getLastTrade();
+                TradeView lastTrade = tradingRecord.getLastTrade();
                 if (lastTrade != null) {
                     addTradeMarker(buyMarkers, sellMarkers, plot, series, lastTrade, positionIndex, timeAxisMode);
                 }
@@ -875,8 +875,8 @@ public final class TradingChartFactory {
         }
     }
 
-    private void addTradeMarker(XYSeries buyMarkers, XYSeries sellMarkers, XYPlot plot, BarSeries series, Trade trade,
-            int positionIndex, TimeAxisMode timeAxisMode) {
+    private void addTradeMarker(XYSeries buyMarkers, XYSeries sellMarkers, XYPlot plot, BarSeries series,
+            TradeView trade, int positionIndex, TimeAxisMode timeAxisMode) {
         if (trade == null) {
             return;
         }
@@ -903,7 +903,7 @@ public final class TradingChartFactory {
         annotateTrade(plot, series, trade, positionIndex, orderDateTime, price);
     }
 
-    private void annotateTrade(XYPlot plot, BarSeries series, Trade trade, int positionIndex, double orderDateTime,
+    private void annotateTrade(XYPlot plot, BarSeries series, TradeView trade, int positionIndex, double orderDateTime,
             double price) {
         String labelPrefix = trade.isBuy() ? "B" : "S";
         String label = labelPrefix + positionIndex + " @" + PRICE_FORMAT.get().format(price);
@@ -916,7 +916,7 @@ public final class TradingChartFactory {
         plot.addAnnotation(annotation);
     }
 
-    private TextAnchor resolveTradeLabelAnchor(Trade trade, BarSeries series) {
+    private TextAnchor resolveTradeLabelAnchor(TradeView trade, BarSeries series) {
         int index = trade.getIndex();
         int begin = series.getBeginIndex();
         int end = series.getEndIndex();
@@ -968,7 +968,7 @@ public final class TradingChartFactory {
         return new XYSeries(key, false, true);
     }
 
-    private void addPositionBand(XYPlot plot, BarSeries series, int positionIndex, Trade entry, Trade exit,
+    private void addPositionBand(XYPlot plot, BarSeries series, int positionIndex, TradeView entry, TradeView exit,
             TimeAxisMode timeAxisMode) {
         if (entry == null) {
             return;

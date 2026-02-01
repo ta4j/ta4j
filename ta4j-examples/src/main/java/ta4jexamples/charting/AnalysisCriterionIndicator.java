@@ -6,7 +6,7 @@ package ta4jexamples.charting;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Trade;
+import org.ta4j.core.TradeView;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
@@ -33,7 +33,7 @@ public class AnalysisCriterionIndicator extends CachedIndicator<Num> {
 
     private final AnalysisCriterion criterion;
     private final TradingRecord fullTradingRecord;
-    private final List<Trade> allTrades;
+    private final List<TradeView> allTrades;
     private final String label;
 
     /**
@@ -77,8 +77,8 @@ public class AnalysisCriterionIndicator extends CachedIndicator<Num> {
      */
     private TradingRecord createPartialTradingRecord(int upToIndex) {
         // Filter trades where trade index <= upToIndex
-        List<Trade> partialTrades = new ArrayList<>();
-        for (Trade trade : allTrades) {
+        List<TradeView> partialTrades = new ArrayList<>();
+        for (TradeView trade : allTrades) {
             if (trade.getIndex() <= upToIndex) {
                 partialTrades.add(trade);
             }
@@ -91,7 +91,7 @@ public class AnalysisCriterionIndicator extends CachedIndicator<Num> {
                     fullTradingRecord.getTransactionCostModel(), fullTradingRecord.getHoldingCostModel());
         }
 
-        Trade[] tradesArray = partialTrades.toArray(new Trade[0]);
+        TradeView[] tradesArray = partialTrades.toArray(new TradeView[0]);
         return new BaseTradingRecord(fullTradingRecord.getTransactionCostModel(),
                 fullTradingRecord.getHoldingCostModel(), tradesArray);
     }
