@@ -10,6 +10,7 @@
 - Added **MorningStarIndicator** and **EveningStarIndicator**
 - Added **BullishKickerIndicator** and **BearishKickerIndicator**
 - Added **PiercingIndicator** and **DarkCloudIndicator**
+- Added versions-maven-plugin
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
@@ -37,6 +38,7 @@
 - **Position duration criterion**: implemented `PositionDurationCriterion` to measure positions duration.
 - **Statistics helper**: Consolidated statistics selection into the `Statistics` enum, with Num calculations.
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
+- **Dependencies**: update to latest versions
 
 ### Fixed
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
