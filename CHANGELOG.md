@@ -1,6 +1,7 @@
 ## Unreleased
 
 ### Added
+- **Charting time axis mode**: Added `TimeAxisMode` with `BAR_INDEX` support to compress non-trading gaps (weekends/holidays) on charts while keeping bar timestamps intact.
 - **Concurrent real-time bar series pipeline**: Introduced core support for concurrent, streaming bar ingestion with
   a dedicated series (`ConcurrentBarSeries`/builder), realtime bar model (`RealtimeBar`/`BaseRealtimeBar`), and
   streaming-bar ingestion helpers to enable candle reconciliation and side/liquidity-aware trade aggregation.
@@ -13,6 +14,9 @@
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
+- **Charting overlays**: Refactored overlay renderer construction and centralized time-axis domain value selection to reduce branching without changing chart output.
+- **Charting defaults**: Centralized chart styling defaults (anti-aliasing, background, title paint) for consistency across chart types.
+- **Chart builder metadata**: Chart definitions now surface a shared metadata object for domain series, title, and time axis mode; chart plans expose a ChartContext and derive their primary series from it, with ChartWorkflow rendering helpers accepting contexts.
 - **TimeBarBuilder**: Enhanced with trade ingestion logic, time alignment validation, and RealtimeBar support.
 - **BaseBarSeriesBuilder**: Deprecated `setConstrained` in favor of deriving constrained mode from max-bar-count configuration.
 - **Release workflow notifications**: Post GitHub Discussion updates for release-scheduler and release runs with decision summaries.
@@ -30,6 +34,7 @@
 - **Release scheduler enablement**: Gate scheduled runs on `RELEASE_SCHEDULER_ENABLED` (defaults to disabled when unset).
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
+- **License headers**: Switch Java source file headers to SPDX identifiers.
 
 ### Fixed
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
@@ -39,6 +44,7 @@
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
+- **Fixed incorrect @since 0.23** by replacing with 0.22.2
 
 ## 0.22.1 (2026-01-15)
 
