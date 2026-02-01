@@ -14,6 +14,7 @@
   bullish/bearish bias, plus `ElliottScenarioSet#trendBias()` and `ElliottWaveFacade#trendBias()` helpers.
 - **Elliott Wave trend backtest demo**: Added `ElliottWaveTrendBacktest` to run backtest and walk-forward
   evaluations on ossified Coinbase/Yahoo datasets.
+- Added versions-maven-plugin
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
@@ -41,6 +42,7 @@
 - **Elliott Wave confidence scoring**: Extension ratio scoring now penalizes under/over-extended projections to
   avoid overstating wave 3 confidence on shallow extensions.
 - **Elliott Wave analysis output**: Chart titles and JSON results now include scenario-weighted trend bias.
+- **Dependencies**: update to latest versions
 
 ### Fixed
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
