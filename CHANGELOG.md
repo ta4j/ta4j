@@ -17,6 +17,7 @@
 - Added **MorningStarIndicator** and **EveningStarIndicator**
 - Added **BullishKickerIndicator** and **BearishKickerIndicator**
 - Added **PiercingIndicator** and **DarkCloudIndicator**
+- **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
 
 ### Changed
@@ -56,6 +57,9 @@
   model so position PnL reflects execution fees.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
 - **Elliott Wave analysis example**: Scenario probability weighting now applies adaptive confidence contrast so closely scored scenarios separate more clearly.
+- **Position duration criterion**: implemented `PositionDurationCriterion` to measure positions duration.
+- **Statistics helper**: Consolidated statistics selection into the `Statistics` enum, with Num calculations.
+- **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 - **Dependencies**: update to latest versions
 
 ### Fixed
