@@ -4,7 +4,6 @@
 package org.ta4j.core.criteria.drawdown;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.SplittableRandom;
 import java.util.function.Supplier;
@@ -14,6 +13,7 @@ import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.criteria.Statistics;
 import org.ta4j.core.num.Num;
 
 /**
@@ -27,19 +27,10 @@ import org.ta4j.core.num.Num;
  */
 public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterion {
 
-    /**
-     * Defines which summary value to return from the simulated drawdowns.
-     *
-     * @since 0.19
-     */
-    public enum Statistic {
-        MEDIAN, P95, P99, MEAN, MIN, MAX
-    }
-
     private final int iterations;
     private final Integer pathBlocks;
     private final Supplier<RandomGenerator> randomSupplier;
-    private final Statistic statistic;
+    private final Statistics statistics;
 
     /**
      * Default constructor returning the 95th percentile.
@@ -47,7 +38,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
      * @since 0.19
      */
     public MonteCarloMaximumDrawdownCriterion() {
-        this(10_000, null, () -> new SplittableRandom(42L), Statistic.P95);
+        this(10_000, null, () -> new SplittableRandom(42L), Statistics.P95);
     }
 
     /**
@@ -57,13 +48,13 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
      * @param pathBlocks number of trades to include in each simulated path
      *                   ({@code null} = use the number of trades in the sample)
      * @param seed       random seed for reproducibility
-     * @param statistic  which summary statistic of the simulated drawdowns to
+     * @param statistics which summary statistic of the simulated drawdowns to
      *                   return
      *
      * @since 0.19
      */
-    public MonteCarloMaximumDrawdownCriterion(int iterations, Integer pathBlocks, long seed, Statistic statistic) {
-        this(iterations, pathBlocks, () -> new SplittableRandom(seed), statistic);
+    public MonteCarloMaximumDrawdownCriterion(int iterations, Integer pathBlocks, long seed, Statistics statistics) {
+        this(iterations, pathBlocks, () -> new SplittableRandom(seed), statistics);
     }
 
     /**
@@ -73,17 +64,17 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
      * @param pathBlocks     number of trades to include in each simulated path
      *                       ({@code null} = use the number of trades in the sample)
      * @param randomSupplier supplier of the random generator used for simulations
-     * @param statistic      which summary statistic of the simulated drawdowns to
+     * @param statistics     which summary statistics of the simulated drawdowns to
      *                       return
      *
      * @since 0.19
      */
     public MonteCarloMaximumDrawdownCriterion(int iterations, Integer pathBlocks,
-            Supplier<RandomGenerator> randomSupplier, Statistic statistic) {
+            Supplier<RandomGenerator> randomSupplier, Statistics statistics) {
         this.iterations = iterations;
         this.pathBlocks = pathBlocks;
         this.randomSupplier = randomSupplier;
-        this.statistic = statistic;
+        this.statistics = statistics;
     }
 
     /**
@@ -112,7 +103,7 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
         }
         var blocksPerPath = pathBlocks != null ? pathBlocks : blocks.size();
         var random = randomSupplier.get();
-        var maxDrawdowns = new double[iterations];
+        var maxDrawdowns = new Num[iterations];
         var numFactory = series.numFactory();
         var one = numFactory.one();
         for (var iteration = 0; iteration < iterations; iteration++) {
@@ -133,33 +124,9 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractAnalysisCriterio
                     }
                 }
             }
-            maxDrawdowns[iteration] = maxDrawdown.doubleValue();
+            maxDrawdowns[iteration] = maxDrawdown;
         }
-        var result = switch (statistic) {
-        case MEDIAN -> percentile(maxDrawdowns, 0.5);
-        case P95 -> percentile(maxDrawdowns, 0.95);
-        case P99 -> percentile(maxDrawdowns, 0.99);
-        case MEAN -> Arrays.stream(maxDrawdowns).average().orElse(0);
-        case MIN -> Arrays.stream(maxDrawdowns).min().orElse(0);
-        case MAX -> Arrays.stream(maxDrawdowns).max().orElse(0);
-        };
-        return numFactory.numOf(result);
-    }
-
-    private static double percentile(double[] values, double level) {
-        if (values.length == 0) {
-            return 0;
-        }
-        var sorted = values.clone();
-        Arrays.sort(sorted);
-        var index = (int) Math.ceil(level * sorted.length) - 1;
-        if (index < 0) {
-            index = 0;
-        }
-        if (index >= sorted.length) {
-            index = sorted.length - 1;
-        }
-        return sorted[index];
+        return statistics.calculate(numFactory, maxDrawdowns);
     }
 
     private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record) {
