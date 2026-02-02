@@ -178,7 +178,7 @@ jobs:
       #   - *-javadoc.jar
       #   - *-sources.jar
       # ------------------------------------------------------------
-      - name: Set up JDK 25
+      - name: Set up JDK
         uses: actions/setup-java@v5
         with:
           distribution: temurin
