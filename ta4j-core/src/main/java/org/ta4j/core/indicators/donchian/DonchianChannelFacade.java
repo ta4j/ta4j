@@ -49,7 +49,7 @@ public class DonchianChannelFacade {
      * @since 0.22.2
      */
     public NumericIndicator lower() {
-        return NumericIndicator.of(lower);
+        return lower;
     }
 
     /**
@@ -61,7 +61,7 @@ public class DonchianChannelFacade {
      * @since 0.22.2
      */
     public NumericIndicator upper() {
-        return NumericIndicator.of(upper);
+        return upper;
     }
 
     /**
@@ -73,7 +73,7 @@ public class DonchianChannelFacade {
      * @since 0.22.2
      */
     public NumericIndicator middle() {
-        return NumericIndicator.of(middle);
+        return middle;
     }
 
 }
