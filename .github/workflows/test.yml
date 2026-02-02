@@ -8,6 +8,10 @@ on:
     branches:
       - master
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     name: Build and Test
@@ -34,4 +38,3 @@ jobs:
 
       - name: Build and run tests with Maven
         run: xvfb-run mvn -B test
-
