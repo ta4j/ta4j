@@ -195,8 +195,8 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
 
         var seedMarkToMarket = new MonteCarloMaximumDrawdownCriterion(1, 1, 7L, Statistics.MAX,
                 EquityCurveMode.MARK_TO_MARKET);
-        var seedIgnore = new MonteCarloMaximumDrawdownCriterion(1, 1, 7L, Statistics.MAX, EquityCurveMode.MARK_TO_MARKET,
-                OpenPositionHandling.IGNORE);
+        var seedIgnore = new MonteCarloMaximumDrawdownCriterion(1, 1, 7L, Statistics.MAX,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
 
         var markToMarketValue = seedMarkToMarket.calculate(series, record);
         var ignoreValue = seedIgnore.calculate(series, record);
