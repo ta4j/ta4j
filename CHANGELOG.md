@@ -12,6 +12,7 @@
 - Added **PiercingIndicator** and **DarkCloudIndicator**
 - **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
+- **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
 
 ### Changed
@@ -43,6 +44,7 @@
 - **Dependencies**: update to latest versions
 
 ### Fixed
+- **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
