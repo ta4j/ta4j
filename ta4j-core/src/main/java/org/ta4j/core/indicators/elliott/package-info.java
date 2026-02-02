@@ -47,6 +47,11 @@
  * alternative scenarios.
  * {@link org.ta4j.core.indicators.elliott.ElliottTrendBiasIndicator} aggregates
  * directional bias across scenarios.</li>
+ * <li><b>Pluggable analysis pipeline</b>:
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalyzer} orchestrates
+ * swing detection, scenario generation, and confidence profiles, with pluggable
+ * detectors under {@code org.ta4j.core.indicators.elliott.swing} and profile
+ * helpers in {@code org.ta4j.core.indicators.elliott.confidence}.</li>
  * <li><b>Invalidation and projections</b>:
  * {@link org.ta4j.core.indicators.elliott.ElliottInvalidationIndicator} flags
  * when wave counts break canonical invalidation levels,

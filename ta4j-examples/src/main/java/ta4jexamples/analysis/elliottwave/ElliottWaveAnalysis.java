@@ -16,6 +16,7 @@ import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import org.ta4j.core.indicators.elliott.ElliottConfidenceScorer;
 import org.ta4j.core.indicators.elliott.ElliottInvalidationIndicator;
 import org.ta4j.core.indicators.elliott.ElliottConfluenceIndicator;
 import org.ta4j.core.indicators.elliott.ElliottWaveCountIndicator;
@@ -39,6 +40,7 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.LabelPlacement;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
@@ -99,6 +101,9 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * <li>{@link BTCUSDElliottWaveAnalysis} - Bitcoin analysis example</li>
  * <li>{@link ETHUSDElliottWaveAnalysis} - Ethereum analysis example</li>
  * <li>{@link SP500ElliottWaveAnalysis} - S&P 500 index analysis example</li>
+ * <li>{@link ElliottWaveAdaptiveSwingAnalysis} - adaptive swing detection
+ * demo</li>
+ * <li>{@link ElliottWavePatternProfileDemo} - pattern-aware profile demo</li>
  * </ul>
  * <p>
  * For programmatic usage, see
@@ -583,7 +588,7 @@ public class ElliottWaveAnalysis {
                 scenarioSet, endIndex, baseCaseChartPlan, alternativeChartPlans);
 
         // Log the structured result (for backward compatibility)
-        logStructuredAnalysisResult(structuredResult);
+        logStructuredAnalysisResult(structuredResult, scenarioSet, series.numFactory());
 
         return new AnalysisResult(series, degree, endIndex, phaseIndicator, invalidationIndicator, channelIndicator,
                 ratioIndicator, confluenceIndicator, swingCount, filteredSwingCount, scenarioIndicator, swingMetadata,
@@ -681,7 +686,8 @@ public class ElliottWaveAnalysis {
      *
      * @param result the structured analysis result
      */
-    private static void logStructuredAnalysisResult(ElliottWaveAnalysisResult result) {
+    private static void logStructuredAnalysisResult(ElliottWaveAnalysisResult result, ElliottScenarioSet scenarioSet,
+            NumFactory numFactory) {
         // Log swing snapshot
         ElliottWaveAnalysisResult.SwingSnapshot snapshot = result.swingSnapshot();
         LOG.info("Elliott swing snapshot valid={}, swings={}, high={}, low={}", snapshot.valid(), snapshot.swings(),
@@ -723,6 +729,7 @@ public class ElliottWaveAnalysis {
             LOG.info("  Weakest factor: {}", baseCase.weakestFactor());
             LOG.info("  Direction: {} | Invalidation: {} | Target: {}", baseCase.direction(),
                     baseCase.invalidationPrice(), baseCase.primaryTarget());
+            scenarioSet.base().ifPresent(scenario -> logTimeAlternationDiagnostics(numFactory, scenario));
         }
 
         // Log alternative scenarios
@@ -1064,6 +1071,21 @@ public class ElliottWaveAnalysis {
         LOG.info("Trend bias: {} | score={} | strength={} | consensus={} | directionalScenarios={}/{}",
                 trendBias.direction(), score, strength, trendBias.consensus(), trendBias.knownDirectionCount(),
                 trendBias.totalScenarios());
+    }
+
+    private static void logTimeAlternationDiagnostics(NumFactory numFactory, ElliottScenario scenario) {
+        if (numFactory == null || scenario == null) {
+            return;
+        }
+        ElliottConfidenceScorer scorer = new ElliottConfidenceScorer(numFactory);
+        ElliottConfidenceScorer.AlternationDiagnostics diagnostics = scorer.alternationDiagnostics(scenario.swings(),
+                scenario.currentPhase());
+        String ratio = Double.isNaN(diagnostics.durationRatio()) ? "n/a"
+                : String.format("%.2f", diagnostics.durationRatio());
+        LOG.info("  Time alternation: barsW2={} | barsW4={} | ratio={} | depthDiff={} | timeDiff={} | score={}",
+                diagnostics.barsWave2(), diagnostics.barsWave4(), ratio,
+                String.format("%.2f", diagnostics.depthDifference()),
+                String.format("%.2f", diagnostics.timeDifference()), String.format("%.2f", diagnostics.score()));
     }
 
     /**

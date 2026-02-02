@@ -17,6 +17,15 @@
 - Added versions-maven-plugin
 - **Elliott Wave trend bias**: Added `ElliottTrendBias` and `ElliottTrendBiasIndicator` for scenario-weighted
   bullish/bearish bias, plus `ElliottScenarioSet#trendBias()` and `ElliottWaveFacade#trendBias()` helpers.
+- **Elliott Wave analysis pipeline**: Added `ElliottWaveAnalyzer` and `ElliottAnalysisResult` for pluggable swing
+  detection, scenario generation, and confidence profiling without chart dependencies.
+- **Elliott Wave swing detectors**: Added adaptive ZigZag, composite swing confirmation, and minimum-magnitude swing
+  filtering helpers under `org.ta4j.core.indicators.elliott.swing`.
+- **Elliott Wave confidence profiles**: Added factor-based confidence modeling (including time alternation diagnostics
+  and granular Fibonacci relationships) plus pattern-aware profile presets.
+- **Elliott Wave pattern configuration**: Added `PatternSet` to enable/disable scenario types during generation.
+- **Elliott Wave adaptive demos**: Added `ElliottWaveAdaptiveSwingAnalysis` and `ElliottWavePatternProfileDemo` examples
+  based on ossified datasets.
 - **Elliott Wave trend backtest demo**: Added `ElliottWaveTrendBacktest` to run backtest and walk-forward
   evaluations on ossified Coinbase/Yahoo datasets.
 
@@ -50,6 +59,7 @@
 - **Elliott Wave confidence scoring**: Extension ratio scoring now penalizes under/over-extended projections to
   avoid overstating wave 3 confidence on shallow extensions.
 - **Elliott Wave analysis output**: Chart titles and JSON results now include scenario-weighted trend bias.
+- **Elliott Wave analysis output**: Logs now include time alternation diagnostics for base scenarios.
 
 ### Fixed
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.

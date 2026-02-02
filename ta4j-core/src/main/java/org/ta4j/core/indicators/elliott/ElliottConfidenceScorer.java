@@ -224,6 +224,47 @@ public final class ElliottConfidenceScorer {
     }
 
     /**
+     * Computes alternation diagnostics between waves 2 and 4.
+     *
+     * @param swings swing sequence
+     * @param phase  current phase
+     * @return alternation diagnostics with score and duration ratios
+     * @since 0.22.2
+     */
+    public AlternationDiagnostics alternationDiagnostics(final List<ElliottSwing> swings, final ElliottPhase phase) {
+        if (swings == null || swings.size() < 4) {
+            return AlternationDiagnostics.neutral();
+        }
+
+        if (phase != null && !phase.isImpulse()) {
+            return AlternationDiagnostics.neutral();
+        }
+
+        final ElliottSwing wave2 = swings.get(1);
+        final ElliottSwing wave4 = swings.get(3);
+
+        final double wave1Amp = swings.get(0).amplitude().doubleValue();
+        final double wave3Amp = swings.get(2).amplitude().doubleValue();
+        final double wave2Depth = wave1Amp > 0 ? wave2.amplitude().doubleValue() / wave1Amp : 0;
+        final double wave4Depth = wave3Amp > 0 ? wave4.amplitude().doubleValue() / wave3Amp : 0;
+
+        final double depthDifference = Math.abs(wave2Depth - wave4Depth);
+
+        final int wave2Bars = wave2.length();
+        final int wave4Bars = wave4.length();
+        final double timeDifference = wave2Bars > 0 || wave4Bars > 0
+                ? Math.abs(wave2Bars - wave4Bars) / (double) Math.max(wave2Bars, wave4Bars)
+                : 0.0;
+        final double durationRatio = wave2Bars > 0 ? (double) wave4Bars / wave2Bars : Double.NaN;
+
+        final double depthScore = Math.min(1.0, depthDifference * 2);
+        final double timeScore = Math.min(1.0, timeDifference);
+        final double score = (depthScore + timeScore) / 2.0;
+
+        return new AlternationDiagnostics(wave2Bars, wave4Bars, durationRatio, depthDifference, timeDifference, score);
+    }
+
+    /**
      * Scores wave 2/4 alternation quality (0.0 - 1.0).
      *
      * <p>
@@ -241,39 +282,30 @@ public final class ElliottConfidenceScorer {
      * @since 0.22.0
      */
     public Num scoreAlternation(final List<ElliottSwing> swings, final ElliottPhase phase) {
-        if (swings == null || swings.size() < 4) {
-            return numFactory.numOf(0.5); // Neutral for insufficient data
+        return numFactory.numOf(alternationDiagnostics(swings, phase).score());
+    }
+
+    /**
+     * Alternation diagnostics between waves 2 and 4.
+     *
+     * @param barsWave2       number of bars in wave 2
+     * @param barsWave4       number of bars in wave 4
+     * @param durationRatio   wave 4 / wave 2 bar ratio
+     * @param depthDifference absolute difference in retracement depth ratios
+     * @param timeDifference  relative duration difference (0.0 - 1.0)
+     * @param score           alternation score (0.0 - 1.0)
+     * @since 0.22.2
+     */
+    public record AlternationDiagnostics(int barsWave2, int barsWave4, double durationRatio, double depthDifference,
+            double timeDifference, double score) {
+
+        /**
+         * @return neutral alternation diagnostics
+         * @since 0.22.2
+         */
+        public static AlternationDiagnostics neutral() {
+            return new AlternationDiagnostics(0, 0, Double.NaN, 0.0, 0.0, 0.5);
         }
-
-        // Alternation only applies to impulse waves, not corrective patterns
-        if (phase != null && !phase.isImpulse()) {
-            return numFactory.numOf(0.5); // Neutral for non-impulse patterns
-        }
-
-        final ElliottSwing wave2 = swings.get(1);
-        final ElliottSwing wave4 = swings.get(3);
-
-        // Compare retracement depths - they should differ
-        final double wave1Amp = swings.get(0).amplitude().doubleValue();
-        final double wave3Amp = swings.get(2).amplitude().doubleValue();
-        final double wave2Depth = wave1Amp > 0 ? wave2.amplitude().doubleValue() / wave1Amp : 0;
-        final double wave4Depth = wave3Amp > 0 ? wave4.amplitude().doubleValue() / wave3Amp : 0;
-
-        // Ideal alternation: one shallow (< 0.5), one deep (> 0.5)
-        final double depthDifference = Math.abs(wave2Depth - wave4Depth);
-
-        // Compare time durations - they should also differ
-        final int wave2Time = wave2.length();
-        final int wave4Time = wave4.length();
-        final double timeDifference = wave2Time > 0 || wave4Time > 0
-                ? Math.abs(wave2Time - wave4Time) / (double) Math.max(wave2Time, wave4Time)
-                : 0;
-
-        // Score based on both depth and time alternation
-        final double depthScore = Math.min(1.0, depthDifference * 2);
-        final double timeScore = Math.min(1.0, timeDifference);
-
-        return numFactory.numOf((depthScore + timeScore) / 2);
     }
 
     /**
