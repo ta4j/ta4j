@@ -3,50 +3,55 @@
  */
 package ta4jexamples.strategies;
 
-import org.junit.Before;
-import org.junit.Test;
+import java.math.BigDecimal;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConcurrentBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
-import org.ta4j.core.indicators.elliott.ElliottChannel;
 import org.ta4j.core.indicators.elliott.ElliottConfidence;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottScenarioSet;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
-import org.ta4j.core.indicators.elliott.ElliottTrendBias;
 import org.ta4j.core.indicators.elliott.ScenarioType;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import static org.junit.Assert.*;
+class HighRewardElliottWaveStrategyTest {
 
-public class HighRewardElliottWaveStrategyTest {
-
-    private BarSeries series;
+    private ConcurrentBarSeries series;
     private NumFactory numFactory;
 
-    @Before
-    public void setUp() {
+    @BeforeEach
+    void setUp() {
         numFactory = DecimalNumFactory.getInstance();
-        List<Double> data = new ArrayList<>();
+        series = new ConcurrentBarSeriesBuilder().withName("elliott-test").withNumFactory(numFactory).build();
+        Instant start = Instant.parse("2025-01-01T00:00:00Z");
         for (int i = 0; i < 30; i++) {
-            data.add(100.0 + i);
+            BigDecimal close = BigDecimal.valueOf(100.0 + i);
+            addBar(series, start.plusSeconds(i * 60L), close);
         }
-        series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
     }
 
     @Test
-    public void testDefaultLabelContainsDirectionAndDegree() {
+    void testDefaultLabelContainsDirectionAndDegree() {
         HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(series);
         String[] parts = strategy.getName().split("_");
         assertEquals("HighRewardElliottWaveStrategy", parts[0]);
@@ -57,7 +62,7 @@ public class HighRewardElliottWaveStrategyTest {
     }
 
     @Test
-    public void testConstructorWithParamsBuildsExpectedLabel() {
+    void testConstructorWithParamsBuildsExpectedLabel() {
         String[] params = new String[] { "BULLISH", "PRIMARY", "0.7", "3", "1.5", "0.2", "5", "2", "50", "2", "4",
                 "0.2" };
         HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(series, params);
@@ -78,26 +83,26 @@ public class HighRewardElliottWaveStrategyTest {
     }
 
     @Test
-    public void testConstructorRejectsInvalidDirection() {
+    void testConstructorRejectsInvalidDirection() {
         assertThrows(IllegalArgumentException.class, () -> new HighRewardElliottWaveStrategy(series, "SIDEWAYS",
                 "PRIMARY", "0.7", "3", "1.5", "0.2", "5", "2", "50", "2", "4", "0.2"));
     }
 
     @Test
-    public void testConstructorRejectsWrongParamCount() {
+    void testConstructorRejectsWrongParamCount() {
         assertThrows(IllegalArgumentException.class,
                 () -> new HighRewardElliottWaveStrategy(series, "BULLISH", "PRIMARY"));
     }
 
     @Test
-    public void testEntryRuleSatisfiedForHighConfidenceImpulse() {
+    void testEntryRuleSatisfiedForHighConfidenceImpulse() {
         HighRewardElliottWaveStrategy.Config config = new HighRewardElliottWaveStrategy.Config(
                 HighRewardElliottWaveStrategy.SignalDirection.BULLISH, ElliottDegree.PRIMARY, 0.7, 3.0, 1.5, 0.2, 5, 2,
                 50.0, 2, 4, 0.2);
 
         ElliottScenario scenario = buildScenario(numFactory.numOf(120), numFactory.numOf(200));
-        ElliottAnalysisResult result = buildResult(series, scenario);
-        Indicator<ElliottAnalysisResult> indicator = new FixedAnalysisIndicator(series, result);
+        ElliottScenarioSet scenarioSet = buildScenarioSet(series, scenario);
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, scenarioSet);
 
         HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(series, config, indicator);
         TradingRecord record = new BaseTradingRecord();
@@ -105,14 +110,14 @@ public class HighRewardElliottWaveStrategyTest {
     }
 
     @Test
-    public void testEntryRuleRejectedWhenRiskRewardTooLow() {
+    void testEntryRuleRejectedWhenRiskRewardTooLow() {
         HighRewardElliottWaveStrategy.Config config = new HighRewardElliottWaveStrategy.Config(
                 HighRewardElliottWaveStrategy.SignalDirection.BULLISH, ElliottDegree.PRIMARY, 0.7, 3.0, 1.5, 0.2, 5, 2,
                 50.0, 2, 4, 0.2);
 
         ElliottScenario scenario = buildScenario(numFactory.numOf(120), numFactory.numOf(140));
-        ElliottAnalysisResult result = buildResult(series, scenario);
-        Indicator<ElliottAnalysisResult> indicator = new FixedAnalysisIndicator(series, result);
+        ElliottScenarioSet scenarioSet = buildScenarioSet(series, scenario);
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, scenarioSet);
 
         HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(series, config, indicator);
         TradingRecord record = new BaseTradingRecord();
@@ -120,13 +125,13 @@ public class HighRewardElliottWaveStrategyTest {
     }
 
     @Test
-    public void testEntryRuleRejectedWhenNoScenario() {
+    void testEntryRuleRejectedWhenNoScenario() {
         HighRewardElliottWaveStrategy.Config config = new HighRewardElliottWaveStrategy.Config(
                 HighRewardElliottWaveStrategy.SignalDirection.BULLISH, ElliottDegree.PRIMARY, 0.7, 3.0, 1.5, 0.2, 5, 2,
                 50.0, 2, 4, 0.2);
 
-        ElliottAnalysisResult result = buildEmptyResult(series);
-        Indicator<ElliottAnalysisResult> indicator = new FixedAnalysisIndicator(series, result);
+        ElliottScenarioSet scenarioSet = buildEmptyScenarioSet(series);
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, scenarioSet);
 
         HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(series, config, indicator);
         TradingRecord record = new BaseTradingRecord();
@@ -134,14 +139,14 @@ public class HighRewardElliottWaveStrategyTest {
     }
 
     @Test
-    public void testExitRuleTriggersOnInvalidation() {
+    void testExitRuleTriggersOnInvalidation() {
         HighRewardElliottWaveStrategy.Config config = new HighRewardElliottWaveStrategy.Config(
                 HighRewardElliottWaveStrategy.SignalDirection.BULLISH, ElliottDegree.PRIMARY, 0.7, 3.0, 1.5, 0.2, 5, 2,
                 50.0, 2, 4, 0.2);
 
         ElliottScenario scenario = buildScenario(numFactory.numOf(130), numFactory.numOf(200));
-        ElliottAnalysisResult result = buildResult(series, scenario);
-        Indicator<ElliottAnalysisResult> indicator = new FixedAnalysisIndicator(series, result);
+        ElliottScenarioSet scenarioSet = buildScenarioSet(series, scenario);
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, scenarioSet);
 
         HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(series, config, indicator);
         BaseTradingRecord record = new BaseTradingRecord();
@@ -152,7 +157,7 @@ public class HighRewardElliottWaveStrategyTest {
     }
 
     @Test
-    public void testExitRuleTriggersOnCorrectiveStopViolation() {
+    void testExitRuleTriggersOnCorrectiveStopViolation() {
         HighRewardElliottWaveStrategy.Config config = new HighRewardElliottWaveStrategy.Config(
                 HighRewardElliottWaveStrategy.SignalDirection.BULLISH, ElliottDegree.PRIMARY, 0.7, 3.0, 1.5, 0.2, 5, 2,
                 50.0, 2, 4, 0.2);
@@ -177,8 +182,8 @@ public class HighRewardElliottWaveStrategyTest {
                 .startIndex(0)
                 .build();
 
-        ElliottAnalysisResult result = buildResult(series, scenario);
-        Indicator<ElliottAnalysisResult> indicator = new FixedAnalysisIndicator(series, result);
+        ElliottScenarioSet scenarioSet = buildScenarioSet(series, scenario);
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, scenarioSet);
 
         HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(series, config, indicator);
         BaseTradingRecord record = new BaseTradingRecord();
@@ -189,13 +194,13 @@ public class HighRewardElliottWaveStrategyTest {
     }
 
     @Test
-    public void testExitRuleTriggersWhenNoScenario() {
+    void testExitRuleTriggersWhenNoScenario() {
         HighRewardElliottWaveStrategy.Config config = new HighRewardElliottWaveStrategy.Config(
                 HighRewardElliottWaveStrategy.SignalDirection.BULLISH, ElliottDegree.PRIMARY, 0.7, 3.0, 1.5, 0.2, 5, 2,
                 50.0, 2, 4, 0.2);
 
-        ElliottAnalysisResult result = buildEmptyResult(series);
-        Indicator<ElliottAnalysisResult> indicator = new FixedAnalysisIndicator(series, result);
+        ElliottScenarioSet scenarioSet = buildEmptyScenarioSet(series);
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, scenarioSet);
 
         HighRewardElliottWaveStrategy strategy = new HighRewardElliottWaveStrategy(series, config, indicator);
         BaseTradingRecord record = new BaseTradingRecord();
@@ -229,20 +234,12 @@ public class HighRewardElliottWaveStrategyTest {
                 .build();
     }
 
-    private ElliottAnalysisResult buildResult(BarSeries series, ElliottScenario scenario) {
-        ElliottScenarioSet scenarioSet = ElliottScenarioSet.of(List.of(scenario), series.getEndIndex());
-        ElliottTrendBias bias = ElliottTrendBias.fromScenarios(List.of(scenario));
-        ElliottChannel channel = new ElliottChannel(numFactory.zero(), numFactory.zero(), numFactory.zero());
-        return new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), scenario.swings(),
-                scenario.swings(), scenarioSet, Map.of(), channel, bias);
+    private ElliottScenarioSet buildScenarioSet(BarSeries series, ElliottScenario scenario) {
+        return ElliottScenarioSet.of(List.of(scenario), series.getEndIndex());
     }
 
-    private ElliottAnalysisResult buildEmptyResult(BarSeries series) {
-        ElliottScenarioSet scenarioSet = ElliottScenarioSet.empty(series.getEndIndex());
-        ElliottTrendBias bias = ElliottTrendBias.fromScenarios(List.of());
-        ElliottChannel channel = new ElliottChannel(numFactory.zero(), numFactory.zero(), numFactory.zero());
-        return new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), List.of(), List.of(), scenarioSet,
-                Map.of(), channel, bias);
+    private ElliottScenarioSet buildEmptyScenarioSet(BarSeries series) {
+        return ElliottScenarioSet.empty(series.getEndIndex());
     }
 
     private ElliottConfidence buildConfidence(NumFactory factory, double overall) {
@@ -250,19 +247,40 @@ public class HighRewardElliottWaveStrategyTest {
         return new ElliottConfidence(score, score, score, score, score, score, "test");
     }
 
-    private static final class FixedAnalysisIndicator implements Indicator<ElliottAnalysisResult> {
+    private static void addBar(ConcurrentBarSeries series, Instant start, BigDecimal close) {
+        Instant end = start.plusSeconds(60L);
+        BigDecimal high = close.add(new BigDecimal("0.5"));
+        BigDecimal low = close.subtract(new BigDecimal("0.5"));
+        series.addBar(buildBar(series, start, end, close, high, low, close));
+    }
+
+    private static Bar buildBar(ConcurrentBarSeries series, Instant start, Instant end, BigDecimal open,
+            BigDecimal high, BigDecimal low, BigDecimal close) {
+        return series.barBuilder()
+                .timePeriod(Duration.between(start, end))
+                .beginTime(start)
+                .endTime(end)
+                .openPrice(open)
+                .highPrice(high)
+                .lowPrice(low)
+                .closePrice(close)
+                .volume(new BigDecimal("1"))
+                .build();
+    }
+
+    private static final class FixedScenarioIndicator implements Indicator<ElliottScenarioSet> {
 
         private final BarSeries series;
-        private final ElliottAnalysisResult result;
+        private final ElliottScenarioSet scenarioSet;
 
-        private FixedAnalysisIndicator(BarSeries series, ElliottAnalysisResult result) {
+        private FixedScenarioIndicator(BarSeries series, ElliottScenarioSet scenarioSet) {
             this.series = series;
-            this.result = result;
+            this.scenarioSet = scenarioSet;
         }
 
         @Override
-        public ElliottAnalysisResult getValue(int index) {
-            return result;
+        public ElliottScenarioSet getValue(int index) {
+            return scenarioSet;
         }
 
         @Override

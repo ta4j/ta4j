@@ -60,6 +60,7 @@
 - **Elliott Wave analysis output**: Chart titles and JSON results now include scenario-weighted trend bias.
 - **Elliott Wave analysis output**: Logs now include time alternation diagnostics for base scenarios.
 
+
 ### Fixed
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).

@@ -19,31 +19,18 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
-import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
-import org.ta4j.core.indicators.elliott.ElliottConfidenceScorer;
+import org.ta4j.core.indicators.elliott.ElliottChannelIndicator;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
-import org.ta4j.core.indicators.elliott.ElliottTrendBias;
-import org.ta4j.core.indicators.elliott.ElliottWaveAnalyzer;
+import org.ta4j.core.indicators.elliott.ElliottScenarioGenerator;
+import org.ta4j.core.indicators.elliott.ElliottScenarioSet;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
-import org.ta4j.core.indicators.elliott.PatternSet;
+import org.ta4j.core.indicators.elliott.ElliottSwingCompressor;
+import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
 import org.ta4j.core.indicators.elliott.ScenarioType;
-import org.ta4j.core.indicators.elliott.confidence.ChannelAdherenceFactor;
-import org.ta4j.core.indicators.elliott.confidence.ConfidenceModel;
-import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfile;
-import org.ta4j.core.indicators.elliott.confidence.FibonacciRelationshipFactor;
-import org.ta4j.core.indicators.elliott.confidence.ScenarioTypeConfidenceModel;
-import org.ta4j.core.indicators.elliott.confidence.StructureCompletenessFactor;
-import org.ta4j.core.indicators.elliott.confidence.TimeAlternationFactor;
-import org.ta4j.core.indicators.elliott.confidence.TimeProportionFactor;
-import org.ta4j.core.indicators.elliott.swing.AdaptiveZigZagConfig;
-import org.ta4j.core.indicators.elliott.swing.MinMagnitudeSwingFilter;
-import org.ta4j.core.indicators.elliott.swing.SwingDetector;
-import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.AbstractRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
@@ -96,10 +83,9 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
     private static final int DEFAULT_MACD_SLOW = 26;
 
     private static final int DEFAULT_ATR_PERIOD = 14;
-    private static final double DEFAULT_ATR_MULTIPLIER = 0.5;
-    private static final int DEFAULT_ATR_SMOOTHING = 1;
     private static final double DEFAULT_MIN_RELATIVE_SWING = 0.10;
     private static final double ANALYZER_MIN_CONFIDENCE = 0.20;
+    private static final int DEFAULT_SCENARIO_SWING_WINDOW = 5;
 
     private static final double MAX_WAVE_DURATION_MULTIPLIER = 1.5;
     private static final int PARAMETER_COUNT = 12;
@@ -125,34 +111,33 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
     }
 
     HighRewardElliottWaveStrategy(final BarSeries series, final Config config,
-            final Indicator<ElliottAnalysisResult> analysisIndicator) {
-        this(series, config, analysisIndicator, buildRules(series, config, analysisIndicator));
+            final Indicator<ElliottScenarioSet> scenarioIndicator) {
+        this(series, config, scenarioIndicator, buildRules(series, config, scenarioIndicator));
     }
 
     private HighRewardElliottWaveStrategy(final BarSeries series, final Config config) {
-        this(series, config, new ElliottAnalysisIndicator(series, buildAnalyzer(series, config)));
+        this(series, config, buildScenarioIndicator(series, config));
     }
 
     private HighRewardElliottWaveStrategy(final BarSeries series, final Config config,
-            final Indicator<ElliottAnalysisResult> analysisIndicator, final RuleBundle rules) {
+            final Indicator<ElliottScenarioSet> scenarioIndicator, final RuleBundle rules) {
         super(buildLabel(config), rules.entryRule(), rules.exitRule(), rules.unstableBars());
     }
 
     private static RuleBundle buildRules(final BarSeries series, final Config config,
-            final Indicator<ElliottAnalysisResult> analysisIndicator) {
+            final Indicator<ElliottScenarioSet> scenarioIndicator) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(config, "config");
-        Objects.requireNonNull(analysisIndicator, "analysisIndicator");
+        Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
 
-        if (analysisIndicator.getBarSeries() != series) {
-            throw new IllegalArgumentException("analysisIndicator must use the same BarSeries instance");
+        if (scenarioIndicator.getBarSeries() != series) {
+            throw new IllegalArgumentException("scenarioIndicator must use the same BarSeries instance");
         }
 
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         SMAIndicator trendSma = new SMAIndicator(close, config.trendSmaPeriod());
         RSIIndicator rsi = new RSIIndicator(close, config.rsiPeriod());
         MACDIndicator macd = new MACDIndicator(close, config.macdFastPeriod(), config.macdSlowPeriod());
-        ElliottConfidenceScorer scorer = new ElliottConfidenceScorer(series.numFactory());
 
         Rule trendRule = config.direction().isBullish() ? new OverIndicatorRule(close, trendSma)
                 : new UnderIndicatorRule(close, trendSma);
@@ -164,10 +149,11 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
         Rule entryRule = trendRule.and(momentumRule).and(new AbstractRule() {
             @Override
             public boolean isSatisfied(final int index, final TradingRecord record) {
-                ElliottAnalysisResult result = analysisIndicator.getValue(index);
-                ElliottScenario base = result.scenarios().base().orElse(null);
+                ElliottScenarioSet scenarios = scenarioIndicator.getValue(index);
+                ElliottScenario base = scenarios.base().orElse(null);
                 Num closePrice = close.getValue(index);
-                boolean satisfied = isEntrySignal(config, result, base, closePrice, scorer);
+                TrendBias bias = computeTrendBias(scenarios);
+                boolean satisfied = isEntrySignal(config, base, closePrice, bias);
                 traceIsSatisfied(index, satisfied);
                 return satisfied;
             }
@@ -180,10 +166,11 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
                     traceIsSatisfied(index, false);
                     return false;
                 }
-                ElliottAnalysisResult result = analysisIndicator.getValue(index);
-                ElliottScenario base = result.scenarios().base().orElse(null);
+                ElliottScenarioSet scenarios = scenarioIndicator.getValue(index);
+                ElliottScenario base = scenarios.base().orElse(null);
                 Num closePrice = close.getValue(index);
-                boolean satisfied = isExitSignal(config, result, base, closePrice, trendRule, momentumRule, record,
+                TrendBias bias = computeTrendBias(scenarios);
+                boolean satisfied = isExitSignal(config, base, closePrice, bias, trendRule, momentumRule, record,
                         index);
                 traceIsSatisfied(index, satisfied);
                 return satisfied;
@@ -194,8 +181,8 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
         return new RuleBundle(entryRule, exitRule, unstableBars);
     }
 
-    private static boolean isEntrySignal(final Config config, final ElliottAnalysisResult result,
-            final ElliottScenario base, final Num closePrice, final ElliottConfidenceScorer scorer) {
+    private static boolean isEntrySignal(final Config config, final ElliottScenario base, final Num closePrice,
+            final TrendBias bias) {
         if (base == null || closePrice == null || Num.isNaNOrNull(closePrice)) {
             return false;
         }
@@ -208,8 +195,7 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
         if (!base.hasKnownDirection() || !directionMatches(config.direction(), base)) {
             return false;
         }
-        ElliottTrendBias bias = result.trendBias();
-        if (bias.isUnknown() || bias.isNeutral()) {
+        if (bias.isNeutral()) {
             return false;
         }
         if (bias.strength() < config.minTrendBiasStrength()) {
@@ -219,16 +205,16 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
             return false;
         }
 
-        if (!meetsAlternationRequirement(base, scorer, config.minAlternationRatio())) {
+        if (!meetsAlternationRequirement(base, config.minAlternationRatio())) {
             return false;
         }
 
         return hasFavorableRiskReward(base, closePrice, config);
     }
 
-    private static boolean isExitSignal(final Config config, final ElliottAnalysisResult result,
-            final ElliottScenario base, final Num closePrice, final Rule trendRule, final Rule momentumRule,
-            final TradingRecord record, final int index) {
+    private static boolean isExitSignal(final Config config, final ElliottScenario base, final Num closePrice,
+            final TrendBias bias, final Rule trendRule, final Rule momentumRule, final TradingRecord record,
+            final int index) {
         if (base == null || closePrice == null || Num.isNaNOrNull(closePrice)) {
             return true;
         }
@@ -248,8 +234,10 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
             return true;
         }
 
-        ElliottTrendBias bias = result.trendBias();
-        if (bias.isUnknown() || bias.isNeutral() || !directionMatches(config.direction(), bias)) {
+        if (bias.isNeutral() || !directionMatches(config.direction(), bias)) {
+            return true;
+        }
+        if (bias.strength() < config.minTrendBiasStrength()) {
             return true;
         }
 
@@ -310,11 +298,23 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
         return direction.isBullish() ? closePrice.isLessThanOrEqual(stop) : closePrice.isGreaterThanOrEqual(stop);
     }
 
-    private static boolean meetsAlternationRequirement(final ElliottScenario base, final ElliottConfidenceScorer scorer,
-            final double minAlternationRatio) {
-        ElliottConfidenceScorer.AlternationDiagnostics diagnostics = scorer.alternationDiagnostics(base.swings(),
-                base.currentPhase());
-        double ratio = diagnostics.durationRatio();
+    private static boolean meetsAlternationRequirement(final ElliottScenario base, final double minAlternationRatio) {
+        List<ElliottSwing> swings = base.swings();
+        if (swings == null || swings.size() < 4) {
+            return false;
+        }
+        ElliottPhase phase = base.currentPhase();
+        if (phase != null && !phase.isImpulse()) {
+            return false;
+        }
+        ElliottSwing wave2 = swings.get(1);
+        ElliottSwing wave4 = swings.get(3);
+        int wave2Bars = wave2.length();
+        int wave4Bars = wave4.length();
+        if (wave2Bars <= 0 || wave4Bars <= 0) {
+            return false;
+        }
+        double ratio = (double) wave4Bars / wave2Bars;
         if (Double.isNaN(ratio) || ratio <= 0.0) {
             return false;
         }
@@ -391,34 +391,52 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
         return direction.isBullish() ? scenario.isBullish() : scenario.isBearish();
     }
 
-    private static boolean directionMatches(final SignalDirection direction, final ElliottTrendBias bias) {
-        return direction.isBullish() ? bias.isBullish() : bias.isBearish();
+    private static boolean directionMatches(final SignalDirection direction, final TrendBias bias) {
+        if (bias == null || bias.direction() == null) {
+            return false;
+        }
+        return direction.isBullish() == bias.direction().isBullish();
     }
 
-    private static ElliottWaveAnalyzer buildAnalyzer(final BarSeries series, final Config config) {
-        AdaptiveZigZagConfig adaptiveConfig = new AdaptiveZigZagConfig(DEFAULT_ATR_PERIOD, DEFAULT_ATR_MULTIPLIER, 0.0,
-                0.0, DEFAULT_ATR_SMOOTHING);
-        SwingDetector detector = SwingDetectors.adaptiveZigZag(adaptiveConfig);
-
-        return ElliottWaveAnalyzer.builder()
-                .degree(config.degree())
-                .swingDetector(detector)
-                .swingFilter(new MinMagnitudeSwingFilter(config.minRelativeSwing()))
-                .patternSet(PatternSet.of(ScenarioType.IMPULSE))
-                .minConfidence(Math.min(config.minConfidence(), ANALYZER_MIN_CONFIDENCE))
-                .confidenceModelFactory(HighRewardElliottWaveStrategy::buildConfidenceModel)
-                .build();
+    private static TrendBias computeTrendBias(final ElliottScenarioSet scenarios) {
+        if (scenarios == null || scenarios.isEmpty()) {
+            return TrendBias.unknown();
+        }
+        double bullishScore = 0.0;
+        double bearishScore = 0.0;
+        for (ElliottScenario scenario : scenarios.all()) {
+            if (scenario == null || !scenario.hasKnownDirection()) {
+                continue;
+            }
+            double score = scenario.confidenceScore().doubleValue();
+            if (Double.isNaN(score) || score <= 0.0) {
+                continue;
+            }
+            if (scenario.isBullish()) {
+                bullishScore += score;
+            } else {
+                bearishScore += score;
+            }
+        }
+        double total = bullishScore + bearishScore;
+        if (total <= 0.0) {
+            return TrendBias.unknown();
+        }
+        double strength = Math.abs(bullishScore - bearishScore) / total;
+        SignalDirection direction = bullishScore >= bearishScore ? SignalDirection.BULLISH : SignalDirection.BEARISH;
+        return new TrendBias(direction, strength);
     }
 
-    private static ConfidenceModel buildConfidenceModel(final NumFactory numFactory) {
-        ElliottConfidenceScorer scorer = new ElliottConfidenceScorer(numFactory);
-        ConfidenceProfile profile = new ConfidenceProfile(
-                List.of(new ConfidenceProfile.WeightedFactor(new FibonacciRelationshipFactor(), 0.40),
-                        new ConfidenceProfile.WeightedFactor(new TimeProportionFactor(scorer), 0.20),
-                        new ConfidenceProfile.WeightedFactor(new TimeAlternationFactor(scorer), 0.20),
-                        new ConfidenceProfile.WeightedFactor(new ChannelAdherenceFactor(scorer), 0.10),
-                        new ConfidenceProfile.WeightedFactor(new StructureCompletenessFactor(scorer), 0.10)));
-        return ScenarioTypeConfidenceModel.builder(numFactory).defaultProfile(profile).build();
+    private static Indicator<ElliottScenarioSet> buildScenarioIndicator(final BarSeries series, final Config config) {
+        ElliottSwingIndicator swingIndicator = ElliottSwingIndicator.zigZag(series, config.degree());
+        ElliottChannelIndicator channelIndicator = new ElliottChannelIndicator(swingIndicator);
+        double minConfidence = Math.min(config.minConfidence(), ANALYZER_MIN_CONFIDENCE);
+        ElliottScenarioGenerator generator = new ElliottScenarioGenerator(series.numFactory(), minConfidence,
+                ElliottScenarioGenerator.DEFAULT_MAX_SCENARIOS);
+        ElliottSwingCompressor compressor = new ElliottSwingCompressor(new ClosePriceIndicator(series),
+                config.minRelativeSwing(), 0);
+        return new ScenarioSetIndicator(series, swingIndicator, channelIndicator, generator, compressor,
+                DEFAULT_SCENARIO_SWING_WINDOW);
     }
 
     private static String buildLabel(final Config config) {
@@ -427,7 +445,7 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
 
     private static int calculateUnstableBars(final Config config) {
         int unstable = Math.max(config.trendSmaPeriod(), Math.max(config.rsiPeriod(), config.macdSlowPeriod()));
-        unstable = Math.max(unstable, DEFAULT_ATR_PERIOD + DEFAULT_ATR_SMOOTHING);
+        unstable = Math.max(unstable, DEFAULT_ATR_PERIOD);
         return unstable;
     }
 
@@ -637,29 +655,61 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
     private record RuleBundle(Rule entryRule, Rule exitRule, int unstableBars) {
     }
 
-    private static final class ElliottAnalysisIndicator extends CachedIndicator<ElliottAnalysisResult> {
+    private record TrendBias(SignalDirection direction, double strength) {
 
-        private final ElliottWaveAnalyzer analyzer;
+        private static TrendBias unknown() {
+            return new TrendBias(null, 0.0);
+        }
 
-        private ElliottAnalysisIndicator(final BarSeries series, final ElliottWaveAnalyzer analyzer) {
+        private boolean isNeutral() {
+            return direction == null || strength <= 0.0;
+        }
+    }
+
+    private static final class ScenarioSetIndicator extends CachedIndicator<ElliottScenarioSet> {
+
+        private final ElliottSwingIndicator swingIndicator;
+        private final ElliottChannelIndicator channelIndicator;
+        private final ElliottScenarioGenerator generator;
+        private final ElliottSwingCompressor compressor;
+        private final int scenarioSwingWindow;
+
+        private ScenarioSetIndicator(final BarSeries series, final ElliottSwingIndicator swingIndicator,
+                final ElliottChannelIndicator channelIndicator, final ElliottScenarioGenerator generator,
+                final ElliottSwingCompressor compressor, final int scenarioSwingWindow) {
             super(series);
-            this.analyzer = Objects.requireNonNull(analyzer, "analyzer");
+            this.swingIndicator = Objects.requireNonNull(swingIndicator, "swingIndicator");
+            this.channelIndicator = Objects.requireNonNull(channelIndicator, "channelIndicator");
+            this.generator = Objects.requireNonNull(generator, "generator");
+            this.compressor = compressor;
+            this.scenarioSwingWindow = scenarioSwingWindow;
         }
 
         @Override
-        protected ElliottAnalysisResult calculate(final int index) {
+        protected ElliottScenarioSet calculate(final int index) {
             final BarSeries series = getBarSeries();
             if (series.isEmpty()) {
                 throw new IllegalArgumentException("series cannot be empty");
             }
             int clampedIndex = Math.max(series.getBeginIndex(), Math.min(index, series.getEndIndex()));
-            BarSeries subSeries = series.getSubSeries(series.getBeginIndex(), clampedIndex + 1);
-            return analyzer.analyze(subSeries);
+            List<ElliottSwing> swings = swingIndicator.getValue(clampedIndex);
+            if (compressor != null) {
+                swings = compressor.compress(swings);
+            }
+            if (swings.isEmpty()) {
+                return ElliottScenarioSet.empty(clampedIndex);
+            }
+            List<ElliottSwing> recent = swings;
+            if (scenarioSwingWindow > 0 && swings.size() > scenarioSwingWindow) {
+                recent = List.copyOf(swings.subList(swings.size() - scenarioSwingWindow, swings.size()));
+            }
+            return generator.generate(recent, swingIndicator.getDegree(), channelIndicator.getValue(clampedIndex),
+                    clampedIndex);
         }
 
         @Override
         public int getCountOfUnstableBars() {
-            return 0;
+            return swingIndicator.getCountOfUnstableBars();
         }
     }
 }
