@@ -49,6 +49,15 @@ public class DonchianChannelMiddleIndicator extends CachedIndicator<Num> {
         this.upper = new DonchianChannelUpperIndicator(series, barCount);
     }
 
+    public DonchianChannelMiddleIndicator(BarSeries series, int barCount,
+            DonchianChannelLowerIndicator donchianChannelLowerIndicator,
+            DonchianChannelUpperIndicator donchianChannelUpperIndicator) {
+        super(series);
+        this.barCount = barCount;
+        this.lower = donchianChannelLowerIndicator;
+        this.upper = donchianChannelUpperIndicator;
+    }
+
     @Override
     protected Num calculate(int index) {
         return (this.lower.getValue(index).plus(this.upper.getValue(index)))
