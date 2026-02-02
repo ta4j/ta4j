@@ -7,7 +7,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 
 /**
- * A facade to create the 3 donchain Channel indicators.
+ * A facade to create the 3 Donchian Channel indicators.
  *
  * <p>
  * This class creates lightweight "fluent" numeric indicators. These objects are
