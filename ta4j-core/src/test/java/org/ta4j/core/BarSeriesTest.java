@@ -1,25 +1,5 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package org.ta4j.core;
 
@@ -420,12 +400,13 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     @Test
     public void subSeriesOfMaxBarCountSeriesTest() {
-        final BarSeries series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+        var maxBarCount = 20;
+        var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
                 .withName("Series with maxBar count")
-                .withMaxBarCount(20)
+                .withMaxBarCount(maxBarCount)
                 .build();
 
-        final int timespan = 5;
+        var timespan = 5;
         var now = Instant.now();
 
         IntStream.range(0, 100).forEach(i -> {
@@ -438,14 +419,33 @@ public class BarSeriesTest extends AbstractIndicatorTest<BarSeries, Num> {
                     .closePrice(5)
                     .volume(i)
                     .add();
-            int startIndex = Math.max(series.getBeginIndex(), series.getEndIndex() - timespan + 1);
-            int endIndex = i + 1;
-            final BarSeries subSeries = series.getSubSeries(startIndex, endIndex);
+            var startIndex = Math.max(series.getBeginIndex(), series.getEndIndex() - timespan + 1);
+            var endIndex = i + 1;
+            var subSeries = series.getSubSeries(startIndex, endIndex);
             assertEquals(subSeries.getBarCount(), endIndex - startIndex);
+            assertEquals(maxBarCount, subSeries.getMaximumBarCount());
 
-            final Bar subSeriesLastBar = subSeries.getLastBar();
-            final Bar seriesLastBar = series.getLastBar();
+            var subSeriesLastBar = subSeries.getLastBar();
+            var seriesLastBar = series.getLastBar();
             assertEquals(subSeriesLastBar.getVolume(), seriesLastBar.getVolume());
         });
     }
+
+    @Test
+    public void subSeriesOfMaxBarCountSeriesNoBarsTest() {
+        var empty = "empty";
+        var maximumBarCount = 42;
+        var series = new BaseBarSeriesBuilder().withName(empty)
+                .withNumFactory(numFactory)
+                .withMaxBarCount(maximumBarCount)
+                .build();
+        var subSeries = series.getSubSeries(0, 1);
+
+        assertEquals(empty, subSeries.getName());
+        assertSame(numFactory, subSeries.numFactory());
+        assertEquals(0, subSeries.getBarCount());
+        assertEquals(maximumBarCount, subSeries.getMaximumBarCount());
+        assertEquals(maximumBarCount, series.getMaximumBarCount());
+    }
+
 }

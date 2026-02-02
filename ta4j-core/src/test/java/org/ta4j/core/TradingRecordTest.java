@@ -1,25 +1,5 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package org.ta4j.core;
 
@@ -28,6 +8,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.num.NaN.NaN;
+
+import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -134,5 +116,44 @@ public class TradingRecordTest {
         assertNull(emptyRecord.getLastExit());
         assertEquals(Trade.sellAt(3, NaN, NaN), openedRecord.getLastExit());
         assertEquals(Trade.sellAt(8, NaN, NaN), closedRecord.getLastExit());
+    }
+
+    @Test
+    public void createRecordFromSingleClosedPosition() {
+        var position = new Position(Trade.buyAt(1, NaN, NaN), Trade.sellAt(4, NaN, NaN));
+
+        var record = new BaseTradingRecord(position);
+
+        assertTrue(record.getCurrentPosition().isNew());
+        assertTrue(record.isClosed());
+        assertEquals(1, record.getPositionCount());
+        assertEquals(position, record.getLastPosition());
+        assertEquals(Trade.sellAt(4, NaN, NaN), record.getLastTrade());
+    }
+
+    @Test
+    public void createRecordFromSingleOpenPosition() {
+        var position = new Position(Trade.TradeType.BUY);
+        position.operate(2, NaN, NaN);
+
+        var record = new BaseTradingRecord(position);
+
+        assertTrue(record.getCurrentPosition().isOpened());
+        assertEquals(0, record.getPositionCount());
+        assertNull(record.getLastPosition());
+        assertEquals(Trade.buyAt(2, NaN, NaN), record.getLastEntry());
+    }
+
+    @Test
+    public void createRecordFromMultiplePositions() {
+        var first = new Position(Trade.buyAt(1, NaN, NaN), Trade.sellAt(3, NaN, NaN));
+        var second = new Position(Trade.sellAt(5, NaN, NaN), Trade.buyAt(7, NaN, NaN));
+
+        var record = new BaseTradingRecord(List.of(first, second));
+
+        assertTrue(record.getCurrentPosition().isNew());
+        assertEquals(2, record.getPositionCount());
+        assertEquals(second, record.getLastPosition());
+        assertEquals(4, record.getTrades().size());
     }
 }

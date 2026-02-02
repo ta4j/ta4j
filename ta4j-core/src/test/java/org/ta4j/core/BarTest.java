@@ -1,40 +1,16 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package org.ta4j.core;
-
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertTrue;
 
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 
+import static org.junit.Assert.*;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.bars.TimeBarBuilder;
@@ -204,5 +180,33 @@ public class BarTest extends AbstractIndicatorTest<BarSeries, Num> {
                 .build();
 
         assertEquals(bar1.hashCode(), bar2.hashCode());
+    }
+
+    @Test
+    public void numFactoryPrefersOpenPrice() {
+        var bar = new TimeBarBuilder(numFactory).timePeriod(Duration.ofSeconds(1))
+                .beginTime(Instant.now())
+                .openPrice(1)
+                .closePrice(2)
+                .build();
+
+        assertSame(bar.getOpenPrice().getClass(), bar.numFactory().one().getClass());
+    }
+
+    @Test
+    public void numFactoryFallsBackToClosePrice() {
+        var bar = new TimeBarBuilder(numFactory).timePeriod(Duration.ofSeconds(1))
+                .beginTime(Instant.now())
+                .closePrice(2)
+                .build();
+
+        assertSame(bar.getClosePrice().getClass(), bar.numFactory().one().getClass());
+    }
+
+    @Test
+    public void numFactoryThrowsWhenNoPricesAvailable() {
+        var bar = new TimeBarBuilder(numFactory).timePeriod(Duration.ofSeconds(1)).beginTime(Instant.now()).build();
+
+        assertThrows(IllegalArgumentException.class, bar::numFactory);
     }
 }

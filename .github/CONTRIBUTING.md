@@ -33,4 +33,14 @@ Each pull request is highly appreciated! Here are some tips to get it merged:
 
 - Finally, push the commits to your fork and submit a [pull request](https://help.github.com/articles/creating-a-pull-request).
 
+### Optional: actionlint pre-push hook
+
+To lint workflow changes before pushing, enable the repo hook once:
+
+```
+git config core.hooksPath .githooks
+```
+
+Then install `actionlint` (for example: `brew install actionlint`). The `.githooks/pre-push` hook will run actionlint for any modified files under `.github/workflows/`.
+
 Looking for something to work on? Take a look at [the roadmap](https://github.com/ta4j/ta4j/wiki/Roadmap) or [our open issues](https://github.com/ta4j/ta4j/issues?q=is%3Aissue+is%3Aopen).

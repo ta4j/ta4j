@@ -1,32 +1,14 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package org.ta4j.core;
 
+import java.io.Serial;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import java.util.stream.Stream;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -37,6 +19,7 @@ import org.ta4j.core.num.Num;
  */
 public class BaseTradingRecord implements TradingRecord {
 
+    @Serial
     private static final long serialVersionUID = -4436851731855891220L;
 
     /** The name of the trading record. */
@@ -164,6 +147,26 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Constructor.
      *
+     * @param position the position to be recorded (entry required)
+     * @since 0.22.2
+     */
+    public BaseTradingRecord(Position position) {
+        this(positionToTrades(position));
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param positions the positions to be recorded (cannot be empty)
+     * @since 0.22.2
+     */
+    public BaseTradingRecord(List<Position> positions) {
+        this(positionsToTrades(positions));
+    }
+
+    /**
+     * Constructor.
+     *
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding the asset (e.g.
      *                             borrowing)
@@ -253,7 +256,7 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public Trade getLastTrade() {
         if (!trades.isEmpty()) {
-            return trades.get(trades.size() - 1);
+            return trades.getLast();
         }
         return null;
     }
@@ -261,9 +264,9 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public Trade getLastTrade(TradeType tradeType) {
         if (TradeType.BUY == tradeType && !buyTrades.isEmpty()) {
-            return buyTrades.get(buyTrades.size() - 1);
+            return buyTrades.getLast();
         } else if (TradeType.SELL == tradeType && !sellTrades.isEmpty()) {
-            return sellTrades.get(sellTrades.size() - 1);
+            return sellTrades.getLast();
         }
         return null;
     }
@@ -271,7 +274,7 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public Trade getLastEntry() {
         if (!entryTrades.isEmpty()) {
-            return entryTrades.get(entryTrades.size() - 1);
+            return entryTrades.getLast();
         }
         return null;
     }
@@ -279,7 +282,7 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public Trade getLastExit() {
         if (!exitTrades.isEmpty()) {
-            return exitTrades.get(exitTrades.size() - 1);
+            return exitTrades.getLast();
         }
         return null;
     }
@@ -328,13 +331,38 @@ public class BaseTradingRecord implements TradingRecord {
         }
     }
 
+    private static Stream<Trade> tradesOf(Position position) {
+        Objects.requireNonNull(position, "position must not be null");
+
+        var entry = position.getEntry();
+        if (entry == null) {
+            throw new IllegalArgumentException("Position entry must not be null");
+        }
+
+        var exit = position.getExit();
+        if (exit == null) {
+            return Stream.of(entry);
+        }
+        return Stream.of(entry, exit);
+    }
+
+    private static Trade[] positionToTrades(Position position) {
+        return tradesOf(position).toArray(Trade[]::new);
+    }
+
+    private static Trade[] positionsToTrades(List<Position> positions) {
+        Objects.requireNonNull(positions, "positions must not be null");
+        return positions.stream().flatMap(BaseTradingRecord::tradesOf).toArray(Trade[]::new);
+    }
+
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder().append("BaseTradingRecord: ")
+        var lineSeparator = System.lineSeparator();
+        var sb = new StringBuilder().append("BaseTradingRecord: ")
                 .append(name == null ? "" : name)
-                .append(System.lineSeparator());
-        for (Trade trade : trades) {
-            sb.append(trade.toString()).append(System.lineSeparator());
+                .append(lineSeparator);
+        for (var trade : trades) {
+            sb.append(trade).append(lineSeparator);
         }
         return sb.toString();
     }

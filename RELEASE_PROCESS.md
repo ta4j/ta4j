@@ -1,130 +1,218 @@
 # Ta4j Release Process
 
-This document explains how the Ta4j release workflow works end-to-end, including
-developer responsibilities, changelog practices, how snapshots are published,
-and how new stable releases are produced and published to Maven Central.
-Automated release gating and scheduling lives in `.github/workflows/release-scheduler.yml`, which evaluates changes, calls GitHub Models (with a short explanation of the decision), and dispatches the main release workflow when criteria are met (or when manually requested with `dryRun`). Workflow dispatches use the built-in `GITHUB_TOKEN`, while GitHub Release publishing uses the `GH_TA4J_REPO_TOKEN` classic PAT.
+This guide explains how Ta4j releases move from documentation updates to Maven Central, which workflow does what, and why each step exists. It is written for maintainers who want a predictable, auditable release flow with clear Git history and tags.
 
-The process is intentionally simple: GitHub Actions performs all version
-management, deployment, and tagging. Contributors only maintain documentation
-(changelog + README).
+The default branch is `master`. Release tags must be reachable from `master` for the scheduler to produce sane diffs and version bumps.
 
 ---
 
 ## Quick Start
 
-**For a typical release:**
+### Production release (typical)
+1. Update `CHANGELOG.md` under **Unreleased** and keep README version references current.
+2. Trigger **Prepare Release** (manually or via the scheduler) with the target `releaseVersion`.
+3. Review the generated release PR and merge using a merge commit.
+4. **Publish Release** runs automatically on PR merge and deploys/tag/releases.
 
-1. Update `CHANGELOG.md` with changes under the `Unreleased` section
-2. Run `scripts/prepare-release.sh 0.20.0` (use `major.minor.patch` format)
-3. Commit and push: `git add CHANGELOG.md README.md release/ && git commit -m "Prepare release 0.20.0" && git push`
-4. Trigger the release workflow manually or wait for the automated scheduler
-
-**To test the release process without publishing:**
-
-1. Follow steps 1-3 above
-2. Go to **GitHub → Actions → Publish Release to Maven Central → Run Workflow**
-3. Set `dryRun` to `true` and provide the version (e.g., `0.20.0`)
-
-**Prerequisites:**
-
-- Local tools: `git`, `perl`, `python3` (for `prepare-release.sh`)
-- Repository secrets configured (see [Required Resources](#required-resources))
-- Write access to the repository
-- Releases must be triggered from the `master` branch
+### Dry-run (validation only)
+1. Follow the same prep steps as production.
+2. Run **Prepare Release** with `dryRun=true` to validate version detection and release notes generation.
+3. (Optional) Run **Publish Release** with `dryRun=true` and explicit `releaseVersion`/`releaseCommit` to validate deployment prechecks without tagging or deploying.
 
 ---
 
-## Overview
+## Key Concepts (What Changes in Git)
 
-Ta4j uses five coordinated components:
+- **Release commit**: `pom.xml` version set to the release version and `release/<version>.md` added.
+- **Tag**: annotated Git tag (e.g., `0.22.2`) created by the publish workflow and pointing at the release commit. Tag push triggers `github-release.yml`.
+- **Snapshot commit**: `pom.xml` bumped to the next `-SNAPSHOT` version.
+- **Release PR (default mode)**: contains the release commit + snapshot commit and merges into `master` with a merge commit.
+- **Direct push mode**: skips the PR and pushes both commits directly to `master`.
 
-1. **prepare-release.sh**  
-   Updates CHANGELOG and README, and generates `release/<version>.md` notes.
-   Does *not* bump versions or perform SCM operations.
-   - **Input**: Version in `major.minor.patch` format (e.g., `0.20.0`)
-   - **Output**: Updated `CHANGELOG.md`, `README.md`, and `release/<version>.md`
+Tags are created only after the release commit is on `master`, so tag reachability is guaranteed.
 
-2. **Release Scheduler (`release-scheduler.yml`)**  
-   - Triggered on a 14-day cron or manual dispatch (`dryRun` supported).  
-   - Collects diff + Unreleased changelog, sanitizes them, and asks GitHub Models for a SemVer bump with a 1–2 sentence rationale.  
-   - Requires `GH_MODELS_TOKEN` (PAT authorized for GitHub Models). If missing, it short-circuits.  
-   - Computes the next tag (no leading `v`), basing the bump on the higher of the current POM base or the last default-branch tag to avoid double-bumping snapshots.  
-   - Always dispatches `release.yml`, passing through `releaseVersion`, `nextVersion` (optional), the AI reasoning, and `dryRun` using `GITHUB_TOKEN`.  
-   - Emits a decision summary (gate, token, AI verdict, bump, version, reason, dryRun).
-   - For major releases, requires manual approval via the `major-release` environment.
+---
 
-3. **GitHub Actions Release Workflow (`release.yml`)**  
-   - Sets the release version in the POM using the Maven Versions Plugin.  
-   - Commits the version and release notes.  
-   - Creates a release tag (skipped on `dryRun=true`).  
-   - Verifies the branch is still fast-forwardable, then builds, signs, and deploys to Maven Central (skipped on `dryRun=true`).  
-   - Bumps to the next snapshot with the Maven Versions Plugin and commits it (skipped on `dryRun=true`).  
-   - Pushes only the tag (after a successful deploy) and opens a pull request (`release/<version>` → `master`) containing both the release commit and the next-snapshot bump. No direct push to `master` is performed.  
-   - **Inputs**: `releaseVersion` (e.g., `0.20.0`, no leading `v`), `nextVersion` (optional), `dryRun` (boolean).
-   - **Version formats supported**: `major.minor.patch` (e.g., `0.20.0`)
+## System Overview (Who Does What)
 
-4. **GitHub Release Workflow (`github-release.yml`)**  
-   - Automatically triggered when a release tag is pushed. Also supports manual `workflow_dispatch` with a required `tag` input for backfills.
-   - Reads `release/<version>.md` for release notes.
-   - Builds all module artifacts (JARs, sources, javadoc).
-   - Creates a GitHub Release with artifacts attached, preserving the markdown formatting of `release/<version>.md` via `body_path`.
-   - **Note**: This runs automatically after `release.yml` creates a tag, or can be triggered manually when a tag already exists.
+1. **prepare-release.sh**
+   - **What**: Updates CHANGELOG/README and generates `release/<version>.md`.
+   - **Why**: Ensures release notes are accurate before the workflows run.
 
-5. **Snapshot Workflow (`snapshot.yml`)**  
-   Automatically publishes snapshot builds to Central on every push to `master`.
+2. **Release Scheduler (`release-scheduler.yml`)**
+   - **What**: Looks at binary-impacting changes + Unreleased changelog, asks GitHub Models for a SemVer bump, and decides whether to release.
+   - **Why**: Automates “should we release?” decisions and reduces manual churn.
+
+3. **Prepare Release Workflow (`prepare-release.yml`)**
+   - **What**: Generates release notes, bumps the release and next snapshot versions, and opens the release PR (or direct-pushes in emergencies).
+   - **Why**: Ensures the release commit lands on `master` before tags and deployment.
+
+4. **Publish Release Workflow (`publish-release.yml`)**
+   - **What**: Tags the release commit, deploys to Maven Central, and posts release summaries after the PR is merged.
+   - **Why**: Guarantees tags are created from commits already on `master`.
+
+5. **Release Health Workflow (`release-health.yml`)**
+   - **What**: Audits tag reachability, snapshot drift, stale release PRs, and missing release notes.
+   - **Why**: Detects drift and keeps release hygiene visible to maintainers.
+
+6. **GitHub Release Workflow (`github-release.yml`)**
+   - **What**: Builds and publishes the GitHub Release when a tag is pushed.
+   - **Why**: Ensures the GitHub Release matches the tagged artifacts.
+
+7. **Snapshot Workflow (`snapshot.yml`)**
+   - **What**: Publishes snapshots on every push to `master`.
+   - **Why**: Provides a current snapshot build for users and CI consumers.
+
+---
+
+## Step-by-Step (What Happens and Why)
+
+### Release Scheduler (`release-scheduler.yml`)
+1. **Find last tag on `master`**
+   - **What**: Finds the most recent tag reachable from the default branch.
+   - **Why**: Ensures diffs are based on what was actually released on `master`.
+2. **Collect binary-impacting changes + changelog**
+   - **What**: Looks for changes in `pom.xml` or `src/main/**`, plus Unreleased notes.
+   - **Why**: Avoids releasing for workflow-only or doc-only changes.
+3. **AI decision (SemVer bump)**
+   - **What**: Calls GitHub Models to choose patch/minor/major.
+   - **Why**: Consistent semantics without manual guessing.
+4. **Compute version and gate**
+   - **What**: Calculates the next version, checks for tag collisions.
+   - **Why**: Prevents duplicate or backward releases.
+5. **Major approval (if needed)**
+   - **What**: Waits for approval in the `major-release` environment.
+   - **Why**: Human sign-off for breaking changes.
+6. **Dispatch `prepare-release.yml`**
+   - **What**: Starts the prepare workflow with the chosen version.
+   - **Why**: Keeps release prep centralized and ready for review.
+7. **Post-discussion summary**
+   - **What**: Writes a decision summary to the Release Scheduler discussion.
+   - **Why**: Auditable history and notifications for maintainers.
+
+**Schedule gate:** scheduled runs only proceed when `RELEASE_SCHEDULER_ENABLED=true`. Unset or empty disables the schedule without affecting manual dispatch.
+
+### Prepare Release (`prepare-release.yml`)
+1. **Validate inputs and compute versions**
+   - **Why**: Fail fast on invalid or regressive versions.
+2. **Generate release notes**
+   - **Why**: Ensures `release/<version>.md` exists and is current.
+3. **Commit release version**
+   - **Why**: Locks the source version for the release.
+4. **Commit next snapshot**
+   - **Why**: Ensures ongoing development is versioned correctly.
+5. **Update `master`**
+   - **Default (PR mode)**: create a PR (`release/<version>` -> `master`) with a release metadata block and `release` label.
+     - **Why**: Keeps a required review gate and preserves merge history.
+   - **Direct push (`RELEASE_DIRECT_PUSH=true`)**: push both commits directly to `master`, then dispatch Publish Release.
+     - **Why**: Skips PR friction when org permissions allow it.
+
+**Merge note:** merge the release PR using a merge commit (no squash). Required checks and maintainer approval must pass.
+
+### Publish Release (`publish-release.yml`)
+1. **Read metadata**
+   - **What**: Parses the PR metadata block or workflow inputs for `releaseVersion` and `releaseCommit`.
+2. **Verify merge discipline**
+   - **Why**: Ensures the release commit is on `master` and was merged via a merge commit.
+3. **Create annotated tag**
+   - **Why**: Tags are the source of truth for releases and GitHub Release workflow triggers.
+4. **Build and deploy to Maven Central** (skipped on `dryRun=true`)
+   - **Why**: Publish signed artifacts for consumption.
+5. **Push tag**
+   - **Why**: Triggers `github-release.yml`.
+6. **Post-discussion summary**
+   - **Why**: Provides an audit trail and notifications.
+
+### Release Health (`release-health.yml`)
+- Scheduled daily (plus manual dispatch) to verify tag reachability, snapshot drift, stale release PRs, and missing release notes.
+- Posts results to the Release Scheduler discussion and fails if drift is detected.
+
+### GitHub Release (`github-release.yml`)
+- Triggered by tag push; builds artifacts and publishes the GitHub Release using `release/<version>.md`.
+
+### Snapshot (`snapshot.yml`)
+- Runs on every push to `master` and publishes snapshot artifacts.
+
+---
+
+## Example Scenarios
+
+### Scenario A: Production release via scheduler (PR mode)
+**Context:** You prepared docs for `0.22.2` and pushed to `master`.
+1. Scheduler runs, detects binary changes, chooses `0.22.2`.
+2. `prepare-release.yml` runs and opens PR `release/0.22.2 -> master`.
+3. Maintainer merges the PR with a merge commit.
+4. `publish-release.yml` runs, tags `0.22.2`, deploys, and pushes the tag.
+5. Tag push triggers `github-release.yml` to create the GitHub Release.
+6. `master` already contains the next snapshot commit from the PR.
+
+### Scenario B: Dry-run (validation only)
+**Context:** You want to verify the pipeline without publishing.
+1. Run `prepare-release.yml` with `dryRun=true`.
+2. Version checks and release note generation run.
+3. No commits, PRs, tags, or deploys occur.
+4. (Optional) Run `publish-release.yml` with `dryRun=true` and explicit inputs to validate deploy prechecks without tagging or deploying.
+
+### Scenario C: Production release with direct push
+**Context:** Org permissions allow direct pushes; `RELEASE_DIRECT_PUSH=true`.
+1. `prepare-release.yml` runs and pushes the release + snapshot commits directly to `master`.
+2. `prepare-release.yml` dispatches `publish-release.yml`.
+3. `publish-release.yml` tags the release commit, deploys artifacts, and pushes the tag.
+4. Tag push triggers `github-release.yml` to create the GitHub Release.
+
+---
+
+## Verification Checklist
+
+1. **Actions run**: `prepare-release.yml` and `publish-release.yml` completed successfully.
+2. **Tag**: `git tag | grep <version>` exists (not in dry-run).
+3. **Tag reachability**: `git merge-base --is-ancestor <version> origin/master` returns true.
+4. **Maven Central**: artifacts appear in Central (may take 10-30 minutes).
+5. **GitHub Release**: release exists with notes and artifacts.
+6. **Snapshot version**: `pom.xml` on `master` is next `-SNAPSHOT` version.
 
 ---
 
 ## Required Resources
 
-The release process depends on several GitHub repository secrets and configurations that must be set up before releases can be published. These are configured in **GitHub → Settings → Secrets and variables → Actions**.
-
 ### Required Repository Secrets
-
-The following secrets are **mandatory** for the release workflows to function:
 
 | Secret Name | Used By | Purpose |
 |------------|---------|---------|
-| `MAVEN_CENTRAL_TOKEN_USER` | `release.yml`, `snapshot.yml` | Maven Central authentication username (Sonatype token username) |
-| `MAVEN_CENTRAL_TOKEN_PASS` | `release.yml`, `snapshot.yml` | Maven Central authentication password (Sonatype token password) |
-| `GPG_PRIVATE_KEY` | `release.yml`, `snapshot.yml` | GPG private key (ASCII-armored) for signing artifacts before publishing to Maven Central |
-| `GPG_PASSPHRASE` | `release.yml`, `snapshot.yml` | Passphrase for the GPG private key |
-| `GH_MODELS_TOKEN` | `release-scheduler.yml` | GitHub Models API token (PAT authorized for GitHub Models) for AI-powered semantic versioning decisions |
-| `GH_TA4J_REPO_TOKEN` | `github-release.yml` | Classic PAT used for GitHub Release creation when org policies restrict `GITHUB_TOKEN` |
+| `MAVEN_CENTRAL_TOKEN_USER` | `publish-release.yml`, `snapshot.yml` | Maven Central authentication username |
+| `MAVEN_CENTRAL_TOKEN_PASS` | `publish-release.yml`, `snapshot.yml` | Maven Central authentication password |
+| `GPG_PRIVATE_KEY` | `publish-release.yml`, `snapshot.yml` | GPG private key for signing artifacts |
+| `GPG_PASSPHRASE` | `publish-release.yml`, `snapshot.yml` | Passphrase for the GPG private key |
+| `GH_MODELS_TOKEN` | `release-scheduler.yml` | GitHub Models API token |
+| `GH_TA4J_REPO_TOKEN` | `prepare-release.yml`, `publish-release.yml`, `github-release.yml` | Classic PAT used for release pushes and GitHub Release creation |
 
 ### Optional Repository Secrets
 
 | Secret Name | Used By | Purpose |
 |------------|---------|---------|
-| `MAVEN_MASTER_PASSPHRASE` | `release.yml`, `snapshot.yml` | Optional Maven master password for `settings-security.xml` encryption. If not set, the workflow skips creating this file. |
+| `MAVEN_MASTER_PASSPHRASE` | `publish-release.yml`, `snapshot.yml` | Optional Maven master password for `settings-security.xml` |
+
+### Optional Repository Variables
+
+| Variable Name | Used By | Purpose |
+|---------------|---------|---------|
+| `RELEASE_DIRECT_PUSH` | `prepare-release.yml` | When `true`, skip the release PR and push commits directly to `master` |
+| `RELEASE_NOTIFY_USER` | `publish-release.yml`, `release-scheduler.yml`, `release-health.yml` | Optional GitHub username to @mention in discussion summaries (defaults to `TheCookieLab`) |
+| `RELEASE_DISCUSSION_NUMBER` | `publish-release.yml` | Discussion number for release run summaries (defaults to 1415) |
+| `RELEASE_SCHEDULER_DISCUSSION_NUMBER` | `release-scheduler.yml`, `release-health.yml` | Discussion number for scheduler summaries (defaults to 1414) |
+| `RELEASE_SCHEDULER_ENABLED` | `release-scheduler.yml` | Set to `true` to allow scheduled runs; unset/empty/false disables |
+| `RELEASE_PR_STALE_DAYS` | `release-health.yml` | Days before a release PR is considered stale |
 
 ### Required GitHub Environment
 
-For **major releases**, a protected environment must be configured:
+For major releases, configure the protected environment:
+- **Name**: `major-release`
+- **Purpose**: manual approval for major bumps
 
-- **Environment Name**: `major-release`
-- **Location**: **GitHub → Settings → Environments**
-- **Purpose**: Requires manual approval before major version releases are published
-- **Configuration**: Add required reviewers who can approve/reject major releases
+### Required Repo Settings
 
-The `release-scheduler.yml` workflow will pause at the approval step for major releases until an authorized reviewer approves the release in the GitHub Actions UI.
-
-### Secret Verification
-
-The `release.yml` workflow includes a verification step that checks for all required secrets before proceeding. If any required secrets are missing:
-- In **dry-run mode**: The workflow continues with warnings
-- In **normal mode**: The workflow fails immediately with an error listing missing secrets
-
-### Setting Up Secrets
-
-1. **Maven Central Credentials**: Create a token in [Sonatype Central](https://central.sonatype.com/) with appropriate permissions for publishing to the `org.ta4j` group.
-2. **GPG Key**: Generate a GPG key pair and export the private key (ASCII-armored) for signing artifacts. The public key must be published to a keyserver.
-3. **GitHub Tokens**: Create Personal Access Tokens (classic PATs) with appropriate scopes:
-   - `GH_MODELS_TOKEN`: Requires authorization for GitHub Models API access (used by the scheduler)
-   - `GH_TA4J_REPO_TOKEN`: Requires `public_repo` (public repos); add `repo` for private repos
-
-**GITHUB_TOKEN permissions:** Ensure repository **Actions → Workflow permissions** is set to **Read and write** so `release-scheduler.yml` and `release.yml` can dispatch workflows, push tags, and open release PRs.
+- **Actions → Workflow permissions**: set to **Read and write** for dispatch/tag/PR.
+- **Merge settings**: enforce merge commits for release PRs (no squash) so publish-release can validate ancestry.
 
 ---
 
@@ -143,317 +231,39 @@ The `release.yml` workflow includes a verification step that checks for all requ
 
 ---
 
-## Release Workflow (Step-by-Step)
-
-You can reach the release workflow two ways:
-- **Automated**: `release-scheduler.yml` runs on a 14-day cadence (or manual dispatch) and dispatches `release.yml`, passing along `releaseVersion`, optional `nextVersion`, and `dryRun`.
-- **Manual**: You can run `release.yml` directly via **GitHub → Actions → Publish Release to Maven Central → Run Workflow**.
-
-### **1. Prepare documentation locally**
-
-**Prerequisites:**
-- Ensure you're on the `master` branch and up to date: `git checkout master && git pull`
-- Verify you have `git`, `perl`, and `python3` installed locally
-
-**Update CHANGELOG.md:**
-- Add all changes to the `Unreleased` section under appropriate categories (Added, Changed, Fixed, etc.)
-- Follow the [Keep a Changelog](https://keepachangelog.com/) format
-
-**Run the preparation script:**
-
-```bash
-scripts/prepare-release.sh <version>
-```
-
-**Version format:** Use `major.minor.patch` format (e.g., `0.20.0`).
-
-Example:
-
-```bash
-scripts/prepare-release.sh 0.20.0
-```
-
-**What the script does:**
-
-- Rolls forward the `Unreleased` entries into a `## 0.20.0 (YYYY-MM-DD)` section with today's date
-- Resets `Unreleased` to contain a placeholder (`- _No changes yet._`)
-- Validates the README sentinel blocks (`TA4J_VERSION_BLOCK:*`) and fails fast if any are missing
-- Updates version snippets in `README.md` (Maven dependency examples)
-- Generates a standalone release notes file: `release/0.20.0.md`
-
-**Important:** The script requires `major.minor.patch` (e.g., `0.20.0`). The release workflow now validates patch-formatted release/next versions before running `prepare-release.sh`.
-
-### **2. Commit the updated documentation**
-
-```
-git add CHANGELOG.md README.md release/
-git commit -m "Prepare release 0.20.0"
-git push
-```
-
-### **3. Trigger (or wait for) the Release Workflow**
-
-#### **Option A: Manual Trigger**
-
-1. Go to **GitHub → Actions → Publish Release to Maven Central → Run Workflow**
-2. Select the `master` branch (releases must be from `master`)
-3. Provide workflow inputs:
-   - **releaseVersion** — e.g., `0.20.0` (no leading `v`)
-     - Must be `major.minor.patch` to satisfy `prepare-release.sh`
-     - If blank, auto-detects from current POM version (must be a SNAPSHOT)
-   - **nextVersion** — e.g., `0.20.1-SNAPSHOT` (optional; auto-computed if blank)
-     - Auto-increments: `0.20.0` → `0.20.1-SNAPSHOT`
-   - **dryRun** — Set to `true` to validate without tagging/pushing/deploying
-     - Recommended for first-time releases or testing changes
-4. Click **Run workflow**
-
-#### **Option B: Automated Scheduler**
-
-The scheduler (`release-scheduler.yml`) runs every 14 days and:
-- Analyzes changes since the last release
-- Uses AI to determine the appropriate version bump (patch/minor/major)
-- Automatically dispatches `release.yml` with the computed version
-- For major releases, waits for manual approval via the `major-release` environment
-
-You can also trigger the scheduler manually:
-- Go to **GitHub → Actions → AI Semantic Release Scheduler → Run Workflow**
-- Optionally set `dryRun` to `true` to test
-
-#### **What the Release Workflow Does**
-
-The `release.yml` workflow executes these steps in order:
-
-1. **Verification**: Checks for required secrets (fails if missing, warns in dry-run)
-2. **Version Detection**: Determines release and next snapshot versions
-3. **Release Notes**: Runs `prepare-release.sh` to ensure release notes are up to date
-4. **Version Bump**: Updates POM to release version using the Maven Versions Plugin (skipped in dry-run)
-5. **Commit & Tag**: Commits version change (with release notes) and creates release tag (skipped in dry-run)
-6. **Safety Check**: Verifies branch hasn't advanced (prevents race conditions)
-7. **Build & Deploy**: Builds, signs, and deploys to Maven Central (skipped in dry-run)
-8. **Next Snapshot**: Bumps to next snapshot version with the Maven Versions Plugin and commits (skipped in dry-run)
-9. **Publish & PR**: Pushes the release tag only (after successful deploy) and opens a pull request `release/<version> -> master` containing the release commit and the next-snapshot bump (skipped in dry-run)
-
-**After the tag is created and pushed**, the `github-release.yml` workflow automatically:
-- Creates a GitHub Release using `release/<version>.md` as the description
-- Attaches all built artifacts (JARs, sources, javadoc) to the release
-If the release does not appear, you can manually run **Create GitHub Release** with the `tag` input set to the existing version.
-
-**No local Maven commands are required** — everything happens in GitHub Actions.
-
----
-
-## Snapshot Publishing
-
-Every push to `master` automatically triggers the snapshot workflow (`snapshot.yml`), which:
-
-1. Builds and tests the project
-2. Signs artifacts with GPG
-3. Deploys to Maven Central Snapshots repository
-
-**Snapshot repository:**
-```
-https://central.sonatype.com/repository/maven-snapshots/
-```
-
-**Key points:**
-- Snapshots use the `sign-snapshots` Maven profile (not the full `production-release` profile)
-- No manual intervention required — happens automatically on every push to `master`
-- Snapshot versions end with `-SNAPSHOT` (e.g., `0.21.0-SNAPSHOT`)
-- Users can depend on snapshots using the snapshot repository URL in their `pom.xml`
-
----
-
-## Verifying a Release
-
-After triggering a release, verify it completed successfully:
-
-### **1. Check Workflow Status**
-
-- Go to **GitHub → Actions** and find the workflow run
-- Verify all steps completed successfully (green checkmarks)
-- In dry-run mode, check that validation passed
-
-### **2. Verify Git State**
-
-```bash
-git fetch --tags
-git tag | grep <version>  # e.g., git tag | grep 0.20.0
-```
-
-The release tag should exist (unless in dry-run mode).
-
-### **3. Check Maven Central**
-
-Releases appear on Maven Central after a few minutes:
-- Search: https://central.sonatype.com/search?q=org.ta4j
-- Direct: https://repo1.maven.org/maven2/org/ta4j/
-
-**Note:** It may take 10-30 minutes for artifacts to sync and become searchable.
-
-### **4. Verify GitHub Release**
-
-- Go to **GitHub → Releases**
-- The release should appear with:
-  - Correct version tag
-  - Release notes from `release/<version>.md`
-  - Attached artifacts (JARs, sources, javadoc)
-- If the release is missing but the tag exists, run **GitHub → Actions → Create GitHub Release → Run workflow** and supply the `tag` input.
-
-### **5. Check Next Snapshot Version**
-
-```bash
-git checkout master
-git pull
-# Check pom.xml - version should be the next snapshot (e.g., 0.21.0-SNAPSHOT)
-```
-Also verify the release PR (`release/<version>`) is open and contains both the release commit and the next-snapshot bump; merge when ready.
-
----
-
 ## Troubleshooting
 
-### **Workflow Fails with "Missing Required Secrets"**
+### Release PR is waiting for merge
+- Ensure required checks pass and a maintainer approval is recorded.
+- Merge using a **merge commit** (not squash/rebase) so tags stay reachable.
 
-**Problem:** One or more required secrets are not configured.
+### Tag exists error
+- You may be re-running a release for an existing version.
+- Use a new version or delete the tag if safe.
 
-**Solution:**
-1. Go to **GitHub → Settings → Secrets and variables → Actions**
-2. Verify all required secrets are present (see [Required Resources](#required-resources))
-3. Check secret names match exactly (case-sensitive)
-4. Re-run the workflow
+### Release notes missing
+- Ensure `release/<version>.md` exists and is committed.
 
-### **Workflow Fails During Maven Central Deployment**
+### Branch advanced during release
+- Someone pushed to `master` during the release; re-run once the branch is stable.
 
-**Problem:** Authentication or signing issues.
-
-**Solutions:**
-- Verify `MAVEN_CENTRAL_TOKEN_USER` and `MAVEN_CENTRAL_TOKEN_PASS` are correct
-- Check that the GPG key is valid and the public key is published to a keyserver
-- Verify `GPG_PASSPHRASE` matches the GPG key
-- Check Sonatype Central for error messages or pending requests
-
-### **Tag Already Exists Error**
-
-**Problem:** The release tag already exists in the repository.
-
-**Solutions:**
-- If the previous release succeeded, you may be trying to re-release the same version
-- Use a new version number
-- If the previous release failed partway through, you may need to:
-  1. Delete the tag: `git push origin --delete <version>` (if safe to do so)
-  2. Or use a patch version increment (e.g., `0.20.1` instead of `0.20.0`)
-
-### **Release Notes File Not Found**
-
-**Problem:** `github-release.yml` fails because `release/<version>.md` doesn't exist.
-
-**Solution:**
-- Ensure you ran `scripts/prepare-release.sh <version>` before triggering the release
-- Verify the file exists: `ls release/<version>.md`
-- Commit and push the file before triggering the release workflow
-- Re-run **Create GitHub Release** with the `tag` input after fixing the notes
-
-### **Branch Advanced During Release**
-
-**Problem:** Workflow fails with "Remote branch advanced while the release workflow was running."
-
-**Solution:**
-- This is a safety check to prevent race conditions
-- Ensure no one pushes to `master` while a release is in progress
-- Re-run the workflow after resolving any conflicts
-
-### **Version Format Errors**
-
-**Problem:** Workflow fails with version format validation errors.
-
-**Solutions:**
-- Use `major.minor.patch` (e.g., `0.20.0`) format
-- Do not include `-SNAPSHOT` in the release version
-- Ensure `nextVersion` ends with `-SNAPSHOT` if provided manually
-- Do not include a leading `v` prefix
-
-### **Major Release Approval Not Working**
-
-**Problem:** Major release workflow is stuck waiting for approval.
-
-**Solution:**
-1. Verify the `major-release` environment exists: **GitHub → Settings → Environments**
-2. Ensure you're listed as a required reviewer
-3. Go to the workflow run in **GitHub → Actions**
-4. Click **Review deployments** and approve the `major-release` environment
-
-### **Dry-Run Shows Warnings but Continues**
-
-**Expected behavior:** In dry-run mode, missing secrets show warnings but the workflow continues for validation purposes. This is normal and allows you to test the workflow structure without all secrets configured.
+### Dry-run still warns
+- In `dryRun=true`, missing secrets are warnings only. This is expected.
 
 ---
 
-## Common Scenarios
+## Notes on RC Builds
 
-### **Scenario 1: First Release After Setup**
-
-1. Verify all secrets are configured (see [Required Resources](#required-resources))
-2. Test with dry-run: Trigger `release.yml` with `dryRun=true`
-3. Review workflow logs to ensure everything validates
-4. Run a real release with `dryRun=false`
-
-### **Scenario 2: Hotfix Release (Patch Version)**
-
-1. Create a hotfix branch from the release tag: `git checkout -b hotfix/0.20.1 0.20.0`
-2. Make fixes and merge to `master`
-3. Update `CHANGELOG.md` under `Unreleased`
-4. Run `scripts/prepare-release.sh 0.20.1` (use patch version)
-5. Commit and push
-6. Trigger release with `releaseVersion=0.20.1`
-
-### **Scenario 3: Testing Release Process**
-
-1. Use dry-run mode: Set `dryRun=true` in workflow inputs
-2. Review all workflow steps in the Actions UI
-3. Check that version detection, validation, and preparation steps succeed
-4. Verify no actual tags or deployments occur
-5. Once confident, run with `dryRun=false`
-
-### **Scenario 4: Automated Release via Scheduler**
-
-1. Ensure `GH_MODELS_TOKEN` is configured
-2. Wait for the 14-day cron schedule, or trigger manually
-3. Review the scheduler's AI decision in the workflow logs
-4. For major releases, approve via the `major-release` environment
-5. Monitor the dispatched `release.yml` workflow
-
----
-
-## Reproducibility Notes
-
-- All release artifacts are signed with GPG keys stored in GitHub Secrets.
-- The release workflow performs full builds via Maven with Central Publishing.
-- Releases are deterministic when built from a tag.
-- The same tag will always produce the same artifacts.
-
----
-
-## Cutting RC ("Release Candidate") Builds
-
-If RC support is later enabled:
-
-- RCs should be named `0.20.0-rc1`, `0.20.0-rc2`, etc.
-- You would run the same workflow but provide the RC version.
-- The workflow supports any version format that Maven accepts.
-
-(Currently RCs are not required, but the system is compatible.)
+RCs are not currently required, but the workflows accept any Maven-valid version. If RCs are introduced, use versions like `0.22.2-rc1` and run the same workflow.
 
 ---
 
 ## Summary
 
-The release process ensures:
+- The scheduler decides **if** and **what** to release.
+- `prepare-release.yml` prepares the release commits and opens the release PR (or direct-pushes in emergencies).
+- `publish-release.yml` tags and deploys after the release commit is on `master`.
+- `github-release.yml` creates the GitHub Release when a tag is pushed.
+- Snapshot publishing happens automatically on every push to `master`.
 
-- **Minimal burden on contributors** — Only documentation maintenance required
-- **100% reproducible builds** — Deterministic artifacts from tags
-- **Fully automated publishing** — No manual Maven commands needed
-- **Stable, predictable release versioning** — AI-assisted semantic versioning with human oversight for major releases
-
-**The only manual requirement is keeping the CHANGELOG and README accurate.**
-
-For questions or issues, check the workflow logs in **GitHub → Actions** or review the workflow files in `.github/workflows/`.
+For questions, check the workflow logs in **GitHub → Actions** or review `.github/workflows/`.

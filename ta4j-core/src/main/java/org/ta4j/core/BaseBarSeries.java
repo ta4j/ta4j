@@ -1,74 +1,78 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package org.ta4j.core;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.ta4j.core.bars.TimeBarBuilderFactory;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
+
+import java.io.Serial;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Base implementation of a {@link BarSeries}.
  */
 public class BaseBarSeries implements BarSeries {
 
+    @Serial
     private static final long serialVersionUID = -1878027009398790126L;
 
-    /** The logger. */
+    /**
+     * The logger.
+     */
     private final transient Logger log = LoggerFactory.getLogger(getClass());
 
-    /** The name of the bar series. */
+    /**
+     * The name of the bar series.
+     */
     private final String name;
 
-    /** The list of bars of the bar series. */
+    /**
+     * The list of bars of the bar series.
+     */
     private final List<Bar> bars;
     private final BarBuilderFactory barBuilderFactory;
 
     private final NumFactory numFactory;
-
-    /** The begin index of the bar series */
-    private int seriesBeginIndex = -1;
-
-    /** The end index of the bar series. */
-    private int seriesEndIndex = -1;
-
-    /** The maximum number of bars for the bar series. */
-    private int maximumBarCount = Integer.MAX_VALUE;
-
-    /** The number of removed bars. */
-    private int removedBarsCount = 0;
-
     /**
      * True if the current bar series is constrained (i.e. its indexes cannot
      * change), false otherwise.
      */
     private final boolean constrained;
+    /**
+     * The begin index of the bar series
+     */
+    private int seriesBeginIndex = -1;
+    /**
+     * The end index of the bar series.
+     */
+    private int seriesEndIndex = -1;
+    /**
+     * The maximum number of bars for the bar series.
+     */
+    private int maximumBarCount = Integer.MAX_VALUE;
+    /**
+     * The number of removed bars.
+     */
+    private int removedBarsCount = 0;
+
+    /**
+     * Convenience constructor for BaseBarSeries minimizing upfront parameter
+     * setting. Defaults to Time-based bars, and DecimalNum values
+     *
+     * @param name the name of the bar series
+     * @param bars the list of bars of the bar series
+     */
+    public BaseBarSeries(final String name, final List<Bar> bars) {
+        this(name, bars, 0, bars.size() - 1, false, DecimalNumFactory.getInstance(), new TimeBarBuilderFactory());
+    }
 
     /**
      * Constructor.
@@ -92,8 +96,6 @@ public class BaseBarSeries implements BarSeries {
         this.barBuilderFactory = Objects.requireNonNull(barBuilderFactory);
         if (bars.isEmpty()) {
             // Bar list empty
-            this.seriesBeginIndex = -1;
-            this.seriesEndIndex = -1;
             this.constrained = false;
             return;
         }
@@ -124,7 +126,7 @@ public class BaseBarSeries implements BarSeries {
 
     /**
      * @param series a bar series
-     * @param index  an out of bounds bar index
+     * @param index  an out-of-bounds bar index
      * @return a message for an OutOfBoundsException
      */
     private static String buildOutOfBoundsMessage(final BaseBarSeries series, final int index) {
@@ -141,16 +143,16 @@ public class BaseBarSeries implements BarSeries {
             throw new IllegalArgumentException(
                     String.format("the endIndex: %s must be greater than startIndex: %s", endIndex, startIndex));
         }
+        var builder = new BaseBarSeriesBuilder().withName(getName())
+                .withNumFactory(this.numFactory)
+                .withMaxBarCount(this.maximumBarCount);
         if (!this.bars.isEmpty()) {
-            final int start = startIndex - getRemovedBarsCount();
-            final int end = Math.min(endIndex - getRemovedBarsCount(), this.getEndIndex() + 1);
-            return new BaseBarSeriesBuilder().withName(getName())
-                    .withBars(cut(this.bars, start, end))
-                    .withNumFactory(this.numFactory)
-                    .build();
+            var removedBarsCount = getRemovedBarsCount();
+            var start = startIndex - removedBarsCount;
+            var end = Math.min(endIndex - removedBarsCount, this.getEndIndex() + 1);
+            return builder.withBars(cut(this.bars, start, end)).build();
         }
-        return new BaseBarSeriesBuilder().withNumFactory(this.numFactory).withName(getName()).build();
-
+        return builder.build();
     }
 
     @Override
@@ -161,6 +163,10 @@ public class BaseBarSeries implements BarSeries {
     @Override
     public BarBuilder barBuilder() {
         return barBuilderFactory.createBarBuilder(this);
+    }
+
+    protected BarBuilderFactory barBuilderFactory() {
+        return barBuilderFactory;
     }
 
     @Override
@@ -220,6 +226,10 @@ public class BaseBarSeries implements BarSeries {
         return this.maximumBarCount;
     }
 
+    boolean isConstrained() {
+        return this.constrained;
+    }
+
     @Override
     public void setMaximumBarCount(final int maximumBarCount) {
         if (this.constrained) {
@@ -272,6 +282,36 @@ public class BaseBarSeries implements BarSeries {
         removeExceedingBars();
     }
 
+    /**
+     * Replaces a bar at the provided series index without changing bar count or
+     * indices.
+     *
+     * @param index the series index to replace
+     * @param bar   the replacement bar
+     *
+     * @throws NullPointerException      if {@code bar} is {@code null}
+     * @throws IllegalArgumentException  if the bar does not match the series
+     *                                   numFactory
+     * @throws IndexOutOfBoundsException if the index is outside the current series
+     *                                   window
+     */
+    protected void replaceBar(final int index, final Bar bar) {
+        Objects.requireNonNull(bar, "bar must not be null");
+        if (!numFactory.produces(bar.getClosePrice())) {
+            throw new IllegalArgumentException(
+                    String.format("Cannot add Bar with data type: %s to series with datatype: %s",
+                            bar.getClosePrice().getClass(), this.numFactory.one().getClass()));
+        }
+        if (index < this.seriesBeginIndex || index > this.seriesEndIndex || this.bars.isEmpty()) {
+            throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, index));
+        }
+        final int innerIndex = index - this.removedBarsCount;
+        if (innerIndex < 0 || innerIndex >= this.bars.size()) {
+            throw new IndexOutOfBoundsException(buildOutOfBoundsMessage(this, index));
+        }
+        this.bars.set(innerIndex, bar);
+    }
+
     @Override
     public void addTrade(final Number tradeVolume, final Number tradePrice) {
         addTrade(numFactory().numOf(tradeVolume), numFactory().numOf(tradePrice));
@@ -296,7 +336,7 @@ public class BaseBarSeries implements BarSeries {
             // Removing old bars
             final int nbBarsToRemove = barCount - this.maximumBarCount;
             if (nbBarsToRemove == 1) {
-                this.bars.remove(0);
+                this.bars.removeFirst();
             } else {
                 this.bars.subList(0, nbBarsToRemove).clear();
             }

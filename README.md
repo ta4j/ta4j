@@ -66,7 +66,7 @@ Add Ta4j from Maven Central:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.22.0</version>
+  <version>0.22.1</version>
 </dependency>
 ```
 
@@ -85,7 +85,7 @@ Prefer living on the edge? Use the snapshot repository and version:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.22.1-SNAPSHOT</version>
+  <version>0.22.2-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -99,7 +99,7 @@ Sample applications are also published so you can copy/paste entire flows:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.22.0</version>
+  <version>0.22.1</version>
 </dependency>
 ```
 
@@ -113,7 +113,7 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.22.1-SNAPSHOT</version>
+  <version>0.22.2-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -409,6 +409,7 @@ Basic strategy visualization with indicator overlays:
 ChartWorkflow chartWorkflow = new ChartWorkflow();
 JFreeChart chart = chartWorkflow.builder()
         .withTitle("EMA Crossover Strategy")
+        .withTimeAxisMode(TimeAxisMode.BAR_INDEX) // Optional: compress non-trading gaps (weekends/holidays)
         .withSeries(series) // Price bars (candlesticks)
         .withIndicatorOverlay(fastEma) // Overlay indicators on price chart
         .withIndicatorOverlay(slowEma)
@@ -421,6 +422,9 @@ chartWorkflow.saveChartImage(chart, series, "ema-crossover-strategy", "output/ch
 ![EMA Crossover Strategy Chart](ta4j-examples/docs/img/ema-crossover-readme.jpg)
 
 The chart above shows candlestick price data with EMA lines overlaid and buy/sell signals marked with arrows. This demonstrates basic strategy visualization with indicator overlays.
+Use `TimeAxisMode.BAR_INDEX` when you want to remove visual gaps from weekends or market holidays while keeping the underlying bar timestamps intact.
+
+If you need to inspect or customize a chart before rendering, call `toPlan()` and review `plan.context()`/`plan.metadata()` for the shared title, domain series, and time axis mode. The same metadata drives consistent title styling across chart types when you render or save charts.
 
 **Adding indicator subcharts** for indicators with different scales (like RSI, which ranges from 0-100):
 <!-- START_SNIPPET: rsi-strategy -->
@@ -566,6 +570,11 @@ Indicator<?> restoredIndicator = Indicator.fromJson(series, indicatorJson);
 Strategy restoredStrategy = Strategy.fromJson(series, strategyJson);
 ```
 
+Bar series serialization (Java):
+- Bar data, the `NumFactory`, and the `BarBuilderFactory` configuration are preserved across the round-trip.
+- `ConcurrentBarSeries` reinitializes its locks after deserialization and recreates the trade bar builder lazily.
+- Builder state (for example, a time period set directly on the builder) must be re-applied after deserialization unless you configured it in the factory.
+
 ## Features at a glance
 
 - **190+ technical indicators (and counting)** - Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and many more. New indicators are added regularly.
@@ -615,6 +624,34 @@ while (true) {
 - **Same code, different data**: Your strategy logic is identical for backtests and live trading
 - **Deterministic**: Same inputs always produce same outputs - critical for testing and debugging
 - **Type-safe**: Compile-time checks catch errors before they cost money
+
+## Streaming trade ingestion (gap handling)
+
+When you need to aggregate raw trades into time bars, use `ConcurrentBarSeries` with a `TimeBarBuilderFactory`:
+
+```java
+import java.time.Duration;
+import java.time.Instant;
+
+import org.ta4j.core.Bar;
+import org.ta4j.core.ConcurrentBarSeries;
+import org.ta4j.core.ConcurrentBarSeriesBuilder;
+import org.ta4j.core.bars.TimeBarBuilderFactory;
+
+ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+        .withName("BTC-USD")
+        .withBarBuilderFactory(new TimeBarBuilderFactory(Duration.ofMinutes(1)))
+        .build();
+
+Instant t0 = Instant.parse("2024-01-01T10:05:00Z");
+series.ingestTrade(t0, 1, 100);
+series.ingestTrade(t0.plusSeconds(150), 2, 105); // skips the 10:06 bar
+
+LOG.info("Bars: {}", series.getBarCount()); // 2
+LOG.info("Second bar begin: {}", series.getBar(1).getBeginTime()); // 2024-01-01T10:07:00Z
+```
+
+Time gaps are omitted; no empty bars are inserted. If your pipeline expects continuous prices, reconcile and backfill OHLCV data upstream before ingestion.
 
 ## Real-world examples
 

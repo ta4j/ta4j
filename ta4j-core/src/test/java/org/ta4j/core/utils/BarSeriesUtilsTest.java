@@ -1,25 +1,5 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package org.ta4j.core.utils;
 
@@ -374,7 +354,7 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         final List<Bar> overlappingBars = BarSeriesUtils.findOverlappingBars(this.series);
 
         // there must be 1 overlapping bars (bar1)
-        assertEquals(overlappingBars.get(0).getBeginTime(), bar1.getBeginTime());
+        assertEquals(overlappingBars.getFirst().getBeginTime(), bar1.getBeginTime());
     }
 
     @Test
@@ -531,5 +511,55 @@ public class BarSeriesUtilsTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(bar1.getEndTime(), unsortedBars2.get(1).getEndTime());
         assertEquals(bar2.getEndTime(), unsortedBars2.get(2).getEndTime());
         assertEquals(bar3.getEndTime(), unsortedBars2.get(3).getEndTime());
+    }
+
+    @Test
+    public void deltaYearsClampsNonPositiveDurations() {
+        var zero = this.numFactory.zero();
+        var barSeries = getBarSeries("test");
+
+        var startTime = Instant.parse("2024-01-01T00:00:00Z");
+        var secondsPerYear = (long) TimeConstants.SECONDS_PER_YEAR;
+
+        barSeries.barBuilder()
+                .endTime(startTime)
+                .timePeriod(Duration.ofDays(1))
+                .openPrice(1d)
+                .closePrice(1d)
+                .highPrice(1d)
+                .lowPrice(1d)
+                .amount(1d)
+                .volume(1d)
+                .trades(1)
+                .add();
+
+        barSeries.barBuilder()
+                .endTime(startTime.plusSeconds(secondsPerYear / 2))
+                .timePeriod(Duration.ofDays(1))
+                .openPrice(1d)
+                .closePrice(1d)
+                .highPrice(1d)
+                .lowPrice(1d)
+                .amount(1d)
+                .volume(1d)
+                .trades(1)
+                .add();
+
+        barSeries.barBuilder()
+                .endTime(startTime.plusSeconds(secondsPerYear))
+                .timePeriod(Duration.ofDays(1))
+                .openPrice(1d)
+                .closePrice(1d)
+                .highPrice(1d)
+                .lowPrice(1d)
+                .amount(1d)
+                .volume(1d)
+                .trades(1)
+                .add();
+
+        assertEquals(numFactory.numOf(0.5d), BarSeriesUtils.deltaYears(barSeries, 0, 1));
+        assertEquals(numFactory.numOf(1d), BarSeriesUtils.deltaYears(barSeries, 0, 2));
+        assertEquals(zero, BarSeriesUtils.deltaYears(barSeries, 2, 1));
+        assertEquals(zero, BarSeriesUtils.deltaYears(barSeries, 1, 1));
     }
 }
