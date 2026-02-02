@@ -27,6 +27,7 @@
   evaluations on ossified Coinbase/Yahoo datasets.
 - **High-reward Elliott Wave strategy**: Added `HighRewardElliottWaveStrategy` (NamedStrategy) and
   `HighRewardElliottWaveBacktest` for selective impulse trades with risk/reward and momentum filters.
+- **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
@@ -59,9 +60,10 @@
   avoid overstating wave 3 confidence on shallow extensions.
 - **Elliott Wave analysis output**: Chart titles and JSON results now include scenario-weighted trend bias.
 - **Elliott Wave analysis output**: Logs now include time alternation diagnostics for base scenarios.
-
+- **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
 
 ### Fixed
+- **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
