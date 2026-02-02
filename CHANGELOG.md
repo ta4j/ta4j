@@ -56,7 +56,6 @@
   model so position PnL reflects execution fees.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
 - **Elliott Wave analysis example**: Scenario probability weighting now applies adaptive confidence contrast so closely scored scenarios separate more clearly.
-- **License headers**: Switch Java source file headers to SPDX identifiers.
 - **Dependencies**: update to latest versions
 
 ### Fixed
@@ -64,7 +63,13 @@
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
+- **Returns**: Mark-to-market returns now carry forward cost-adjusted prices for consistent holding-cost treatment.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
+- **ModeledTrade**: Avoid divide-by-zero when calculating net price for zero-amount trades.
+- **Position**: Default transaction/holding cost models after deserialization now return zero-cost models instead of null.
+- **BaseTradingRecord**: Reject empty trade arrays with a clear error instead of throwing an array bounds exception.
+- **PositionBook**: Validate null or non-positive live trades before mutating lot state.
+- **Keltner channels**: Rebuild ATR indicators after deserialization and include ATR unstable bars in the reported warmup.
 - **Trade interface naming**: Aligned the public `Trade` interface filename with Java conventions to restore compilation.
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
