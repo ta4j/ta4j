@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.donchian;
 
+import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -37,6 +38,14 @@ public class DonchianChannelFacadeTest extends AbstractIndicatorTest<Indicator<N
         series.barBuilder().openPrice(110).highPrice(115).lowPrice(105).closePrice(110).add();
         series.barBuilder().openPrice(105).highPrice(110).lowPrice(100).closePrice(105).add();
         series.barBuilder().openPrice(100).highPrice(105).lowPrice(95).closePrice(100).add();
+    }
+
+    @Test
+    public void testCreation() {
+        final DonchianChannelFacade facade = new DonchianChannelFacade(series, 3);
+        assertEquals(series, facade.upper().getBarSeries());
+        assertEquals(series, facade.middle().getBarSeries());
+        assertEquals(series, facade.lower().getBarSeries());
     }
 
     @Test
