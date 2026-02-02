@@ -36,7 +36,7 @@ public class HighRewardElliottWaveBacktest {
 
     private static final Logger LOG = LogManager.getLogger(HighRewardElliottWaveBacktest.class);
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE.withZone(ZoneOffset.UTC);
-    private static final String DEFAULT_OHLCV_RESOURCE = "Coinbase-ETH-USD-PT1D-20160517_20251028.json";
+    private static final String DEFAULT_OHLCV_RESOURCE = "Coinbase-ETH-USD-PT4H-20160518_20251028.json";
 
     private static final List<StrategySpec> DEFAULT_SPECS = List.of(StrategySpec.defaultSpec(),
             StrategySpec.relaxedSpec(), StrategySpec.exploratorySpec(), StrategySpec.strictSpec());
