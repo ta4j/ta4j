@@ -12,7 +12,7 @@ import org.ta4j.core.BaseTradingRecord;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
 import org.ta4j.core.criteria.AbstractCriterionTest;
-import static org.ta4j.core.criteria.drawdown.MonteCarloMaximumDrawdownCriterion.*;
+import org.ta4j.core.criteria.Statistics;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
@@ -27,7 +27,7 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5, 6).build();
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series), Trade.buyAt(2, series),
                 Trade.sellAt(3, series), Trade.buyAt(4, series), Trade.sellAt(5, series));
-        var criterion = new MonteCarloMaximumDrawdownCriterion(200, null, 123L, Statistic.P95);
+        var criterion = new MonteCarloMaximumDrawdownCriterion(200, null, 123L, Statistics.P95);
         assertNumEquals(0d, criterion.calculate(series, record));
     }
 
@@ -39,9 +39,9 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series), Trade.buyAt(3, series),
                 Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(7, series), Trade.buyAt(8, series),
                 Trade.sellAt(9, series));
-        var criterion1 = new MonteCarloMaximumDrawdownCriterion(100, null, 42L, Statistic.P95);
+        var criterion1 = new MonteCarloMaximumDrawdownCriterion(100, null, 42L, Statistics.P95);
         var value1 = criterion1.calculate(series, record);
-        var criterion2 = new MonteCarloMaximumDrawdownCriterion(100, null, 42L, Statistic.P95);
+        var criterion2 = new MonteCarloMaximumDrawdownCriterion(100, null, 42L, Statistics.P95);
         var value2 = criterion2.calculate(series, record);
         assertNumEquals(value1, value2);
     }
@@ -54,8 +54,8 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(2, series), Trade.buyAt(3, series),
                 Trade.sellAt(4, series), Trade.buyAt(5, series), Trade.sellAt(7, series), Trade.buyAt(8, series),
                 Trade.sellAt(9, series));
-        var medianCriterion = new MonteCarloMaximumDrawdownCriterion(100, null, 42L, Statistic.MEDIAN);
-        var maxCriterion = new MonteCarloMaximumDrawdownCriterion(100, null, 42L, Statistic.MAX);
+        var medianCriterion = new MonteCarloMaximumDrawdownCriterion(100, null, 42L, Statistics.MEDIAN);
+        var maxCriterion = new MonteCarloMaximumDrawdownCriterion(100, null, 42L, Statistics.MAX);
         var median = medianCriterion.calculate(series, record);
         var max = maxCriterion.calculate(series, record);
         // max drawdown should be at least as large as median drawdown
@@ -67,7 +67,7 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 2, 1).build();
         var record = new BaseTradingRecord(Trade.buyAt(0, series), Trade.sellAt(1, series), Trade.buyAt(2, series),
                 Trade.sellAt(3, series));
-        var monteCarlo = new MonteCarloMaximumDrawdownCriterion(100, null, 7L, Statistic.P95);
+        var monteCarlo = new MonteCarloMaximumDrawdownCriterion(100, null, 7L, Statistics.P95);
         var result = monteCarlo.calculate(series, record);
         var expected = new MaximumDrawdownCriterion().calculate(series, record);
         assertNumEquals(expected, result);
@@ -106,7 +106,7 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
                 return 0d;
             }
         }
-        var criterion = new MonteCarloMaximumDrawdownCriterion(1, 2, CountingRandom::new, Statistic.P95);
+        var criterion = new MonteCarloMaximumDrawdownCriterion(1, 2, CountingRandom::new, Statistics.P95);
         criterion.calculate(series, record);
         assertEquals(2, counter.get());
     }

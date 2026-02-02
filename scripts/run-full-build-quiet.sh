@@ -52,7 +52,7 @@ fi
 TMP_FILES=()
 cleanup() {
     local file
-    for file in "${TMP_FILES[@]}"; do
+    for file in "${TMP_FILES[@]:-}"; do
         if [[ -n "${file:-}" && -f "$file" ]]; then
             rm -f "$file"
         fi
@@ -140,7 +140,7 @@ echo "Running ta4j full build quietly..."
 echo "Full log: $LOG_FILE_FOR_DISPLAY"
 echo
 
-FILTER_SCRIPT="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-filter.XXXXXX.py")"
+FILTER_SCRIPT="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-filter.XXXXXX")"
 TMP_FILES+=("$FILTER_SCRIPT")
 cat >"$FILTER_SCRIPT" <<'PY'
 import os
