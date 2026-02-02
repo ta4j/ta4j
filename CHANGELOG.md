@@ -48,9 +48,6 @@
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
-- **Elliott Wave confidence scoring**: Extension ratio scoring now penalizes under/over-extended projections to
-  avoid overstating wave 3 confidence on shallow extensions.
-- **Elliott Wave analysis output**: Chart titles and JSON results now include scenario-weighted trend bias.
 - **Dependencies**: update to latest versions
 - **Elliott Wave confidence scoring**: Extension ratio scoring now penalizes under/over-extended projections to
   avoid overstating wave 3 confidence on shallow extensions.
