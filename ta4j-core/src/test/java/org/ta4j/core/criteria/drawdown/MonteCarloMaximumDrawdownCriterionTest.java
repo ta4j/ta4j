@@ -109,9 +109,9 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
                 return 0d;
             }
         }
-        var markToMarket = new MonteCarloMaximumDrawdownCriterion(1, 1, FixedRandom::new, Statistic.MAX,
+        var markToMarket = new MonteCarloMaximumDrawdownCriterion(1, 1, FixedRandom::new, Statistics.MAX,
                 EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
-        var realized = new MonteCarloMaximumDrawdownCriterion(1, 1, FixedRandom::new, Statistic.MAX,
+        var realized = new MonteCarloMaximumDrawdownCriterion(1, 1, FixedRandom::new, Statistics.MAX,
                 EquityCurveMode.REALIZED, OpenPositionHandling.MARK_TO_MARKET);
         assertNumEquals(0.5d, markToMarket.calculate(series, record));
         assertNumEquals(0d, realized.calculate(series, record));
@@ -157,9 +157,9 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
             }
         }
 
-        var markToMarket = new MonteCarloMaximumDrawdownCriterion(1, 1, FixedRandom::new, Statistic.MAX,
+        var markToMarket = new MonteCarloMaximumDrawdownCriterion(1, 1, FixedRandom::new, Statistics.MAX,
                 EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
-        var ignoreOpen = new MonteCarloMaximumDrawdownCriterion(1, 1, FixedRandom::new, Statistic.MAX,
+        var ignoreOpen = new MonteCarloMaximumDrawdownCriterion(1, 1, FixedRandom::new, Statistics.MAX,
                 EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
 
         var markToMarketValue = markToMarket.calculate(series, record);
@@ -176,12 +176,12 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         var record = new BaseTradingRecord(Trade.buyAt(0, series));
 
         var equityModeConvenience = new MonteCarloMaximumDrawdownCriterion(EquityCurveMode.REALIZED);
-        var equityModeExplicit = new MonteCarloMaximumDrawdownCriterion(10_000, null, 42L, Statistic.P95,
+        var equityModeExplicit = new MonteCarloMaximumDrawdownCriterion(10_000, null, 42L, Statistics.P95,
                 EquityCurveMode.REALIZED);
         assertNumEquals(equityModeExplicit.calculate(series, record), equityModeConvenience.calculate(series, record));
 
         var handlingConvenience = new MonteCarloMaximumDrawdownCriterion(OpenPositionHandling.IGNORE);
-        var handlingExplicit = new MonteCarloMaximumDrawdownCriterion(10_000, null, 42L, Statistic.P95,
+        var handlingExplicit = new MonteCarloMaximumDrawdownCriterion(10_000, null, 42L, Statistics.P95,
                 EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
         assertNumEquals(handlingExplicit.calculate(series, record), handlingConvenience.calculate(series, record));
     }
@@ -193,9 +193,9 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
                 .build();
         var record = buildLiveRecordWithOpenLot(series, true);
 
-        var seedMarkToMarket = new MonteCarloMaximumDrawdownCriterion(1, 1, 7L, Statistic.MAX,
+        var seedMarkToMarket = new MonteCarloMaximumDrawdownCriterion(1, 1, 7L, Statistics.MAX,
                 EquityCurveMode.MARK_TO_MARKET);
-        var seedIgnore = new MonteCarloMaximumDrawdownCriterion(1, 1, 7L, Statistic.MAX, EquityCurveMode.MARK_TO_MARKET,
+        var seedIgnore = new MonteCarloMaximumDrawdownCriterion(1, 1, 7L, Statistics.MAX, EquityCurveMode.MARK_TO_MARKET,
                 OpenPositionHandling.IGNORE);
 
         var markToMarketValue = seedMarkToMarket.calculate(series, record);
