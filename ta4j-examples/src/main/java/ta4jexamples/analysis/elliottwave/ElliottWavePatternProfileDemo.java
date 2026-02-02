@@ -29,6 +29,11 @@ public class ElliottWavePatternProfileDemo {
     private static final Logger LOG = LogManager.getLogger(ElliottWavePatternProfileDemo.class);
     private static final String DEFAULT_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
 
+    /**
+     * Runs the pattern profile comparison demo.
+     *
+     * @param args command-line arguments (unused)
+     */
     public static void main(String[] args) {
         BarSeries series = loadSeries();
         if (series == null || series.isEmpty()) {
@@ -55,6 +60,12 @@ public class ElliottWavePatternProfileDemo {
         logBaseScenario("Pattern-aware profile", patternResult);
     }
 
+    /**
+     * Logs the base scenario for the provided analysis result.
+     *
+     * @param label  label for the output
+     * @param result analysis result to inspect
+     */
     private static void logBaseScenario(String label, ElliottAnalysisResult result) {
         ElliottScenario base = result.scenarios().base().orElse(null);
         if (base == null) {
@@ -65,6 +76,11 @@ public class ElliottWavePatternProfileDemo {
                 String.format("%.1f", base.confidence().asPercentage()));
     }
 
+    /**
+     * Loads the ossified BTC-USD dataset from classpath resources.
+     *
+     * @return loaded bar series, or {@code null} if unavailable
+     */
     private static BarSeries loadSeries() {
         try (InputStream stream = ElliottWavePatternProfileDemo.class.getClassLoader()
                 .getResourceAsStream(DEFAULT_OHLCV_RESOURCE)) {

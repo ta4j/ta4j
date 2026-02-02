@@ -43,6 +43,11 @@ public class ElliottWaveTrendBacktest {
     private static final int DEFAULT_WALK_FORWARD_WINDOW = 180;
     private static final int DEFAULT_WALK_FORWARD_STEP = 60;
 
+    /**
+     * Runs the trend-bias backtest and walk-forward evaluation demo.
+     *
+     * @param args command-line arguments (unused)
+     */
     public static void main(String[] args) {
         List<DatasetSpec> datasets = List.of(
                 DatasetSpec.json("Coinbase-ETH-USD-PT1D-20160517_20251028.json", "ETH-USD PT1D (Coinbase)",
@@ -71,12 +76,30 @@ public class ElliottWaveTrendBacktest {
         }
     }
 
+    /**
+     * Builds an Elliott Wave facade with zigzag swings and compression.
+     *
+     * @param series bar series to analyze
+     * @param degree Elliott wave degree to use
+     * @return configured Elliott Wave facade
+     */
     private static ElliottWaveFacade buildFacade(BarSeries series, ElliottDegree degree) {
         ElliottSwingCompressor compressor = new ElliottSwingCompressor(series);
         return ElliottWaveFacade.zigZag(series, degree, Optional.of(series.numFactory().numOf(DEFAULT_FIB_TOLERANCE)),
                 Optional.of(compressor));
     }
 
+    /**
+     * Evaluates directional accuracy across a contiguous bar window.
+     *
+     * @param series             bar series being evaluated
+     * @param trendBiasIndicator indicator supplying trend bias values
+     * @param startIndex         first index to evaluate
+     * @param endIndex           last index to evaluate
+     * @param lookaheadBars      bars to look ahead for validation
+     * @param minStrength        minimum bias strength to include
+     * @return aggregated accuracy statistics
+     */
     private static TrendAccuracy evaluateWindow(BarSeries series, ElliottTrendBiasIndicator trendBiasIndicator,
             int startIndex, int endIndex, int lookaheadBars, double minStrength) {
         int effectiveStart = Math.max(startIndex, series.getBeginIndex());
@@ -141,6 +164,16 @@ public class ElliottWaveTrendBacktest {
                 bearishPredictions, bearishCorrect, skipped);
     }
 
+    /**
+     * Runs a rolling walk-forward evaluation across the series.
+     *
+     * @param series             bar series being evaluated
+     * @param trendBiasIndicator indicator supplying trend bias values
+     * @param lookaheadBars      bars to look ahead for validation
+     * @param minStrength        minimum bias strength to include
+     * @param windowSize         rolling window size in bars
+     * @param stepSize           step size between windows in bars
+     */
     private static void runWalkForward(BarSeries series, ElliottTrendBiasIndicator trendBiasIndicator,
             int lookaheadBars, double minStrength, int windowSize, int stepSize) {
         int startIndex = Math.max(series.getBeginIndex(), trendBiasIndicator.getCountOfUnstableBars());
@@ -166,10 +199,26 @@ public class ElliottWaveTrendBacktest {
         }
     }
 
+    /**
+     * Logs summary accuracy output.
+     *
+     * @param label         label for the output
+     * @param accuracy      aggregated accuracy statistics
+     * @param lookaheadBars lookahead window used in bars
+     * @param minStrength   minimum bias strength used for inclusion
+     */
     private static void logAccuracy(String label, TrendAccuracy accuracy, int lookaheadBars, double minStrength) {
         LOG.info("{} -> {}", label, formatAccuracy(accuracy, lookaheadBars, minStrength));
     }
 
+    /**
+     * Formats accuracy statistics into a single summary string.
+     *
+     * @param accuracy      aggregated accuracy statistics
+     * @param lookaheadBars lookahead window used in bars
+     * @param minStrength   minimum bias strength used for inclusion
+     * @return formatted summary string
+     */
     private static String formatAccuracy(TrendAccuracy accuracy, int lookaheadBars, double minStrength) {
         String overall = formatPercent(accuracy.accuracy());
         String bullish = formatPercent(accuracy.bullishAccuracy());
@@ -180,6 +229,12 @@ public class ElliottWaveTrendBacktest {
                 accuracy.skippedPredictions());
     }
 
+    /**
+     * Formats a ratio as a percentage string.
+     *
+     * @param value ratio value (0.0-1.0)
+     * @return formatted percentage string, or {@code n/a} if undefined
+     */
     private static String formatPercent(double value) {
         if (Double.isNaN(value)) {
             return "n/a";
@@ -187,10 +242,24 @@ public class ElliottWaveTrendBacktest {
         return String.format("%.1f%%", value * 100.0);
     }
 
+    /**
+     * Describes the full range of the series in ISO date form.
+     *
+     * @param series bar series to describe
+     * @return formatted date range string
+     */
     private static String describeRange(BarSeries series) {
         return describeRange(series, series.getBeginIndex(), series.getEndIndex());
     }
 
+    /**
+     * Describes a subset of the series in ISO date form.
+     *
+     * @param series     bar series to describe
+     * @param startIndex start bar index
+     * @param endIndex   end bar index
+     * @return formatted date range string
+     */
     private static String describeRange(BarSeries series, int startIndex, int endIndex) {
         DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE;
         String start = series.getBar(startIndex).getEndTime().atZone(ZoneOffset.UTC).toLocalDate().format(formatter);
@@ -198,7 +267,21 @@ public class ElliottWaveTrendBacktest {
         return start + " -> " + end;
     }
 
+    /**
+     * Dataset metadata for backtesting inputs.
+     *
+     * @param resource   classpath resource identifier
+     * @param label      label for logging output
+     * @param degree     Elliott wave degree to analyze
+     * @param sourceType data source kind
+     */
     private record DatasetSpec(String resource, String label, ElliottDegree degree, DataSourceType sourceType) {
+
+        /**
+         * Loads the bar series for this dataset.
+         *
+         * @return loaded series, or {@code null} if unavailable
+         */
         BarSeries loadSeries() {
             if (sourceType == DataSourceType.JSON) {
                 return JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(resource);
@@ -206,10 +289,26 @@ public class ElliottWaveTrendBacktest {
             return new CsvFileBarSeriesDataSource().loadSeries(resource);
         }
 
+        /**
+         * Builds a JSON-backed dataset spec.
+         *
+         * @param resource resource path
+         * @param label    label for logging
+         * @param degree   Elliott wave degree
+         * @return dataset spec
+         */
         static DatasetSpec json(String resource, String label, ElliottDegree degree) {
             return new DatasetSpec(resource, label, degree, DataSourceType.JSON);
         }
 
+        /**
+         * Builds a CSV-backed dataset spec.
+         *
+         * @param resource resource path
+         * @param label    label for logging
+         * @param degree   Elliott wave degree
+         * @return dataset spec
+         */
         static DatasetSpec csv(String resource, String label, ElliottDegree degree) {
             return new DatasetSpec(resource, label, degree, DataSourceType.CSV);
         }
@@ -219,25 +318,55 @@ public class ElliottWaveTrendBacktest {
         JSON, CSV
     }
 
+    /**
+     * Aggregated trend-bias prediction accuracy metrics.
+     *
+     * @param totalPredictions   total evaluated predictions
+     * @param correctPredictions total correct predictions
+     * @param bullishPredictions total bullish predictions
+     * @param bullishCorrect     correct bullish predictions
+     * @param bearishPredictions total bearish predictions
+     * @param bearishCorrect     correct bearish predictions
+     * @param skippedPredictions skipped predictions
+     */
     private record TrendAccuracy(int totalPredictions, int correctPredictions, int bullishPredictions,
             int bullishCorrect, int bearishPredictions, int bearishCorrect, int skippedPredictions) {
 
+        /**
+         * @return empty accuracy metrics
+         */
         static TrendAccuracy empty() {
             return new TrendAccuracy(0, 0, 0, 0, 0, 0, 0);
         }
 
+        /**
+         * @return overall accuracy ratio
+         */
         double accuracy() {
             return ratio(correctPredictions, totalPredictions);
         }
 
+        /**
+         * @return bullish-only accuracy ratio
+         */
         double bullishAccuracy() {
             return ratio(bullishCorrect, bullishPredictions);
         }
 
+        /**
+         * @return bearish-only accuracy ratio
+         */
         double bearishAccuracy() {
             return ratio(bearishCorrect, bearishPredictions);
         }
 
+        /**
+         * Computes a safe ratio, returning NaN when the denominator is zero.
+         *
+         * @param numerator   numerator value
+         * @param denominator denominator value
+         * @return ratio or NaN
+         */
         private double ratio(int numerator, int denominator) {
             return denominator > 0 ? (double) numerator / denominator : Double.NaN;
         }

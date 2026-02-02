@@ -35,6 +35,11 @@ public class ElliottWaveAdaptiveSwingAnalysis {
     private static final Logger LOG = LogManager.getLogger(ElliottWaveAdaptiveSwingAnalysis.class);
     private static final String DEFAULT_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
 
+    /**
+     * Runs the adaptive swing analysis demo.
+     *
+     * @param args command-line arguments (unused)
+     */
     public static void main(String[] args) {
         BarSeries series = loadSeries();
         if (series == null || series.isEmpty()) {
@@ -61,6 +66,13 @@ public class ElliottWaveAdaptiveSwingAnalysis {
         }
     }
 
+    /**
+     * Logs scenario-level confidence breakdown details.
+     *
+     * @param label    scenario label
+     * @param scenario scenario to log
+     * @param result   analysis result containing factor breakdowns
+     */
     private static void logScenario(String label, ElliottScenario scenario, ElliottAnalysisResult result) {
         LOG.info("{} SCENARIO: {} ({}) - confidence={}%%", label, scenario.currentPhase(), scenario.type(),
                 String.format("%.1f", scenario.confidence().asPercentage()));
@@ -75,6 +87,11 @@ public class ElliottWaveAdaptiveSwingAnalysis {
         }
     }
 
+    /**
+     * Loads the ossified BTC-USD dataset from classpath resources.
+     *
+     * @return loaded bar series, or {@code null} if unavailable
+     */
     private static BarSeries loadSeries() {
         try (InputStream stream = ElliottWaveAdaptiveSwingAnalysis.class.getClassLoader()
                 .getResourceAsStream(DEFAULT_OHLCV_RESOURCE)) {
