@@ -10,10 +10,6 @@
 - Added **MorningStarIndicator** and **EveningStarIndicator**
 - Added **BullishKickerIndicator** and **BearishKickerIndicator**
 - Added **PiercingIndicator** and **DarkCloudIndicator**
-- **Elliott Wave trend bias**: Added `ElliottTrendBias` and `ElliottTrendBiasIndicator` for scenario-weighted
-  bullish/bearish bias, plus `ElliottScenarioSet#trendBias()` and `ElliottWaveFacade#trendBias()` helpers.
-- **Elliott Wave trend backtest demo**: Added `ElliottWaveTrendBacktest` to run backtest and walk-forward
-  evaluations on ossified Coinbase/Yahoo datasets.
 - Added versions-maven-plugin
 - **Elliott Wave trend bias**: Added `ElliottTrendBias` and `ElliottTrendBiasIndicator` for scenario-weighted
   bullish/bearish bias, plus `ElliottScenarioSet#trendBias()` and `ElliottWaveFacade#trendBias()` helpers.
