@@ -34,7 +34,6 @@
 - **Release automation tokens**: Use `GH_TA4J_REPO_TOKEN` for release push operations when available.
 - **Release token preflight**: Fail fast when `GH_TA4J_REPO_TOKEN` lacks write permission (warn-only in dry-run mode).
 - **Release scheduler enablement**: Gate scheduled runs on `RELEASE_SCHEDULER_ENABLED` (defaults to disabled when unset).
-- **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
@@ -42,7 +41,7 @@
 - **Statistics helper**: Consolidated statistics selection into the `Statistics` enum, with Num calculations.
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 - **Dependencies**: update to latest versions
-- **GitHub workflows** changed cancel in progress so jobs do not get backed up
+- **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
 
 ### Fixed
 - **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.
