@@ -24,6 +24,8 @@
   based on ossified datasets.
 - **Elliott Wave trend backtest demo**: Added `ElliottWaveTrendBacktest` to run backtest and walk-forward
   evaluations on ossified Coinbase/Yahoo datasets.
+- **High-reward Elliott Wave strategy**: Added `HighRewardElliottWaveStrategy` (NamedStrategy) and
+  `HighRewardElliottWaveBacktest` for selective impulse trades with risk/reward and momentum filters.
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
@@ -63,6 +65,7 @@
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
 - **Fixed incorrect @since 0.23** by replacing with 0.22.2
+- **Full build script**: Fix macOS temp file creation in `run-full-build-quiet.sh` by using a portable mktemp template.
 
 ## 0.22.1 (2026-01-15)
 
