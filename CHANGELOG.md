@@ -10,6 +10,7 @@
 - Added **MorningStarIndicator** and **EveningStarIndicator**
 - Added **BullishKickerIndicator** and **BearishKickerIndicator**
 - Added **PiercingIndicator** and **DarkCloudIndicator**
+- **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
 
 ### Changed
@@ -35,6 +36,9 @@
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
+- **Position duration criterion**: implemented `PositionDurationCriterion` to measure positions duration.
+- **Statistics helper**: Consolidated statistics selection into the `Statistics` enum, with Num calculations.
+- **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 - **Dependencies**: update to latest versions
 
 ### Fixed
