@@ -33,13 +33,6 @@ jobs:
       # -----------------------
       # Setup and Validation
       # -----------------------
-      - name: Checkout repository
-        uses: actions/checkout@v5
-        with:
-          fetch-depth: 0
-          persist-credentials: true
-          token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
-
       - name: Normalize dry run input
         id: dry_run
         run: |
@@ -78,6 +71,7 @@ jobs:
         env:
           GH_TA4J_REPO_TOKEN: ${{ secrets.GH_TA4J_REPO_TOKEN }}
           DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          DIRECT_PUSH: ${{ steps.direct_push.outputs.enabled }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
@@ -88,9 +82,28 @@ jobs:
 
           token = os.environ.get("GH_TA4J_REPO_TOKEN", "")
           dry_run = os.environ.get("DRY_RUN", "false").lower() == "true"
+          direct_push = os.environ.get("DIRECT_PUSH", "false").lower() == "true"
+
+          output_path = os.environ.get("GITHUB_OUTPUT")
+          def write_output(line: str) -> None:
+              if output_path:
+                  with open(output_path, "a", encoding="utf-8") as fh:
+                      fh.write(line + "\n")
+
+          def warn_or_error(message: str) -> bool:
+              if dry_run:
+                  print(f"::warning::{message}")
+                  return False
+              if direct_push:
+                  print(f"::error::{message}")
+                  return True
+              print(f"::warning::{message}")
+              return False
 
           if not token:
               print("audit:repo_token_present=false")
+              write_output("repo_token_present=false")
+              write_output("use_repo_token=false")
               sys.exit(0)
 
           owner = os.environ.get("GITHUB_REPOSITORY_OWNER")
@@ -117,39 +130,46 @@ jobs:
                   data = json.load(resp)
           except Exception as exc:
               msg = f"GH_TA4J_REPO_TOKEN permission check failed: {exc}"
-              if dry_run:
-                  print(f"::warning::{msg}")
-                  sys.exit(0)
-              print(f"::error::{msg}")
-              sys.exit(1)
+              should_fail = warn_or_error(msg)
+              write_output("repo_token_present=true")
+              write_output("use_repo_token=false")
+              if should_fail:
+                  sys.exit(1)
+              sys.exit(0)
 
           if "errors" in data:
               msg = f"GH_TA4J_REPO_TOKEN permission check failed: {data['errors']}"
-              if dry_run:
-                  print(f"::warning::{msg}")
-                  sys.exit(0)
-              print(f"::error::{msg}")
-              sys.exit(1)
+              should_fail = warn_or_error(msg)
+              write_output("repo_token_present=true")
+              write_output("use_repo_token=false")
+              if should_fail:
+                  sys.exit(1)
+              sys.exit(0)
 
           permission = data.get("data", {}).get("repository", {}).get("viewerPermission")
           allowed = permission in ("WRITE", "MAINTAIN", "ADMIN")
 
-          output_path = os.environ.get("GITHUB_OUTPUT")
-          if output_path:
-              with open(output_path, "a", encoding="utf-8") as fh:
-                  fh.write("repo_token_present=true\n")
-                  fh.write(f"repo_token_permission={permission}\n")
+          write_output("repo_token_present=true")
+          write_output(f"repo_token_permission={permission}")
+          write_output(f"use_repo_token={'true' if allowed else 'false'}")
 
           if not allowed:
               msg = f"GH_TA4J_REPO_TOKEN permission '{permission}' lacks write access."
-              if dry_run:
-                  print(f"::warning::{msg}")
-                  sys.exit(0)
-              print(f"::error::{msg}")
-              sys.exit(1)
+              should_fail = warn_or_error(msg)
+              if should_fail:
+                  sys.exit(1)
+              sys.exit(0)
 
           print(f"audit:repo_token_permission={permission}")
+          print("audit:repo_token_usable=true")
           PY
+
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+          token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
 
       # -----------------------
       # Version Detection
@@ -385,7 +405,7 @@ jobs:
           RELEASE_COMMIT: ${{ steps.release_commit.outputs.release_commit }}
           DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
         with:
-          github-token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
+          github-token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
           script: |
             const releaseVersion = process.env.RELEASE_VERSION;
             const releaseCommit = process.env.RELEASE_COMMIT;
@@ -430,7 +450,7 @@ jobs:
           RELEASE_BRANCH: release/${{ steps.versions.outputs.release }}
           TARGET_BRANCH: ${{ github.event.repository.default_branch }}
         with:
-          github-token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
+          github-token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
           script: |
             const core = require("@actions/core");
             const releaseVersion = process.env.RELEASE_VERSION;
