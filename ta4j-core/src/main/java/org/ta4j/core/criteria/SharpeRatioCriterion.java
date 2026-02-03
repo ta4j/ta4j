@@ -14,7 +14,11 @@ import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
-import org.ta4j.core.analysis.frequency.*;
+import org.ta4j.core.analysis.frequency.IndexPair;
+import org.ta4j.core.analysis.frequency.Sample;
+import org.ta4j.core.analysis.frequency.SampleSummary;
+import org.ta4j.core.analysis.frequency.SamplingFrequency;
+import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexes;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.utils.BarSeriesUtils;
 
@@ -220,11 +224,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
         var sharpePerPeriod = summary.mean().dividedBy(stdev);
 
-        if (annualization == Annualization.PERIOD) {
-            return sharpePerPeriod;
-        }
-
-        return summary.annualizationFactor(numFactory).map(sharpePerPeriod::multipliedBy).orElse(sharpePerPeriod);
+        return annualization.apply(sharpePerPeriod, summary, numFactory);
     }
 
     private Sample getSample(BarSeries series, IndexPair pair, ExcessReturns excessReturns) {

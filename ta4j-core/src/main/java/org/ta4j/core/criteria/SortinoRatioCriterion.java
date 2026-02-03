@@ -15,7 +15,11 @@ import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
-import org.ta4j.core.analysis.frequency.*;
+import org.ta4j.core.analysis.frequency.IndexPair;
+import org.ta4j.core.analysis.frequency.Sample;
+import org.ta4j.core.analysis.frequency.SampleSummary;
+import org.ta4j.core.analysis.frequency.SamplingFrequency;
+import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexes;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -223,10 +227,7 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion {
         }
 
         var sortinoPerPeriod = summary.mean().dividedBy(downsideDeviation);
-        if (annualization == Annualization.PERIOD) {
-            return sortinoPerPeriod;
-        }
-        return summary.annualizationFactor(numFactory).map(sortinoPerPeriod::multipliedBy).orElse(sortinoPerPeriod);
+        return annualization.apply(sortinoPerPeriod, summary, numFactory);
     }
 
     private Num downsideDeviation(List<Sample> samples, NumFactory numFactory) {
