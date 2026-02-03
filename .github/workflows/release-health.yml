@@ -372,6 +372,60 @@ jobs:
               throw new Error(`Discussion ${number} not found in ${owner}/${repo}`);
             }
 
+            const commentQuery = `
+              query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
+                repository(owner: $owner, name: $repo) {
+                  discussion(number: $number) {
+                    comments(first: 100, after: $cursor) {
+                      nodes {
+                        id
+                        body
+                        author {
+                          login
+                        }
+                      }
+                      pageInfo {
+                        hasNextPage
+                        endCursor
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+            const deleteMutation = `
+              mutation($id: ID!) {
+                deleteDiscussionComment(input: { id: $id }) {
+                  clientMutationId
+                }
+              }
+            `;
+            const healthCheckRegex = /Release Health Check/i;
+            let cursor = null;
+            let deletedCount = 0;
+            let scannedCount = 0;
+            do {
+              const commentResult = await github.graphql(commentQuery, { owner, repo, number, cursor });
+              const page = commentResult?.repository?.discussion?.comments;
+              const nodes = page?.nodes || [];
+              scannedCount += nodes.length;
+              const deletions = nodes.filter((comment) => {
+                if (!comment?.body || !comment?.author?.login) {
+                  return false;
+                }
+                if (!comment.author.login.startsWith("github-actions")) {
+                  return false;
+                }
+                return healthCheckRegex.test(comment.body);
+              });
+              for (const comment of deletions) {
+                await github.graphql(deleteMutation, { id: comment.id });
+                deletedCount += 1;
+              }
+              cursor = page?.pageInfo?.hasNextPage ? page.pageInfo.endCursor : null;
+            } while (cursor);
+            core.info(`Scanned ${scannedCount} discussion comments; removed ${deletedCount} prior health check posts.`);
+
             const mutation = `
               mutation($discussionId: ID!, $body: String!) {
                 addDiscussionComment(input: { discussionId: $discussionId, body: $body }) {
