@@ -17,7 +17,7 @@ The default branch is `master`. Release tags must be reachable from `master` for
 ### Dry-run (validation only)
 1. Follow the same prep steps as production.
 2. Run **Prepare Release** with `dryRun=true` to validate version detection and release notes generation.
-3. (Optional) Run **Publish Release** with `dryRun=true` and explicit `releaseVersion`/`releaseCommit` to validate deployment prechecks without tagging or deploying.
+3. (Optional) Run **Publish Release** with `dryRun=true` and explicit `releaseVersion` (and optional `releaseCommit`) to validate deployment prechecks without tagging or deploying.
 
 ---
 
@@ -111,7 +111,7 @@ Tags are created only after the release commit is on `master`, so tag reachabili
 
 ### Publish Release (`publish-release.yml`)
 1. **Read metadata**
-   - **What**: Parses the PR metadata block or workflow inputs for `releaseVersion` and `releaseCommit`.
+   - **What**: Parses the PR metadata block or workflow inputs for `releaseVersion` and `releaseCommit`. For workflow_dispatch, `releaseCommit` can be blank and is auto-detected from `release/<version>.md` on the default branch.
 2. **Verify merge discipline**
    - **Why**: Ensures the release commit is on `master` and was merged via a merge commit.
 3. **Create annotated tag**
@@ -151,7 +151,7 @@ Tags are created only after the release commit is on `master`, so tag reachabili
 1. Run `prepare-release.yml` with `dryRun=true`.
 2. Version checks and release note generation run.
 3. No commits, PRs, tags, or deploys occur.
-4. (Optional) Run `publish-release.yml` with `dryRun=true` and explicit inputs to validate deploy prechecks without tagging or deploying.
+4. (Optional) Run `publish-release.yml` with `dryRun=true` and explicit `releaseVersion` (and optional `releaseCommit`) to validate deploy prechecks without tagging or deploying.
 
 ### Scenario C: Production release with direct push
 **Context:** Org permissions allow direct pushes; `RELEASE_DIRECT_PUSH=true`.
