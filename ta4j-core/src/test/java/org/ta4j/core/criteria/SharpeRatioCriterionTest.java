@@ -15,6 +15,7 @@ import org.ta4j.core.*;
 import org.junit.Test;
 
 import static org.ta4j.core.criteria.SharpeRatioCriterion.Annualization;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -49,10 +50,10 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var tradingRecord = alwaysInvested(series);
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
 
-        var actual = criterion.calculate(series, tradingRecord).doubleValue();
-        var expected = Math.sqrt(3.0) / 2.0;
+        var actual = criterion.calculate(series, tradingRecord);
+        var expected = numFactory.numOf(Math.sqrt(3.0) / 2.0);
 
-        assertEquals(expected, actual, 1e-12);
+        assertNumEquals(expected, actual);
     }
 
     @Test
