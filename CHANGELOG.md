@@ -32,6 +32,7 @@
 - **Release notifications**: Include run mode and timestamp in the release discussion header.
 - **Release scheduler dispatch**: Route automated releases through `prepare-release.yml` and include the binary change count in the AI prompt, with deterministic no-release outputs for zero binary changes.
 - **Release scheduler AI prompt**: Summarize binary changes and trim changelog highlights to keep AI requests within model limits, with model override via `RELEASE_AI_MODEL`.
+- **Release scheduler notifications**: Wrap the binary-change path list in a collapsible details block to reduce discussion clutter.
 - **Release automation tokens**: Use `GH_TA4J_REPO_TOKEN` for release push operations when available.
 - **Release token preflight**: Fail fast when `GH_TA4J_REPO_TOKEN` lacks write permission (warn-only in dry-run mode).
 - **Release scheduler enablement**: Gate scheduled runs on `RELEASE_SCHEDULER_ENABLED` (defaults to disabled when unset).

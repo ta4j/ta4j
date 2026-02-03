@@ -888,7 +888,12 @@ jobs:
           - pom base: ${pom_base}
 
           Binary-impacting changes (paths):
+          <details>
+          <summary>Show paths</summary>
+
           ${binary_changes}
+
+          </details>
 
           Job Results:
           - analyze: ${ANALYZE_RESULT}
