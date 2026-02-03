@@ -17,7 +17,7 @@ The default branch is `master`. Release tags must be reachable from `master` for
 ### Dry-run (validation only)
 1. Follow the same prep steps as production.
 2. Run **Prepare Release** with `dryRun=true` to validate version detection and release notes generation.
-3. (Optional) Run **Publish Release** with `dryRun=true` and explicit `releaseVersion`/`releaseCommit` to validate deployment prechecks without tagging or deploying.
+3. (Optional) Run **Publish Release** with `dryRun=true` and explicit `releaseVersion` (and optional `releaseCommit`) to validate deployment prechecks without tagging or deploying.
 
 ---
 
@@ -40,7 +40,7 @@ Tags are created only after the release commit is on `master`, so tag reachabili
    - **Why**: Ensures release notes are accurate before the workflows run.
 
 2. **Release Scheduler (`release-scheduler.yml`)**
-   - **What**: Looks at binary-impacting changes + Unreleased changelog, asks GitHub Models for a SemVer bump, and decides whether to release.
+   - **What**: Looks at binary-impacting changes + Unreleased changelog (summarized and sanitized), asks GitHub Models for a SemVer bump, and decides whether to release.
    - **Why**: Automates “should we release?” decisions and reduces manual churn.
 
 3. **Prepare Release Workflow (`prepare-release.yml`)**
@@ -65,6 +65,43 @@ Tags are created only after the release commit is on `master`, so tag reachabili
 
 ---
 
+## Discussion Posts: Identifiers and Cleanup
+
+Release-related workflows post summaries to GitHub Discussions. Every automated comment starts with a machine-readable HTML comment so maintainers can reliably identify the post type and whether it was a dry-run or real run.
+
+**Marker format (first line of the comment body):**
+
+```
+<!-- ta4j:post-type=<type>;run=<real|dry-run> -->
+```
+
+**Post types**
+- `release-scheduler`
+- `publish-release`
+- `release-health`
+
+**Run modes**
+- `real`: production runs (including all release-health checks)
+- `dry-run`: dry-run scheduler / publish-release runs
+
+**Release Scheduler extra fields**
+- Scheduler posts include additional identifiers to target dry-run cleanup:
+  - `lastTag`, `pomVersion`, `pomBase`
+- Example:
+
+```
+<!-- ta4j:post-type=release-scheduler;run=dry-run;lastTag=0.22.2;pomVersion=0.22.3-SNAPSHOT;pomBase=0.22.3 -->
+```
+
+**Cleanup behavior**
+- **Release Health (`release-health.yml`)**: deletes prior comments with the marker `post-type=release-health;run=real` before posting the new summary, ensuring the discussion contains at most one current health check.
+- **Release Scheduler (`release-scheduler.yml`)**: when `dryRun=true`, deletes prior comments where `run=dry-run` and `lastTag`, `pomVersion`, and `pomBase` match the current run (prevents duplicate dry-run summaries for the same proposed release). Production scheduler posts are retained.
+- **Publish Release (`publish-release.yml`)**: posts a summary with the marker but does not delete previous posts (keeps a permanent audit trail).
+
+These markers are the only supported way to programmatically identify comments; avoid keying off author names or body text in maintenance scripts.
+
+---
+
 ## Step-by-Step (What Happens and Why)
 
 ### Release Scheduler (`release-scheduler.yml`)
@@ -72,14 +109,22 @@ Tags are created only after the release commit is on `master`, so tag reachabili
    - **What**: Finds the most recent tag reachable from the default branch.
    - **Why**: Ensures diffs are based on what was actually released on `master`.
 2. **Collect binary-impacting changes + changelog**
-   - **What**: Looks for changes in `pom.xml` or `src/main/**`, plus Unreleased notes.
-   - **Why**: Avoids releasing for workflow-only or doc-only changes.
+   - **What**: Looks for changes in `pom.xml` or `src/main/**`, plus Unreleased notes. The change list is sanitized (URLs/tokens redacted), summarized by path buckets, and only includes sample paths when the list is small; discussion output is truncated for safety. Changelog text is filtered to headings/bullets and truncated before sending to the model.
+   - **Why**: Avoids releasing for workflow-only or doc-only changes while keeping the AI request and discussion payloads bounded.
 3. **AI decision (SemVer bump)**
-   - **What**: Calls GitHub Models to choose patch/minor/major.
-   - **Why**: Consistent semantics without manual guessing.
+   - **What**: Calls GitHub Models to choose patch/minor/major using the summarized binary-change prompt and filtered changelog highlights.
+   - **Why**: Consistent semantics without manual guessing, without sending an oversized payload.
 4. **Compute version and gate**
-   - **What**: Calculates the next version, checks for tag collisions.
-   - **Why**: Prevents duplicate or backward releases.
+   - **What**: Calculates the next version from the **base version** and checks for tag collisions.
+   - **How the base version is determined**:
+     - Read `pom.xml` and strip `-SNAPSHOT` to get the **pom base** (e.g., `0.22.3-SNAPSHOT` → `0.22.3`).
+     - Normalize to `major.minor.patch` (e.g., `0.22` → `0.22.0`) and validate SemVer.
+     - If a reachable tag exists on `master`, prefer the **higher** of `last_tag` and `pom base` as the bump base (prevents regressing below already-tagged releases).
+   - **Safety gates**:
+     - Refuse to compute a version lower than the pom base; if the bump result would be lower, it is raised to the pom base.
+     - Fail fast on invalid SemVer formats (must be `major.minor` or `major.minor.patch`).
+     - Ensure no tag collision with the computed version.
+   - **Why**: Prevents duplicate or backward releases and keeps version math anchored to the repo’s canonical base.
 5. **Major approval (if needed)**
    - **What**: Waits for approval in the `major-release` environment.
    - **Why**: Human sign-off for breaking changes.
@@ -111,7 +156,7 @@ Tags are created only after the release commit is on `master`, so tag reachabili
 
 ### Publish Release (`publish-release.yml`)
 1. **Read metadata**
-   - **What**: Parses the PR metadata block or workflow inputs for `releaseVersion` and `releaseCommit`.
+   - **What**: Parses the PR metadata block or workflow inputs for `releaseVersion` and `releaseCommit`. For workflow_dispatch, `releaseCommit` can be blank and is auto-detected from `release/<version>.md` on the default branch.
 2. **Verify merge discipline**
    - **Why**: Ensures the release commit is on `master` and was merged via a merge commit.
 3. **Create annotated tag**
@@ -151,7 +196,7 @@ Tags are created only after the release commit is on `master`, so tag reachabili
 1. Run `prepare-release.yml` with `dryRun=true`.
 2. Version checks and release note generation run.
 3. No commits, PRs, tags, or deploys occur.
-4. (Optional) Run `publish-release.yml` with `dryRun=true` and explicit inputs to validate deploy prechecks without tagging or deploying.
+4. (Optional) Run `publish-release.yml` with `dryRun=true` and explicit `releaseVersion` (and optional `releaseCommit`) to validate deploy prechecks without tagging or deploying.
 
 ### Scenario C: Production release with direct push
 **Context:** Org permissions allow direct pushes; `RELEASE_DIRECT_PUSH=true`.
@@ -184,7 +229,7 @@ Tags are created only after the release commit is on `master`, so tag reachabili
 | `GPG_PRIVATE_KEY` | `publish-release.yml`, `snapshot.yml` | GPG private key for signing artifacts |
 | `GPG_PASSPHRASE` | `publish-release.yml`, `snapshot.yml` | Passphrase for the GPG private key |
 | `GH_MODELS_TOKEN` | `release-scheduler.yml` | GitHub Models API token |
-| `GH_TA4J_REPO_TOKEN` | `prepare-release.yml`, `publish-release.yml`, `github-release.yml` | Classic PAT used for release pushes and GitHub Release creation |
+| `GH_TA4J_REPO_TOKEN` | `prepare-release.yml`, `publish-release.yml`, `github-release.yml` | Classic PAT used for release pushes and GitHub Release creation; prepare-release falls back to `github.token` when the PAT is missing/insufficient (except when `RELEASE_DIRECT_PUSH=true`) |
 
 ### Optional Repository Secrets
 
@@ -201,6 +246,7 @@ Tags are created only after the release commit is on `master`, so tag reachabili
 | `RELEASE_DISCUSSION_NUMBER` | `publish-release.yml` | Discussion number for release run summaries (defaults to 1415) |
 | `RELEASE_SCHEDULER_DISCUSSION_NUMBER` | `release-scheduler.yml`, `release-health.yml` | Discussion number for scheduler summaries (defaults to 1414) |
 | `RELEASE_SCHEDULER_ENABLED` | `release-scheduler.yml` | Set to `true` to allow scheduled runs; unset/empty/false disables |
+| `RELEASE_AI_MODEL` | `release-scheduler.yml` | Override the GitHub Models API model (defaults to `openai/gpt-4.1-nano`) |
 | `RELEASE_PR_STALE_DAYS` | `release-health.yml` | Days before a release PR is considered stale |
 
 ### Required GitHub Environment

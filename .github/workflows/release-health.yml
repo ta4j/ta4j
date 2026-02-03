@@ -299,6 +299,7 @@ jobs:
           notify_user="${RELEASE_NOTIFY_USER:-TheCookieLab}"
 
           cat > notification-body.txt <<EOF
+          <!-- ta4j:post-type=release-health;run=real -->
           @${notify_user}
 
           **Release Health Check ${status} at ${timestamp}**
@@ -349,7 +350,7 @@ jobs:
               body = fs.readFileSync("notification-body.txt", "utf8");
             } else {
               core.warning("notification-body.txt not found; posting fallback message.");
-              body = `@${notifyUser}\n\n**Release Health Check summary unavailable**\n- Repository: ${process.env.GITHUB_REPOSITORY || `${owner}/${repo}`}\n- Run: ${runUrl}\n\nThe summary step did not produce notification-body.txt. Check earlier steps for failures.`;
+              body = `<!-- ta4j:post-type=release-health;run=real -->\n@${notifyUser}\n\n**Release Health Check summary unavailable**\n- Repository: ${process.env.GITHUB_REPOSITORY || `${owner}/${repo}`}\n- Run: ${runUrl}\n\nThe summary step did not produce notification-body.txt. Check earlier steps for failures.`;
             }
             const rawNumber = process.env.RELEASE_SCHEDULER_DISCUSSION_NUMBER;
             const number = rawNumber ? Number(rawNumber) : 1414;
@@ -371,6 +372,54 @@ jobs:
             if (!discussionId) {
               throw new Error(`Discussion ${number} not found in ${owner}/${repo}`);
             }
+
+            const commentQuery = `
+              query($owner: String!, $repo: String!, $number: Int!, $cursor: String) {
+                repository(owner: $owner, name: $repo) {
+                  discussion(number: $number) {
+                    comments(first: 100, after: $cursor) {
+                      nodes {
+                        id
+                        body
+                      }
+                      pageInfo {
+                        hasNextPage
+                        endCursor
+                      }
+                    }
+                  }
+                }
+              }
+            `;
+            const deleteMutation = `
+              mutation($id: ID!) {
+                deleteDiscussionComment(input: { id: $id }) {
+                  clientMutationId
+                }
+              }
+            `;
+            const healthCheckMarker = "<!-- ta4j:post-type=release-health;run=real -->";
+            let cursor = null;
+            let deletedCount = 0;
+            let scannedCount = 0;
+            do {
+              const commentResult = await github.graphql(commentQuery, { owner, repo, number, cursor });
+              const page = commentResult?.repository?.discussion?.comments;
+              const nodes = page?.nodes || [];
+              scannedCount += nodes.length;
+              const deletions = nodes.filter((comment) => {
+                if (!comment?.body) {
+                  return false;
+                }
+                return comment.body.includes(healthCheckMarker);
+              });
+              for (const comment of deletions) {
+                await github.graphql(deleteMutation, { id: comment.id });
+                deletedCount += 1;
+              }
+              cursor = page?.pageInfo?.hasNextPage ? page.pageInfo.endCursor : null;
+            } while (cursor);
+            core.info(`Scanned ${scannedCount} discussion comments; removed ${deletedCount} prior health check posts.`);
 
             const mutation = `
               mutation($discussionId: ID!, $body: String!) {
