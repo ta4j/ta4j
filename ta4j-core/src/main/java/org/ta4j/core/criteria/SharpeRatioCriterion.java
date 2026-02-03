@@ -91,10 +91,6 @@ import org.ta4j.core.utils.BarSeriesUtils;
  */
 public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
-    public enum Annualization {
-        PERIOD, ANNUALIZED
-    }
-
     private final SamplingFrequencyIndexes samplingFrequencyIndexes;
     private final Annualization annualization;
     private final CashReturnPolicy cashReturnPolicy;

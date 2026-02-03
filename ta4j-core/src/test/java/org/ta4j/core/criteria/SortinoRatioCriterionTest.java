@@ -19,7 +19,6 @@ import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.num.NumFactory;
 
-import static org.ta4j.core.criteria.SortinoRatioCriterion.Annualization;
 import static org.ta4j.core.criteria.SamplingParityTestSupport.compressSeries;
 import static org.ta4j.core.criteria.SamplingParityTestSupport.monthlyEndIndicesUtc;
 import static org.ta4j.core.criteria.SamplingParityTestSupport.weeklyEndIndicesUtc;

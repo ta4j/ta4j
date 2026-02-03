@@ -96,15 +96,6 @@ import org.ta4j.core.utils.BarSeriesUtils;
  */
 public class SortinoRatioCriterion extends AbstractAnalysisCriterion {
 
-    /**
-     * Annualization mode for the Sortino ratio.
-     *
-     * @since 0.22.2
-     */
-    public enum Annualization {
-        PERIOD, ANNUALIZED
-    }
-
     private final SamplingFrequencyIndexes samplingFrequencyIndexes;
     private final Annualization annualization;
     private final CashReturnPolicy cashReturnPolicy;

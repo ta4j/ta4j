@@ -13,7 +13,6 @@ import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.*;
 import org.junit.Test;
 
-import static org.ta4j.core.criteria.SharpeRatioCriterion.Annualization;
 import static org.ta4j.core.criteria.SamplingParityTestSupport.compressSeries;
 import static org.ta4j.core.criteria.SamplingParityTestSupport.monthlyEndIndicesUtc;
 import static org.ta4j.core.criteria.SamplingParityTestSupport.weeklyEndIndicesUtc;
