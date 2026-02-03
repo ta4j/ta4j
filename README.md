@@ -56,6 +56,20 @@ Ta4j does not promise profitable strategies. It promises reproducible experiment
 - **Backtesting built-in**: Evaluate risk/reward with realistic trading costs and performance metrics in just a few lines.
 - **MIT licensed**: Use it at work, in research, or inside your next trading product without legal concerns.
 
+### Wyckoff cycle analysis
+
+Ta4j now ships with dedicated Wyckoff cycle tooling that interprets structural events (selling climax, upthrust,
+springs, etc.) and maps them to the classic phase lettering (A through E) for both accumulation and distribution
+cycles.
+
+- `WyckoffPhaseIndicator` composes recent swing structure and relative volume to emit `WyckoffPhase` values per bar.
+  The fluent builder lets you tune swing look-backs, volume smoothing windows, and breakout tolerances so the
+  indicator can adapt to different markets or timeframes.
+- Helper accessors expose the inferred trading-range bounds and latest phase transition index, making it
+  straightforward to feed the signal into strategies or reporting pipelines.
+- See [`ta4jexamples.wyckoff.WyckoffCycleExample`](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleExample.java)
+  for a runnable example that prints phase transitions for Apple Inc. daily data.
+
 ## Install in seconds
 
 Add Ta4j from Maven Central:

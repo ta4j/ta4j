@@ -5,7 +5,6 @@ package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
@@ -22,45 +21,47 @@ import org.ta4j.core.num.Num;
  * @see <a href="https://en.wikipedia.org/wiki/Volume-weighted_average_price">
  *      https://en.wikipedia.org/wiki/Volume-weighted_average_price</a>
  */
-public class VWAPIndicator extends CachedIndicator<Num> {
+public class VWAPIndicator extends AbstractVWAPIndicator {
 
     private final int barCount;
-    private final Indicator<Num> typicalPrice;
-    private final Indicator<Num> volume;
 
     /**
      * Constructor.
      *
      * @param series   the bar series
      * @param barCount the time frame
+     *
+     * @since 0.19
      */
     public VWAPIndicator(BarSeries series, int barCount) {
-        super(series);
+        this(new TypicalPriceIndicator(series), new VolumeIndicator(series), barCount);
+    }
+
+    /**
+     * Constructor with explicitly supplied price and volume indicators.
+     *
+     * @param priceIndicator  the price indicator (for example typical price)
+     * @param volumeIndicator the volume indicator
+     * @param barCount        the time frame (must be {@code > 0})
+     *
+     * @since 0.19
+     */
+    public VWAPIndicator(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator, int barCount) {
+        super(priceIndicator, volumeIndicator);
+        if (barCount <= 0) {
+            throw new IllegalArgumentException("barCount must be greater than zero");
+        }
         this.barCount = barCount;
-        this.typicalPrice = new TypicalPriceIndicator(series);
-        this.volume = new VolumeIndicator(series);
     }
 
     @Override
-    protected Num calculate(int index) {
-        if (index <= 0) {
-            return typicalPrice.getValue(index);
-        }
-        int startIndex = Math.max(0, index - barCount + 1);
-        final var zero = getBarSeries().numFactory().zero();
-        Num cumulativeTPV = zero;
-        Num cumulativeVolume = zero;
-        for (int i = startIndex; i <= index; i++) {
-            Num currentVolume = volume.getValue(i);
-            cumulativeTPV = cumulativeTPV.plus(typicalPrice.getValue(i).multipliedBy(currentVolume));
-            cumulativeVolume = cumulativeVolume.plus(currentVolume);
-        }
-        return cumulativeTPV.dividedBy(cumulativeVolume);
+    protected int resolveWindowStartIndex(int index) {
+        return index - barCount + 1;
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return Math.max(0, barCount - 1);
     }
 
     @Override
