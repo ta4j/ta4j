@@ -12,6 +12,8 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
+import static java.util.Objects.requireNonNull;
+
 /**
  * An ATR-based stop-gain rule.
  *
@@ -29,7 +31,7 @@ public class AverageTrueRangeStopGainRule extends AbstractRule {
      */
     private final transient Indicator<Num> stopGainThreshold;
     private final Indicator<Num> referencePrice;
-    private final int atrBarCount;
+    private final ATRIndicator atrIndicator;
     private final Number atrCoefficient;
 
     /**
@@ -44,18 +46,31 @@ public class AverageTrueRangeStopGainRule extends AbstractRule {
     }
 
     /**
-     * Constructor.
+     * Constructor with custom price indicator.
      *
      * @param series         the bar series
+     * @param referencePrice the price indicator
      * @param atrBarCount    the number of bars used for ATR calculation
      * @param atrCoefficient the multiple of ATR to set the gain threshold
      */
     public AverageTrueRangeStopGainRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient) {
-        this.referencePrice = referencePrice;
-        this.atrBarCount = atrBarCount;
-        this.atrCoefficient = atrCoefficient;
-        this.stopGainThreshold = createStopGainThreshold(series);
+        this(referencePrice, new ATRIndicator(series, atrBarCount), atrCoefficient);
+    }
+
+    /**
+     * Constructor with custom price and ATR indicators.
+     *
+     * @param referencePrice the price indicator
+     * @param atrIndicator   ATR indicator
+     * @param atrCoefficient the multiple of ATR to set the gain threshold
+     */
+    public AverageTrueRangeStopGainRule(final Indicator<Num> referencePrice,
+            final ATRIndicator atrIndicator, final Number atrCoefficient) {
+        this.referencePrice = requireNonNull(referencePrice);
+        this.atrIndicator = requireNonNull(atrIndicator);
+        this.atrCoefficient = requireNonNull(atrCoefficient);
+        this.stopGainThreshold = createStopGainThreshold();
     }
 
     /**
@@ -81,7 +96,7 @@ public class AverageTrueRangeStopGainRule extends AbstractRule {
                 : currentPrice.isLessThanOrEqual(entryPrice.minus(gainThreshold));
     }
 
-    private Indicator<Num> createStopGainThreshold(BarSeries series) {
-        return BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
+    private Indicator<Num> createStopGainThreshold() {
+        return BinaryOperationIndicator.product(atrIndicator, atrCoefficient);
     }
 }
