@@ -12,7 +12,8 @@ import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.num.Num;
 
 /**
- * Live trade for live trading record updates.
+ * Live trade for live trading record updates (implements
+ * {@link ExecutionFill}).
  *
  * @param index         trade index
  * @param time          execution timestamp (UTC)
@@ -25,7 +26,7 @@ import org.ta4j.core.num.Num;
  * @since 0.22.2
  */
 public record LiveTrade(int index, Instant time, Num price, Num amount, Num fee, ExecutionSide side, String orderId,
-        String correlationId) implements Trade {
+        String correlationId) implements Trade, ExecutionFill {
 
     @Serial
     private static final long serialVersionUID = 3196554864123769210L;

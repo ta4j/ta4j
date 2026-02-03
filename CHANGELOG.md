@@ -7,6 +7,8 @@
   streaming-bar ingestion helpers to enable candle reconciliation and side/liquidity-aware trade aggregation.
 - **LiveTradingRecord**: Added live execution fill tracking with partial-fill support, open lot bookkeeping, and
   FIFO/LIFO/avg-cost matching helpers for production trading analytics.
+- **Execution intents and fills**: Added `ExecutionIntent` and `ExecutionFill` core contracts; `LiveTrade` now
+  implements `ExecutionFill`, and `LiveTradingRecord` can record generic fills.
 - **Open position analytics**: Added `OpenPositionCostBasisCriterion`, `OpenPositionUnrealizedProfitCriterion`, and
   `TotalFeesCriterion` to quantify open exposure, unrealized PnL, and recorded execution fees.
 - **Sharpe Ratio**: Added `SharpeRatioCriterion` and its related calculation classes
