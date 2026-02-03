@@ -197,7 +197,6 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion {
         if (position == null || position.getEntry() == null) {
             return series.numFactory().zero();
         }
-
         return calculate(series, new BaseTradingRecord(position));
     }
 
@@ -208,13 +207,13 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion {
         if (tradingRecord == null) {
             return zero;
         }
-
         var beginIndex = series.getBeginIndex();
         var start = beginIndex + 1;
         var end = series.getEndIndex();
         if (end - start + 1 < 2) {
             return zero;
         }
+
         var annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
         var excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
                 openPositionHandling);
@@ -226,18 +225,15 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion {
         if (summary.count() < 2) {
             return zero;
         }
-
         Num downsideDeviation = downsideDeviation(samples, numFactory);
-        if (downsideDeviation.isZero()) {
-            return zero;
+        if (downsideDeviation.isNaN()) {
+            return downsideDeviation;
         }
 
         var sortinoPerPeriod = summary.mean().dividedBy(downsideDeviation);
-
         if (annualization == Annualization.PERIOD) {
             return sortinoPerPeriod;
         }
-
         return summary.annualizationFactor(numFactory).map(sortinoPerPeriod::multipliedBy).orElse(sortinoPerPeriod);
     }
 
