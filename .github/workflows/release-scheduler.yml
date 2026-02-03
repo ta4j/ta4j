@@ -902,6 +902,8 @@ jobs:
         if: always()
         uses: actions/github-script@v8
         env:
+          DRY_RUN: ${{ needs.analyze.outputs.dryRun }}
+          LAST_TAG: ${{ needs.analyze.outputs.last_tag }}
           RELEASE_SCHEDULER_DISCUSSION_NUMBER: ${{ vars.RELEASE_SCHEDULER_DISCUSSION_NUMBER }}
         with:
           github-token: ${{ github.token }}
