@@ -52,8 +52,9 @@ public record LiveTrade(int index, Instant time, Num price, Num amount, Num fee,
      * @return true when the fill has a non-zero fee
      * @since 0.22.2
      */
+    @Override
     public boolean hasFee() {
-        return !fee.isZero();
+        return fee != null && !fee.isZero();
     }
 
     @Override
