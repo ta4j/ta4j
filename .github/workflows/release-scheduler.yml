@@ -865,7 +865,7 @@ jobs:
           notify_user="${RELEASE_NOTIFY_USER:-TheCookieLab}"
 
           cat > notification-body.txt <<EOF
-          <!-- ta4j:post-type=release-scheduler;run=${marker_run};lastTag=${last_tag};pomVersion=${pom_version};pomBase=${pom_base} -->
+          <!-- ta4j:post-type=release-scheduler;run=${marker_run};proposedVersion=${version};lastTag=${last_tag};pomVersion=${pom_version};pomBase=${pom_base} -->
           @${notify_user}
 
           **Release Scheduler ${mode_label} ${completion_text} at ${timestamp}**
@@ -912,6 +912,9 @@ jobs:
         env:
           DRY_RUN: ${{ needs.analyze.outputs.dryRun }}
           LAST_TAG: ${{ needs.analyze.outputs.last_tag }}
+          VERSION: ${{ needs.analyze.outputs.version }}
+          POM_VERSION: ${{ needs.analyze.outputs.pom_version }}
+          POM_BASE: ${{ needs.analyze.outputs.pom_base }}
           RELEASE_SCHEDULER_DISCUSSION_NUMBER: ${{ vars.RELEASE_SCHEDULER_DISCUSSION_NUMBER }}
         with:
           github-token: ${{ github.token }}
@@ -946,9 +949,7 @@ jobs:
               }
             `;
             const isDryRun = process.env.DRY_RUN === "true";
-            const markerLastTag = (process.env.LAST_TAG || "(none)").trim() || "(none)";
-            const markerPomVersion = (process.env.POM_VERSION || "(unknown)").trim() || "(unknown)";
-            const markerPomBase = (process.env.POM_BASE || "(unknown)").trim() || "(unknown)";
+            const currentProposedVersion = (process.env.VERSION || "").trim();
             const queryResult = await github.graphql(query, { owner, repo, number });
             const discussion = queryResult?.repository?.discussion;
             const discussionId = discussion?.id;
@@ -956,7 +957,7 @@ jobs:
               throw new Error(`Discussion ${number} not found in ${owner}/${repo}`);
             }
 
-            if (isDryRun) {
+            if (isDryRun && currentProposedVersion && currentProposedVersion !== "(none)") {
               const markerRegex = /<!--\s*ta4j:post-type=release-scheduler;([^>]*)-->/i;
               const parseMarker = (text) => {
                 const match = text.match(markerRegex);
@@ -980,6 +981,13 @@ jobs:
                 }
                 return fields;
               };
+              const parseLegacyComputedVersion = (text) => {
+                const match = text.match(/- computed version:\s*(.+)\s*$/im);
+                if (!match) {
+                  return "";
+                }
+                return match[1].trim();
+              };
               const toDelete = [];
 
               let page = discussion.comments;
@@ -987,17 +995,12 @@ jobs:
                 for (const node of page.nodes || []) {
                   const text = node?.body || "";
                   const fields = parseMarker(text);
-                  if (!fields) {
+                  const isDryRunPost = fields ? fields.run === "dry-run" : /- dryRun:\s*true/i.test(text);
+                  if (!isDryRunPost) {
                     continue;
                   }
-                  if (fields.run !== "dry-run") {
-                    continue;
-                  }
-                  const matchesVersion =
-                    fields.lastTag === markerLastTag ||
-                    fields.pomVersion === markerPomVersion ||
-                    fields.pomBase === markerPomBase;
-                  if (matchesVersion) {
+                  const proposedVersion = fields?.proposedVersion || parseLegacyComputedVersion(text);
+                  if (proposedVersion && proposedVersion === currentProposedVersion) {
                     toDelete.push(node.id);
                   }
                 }
