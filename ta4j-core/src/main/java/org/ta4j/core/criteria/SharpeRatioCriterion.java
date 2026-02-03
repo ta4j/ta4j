@@ -33,7 +33,7 @@ import org.ta4j.core.utils.BarSeriesUtils;
  * excess growth factors between the two indices (so mixed in/out-of-market bars
  * are handled correctly) and converts the compounded growth into an excess
  * return. It then returns {@code mean(excessReturn) / stdev(excessReturn)}
- * using the sample standard deviation.
+ * using the sample standard deviation ({@code N - 1}).
  *
  * <p>
  * <b>Sampling (aggregation) of returns.</b> The {@link SamplingFrequency}

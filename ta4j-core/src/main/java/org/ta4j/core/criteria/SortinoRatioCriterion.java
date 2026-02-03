@@ -37,7 +37,8 @@ import org.ta4j.core.utils.BarSeriesUtils;
  * are handled correctly) and converts the compounded growth into an excess
  * return. It then returns {@code mean(excessReturn) / downsideDeviation}, where
  * {@code downsideDeviation} is the root-mean-square of the negative excess
- * returns (values above zero contribute as zero).
+ * returns (values above zero contribute as zero), using the full sample count
+ * {@code N} rather than {@code N - 1}.
  *
  * <p>
  * <b>Sampling (aggregation) of returns.</b> The {@link SamplingFrequency}
