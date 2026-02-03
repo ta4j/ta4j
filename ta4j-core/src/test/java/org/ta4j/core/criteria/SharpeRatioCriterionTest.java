@@ -16,7 +16,6 @@ import org.junit.Test;
 
 import static org.ta4j.core.criteria.SharpeRatioCriterion.Annualization;
 import static org.ta4j.core.TestUtils.assertNumEquals;
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class SharpeRatioCriterionTest extends AbstractCriterionTest {
@@ -62,14 +61,12 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
                 Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var period = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
-        var annualized = criterion(SamplingFrequency.BAR, Annualization.ANNUALIZED).calculate(series, tradingRecord)
-                .doubleValue();
+        var period = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord);
+        var annualized = criterion(SamplingFrequency.BAR, Annualization.ANNUALIZED).calculate(series, tradingRecord);
 
-        var expectedFactor = Math.sqrt(365.2425d);
-        var expected = period * expectedFactor;
-        assertEquals(expected, annualized, 1e-9);
+        var expectedFactor = numFactory.numOf(Math.sqrt(365.2425d));
+        var expected = period.multipliedBy(expectedFactor);
+        assertNumEquals(expected, annualized, 1e-9);
     }
 
     @Test
@@ -78,12 +75,10 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
                 Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
-        var daily = criterion(SamplingFrequency.DAY, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
+        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord);
+        var daily = criterion(SamplingFrequency.DAY, Annualization.PERIOD).calculate(series, tradingRecord);
 
-        assertEquals(perBar, daily, 1e-12);
+        assertNumEquals(perBar, daily, 1e-12);
     }
 
     @Test
@@ -96,15 +91,13 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var dailySeries = buildDailySeries(dayEndCloses, Instant.parse("2024-01-01T00:00:00Z"));
         var dailyTradingRecord = alwaysInvested(dailySeries);
 
-        var intradayDailySampling = criterion(SamplingFrequency.DAY, Annualization.PERIOD)
-                .calculate(intradaySeries, intradayTradingRecord)
-                .doubleValue();
+        var intradayDailySampling = criterion(SamplingFrequency.DAY, Annualization.PERIOD).calculate(intradaySeries,
+                intradayTradingRecord);
 
-        var compressedDailyPerBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD)
-                .calculate(dailySeries, dailyTradingRecord)
-                .doubleValue();
+        var compressedDailyPerBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(dailySeries,
+                dailyTradingRecord);
 
-        assertEquals(compressedDailyPerBar, intradayDailySampling, 1e-12);
+        assertNumEquals(compressedDailyPerBar, intradayDailySampling, 1e-12);
     }
 
     @Test
@@ -141,12 +134,12 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
         var tradingRecord = alwaysInvested(series);
 
-        var sharpeNewYork = criterion(ZoneId.of("America/New_York")).calculate(series, tradingRecord).doubleValue();
+        var sharpeNewYork = criterion(ZoneId.of("America/New_York")).calculate(series, tradingRecord);
 
-        var sharpeUtc = criterion(ZoneOffset.UTC).calculate(series, tradingRecord).doubleValue();
+        var sharpeUtc = criterion(ZoneOffset.UTC).calculate(series, tradingRecord);
 
-        assertEquals(0d, sharpeNewYork, 0d);
-        assertTrue(Math.abs(sharpeUtc) > 1e-12);
+        assertNumEquals(series.numFactory().zero(), sharpeNewYork, 0d);
+        assertTrue(sharpeUtc.abs().isGreaterThan(series.numFactory().numOf(1e-12)));
     }
 
     @Test
@@ -155,11 +148,10 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
                 Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var sharpeNoRf = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
-        var sharpeWithRf = criterion().calculate(series, tradingRecord).doubleValue();
+        var sharpeNoRf = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord);
+        var sharpeWithRf = criterion().calculate(series, tradingRecord);
 
-        assertTrue(sharpeWithRf < sharpeNoRf);
+        assertTrue(sharpeWithRf.isLessThan(sharpeNoRf));
     }
 
     @Test
@@ -200,7 +192,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
         var actual = criterion.calculate(series, tradingRecord);
 
-        assertEquals(series.numFactory().zero(), actual);
+        assertNumEquals(series.numFactory().zero(), actual);
     }
 
     @Test
@@ -211,7 +203,7 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
         var actual = criterion.calculate(series, tradingRecord);
 
-        assertEquals(series.numFactory().zero(), actual);
+        assertNumEquals(series.numFactory().zero(), actual);
     }
 
     @Test
@@ -221,15 +213,13 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var series = buildDailySeries(closes, Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var weekly = criterion(SamplingFrequency.WEEK, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
+        var weekly = criterion(SamplingFrequency.WEEK, Annualization.PERIOD).calculate(series, tradingRecord);
 
         var weeklyCompressedSeries = compressSeries(series, weeklyEndIndicesUtc(series), "weekly_compressed");
-        var weeklyCompressed = criterion(SamplingFrequency.BAR, Annualization.PERIOD)
-                .calculate(weeklyCompressedSeries, alwaysInvested(weeklyCompressedSeries))
-                .doubleValue();
+        var weeklyCompressed = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(weeklyCompressedSeries,
+                alwaysInvested(weeklyCompressedSeries));
 
-        assertEquals(weeklyCompressed, weekly, 1e-12);
+        assertNumEquals(weeklyCompressed, weekly, 1e-12);
     }
 
     @Test
@@ -239,15 +229,13 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var series = buildDailySeries(closes, Instant.parse("2024-01-24T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var monthly = criterion(SamplingFrequency.MONTH, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
+        var monthly = criterion(SamplingFrequency.MONTH, Annualization.PERIOD).calculate(series, tradingRecord);
 
         var monthlyCompressedSeries = compressSeries(series, monthlyEndIndicesUtc(series), "monthly_compressed");
         var monthlyCompressed = criterion(SamplingFrequency.BAR, Annualization.PERIOD)
-                .calculate(monthlyCompressedSeries, alwaysInvested(monthlyCompressedSeries))
-                .doubleValue();
+                .calculate(monthlyCompressedSeries, alwaysInvested(monthlyCompressedSeries));
 
-        assertEquals(monthlyCompressed, monthly, 1e-12);
+        assertNumEquals(monthlyCompressed, monthly, 1e-12);
     }
 
     @Test
@@ -264,9 +252,9 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
 
         var actual = criterion.calculate(series, position);
-        var expected = Math.sqrt(3.0) / 2.0;
+        var expected = numFactory.numOf(Math.sqrt(3.0) / 2.0);
 
-        assertEquals(expected, actual.doubleValue(), 1e-12);
+        assertNumEquals(expected, actual, 1e-12);
     }
 
     @Test
@@ -274,12 +262,10 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var series = buildHourlySeries(new double[] { 100d, 105d, 110d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
-        var hourly = criterion(SamplingFrequency.HOUR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
+        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord);
+        var hourly = criterion(SamplingFrequency.HOUR, Annualization.PERIOD).calculate(series, tradingRecord);
 
-        assertEquals(perBar, hourly, 1e-12);
+        assertNumEquals(perBar, hourly, 1e-12);
     }
 
     @Test
@@ -287,12 +273,10 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var series = buildMinuteSeries(new double[] { 100d, 101d, 102d, 103d }, Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
-        var minutely = criterion(SamplingFrequency.MINUTE, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
+        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord);
+        var minutely = criterion(SamplingFrequency.MINUTE, Annualization.PERIOD).calculate(series, tradingRecord);
 
-        assertEquals(perBar, minutely, 1e-12);
+        assertNumEquals(perBar, minutely, 1e-12);
     }
 
     @Test
@@ -300,12 +284,10 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var series = buildSecondSeries(new double[] { 100d, 101d, 103d, 106d }, Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
-        var perSecond = criterion(SamplingFrequency.SECOND, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
+        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord);
+        var perSecond = criterion(SamplingFrequency.SECOND, Annualization.PERIOD).calculate(series, tradingRecord);
 
-        assertEquals(perBar, perSecond, 1e-12);
+        assertNumEquals(perBar, perSecond, 1e-12);
     }
 
     @Test
@@ -325,9 +307,9 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var mean = (return1 + return2) / 2d;
         var variance = (Math.pow(return1 - mean, 2) + Math.pow(return2 - mean, 2));
         var stdev = Math.sqrt(variance);
-        var expected = mean / stdev;
+        var expected = numFactory.numOf(mean / stdev);
 
-        assertEquals(expected, actual.doubleValue(), 1e-12);
+        assertNumEquals(expected, actual, 1e-12);
     }
 
     @Test
@@ -368,9 +350,9 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var mean = return1 / 3d;
         var variance = (Math.pow(return1 - mean, 2) + Math.pow(-mean, 2) + Math.pow(-mean, 2));
         var stdev = Math.sqrt(variance / 2d);
-        var expected = mean / stdev;
+        var expected = numFactory.numOf(mean / stdev);
 
-        assertEquals(expected, actual.doubleValue(), 1e-12);
+        assertNumEquals(expected, actual, 1e-12);
     }
 
     private BarSeries buildDailySeries(double[] closes, Instant start) {

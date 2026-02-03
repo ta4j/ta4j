@@ -5,8 +5,11 @@ package org.ta4j.core.criteria;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.time.YearMonth;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.temporal.WeekFields;
 import java.util.stream.IntStream;
 
 import static org.junit.Assert.*;
@@ -17,10 +20,10 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
-import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.NumFactory;
 
 import static org.ta4j.core.criteria.SortinoRatioCriterion.Annualization;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 public class SortinoRatioCriterionTest extends AbstractCriterionTest {
 
@@ -36,11 +39,11 @@ public class SortinoRatioCriterionTest extends AbstractCriterionTest {
         var tradingRecord = alwaysInvested(series);
 
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
-        var actual = criterion.calculate(series, tradingRecord).doubleValue();
+        var actual = criterion.calculate(series, tradingRecord);
 
-        var expected = Math.sqrt(0.5d);
+        var expected = numFactory.numOf(Math.sqrt(0.5d));
 
-        assertEquals(expected, actual, 1e-12);
+        assertNumEquals(expected, actual, 1e-12);
     }
 
     @Test
@@ -49,15 +52,13 @@ public class SortinoRatioCriterionTest extends AbstractCriterionTest {
                 Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var period = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
-        var annualized = criterion(SamplingFrequency.BAR, Annualization.ANNUALIZED).calculate(series, tradingRecord)
-                .doubleValue();
+        var period = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord);
+        var annualized = criterion(SamplingFrequency.BAR, Annualization.ANNUALIZED).calculate(series, tradingRecord);
 
-        var expectedFactor = Math.sqrt(365.2425d);
-        var expected = period * expectedFactor;
+        var expectedFactor = numFactory.numOf(Math.sqrt(365.2425d));
+        var expected = period.multipliedBy(expectedFactor);
 
-        assertEquals(expected, annualized, 1e-9);
+        assertNumEquals(expected, annualized, 1e-9);
     }
 
     @Test
@@ -66,12 +67,10 @@ public class SortinoRatioCriterionTest extends AbstractCriterionTest {
                 Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
-        var daily = criterion(SamplingFrequency.DAY, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
+        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord);
+        var daily = criterion(SamplingFrequency.DAY, Annualization.PERIOD).calculate(series, tradingRecord);
 
-        assertEquals(perBar, daily, 1e-12);
+        assertNumEquals(perBar, daily, 1e-12);
     }
 
     @Test
@@ -84,14 +83,44 @@ public class SortinoRatioCriterionTest extends AbstractCriterionTest {
         var dailySeries = buildDailySeries(dayEndCloses, Instant.parse("2024-01-01T00:00:00Z"));
         var dailyTradingRecord = alwaysInvested(dailySeries);
 
-        var intradayDailySampling = criterion(SamplingFrequency.DAY, Annualization.PERIOD)
-                .calculate(intradaySeries, intradayTradingRecord)
-                .doubleValue();
-        var compressedDailyPerBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD)
-                .calculate(dailySeries, dailyTradingRecord)
-                .doubleValue();
+        var intradayDailySampling = criterion(SamplingFrequency.DAY, Annualization.PERIOD).calculate(intradaySeries,
+                intradayTradingRecord);
+        var compressedDailyPerBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(dailySeries,
+                dailyTradingRecord);
 
-        assertEquals(compressedDailyPerBar, intradayDailySampling, 1e-12);
+        assertNumEquals(compressedDailyPerBar, intradayDailySampling, 1e-12);
+    }
+
+    @Test
+    public void samplingWeeklyOnDailyMatchesPerBarOnCompressedWeeklySeries() {
+        var closes = IntStream.range(0, 15).mapToDouble(i -> 100d + i + ((i % 4) == 0 ? 7d : -3d)).toArray();
+
+        var series = buildDailySeries(closes, Instant.parse("2024-01-01T00:00:00Z"));
+        var tradingRecord = alwaysInvested(series);
+
+        var weekly = criterion(SamplingFrequency.WEEK, Annualization.PERIOD).calculate(series, tradingRecord);
+
+        var weeklyCompressedSeries = compressSeries(series, weeklyEndIndicesUtc(series), "weekly_compressed");
+        var weeklyCompressed = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(weeklyCompressedSeries,
+                alwaysInvested(weeklyCompressedSeries));
+
+        assertNumEquals(weeklyCompressed, weekly, 1e-12);
+    }
+
+    @Test
+    public void samplingMonthlyOnDailyMatchesPerBarOnCompressedMonthlySeries() {
+        var closes = IntStream.range(0, 45).mapToDouble(i -> 120d + i + ((i % 7) == 0 ? 11d : -2d)).toArray();
+
+        var series = buildDailySeries(closes, Instant.parse("2024-01-24T00:00:00Z"));
+        var tradingRecord = alwaysInvested(series);
+
+        var monthly = criterion(SamplingFrequency.MONTH, Annualization.PERIOD).calculate(series, tradingRecord);
+
+        var monthlyCompressedSeries = compressSeries(series, monthlyEndIndicesUtc(series), "monthly_compressed");
+        var monthlyCompressed = criterion(SamplingFrequency.BAR, Annualization.PERIOD)
+                .calculate(monthlyCompressedSeries, alwaysInvested(monthlyCompressedSeries));
+
+        assertNumEquals(monthlyCompressed, monthly, 1e-12);
     }
 
     @Test
@@ -100,11 +129,10 @@ public class SortinoRatioCriterionTest extends AbstractCriterionTest {
                 Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var sortinoNoRf = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
-        var sortinoWithRf = criterion().calculate(series, tradingRecord).doubleValue();
+        var sortinoNoRf = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord);
+        var sortinoWithRf = criterion().calculate(series, tradingRecord);
 
-        assertTrue(sortinoWithRf < sortinoNoRf);
+        assertTrue(sortinoWithRf.isLessThan(sortinoNoRf));
     }
 
     @Test
@@ -165,7 +193,7 @@ public class SortinoRatioCriterionTest extends AbstractCriterionTest {
                 CashReturnPolicy.CASH_EARNS_RISK_FREE, OpenPositionHandling.MARK_TO_MARKET)
                 .calculate(series, tradingRecord);
 
-        assertEquals(NaN.NaN, sortinoNewYork);
+        assertTrue(sortinoNewYork.isNaN());
         assertFalse(sortinoUtc.isNaN());
     }
 
@@ -177,7 +205,19 @@ public class SortinoRatioCriterionTest extends AbstractCriterionTest {
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
         var actual = criterion.calculate(series, tradingRecord);
 
-        assertEquals(NaN.NaN, actual);
+        assertTrue(actual.isNaN());
+    }
+
+    @Test
+    public void returnsNaN_whenDownsideDeviationIsZero_forWeeklySampling() {
+        var closes = IntStream.range(0, 15).mapToDouble(i -> 100d * Math.pow(1.05d, i)).toArray();
+        var series = buildDailySeries(closes, Instant.parse("2024-01-01T00:00:00Z"));
+        var tradingRecord = alwaysInvested(series);
+
+        var criterion = criterion(SamplingFrequency.WEEK, Annualization.PERIOD);
+        var actual = criterion.calculate(series, tradingRecord);
+
+        assertTrue(actual.isNaN());
     }
 
     @Test
@@ -188,7 +228,7 @@ public class SortinoRatioCriterionTest extends AbstractCriterionTest {
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
         var actual = criterion.calculate(series, tradingRecord);
 
-        assertEquals(series.numFactory().zero(), actual);
+        assertNumEquals(series.numFactory().zero(), actual, 0d);
     }
 
     @Test
@@ -208,7 +248,7 @@ public class SortinoRatioCriterionTest extends AbstractCriterionTest {
         var ignoreValue = ignore.calculate(series, tradingRecord);
 
         assertFalse(markToMarketValue.isNaN());
-        assertEquals(NaN.NaN, ignoreValue);
+        assertTrue(ignoreValue.isNaN());
     }
 
     @Test
@@ -321,6 +361,64 @@ public class SortinoRatioCriterionTest extends AbstractCriterionTest {
         tradingRecord.exit(begin + 4, series.getBar(begin + 4).getClosePrice(), amount);
 
         return tradingRecord;
+    }
+
+    private static int[] weeklyEndIndicesUtc(BarSeries series) {
+        var begin = series.getBeginIndex();
+        var end = series.getEndIndex();
+
+        return IntStream.rangeClosed(begin, end).filter(i -> {
+            if (i == begin || i == end) {
+                return true;
+            }
+            var now = series.getBar(i).getEndTime().atZone(ZoneOffset.UTC);
+            var next = series.getBar(i + 1).getEndTime().atZone(ZoneOffset.UTC);
+            return !sameIsoWeek(now, next);
+        }).toArray();
+    }
+
+    private static boolean sameIsoWeek(ZonedDateTime a, ZonedDateTime b) {
+        var weekFields = WeekFields.ISO;
+        var weekA = a.get(weekFields.weekOfWeekBasedYear());
+        var weekB = b.get(weekFields.weekOfWeekBasedYear());
+        var yearA = a.get(weekFields.weekBasedYear());
+        var yearB = b.get(weekFields.weekBasedYear());
+        return weekA == weekB && yearA == yearB;
+    }
+
+    private static int[] monthlyEndIndicesUtc(BarSeries series) {
+        var begin = series.getBeginIndex();
+        var end = series.getEndIndex();
+
+        return IntStream.rangeClosed(begin, end).filter(i -> {
+            if (i == begin || i == end) {
+                return true;
+            }
+            var now = series.getBar(i).getEndTime().atZone(ZoneOffset.UTC);
+            var next = series.getBar(i + 1).getEndTime().atZone(ZoneOffset.UTC);
+            return !YearMonth.from(now).equals(YearMonth.from(next));
+        }).toArray();
+    }
+
+    private BarSeries compressSeries(BarSeries source, int[] indices, String name) {
+        var series = getBarSeries(name);
+
+        IntStream.range(0, indices.length).forEach(i -> {
+            var sourceBar = source.getBar(indices[i]);
+            var close = sourceBar.getClosePrice().doubleValue();
+
+            series.addBar(series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(sourceBar.getEndTime())
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1)
+                    .build());
+        });
+
+        return series;
     }
 
     private SortinoRatioCriterion criterion(SamplingFrequency samplingFrequency, Annualization annualization) {
