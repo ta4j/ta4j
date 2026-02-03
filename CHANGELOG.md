@@ -31,6 +31,7 @@
 - **Release scheduler notifications**: Include run mode and timestamp in the discussion header.
 - **Release notifications**: Include run mode and timestamp in the release discussion header.
 - **Release scheduler dispatch**: Route automated releases through `prepare-release.yml` and include the binary change count in the AI prompt, with deterministic no-release outputs for zero binary changes.
+- **Release scheduler AI prompt**: Summarize binary changes and trim changelog highlights to keep AI requests within model limits, with model override via `RELEASE_AI_MODEL`.
 - **Release automation tokens**: Use `GH_TA4J_REPO_TOKEN` for release push operations when available.
 - **Release token preflight**: Fail fast when `GH_TA4J_REPO_TOKEN` lacks write permission (warn-only in dry-run mode).
 - **Release scheduler enablement**: Gate scheduled runs on `RELEASE_SCHEDULER_ENABLED` (defaults to disabled when unset).
@@ -51,6 +52,7 @@
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
+- **Release scheduler redaction**: Avoid masking long Java class names in binary-change listings.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
 - **Fixed incorrect @since 0.23** by replacing with 0.22.2
 

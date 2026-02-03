@@ -201,6 +201,7 @@ Tags are created only after the release commit is on `master`, so tag reachabili
 | `RELEASE_DISCUSSION_NUMBER` | `publish-release.yml` | Discussion number for release run summaries (defaults to 1415) |
 | `RELEASE_SCHEDULER_DISCUSSION_NUMBER` | `release-scheduler.yml`, `release-health.yml` | Discussion number for scheduler summaries (defaults to 1414) |
 | `RELEASE_SCHEDULER_ENABLED` | `release-scheduler.yml` | Set to `true` to allow scheduled runs; unset/empty/false disables |
+| `RELEASE_AI_MODEL` | `release-scheduler.yml` | Override the GitHub Models API model (defaults to `openai/gpt-4.1-nano`) |
 | `RELEASE_PR_STALE_DAYS` | `release-health.yml` | Days before a release PR is considered stale |
 
 ### Required GitHub Environment
