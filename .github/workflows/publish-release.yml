@@ -616,6 +616,9 @@ jobs:
           - Status: ${status_upper}
 
           Release Summary:
+          <details>
+          <summary>Show details</summary>
+
           - dryRun: ${dry_run}
           - release version: ${release}
           - next snapshot: ${next}
@@ -626,6 +629,8 @@ jobs:
           - existing tag: ${existing_tag}
           - missing secrets: ${missing_secrets}
           - has missing secrets: ${has_missing}
+
+          </details>
           EOF
 
       - name: Post to Maven Central Releases discussion
