@@ -84,9 +84,18 @@ Release-related workflows post summaries to GitHub Discussions. Every automated 
 - `real`: production runs (including all release-health checks)
 - `dry-run`: dry-run scheduler / publish-release runs
 
+**Release Scheduler extra fields**
+- Scheduler posts include additional identifiers to target dry-run cleanup:
+  - `lastTag`, `pomVersion`, `pomBase`
+- Example:
+
+```
+<!-- ta4j:post-type=release-scheduler;run=dry-run;lastTag=0.22.2;pomVersion=0.22.3-SNAPSHOT;pomBase=0.22.3 -->
+```
+
 **Cleanup behavior**
 - **Release Health (`release-health.yml`)**: deletes prior comments with the marker `post-type=release-health;run=real` before posting the new summary, ensuring the discussion contains at most one current health check.
-- **Release Scheduler (`release-scheduler.yml`)**: when `dryRun=true`, deletes prior comments with the marker `post-type=release-scheduler;run=dry-run` to prevent dry-run spam. Production scheduler posts are retained.
+- **Release Scheduler (`release-scheduler.yml`)**: when `dryRun=true`, deletes prior comments where `run=dry-run` and **at least one** of `lastTag`, `pomVersion`, or `pomBase` matches the current run (prevents deleting dry-runs for a different base/version). Production scheduler posts are retained.
 - **Publish Release (`publish-release.yml`)**: posts a summary with the marker but does not delete previous posts (keeps a permanent audit trail).
 
 These markers are the only supported way to programmatically identify comments; avoid keying off author names or body text in maintenance scripts.

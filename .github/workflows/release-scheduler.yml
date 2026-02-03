@@ -865,7 +865,7 @@ jobs:
           notify_user="${RELEASE_NOTIFY_USER:-TheCookieLab}"
 
           cat > notification-body.txt <<EOF
-          <!-- ta4j:post-type=release-scheduler;run=${marker_run} -->
+          <!-- ta4j:post-type=release-scheduler;run=${marker_run};lastTag=${last_tag};pomVersion=${pom_version};pomBase=${pom_base} -->
           @${notify_user}
 
           **Release Scheduler ${mode_label} ${completion_text} at ${timestamp}**
@@ -946,6 +946,9 @@ jobs:
               }
             `;
             const isDryRun = process.env.DRY_RUN === "true";
+            const markerLastTag = (process.env.LAST_TAG || "(none)").trim() || "(none)";
+            const markerPomVersion = (process.env.POM_VERSION || "(unknown)").trim() || "(unknown)";
+            const markerPomBase = (process.env.POM_BASE || "(unknown)").trim() || "(unknown)";
             const queryResult = await github.graphql(query, { owner, repo, number });
             const discussion = queryResult?.repository?.discussion;
             const discussionId = discussion?.id;
@@ -954,14 +957,47 @@ jobs:
             }
 
             if (isDryRun) {
-              const dryRunMarker = "<!-- ta4j:post-type=release-scheduler;run=dry-run -->";
+              const markerRegex = /<!--\s*ta4j:post-type=release-scheduler;([^>]*)-->/i;
+              const parseMarker = (text) => {
+                const match = text.match(markerRegex);
+                if (!match) {
+                  return null;
+                }
+                const fields = {};
+                for (const part of match[1].split(";")) {
+                  if (!part.trim()) {
+                    continue;
+                  }
+                  const idx = part.indexOf("=");
+                  if (idx === -1) {
+                    continue;
+                  }
+                  const key = part.slice(0, idx).trim();
+                  const value = part.slice(idx + 1).trim();
+                  if (key) {
+                    fields[key] = value;
+                  }
+                }
+                return fields;
+              };
               const toDelete = [];
 
               let page = discussion.comments;
               while (page) {
                 for (const node of page.nodes || []) {
                   const text = node?.body || "";
-                  if (text.includes(dryRunMarker)) {
+                  const fields = parseMarker(text);
+                  if (!fields) {
+                    continue;
+                  }
+                  if (fields.run !== "dry-run") {
+                    continue;
+                  }
+                  const matchesVersion =
+                    fields.lastTag === markerLastTag ||
+                    fields.pomVersion === markerPomVersion ||
+                    fields.pomBase === markerPomBase;
+                  if (matchesVersion) {
                     toDelete.push(node.id);
                   }
                 }
