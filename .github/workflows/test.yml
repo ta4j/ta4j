@@ -1,5 +1,8 @@
 name: Run Unit Tests
 
+permissions:
+  contents: read
+
 on:
   pull_request:
     branches:
@@ -7,6 +10,10 @@ on:
   push:
     branches:
       - master
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -34,4 +41,3 @@ jobs:
 
       - name: Build and run tests with Maven
         run: xvfb-run mvn -B test
-

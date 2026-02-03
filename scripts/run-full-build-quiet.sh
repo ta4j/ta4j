@@ -52,7 +52,7 @@ fi
 TMP_FILES=()
 cleanup() {
     local file
-    for file in "${TMP_FILES[@]}"; do
+    for file in "${TMP_FILES[@]:-}"; do
         if [[ -n "${file:-}" && -f "$file" ]]; then
             rm -f "$file"
         fi
