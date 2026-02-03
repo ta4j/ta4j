@@ -65,6 +65,34 @@ Tags are created only after the release commit is on `master`, so tag reachabili
 
 ---
 
+## Discussion Posts: Identifiers and Cleanup
+
+Release-related workflows post summaries to GitHub Discussions. Every automated comment starts with a machine-readable HTML comment so maintainers can reliably identify the post type and whether it was a dry-run or real run.
+
+**Marker format (first line of the comment body):**
+
+```
+<!-- ta4j:post-type=<type>;run=<real|dry-run> -->
+```
+
+**Post types**
+- `release-scheduler`
+- `publish-release`
+- `release-health`
+
+**Run modes**
+- `real`: production runs (including all release-health checks)
+- `dry-run`: dry-run scheduler / publish-release runs
+
+**Cleanup behavior**
+- **Release Health (`release-health.yml`)**: deletes prior comments with the marker `post-type=release-health;run=real` before posting the new summary, ensuring the discussion contains at most one current health check.
+- **Release Scheduler (`release-scheduler.yml`)**: when `dryRun=true`, deletes prior comments with the marker `post-type=release-scheduler;run=dry-run` to prevent dry-run spam. Production scheduler posts are retained.
+- **Publish Release (`publish-release.yml`)**: posts a summary with the marker but does not delete previous posts (keeps a permanent audit trail).
+
+These markers are the only supported way to programmatically identify comments; avoid keying off author names or body text in maintenance scripts.
+
+---
+
 ## Step-by-Step (What Happens and Why)
 
 ### Release Scheduler (`release-scheduler.yml`)
@@ -78,8 +106,16 @@ Tags are created only after the release commit is on `master`, so tag reachabili
    - **What**: Calls GitHub Models to choose patch/minor/major using the summarized binary-change prompt and filtered changelog highlights.
    - **Why**: Consistent semantics without manual guessing, without sending an oversized payload.
 4. **Compute version and gate**
-   - **What**: Calculates the next version, checks for tag collisions.
-   - **Why**: Prevents duplicate or backward releases.
+   - **What**: Calculates the next version from the **base version** and checks for tag collisions.
+   - **How the base version is determined**:
+     - Read `pom.xml` and strip `-SNAPSHOT` to get the **pom base** (e.g., `0.22.3-SNAPSHOT` → `0.22.3`).
+     - Normalize to `major.minor.patch` (e.g., `0.22` → `0.22.0`) and validate SemVer.
+     - If a reachable tag exists on `master`, prefer the **higher** of `last_tag` and `pom base` as the bump base (prevents regressing below already-tagged releases).
+   - **Safety gates**:
+     - Refuse to compute a version lower than the pom base; if the bump result would be lower, it is raised to the pom base.
+     - Fail fast on invalid SemVer formats (must be `major.minor` or `major.minor.patch`).
+     - Ensure no tag collision with the computed version.
+   - **Why**: Prevents duplicate or backward releases and keeps version math anchored to the repo’s canonical base.
 5. **Major approval (if needed)**
    - **What**: Waits for approval in the `major-release` environment.
    - **Why**: Human sign-off for breaking changes.

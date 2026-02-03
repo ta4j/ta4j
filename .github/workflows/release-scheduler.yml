@@ -826,8 +826,10 @@ jobs:
 
           if [ "$dry_run" = "true" ]; then
             mode_label="dry-run"
+            marker_run="dry-run"
           else
             mode_label="production"
+            marker_run="real"
           fi
 
           if [ "$status" = "success" ]; then
@@ -863,6 +865,7 @@ jobs:
           notify_user="${RELEASE_NOTIFY_USER:-TheCookieLab}"
 
           cat > notification-body.txt <<EOF
+          <!-- ta4j:post-type=release-scheduler;run=${marker_run} -->
           @${notify_user}
 
           **Release Scheduler ${mode_label} ${completion_text} at ${timestamp}**
@@ -932,9 +935,6 @@ jobs:
                       nodes {
                         id
                         body
-                        author {
-                          login
-                        }
                       }
                       pageInfo {
                         hasNextPage
@@ -946,7 +946,6 @@ jobs:
               }
             `;
             const isDryRun = process.env.DRY_RUN === "true";
-            const lastTag = process.env.LAST_TAG || "";
             const queryResult = await github.graphql(query, { owner, repo, number });
             const discussion = queryResult?.repository?.discussion;
             const discussionId = discussion?.id;
@@ -954,21 +953,15 @@ jobs:
               throw new Error(`Discussion ${number} not found in ${owner}/${repo}`);
             }
 
-            if (isDryRun && lastTag) {
-              const dryRunNeedle = "dryRun: true";
-              const lastTagNeedle = `- last tag: ${lastTag}`;
-              const botLogins = new Set(["github-actions[bot]", "github-actions"]);
+            if (isDryRun) {
+              const dryRunMarker = "<!-- ta4j:post-type=release-scheduler;run=dry-run -->";
               const toDelete = [];
 
               let page = discussion.comments;
               while (page) {
                 for (const node of page.nodes || []) {
-                  const author = node?.author?.login;
-                  if (!author || !botLogins.has(author)) {
-                    continue;
-                  }
                   const text = node?.body || "";
-                  if (text.includes(dryRunNeedle) && text.includes(lastTagNeedle)) {
+                  if (text.includes(dryRunMarker)) {
                     toDelete.push(node.id);
                   }
                 }
@@ -984,9 +977,6 @@ jobs:
                             nodes {
                               id
                               body
-                              author {
-                                login
-                              }
                             }
                             pageInfo {
                               hasNextPage

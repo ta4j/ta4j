@@ -624,8 +624,10 @@ jobs:
 
           if [ "$dry_run" = "true" ]; then
             mode_label="dry-run"
+            marker_run="dry-run"
           else
             mode_label="production"
+            marker_run="real"
           fi
 
           if [ "$status" = "success" ]; then
@@ -637,6 +639,7 @@ jobs:
           timestamp=$(date '+%-I:%M:%S %p on %-m.%-d.%Y')
 
           cat > notification-body.txt <<EOF
+          <!-- ta4j:post-type=publish-release;run=${marker_run} -->
           @${notify_user}
 
           **Maven Central Release ${mode_label} ${completion_text} at ${timestamp}**
