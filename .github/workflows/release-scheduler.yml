@@ -921,14 +921,92 @@ jobs:
                 repository(owner: $owner, name: $repo) {
                   discussion(number: $number) {
                     id
+                    comments(first: 50) {
+                      nodes {
+                        id
+                        body
+                        author {
+                          login
+                        }
+                      }
+                      pageInfo {
+                        hasNextPage
+                        endCursor
+                      }
+                    }
                   }
                 }
               }
             `;
+            const isDryRun = process.env.DRY_RUN === "true";
+            const lastTag = process.env.LAST_TAG || "";
             const queryResult = await github.graphql(query, { owner, repo, number });
-            const discussionId = queryResult?.repository?.discussion?.id;
+            const discussion = queryResult?.repository?.discussion;
+            const discussionId = discussion?.id;
             if (!discussionId) {
               throw new Error(`Discussion ${number} not found in ${owner}/${repo}`);
+            }
+
+            if (isDryRun && lastTag) {
+              const dryRunNeedle = "dryRun: true";
+              const lastTagNeedle = `- last tag: ${lastTag}`;
+              const botLogins = new Set(["github-actions[bot]", "github-actions"]);
+              const toDelete = [];
+
+              let page = discussion.comments;
+              while (page) {
+                for (const node of page.nodes || []) {
+                  const author = node?.author?.login;
+                  if (!author || !botLogins.has(author)) {
+                    continue;
+                  }
+                  const text = node?.body || "";
+                  if (text.includes(dryRunNeedle) && text.includes(lastTagNeedle)) {
+                    toDelete.push(node.id);
+                  }
+                }
+                if (!page.pageInfo?.hasNextPage) {
+                  break;
+                }
+                const next = await github.graphql(
+                  `
+                    query($owner: String!, $repo: String!, $number: Int!, $cursor: String!) {
+                      repository(owner: $owner, name: $repo) {
+                        discussion(number: $number) {
+                          comments(first: 50, after: $cursor) {
+                            nodes {
+                              id
+                              body
+                              author {
+                                login
+                              }
+                            }
+                            pageInfo {
+                              hasNextPage
+                              endCursor
+                            }
+                          }
+                        }
+                      }
+                    }
+                  `,
+                  { owner, repo, number, cursor: page.pageInfo.endCursor }
+                );
+                page = next?.repository?.discussion?.comments;
+              }
+
+              for (const commentId of toDelete) {
+                await github.graphql(
+                  `
+                    mutation($commentId: ID!) {
+                      deleteDiscussionComment(input: { id: $commentId }) {
+                        clientMutationId
+                      }
+                    }
+                  `,
+                  { commentId }
+                );
+              }
             }
 
             const mutation = `

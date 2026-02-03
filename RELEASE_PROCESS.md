@@ -40,7 +40,7 @@ Tags are created only after the release commit is on `master`, so tag reachabili
    - **Why**: Ensures release notes are accurate before the workflows run.
 
 2. **Release Scheduler (`release-scheduler.yml`)**
-   - **What**: Looks at binary-impacting changes + Unreleased changelog, asks GitHub Models for a SemVer bump, and decides whether to release.
+   - **What**: Looks at binary-impacting changes + Unreleased changelog (summarized and sanitized), asks GitHub Models for a SemVer bump, and decides whether to release.
    - **Why**: Automates “should we release?” decisions and reduces manual churn.
 
 3. **Prepare Release Workflow (`prepare-release.yml`)**
@@ -72,11 +72,11 @@ Tags are created only after the release commit is on `master`, so tag reachabili
    - **What**: Finds the most recent tag reachable from the default branch.
    - **Why**: Ensures diffs are based on what was actually released on `master`.
 2. **Collect binary-impacting changes + changelog**
-   - **What**: Looks for changes in `pom.xml` or `src/main/**`, plus Unreleased notes.
-   - **Why**: Avoids releasing for workflow-only or doc-only changes.
+   - **What**: Looks for changes in `pom.xml` or `src/main/**`, plus Unreleased notes. The change list is sanitized (URLs/tokens redacted), summarized by path buckets, and only includes sample paths when the list is small; discussion output is truncated for safety. Changelog text is filtered to headings/bullets and truncated before sending to the model.
+   - **Why**: Avoids releasing for workflow-only or doc-only changes while keeping the AI request and discussion payloads bounded.
 3. **AI decision (SemVer bump)**
-   - **What**: Calls GitHub Models to choose patch/minor/major.
-   - **Why**: Consistent semantics without manual guessing.
+   - **What**: Calls GitHub Models to choose patch/minor/major using the summarized binary-change prompt and filtered changelog highlights.
+   - **Why**: Consistent semantics without manual guessing, without sending an oversized payload.
 4. **Compute version and gate**
    - **What**: Calculates the next version, checks for tag collisions.
    - **Why**: Prevents duplicate or backward releases.
@@ -184,7 +184,7 @@ Tags are created only after the release commit is on `master`, so tag reachabili
 | `GPG_PRIVATE_KEY` | `publish-release.yml`, `snapshot.yml` | GPG private key for signing artifacts |
 | `GPG_PASSPHRASE` | `publish-release.yml`, `snapshot.yml` | Passphrase for the GPG private key |
 | `GH_MODELS_TOKEN` | `release-scheduler.yml` | GitHub Models API token |
-| `GH_TA4J_REPO_TOKEN` | `prepare-release.yml`, `publish-release.yml`, `github-release.yml` | Classic PAT used for release pushes and GitHub Release creation |
+| `GH_TA4J_REPO_TOKEN` | `prepare-release.yml`, `publish-release.yml`, `github-release.yml` | Classic PAT used for release pushes and GitHub Release creation; prepare-release falls back to `github.token` when the PAT is missing/insufficient (except when `RELEASE_DIRECT_PUSH=true`) |
 
 ### Optional Repository Secrets
 
