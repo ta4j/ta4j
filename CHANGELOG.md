@@ -42,6 +42,7 @@
 - **Statistics helper**: Consolidated statistics selection into the `Statistics` enum, with Num calculations.
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 - **Dependencies**: update to latest versions
+- **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
 
 ### Fixed
 - **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.
