@@ -1,36 +1,20 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package org.ta4j.core.indicators.volume;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.serialization.ComponentDescriptor;
+import org.ta4j.core.serialization.ComponentSerialization;
 
 /**
  * Anchored volume-weighted average price (AVWAP) indicator.
@@ -44,9 +28,10 @@ import org.ta4j.core.num.Num;
 public class AnchoredVWAPIndicator extends AbstractVWAPIndicator {
 
     private final Indicator<Boolean> anchorSignal;
-    private final int baseAnchorIndex;
-    private final int baseIndex;
-    private final List<Integer> anchorIndexCache = new ArrayList<>();
+    private final int defaultAnchorIndex;
+    private final transient int baseAnchorIndex;
+    private final transient int baseIndex;
+    private final transient List<Integer> anchorIndexCache = new ArrayList<>();
 
     /**
      * Creates an anchored VWAP using typical price and volume from the provided
@@ -108,20 +93,18 @@ public class AnchoredVWAPIndicator extends AbstractVWAPIndicator {
             IndicatorSeriesUtils.requireSameSeries(priceIndicator, anchorSignal);
         }
         this.anchorSignal = anchorSignal;
+        this.defaultAnchorIndex = defaultAnchorIndex;
         this.baseIndex = getBarSeries().getBeginIndex();
         int clampedDefault = Math.max(defaultAnchorIndex, baseIndex);
         this.baseAnchorIndex = clampedDefault;
-        ensureAnchorCache(baseIndex - 1);
+        synchronized (anchorIndexCache) {
+            ensureAnchorCacheLocked(baseIndex - 1);
+        }
     }
 
     @Override
     protected int resolveWindowStartIndex(int index) {
-        ensureAnchorCache(index);
-        int offset = index - baseIndex;
-        if (offset < 0) {
-            return baseIndex;
-        }
-        return anchorIndexCache.get(offset);
+        return resolveAnchorIndex(index);
     }
 
     /**
@@ -133,15 +116,21 @@ public class AnchoredVWAPIndicator extends AbstractVWAPIndicator {
      * @since 0.19
      */
     public int getAnchorIndex(int index) {
-        ensureAnchorCache(index);
-        int offset = index - baseIndex;
-        if (offset < 0) {
-            return baseAnchorIndex;
-        }
-        return anchorIndexCache.get(offset);
+        return resolveAnchorIndex(index);
     }
 
-    private void ensureAnchorCache(int index) {
+    private int resolveAnchorIndex(int index) {
+        synchronized (anchorIndexCache) {
+            ensureAnchorCacheLocked(index);
+            int offset = index - baseIndex;
+            if (offset < 0) {
+                return baseAnchorIndex;
+            }
+            return anchorIndexCache.get(offset);
+        }
+    }
+
+    private void ensureAnchorCacheLocked(int index) {
         int offset = index - baseIndex;
         if (offset < 0) {
             return;
@@ -173,7 +162,27 @@ public class AnchoredVWAPIndicator extends AbstractVWAPIndicator {
     }
 
     @Override
+    public ComponentDescriptor toDescriptor() {
+        Map<String, Object> parameters = new LinkedHashMap<>();
+        parameters.put("defaultAnchorIndex", defaultAnchorIndex);
+        ComponentDescriptor.Builder builder = ComponentDescriptor.builder()
+                .withType(getClass().getSimpleName())
+                .withParameters(parameters);
+        builder.addComponent(priceIndicator.toDescriptor());
+        builder.addComponent(volumeIndicator.toDescriptor());
+        if (anchorSignal != null) {
+            builder.addComponent(anchorSignal.toDescriptor());
+        }
+        return builder.build();
+    }
+
+    @Override
+    public String toJson() {
+        return ComponentSerialization.toJson(toDescriptor());
+    }
+
+    @Override
     public String toString() {
-        return getClass().getSimpleName() + " baseAnchorIndex: " + baseAnchorIndex;
+        return getClass().getSimpleName() + " defaultAnchorIndex: " + defaultAnchorIndex;
     }
 }

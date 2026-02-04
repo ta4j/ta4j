@@ -1,25 +1,5 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package org.ta4j.core.indicators.supportresistance;
 
@@ -45,10 +25,11 @@ import org.ta4j.core.num.NumFactory;
  * The indicator evaluates the KDE at the current bar's price to expose the
  * liquidity available near that level. For detailed profiling, callers can
  * query the density at any price or ask for the most liquid price in the
- * look-back window. See <a href="https://www.investopedia.com/terms/v/volume-profile.asp">Investopedia: Volume
- * Profile</a> for an overview of the trading concept.
+ * look-back window. See <a href=
+ * "https://www.investopedia.com/terms/v/volume-profile.asp">Investopedia:
+ * Volume Profile</a> for an overview of the trading concept.
  *
- * @since 0.19
+ * @since 0.22.2
  */
 public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
 
@@ -56,9 +37,9 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> volumeIndicator;
     private final int lookbackLength;
     private final Num bandwidth;
-    private final boolean gaussianKernel;
-    private final double gaussianBandwidth;
-    private final double gaussianCoefficient;
+    private final transient boolean gaussianKernel;
+    private final transient double gaussianBandwidth;
+    private final transient double gaussianCoefficient;
 
     /**
      * Constructor using {@link ClosePriceIndicator}, {@link VolumeIndicator} with
@@ -66,7 +47,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
      *
      * @param series    the backing bar series
      * @param bandwidth the kernel bandwidth (non-negative)
-     * @since 0.19
+     * @since 0.22.2
      */
     public VolumeProfileKDEIndicator(BarSeries series, Num bandwidth) {
         this(new ClosePriceIndicator(series), new VolumeIndicator(series, 1), 0, bandwidth);
@@ -80,7 +61,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
      * @param lookbackLength  number of bars to consider (non-positive for the full
      *                        history)
      * @param bandwidth       kernel bandwidth (non-negative)
-     * @since 0.19
+     * @since 0.22.2
      */
     public VolumeProfileKDEIndicator(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator, int lookbackLength,
             Num bandwidth) {
@@ -94,7 +75,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         }
         this.lookbackLength = lookbackLength;
         this.bandwidth = Objects.requireNonNull(bandwidth, "bandwidth must not be null");
-        if (bandwidth.isLessThan(series.numFactory().zero())) {
+        if (isInvalid(bandwidth) || bandwidth.isLessThan(series.numFactory().zero())) {
             throw new IllegalArgumentException("bandwidth must be greater than or equal to zero");
         }
         this.gaussianKernel = !bandwidth.isZero();
@@ -109,8 +90,11 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
+            return NaN;
+        }
         Num price = priceIndicator.getValue(index);
-        if (price == null || price.isNaN()) {
+        if (isInvalid(price)) {
             return NaN;
         }
         List<Sample> samples = collectSamples(index);
@@ -126,10 +110,13 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
      * @param index the bar index
      * @param price the price to evaluate
      * @return the estimated density or {@code NaN} when unavailable
-     * @since 0.19
+     * @since 0.22.2
      */
     public Num getDensityAtPrice(int index, Num price) {
-        if (price == null || price.isNaN()) {
+        if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
+            return NaN;
+        }
+        if (isInvalid(price)) {
             return NaN;
         }
         List<Sample> samples = collectSamples(index);
@@ -140,8 +127,8 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Returns the price level with the highest estimated liquidity in the
-     * look-back window.
+     * Returns the price level with the highest estimated liquidity in the look-back
+     * window.
      *
      * <p>
      * Ties prefer the lower price to reflect how traders often anchor to the lower
@@ -149,9 +136,12 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
      *
      * @param index the bar index
      * @return the modal price or {@code NaN} when no samples are available
-     * @since 0.19
+     * @since 0.22.2
      */
     public Num getModePrice(int index) {
+        if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
+            return NaN;
+        }
         List<Sample> samples = collectSamples(index);
         if (samples.isEmpty()) {
             return NaN;
@@ -163,8 +153,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
             if (bestDensity == null || density.isGreaterThan(bestDensity)) {
                 bestDensity = density;
                 bestPrice = sample.price;
-            } else if (density.isEqual(bestDensity) && bestPrice != null
-                    && sample.price.isLessThan(bestPrice)) {
+            } else if (density.isEqual(bestDensity) && bestPrice != null && sample.price.isLessThan(bestPrice)) {
                 bestPrice = sample.price;
             }
         }
@@ -181,7 +170,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         for (int i = startIndex; i <= index; i++) {
             Num price = priceIndicator.getValue(i);
             Num volume = volumeIndicator.getValue(i);
-            if (price == null || price.isNaN() || volume == null || volume.isNaN()) {
+            if (isInvalid(price) || isInvalid(volume)) {
                 continue;
             }
             Num weight = volume.abs();
@@ -195,7 +184,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(0, lookbackLength);
+        return Math.max(0, lookbackLength - 1);
     }
 
     private int computeStartIndex(int index, BarSeries series) {
@@ -240,5 +229,12 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
             this.priceValue = price.doubleValue();
             this.weightValue = weight.doubleValue();
         }
+    }
+
+    private static boolean isInvalid(Num value) {
+        if (Num.isNaNOrNull(value)) {
+            return true;
+        }
+        return Double.isNaN(value.doubleValue());
     }
 }

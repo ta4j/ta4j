@@ -1,33 +1,13 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package org.ta4j.core.indicators.supportresistance;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.ta4j.core.num.NaN.NaN;
 
@@ -47,21 +27,21 @@ import org.ta4j.core.num.NumFactory;
  * down-to-up). The class groups these turning-point prices into configurable
  * buckets and returns the representative price of the most frequent bucket.
  *
- * @since 0.19
+ * @since 0.22.2
  */
 public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> priceIndicator;
-    private final int lookbackLength;
+    private final int lookbackCount;
     private final Num bucketSize;
-    private final transient Map<Integer, Integer> bounceIndexCache = new HashMap<>();
+    private final transient Map<Integer, Integer> bounceIndexCache = new ConcurrentHashMap<>();
 
     /**
      * Constructor using {@link ClosePriceIndicator}.
      *
-     * @param series      the backing bar series
-     * @param bucketSize  the absolute bucket size for grouping bounce prices
-     * @since 0.19
+     * @param series     the backing bar series
+     * @param bucketSize the absolute bucket size for grouping bounce prices
+     * @since 0.22.2
      */
     protected AbstractBounceCountIndicator(BarSeries series, Num bucketSize) {
         this(new ClosePriceIndicator(series), 0, bucketSize);
@@ -72,7 +52,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      *
      * @param priceIndicator the price indicator to analyse
      * @param bucketSize     the absolute bucket size for grouping bounce prices
-     * @since 0.19
+     * @since 0.22.2
      */
     protected AbstractBounceCountIndicator(Indicator<Num> priceIndicator, Num bucketSize) {
         this(priceIndicator, 0, bucketSize);
@@ -82,18 +62,19 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      * Constructor with full configuration.
      *
      * @param priceIndicator the price indicator to analyse
-     * @param lookbackLength the number of bars to evaluate (non-positive for the
+     * @param lookbackCount  the number of bars to evaluate (non-positive for the
      *                       full history)
      * @param bucketSize     the absolute bucket size for grouping bounce prices
-     * @since 0.19
+     * @since 0.22.2
      */
-    protected AbstractBounceCountIndicator(Indicator<Num> priceIndicator, int lookbackLength, Num bucketSize) {
+    protected AbstractBounceCountIndicator(Indicator<Num> priceIndicator, int lookbackCount, Num bucketSize) {
         super(priceIndicator);
         this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator must not be null");
-        this.lookbackLength = lookbackLength;
+        this.lookbackCount = lookbackCount;
         this.bucketSize = Objects.requireNonNull(bucketSize, "bucketSize must not be null");
-        BarSeries series = Objects.requireNonNull(priceIndicator.getBarSeries(), "indicator must reference a bar series");
-        if (bucketSize.isLessThan(series.numFactory().zero())) {
+        BarSeries series = Objects.requireNonNull(priceIndicator.getBarSeries(),
+                "indicator must reference a bar series");
+        if (isInvalid(bucketSize) || bucketSize.isLessThan(series.numFactory().zero())) {
             throw new IllegalArgumentException("bucketSize must be greater than or equal to zero");
         }
     }
@@ -126,7 +107,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      * @param index the bar index
      * @return the most recent bounce index or {@code -1} when no bounce is
      *         available
-     * @since 0.19
+     * @since 0.22.2
      */
     public int getBounceIndex(int index) {
         getValue(index);
@@ -134,10 +115,10 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
     }
 
     private int computeStartIndex(int index, BarSeries series) {
-        if (lookbackLength <= 0) {
+        if (lookbackCount <= 0) {
             return series.getBeginIndex();
         }
-        int desiredStart = index - lookbackLength + 1;
+        int desiredStart = index - lookbackCount + 1;
         return Math.max(series.getBeginIndex(), desiredStart);
     }
 
@@ -152,11 +133,11 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
 
         for (int i = startIndex; i <= endIndex; i++) {
             Num value = priceIndicator.getValue(i);
-            if (Num.isNaNOrNull(value)) {
+            if (isInvalid(value)) {
                 continue;
             }
 
-            if (Num.isNaNOrNull(previousValue)) {
+            if (isInvalid(previousValue)) {
                 previousValue = value;
                 previousIndex = i;
                 continue;
@@ -193,7 +174,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
     private int seedPreviousIndex(int startIndex) {
         for (int i = startIndex - 1; i >= getBarSeries().getBeginIndex(); i--) {
             Num value = priceIndicator.getValue(i);
-            if (!Num.isNaNOrNull(value)) {
+            if (!isInvalid(value)) {
                 return i;
             }
         }
@@ -243,7 +224,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      *
      * @return {@code true} to prefer lower prices, {@code false} to prefer higher
      *         prices
-     * @since 0.19
+     * @since 0.22.2
      */
     protected abstract boolean preferLowerPriceOnTie();
 
@@ -257,9 +238,16 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      *                          {@code -1} for down)
      * @return {@code true} when the flip counts as a bounce, {@code false}
      *         otherwise
-     * @since 0.19
+     * @since 0.22.2
      */
     protected abstract boolean shouldRecordBounce(int previousDirection, int newDirection);
+
+    private static boolean isInvalid(Num value) {
+        if (Num.isNaNOrNull(value)) {
+            return true;
+        }
+        return Double.isNaN(value.doubleValue());
+    }
 
     private static final class PriceBucket {
         private Num representativePrice;

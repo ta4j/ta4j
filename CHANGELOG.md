@@ -13,6 +13,9 @@
 - **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
+- **VWAP analytics suite**: Added anchored/rolling VWAP deviation, standard deviation, z-score, and band indicators for volume-weighted price analytics.
+- **Support/resistance clustering**: Added bounce-count and KDE-based price cluster support/resistance indicators with configurable lookbacks and tolerances.
+- **Wyckoff cycle analysis**: Added Wyckoff phase detection indicators (structure, volume profile, event detection) plus an example workflow.
 - **VWAP analytics suite**: Added anchored VWAP, VWAP deviation/standard deviation/z-score, and VWAP band indicators with shared series validation and NaN handling.
 - **Support/resistance clustering**: Added bounce-count and price-cluster support/resistance indicators plus volume-profile KDE helpers for grouping prices.
 - **Wyckoff cycle analysis**: Added Wyckoff structure, volume, event, and phase indicators plus a runnable cycle example.
@@ -48,6 +51,7 @@
 - **Release scheduler redaction**: Avoid masking long Java class names in binary-change listings.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
 - **Fixed incorrect @since 0.23** by replacing with 0.22.2
+- **Indicator serialization and stability**: Aligned VWAP, price-cluster, and Wyckoff indicators with stable descriptor ordering, NaN handling, and unstable-bar conventions.
 
 ## 0.22.1 (2026-01-15)
 

@@ -1,25 +1,5 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package org.ta4j.core.indicators.wyckoff;
 
@@ -35,7 +15,7 @@ import static org.ta4j.core.num.NaN.NaN;
 /**
  * Provides relative volume measurements to support Wyckoff event detection.
  *
- * @since 0.19
+ * @since 0.22.2
  */
 public final class WyckoffVolumeProfile {
 
@@ -53,7 +33,7 @@ public final class WyckoffVolumeProfile {
      * @param longWindow      size of the slow moving average window
      * @param climaxThreshold ratio above which volume is treated as a climax
      * @param dryUpThreshold  ratio below which volume is treated as drying up
-     * @since 0.19
+     * @since 0.22.2
      */
     public WyckoffVolumeProfile(BarSeries series, int shortWindow, int longWindow, Num climaxThreshold,
             Num dryUpThreshold) {
@@ -68,6 +48,9 @@ public final class WyckoffVolumeProfile {
         this.longSma = new SMAIndicator(volumeIndicator, longWindow);
         this.climaxThreshold = Objects.requireNonNull(climaxThreshold, "climaxThreshold");
         this.dryUpThreshold = Objects.requireNonNull(dryUpThreshold, "dryUpThreshold");
+        if (isInvalid(this.climaxThreshold) || isInvalid(this.dryUpThreshold)) {
+            throw new IllegalArgumentException("Volume thresholds must be valid numbers");
+        }
     }
 
     /**
@@ -75,21 +58,21 @@ public final class WyckoffVolumeProfile {
      *
      * @param index the bar index
      * @return snapshot capturing the current relative volume conditions
-     * @since 0.19
+     * @since 0.22.2
      */
     public VolumeSnapshot snapshot(int index) {
         final Num rawVolume = volumeIndicator.getValue(index);
-        if (rawVolume.isNaN()) {
+        if (isInvalid(rawVolume)) {
             return VolumeSnapshot.empty();
         }
         final Num shortAverage = shortSma.getValue(index);
         final Num longAverage = longSma.getValue(index);
-        if (shortAverage.isNaN() || longAverage.isNaN() || longAverage.isZero()) {
+        if (isInvalid(shortAverage) || isInvalid(longAverage) || longAverage.isZero()) {
             return new VolumeSnapshot(rawVolume, NaN, false, false);
         }
         final Num ratio = shortAverage.dividedBy(longAverage);
-        final boolean climax = !ratio.isNaN() && ratio.isGreaterThan(climaxThreshold);
-        final boolean dryUp = !ratio.isNaN() && ratio.isLessThan(dryUpThreshold);
+        final boolean climax = !isInvalid(ratio) && ratio.isGreaterThan(climaxThreshold);
+        final boolean dryUp = !isInvalid(ratio) && ratio.isLessThan(dryUpThreshold);
         return new VolumeSnapshot(rawVolume, ratio, climax, dryUp);
     }
 
@@ -100,12 +83,19 @@ public final class WyckoffVolumeProfile {
      * @param relativeVolume ratio of short to long averages
      * @param climax         whether the ratio indicates a volume climax
      * @param dryUp          whether the ratio indicates volume dry-up
-     * @since 0.19
+     * @since 0.22.2
      */
     public record VolumeSnapshot(Num volume, Num relativeVolume, boolean climax, boolean dryUp) {
 
         private static VolumeSnapshot empty() {
             return new VolumeSnapshot(NaN, NaN, false, false);
         }
+    }
+
+    private static boolean isInvalid(Num value) {
+        if (value == null) {
+            return true;
+        }
+        return value.isNaN() || Double.isNaN(value.doubleValue());
     }
 }

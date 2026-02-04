@@ -1,32 +1,12 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package org.ta4j.core.indicators.wyckoff;
 
 import java.util.EnumSet;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -37,28 +17,75 @@ import org.ta4j.core.num.NumFactory;
  * Indicator that infers Wyckoff phases by composing structural and volume
  * detectors.
  *
- * @since 0.19
+ * @since 0.22.2
  */
 public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
 
-    private final WyckoffStructureTracker structureTracker;
-    private final WyckoffVolumeProfile volumeProfile;
-    private final WyckoffEventDetector eventDetector;
-    private final int unstableBars;
+    private final int precedingSwingBars;
+    private final int followingSwingBars;
+    private final int allowedEqualSwingBars;
+    private final int volumeShortWindow;
+    private final int volumeLongWindow;
+    private final Num breakoutTolerance;
+    private final Num retestTolerance;
+    private final Num climaxThreshold;
+    private final Num dryUpThreshold;
 
-    private final Map<Integer, WyckoffStructureTracker.StructureSnapshot> structureSnapshots;
-    private final Map<Integer, Integer> lastTransitionIndices;
+    private final transient WyckoffStructureTracker structureTracker;
+    private final transient WyckoffVolumeProfile volumeProfile;
+    private final transient WyckoffEventDetector eventDetector;
+    private final transient int unstableBars;
 
-    private WyckoffPhaseIndicator(Builder builder) {
-        super(builder.series);
-        this.structureTracker = new WyckoffStructureTracker(builder.series, builder.precedingSwingBars,
-                builder.followingSwingBars, builder.allowedEqualSwingBars, builder.breakoutTolerance);
-        this.volumeProfile = new WyckoffVolumeProfile(builder.series, builder.volumeShortWindow,
-                builder.volumeLongWindow, builder.climaxThreshold, builder.dryUpThreshold);
-        this.eventDetector = new WyckoffEventDetector(builder.series, builder.retestTolerance);
-        this.unstableBars = Math.max(builder.precedingSwingBars + builder.followingSwingBars, builder.volumeLongWindow);
-        this.structureSnapshots = new HashMap<>();
-        this.lastTransitionIndices = new HashMap<>();
+    private final transient Map<Integer, WyckoffStructureTracker.StructureSnapshot> structureSnapshots;
+    private final transient Map<Integer, Integer> lastTransitionIndices;
+
+    /**
+     * Creates a Wyckoff phase indicator with default configuration.
+     *
+     * @param series underlying bar series
+     * @since 0.22.2
+     */
+    public WyckoffPhaseIndicator(BarSeries series) {
+        this(Objects.requireNonNull(series, "series"), 3, 3, 1, 5, 20, series.numFactory().numOf(0.02),
+                series.numFactory().numOf(0.05), series.numFactory().numOf(1.6), series.numFactory().numOf(0.7));
+    }
+
+    /**
+     * Creates a Wyckoff phase indicator with full configuration.
+     *
+     * @param series                underlying bar series
+     * @param precedingSwingBars    bars preceding a swing point
+     * @param followingSwingBars    bars following a swing point
+     * @param allowedEqualSwingBars number of equal bars allowed in swing detection
+     * @param volumeShortWindow     short volume SMA window
+     * @param volumeLongWindow      long volume SMA window
+     * @param breakoutTolerance     breakout tolerance applied to range bounds
+     * @param retestTolerance       retest tolerance applied to range bounds
+     * @param climaxThreshold       ratio above which volume is a climax
+     * @param dryUpThreshold        ratio below which volume is drying up
+     * @since 0.22.2
+     */
+    public WyckoffPhaseIndicator(BarSeries series, int precedingSwingBars, int followingSwingBars,
+            int allowedEqualSwingBars, int volumeShortWindow, int volumeLongWindow, Num breakoutTolerance,
+            Num retestTolerance, Num climaxThreshold, Num dryUpThreshold) {
+        super(Objects.requireNonNull(series, "series"));
+        this.precedingSwingBars = precedingSwingBars;
+        this.followingSwingBars = followingSwingBars;
+        this.allowedEqualSwingBars = allowedEqualSwingBars;
+        this.volumeShortWindow = volumeShortWindow;
+        this.volumeLongWindow = volumeLongWindow;
+        this.breakoutTolerance = Objects.requireNonNull(breakoutTolerance, "breakoutTolerance");
+        this.retestTolerance = Objects.requireNonNull(retestTolerance, "retestTolerance");
+        this.climaxThreshold = Objects.requireNonNull(climaxThreshold, "climaxThreshold");
+        this.dryUpThreshold = Objects.requireNonNull(dryUpThreshold, "dryUpThreshold");
+        this.structureTracker = new WyckoffStructureTracker(series, precedingSwingBars, followingSwingBars,
+                allowedEqualSwingBars, this.breakoutTolerance);
+        this.volumeProfile = new WyckoffVolumeProfile(series, volumeShortWindow, volumeLongWindow, this.climaxThreshold,
+                this.dryUpThreshold);
+        this.eventDetector = new WyckoffEventDetector(series, this.retestTolerance);
+        this.unstableBars = Math.max(precedingSwingBars + followingSwingBars, Math.max(0, volumeLongWindow - 1));
+        this.structureSnapshots = new ConcurrentHashMap<>();
+        this.lastTransitionIndices = new ConcurrentHashMap<>();
     }
 
     /**
@@ -66,7 +93,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      *
      * @param series underlying bar series
      * @return configured builder
-     * @since 0.19
+     * @since 0.22.2
      */
     public static Builder builder(BarSeries series) {
         return new Builder(series);
@@ -74,6 +101,9 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
 
     @Override
     protected WyckoffPhase calculate(int index) {
+        if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
+            return WyckoffPhase.UNKNOWN;
+        }
         final WyckoffStructureTracker.StructureSnapshot structure = structureTracker.snapshot(index);
         final WyckoffVolumeProfile.VolumeSnapshot volume = volumeProfile.snapshot(index);
         structureSnapshots.put(index, structure);
@@ -176,7 +206,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      *
      * @param index bar index
      * @return trading-range high or {@code NaN}
-     * @since 0.19
+     * @since 0.22.2
      */
     public Num getTradingRangeHigh(int index) {
         return ensureStructureSnapshot(index).rangeHigh();
@@ -187,7 +217,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      *
      * @param index bar index
      * @return trading-range low or {@code NaN}
-     * @since 0.19
+     * @since 0.22.2
      */
     public Num getTradingRangeLow(int index) {
         return ensureStructureSnapshot(index).rangeLow();
@@ -199,7 +229,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      * @param index bar index
      * @return index of the last phase transition or {@code -1} if none were
      *         recorded yet
-     * @since 0.19
+     * @since 0.22.2
      */
     public int getLastPhaseTransitionIndex(int index) {
         final Integer transition = lastTransitionIndices.get(index);
@@ -224,7 +254,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
     /**
      * Fluent builder for {@link WyckoffPhaseIndicator}.
      *
-     * @since 0.19
+     * @since 0.22.2
      */
     public static final class Builder {
 
@@ -250,28 +280,28 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
         }
 
         /**
-         * Configures the swing-window parameters.
+         * Sets swing-point configuration.
          *
-         * @param preceding number of bars before the swing point
-         * @param following number of bars after the swing point
-         * @param equals    tolerated equal bars when confirming a swing
-         * @return fluent builder
-         * @since 0.19
+         * @param precedingSwingBars bars preceding a swing point
+         * @param followingSwingBars bars following a swing point
+         * @param allowedEqualBars   number of equal bars allowed in swing detection
+         * @return builder
+         * @since 0.22.2
          */
-        public Builder withSwingConfiguration(int preceding, int following, int equals) {
-            this.precedingSwingBars = preceding;
-            this.followingSwingBars = following;
-            this.allowedEqualSwingBars = equals;
+        public Builder withSwingConfiguration(int precedingSwingBars, int followingSwingBars, int allowedEqualBars) {
+            this.precedingSwingBars = precedingSwingBars;
+            this.followingSwingBars = followingSwingBars;
+            this.allowedEqualSwingBars = allowedEqualBars;
             return this;
         }
 
         /**
-         * Configures the volume averaging windows.
+         * Sets volume window lengths.
          *
-         * @param shortWindow short SMA window
-         * @param longWindow  long SMA window
-         * @return fluent builder
-         * @since 0.19
+         * @param shortWindow short volume SMA window
+         * @param longWindow  long volume SMA window
+         * @return builder
+         * @since 0.22.2
          */
         public Builder withVolumeWindows(int shortWindow, int longWindow) {
             this.volumeShortWindow = shortWindow;
@@ -280,41 +310,43 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
         }
 
         /**
-         * Configures breakout and retest tolerances.
+         * Sets breakout and retest tolerances.
          *
-         * @param breakout tolerance applied to breakout classification
-         * @param retest   tolerance applied to retests near range bounds
-         * @return fluent builder
-         * @since 0.19
+         * @param breakoutTolerance breakout tolerance applied to range bounds
+         * @param retestTolerance   retest tolerance applied to range bounds
+         * @return builder
+         * @since 0.22.2
          */
-        public Builder withTolerances(Num breakout, Num retest) {
-            this.breakoutTolerance = breakout;
-            this.retestTolerance = retest;
+        public Builder withTolerances(Num breakoutTolerance, Num retestTolerance) {
+            this.breakoutTolerance = Objects.requireNonNull(breakoutTolerance, "breakoutTolerance");
+            this.retestTolerance = Objects.requireNonNull(retestTolerance, "retestTolerance");
             return this;
         }
 
         /**
-         * Configures the volume thresholds.
+         * Sets volume climax and dry-up thresholds.
          *
-         * @param climax ratio above which volume is considered a climax
-         * @param dryUp  ratio below which volume is considered a dry-up
-         * @return fluent builder
-         * @since 0.19
+         * @param climaxThreshold ratio above which volume is treated as a climax
+         * @param dryUpThreshold  ratio below which volume is treated as drying up
+         * @return builder
+         * @since 0.22.2
          */
-        public Builder withVolumeThresholds(Num climax, Num dryUp) {
-            this.climaxThreshold = climax;
-            this.dryUpThreshold = dryUp;
+        public Builder withVolumeThresholds(Num climaxThreshold, Num dryUpThreshold) {
+            this.climaxThreshold = Objects.requireNonNull(climaxThreshold, "climaxThreshold");
+            this.dryUpThreshold = Objects.requireNonNull(dryUpThreshold, "dryUpThreshold");
             return this;
         }
 
         /**
-         * Builds the indicator.
+         * Builds the configured indicator.
          *
-         * @return configured indicator
-         * @since 0.19
+         * @return WyckoffPhaseIndicator instance
+         * @since 0.22.2
          */
         public WyckoffPhaseIndicator build() {
-            return new WyckoffPhaseIndicator(this);
+            return new WyckoffPhaseIndicator(series, precedingSwingBars, followingSwingBars, allowedEqualSwingBars,
+                    volumeShortWindow, volumeLongWindow, breakoutTolerance, retestTolerance, climaxThreshold,
+                    dryUpThreshold);
         }
     }
 }

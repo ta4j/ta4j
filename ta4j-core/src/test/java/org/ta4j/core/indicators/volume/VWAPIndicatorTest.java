@@ -94,4 +94,5 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         assertThat(vwap.getValue(1).isNaN()).isTrue();
         assertThat(vwap.getValue(2).isNaN()).isTrue();
     }
+
 }

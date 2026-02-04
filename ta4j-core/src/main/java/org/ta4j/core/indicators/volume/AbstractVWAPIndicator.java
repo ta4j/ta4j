@@ -1,25 +1,5 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package org.ta4j.core.indicators.volume;
 
@@ -53,9 +33,6 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
 
     @Override
     protected final Num calculate(int index) {
-        if (index < getCountOfUnstableBars()) {
-            return NaN.NaN;
-        }
         int startIndex = getWindowStartIndex(index);
         if (startIndex > index) {
             return NaN.NaN;
@@ -127,7 +104,7 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
         for (int i = startIndex; i <= endIndex; i++) {
             Num price = priceIndicator.getValue(i);
             Num volume = volumeIndicator.getValue(i);
-            if (Num.isNaNOrNull(price) || Num.isNaNOrNull(volume) || volume.isNegative()) {
+            if (isInvalid(price) || isInvalid(volume) || volume.isNegative()) {
                 return VWAPValues.invalid(factory);
             }
             if (volume.isZero()) {
@@ -203,5 +180,12 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
         public NumFactory getFactory() {
             return factory;
         }
+    }
+
+    private static boolean isInvalid(Num value) {
+        if (Num.isNaNOrNull(value)) {
+            return true;
+        }
+        return Double.isNaN(value.doubleValue());
     }
 }

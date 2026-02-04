@@ -1,33 +1,13 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package org.ta4j.core.indicators.supportresistance;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static org.ta4j.core.num.NaN.NaN;
 
@@ -46,27 +26,29 @@ import org.ta4j.core.num.NumFactory;
  * Concrete implementations provide the tie-breaking behaviour for equally
  * popular clusters.
  *
- * @since 0.19
+ * @since 0.22.2
  */
 public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> priceIndicator;
-    private final Indicator<Num> weightIndicator;
-    private final int lookbackLength;
+    @SuppressWarnings("unused")
+    private final Indicator<Num> weightIndicatorSource;
+    private final int lookbackCount;
     private final Num tolerance;
-    private final transient Map<Integer, Integer> clusterIndexCache = new HashMap<>();
+    private final transient Indicator<Num> weightIndicator;
+    private final transient Map<Integer, Integer> clusterIndexCache = new ConcurrentHashMap<>();
 
     /**
      * Constructor.
      *
      * @param priceIndicator the price source to cluster
-     * @param lookbackLength the number of bars to evaluate (non-positive for the
+     * @param lookbackCount  the number of bars to evaluate (non-positive for the
      *                       full history)
      * @param tolerance      the absolute tolerance for bucket membership
-     * @since 0.19
+     * @since 0.22.2
      */
-    protected AbstractPriceClusterIndicator(Indicator<Num> priceIndicator, int lookbackLength, Num tolerance) {
-        this(priceIndicator, null, lookbackLength, tolerance);
+    protected AbstractPriceClusterIndicator(Indicator<Num> priceIndicator, int lookbackCount, Num tolerance) {
+        this(priceIndicator, null, lookbackCount, tolerance);
     }
 
     /**
@@ -75,26 +57,53 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      * @param priceIndicator  the price source to cluster
      * @param weightIndicator optional weight indicator (defaults to unit weights
      *                        when {@code null})
-     * @param lookbackLength  the number of bars to evaluate (non-positive for the
+     * @param lookbackCount   the number of bars to evaluate (non-positive for the
      *                        full history)
      * @param tolerance       the absolute tolerance for bucket membership
-     * @since 0.19
+     * @since 0.22.2
      */
     protected AbstractPriceClusterIndicator(Indicator<Num> priceIndicator, Indicator<Num> weightIndicator,
-            int lookbackLength, Num tolerance) {
+            int lookbackCount, Num tolerance) {
+        this(priceIndicator, weightIndicator, weightIndicator, lookbackCount, tolerance);
+    }
+
+    /**
+     * Constructor supporting separate source and derived weight indicators.
+     *
+     * @param priceIndicator        the price source to cluster
+     * @param weightIndicator       indicator used for weighting calculations
+     * @param weightIndicatorSource logical weight indicator to expose for
+     *                              serialization
+     * @param lookbackCount         the number of bars to evaluate (non-positive for
+     *                              the full history)
+     * @param tolerance             the absolute tolerance for bucket membership
+     * @since 0.22.2
+     */
+    protected AbstractPriceClusterIndicator(Indicator<Num> priceIndicator, Indicator<Num> weightIndicator,
+            Indicator<Num> weightIndicatorSource, int lookbackCount, Num tolerance) {
         super(priceIndicator);
         this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator must not be null");
-        this.lookbackLength = lookbackLength;
+        this.lookbackCount = lookbackCount;
         this.tolerance = Objects.requireNonNull(tolerance, "tolerance must not be null");
-        BarSeries series = Objects.requireNonNull(priceIndicator.getBarSeries(), "indicator must reference a bar series");
-        if (tolerance.isLessThan(series.numFactory().zero())) {
+        BarSeries series = Objects.requireNonNull(priceIndicator.getBarSeries(),
+                "indicator must reference a bar series");
+        if (isInvalid(tolerance) || tolerance.isLessThan(series.numFactory().zero())) {
             throw new IllegalArgumentException("tolerance must be greater than or equal to zero");
         }
-        if (weightIndicator != null && weightIndicator.getBarSeries() != series) {
+        Indicator<Num> resolvedWeight = weightIndicator;
+        if (resolvedWeight == null) {
+            resolvedWeight = new ConstantIndicator<>(series, series.numFactory().one());
+        }
+        Indicator<Num> resolvedSource = weightIndicatorSource != null ? weightIndicatorSource : resolvedWeight;
+        if (resolvedWeight.getBarSeries() != series) {
             throw new IllegalArgumentException("weightIndicator must share the same bar series as priceIndicator");
         }
-        this.weightIndicator = weightIndicator != null ? weightIndicator
-                : new ConstantIndicator<>(series, series.numFactory().one());
+        if (resolvedSource.getBarSeries() != series) {
+            throw new IllegalArgumentException(
+                    "weightIndicatorSource must share the same bar series as priceIndicator");
+        }
+        this.weightIndicator = resolvedWeight;
+        this.weightIndicatorSource = resolvedSource;
     }
 
     /**
@@ -104,7 +113,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      * @param lookbackCount the number of bars to evaluate (non-positive for the
      *                      full history)
      * @param tolerance     the absolute tolerance for bucket membership
-     * @since 0.19
+     * @since 0.22.2
      */
     protected AbstractPriceClusterIndicator(BarSeries series, int lookbackCount, Num tolerance) {
         this(new ClosePriceIndicator(series), lookbackCount, tolerance);
@@ -138,7 +147,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      * @param index the bar index
      * @return the most recent cluster member index or {@code -1} when no cluster is
      *         available
-     * @since 0.19
+     * @since 0.22.2
      */
     public int getClusterIndex(int index) {
         getValue(index);
@@ -146,10 +155,10 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
     }
 
     private int computeStartIndex(int index, BarSeries series) {
-        if (lookbackLength <= 0) {
+        if (lookbackCount <= 0) {
             return series.getBeginIndex();
         }
-        int desiredStart = index - lookbackLength + 1;
+        int desiredStart = index - lookbackCount + 1;
         return Math.max(series.getBeginIndex(), desiredStart);
     }
 
@@ -157,11 +166,11 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
         List<PriceCluster> clusters = new ArrayList<>();
         for (int i = startIndex; i <= endIndex; i++) {
             Num value = priceIndicator.getValue(i);
-            if (Num.isNaNOrNull(value)) {
+            if (isInvalid(value)) {
                 continue;
             }
             Num weight = weightIndicator.getValue(i);
-            if (Num.isNaNOrNull(weight) || !weight.isPositive()) {
+            if (isInvalid(weight) || !weight.isPositive()) {
                 continue;
             }
             boolean assigned = false;
@@ -218,9 +227,16 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      *
      * @return {@code true} to prefer lower prices, {@code false} to prefer higher
      *         prices
-     * @since 0.19
+     * @since 0.22.2
      */
     protected abstract boolean preferLowerPriceOnTie();
+
+    private static boolean isInvalid(Num value) {
+        if (Num.isNaNOrNull(value)) {
+            return true;
+        }
+        return Double.isNaN(value.doubleValue());
+    }
 
     private static final class PriceCluster {
         private Num weightedSum;

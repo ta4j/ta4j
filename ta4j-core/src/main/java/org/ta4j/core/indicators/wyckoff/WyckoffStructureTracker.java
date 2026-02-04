@@ -1,25 +1,5 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package org.ta4j.core.indicators.wyckoff;
 
@@ -28,8 +8,9 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.RecentSwingHighIndicator;
-import org.ta4j.core.indicators.RecentSwingLowIndicator;
+import org.ta4j.core.indicators.RecentFractalSwingHighIndicator;
+import org.ta4j.core.indicators.RecentFractalSwingLowIndicator;
+import org.ta4j.core.indicators.RecentSwingIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
@@ -40,13 +21,13 @@ import static org.ta4j.core.num.NaN.NaN;
 /**
  * Tracks trading-range structure using recent swing highs and lows.
  *
- * @since 0.19
+ * @since 0.22.2
  */
 public final class WyckoffStructureTracker {
 
     private final BarSeries series;
-    private final RecentSwingHighIndicator swingHighIndicator;
-    private final RecentSwingLowIndicator swingLowIndicator;
+    private final RecentSwingIndicator swingHighIndicator;
+    private final RecentSwingIndicator swingLowIndicator;
     private final HighPriceIndicator highPriceIndicator;
     private final LowPriceIndicator lowPriceIndicator;
     private final ClosePriceIndicator closePriceIndicator;
@@ -63,14 +44,14 @@ public final class WyckoffStructureTracker {
      *                           swing
      * @param breakoutTolerance  tolerance applied when classifying breakouts
      *                           relative to the range bounds
-     * @since 0.19
+     * @since 0.22.2
      */
     public WyckoffStructureTracker(BarSeries series, int precedingSwingBars, int followingSwingBars,
             int allowedEqualBars, Num breakoutTolerance) {
         this.series = Objects.requireNonNull(series, "series");
-        this.swingHighIndicator = new RecentSwingHighIndicator(new HighPriceIndicator(series), precedingSwingBars,
-                followingSwingBars, allowedEqualBars);
-        this.swingLowIndicator = new RecentSwingLowIndicator(new LowPriceIndicator(series), precedingSwingBars,
+        this.swingHighIndicator = new RecentFractalSwingHighIndicator(new HighPriceIndicator(series),
+                precedingSwingBars, followingSwingBars, allowedEqualBars);
+        this.swingLowIndicator = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), precedingSwingBars,
                 followingSwingBars, allowedEqualBars);
         this.highPriceIndicator = new HighPriceIndicator(series);
         this.lowPriceIndicator = new LowPriceIndicator(series);
@@ -87,7 +68,7 @@ public final class WyckoffStructureTracker {
      *
      * @param index the bar index to inspect
      * @return immutable structure snapshot
-     * @since 0.19
+     * @since 0.22.2
      */
     public StructureSnapshot snapshot(int index) {
         if (index < series.getBeginIndex() || index > series.getEndIndex()) {
@@ -160,7 +141,7 @@ public final class WyckoffStructureTracker {
      * @param inRange         whether the close resides within the trading range
      * @param brokeAboveRange {@code true} if the close broke above the range high
      * @param brokeBelowRange {@code true} if the close broke below the range low
-     * @since 0.19
+     * @since 0.22.2
      */
     public record StructureSnapshot(Num rangeLow, Num rangeHigh, int rangeLowIndex, int rangeHighIndex, Num closePrice,
             boolean inRange, boolean brokeAboveRange, boolean brokeBelowRange) {

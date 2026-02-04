@@ -1,25 +1,5 @@
 /*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ * SPDX-License-Identifier: MIT
  */
 package org.ta4j.core.indicators.supportresistance;
 
@@ -35,16 +15,19 @@ import org.ta4j.core.num.Num;
  * Estimates support levels by clustering bar closes within a configurable
  * tolerance.
  *
- * @since 0.19
+ * @since 0.22.2
  */
 public class PriceClusterSupportIndicator extends AbstractPriceClusterIndicator {
+
+    @SuppressWarnings("unused")
+    private final Num bandwidth;
 
     /**
      * Constructor using {@link ClosePriceIndicator}, unlimited history and zero
      * tolerance.
      *
      * @param series the backing bar series
-     * @since 0.19
+     * @since 0.22.2
      */
     public PriceClusterSupportIndicator(BarSeries series) {
         this(new ClosePriceIndicator(series), new VolumeIndicator(series, 1), 0, series.numFactory().zero(),
@@ -58,7 +41,7 @@ public class PriceClusterSupportIndicator extends AbstractPriceClusterIndicator 
      * @param lookbackCount the number of bars to evaluate (non-positive for the
      *                      full history)
      * @param tolerance     the absolute tolerance for bucket membership
-     * @since 0.19
+     * @since 0.22.2
      */
     public PriceClusterSupportIndicator(BarSeries series, int lookbackCount, Num tolerance) {
         this(new ClosePriceIndicator(series), new VolumeIndicator(series, 1), lookbackCount, tolerance, tolerance);
@@ -69,7 +52,7 @@ public class PriceClusterSupportIndicator extends AbstractPriceClusterIndicator 
      * tolerance.
      *
      * @param priceIndicator the price indicator to cluster
-     * @since 0.19
+     * @since 0.22.2
      */
     public PriceClusterSupportIndicator(Indicator<Num> priceIndicator) {
         this(priceIndicator, defaultVolumeIndicator(priceIndicator), 0, zeroTolerance(priceIndicator),
@@ -83,7 +66,7 @@ public class PriceClusterSupportIndicator extends AbstractPriceClusterIndicator 
      * @param lookbackCount  the number of bars to evaluate (non-positive for the
      *                       full history)
      * @param tolerance      the absolute tolerance for bucket membership
-     * @since 0.19
+     * @since 0.22.2
      */
     public PriceClusterSupportIndicator(Indicator<Num> priceIndicator, int lookbackCount, Num tolerance) {
         this(priceIndicator, defaultVolumeIndicator(priceIndicator), lookbackCount, tolerance, tolerance);
@@ -97,11 +80,12 @@ public class PriceClusterSupportIndicator extends AbstractPriceClusterIndicator 
      * @param lookbackCount   the number of bars to evaluate (non-positive for the
      *                        full history)
      * @param tolerance       the absolute tolerance for bucket membership
-     * @since 0.19
+     * @since 0.22.2
      */
     public PriceClusterSupportIndicator(Indicator<Num> priceIndicator, Indicator<Num> weightIndicator,
             int lookbackCount, Num tolerance) {
         super(priceIndicator, weightIndicator, lookbackCount, tolerance);
+        this.bandwidth = null;
     }
 
     /**
@@ -114,12 +98,13 @@ public class PriceClusterSupportIndicator extends AbstractPriceClusterIndicator 
      *                        full history)
      * @param tolerance       the absolute tolerance for bucket membership
      * @param bandwidth       the bandwidth passed to the volume profile KDE
-     * @since 0.19
+     * @since 0.22.2
      */
     public PriceClusterSupportIndicator(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator,
             int lookbackCount, Num tolerance, Num bandwidth) {
-        this(priceIndicator, new VolumeProfileKDEIndicator(priceIndicator, volumeIndicator, lookbackCount, bandwidth),
-                lookbackCount, tolerance);
+        super(priceIndicator, new VolumeProfileKDEIndicator(priceIndicator, volumeIndicator, lookbackCount, bandwidth),
+                volumeIndicator, lookbackCount, tolerance);
+        this.bandwidth = bandwidth;
     }
 
     private static VolumeIndicator defaultVolumeIndicator(Indicator<Num> priceIndicator) {
