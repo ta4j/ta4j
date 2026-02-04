@@ -14,6 +14,11 @@ import org.ta4j.core.num.Num;
 /**
  * Scores wave structure completeness.
  *
+ * <p>
+ * This factor measures how many expected waves are confirmed for the current
+ * phase. Use it when you want incomplete or early-stage patterns to score lower
+ * than fully formed structures.
+ *
  * @since 0.22.2
  */
 public final class StructureCompletenessFactor implements ConfidenceFactor {

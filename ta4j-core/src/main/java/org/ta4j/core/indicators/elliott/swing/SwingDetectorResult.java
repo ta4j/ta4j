@@ -12,6 +12,11 @@ import org.ta4j.core.indicators.elliott.ElliottSwing;
 /**
  * Captures detected swing pivots and swings for a given index.
  *
+ * <p>
+ * Use this record to return both pivot-level and swing-level views from a
+ * {@link SwingDetector}. It is especially handy when downstream consumers need
+ * pivot diagnostics or to reconstitute swings.
+ *
  * @param pivots ordered list of detected pivots
  * @param swings ordered list of swings derived from pivots
  * @since 0.22.2

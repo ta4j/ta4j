@@ -13,6 +13,11 @@ import org.ta4j.core.num.Num;
 /**
  * Scores wave 2/4 alternation with time diagnostics.
  *
+ * <p>
+ * Use this factor to emphasize alternation quality between corrective waves. It
+ * leverages alternation diagnostics from {@link ElliottConfidenceScorer} and
+ * returns detailed timing notes in the diagnostics map.
+ *
  * @since 0.22.2
  */
 public final class TimeAlternationFactor implements ConfidenceFactor {

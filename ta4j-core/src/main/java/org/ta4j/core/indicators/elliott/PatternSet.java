@@ -10,6 +10,11 @@ import java.util.Set;
 /**
  * Configures which Elliott scenario patterns are enabled.
  *
+ * <p>
+ * Use this helper to constrain {@link ElliottScenarioGenerator} or
+ * {@link ElliottWaveAnalyzer} to a subset of pattern types (for example,
+ * impulse-only analysis).
+ *
  * @since 0.22.2
  */
 public final class PatternSet {

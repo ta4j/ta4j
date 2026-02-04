@@ -9,6 +9,10 @@ import org.ta4j.core.indicators.elliott.ElliottDegree;
 /**
  * Detects Elliott swing pivots and constructs swing sequences.
  *
+ * <p>
+ * Implement this interface to plug custom swing detection algorithms into
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalyzer}.
+ *
  * @since 0.22.2
  */
 @FunctionalInterface

@@ -12,6 +12,10 @@ import org.ta4j.core.num.NumFactory;
 /**
  * Factory helpers for confidence profiles.
  *
+ * <p>
+ * Use these helpers to build default or scenario-specific profiles without
+ * manually wiring each factor and weight.
+ *
  * @since 0.22.2
  */
 public final class ConfidenceProfiles {

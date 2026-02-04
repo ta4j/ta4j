@@ -10,6 +10,10 @@ import org.ta4j.core.indicators.elliott.ElliottSwing;
 /**
  * Post-processes swing lists to remove noise or apply custom constraints.
  *
+ * <p>
+ * Implement this interface to plug additional filtering into
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalyzer}.
+ *
  * @since 0.22.2
  */
 @FunctionalInterface

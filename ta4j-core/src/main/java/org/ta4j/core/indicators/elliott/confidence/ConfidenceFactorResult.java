@@ -12,6 +12,11 @@ import org.ta4j.core.num.Num;
 /**
  * Result of scoring a confidence factor.
  *
+ * <p>
+ * Use this record to capture diagnostic details for a single factor. The
+ * weighted results are aggregated into {@link ElliottConfidenceBreakdown} for
+ * reporting or analysis.
+ *
  * @param name        factor name
  * @param category    factor category
  * @param score       factor score (0.0 - 1.0)

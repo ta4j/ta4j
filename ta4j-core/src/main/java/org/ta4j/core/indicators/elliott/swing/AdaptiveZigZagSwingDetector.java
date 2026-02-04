@@ -20,6 +20,11 @@ import org.ta4j.core.num.Num;
 /**
  * Swing detector that adapts the ZigZag reversal threshold to volatility.
  *
+ * <p>
+ * Use this detector when a fixed reversal threshold is too rigid for changing
+ * volatility regimes. It derives reversal thresholds from ATR, optionally
+ * smoothed, and feeds the result into a ZigZag-based swing detector.
+ *
  * @since 0.22.2
  */
 public final class AdaptiveZigZagSwingDetector implements SwingDetector {

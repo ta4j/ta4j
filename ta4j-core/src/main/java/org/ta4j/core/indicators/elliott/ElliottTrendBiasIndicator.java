@@ -11,6 +11,11 @@ import org.ta4j.core.indicators.CachedIndicator;
 /**
  * Computes the aggregate directional bias across Elliott wave scenarios.
  *
+ * <p>
+ * Use this indicator to derive a single bullish/bearish/neutral signal from a
+ * scenario set. It is useful for strategy filters or dashboards that do not
+ * need the full scenario list.
+ *
  * @since 0.22.2
  */
 public class ElliottTrendBiasIndicator extends CachedIndicator<ElliottTrendBias> {

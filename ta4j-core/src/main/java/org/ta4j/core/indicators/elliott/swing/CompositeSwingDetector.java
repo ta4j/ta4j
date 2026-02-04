@@ -16,6 +16,12 @@ import org.ta4j.core.num.Num;
 /**
  * Combines multiple swing detectors with AND/OR pivot agreement.
  *
+ * <p>
+ * Use this detector when you need stronger confirmation (AND) or broader
+ * coverage (OR) across multiple swing detection strategies. It merges pivots
+ * from underlying detectors and resolves disagreements according to the chosen
+ * policy.
+ *
  * @since 0.22.2
  */
 public final class CompositeSwingDetector implements SwingDetector {

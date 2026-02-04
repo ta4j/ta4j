@@ -27,6 +27,12 @@ import org.ta4j.core.num.NumFactory;
  * <li>Structure completeness (15%): How many expected waves are confirmed</li>
  * </ul>
  *
+ * <p>
+ * Use this scorer when you need direct control over factor weights or want to
+ * build custom confidence profiles for {@link ElliottScenarioGenerator} or
+ * {@link org.ta4j.core.indicators.elliott.confidence.ConfidenceModel}
+ * implementations.
+ *
  * @since 0.22.0
  */
 public final class ElliottConfidenceScorer {

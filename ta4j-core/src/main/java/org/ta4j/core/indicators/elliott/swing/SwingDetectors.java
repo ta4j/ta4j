@@ -9,6 +9,10 @@ import java.util.List;
 /**
  * Factory helpers for common swing detector configurations.
  *
+ * <p>
+ * Use these factories to quickly wire up swing detection without manually
+ * instantiating each detector or configuration class.
+ *
  * @since 0.22.2
  */
 public final class SwingDetectors {

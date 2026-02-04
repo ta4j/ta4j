@@ -25,6 +25,11 @@ import org.ta4j.core.num.NumFactory;
  * recalculating the projected channel on each bar using the latest two swing
  * highs and lows.
  *
+ * <p>
+ * Use this indicator when you need per-bar channel boundaries for validation,
+ * chart overlays, or confidence scoring. It is commonly paired with
+ * {@link ElliottScenarioIndicator} or accessed via {@link ElliottWaveFacade}.
+ *
  * @since 0.22.0
  */
 public class ElliottChannelIndicator extends CachedIndicator<ElliottChannel> {

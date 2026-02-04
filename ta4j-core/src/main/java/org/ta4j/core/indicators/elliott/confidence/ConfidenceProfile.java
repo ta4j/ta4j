@@ -15,6 +15,11 @@ import org.ta4j.core.num.Num;
 /**
  * Defines a weighted set of confidence factors.
  *
+ * <p>
+ * Use this record to assemble custom scoring profiles by combining
+ * {@link ConfidenceFactor} instances with explicit weights. Profiles are
+ * consumed by {@link ConfidenceModel} implementations.
+ *
  * @param factors weighted factor list
  * @since 0.22.2
  */

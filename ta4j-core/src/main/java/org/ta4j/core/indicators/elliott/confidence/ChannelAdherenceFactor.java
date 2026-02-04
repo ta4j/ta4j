@@ -13,6 +13,11 @@ import org.ta4j.core.num.Num;
 /**
  * Scores channel adherence.
  *
+ * <p>
+ * This factor evaluates how well swing pivots stay within the projected Elliott
+ * channel. Use it when constructing custom confidence profiles or when you want
+ * to emphasize channel-respecting structures.
+ *
  * @since 0.22.2
  */
 public final class ChannelAdherenceFactor implements ConfidenceFactor {

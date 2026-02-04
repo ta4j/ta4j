@@ -18,6 +18,11 @@ import org.ta4j.core.num.Num;
  * {@link #base()} method returns the highest-confidence interpretation (base
  * case), while {@link #alternatives()} provides all other valid scenarios.
  *
+ * <p>
+ * Use this container when you need to summarize or filter multiple
+ * interpretations, derive consensus signals, or compute trend bias across
+ * scenarios.
+ *
  * @since 0.22.0
  */
 public final class ElliottScenarioSet {

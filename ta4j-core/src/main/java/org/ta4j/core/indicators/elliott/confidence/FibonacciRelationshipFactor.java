@@ -14,6 +14,11 @@ import org.ta4j.core.num.Num;
 /**
  * Scores Fibonacci proximity relationships for impulse/corrective waves.
  *
+ * <p>
+ * Use this factor to emphasize classic Fibonacci ratios when building custom
+ * confidence profiles. It inspects swing amplitudes and phase context to score
+ * retracement and extension conformity.
+ *
  * @since 0.22.2
  */
 public final class FibonacciRelationshipFactor implements ConfidenceFactor {

@@ -6,6 +6,11 @@ package org.ta4j.core.indicators.elliott.swing;
 /**
  * Configuration for adaptive ZigZag swing detection.
  *
+ * <p>
+ * Use this configuration when you want ZigZag reversal thresholds to scale with
+ * volatility (ATR) while still enforcing minimum/maximum bounds. It is consumed
+ * by {@link AdaptiveZigZagSwingDetector}.
+ *
  * @param atrPeriod       ATR lookback period
  * @param atrMultiplier   multiplier applied to ATR values
  * @param minThreshold    minimum reversal threshold (price units, 0 to disable)

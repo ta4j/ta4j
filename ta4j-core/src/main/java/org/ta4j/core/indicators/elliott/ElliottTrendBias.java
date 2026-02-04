@@ -11,6 +11,12 @@ import org.ta4j.core.num.Num;
 /**
  * Captures the aggregate directional bias across Elliott wave scenarios.
  *
+ * <p>
+ * Use this record when you need a single bullish/bearish/neutral summary of
+ * scenario outcomes, for example to filter trades or annotate reports. It is
+ * produced by {@link ElliottScenarioSet#trendBias()} and
+ * {@link ElliottTrendBiasIndicator}.
+ *
  * @param direction     directional bias classification
  * @param score         signed bias score (-1.0 to 1.0). Positive values
  *                      indicate bullish dominance, negative values indicate

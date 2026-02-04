@@ -6,6 +6,12 @@ package org.ta4j.core.indicators.elliott.confidence;
 /**
  * Confidence factor for Elliott wave scoring.
  *
+ * <p>
+ * Implement this interface to introduce a new scoring dimension (for example,
+ * custom volatility or volume-based checks). Factors are assembled into
+ * {@link ConfidenceProfile} instances and weighted by {@link ConfidenceModel}
+ * implementations.
+ *
  * @since 0.22.2
  */
 public interface ConfidenceFactor {

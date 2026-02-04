@@ -18,6 +18,12 @@ import org.ta4j.core.num.NumFactory;
 /**
  * Confidence model that selects profiles by {@link ScenarioType}.
  *
+ * <p>
+ * Use this model when different pattern types (impulse vs corrective) should be
+ * scored with different factor weights. It is the default model used by
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalyzer} and
+ * {@link org.ta4j.core.indicators.elliott.ElliottScenarioGenerator} helpers.
+ *
  * @since 0.22.2
  */
 public final class ScenarioTypeConfidenceModel implements ConfidenceModel {

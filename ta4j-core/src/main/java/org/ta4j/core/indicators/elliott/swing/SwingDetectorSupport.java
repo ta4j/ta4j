@@ -11,6 +11,13 @@ import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.num.Num;
 
+/**
+ * Package-private helpers for normalizing swing pivots and sequences.
+ *
+ * <p>
+ * This utility centralizes pivot normalization so detectors produce consistent
+ * swing lists regardless of input order or duplicate pivots.
+ */
 final class SwingDetectorSupport {
 
     private SwingDetectorSupport() {

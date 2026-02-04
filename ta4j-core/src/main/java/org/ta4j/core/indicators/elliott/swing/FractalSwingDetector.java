@@ -13,6 +13,11 @@ import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
 /**
  * Swing detector backed by fractal swing high/low indicators.
  *
+ * <p>
+ * Use this detector when you prefer classic Bill Williams-style fractal
+ * confirmations with configurable lookback/lookforward windows. It is the
+ * default choice for deterministic swing detection in Elliott Wave analysis.
+ *
  * @since 0.22.2
  */
 public final class FractalSwingDetector implements SwingDetector {

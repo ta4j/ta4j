@@ -26,6 +26,12 @@ import org.ta4j.core.num.NumFactory;
  * scenario receives a confidence score, and low-confidence interpretations are
  * pruned from the final output.
  *
+ * <p>
+ * Use this generator when you need programmatic access to alternative wave
+ * interpretations outside of the indicator framework (for example in batch
+ * analysis or custom pipelines). It is the engine behind
+ * {@link ElliottScenarioIndicator} and {@link ElliottWaveAnalyzer}.
+ *
  * @since 0.22.0
  */
 public final class ElliottScenarioGenerator {

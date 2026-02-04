@@ -18,6 +18,11 @@ import org.ta4j.core.num.Num;
 /**
  * Swing detector backed by the ZigZag state indicator.
  *
+ * <p>
+ * Use this detector when you want adaptive pivot confirmation based on a
+ * reversal threshold (fixed or indicator-driven). It is a good choice for
+ * volatile markets where fixed window fractals are too rigid.
+ *
  * @since 0.22.2
  */
 public final class ZigZagSwingDetector implements SwingDetector {

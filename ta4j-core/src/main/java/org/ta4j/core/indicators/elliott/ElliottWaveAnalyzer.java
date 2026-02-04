@@ -26,6 +26,17 @@ import org.ta4j.core.num.NumFactory;
 /**
  * Orchestrates Elliott Wave analysis using pluggable detectors and profiles.
  *
+ * <p>
+ * Use this analyzer when you want a single, end-to-end analysis run (for
+ * charting, reporting, or batch workflows) rather than per-bar indicator
+ * outputs. The analyzer wires together a {@link SwingDetector}, optional
+ * {@link SwingFilter}, optional {@link ElliottSwingCompressor}, and a
+ * confidence model to produce an {@link ElliottAnalysisResult} containing
+ * scenarios, confidence breakdowns, channels, and trend bias.
+ *
+ * <p>
+ * For indicator-style access, use {@link ElliottWaveFacade} instead.
+ *
  * @since 0.22.2
  */
 public final class ElliottWaveAnalyzer {

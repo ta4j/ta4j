@@ -13,6 +13,11 @@ import org.ta4j.core.indicators.elliott.ScenarioType;
 /**
  * Selects a confidence profile for scoring Elliott scenarios.
  *
+ * <p>
+ * Implement this interface when you need different scoring profiles per
+ * scenario type, market regime, or strategy context. The default implementation
+ * is {@link ScenarioTypeConfidenceModel}.
+ *
  * @since 0.22.2
  */
 public interface ConfidenceModel {

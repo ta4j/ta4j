@@ -66,6 +66,15 @@
  * </ul>
  *
  * <p>
+ * <b>Entry points</b>: Use
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveFacade} when you want
+ * indicator-style, per-bar access to Elliott outputs (phase, ratios, scenarios,
+ * invalidations). Use
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalyzer} when you want a
+ * one-shot analysis pipeline with pluggable swing detection, filtering, and
+ * confidence profiles.
+ *
+ * <p>
  * <b>Getting Started</b>:
  * <p>
  * The simplest way to use Elliott Wave analysis is through the

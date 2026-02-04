@@ -16,6 +16,11 @@ import org.ta4j.core.num.Num;
 /**
  * Scores time proportion conformance.
  *
+ * <p>
+ * This factor checks whether wave durations conform to expected Elliott
+ * relationships. Use it when you want time-based structure checks to influence
+ * confidence scoring.
+ *
  * @since 0.22.2
  */
 public final class TimeProportionFactor implements ConfidenceFactor {

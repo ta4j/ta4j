@@ -14,6 +14,10 @@ import org.ta4j.core.num.Num;
  * Filters out swings whose magnitude is below a percentage of the largest
  * swing.
  *
+ * <p>
+ * Use this filter to remove micro-swings before counting waves or generating
+ * scenarios. It is especially helpful for noisy or high-frequency data.
+ *
  * @since 0.22.2
  */
 public final class MinMagnitudeSwingFilter implements SwingFilter {

@@ -15,6 +15,11 @@ import org.ta4j.core.num.NumFactory;
 /**
  * Context required to score confidence factors.
  *
+ * <p>
+ * This immutable context bundles swings, phase, channel, and Fibonacci
+ * validation utilities so each factor can compute a normalized score. It is
+ * constructed by {@link ConfidenceModel} implementations.
+ *
  * @param swings     swing sequence
  * @param phase      current Elliott phase
  * @param channel    Elliott channel (nullable)

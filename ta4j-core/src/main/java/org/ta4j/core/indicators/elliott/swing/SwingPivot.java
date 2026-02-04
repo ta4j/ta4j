@@ -10,6 +10,11 @@ import org.ta4j.core.num.Num;
 /**
  * Represents a confirmed swing pivot.
  *
+ * <p>
+ * Use this record when you need pivot-level diagnostics or to reconstruct swing
+ * sequences outside of
+ * {@link org.ta4j.core.indicators.elliott.ElliottSwingIndicator}.
+ *
  * @param index bar index of the pivot
  * @param price pivot price level
  * @param type  pivot type (high/low)
