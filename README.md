@@ -55,20 +55,7 @@ Ta4j does not promise profitable strategies. It promises reproducible experiment
 - **Composable strategies**: Chain rules fluently using familiar Java patterns - no DSLs or configuration files required.
 - **Backtesting built-in**: Evaluate risk/reward with realistic trading costs and performance metrics in just a few lines.
 - **MIT licensed**: Use it at work, in research, or inside your next trading product without legal concerns.
-
-### Wyckoff cycle analysis
-
-Ta4j now ships with dedicated Wyckoff cycle tooling that interprets structural events (selling climax, upthrust,
-springs, etc.) and maps them to the classic phase lettering (A through E) for both accumulation and distribution
-cycles.
-
-- `WyckoffPhaseIndicator` composes recent swing structure and relative volume to emit `WyckoffPhase` values per bar.
-  The fluent builder lets you tune swing look-backs, volume smoothing windows, and breakout tolerances so the
-  indicator can adapt to different markets or timeframes.
-- Helper accessors expose the inferred trading-range bounds and latest phase transition index, making it
-  straightforward to feed the signal into strategies or reporting pipelines.
-- See [`ta4jexamples.wyckoff.WyckoffCycleExample`](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleExample.java)
-  for a runnable example that prints phase transitions for Apple Inc. daily data.
+- 
 
 ## Install in seconds
 
@@ -589,16 +576,6 @@ Bar series serialization (Java):
 - `ConcurrentBarSeries` reinitializes its locks after deserialization and recreates the trade bar builder lazily.
 - Builder state (for example, a time period set directly on the builder) must be re-applied after deserialization unless you configured it in the factory.
 
-## Features at a glance
-
-- **190+ technical indicators (and counting)** - Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and many more. New indicators are added regularly.
-- **Composable strategy API** - Build complex trading rules using fluent Java patterns
-- **Built-in backtesting engine** - Test strategies on years of data in seconds. Same code for backtesting and live trading — no rewrites.
-- **Performance metrics** - 30+ analysis criteria including Sharpe ratio, drawdown, win rate, and more
-- **Charting support** - Visualize strategies with candlestick charts, indicator overlays, and performance subcharts
-- **JSON serialization** - Save and restore strategies and indicators for persistence and sharing
-- **Production-ready** - Deterministic calculations, minimal dependencies, type-safe APIs
-- **Extensive examples** - Runnable demos covering strategies, indicators, backtesting, and live trading
 
 ## From backtest to live trading
 
