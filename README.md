@@ -671,7 +671,7 @@ ElliottScenarioSet scenarios = facade.scenarios().getValue(index);
 Num invalidation = facade.invalidationLevel().getValue(index);
 ```
 
-See `docs/elliott-wave-quickstart.md` for the full guide and the analyzer-based workflow.
+See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and analyzer-based workflow.
 
 ## Real-world examples
 
