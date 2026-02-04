@@ -6,10 +6,12 @@ package org.ta4j.core.rules.elliott;
 import java.util.Objects;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottScenarioSet;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.AbstractRule;
+import org.ta4j.core.rules.OverOrEqualIndicatorRule;
 
 /**
  * Checks that the base scenario meets a minimum confidence threshold.
@@ -18,8 +20,7 @@ import org.ta4j.core.rules.AbstractRule;
  */
 public class ElliottScenarioConfidenceRule extends AbstractRule {
 
-    private final Indicator<ElliottScenarioSet> scenarioIndicator;
-    private final double minConfidence;
+    private final Rule confidenceRule;
 
     /**
      * Creates a confidence threshold rule.
@@ -30,14 +31,14 @@ public class ElliottScenarioConfidenceRule extends AbstractRule {
      */
     public ElliottScenarioConfidenceRule(final Indicator<ElliottScenarioSet> scenarioIndicator,
             final double minConfidence) {
-        this.scenarioIndicator = Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
-        this.minConfidence = minConfidence;
+        Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
+        Indicator<Num> confidenceIndicator = ElliottScenarioRuleSupport.confidenceIndicator(scenarioIndicator);
+        this.confidenceRule = new OverOrEqualIndicatorRule(confidenceIndicator, minConfidence);
     }
 
     @Override
     public boolean isSatisfied(final int index, final TradingRecord tradingRecord) {
-        ElliottScenario base = ElliottScenarioRuleSupport.baseScenario(scenarioIndicator, index);
-        boolean satisfied = base != null && base.confidence().isAboveThreshold(minConfidence);
+        boolean satisfied = confidenceRule.isSatisfied(index, tradingRecord);
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }

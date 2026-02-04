@@ -6,11 +6,13 @@ package org.ta4j.core.rules.elliott;
 import java.util.Objects;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottScenarioSet;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.AbstractRule;
+import org.ta4j.core.rules.OverOrEqualIndicatorRule;
+import org.ta4j.core.rules.UnderOrEqualIndicatorRule;
 
 /**
  * Checks whether the price has reached the scenario target.
@@ -19,9 +21,7 @@ import org.ta4j.core.rules.AbstractRule;
  */
 public class ElliottScenarioTargetReachedRule extends AbstractRule {
 
-    private final Indicator<ElliottScenarioSet> scenarioIndicator;
-    private final Indicator<Num> priceIndicator;
-    private final boolean bullish;
+    private final Rule targetRule;
 
     /**
      * Creates a target-reached rule.
@@ -34,25 +34,16 @@ public class ElliottScenarioTargetReachedRule extends AbstractRule {
      */
     public ElliottScenarioTargetReachedRule(final Indicator<ElliottScenarioSet> scenarioIndicator,
             final Indicator<Num> priceIndicator, final boolean bullish) {
-        this.scenarioIndicator = Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
-        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
-        this.bullish = bullish;
+        Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
+        Objects.requireNonNull(priceIndicator, "priceIndicator");
+        Indicator<Num> targetIndicator = ElliottScenarioRuleSupport.targetIndicator(scenarioIndicator, bullish);
+        this.targetRule = bullish ? new OverOrEqualIndicatorRule(priceIndicator, targetIndicator)
+                : new UnderOrEqualIndicatorRule(priceIndicator, targetIndicator);
     }
 
     @Override
     public boolean isSatisfied(final int index, final TradingRecord tradingRecord) {
-        ElliottScenario base = ElliottScenarioRuleSupport.baseScenario(scenarioIndicator, index);
-        Num closePrice = priceIndicator.getValue(index);
-        if (base == null || Num.isNaNOrNull(closePrice)) {
-            traceIsSatisfied(index, false);
-            return false;
-        }
-        Num target = ElliottScenarioRuleSupport.selectTarget(base, bullish);
-        if (Num.isNaNOrNull(target)) {
-            traceIsSatisfied(index, false);
-            return false;
-        }
-        boolean satisfied = bullish ? closePrice.isGreaterThanOrEqual(target) : closePrice.isLessThanOrEqual(target);
+        boolean satisfied = targetRule.isSatisfied(index, tradingRecord);
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }
