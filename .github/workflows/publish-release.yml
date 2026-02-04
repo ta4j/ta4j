@@ -14,8 +14,8 @@ on:
         required: true
         type: string
       releaseCommit:
-        description: "Release commit SHA that already exists on the default branch."
-        required: true
+        description: "Optional: Release commit SHA on the default branch (auto-detects from release/<version>.md if blank)."
+        required: false
         type: string
       dryRun:
         description: "Run publish workflow in dry-run mode (no tag/push/deploy)."
@@ -151,6 +151,7 @@ jobs:
           github-token: ${{ github.token }}
           script: |
             const core = require("@actions/core");
+            const { execSync } = require("child_process");
 
             const eventName = context.eventName;
             let releaseVersion = "";
@@ -162,6 +163,35 @@ jobs:
             if (eventName === "workflow_dispatch") {
               releaseVersion = core.getInput("releaseVersion");
               releaseCommit = core.getInput("releaseCommit");
+              if (!releaseVersion) {
+                throw new Error("releaseVersion is required for workflow_dispatch.");
+              }
+              if (!releaseCommit) {
+                const defaultBranch = context.payload.repository?.default_branch || "";
+                if (!defaultBranch) {
+                  throw new Error("Default branch not available; cannot auto-detect release commit.");
+                }
+                const releaseNotesPath = `release/${releaseVersion}.md`;
+                execSync(`git fetch origin ${defaultBranch} --tags`, { stdio: "inherit" });
+                let output = "";
+                try {
+                  output = execSync(
+                    `git log --diff-filter=A --format=%H origin/${defaultBranch} -- ${releaseNotesPath}`,
+                    { encoding: "utf8" }
+                  ).trim();
+                } catch (error) {
+                  throw new Error(`Failed to search for release commit on origin/${defaultBranch}: ${error.message}`);
+                }
+                if (!output) {
+                  throw new Error(
+                    `Unable to auto-detect release commit. '${releaseNotesPath}' not found on origin/${defaultBranch}.`
+                  );
+                }
+                releaseCommit = output.split(/\r?\n/)[0].trim();
+                core.info(
+                  `Auto-detected release commit ${releaseCommit} from ${releaseNotesPath} on origin/${defaultBranch}.`
+                );
+              }
             } else {
               const pr = context.payload.pull_request;
               prNumber = pr?.number ? String(pr.number) : "";
@@ -594,8 +624,10 @@ jobs:
 
           if [ "$dry_run" = "true" ]; then
             mode_label="dry-run"
+            marker_run="dry-run"
           else
             mode_label="production"
+            marker_run="real"
           fi
 
           if [ "$status" = "success" ]; then
@@ -607,6 +639,7 @@ jobs:
           timestamp=$(date '+%-I:%M:%S %p on %-m.%-d.%Y')
 
           cat > notification-body.txt <<EOF
+          <!-- ta4j:post-type=publish-release;run=${marker_run} -->
           @${notify_user}
 
           **Maven Central Release ${mode_label} ${completion_text} at ${timestamp}**
@@ -616,6 +649,9 @@ jobs:
           - Status: ${status_upper}
 
           Release Summary:
+          <details>
+          <summary>Show details</summary>
+
           - dryRun: ${dry_run}
           - release version: ${release}
           - next snapshot: ${next}
@@ -626,6 +662,8 @@ jobs:
           - existing tag: ${existing_tag}
           - missing secrets: ${missing_secrets}
           - has missing secrets: ${has_missing}
+
+          </details>
           EOF
 
       - name: Post to Maven Central Releases discussion
