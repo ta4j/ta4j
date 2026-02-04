@@ -44,50 +44,50 @@ public final class FibonacciRelationshipFactor implements ConfidenceFactor {
                     "Insufficient swings");
         }
 
-        double total = 0.0;
+        Num total = context.numFactory().zero();
         int count = 0;
 
         if (phase.isImpulse()) {
             if (swings.size() >= 2) {
                 Num score = context.validator().waveTwoProximityScore(swings.get(0), swings.get(1));
                 diagnostics.put("wave2", score.doubleValue());
-                total += score.doubleValue();
+                total = total.plus(score);
                 count++;
             }
             if (swings.size() >= 3) {
                 Num score = context.validator().waveThreeProximityScore(swings.get(0), swings.get(2));
                 diagnostics.put("wave3", score.doubleValue());
-                total += score.doubleValue();
+                total = total.plus(score);
                 count++;
             }
             if (swings.size() >= 4) {
                 Num score = context.validator().waveFourProximityScore(swings.get(2), swings.get(3));
                 diagnostics.put("wave4", score.doubleValue());
-                total += score.doubleValue();
+                total = total.plus(score);
                 count++;
             }
             if (swings.size() >= 5) {
                 Num score = context.validator().waveFiveProximityScore(swings.get(0), swings.get(4));
                 diagnostics.put("wave5", score.doubleValue());
-                total += score.doubleValue();
+                total = total.plus(score);
                 count++;
             }
         } else if (phase.isCorrective()) {
             if (swings.size() >= 2) {
                 Num score = context.validator().waveBProximityScore(swings.get(0), swings.get(1));
                 diagnostics.put("waveB", score.doubleValue());
-                total += score.doubleValue();
+                total = total.plus(score);
                 count++;
             }
             if (swings.size() >= 3) {
                 Num score = context.validator().waveCProximityScore(swings.get(0), swings.get(2));
                 diagnostics.put("waveC", score.doubleValue());
-                total += score.doubleValue();
+                total = total.plus(score);
                 count++;
             }
         }
 
-        Num average = count > 0 ? context.numFactory().numOf(total / count) : context.numFactory().zero();
+        Num average = count > 0 ? total.dividedBy(context.numFactory().numOf(count)) : context.numFactory().zero();
         return ConfidenceFactorResult.of(name(), category(), average, diagnostics, "Fibonacci proximity");
     }
 }
