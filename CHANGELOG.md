@@ -21,19 +21,10 @@
 - **Chart builder metadata**: Chart definitions now surface a shared metadata object for domain series, title, and time axis mode; chart plans expose a ChartContext and derive their primary series from it, with ChartWorkflow rendering helpers accepting contexts.
 - **TimeBarBuilder**: Enhanced with trade ingestion logic, time alignment validation, and RealtimeBar support.
 - **BaseBarSeriesBuilder**: Deprecated `setConstrained` in favor of deriving constrained mode from max-bar-count configuration.
-- **Release workflow notifications**: Post GitHub Discussion updates for release-scheduler and release runs with decision summaries.
-- **Workflow lint hook**: Added a repo `pre-push` hook to run `actionlint` on workflow changes (see CONTRIBUTING).
-- **Release health workflow**: Added scheduled checks for tag reachability, snapshot version drift, stale release PRs, and missing release notes, with summaries posted to Discussions.
-- **Two-phase release workflows**: Added `prepare-release.yml` and `publish-release.yml` to split release preparation from tagging and deployment.
-- **Release workflow branching**: Auto-merge the release PR by default, with optional direct push to the default branch when `RELEASE_DIRECT_PUSH=true`.
-- **Agent workflow**: Allow skipping the full build when the only changes are within `.github/workflows/`, `CHANGELOG.md`, or documentation-only files (e.g., `*.md`, `docs/`).
-- **Release process docs**: Overhauled with clearer steps, rationale, and example scenarios.
-- **Release scheduler notifications**: Include run mode and timestamp in the discussion header.
-- **Release notifications**: Include run mode and timestamp in the release discussion header.
-- **Release scheduler dispatch**: Route automated releases through `prepare-release.yml` and include the binary change count in the AI prompt, with deterministic no-release outputs for zero binary changes.
-- **Release automation tokens**: Use `GH_TA4J_REPO_TOKEN` for release push operations when available.
-- **Release token preflight**: Fail fast when `GH_TA4J_REPO_TOKEN` lacks write permission (warn-only in dry-run mode).
-- **Release scheduler enablement**: Gate scheduled runs on `RELEASE_SCHEDULER_ENABLED` (defaults to disabled when unset).
+- **Release automation (two-phase, tokens, tooling):** Two-phase workflows (`prepare-release.yml`, `publish-release.yml`) with optional direct push (`RELEASE_DIRECT_PUSH`). Token handling: preflight runs before checkout; `GH_TA4J_REPO_TOKEN` is used for checkout and push only when valid, otherwise `github.token`; fail fast when the token lacks write (warn in dry-run). Release process docs overhauled; pre-push hook runs actionlint on workflow changes (see CONTRIBUTING); agent workflow skips full build for workflow/CHANGELOG/docs-only changes.
+- **Release scheduler and discussions:** Gated by `RELEASE_SCHEDULER_ENABLED`. Dispatches through prepare-release only when binary-impacting changes exist (`pom.xml` or `src/main/**`); AI prompt uses summarized binary changes and trimmed changelog with optional `RELEASE_AI_MODEL`. Scheduler and release runs post to GitHub Discussions with run mode and timestamp; binary path list and Maven Central summary in collapsible details; previous dry-run comments for the same tag are removed before posting.
+- **Publish-release manual trigger:** For workflow_dispatch, `releaseCommit` is optional and auto-detected from `release/<version>.md` on the default branch so manual publishes require only the release version.
+- **Release health workflow:** Scheduled checks for tag reachability, snapshot version drift, stale release PRs, and missing release notes, with summaries posted to Discussions.
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
@@ -52,6 +43,7 @@
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
+- **Release scheduler redaction**: Avoid masking long Java class names in binary-change listings.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
 - **Fixed incorrect @since 0.23** by replacing with 0.22.2
 
