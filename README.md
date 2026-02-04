@@ -55,7 +55,6 @@ Ta4j does not promise profitable strategies. It promises reproducible experiment
 - **Composable strategies**: Chain rules fluently using familiar Java patterns - no DSLs or configuration files required.
 - **Backtesting built-in**: Evaluate risk/reward with realistic trading costs and performance metrics in just a few lines.
 - **MIT licensed**: Use it at work, in research, or inside your next trading product without legal concerns.
-- 
 
 ## Install in seconds
 
