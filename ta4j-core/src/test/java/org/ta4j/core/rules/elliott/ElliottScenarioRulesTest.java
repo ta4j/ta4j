@@ -81,6 +81,16 @@ class ElliottScenarioRulesTest {
     }
 
     @Test
+    void impulsePhaseRuleRejectsCorrectiveScenarios() {
+        ElliottScenario corrective = buildCorrectiveScenario(ElliottPhase.CORRECTIVE_A, 0.8);
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(corrective), series.getEndIndex());
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, set);
+
+        ElliottImpulsePhaseRule rule = new ElliottImpulsePhaseRule(indicator, ElliottPhase.WAVE3, ElliottPhase.WAVE5);
+        assertThat(rule.isSatisfied(series.getEndIndex(), null)).isFalse();
+    }
+
+    @Test
     void confidenceRuleHonorsThreshold() {
         ElliottScenario scenario = buildBullishScenario(ElliottPhase.WAVE3, 0.8);
         ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario), series.getEndIndex());
@@ -107,6 +117,24 @@ class ElliottScenarioRulesTest {
     }
 
     @Test
+    void directionRuleRejectsUnknownDirection() {
+        ElliottScenario unknown = ElliottScenario.builder()
+                .id("unknown")
+                .currentPhase(ElliottPhase.WAVE3)
+                .swings(List.of())
+                .confidence(buildConfidence(0.8))
+                .degree(ElliottDegree.PRIMARY)
+                .type(ScenarioType.IMPULSE)
+                .bullishDirection(null)
+                .build();
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(unknown), series.getEndIndex());
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, set);
+
+        ElliottScenarioDirectionRule rule = new ElliottScenarioDirectionRule(indicator, true);
+        assertThat(rule.isSatisfied(series.getEndIndex(), null)).isFalse();
+    }
+
+    @Test
     void trendBiasRuleRequiresDirectionAndStrength() {
         ElliottScenario bullishScenario = buildBullishScenario(ElliottPhase.WAVE3, 0.8);
         ElliottScenarioSet bullishSet = ElliottScenarioSet.of(List.of(bullishScenario), series.getEndIndex());
@@ -125,6 +153,15 @@ class ElliottScenarioRulesTest {
     }
 
     @Test
+    void trendBiasRuleRejectsEmptyScenarioSets() {
+        ElliottScenarioSet emptySet = ElliottScenarioSet.empty(series.getEndIndex());
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, emptySet);
+
+        ElliottTrendBiasRule rule = new ElliottTrendBiasRule(indicator, true, 0.2);
+        assertThat(rule.isSatisfied(series.getEndIndex(), null)).isFalse();
+    }
+
+    @Test
     void alternationRuleEnforcesMinimumRatio() {
         ElliottScenario scenario = buildBullishScenario(ElliottPhase.WAVE5, 0.8);
         ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario), series.getEndIndex());
@@ -135,6 +172,16 @@ class ElliottScenarioRulesTest {
 
         ElliottScenarioAlternationRule strictRule = new ElliottScenarioAlternationRule(indicator, 2.5);
         assertThat(strictRule.isSatisfied(series.getEndIndex(), null)).isFalse();
+    }
+
+    @Test
+    void alternationRuleRejectsCorrectivePhase() {
+        ElliottScenario corrective = buildCorrectiveScenario(ElliottPhase.CORRECTIVE_C, 0.8);
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(corrective), series.getEndIndex());
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, set);
+
+        ElliottScenarioAlternationRule rule = new ElliottScenarioAlternationRule(indicator, 1.5);
+        assertThat(rule.isSatisfied(series.getEndIndex(), null)).isFalse();
     }
 
     @Test
@@ -152,6 +199,17 @@ class ElliottScenarioRulesTest {
     }
 
     @Test
+    void riskRewardRuleSupportsBearishScenarios() {
+        ElliottScenario scenario = buildBearishScenario(ElliottPhase.WAVE3, 0.8);
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario), series.getEndIndex());
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, set);
+        Indicator<Num> close = constantIndicator(numFactory.numOf(140));
+
+        ElliottScenarioRiskRewardRule rule = new ElliottScenarioRiskRewardRule(indicator, close, false, 2.0);
+        assertThat(rule.isSatisfied(series.getEndIndex(), null)).isTrue();
+    }
+
+    @Test
     void targetReachedRuleDetectsHit() {
         ElliottScenario scenario = buildBullishScenario(ElliottPhase.WAVE5, 0.8);
         ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario), series.getEndIndex());
@@ -159,6 +217,17 @@ class ElliottScenarioRulesTest {
         Indicator<Num> close = constantIndicator(numFactory.numOf(240));
 
         ElliottScenarioTargetReachedRule rule = new ElliottScenarioTargetReachedRule(indicator, close, true);
+        assertThat(rule.isSatisfied(series.getEndIndex(), null)).isTrue();
+    }
+
+    @Test
+    void targetReachedRuleDetectsBearishHit() {
+        ElliottScenario scenario = buildBearishScenario(ElliottPhase.WAVE5, 0.8);
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario), series.getEndIndex());
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, set);
+        Indicator<Num> close = constantIndicator(numFactory.numOf(70));
+
+        ElliottScenarioTargetReachedRule rule = new ElliottScenarioTargetReachedRule(indicator, close, false);
         assertThat(rule.isSatisfied(series.getEndIndex(), null)).isTrue();
     }
 
@@ -174,6 +243,17 @@ class ElliottScenarioRulesTest {
     }
 
     @Test
+    void stopViolationRuleDetectsBearishBreach() {
+        ElliottScenario scenario = buildBearishScenario(ElliottPhase.WAVE3, 0.8);
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario), series.getEndIndex());
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, set);
+        Indicator<Num> close = constantIndicator(numFactory.numOf(180));
+
+        ElliottScenarioStopViolationRule rule = new ElliottScenarioStopViolationRule(indicator, close, false);
+        assertThat(rule.isSatisfied(series.getEndIndex(), null)).isTrue();
+    }
+
+    @Test
     void invalidationRuleTriggersWhenPriceBreaksLevel() {
         ElliottScenario scenario = buildBullishScenario(ElliottPhase.WAVE3, 0.8);
         ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario), series.getEndIndex());
@@ -182,6 +262,17 @@ class ElliottScenarioRulesTest {
 
         ElliottScenarioInvalidationRule rule = new ElliottScenarioInvalidationRule(indicator, close);
         assertThat(rule.isSatisfied(series.getEndIndex(), null)).isTrue();
+    }
+
+    @Test
+    void invalidationRuleRemainsFalseWhenPriceHolds() {
+        ElliottScenario scenario = buildBullishScenario(ElliottPhase.WAVE3, 0.8);
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario), series.getEndIndex());
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, set);
+        Indicator<Num> close = constantIndicator(numFactory.numOf(130));
+
+        ElliottScenarioInvalidationRule rule = new ElliottScenarioInvalidationRule(indicator, close);
+        assertThat(rule.isSatisfied(series.getEndIndex(), null)).isFalse();
     }
 
     @Test
@@ -195,6 +286,16 @@ class ElliottScenarioRulesTest {
     }
 
     @Test
+    void completionRuleRejectsIncompletePhases() {
+        ElliottScenario scenario = buildBullishScenario(ElliottPhase.WAVE3, 0.8);
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario), series.getEndIndex());
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, set);
+
+        ElliottScenarioCompletionRule rule = new ElliottScenarioCompletionRule(indicator);
+        assertThat(rule.isSatisfied(series.getEndIndex(), null)).isFalse();
+    }
+
+    @Test
     void timeStopRuleFiresAfterDuration() {
         ElliottScenario scenario = buildShortWaveScenario();
         ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario), series.getEndIndex());
@@ -205,6 +306,17 @@ class ElliottScenarioRulesTest {
         record.enter(series.getBeginIndex());
 
         assertThat(rule.isSatisfied(series.getBeginIndex() + 3, record)).isTrue();
+    }
+
+    @Test
+    void timeStopRuleSkipsClosedRecords() {
+        ElliottScenario scenario = buildShortWaveScenario();
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(scenario), series.getEndIndex());
+        Indicator<ElliottScenarioSet> indicator = new FixedScenarioIndicator(series, set);
+
+        ElliottScenarioTimeStopRule rule = new ElliottScenarioTimeStopRule(indicator, 1.5);
+        TradingRecord record = new BaseTradingRecord();
+        assertThat(rule.isSatisfied(series.getBeginIndex(), record)).isFalse();
     }
 
     private ElliottScenario buildBullishScenario(final ElliottPhase phase, final double confidenceValue) {
@@ -247,6 +359,28 @@ class ElliottScenarioRulesTest {
                 .primaryTarget(target)
                 .fibonacciTargets(List.of(target))
                 .type(ScenarioType.IMPULSE)
+                .startIndex(0)
+                .build();
+    }
+
+    private ElliottScenario buildCorrectiveScenario(final ElliottPhase phase, final double confidenceValue) {
+        List<ElliottSwing> swings = List.of(
+                new ElliottSwing(0, 3, numFactory.hundred(), numFactory.numOf(120), ElliottDegree.PRIMARY),
+                new ElliottSwing(3, 6, numFactory.numOf(120), numFactory.numOf(110), ElliottDegree.PRIMARY),
+                new ElliottSwing(6, 9, numFactory.numOf(110), numFactory.numOf(130), ElliottDegree.PRIMARY),
+                new ElliottSwing(9, 12, numFactory.numOf(130), numFactory.numOf(115), ElliottDegree.PRIMARY),
+                new ElliottSwing(12, 15, numFactory.numOf(115), numFactory.numOf(125), ElliottDegree.PRIMARY));
+        Num target = numFactory.numOf(125);
+        return ElliottScenario.builder()
+                .id("corrective")
+                .currentPhase(phase)
+                .swings(swings)
+                .confidence(buildConfidence(confidenceValue))
+                .degree(ElliottDegree.PRIMARY)
+                .invalidationPrice(numFactory.numOf(95))
+                .primaryTarget(target)
+                .fibonacciTargets(List.of(target))
+                .type(ScenarioType.CORRECTIVE_TRIANGLE)
                 .startIndex(0)
                 .build();
     }
