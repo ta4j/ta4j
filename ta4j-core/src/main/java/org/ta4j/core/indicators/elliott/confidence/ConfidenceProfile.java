@@ -11,6 +11,7 @@ import java.util.Objects;
 
 import org.ta4j.core.indicators.elliott.ElliottConfidence;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Defines a weighted set of confidence factors.
@@ -44,36 +45,37 @@ public record ConfidenceProfile(List<WeightedFactor> factors) {
         }
 
         final List<ConfidenceFactorResult> results = new ArrayList<>(factors.size());
-        double weightedSum = 0.0;
-        double weightSum = 0.0;
+        final NumFactory numFactory = context.numFactory();
+        Num weightedSum = numFactory.zero();
+        Num weightSum = numFactory.zero();
 
         final Map<ConfidenceFactorCategory, CategoryTotals> categoryTotals = new EnumMap<>(
                 ConfidenceFactorCategory.class);
 
         ConfidenceFactorResult topContributor = null;
-        double topContribution = Double.NEGATIVE_INFINITY;
+        Num topContribution = null;
 
+        // Accumulates weighted factor contributions to overall score
         for (final WeightedFactor factor : factors) {
             ConfidenceFactorResult rawResult = factor.factor().score(context);
             ConfidenceFactorResult weightedResult = rawResult.withWeight(factor.weight());
             results.add(weightedResult);
 
-            double scoreValue = weightedResult.score().doubleValue();
-            weightedSum += scoreValue * factor.weight();
-            weightSum += factor.weight();
+            Num weight = numFactory.numOf(factor.weight());
+            Num contribution = weightedResult.score().multipliedBy(weight);
+            weightedSum = weightedSum.plus(contribution);
+            weightSum = weightSum.plus(weight);
 
-            double contribution = scoreValue * factor.weight();
-            if (contribution > topContribution) {
+            if (topContribution == null || contribution.isGreaterThan(topContribution)) {
                 topContribution = contribution;
                 topContributor = weightedResult;
             }
 
-            categoryTotals.computeIfAbsent(weightedResult.category(), unused -> new CategoryTotals())
-                    .add(scoreValue, factor.weight());
+            categoryTotals.computeIfAbsent(weightedResult.category(), unused -> new CategoryTotals(numFactory))
+                    .add(weightedResult.score(), weight);
         }
 
-        double overall = weightSum > 0.0 ? weightedSum / weightSum : 0.0;
-        Num overallNum = context.numFactory().numOf(overall);
+        Num overallNum = weightSum.isPositive() ? weightedSum.dividedBy(weightSum) : numFactory.zero();
 
         Num fibScore = scoreFor(categoryTotals, ConfidenceFactorCategory.FIBONACCI, context);
         Num timeScore = scoreFor(categoryTotals, ConfidenceFactorCategory.TIME, context);
@@ -94,19 +96,24 @@ public record ConfidenceProfile(List<WeightedFactor> factors) {
     private Num scoreFor(final Map<ConfidenceFactorCategory, CategoryTotals> totals,
             final ConfidenceFactorCategory category, final ElliottConfidenceContext context) {
         CategoryTotals accumulator = totals.get(category);
-        if (accumulator == null || accumulator.weightSum == 0.0) {
+        if (accumulator == null || accumulator.weightSum.isZero()) {
             return context.numFactory().zero();
         }
-        return context.numFactory().numOf(accumulator.weightedSum / accumulator.weightSum);
+        return accumulator.weightedSum.dividedBy(accumulator.weightSum);
     }
 
     private static final class CategoryTotals {
-        private double weightedSum;
-        private double weightSum;
+        private Num weightedSum;
+        private Num weightSum;
 
-        private void add(final double score, final double weight) {
-            weightedSum += score * weight;
-            weightSum += weight;
+        private CategoryTotals(final NumFactory numFactory) {
+            weightedSum = numFactory.zero();
+            weightSum = numFactory.zero();
+        }
+
+        private void add(final Num score, final Num weight) {
+            weightedSum = weightedSum.plus(score.multipliedBy(weight));
+            weightSum = weightSum.plus(weight);
         }
     }
 
