@@ -101,7 +101,8 @@ public record ElliottConfidence(Num overall, Num fibonacciScore, Num timeProport
         if (Num.isNaNOrNull(overall)) {
             return false;
         }
-        return overall.doubleValue() >= threshold;
+        Num thresholdNum = overall.getNumFactory().numOf(threshold);
+        return overall.isGreaterThanOrEqual(thresholdNum);
     }
 
     /**
@@ -122,7 +123,7 @@ public record ElliottConfidence(Num overall, Num fibonacciScore, Num timeProport
         if (!isValid()) {
             return Double.NaN;
         }
-        return overall.doubleValue() * 100.0;
+        return overall.multipliedBy(overall.getNumFactory().hundred()).doubleValue();
     }
 
     /**

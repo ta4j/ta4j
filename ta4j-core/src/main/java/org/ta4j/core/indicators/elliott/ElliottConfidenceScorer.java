@@ -112,14 +112,15 @@ public final class ElliottConfidenceScorer {
         final Num chanScore = scoreChannel(swings, channel);
         final Num compScore = scoreCompleteness(swings, phase);
 
-        final double overall = fibScore.doubleValue() * fibonacciWeight + timeScore.doubleValue() * timeWeight
-                + altScore.doubleValue() * alternationWeight + chanScore.doubleValue() * channelWeight
-                + compScore.doubleValue() * completenessWeight;
+        final Num overall = fibScore.multipliedBy(numFactory.numOf(fibonacciWeight))
+                .plus(timeScore.multipliedBy(numFactory.numOf(timeWeight)))
+                .plus(altScore.multipliedBy(numFactory.numOf(alternationWeight)))
+                .plus(chanScore.multipliedBy(numFactory.numOf(channelWeight)))
+                .plus(compScore.multipliedBy(numFactory.numOf(completenessWeight)));
 
         final String reason = determinePrimaryReason(fibScore, timeScore, altScore, chanScore, compScore);
 
-        return new ElliottConfidence(numFactory.numOf(overall), fibScore, timeScore, altScore, chanScore, compScore,
-                reason);
+        return new ElliottConfidence(overall, fibScore, timeScore, altScore, chanScore, compScore, reason);
     }
 
     /**
@@ -145,38 +146,42 @@ public final class ElliottConfidenceScorer {
             return numFactory.zero(); // Return zero for non-impulse patterns
         }
 
-        double totalScore = 0.0;
+        Num totalScore = numFactory.zero();
         int count = 0;
 
         // Score wave 2 retracement (0.382 - 0.786 ideal)
         if (swings.size() >= 2) {
-            final double ratio = calculateRatio(swings.get(1), swings.get(0));
-            totalScore += scoreRetracementRatio(ratio, 0.382, 0.786);
+            final Num ratio = calculateRatio(swings.get(1), swings.get(0));
+            totalScore = totalScore
+                    .plus(scoreRetracementRatio(ratio, numFactory.numOf(0.382), numFactory.numOf(0.786)));
             count++;
         }
 
         // Score wave 3 extension (1.0 - 2.618 ideal, prefer 1.618)
         if (swings.size() >= 3) {
-            final double ratio = calculateRatio(swings.get(2), swings.get(0));
-            totalScore += scoreExtensionRatio(ratio, 1.0, 2.618, 1.618);
+            final Num ratio = calculateRatio(swings.get(2), swings.get(0));
+            totalScore = totalScore.plus(
+                    scoreExtensionRatio(ratio, numFactory.one(), numFactory.numOf(2.618), numFactory.numOf(1.618)));
             count++;
         }
 
         // Score wave 4 retracement (0.236 - 0.786 ideal)
         if (swings.size() >= 4) {
-            final double ratio = calculateRatio(swings.get(3), swings.get(2));
-            totalScore += scoreRetracementRatio(ratio, 0.236, 0.786);
+            final Num ratio = calculateRatio(swings.get(3), swings.get(2));
+            totalScore = totalScore
+                    .plus(scoreRetracementRatio(ratio, numFactory.numOf(0.236), numFactory.numOf(0.786)));
             count++;
         }
 
         // Score wave 5 projection (0.618 - 1.618 ideal)
         if (swings.size() >= 5) {
-            final double ratio = calculateRatio(swings.get(4), swings.get(0));
-            totalScore += scoreExtensionRatio(ratio, 0.618, 1.618, 1.0);
+            final Num ratio = calculateRatio(swings.get(4), swings.get(0));
+            totalScore = totalScore.plus(
+                    scoreExtensionRatio(ratio, numFactory.numOf(0.618), numFactory.numOf(1.618), numFactory.one()));
             count++;
         }
 
-        return count > 0 ? numFactory.numOf(totalScore / count) : numFactory.zero();
+        return count > 0 ? totalScore.dividedBy(numFactory.numOf(count)) : numFactory.zero();
     }
 
     /**
@@ -249,25 +254,31 @@ public final class ElliottConfidenceScorer {
         final ElliottSwing wave2 = swings.get(1);
         final ElliottSwing wave4 = swings.get(3);
 
-        final double wave1Amp = swings.get(0).amplitude().doubleValue();
-        final double wave3Amp = swings.get(2).amplitude().doubleValue();
-        final double wave2Depth = wave1Amp > 0 ? wave2.amplitude().doubleValue() / wave1Amp : 0;
-        final double wave4Depth = wave3Amp > 0 ? wave4.amplitude().doubleValue() / wave3Amp : 0;
+        final Num wave1Amp = swings.get(0).amplitude();
+        final Num wave3Amp = swings.get(2).amplitude();
+        final Num wave2Depth = wave1Amp.isPositive() ? wave2.amplitude().dividedBy(wave1Amp) : numFactory.zero();
+        final Num wave4Depth = wave3Amp.isPositive() ? wave4.amplitude().dividedBy(wave3Amp) : numFactory.zero();
 
-        final double depthDifference = Math.abs(wave2Depth - wave4Depth);
+        final Num depthDifference = wave2Depth.minus(wave4Depth).abs();
 
         final int wave2Bars = wave2.length();
         final int wave4Bars = wave4.length();
-        final double timeDifference = wave2Bars > 0 || wave4Bars > 0
-                ? Math.abs(wave2Bars - wave4Bars) / (double) Math.max(wave2Bars, wave4Bars)
-                : 0.0;
-        final double durationRatio = wave2Bars > 0 ? (double) wave4Bars / wave2Bars : Double.NaN;
+        Num timeDifference = numFactory.zero();
+        if (wave2Bars > 0 || wave4Bars > 0) {
+            Num diff = numFactory.numOf(Math.abs(wave2Bars - wave4Bars));
+            Num max = numFactory.numOf(Math.max(wave2Bars, wave4Bars));
+            timeDifference = diff.dividedBy(max);
+        }
+        final double durationRatio = wave2Bars > 0
+                ? numFactory.numOf(wave4Bars).dividedBy(numFactory.numOf(wave2Bars)).doubleValue()
+                : Double.NaN;
 
-        final double depthScore = Math.min(1.0, depthDifference * 2);
-        final double timeScore = Math.min(1.0, timeDifference);
-        final double score = (depthScore + timeScore) / 2.0;
+        final Num depthScore = depthDifference.multipliedBy(numFactory.two()).min(numFactory.one());
+        final Num timeScore = timeDifference.min(numFactory.one());
+        final Num score = depthScore.plus(timeScore).dividedBy(numFactory.two());
 
-        return new AlternationDiagnostics(wave2Bars, wave4Bars, durationRatio, depthDifference, timeDifference, score);
+        return new AlternationDiagnostics(wave2Bars, wave4Bars, durationRatio, depthDifference.doubleValue(),
+                timeDifference.doubleValue(), score.doubleValue());
     }
 
     /**
@@ -343,7 +354,8 @@ public final class ElliottConfidenceScorer {
             totalPoints++;
         }
 
-        return totalPoints > 0 ? numFactory.numOf((double) withinChannel / totalPoints) : numFactory.numOf(0.5);
+        return totalPoints > 0 ? numFactory.numOf(withinChannel).dividedBy(numFactory.numOf(totalPoints))
+                : numFactory.numOf(0.5);
     }
 
     /**
@@ -369,89 +381,107 @@ public final class ElliottConfidenceScorer {
         }
 
         final int actualWaves = swings.size();
-        final double completeness = Math.min(1.0, (double) actualWaves / expectedWaves);
+        Num completeness = numFactory.numOf(actualWaves)
+                .dividedBy(numFactory.numOf(expectedWaves))
+                .min(numFactory.one());
 
         // Bonus for completed structures
         if (phase.completesStructure()) {
-            return numFactory.numOf(Math.min(1.0, completeness + 0.1));
+            return completeness.plus(numFactory.numOf(0.1)).min(numFactory.one());
         }
 
-        return numFactory.numOf(completeness);
+        return completeness;
     }
 
-    private double calculateRatio(final ElliottSwing numerator, final ElliottSwing denominator) {
+    private Num calculateRatio(final ElliottSwing numerator, final ElliottSwing denominator) {
         if (numerator == null || denominator == null) {
-            return 0.0;
+            return numFactory.zero();
         }
-        final double numAmp = numerator.amplitude().doubleValue();
-        final double denAmp = denominator.amplitude().doubleValue();
-        return denAmp > 0 ? numAmp / denAmp : 0.0;
+        final Num numAmp = numerator.amplitude();
+        final Num denAmp = denominator.amplitude();
+        return denAmp.isPositive() ? numAmp.dividedBy(denAmp) : numFactory.zero();
     }
 
-    private double scoreRetracementRatio(final double ratio, final double min, final double max) {
-        if (ratio < min * 0.8 || ratio > max * 1.2) {
-            return 0.0; // Well outside range
+    private Num scoreRetracementRatio(final Num ratio, final Num min, final Num max) {
+        if (Num.isNaNOrNull(ratio)) {
+            return numFactory.zero();
         }
-        if (ratio >= min && ratio <= max) {
-            return 1.0; // Perfect
+        final Num lowerBound = min.multipliedBy(numFactory.numOf(0.8));
+        final Num upperBound = max.multipliedBy(numFactory.numOf(1.2));
+        if (ratio.isLessThan(lowerBound) || ratio.isGreaterThan(upperBound)) {
+            return numFactory.zero(); // Well outside range
+        }
+        if (ratio.isGreaterThanOrEqual(min) && ratio.isLessThanOrEqual(max)) {
+            return numFactory.one(); // Perfect
         }
         // Partial score for close misses
-        if (ratio < min) {
-            return Math.max(0, 1.0 - (min - ratio) / min);
+        if (ratio.isLessThan(min)) {
+            Num score = numFactory.one().minus(min.minus(ratio).dividedBy(min));
+            return score.max(numFactory.zero());
         }
-        return Math.max(0, 1.0 - (ratio - max) / max);
+        Num score = numFactory.one().minus(ratio.minus(max).dividedBy(max));
+        return score.max(numFactory.zero());
     }
 
-    private double scoreExtensionRatio(final double ratio, final double min, final double max, final double ideal) {
-        if (ratio < min * 0.8 || ratio > max * 1.2) {
-            return 0.0;
+    private Num scoreExtensionRatio(final Num ratio, final Num min, final Num max, final Num ideal) {
+        if (Num.isNaNOrNull(ratio)) {
+            return numFactory.zero();
+        }
+        final Num lowerBound = min.multipliedBy(numFactory.numOf(0.8));
+        final Num upperBound = max.multipliedBy(numFactory.numOf(1.2));
+        if (ratio.isLessThan(lowerBound) || ratio.isGreaterThan(upperBound)) {
+            return numFactory.zero();
         }
 
         // Base score scales down when slightly outside the preferred range
-        double score;
-        if (ratio < min) {
-            double minBound = min * 0.8;
-            score = 0.7 * Math.max(0.0, (ratio - minBound) / (min - minBound));
-        } else if (ratio > max) {
-            double maxBound = max * 1.2;
-            score = 0.7 * Math.max(0.0, (maxBound - ratio) / (maxBound - max));
+        Num score;
+        if (ratio.isLessThan(min)) {
+            final Num minBound = lowerBound;
+            final Num fraction = ratio.minus(minBound).dividedBy(min.minus(minBound)).max(numFactory.zero());
+            score = numFactory.numOf(0.7).multipliedBy(fraction);
+        } else if (ratio.isGreaterThan(max)) {
+            final Num maxBound = upperBound;
+            final Num fraction = maxBound.minus(ratio).dividedBy(maxBound.minus(max)).max(numFactory.zero());
+            score = numFactory.numOf(0.7).multipliedBy(fraction);
         } else {
-            score = 0.7;
+            score = numFactory.numOf(0.7);
         }
 
         // Bonus for being close to ideal
-        final double distanceFromIdeal = Math.abs(ratio - ideal);
-        score += 0.3 * Math.max(0, 1.0 - distanceFromIdeal / ideal);
+        final Num distanceFromIdeal = ratio.minus(ideal).abs();
+        final Num bonus = numFactory.numOf(0.3)
+                .multipliedBy(numFactory.one().minus(distanceFromIdeal.dividedBy(ideal)).max(numFactory.zero()));
+        score = score.plus(bonus);
 
-        return Math.min(1.0, score);
+        return score.min(numFactory.one());
     }
 
     private String determinePrimaryReason(final Num fibScore, final Num timeScore, final Num altScore,
             final Num chanScore, final Num compScore) {
 
         // Find the highest weighted contributor
-        final double fibContrib = fibScore.doubleValue() * fibonacciWeight;
-        final double timeContrib = timeScore.doubleValue() * timeWeight;
-        final double altContrib = altScore.doubleValue() * alternationWeight;
-        final double chanContrib = chanScore.doubleValue() * channelWeight;
-        final double compContrib = compScore.doubleValue() * completenessWeight;
+        final Num fibContrib = fibScore.multipliedBy(numFactory.numOf(fibonacciWeight));
+        final Num timeContrib = timeScore.multipliedBy(numFactory.numOf(timeWeight));
+        final Num altContrib = altScore.multipliedBy(numFactory.numOf(alternationWeight));
+        final Num chanContrib = chanScore.multipliedBy(numFactory.numOf(channelWeight));
+        final Num compContrib = compScore.multipliedBy(numFactory.numOf(completenessWeight));
 
-        double maxContrib = fibContrib;
+        Num maxContrib = fibContrib;
         String reason = "Strong Fibonacci conformance";
 
-        if (timeContrib > maxContrib) {
+        if (timeContrib.isGreaterThan(maxContrib)) {
             maxContrib = timeContrib;
             reason = "Good time proportions";
         }
-        if (altContrib > maxContrib) {
+        if (altContrib.isGreaterThan(maxContrib)) {
             maxContrib = altContrib;
             reason = "Clear wave alternation";
         }
-        if (chanContrib > maxContrib) {
+        if (chanContrib.isGreaterThan(maxContrib)) {
             maxContrib = chanContrib;
             reason = "Strong channel adherence";
         }
-        if (compContrib > maxContrib) {
+        if (compContrib.isGreaterThan(maxContrib)) {
             reason = "Complete structure";
         }
 

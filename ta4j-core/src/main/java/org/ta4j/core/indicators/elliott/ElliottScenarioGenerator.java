@@ -47,6 +47,7 @@ public final class ElliottScenarioGenerator {
     private final ConfidenceModel confidenceModel;
     private final PatternSet patternSet;
     private final double minConfidence;
+    private final Num minConfidenceNum;
     private final int maxScenarios;
     private final AtomicInteger scenarioCounter = new AtomicInteger(0);
 
@@ -90,6 +91,7 @@ public final class ElliottScenarioGenerator {
         this.confidenceModel = Objects.requireNonNull(confidenceModel, "confidenceModel");
         this.patternSet = Objects.requireNonNull(patternSet, "patternSet");
         this.minConfidence = minConfidence;
+        this.minConfidenceNum = numFactory.numOf(minConfidence);
         this.maxScenarios = maxScenarios;
     }
 
@@ -182,7 +184,7 @@ public final class ElliottScenarioGenerator {
                     ScenarioType.IMPULSE);
             final ElliottConfidence confidence = breakdown.confidence();
 
-            if (confidence.overall().doubleValue() < minConfidence) {
+            if (confidence.overall().isLessThan(minConfidenceNum)) {
                 continue;
             }
 
@@ -247,7 +249,7 @@ public final class ElliottScenarioGenerator {
                     ScenarioType.CORRECTIVE_ZIGZAG);
             final ElliottConfidence confidence = breakdown.confidence();
 
-            if (confidence.overall().doubleValue() < minConfidence) {
+            if (confidence.overall().isLessThan(minConfidenceNum)) {
                 continue;
             }
 
@@ -308,7 +310,7 @@ public final class ElliottScenarioGenerator {
                     ScenarioType.CORRECTIVE_FLAT);
             final ElliottConfidence confidence = breakdown.confidence();
 
-            if (confidence.overall().doubleValue() < minConfidence) {
+            if (confidence.overall().isLessThan(minConfidenceNum)) {
                 continue;
             }
 
@@ -516,7 +518,7 @@ public final class ElliottScenarioGenerator {
 
     private List<ElliottScenario> prune(final List<ElliottScenario> candidates) {
         return candidates.stream()
-                .filter(s -> s.confidenceScore().doubleValue() >= minConfidence)
+                .filter(s -> s.confidenceScore().isGreaterThanOrEqual(minConfidenceNum))
                 .sorted(ElliottScenarioSet.byConfidenceDescending())
                 .limit(maxScenarios)
                 .toList();

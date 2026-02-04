@@ -64,6 +64,22 @@ class ElliottConfidenceScorerTest {
     }
 
     @Test
+    void fibonacciScoreUsesNumPrecisionNearRetracementBoundary() {
+        NumFactory highPrecision = DecimalNumFactory.getInstance(32);
+        ElliottConfidenceScorer preciseScorer = new ElliottConfidenceScorer(highPrecision);
+        Num wave1Start = highPrecision.zero();
+        Num wave1End = highPrecision.one();
+        Num wave2End = highPrecision.numOf("0.61800000000000000001");
+        List<ElliottSwing> swings = List.of(new ElliottSwing(0, 5, wave1Start, wave1End, ElliottDegree.MINOR),
+                new ElliottSwing(5, 10, wave1End, wave2End, ElliottDegree.MINOR));
+
+        Num fibScore = preciseScorer.scoreFibonacci(swings, ElliottPhase.WAVE2);
+
+        assertThat(fibScore).isGreaterThan(highPrecision.zero());
+        assertThat(fibScore).isLessThan(highPrecision.one());
+    }
+
+    @Test
     void fibonacciScoreReturnsZeroForCorrectivePhase() {
         // Fibonacci ratio rules are specific to impulse waves
         // Create swings that would score well if evaluated for impulse waves
