@@ -112,15 +112,14 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
 
     HighRewardElliottWaveStrategy(final BarSeries series, final Config config,
             final Indicator<ElliottScenarioSet> scenarioIndicator) {
-        this(series, config, scenarioIndicator, buildRules(series, config, scenarioIndicator));
+        this(config, buildRules(series, config, scenarioIndicator));
     }
 
     private HighRewardElliottWaveStrategy(final BarSeries series, final Config config) {
         this(series, config, buildScenarioIndicator(series, config));
     }
 
-    private HighRewardElliottWaveStrategy(final BarSeries series, final Config config,
-            final Indicator<ElliottScenarioSet> scenarioIndicator, final RuleBundle rules) {
+    private HighRewardElliottWaveStrategy(final Config config, final RuleBundle rules) {
         super(buildLabel(config), rules.entryRule(), rules.exitRule(), rules.unstableBars());
     }
 
