@@ -13,12 +13,9 @@
 - **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
-- **VWAP analytics suite**: Added anchored/rolling VWAP deviation, standard deviation, z-score, and band indicators for volume-weighted price analytics.
-- **Support/resistance clustering**: Added bounce-count and KDE-based price cluster support/resistance indicators with configurable lookbacks and tolerances.
-- **Wyckoff cycle analysis**: Added Wyckoff phase detection indicators (structure, volume profile, event detection) plus an example workflow.
-- **VWAP analytics suite**: Added anchored VWAP, VWAP deviation/standard deviation/z-score, and VWAP band indicators with shared series validation and NaN handling.
-- **Support/resistance clustering**: Added bounce-count and price-cluster support/resistance indicators plus volume-profile KDE helpers for grouping prices.
-- **Wyckoff cycle analysis**: Added Wyckoff structure, volume, event, and phase indicators plus a runnable cycle example.
+- **VWAP analytics suite**: Added rolling and anchored VWAP indicators plus deviation/standard deviation/z-score/band indicators with shared series validation and NaN handling.
+- **Support/resistance clustering**: Added bounce-count and KDE-based price-cluster support/resistance indicators plus volume-profile KDE helpers for grouping prices with configurable lookbacks and tolerances.
+- **Wyckoff cycle analysis**: Added Wyckoff structure, volume profile, event detection, and phase indicators plus a runnable cycle example.
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
