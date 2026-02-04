@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -52,9 +53,9 @@ public class MVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         VWAPIndicator vwap = new VWAPIndicator(data, 5);
         MVWAPIndicator mvwap = new MVWAPIndicator(vwap, 8);
 
-        assertNumEquals(45.1271, mvwap.getValue(8));
-        assertNumEquals(45.1399, mvwap.getValue(9));
-        assertNumEquals(45.1530, mvwap.getValue(10));
+        assertThat(mvwap.getValue(8).isNaN()).isTrue();
+        assertThat(mvwap.getValue(9).isNaN()).isTrue();
+        assertThat(mvwap.getValue(10).isNaN()).isTrue();
         assertNumEquals(45.1790, mvwap.getValue(11));
         assertNumEquals(45.2227, mvwap.getValue(12));
         assertNumEquals(45.2533, mvwap.getValue(13));

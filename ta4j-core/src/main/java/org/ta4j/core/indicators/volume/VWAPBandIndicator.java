@@ -3,6 +3,9 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import java.math.BigDecimal;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import org.ta4j.core.Indicator;
@@ -11,6 +14,8 @@ import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.serialization.ComponentDescriptor;
+import org.ta4j.core.serialization.ComponentSerialization;
 
 /**
  * VWAP-based bands computed as VWAP +/- multiplier * standard deviation.
@@ -80,8 +85,42 @@ public class VWAPBandIndicator extends CachedIndicator<Num> {
     }
 
     @Override
+    public ComponentDescriptor toDescriptor() {
+        Map<String, Object> parameters = new LinkedHashMap<>();
+        parameters.put("multiplier", normalizeMultiplier(multiplier));
+        parameters.put("bandType", bandType.name());
+        return ComponentDescriptor.builder()
+                .withType(getClass().getSimpleName())
+                .withParameters(parameters)
+                .addComponent(vwapIndicator.toDescriptor())
+                .addComponent(standardDeviationIndicator.toDescriptor())
+                .build();
+    }
+
+    @Override
+    public String toJson() {
+        return ComponentSerialization.toJson(toDescriptor());
+    }
+
+    @Override
     public String toString() {
         return getClass().getSimpleName() + " bandType: " + bandType;
+    }
+
+    private static String normalizeMultiplier(Num value) {
+        if (value == null) {
+            return null;
+        }
+        String raw = value.getDelegate().toString();
+        try {
+            BigDecimal decimal = new BigDecimal(raw).stripTrailingZeros();
+            if (decimal.scale() < 0) {
+                decimal = decimal.setScale(0);
+            }
+            return decimal.toPlainString();
+        } catch (NumberFormatException ex) {
+            return raw;
+        }
     }
 
     private static boolean isInvalid(Num value) {
