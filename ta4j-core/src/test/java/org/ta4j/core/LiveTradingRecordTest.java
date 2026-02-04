@@ -15,8 +15,27 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.criteria.ExpectancyCriterion;
+import org.ta4j.core.criteria.NumberOfLosingPositionsCriterion;
+import org.ta4j.core.criteria.NumberOfPositionsCriterion;
+import org.ta4j.core.criteria.NumberOfWinningPositionsCriterion;
+import org.ta4j.core.criteria.PositionsRatioCriterion;
+import org.ta4j.core.criteria.SqnCriterion;
+import org.ta4j.core.criteria.helpers.VarianceCriterion;
+import org.ta4j.core.criteria.pnl.GrossLossCriterion;
+import org.ta4j.core.criteria.pnl.GrossProfitCriterion;
+import org.ta4j.core.criteria.pnl.GrossProfitLossRatioCriterion;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitLossRatioCriterion;
+import org.ta4j.core.criteria.pnl.NetReturnCriterion;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -53,6 +72,70 @@ class LiveTradingRecordTest {
         assertNotNull(net);
         assertEquals(numFactory.one(), net.amount());
         assertEquals(numFactory.numOf(110), net.averageEntryPrice());
+    }
+
+    @Test
+    void recordsShortEntriesAndExits() {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.SELL, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+
+        record.recordFill(fill(ExecutionSide.SELL, numFactory.hundred(), numFactory.two()));
+
+        OpenPosition net = record.getNetOpenPosition();
+        assertNotNull(net);
+        assertEquals(ExecutionSide.SELL, net.side());
+        assertEquals(numFactory.two(), net.amount());
+        assertEquals(numFactory.hundred(), net.averageEntryPrice());
+
+        record.recordFill(fill(ExecutionSide.BUY, numFactory.numOf(90), numFactory.two()));
+
+        List<Position> positions = record.getPositions();
+        assertEquals(1, positions.size());
+        Position closed = positions.get(0);
+        assertEquals(TradeType.SELL, closed.getEntry().getType());
+        assertEquals(TradeType.BUY, closed.getExit().getType());
+        assertEquals(numFactory.hundred(), closed.getEntry().getPricePerAsset());
+        assertEquals(numFactory.numOf(90), closed.getExit().getPricePerAsset());
+        assertTrue(record.getOpenPositions().isEmpty());
+    }
+
+    @Test
+    void enterExitUsesShortStartingType() {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.SELL, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+
+        assertTrue(record.enter(0, numFactory.hundred(), numFactory.one()));
+        Trade entry = record.getLastEntry();
+        assertNotNull(entry);
+        assertEquals(TradeType.SELL, entry.getType());
+
+        assertTrue(record.exit(1, numFactory.numOf(90), numFactory.one()));
+        Trade exit = record.getLastExit();
+        assertNotNull(exit);
+        assertEquals(TradeType.BUY, exit.getType());
+    }
+
+    @Test
+    void shortCriteriaMatchBaseTradingRecord() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90, 100, 110).build();
+        TradingRecord baseRecord = buildBaseShortRecord(series);
+        TradingRecord liveRecord = buildLiveShortRecord(series);
+
+        assertParity(new NetProfitCriterion(), series, baseRecord, liveRecord);
+        assertParity(new GrossProfitCriterion(), series, baseRecord, liveRecord);
+        assertParity(new GrossLossCriterion(), series, baseRecord, liveRecord);
+        assertParity(new GrossProfitLossRatioCriterion(), series, baseRecord, liveRecord);
+        assertParity(new NetProfitLossRatioCriterion(), series, baseRecord, liveRecord);
+        assertParity(new NetReturnCriterion(), series, baseRecord, liveRecord);
+        assertParity(new GrossReturnCriterion(), series, baseRecord, liveRecord);
+        assertParity(new NumberOfPositionsCriterion(), series, baseRecord, liveRecord);
+        assertParity(new NumberOfWinningPositionsCriterion(), series, baseRecord, liveRecord);
+        assertParity(new NumberOfLosingPositionsCriterion(), series, baseRecord, liveRecord);
+        assertParity(new PositionsRatioCriterion(AnalysisCriterion.PositionFilter.PROFIT), series, baseRecord,
+                liveRecord);
+        assertParity(new ExpectancyCriterion(), series, baseRecord, liveRecord);
+        assertParity(new SqnCriterion(), series, baseRecord, liveRecord);
+        assertParity(new VarianceCriterion(new NetProfitCriterion()), series, baseRecord, liveRecord);
     }
 
     @Test
@@ -372,8 +455,37 @@ class LiveTradingRecordTest {
         return new LiveTrade(0, Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, side, null, null);
     }
 
+    private LiveTrade fill(int index, ExecutionSide side, Num price) {
+        return new LiveTrade(index, Instant.EPOCH, price, numFactory.one(), numFactory.zero(), side, null, null);
+    }
+
     private LiveTrade fillWithIds(ExecutionSide side, Num price, Num amount, String orderId, String correlationId) {
         return new LiveTrade(0, Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, side, orderId,
                 correlationId);
+    }
+
+    private TradingRecord buildBaseShortRecord(BarSeries series) {
+        TradingRecord record = new BaseTradingRecord(TradeType.SELL, new ZeroCostModel(), new ZeroCostModel());
+        record.enter(0, series.getBar(0).getClosePrice(), numFactory.one());
+        record.exit(1, series.getBar(1).getClosePrice(), numFactory.one());
+        record.enter(2, series.getBar(2).getClosePrice(), numFactory.one());
+        record.exit(3, series.getBar(3).getClosePrice(), numFactory.one());
+        return record;
+    }
+
+    private TradingRecord buildLiveShortRecord(BarSeries series) {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.SELL, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.recordFill(fill(0, ExecutionSide.SELL, series.getBar(0).getClosePrice()));
+        record.recordFill(fill(1, ExecutionSide.BUY, series.getBar(1).getClosePrice()));
+        record.recordFill(fill(2, ExecutionSide.SELL, series.getBar(2).getClosePrice()));
+        record.recordFill(fill(3, ExecutionSide.BUY, series.getBar(3).getClosePrice()));
+        return record;
+    }
+
+    private void assertParity(AnalysisCriterion criterion, BarSeries series, TradingRecord baseRecord,
+            TradingRecord liveRecord) {
+        assertEquals(criterion.calculate(series, baseRecord), criterion.calculate(series, liveRecord),
+                criterion.getClass().getSimpleName());
     }
 }

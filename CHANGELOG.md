@@ -7,6 +7,9 @@
   streaming-bar ingestion helpers to enable candle reconciliation and side/liquidity-aware trade aggregation.
 - **LiveTradingRecord**: Added live execution fill tracking with partial-fill support, open lot bookkeeping, and
   FIFO/LIFO/avg-cost matching helpers for production trading analytics.
+- **LiveTradingRecord short-mode tests**: Added coverage for short-only entry/exit behavior (SELL entry, BUY exit) and
+  parity checks for short-side criteria calculations.
+- **Strategy starting type**: Added `Strategy#getStartingType()` (default BUY) to declare long vs short strategies.
 - **Execution intents and fills**: Added `ExecutionIntent` and `ExecutionFill` core contracts; `LiveTrade` now
   implements `ExecutionFill`, and `LiveTradingRecord` can record generic fills.
 - **Open position analytics**: Added `OpenPositionCostBasisCriterion`, `OpenPositionUnrealizedProfitCriterion`, and
