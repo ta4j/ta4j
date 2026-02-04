@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
-import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
@@ -28,12 +27,23 @@ import org.ta4j.core.indicators.elliott.ElliottScenarioSet;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottSwingCompressor;
 import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
-import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.AbstractRule;
+import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
+import org.ta4j.core.rules.elliott.ElliottImpulsePhaseRule;
+import org.ta4j.core.rules.elliott.ElliottScenarioAlternationRule;
+import org.ta4j.core.rules.elliott.ElliottScenarioCompletionRule;
+import org.ta4j.core.rules.elliott.ElliottScenarioConfidenceRule;
+import org.ta4j.core.rules.elliott.ElliottScenarioDirectionRule;
+import org.ta4j.core.rules.elliott.ElliottScenarioInvalidationRule;
+import org.ta4j.core.rules.elliott.ElliottScenarioRiskRewardRule;
+import org.ta4j.core.rules.elliott.ElliottScenarioStopViolationRule;
+import org.ta4j.core.rules.elliott.ElliottScenarioTargetReachedRule;
+import org.ta4j.core.rules.elliott.ElliottScenarioTimeStopRule;
+import org.ta4j.core.rules.elliott.ElliottScenarioValidRule;
+import org.ta4j.core.rules.elliott.ElliottTrendBiasRule;
 import org.ta4j.core.strategy.named.NamedStrategy;
 
 /**
@@ -172,18 +182,33 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
                 ? new OverIndicatorRule(rsi, config.rsiThreshold()).or(new OverIndicatorRule(macd, 0))
                 : new UnderIndicatorRule(rsi, config.rsiThreshold()).or(new UnderIndicatorRule(macd, 0));
 
-        Rule entryRule = trendRule.and(momentumRule).and(new AbstractRule() {
-            @Override
-            public boolean isSatisfied(final int index, final TradingRecord record) {
-                ElliottScenarioSet scenarios = scenarioIndicator.getValue(index);
-                ElliottScenario base = scenarios.base().orElse(null);
-                Num closePrice = close.getValue(index);
-                TrendBias bias = computeTrendBias(scenarios);
-                boolean satisfied = isEntrySignal(config, base, closePrice, bias);
-                traceIsSatisfied(index, satisfied);
-                return satisfied;
-            }
-        });
+        Rule scenarioValidRule = new ElliottScenarioValidRule(scenarioIndicator, close);
+        Rule impulsePhaseRule = new ElliottImpulsePhaseRule(scenarioIndicator, ElliottPhase.WAVE3, ElliottPhase.WAVE5);
+        Rule confidenceRule = new ElliottScenarioConfidenceRule(scenarioIndicator, config.minConfidence());
+        Rule directionRule = new ElliottScenarioDirectionRule(scenarioIndicator, config.direction().isBullish());
+        Rule trendBiasRule = new ElliottTrendBiasRule(scenarioIndicator, config.direction().isBullish(),
+                config.minTrendBiasStrength());
+        Rule alternationRule = new ElliottScenarioAlternationRule(scenarioIndicator, config.minAlternationRatio());
+        Rule riskRewardRule = new ElliottScenarioRiskRewardRule(scenarioIndicator, close,
+                config.direction().isBullish(), config.minRiskReward());
+
+        Rule entryRule = scenarioValidRule.and(impulsePhaseRule)
+                .and(confidenceRule)
+                .and(directionRule)
+                .and(trendBiasRule)
+                .and(alternationRule)
+                .and(riskRewardRule)
+                .and(trendRule)
+                .and(momentumRule);
+
+        Rule exitTriggers = new NotRule(scenarioValidRule).or(new NotRule(directionRule))
+                .or(new ElliottScenarioCompletionRule(scenarioIndicator))
+                .or(new ElliottScenarioInvalidationRule(scenarioIndicator, close))
+                .or(new ElliottScenarioTargetReachedRule(scenarioIndicator, close, config.direction().isBullish()))
+                .or(new ElliottScenarioStopViolationRule(scenarioIndicator, close, config.direction().isBullish()))
+                .or(new NotRule(trendBiasRule))
+                .or(new NotRule(trendRule.and(momentumRule)))
+                .or(new ElliottScenarioTimeStopRule(scenarioIndicator, MAX_WAVE_DURATION_MULTIPLIER));
 
         Rule exitRule = new AbstractRule() {
             @Override
@@ -192,12 +217,7 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
                     traceIsSatisfied(index, false);
                     return false;
                 }
-                ElliottScenarioSet scenarios = scenarioIndicator.getValue(index);
-                ElliottScenario base = scenarios.base().orElse(null);
-                Num closePrice = close.getValue(index);
-                TrendBias bias = computeTrendBias(scenarios);
-                boolean satisfied = isExitSignal(config, base, closePrice, bias, trendRule, momentumRule, record,
-                        index);
+                boolean satisfied = exitTriggers.isSatisfied(index, record);
                 traceIsSatisfied(index, satisfied);
                 return satisfied;
             }
@@ -205,350 +225,6 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
 
         int unstableBars = calculateUnstableBars(config);
         return new RuleBundle(entryRule, exitRule, unstableBars);
-    }
-
-    /**
-     * Evaluates whether the current conditions satisfy the entry filters.
-     *
-     * @param config     strategy configuration
-     * @param base       base scenario (nullable)
-     * @param closePrice current close price
-     * @param bias       computed trend bias
-     * @return {@code true} when entry conditions are met
-     */
-    private static boolean isEntrySignal(final Config config, final ElliottScenario base, final Num closePrice,
-            final TrendBias bias) {
-        if (base == null || closePrice == null || Num.isNaNOrNull(closePrice)) {
-            return false;
-        }
-        if (base.type() != ScenarioType.IMPULSE || !isImpulseEntryPhase(base.currentPhase())) {
-            return false;
-        }
-        if (!base.confidence().isAboveThreshold(config.minConfidence())) {
-            return false;
-        }
-        if (!base.hasKnownDirection() || !directionMatches(config.direction(), base)) {
-            return false;
-        }
-        if (bias.isNeutral()) {
-            return false;
-        }
-        if (bias.strength() < config.minTrendBiasStrength()) {
-            return false;
-        }
-        if (!directionMatches(config.direction(), bias)) {
-            return false;
-        }
-
-        if (!meetsAlternationRequirement(base, config.minAlternationRatio())) {
-            return false;
-        }
-
-        return hasFavorableRiskReward(base, closePrice, config);
-    }
-
-    /**
-     * Evaluates whether the current conditions trigger an exit.
-     *
-     * @param config       strategy configuration
-     * @param base         base scenario (nullable)
-     * @param closePrice   current close price
-     * @param bias         computed trend bias
-     * @param trendRule    trend confirmation rule
-     * @param momentumRule momentum confirmation rule
-     * @param record       current trading record
-     * @param index        current bar index
-     * @return {@code true} when exit conditions are met
-     */
-    private static boolean isExitSignal(final Config config, final ElliottScenario base, final Num closePrice,
-            final TrendBias bias, final Rule trendRule, final Rule momentumRule, final TradingRecord record,
-            final int index) {
-        if (base == null || closePrice == null || Num.isNaNOrNull(closePrice)) {
-            return true;
-        }
-        if (!base.hasKnownDirection() || !directionMatches(config.direction(), base)) {
-            return true;
-        }
-        if (base.expectsCompletion()) {
-            return true;
-        }
-        if (base.isInvalidatedBy(closePrice)) {
-            return true;
-        }
-        if (hasReachedTarget(base, closePrice, config.direction())) {
-            return true;
-        }
-        if (hasStopViolation(base, closePrice, config.direction())) {
-            return true;
-        }
-
-        if (bias.isNeutral() || !directionMatches(config.direction(), bias)) {
-            return true;
-        }
-        if (bias.strength() < config.minTrendBiasStrength()) {
-            return true;
-        }
-
-        if (!trendRule.isSatisfied(index, record) || !momentumRule.isSatisfied(index, record)) {
-            return true;
-        }
-
-        return isTimeStopTriggered(record, base, index);
-    }
-
-    /**
-     * Checks whether the scenario offers the minimum risk/reward ratio.
-     *
-     * @param base       base scenario
-     * @param closePrice current close price
-     * @param config     strategy configuration
-     * @return {@code true} when risk/reward meets the configured threshold
-     */
-    private static boolean hasFavorableRiskReward(final ElliottScenario base, final Num closePrice,
-            final Config config) {
-        Num stop = selectStop(base);
-        Num target = selectTarget(base, config.direction());
-        if (Num.isNaNOrNull(stop) || Num.isNaNOrNull(target)) {
-            return false;
-        }
-
-        Num risk;
-        Num reward;
-        if (config.direction().isBullish()) {
-            if (!closePrice.isGreaterThan(stop) || !target.isGreaterThan(closePrice)) {
-                return false;
-            }
-            risk = closePrice.minus(stop);
-            reward = target.minus(closePrice);
-        } else {
-            if (!stop.isGreaterThan(closePrice) || !closePrice.isGreaterThan(target)) {
-                return false;
-            }
-            risk = stop.minus(closePrice);
-            reward = closePrice.minus(target);
-        }
-
-        if (risk.isLessThanOrEqual(closePrice.getNumFactory().zero())) {
-            return false;
-        }
-
-        Num rr = reward.dividedBy(risk);
-        return rr.isGreaterThanOrEqual(closePrice.getNumFactory().numOf(config.minRiskReward()));
-    }
-
-    /**
-     * Determines whether the price has reached the selected target.
-     *
-     * @param base       base scenario
-     * @param closePrice current close price
-     * @param direction  trade direction
-     * @return {@code true} when the target is hit
-     */
-    private static boolean hasReachedTarget(final ElliottScenario base, final Num closePrice,
-            final SignalDirection direction) {
-        Num target = selectTarget(base, direction);
-        if (Num.isNaNOrNull(target)) {
-            return false;
-        }
-        return direction.isBullish() ? closePrice.isGreaterThanOrEqual(target) : closePrice.isLessThanOrEqual(target);
-    }
-
-    /**
-     * Determines whether the corrective stop has been breached.
-     *
-     * @param base       base scenario
-     * @param closePrice current close price
-     * @param direction  trade direction
-     * @return {@code true} when the stop is violated
-     */
-    private static boolean hasStopViolation(final ElliottScenario base, final Num closePrice,
-            final SignalDirection direction) {
-        Num stop = selectStop(base);
-        if (Num.isNaNOrNull(stop)) {
-            return false;
-        }
-        return direction.isBullish() ? closePrice.isLessThanOrEqual(stop) : closePrice.isGreaterThanOrEqual(stop);
-    }
-
-    /**
-     * Validates wave 2/4 alternation meets the minimum ratio.
-     *
-     * @param base                base scenario
-     * @param minAlternationRatio minimum acceptable duration ratio
-     * @return {@code true} when alternation requirement is satisfied
-     */
-    private static boolean meetsAlternationRequirement(final ElliottScenario base, final double minAlternationRatio) {
-        List<ElliottSwing> swings = base.swings();
-        if (swings == null || swings.size() < 4) {
-            return false;
-        }
-        ElliottPhase phase = base.currentPhase();
-        if (phase != null && !phase.isImpulse()) {
-            return false;
-        }
-        ElliottSwing wave2 = swings.get(1);
-        ElliottSwing wave4 = swings.get(3);
-        int wave2Bars = wave2.length();
-        int wave4Bars = wave4.length();
-        if (wave2Bars <= 0 || wave4Bars <= 0) {
-            return false;
-        }
-        double ratio = (double) wave4Bars / wave2Bars;
-        if (Double.isNaN(ratio) || ratio <= 0.0) {
-            return false;
-        }
-        double normalized = ratio >= 1.0 ? ratio : 1.0 / ratio;
-        return normalized >= minAlternationRatio;
-    }
-
-    /**
-     * Selects the corrective stop level for the scenario.
-     *
-     * @param base base scenario
-     * @return stop price (or invalidation price as fallback)
-     */
-    private static Num selectStop(final ElliottScenario base) {
-        List<ElliottSwing> swings = base.swings();
-        if (swings == null || swings.isEmpty()) {
-            return base.invalidationPrice();
-        }
-        ElliottPhase phase = base.currentPhase();
-        int correctiveIndex = phase == ElliottPhase.WAVE3 ? 1 : phase == ElliottPhase.WAVE5 ? 3 : -1;
-        if (correctiveIndex >= 0 && swings.size() > correctiveIndex) {
-            ElliottSwing corrective = swings.get(correctiveIndex);
-            return corrective.toPrice();
-        }
-        return base.invalidationPrice();
-    }
-
-    /**
-     * Selects the furthest valid target in the trade direction.
-     *
-     * @param base      base scenario
-     * @param direction trade direction
-     * @return selected target price, or {@code null} if unavailable
-     */
-    private static Num selectTarget(final ElliottScenario base, final SignalDirection direction) {
-        Num selected = Num.isValid(base.primaryTarget()) ? base.primaryTarget() : null;
-        List<Num> targets = base.fibonacciTargets();
-        if (targets == null || targets.isEmpty()) {
-            return selected;
-        }
-        for (Num target : targets) {
-            if (!Num.isValid(target)) {
-                continue;
-            }
-            if (selected == null) {
-                selected = target;
-                continue;
-            }
-            if (direction.isBullish()) {
-                if (target.isGreaterThan(selected)) {
-                    selected = target;
-                }
-            } else if (target.isLessThan(selected)) {
-                selected = target;
-            }
-        }
-        return selected;
-    }
-
-    /**
-     * Determines whether the trade has exceeded the maximum wave duration window.
-     *
-     * @param record trading record containing the entry
-     * @param base   base scenario
-     * @param index  current bar index
-     * @return {@code true} when a time-based stop should trigger
-     */
-    private static boolean isTimeStopTriggered(final TradingRecord record, final ElliottScenario base,
-            final int index) {
-        Trade entry = record.getCurrentPosition() == null ? null : record.getCurrentPosition().getEntry();
-        if (entry == null) {
-            return false;
-        }
-        int barsOpen = index - entry.getIndex();
-        if (barsOpen <= 0) {
-            return false;
-        }
-        List<ElliottSwing> swings = base.swings();
-        if (swings.size() < 3) {
-            return false;
-        }
-        int wave3Bars = swings.get(2).length();
-        if (wave3Bars <= 0) {
-            return false;
-        }
-        double maxBars = wave3Bars * MAX_WAVE_DURATION_MULTIPLIER;
-        return barsOpen >= Math.ceil(maxBars);
-    }
-
-    /**
-     * @param phase current phase
-     * @return {@code true} when phase is eligible for entry (wave 3 or 5)
-     */
-    private static boolean isImpulseEntryPhase(final ElliottPhase phase) {
-        return phase == ElliottPhase.WAVE3 || phase == ElliottPhase.WAVE5;
-    }
-
-    /**
-     * Checks if the scenario direction matches the configured trade direction.
-     *
-     * @param direction configured direction
-     * @param scenario  base scenario
-     * @return {@code true} when direction aligns
-     */
-    private static boolean directionMatches(final SignalDirection direction, final ElliottScenario scenario) {
-        return direction.isBullish() ? scenario.isBullish() : scenario.isBearish();
-    }
-
-    /**
-     * Checks if the trend bias direction matches the configured trade direction.
-     *
-     * @param direction configured direction
-     * @param bias      computed trend bias
-     * @return {@code true} when bias aligns
-     */
-    private static boolean directionMatches(final SignalDirection direction, final TrendBias bias) {
-        if (bias == null || bias.direction() == null) {
-            return false;
-        }
-        return direction.isBullish() == bias.direction().isBullish();
-    }
-
-    /**
-     * Aggregates scenario confidences into a simplified trend bias snapshot.
-     *
-     * @param scenarios scenario set at the current index
-     * @return aggregated trend bias
-     */
-    private static TrendBias computeTrendBias(final ElliottScenarioSet scenarios) {
-        if (scenarios == null || scenarios.isEmpty()) {
-            return TrendBias.unknown();
-        }
-        double bullishScore = 0.0;
-        double bearishScore = 0.0;
-        for (ElliottScenario scenario : scenarios.all()) {
-            if (scenario == null || !scenario.hasKnownDirection()) {
-                continue;
-            }
-            double score = scenario.confidenceScore().doubleValue();
-            if (Double.isNaN(score) || score <= 0.0) {
-                continue;
-            }
-            if (scenario.isBullish()) {
-                bullishScore += score;
-            } else {
-                bearishScore += score;
-            }
-        }
-        double total = bullishScore + bearishScore;
-        if (total <= 0.0) {
-            return TrendBias.unknown();
-        }
-        double strength = Math.abs(bullishScore - bearishScore) / total;
-        SignalDirection direction = bullishScore >= bearishScore ? SignalDirection.BULLISH : SignalDirection.BEARISH;
-        return new TrendBias(direction, strength);
     }
 
     /**
@@ -908,26 +584,6 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
      * Bundles rules with their shared unstable bar count.
      */
     private record RuleBundle(Rule entryRule, Rule exitRule, int unstableBars) {
-    }
-
-    /**
-     * Simple bias snapshot derived from scenario confidence weights.
-     */
-    private record TrendBias(SignalDirection direction, double strength) {
-
-        /**
-         * @return unknown bias placeholder
-         */
-        private static TrendBias unknown() {
-            return new TrendBias(null, 0.0);
-        }
-
-        /**
-         * @return {@code true} when bias is neutral or unknown
-         */
-        private boolean isNeutral() {
-            return direction == null || strength <= 0.0;
-        }
     }
 
     /**
