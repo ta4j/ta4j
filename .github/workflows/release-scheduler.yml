@@ -153,10 +153,8 @@ jobs:
           binary_files=$(printf '%s\n' "$changed_files" | grep -E '(^|/)pom\.xml$|(^|/)src/main/' || true)
           binary_files=$(printf '%s\n' "$binary_files" | sort -u)
 
-          # sanitize: mask URLs, common GH tokens, long hex-like strings; truncate to keep payload small
-          sanitized=$(printf '%s\n' "$binary_files" | perl -pe 's#https?://\S+#[REDACTED_URL]#g; s/(gh[oprsu]_[A-Za-z0-9]{20,})/[REDACTED_TOKEN]/g; s/([A-Za-z0-9]{32,})/[REDACTED_SECRET]/g')
-          # truncate to 2000 chars to stay within model token limits
-          sanitized=$(printf '%s' "$sanitized" | cut -c1-2000)
+          # sanitize: mask URLs, common GH tokens, and long alnum tokens (avoid redacting long Java identifiers)
+          sanitized=$(printf '%s\n' "$binary_files" | perl -pe 's#https?://\S+#[REDACTED_URL]#g; s/(gh[oprsu]_[A-Za-z0-9]{20,})/[REDACTED_TOKEN]/g; s/((?=[A-Za-z0-9]{32,})(?=.*[0-9])[A-Za-z0-9]+)/[REDACTED_SECRET]/g')
 
           if [ -z "$sanitized" ]; then
             count=0
@@ -164,14 +162,42 @@ jobs:
             count=$(printf '%s\n' "$sanitized" | wc -l | tr -d ' ')
           fi
 
-          echo "audit:binary_change_lines=$count sanitized=true truncated=2000"
-          diff_b64=$(printf '%s' "$sanitized" | base64 -w0)
+          summary="(none)"
+          if [ "$count" -gt 0 ]; then
+            summary=$(printf '%s\n' "$sanitized" | awk -F/ '
+              NF>=3 && $2 == "src" && $3 == "main" {key=$1"/"$2"/"$3; counts[key]++; next}
+              NF>=2 {key=$1"/"$2; counts[key]++; next}
+              {counts[$1]++}
+              END {for (k in counts) printf "%s: %d files\n", k, counts[k]}
+            ' | sort)
+          fi
+
+          sample=""
+          if [ "$count" -gt 0 ] && [ "$count" -le 40 ]; then
+            sample="$sanitized"
+          fi
+
+          binary_prompt="$summary"
+          if [ -n "$sample" ]; then
+            binary_prompt="${binary_prompt}\nSample paths:\n${sample}"
+          fi
+          binary_prompt=$(printf '%s' "$binary_prompt" | cut -c1-1200)
+          binary_prompt_b64=$(printf '%s' "$binary_prompt" | base64 -w0)
+          binary_prompt_len=$(printf '%s' "$binary_prompt" | wc -c | tr -d ' ')
+
+          # truncate to 2000 chars for discussion output
+          sanitized_truncated=$(printf '%s' "$sanitized" | cut -c1-2000)
+
+          echo "audit:binary_change_lines=$count sanitized=true truncated=2000 summary_prompt_chars=$binary_prompt_len"
+          diff_b64=$(printf '%s' "$sanitized_truncated" | base64 -w0)
+          echo "binary_prompt_b64=$binary_prompt_b64" >> $GITHUB_OUTPUT
+          echo "binary_prompt_len=$binary_prompt_len" >> $GITHUB_OUTPUT
           echo "diff_b64=$diff_b64" >> $GITHUB_OUTPUT
           echo "lines=$count" >> $GITHUB_OUTPUT
           delim="BIN_CHANGES_$(date +%s%N)"
           {
             echo "binary_changes<<$delim"
-            printf '%s\n' "$sanitized"
+            printf '%s\n' "$sanitized_truncated"
             echo "$delim"
           } >> "$GITHUB_OUTPUT"
 
@@ -203,8 +229,13 @@ jobs:
             inSection {print}
           ' CHANGELOG.md)
 
+          filtered=$(printf '%s\n' "$unreleased" | grep -E '^[[:space:]]*(#{2,4}|[-*])' || true)
+          if [ -n "$filtered" ]; then
+            unreleased="$filtered"
+          fi
+
           # truncate to keep payload bounded and token friendly
-          unreleased=$(printf '%s' "$unreleased" | cut -c1-6000)
+          unreleased=$(printf '%s' "$unreleased" | cut -c1-2000)
 
           changelog_b64=$(printf '%s' "$unreleased" | base64 -w0)
           changelog_len=$(printf '%s' "$unreleased" | wc -c | tr -d ' ')
@@ -277,10 +308,12 @@ jobs:
       - name: Build and validate AI request JSON
         id: build_request
         if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true'
+        env:
+          RELEASE_AI_MODEL: ${{ vars.RELEASE_AI_MODEL }}
         run: |
           set -euo pipefail
 
-          binary_changes=$(printf '%s' "${{ steps.diff.outputs.diff_b64 }}" | base64 -d 2>/dev/null || true)
+          binary_prompt=$(printf '%s' "${{ steps.diff.outputs.binary_prompt_b64 }}" | base64 -d 2>/dev/null || true)
           changelog_decoded=$(printf '%s' "${{ steps.changelog.outputs.changelog_b64 }}" | base64 -d 2>/dev/null || true)
           binary_count="${{ steps.diff.outputs.lines }}"
           binary_count=${binary_count:-0}
@@ -288,15 +321,17 @@ jobs:
           current_version="${{ steps.pom_version.outputs.version }}"
           base_version="${{ steps.pom_version.outputs.base }}"
           last_tag="${{ steps.lasttag.outputs.last }}"
+          model="${RELEASE_AI_MODEL:-openai/gpt-4.1-nano}"
 
           if [ -z "$current_version" ]; then
             echo "audit:current_version_missing=true" >&2
             exit 1
           fi
           echo "audit:current_version_source=pom.xml value=$current_version base=$base_version last_tag=$last_tag"
+          echo "audit:ai_model=$model"
 
-          if [ -z "$binary_changes" ]; then
-            binary_changes="(none)"
+          if [ -z "$binary_prompt" ]; then
+            binary_prompt="(none)"
           fi
 
           # Read SemVer rules from file if it exists and has content, otherwise use defaults
@@ -312,13 +347,13 @@ jobs:
           # Build the JSON request using jq and safe string args.
           echo "build.request_json:build.start"
           jq -n \
-            --arg binary_changes "$binary_changes" \
+            --arg binary_prompt "$binary_prompt" \
             --arg binary_count "$binary_count" \
             --arg changelog "$changelog_decoded" \
             --arg current_version "$current_version" \
             --arg semver_rules "$semver_rules" \
             --arg last_tag "$last_tag" \
-            --arg model "openai/gpt-4.1-nano" \
+            --arg model "$model" \
             --arg temp "0" \
             '{
               model: $model,
@@ -332,8 +367,8 @@ jobs:
                     "Last tag: " + $last_tag + "\n" +
                     "Binary change count: " + $binary_count + "\n" +
                     "Rules:\n" + $semver_rules + "\n" +
-                    "Binary-impacting changes (paths):\n" + $binary_changes + "\n" +
-                    "Changelog (truncated):\n" + $changelog + "\n" +
+                    "Binary-impacting changes summary:\n" + $binary_prompt + "\n" +
+                    "Changelog highlights:\n" + $changelog + "\n" +
                     "Return JSON: {\"should_release\":true|false,\"bump\":\"patch|minor|major\",\"reason\":\"1-2 sentences\"}"
                   )
                 }
@@ -356,6 +391,7 @@ jobs:
         run: |
           set -uo pipefail
           echo "audit:request_json_size_bytes=$(wc -c < request.json | tr -d ' ')"
+          echo "audit:binary_prompt_chars=${{ steps.diff.outputs.binary_prompt_len }}"
           echo "audit:binary_change_truncated_chars=$(printf '%s' "${{ steps.diff.outputs.diff_b64 }}" | base64 -d 2>/dev/null | wc -c | tr -d ' ' || true)"
           echo "audit:changelog_truncated_chars=$(printf '%s' "${{ steps.changelog.outputs.changelog_b64 }}" | base64 -d 2>/dev/null | wc -c | tr -d ' ' || true)"
           echo "audit:external_call target=models.github.ai payload=request.json sanitized=true"
@@ -790,8 +826,10 @@ jobs:
 
           if [ "$dry_run" = "true" ]; then
             mode_label="dry-run"
+            marker_run="dry-run"
           else
             mode_label="production"
+            marker_run="real"
           fi
 
           if [ "$status" = "success" ]; then
@@ -827,6 +865,7 @@ jobs:
           notify_user="${RELEASE_NOTIFY_USER:-TheCookieLab}"
 
           cat > notification-body.txt <<EOF
+          <!-- ta4j:post-type=release-scheduler;run=${marker_run};lastTag=${last_tag};pomVersion=${pom_version};pomBase=${pom_base} -->
           @${notify_user}
 
           **Release Scheduler ${mode_label} ${completion_text} at ${timestamp}**
@@ -852,7 +891,12 @@ jobs:
           - pom base: ${pom_base}
 
           Binary-impacting changes (paths):
+          <details>
+          <summary>Show paths</summary>
+
           ${binary_changes}
+
+          </details>
 
           Job Results:
           - analyze: ${ANALYZE_RESULT}
@@ -866,6 +910,10 @@ jobs:
         if: always()
         uses: actions/github-script@v8
         env:
+          DRY_RUN: ${{ needs.analyze.outputs.dryRun }}
+          LAST_TAG: ${{ needs.analyze.outputs.last_tag }}
+          POM_VERSION: ${{ needs.analyze.outputs.pom_version }}
+          POM_BASE: ${{ needs.analyze.outputs.pom_base }}
           RELEASE_SCHEDULER_DISCUSSION_NUMBER: ${{ vars.RELEASE_SCHEDULER_DISCUSSION_NUMBER }}
         with:
           github-token: ${{ github.token }}
@@ -885,14 +933,136 @@ jobs:
                 repository(owner: $owner, name: $repo) {
                   discussion(number: $number) {
                     id
+                    comments(first: 50) {
+                      nodes {
+                        id
+                        body
+                      }
+                      pageInfo {
+                        hasNextPage
+                        endCursor
+                      }
+                    }
                   }
                 }
               }
             `;
+            const isDryRun = process.env.DRY_RUN === "true";
+            const currentLastTag = (process.env.LAST_TAG || "(none)").trim() || "(none)";
+            const currentPomVersion = (process.env.POM_VERSION || "(unknown)").trim() || "(unknown)";
+            const currentPomBase = (process.env.POM_BASE || "(unknown)").trim() || "(unknown)";
             const queryResult = await github.graphql(query, { owner, repo, number });
-            const discussionId = queryResult?.repository?.discussion?.id;
+            const discussion = queryResult?.repository?.discussion;
+            const discussionId = discussion?.id;
             if (!discussionId) {
               throw new Error(`Discussion ${number} not found in ${owner}/${repo}`);
+            }
+
+            if (isDryRun) {
+              const markerRegex = /<!--\s*ta4j:post-type=release-scheduler;([^>]*)-->/i;
+              const parseMarker = (text) => {
+                const match = text.match(markerRegex);
+                if (!match) {
+                  return null;
+                }
+                const fields = {};
+                for (const part of match[1].split(";")) {
+                  if (!part.trim()) {
+                    continue;
+                  }
+                  const idx = part.indexOf("=");
+                  if (idx === -1) {
+                    continue;
+                  }
+                  const key = part.slice(0, idx).trim();
+                  const value = part.slice(idx + 1).trim();
+                  if (key) {
+                    fields[key] = value;
+                  }
+                }
+                return fields;
+              };
+              const parseLegacyFields = (text) => {
+                const lastTagMatch = text.match(/- last tag:\s*(.+)\s*$/im);
+                const pomVersionMatch = text.match(/- pom version:\s*(.+)\s*$/im);
+                const pomBaseMatch = text.match(/- pom base:\s*(.+)\s*$/im);
+                if (!lastTagMatch || !pomVersionMatch || !pomBaseMatch) {
+                  return null;
+                }
+                return {
+                  lastTag: lastTagMatch[1].trim(),
+                  pomVersion: pomVersionMatch[1].trim(),
+                  pomBase: pomBaseMatch[1].trim()
+                };
+              };
+              const matchesCurrentVersions = (fields) => {
+                if (!fields?.lastTag || !fields?.pomVersion || !fields?.pomBase) {
+                  return false;
+                }
+                return (
+                  fields.lastTag === currentLastTag &&
+                  fields.pomVersion === currentPomVersion &&
+                  fields.pomBase === currentPomBase
+                );
+              };
+              const toDelete = [];
+
+              let page = discussion.comments;
+              while (page) {
+                for (const node of page.nodes || []) {
+                  const text = node?.body || "";
+                  const fields = parseMarker(text);
+                  const isDryRunPost = fields ? fields.run === "dry-run" : /- dryRun:\s*true/i.test(text);
+                  if (!isDryRunPost) {
+                    continue;
+                  }
+                  const versionFields =
+                    fields && fields.lastTag && fields.pomVersion && fields.pomBase
+                      ? fields
+                      : parseLegacyFields(text);
+                  if (matchesCurrentVersions(versionFields)) {
+                    toDelete.push(node.id);
+                  }
+                }
+                if (!page.pageInfo?.hasNextPage) {
+                  break;
+                }
+                const next = await github.graphql(
+                  `
+                    query($owner: String!, $repo: String!, $number: Int!, $cursor: String!) {
+                      repository(owner: $owner, name: $repo) {
+                        discussion(number: $number) {
+                          comments(first: 50, after: $cursor) {
+                            nodes {
+                              id
+                              body
+                            }
+                            pageInfo {
+                              hasNextPage
+                              endCursor
+                            }
+                          }
+                        }
+                      }
+                    }
+                  `,
+                  { owner, repo, number, cursor: page.pageInfo.endCursor }
+                );
+                page = next?.repository?.discussion?.comments;
+              }
+
+              for (const commentId of toDelete) {
+                await github.graphql(
+                  `
+                    mutation($commentId: ID!) {
+                      deleteDiscussionComment(input: { id: $commentId }) {
+                        clientMutationId
+                      }
+                    }
+                  `,
+                  { commentId }
+                );
+              }
             }
 
             const mutation = `
