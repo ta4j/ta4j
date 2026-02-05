@@ -5,6 +5,7 @@ package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -14,6 +15,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class AverageTrueRangeTrailingStopGainRuleTest {
@@ -83,5 +85,16 @@ public class AverageTrueRangeTrailingStopGainRuleTest {
         var rule = new AverageTrueRangeTrailingStopGainRule(series, 3, 1.5);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
+    }
+
+    @Test
+    public void constructorValidation() {
+        var reference = new ClosePriceIndicator(series);
+        assertThrows(IllegalArgumentException.class,
+                () -> new AverageTrueRangeTrailingStopGainRule(series, null, 3, 1.0, 2));
+        assertThrows(IllegalArgumentException.class,
+                () -> new AverageTrueRangeTrailingStopGainRule(series, reference, 0, 1.0, 2));
+        assertThrows(IllegalArgumentException.class,
+                () -> new AverageTrueRangeTrailingStopGainRule(series, reference, 3, 1.0, 0));
     }
 }

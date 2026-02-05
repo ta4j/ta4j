@@ -45,6 +45,9 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
         if (indicator == null) {
             throw new IllegalArgumentException("indicator must not be null");
         }
+        if (Num.isNaNOrNull(gainPercentage) || gainPercentage.isZero() || gainPercentage.isNegative()) {
+            throw new IllegalArgumentException("gainPercentage must be positive");
+        }
         if (barCount <= 0) {
             throw new IllegalArgumentException("barCount must be positive");
         }
@@ -70,13 +73,14 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
         if (tradingRecord != null) {
             Position currentPosition = tradingRecord.getCurrentPosition();
             if (currentPosition.isOpened()) {
+                Num entryPrice = currentPosition.getEntry().getNetPrice();
                 Num currentPrice = priceIndicator.getValue(index);
                 int positionIndex = currentPosition.getEntry().getIndex();
 
                 if (currentPosition.getEntry().isBuy()) {
-                    satisfied = isBuySatisfied(currentPrice, index, positionIndex);
+                    satisfied = isBuySatisfied(entryPrice, currentPrice, index, positionIndex);
                 } else {
-                    satisfied = isSellSatisfied(currentPrice, index, positionIndex);
+                    satisfied = isSellSatisfied(entryPrice, currentPrice, index, positionIndex);
                 }
             }
         }
@@ -84,19 +88,27 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
         return satisfied;
     }
 
-    private boolean isBuySatisfied(Num currentPrice, int index, int positionIndex) {
+    private boolean isBuySatisfied(Num entryPrice, Num currentPrice, int index, int positionIndex) {
         HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
                 getValueIndicatorBarCount(index, positionIndex));
         Num highestCloseNum = highest.getValue(index);
-        Num currentStopGainLimitActivation = StopLossRule.stopLossPrice(highestCloseNum, gainPercentage, true);
+        Num gainActivationThreshold = StopGainRule.stopGainPrice(entryPrice, gainPercentage, true);
+        if (highestCloseNum.isLessThan(gainActivationThreshold)) {
+            return false;
+        }
+        Num currentStopGainLimitActivation = StopGainRule.trailingStopGainPrice(highestCloseNum, gainPercentage, true);
         return currentPrice.isLessThanOrEqual(currentStopGainLimitActivation);
     }
 
-    private boolean isSellSatisfied(Num currentPrice, int index, int positionIndex) {
+    private boolean isSellSatisfied(Num entryPrice, Num currentPrice, int index, int positionIndex) {
         LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
                 getValueIndicatorBarCount(index, positionIndex));
         Num lowestCloseNum = lowest.getValue(index);
-        Num currentStopGainLimitActivation = StopLossRule.stopLossPrice(lowestCloseNum, gainPercentage, false);
+        Num gainActivationThreshold = StopGainRule.stopGainPrice(entryPrice, gainPercentage, false);
+        if (lowestCloseNum.isGreaterThan(gainActivationThreshold)) {
+            return false;
+        }
+        Num currentStopGainLimitActivation = StopGainRule.trailingStopGainPrice(lowestCloseNum, gainPercentage, false);
         return currentPrice.isGreaterThanOrEqual(currentStopGainLimitActivation);
     }
 
@@ -118,11 +130,11 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
         if (position.getEntry().isBuy()) {
             HighestValueIndicator highest = new HighestValueIndicator(priceIndicator, lookback);
             Num highestCloseNum = highest.getValue(entryIndex);
-            return StopLossRule.stopLossPrice(highestCloseNum, gainPercentage, true);
+            return StopGainRule.trailingStopGainPrice(highestCloseNum, gainPercentage, true);
         }
         LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator, lookback);
         Num lowestCloseNum = lowest.getValue(entryIndex);
-        return StopLossRule.stopLossPrice(lowestCloseNum, gainPercentage, false);
+        return StopGainRule.trailingStopGainPrice(lowestCloseNum, gainPercentage, false);
     }
 
     private int getValueIndicatorBarCount(int index, int positionIndex) {

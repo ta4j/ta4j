@@ -15,7 +15,6 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
 public class VolatilityTrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Object> {
@@ -26,7 +25,7 @@ public class VolatilityTrailingStopLossRuleTest extends AbstractIndicatorTest<Ob
 
     @Test
     public void isSatisfiedForBuy() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 120, 130, 119).build();
+        var series = StopRuleTestSupport.series(numFactory, 100, 120, 130, 119);
         var closePrice = new ClosePriceIndicator(series);
         var volatility = new ConstantIndicator<>(series, numFactory.numOf(5));
         var rule = new VolatilityTrailingStopLossRule(closePrice, volatility, 1);
@@ -43,7 +42,7 @@ public class VolatilityTrailingStopLossRuleTest extends AbstractIndicatorTest<Ob
 
     @Test
     public void isSatisfiedForSell() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90, 80, 86).build();
+        var series = StopRuleTestSupport.series(numFactory, 100, 90, 80, 86);
         var closePrice = new ClosePriceIndicator(series);
         var volatility = new ConstantIndicator<>(series, numFactory.numOf(5));
         var rule = new VolatilityTrailingStopLossRule(closePrice, volatility, 1);
@@ -56,5 +55,31 @@ public class VolatilityTrailingStopLossRuleTest extends AbstractIndicatorTest<Ob
 
         Position position = new Position(Trade.sellAt(0, series), Trade.buyAt(1, series));
         assertNumEquals(105, rule.stopPrice(series, position));
+    }
+
+    @Test
+    public void isSatisfiedForBuyAtExactThreshold() {
+        var series = StopRuleTestSupport.series(numFactory, 100, 120, 115);
+        var closePrice = new ClosePriceIndicator(series);
+        var volatility = new ConstantIndicator<>(series, numFactory.numOf(5));
+        var rule = new VolatilityTrailingStopLossRule(closePrice, volatility, 1);
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+
+        tradingRecord.enter(0, numFactory.hundred(), numFactory.one());
+
+        assertTrue(rule.isSatisfied(2, tradingRecord));
+    }
+
+    @Test
+    public void isSatisfiedForSellAtExactThreshold() {
+        var series = StopRuleTestSupport.series(numFactory, 100, 80, 85);
+        var closePrice = new ClosePriceIndicator(series);
+        var volatility = new ConstantIndicator<>(series, numFactory.numOf(5));
+        var rule = new VolatilityTrailingStopLossRule(closePrice, volatility, 1);
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.SELL);
+
+        tradingRecord.enter(0, numFactory.hundred(), numFactory.one());
+
+        assertTrue(rule.isSatisfied(2, tradingRecord));
     }
 }

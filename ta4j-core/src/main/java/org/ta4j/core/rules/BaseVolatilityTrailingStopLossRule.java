@@ -57,12 +57,12 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
                     HighestValueIndicator highestPrice = new HighestValueIndicator(referencePrice, lookback);
                     Num reference = entryPrice.max(highestPrice.getValue(index));
                     Num thresholdPrice = StopLossRule.stopLossPriceFromDistance(reference, threshold, true);
-                    return currentPrice.isLessThan(thresholdPrice);
+                    return currentPrice.isLessThanOrEqual(thresholdPrice);
                 }
                 LowestValueIndicator lowestPrice = new LowestValueIndicator(referencePrice, lookback);
                 Num reference = entryPrice.min(lowestPrice.getValue(index));
                 Num thresholdPrice = StopLossRule.stopLossPriceFromDistance(reference, threshold, false);
-                return currentPrice.isGreaterThan(thresholdPrice);
+                return currentPrice.isGreaterThanOrEqual(thresholdPrice);
             }
         }
         return false;

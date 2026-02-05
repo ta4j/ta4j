@@ -90,6 +90,50 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
     }
 
     /**
+     * Computes the trailing stop-gain retracement price from a favorable price and
+     * retracement percentage.
+     *
+     * @param favorablePrice        the most favorable price reached so far
+     * @param retracementPercentage the retracement percentage
+     * @param isBuy                 true for long positions, false for short
+     *                              positions
+     * @return the trailing stop-gain retracement price
+     * @since 0.22.2
+     */
+    public static Num trailingStopGainPrice(Num favorablePrice, Num retracementPercentage, boolean isBuy) {
+        if (favorablePrice == null) {
+            throw new IllegalArgumentException("favorablePrice must not be null");
+        }
+        if (retracementPercentage == null) {
+            throw new IllegalArgumentException("retracementPercentage must not be null");
+        }
+        var hundred = favorablePrice.getNumFactory().hundred();
+        var retracementRatioThreshold = isBuy ? hundred.minus(retracementPercentage).dividedBy(hundred)
+                : hundred.plus(retracementPercentage).dividedBy(hundred);
+        return favorablePrice.multipliedBy(retracementRatioThreshold);
+    }
+
+    /**
+     * Computes the trailing stop-gain retracement price from a favorable price and
+     * retracement distance.
+     *
+     * @param favorablePrice      the most favorable price reached so far
+     * @param retracementDistance the retracement distance
+     * @param isBuy               true for long positions, false for short positions
+     * @return the trailing stop-gain retracement price
+     * @since 0.22.2
+     */
+    public static Num trailingStopGainPriceFromDistance(Num favorablePrice, Num retracementDistance, boolean isBuy) {
+        if (favorablePrice == null) {
+            throw new IllegalArgumentException("favorablePrice must not be null");
+        }
+        if (retracementDistance == null) {
+            throw new IllegalArgumentException("retracementDistance must not be null");
+        }
+        return isBuy ? favorablePrice.minus(retracementDistance) : favorablePrice.plus(retracementDistance);
+    }
+
+    /**
      * Returns the stop-gain price for the supplied position entry.
      *
      * @param series   the price series

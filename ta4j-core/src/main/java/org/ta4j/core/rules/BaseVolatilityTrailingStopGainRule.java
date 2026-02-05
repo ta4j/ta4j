@@ -59,13 +59,23 @@ abstract class BaseVolatilityTrailingStopGainRule extends AbstractRule implement
 
                 if (position.getEntry().isBuy()) {
                     HighestValueIndicator highestPrice = new HighestValueIndicator(referencePrice, lookback);
-                    Num reference = entryPrice.max(highestPrice.getValue(index));
-                    Num thresholdPrice = StopLossRule.stopLossPriceFromDistance(reference, threshold, true);
+                    Num highestValue = highestPrice.getValue(index);
+                    Num gainActivationThreshold = StopGainRule.stopGainPriceFromDistance(entryPrice, threshold, true);
+                    if (highestValue.isLessThan(gainActivationThreshold)) {
+                        return false;
+                    }
+                    Num reference = entryPrice.max(highestValue);
+                    Num thresholdPrice = StopGainRule.trailingStopGainPriceFromDistance(reference, threshold, true);
                     return currentPrice.isLessThanOrEqual(thresholdPrice);
                 }
                 LowestValueIndicator lowestPrice = new LowestValueIndicator(referencePrice, lookback);
-                Num reference = entryPrice.min(lowestPrice.getValue(index));
-                Num thresholdPrice = StopLossRule.stopLossPriceFromDistance(reference, threshold, false);
+                Num lowestValue = lowestPrice.getValue(index);
+                Num gainActivationThreshold = StopGainRule.stopGainPriceFromDistance(entryPrice, threshold, false);
+                if (lowestValue.isGreaterThan(gainActivationThreshold)) {
+                    return false;
+                }
+                Num reference = entryPrice.min(lowestValue);
+                Num thresholdPrice = StopGainRule.trailingStopGainPriceFromDistance(reference, threshold, false);
                 return currentPrice.isGreaterThanOrEqual(thresholdPrice);
             }
         }
@@ -91,10 +101,10 @@ abstract class BaseVolatilityTrailingStopGainRule extends AbstractRule implement
         if (position.getEntry().isBuy()) {
             HighestValueIndicator highestPrice = new HighestValueIndicator(referencePrice, lookback);
             Num reference = entryPrice.max(highestPrice.getValue(entryIndex));
-            return StopLossRule.stopLossPriceFromDistance(reference, threshold, true);
+            return StopGainRule.trailingStopGainPriceFromDistance(reference, threshold, true);
         }
         LowestValueIndicator lowestPrice = new LowestValueIndicator(referencePrice, lookback);
         Num reference = entryPrice.min(lowestPrice.getValue(entryIndex));
-        return StopLossRule.stopLossPriceFromDistance(reference, threshold, false);
+        return StopGainRule.trailingStopGainPriceFromDistance(reference, threshold, false);
     }
 }

@@ -43,9 +43,11 @@ abstract class BaseVolatilityStopLossRule extends AbstractRule implements StopLo
                 }
 
                 if (position.getEntry().isBuy()) {
-                    return currentPrice.isLessThan(StopLossRule.stopLossPriceFromDistance(entryPrice, threshold, true));
+                    return currentPrice
+                            .isLessThanOrEqual(StopLossRule.stopLossPriceFromDistance(entryPrice, threshold, true));
                 }
-                return currentPrice.isGreaterThan(StopLossRule.stopLossPriceFromDistance(entryPrice, threshold, false));
+                return currentPrice
+                        .isGreaterThanOrEqual(StopLossRule.stopLossPriceFromDistance(entryPrice, threshold, false));
             }
         }
         return false;

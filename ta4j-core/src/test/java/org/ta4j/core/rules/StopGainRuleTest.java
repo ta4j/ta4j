@@ -44,6 +44,10 @@ public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertNumEquals(95, StopGainRule.stopGainPrice(entryPrice, gainPercent, false));
         assertNumEquals(105, StopGainRule.stopGainPriceFromDistance(entryPrice, numFactory.numOf(5), true));
         assertNumEquals(95, StopGainRule.stopGainPriceFromDistance(entryPrice, numFactory.numOf(5), false));
+        assertNumEquals(95, StopGainRule.trailingStopGainPrice(entryPrice, gainPercent, true));
+        assertNumEquals(105, StopGainRule.trailingStopGainPrice(entryPrice, gainPercent, false));
+        assertNumEquals(95, StopGainRule.trailingStopGainPriceFromDistance(entryPrice, numFactory.numOf(5), true));
+        assertNumEquals(105, StopGainRule.trailingStopGainPriceFromDistance(entryPrice, numFactory.numOf(5), false));
     }
 
     @Test

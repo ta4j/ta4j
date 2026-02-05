@@ -94,13 +94,14 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
         if (tradingRecord != null) {
             Position currentPosition = tradingRecord.getCurrentPosition();
             if (currentPosition.isOpened()) {
+                Num entryPrice = currentPosition.getEntry().getNetPrice();
                 Num currentPrice = priceIndicator.getValue(index);
                 int positionIndex = currentPosition.getEntry().getIndex();
 
                 if (currentPosition.getEntry().isBuy()) {
-                    satisfied = isBuySatisfied(currentPrice, index, positionIndex);
+                    satisfied = isBuySatisfied(entryPrice, currentPrice, index, positionIndex);
                 } else {
-                    satisfied = isSellSatisfied(currentPrice, index, positionIndex);
+                    satisfied = isSellSatisfied(entryPrice, currentPrice, index, positionIndex);
                 }
             }
         }
@@ -108,19 +109,29 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
         return satisfied;
     }
 
-    private boolean isBuySatisfied(Num currentPrice, int index, int positionIndex) {
+    private boolean isBuySatisfied(Num entryPrice, Num currentPrice, int index, int positionIndex) {
         HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
                 getValueIndicatorBarCount(index, positionIndex));
         Num highestCloseNum = highest.getValue(index);
-        Num currentStopGainLimitActivation = StopLossRule.stopLossPriceFromDistance(highestCloseNum, gainAmount, true);
+        Num gainActivationThreshold = StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, true);
+        if (highestCloseNum.isLessThan(gainActivationThreshold)) {
+            return false;
+        }
+        Num currentStopGainLimitActivation = StopGainRule.trailingStopGainPriceFromDistance(highestCloseNum, gainAmount,
+                true);
         return currentPrice.isLessThanOrEqual(currentStopGainLimitActivation);
     }
 
-    private boolean isSellSatisfied(Num currentPrice, int index, int positionIndex) {
+    private boolean isSellSatisfied(Num entryPrice, Num currentPrice, int index, int positionIndex) {
         LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
                 getValueIndicatorBarCount(index, positionIndex));
         Num lowestCloseNum = lowest.getValue(index);
-        Num currentStopGainLimitActivation = StopLossRule.stopLossPriceFromDistance(lowestCloseNum, gainAmount, false);
+        Num gainActivationThreshold = StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, false);
+        if (lowestCloseNum.isGreaterThan(gainActivationThreshold)) {
+            return false;
+        }
+        Num currentStopGainLimitActivation = StopGainRule.trailingStopGainPriceFromDistance(lowestCloseNum, gainAmount,
+                false);
         return currentPrice.isGreaterThanOrEqual(currentStopGainLimitActivation);
     }
 
@@ -142,11 +153,11 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
         if (position.getEntry().isBuy()) {
             HighestValueIndicator highest = new HighestValueIndicator(priceIndicator, lookback);
             Num highestCloseNum = highest.getValue(entryIndex);
-            return StopLossRule.stopLossPriceFromDistance(highestCloseNum, gainAmount, true);
+            return StopGainRule.trailingStopGainPriceFromDistance(highestCloseNum, gainAmount, true);
         }
         LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator, lookback);
         Num lowestCloseNum = lowest.getValue(entryIndex);
-        return StopLossRule.stopLossPriceFromDistance(lowestCloseNum, gainAmount, false);
+        return StopGainRule.trailingStopGainPriceFromDistance(lowestCloseNum, gainAmount, false);
     }
 
     private int getValueIndicatorBarCount(int index, int positionIndex) {

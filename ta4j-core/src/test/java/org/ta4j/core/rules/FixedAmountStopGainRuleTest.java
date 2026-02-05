@@ -5,6 +5,7 @@ package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -79,5 +80,13 @@ public class FixedAmountStopGainRuleTest extends AbstractIndicatorTest<BarSeries
         var rule = new FixedAmountStopGainRule(closePrice, numFactory.numOf(8));
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(closePrice.getBarSeries(), rule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(closePrice.getBarSeries(), rule);
+    }
+
+    @Test
+    public void constructorValidation() {
+        assertThrows(IllegalArgumentException.class, () -> new FixedAmountStopGainRule(null, numFactory.one()));
+        assertThrows(IllegalArgumentException.class, () -> new FixedAmountStopGainRule(closePrice, numFactory.zero()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new FixedAmountStopGainRule(closePrice, numFactory.minusOne()));
     }
 }
