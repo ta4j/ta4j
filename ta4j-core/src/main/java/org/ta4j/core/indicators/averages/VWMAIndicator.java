@@ -29,6 +29,8 @@ import static org.ta4j.core.num.NaN.NaN;
 public class VWMAIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
+    private final Indicator<Num> priceIndicator;
+    private final Indicator<Num> volumeIndicator;
     private final Indicator<Num> volumeWeightedIndicator;
 
     /**
@@ -60,6 +62,8 @@ public class VWMAIndicator extends CachedIndicator<Num> {
             throw new IllegalArgumentException("Price and volume indicators must share the same bar series");
         }
 
+        this.priceIndicator = priceIndicator;
+        this.volumeIndicator = volumeIndicator;
         final var weightedPriceSum = BinaryOperationIndicator.product(priceIndicator, volumeIndicator);
         final var weightedPriceAverage = Objects.requireNonNull(averageFactory.apply(weightedPriceSum, barCount),
                 "averageFactory must return a price-volume average");
@@ -80,7 +84,9 @@ public class VWMAIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return volumeWeightedIndicator.getCountOfUnstableBars();
+        int baseUnstableBars = Math.max(priceIndicator.getCountOfUnstableBars(),
+                volumeIndicator.getCountOfUnstableBars());
+        return Math.max(baseUnstableBars, volumeWeightedIndicator.getCountOfUnstableBars());
     }
 
     @Override
