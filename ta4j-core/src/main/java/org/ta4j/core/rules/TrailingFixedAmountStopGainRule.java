@@ -12,15 +12,18 @@ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * A trailing stop-loss rule.
+ * A trailing stop-gain rule using a fixed absolute amount.
  *
  * <p>
- * Satisfied when the price reaches the trailing loss threshold.
+ * The stop-gain distance is a fixed price amount (flat-dollar trailing
+ * take-profit).
  *
  * <p>
  * This rule uses the {@code tradingRecord}.
+ *
+ * @since 0.22.2
  */
-public class TrailingStopLossRule extends AbstractRule implements StopLossPriceModel {
+public class TrailingFixedAmountStopGainRule extends AbstractRule implements StopGainPriceModel {
 
     /** The price indicator. */
     private final Indicator<Num> priceIndicator;
@@ -28,37 +31,66 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
     /** The barCount. */
     private final int barCount;
 
-    /** the loss-distance as percentage. */
-    private final Num lossPercentage;
+    /** The gain distance as an absolute amount. */
+    private final Num gainAmount;
 
     /**
      * Constructor.
      *
-     * @param indicator      the (close price) indicator
-     * @param lossPercentage the loss percentage
-     * @param barCount       the number of bars to look back for the calculation
+     * @param indicator  the (close price) indicator
+     * @param gainAmount the absolute gain amount
+     * @param barCount   the number of bars to look back for the calculation
      */
-    public TrailingStopLossRule(Indicator<Num> indicator, Num lossPercentage, int barCount) {
+    public TrailingFixedAmountStopGainRule(Indicator<Num> indicator, Num gainAmount, int barCount) {
+        if (indicator == null) {
+            throw new IllegalArgumentException("indicator must not be null");
+        }
+        if (Num.isNaNOrNull(gainAmount) || gainAmount.isZero() || gainAmount.isNegative()) {
+            throw new IllegalArgumentException("gainAmount must be positive");
+        }
+        if (barCount <= 0) {
+            throw new IllegalArgumentException("barCount must be positive");
+        }
         this.priceIndicator = indicator;
         this.barCount = barCount;
-        this.lossPercentage = lossPercentage;
+        this.gainAmount = gainAmount;
     }
 
     /**
      * Constructor.
      *
-     * @param indicator      the (close price) indicator
-     * @param lossPercentage the loss percentage
+     * @param indicator  the (close price) indicator
+     * @param gainAmount the absolute gain amount
+     * @param barCount   the number of bars to look back for the calculation
      */
-    public TrailingStopLossRule(Indicator<Num> indicator, Num lossPercentage) {
-        this(indicator, lossPercentage, Integer.MAX_VALUE);
+    public TrailingFixedAmountStopGainRule(Indicator<Num> indicator, Number gainAmount, int barCount) {
+        this(indicator, indicator.getBarSeries().numFactory().numOf(gainAmount), barCount);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param indicator  the (close price) indicator
+     * @param gainAmount the absolute gain amount
+     */
+    public TrailingFixedAmountStopGainRule(Indicator<Num> indicator, Num gainAmount) {
+        this(indicator, gainAmount, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param indicator  the (close price) indicator
+     * @param gainAmount the absolute gain amount
+     */
+    public TrailingFixedAmountStopGainRule(Indicator<Num> indicator, Number gainAmount) {
+        this(indicator, gainAmount, Integer.MAX_VALUE);
     }
 
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         boolean satisfied = false;
-        // No trading history or no position opened, no loss
         if (tradingRecord != null) {
             Position currentPosition = tradingRecord.getCurrentPosition();
             if (currentPosition.isOpened()) {
@@ -80,24 +112,24 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
         HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
                 getValueIndicatorBarCount(index, positionIndex));
         Num highestCloseNum = highest.getValue(index);
-        Num currentStopLossLimitActivation = StopLossRule.stopLossPrice(highestCloseNum, lossPercentage, true);
-        return currentPrice.isLessThanOrEqual(currentStopLossLimitActivation);
+        Num currentStopGainLimitActivation = StopLossRule.stopLossPriceFromDistance(highestCloseNum, gainAmount, true);
+        return currentPrice.isLessThanOrEqual(currentStopGainLimitActivation);
     }
 
     private boolean isSellSatisfied(Num currentPrice, int index, int positionIndex) {
         LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
                 getValueIndicatorBarCount(index, positionIndex));
         Num lowestCloseNum = lowest.getValue(index);
-        Num currentStopLossLimitActivation = StopLossRule.stopLossPrice(lowestCloseNum, lossPercentage, false);
-        return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
+        Num currentStopGainLimitActivation = StopLossRule.stopLossPriceFromDistance(lowestCloseNum, gainAmount, false);
+        return currentPrice.isGreaterThanOrEqual(currentStopGainLimitActivation);
     }
 
     /**
-     * Returns the stop-loss price for the supplied position entry.
+     * Returns the stop-gain price for the supplied position entry.
      *
      * @param series   the price series
      * @param position the position being evaluated
-     * @return the stop-loss price, or {@code null} if unavailable
+     * @return the stop-gain price, or {@code null} if unavailable
      * @since 0.22.2
      */
     @Override
@@ -106,15 +138,15 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
             return null;
         }
         int entryIndex = position.getEntry().getIndex();
-        int barCount = getValueIndicatorBarCount(entryIndex, entryIndex);
+        int lookback = Math.min(1, barCount);
         if (position.getEntry().isBuy()) {
-            HighestValueIndicator highest = new HighestValueIndicator(priceIndicator, barCount);
+            HighestValueIndicator highest = new HighestValueIndicator(priceIndicator, lookback);
             Num highestCloseNum = highest.getValue(entryIndex);
-            return StopLossRule.stopLossPrice(highestCloseNum, lossPercentage, true);
+            return StopLossRule.stopLossPriceFromDistance(highestCloseNum, gainAmount, true);
         }
-        LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator, barCount);
+        LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator, lookback);
         Num lowestCloseNum = lowest.getValue(entryIndex);
-        return StopLossRule.stopLossPrice(lowestCloseNum, lossPercentage, false);
+        return StopLossRule.stopLossPriceFromDistance(lowestCloseNum, gainAmount, false);
     }
 
     private int getValueIndicatorBarCount(int index, int positionIndex) {

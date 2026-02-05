@@ -16,6 +16,12 @@
   or short-first behavior explicitly.
 - **Open position analytics**: Added `PositionLedger`, `OpenPositionCostBasisCriterion`,
   `OpenPositionUnrealizedProfitCriterion`, and `TotalFeesCriterion` for live exposure and fee analysis.
+- **R-multiple criterion**: Added `PositionRiskModel` and `RMultipleCriterion` to compute profit per unit of risk.
+- **Stop-loss/gain tooling**: Added `StopLossPositionRiskModel`, `StopLossPriceModel`, `StopGainPriceModel`,
+  fixed/trailing stop-loss rules, and matching stop-gain counterparts (`FixedAmountStopGainRule`,
+  `TrailingStopGainRule`, `TrailingFixedAmountStopGainRule`, `VolatilityStopGainRule`,
+  `VolatilityTrailingStopGainRule`, `AverageTrueRangeTrailingStopGainRule`) to cover fixed-percentage,
+  fixed-amount, and volatility-scaled stops.
 - **Sharpe Ratio**: Added `SharpeRatioCriterion` and its related calculation classes
 - **Equity-curve controls**: Added `OpenPositionHandling` and `PerformanceIndicator` to standardize mark-to-market vs
   realized behavior across performance metrics.
