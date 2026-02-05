@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -45,15 +46,14 @@ public class IntraDayMomentumIndexIndicatorTest extends AbstractIndicatorTest<In
         assertTrue(imi.getValue(1).isNaN());
         assertTrue(imi.getValue(2).isNaN());
         assertTrue(imi.getValue(3).isNaN());
-        assertTrue(imi.getValue(4).isNaN());
-        assertFalse(imi.getValue(5).isNaN());
+        assertFalse(imi.getValue(4).isNaN());
     }
 
     @Test
     public void givenBarCountOf1_whenGetValue_thenReturnCorrectValue() {
         var imi = new IntraDayMomentumIndexIndicator(mockBarSeries, 1);
 
-        assertTrue(imi.getValue(0).isNaN());
+        assertNumEquals(0, imi.getValue(0));
         assertNumEquals(100, imi.getValue(1));
         assertNumEquals(100, imi.getValue(2));
         assertNumEquals(100, imi.getValue(3));
@@ -68,13 +68,20 @@ public class IntraDayMomentumIndexIndicatorTest extends AbstractIndicatorTest<In
 
         assertTrue(imi.getValue(0).isNaN());
         assertTrue(imi.getValue(1).isNaN());
-        assertTrue(imi.getValue(2).isNaN());
+        assertNumEquals(66.66666666666666, imi.getValue(2));
         assertNumEquals(100, imi.getValue(3));
         assertNumEquals(100, imi.getValue(4));
         assertNumEquals(83.33333333333334, imi.getValue(5));
         assertNumEquals(42.85714285714286, imi.getValue(6));
         assertNumEquals(42.85714285714286, imi.getValue(7));
         assertNumEquals(20, imi.getValue(8));
+    }
+
+    @Test
+    public void reportsUnstableBarsFromMovingAverages() {
+        assertEquals(4, new IntraDayMomentumIndexIndicator(mockBarSeries, 5).getCountOfUnstableBars());
+        assertEquals(0, new IntraDayMomentumIndexIndicator(mockBarSeries, 1).getCountOfUnstableBars());
+        assertEquals(2, new IntraDayMomentumIndexIndicator(mockBarSeries, 3).getCountOfUnstableBars());
     }
 
 }

@@ -35,23 +35,13 @@ public class DoubleEMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     public void doubleEMAUsingBarCount5UsingClosePrice() {
         var doubleEma = new DoubleEMAIndicator(closePrice, 5);
 
-        // With barCount=5, unstable period is 5, so indices 0-4 return NaN
-        assertThat(Double.isNaN(doubleEma.getValue(0).doubleValue())).isTrue();
-        assertThat(Double.isNaN(doubleEma.getValue(1).doubleValue())).isTrue();
-        assertThat(Double.isNaN(doubleEma.getValue(2).doubleValue())).isTrue();
-        assertThat(Double.isNaN(doubleEma.getValue(3).doubleValue())).isTrue();
-        assertThat(Double.isNaN(doubleEma.getValue(4).doubleValue())).isTrue();
+        int unstableBars = doubleEma.getCountOfUnstableBars();
+        for (int i = 0; i < unstableBars; i++) {
+            assertThat(Num.isNaNOrNull(doubleEma.getValue(i))).isTrue();
+        }
 
-        // Values after unstable period should be valid (not NaN)
-        // Note: Values differ from old behavior because first EMA value after unstable
-        // period
-        // is now initialized to current value, not calculated from previous values
-        assertThat(Double.isNaN(doubleEma.getValue(6).doubleValue())).isFalse();
-        assertThat(Double.isNaN(doubleEma.getValue(7).doubleValue())).isFalse();
-        assertThat(Double.isNaN(doubleEma.getValue(8).doubleValue())).isFalse();
-
-        assertThat(Double.isNaN(doubleEma.getValue(12).doubleValue())).isFalse();
-        assertThat(Double.isNaN(doubleEma.getValue(13).doubleValue())).isFalse();
-        assertThat(Double.isNaN(doubleEma.getValue(14).doubleValue())).isFalse();
+        for (int i = unstableBars; i < closePrice.getBarSeries().getBarCount(); i++) {
+            assertThat(Num.isNaNOrNull(doubleEma.getValue(i))).isFalse();
+        }
     }
 }

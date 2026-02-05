@@ -122,7 +122,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 1;
+        return indicator.getCountOfUnstableBars() + 1;
     }
 
     private Num fractionToPercentage(Num changeFraction) {

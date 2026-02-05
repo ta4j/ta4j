@@ -75,6 +75,6 @@ public class HammerIndicator extends CachedIndicator<Boolean> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return Math.max(realBodyIndicator.getCountOfUnstableBars(), trendIndicator.getCountOfUnstableBars());
     }
 }

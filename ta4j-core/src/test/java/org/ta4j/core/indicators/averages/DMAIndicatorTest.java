@@ -13,6 +13,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -43,8 +44,12 @@ public class DMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         int displacement = 5;
         DMAIndicator dmaIndicator = new DMAIndicator(new ClosePriceIndicator(data), 3, displacement);
 
-        for (int i = displacement; i < dmaIndicator.getBarSeries().getBarCount(); i++) {
+        int unstableBars = dmaIndicator.getCountOfUnstableBars();
+        for (int i = 0; i < unstableBars; i++) {
+            assertNumEquals(NaN.NaN, dmaIndicator.getValue(i));
+        }
 
+        for (int i = unstableBars; i < dmaIndicator.getBarSeries().getBarCount(); i++) {
             assertNumEquals(results3[i - displacement], dmaIndicator.getValue(i));
         }
     }
@@ -65,8 +70,12 @@ public class DMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         int displacement = 5;
         DMAIndicator dmaIndicator = new DMAIndicator(new ClosePriceIndicator(data), 5, displacement);
 
-        for (int i = displacement; i < dmaIndicator.getBarSeries().getBarCount(); i++) {
+        int unstableBars = dmaIndicator.getCountOfUnstableBars();
+        for (int i = 0; i < unstableBars; i++) {
+            assertNumEquals(NaN.NaN, dmaIndicator.getValue(i));
+        }
 
+        for (int i = unstableBars; i < dmaIndicator.getBarSeries().getBarCount(); i++) {
             assertNumEquals(results[i - displacement], dmaIndicator.getValue(i));
         }
     }

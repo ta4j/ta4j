@@ -20,6 +20,7 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
     private final int barCountEffectiveRatio;
     private final Num fastest;
     private final Num slowest;
+    private final int unstableBars;
 
     /**
      * Constructor.
@@ -38,6 +39,7 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
         final var two = numFactory.two();
         this.fastest = two.dividedBy(numFactory.numOf(barCountFast + 1));
         this.slowest = two.dividedBy(numFactory.numOf(barCountSlow + 1));
+        this.unstableBars = price.getCountOfUnstableBars() + barCountEffectiveRatio;
     }
 
     /**
@@ -88,7 +90,7 @@ public class KAMAIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return unstableBars;
     }
 
 }

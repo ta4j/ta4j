@@ -83,7 +83,7 @@ public class SimpleLinearRegressionIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return indicator.getCountOfUnstableBars() + Math.max(1, barCount - 1);
     }
 
     /**

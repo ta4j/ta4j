@@ -117,9 +117,10 @@ public class EDMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         // For indices >= displacement but < unstableBars + displacement, it returns NaN
         // values.
 
+        int unstableBars = edma.getCountOfUnstableBars();
         // Indices 0-10 should return NaN (0-1 return results.get(0) which is NaN, 2-10
         // return NaN cached values)
-        for (int i = 0; i < 9 + displacement; i++) {
+        for (int i = 0; i < unstableBars; i++) {
             assertThat(Double.isNaN(edma.getValue(i).doubleValue())).isTrue();
         }
 
@@ -127,7 +128,7 @@ public class EDMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         // Note: Values will differ from expected because first EMA value after unstable
         // period
         // is now initialized to current value, not calculated from previous values
-        for (int i = 9 + displacement; i < data.getBarCount() - displacement; i++) {
+        for (int i = unstableBars; i < data.getBarCount() - displacement; i++) {
             // Just verify values are not NaN (they'll differ from expected due to
             // initialization change)
             assertThat(Double.isNaN(edma.getValue(i).doubleValue())).isFalse();

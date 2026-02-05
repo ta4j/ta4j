@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -34,6 +35,7 @@ public class ROCIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
     @Test
     public void getValueWhenBarCountIs12() {
         var roc = new ROCIndicator(closePrice, 12);
+        assertEquals(12, roc.getCountOfUnstableBars());
 
         // Incomplete time frame
         assertNumEquals(0, roc.getValue(0));

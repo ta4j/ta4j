@@ -46,7 +46,7 @@ public class DXIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return Math.max(plusDIIndicator.getCountOfUnstableBars(), minusDIIndicator.getCountOfUnstableBars());
     }
 
     @Override

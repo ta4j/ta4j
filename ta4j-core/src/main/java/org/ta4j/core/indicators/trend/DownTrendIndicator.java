@@ -49,6 +49,8 @@ public class DownTrendIndicator extends AbstractIndicator<Boolean> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return unstableBars;
+        int diUnstableBars = Math.max(minusDIIndicator.getCountOfUnstableBars(),
+                plusDIIndicator.getCountOfUnstableBars());
+        return Math.max(directionStrengthIndicator.getCountOfUnstableBars(), diUnstableBars + 1);
     }
 }

@@ -25,6 +25,7 @@ public class PlusDIIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
     private final ATRIndicator atrIndicator;
+    private final PlusDMIndicator plusDMIndicator;
     private final MMAIndicator avgPlusDMIndicator;
 
     /**
@@ -38,7 +39,8 @@ public class PlusDIIndicator extends CachedIndicator<Num> {
         super(series);
         this.barCount = barCount;
         this.atrIndicator = new ATRIndicator(series, barCount);
-        this.avgPlusDMIndicator = new MMAIndicator(new PlusDMIndicator(series), barCount);
+        this.plusDMIndicator = new PlusDMIndicator(series);
+        this.avgPlusDMIndicator = new MMAIndicator(plusDMIndicator, barCount);
     }
 
     @Override
@@ -55,7 +57,8 @@ public class PlusDIIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        int dmUnstableBars = plusDMIndicator.getCountOfUnstableBars() + avgPlusDMIndicator.getCountOfUnstableBars();
+        return Math.max(atrIndicator.getCountOfUnstableBars(), dmUnstableBars);
     }
 
     @Override

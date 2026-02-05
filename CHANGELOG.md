@@ -39,7 +39,7 @@
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
-- **Indicator unstable periods**: Align true range/ATR/RSI/Keltner/Chandelier/net momentum warm-up handling with component unstable-bar aggregation and NaN gating.
+- **Indicator unstable periods**: Align true range/ATR/RSI/Keltner/Chandelier/net momentum warm-up handling with component unstable-bar aggregation and NaN gating; corrected IntraDayMomentumIndex and RelativeVolumeStandardDeviation unstable windows.
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.

@@ -7,6 +7,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Triangular Moving Average (TMA) Indicator.
  *
@@ -40,13 +42,15 @@ public class TMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         return smaSma.getValue(index);
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return smaSma.getCountOfUnstableBars();
     }
 
     @Override

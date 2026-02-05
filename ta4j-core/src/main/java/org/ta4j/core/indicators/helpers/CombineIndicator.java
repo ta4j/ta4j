@@ -53,7 +53,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
     /** @return {@code 0} */
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return Math.max(indicatorLeft.getCountOfUnstableBars(), indicatorRight.getCountOfUnstableBars());
     }
 
     /**

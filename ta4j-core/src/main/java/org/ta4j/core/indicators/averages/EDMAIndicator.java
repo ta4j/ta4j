@@ -11,6 +11,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Exponential Displaced Moving Average (EDMA)
  *
@@ -27,6 +29,8 @@ public class EDMAIndicator extends AbstractIndicator<Num> {
     private final int displacement;
     /** List of cached results. */
     private final List<Num> results;
+    private final Indicator<Num> indicator;
+    private final int unstableBars;
 
     /**
      * Constructor.
@@ -40,15 +44,21 @@ public class EDMAIndicator extends AbstractIndicator<Num> {
         BarSeries series = indicator.getBarSeries();
         this.barCount = barCount;
         this.displacement = displacement;
+        this.indicator = indicator;
         this.results = new ArrayList<>();
 
         EMAIndicator ema = new EMAIndicator(indicator, barCount);
         for (int i = 0; i < series.getBarCount(); i++) {
             results.add(ema.getValue(i));
         }
+        int emaUnstableBars = indicator.getCountOfUnstableBars() + barCount;
+        this.unstableBars = Math.max(0, emaUnstableBars + displacement);
     }
 
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
 
         int displacedIndex = index - displacement;
         if (index <= displacement) {
@@ -59,7 +69,7 @@ public class EDMAIndicator extends AbstractIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return unstableBars;
     }
 
     @Override

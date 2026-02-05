@@ -51,7 +51,8 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        int unstableBars = Math.max(up.getCountOfUnstableBars(), low.getCountOfUnstableBars());
+        return Math.max(1, unstableBars);
     }
 
     /** @return the initial lower indicator */

@@ -64,7 +64,7 @@ public class RelativeVolumeStandardDeviationIndicator extends CachedIndicator<Nu
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return Math.max(averageVolume.getCountOfUnstableBars(), volumeStandardDeviation.getCountOfUnstableBars());
     }
 
     @Override

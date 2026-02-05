@@ -44,6 +44,6 @@ public class MinusDMIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return 1;
     }
 }

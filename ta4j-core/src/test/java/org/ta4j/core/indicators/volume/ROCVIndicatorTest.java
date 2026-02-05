@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -40,6 +41,7 @@ public class ROCVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     @Test
     public void test() {
         ROCVIndicator roc = new ROCVIndicator(series, 3);
+        assertEquals(3, roc.getCountOfUnstableBars());
 
         assertNumEquals(0, roc.getValue(0));
         assertNumEquals(200, roc.getValue(1));

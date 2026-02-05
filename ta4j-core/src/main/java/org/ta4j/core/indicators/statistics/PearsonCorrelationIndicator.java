@@ -76,6 +76,7 @@ public class PearsonCorrelationIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        int baseUnstableBars = Math.max(indicator1.getCountOfUnstableBars(), indicator2.getCountOfUnstableBars());
+        return baseUnstableBars + barCount - 1;
     }
 }

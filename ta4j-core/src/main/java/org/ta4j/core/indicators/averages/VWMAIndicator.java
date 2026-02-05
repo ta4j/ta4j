@@ -12,6 +12,8 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Variable Weighted Moving Average (VWMA) indicator.
  *
@@ -70,12 +72,15 @@ public class VWMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         return volumeWeightedIndicator.getValue(index);
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return volumeWeightedIndicator.getCountOfUnstableBars();
     }
 
     @Override
