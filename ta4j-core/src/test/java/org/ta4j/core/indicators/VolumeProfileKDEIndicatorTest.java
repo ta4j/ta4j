@@ -4,6 +4,9 @@
 package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.util.List;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -12,6 +15,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.supportresistance.VolumeProfileKDEIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -64,6 +68,26 @@ public class VolumeProfileKDEIndicatorTest extends AbstractIndicatorTest<Indicat
     }
 
     @Test
+    public void shouldComputeGaussianDensityUsingNumMath() {
+        BarSeries series = buildSeries(new double[] { 1, 1 }, new double[] { 1, 1 });
+        NumFactory factory = series.numFactory();
+        List<Num> prices = List.of(factory.numOf("10.125"), factory.numOf("10.375"));
+        List<Num> volumes = List.of(factory.numOf("120.5"), factory.numOf("45.25"));
+
+        Indicator<Num> price = new MockIndicator(series, prices);
+        Indicator<Num> volume = new MockIndicator(series, volumes);
+
+        Num bandwidth = factory.numOf("0.4");
+        VolumeProfileKDEIndicator indicator = new VolumeProfileKDEIndicator(price, volume, 0, bandwidth);
+
+        Num evaluationPrice = factory.numOf("10.25");
+        Num expected = gaussianDensity(factory, evaluationPrice, prices, volumes, bandwidth);
+        Num actual = indicator.getDensityAtPrice(1, evaluationPrice);
+
+        assertNumEquals(expected, actual);
+    }
+
+    @Test
     public void shouldRoundTripSerializeAndDeserialize() {
         BarSeries series = buildSeries(new double[] { 10, 10.5, 11 }, new double[] { 150, 60, 25 });
         var price = new ClosePriceIndicator(series);
@@ -95,5 +119,19 @@ public class VolumeProfileKDEIndicatorTest extends AbstractIndicatorTest<Indicat
                     .add();
         }
         return barSeries;
+    }
+
+    private Num gaussianDensity(NumFactory factory, Num price, List<Num> prices, List<Num> volumes, Num bandwidth) {
+        Num twoPi = factory.two().multipliedBy(factory.numOf(Math.PI));
+        Num coefficient = factory.one().dividedBy(bandwidth.multipliedBy(twoPi.sqrt()));
+        Num negativeHalf = factory.numOf(-0.5);
+        Num density = factory.zero();
+        for (int i = 0; i < prices.size(); i++) {
+            Num diff = price.minus(prices.get(i));
+            Num exponent = diff.dividedBy(bandwidth).pow(2).multipliedBy(negativeHalf);
+            Num kernel = coefficient.multipliedBy(exponent.exp());
+            density = density.plus(volumes.get(i).abs().multipliedBy(kernel));
+        }
+        return density;
     }
 }

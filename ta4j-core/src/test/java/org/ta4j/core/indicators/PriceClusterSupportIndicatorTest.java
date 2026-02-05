@@ -14,6 +14,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.supportresistance.PriceClusterSupportIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -35,7 +36,9 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
 
     @Test
     public void shouldRespectLookbackWindow() {
-        var indicator = new PriceClusterSupportIndicator(series, 3, numOf(0.25));
+        var price = new ClosePriceIndicator(series);
+        var volume = new VolumeIndicator(series, 1);
+        var indicator = new PriceClusterSupportIndicator(price, volume, 3, numOf(0.25));
 
         assertThat(indicator.getValue(6).doubleValue()).as("lookback excludes early clusters")
                 .isCloseTo(12.0, within(1e-6));

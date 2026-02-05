@@ -8,6 +8,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.supportresistance.PriceClusterResistanceIndicator;
 import org.ta4j.core.indicators.supportresistance.PriceClusterSupportIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -25,8 +27,10 @@ public class PriceClusterResistanceIndicatorTest extends AbstractIndicatorTest<I
         BarSeries series = buildSeries(new double[] { 10, 10.1, 10.2, 15, 15.1, 15.2 },
                 new double[] { 40, 40, 40, 40, 40, 40 });
 
-        var support = new PriceClusterSupportIndicator(series, 0, numOf(0.3));
-        var resistance = new PriceClusterResistanceIndicator(series, 0, numOf(0.3));
+        var price = new ClosePriceIndicator(series);
+        var volume = new VolumeIndicator(series, 1);
+        var support = new PriceClusterSupportIndicator(price, volume, 0, numOf(0.3));
+        var resistance = new PriceClusterResistanceIndicator(price, volume, 0, numOf(0.3));
 
         assertThat(support.getClusterIndex(5)).as("support favours lower cluster").isEqualTo(2);
 
@@ -38,7 +42,9 @@ public class PriceClusterResistanceIndicatorTest extends AbstractIndicatorTest<I
     public void shouldFavorHeavierHighClusterForResistance() {
         BarSeries series = buildSeries(new double[] { 10, 10, 15 }, new double[] { 20, 20, 200 });
 
-        var resistance = new PriceClusterResistanceIndicator(series, 0, numOf(0.5));
+        var price = new ClosePriceIndicator(series);
+        var volume = new VolumeIndicator(series, 1);
+        var resistance = new PriceClusterResistanceIndicator(price, volume, 0, numOf(0.5));
 
         assertThat(resistance.getValue(2)).as("resistance favours heavier upper cluster")
                 .isEqualByComparingTo(numOf(15));

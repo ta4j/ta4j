@@ -38,8 +38,8 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
     private final int lookbackLength;
     private final Num bandwidth;
     private final transient boolean gaussianKernel;
-    private final transient double gaussianBandwidth;
-    private final transient double gaussianCoefficient;
+    private final transient Num gaussianBandwidth;
+    private final transient Num gaussianCoefficient;
 
     /**
      * Constructor using {@link ClosePriceIndicator}, {@link VolumeIndicator} with
@@ -80,11 +80,13 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         }
         this.gaussianKernel = !bandwidth.isZero();
         if (gaussianKernel) {
-            this.gaussianBandwidth = bandwidth.doubleValue();
-            this.gaussianCoefficient = 1d / (gaussianBandwidth * Math.sqrt(2d * Math.PI));
+            NumFactory factory = series.numFactory();
+            Num twoPi = factory.two().multipliedBy(factory.numOf(Math.PI));
+            this.gaussianBandwidth = bandwidth;
+            this.gaussianCoefficient = factory.one().dividedBy(gaussianBandwidth.multipliedBy(twoPi.sqrt()));
         } else {
-            this.gaussianBandwidth = Double.NaN;
-            this.gaussianCoefficient = Double.NaN;
+            this.gaussianBandwidth = NaN;
+            this.gaussianCoefficient = NaN;
         }
     }
 
@@ -182,6 +184,12 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         return samples;
     }
 
+    /**
+     * Returns the number of unstable bars based on the configured look-back length.
+     *
+     * @return number of unstable bars
+     * @since 0.22.2
+     */
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(0, lookbackLength - 1);
@@ -198,15 +206,15 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
     private Num evaluateDensity(List<Sample> samples, Num price) {
         NumFactory factory = getBarSeries().numFactory();
         if (gaussianKernel) {
-            double priceValue = price.doubleValue();
-            double density = 0d;
+            Num density = factory.zero();
+            Num negativeHalf = factory.numOf(-0.5);
             for (Sample sample : samples) {
-                double diff = priceValue - sample.priceValue;
-                double exponent = -0.5d * Math.pow(diff / gaussianBandwidth, 2d);
-                double kernel = gaussianCoefficient * Math.exp(exponent);
-                density += sample.weightValue * kernel;
+                Num diff = price.minus(sample.price);
+                Num exponent = diff.dividedBy(gaussianBandwidth).pow(2).multipliedBy(negativeHalf);
+                Num kernel = gaussianCoefficient.multipliedBy(exponent.exp());
+                density = density.plus(sample.weight.multipliedBy(kernel));
             }
-            return factory.numOf(density);
+            return density;
         }
         Num density = factory.zero();
         for (Sample sample : samples) {
@@ -220,14 +228,10 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
     private static final class Sample {
         private final Num price;
         private final Num weight;
-        private final double priceValue;
-        private final double weightValue;
 
         private Sample(Num price, Num weight) {
             this.price = price;
             this.weight = weight;
-            this.priceValue = price.doubleValue();
-            this.weightValue = weight.doubleValue();
         }
     }
 
