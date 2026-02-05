@@ -7,6 +7,8 @@ import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Keltner Channel (upper line) indicator.
  *
@@ -49,13 +51,17 @@ public class KeltnerChannelUpperIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         return keltnerMiddleIndicator.getValue(index)
                 .plus(ratio.multipliedBy(averageTrueRangeIndicator.getValue(index)));
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return getBarCount();
+        return Math.max(keltnerMiddleIndicator.getCountOfUnstableBars(),
+                averageTrueRangeIndicator.getCountOfUnstableBars());
     }
 
     /** @return the bar count of {@link #keltnerMiddleIndicator} */

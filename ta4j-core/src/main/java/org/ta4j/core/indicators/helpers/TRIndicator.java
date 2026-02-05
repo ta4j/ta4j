@@ -8,6 +8,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * True range indicator.
  *
@@ -31,6 +33,9 @@ public class TRIndicator extends CachedIndicator<Num> {
         Bar bar = getBarSeries().getBar(index);
         Num high = bar.getHighPrice();
         Num low = bar.getLowPrice();
+        if (Num.isNaNOrNull(high) || Num.isNaNOrNull(low)) {
+            return NaN;
+        }
         Num hl = high.minus(low);
 
         if (index == 0) {
@@ -38,15 +43,18 @@ public class TRIndicator extends CachedIndicator<Num> {
         }
 
         Num previousClose = getBarSeries().getBar(index - 1).getClosePrice();
+        if (Num.isNaNOrNull(previousClose)) {
+            return NaN;
+        }
         Num hc = high.minus(previousClose);
         Num cl = previousClose.minus(low);
         return hl.abs().max(hc.abs()).max(cl.abs());
 
     }
 
-    /** @return {@code 1} */
+    /** @return {@code 0} */
     @Override
     public int getCountOfUnstableBars() {
-        return 1;
+        return 0;
     }
 }

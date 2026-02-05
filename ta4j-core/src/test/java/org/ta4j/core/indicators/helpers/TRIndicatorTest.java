@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.helpers;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
@@ -34,5 +36,16 @@ public class TRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
         assertNumEquals(9, tr.getValue(2));
         assertNumEquals(3, tr.getValue(3));
         assertNumEquals(15, tr.getValue(4));
+    }
+
+    @Test
+    public void unstableBarsStartImmediately() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(0).closePrice(12).highPrice(15).lowPrice(8).add();
+
+        var tr = new TRIndicator(series);
+
+        assertEquals(0, tr.getCountOfUnstableBars());
+        assertFalse(Num.isNaNOrNull(tr.getValue(0)));
     }
 }

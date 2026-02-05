@@ -8,6 +8,8 @@ import org.ta4j.core.indicators.averages.MMAIndicator;
 import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Average true range indicator.
  */
@@ -42,12 +44,15 @@ public class ATRIndicator extends AbstractIndicator<Num> {
 
     @Override
     public Num getValue(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         return averageTrueRangeIndicator.getValue(index);
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return getBarCount();
+        return trIndicator.getCountOfUnstableBars() + getBarCount();
     }
 
     /** @return the {@link #trIndicator} */
