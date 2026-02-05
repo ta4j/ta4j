@@ -3,20 +3,30 @@
  */
 package org.ta4j.core.criteria;
 
-import java.time.*;
-import java.time.temporal.WeekFields;
+import static org.ta4j.core.criteria.RatioCriterionTestSupport.alwaysInvested;
+import static org.ta4j.core.criteria.RatioCriterionTestSupport.buildDailySeries;
+import static org.ta4j.core.criteria.RatioCriterionTestSupport.buildHourlySeries;
+import static org.ta4j.core.criteria.RatioCriterionTestSupport.buildIntradaySeriesWithDailyEnds;
+import static org.ta4j.core.criteria.RatioCriterionTestSupport.buildMinuteSeries;
+import static org.ta4j.core.criteria.RatioCriterionTestSupport.buildSecondSeries;
+import static org.ta4j.core.criteria.RatioCriterionTestSupport.compressSeries;
+import static org.ta4j.core.criteria.RatioCriterionTestSupport.monthlyEndIndicesUtc;
+import static org.ta4j.core.criteria.RatioCriterionTestSupport.weeklyEndIndicesUtc;
+import static org.ta4j.core.TestUtils.assertNumEquals;
+import static org.junit.Assert.assertTrue;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.stream.IntStream;
 
-import org.ta4j.core.analysis.frequency.SamplingFrequency;
+import org.junit.Test;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.num.NumFactory;
-import org.ta4j.core.*;
-import org.junit.Test;
-
-import static org.ta4j.core.criteria.SharpeRatioCriterion.Annualization;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 
 public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
@@ -49,61 +59,57 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var tradingRecord = alwaysInvested(series);
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
 
-        var actual = criterion.calculate(series, tradingRecord).doubleValue();
-        var expected = Math.sqrt(3.0) / 2.0;
+        var actual = criterion.calculate(series, tradingRecord);
+        var expected = numFactory.numOf(Math.sqrt(3.0) / 2.0);
 
-        assertEquals(expected, actual, 1e-12);
+        assertNumEquals(expected, actual);
     }
 
     @Test
     public void annualizationEqualsPeriodTimesSqrtPeriodsPerYear_whenDailyBars() {
-        var series = buildDailySeries(new double[] { 100d, 150d, 150d, 225d, 225d },
+        var series = buildDailySeries(getBarSeries("daily_series"), new double[] { 100d, 150d, 150d, 225d, 225d },
                 Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var period = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
-        var annualized = criterion(SamplingFrequency.BAR, Annualization.ANNUALIZED).calculate(series, tradingRecord)
-                .doubleValue();
+        var period = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord);
+        var annualized = criterion(SamplingFrequency.BAR, Annualization.ANNUALIZED).calculate(series, tradingRecord);
 
-        var expectedFactor = Math.sqrt(365.2425d);
-        var expected = period * expectedFactor;
-        assertEquals(expected, annualized, 1e-9);
+        var expectedFactor = numFactory.numOf(Math.sqrt(365.2425d));
+        var expected = period.multipliedBy(expectedFactor);
+        assertNumEquals(expected, annualized, 1e-9);
     }
 
     @Test
     public void samplingDailyEqualsPerBar_whenBarsAreDaily() {
-        var series = buildDailySeries(new double[] { 100d, 150d, 150d, 225d, 225d },
+        var series = buildDailySeries(getBarSeries("daily_series"), new double[] { 100d, 150d, 150d, 225d, 225d },
                 Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
-        var daily = criterion(SamplingFrequency.DAY, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
+        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord);
+        var daily = criterion(SamplingFrequency.DAY, Annualization.PERIOD).calculate(series, tradingRecord);
 
-        assertEquals(perBar, daily, 1e-12);
+        assertNumEquals(perBar, daily, 1e-12);
     }
 
     @Test
     public void samplingDailyOnIntradayMatchesPerBarOnCompressedDailySeries() {
         var dayEndCloses = new double[] { 100d, 150d, 150d, 225d, 225d };
 
-        var intradaySeries = buildIntradaySeriesWithDailyEnds(dayEndCloses, Instant.parse("2024-01-01T00:00:00Z"));
+        var intradaySeries = buildIntradaySeriesWithDailyEnds(getBarSeries("intraday_series"), dayEndCloses,
+                Instant.parse("2024-01-01T00:00:00Z"));
         var intradayTradingRecord = alwaysInvested(intradaySeries);
 
-        var dailySeries = buildDailySeries(dayEndCloses, Instant.parse("2024-01-01T00:00:00Z"));
+        var dailySeries = buildDailySeries(getBarSeries("daily_series"), dayEndCloses,
+                Instant.parse("2024-01-01T00:00:00Z"));
         var dailyTradingRecord = alwaysInvested(dailySeries);
 
-        var intradayDailySampling = criterion(SamplingFrequency.DAY, Annualization.PERIOD)
-                .calculate(intradaySeries, intradayTradingRecord)
-                .doubleValue();
+        var intradayDailySampling = criterion(SamplingFrequency.DAY, Annualization.PERIOD).calculate(intradaySeries,
+                intradayTradingRecord);
 
-        var compressedDailyPerBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD)
-                .calculate(dailySeries, dailyTradingRecord)
-                .doubleValue();
+        var compressedDailyPerBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(dailySeries,
+                dailyTradingRecord);
 
-        assertEquals(compressedDailyPerBar, intradayDailySampling, 1e-12);
+        assertNumEquals(compressedDailyPerBar, intradayDailySampling, 1e-12);
     }
 
     @Test
@@ -140,30 +146,30 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
         var tradingRecord = alwaysInvested(series);
 
-        var sharpeNewYork = criterion(ZoneId.of("America/New_York")).calculate(series, tradingRecord).doubleValue();
+        var sharpeNewYork = criterion(ZoneId.of("America/New_York")).calculate(series, tradingRecord);
 
-        var sharpeUtc = criterion(ZoneOffset.UTC).calculate(series, tradingRecord).doubleValue();
+        var sharpeUtc = criterion(ZoneOffset.UTC).calculate(series, tradingRecord);
 
-        assertEquals(0d, sharpeNewYork, 0d);
-        assertTrue(Math.abs(sharpeUtc) > 1e-12);
+        assertNumEquals(series.numFactory().zero(), sharpeNewYork, 0d);
+        assertTrue(sharpeUtc.abs().isGreaterThan(series.numFactory().numOf(1e-12)));
     }
 
     @Test
     public void riskFreeRateReducesSharpe_whenPositive() {
-        var series = buildDailySeries(new double[] { 100d, 150d, 150d, 225d, 225d },
+        var series = buildDailySeries(getBarSeries("daily_series"), new double[] { 100d, 150d, 150d, 225d, 225d },
                 Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var sharpeNoRf = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
-        var sharpeWithRf = criterion().calculate(series, tradingRecord).doubleValue();
+        var sharpeNoRf = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord);
+        var sharpeWithRf = criterion().calculate(series, tradingRecord);
 
-        assertTrue(sharpeWithRf < sharpeNoRf);
+        assertTrue(sharpeWithRf.isLessThan(sharpeNoRf));
     }
 
     @Test
     public void returnsSharpe_whenNoClosedPositionsInTradingRecord() {
-        var series = buildDailySeries(new double[] { 100d, 110d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+        var series = buildDailySeries(getBarSeries("daily_series"), new double[] { 100d, 110d, 120d },
+                Instant.parse("2024-01-01T00:00:00Z"));
 
         var amount = series.numFactory().one();
         var tradingRecord = new BaseTradingRecord();
@@ -177,7 +183,8 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void returnsSharpe_whenOpenPositionIsEvaluatedDirectly() {
-        var series = buildDailySeries(new double[] { 100d, 110d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+        var series = buildDailySeries(getBarSeries("daily_series"), new double[] { 100d, 110d, 120d },
+                Instant.parse("2024-01-01T00:00:00Z"));
 
         var amount = series.numFactory().one();
         var tradingRecord = new BaseTradingRecord();
@@ -193,65 +200,63 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void returnsZero_whenStdevIsZero() {
-        var series = buildDailySeries(new double[] { 100d, 100d, 100d, 100d }, Instant.parse("2024-01-01T00:00:00Z"));
+        var series = buildDailySeries(getBarSeries("daily_series"), new double[] { 100d, 100d, 100d, 100d },
+                Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
         var actual = criterion.calculate(series, tradingRecord);
 
-        assertEquals(series.numFactory().zero(), actual);
+        assertNumEquals(series.numFactory().zero(), actual);
     }
 
     @Test
     public void returnsZero_whenLessThanTwoReturnsAreAvailable() {
-        var series = buildDailySeries(new double[] { 100d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+        var series = buildDailySeries(getBarSeries("daily_series"), new double[] { 100d, 120d },
+                Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
         var actual = criterion.calculate(series, tradingRecord);
 
-        assertEquals(series.numFactory().zero(), actual);
+        assertNumEquals(series.numFactory().zero(), actual);
     }
 
     @Test
     public void samplingWeeklyOnDailyMatchesPerBarOnCompressedWeeklySeries() {
         var closes = IntStream.range(0, 15).mapToDouble(i -> 100d + i + ((i % 4) == 0 ? 7d : -3d)).toArray();
 
-        var series = buildDailySeries(closes, Instant.parse("2024-01-01T00:00:00Z"));
+        var series = buildDailySeries(getBarSeries("daily_series"), closes, Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var weekly = criterion(SamplingFrequency.WEEK, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
+        var weekly = criterion(SamplingFrequency.WEEK, Annualization.PERIOD).calculate(series, tradingRecord);
 
         var weeklyCompressedSeries = compressSeries(series, weeklyEndIndicesUtc(series), "weekly_compressed");
-        var weeklyCompressed = criterion(SamplingFrequency.BAR, Annualization.PERIOD)
-                .calculate(weeklyCompressedSeries, alwaysInvested(weeklyCompressedSeries))
-                .doubleValue();
+        var weeklyCompressed = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(weeklyCompressedSeries,
+                alwaysInvested(weeklyCompressedSeries));
 
-        assertEquals(weeklyCompressed, weekly, 1e-12);
+        assertNumEquals(weeklyCompressed, weekly, 1e-12);
     }
 
     @Test
     public void samplingMonthlyOnDailyMatchesPerBarOnCompressedMonthlySeries() {
         var closes = IntStream.range(0, 45).mapToDouble(i -> 120d + i + ((i % 7) == 0 ? 11d : -2d)).toArray();
 
-        var series = buildDailySeries(closes, Instant.parse("2024-01-24T00:00:00Z"));
+        var series = buildDailySeries(getBarSeries("daily_series"), closes, Instant.parse("2024-01-24T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var monthly = criterion(SamplingFrequency.MONTH, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
+        var monthly = criterion(SamplingFrequency.MONTH, Annualization.PERIOD).calculate(series, tradingRecord);
 
         var monthlyCompressedSeries = compressSeries(series, monthlyEndIndicesUtc(series), "monthly_compressed");
         var monthlyCompressed = criterion(SamplingFrequency.BAR, Annualization.PERIOD)
-                .calculate(monthlyCompressedSeries, alwaysInvested(monthlyCompressedSeries))
-                .doubleValue();
+                .calculate(monthlyCompressedSeries, alwaysInvested(monthlyCompressedSeries));
 
-        assertEquals(monthlyCompressed, monthly, 1e-12);
+        assertNumEquals(monthlyCompressed, monthly, 1e-12);
     }
 
     @Test
     public void returnsSharpe_whenClosedPositionIsEvaluatedDirectly() {
-        var series = buildDailySeries(new double[] { 100d, 150d, 150d, 225d, 225d },
+        var series = buildDailySeries(getBarSeries("daily_series"), new double[] { 100d, 150d, 150d, 225d, 225d },
                 Instant.parse("2024-01-01T00:00:00Z"));
 
         var amount = series.numFactory().one();
@@ -263,53 +268,51 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var criterion = criterion(SamplingFrequency.BAR, Annualization.PERIOD);
 
         var actual = criterion.calculate(series, position);
-        var expected = Math.sqrt(3.0) / 2.0;
+        var expected = numFactory.numOf(Math.sqrt(3.0) / 2.0);
 
-        assertEquals(expected, actual.doubleValue(), 1e-12);
+        assertNumEquals(expected, actual, 1e-12);
     }
 
     @Test
     public void samplingHourlyEqualsPerBar_whenBarsAreHourly() {
-        var series = buildHourlySeries(new double[] { 100d, 105d, 110d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+        var series = buildHourlySeries(getBarSeries("hourly_series"), new double[] { 100d, 105d, 110d, 120d },
+                Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
-        var hourly = criterion(SamplingFrequency.HOUR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
+        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord);
+        var hourly = criterion(SamplingFrequency.HOUR, Annualization.PERIOD).calculate(series, tradingRecord);
 
-        assertEquals(perBar, hourly, 1e-12);
+        assertNumEquals(perBar, hourly, 1e-12);
     }
 
     @Test
     public void samplingMinutelyEqualsPerBar_whenBarsAreMinutely() {
-        var series = buildMinuteSeries(new double[] { 100d, 101d, 102d, 103d }, Instant.parse("2024-01-01T00:00:00Z"));
+        var series = buildMinuteSeries(getBarSeries("minute_series"), new double[] { 100d, 101d, 102d, 103d },
+                Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
-        var minutely = criterion(SamplingFrequency.MINUTE, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
+        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord);
+        var minutely = criterion(SamplingFrequency.MINUTE, Annualization.PERIOD).calculate(series, tradingRecord);
 
-        assertEquals(perBar, minutely, 1e-12);
+        assertNumEquals(perBar, minutely, 1e-12);
     }
 
     @Test
     public void samplingPerSecondEqualsPerBar_whenBarsArePerSecond() {
-        var series = buildSecondSeries(new double[] { 100d, 101d, 103d, 106d }, Instant.parse("2024-01-01T00:00:00Z"));
+        var series = buildSecondSeries(getBarSeries("second_series"), new double[] { 100d, 101d, 103d, 106d },
+                Instant.parse("2024-01-01T00:00:00Z"));
         var tradingRecord = alwaysInvested(series);
 
-        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
-        var perSecond = criterion(SamplingFrequency.SECOND, Annualization.PERIOD).calculate(series, tradingRecord)
-                .doubleValue();
+        var perBar = criterion(SamplingFrequency.BAR, Annualization.PERIOD).calculate(series, tradingRecord);
+        var perSecond = criterion(SamplingFrequency.SECOND, Annualization.PERIOD).calculate(series, tradingRecord);
 
-        assertEquals(perBar, perSecond, 1e-12);
+        assertNumEquals(perBar, perSecond, 1e-12);
     }
 
     @Test
     public void returnsSharpe_whenOnlyOneClosedPositionIsAvailable() {
-        var series = buildDailySeries(new double[] { 100d, 110d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+        var series = buildDailySeries(getBarSeries("daily_series"), new double[] { 100d, 110d, 120d },
+                Instant.parse("2024-01-01T00:00:00Z"));
 
         var amount = series.numFactory().one();
         var tradingRecord = new BaseTradingRecord();
@@ -324,14 +327,15 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var mean = (return1 + return2) / 2d;
         var variance = (Math.pow(return1 - mean, 2) + Math.pow(return2 - mean, 2));
         var stdev = Math.sqrt(variance);
-        var expected = mean / stdev;
+        var expected = numFactory.numOf(mean / stdev);
 
-        assertEquals(expected, actual.doubleValue(), 1e-12);
+        assertNumEquals(expected, actual, 1e-12);
     }
 
     @Test
     public void returnsSharpe_whenOneClosedPositionAndOneOpenPositionAreAvailable() {
-        var series = buildDailySeries(new double[] { 100d, 110d, 90d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+        var series = buildDailySeries(getBarSeries("daily_series"), new double[] { 100d, 110d, 90d, 120d },
+                Instant.parse("2024-01-01T00:00:00Z"));
 
         var amount = series.numFactory().one();
         var tradingRecord = new BaseTradingRecord();
@@ -349,7 +353,8 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void returnsSharpe_whenOpenPositionIsExcludedFromReturnSeries() {
-        var series = buildDailySeries(new double[] { 100d, 110d, 90d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+        var series = buildDailySeries(getBarSeries("daily_series"), new double[] { 100d, 110d, 90d, 120d },
+                Instant.parse("2024-01-01T00:00:00Z"));
 
         var amount = series.numFactory().one();
         var tradingRecord = new BaseTradingRecord();
@@ -367,209 +372,9 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         var mean = return1 / 3d;
         var variance = (Math.pow(return1 - mean, 2) + Math.pow(-mean, 2) + Math.pow(-mean, 2));
         var stdev = Math.sqrt(variance / 2d);
-        var expected = mean / stdev;
+        var expected = numFactory.numOf(mean / stdev);
 
-        assertEquals(expected, actual.doubleValue(), 1e-12);
-    }
-
-    private BarSeries buildDailySeries(double[] closes, Instant start) {
-        var series = getBarSeries("daily_series");
-
-        IntStream.range(0, closes.length).forEach(i -> {
-            var endTime = start.plus(Duration.ofDays(i + 1L));
-            var close = closes[i];
-            series.addBar(series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
-                    .endTime(endTime)
-                    .openPrice(close)
-                    .highPrice(close)
-                    .lowPrice(close)
-                    .closePrice(close)
-                    .volume(1)
-                    .build());
-        });
-
-        return series;
-    }
-
-    private BarSeries buildHourlySeries(double[] closes, Instant start) {
-        var series = getBarSeries("hourly_series");
-
-        IntStream.range(0, closes.length).forEach(i -> {
-            var endTime = start.plus(Duration.ofHours(i + 1L));
-            var close = closes[i];
-            series.addBar(series.barBuilder()
-                    .timePeriod(Duration.ofHours(1))
-                    .endTime(endTime)
-                    .openPrice(close)
-                    .highPrice(close)
-                    .lowPrice(close)
-                    .closePrice(close)
-                    .volume(1)
-                    .build());
-        });
-
-        return series;
-    }
-
-    private BarSeries buildMinuteSeries(double[] closes, Instant start) {
-        var series = getBarSeries("minute_series");
-
-        IntStream.range(0, closes.length).forEach(i -> {
-            var endTime = start.plus(Duration.ofMinutes(i + 1L));
-            var close = closes[i];
-            series.addBar(series.barBuilder()
-                    .timePeriod(Duration.ofMinutes(1))
-                    .endTime(endTime)
-                    .openPrice(close)
-                    .highPrice(close)
-                    .lowPrice(close)
-                    .closePrice(close)
-                    .volume(1)
-                    .build());
-        });
-
-        return series;
-    }
-
-    private BarSeries buildSecondSeries(double[] closes, Instant start) {
-        var series = getBarSeries("second_series");
-
-        IntStream.range(0, closes.length).forEach(i -> {
-            var endTime = start.plus(Duration.ofSeconds(i + 1L));
-            var close = closes[i];
-            series.addBar(series.barBuilder()
-                    .timePeriod(Duration.ofSeconds(1))
-                    .endTime(endTime)
-                    .openPrice(close)
-                    .highPrice(close)
-                    .lowPrice(close)
-                    .closePrice(close)
-                    .volume(1)
-                    .build());
-        });
-
-        return series;
-    }
-
-    private BarSeries buildIntradaySeriesWithDailyEnds(double[] dailyEndCloses, Instant day0StartUtc) {
-        var series = getBarSeries("intraday_series");
-
-        var day0EndTime = day0StartUtc.plus(Duration.ofHours(23));
-        var day0EndClose = dailyEndCloses[0];
-        series.addBar(series.barBuilder()
-                .timePeriod(Duration.ofHours(1))
-                .endTime(day0EndTime)
-                .openPrice(day0EndClose)
-                .highPrice(day0EndClose)
-                .lowPrice(day0EndClose)
-                .closePrice(day0EndClose)
-                .volume(1)
-                .build());
-
-        IntStream.range(1, dailyEndCloses.length).forEach(dayIndex -> {
-            var dayBase = day0StartUtc.plus(Duration.ofDays(dayIndex));
-
-            var times = new Instant[] { dayBase.plus(Duration.ofHours(10)), dayBase.plus(Duration.ofHours(15)),
-                    dayBase.plus(Duration.ofHours(23)) };
-
-            var prevDayEnd = dailyEndCloses[dayIndex - 1];
-            var dayEnd = dailyEndCloses[dayIndex];
-            var mid = (prevDayEnd + dayEnd) / 2.0;
-
-            var closes = new double[] { prevDayEnd, mid, dayEnd };
-
-            IntStream.range(0, times.length).forEach(i -> {
-                var close = closes[i];
-                series.addBar(series.barBuilder()
-                        .timePeriod(Duration.ofHours(1))
-                        .endTime(times[i])
-                        .openPrice(close)
-                        .highPrice(close)
-                        .lowPrice(close)
-                        .closePrice(close)
-                        .volume(1)
-                        .build());
-            });
-        });
-
-        return series;
-    }
-
-    private static TradingRecord alwaysInvested(BarSeries series) {
-        var amount = series.numFactory().one();
-        var begin = series.getBeginIndex();
-        var end = series.getEndIndex();
-        var split = begin + (end - begin) / 2;
-
-        var tradingRecord = new BaseTradingRecord();
-        tradingRecord.enter(begin, series.getBar(begin).getClosePrice(), amount);
-        tradingRecord.exit(split, series.getBar(split).getClosePrice(), amount);
-
-        if (split < end) {
-            tradingRecord.enter(split, series.getBar(split).getClosePrice(), amount);
-            tradingRecord.exit(end, series.getBar(end).getClosePrice(), amount);
-        }
-
-        return tradingRecord;
-    }
-
-    private static int[] weeklyEndIndicesUtc(BarSeries series) {
-        var begin = series.getBeginIndex();
-        var end = series.getEndIndex();
-
-        return IntStream.rangeClosed(begin, end).filter(i -> {
-            if (i == begin || i == end) {
-                return true;
-            }
-            var now = series.getBar(i).getEndTime().atZone(ZoneOffset.UTC);
-            var next = series.getBar(i + 1).getEndTime().atZone(ZoneOffset.UTC);
-            return !sameIsoWeek(now, next);
-        }).toArray();
-    }
-
-    private static boolean sameIsoWeek(ZonedDateTime a, ZonedDateTime b) {
-        var weekFields = WeekFields.ISO;
-        var weekA = a.get(weekFields.weekOfWeekBasedYear());
-        var weekB = b.get(weekFields.weekOfWeekBasedYear());
-        var yearA = a.get(weekFields.weekBasedYear());
-        var yearB = b.get(weekFields.weekBasedYear());
-        return weekA == weekB && yearA == yearB;
-    }
-
-    private static int[] monthlyEndIndicesUtc(BarSeries series) {
-        var begin = series.getBeginIndex();
-        var end = series.getEndIndex();
-
-        return IntStream.rangeClosed(begin, end).filter(i -> {
-            if (i == begin || i == end) {
-                return true;
-            }
-            var now = series.getBar(i).getEndTime().atZone(ZoneOffset.UTC);
-            var next = series.getBar(i + 1).getEndTime().atZone(ZoneOffset.UTC);
-            return !YearMonth.from(now).equals(YearMonth.from(next));
-        }).toArray();
-    }
-
-    private BarSeries compressSeries(BarSeries source, int[] indices, String name) {
-        var series = getBarSeries(name);
-
-        IntStream.range(0, indices.length).forEach(i -> {
-            var sourceBar = source.getBar(indices[i]);
-            var close = sourceBar.getClosePrice().doubleValue();
-
-            series.addBar(series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
-                    .endTime(sourceBar.getEndTime())
-                    .openPrice(close)
-                    .highPrice(close)
-                    .lowPrice(close)
-                    .closePrice(close)
-                    .volume(1)
-                    .build());
-        });
-
-        return series;
+        assertNumEquals(expected, actual, 1e-12);
     }
 
     private SharpeRatioCriterion criterion(ZoneId zoneId) {
