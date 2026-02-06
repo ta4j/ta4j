@@ -29,3 +29,15 @@
 - When chaining multiple smoothing stages (EMA on derived data such as price changes), prefer small `RecursiveCachedIndicator` wrappers that reset gracefully after encountering `NaN` inputs; this avoids contaminating later bars with an early invalid value and keeps look-ahead guarantees intact.
 - `AbstractEMAIndicator` already enforces the NaN rules: it returns `NaN` during the unstable window and resets to the current value when a prior value is `NaN`. Extend it instead of re-implementing EMA math, and never bypass its `calculate` logic with custom smoothing.
 - Prefer exposing helper methods (e.g., returning the source index of a detected event) when they simplify testing and downstream reuse.
+
+## Unstable bar contract
+- `getCountOfUnstableBars()` must return the first index at which indicator output is considered stable and safe to consume.
+- For `Indicator<Num>`, guard `calculate` with `if (index < getCountOfUnstableBars()) return NaN;` unless the indicator intentionally delegates that guard to a composed indicator.
+- For non-`Num` indicators (for example boolean signal indicators), do not read pre-warmup history (`index - 1`, backtracking loops) before the unstable boundary; return a deterministic fallback (`false`/`NONE`) during warm-up.
+- Never hardcode unstable counts when they depend on component indicators; derive from the current component graph so constructor and deserialized instances behave identically.
+- Include lookback offsets explicitly: if logic requires previous bars (`index - n`) beyond component unstable bars, add that offset (`+ n`) to the unstable count.
+- Keep unstable count formulas aligned with dataflow shape:
+  - Sequential chain where each stage adds new warm-up: sum stage contributions.
+  - Parallel branch merge: max branch unstable counts.
+  - Mixed pipelines: compute branch-local unstable counts first, then combine with `max` at merge points.
+- Avoid double counting: if a component already includes upstream unstable bars in its own `getCountOfUnstableBars()`, do not add upstream values again.
