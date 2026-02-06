@@ -21,7 +21,7 @@ public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final transient EMAIndicator emaIndicator;
-    private final int barCountEMA;
+    private final int barCount;
 
     /**
      * Constructor.
@@ -42,7 +42,7 @@ public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
     public KeltnerChannelMiddleIndicator(Indicator<Num> indicator, int barCountEMA) {
         super(indicator.getBarSeries());
         this.indicator = indicator;
-        this.barCountEMA = barCountEMA;
+        this.barCount = barCountEMA;
         this.emaIndicator = new EMAIndicator(indicator, barCountEMA);
     }
 
@@ -58,7 +58,7 @@ public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
 
     /** @return the bar count of {@link #emaIndicator} */
     public int getBarCount() {
-        return emaIndicator.getBarCount();
+        return barCount;
     }
 
     @Override

@@ -14,6 +14,8 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
+import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.AbstractCriterionTest;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -169,6 +171,43 @@ public class ReturnOverMaxDrawdownCriterionTest extends AbstractCriterionTest {
         var result = returnOverMaxDrawDown.calculate(series, position);
 
         assertNumEquals(0, result);
+    }
+
+    @Test
+    public void includesOpenPositionWhenMarkToMarket() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 90).build();
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(series.getBeginIndex(), series.getBar(series.getBeginIndex()).getClosePrice(),
+                numFactory.one());
+
+        var criterion = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        var result = criterion.calculate(series, tradingRecord);
+
+        var entryPrice = series.getBar(series.getBeginIndex()).getClosePrice();
+        var peak = series.getBar(series.getBeginIndex() + 1).getClosePrice().dividedBy(entryPrice);
+        var trough = series.getBar(series.getBeginIndex() + 2).getClosePrice().dividedBy(entryPrice);
+        var maxDrawdown = peak.minus(trough).dividedBy(peak);
+        var netReturn = trough.minus(numFactory.one());
+        var expected = netReturn.dividedBy(maxDrawdown);
+
+        assertNumEquals(expected, result);
+    }
+
+    @Test
+    public void ignoresOpenPositionWhenConfigured() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 90).build();
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(series.getBeginIndex(), series.getBar(series.getBeginIndex()).getClosePrice(),
+                numFactory.one());
+
+        var ignoreOpen = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL,
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
+        var realized = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.DECIMAL, EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(0, ignoreOpen.calculate(series, tradingRecord));
+        assertNumEquals(0, realized.calculate(series, tradingRecord));
     }
 
     @Test

@@ -73,4 +73,39 @@ public class InvestedIntervalTest extends AbstractIndicatorTest<Indicator<Boolea
         assertThat(indicator.getValue(5)).as("open position following interval").isFalse();
     }
 
+    @Test
+    public void handlesEmptySeriesWithoutIntervals() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData().build();
+        var tradingRecord = new BaseTradingRecord();
+
+        var indicator = new InvestedInterval(series, tradingRecord);
+
+        assertThat(series.getEndIndex()).isEqualTo(-1);
+        assertThat(series.getBarCount()).isEqualTo(0);
+        assertThat(indicator.getValue(0)).isFalse();
+    }
+
+    @Test
+    public void respectsNonZeroBeginIndexWhenMarkingIntervals() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 1, 1, 1, 1)
+                .withMaxBarCount(2)
+                .build();
+        var tradingRecord = new BaseTradingRecord();
+        var price = series.numFactory().one();
+        var amount = series.numFactory().one();
+
+        tradingRecord.enter(0, price, amount);
+
+        var indicator = new InvestedInterval(series, tradingRecord, OpenPositionHandling.MARK_TO_MARKET);
+
+        int beginIndex = series.getBeginIndex();
+        assertThat(beginIndex).isGreaterThan(0);
+        assertThat(indicator.getValue(beginIndex)).as("begin index interval").isFalse();
+        assertThat(indicator.getValue(beginIndex + 1)).as("first invested interval after begin index").isTrue();
+
+        var ignoreIndicator = new InvestedInterval(series, tradingRecord, OpenPositionHandling.IGNORE);
+        assertThat(ignoreIndicator.getValue(beginIndex + 1)).as("ignored open position interval").isFalse();
+    }
+
 }

@@ -13,7 +13,6 @@ import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Projects an Elliott price channel based on the most recent swing highs and

@@ -4,7 +4,6 @@
 package org.ta4j.core.indicators.adx;
 
 import static org.junit.Assert.assertEquals;
-import static org.ta4j.core.TestUtils.assertIndicatorEquals;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;

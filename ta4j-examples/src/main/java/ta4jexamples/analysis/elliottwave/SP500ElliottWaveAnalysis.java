@@ -3,7 +3,6 @@
  */
 package ta4jexamples.analysis.elliottwave;
 
-import org.ta4j.core.indicators.elliott.ElliottDegree;
 import java.time.temporal.ChronoUnit;
 import java.time.Instant;
 import java.time.Duration;

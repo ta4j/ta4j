@@ -5,6 +5,7 @@ package org.ta4j.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ta4j.core.Trade.TradeType;
 
 /**
  * Base implementation of a {@link Strategy}.
@@ -26,6 +27,9 @@ public class BaseStrategy implements Strategy {
     /** The exit rule. */
     private final Rule exitRule;
 
+    /** The entry trade type for this strategy. */
+    private final TradeType startingType;
+
     /**
      * The number of first bars in a bar series that this strategy ignores. During
      * the unstable bars of the strategy, any trade placement will be canceled i.e.
@@ -40,7 +44,7 @@ public class BaseStrategy implements Strategy {
      * @param exitRule  the exit rule
      */
     public BaseStrategy(Rule entryRule, Rule exitRule) {
-        this(null, entryRule, exitRule, 0);
+        this(null, entryRule, exitRule, 0, TradeType.BUY);
     }
 
     /**
@@ -52,7 +56,33 @@ public class BaseStrategy implements Strategy {
      *                     {@code index < unstableBars}
      */
     public BaseStrategy(Rule entryRule, Rule exitRule, int unstableBars) {
-        this(null, entryRule, exitRule, unstableBars);
+        this(null, entryRule, exitRule, unstableBars, TradeType.BUY);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param entryRule    the entry rule
+     * @param exitRule     the exit rule
+     * @param startingType the entry trade type
+     * @since 0.22.2
+     */
+    public BaseStrategy(Rule entryRule, Rule exitRule, TradeType startingType) {
+        this(null, entryRule, exitRule, 0, startingType);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param entryRule    the entry rule
+     * @param exitRule     the exit rule
+     * @param unstableBars strategy will ignore possible signals at
+     *                     {@code index < unstableBars}
+     * @param startingType the entry trade type
+     * @since 0.22.2
+     */
+    public BaseStrategy(Rule entryRule, Rule exitRule, int unstableBars, TradeType startingType) {
+        this(null, entryRule, exitRule, unstableBars, startingType);
     }
 
     /**
@@ -63,7 +93,20 @@ public class BaseStrategy implements Strategy {
      * @param exitRule  the exit rule
      */
     public BaseStrategy(String name, Rule entryRule, Rule exitRule) {
-        this(name, entryRule, exitRule, 0);
+        this(name, entryRule, exitRule, 0, TradeType.BUY);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param name         the name of the strategy
+     * @param entryRule    the entry rule
+     * @param exitRule     the exit rule
+     * @param startingType the entry trade type
+     * @since 0.22.2
+     */
+    public BaseStrategy(String name, Rule entryRule, Rule exitRule, TradeType startingType) {
+        this(name, entryRule, exitRule, 0, startingType);
     }
 
     /**
@@ -77,16 +120,36 @@ public class BaseStrategy implements Strategy {
      * @throws IllegalArgumentException if entryRule or exitRule is null
      */
     public BaseStrategy(String name, Rule entryRule, Rule exitRule, int unstableBars) {
+        this(name, entryRule, exitRule, unstableBars, TradeType.BUY);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param name         the name of the strategy
+     * @param entryRule    the entry rule
+     * @param exitRule     the exit rule
+     * @param unstableBars strategy will ignore possible signals at
+     *                     {@code index < unstableBars}
+     * @param startingType the entry trade type
+     * @throws IllegalArgumentException if entryRule or exitRule is null
+     * @since 0.22.2
+     */
+    public BaseStrategy(String name, Rule entryRule, Rule exitRule, int unstableBars, TradeType startingType) {
         if (entryRule == null || exitRule == null) {
             throw new IllegalArgumentException("Rules cannot be null");
         }
         if (unstableBars < 0) {
             throw new IllegalArgumentException("Unstable bars must be >= 0");
         }
+        if (startingType == null) {
+            throw new IllegalArgumentException("Starting type cannot be null");
+        }
         this.name = name;
         this.entryRule = entryRule;
         this.exitRule = exitRule;
         this.unstableBars = unstableBars;
+        this.startingType = startingType;
     }
 
     @Override
@@ -102,6 +165,11 @@ public class BaseStrategy implements Strategy {
     @Override
     public Rule getExitRule() {
         return exitRule;
+    }
+
+    @Override
+    public TradeType getStartingType() {
+        return startingType;
     }
 
     @Override
@@ -149,19 +217,19 @@ public class BaseStrategy implements Strategy {
 
     @Override
     public Strategy opposite() {
-        return new BaseStrategy("opposite(" + name + ")", exitRule, entryRule, unstableBars);
+        return new BaseStrategy("opposite(" + name + ")", exitRule, entryRule, unstableBars, startingType);
     }
 
     @Override
     public Strategy and(String name, Strategy strategy, int unstableBars) {
         return new BaseStrategy(name, entryRule.and(strategy.getEntryRule()), exitRule.and(strategy.getExitRule()),
-                unstableBars);
+                unstableBars, getStartingType());
     }
 
     @Override
     public Strategy or(String name, Strategy strategy, int unstableBars) {
         return new BaseStrategy(name, entryRule.or(strategy.getEntryRule()), exitRule.or(strategy.getExitRule()),
-                unstableBars);
+                unstableBars, getStartingType());
     }
 
     /**

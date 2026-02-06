@@ -4,10 +4,8 @@
 package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -149,116 +147,5 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         // Index 3 should recover if VWMA calculations are valid
         // The key improvement: NaN no longer contaminates all future values
         // If the underlying data is valid, the indicator recovers gracefully
-    }
-
-    private static double[] computeMacdv(double[] price, double[] high, double[] low, double[] volume, int shortPeriod,
-            int longPeriod) {
-        double[] shortVwema = computeVolumeAtrWeightedEma(price, high, low, volume, shortPeriod);
-        double[] longVwema = computeVolumeAtrWeightedEma(price, high, low, volume, longPeriod);
-        double[] macdv = new double[price.length];
-        for (int i = 0; i < price.length; i++) {
-            double shortVal = shortVwema[i];
-            double longVal = longVwema[i];
-            macdv[i] = Double.isNaN(shortVal) || Double.isNaN(longVal) ? Double.NaN : shortVal - longVal;
-        }
-        return macdv;
-    }
-
-    private static double[] computeVolumeAtrWeightedEma(double[] price, double[] high, double[] low, double[] volume,
-            int period) {
-        double[] atr = computeAtr(high, low, price, period);
-        double[] weights = new double[price.length];
-        double[] weightedPrice = new double[price.length];
-        for (int i = 0; i < price.length; i++) {
-            double p = price[i];
-            double v = volume[i];
-            double a = atr[i];
-            if (Double.isNaN(p) || Double.isNaN(v) || Double.isNaN(a) || a == 0.0) {
-                weights[i] = Double.NaN;
-                weightedPrice[i] = Double.NaN;
-            } else {
-                double w = v / a;
-                weights[i] = w;
-                weightedPrice[i] = p * w;
-            }
-        }
-
-        double[] priceVolumeEma = ema(weightedPrice, period);
-        double[] weightEma = ema(weights, period);
-        double[] vwema = new double[price.length];
-        for (int i = 0; i < price.length; i++) {
-            double numerator = priceVolumeEma[i];
-            double denominator = weightEma[i];
-            if (Double.isNaN(numerator) || Double.isNaN(denominator) || denominator == 0.0) {
-                vwema[i] = Double.NaN;
-            } else {
-                vwema[i] = numerator / denominator;
-            }
-        }
-        return vwema;
-    }
-
-    private static double[] computeAtr(double[] high, double[] low, double[] close, int period) {
-        double[] trueRange = new double[close.length];
-        for (int i = 0; i < close.length; i++) {
-            double h = high[i];
-            double l = low[i];
-            if (Double.isNaN(h) || Double.isNaN(l)) {
-                trueRange[i] = Double.NaN;
-                continue;
-            }
-            double hl = Math.abs(h - l);
-            if (i == 0) {
-                trueRange[i] = hl;
-                continue;
-            }
-            double prevClose = close[i - 1];
-            if (Double.isNaN(prevClose)) {
-                trueRange[i] = Double.NaN;
-                continue;
-            }
-            double hc = Math.abs(h - prevClose);
-            double lc = Math.abs(prevClose - l);
-            trueRange[i] = Math.max(hl, Math.max(hc, lc));
-        }
-        return mma(trueRange, period);
-    }
-
-    private static double[] mma(double[] values, int period) {
-        double multiplier = 1.0 / period;
-        double[] result = new double[values.length];
-        if (values.length == 0) {
-            return result;
-        }
-        result[0] = values[0];
-        for (int i = 1; i < values.length; i++) {
-            double prev = result[i - 1];
-            double current = values[i];
-            if (Double.isNaN(prev) || Double.isNaN(current)) {
-                result[i] = Double.NaN;
-            } else {
-                result[i] = prev + (current - prev) * multiplier;
-            }
-        }
-        return result;
-    }
-
-    private static double[] ema(double[] values, int period) {
-        double multiplier = 2.0 / (period + 1.0);
-        double[] result = new double[values.length];
-        if (values.length == 0) {
-            return result;
-        }
-        result[0] = values[0];
-        for (int i = 1; i < values.length; i++) {
-            double prev = result[i - 1];
-            double current = values[i];
-            if (Double.isNaN(prev) || Double.isNaN(current)) {
-                result[i] = Double.NaN;
-            } else {
-                result[i] = (current - prev) * multiplier + prev;
-            }
-        }
-        return result;
     }
 }

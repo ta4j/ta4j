@@ -5,3 +5,5 @@
 - Keep concurrent read access safe by returning immutable snapshots from `getBarData()` (e.g., via `List.copyOf(...)`) instead of exposing internal mutable lists.
 - Guard mutations with `ReentrantReadWriteLock` write locks and wrap read-mostly methods with the read lock; do not rely on synchronized collections.
 - Add `@since <current version sans SNAPSHOT>` to every new public class or method introduced in this package.
+- Treat Javadoc and documentation as first-class: new public APIs or behavior changes must include clear Javadoc and
+  any relevant doc updates to explain intent, usage, and differences from nearby APIs.
