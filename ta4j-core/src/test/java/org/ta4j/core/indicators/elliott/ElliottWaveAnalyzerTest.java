@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -51,6 +52,44 @@ class ElliottWaveAnalyzerTest {
         assertThat(result.processedSwings()).hasSize(2);
         assertThat(result.scenarios().isEmpty()).isFalse();
         assertThat(result.confidenceBreakdowns()).hasSize(result.scenarios().size());
+    }
+
+    @Test
+    void buildRequiresSwingDetector() {
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> ElliottWaveAnalyzer.builder().degree(ElliottDegree.PRIMARY).build());
+        assertThat(exception).hasMessage("swingDetector must be configured");
+    }
+
+    @Test
+    void buildRequiresDegree() {
+        SwingDetector detector = (series, index, degree) -> SwingDetectorResult.fromSwings(List.of());
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> ElliottWaveAnalyzer.builder().swingDetector(detector).build());
+        assertThat(exception).hasMessage("degree must be configured");
+    }
+
+    @Test
+    void rejectsInvalidConfidenceThresholds() {
+        IllegalArgumentException low = assertThrows(IllegalArgumentException.class,
+                () -> ElliottWaveAnalyzer.builder().minConfidence(-0.01));
+        assertThat(low).hasMessage("minConfidence must be in [0.0, 1.0]");
+
+        IllegalArgumentException high = assertThrows(IllegalArgumentException.class,
+                () -> ElliottWaveAnalyzer.builder().minConfidence(1.01));
+        assertThat(high).hasMessage("minConfidence must be in [0.0, 1.0]");
+    }
+
+    @Test
+    void rejectsInvalidScenarioParameters() {
+        IllegalArgumentException maxScenarios = assertThrows(IllegalArgumentException.class,
+                () -> ElliottWaveAnalyzer.builder().maxScenarios(0));
+        assertThat(maxScenarios).hasMessage("maxScenarios must be positive");
+
+        IllegalArgumentException window = assertThrows(IllegalArgumentException.class,
+                () -> ElliottWaveAnalyzer.builder().scenarioSwingWindow(-1));
+        assertThat(window).hasMessage("scenarioSwingWindow must be >= 0");
     }
 
     private BarSeries buildSeries() {

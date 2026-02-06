@@ -229,7 +229,7 @@ public final class ElliottWaveAnalyzer {
          * @since 0.22.2
          */
         public Builder swingDetector(final SwingDetector swingDetector) {
-            this.swingDetector = swingDetector;
+            this.swingDetector = Objects.requireNonNull(swingDetector, "swingDetector");
             return this;
         }
 
@@ -259,6 +259,7 @@ public final class ElliottWaveAnalyzer {
          * @since 0.22.2
          */
         public Builder confidenceModel(final ConfidenceModel confidenceModel) {
+            Objects.requireNonNull(confidenceModel, "confidenceModel");
             this.confidenceModelFactory = unused -> confidenceModel;
             return this;
         }
@@ -269,7 +270,7 @@ public final class ElliottWaveAnalyzer {
          * @since 0.22.2
          */
         public Builder confidenceModelFactory(final Function<NumFactory, ConfidenceModel> confidenceModelFactory) {
-            this.confidenceModelFactory = confidenceModelFactory;
+            this.confidenceModelFactory = Objects.requireNonNull(confidenceModelFactory, "confidenceModelFactory");
             return this;
         }
 
@@ -279,7 +280,7 @@ public final class ElliottWaveAnalyzer {
          * @since 0.22.2
          */
         public Builder patternSet(final PatternSet patternSet) {
-            this.patternSet = patternSet;
+            this.patternSet = Objects.requireNonNull(patternSet, "patternSet");
             return this;
         }
 
@@ -289,7 +290,7 @@ public final class ElliottWaveAnalyzer {
          * @since 0.22.2
          */
         public Builder degree(final ElliottDegree degree) {
-            this.degree = degree;
+            this.degree = Objects.requireNonNull(degree, "degree");
             return this;
         }
 
@@ -299,6 +300,9 @@ public final class ElliottWaveAnalyzer {
          * @since 0.22.2
          */
         public Builder minConfidence(final double minConfidence) {
+            if (minConfidence < 0.0 || minConfidence > 1.0) {
+                throw new IllegalArgumentException("minConfidence must be in [0.0, 1.0]");
+            }
             this.minConfidence = minConfidence;
             return this;
         }
@@ -309,6 +313,9 @@ public final class ElliottWaveAnalyzer {
          * @since 0.22.2
          */
         public Builder maxScenarios(final int maxScenarios) {
+            if (maxScenarios <= 0) {
+                throw new IllegalArgumentException("maxScenarios must be positive");
+            }
             this.maxScenarios = maxScenarios;
             return this;
         }
@@ -319,6 +326,9 @@ public final class ElliottWaveAnalyzer {
          * @since 0.22.2
          */
         public Builder scenarioSwingWindow(final int scenarioSwingWindow) {
+            if (scenarioSwingWindow < 0) {
+                throw new IllegalArgumentException("scenarioSwingWindow must be >= 0");
+            }
             this.scenarioSwingWindow = scenarioSwingWindow;
             return this;
         }
@@ -330,6 +340,12 @@ public final class ElliottWaveAnalyzer {
          * @since 0.22.2
          */
         public ElliottWaveAnalyzer build() {
+            if (swingDetector == null) {
+                throw new IllegalStateException("swingDetector must be configured");
+            }
+            if (degree == null) {
+                throw new IllegalStateException("degree must be configured");
+            }
             return new ElliottWaveAnalyzer(this);
         }
     }

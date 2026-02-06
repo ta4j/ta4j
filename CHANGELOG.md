@@ -12,21 +12,15 @@
 - Added **PiercingIndicator** and **DarkCloudIndicator**
 - **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
+- **Elliott Wave analysis toolkit**: Added `ElliottWaveAnalyzer`, `ElliottAnalysisResult`, configurable `PatternSet`,
+  and the `org.ta4j.core.indicators.elliott.swing` detector/filter package for pluggable, chart-independent analysis.
+- **Elliott Wave confidence modeling**: Added profile-driven confidence scoring with factor breakdowns, time
+  alternation diagnostics, and granular Fibonacci relationship scoring.
 - **Elliott Wave trend bias**: Added `ElliottTrendBias` and `ElliottTrendBiasIndicator` for scenario-weighted
-  bullish/bearish bias, plus `ElliottScenarioSet#trendBias()` and `ElliottWaveFacade#trendBias()` helpers.
-- **Elliott Wave analysis pipeline**: Added `ElliottWaveAnalyzer` and `ElliottAnalysisResult` for pluggable swing
-  detection, scenario generation, and confidence profiling without chart dependencies.
-- **Elliott Wave swing detectors**: Added adaptive ZigZag, composite swing confirmation, and minimum-magnitude swing
-  filtering helpers under `org.ta4j.core.indicators.elliott.swing`.
-- **Elliott Wave confidence profiles**: Added factor-based confidence modeling (including time alternation diagnostics
-  and granular Fibonacci relationships) plus pattern-aware profile presets.
-- **Elliott Wave pattern configuration**: Added `PatternSet` to enable/disable scenario types during generation.
-- **Elliott Wave adaptive demos**: Added `ElliottWaveAdaptiveSwingAnalysis` and `ElliottWavePatternProfileDemo` examples
-  based on ossified datasets.
-- **Elliott Wave trend backtest demo**: Added `ElliottWaveTrendBacktest` to run backtest and walk-forward
-  evaluations on ossified Coinbase/Yahoo datasets.
-- **High-reward Elliott Wave strategy**: Added `HighRewardElliottWaveStrategy` (NamedStrategy) and
-  `HighRewardElliottWaveBacktest` for selective impulse trades with risk/reward and momentum filters.
+  bullish/bearish context, plus `ElliottScenarioSet#trendBias()` and `ElliottWaveFacade#trendBias()` helpers.
+- **Elliott Wave strategy demos**: Added `ElliottWaveAdaptiveSwingAnalysis`, `ElliottWavePatternProfileDemo`,
+  `ElliottWaveTrendBacktest`, and `HighRewardElliottWaveBacktest` with `HighRewardElliottWaveStrategy` for
+  selective impulse entries using confidence, alternation, and risk/reward filters.
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
 
 ### Changed
@@ -47,10 +41,8 @@
 - **Statistics helper**: Consolidated statistics selection into the `Statistics` enum, with Num calculations.
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 - **Dependencies**: update to latest versions
-- **Elliott Wave confidence scoring**: Extension ratio scoring now penalizes under/over-extended projections to
-  avoid overstating wave 3 confidence on shallow extensions.
-- **Elliott Wave analysis output**: Chart titles and JSON results now include scenario-weighted trend bias.
-- **Elliott Wave analysis output**: Logs now include time alternation diagnostics for base scenarios.
+- **Elliott Wave scoring and diagnostics**: Extension ratio scoring now penalizes under/over-extended projections,
+  chart/JSON outputs include scenario-weighted trend bias, and logs include time alternation diagnostics.
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
 
 ### Fixed
