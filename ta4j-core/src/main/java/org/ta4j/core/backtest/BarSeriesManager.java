@@ -107,19 +107,19 @@ public class BarSeriesManager {
     /**
      * Runs the provided strategy over the managed series.
      *
-     * Opens the position with a {@link TradeType} BUY trade.
+     * Opens the position with the strategy {@link TradeType starting type}.
      *
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy) {
-        return run(strategy, TradeType.BUY);
+        return run(strategy, strategy.getStartingType());
     }
 
     /**
      * Runs the provided strategy over the managed series (from startIndex to
      * finishIndex).
      *
-     * Opens the position with a {@link TradeType} BUY trade.
+     * Opens the position with the strategy {@link TradeType starting type}.
      *
      * @param strategy    the trading strategy
      * @param startIndex  the start index for the run (included)
@@ -127,7 +127,7 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, int startIndex, int finishIndex) {
-        return run(strategy, TradeType.BUY, barSeries.numFactory().one(), startIndex, finishIndex);
+        return run(strategy, strategy.getStartingType(), barSeries.numFactory().one(), startIndex, finishIndex);
     }
 
     /**

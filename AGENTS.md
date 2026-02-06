@@ -35,6 +35,15 @@
 - **🚫 CRITICAL: Do not ignore build errors even if you think they were pre-existing.** Suppressing/ignoring/assuming or otherwise skipping over the errors is forbidden. **All errors that surface must be investigated and root cause resolved.** Surface to the user any fixes that require complex refactoring or design changes. **Never skip over a failing test without explicit approval from user.**
 - Update or add `AGENTS.md` files in subdirectories when you discover local conventions that are worth making explicit for future agents.
 - When tweaking rule/indicator/strategy serialization tests, prefer canonical comparisons instead of brittle string equality. The helper `RuleSerializationRoundTripTestSupport` already normalizes `ComponentDescriptor`s (sorted children, normalized numeric strings) — reuse it rather than hand-rolled assertions so that constructor inference-induced ordering changes don't break tests.
+- **Public API stability:** Breaking changes are acceptable for public APIs introduced or tagged within 0.1.0 of the current release (including APIs tagged at the current latest version); treat those as not contract-breaking.
+
+### Worktrees (non-trivial work)
+
+- Skip worktrees for trivial docs/typos/quick hotfixes (<10 min); otherwise create under `.agents/worktrees/`: `git worktree add -b <branch> .agents/worktrees/<name> <base-branch>`.
+- In the worktree, create and maintain a PRD/TODO/checklist doc (requirements, design notes as needed, implementation checklist, decisions) so work can be resumed with minimal discovery.
+- In-progress PRDs live in `docs/proposed/`. When complete, move the PRD to `docs/archive/`, delete the proposed copy so it is no longer tracked in the working branch/worktree, and commit the final location.
+- Work inside the worktree; merge back when done; remove via `git worktree remove .agents/worktrees/<name>`.
+- Naming: descriptive; branch prefixes `feature/`, `bugfix/`, `refactor/`.
 
 ### Unit Testing Best Practices
 
@@ -64,6 +73,7 @@
 - When adding tests, place them in the mirrored package inside `src/test/java` and use existing test utilities/helpers when available.
 - **Always use loggers instead of System.out/System.err.** Use `org.apache.logging.log4j.LogManager` and `org.apache.logging.log4j.Logger`. Create a static logger: `private static final Logger LOG = LogManager.getLogger(ClassName.class);`. Use parameterized logging: `LOG.error("Message: {} - {}", param1, param2);` instead of string concatenation.
 - **Avoid fully qualified namespaces in code.** Always use imports instead of fully qualified class names (e.g., use `Num` instead of `org.ta4j.core.num.Num`, `BarSeries` instead of `org.ta4j.core.BarSeries`). This improves readability and maintains consistency with the codebase style. Add the necessary import statements at the top of the file rather than using fully qualified names in variable initializations, method calls, or type casts.
+- **Prefer explicit local variable typing over `var`.** Use `var` only when the inferred type is immediately obvious from the right-hand side and the declaration meaningfully reduces boilerplate (for example, long generic constructors). Avoid `var` when the inferred type is ambiguous, when readers must inspect APIs to infer it, or when there is no brevity benefit (for example: `int`, `long`, `Num`).
 
 ## Domain Model and DTO class Design
 Favor immutability and simplicity: record > public final fields > private fields + getters/setters.

@@ -6,6 +6,7 @@ package org.ta4j.core;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
@@ -227,7 +228,8 @@ public class PositionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 105)
                 .build();
-        Position position = new Position(new Trade(0, TradeType.BUY, NaN, NaN), new Trade(1, TradeType.SELL, NaN, NaN));
+        Position position = new Position(new SimulatedTrade(0, TradeType.BUY, NaN, NaN),
+                new SimulatedTrade(1, TradeType.SELL, NaN, NaN));
         assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series));
     }
 
@@ -236,13 +238,28 @@ public class PositionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 95)
                 .build();
-        Position position = new Position(new Trade(0, TradeType.SELL, NaN, NaN), new Trade(1, TradeType.BUY, NaN, NaN));
+        Position position = new Position(new SimulatedTrade(0, TradeType.SELL, NaN, NaN),
+                new SimulatedTrade(1, TradeType.BUY, NaN, NaN));
         assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series));
     }
 
     @Test
     public void testCostModelConsistencyTrue() {
         new Position(enter, exitSameType, transactionModel, holdingModel);
+    }
+
+    @Test
+    public void exposesTransactionCostModel() {
+        Position position = new Position(TradeType.BUY, transactionModel, holdingModel);
+
+        assertSame(transactionModel, position.getTransactionCostModel());
+    }
+
+    @Test
+    public void exposesHoldingCostModel() {
+        Position position = new Position(TradeType.BUY, transactionModel, holdingModel);
+
+        assertSame(holdingModel, position.getHoldingCostModel());
     }
 
     @Test(expected = IllegalArgumentException.class)

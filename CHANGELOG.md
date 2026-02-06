@@ -1,11 +1,24 @@
 ## Unreleased
 
+### Breaking
+- **Trade model split**: `Trade` is now an interface; the previous concrete implementation is `SimulatedTrade` (backtesting/simulation), and live executions are represented by `LiveTrade`.
+- **Swing indicator interfaces**: Removed deprecated `RecentSwingHighIndicator` and `RecentSwingLowIndicator`; use `RecentSwingIndicator` and concrete implementations directly.
+
+
 ### Added
 - **Charting time axis mode**: Added `TimeAxisMode` with `BAR_INDEX` support to compress non-trading gaps (weekends/holidays) on charts while keeping bar timestamps intact.
 - **Concurrent real-time bar series pipeline**: Introduced core support for concurrent, streaming bar ingestion with
   a dedicated series (`ConcurrentBarSeries`/builder), realtime bar model (`RealtimeBar`/`BaseRealtimeBar`), and
   streaming-bar ingestion helpers to enable candle reconciliation and side/liquidity-aware trade aggregation.
+- **Live trading domain model**: Added `ExecutionIntent`, `ExecutionFill`, `LiveTrade`, and `LiveTradingRecord` with
+  partial-fill tracking, multi-lot bookkeeping, and configurable matching (`FIFO`, `LIFO`, `AVG_COST`, `SPECIFIC_ID`).
+- **Strategy trade direction**: Added `Strategy#getStartingType()` (default `BUY`) so strategies can declare long-first
+  or short-first behavior explicitly.
+- **Open position analytics**: Added `PositionLedger`, `OpenPositionCostBasisCriterion`,
+  `OpenPositionUnrealizedProfitCriterion`, and `TotalFeesCriterion` for live exposure and fee analysis.
 - **Sharpe Ratio**: Added `SharpeRatioCriterion` and its related calculation classes
+- **Equity-curve controls**: Added `OpenPositionHandling` and `PerformanceIndicator` to standardize mark-to-market vs
+  realized behavior across performance metrics.
 - Added **ThreeInsideUpIndicator** and **ThreeInsideDownIndicator**
 - Added **MorningStarIndicator** and **EveningStarIndicator**
 - Added **BullishKickerIndicator** and **BearishKickerIndicator**
@@ -28,7 +41,16 @@
 - **Release health workflow:** Scheduled checks for tag reachability, snapshot version drift, stale release PRs, and missing release notes, with summaries posted to Discussions.
 - **Factory selection from bars**: Derive the NumFactory from the first available bar price instead of assuming a specific price is always present.
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
+- **Live/backtest calculation parity**: `CashFlow`, `CumulativePnL`, `Returns`, and drawdown criteria now align on bar
+  indices, support explicit equity/open-position handling, and correctly account for multiple live lots.
+- **Live vs simulated record boundaries**: `BaseTradingRecord` now rejects `LiveTrade`, while charting/analysis paths can
+  build partial `LiveTradingRecord` instances so recorded live fees are preserved.
+- **Live persistence simplification**: Removed `LiveTradingRecordSnapshot`; persistence now uses `LiveTradingRecord`
+  serialization plus explicit cost-model rehydration.
+- **Recorded fee semantics**: Live-trading positions and criteria now use recorded `LiveTrade` fees via
+  `RecordedTradeCostModel` so PnL reflects actual execution costs.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
+- **Elliott Wave analysis example**: Scenario probability weighting now applies adaptive confidence contrast so closely scored scenarios separate more clearly.
 - **Position duration criterion**: implemented `PositionDurationCriterion` to measure positions duration.
 - **Statistics helper**: Consolidated statistics selection into the `Statistics` enum, with Num calculations.
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
@@ -42,7 +64,18 @@
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
+- **Returns**: Mark-to-market returns now carry forward cost-adjusted prices for consistent holding-cost treatment.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
+- **SimulatedTrade**: Avoid divide-by-zero when calculating net price for zero-amount trades and return a non-null
+  zero-cost model when deserialized without a transient cost model.
+- **Position**: Default transaction/holding cost models after deserialization now return zero-cost models instead of
+  `null`.
+- **Live-trading validation hardening**: `BaseTradingRecord` now rejects empty trade arrays with a clear error, and
+  `PositionBook` validates null/non-positive live trades before mutating lot state.
+- **Strategy starting type propagation**: `BarSeriesManager` default `run(...)` methods now use `Strategy#getStartingType()`, `BaseStrategy` composition (`and`/`or`/`opposite`) preserves non-default starting types, and strategy serialization round-trips retain short-mode (`SELL`) starting type metadata.
+- **ExecutionFill index handling**: `LiveTradingRecord.recordExecutionFill(ExecutionFill)` now applies explicit fill indices consistently for both `LiveTrade` and non-`LiveTrade` implementations.
+- **Keltner channels**: Rebuild ATR indicators after deserialization and include ATR unstable bars in the reported warmup.
+- **Trade interface naming**: Aligned the public `Trade` interface filename with Java conventions to restore compilation.
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
 - **Release scheduler redaction**: Avoid masking long Java class names in binary-change listings.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.

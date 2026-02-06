@@ -5,6 +5,7 @@ package org.ta4j.core;
 
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 
@@ -25,6 +26,7 @@ import org.ta4j.core.num.Num;
  */
 public class Position implements Serializable {
 
+    @Serial
     private static final long serialVersionUID = -5484709075767220358L;
 
     /** The entry trade */
@@ -111,6 +113,26 @@ public class Position implements Serializable {
     }
 
     /**
+     * Constructor for an open position.
+     *
+     * @param entry                the entry {@link Trade trade}
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     * @since 0.22.2
+     */
+    public Position(Trade entry, CostModel transactionCostModel, CostModel holdingCostModel) {
+        Objects.requireNonNull(entry, "entry");
+        if (!(entry.getCostModel().equals(transactionCostModel))) {
+            throw new IllegalArgumentException("Trades and the position must incorporate the same trading cost model");
+        }
+        this.startingType = entry.getType();
+        this.entry = entry;
+        this.exit = null;
+        this.transactionCostModel = transactionCostModel;
+        this.holdingCostModel = holdingCostModel;
+    }
+
+    /**
      * @return the entry {@link Trade trade} of the position
      */
     public Trade getEntry() {
@@ -162,13 +184,13 @@ public class Position implements Serializable {
     public Trade operate(int index, Num price, Num amount) {
         Trade trade = null;
         if (isNew()) {
-            trade = new Trade(index, startingType, price, amount, transactionCostModel);
+            trade = new SimulatedTrade(index, startingType, price, amount, transactionCostModel);
             entry = trade;
         } else if (isOpened()) {
             if (index < entry.getIndex()) {
                 throw new IllegalStateException("The index i is less than the entryTrade index");
             }
-            trade = new Trade(index, startingType.complementType(), price, amount, transactionCostModel);
+            trade = new SimulatedTrade(index, startingType.complementType(), price, amount, transactionCostModel);
             exit = trade;
         }
         return trade;
@@ -387,6 +409,26 @@ public class Position implements Serializable {
      */
     public Num getHoldingCost(int finalIndex) {
         return holdingCostModel.calculate(this, finalIndex);
+    }
+
+    /**
+     * @return the transaction cost model, or a zero-cost model after
+     *         deserialization when the model is unset
+     *
+     * @since 0.22.2
+     */
+    public CostModel getTransactionCostModel() {
+        return transactionCostModel == null ? new ZeroCostModel() : transactionCostModel;
+    }
+
+    /**
+     * @return the holding cost model, or a zero-cost model after deserialization
+     *         when the model is unset
+     *
+     * @since 0.22.2
+     */
+    public CostModel getHoldingCostModel() {
+        return holdingCostModel == null ? new ZeroCostModel() : holdingCostModel;
     }
 
     /**

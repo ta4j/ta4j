@@ -12,7 +12,6 @@ import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYLineAndShapeRenderer;
 import org.jfree.chart.title.LegendTitle;
 import org.jfree.chart.ui.Layer;
-import org.junit.Assume;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -25,7 +24,6 @@ import org.ta4j.core.num.Num;
 
 import ta4jexamples.charting.display.SwingChartDisplayer;
 
-import java.awt.*;
 import java.util.Collection;
 import java.util.Comparator;
 import java.io.IOException;
@@ -1367,24 +1365,6 @@ public class ChartWorkflowTest {
             return displayCallCount + displayWithTitleCallCount;
         }
 
-        /**
-         * Returns all display calls made to this spy.
-         */
-        java.util.List<DisplayCall> getAllCalls() {
-            return new java.util.ArrayList<>(allCalls);
-        }
-
-        /**
-         * Resets all tracking state.
-         */
-        void reset() {
-            this.lastChart = null;
-            this.lastWindowTitle = null;
-            this.displayWithoutTitleCalled = false;
-            this.displayCallCount = 0;
-            this.displayWithTitleCallCount = 0;
-            this.allCalls.clear();
-        }
     }
 
 }
