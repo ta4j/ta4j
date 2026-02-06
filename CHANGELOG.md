@@ -2,7 +2,6 @@
 
 ### Breaking
 - **Trade model split**: `Trade` is now an interface; the previous concrete implementation is `ModeledTrade` (backtesting/simulation), and live executions are represented by `LiveTrade`.
-- **Live fill API naming**: `LiveTradingRecord.recordFill(ExecutionFill)` was renamed to `recordExecutionFill(ExecutionFill)` to avoid overload ambiguity with `recordFill(LiveTrade)`.
 - **Swing indicator interfaces**: Removed deprecated `RecentSwingHighIndicator` and `RecentSwingLowIndicator`; use `RecentSwingIndicator` and concrete implementations directly.
 
 
