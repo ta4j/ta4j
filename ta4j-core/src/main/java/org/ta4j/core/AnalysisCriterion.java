@@ -20,7 +20,7 @@ import org.ta4j.core.num.Num;
 public interface AnalysisCriterion {
 
     /** Filter to differentiate between winning or losing positions. */
-    public enum PositionFilter {
+    enum PositionFilter {
         /** Consider only winning positions. */
         PROFIT,
         /** Consider only losing positions. */
@@ -60,8 +60,7 @@ public interface AnalysisCriterion {
      *         criterion
      */
     default Strategy chooseBest(BarSeriesManager manager, TradeType tradeType, List<Strategy> strategies) {
-
-        Strategy bestStrategy = strategies.get(0);
+        Strategy bestStrategy = strategies.getFirst();
         Num bestCriterionValue = calculate(manager.getBarSeries(), manager.run(bestStrategy));
 
         for (int i = 1; i < strategies.size(); i++) {
