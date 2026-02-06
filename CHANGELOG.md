@@ -22,6 +22,7 @@
   `ElliottWaveTrendBacktest`, and `HighRewardElliottWaveBacktest` with `HighRewardElliottWaveStrategy` for
   selective impulse entries using confidence, alternation, and risk/reward filters.
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
+- **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
