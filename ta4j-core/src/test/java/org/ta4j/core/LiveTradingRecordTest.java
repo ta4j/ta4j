@@ -451,6 +451,23 @@ class LiveTradingRecordTest {
         }
     }
 
+    @Test
+    void executionFillIndexIsAppliedConsistentlyForLiveAndGenericFills() {
+        LiveTradingRecord liveFillRecord = new LiveTradingRecord();
+        LiveTradingRecord genericFillRecord = new LiveTradingRecord();
+
+        ExecutionFill liveFill = new LiveTrade(42, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+                numFactory.one(), numFactory.zero(), ExecutionSide.BUY, "live-order", "live-correlation");
+        ExecutionFill genericFill = fillContract(42, ExecutionSide.BUY, numFactory.hundred(), numFactory.one(),
+                "generic-order", "generic-correlation");
+
+        liveFillRecord.recordFill(liveFill);
+        genericFillRecord.recordFill(genericFill);
+
+        assertEquals(42, liveFillRecord.getLastTrade().getIndex());
+        assertEquals(42, genericFillRecord.getLastTrade().getIndex());
+    }
+
     private LiveTrade fill(ExecutionSide side, Num price, Num amount) {
         return new LiveTrade(0, Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, side, null, null);
     }
@@ -462,6 +479,51 @@ class LiveTradingRecordTest {
     private LiveTrade fillWithIds(ExecutionSide side, Num price, Num amount, String orderId, String correlationId) {
         return new LiveTrade(0, Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, side, orderId,
                 correlationId);
+    }
+
+    private ExecutionFill fillContract(int index, ExecutionSide side, Num price, Num amount, String orderId,
+            String correlationId) {
+        return new ExecutionFill() {
+            @Override
+            public Instant time() {
+                return Instant.parse("2025-01-01T00:00:00Z");
+            }
+
+            @Override
+            public Num price() {
+                return price;
+            }
+
+            @Override
+            public Num amount() {
+                return amount;
+            }
+
+            @Override
+            public Num fee() {
+                return numFactory.zero();
+            }
+
+            @Override
+            public ExecutionSide side() {
+                return side;
+            }
+
+            @Override
+            public String orderId() {
+                return orderId;
+            }
+
+            @Override
+            public String correlationId() {
+                return correlationId;
+            }
+
+            @Override
+            public int index() {
+                return index;
+            }
+        };
     }
 
     private TradingRecord buildBaseShortRecord(BarSeries series) {

@@ -76,6 +76,8 @@
 - **Position**: Default transaction/holding cost models after deserialization now return zero-cost models instead of null.
 - **BaseTradingRecord**: Reject empty trade arrays with a clear error instead of throwing an array bounds exception.
 - **PositionBook**: Validate null or non-positive live trades before mutating lot state.
+- **Strategy starting type propagation**: `BarSeriesManager` default `run(...)` methods now use `Strategy#getStartingType()`, `BaseStrategy` composition (`and`/`or`/`opposite`) preserves non-default starting types, and strategy serialization round-trips retain short-mode (`SELL`) starting type metadata.
+- **ExecutionFill index handling**: `LiveTradingRecord.recordFill(ExecutionFill)` now applies explicit fill indices consistently for both `LiveTrade` and non-`LiveTrade` implementations.
 - **Keltner channels**: Rebuild ATR indicators after deserialization and include ATR unstable bars in the reported warmup.
 - **Trade interface naming**: Aligned the public `Trade` interface filename with Java conventions to restore compilation.
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.

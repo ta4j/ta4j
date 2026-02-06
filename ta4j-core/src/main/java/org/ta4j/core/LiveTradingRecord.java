@@ -123,13 +123,14 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      */
     public void recordFill(ExecutionFill fill) {
         Objects.requireNonNull(fill, "fill");
-        if (fill instanceof LiveTrade liveTrade) {
-            recordFill(liveTrade);
-            return;
-        }
-        LiveTrade trade = new LiveTrade(0, fill.time(), fill.price(), fill.amount(), fill.fee(), fill.side(),
-                fill.orderId(), fill.correlationId());
         int index = fill.index();
+        LiveTrade trade;
+        if (fill instanceof LiveTrade liveTrade) {
+            trade = liveTrade;
+        } else {
+            trade = new LiveTrade(index >= 0 ? index : 0, fill.time(), fill.price(), fill.amount(), fill.fee(),
+                    fill.side(), fill.orderId(), fill.correlationId());
+        }
         if (index >= 0) {
             recordFill(index, trade);
         } else {
