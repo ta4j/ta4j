@@ -27,7 +27,7 @@ class ExecutionFillTest {
     }
 
     @Test
-    void recordFillAcceptsExecutionFill() {
+    void recordExecutionFillAcceptsExecutionFill() {
         Num price = DoubleNumFactory.getInstance().numOf(100);
         Num amount = DoubleNumFactory.getInstance().numOf(1);
         ExecutionFill fill = new TestFill(Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, ExecutionSide.BUY,
@@ -35,7 +35,7 @@ class ExecutionFillTest {
 
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
-        record.recordFill(fill);
+        record.recordExecutionFill(fill);
 
         assertEquals(1, record.getTrades().size());
         assertEquals("intent-2", record.getTrades().get(0).getCorrelationId());

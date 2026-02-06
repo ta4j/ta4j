@@ -461,8 +461,8 @@ class LiveTradingRecordTest {
         ExecutionFill genericFill = fillContract(42, ExecutionSide.BUY, numFactory.hundred(), numFactory.one(),
                 "generic-order", "generic-correlation");
 
-        liveFillRecord.recordFill(liveFill);
-        genericFillRecord.recordFill(genericFill);
+        liveFillRecord.recordExecutionFill(liveFill);
+        genericFillRecord.recordExecutionFill(genericFill);
 
         assertEquals(42, liveFillRecord.getLastTrade().getIndex());
         assertEquals(42, genericFillRecord.getLastTrade().getIndex());

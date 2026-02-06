@@ -121,7 +121,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * @throws IllegalArgumentException when fill price or amount is NaN/invalid
      * @since 0.22.2
      */
-    public void recordFill(ExecutionFill fill) {
+    public void recordExecutionFill(ExecutionFill fill) {
         Objects.requireNonNull(fill, "fill");
         int index = fill.index();
         LiveTrade trade;

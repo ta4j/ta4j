@@ -18,15 +18,13 @@ import org.ta4j.core.num.Num;
  * fractal-based window detection approach similar to Bill Williams' Fractal
  * indicator.
  *
- * @see RecentSwingHighIndicator
+ * @see RecentSwingIndicator
  * @see <a href=
  *      "https://www.investopedia.com/terms/s/swinghigh.asp">Investopedia: Swing
  *      High</a>
  * @since 0.20
  */
-// Implements deprecated RecentSwingHighIndicator for backward compatibility.
-@SuppressWarnings("deprecation")
-public class RecentFractalSwingHighIndicator extends AbstractRecentSwingIndicator implements RecentSwingHighIndicator {
+public class RecentFractalSwingHighIndicator extends AbstractRecentSwingIndicator {
 
     private final Indicator<Num> indicator;
     private final int precedingLowerBars;
