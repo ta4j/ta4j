@@ -83,6 +83,8 @@
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
 - **Fixed incorrect @since 0.23** by replacing with 0.22.2
 - **Indicator serialization and stability**: Aligned VWAP, price-cluster, and Wyckoff indicators with stable descriptor ordering, NaN handling, and unstable-bar conventions.
+- **Wyckoff confidence invariants**: `WyckoffPhase` now rejects null cycle/phase values and enforces finite confidence in the `[0.0, 1.0]` range to prevent invalid state propagation.
+- **KDE Gaussian constants**: `VolumeProfileKDEIndicator` now reuses precomputed Gaussian constants and uses high-precision PI parsing for `Num` factories to reduce repeated allocations and preserve numeric precision.
 
 ## 0.22.1 (2026-01-15)
 

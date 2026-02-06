@@ -33,6 +33,8 @@ import org.ta4j.core.num.NumFactory;
  */
 public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
 
+    private static final String PI = "3.1415926535897932384626433832795028841971";
+
     private final Indicator<Num> priceIndicator;
     private final Indicator<Num> volumeIndicator;
     private final int lookbackLength;
@@ -40,6 +42,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
     private final transient boolean gaussianKernel;
     private final transient Num gaussianBandwidth;
     private final transient Num gaussianCoefficient;
+    private final transient Num gaussianNegativeHalf;
 
     /**
      * Constructor using {@link ClosePriceIndicator}, {@link VolumeIndicator} with
@@ -81,12 +84,14 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         this.gaussianKernel = !bandwidth.isZero();
         if (gaussianKernel) {
             NumFactory factory = series.numFactory();
-            Num twoPi = factory.two().multipliedBy(factory.numOf(Math.PI));
+            Num twoPi = factory.two().multipliedBy(factory.numOf(PI));
             this.gaussianBandwidth = bandwidth;
             this.gaussianCoefficient = factory.one().dividedBy(gaussianBandwidth.multipliedBy(twoPi.sqrt()));
+            this.gaussianNegativeHalf = factory.numOf("-0.5");
         } else {
             this.gaussianBandwidth = NaN;
             this.gaussianCoefficient = NaN;
+            this.gaussianNegativeHalf = NaN;
         }
     }
 
@@ -207,10 +212,9 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         NumFactory factory = getBarSeries().numFactory();
         if (gaussianKernel) {
             Num density = factory.zero();
-            Num negativeHalf = factory.numOf(-0.5);
             for (Sample sample : samples) {
                 Num diff = price.minus(sample.price);
-                Num exponent = diff.dividedBy(gaussianBandwidth).pow(2).multipliedBy(negativeHalf);
+                Num exponent = diff.dividedBy(gaussianBandwidth).pow(2).multipliedBy(gaussianNegativeHalf);
                 Num kernel = gaussianCoefficient.multipliedBy(exponent.exp());
                 density = density.plus(sample.weight.multipliedBy(kernel));
             }

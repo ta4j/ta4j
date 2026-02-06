@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.wyckoff;
 
+import java.util.Objects;
+
 /**
  * Describes the inferred Wyckoff phase for a bar.
  *
@@ -21,6 +23,21 @@ public record WyckoffPhase(WyckoffCycleType cycleType, WyckoffPhaseType phaseTyp
     /** Constant describing an indeterminate phase with zero confidence. */
     public static final WyckoffPhase UNKNOWN = new WyckoffPhase(WyckoffCycleType.UNKNOWN, WyckoffPhaseType.PHASE_A, 0.0,
             -1);
+
+    /**
+     * Validates record invariants.
+     *
+     * @throws IllegalArgumentException if confidence is NaN, infinite, or outside
+     *                                  {@code [0.0, 1.0]}
+     * @throws NullPointerException     if cycle or phase is {@code null}
+     */
+    public WyckoffPhase {
+        cycleType = Objects.requireNonNull(cycleType, "cycleType");
+        phaseType = Objects.requireNonNull(phaseType, "phaseType");
+        if (!Double.isFinite(confidence) || confidence < 0.0 || confidence > 1.0) {
+            throw new IllegalArgumentException("confidence must be finite and between 0.0 and 1.0");
+        }
+    }
 
     /**
      * Returns a new phase with the provided confidence value.
