@@ -4,6 +4,9 @@
 package org.ta4j.core;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
@@ -38,6 +41,20 @@ public record OpenPosition(ExecutionSide side, Num amount, Num averageEntryPrice
 
     @Override
     public String toString() {
-        return GSON.toJson(this);
+        JsonObject json = new JsonObject();
+        json.addProperty("side", side == null ? null : side.name());
+        json.addProperty("amount", amount == null ? null : amount.toString());
+        json.addProperty("averageEntryPrice", averageEntryPrice == null ? null : averageEntryPrice.toString());
+        json.addProperty("totalEntryCost", totalEntryCost == null ? null : totalEntryCost.toString());
+        json.addProperty("totalFees", totalFees == null ? null : totalFees.toString());
+        json.addProperty("earliestEntryTime", earliestEntryTime == null ? null : earliestEntryTime.toString());
+        json.addProperty("latestEntryTime", latestEntryTime == null ? null : latestEntryTime.toString());
+
+        JsonArray lotsJson = new JsonArray();
+        for (PositionLot lot : lots) {
+            lotsJson.add(JsonParser.parseString(lot.toString()));
+        }
+        json.add("lots", lotsJson);
+        return GSON.toJson(json);
     }
 }

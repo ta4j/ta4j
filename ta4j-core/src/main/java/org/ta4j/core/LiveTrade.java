@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import java.io.Serial;
 import java.time.Instant;
 import java.util.Objects;
@@ -139,6 +140,15 @@ public record LiveTrade(int index, Instant time, Num price, Num amount, Num fee,
 
     @Override
     public String toString() {
-        return GSON.toJson(this);
+        JsonObject json = new JsonObject();
+        json.addProperty("index", index);
+        json.addProperty("time", time == null ? null : time.toString());
+        json.addProperty("price", price == null ? null : price.toString());
+        json.addProperty("amount", amount == null ? null : amount.toString());
+        json.addProperty("fee", fee == null ? null : fee.toString());
+        json.addProperty("side", side == null ? null : side.name());
+        json.addProperty("orderId", orderId);
+        json.addProperty("correlationId", correlationId);
+        return GSON.toJson(json);
     }
 }

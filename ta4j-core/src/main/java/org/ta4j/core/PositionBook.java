@@ -4,6 +4,9 @@
 package org.ta4j.core;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.Serial;
 import java.io.Serializable;
 import java.io.IOException;
@@ -311,7 +314,18 @@ public final class PositionBook implements Serializable, PositionLedger {
 
     @Override
     public String toString() {
-        return GSON.toJson(this);
+        JsonObject json = new JsonObject();
+        json.addProperty("startingType", startingType == null ? null : startingType.name());
+        json.addProperty("matchPolicy", matchPolicy == null ? null : matchPolicy.name());
+        json.addProperty("openLotCount", openLots.size());
+        json.addProperty("closedPositionCount", closedPositions.size());
+
+        JsonArray openLotsJson = new JsonArray();
+        for (PositionLot lot : openLots) {
+            openLotsJson.add(JsonParser.parseString(lot.toString()));
+        }
+        json.add("openLots", openLotsJson);
+        return GSON.toJson(json);
     }
 
     @Serial

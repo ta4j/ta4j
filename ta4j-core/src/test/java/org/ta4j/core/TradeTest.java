@@ -6,17 +6,23 @@ package org.ta4j.core;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
@@ -67,6 +73,28 @@ public class TradeTest {
         assertNumEquals(expectedRawPrice, trade.getPricePerAsset());
         assertNumEquals(expectedNetPrice, trade.getNetPrice());
         assertTrue(transactionCostModel.equals(trade.getCostModel()));
+    }
+
+    @Test
+    public void modeledTradeSerializationKeepsCostModelAccessible() throws Exception {
+        var numFactory = DoubleNumFactory.getInstance();
+        Trade original = Trade.buyAt(0, numFactory.hundred(), numFactory.one(), new FixedTransactionCostModel(1.0));
+
+        byte[] data;
+        try (var output = new ByteArrayOutputStream(); var objectOutput = new ObjectOutputStream(output)) {
+            objectOutput.writeObject(original);
+            objectOutput.flush();
+            data = output.toByteArray();
+        }
+
+        Trade restored;
+        try (var input = new ByteArrayInputStream(data); var objectInput = new ObjectInputStream(input)) {
+            restored = (Trade) objectInput.readObject();
+        }
+
+        assertNotNull(restored.getCostModel());
+        assertNumEquals(original.getCost(), restored.getCost());
+        assertNumEquals(original.getNetPrice(), restored.getNetPrice());
     }
 
     @Test
@@ -204,5 +232,14 @@ public class TradeTest {
 
         assertNumEquals(numFactory.hundred(), buyTrade.getNetPrice());
         assertNumEquals(numFactory.hundred(), sellTrade.getNetPrice());
+    }
+
+    @Test
+    public void modeledTradeToStringSupportsDecimalNum() {
+        var decimalFactory = DecimalNumFactory.getInstance();
+        Trade trade = Trade.buyAt(0, decimalFactory.hundred(), decimalFactory.one());
+
+        String json = trade.toString();
+        assertTrue(json.contains("\"type\":\"BUY\""));
     }
 }

@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
@@ -131,6 +132,15 @@ public final class PositionLot implements Serializable {
 
     @Override
     public String toString() {
-        return GSON.toJson(this);
+        JsonObject json = new JsonObject();
+        json.addProperty("entryIndex", entryIndex);
+        json.addProperty("entrySequence", entrySequence);
+        json.addProperty("entryTime", entryTime == null ? null : entryTime.toString());
+        json.addProperty("entryPrice", entryPrice == null ? null : entryPrice.toString());
+        json.addProperty("amount", amount == null ? null : amount.toString());
+        json.addProperty("fee", fee == null ? null : fee.toString());
+        json.addProperty("orderId", orderId);
+        json.addProperty("correlationId", correlationId);
+        return GSON.toJson(json);
     }
 }

@@ -36,6 +36,7 @@ import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossRatioCriterion;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -466,6 +467,37 @@ class LiveTradingRecordTest {
 
         assertEquals(42, liveFillRecord.getLastTrade().getIndex());
         assertEquals(42, genericFillRecord.getLastTrade().getIndex());
+    }
+
+    @Test
+    void executionFillWithoutIndexUsesAutoIncrementedIndex() {
+        LiveTradingRecord record = new LiveTradingRecord();
+
+        record.recordExecutionFill(fillContract(-1, ExecutionSide.BUY, numFactory.hundred(), numFactory.one(),
+                "order-1", "generic-correlation-1"));
+        record.recordExecutionFill(fillContract(-1, ExecutionSide.BUY, numFactory.numOf(101), numFactory.one(),
+                "order-2", "generic-correlation-2"));
+
+        List<Trade> trades = record.getTrades();
+        assertEquals(2, trades.size());
+        assertEquals(0, trades.get(0).getIndex());
+        assertEquals(1, trades.get(1).getIndex());
+    }
+
+    @Test
+    void toStringSupportsDecimalNumValues() {
+        var decimalFactory = DecimalNumFactory.getInstance();
+        LiveTradingRecord record = new LiveTradingRecord();
+        record.recordFill(new LiveTrade(0, Instant.parse("2025-01-01T00:00:00Z"), decimalFactory.hundred(),
+                decimalFactory.one(), decimalFactory.zero(), ExecutionSide.BUY, "order-1", "corr-1"));
+
+        String recordJson = record.toString();
+        String openPositionJson = record.getNetOpenPosition().toString();
+        String lotJson = record.getOpenPositions().getFirst().lots().getFirst().toString();
+
+        assertTrue(recordJson.contains("\"tradeCount\":1"));
+        assertTrue(openPositionJson.contains("\"side\":\"BUY\""));
+        assertTrue(lotJson.contains("\"entryIndex\":0"));
     }
 
     private LiveTrade fill(ExecutionSide side, Num price, Num amount) {

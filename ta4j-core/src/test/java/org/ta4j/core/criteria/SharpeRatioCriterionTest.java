@@ -201,7 +201,8 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void realizedSharpeIgnoresOpenPositionEvenWhenMarkedToMarket() {
-        var series = buildDailySeries(new double[] { 100d, 110d, 90d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+        var series = buildDailySeries(getBarSeries("daily_series"), new double[] { 100d, 110d, 90d, 120d },
+                Instant.parse("2024-01-01T00:00:00Z"));
 
         var amount = series.numFactory().one();
         var tradingRecord = new BaseTradingRecord();

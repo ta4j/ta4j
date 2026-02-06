@@ -4,6 +4,9 @@
 package org.ta4j.core;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import java.io.Serial;
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -116,6 +119,11 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
 
     /**
      * Records a live fill using an {@link ExecutionFill} contract.
+     *
+     * <p>
+     * If {@link ExecutionFill#index()} is non-negative, that index is used.
+     * Otherwise, the record assigns the next auto-incremented index.
+     * </p>
      *
      * @param fill execution fill
      * @throws IllegalArgumentException when fill price or amount is NaN/invalid
@@ -439,7 +447,34 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
 
     @Override
     public String toString() {
-        return GSON.toJson(this);
+        lock.readLock().lock();
+        try {
+            JsonObject json = new JsonObject();
+            json.addProperty("name", name);
+            json.addProperty("startingType", startingType.name());
+            json.addProperty("matchPolicy", matchPolicy.name());
+            json.addProperty("startIndex", startIndex);
+            json.addProperty("endIndex", endIndex);
+            json.addProperty("nextTradeIndex", nextTradeIndex);
+            json.addProperty("openPositionCount", positionBook.openPositions().size());
+            json.addProperty("closedPositionCount", positionBook.closedPositions().size());
+            json.addProperty("totalFees", getTotalFees().toString());
+
+            List<Trade> trades = buildTrades();
+            json.addProperty("tradeCount", trades.size());
+            JsonArray tradesJson = new JsonArray();
+            for (Trade trade : trades) {
+                try {
+                    tradesJson.add(JsonParser.parseString(trade.toString()));
+                } catch (RuntimeException parseFailure) {
+                    tradesJson.add(trade.toString());
+                }
+            }
+            json.add("trades", tradesJson);
+            return GSON.toJson(json);
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     @Serial

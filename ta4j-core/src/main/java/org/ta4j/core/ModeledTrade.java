@@ -3,6 +3,8 @@
  */
 package org.ta4j.core;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import java.io.Serial;
 import java.util.Objects;
 import org.ta4j.core.analysis.cost.CostModel;
@@ -28,6 +30,9 @@ public class ModeledTrade implements Trade {
 
     @Serial
     private static final long serialVersionUID = -905474949010114150L;
+
+    private static final Gson GSON = new Gson();
+    private static final CostModel DEFAULT_COST_MODEL = new ZeroCostModel();
 
     /** The type of the trade. */
     private final Trade.TradeType type;
@@ -175,9 +180,15 @@ public class ModeledTrade implements Trade {
         return amount;
     }
 
+    /**
+     * @return the configured cost model, or a zero-cost model after deserialization
+     *         when the transient model is unset
+     *
+     * @since 0.22.2
+     */
     @Override
     public CostModel getCostModel() {
-        return costModel;
+        return costModel == null ? DEFAULT_COST_MODEL : costModel;
     }
 
     /**
@@ -234,7 +245,14 @@ public class ModeledTrade implements Trade {
 
     @Override
     public String toString() {
-        return "Trade{" + "type=" + type + ", index=" + index + ", price=" + pricePerAsset + ", amount=" + amount + '}';
+        JsonObject json = new JsonObject();
+        json.addProperty("type", type == null ? null : type.name());
+        json.addProperty("index", index);
+        json.addProperty("pricePerAsset", pricePerAsset == null ? null : pricePerAsset.toString());
+        json.addProperty("netPrice", netPrice == null ? null : netPrice.toString());
+        json.addProperty("amount", amount == null ? null : amount.toString());
+        json.addProperty("cost", cost == null ? null : cost.toString());
+        return GSON.toJson(json);
     }
 
     /**
