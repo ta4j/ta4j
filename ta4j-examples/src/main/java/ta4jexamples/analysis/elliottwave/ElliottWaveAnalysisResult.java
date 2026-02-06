@@ -74,6 +74,9 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
     private static final double CONSENSUS_ADJUSTMENT_WEIGHT = 0.4;
     private static final double DIRECTION_OVERLAP_WEIGHT = 0.2;
     private static final double PHASE_OVERLAP_WEIGHT = 0.5;
+    private static final double MIN_CONFIDENCE_CONTRAST_EXPONENT = 1.5;
+    private static final double MAX_CONFIDENCE_CONTRAST_EXPONENT = 6.0;
+    private static final double CONFIDENCE_SPREAD_TARGET = 0.25;
 
     private static final TypeAdapter<Double> NULLING_DOUBLE_ADAPTER = new TypeAdapter<>() {
         @Override
@@ -373,8 +376,9 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
     }
 
     /**
-     * Computes scenario probabilities by normalizing confidence and tilting toward
-     * overlapping consensus factors (phase, type, and direction).
+     * Computes scenario probabilities by applying adaptive contrast to confidence
+     * scores, then tilting toward overlapping consensus factors (phase, type, and
+     * direction).
      *
      * @param scenarioSet scenario set to evaluate
      * @return scenario probability ratios keyed by scenario id
@@ -388,13 +392,18 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
 
         EnumMap<ElliottPhase, Integer> phaseCounts = new EnumMap<>(ElliottPhase.class);
         EnumMap<ScenarioType, Integer> typeCounts = new EnumMap<>(ScenarioType.class);
+        double minConfidence = Double.POSITIVE_INFINITY;
+        double maxConfidence = Double.NEGATIVE_INFINITY;
+        int scenarioCount = scenarios.size();
+        double[] confidenceScores = new double[scenarioCount];
         int knownPhaseCount = 0;
         int knownTypeCount = 0;
         int bullishCount = 0;
         int bearishCount = 0;
         int knownDirectionCount = 0;
 
-        for (ElliottScenario scenario : scenarios) {
+        for (int i = 0; i < scenarioCount; i++) {
+            ElliottScenario scenario = scenarios.get(i);
             ElliottPhase phase = scenario.currentPhase();
             if (phase != ElliottPhase.NONE) {
                 phaseCounts.merge(phase, 1, Integer::sum);
@@ -415,16 +424,21 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
                     bearishCount++;
                 }
             }
+
+            double confidence = safeScoreValue(scenario.confidenceScore());
+            confidenceScores[i] = confidence;
+            minConfidence = Math.min(minConfidence, confidence);
+            maxConfidence = Math.max(maxConfidence, confidence);
         }
 
-        int scenarioCount = scenarios.size();
         double[] baseWeights = new double[scenarioCount];
         double totalConfidence = 0.0;
+        double contrastExponent = confidenceContrastExponent(minConfidence, maxConfidence, scenarioCount);
         for (int i = 0; i < scenarioCount; i++) {
-            ElliottScenario scenario = scenarios.get(i);
-            double confidence = safeScoreValue(scenario.confidenceScore());
-            baseWeights[i] = confidence;
-            totalConfidence += confidence;
+            double confidence = confidenceScores[i];
+            double contrasted = applyConfidenceContrast(confidence, contrastExponent);
+            baseWeights[i] = contrasted;
+            totalConfidence += contrasted;
         }
         if (totalConfidence > 0.0) {
             for (int i = 0; i < scenarioCount; i++) {
@@ -511,6 +525,29 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
         }
 
         return weightedSum / weightTotal;
+    }
+
+    private static double confidenceContrastExponent(double minConfidence, double maxConfidence, int scenarioCount) {
+        if (scenarioCount <= 1) {
+            return 1.0;
+        }
+        double spread = maxConfidence - minConfidence;
+        if (spread <= 0.0) {
+            return MAX_CONFIDENCE_CONTRAST_EXPONENT;
+        }
+        double normalizedSpread = Math.min(1.0, spread / CONFIDENCE_SPREAD_TARGET);
+        return MIN_CONFIDENCE_CONTRAST_EXPONENT
+                + (MAX_CONFIDENCE_CONTRAST_EXPONENT - MIN_CONFIDENCE_CONTRAST_EXPONENT) * (1.0 - normalizedSpread);
+    }
+
+    private static double applyConfidenceContrast(double confidence, double exponent) {
+        if (confidence <= 0.0) {
+            return 0.0;
+        }
+        if (exponent <= 1.0) {
+            return confidence;
+        }
+        return Math.pow(confidence, exponent);
     }
 
     /**

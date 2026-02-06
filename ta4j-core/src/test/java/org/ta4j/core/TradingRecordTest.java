@@ -3,16 +3,22 @@
  */
 package org.ta4j.core;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.time.Instant;
+import java.util.List;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import static org.ta4j.core.num.NaN.NaN;
-
-import java.util.List;
-
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.num.DoubleNumFactory;
 
 public class TradingRecordTest {
 
@@ -155,5 +161,46 @@ public class TradingRecordTest {
         assertEquals(2, record.getPositionCount());
         assertEquals(second, record.getLastPosition());
         assertEquals(4, record.getTrades().size());
+    }
+
+    @Test
+    public void createRecordFromDeserializedPositionDefaultsCostModels() throws Exception {
+        var position = new Position(Trade.buyAt(1, NaN, NaN), Trade.sellAt(2, NaN, NaN));
+
+        var deserialized = roundTrip(position);
+
+        assertTrue(deserialized.getTransactionCostModel() instanceof ZeroCostModel);
+        assertTrue(deserialized.getHoldingCostModel() instanceof ZeroCostModel);
+
+        var record = new BaseTradingRecord(deserialized);
+
+        assertTrue(record.getTransactionCostModel() instanceof ZeroCostModel);
+        assertTrue(record.getHoldingCostModel() instanceof ZeroCostModel);
+        assertEquals(1, record.getPositionCount());
+    }
+
+    @Test
+    public void baseTradingRecordRejectsLiveTrades() {
+        var numFactory = DoubleNumFactory.getInstance();
+        var trade = new LiveTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), null, ExecutionSide.BUY,
+                null, null);
+
+        assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(trade));
+    }
+
+    @Test
+    public void baseTradingRecordRejectsEmptyTradesArray() {
+        assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(new Trade[0]));
+    }
+
+    private Position roundTrip(Position position) throws Exception {
+        var outputStream = new ByteArrayOutputStream();
+        try (var objectOutputStream = new ObjectOutputStream(outputStream)) {
+            objectOutputStream.writeObject(position);
+        }
+
+        try (var objectInputStream = new ObjectInputStream(new ByteArrayInputStream(outputStream.toByteArray()))) {
+            return (Position) objectInputStream.readObject();
+        }
     }
 }

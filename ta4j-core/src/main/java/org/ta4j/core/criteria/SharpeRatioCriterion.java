@@ -6,11 +6,13 @@ package org.ta4j.core.criteria;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Objects;
+import java.util.stream.Stream;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
@@ -20,6 +22,7 @@ import org.ta4j.core.analysis.frequency.SampleSummary;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexes;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.BarSeriesUtils;
 
 /**
@@ -88,7 +91,10 @@ import org.ta4j.core.utils.BarSeriesUtils;
  * {@link OpenPositionHandling#MARK_TO_MARKET}, the current open position (if
  * any) contributes to both invested intervals and cash-flow accrual. When
  * {@link OpenPositionHandling#IGNORE}, only closed positions are considered for
- * the return series and position count.
+ * the return series and position count. When {@link #equityCurveMode} is
+ * {@link EquityCurveMode#REALIZED}, open positions are ignored regardless of
+ * {@link #openPositionHandling}, so interim price movements do not affect
+ * returns.
  *
  * @since 0.22.2
  *
@@ -100,6 +106,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     private final CashReturnPolicy cashReturnPolicy;
     private final double annualRiskFreeRate;
     private final ZoneId groupingZoneId;
+    private final EquityCurveMode equityCurveMode;
     private final OpenPositionHandling openPositionHandling;
 
     /**
@@ -111,7 +118,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
      */
     public SharpeRatioCriterion() {
         this(0, SamplingFrequency.BAR, Annualization.ANNUALIZED, ZoneOffset.UTC, CashReturnPolicy.CASH_EARNS_RISK_FREE,
-                OpenPositionHandling.MARK_TO_MARKET);
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
@@ -124,7 +131,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
      */
     public SharpeRatioCriterion(double annualRiskFreeRate) {
         this(annualRiskFreeRate, SamplingFrequency.BAR, Annualization.ANNUALIZED, ZoneOffset.UTC,
-                CashReturnPolicy.CASH_EARNS_RISK_FREE, OpenPositionHandling.MARK_TO_MARKET);
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
@@ -140,7 +148,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     public SharpeRatioCriterion(double annualRiskFreeRate, SamplingFrequency samplingFrequency,
             Annualization annualization, ZoneId groupingZoneId) {
         this(annualRiskFreeRate, samplingFrequency, annualization, groupingZoneId,
-                CashReturnPolicy.CASH_EARNS_RISK_FREE, OpenPositionHandling.MARK_TO_MARKET);
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
@@ -156,7 +165,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     public SharpeRatioCriterion(double annualRiskFreeRate, SamplingFrequency samplingFrequency,
             Annualization annualization, ZoneId groupingZoneId, CashReturnPolicy cashReturnPolicy) {
         this(annualRiskFreeRate, samplingFrequency, annualization, groupingZoneId, cashReturnPolicy,
-                OpenPositionHandling.MARK_TO_MARKET);
+                EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
@@ -173,10 +182,30 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
     public SharpeRatioCriterion(double annualRiskFreeRate, SamplingFrequency samplingFrequency,
             Annualization annualization, ZoneId groupingZoneId, CashReturnPolicy cashReturnPolicy,
             OpenPositionHandling openPositionHandling) {
+        this(annualRiskFreeRate, samplingFrequency, annualization, groupingZoneId, cashReturnPolicy,
+                EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
+    }
+
+    /**
+     * Creates a Sharpe ratio criterion with explicit cash return handling.
+     *
+     * @param annualRiskFreeRate   the annual risk-free rate (e.g. 0.05 for 5%)
+     * @param samplingFrequency    the sampling granularity
+     * @param annualization        the annualization mode
+     * @param groupingZoneId       the time zone used to interpret bar end times
+     * @param cashReturnPolicy     the policy for flat equity intervals
+     * @param equityCurveMode      the equity curve calculation mode
+     * @param openPositionHandling how open positions should be handled
+     * @since 0.22.2
+     */
+    public SharpeRatioCriterion(double annualRiskFreeRate, SamplingFrequency samplingFrequency,
+            Annualization annualization, ZoneId groupingZoneId, CashReturnPolicy cashReturnPolicy,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         this.annualRiskFreeRate = annualRiskFreeRate;
         this.annualization = Objects.requireNonNull(annualization, "annualization must not be null");
         this.groupingZoneId = Objects.requireNonNull(groupingZoneId, "groupingZoneId must not be null");
         this.cashReturnPolicy = Objects.requireNonNull(cashReturnPolicy, "cashReturnPolicy must not be null");
+        this.equityCurveMode = Objects.requireNonNull(equityCurveMode, "equityCurveMode must not be null");
         this.openPositionHandling = Objects.requireNonNull(openPositionHandling,
                 "openPositionHandling must not be null");
         Objects.requireNonNull(samplingFrequency, "samplingFrequency must not be null");
@@ -194,43 +223,43 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var numFactory = series.numFactory();
-        var zero = numFactory.zero();
+        NumFactory numFactory = series.numFactory();
+        Num zero = numFactory.zero();
         if (tradingRecord == null) {
             return zero;
         }
 
         int beginIndex = series.getBeginIndex();
-        var start = beginIndex + 1;
-        var end = series.getEndIndex();
+        int start = beginIndex + 1;
+        int end = series.getEndIndex();
         if (end - start + 1 < 2) {
             return zero;
         }
-        var annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
-        var excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
-                openPositionHandling);
-        var samples = samplingFrequencyIndexes.sample(series, beginIndex, start, end)
+        Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
+        ExcessReturns excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
+                equityCurveMode, openPositionHandling);
+        Stream<Sample> samples = samplingFrequencyIndexes.sample(series, beginIndex, start, end)
                 .map(pair -> getSample(series, pair, excessReturns));
-        var summary = SampleSummary.fromSamples(samples, numFactory);
+        SampleSummary summary = SampleSummary.fromSamples(samples, numFactory);
 
         if (summary.count() < 2) {
             return zero;
         }
 
-        var stdev = summary.sampleVariance(numFactory).sqrt();
+        Num stdev = summary.sampleVariance(numFactory).sqrt();
         if (stdev.isZero()) {
             return zero;
         }
 
-        var sharpePerPeriod = summary.mean().dividedBy(stdev);
+        Num sharpePerPeriod = summary.mean().dividedBy(stdev);
 
         return annualization.apply(sharpePerPeriod, summary, numFactory);
     }
 
     private Sample getSample(BarSeries series, IndexPair pair, ExcessReturns excessReturns) {
-        var previousIndex = pair.previousIndex();
-        var excessReturn = excessReturns.excessReturn(previousIndex, pair.currentIndex());
-        var deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, pair.currentIndex());
+        int previousIndex = pair.previousIndex();
+        Num excessReturn = excessReturns.excessReturn(previousIndex, pair.currentIndex());
+        Num deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, pair.currentIndex());
         return new Sample(excessReturn, deltaYears);
     }
 

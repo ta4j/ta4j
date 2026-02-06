@@ -6,6 +6,8 @@ package ta4jexamples.charting;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.LiveTrade;
+import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -76,6 +78,9 @@ public class AnalysisCriterionIndicator extends CachedIndicator<Num> {
      * @return a partial trading record
      */
     private TradingRecord createPartialTradingRecord(int upToIndex) {
+        if (fullTradingRecord instanceof LiveTradingRecord liveRecord) {
+            return createPartialLiveTradingRecord(liveRecord, upToIndex);
+        }
         // Filter trades where trade index <= upToIndex
         List<Trade> partialTrades = new ArrayList<>();
         for (Trade trade : allTrades) {
@@ -94,6 +99,24 @@ public class AnalysisCriterionIndicator extends CachedIndicator<Num> {
         Trade[] tradesArray = partialTrades.toArray(new Trade[0]);
         return new BaseTradingRecord(fullTradingRecord.getTransactionCostModel(),
                 fullTradingRecord.getHoldingCostModel(), tradesArray);
+    }
+
+    TradingRecord createPartialLiveTradingRecord(LiveTradingRecord liveRecord, int upToIndex) {
+        LiveTradingRecord partialRecord = new LiveTradingRecord(liveRecord.getStartingType(),
+                liveRecord.getMatchPolicy(), liveRecord.getTransactionCostModel(), liveRecord.getHoldingCostModel(),
+                liveRecord.getStartIndex(), liveRecord.getEndIndex());
+        partialRecord.setName(liveRecord.getName());
+        for (Trade trade : allTrades) {
+            if (trade.getIndex() > upToIndex) {
+                break;
+            }
+            if (trade instanceof LiveTrade liveTrade) {
+                partialRecord.recordFill(trade.getIndex(), liveTrade);
+            } else {
+                throw new IllegalArgumentException("LiveTradingRecord must provide LiveTrade trades");
+            }
+        }
+        return partialRecord;
     }
 
     @Override

@@ -17,6 +17,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.indicators.averages.SMAIndicator;
@@ -89,6 +90,23 @@ public class StrategySerializationTest {
         TradingRecord record = new BaseTradingRecord();
         assertThat(restored.shouldEnter(3, record)).isTrue();
         assertThat(restored.shouldExit(3, record)).isFalse();
+    }
+
+    @Test
+    public void roundTripBaseStrategyWithShortStartingType() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+        Strategy original = new BaseStrategy("RoundTripShort", new SerializableRule(true), new SerializableRule(false),
+                2, TradeType.SELL);
+
+        ComponentDescriptor descriptor = original.toDescriptor();
+        assertThat(descriptor.getParameters()).containsEntry("startingType", "SELL");
+
+        String json = original.toJson();
+        Strategy restored = Strategy.fromJson(series, json);
+
+        assertThat(restored).isInstanceOf(BaseStrategy.class);
+        assertThat(restored.getStartingType()).isEqualTo(TradeType.SELL);
+        assertThat(restored.getUnstableBars()).isEqualTo(original.getUnstableBars());
     }
 
     @Test

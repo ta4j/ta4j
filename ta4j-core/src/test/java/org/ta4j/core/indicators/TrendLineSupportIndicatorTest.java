@@ -639,27 +639,6 @@ public class TrendLineSupportIndicatorTest extends AbstractIndicatorTest<Indicat
      * @throws AssertionError if the parameter is missing, null, or cannot be parsed
      *                        as an int
      */
-    private int parseIntParameter(ComponentDescriptor descriptor, String parameterName) {
-        final Object value = descriptor.getParameters().get(parameterName);
-        if (value == null) {
-            throw new AssertionError(String.format("Parameter '%s' is missing or null in descriptor", parameterName));
-        }
-
-        // If already a Number, extract int value directly
-        if (value instanceof Number) {
-            return ((Number) value).intValue();
-        }
-
-        // Try parsing from string representation
-        try {
-            return Integer.parseInt(value.toString());
-        } catch (NumberFormatException e) {
-            throw new AssertionError(
-                    String.format("Failed to parse parameter '%s' as int. Value: '%s' (type: %s). Error: %s",
-                            parameterName, value, value.getClass().getName(), e.getMessage()),
-                    e);
-        }
-    }
 
     private static final class WarmupIndicator extends CachedIndicator<Num> {
 
