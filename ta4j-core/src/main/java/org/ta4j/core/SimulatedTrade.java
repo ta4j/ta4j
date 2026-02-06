@@ -12,7 +12,7 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**
- * Modeled {@link Trade} implementation backed by a {@link CostModel}.
+ * Simulated {@link Trade} implementation backed by a {@link CostModel}.
  *
  * <ul>
  * <li>the index (in the {@link BarSeries bar series}) on which the trade is
@@ -26,7 +26,7 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.22.2
  */
-public class ModeledTrade implements Trade {
+public class SimulatedTrade implements Trade {
 
     @Serial
     private static final long serialVersionUID = -905474949010114150L;
@@ -53,7 +53,7 @@ public class ModeledTrade implements Trade {
     private final Num amount;
 
     /**
-     * The modeled execution cost for this trade, derived from the configured
+     * The simulated execution cost for this trade, derived from the configured
      * {@link CostModel}.
      */
     private Num cost;
@@ -68,7 +68,7 @@ public class ModeledTrade implements Trade {
      * @param series the bar series
      * @param type   the trade type
      */
-    protected ModeledTrade(int index, BarSeries series, Trade.TradeType type) {
+    protected SimulatedTrade(int index, BarSeries series, Trade.TradeType type) {
         this(index, series, type, series.numFactory().one());
     }
 
@@ -80,7 +80,7 @@ public class ModeledTrade implements Trade {
      * @param type   the trade type
      * @param amount the trade amount
      */
-    protected ModeledTrade(int index, BarSeries series, Trade.TradeType type, Num amount) {
+    protected SimulatedTrade(int index, BarSeries series, Trade.TradeType type, Num amount) {
         this(index, series, type, amount, new ZeroCostModel());
     }
 
@@ -93,7 +93,7 @@ public class ModeledTrade implements Trade {
      * @param amount               the trade amount
      * @param transactionCostModel the cost model for trade execution cost
      */
-    protected ModeledTrade(int index, BarSeries series, Trade.TradeType type, Num amount,
+    protected SimulatedTrade(int index, BarSeries series, Trade.TradeType type, Num amount,
             CostModel transactionCostModel) {
         this.type = type;
         this.index = index;
@@ -108,7 +108,7 @@ public class ModeledTrade implements Trade {
      * @param type          the trade type
      * @param pricePerAsset the trade price per asset
      */
-    protected ModeledTrade(int index, Trade.TradeType type, Num pricePerAsset) {
+    protected SimulatedTrade(int index, Trade.TradeType type, Num pricePerAsset) {
         this(index, type, pricePerAsset, pricePerAsset.getNumFactory().one());
     }
 
@@ -120,7 +120,7 @@ public class ModeledTrade implements Trade {
      * @param pricePerAsset the trade price per asset
      * @param amount        the trade amount
      */
-    protected ModeledTrade(int index, Trade.TradeType type, Num pricePerAsset, Num amount) {
+    protected SimulatedTrade(int index, Trade.TradeType type, Num pricePerAsset, Num amount) {
         this(index, type, pricePerAsset, amount, new ZeroCostModel());
     }
 
@@ -133,7 +133,7 @@ public class ModeledTrade implements Trade {
      * @param amount               the trade amount
      * @param transactionCostModel the cost model for trade execution
      */
-    protected ModeledTrade(int index, Trade.TradeType type, Num pricePerAsset, Num amount,
+    protected SimulatedTrade(int index, Trade.TradeType type, Num pricePerAsset, Num amount,
             CostModel transactionCostModel) {
         this.type = type;
         this.index = index;
@@ -236,7 +236,7 @@ public class ModeledTrade implements Trade {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof ModeledTrade other)) {
+        if (!(obj instanceof SimulatedTrade other)) {
             return false;
         }
         return Objects.equals(type, other.type) && Objects.equals(index, other.index)
@@ -261,8 +261,8 @@ public class ModeledTrade implements Trade {
      * @return a BUY trade
      * @since 0.22.2
      */
-    public static ModeledTrade buyAt(int index, BarSeries series) {
-        return new ModeledTrade(index, series, Trade.TradeType.BUY);
+    public static SimulatedTrade buyAt(int index, BarSeries series) {
+        return new SimulatedTrade(index, series, Trade.TradeType.BUY);
     }
 
     /**
@@ -273,8 +273,8 @@ public class ModeledTrade implements Trade {
      * @return a BUY trade
      * @since 0.22.2
      */
-    public static ModeledTrade buyAt(int index, Num price, Num amount, CostModel transactionCostModel) {
-        return new ModeledTrade(index, Trade.TradeType.BUY, price, amount, transactionCostModel);
+    public static SimulatedTrade buyAt(int index, Num price, Num amount, CostModel transactionCostModel) {
+        return new SimulatedTrade(index, Trade.TradeType.BUY, price, amount, transactionCostModel);
     }
 
     /**
@@ -284,8 +284,8 @@ public class ModeledTrade implements Trade {
      * @return a BUY trade
      * @since 0.22.2
      */
-    public static ModeledTrade buyAt(int index, Num price, Num amount) {
-        return new ModeledTrade(index, Trade.TradeType.BUY, price, amount);
+    public static SimulatedTrade buyAt(int index, Num price, Num amount) {
+        return new SimulatedTrade(index, Trade.TradeType.BUY, price, amount);
     }
 
     /**
@@ -295,8 +295,8 @@ public class ModeledTrade implements Trade {
      * @return a BUY trade
      * @since 0.22.2
      */
-    public static ModeledTrade buyAt(int index, BarSeries series, Num amount) {
-        return new ModeledTrade(index, series, Trade.TradeType.BUY, amount);
+    public static SimulatedTrade buyAt(int index, BarSeries series, Num amount) {
+        return new SimulatedTrade(index, series, Trade.TradeType.BUY, amount);
     }
 
     /**
@@ -307,8 +307,8 @@ public class ModeledTrade implements Trade {
      * @return a BUY trade
      * @since 0.22.2
      */
-    public static ModeledTrade buyAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
-        return new ModeledTrade(index, series, Trade.TradeType.BUY, amount, transactionCostModel);
+    public static SimulatedTrade buyAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
+        return new SimulatedTrade(index, series, Trade.TradeType.BUY, amount, transactionCostModel);
     }
 
     /**
@@ -317,8 +317,8 @@ public class ModeledTrade implements Trade {
      * @return a SELL trade
      * @since 0.22.2
      */
-    public static ModeledTrade sellAt(int index, BarSeries series) {
-        return new ModeledTrade(index, series, Trade.TradeType.SELL);
+    public static SimulatedTrade sellAt(int index, BarSeries series) {
+        return new SimulatedTrade(index, series, Trade.TradeType.SELL);
     }
 
     /**
@@ -328,8 +328,8 @@ public class ModeledTrade implements Trade {
      * @return a SELL trade
      * @since 0.22.2
      */
-    public static ModeledTrade sellAt(int index, Num price, Num amount) {
-        return new ModeledTrade(index, Trade.TradeType.SELL, price, amount);
+    public static SimulatedTrade sellAt(int index, Num price, Num amount) {
+        return new SimulatedTrade(index, Trade.TradeType.SELL, price, amount);
     }
 
     /**
@@ -340,8 +340,8 @@ public class ModeledTrade implements Trade {
      * @return a SELL trade
      * @since 0.22.2
      */
-    public static ModeledTrade sellAt(int index, Num price, Num amount, CostModel transactionCostModel) {
-        return new ModeledTrade(index, Trade.TradeType.SELL, price, amount, transactionCostModel);
+    public static SimulatedTrade sellAt(int index, Num price, Num amount, CostModel transactionCostModel) {
+        return new SimulatedTrade(index, Trade.TradeType.SELL, price, amount, transactionCostModel);
     }
 
     /**
@@ -351,8 +351,8 @@ public class ModeledTrade implements Trade {
      * @return a SELL trade
      * @since 0.22.2
      */
-    public static ModeledTrade sellAt(int index, BarSeries series, Num amount) {
-        return new ModeledTrade(index, series, Trade.TradeType.SELL, amount);
+    public static SimulatedTrade sellAt(int index, BarSeries series, Num amount) {
+        return new SimulatedTrade(index, series, Trade.TradeType.SELL, amount);
     }
 
     /**
@@ -363,8 +363,8 @@ public class ModeledTrade implements Trade {
      * @return a SELL trade
      * @since 0.22.2
      */
-    public static ModeledTrade sellAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
-        return new ModeledTrade(index, series, Trade.TradeType.SELL, amount, transactionCostModel);
+    public static SimulatedTrade sellAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
+        return new SimulatedTrade(index, series, Trade.TradeType.SELL, amount, transactionCostModel);
     }
 
 }

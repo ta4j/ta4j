@@ -9,7 +9,7 @@ import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.num.Num;
 
 /**
- * Read-only trade contract shared by modeled trades and live executions.
+ * Read-only trade contract shared by simulated trades and live executions.
  *
  * <ul>
  * <li>the index (in the {@link BarSeries bar series}) on which the trade is
@@ -26,7 +26,7 @@ import org.ta4j.core.num.Num;
  * </p>
  *
  * <p>
- * Use {@link ModeledTrade} as the default modeled implementation and
+ * Use {@link SimulatedTrade} as the default simulated implementation and
  * {@link LiveTrade} for live fills.
  * </p>
  *
@@ -99,7 +99,7 @@ public interface Trade extends Serializable {
     Num getAmount();
 
     /**
-     * @return the modeled costs of the trade as calculated by the configured
+     * @return the simulated costs of the trade as calculated by the configured
      *         {@link CostModel}
      */
     Num getCost();
@@ -177,7 +177,7 @@ public interface Trade extends Serializable {
      * @return a BUY trade
      */
     static Trade buyAt(int index, BarSeries series) {
-        return new ModeledTrade(index, series, TradeType.BUY);
+        return new SimulatedTrade(index, series, TradeType.BUY);
     }
 
     /**
@@ -188,7 +188,7 @@ public interface Trade extends Serializable {
      * @return a BUY trade
      */
     static Trade buyAt(int index, Num price, Num amount, CostModel transactionCostModel) {
-        return new ModeledTrade(index, TradeType.BUY, price, amount, transactionCostModel);
+        return new SimulatedTrade(index, TradeType.BUY, price, amount, transactionCostModel);
     }
 
     /**
@@ -198,7 +198,7 @@ public interface Trade extends Serializable {
      * @return a BUY trade
      */
     static Trade buyAt(int index, Num price, Num amount) {
-        return new ModeledTrade(index, TradeType.BUY, price, amount);
+        return new SimulatedTrade(index, TradeType.BUY, price, amount);
     }
 
     /**
@@ -208,7 +208,7 @@ public interface Trade extends Serializable {
      * @return a BUY trade
      */
     static Trade buyAt(int index, BarSeries series, Num amount) {
-        return new ModeledTrade(index, series, TradeType.BUY, amount);
+        return new SimulatedTrade(index, series, TradeType.BUY, amount);
     }
 
     /**
@@ -219,7 +219,7 @@ public interface Trade extends Serializable {
      * @return a BUY trade
      */
     static Trade buyAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
-        return new ModeledTrade(index, series, TradeType.BUY, amount, transactionCostModel);
+        return new SimulatedTrade(index, series, TradeType.BUY, amount, transactionCostModel);
     }
 
     /**
@@ -228,7 +228,7 @@ public interface Trade extends Serializable {
      * @return a SELL trade
      */
     static Trade sellAt(int index, BarSeries series) {
-        return new ModeledTrade(index, series, TradeType.SELL);
+        return new SimulatedTrade(index, series, TradeType.SELL);
     }
 
     /**
@@ -238,7 +238,7 @@ public interface Trade extends Serializable {
      * @return a SELL trade
      */
     static Trade sellAt(int index, Num price, Num amount) {
-        return new ModeledTrade(index, TradeType.SELL, price, amount);
+        return new SimulatedTrade(index, TradeType.SELL, price, amount);
     }
 
     /**
@@ -249,7 +249,7 @@ public interface Trade extends Serializable {
      * @return a SELL trade
      */
     static Trade sellAt(int index, Num price, Num amount, CostModel transactionCostModel) {
-        return new ModeledTrade(index, TradeType.SELL, price, amount, transactionCostModel);
+        return new SimulatedTrade(index, TradeType.SELL, price, amount, transactionCostModel);
     }
 
     /**
@@ -259,7 +259,7 @@ public interface Trade extends Serializable {
      * @return a SELL trade
      */
     static Trade sellAt(int index, BarSeries series, Num amount) {
-        return new ModeledTrade(index, series, TradeType.SELL, amount);
+        return new SimulatedTrade(index, series, TradeType.SELL, amount);
     }
 
     /**
@@ -270,6 +270,6 @@ public interface Trade extends Serializable {
      * @return a SELL trade
      */
     static Trade sellAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
-        return new ModeledTrade(index, series, TradeType.SELL, amount, transactionCostModel);
+        return new SimulatedTrade(index, series, TradeType.SELL, amount, transactionCostModel);
     }
 }

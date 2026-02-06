@@ -61,7 +61,7 @@ public class TradeTest {
     @Test
     public void initializeWithCostsTest() {
         var transactionCostModel = new LinearTransactionCostModel(0.05);
-        var trade = new ModeledTrade(0, TradeType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(20),
+        var trade = new SimulatedTrade(0, TradeType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(20),
                 transactionCostModel);
         Num expectedCost = DoubleNum.valueOf(100);
         Num expectedValue = DoubleNum.valueOf(2000);
@@ -76,7 +76,7 @@ public class TradeTest {
     }
 
     @Test
-    public void modeledTradeSerializationKeepsCostModelAccessible() throws Exception {
+    public void simulatedTradeSerializationKeepsCostModelAccessible() throws Exception {
         var numFactory = DoubleNumFactory.getInstance();
         Trade original = Trade.buyAt(0, numFactory.hundred(), numFactory.one(), new FixedTransactionCostModel(1.0));
 
@@ -102,7 +102,7 @@ public class TradeTest {
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 95, 100, 80, 85, 130)
                 .build();
-        Trade trade = new ModeledTrade(1, TradeType.BUY, NaN);
+        Trade trade = new SimulatedTrade(1, TradeType.BUY, NaN);
         assertNumEquals(DoubleNum.valueOf(95), trade.getPricePerAsset(series));
     }
 
@@ -235,7 +235,7 @@ public class TradeTest {
     }
 
     @Test
-    public void modeledTradeToStringSupportsDecimalNum() {
+    public void simulatedTradeToStringSupportsDecimalNum() {
         var decimalFactory = DecimalNumFactory.getInstance();
         Trade trade = Trade.buyAt(0, decimalFactory.hundred(), decimalFactory.one());
 

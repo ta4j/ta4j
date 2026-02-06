@@ -1,7 +1,7 @@
 ## Unreleased
 
 ### Breaking
-- **Trade model split**: `Trade` is now an interface; the previous concrete implementation is `ModeledTrade` (backtesting/simulation), and live executions are represented by `LiveTrade`.
+- **Trade model split**: `Trade` is now an interface; the previous concrete implementation is `SimulatedTrade` (backtesting/simulation), and live executions are represented by `LiveTrade`.
 - **Swing indicator interfaces**: Removed deprecated `RecentSwingHighIndicator` and `RecentSwingLowIndicator`; use `RecentSwingIndicator` and concrete implementations directly.
 
 
@@ -43,7 +43,7 @@
 - **CashFlow**: Added a realized-only calculation mode alongside the default mark-to-market cash flow curve.
 - **Live/backtest calculation parity**: `CashFlow`, `CumulativePnL`, `Returns`, and drawdown criteria now align on bar
   indices, support explicit equity/open-position handling, and correctly account for multiple live lots.
-- **Live vs modeled record boundaries**: `BaseTradingRecord` now rejects `LiveTrade`, while charting/analysis paths can
+- **Live vs simulated record boundaries**: `BaseTradingRecord` now rejects `LiveTrade`, while charting/analysis paths can
   build partial `LiveTradingRecord` instances so recorded live fees are preserved.
 - **Live persistence simplification**: Removed `LiveTradingRecordSnapshot`; persistence now uses `LiveTradingRecord`
   serialization plus explicit cost-model rehydration.
@@ -65,7 +65,7 @@
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 - **Returns**: Mark-to-market returns now carry forward cost-adjusted prices for consistent holding-cost treatment.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
-- **ModeledTrade**: Avoid divide-by-zero when calculating net price for zero-amount trades and return a non-null
+- **SimulatedTrade**: Avoid divide-by-zero when calculating net price for zero-amount trades and return a non-null
   zero-cost model when deserialized without a transient cost model.
 - **Position**: Default transaction/holding cost models after deserialization now return zero-cost models instead of
   `null`.
