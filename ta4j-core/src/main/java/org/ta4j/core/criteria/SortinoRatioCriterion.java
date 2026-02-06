@@ -198,20 +198,20 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var numFactory = series.numFactory();
-        var zero = numFactory.zero();
+        NumFactory numFactory = series.numFactory();
+        Num zero = numFactory.zero();
         if (tradingRecord == null) {
             return zero;
         }
-        var beginIndex = series.getBeginIndex();
-        var start = beginIndex + 1;
-        var end = series.getEndIndex();
+        int beginIndex = series.getBeginIndex();
+        int start = beginIndex + 1;
+        int end = series.getEndIndex();
         if (end - start + 1 < 2) {
             return zero;
         }
 
-        var annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
-        var excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
+        Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
+        ExcessReturns excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
                 openPositionHandling);
         List<Sample> samples = samplingFrequencyIndexes.sample(series, beginIndex, start, end)
                 .map(pair -> getSample(series, pair, excessReturns))
@@ -226,7 +226,7 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion {
             return downsideDeviation;
         }
 
-        var sortinoPerPeriod = summary.mean().dividedBy(downsideDeviation);
+        Num sortinoPerPeriod = summary.mean().dividedBy(downsideDeviation);
         return annualization.apply(sortinoPerPeriod, summary, numFactory);
     }
 
@@ -235,10 +235,10 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion {
             return numFactory.zero();
         }
 
-        var zero = numFactory.zero();
-        var downsideSumSquares = zero;
-        for (var sample : samples) {
-            var value = sample.value();
+        Num zero = numFactory.zero();
+        Num downsideSumSquares = zero;
+        for (Sample sample : samples) {
+            Num value = sample.value();
             if (value.isLessThan(zero)) {
                 downsideSumSquares = downsideSumSquares.plus(value.multipliedBy(value));
             }
@@ -250,12 +250,12 @@ public class SortinoRatioCriterion extends AbstractAnalysisCriterion {
             return NaN.NaN;
         }
 
-        var variance = downsideSumSquares.dividedBy(numFactory.numOf(samples.size()));
+        Num variance = downsideSumSquares.dividedBy(numFactory.numOf(samples.size()));
         return variance.sqrt();
     }
 
     private Sample getSample(BarSeries series, IndexPair pair, ExcessReturns excessReturns) {
-        var previousIndex = pair.previousIndex();
+        int previousIndex = pair.previousIndex();
         Num excessReturn = excessReturns.excessReturn(previousIndex, pair.currentIndex());
         Num deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, pair.currentIndex());
         return new Sample(excessReturn, deltaYears);

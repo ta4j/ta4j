@@ -20,7 +20,7 @@ public class UnderOrEqualIndicatorRuleTest {
     @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().build();
-        var indicator = new FixedNumIndicator(series, 0, 5, 8, 5, 1, 10, 20, 30);
+        FixedNumIndicator indicator = new FixedNumIndicator(series, 0, 5, 8, 5, 1, 10, 20, 30);
         rule = new UnderOrEqualIndicatorRule(indicator, series.numFactory().numOf(5));
     }
 

@@ -132,8 +132,8 @@ public final class ElliottWaveFacade {
             final Optional<Num> fibTolerance, final Optional<ElliottSwingCompressor> compressor) {
         Objects.requireNonNull(series, "series cannot be null");
         Objects.requireNonNull(degree, "degree cannot be null");
-        var swingIndicator = new ElliottSwingIndicator(series, window, degree);
-        var priceIndicator = new ClosePriceIndicator(series);
+        ElliottSwingIndicator swingIndicator = new ElliottSwingIndicator(series, window, degree);
+        ClosePriceIndicator priceIndicator = new ClosePriceIndicator(series);
         return new ElliottWaveFacade(series, swingIndicator, priceIndicator, fibTolerance, compressor);
     }
 
@@ -180,8 +180,9 @@ public final class ElliottWaveFacade {
             final Optional<ElliottSwingCompressor> compressor) {
         Objects.requireNonNull(series, "series cannot be null");
         Objects.requireNonNull(degree, "degree cannot be null");
-        var swingIndicator = new ElliottSwingIndicator(series, lookbackLength, lookforwardLength, degree);
-        var priceIndicator = new ClosePriceIndicator(series);
+        ElliottSwingIndicator swingIndicator = new ElliottSwingIndicator(series, lookbackLength, lookforwardLength,
+                degree);
+        ClosePriceIndicator priceIndicator = new ClosePriceIndicator(series);
         return new ElliottWaveFacade(series, swingIndicator, priceIndicator, fibTolerance, compressor);
     }
 
@@ -220,8 +221,8 @@ public final class ElliottWaveFacade {
             final Optional<Num> fibTolerance, final Optional<ElliottSwingCompressor> compressor) {
         Objects.requireNonNull(series, "series cannot be null");
         Objects.requireNonNull(degree, "degree cannot be null");
-        var swingIndicator = ElliottSwingIndicator.zigZag(series, degree);
-        var priceIndicator = new ClosePriceIndicator(series);
+        ElliottSwingIndicator swingIndicator = ElliottSwingIndicator.zigZag(series, degree);
+        ClosePriceIndicator priceIndicator = new ClosePriceIndicator(series);
         return new ElliottWaveFacade(series, swingIndicator, priceIndicator, fibTolerance, compressor);
     }
 
