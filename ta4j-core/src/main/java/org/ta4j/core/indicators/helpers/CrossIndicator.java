@@ -36,23 +36,24 @@ public class CrossIndicator extends CachedIndicator<Boolean> {
 
     @Override
     protected Boolean calculate(int index) {
+        int unstableBoundary = Math.max(up.getCountOfUnstableBars(), low.getCountOfUnstableBars());
 
         int i = index;
-        if (i == 0 || up.getValue(i).isGreaterThanOrEqual(low.getValue(i))) {
+        if (i <= unstableBoundary || up.getValue(i).isGreaterThanOrEqual(low.getValue(i))) {
             return false;
         }
 
         do {
             i--;
-        } while (i > 0 && up.getValue(i).isEqual(low.getValue(i)));
+        } while (i > unstableBoundary && up.getValue(i).isEqual(low.getValue(i)));
 
         return up.getValue(i).isGreaterThan(low.getValue(i));
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        int unstableBars = Math.max(up.getCountOfUnstableBars(), low.getCountOfUnstableBars());
-        return Math.max(1, unstableBars);
+        int unstableBoundary = Math.max(up.getCountOfUnstableBars(), low.getCountOfUnstableBars());
+        return unstableBoundary + 1;
     }
 
     /** @return the initial lower indicator */
