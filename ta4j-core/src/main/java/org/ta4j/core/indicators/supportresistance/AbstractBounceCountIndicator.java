@@ -86,6 +86,10 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
             bounceIndexCache.put(index, -1);
             return NaN;
         }
+        if (index < series.getBeginIndex() + getCountOfUnstableBars()) {
+            bounceIndexCache.put(index, -1);
+            return NaN;
+        }
 
         int startIndex = computeStartIndex(index, series);
         List<PriceBucket> buckets = tallyBounces(startIndex, index);
@@ -98,6 +102,19 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
 
         bounceIndexCache.put(index, bestBucket.getLastIndex());
         return bestBucket.getRepresentativePrice();
+    }
+
+    /**
+     * Returns the unstable warmup covering source indicator warmup plus the
+     * configured look-back window.
+     *
+     * @return number of unstable bars
+     * @since 0.22.2
+     */
+    @Override
+    public int getCountOfUnstableBars() {
+        int componentUnstableBars = priceIndicator.getCountOfUnstableBars();
+        return componentUnstableBars + Math.max(0, lookbackCount - 1);
     }
 
     /**

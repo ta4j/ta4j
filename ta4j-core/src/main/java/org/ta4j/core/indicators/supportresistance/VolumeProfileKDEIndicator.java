@@ -190,14 +190,17 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Returns the number of unstable bars based on the configured look-back length.
+     * Returns the unstable warmup covering source indicator warmup plus the
+     * configured look-back window.
      *
      * @return number of unstable bars
      * @since 0.22.2
      */
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(0, lookbackLength - 1);
+        int componentUnstableBars = Math.max(priceIndicator.getCountOfUnstableBars(),
+                volumeIndicator.getCountOfUnstableBars());
+        return componentUnstableBars + Math.max(0, lookbackLength - 1);
     }
 
     private int computeStartIndex(int index, BarSeries series) {

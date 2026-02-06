@@ -126,6 +126,6 @@ public class PriceClusterSupportIndicator extends AbstractPriceClusterIndicator 
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return super.getCountOfUnstableBars();
     }
 }

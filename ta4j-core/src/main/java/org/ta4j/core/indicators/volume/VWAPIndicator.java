@@ -61,7 +61,9 @@ public class VWAPIndicator extends AbstractVWAPIndicator {
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(0, barCount - 1);
+        int componentUnstableBars = Math.max(priceIndicator.getCountOfUnstableBars(),
+                volumeIndicator.getCountOfUnstableBars());
+        return componentUnstableBars + Math.max(0, barCount - 1);
     }
 
     @Override

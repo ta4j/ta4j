@@ -17,6 +17,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.supportresistance.PriceClusterSupportIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -53,7 +54,7 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
     public void shouldPropagateNaNWhenWindowContainsNoValidValues() {
         var baseIndicator = new ClosePriceIndicator(series);
         Indicator<Num> withNaN = new Indicator<>() {
-            private final Set<Integer> invalidIndices = Set.of(2, 3, 4, 5, 6, 7, 8);
+            private final Set<Integer> invalidIndices = Set.of(5, 6, 7, 8);
 
             @Override
             public Num getValue(int index) {
@@ -76,9 +77,12 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
 
         var indicator = new PriceClusterSupportIndicator(withNaN, 2, numOf(0.1));
 
-        assertThat(indicator.getValue(2)).as("valid values should survive mixed window")
-                .isEqualByComparingTo(numOf(20));
-        assertThat(indicator.getClusterIndex(2)).isEqualTo(1);
+        assertThat(indicator.getValue(2).isNaN()).as("unstable warmup returns NaN").isTrue();
+        assertThat(indicator.getClusterIndex(2)).isEqualTo(-1);
+
+        assertThat(indicator.getValue(4).doubleValue()).as("valid values should survive mixed window")
+                .isCloseTo(12.0, within(1e-6));
+        assertThat(indicator.getClusterIndex(4)).isEqualTo(4);
 
         assertThat(indicator.getValue(7).isNaN()).as("NaN when entire lookback is invalid").isTrue();
         assertThat(indicator.getClusterIndex(7)).isEqualTo(-1);
@@ -87,8 +91,9 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
     @Test
     public void shouldFavorVolumeHeavierClusterBeforeTieBreakers() {
         BarSeries customSeries = buildSeries(new double[] { 10, 15, 15 }, new double[] { 100, 30, 30 });
-
-        var indicator = new PriceClusterSupportIndicator(customSeries, 0, numOf(0.5));
+        var price = new ClosePriceIndicator(customSeries);
+        var volume = new VolumeIndicator(customSeries, 1);
+        var indicator = new PriceClusterSupportIndicator(price, volume, 0, numOf(0.5));
 
         assertThat(indicator.getValue(2)).as("support favours heavier low cluster despite smaller count")
                 .isEqualByComparingTo(numOf(10));
@@ -108,6 +113,21 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
         int index = series.getEndIndex();
         assertThat(restoredIndicator.getValue(index)).isEqualByComparingTo(indicator.getValue(index));
         assertThat(restoredIndicator.getClusterIndex(index)).isEqualTo(indicator.getClusterIndex(index));
+    }
+
+    @Test
+    public void unstableBarsIncludeInputWarmupAndLookback() {
+        BarSeries customSeries = buildSeries(new double[] { 10, 10, 10, 12, 12, 12, 12 },
+                new double[] { 5, 5, 5, 5, 5, 5, 5 });
+        MockIndicator price = new MockIndicator(customSeries, 2, numOf(10), numOf(10), numOf(10), numOf(12), numOf(12),
+                numOf(12), numOf(12));
+        MockIndicator volume = new MockIndicator(customSeries, 3, numOf(5), numOf(5), numOf(5), numOf(5), numOf(5),
+                numOf(5), numOf(5));
+        PriceClusterSupportIndicator indicator = new PriceClusterSupportIndicator(price, volume, 3, numOf(0.1));
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(5);
+        assertThat(indicator.getValue(4).isNaN()).isTrue();
+        assertThat(indicator.getValue(5).isNaN()).isFalse();
     }
 
     private BarSeries buildSeries(double[] closes, double[] volumes) {

@@ -45,10 +45,10 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         var std = new VWAPStandardDeviationIndicator(vwap);
         var deviation = new VWAPDeviationIndicator(closePrice, vwap);
 
-        assertNumEquals(0.6872, std.getValue(2));
+        assertThat(std.getValue(2).isNaN()).isTrue();
         assertNumEquals(1.3426, std.getValue(3));
 
-        assertNumEquals(-0.1667, deviation.getValue(2));
+        assertThat(deviation.getValue(2).isNaN()).isTrue();
         assertNumEquals(1.4444, deviation.getValue(3));
 
         assertThat(std.getWindowStartIndex(3)).isEqualTo(1);
@@ -81,8 +81,8 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         var upper = new VWAPBandIndicator(vwap, std, 2, VWAPBandIndicator.BandType.UPPER);
         var lower = new VWAPBandIndicator(vwap, std, 2, VWAPBandIndicator.BandType.LOWER);
 
-        assertNumEquals(12.5411, upper.getValue(2));
-        assertNumEquals(9.7923, lower.getValue(2));
+        assertThat(upper.getValue(2).isNaN()).isTrue();
+        assertThat(lower.getValue(2).isNaN()).isTrue();
         assertNumEquals(15.2407, upper.getValue(3));
         assertNumEquals(9.8704, lower.getValue(3));
 

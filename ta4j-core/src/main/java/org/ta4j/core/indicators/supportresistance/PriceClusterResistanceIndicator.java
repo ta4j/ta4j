@@ -126,6 +126,6 @@ public class PriceClusterResistanceIndicator extends AbstractPriceClusterIndicat
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return super.getCountOfUnstableBars();
     }
 }

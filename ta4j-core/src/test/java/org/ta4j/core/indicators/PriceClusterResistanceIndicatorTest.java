@@ -13,6 +13,7 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.supportresistance.PriceClusterResistanceIndicator;
 import org.ta4j.core.indicators.supportresistance.PriceClusterSupportIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -67,6 +68,21 @@ public class PriceClusterResistanceIndicatorTest extends AbstractIndicatorTest<I
         int index = series.getEndIndex();
         assertThat(restoredIndicator.getValue(index)).isEqualByComparingTo(indicator.getValue(index));
         assertThat(restoredIndicator.getClusterIndex(index)).isEqualTo(indicator.getClusterIndex(index));
+    }
+
+    @Test
+    public void unstableBarsIncludeInputWarmupAndLookback() {
+        BarSeries series = buildSeries(new double[] { 10, 10, 10, 15, 15, 15, 15 },
+                new double[] { 2, 2, 2, 6, 6, 6, 6 });
+        MockIndicator price = new MockIndicator(series, 1, numOf(10), numOf(10), numOf(10), numOf(15), numOf(15),
+                numOf(15), numOf(15));
+        MockIndicator volume = new MockIndicator(series, 4, numOf(2), numOf(2), numOf(2), numOf(6), numOf(6), numOf(6),
+                numOf(6));
+        PriceClusterResistanceIndicator indicator = new PriceClusterResistanceIndicator(price, volume, 2, numOf(0.2));
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(5);
+        assertThat(indicator.getValue(4).isNaN()).isTrue();
+        assertThat(indicator.getValue(5).isNaN()).isFalse();
     }
 
     private BarSeries buildSeries(double[] closes, double[] volumes) {

@@ -53,10 +53,11 @@ public class MVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         VWAPIndicator vwap = new VWAPIndicator(data, 5);
         MVWAPIndicator mvwap = new MVWAPIndicator(vwap, 8);
 
+        assertThat(mvwap.getCountOfUnstableBars()).isEqualTo(12);
         assertThat(mvwap.getValue(8).isNaN()).isTrue();
         assertThat(mvwap.getValue(9).isNaN()).isTrue();
         assertThat(mvwap.getValue(10).isNaN()).isTrue();
-        assertNumEquals(45.1790, mvwap.getValue(11));
+        assertThat(mvwap.getValue(11).isNaN()).isTrue();
         assertNumEquals(45.2227, mvwap.getValue(12));
         assertNumEquals(45.2533, mvwap.getValue(13));
         assertNumEquals(45.2769, mvwap.getValue(14));

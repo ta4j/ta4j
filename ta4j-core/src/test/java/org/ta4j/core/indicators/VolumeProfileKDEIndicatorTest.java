@@ -106,6 +106,21 @@ public class VolumeProfileKDEIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(restoredIndicator.getModePrice(index)).isEqualByComparingTo(indicator.getModePrice(index));
     }
 
+    @Test
+    public void unstableBarsIncludeInputWarmupAndLookback() {
+        BarSeries series = buildSeries(new double[] { 10, 10.2, 10.4, 10.6, 10.8, 11.0, 11.2, 11.4 },
+                new double[] { 100, 90, 80, 70, 60, 50, 40, 30 });
+        MockIndicator price = new MockIndicator(series, 3, List.of(numOf(10), numOf(10.2), numOf(10.4), numOf(10.6),
+                numOf(10.8), numOf(11.0), numOf(11.2), numOf(11.4)));
+        MockIndicator volume = new MockIndicator(series, 1,
+                List.of(numOf(100), numOf(90), numOf(80), numOf(70), numOf(60), numOf(50), numOf(40), numOf(30)));
+        VolumeProfileKDEIndicator indicator = new VolumeProfileKDEIndicator(price, volume, 4, numOf(0));
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(6);
+        assertThat(indicator.getValue(5).isNaN()).isTrue();
+        assertThat(indicator.getValue(6).isNaN()).isFalse();
+    }
+
     private BarSeries buildSeries(double[] closes, double[] volumes) {
         var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         BarSeries barSeries = builder.build();

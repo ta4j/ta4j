@@ -126,6 +126,10 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
             clusterIndexCache.put(index, -1);
             return NaN;
         }
+        if (index < series.getBeginIndex() + getCountOfUnstableBars()) {
+            clusterIndexCache.put(index, -1);
+            return NaN;
+        }
 
         int startIndex = computeStartIndex(index, series);
         List<PriceCluster> clusters = buildClusters(startIndex, index);
@@ -138,6 +142,20 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
 
         clusterIndexCache.put(index, bestCluster.getLastIndex());
         return bestCluster.getRepresentativePrice();
+    }
+
+    /**
+     * Returns the unstable warmup covering source indicator warmup plus the
+     * configured look-back window.
+     *
+     * @return number of unstable bars
+     * @since 0.22.2
+     */
+    @Override
+    public int getCountOfUnstableBars() {
+        int componentUnstableBars = Math.max(priceIndicator.getCountOfUnstableBars(),
+                weightIndicator.getCountOfUnstableBars());
+        return componentUnstableBars + Math.max(0, lookbackCount - 1);
     }
 
     /**

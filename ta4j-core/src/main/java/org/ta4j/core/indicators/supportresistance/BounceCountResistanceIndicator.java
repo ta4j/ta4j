@@ -67,6 +67,6 @@ public class BounceCountResistanceIndicator extends AbstractBounceCountIndicator
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return super.getCountOfUnstableBars();
     }
 }

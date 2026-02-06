@@ -8,6 +8,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.Before;
@@ -16,6 +17,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -66,7 +68,8 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
         var anchored = new AnchoredVWAPIndicator(series, -5);
 
         assertThat(anchored.getAnchorIndex(0)).isEqualTo(series.getBeginIndex());
-        assertNumEquals(10d, anchored.getValue(0));
+        assertThat(anchored.getValue(0).isNaN()).isTrue();
+        assertNumEquals((10 * 100 + 11 * 200) / 300d, anchored.getValue(1));
     }
 
     @Test
@@ -94,6 +97,22 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
             assertThat(restoredIndicator.getValue(i)).isEqualByComparingTo(anchored.getValue(i));
             assertThat(restoredIndicator.getAnchorIndex(i)).isEqualTo(anchored.getAnchorIndex(i));
         }
+    }
+
+    @Test
+    public void unstableBarsTrackInputWarmup() {
+        BarSeries syntheticSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 1, 1, 1, 1, 1)
+                .build();
+        MockIndicator price = new MockIndicator(syntheticSeries, 1,
+                List.of(numOf(10), numOf(11), numOf(12), numOf(13), numOf(14), numOf(15)));
+        MockIndicator volume = new MockIndicator(syntheticSeries, 4, List.of(numFactory.one(), numFactory.one(),
+                numFactory.one(), numFactory.one(), numFactory.one(), numFactory.one()));
+        AnchoredVWAPIndicator indicator = new AnchoredVWAPIndicator(price, volume, 0);
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(4);
+        assertThat(indicator.getValue(3).isNaN()).isTrue();
+        assertNumEquals(12, indicator.getValue(4));
     }
 
     private static final class AnchorSignal implements Indicator<Boolean> {

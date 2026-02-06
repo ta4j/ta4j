@@ -6,6 +6,8 @@ package org.ta4j.core.indicators.volume;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.util.List;
+
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -14,6 +16,7 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -78,7 +81,7 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         var volume = new VolumeIndicator(data);
         var vwap = new VWAPIndicator(closePrice, volume, 3);
 
-        assertNumEquals(45.1133, vwap.getValue(2));
+        assertThat(vwap.getValue(2).isNaN()).isTrue();
         assertNumEquals(45.1433, vwap.getValue(3));
     }
 
@@ -93,6 +96,20 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
         assertThat(vwap.getValue(1).isNaN()).isTrue();
         assertThat(vwap.getValue(2).isNaN()).isTrue();
+    }
+
+    @Test
+    public void unstableBarsIncludeInputWarmupAndWindowLength() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1, 1, 1, 1).build();
+        MockIndicator price = new MockIndicator(series, 2,
+                List.of(numOf(10), numOf(11), numOf(12), numOf(13), numOf(14), numOf(15), numOf(16)));
+        MockIndicator volume = new MockIndicator(series, 1, List.of(numFactory.one(), numFactory.one(),
+                numFactory.one(), numFactory.one(), numFactory.one(), numFactory.one(), numFactory.one()));
+        VWAPIndicator indicator = new VWAPIndicator(price, volume, 3);
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(4);
+        assertThat(indicator.getValue(3).isNaN()).isTrue();
+        assertNumEquals(13, indicator.getValue(4));
     }
 
 }

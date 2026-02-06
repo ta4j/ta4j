@@ -33,6 +33,9 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
 
     @Override
     protected final Num calculate(int index) {
+        if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
+            return NaN.NaN;
+        }
         int startIndex = getWindowStartIndex(index);
         if (startIndex > index) {
             return NaN.NaN;

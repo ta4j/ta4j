@@ -13,6 +13,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.supportresistance.BounceCountResistanceIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -83,6 +84,18 @@ public class BounceCountResistanceIndicatorTest extends AbstractIndicatorTest<Bo
         int index = series.getEndIndex();
         assertThat(restoredIndicator.getValue(index)).isEqualByComparingTo(indicator.getValue(index));
         assertThat(restoredIndicator.getBounceIndex(index)).isEqualTo(indicator.getBounceIndex(index));
+    }
+
+    @Test
+    public void unstableBarsIncludeInputWarmupAndLookback() {
+        BarSeries series = buildSeries(2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0);
+        MockIndicator price = new MockIndicator(series, 3, numOf(2), numOf(3), numOf(2), numOf(3), numOf(2), numOf(3),
+                numOf(2));
+        BounceCountResistanceIndicator indicator = new BounceCountResistanceIndicator(price, 2, numOf(0.1));
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(4);
+        assertThat(indicator.getValue(3).isNaN()).isTrue();
+        assertThat(indicator.getValue(4).isNaN()).isFalse();
     }
 
     private BarSeries buildSeries(double... closes) {
