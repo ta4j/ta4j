@@ -57,7 +57,7 @@ public class IchimokuChikouSpanIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return closePriceIndicator.getCountOfUnstableBars();
     }
 
 }

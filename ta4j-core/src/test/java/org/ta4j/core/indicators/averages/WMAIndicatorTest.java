@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.averages;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
@@ -25,8 +26,10 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         Indicator<Num> close = new ClosePriceIndicator(series);
         Indicator<Num> wmaIndicator = new WMAIndicator(close, 3);
 
-        assertNumEquals(1, wmaIndicator.getValue(0));
-        assertNumEquals(1.6667, wmaIndicator.getValue(1));
+        int unstableBars = wmaIndicator.getCountOfUnstableBars();
+        for (int i = 0; i < unstableBars; i++) {
+            assertThat(Num.isNaNOrNull(wmaIndicator.getValue(i))).isTrue();
+        }
         assertNumEquals(2.3333, wmaIndicator.getValue(2));
         assertNumEquals(3.3333, wmaIndicator.getValue(3));
         assertNumEquals(4.3333, wmaIndicator.getValue(4));
@@ -39,12 +42,9 @@ public class WMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         Indicator<Num> close = new ClosePriceIndicator(series);
         Indicator<Num> wmaIndicator = new WMAIndicator(close, 55);
 
-        assertNumEquals(1, wmaIndicator.getValue(0));
-        assertNumEquals(1.6667, wmaIndicator.getValue(1));
-        assertNumEquals(2.3333, wmaIndicator.getValue(2));
-        assertNumEquals(3, wmaIndicator.getValue(3));
-        assertNumEquals(3.6666, wmaIndicator.getValue(4));
-        assertNumEquals(4.3333, wmaIndicator.getValue(5));
+        for (int i = 0; i < series.getBarCount(); i++) {
+            assertThat(Num.isNaNOrNull(wmaIndicator.getValue(i))).isTrue();
+        }
     }
 
     @Test

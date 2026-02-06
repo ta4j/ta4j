@@ -52,6 +52,6 @@ public class CMOIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return gainIndicator.getCountOfUnstableBars() + barCount - 1;
     }
 }

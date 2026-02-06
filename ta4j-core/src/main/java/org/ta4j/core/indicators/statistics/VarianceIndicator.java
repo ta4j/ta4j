@@ -47,7 +47,7 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return indicator.getCountOfUnstableBars() + barCount - 1;
     }
 
     @Override

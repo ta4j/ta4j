@@ -33,8 +33,9 @@ import org.ta4j.core.num.Num;
  */
 public class MACDVIndicator extends CachedIndicator<Num> {
 
-    private final VWMAIndicator shortTermVwema;
-    private final VWMAIndicator longTermVwema;
+    private final Indicator<Num> priceIndicator;
+    private final transient VWMAIndicator shortTermVwema;
+    private final transient VWMAIndicator longTermVwema;
 
     /**
      * Constructor with:
@@ -92,6 +93,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
             throw new IllegalArgumentException("Long term period count must be greater than short term period count");
         }
 
+        this.priceIndicator = priceIndicator;
         var series = priceIndicator.getBarSeries();
         var volumeIndicator = new VolumeIndicator(series);
 
@@ -154,7 +156,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return Math.max(shortTermVwema.getCountOfUnstableBars(), longTermVwema.getCountOfUnstableBars());
     }
 
 }

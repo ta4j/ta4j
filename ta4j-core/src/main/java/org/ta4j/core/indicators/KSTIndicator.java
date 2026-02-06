@@ -88,6 +88,8 @@ public class KSTIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        int firstPair = Math.max(RCMA1.getCountOfUnstableBars(), RCMA2.getCountOfUnstableBars());
+        int secondPair = Math.max(RCMA3.getCountOfUnstableBars(), RCMA4.getCountOfUnstableBars());
+        return Math.max(firstPair, secondPair);
     }
 }

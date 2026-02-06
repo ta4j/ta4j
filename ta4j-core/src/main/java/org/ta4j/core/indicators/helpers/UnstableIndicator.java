@@ -39,6 +39,6 @@ public class UnstableIndicator extends CachedIndicator<Num> {
     /** @return {@link #unstableBars} */
     @Override
     public int getCountOfUnstableBars() {
-        return unstableBars;
+        return Math.max(unstableBars, indicator.getCountOfUnstableBars());
     }
 }

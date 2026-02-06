@@ -30,26 +30,17 @@ public class ADXIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
         Indicator<Num> actualIndicator;
 
         actualIndicator = getIndicator(series, 1, 1);
-        // With diBarCount=1, adxBarCount=1, unstable period is max(1,1)=1, so index 0
-        // returns NaN
-        // Values after unstable period will differ initially but should converge. Only
-        // check end value.
+        assertEquals(3, actualIndicator.getCountOfUnstableBars());
         assertEquals(100.0, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
 
         actualIndicator = getIndicator(series, 3, 2);
-        // With diBarCount=3, adxBarCount=2, unstable period is max(3,2)=3, so indices
-        // 0-2 return NaN
-        // Values after unstable period will differ initially but should converge. Only
-        // check end value.
+        assertEquals(6, actualIndicator.getCountOfUnstableBars());
         assertEquals(12.1330, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
 
         actualIndicator = getIndicator(series, 13, 8);
-        // With diBarCount=13, adxBarCount=8, unstable period is max(13,8)=13, so
-        // indices 0-12 return NaN
-        // Values after unstable period will differ initially but should converge. Only
-        // check end value.
+        assertEquals(22, actualIndicator.getCountOfUnstableBars());
         assertEquals(7.3884, actualIndicator.getValue(actualIndicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
     }

@@ -82,7 +82,7 @@ public class StochasticIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return lookback;
+        return Math.max(highest.getCountOfUnstableBars(), lowest.getCountOfUnstableBars());
     }
 
 }

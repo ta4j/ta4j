@@ -41,6 +41,10 @@ public class SumIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        int unstableBars = 0;
+        for (Indicator<Num> summand : summands) {
+            unstableBars = Math.max(unstableBars, summand.getCountOfUnstableBars());
+        }
+        return unstableBars;
     }
 }

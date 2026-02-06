@@ -72,6 +72,8 @@ public class ChopIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return timeFrame;
+        int atrUnstableBars = atrIndicator.getCountOfUnstableBars() + timeFrame - 1;
+        int highLowUnstableBars = Math.max(hvi.getCountOfUnstableBars(), lvi.getCountOfUnstableBars());
+        return Math.max(atrUnstableBars, highLowUnstableBars);
     }
 }

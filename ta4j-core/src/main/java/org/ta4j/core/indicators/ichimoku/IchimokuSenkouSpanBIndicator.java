@@ -67,6 +67,6 @@ public class IchimokuSenkouSpanBIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return lineIndicator.getCountOfUnstableBars() + offset - 1;
     }
 }

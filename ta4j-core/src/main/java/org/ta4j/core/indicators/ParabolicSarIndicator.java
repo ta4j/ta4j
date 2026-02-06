@@ -206,7 +206,7 @@ public class ParabolicSarIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return Math.max(lowestValueIndicator.getCountOfUnstableBars(), highestValueIndicator.getCountOfUnstableBars());
     }
 
     private boolean defineUpTrend(final int barIndex) {

@@ -13,6 +13,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -76,7 +77,12 @@ public class LSMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
         LSMAIndicator lsma = new LSMAIndicator(new ClosePriceIndicator(barSeries), 20);
 
-        for (int i = 0; i < barSeries.getBarCount(); i++) {
+        int unstableBars = lsma.getCountOfUnstableBars();
+        for (int i = 0; i < unstableBars; i++) {
+            assertNumEquals(NaN.NaN, lsma.getValue(i));
+        }
+
+        for (int i = unstableBars; i < barSeries.getBarCount(); i++) {
             Num expected = mock.getValue(i);
             Num value = lsma.getValue(i);
 

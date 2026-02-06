@@ -18,8 +18,9 @@ import org.ta4j.core.num.Num;
  */
 public class MACDIndicator extends CachedIndicator<Num> {
 
-    private final EMAIndicator shortTermEma;
-    private final EMAIndicator longTermEma;
+    private final Indicator<Num> indicator;
+    private final transient EMAIndicator shortTermEma;
+    private final transient EMAIndicator longTermEma;
 
     /**
      * Constructor with:
@@ -47,6 +48,7 @@ public class MACDIndicator extends CachedIndicator<Num> {
         if (shortBarCount > longBarCount) {
             throw new IllegalArgumentException("Long term period count must be greater than short term period count");
         }
+        this.indicator = indicator;
         this.shortTermEma = new EMAIndicator(indicator, shortBarCount);
         this.longTermEma = new EMAIndicator(indicator, longBarCount);
     }
@@ -88,6 +90,7 @@ public class MACDIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        int emaUnstableBars = Math.max(shortTermEma.getCountOfUnstableBars(), longTermEma.getCountOfUnstableBars());
+        return indicator.getCountOfUnstableBars() + emaUnstableBars;
     }
 }
