@@ -17,13 +17,13 @@ import org.ta4j.core.num.Num;
  * in technical analysis literature, using a fractal-based window detection
  * approach similar to Bill Williams' Fractal indicator.
  *
- * @see RecentSwingLowIndicator
+ * @see RecentSwingIndicator
  * @see <a href=
  *      "https://www.investopedia.com/terms/s/swinglow.asp">Investopedia: Swing
  *      Low</a>
  * @since 0.20
  */
-public class RecentFractalSwingLowIndicator extends AbstractRecentSwingIndicator implements RecentSwingLowIndicator {
+public class RecentFractalSwingLowIndicator extends AbstractRecentSwingIndicator {
 
     private final Indicator<Num> indicator;
     private final int precedingHigherBars;

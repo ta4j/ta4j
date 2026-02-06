@@ -7,16 +7,18 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Locale;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.strategy.named.NamedStrategy;
 
 /**
@@ -31,6 +33,7 @@ public final class StrategySerialization {
     private static final String EXIT_LABEL = "exit";
     private static final String STRATEGY_PACKAGE = "org.ta4j.core";
     private static final String UNSTABLE_BARS_KEY = "unstableBars";
+    private static final String STARTING_TYPE_KEY = "startingType";
     private static final String ARGS_KEY = "__args";
 
     private StrategySerialization() {
@@ -72,8 +75,11 @@ public final class StrategySerialization {
             builder.withLabel(name);
         }
 
-        Map<String, Object> parameters = new HashMap<>();
+        Map<String, Object> parameters = new LinkedHashMap<>();
         parameters.put(UNSTABLE_BARS_KEY, strategy.getUnstableBars());
+        if (strategy.getStartingType() != TradeType.BUY) {
+            parameters.put(STARTING_TYPE_KEY, strategy.getStartingType().name());
+        }
         builder.withParameters(parameters);
 
         if (entryDescriptor != null) {
@@ -140,8 +146,9 @@ public final class StrategySerialization {
 
         String name = descriptor.getLabel();
         int unstableBars = extractUnstableBars(descriptor.getParameters().get(UNSTABLE_BARS_KEY));
+        TradeType startingType = extractStartingType(descriptor.getParameters().get(STARTING_TYPE_KEY));
 
-        Strategy strategy = instantiateStrategy(strategyType, name, entryRule, exitRule, unstableBars);
+        Strategy strategy = instantiateStrategy(strategyType, name, entryRule, exitRule, unstableBars, startingType);
         strategy.setUnstableBars(unstableBars);
         return strategy;
     }
@@ -196,6 +203,20 @@ public final class StrategySerialization {
             return Integer.parseInt(String.valueOf(value));
         } catch (NumberFormatException e) {
             return 0;
+        }
+    }
+
+    private static TradeType extractStartingType(Object value) {
+        if (value == null) {
+            return TradeType.BUY;
+        }
+        if (value instanceof TradeType tradeType) {
+            return tradeType;
+        }
+        try {
+            return TradeType.valueOf(String.valueOf(value).trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            return TradeType.BUY;
         }
     }
 
@@ -386,6 +407,14 @@ public final class StrategySerialization {
      * <p>
      * This method tries multiple constructor signatures in order:
      * <ol>
+     * <li>{@code (String, Rule, Rule, int, TradeType)} - name, entry, exit,
+     * unstableBars, startingType</li>
+     * <li>{@code (String, Rule, Rule, TradeType)} - name, entry, exit, startingType
+     * (unstableBars set via setter)</li>
+     * <li>{@code (Rule, Rule, int, TradeType)} - entry, exit, unstableBars,
+     * startingType</li>
+     * <li>{@code (Rule, Rule, TradeType)} - entry, exit, startingType (unstableBars
+     * set via setter)</li>
      * <li>{@code (String, Rule, Rule, int)} - name, entry, exit, unstableBars</li>
      * <li>{@code (String, Rule, Rule)} - name, entry, exit (unstableBars set via
      * setter)</li>
@@ -409,13 +438,62 @@ public final class StrategySerialization {
      * @param entryRule    entry rule (required)
      * @param exitRule     exit rule (required)
      * @param unstableBars number of unstable bars
+     * @param startingType strategy entry trade type
      * @return instantiated strategy (may be a {@link BaseStrategy} fallback if the
      *         requested type could not be instantiated)
      * @throws IllegalStateException if the requested type is {@code BaseStrategy}
      *                               and no suitable constructor is found
      */
     private static Strategy instantiateStrategy(Class<? extends Strategy> strategyType, String name, Rule entryRule,
-            Rule exitRule, int unstableBars) {
+            Rule exitRule, int unstableBars, TradeType startingType) {
+        try {
+            Constructor<? extends Strategy> constructor = strategyType.getDeclaredConstructor(String.class, Rule.class,
+                    Rule.class, int.class, TradeType.class);
+            constructor.setAccessible(true);
+            return constructor.newInstance(name, entryRule, exitRule, unstableBars, startingType);
+        } catch (NoSuchMethodException ex) {
+            // ignore and try the next options
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
+            throw new IllegalStateException("Failed to construct strategy: " + strategyType.getName(), ex);
+        }
+
+        try {
+            Constructor<? extends Strategy> constructor = strategyType.getDeclaredConstructor(String.class, Rule.class,
+                    Rule.class, TradeType.class);
+            constructor.setAccessible(true);
+            Strategy strategy = constructor.newInstance(name, entryRule, exitRule, startingType);
+            strategy.setUnstableBars(unstableBars);
+            return strategy;
+        } catch (NoSuchMethodException ex) {
+            // ignore and try the next options
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
+            throw new IllegalStateException("Failed to construct strategy: " + strategyType.getName(), ex);
+        }
+
+        try {
+            Constructor<? extends Strategy> constructor = strategyType.getDeclaredConstructor(Rule.class, Rule.class,
+                    int.class, TradeType.class);
+            constructor.setAccessible(true);
+            return constructor.newInstance(entryRule, exitRule, unstableBars, startingType);
+        } catch (NoSuchMethodException ex) {
+            // ignore and try the next options
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
+            throw new IllegalStateException("Failed to construct strategy: " + strategyType.getName(), ex);
+        }
+
+        try {
+            Constructor<? extends Strategy> constructor = strategyType.getDeclaredConstructor(Rule.class, Rule.class,
+                    TradeType.class);
+            constructor.setAccessible(true);
+            Strategy strategy = constructor.newInstance(entryRule, exitRule, startingType);
+            strategy.setUnstableBars(unstableBars);
+            return strategy;
+        } catch (NoSuchMethodException ex) {
+            // ignore and try the next options
+        } catch (InstantiationException | IllegalAccessException | InvocationTargetException ex) {
+            throw new IllegalStateException("Failed to construct strategy: " + strategyType.getName(), ex);
+        }
+
         try {
             Constructor<? extends Strategy> constructor = strategyType.getDeclaredConstructor(String.class, Rule.class,
                     Rule.class, int.class);
@@ -469,7 +547,7 @@ public final class StrategySerialization {
         // issues where a specific strategy type was expected. The fallback preserves
         // the entry/exit rules and parameters but changes the strategy type.
         if (!strategyType.equals(BaseStrategy.class)) {
-            return new BaseStrategy(name, entryRule, exitRule, unstableBars);
+            return new BaseStrategy(name, entryRule, exitRule, unstableBars, startingType);
         }
         throw new IllegalStateException("No suitable constructor found for strategy type: " + strategyType.getName());
     }

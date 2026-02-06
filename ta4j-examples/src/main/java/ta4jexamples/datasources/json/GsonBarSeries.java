@@ -17,6 +17,7 @@ public class GsonBarSeries {
     private String name;
     private List<GsonBarData> ohlc = new LinkedList<>();
 
+    @Deprecated
     public static GsonBarSeries from(BarSeries series) {
         GsonBarSeries result = new GsonBarSeries();
         result.name = series.getName();
@@ -28,6 +29,7 @@ public class GsonBarSeries {
         return result;
     }
 
+    @Deprecated
     public BarSeries toBarSeries() {
         BaseBarSeries result = new BaseBarSeriesBuilder().withName(this.name).build();
         for (GsonBarData data : ohlc) {

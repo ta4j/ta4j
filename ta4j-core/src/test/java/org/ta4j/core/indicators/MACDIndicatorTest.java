@@ -4,7 +4,6 @@
 package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
 import org.junit.Test;

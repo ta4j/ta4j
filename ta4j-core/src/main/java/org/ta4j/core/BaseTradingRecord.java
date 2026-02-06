@@ -151,7 +151,8 @@ public class BaseTradingRecord implements TradingRecord {
      * @since 0.22.2
      */
     public BaseTradingRecord(Position position) {
-        this(positionToTrades(position));
+        this(defaultCostModel(position.getTransactionCostModel()), defaultCostModel(position.getHoldingCostModel()),
+                positionToTrades(position));
     }
 
     /**
@@ -171,9 +172,10 @@ public class BaseTradingRecord implements TradingRecord {
      * @param holdingCostModel     the cost model for holding the asset (e.g.
      *                             borrowing)
      * @param trades               the trades to be recorded (cannot be empty)
+     * @throws IllegalArgumentException if trades contain {@link LiveTrade}
      */
     public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Trade... trades) {
-        this(trades[0].getType(), transactionCostModel, holdingCostModel);
+        this(validateTrades(trades), transactionCostModel, holdingCostModel);
         for (Trade o : trades) {
             boolean newTradeWillBeAnEntry = currentPosition.isNew();
             if (newTradeWillBeAnEntry && o.getType() != startingType) {
@@ -187,6 +189,19 @@ public class BaseTradingRecord implements TradingRecord {
             Trade newTrade = currentPosition.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
             recordTrade(newTrade, newTradeWillBeAnEntry);
         }
+    }
+
+    private static TradeType validateTrades(Trade... trades) {
+        if (trades == null || trades.length == 0) {
+            throw new IllegalArgumentException("At least one trade is required");
+        }
+        for (Trade trade : trades) {
+            if (trade instanceof LiveTrade) {
+                throw new IllegalArgumentException("LiveTrade is not supported by BaseTradingRecord. "
+                        + "Use LiveTradingRecord for live executions.");
+            }
+        }
+        return trades[0].getType();
     }
 
     @Override
@@ -334,12 +349,12 @@ public class BaseTradingRecord implements TradingRecord {
     private static Stream<Trade> tradesOf(Position position) {
         Objects.requireNonNull(position, "position must not be null");
 
-        var entry = position.getEntry();
+        Trade entry = position.getEntry();
         if (entry == null) {
             throw new IllegalArgumentException("Position entry must not be null");
         }
 
-        var exit = position.getExit();
+        Trade exit = position.getExit();
         if (exit == null) {
             return Stream.of(entry);
         }
@@ -355,13 +370,17 @@ public class BaseTradingRecord implements TradingRecord {
         return positions.stream().flatMap(BaseTradingRecord::tradesOf).toArray(Trade[]::new);
     }
 
+    private static CostModel defaultCostModel(CostModel costModel) {
+        return costModel == null ? new ZeroCostModel() : costModel;
+    }
+
     @Override
     public String toString() {
-        var lineSeparator = System.lineSeparator();
-        var sb = new StringBuilder().append("BaseTradingRecord: ")
+        String lineSeparator = System.lineSeparator();
+        StringBuilder sb = new StringBuilder().append("BaseTradingRecord: ")
                 .append(name == null ? "" : name)
                 .append(lineSeparator);
-        for (var trade : trades) {
+        for (Trade trade : trades) {
             sb.append(trade).append(lineSeparator);
         }
         return sb.toString();
