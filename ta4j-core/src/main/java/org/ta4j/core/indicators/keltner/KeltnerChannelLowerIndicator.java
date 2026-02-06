@@ -18,10 +18,10 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class KeltnerChannelLowerIndicator extends CachedIndicator<Num> {
 
-    private final transient ATRIndicator averageTrueRangeIndicator;
     private final KeltnerChannelMiddleIndicator keltnerMiddleIndicator;
+    private transient ATRIndicator averageTrueRangeIndicator;
+    private final int atrBarCount;
     private final Num ratio;
-    private final int barCountATR;
 
     /**
      * Constructor.
@@ -45,8 +45,8 @@ public class KeltnerChannelLowerIndicator extends CachedIndicator<Num> {
         super(middle.getBarSeries());
         this.keltnerMiddleIndicator = middle;
         this.averageTrueRangeIndicator = atr;
+        this.atrBarCount = atr.getBarCount();
         this.ratio = getBarSeries().numFactory().numOf(ratio);
-        this.barCountATR = atr.getBarCount();
     }
 
     @Override
@@ -55,18 +55,25 @@ public class KeltnerChannelLowerIndicator extends CachedIndicator<Num> {
             return NaN;
         }
         return keltnerMiddleIndicator.getValue(index)
-                .minus(ratio.multipliedBy(averageTrueRangeIndicator.getValue(index)));
+                .minus(ratio.multipliedBy(getAverageTrueRangeIndicator().getValue(index)));
     }
 
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(keltnerMiddleIndicator.getCountOfUnstableBars(),
-                averageTrueRangeIndicator.getCountOfUnstableBars());
+                getAverageTrueRangeIndicator().getCountOfUnstableBars());
     }
 
     /** @return the bar count of {@link #keltnerMiddleIndicator} */
     public int getBarCount() {
         return keltnerMiddleIndicator.getBarCount();
+    }
+
+    private ATRIndicator getAverageTrueRangeIndicator() {
+        if (averageTrueRangeIndicator == null) {
+            averageTrueRangeIndicator = new ATRIndicator(getBarSeries(), atrBarCount);
+        }
+        return averageTrueRangeIndicator;
     }
 
     @Override

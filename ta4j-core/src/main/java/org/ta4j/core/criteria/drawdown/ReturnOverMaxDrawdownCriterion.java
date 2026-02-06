@@ -3,15 +3,18 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
-import org.ta4j.core.AnalysisCriterion;
+import java.util.Objects;
+import java.util.Optional;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.criteria.AbstractAnalysisCriterion;
+import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
 import org.ta4j.core.criteria.ReturnRepresentation;
-import org.ta4j.core.criteria.ReturnRepresentationPolicy;
-import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Reward risk ratio criterion (also known as "RoMaD"), returned in the
@@ -33,15 +36,16 @@ import org.ta4j.core.num.Num;
  *
  * <pre>{@code
  * // Default DECIMAL representation
- * var romad = new ReturnOverMaxDrawdownCriterion();
+ * ReturnOverMaxDrawdownCriterion romad = new ReturnOverMaxDrawdownCriterion();
  * // Result: 2.0 means return is 2x the maximum drawdown
  *
  * // PERCENTAGE representation
- * var romadPercentage = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE);
+ * ReturnOverMaxDrawdownCriterion romadPercentage = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE);
  * // Result: 200.0 means return is 200% of the maximum drawdown
  *
  * // MULTIPLICATIVE representation
- * var romadMultiplicative = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
+ * ReturnOverMaxDrawdownCriterion romadMultiplicative = new ReturnOverMaxDrawdownCriterion(
+ *         ReturnRepresentation.MULTIPLICATIVE);
  * // Result: 3.0 means return is 200% better than drawdown (1 + 2.0 = 3.0)
  * }</pre>
  *
@@ -54,13 +58,18 @@ import org.ta4j.core.num.Num;
  * <li><b>MULTIPLICATIVE</b>: 3.0 (1 + 2.0 = 3.0, meaning 200% better)
  * </ul>
  *
+ * <p>
+ * <b>Open positions:</b> When using {@link EquityCurveMode#MARK_TO_MARKET}, the
+ * {@link OpenPositionHandling} setting controls whether open positions
+ * contribute to the return calculation. {@link EquityCurveMode#REALIZED} always
+ * ignores open positions regardless of the requested handling.
+ *
  * @see ReturnRepresentation
  * @see ReturnRepresentationPolicy
  */
-public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
+public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsCriterion {
 
-    private final AnalysisCriterion netReturnCriterion;
-    private final AnalysisCriterion maxDrawdownCriterion = new MaximumDrawdownCriterion();
+    private final MaximumDrawdownCriterion maxDrawdownCriterion;
     private final ReturnRepresentation returnRepresentation;
 
     /**
@@ -88,92 +97,120 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractAnalysisCriterion {
      *                             {@link ReturnRepresentation#MULTIPLICATIVE})
      */
     public ReturnOverMaxDrawdownCriterion(ReturnRepresentation returnRepresentation) {
-        this.returnRepresentation = returnRepresentation;
-        // Always use DECIMAL (0-based) for internal calculation since the formula
-        // requires
-        // "net return without base" (rate of return). The final ratio will be converted
-        // to the desired representation.
-        this.netReturnCriterion = new NetReturnCriterion(ReturnRepresentation.DECIMAL);
+        this(returnRepresentation, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor using a specific equity curve calculation mode.
+     *
+     * @param equityCurveMode the equity curve mode to use for returns and drawdown
+     * @since 0.22.2
+     */
+    public ReturnOverMaxDrawdownCriterion(EquityCurveMode equityCurveMode) {
+        this(ReturnRepresentation.DECIMAL, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor using the provided open position handling.
+     *
+     * @param openPositionHandling how to handle open positions
+     * @since 0.22.2
+     */
+    public ReturnOverMaxDrawdownCriterion(OpenPositionHandling openPositionHandling) {
+        this(ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
+    }
+
+    /**
+     * Constructor using specific equity curve and open position handling.
+     *
+     * @param equityCurveMode      the equity curve mode to use for returns and
+     *                             drawdown
+     * @param openPositionHandling how to handle open positions
+     * @since 0.22.2
+     */
+    public ReturnOverMaxDrawdownCriterion(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        this(ReturnRepresentation.DECIMAL, equityCurveMode, openPositionHandling);
+    }
+
+    /**
+     * Constructor with explicit return representation and equity curve settings.
+     *
+     * @param returnRepresentation the return representation to use for the output
+     *                             ratio
+     * @param equityCurveMode      the equity curve mode to use for returns and
+     *                             drawdown
+     * @param openPositionHandling how to handle open positions
+     * @since 0.22.2
+     */
+    public ReturnOverMaxDrawdownCriterion(ReturnRepresentation returnRepresentation, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling) {
+        super(equityCurveMode, openPositionHandling);
+        this.returnRepresentation = Objects.requireNonNull(returnRepresentation, "returnRepresentation");
+        this.maxDrawdownCriterion = new MaximumDrawdownCriterion(equityCurveMode, openPositionHandling);
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        var numFactory = series.numFactory();
-        if (position.isOpened()) {
+        NumFactory numFactory = series.numFactory();
+        if (position == null || position.isOpened()) {
             return numFactory.zero();
         }
-        var maxDrawdown = maxDrawdownCriterion.calculate(series, position);
-        // Get the net return in DECIMAL (0-based) for the formula calculation
-        var netReturn = netReturnCriterion.calculate(series, position);
-        if (maxDrawdown.isZero()) {
-            // If no drawdown, convert the net return to the desired representation
-            return returnRepresentation.toRepresentationFromRateOfReturn(netReturn);
-        }
-        // Calculate ratio: net return (0-based) / drawdown
-        // Both are in DECIMAL format, so the ratio is also in DECIMAL
-        var rawRatio = netReturn.dividedBy(maxDrawdown);
-        // Convert the ratio to the desired representation
-        if (returnRepresentation == ReturnRepresentation.DECIMAL) {
-            return rawRatio;
-        }
-        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
-            // For MULTIPLICATIVE, return 1 + rawRatio for positive ratios, or rawRatio
-            // as-is for negative ratios (since 1 + negative doesn't make intuitive sense)
-            var one = numFactory.one();
-            var zero = numFactory.zero();
-            if (rawRatio.isGreaterThanOrEqual(zero)) {
-                return rawRatio.plus(one);
-            } else {
-                return rawRatio;
-            }
-        }
-        // For PERCENTAGE, multiply the ratio by 100
-        return rawRatio.multipliedBy(numFactory.numOf(100));
+        Num maxDrawdown = maxDrawdownCriterion.calculate(series, position);
+        Num netReturn = calculateNetReturn(series, position);
+        return toRepresentation(netReturn, maxDrawdown, numFactory);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var numFactory = series.numFactory();
-        if (tradingRecord.getPositions().isEmpty()) {
-            return numFactory.zero(); // penalise no-trade strategies
-        }
-        var maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
-        // Get the net return in DECIMAL (0-based) for the formula calculation
-        var netReturn = netReturnCriterion.calculate(series, tradingRecord);
-        if (maxDrawdown.isZero()) {
-            // If no drawdown, convert the net return to the desired representation
-            return returnRepresentation.toRepresentationFromRateOfReturn(netReturn);
-        }
-        // Calculate ratio: net return (0-based) / drawdown
-        // Both are in DECIMAL format, so the ratio is also in DECIMAL
-        var rawRatio = netReturn.dividedBy(maxDrawdown);
-        // Convert the ratio to the desired representation
-        if (returnRepresentation == ReturnRepresentation.DECIMAL) {
-            return rawRatio;
-        }
-        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
-            // For MULTIPLICATIVE, return 1 + rawRatio for positive ratios, or rawRatio
-            // as-is for negative ratios (since 1 + negative doesn't make intuitive sense)
-            var one = numFactory.one();
-            var zero = numFactory.zero();
-            if (rawRatio.isGreaterThanOrEqual(zero)) {
-                return rawRatio.plus(one);
-            } else {
-                return rawRatio;
-            }
-        }
-        // For PERCENTAGE, multiply the ratio by 100
-        return rawRatio.multipliedBy(numFactory.numOf(100));
+        NumFactory numFactory = series.numFactory();
+        Num maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
+        Num netReturn = calculateNetReturn(series, tradingRecord);
+        return toRepresentation(netReturn, maxDrawdown, numFactory);
     }
 
     @Override
-    public java.util.Optional<ReturnRepresentation> getReturnRepresentation() {
-        return java.util.Optional.of(returnRepresentation);
+    public Optional<ReturnRepresentation> getReturnRepresentation() {
+        return Optional.of(returnRepresentation);
     }
 
     /** The higher the criterion value, the better. */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
+    private Num calculateNetReturn(BarSeries series, Position position) {
+        CashFlow cashFlow = new CashFlow(series, position, equityCurveMode);
+        Num one = series.numFactory().one();
+        return cashFlow.getValue(position.getExit().getIndex()).minus(one);
+    }
+
+    private Num calculateNetReturn(BarSeries series, TradingRecord tradingRecord) {
+        if (tradingRecord == null) {
+            return series.numFactory().zero();
+        }
+        int endIndex = tradingRecord.getEndIndex(series);
+        if (endIndex < series.getBeginIndex()) {
+            return series.numFactory().zero();
+        }
+        CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
+        Num one = series.numFactory().one();
+        return cashFlow.getValue(endIndex).minus(one);
+    }
+
+    private Num toRepresentation(Num netReturn, Num maxDrawdown, NumFactory numFactory) {
+        if (maxDrawdown.isZero()) {
+            return returnRepresentation.toRepresentationFromRateOfReturn(netReturn);
+        }
+        Num rawRatio = netReturn.dividedBy(maxDrawdown);
+        if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
+            Num one = numFactory.one();
+            Num zero = numFactory.zero();
+            if (rawRatio.isGreaterThanOrEqual(zero)) {
+                return rawRatio.plus(one);
+            }
+            return rawRatio;
+        }
+        return returnRepresentation.toRepresentationFromRateOfReturn(rawRatio);
     }
 }
