@@ -1,5 +1,9 @@
 ## Unreleased
 
+### Breaking
+- **Trade**: is now an interface. The previous `Trade` class is now known as `ModeledTrade` and represents a trade during simulation/back-testing. 
+
+
 ### Added
 - **Charting time axis mode**: Added `TimeAxisMode` with `BAR_INDEX` support to compress non-trading gaps (weekends/holidays) on charts while keeping bar timestamps intact.
 - **Concurrent real-time bar series pipeline**: Introduced core support for concurrent, streaming bar ingestion with
