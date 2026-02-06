@@ -109,6 +109,11 @@ if [[ "$RUNNING_IN_MINGW" == "true" ]]; then
     LOG_FILE_FOR_DISPLAY="$LOG_FILE_FOR_PYTHON"
 fi
 
+BUILD_TIMEOUT_SECONDS="${QUIET_BUILD_TIMEOUT_SECONDS:-180}"
+if ! [[ "$BUILD_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]]; then
+    BUILD_TIMEOUT_SECONDS=180
+fi
+
 MAVEN_FLAGS=(
     -B
     -ntp
@@ -258,9 +263,71 @@ if __name__ == "__main__":
     main(sys.argv[1])
 PY
 
+TIMEOUT_WRAPPER=()
+if ((BUILD_TIMEOUT_SECONDS > 0)); then
+    TIMEOUT_SCRIPT="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-timeout.XXXXXX")"
+    TMP_FILES+=("$TIMEOUT_SCRIPT")
+    cat >"$TIMEOUT_SCRIPT" <<'PY'
+import sys
+import subprocess
+import threading
+import time
+
+
+def forward_output(stream):
+    for chunk in iter(stream.readline, b""):
+        sys.stdout.buffer.write(chunk)
+        sys.stdout.buffer.flush()
+
+
+def main():
+    if len(sys.argv) < 3:
+        sys.stderr.write("Usage: timeout_runner.py <timeout_seconds> <cmd...>\n")
+        return 2
+    try:
+        timeout_seconds = int(sys.argv[1])
+    except ValueError:
+        timeout_seconds = 0
+    command = sys.argv[2:]
+    if timeout_seconds < 0:
+        timeout_seconds = 0
+
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    if proc.stdout is None:
+        return 1
+    reader = threading.Thread(target=forward_output, args=(proc.stdout,), daemon=True)
+    reader.start()
+    try:
+        if timeout_seconds:
+            proc.wait(timeout=timeout_seconds)
+        else:
+            proc.wait()
+    except subprocess.TimeoutExpired:
+        proc.terminate()
+        try:
+            proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        sys.stdout.write(
+            f"[quiet-build] Timeout after {timeout_seconds}s. Maven was terminated.\n"
+        )
+        sys.stdout.flush()
+        return 124
+    return proc.returncode
+
+
+if __name__ == "__main__":
+    sys.exit(main())
+PY
+    TIMEOUT_WRAPPER=("${PYTHON_CMD[@]}" -u "$TIMEOUT_SCRIPT" "$BUILD_TIMEOUT_SECONDS" "${MVN_CMD[@]}")
+else
+    TIMEOUT_WRAPPER=("${MVN_CMD[@]}")
+fi
+
 set +o pipefail
 set +e
-"${MVN_CMD[@]}" 2>&1 | "${PYTHON_CMD[@]}" -u "$FILTER_SCRIPT" "$LOG_FILE_FOR_PYTHON"
+"${TIMEOUT_WRAPPER[@]}" 2>&1 | "${PYTHON_CMD[@]}" -u "$FILTER_SCRIPT" "$LOG_FILE_FOR_PYTHON"
 statuses=("${PIPESTATUS[@]}")
 set -e
 set -o pipefail
@@ -270,6 +337,10 @@ filter_status=${statuses[1]:-0}
 
 if ((mvn_status != 0 || filter_status != 0)); then
     echo
+    if ((mvn_status == 124)); then
+        echo "Maven build timed out after ${BUILD_TIMEOUT_SECONDS}s. Inspect the full log at: $LOG_FILE_FOR_DISPLAY"
+        exit 1
+    fi
     echo "Maven build failed (mvn=$mvn_status, filter=$filter_status). Inspect the full log at: $LOG_FILE_FOR_DISPLAY"
     exit 1
 fi

@@ -19,6 +19,7 @@ public class GsonBarData {
     private Number volume;
     private Number amount;
 
+    @Deprecated
     public static GsonBarData from(Bar bar) {
         var result = new GsonBarData();
         result.endTime = bar.getEndTime().toEpochMilli();
@@ -31,6 +32,7 @@ public class GsonBarData {
         return result;
     }
 
+    @Deprecated
     public void addTo(BaseBarSeries barSeries) {
         var endTimeInstant = Instant.ofEpochMilli(endTime);
         barSeries.barBuilder()

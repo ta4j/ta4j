@@ -57,7 +57,7 @@ public class ATRIndicator extends AbstractIndicator<Num> {
 
     /** @return the bar count of {@link #averageTrueRangeIndicator} */
     public int getBarCount() {
-        return averageTrueRangeIndicator.getBarCount();
+        return barCount;
     }
 
     @Override

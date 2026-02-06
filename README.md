@@ -615,6 +615,56 @@ while (true) {
 - **Deterministic**: Same inputs always produce same outputs - critical for testing and debugging
 - **Type-safe**: Compile-time checks catch errors before they cost money
 
+## Recording live executions
+
+When you route orders to an exchange, record the fills in a `LiveTradingRecord`. It tracks partial fills, multiple open
+lots, and recorded fees so analytics can include open exposure.
+
+```java
+import java.time.Instant;
+
+import org.ta4j.core.ExecutionFill;
+import org.ta4j.core.ExecutionMatchPolicy;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.LiveTrade;
+import org.ta4j.core.LiveTradingRecord;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.CashFlow;
+import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
+
+LiveTradingRecord record = new LiveTradingRecord(
+        TradeType.BUY,
+        ExecutionMatchPolicy.FIFO,
+        new ZeroCostModel(),
+        new ZeroCostModel(),
+        null,
+        null);
+
+record.recordFill(new LiveTrade(
+        barIndex,
+        Instant.now(),
+        price,
+        amount,
+        fee,
+        ExecutionSide.BUY,
+        orderId,
+        correlationId));
+
+// If you already have exchange DTOs mapped to ExecutionFill, use the generic API.
+ExecutionFill exchangeFill = mapExchangeFill();
+record.recordExecutionFill(exchangeFill);
+
+CashFlow equity = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET,
+        OpenPositionHandling.MARK_TO_MARKET);
+var latest = equity.getValue(series.getEndIndex());
+```
+
+Notes:
+- `ExecutionMatchPolicy.SPECIFIC_ID` matches exits to the lot with a matching `correlationId` or `orderId`.
+- After deserializing a `LiveTradingRecord`, call `rehydrate(holdingCostModel)` to restore transient cost models.
+
 ## Streaming trade ingestion (gap handling)
 
 When you need to aggregate raw trades into time bars, use `ConcurrentBarSeries` with a `TimeBarBuilderFactory`:

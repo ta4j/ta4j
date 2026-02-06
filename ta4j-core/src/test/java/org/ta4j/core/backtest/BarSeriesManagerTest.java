@@ -115,6 +115,27 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
+    public void runUsesStrategyStartingTypeByDefault() {
+        Strategy shortStrategy = new BaseStrategy(new FixedRule(0, 2, 3, 6), new FixedRule(1, 4, 7, 8), TradeType.SELL);
+        shortStrategy.setUnstableBars(2);
+
+        List<Position> positions = manager.run(shortStrategy).getPositions();
+        assertEquals(2, positions.size());
+        assertEquals(Trade.sellAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(Trade.buyAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
+    }
+
+    @Test
+    public void runWithIndexesUsesStrategyStartingTypeByDefault() {
+        Strategy shortStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(3), TradeType.SELL);
+        List<Position> positions = manager.run(shortStrategy, 0, 3).getPositions();
+        assertEquals(1, positions.size());
+
+        assertEquals(Trade.sellAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(Trade.buyAt(3, seriesForRun.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getExit());
+    }
+
+    @Test
     public void runBetweenIndexes() {
 
         // only 1 entry happened within [0-3]

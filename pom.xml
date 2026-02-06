@@ -321,7 +321,7 @@
                 <configuration>
                     <licenseSets>
                         <licenseSet>
-                            <header>${maven.multiModuleProjectDirectory}/license-header.txt</header>
+                            <header>${project.basedir}/license-header.txt</header>
                             <includes>
                                 <include>**/*.java</include>
                             </includes>
@@ -336,7 +336,7 @@
                 <artifactId>formatter-maven-plugin</artifactId>
                 <version>2.29.0</version>
                 <configuration>
-                    <configFile>${maven.multiModuleProjectDirectory}/code-formatter.xml</configFile>
+                    <configFile>${project.basedir}/code-formatter.xml</configFile>
                 </configuration>
             </plugin>
 

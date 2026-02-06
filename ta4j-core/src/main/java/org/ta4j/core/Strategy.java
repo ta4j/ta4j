@@ -3,6 +3,7 @@
  */
 package org.ta4j.core;
 
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.StrategySerialization;
 
@@ -23,6 +24,21 @@ public interface Strategy {
      * @return the entry rule
      */
     Rule getEntryRule();
+
+    /**
+     * Returns the starting trade type for this strategy.
+     *
+     * <p>
+     * Defaults to {@link TradeType#BUY} (long-only). Override when the strategy is
+     * meant to run in short-only mode.
+     * </p>
+     *
+     * @return starting trade type
+     * @since 0.22.2
+     */
+    default TradeType getStartingType() {
+        return TradeType.BUY;
+    }
 
     /**
      * @return the exit rule

@@ -9,5 +9,18 @@ package org.ta4j.core.analysis;
  * @since 0.22.2
  */
 public enum OpenPositionHandling {
-    MARK_TO_MARKET, IGNORE
+
+    /**
+     * Include open positions and mark them to market at the final index.
+     *
+     * @since 0.22.2
+     */
+    MARK_TO_MARKET,
+
+    /**
+     * Ignore open positions.
+     *
+     * @since 0.22.2
+     */
+    IGNORE
 }

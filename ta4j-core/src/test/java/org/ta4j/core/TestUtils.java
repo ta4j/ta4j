@@ -21,7 +21,7 @@ public class TestUtils {
     /** Offset for double equality checking */
     public static final double GENERAL_OFFSET = 0.0001;
 
-    private static Logger log = LoggerFactory.getLogger(TestUtils.class);
+    private static final Logger log = LoggerFactory.getLogger(TestUtils.class);
 
     /**
      * Verifies that the actual {@code Num} value is equal to the given
@@ -48,6 +48,29 @@ public class TestUtils {
      */
     public static void assertNumEquals(Num expected, Num actual) {
         assertEquals(expected, actual);
+    }
+
+    /**
+     * Verifies that the actual {@code Num} value is equal (within a positive
+     * offset) to the given {@code Num} representation.
+     *
+     * @param expected the given {@code Num} representation to compare the actual
+     *                 value to
+     * @param actual   the actual {@code Num} value
+     * @param offset   the allowed difference between expected and actual
+     * @throws AssertionError if the actual value is not equal to the given
+     *                        {@code Num} representation within the offset
+     */
+    public static void assertNumEquals(Num expected, Num actual, double offset) {
+        if (Num.isNaNOrNull(expected) || Num.isNaNOrNull(actual)) {
+            boolean expectedIsNaN = Num.isNaNOrNull(expected);
+            boolean actualIsNaN = Num.isNaNOrNull(actual);
+            if (expectedIsNaN != actualIsNaN) {
+                throw new AssertionError("Expected: " + expected + " Actual: " + actual);
+            }
+            return;
+        }
+        assertEquals(expected.doubleValue(), actual.doubleValue(), offset);
     }
 
     /**
