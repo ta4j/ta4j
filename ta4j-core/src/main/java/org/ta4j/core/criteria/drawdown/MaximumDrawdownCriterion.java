@@ -27,8 +27,10 @@ import org.ta4j.core.num.Num;
  * open positions regardless of the requested handling.
  *
  * <pre>{@code
- * var markToMarket = new MaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
- * var ignoreOpen = new MaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
+ * MaximumDrawdownCriterion markToMarket = new MaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET,
+ *         OpenPositionHandling.MARK_TO_MARKET);
+ * MaximumDrawdownCriterion ignoreOpen = new MaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET,
+ *         OpenPositionHandling.IGNORE);
  * }</pre>
  *
  * @see <a href=
@@ -79,13 +81,13 @@ public class MaximumDrawdownCriterion extends AbstractEquityCurveSettingsCriteri
         if (position == null || position.getEntry() == null || position.getExit() == null) {
             return series.numFactory().zero();
         }
-        var cashFlow = new CashFlow(series, position, equityCurveMode);
+        CashFlow cashFlow = new CashFlow(series, position, equityCurveMode);
         return Drawdown.amount(series, null, cashFlow);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
+        CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
         return Drawdown.amount(series, tradingRecord, cashFlow);
     }
 

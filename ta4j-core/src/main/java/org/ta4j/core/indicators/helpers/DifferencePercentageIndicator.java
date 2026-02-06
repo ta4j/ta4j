@@ -130,7 +130,7 @@ public class DifferencePercentageIndicator extends CachedIndicator<Num> {
     }
 
     private Num fractionToPercentage(Num changeFraction) {
-        final var hundred = getBarSeries().numFactory().hundred();
+        final Num hundred = getBarSeries().numFactory().hundred();
         return changeFraction.multipliedBy(hundred).minus(hundred);
     }
 }

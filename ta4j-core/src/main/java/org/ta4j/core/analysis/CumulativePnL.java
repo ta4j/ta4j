@@ -7,11 +7,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import org.ta4j.core.BarSeries;
-import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
+
+import org.ta4j.core.*;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * An {@link org.ta4j.core.PerformanceIndicator} implementation that computes
@@ -47,8 +46,8 @@ public final class CumulativePnL implements PerformanceIndicator {
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         this.barSeries = Objects.requireNonNull(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        var seriesEnd = barSeries.getEndIndex();
-        var size = Math.max(seriesEnd + 1, 0);
+        int seriesEnd = barSeries.getEndIndex();
+        int size = Math.max(seriesEnd + 1, 0);
         this.values = new ArrayList<>(Collections.nCopies(size, barSeries.numFactory().zero()));
         calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
     }
@@ -163,46 +162,46 @@ public final class CumulativePnL implements PerformanceIndicator {
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
-        var entry = position.getEntry();
+        Trade entry = position.getEntry();
         if (entry == null) {
             return;
         }
-        var seriesEnd = barSeries.getEndIndex();
-        var entryIndex = entry.getIndex();
+        int seriesEnd = barSeries.getEndIndex();
+        int entryIndex = entry.getIndex();
         if (entryIndex > finalIndex || entryIndex > seriesEnd) {
             return;
         }
-        var endIndex = determineEndIndex(position, finalIndex, seriesEnd);
-        var seriesBegin = barSeries.getBeginIndex();
+        int endIndex = determineEndIndex(position, finalIndex, seriesEnd);
+        int seriesBegin = barSeries.getBeginIndex();
         if (endIndex < seriesBegin) {
             return;
         }
 
-        var numFactory = barSeries.numFactory();
-        var isLong = entry.isBuy();
-        var netEntryPrice = entry.getNetPrice();
+        NumFactory numFactory = barSeries.numFactory();
+        boolean isLong = entry.isBuy();
+        Num netEntryPrice = entry.getNetPrice();
 
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
-            var averageCostPerPeriod = averageHoldingCostPerPeriod(position, endIndex, numFactory);
-            var start = Math.max(entryIndex + 1, seriesBegin + 1);
-            for (var i = start; i < endIndex; i++) {
-                var close = barSeries.getBar(i).getClosePrice();
-                var netIntermediate = addCost(close, averageCostPerPeriod, isLong);
-                var delta = isLong ? netIntermediate.minus(netEntryPrice) : netEntryPrice.minus(netIntermediate);
+            Num averageCostPerPeriod = averageHoldingCostPerPeriod(position, endIndex, numFactory);
+            int start = Math.max(entryIndex + 1, seriesBegin + 1);
+            for (int i = start; i < endIndex; i++) {
+                Num close = barSeries.getBar(i).getClosePrice();
+                Num netIntermediate = addCost(close, averageCostPerPeriod, isLong);
+                Num delta = isLong ? netIntermediate.minus(netEntryPrice) : netEntryPrice.minus(netIntermediate);
                 addValue(i, delta);
             }
-            var exitRaw = resolveExitPrice(position, endIndex, barSeries);
-            var netExit = addCost(exitRaw, averageCostPerPeriod, isLong);
-            var deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
+            Num exitRaw = resolveExitPrice(position, endIndex, barSeries);
+            Num netExit = addCost(exitRaw, averageCostPerPeriod, isLong);
+            Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
             addToRange(endIndex, seriesEnd, deltaExit);
             return;
         }
 
-        var exit = position.getExit();
+        Trade exit = position.getExit();
         if (exit != null && endIndex >= exit.getIndex()) {
-            var holdingCost = position.getHoldingCost(endIndex);
-            var netExit = addCost(exit.getNetPrice(), holdingCost, isLong);
-            var deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
+            Num holdingCost = position.getHoldingCost(endIndex);
+            Num netExit = addCost(exit.getNetPrice(), holdingCost, isLong);
+            Num deltaExit = isLong ? netExit.minus(netEntryPrice) : netEntryPrice.minus(netExit);
             addToRange(exit.getIndex(), seriesEnd, deltaExit);
         }
     }
@@ -267,12 +266,12 @@ public final class CumulativePnL implements PerformanceIndicator {
         if (values.isEmpty()) {
             return;
         }
-        var start = Math.max(0, startIndex);
-        var end = Math.min(endIndex, values.size() - 1);
+        int start = Math.max(0, startIndex);
+        int end = Math.min(endIndex, values.size() - 1);
         if (start > end) {
             return;
         }
-        for (var i = start; i <= end; i++) {
+        for (int i = start; i <= end; i++) {
             values.set(i, values.get(i).plus(delta));
         }
     }

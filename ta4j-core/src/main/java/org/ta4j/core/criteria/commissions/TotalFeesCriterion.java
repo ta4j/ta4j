@@ -7,6 +7,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -55,7 +56,7 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
         if (tradingRecord instanceof LiveTradingRecord liveRecord) {
             return toSeriesNum(factory, liveRecord.getTotalFees());
         }
-        var model = tradingRecord.getTransactionCostModel();
+        CostModel model = tradingRecord.getTransactionCostModel();
         Num closedFees = tradingRecord.getPositions()
                 .stream()
                 .filter(Position::isClosed)

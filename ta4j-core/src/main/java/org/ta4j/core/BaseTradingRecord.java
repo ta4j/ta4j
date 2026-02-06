@@ -349,12 +349,12 @@ public class BaseTradingRecord implements TradingRecord {
     private static Stream<Trade> tradesOf(Position position) {
         Objects.requireNonNull(position, "position must not be null");
 
-        var entry = position.getEntry();
+        Trade entry = position.getEntry();
         if (entry == null) {
             throw new IllegalArgumentException("Position entry must not be null");
         }
 
-        var exit = position.getExit();
+        Trade exit = position.getExit();
         if (exit == null) {
             return Stream.of(entry);
         }
@@ -376,11 +376,11 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public String toString() {
-        var lineSeparator = System.lineSeparator();
-        var sb = new StringBuilder().append("BaseTradingRecord: ")
+        String lineSeparator = System.lineSeparator();
+        StringBuilder sb = new StringBuilder().append("BaseTradingRecord: ")
                 .append(name == null ? "" : name)
                 .append(lineSeparator);
-        for (var trade : trades) {
+        for (Trade trade : trades) {
             sb.append(trade).append(lineSeparator);
         }
         return sb.toString();

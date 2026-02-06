@@ -6,6 +6,7 @@ package org.ta4j.core.criteria;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Objects;
+import java.util.stream.Stream;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
@@ -21,6 +22,7 @@ import org.ta4j.core.analysis.frequency.SampleSummary;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexes;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.BarSeriesUtils;
 
 /**
@@ -221,43 +223,43 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var numFactory = series.numFactory();
-        var zero = numFactory.zero();
+        NumFactory numFactory = series.numFactory();
+        Num zero = numFactory.zero();
         if (tradingRecord == null) {
             return zero;
         }
 
         int beginIndex = series.getBeginIndex();
-        var start = beginIndex + 1;
-        var end = series.getEndIndex();
+        int start = beginIndex + 1;
+        int end = series.getEndIndex();
         if (end - start + 1 < 2) {
             return zero;
         }
-        var annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
-        var excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
+        Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
+        ExcessReturns excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
                 equityCurveMode, openPositionHandling);
-        var samples = samplingFrequencyIndexes.sample(series, beginIndex, start, end)
+        Stream<Sample> samples = samplingFrequencyIndexes.sample(series, beginIndex, start, end)
                 .map(pair -> getSample(series, pair, excessReturns));
-        var summary = SampleSummary.fromSamples(samples, numFactory);
+        SampleSummary summary = SampleSummary.fromSamples(samples, numFactory);
 
         if (summary.count() < 2) {
             return zero;
         }
 
-        var stdev = summary.sampleVariance(numFactory).sqrt();
+        Num stdev = summary.sampleVariance(numFactory).sqrt();
         if (stdev.isZero()) {
             return zero;
         }
 
-        var sharpePerPeriod = summary.mean().dividedBy(stdev);
+        Num sharpePerPeriod = summary.mean().dividedBy(stdev);
 
         return annualization.apply(sharpePerPeriod, summary, numFactory);
     }
 
     private Sample getSample(BarSeries series, IndexPair pair, ExcessReturns excessReturns) {
-        var previousIndex = pair.previousIndex();
-        var excessReturn = excessReturns.excessReturn(previousIndex, pair.currentIndex());
-        var deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, pair.currentIndex());
+        int previousIndex = pair.previousIndex();
+        Num excessReturn = excessReturns.excessReturn(previousIndex, pair.currentIndex());
+        Num deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, pair.currentIndex());
         return new Sample(excessReturn, deltaYears);
     }
 

@@ -10,8 +10,10 @@ import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Allows to follow the money cash flow involved by a list of positions over a
@@ -49,8 +51,8 @@ public class CashFlow implements PerformanceIndicator {
             OpenPositionHandling openPositionHandling) {
         this.barSeries = Objects.requireNonNull(barSeries);
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode);
-        var seriesEnd = barSeries.getEndIndex();
-        var size = Math.max(seriesEnd + 1, 0);
+        int seriesEnd = barSeries.getEndIndex();
+        int size = Math.max(seriesEnd + 1, 0);
         this.values = new ArrayList<>(Collections.nCopies(size, barSeries.numFactory().one()));
         calculate(Objects.requireNonNull(tradingRecord), finalIndex, Objects.requireNonNull(openPositionHandling));
     }
@@ -164,55 +166,55 @@ public class CashFlow implements PerformanceIndicator {
      */
     @Override
     public void calculatePosition(Position position, int finalIndex) {
-        var entry = position.getEntry();
+        Trade entry = position.getEntry();
         if (entry == null) {
             return;
         }
-        var seriesEnd = barSeries.getEndIndex();
-        var entryIndex = entry.getIndex();
+        int seriesEnd = barSeries.getEndIndex();
+        int entryIndex = entry.getIndex();
         if (entryIndex > finalIndex || entryIndex > seriesEnd) {
             return;
         }
-        var endIndex = determineEndIndex(position, finalIndex, seriesEnd);
-        var seriesBegin = barSeries.getBeginIndex();
+        int endIndex = determineEndIndex(position, finalIndex, seriesEnd);
+        int seriesBegin = barSeries.getBeginIndex();
         if (endIndex < seriesBegin) {
             return;
         }
 
-        var numFactory = barSeries.numFactory();
-        var isLongTrade = entry.isBuy();
-        var start = Math.max(entryIndex + 1, seriesBegin + 1);
-        var netEntryPrice = entry.getNetPrice();
-        var entryEquity = values.get(entryIndex);
+        NumFactory numFactory = barSeries.numFactory();
+        boolean isLongTrade = entry.isBuy();
+        int start = Math.max(entryIndex + 1, seriesBegin + 1);
+        Num netEntryPrice = entry.getNetPrice();
+        Num entryEquity = values.get(entryIndex);
         if (!entryEquity.isGreaterThan(numFactory.zero())) {
             return;
         }
-        var ratioIndex = endIndex;
+        int ratioIndex = endIndex;
         if (ratioIndex == entryIndex && entryIndex < seriesEnd) {
             ratioIndex = entryIndex + 1;
         }
 
         if (equityCurveMode == EquityCurveMode.MARK_TO_MARKET) {
-            var averageHoldingCostPerPeriod = averageHoldingCostPerPeriod(position, endIndex, numFactory);
-            for (var barIndex = start; barIndex < endIndex; barIndex++) {
-                var closePrice = barSeries.getBar(barIndex).getClosePrice();
-                var intermediateNetPrice = addCost(closePrice, averageHoldingCostPerPeriod, isLongTrade);
-                var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
+            Num averageHoldingCostPerPeriod = averageHoldingCostPerPeriod(position, endIndex, numFactory);
+            for (int barIndex = start; barIndex < endIndex; barIndex++) {
+                Num closePrice = barSeries.getBar(barIndex).getClosePrice();
+                Num intermediateNetPrice = addCost(closePrice, averageHoldingCostPerPeriod, isLongTrade);
+                Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, intermediateNetPrice);
                 multiplyValue(barIndex, ratio);
             }
-            var exitPrice = resolveExitPrice(position, endIndex, barSeries);
-            var netExitPrice = addCost(exitPrice, averageHoldingCostPerPeriod, isLongTrade);
-            var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
+            Num exitPrice = resolveExitPrice(position, endIndex, barSeries);
+            Num netExitPrice = addCost(exitPrice, averageHoldingCostPerPeriod, isLongTrade);
+            Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
             multiplyValue(ratioIndex, ratio);
             multiplyRange(ratioIndex + 1, seriesEnd, ratio);
             return;
         }
 
-        var exit = position.getExit();
+        Trade exit = position.getExit();
         if (exit != null && endIndex >= exit.getIndex()) {
-            var holdingCost = position.getHoldingCost(endIndex);
-            var netExitPrice = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
-            var ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
+            Num holdingCost = position.getHoldingCost(endIndex);
+            Num netExitPrice = addCost(exit.getNetPrice(), holdingCost, isLongTrade);
+            Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
             multiplyRange(ratioIndex, seriesEnd, ratio);
         }
     }
@@ -263,12 +265,12 @@ public class CashFlow implements PerformanceIndicator {
         if (values.isEmpty()) {
             return;
         }
-        var start = Math.max(0, startIndex);
-        var end = Math.min(endIndex, values.size() - 1);
+        int start = Math.max(0, startIndex);
+        int end = Math.min(endIndex, values.size() - 1);
         if (start > end) {
             return;
         }
-        for (var i = start; i <= end; i++) {
+        for (int i = start; i <= end; i++) {
             values.set(i, values.get(i).multipliedBy(ratio));
         }
     }

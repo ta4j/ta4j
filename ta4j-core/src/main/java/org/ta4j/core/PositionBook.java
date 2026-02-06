@@ -280,7 +280,7 @@ public final class PositionBook implements Serializable, PositionLedger {
         } else {
             lot.reduce(closeAmount, entryFeePortion);
         }
-        var entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        ExecutionSide entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
         Trade entry = new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount, entryFeePortion,
                 entrySide, lot.orderId(), lot.correlationId());
         Trade exit = new LiveTrade(index, trade.time(), trade.price(), closeAmount, exitFeePortion, trade.side(),

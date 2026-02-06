@@ -48,32 +48,32 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        var bars = numberOfBars.calculate(series, position);
+        Num bars = numberOfBars.calculate(series, position);
         // If a simple division was used (net return/bars), compounding would not be
         // considered, leading to inaccuracies in the calculation.
         // Therefore, we need to use "pow" to accurately capture the compounding effect.
-        var numFactory = series.numFactory();
+        NumFactory numFactory = series.numFactory();
         if (bars.isZero()) {
             return getNeutralValue(numFactory);
         }
-        var representedReturn = netReturn.calculate(series, position);
-        var totalReturn = returnRepresentation.toTotalReturn(representedReturn);
-        var one = numFactory.one();
-        var perBarTotalReturn = totalReturn.pow(one.dividedBy(bars));
+        Num representedReturn = netReturn.calculate(series, position);
+        Num totalReturn = returnRepresentation.toTotalReturn(representedReturn);
+        Num one = numFactory.one();
+        Num perBarTotalReturn = totalReturn.pow(one.dividedBy(bars));
         return convertTotalReturnToRepresentation(perBarTotalReturn, numFactory);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var bars = numberOfBars.calculate(series, tradingRecord);
-        var numFactory = series.numFactory();
+        Num bars = numberOfBars.calculate(series, tradingRecord);
+        NumFactory numFactory = series.numFactory();
         if (bars.isZero()) {
             return getNeutralValue(numFactory);
         }
-        var representedReturn = this.netReturn.calculate(series, tradingRecord);
-        var totalReturn = returnRepresentation.toTotalReturn(representedReturn);
-        var one = numFactory.one();
-        var perBarTotalReturn = totalReturn.pow(one.dividedBy(bars));
+        Num representedReturn = this.netReturn.calculate(series, tradingRecord);
+        Num totalReturn = returnRepresentation.toTotalReturn(representedReturn);
+        Num one = numFactory.one();
+        Num perBarTotalReturn = totalReturn.pow(one.dividedBy(bars));
         return convertTotalReturnToRepresentation(perBarTotalReturn, numFactory);
     }
 
@@ -89,8 +89,8 @@ public class AverageReturnPerBarCriterion extends AbstractAnalysisCriterion {
         if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
             return totalReturn;
         }
-        var one = numFactory.one();
-        var rateOfReturn = totalReturn.minus(one);
+        Num one = numFactory.one();
+        Num rateOfReturn = totalReturn.minus(one);
 
         if (returnRepresentation == ReturnRepresentation.DECIMAL) {
             return rateOfReturn;

@@ -318,9 +318,9 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
                 return new Position(startingType, transactionCostModel, holdingCostModel);
             }
             int entryIndex = positionBook.openLots().stream().mapToInt(PositionLot::entryIndex).min().orElse(0);
-            var entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
-            var entryTime = net.earliestEntryTime() == null ? Instant.EPOCH : net.earliestEntryTime();
-            var entryTrade = new LiveTrade(entryIndex, entryTime, net.averageEntryPrice(), net.amount(),
+            ExecutionSide entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+            Instant entryTime = net.earliestEntryTime() == null ? Instant.EPOCH : net.earliestEntryTime();
+            LiveTrade entryTrade = new LiveTrade(entryIndex, entryTime, net.averageEntryPrice(), net.amount(),
                     net.totalFees(), entrySide, null, null);
             return new Position(entryTrade, transactionCostModel, holdingCostModel);
         } finally {
@@ -417,7 +417,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
             trades.add(new SequencedTrade(closed.position().getExit(), closed.exitSequence()));
         }
         for (PositionLot lot : positionBook.openLots()) {
-            var entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+            ExecutionSide entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
             trades.add(new SequencedTrade(new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(),
                     lot.amount(), lot.fee(), entrySide, lot.orderId(), lot.correlationId()), lot.entrySequence()));
         }

@@ -3,11 +3,12 @@
  */
 package org.ta4j.core.analysis;
 
+import java.util.List;
 import java.util.Objects;
-import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.indicators.CachedIndicator;
 
 /**
  * Indicates whether each bar interval is part of an invested position.
@@ -60,27 +61,27 @@ public class InvestedInterval extends CachedIndicator<Boolean> {
     }
 
     private boolean[] buildInvestedIntervals(TradingRecord tradingRecord, OpenPositionHandling openPositionHandling) {
-        var series = getBarSeries();
-        var size = Math.max(series.getEndIndex() + 1, 0);
-        var invested = new boolean[size];
+        BarSeries series = getBarSeries();
+        int size = Math.max(series.getEndIndex() + 1, 0);
+        boolean[] invested = new boolean[size];
         tradingRecord.getPositions().forEach(position -> markInvestedIntervals(position, invested));
         if (openPositionHandling == OpenPositionHandling.MARK_TO_MARKET) {
-            var openPositions = AnalysisPositionSupport.openPositions(tradingRecord, series.getEndIndex());
+            List<Position> openPositions = AnalysisPositionSupport.openPositions(tradingRecord, series.getEndIndex());
             openPositions.forEach(position -> markInvestedIntervals(position, invested));
         }
         return invested;
     }
 
     private void markInvestedIntervals(Position position, boolean[] invested) {
-        var series = getBarSeries();
+        BarSeries series = getBarSeries();
         if (position == null || position.getEntry() == null) {
             return;
         }
-        var entryIndex = position.getEntry().getIndex();
-        var exitIndex = position.isClosed() ? position.getExit().getIndex() : series.getEndIndex();
-        var start = Math.max(entryIndex + 1, series.getBeginIndex() + 1);
-        var end = Math.min(exitIndex, invested.length - 1);
-        for (var i = start; i <= end; i++) {
+        int entryIndex = position.getEntry().getIndex();
+        int exitIndex = position.isClosed() ? position.getExit().getIndex() : series.getEndIndex();
+        int start = Math.max(entryIndex + 1, series.getBeginIndex() + 1);
+        int end = Math.min(exitIndex, invested.length - 1);
+        for (int i = start; i <= end; i++) {
             invested[i] = true;
         }
     }

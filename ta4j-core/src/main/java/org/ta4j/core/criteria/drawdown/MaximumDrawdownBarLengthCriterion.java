@@ -75,7 +75,7 @@ public class MaximumDrawdownBarLengthCriterion extends AbstractEquityCurveSettin
         if (position == null || position.getEntry() == null || position.getExit() == null) {
             return series.numFactory().zero();
         }
-        var cashFlow = new CashFlow(series, position, equityCurveMode);
+        CashFlow cashFlow = new CashFlow(series, position, equityCurveMode);
         return Drawdown.length(series, null, cashFlow);
     }
 
@@ -86,7 +86,7 @@ public class MaximumDrawdownBarLengthCriterion extends AbstractEquityCurveSettin
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
+        CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
         return Drawdown.length(series, tradingRecord, cashFlow);
     }
 

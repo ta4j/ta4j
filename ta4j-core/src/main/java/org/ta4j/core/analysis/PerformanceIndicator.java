@@ -9,6 +9,7 @@ import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -49,8 +50,8 @@ public interface PerformanceIndicator extends Indicator<Num> {
     default void calculate(TradingRecord tradingRecord, int finalIndex, OpenPositionHandling openPositionHandling) {
         Objects.requireNonNull(tradingRecord);
         Objects.requireNonNull(openPositionHandling);
-        var effectiveOpenPositionHandling = getEffectiveOpenPositionHandling(openPositionHandling);
-        var positions = AnalysisPositionSupport.positionsForAnalysis(tradingRecord, finalIndex,
+        OpenPositionHandling effectiveOpenPositionHandling = getEffectiveOpenPositionHandling(openPositionHandling);
+        List<Position> positions = AnalysisPositionSupport.positionsForAnalysis(tradingRecord, finalIndex,
                 effectiveOpenPositionHandling, getEquityCurveMode());
         positions.forEach(position -> calculatePosition(position, finalIndex));
     }
@@ -62,7 +63,7 @@ public interface PerformanceIndicator extends Indicator<Num> {
      * <p>
      * When the equity curve is realized-only, we force
      * {@link OpenPositionHandling#IGNORE} regardless of the caller preference. For
-     * all other modes we defer to the requested handling so callers can opt into
+     * all other modes we defer to the requested handling, so callers can opt into
      * mark-to-market behavior.
      * </p>
      *
@@ -82,8 +83,8 @@ public interface PerformanceIndicator extends Indicator<Num> {
      * @since 0.22.2
      */
     default int determineEndIndex(Position position, int finalIndex, int maxIndex) {
-        var idx = finalIndex;
-        // After closing of position, no further accrual necessary
+        int idx = finalIndex;
+        // After closing of the position, no further accrual necessary
         if (position.getExit() != null) {
             idx = Math.min(position.getExit().getIndex(), finalIndex);
         }
@@ -120,11 +121,11 @@ public interface PerformanceIndicator extends Indicator<Num> {
      * @since 0.22.2
      */
     default Num averageHoldingCostPerPeriod(Position position, int endIndex, NumFactory numFactory) {
-        var periods = Math.max(0, endIndex - position.getEntry().getIndex());
+        int periods = Math.max(0, endIndex - position.getEntry().getIndex());
         if (periods == 0) {
             return numFactory.zero();
         }
-        var holdingCost = position.getHoldingCost(endIndex);
+        Num holdingCost = position.getHoldingCost(endIndex);
         return holdingCost.dividedBy(numFactory.numOf(periods));
     }
 
@@ -139,7 +140,7 @@ public interface PerformanceIndicator extends Indicator<Num> {
      * @since 0.22.2
      */
     default Num resolveExitPrice(Position position, int endIndex, BarSeries series) {
-        var exit = position.getExit();
+        Trade exit = position.getExit();
         if (exit != null && exit.getIndex() <= endIndex) {
             return exit.getNetPrice();
         }

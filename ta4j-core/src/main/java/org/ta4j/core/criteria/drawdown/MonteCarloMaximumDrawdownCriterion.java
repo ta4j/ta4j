@@ -18,6 +18,7 @@ import org.ta4j.core.criteria.AbstractEquityCurveSettingsCriterion;
 import org.ta4j.core.criteria.AbstractAnalysisCriterion;
 import org.ta4j.core.criteria.Statistics;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Estimates the range of maximum drawdowns by randomly re-ordering past trades
@@ -33,9 +34,10 @@ import org.ta4j.core.num.Num;
  * always ignores open positions regardless of the requested handling.
  *
  * <pre>{@code
- * var markToMarket = new MonteCarloMaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET,
- *         OpenPositionHandling.MARK_TO_MARKET);
- * var ignoreOpen = new MonteCarloMaximumDrawdownCriterion(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
+ * MonteCarloMaximumDrawdownCriterion markToMarket = new MonteCarloMaximumDrawdownCriterion(
+ *         EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+ * MonteCarloMaximumDrawdownCriterion ignoreOpen = new MonteCarloMaximumDrawdownCriterion(
+ *         EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
  * }</pre>
  *
  * @since 0.19
@@ -202,27 +204,27 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var blocks = buildBlocks(series, tradingRecord);
+        List<List<Num>> blocks = buildBlocks(series, tradingRecord);
         if (blocks.size() < 3) {
             return maximumDrawdownCriterion.calculate(series, tradingRecord);
         }
-        var blocksPerPath = pathBlocks != null ? pathBlocks : blocks.size();
-        var random = randomSupplier.get();
-        var maxDrawdowns = new Num[iterations];
-        var numFactory = series.numFactory();
-        var one = numFactory.one();
-        for (var iteration = 0; iteration < iterations; iteration++) {
-            var equity = one;
-            var peak = one;
-            var maxDrawdown = numFactory.zero();
-            for (var blockIndex = 0; blockIndex < blocksPerPath; blockIndex++) {
-                var block = blocks.get(random.nextInt(blocks.size()));
-                for (var relativeReturn : block) {
+        int blocksPerPath = pathBlocks != null ? pathBlocks : blocks.size();
+        RandomGenerator random = randomSupplier.get();
+        Num[] maxDrawdowns = new Num[iterations];
+        NumFactory numFactory = series.numFactory();
+        Num one = numFactory.one();
+        for (int iteration = 0; iteration < iterations; iteration++) {
+            Num equity = one;
+            Num peak = one;
+            Num maxDrawdown = numFactory.zero();
+            for (int blockIndex = 0; blockIndex < blocksPerPath; blockIndex++) {
+                List<Num> block = blocks.get(random.nextInt(blocks.size()));
+                for (Num relativeReturn : block) {
                     equity = equity.multipliedBy(one.plus(relativeReturn));
                     if (equity.isGreaterThan(peak)) {
                         peak = equity;
                     } else {
-                        var drawdown = peak.minus(equity).dividedBy(peak);
+                        Num drawdown = peak.minus(equity).dividedBy(peak);
                         if (drawdown.isGreaterThan(maxDrawdown)) {
                             maxDrawdown = drawdown;
                         }
@@ -235,19 +237,19 @@ public class MonteCarloMaximumDrawdownCriterion extends AbstractEquityCurveSetti
     }
 
     private List<List<Num>> buildBlocks(BarSeries series, TradingRecord record) {
-        var blocks = new ArrayList<List<Num>>();
-        var cashFlow = new CashFlow(series, record, equityCurveMode, openPositionHandling);
-        var one = series.numFactory().one();
-        for (var position : record.getPositions()) {
+        List<List<Num>> blocks = new ArrayList<>();
+        CashFlow cashFlow = new CashFlow(series, record, equityCurveMode, openPositionHandling);
+        Num one = series.numFactory().one();
+        for (Position position : record.getPositions()) {
             if (!position.isClosed()) {
                 continue;
             }
-            var entryIndex = position.getEntry().getIndex();
-            var exitIndex = position.getExit().getIndex();
-            var block = new ArrayList<Num>();
-            var previousEquity = entryIndex > 0 ? cashFlow.getValue(entryIndex - 1) : one;
+            int entryIndex = position.getEntry().getIndex();
+            int exitIndex = position.getExit().getIndex();
+            List<Num> block = new ArrayList<>();
+            Num previousEquity = entryIndex > 0 ? cashFlow.getValue(entryIndex - 1) : one;
             for (int i = entryIndex; i <= exitIndex; i++) {
-                var currentEquity = cashFlow.getValue(i);
+                Num currentEquity = cashFlow.getValue(i);
                 block.add(currentEquity.dividedBy(previousEquity).minus(one));
                 previousEquity = currentEquity;
             }

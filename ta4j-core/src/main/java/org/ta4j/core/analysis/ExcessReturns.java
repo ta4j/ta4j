@@ -9,6 +9,7 @@ import org.ta4j.core.utils.BarSeriesUtils;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Computes compounded excess returns between sampled index pairs.
@@ -113,7 +114,8 @@ public final class ExcessReturns {
         Objects.requireNonNull(equityCurveMode, "equityCurveMode cannot be null");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling cannot be null");
 
-        var effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED ? OpenPositionHandling.IGNORE
+        OpenPositionHandling effectiveOpenPositionHandling = equityCurveMode == EquityCurveMode.REALIZED
+                ? OpenPositionHandling.IGNORE
                 : openPositionHandling;
         this.investedInterval = new InvestedInterval(series, tradingRecord, effectiveOpenPositionHandling);
         this.cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, effectiveOpenPositionHandling);
@@ -128,20 +130,20 @@ public final class ExcessReturns {
      * @since 0.22.2
      */
     public Num excessReturn(int previousIndex, int currentIndex) {
-        var numFactory = series.numFactory();
-        var zero = numFactory.zero();
-        var one = numFactory.one();
+        NumFactory numFactory = series.numFactory();
+        Num zero = numFactory.zero();
+        Num one = numFactory.one();
         if (currentIndex <= previousIndex) {
             return zero;
         }
 
-        var excessGrowth = one;
-        for (var i = previousIndex + 1; i <= currentIndex; i++) {
-            var previousEquity = cashFlow.getValue(i - 1);
-            var currentEquity = cashFlow.getValue(i);
-            var riskFreeGrowth = riskFreeGrowth(i - 1, i, one);
-            var isFlat = currentEquity.isEqual(previousEquity);
-            var isInvested = isInvested(i);
+        Num excessGrowth = one;
+        for (int i = previousIndex + 1; i <= currentIndex; i++) {
+            Num previousEquity = cashFlow.getValue(i - 1);
+            Num currentEquity = cashFlow.getValue(i);
+            Num riskFreeGrowth = riskFreeGrowth(i - 1, i, one);
+            boolean isFlat = currentEquity.isEqual(previousEquity);
+            boolean isInvested = isInvested(i);
             if (cashReturnPolicy == CashReturnPolicy.CASH_EARNS_RISK_FREE && isFlat && !isInvested) {
                 continue;
             }
@@ -157,7 +159,7 @@ public final class ExcessReturns {
                 continue;
             }
 
-            var growth = currentEquity.dividedBy(previousEquity).dividedBy(riskFreeGrowth);
+            Num growth = currentEquity.dividedBy(previousEquity).dividedBy(riskFreeGrowth);
             excessGrowth = excessGrowth.multipliedBy(growth);
         }
 
@@ -165,9 +167,9 @@ public final class ExcessReturns {
     }
 
     private Num riskFreeGrowth(int previousIndex, int currentIndex, Num one) {
-        var numFactory = series.numFactory();
-        var zero = numFactory.zero();
-        var deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, currentIndex);
+        NumFactory numFactory = series.numFactory();
+        Num zero = numFactory.zero();
+        Num deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, currentIndex);
         if (deltaYears.isLessThanOrEqual(zero)) {
             return one;
         }

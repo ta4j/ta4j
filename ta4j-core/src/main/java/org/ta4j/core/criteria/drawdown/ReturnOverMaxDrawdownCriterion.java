@@ -36,15 +36,16 @@ import org.ta4j.core.num.NumFactory;
  *
  * <pre>{@code
  * // Default DECIMAL representation
- * var romad = new ReturnOverMaxDrawdownCriterion();
+ * ReturnOverMaxDrawdownCriterion romad = new ReturnOverMaxDrawdownCriterion();
  * // Result: 2.0 means return is 2x the maximum drawdown
  *
  * // PERCENTAGE representation
- * var romadPercentage = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE);
+ * ReturnOverMaxDrawdownCriterion romadPercentage = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.PERCENTAGE);
  * // Result: 200.0 means return is 200% of the maximum drawdown
  *
  * // MULTIPLICATIVE representation
- * var romadMultiplicative = new ReturnOverMaxDrawdownCriterion(ReturnRepresentation.MULTIPLICATIVE);
+ * ReturnOverMaxDrawdownCriterion romadMultiplicative = new ReturnOverMaxDrawdownCriterion(
+ *         ReturnRepresentation.MULTIPLICATIVE);
  * // Result: 3.0 means return is 200% better than drawdown (1 + 2.0 = 3.0)
  * }</pre>
  *
@@ -150,20 +151,20 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        var numFactory = series.numFactory();
+        NumFactory numFactory = series.numFactory();
         if (position == null || position.isOpened()) {
             return numFactory.zero();
         }
-        var maxDrawdown = maxDrawdownCriterion.calculate(series, position);
-        var netReturn = calculateNetReturn(series, position);
+        Num maxDrawdown = maxDrawdownCriterion.calculate(series, position);
+        Num netReturn = calculateNetReturn(series, position);
         return toRepresentation(netReturn, maxDrawdown, numFactory);
     }
 
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
-        var numFactory = series.numFactory();
-        var maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
-        var netReturn = calculateNetReturn(series, tradingRecord);
+        NumFactory numFactory = series.numFactory();
+        Num maxDrawdown = maxDrawdownCriterion.calculate(series, tradingRecord);
+        Num netReturn = calculateNetReturn(series, tradingRecord);
         return toRepresentation(netReturn, maxDrawdown, numFactory);
     }
 
@@ -179,8 +180,8 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
     }
 
     private Num calculateNetReturn(BarSeries series, Position position) {
-        var cashFlow = new CashFlow(series, position, equityCurveMode);
-        var one = series.numFactory().one();
+        CashFlow cashFlow = new CashFlow(series, position, equityCurveMode);
+        Num one = series.numFactory().one();
         return cashFlow.getValue(position.getExit().getIndex()).minus(one);
     }
 
@@ -188,12 +189,12 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
         if (tradingRecord == null) {
             return series.numFactory().zero();
         }
-        var endIndex = tradingRecord.getEndIndex(series);
+        int endIndex = tradingRecord.getEndIndex(series);
         if (endIndex < series.getBeginIndex()) {
             return series.numFactory().zero();
         }
-        var cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
-        var one = series.numFactory().one();
+        CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
+        Num one = series.numFactory().one();
         return cashFlow.getValue(endIndex).minus(one);
     }
 
@@ -201,10 +202,10 @@ public class ReturnOverMaxDrawdownCriterion extends AbstractEquityCurveSettingsC
         if (maxDrawdown.isZero()) {
             return returnRepresentation.toRepresentationFromRateOfReturn(netReturn);
         }
-        var rawRatio = netReturn.dividedBy(maxDrawdown);
+        Num rawRatio = netReturn.dividedBy(maxDrawdown);
         if (returnRepresentation == ReturnRepresentation.MULTIPLICATIVE) {
-            var one = numFactory.one();
-            var zero = numFactory.zero();
+            Num one = numFactory.one();
+            Num zero = numFactory.zero();
             if (rawRatio.isGreaterThanOrEqual(zero)) {
                 return rawRatio.plus(one);
             }

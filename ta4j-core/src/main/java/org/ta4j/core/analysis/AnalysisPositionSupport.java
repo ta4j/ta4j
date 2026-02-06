@@ -6,13 +6,8 @@ package org.ta4j.core.analysis;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import org.ta4j.core.ExecutionSide;
-import org.ta4j.core.LiveTrade;
-import org.ta4j.core.LiveTradingRecord;
-import org.ta4j.core.OpenPosition;
-import org.ta4j.core.Position;
-import org.ta4j.core.PositionLot;
-import org.ta4j.core.TradingRecord;
+
+import org.ta4j.core.*;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -27,8 +22,8 @@ final class AnalysisPositionSupport {
         Objects.requireNonNull(record, "record");
         Objects.requireNonNull(openPositionHandling, "openPositionHandling");
         Objects.requireNonNull(equityCurveMode, "equityCurveMode");
-        var positions = new ArrayList<Position>();
-        for (var position : record.getPositions()) {
+        List<Position> positions = new ArrayList<>();
+        for (Position position : record.getPositions()) {
             if (shouldIncludePosition(position, finalIndex, openPositionHandling, equityCurveMode)) {
                 positions.add(position);
             }
@@ -44,13 +39,13 @@ final class AnalysisPositionSupport {
         if (position == null || position.getEntry() == null) {
             return false;
         }
-        var entryIndex = position.getEntry().getIndex();
+        int entryIndex = position.getEntry().getIndex();
         if (entryIndex > finalIndex) {
             return false;
         }
         if (!shouldIncludeOpenPositions(openPositionHandling, equityCurveMode)) {
-            var exit = position.getExit();
-            var isOpenAtFinalIndex = exit == null || exit.getIndex() > finalIndex;
+            Trade exit = position.getExit();
+            boolean isOpenAtFinalIndex = exit == null || exit.getIndex() > finalIndex;
             return !isOpenAtFinalIndex;
         }
         return true;
@@ -66,8 +61,8 @@ final class AnalysisPositionSupport {
         if (record instanceof LiveTradingRecord liveRecord) {
             return openPositionsFromLiveRecord(liveRecord, finalIndex);
         }
-        var positions = new ArrayList<Position>();
-        var current = record.getCurrentPosition();
+        List<Position> positions = new ArrayList<>();
+        Position current = record.getCurrentPosition();
         if (current != null && current.isOpened() && current.getEntry() != null
                 && current.getEntry().getIndex() <= finalIndex) {
             positions.add(current);
@@ -76,19 +71,19 @@ final class AnalysisPositionSupport {
     }
 
     private static List<Position> openPositionsFromLiveRecord(LiveTradingRecord record, int finalIndex) {
-        var positions = new ArrayList<Position>();
-        var transactionCostModel = defaultCostModel(record.getTransactionCostModel());
-        var holdingCostModel = defaultCostModel(record.getHoldingCostModel());
-        var startingType = record.getStartingType();
-        var entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        List<Position> positions = new ArrayList<>();
+        CostModel transactionCostModel = defaultCostModel(record.getTransactionCostModel());
+        CostModel holdingCostModel = defaultCostModel(record.getHoldingCostModel());
+        TradeType startingType = record.getStartingType();
+        ExecutionSide entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
         for (OpenPosition openPosition : record.getOpenPositions()) {
             for (PositionLot lot : openPosition.lots()) {
                 if (lot.entryIndex() > finalIndex) {
                     continue;
                 }
-                var entryTrade = new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
+                LiveTrade entryTrade = new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
                         lot.fee(), entrySide, lot.orderId(), lot.correlationId());
-                var position = new Position(entryTrade, transactionCostModel, holdingCostModel);
+                Position position = new Position(entryTrade, transactionCostModel, holdingCostModel);
                 positions.add(position);
             }
         }
