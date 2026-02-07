@@ -65,8 +65,8 @@ public class AverageTrueRangeStopGainRule extends AbstractRule {
      * @param atrIndicator   ATR indicator
      * @param atrCoefficient the multiple of ATR to set the gain threshold
      */
-    public AverageTrueRangeStopGainRule(final Indicator<Num> referencePrice,
-            final ATRIndicator atrIndicator, final Number atrCoefficient) {
+    public AverageTrueRangeStopGainRule(final Indicator<Num> referencePrice, final ATRIndicator atrIndicator,
+            final Number atrCoefficient) {
         this.referencePrice = requireNonNull(referencePrice);
         this.atrIndicator = requireNonNull(atrIndicator);
         this.atrCoefficient = requireNonNull(atrCoefficient);
