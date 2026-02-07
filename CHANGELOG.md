@@ -57,6 +57,7 @@
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 - **Dependencies**: update to latest versions
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
+- **JDK**: updated to Java 25
 
 ### Fixed
 - **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.
