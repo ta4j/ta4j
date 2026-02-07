@@ -97,6 +97,34 @@ class ElliottScenarioComparatorTest {
     }
 
     @Test
+    void averageConfidencePreservesNumPrecision() {
+        NumFactory highPrecision = DecimalNumFactory.getInstance(32);
+        ElliottScenarioComparator preciseComparator = new ElliottScenarioComparator(highPrecision);
+
+        Num scoreA = highPrecision.numOf("0.12345678901234567890");
+        Num scoreB = highPrecision.numOf("0.22345678901234567890");
+        ElliottConfidence confidenceA = new ElliottConfidence(scoreA, scoreA, scoreA, scoreA, scoreA, scoreA, "Test");
+        ElliottConfidence confidenceB = new ElliottConfidence(scoreB, scoreB, scoreB, scoreB, scoreB, scoreB, "Test");
+
+        ElliottScenario scenarioA = ElliottScenario.builder()
+                .id("a")
+                .currentPhase(ElliottPhase.WAVE1)
+                .confidence(confidenceA)
+                .type(ScenarioType.IMPULSE)
+                .build();
+        ElliottScenario scenarioB = ElliottScenario.builder()
+                .id("b")
+                .currentPhase(ElliottPhase.WAVE1)
+                .confidence(confidenceB)
+                .type(ScenarioType.IMPULSE)
+                .build();
+
+        Num average = preciseComparator.averageConfidence(List.of(scenarioA, scenarioB));
+
+        assertThat(average).isEqualByComparingTo(highPrecision.numOf("0.17345678901234567890"));
+    }
+
+    @Test
     void directionalConsensusWhenSameDirection() {
         ElliottScenario s1 = createScenario("s1", 0.9, ElliottPhase.WAVE3, true, ScenarioType.IMPULSE);
         ElliottScenario s2 = createScenario("s2", 0.8, ElliottPhase.WAVE4, true, ScenarioType.IMPULSE);

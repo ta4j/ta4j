@@ -14,6 +14,11 @@ import org.ta4j.core.num.NumFactory;
 /**
  * Utility for comparing and analyzing Elliott wave scenarios.
  *
+ * <p>
+ * Use this helper when you need to quantify divergence between scenarios,
+ * compute shared invalidation levels, or derive consensus metrics across a
+ * scenario set for reporting or strategy logic.
+ *
  * @since 0.22.0
  */
 public final class ElliottScenarioComparator {
@@ -183,18 +188,18 @@ public final class ElliottScenarioComparator {
             return numFactory.zero();
         }
 
-        double total = 0.0;
+        Num total = numFactory.zero();
         int count = 0;
 
         for (final ElliottScenario scenario : scenarios) {
             final Num confidence = scenario.confidenceScore();
             if (Num.isValid(confidence)) {
-                total += confidence.doubleValue();
+                total = total.plus(confidence);
                 count++;
             }
         }
 
-        return count > 0 ? numFactory.numOf(total / count) : numFactory.zero();
+        return count > 0 ? total.dividedBy(numFactory.numOf(count)) : numFactory.zero();
     }
 
     /**

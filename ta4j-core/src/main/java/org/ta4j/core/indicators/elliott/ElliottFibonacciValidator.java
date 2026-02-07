@@ -12,6 +12,13 @@ import org.ta4j.core.num.NumFactory;
  * Validates Elliott swing amplitudes against common Fibonacci retracement and
  * extension ranges.
  *
+ * <p>
+ * Use this validator when you need to score how closely swing relationships
+ * align with canonical Elliott ratios. It is used internally by
+ * {@link ElliottPhaseIndicator} and {@link ElliottScenarioGenerator}, and can
+ * be customized with a tighter or looser tolerance depending on your market and
+ * timeframe.
+ *
  * @since 0.22.0
  */
 public class ElliottFibonacciValidator {

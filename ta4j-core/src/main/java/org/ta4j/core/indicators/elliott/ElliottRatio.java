@@ -8,6 +8,10 @@ import org.ta4j.core.num.Num;
 /**
  * Captures the ratio between two consecutive Elliott swings.
  *
+ * <p>
+ * Produced by {@link ElliottRatioIndicator} and used by confluence and
+ * validation logic to classify retracements versus extensions.
+ *
  * @param value measured ratio (absolute amplitude of the latest swing divided
  *              by the previous swing amplitude)
  * @param type  classification of the ratio (retracement or extension)

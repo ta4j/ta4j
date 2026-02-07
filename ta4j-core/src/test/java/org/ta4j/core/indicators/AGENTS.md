@@ -20,3 +20,11 @@
   the test.
 - It is acceptable to keep separate expected sequences per `NumFactory` when floating-point rounding diverges; branch on `instanceof DecimalNumFactory` instead of loosening assertions.
 
+## Unstable bar testing requirements
+- Every indicator change that affects `getCountOfUnstableBars()` must include a direct assertion on the unstable count; do not rely on comments or implicit behavior.
+- Add explicit boundary checks around warm-up edges:
+  - `index == unstableBars - 1`: expect unstable output (`NaN` for `Indicator<Num>`, deterministic fallback for boolean/enum indicators).
+  - `index == unstableBars`: expect stable output path (not `NaN`, or normal signal evaluation).
+- For composed indicators, compute expected unstable counts from component indicators inside the test (using the same `sum` vs `max` rules) and assert equality.
+- Include at least one regression case for lookback/backtracking indicators so the test proves no pre-warmup history access is required.
+- If serialization/deserialization is supported, verify unstable count remains identical after round trip.

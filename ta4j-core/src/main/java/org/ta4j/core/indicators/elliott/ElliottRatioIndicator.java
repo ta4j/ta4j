@@ -28,6 +28,12 @@ import org.ta4j.core.num.Num;
  * low).</li>
  * </ul>
  *
+ * <p>
+ * Use this indicator when you need a lightweight, per-bar Fibonacci ratio
+ * signal for validation, confluence checks, or chart annotation. For
+ * multi-scenario ratio scoring, use {@link ElliottScenarioGenerator} or
+ * {@link ElliottFibonacciValidator}.
+ *
  * @since 0.22.0
  */
 public class ElliottRatioIndicator extends CachedIndicator<ElliottRatio> {

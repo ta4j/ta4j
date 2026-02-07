@@ -5,6 +5,7 @@
 .vscode/
 .svn/
 .agents/
+.codex/
 nb-configuration.xml
 nbactions.xml
 *.code-workspace

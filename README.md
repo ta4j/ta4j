@@ -703,6 +703,26 @@ LOG.info("Second bar begin: {}", series.getBar(1).getBeginTime()); // 2024-01-01
 
 Time gaps are omitted; no empty bars are inserted. If your pipeline expects continuous prices, reconcile and backfill OHLCV data upstream before ingestion.
 
+## Elliott Wave quickstart
+
+The Elliott Wave suite exposes two minimal entry points:
+
+- `ElliottWaveFacade` for indicator-style, per-bar access (recommended for rules and chart overlays)
+- `ElliottWaveAnalyzer` for one-shot analysis runs with pluggable detectors and confidence profiles
+
+```java
+BarSeries series = ...;
+int index = series.getEndIndex();
+
+ElliottWaveFacade facade = ElliottWaveFacade.fractal(series, 5, ElliottDegree.INTERMEDIATE);
+
+ElliottPhase phase = facade.phase().getValue(index);
+ElliottScenarioSet scenarios = facade.scenarios().getValue(index);
+Num invalidation = facade.invalidationLevel().getValue(index);
+```
+
+See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and analyzer-based workflow.
+
 ## Real-world examples
 
 The `ta4j-examples` module includes runnable examples demonstrating common patterns and strategies:

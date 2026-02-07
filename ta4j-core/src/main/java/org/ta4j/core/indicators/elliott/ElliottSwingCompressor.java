@@ -17,6 +17,17 @@ import org.ta4j.core.num.Num;
 /**
  * Utility for post-processing swing sequences.
  *
+ * <p>
+ * The compressor removes or merges swings that do not meet minimum amplitude or
+ * minimum bar-length constraints. Use it to reduce noise before counting waves
+ * or generating scenarios, especially when swing detection is noisy or
+ * high-frequency.
+ *
+ * <p>
+ * This class does not detect swings itself; it operates on the output of
+ * {@link ElliottSwingIndicator} or
+ * {@link org.ta4j.core.indicators.elliott.swing.SwingDetector}.
+ *
  * @since 0.22.0
  */
 public class ElliottSwingCompressor {

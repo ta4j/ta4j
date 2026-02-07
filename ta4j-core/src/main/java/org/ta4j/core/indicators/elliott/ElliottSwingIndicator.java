@@ -46,6 +46,11 @@ import org.ta4j.core.num.Num;
  * the chosen lookforward window. Account for this inherent confirmation delay
  * when using the swings in live or latency-sensitive workflows.
  *
+ * <p>
+ * Use this indicator as the canonical swing source for Elliott Wave analysis.
+ * It powers {@link ElliottWaveFacade}, {@link ElliottPhaseIndicator}, and
+ * {@link ElliottScenarioIndicator}.
+ *
  * @since 0.22.0
  */
 public class ElliottSwingIndicator extends CachedIndicator<List<ElliottSwing>> {

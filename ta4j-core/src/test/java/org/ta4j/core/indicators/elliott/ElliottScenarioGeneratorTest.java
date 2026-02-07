@@ -9,7 +9,10 @@ import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.indicators.elliott.confidence.ConfidenceModel;
+import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 class ElliottScenarioGeneratorTest {
@@ -87,6 +90,27 @@ class ElliottScenarioGeneratorTest {
         for (ElliottScenario scenario : set.all()) {
             assertThat(scenario.confidenceScore().doubleValue()).isGreaterThan(0.89);
         }
+    }
+
+    @Test
+    void minConfidenceUsesNumPrecision() {
+        NumFactory highPrecision = DecimalNumFactory.getInstance(32);
+        Num borderline = highPrecision.numOf("0.69999999999999999999");
+        ConfidenceModel model = (swings, phase, channel, scenarioType) -> {
+            ElliottConfidence confidence = new ElliottConfidence(borderline, borderline, borderline, borderline,
+                    borderline, borderline, "Test");
+            return new ElliottConfidenceBreakdown(confidence, List.of());
+        };
+
+        ElliottScenarioGenerator preciseGenerator = new ElliottScenarioGenerator(highPrecision, 0.7, 5, model,
+                PatternSet.of(ScenarioType.IMPULSE));
+
+        List<ElliottSwing> swings = List
+                .of(new ElliottSwing(0, 1, highPrecision.one(), highPrecision.two(), ElliottDegree.MINOR));
+
+        ElliottScenarioSet set = preciseGenerator.generate(swings, ElliottDegree.MINOR, null, 1);
+
+        assertThat(set.isEmpty()).isTrue();
     }
 
     @Test

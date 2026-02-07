@@ -10,6 +10,12 @@ import org.ta4j.core.num.Num;
 /**
  * Immutable representation of a single Elliott swing between two pivots.
  *
+ * <p>
+ * Swings are produced by {@link ElliottSwingIndicator} and form the foundation
+ * for wave counting, phase classification, and scenario generation. Use this
+ * record when you need to reason about pivot-to-pivot movement or annotate
+ * swings on charts.
+ *
  * @since 0.22.0
  */
 public record ElliottSwing(int fromIndex, int toIndex, Num fromPrice, Num toPrice, ElliottDegree degree) {

@@ -19,6 +19,11 @@ import org.ta4j.core.num.NumFactory;
  * corrective segments so that trading rules can assert higher level structure
  * before acting.
  *
+ * <p>
+ * Use this indicator when you need a single, deterministic phase label per bar
+ * (for rules or visual overlays). For multiple alternative interpretations, use
+ * {@link ElliottScenarioIndicator} instead.
+ *
  * @since 0.22.0
  */
 public class ElliottPhaseIndicator extends RecursiveCachedIndicator<ElliottPhase> {

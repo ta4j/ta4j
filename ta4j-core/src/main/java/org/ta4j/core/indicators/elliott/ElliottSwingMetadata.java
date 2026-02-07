@@ -14,6 +14,12 @@ import org.ta4j.core.num.NumFactory;
 /**
  * Immutable snapshot of swing statistics helpful for Elliott wave validation.
  *
+ * <p>
+ * Use this helper when you need quick access to aggregated swing attributes
+ * (highest/lowest prices, validity checks, or slicing helpers) without
+ * re-walking the swing list. {@link ElliottPhaseIndicator} uses it to validate
+ * impulse and correction segments.
+ *
  * @since 0.22.0
  */
 public final class ElliottSwingMetadata {

@@ -6,6 +6,10 @@ package org.ta4j.core.indicators.elliott;
 /**
  * Categorizes Elliott wave structure patterns.
  *
+ * <p>
+ * Use this enum to filter or constrain scenario generation ({@link PatternSet})
+ * and to interpret results from {@link ElliottScenarioGenerator}.
+ *
  * @since 0.22.0
  */
 public enum ScenarioType {

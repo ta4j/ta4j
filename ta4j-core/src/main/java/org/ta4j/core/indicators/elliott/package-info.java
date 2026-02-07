@@ -44,7 +44,14 @@
  * {@link org.ta4j.core.indicators.elliott.ElliottConfidenceScorer} calculates
  * confidence from weighted factors, and
  * {@link org.ta4j.core.indicators.elliott.ElliottScenarioSet} holds ranked
- * alternative scenarios.</li>
+ * alternative scenarios.
+ * {@link org.ta4j.core.indicators.elliott.ElliottTrendBiasIndicator} aggregates
+ * directional bias across scenarios.</li>
+ * <li><b>Pluggable analysis pipeline</b>:
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalyzer} orchestrates
+ * swing detection, scenario generation, and confidence profiles, with pluggable
+ * detectors under {@code org.ta4j.core.indicators.elliott.swing} and profile
+ * helpers in {@code org.ta4j.core.indicators.elliott.confidence}.</li>
  * <li><b>Invalidation and projections</b>:
  * {@link org.ta4j.core.indicators.elliott.ElliottInvalidationIndicator} flags
  * when wave counts break canonical invalidation levels,
@@ -57,6 +64,15 @@
  * high-level API that coordinates all indicators with consistent
  * configuration.</li>
  * </ul>
+ *
+ * <p>
+ * <b>Entry points</b>: Use
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveFacade} when you want
+ * indicator-style, per-bar access to Elliott outputs (phase, ratios, scenarios,
+ * invalidations). Use
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalyzer} when you want a
+ * one-shot analysis pipeline with pluggable swing detection, filtering, and
+ * confidence profiles.
  *
  * <p>
  * <b>Getting Started</b>:
