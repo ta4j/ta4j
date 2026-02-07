@@ -1,0 +1,115 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package ta4jexamples.analysis.elliottwave;
+
+import java.io.InputStream;
+import java.util.List;
+import java.util.Optional;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
+import org.ta4j.core.indicators.elliott.ElliottMultiDegreeAnalysisResult;
+import org.ta4j.core.indicators.elliott.ElliottScenario;
+import org.ta4j.core.indicators.elliott.ElliottWaveMultiDegreeAnalyzer;
+
+import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
+
+/**
+ * Demonstrates multi-degree Elliott Wave analysis, validating scenarios across
+ * neighboring degrees and re-ranking base-degree outcomes.
+ *
+ * <p>
+ * This demo uses an ossified BTC-USD dataset from classpath resources and runs
+ * a base-degree {@link ElliottDegree#PRIMARY} analysis, plus one supporting
+ * degree higher ({@link ElliottDegree#CYCLE}) and lower
+ * ({@link ElliottDegree#INTERMEDIATE}).
+ *
+ * @since 0.22.2
+ */
+public class ElliottWaveMultiDegreeAnalysisDemo {
+
+    private static final Logger LOG = LogManager.getLogger(ElliottWaveMultiDegreeAnalysisDemo.class);
+    private static final String DEFAULT_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
+
+    public static void main(String[] args) {
+        BarSeries series = loadSeries(DEFAULT_OHLCV_RESOURCE);
+        if (series == null || series.isEmpty()) {
+            LOG.error("No series available for multi-degree Elliott Wave analysis");
+            return;
+        }
+
+        ElliottWaveMultiDegreeAnalyzer analyzer = ElliottWaveMultiDegreeAnalyzer.builder()
+                .baseDegree(ElliottDegree.PRIMARY)
+                .higherDegrees(1)
+                .lowerDegrees(1)
+                .build();
+
+        ElliottMultiDegreeAnalysisResult result = analyzer.analyze(series);
+
+        for (ElliottMultiDegreeAnalysisResult.DegreeAnalysis analysis : result.analyses()) {
+            LOG.info("Degree {}: bars={} duration={} historyFit={} trendBias={}", analysis.degree(),
+                    analysis.barCount(), analysis.barDuration(), String.format("%.2f", analysis.historyFitScore()),
+                    analysis.analysis().trendBias().direction());
+            analysis.analysis().scenarios().base().ifPresent(base -> logScenario("  Base", base));
+        }
+
+        Optional<ElliottMultiDegreeAnalysisResult.BaseScenarioAssessment> recommended = result.recommendedScenario();
+        if (recommended.isEmpty()) {
+            LOG.warn("No base-degree scenarios were produced");
+            return;
+        }
+
+        ElliottMultiDegreeAnalysisResult.BaseScenarioAssessment assessment = recommended.orElseThrow();
+        ElliottScenario scenario = assessment.scenario();
+        LOG.info("Recommended base scenario: id={} phase={} type={} confidence={} crossDegree={} composite={}",
+                scenario.id(), scenario.currentPhase(), scenario.type(),
+                String.format("%.2f", assessment.confidenceScore()),
+                String.format("%.2f", assessment.crossDegreeScore()),
+                String.format("%.2f", assessment.compositeScore()));
+
+        List<ElliottMultiDegreeAnalysisResult.SupportingScenarioMatch> matches = assessment.supportingMatches();
+        for (ElliottMultiDegreeAnalysisResult.SupportingScenarioMatch match : matches) {
+            LOG.info("  Match {}: scenarioId={} compat={} weightedCompat={} historyFit={}", match.degree(),
+                    match.scenarioId(), String.format("%.2f", match.compatibilityScore()),
+                    String.format("%.2f", match.weightedCompatibility()),
+                    String.format("%.2f", match.historyFitScore()));
+        }
+
+        for (String note : result.notes()) {
+            LOG.info("Note: {}", note);
+        }
+    }
+
+    private static void logScenario(final String label, final ElliottScenario scenario) {
+        LOG.info("{} scenarioId={} phase={} type={} confidence={} direction={}", label, scenario.id(),
+                scenario.currentPhase(), scenario.type(), String.format("%.1f", scenario.confidence().asPercentage()),
+                scenario.hasKnownDirection() ? (scenario.isBullish() ? "bullish" : "bearish") : "unknown");
+    }
+
+    private static BarSeries loadSeries(final String resource) {
+        try (InputStream stream = ElliottWaveMultiDegreeAnalysisDemo.class.getClassLoader()
+                .getResourceAsStream(resource)) {
+            if (stream == null) {
+                LOG.error("Missing resource: {}", resource);
+                return null;
+            }
+            BarSeries loaded = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(stream);
+            if (loaded == null) {
+                LOG.error("Failed to load resource: {}", resource);
+                return null;
+            }
+            BarSeries series = new BaseBarSeriesBuilder().withName("BTC-USD_PT1D@Coinbase (ossified)").build();
+            for (int i = 0; i < loaded.getBarCount(); i++) {
+                series.addBar(loaded.getBar(i));
+            }
+            return series;
+        } catch (Exception ex) {
+            LOG.error("Failed to load dataset: {}", ex.getMessage(), ex);
+            return null;
+        }
+    }
+}

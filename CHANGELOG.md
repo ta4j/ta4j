@@ -27,6 +27,9 @@
 - Added versions-maven-plugin
 - **Elliott Wave analysis toolkit**: Added `ElliottWaveAnalyzer`, `ElliottAnalysisResult`, configurable `PatternSet`,
   and the `org.ta4j.core.indicators.elliott.swing` detector/filter package for pluggable, chart-independent analysis.
+- **Elliott Wave multi-degree validation**: Added `ElliottWaveMultiDegreeAnalyzer` and
+  `ElliottMultiDegreeAnalysisResult` to run supporting degree analyses and re-rank base scenarios using
+  cross-degree compatibility.
 - **Elliott Wave confidence modeling**: Added profile-driven confidence scoring with factor breakdowns, time
   alternation diagnostics, and granular Fibonacci relationship scoring.
 - **Elliott Wave trend bias**: Added `ElliottTrendBias` and `ElliottTrendBiasIndicator` for scenario-weighted

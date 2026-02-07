@@ -103,6 +103,8 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * <li>{@link SP500ElliottWaveAnalysis} - S&P 500 index analysis example</li>
  * <li>{@link ElliottWaveAdaptiveSwingAnalysis} - adaptive swing detection
  * demo</li>
+ * <li>{@link ElliottWaveMultiDegreeAnalysisDemo} - cross-degree scenario
+ * validation demo</li>
  * <li>{@link ElliottWavePatternProfileDemo} - pattern-aware profile demo</li>
  * </ul>
  * <p>

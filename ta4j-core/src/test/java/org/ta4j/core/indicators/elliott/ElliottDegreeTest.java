@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.elliott;
 
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.within;
 
 import java.time.Duration;
 import java.util.List;
@@ -94,5 +95,33 @@ class ElliottDegreeTest {
         assertThrows(IllegalArgumentException.class, () -> ElliottDegree.getRecommendedDegrees(Duration.ofDays(1), 0));
         assertThrows(IllegalArgumentException.class,
                 () -> ElliottDegree.getRecommendedDegrees(Duration.ofDays(-1), 10));
+    }
+
+    @Test
+    void recommendedHistoryDays_shouldExposeMaxFlag() {
+        ElliottDegree.RecommendedHistory primary = ElliottDegree.PRIMARY.recommendedHistoryDays();
+        assertThat(primary.minDays()).isGreaterThan(0.0);
+        assertThat(primary.hasMax()).isTrue();
+        assertThat(primary.maxDays()).isGreaterThan(primary.minDays());
+
+        ElliottDegree.RecommendedHistory grandSupercycle = ElliottDegree.GRAND_SUPERCYCLE.recommendedHistoryDays();
+        assertThat(grandSupercycle.minDays()).isGreaterThan(0.0);
+        assertThat(grandSupercycle.hasMax()).isFalse();
+        assertThat(grandSupercycle.maxDays()).isEqualTo(0.0);
+    }
+
+    @Test
+    void historyFitScore_shouldReturnOneWhenWithinRange() {
+        double score = ElliottDegree.PRIMARY.historyFitScore(Duration.ofDays(1), 1000);
+        assertThat(score).isCloseTo(1.0, within(1e-12));
+    }
+
+    @Test
+    void historyFitScore_shouldDecreaseWhenOutsideRange() {
+        double tooShort = ElliottDegree.PRIMARY.historyFitScore(Duration.ofDays(1), 200);
+        assertThat(tooShort).isCloseTo(0.5, within(1e-12));
+
+        double tooLong = ElliottDegree.PRIMARY.historyFitScore(Duration.ofDays(1), 2000);
+        assertThat(tooLong).isCloseTo(0.5, within(1e-12));
     }
 }
