@@ -68,8 +68,7 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
         var anchored = new AnchoredVWAPIndicator(series, -5);
 
         assertThat(anchored.getAnchorIndex(0)).isEqualTo(series.getBeginIndex());
-        assertThat(anchored.getValue(0).isNaN()).isTrue();
-        assertNumEquals((10 * 100 + 11 * 200) / 300d, anchored.getValue(1));
+        assertNumEquals(10d, anchored.getValue(0));
     }
 
     @Test

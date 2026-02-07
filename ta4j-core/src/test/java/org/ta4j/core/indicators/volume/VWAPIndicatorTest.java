@@ -81,7 +81,7 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         var volume = new VolumeIndicator(data);
         var vwap = new VWAPIndicator(closePrice, volume, 3);
 
-        assertThat(vwap.getValue(2).isNaN()).isTrue();
+        assertNumEquals(45.1133, vwap.getValue(2));
         assertNumEquals(45.1433, vwap.getValue(3));
     }
 
