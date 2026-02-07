@@ -575,16 +575,6 @@ Bar series serialization (Java):
 - `ConcurrentBarSeries` reinitializes its locks after deserialization and recreates the trade bar builder lazily.
 - Builder state (for example, a time period set directly on the builder) must be re-applied after deserialization unless you configured it in the factory.
 
-## Features at a glance
-
-- **190+ technical indicators (and counting)** - Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and many more. New indicators are added regularly.
-- **Composable strategy API** - Build complex trading rules using fluent Java patterns
-- **Built-in backtesting engine** - Test strategies on years of data in seconds. Same code for backtesting and live trading — no rewrites.
-- **Performance metrics** - 30+ analysis criteria including Sharpe ratio, drawdown, win rate, and more
-- **Charting support** - Visualize strategies with candlestick charts, indicator overlays, and performance subcharts
-- **JSON serialization** - Save and restore strategies and indicators for persistence and sharing
-- **Production-ready** - Deterministic calculations, minimal dependencies, type-safe APIs
-- **Extensive examples** - Runnable demos covering strategies, indicators, backtesting, and live trading
 
 ## From backtest to live trading
 
@@ -730,6 +720,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[BTCUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/BTCUSDElliottWaveAnalysis.java)** - Example Elliott Wave analysis for Bitcoin (BTC-USD) using Coinbase data
 - **[ETHUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ETHUSDElliottWaveAnalysis.java)** - Example Elliott Wave analysis for Ethereum (ETH-USD) using Coinbase data
 - **[SP500ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/SP500ElliottWaveAnalysis.java)** - Example Elliott Wave analysis for S&P 500 Index (^GSPC) using Yahoo Finance data
+- **[WyckoffCycleExample](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleExample.java)** - Walk through Wyckoff phase detection events, structure tracking, and phase transitions on synthetic market data
 - **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
 

@@ -1,0 +1,58 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package org.ta4j.core.indicators.volume;
+
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
+import org.ta4j.core.num.NaN;
+import org.ta4j.core.num.Num;
+
+/**
+ * Measures the absolute price premium/discount versus VWAP.
+ * <p>
+ * Uses the same VWAP window/anchor definition as the supplied VWAP indicator.
+ *
+ * @since 0.19
+ */
+public class VWAPDeviationIndicator extends CachedIndicator<Num> {
+
+    @SuppressWarnings("unused")
+    private final Indicator<Num> priceIndicator;
+    private final AbstractVWAPIndicator vwapIndicator;
+    private final transient Indicator<Num> difference;
+
+    /**
+     * Constructor.
+     *
+     * @param priceIndicator the price indicator (for example close price)
+     * @param vwapIndicator  the VWAP indicator to compare against
+     *
+     * @since 0.19
+     */
+    public VWAPDeviationIndicator(Indicator<Num> priceIndicator, AbstractVWAPIndicator vwapIndicator) {
+        super(IndicatorSeriesUtils.requireSameSeries(priceIndicator, vwapIndicator));
+        this.priceIndicator = priceIndicator;
+        this.difference = BinaryOperationIndicator.difference(priceIndicator, vwapIndicator);
+        this.vwapIndicator = vwapIndicator;
+    }
+
+    @Override
+    protected Num calculate(int index) {
+        Num value = difference.getValue(index);
+        return isInvalid(value) ? NaN.NaN : value;
+    }
+
+    @Override
+    public int getCountOfUnstableBars() {
+        return Math.max(priceIndicator.getCountOfUnstableBars(), vwapIndicator.getCountOfUnstableBars());
+    }
+
+    private static boolean isInvalid(Num value) {
+        if (Num.isNaNOrNull(value)) {
+            return true;
+        }
+        return Double.isNaN(value.doubleValue());
+    }
+}
