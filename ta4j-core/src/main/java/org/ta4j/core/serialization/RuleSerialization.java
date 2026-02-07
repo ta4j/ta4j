@@ -1150,7 +1150,18 @@ public final class RuleSerialization {
             Constructor<?>[] constructors = rule.getClass().getDeclaredConstructors();
             List<Constructor<?>> ordered = new ArrayList<>(constructors.length);
             Collections.addAll(ordered, constructors);
-            ordered.sort((left, right) -> Integer.compare(right.getParameterCount(), left.getParameterCount()));
+            ordered.sort((left, right) -> {
+                int countComparison = Integer.compare(right.getParameterCount(), left.getParameterCount());
+                if (countComparison != 0) {
+                    return countComparison;
+                }
+                int specificityComparison = Integer.compare(constructorSpecificity(right),
+                        constructorSpecificity(left));
+                if (specificityComparison != 0) {
+                    return specificityComparison;
+                }
+                return left.toGenericString().compareTo(right.toGenericString());
+            });
 
             Map<String, Object> values = FieldExtractor.extract(rule);
             for (Constructor<?> constructor : ordered) {
@@ -1160,6 +1171,48 @@ public final class RuleSerialization {
                 }
             }
             return null;
+        }
+
+        private static int constructorSpecificity(Constructor<?> constructor) {
+            int score = 0;
+            for (Class<?> type : constructor.getParameterTypes()) {
+                score += parameterSpecificity(type);
+            }
+            return score;
+        }
+
+        private static int parameterSpecificity(Class<?> type) {
+            if (type.equals(BarSeries.class)) {
+                return 80;
+            }
+            if (Rule.class.isAssignableFrom(type) || Indicator.class.isAssignableFrom(type)) {
+                return 70;
+            }
+            if (Num.class.isAssignableFrom(type)) {
+                return 60;
+            }
+            if (type.isEnum()) {
+                return 50;
+            }
+            if (type.equals(boolean.class) || type.equals(Boolean.class)) {
+                return 45;
+            }
+            if (type.isArray()) {
+                return 40 + parameterSpecificity(type.getComponentType());
+            }
+            if (type.isPrimitive()) {
+                return 35;
+            }
+            if (type.equals(String.class)) {
+                return 30;
+            }
+            if (type.equals(Number.class)) {
+                return 5;
+            }
+            if (Number.class.isAssignableFrom(type)) {
+                return 25;
+            }
+            return 10;
         }
 
         private static Optional<List<Argument>> match(Rule rule, Constructor<?> constructor,
@@ -1197,7 +1250,10 @@ public final class RuleSerialization {
                 }
 
                 if (Num.class.isAssignableFrom(type)) {
-                    Match match = findMatch(values, used, Num.class::isInstance);
+                    Match match = findMatchByName(values, used, name, Num.class::isInstance);
+                    if (match == null) {
+                        match = findMatch(values, used, Num.class::isInstance);
+                    }
                     if (match == null) {
                         return Optional.empty();
                     }
@@ -1231,7 +1287,10 @@ public final class RuleSerialization {
                 }
 
                 if (type.isEnum()) {
-                    Match match = findMatch(values, used, type::isInstance);
+                    Match match = findMatchByName(values, used, name, type::isInstance);
+                    if (match == null) {
+                        match = findMatch(values, used, type::isInstance);
+                    }
                     if (match == null) {
                         return Optional.empty();
                     }
@@ -1242,7 +1301,10 @@ public final class RuleSerialization {
                 }
 
                 if (type.equals(String.class)) {
-                    Match match = findMatch(values, used, value -> value instanceof String);
+                    Match match = findMatchByName(values, used, name, value -> value instanceof String);
+                    if (match == null) {
+                        match = findMatch(values, used, value -> value instanceof String);
+                    }
                     if (match == null) {
                         return Optional.empty();
                     }
@@ -1251,7 +1313,10 @@ public final class RuleSerialization {
                 }
 
                 if (type.equals(boolean.class) || type.equals(Boolean.class)) {
-                    Match match = findMatch(values, used, value -> value instanceof Boolean);
+                    Match match = findMatchByName(values, used, name, value -> value instanceof Boolean);
+                    if (match == null) {
+                        match = findMatch(values, used, value -> value instanceof Boolean);
+                    }
                     if (match == null) {
                         return Optional.empty();
                     }
@@ -1260,7 +1325,7 @@ public final class RuleSerialization {
                 }
 
                 if (Number.class.isAssignableFrom(type) || type.isPrimitive()) {
-                    Match match = findNumericMatch(values, used);
+                    Match match = findNumericMatch(values, used, name);
                     if (match == null) {
                         return Optional.empty();
                     }
@@ -1316,7 +1381,12 @@ public final class RuleSerialization {
             return true;
         }
 
-        private static Match findNumericMatch(Map<String, Object> values, Set<String> used) {
+        private static Match findNumericMatch(Map<String, Object> values, Set<String> used, String preferredKey) {
+            Match preferred = findMatchByName(values, used, preferredKey,
+                    value -> value instanceof Number || value instanceof Num);
+            if (preferred != null) {
+                return preferred;
+            }
             for (Map.Entry<String, Object> entry : values.entrySet()) {
                 if (used.contains(entry.getKey())) {
                     continue;
@@ -1326,6 +1396,19 @@ public final class RuleSerialization {
                     used.add(entry.getKey());
                     return new Match(entry.getKey(), value);
                 }
+            }
+            return null;
+        }
+
+        private static Match findMatchByName(Map<String, Object> values, Set<String> used, String key,
+                java.util.function.Predicate<Object> filter) {
+            if (key == null || key.isBlank() || used.contains(key)) {
+                return null;
+            }
+            Object value = values.get(key);
+            if (value != null && filter.test(value)) {
+                used.add(key);
+                return new Match(key, value);
             }
             return null;
         }

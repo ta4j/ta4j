@@ -26,6 +26,7 @@ import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.indicators.helpers.DateTimeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.BooleanRule;
@@ -36,6 +37,8 @@ import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OrRule;
 import org.ta4j.core.rules.OverIndicatorRule;
+import org.ta4j.core.rules.TrailingFixedAmountStopGainRule;
+import org.ta4j.core.rules.TrailingFixedAmountStopLossRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 import org.ta4j.core.rules.VoteRule;
 import org.ta4j.core.rules.XorRule;
@@ -306,6 +309,40 @@ public class RuleSerializationTest {
         // Verify the restored strategy works correctly
         assertThat(restoredStrategy.getName()).isEqualTo("Test");
         assertThat(restoredStrategy.getUnstableBars()).isEqualTo(1);
+    }
+
+    @Test
+    public void serializeTrailingFixedAmountStopGainRuleKeepsNumericParametersAlignedByName() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(100, 110, 90, 95, 105)
+                .build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        TrailingFixedAmountStopGainRule rule = new TrailingFixedAmountStopGainRule(close, series.numFactory().numOf(7),
+                2);
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(rule);
+        assertThat(descriptor.getParameters()).containsEntry("gainAmount", "7").containsEntry("barCount", 2);
+
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+        ComponentDescriptor restoredDescriptor = RuleSerialization.describe(restored);
+        assertThat(restoredDescriptor.getParameters()).isEqualTo(descriptor.getParameters());
+    }
+
+    @Test
+    public void serializeTrailingFixedAmountStopLossRuleKeepsNumericParametersAlignedByName() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(100, 110, 90, 95, 105)
+                .build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        TrailingFixedAmountStopLossRule rule = new TrailingFixedAmountStopLossRule(close, series.numFactory().numOf(7),
+                2);
+
+        ComponentDescriptor descriptor = RuleSerialization.describe(rule);
+        assertThat(descriptor.getParameters()).containsEntry("lossAmount", "7").containsEntry("barCount", 2);
+
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+        ComponentDescriptor restoredDescriptor = RuleSerialization.describe(restored);
+        assertThat(restoredDescriptor.getParameters()).isEqualTo(descriptor.getParameters());
     }
 
     @Test
