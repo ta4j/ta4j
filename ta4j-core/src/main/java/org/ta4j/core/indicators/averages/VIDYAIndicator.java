@@ -63,7 +63,7 @@ public class VIDYAIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return cmoPeriod;
+        return cmoIndicator.getCountOfUnstableBars();
     }
 
     @Override

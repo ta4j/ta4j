@@ -61,6 +61,6 @@ public class DojiIndicator extends CachedIndicator<Boolean> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return averageBodyHeightInd.getCountOfUnstableBars() + 1;
     }
 }

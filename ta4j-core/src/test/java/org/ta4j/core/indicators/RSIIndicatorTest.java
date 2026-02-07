@@ -9,6 +9,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TestUtils;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.GainIndicator;
@@ -95,6 +96,27 @@ public class RSIIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num>
         Indicator<Num> rsi = getIndicator(new ClosePriceIndicator(data), barCount);
 
         assertEquals(barCount, rsi.getCountOfUnstableBars());
+    }
+
+    @Test
+    public void testUnstableBarsIncludeSourceIndicator() {
+        Indicator<Num> unstableSource = new CachedIndicator<>(data) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 3;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return numOf(50);
+            }
+        };
+
+        RSIIndicator rsi = new RSIIndicator(unstableSource, 5);
+        assertEquals(8, rsi.getCountOfUnstableBars());
+        for (int i = 0; i < 8; i++) {
+            assertEquals(NaN.NaN, rsi.getValue(i));
+        }
     }
 
     @Test

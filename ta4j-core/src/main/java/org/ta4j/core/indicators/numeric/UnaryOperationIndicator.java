@@ -190,7 +190,7 @@ public class UnaryOperationIndicator implements Indicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return operand.getCountOfUnstableBars();
     }
 
     @Override

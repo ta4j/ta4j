@@ -155,7 +155,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
 
             @Override
             public int getCountOfUnstableBars() {
-                return 0;
+                return Math.max(periodHigh.getCountOfUnstableBars(), periodLow.getCountOfUnstableBars());
             }
         };
     }
@@ -183,7 +183,7 @@ public class FisherIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return intermediateValue.getCountOfUnstableBars();
     }
 
 }

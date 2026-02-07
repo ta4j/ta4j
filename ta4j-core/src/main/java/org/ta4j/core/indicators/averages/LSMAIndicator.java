@@ -8,6 +8,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Least Squares Moving Average (LSMA) Indicator.
  *
@@ -48,8 +50,8 @@ public class LSMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        if (index < barCount - 1) {
-            return indicator.getValue(index); // Not enough data points
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
         }
 
         Num zero = numFactory.zero();
@@ -88,7 +90,7 @@ public class LSMAIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return indicator.getCountOfUnstableBars() + barCount - 1;
     }
 
     @Override

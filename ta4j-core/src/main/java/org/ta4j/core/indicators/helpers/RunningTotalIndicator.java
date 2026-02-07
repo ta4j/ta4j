@@ -77,6 +77,6 @@ public class RunningTotalIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return indicator.getCountOfUnstableBars() + barCount - 1;
     }
 }

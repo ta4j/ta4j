@@ -7,6 +7,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Double exponential moving average indicator.
  *
@@ -18,8 +20,10 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
 
     private final Num two;
     private final int barCount;
-    private final EMAIndicator ema;
-    private final EMAIndicator emaEma;
+    private final Indicator<Num> indicator;
+    private final transient EMAIndicator ema;
+    private final transient EMAIndicator emaEma;
+    private final int unstableBars;
 
     /**
      * Constructor.
@@ -31,18 +35,23 @@ public class DoubleEMAIndicator extends CachedIndicator<Num> {
         super(indicator);
         this.two = getBarSeries().numFactory().two();
         this.barCount = barCount;
+        this.indicator = indicator;
         this.ema = new EMAIndicator(indicator, barCount);
         this.emaEma = new EMAIndicator(ema, barCount);
+        this.unstableBars = indicator.getCountOfUnstableBars() + (barCount * 2);
     }
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         return ema.getValue(index).multipliedBy(two).minus(emaEma.getValue(index));
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return unstableBars;
     }
 
     @Override

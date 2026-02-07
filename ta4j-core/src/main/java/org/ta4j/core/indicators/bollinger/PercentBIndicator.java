@@ -48,6 +48,7 @@ public class PercentBIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        int unstableBars = Math.max(indicator.getCountOfUnstableBars(), bbu.getCountOfUnstableBars());
+        return Math.max(unstableBars, bbl.getCountOfUnstableBars());
     }
 }

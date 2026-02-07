@@ -52,6 +52,6 @@ public class VolumeIndicator extends CachedIndicator<Num> {
     /** @return {@link #barCount} */
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return Math.max(0, barCount - 1);
     }
 }

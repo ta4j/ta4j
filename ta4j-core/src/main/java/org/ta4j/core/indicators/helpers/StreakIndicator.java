@@ -49,17 +49,26 @@ public class StreakIndicator extends RecursiveCachedIndicator<Num> {
 
         int beginIndex = getBarSeries().getBeginIndex();
         Num current = indicator.getValue(index);
+        if (Num.isNaNOrNull(current)) {
+            return NaN;
+        }
 
         if (index <= beginIndex) {
             return getBarSeries().numFactory().zero();
         }
         Num previousPrice = indicator.getValue(index - 1);
+        if (Num.isNaNOrNull(previousPrice)) {
+            return NaN;
+        }
 
         Num priceChange = current.minus(previousPrice);
         if (priceChange.isZero()) {
             return getBarSeries().numFactory().zero();
         }
         Num previousStreak = getValue(index - 1);
+        if (Num.isNaNOrNull(previousStreak)) {
+            previousStreak = getBarSeries().numFactory().zero();
+        }
 
         Num one = getBarSeries().numFactory().one();
         if (priceChange.isPositive()) {
@@ -71,6 +80,6 @@ public class StreakIndicator extends RecursiveCachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 1;
+        return indicator.getCountOfUnstableBars() + 1;
     }
 }

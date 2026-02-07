@@ -8,6 +8,8 @@ import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.HighestValueIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * The Chandelier Exit (long) Indicator.
  *
@@ -51,11 +53,14 @@ public class ChandelierExitLongIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         return high.getValue(index).minus(atr.getValue(index).multipliedBy(k));
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return Math.max(high.getCountOfUnstableBars(), atr.getCountOfUnstableBars());
     }
 }

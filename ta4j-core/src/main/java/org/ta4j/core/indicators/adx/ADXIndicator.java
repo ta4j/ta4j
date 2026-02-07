@@ -21,6 +21,7 @@ public class ADXIndicator extends CachedIndicator<Num> {
 
     private final int diBarCount;
     private final int adxBarCount;
+    private final DXIndicator dxIndicator;
     private final MMAIndicator averageDXIndicator;
 
     /**
@@ -34,7 +35,8 @@ public class ADXIndicator extends CachedIndicator<Num> {
         super(series);
         this.diBarCount = diBarCount;
         this.adxBarCount = adxBarCount;
-        this.averageDXIndicator = new MMAIndicator(new DXIndicator(series, diBarCount), adxBarCount);
+        this.dxIndicator = new DXIndicator(series, diBarCount);
+        this.averageDXIndicator = new MMAIndicator(dxIndicator, adxBarCount);
     }
 
     /**
@@ -55,7 +57,7 @@ public class ADXIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(diBarCount, adxBarCount);
+        return dxIndicator.getCountOfUnstableBars() + averageDXIndicator.getCountOfUnstableBars();
     }
 
     @Override

@@ -54,6 +54,7 @@ public class MassIndexIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        int emaUnstableBars = singleEma.getCountOfUnstableBars() + doubleEma.getCountOfUnstableBars();
+        return emaUnstableBars + barCount - 1;
     }
 }

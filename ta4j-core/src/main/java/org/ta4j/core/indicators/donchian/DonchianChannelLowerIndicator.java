@@ -38,7 +38,7 @@ public class DonchianChannelLowerIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return lowestPrice.getCountOfUnstableBars();
     }
 
     @Override

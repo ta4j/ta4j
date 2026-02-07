@@ -65,7 +65,7 @@ public class TimeSegmentedVolumeIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return closePriceDifference.getCountOfUnstableBars() + barCount - 1;
     }
 
     @Override

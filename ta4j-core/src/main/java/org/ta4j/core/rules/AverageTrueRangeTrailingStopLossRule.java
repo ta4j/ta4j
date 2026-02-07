@@ -13,6 +13,8 @@ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
+import static java.util.Objects.requireNonNull;
+
 /**
  * A trailing stop-loss rule based on Average True Range (ATR).
  *
@@ -35,7 +37,7 @@ public class AverageTrueRangeTrailingStopLossRule extends AbstractRule {
      * The reference price indicator.
      */
     private final Indicator<Num> referencePrice;
-    private final int atrBarCount;
+    private final ATRIndicator atrIndicator;
     private final Number atrCoefficient;
 
     /**
@@ -59,10 +61,22 @@ public class AverageTrueRangeTrailingStopLossRule extends AbstractRule {
      */
     public AverageTrueRangeTrailingStopLossRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient) {
-        this.referencePrice = referencePrice;
-        this.atrBarCount = atrBarCount;
-        this.atrCoefficient = atrCoefficient;
-        this.stopLossThreshold = createStopLossThreshold(series);
+        this(referencePrice, new ATRIndicator(series, atrBarCount), atrCoefficient);
+    }
+
+    /**
+     * Constructor with custom reference price and ATR indicators.
+     *
+     * @param referencePrice the reference price indicator
+     * @param atrIndicator   the ATR indicator
+     * @param atrCoefficient the coefficient to multiply ATR
+     */
+    public AverageTrueRangeTrailingStopLossRule(final Indicator<Num> referencePrice, final ATRIndicator atrIndicator,
+            final Number atrCoefficient) {
+        this.referencePrice = requireNonNull(referencePrice);
+        this.atrIndicator = requireNonNull(atrIndicator);
+        this.atrCoefficient = requireNonNull(atrCoefficient);
+        this.stopLossThreshold = createStopLossThreshold();
     }
 
     /**
@@ -105,7 +119,7 @@ public class AverageTrueRangeTrailingStopLossRule extends AbstractRule {
         return false;
     }
 
-    private Indicator<Num> createStopLossThreshold(BarSeries series) {
-        return BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
+    private Indicator<Num> createStopLossThreshold() {
+        return BinaryOperationIndicator.product(atrIndicator, atrCoefficient);
     }
 }

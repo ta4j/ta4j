@@ -26,6 +26,7 @@
 - **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
+- Added constructors accepting custom ATR indicator to **AverageTrueRangeStopGainRule** **AverageTrueRangeStopLossRule** and **AverageTrueRangeTrailingStopLossRule**
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
 
 ### Changed
@@ -63,6 +64,7 @@
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
+- **Indicator unstable periods**: Standardized unstable-bar aggregation and warm-up guarding across indicators so pre-warmup bars are handled consistently, including lookback-driven trend/cross indicators.
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 - **Returns**: Mark-to-market returns now carry forward cost-adjusted prices for consistent holding-cost treatment.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 
