@@ -57,7 +57,7 @@ public class BollingerBandsUpperIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return Math.max(bbm.getCountOfUnstableBars(), deviation.getCountOfUnstableBars());
     }
 
     /** @return the K multiplier */

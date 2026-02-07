@@ -60,7 +60,8 @@ public class VWAPIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        int baseUnstableBars = Math.max(typicalPrice.getCountOfUnstableBars(), volume.getCountOfUnstableBars());
+        return baseUnstableBars + barCount - 1;
     }
 
     @Override

@@ -49,15 +49,15 @@ public class MassIndexIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     @Test
     public void massIndexUsing3And8BarCounts() {
         var massIndex = new MassIndexIndicator(data, 3, 8);
+        assertThat(massIndex.getCountOfUnstableBars()).isEqualTo(13);
 
         // MassIndexIndicator uses EMAIndicator with emaBarCount=3, so EMA has unstable
         // period of 3
         // The doubleEma (EMA of singleEma) also has unstable period of 3
         // So indices 0-2 will have NaN from EMAs, causing MassIndex to return NaN or
         // invalid values
-        // Note: MassIndexIndicator.getCountOfUnstableBars() returns 0, but the
-        // underlying EMAs return NaN
-        // during their unstable period, which affects the calculation
+        // MassIndexIndicator.getCountOfUnstableBars() reflects the combined EMA
+        // warmup plus the summation window.
         for (int i = 0; i < 3; i++) {
             // Values during EMA unstable period may be NaN or invalid
             Num value = massIndex.getValue(i);

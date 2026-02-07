@@ -32,6 +32,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
     private final Num beta;
     private final Num phaseRatio;
     private final Num alpha;
+    private final int unstableBars;
 
     /**
      * Constructor.
@@ -60,6 +61,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
                         : this.phase.dividedBy(numFactory.numOf(100)).plus(numFactory.numOf(1.5)));
 
         alpha = beta.pow(this.power);
+        this.unstableBars = indicator.getCountOfUnstableBars() + barCount;
 
         for (int i = indicator.getBarSeries().getBeginIndex(); i < indicator.getBarSeries().getBarCount(); i++) {
             calculate(i);
@@ -125,7 +127,7 @@ public class JMAIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return unstableBars;
     }
 
     record JmaData(Num e0, Num e1, Num e2, Num jma) {

@@ -45,6 +45,7 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        int unstableBars = Math.max(variance1.getCountOfUnstableBars(), variance2.getCountOfUnstableBars());
+        return Math.max(unstableBars, covariance.getCountOfUnstableBars());
     }
 }

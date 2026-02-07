@@ -6,6 +6,8 @@ package org.ta4j.core.indicators.averages;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Displaced Moving Average (DMA) indicator.
  *
@@ -21,6 +23,7 @@ public class DMAIndicator extends SMAIndicator {
 
     private final int barCount;
     private final int displacement;
+    private final int unstableBars;
 
     /**
      * Constructor.
@@ -34,10 +37,14 @@ public class DMAIndicator extends SMAIndicator {
         super(indicator, barCount);
         this.barCount = barCount;
         this.displacement = displacement;
+        this.unstableBars = Math.max(0, super.getCountOfUnstableBars() + displacement);
     }
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
 
         int displacedIndex = index - displacement;
         if (displacedIndex < 0) {
@@ -52,7 +59,7 @@ public class DMAIndicator extends SMAIndicator {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount * 2;
+        return unstableBars;
     }
 
     @Override

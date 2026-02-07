@@ -73,7 +73,7 @@ public class AroonUpIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return highestHighPriceIndicator.getCountOfUnstableBars();
     }
 
     @Override

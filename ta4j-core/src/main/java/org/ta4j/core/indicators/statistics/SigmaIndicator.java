@@ -43,7 +43,7 @@ public class SigmaIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return Math.max(mean.getCountOfUnstableBars(), sd.getCountOfUnstableBars());
     }
 
     @Override

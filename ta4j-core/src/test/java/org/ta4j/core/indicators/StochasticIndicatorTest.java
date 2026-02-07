@@ -36,7 +36,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     @Test
     public void calculatesStochasticCorrectly() {
         // Test data: values from 10 to 20 over 5 periods
-        // Lookback 5: unstable period is 5 (indices 0-4)
+        // Lookback 5: unstable period is 4 (indices 0-3)
         List<Num> values = Arrays.asList(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)
                 .stream()
                 .map(numFactory::numOf)
@@ -45,7 +45,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         StochasticIndicator stochastic = new StochasticIndicator(mockIndicator, 5);
 
         int unstableBars = stochastic.getCountOfUnstableBars();
-        assertThat(unstableBars).isEqualTo(5);
+        assertThat(unstableBars).isEqualTo(4);
 
         // During unstable period, should return NaN
         for (int i = 0; i < unstableBars; i++) {
@@ -62,7 +62,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     @Test
     public void calculatesStochasticAtZero() {
         // Test data: values from 10 to 20, but at index 5, value is at minimum
-        // Lookback 5: unstable period is 5 (indices 0-4)
+        // Lookback 5: unstable period is 4 (indices 0-3)
         List<Num> values = Arrays.asList(10, 11, 12, 13, 14, 10, 16, 17, 18, 19, 20)
                 .stream()
                 .map(numFactory::numOf)
@@ -77,7 +77,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     @Test
     public void calculatesStochasticAtMidpoint() {
         // Test data: oscillating values to test midpoint calculation
-        // Lookback 5: unstable period is 5 (indices 0-4)
+        // Lookback 5: unstable period is 4 (indices 0-3)
         List<Num> values = Arrays.asList(10, 15, 20, 15, 10, 15, 20, 15, 10, 15, 20)
                 .stream()
                 .map(numFactory::numOf)
@@ -92,7 +92,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     @Test
     public void returnsZeroWhenRangeIsZeroAtFirstIndex() {
         // Test data: first few values are the same, then different
-        // Lookback 3: unstable period is 3 (indices 0-2)
+        // Lookback 3: unstable period is 2 (indices 0-1)
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(5, 5, 5, 10, 15, 20).build();
         List<Num> values = Arrays.asList(5, 5, 5, 10, 15, 20)
                 .stream()
@@ -102,7 +102,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         StochasticIndicator stochastic = new StochasticIndicator(mockIndicator, 3);
 
         int unstableBars = stochastic.getCountOfUnstableBars();
-        assertThat(unstableBars).isEqualTo(3);
+        assertThat(unstableBars).isEqualTo(2);
 
         // During unstable period, should return NaN
         int beginIndex = series.getBeginIndex();
@@ -118,7 +118,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     @Test
     public void returnsPreviousValueWhenRangeIsZero() {
         // Test data: all values are the same after initial value
-        // Lookback 3: unstable period is 3 (indices 0-2)
+        // Lookback 3: unstable period is 2 (indices 0-1)
         List<Num> values = Arrays.asList(10, 5, 5, 5, 5, 5)
                 .stream()
                 .map(numFactory::numOf)
@@ -127,7 +127,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         StochasticIndicator stochastic = new StochasticIndicator(mockIndicator, 3);
 
         int unstableBars = stochastic.getCountOfUnstableBars();
-        assertThat(unstableBars).isEqualTo(3);
+        assertThat(unstableBars).isEqualTo(2);
 
         // During unstable period, should return NaN
         for (int i = 0; i < unstableBars; i++) {
@@ -203,7 +203,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         MockIndicator mockIndicator = new MockIndicator(data, values);
         StochasticIndicator stochastic = new StochasticIndicator(mockIndicator, lookback);
 
-        assertThat(stochastic.getCountOfUnstableBars()).isEqualTo(lookback);
+        assertThat(stochastic.getCountOfUnstableBars()).isEqualTo(lookback - 1);
     }
 
     @Test
@@ -244,7 +244,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     @Test
     public void handlesAscendingSequence() {
         // Strictly ascending values
-        // Lookback 5: unstable period is 5 (indices 0-4)
+        // Lookback 5: unstable period is 4 (indices 0-3)
         List<Num> values = Arrays.asList(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20)
                 .stream()
                 .map(numFactory::numOf)
@@ -253,7 +253,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         StochasticIndicator stochastic = new StochasticIndicator(mockIndicator, 5);
 
         int unstableBars = stochastic.getCountOfUnstableBars();
-        assertThat(unstableBars).isEqualTo(5);
+        assertThat(unstableBars).isEqualTo(4);
 
         // In an ascending sequence, each value after unstable period should be at 100%
         // (it's the max in its window)
@@ -266,7 +266,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     @Test
     public void handlesDescendingSequence() {
         // Strictly descending values
-        // Lookback 5: unstable period is 5 (indices 0-4)
+        // Lookback 5: unstable period is 4 (indices 0-3)
         List<Num> values = Arrays.asList(20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10)
                 .stream()
                 .map(numFactory::numOf)
@@ -275,7 +275,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         StochasticIndicator stochastic = new StochasticIndicator(mockIndicator, 5);
 
         int unstableBars = stochastic.getCountOfUnstableBars();
-        assertThat(unstableBars).isEqualTo(5);
+        assertThat(unstableBars).isEqualTo(4);
 
         // In a descending sequence, each value after unstable period should be at 0%
         // (it's the min in its window)
@@ -288,7 +288,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
     @Test
     public void handlesOscillatingValues() {
         // Oscillating pattern: 10, 20, 10, 20, ...
-        // Lookback 5: unstable period is 5 (indices 0-4)
+        // Lookback 5: unstable period is 4 (indices 0-3)
         List<Num> values = Arrays.asList(10, 20, 10, 20, 10, 20, 10, 20, 10, 20)
                 .stream()
                 .map(numFactory::numOf)
@@ -297,7 +297,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         StochasticIndicator stochastic = new StochasticIndicator(mockIndicator, 5);
 
         int unstableBars = stochastic.getCountOfUnstableBars();
-        assertThat(unstableBars).isEqualTo(5);
+        assertThat(unstableBars).isEqualTo(4);
 
         // During unstable period, should return NaN
         for (int i = 0; i < unstableBars; i++) {
@@ -335,9 +335,9 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         }
 
         // Verify unstable bars count matches lookback
-        assertThat(stochastic3.getCountOfUnstableBars()).isEqualTo(3);
-        assertThat(stochastic5.getCountOfUnstableBars()).isEqualTo(5);
-        assertThat(stochastic10.getCountOfUnstableBars()).isEqualTo(10);
+        assertThat(stochastic3.getCountOfUnstableBars()).isEqualTo(2);
+        assertThat(stochastic5.getCountOfUnstableBars()).isEqualTo(4);
+        assertThat(stochastic10.getCountOfUnstableBars()).isEqualTo(9);
     }
 
     @Test
@@ -350,7 +350,7 @@ public class StochasticIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         StochasticIndicator stochastic = new StochasticIndicator(mockIndicator, 5);
 
         int unstableBars = stochastic.getCountOfUnstableBars();
-        assertThat(unstableBars).isEqualTo(5);
+        assertThat(unstableBars).isEqualTo(4);
 
         // All indices before unstable period should return NaN
         for (int i = 0; i < unstableBars; i++) {

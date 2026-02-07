@@ -40,6 +40,6 @@ public class RAVIIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return Math.max(shortSma.getCountOfUnstableBars(), longSma.getCountOfUnstableBars());
     }
 }

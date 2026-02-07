@@ -3,7 +3,12 @@
  */
 package org.ta4j.core.indicators.averages;
 
+import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -114,6 +119,24 @@ public class VWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
             assertNumEquals(expected.doubleValue(), value);
         }
+    }
+
+    @Test
+    public void reportsUnstableBarsForEmaWeightedInputs() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+                .build();
+
+        List<Num> values = IntStream.range(0, series.getBarCount())
+                .mapToObj(i -> numFactory.numOf(i + 1))
+                .collect(Collectors.toList());
+
+        MockIndicator price = new MockIndicator(series, 7, values);
+        MockIndicator volume = new MockIndicator(series, 2, values);
+
+        VWMAIndicator vwma = new VWMAIndicator(price, volume, 5, EMAIndicator::new);
+
+        assertEquals(7, vwma.getCountOfUnstableBars());
     }
 
 }

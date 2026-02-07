@@ -12,6 +12,8 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Variable Weighted Moving Average (VWMA) indicator.
  *
@@ -27,6 +29,8 @@ import org.ta4j.core.num.Num;
 public class VWMAIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
+    private final Indicator<Num> priceIndicator;
+    private final Indicator<Num> volumeIndicator;
     private final Indicator<Num> volumeWeightedIndicator;
 
     /**
@@ -58,6 +62,8 @@ public class VWMAIndicator extends CachedIndicator<Num> {
             throw new IllegalArgumentException("Price and volume indicators must share the same bar series");
         }
 
+        this.priceIndicator = priceIndicator;
+        this.volumeIndicator = volumeIndicator;
         final var weightedPriceSum = BinaryOperationIndicator.product(priceIndicator, volumeIndicator);
         final var weightedPriceAverage = Objects.requireNonNull(averageFactory.apply(weightedPriceSum, barCount),
                 "averageFactory must return a price-volume average");
@@ -70,12 +76,17 @@ public class VWMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         return volumeWeightedIndicator.getValue(index);
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        int baseUnstableBars = Math.max(priceIndicator.getCountOfUnstableBars(),
+                volumeIndicator.getCountOfUnstableBars());
+        return Math.max(baseUnstableBars, volumeWeightedIndicator.getCountOfUnstableBars());
     }
 
     @Override

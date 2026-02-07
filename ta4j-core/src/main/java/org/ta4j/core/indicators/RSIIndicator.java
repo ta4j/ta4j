@@ -19,9 +19,11 @@ import static org.ta4j.core.num.NaN.NaN;
  */
 public class RSIIndicator extends CachedIndicator<Num> {
 
-    private final MMAIndicator averageGainIndicator;
-    private final MMAIndicator averageLossIndicator;
+    private final Indicator<Num> indicator;
+    private final transient MMAIndicator averageGainIndicator;
+    private final transient MMAIndicator averageLossIndicator;
     private final int barCount;
+    private final int unstableBars;
 
     /**
      * Constructor.
@@ -31,9 +33,11 @@ public class RSIIndicator extends CachedIndicator<Num> {
      */
     public RSIIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
+        this.indicator = indicator;
         this.averageGainIndicator = new MMAIndicator(new GainIndicator(indicator), barCount);
         this.averageLossIndicator = new MMAIndicator(new LossIndicator(indicator), barCount);
         this.barCount = barCount;
+        this.unstableBars = barCount + indicator.getCountOfUnstableBars();
     }
 
     @Override
@@ -44,6 +48,9 @@ public class RSIIndicator extends CachedIndicator<Num> {
         // compute relative strength
         Num averageGain = averageGainIndicator.getValue(index);
         Num averageLoss = averageLossIndicator.getValue(index);
+        if (Num.isNaNOrNull(averageGain) || Num.isNaNOrNull(averageLoss)) {
+            return NaN;
+        }
         final var numFactory = getBarSeries().numFactory();
         if (averageLoss.isZero()) {
             return averageGain.isZero() ? numFactory.zero() : numFactory.hundred();
@@ -55,6 +62,6 @@ public class RSIIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return this.barCount;
+        return unstableBars;
     }
 }

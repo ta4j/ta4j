@@ -8,6 +8,8 @@ import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * The Chandelier Exit (short) Indicator.
  *
@@ -51,11 +53,14 @@ public class ChandelierExitShortIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         return low.getValue(index).plus(atr.getValue(index).multipliedBy(k));
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return Math.max(low.getCountOfUnstableBars(), atr.getCountOfUnstableBars());
     }
 }

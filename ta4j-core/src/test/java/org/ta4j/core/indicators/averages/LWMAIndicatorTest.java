@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.averages;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -33,10 +34,10 @@ public class LWMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
     @Test
     public void lwmaUsingBarCount5UsingClosePrice() {
         var lwma = new LWMAIndicator(new ClosePriceIndicator(data), 5);
-        assertNumEquals(0.0, lwma.getValue(0));
-        assertNumEquals(0.0, lwma.getValue(1));
-        assertNumEquals(0.0, lwma.getValue(2));
-        assertNumEquals(0.0, lwma.getValue(3));
+        int unstableBars = lwma.getCountOfUnstableBars();
+        for (int i = 0; i < unstableBars; i++) {
+            assertThat(Num.isNaNOrNull(lwma.getValue(i))).isTrue();
+        }
         assertNumEquals(36.0506, lwma.getValue(4));
         assertNumEquals(35.9673, lwma.getValue(5));
         assertNumEquals(36.0766, lwma.getValue(6));

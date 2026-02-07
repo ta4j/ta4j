@@ -79,6 +79,7 @@ public class IchimokuSenkouSpanAIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        int baseUnstableBars = Math.max(conversionLine.getCountOfUnstableBars(), baseLine.getCountOfUnstableBars());
+        return baseUnstableBars + offset - 1;
     }
 }

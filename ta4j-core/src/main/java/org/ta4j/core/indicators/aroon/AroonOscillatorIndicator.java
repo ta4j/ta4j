@@ -40,7 +40,7 @@ public class AroonOscillatorIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return Math.max(aroonUpIndicator.getCountOfUnstableBars(), aroonDownIndicator.getCountOfUnstableBars());
     }
 
     @Override

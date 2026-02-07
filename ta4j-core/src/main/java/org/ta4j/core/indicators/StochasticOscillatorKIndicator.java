@@ -68,7 +68,9 @@ public class StochasticOscillatorKIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        int baseUnstable = Math.max(indicator.getCountOfUnstableBars(),
+                Math.max(highPriceIndicator.getCountOfUnstableBars(), lowPriceIndicator.getCountOfUnstableBars()));
+        return baseUnstable + barCount - 1;
     }
 
     @Override

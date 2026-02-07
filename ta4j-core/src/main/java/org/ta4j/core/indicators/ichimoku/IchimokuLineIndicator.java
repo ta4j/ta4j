@@ -48,6 +48,6 @@ public class IchimokuLineIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return Math.max(periodHigh.getCountOfUnstableBars(), periodLow.getCountOfUnstableBars());
     }
 }

@@ -70,7 +70,9 @@ public class WilliamsRIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        int baseUnstable = Math.max(closePriceIndicator.getCountOfUnstableBars(),
+                Math.max(highPriceIndicator.getCountOfUnstableBars(), lowPriceIndicator.getCountOfUnstableBars()));
+        return baseUnstable + barCount - 1;
     }
 
     @Override

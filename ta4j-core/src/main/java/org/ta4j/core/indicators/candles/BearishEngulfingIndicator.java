@@ -46,6 +46,6 @@ public class BearishEngulfingIndicator extends CachedIndicator<Boolean> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return 1;
     }
 }

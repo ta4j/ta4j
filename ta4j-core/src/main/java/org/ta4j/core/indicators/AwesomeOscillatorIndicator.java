@@ -68,6 +68,6 @@ public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return Math.max(sma5.getCountOfUnstableBars(), sma34.getCountOfUnstableBars());
     }
 }

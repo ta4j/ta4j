@@ -123,6 +123,6 @@ public class PeriodicalGrowthRateIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return indicator.getCountOfUnstableBars() + barCount;
     }
 }

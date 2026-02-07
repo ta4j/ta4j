@@ -45,6 +45,7 @@ public class BollingerBandWidthIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        int unstableBars = Math.max(bbu.getCountOfUnstableBars(), bbm.getCountOfUnstableBars());
+        return Math.max(unstableBars, bbl.getCountOfUnstableBars());
     }
 }

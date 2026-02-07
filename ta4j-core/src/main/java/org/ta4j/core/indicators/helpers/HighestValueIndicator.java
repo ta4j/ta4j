@@ -48,7 +48,7 @@ public class HighestValueIndicator extends CachedIndicator<Num> {
     /** @return {@link #barCount} */
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return indicator.getCountOfUnstableBars() + barCount - 1;
     }
 
     @Override

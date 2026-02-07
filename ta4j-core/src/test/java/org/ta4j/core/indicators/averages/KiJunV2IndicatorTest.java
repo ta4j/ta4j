@@ -13,6 +13,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -32,7 +33,12 @@ public class KiJunV2IndicatorTest extends AbstractIndicatorTest<Indicator<Num>, 
         KiJunV2Indicator kijunv2 = new KiJunV2Indicator(new HighPriceIndicator(barSeries),
                 new LowPriceIndicator(barSeries), 9);
 
-        for (int i = 0; i < barSeries.getBarCount(); i++) {
+        int unstableBars = kijunv2.getCountOfUnstableBars();
+        for (int i = 0; i < unstableBars; i++) {
+            assertNumEquals(NaN.NaN, kijunv2.getValue(i));
+        }
+
+        for (int i = unstableBars; i < barSeries.getBarCount(); i++) {
             Num expected = mock.getValue(i);
             Num value = kijunv2.getValue(i);
 

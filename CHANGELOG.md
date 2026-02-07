@@ -63,6 +63,7 @@
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
+- **Indicator unstable periods**: Standardized unstable-bar aggregation and warm-up guarding across indicators so pre-warmup bars are handled consistently, including lookback-driven trend/cross indicators.
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 - **Returns**: Mark-to-market returns now carry forward cost-adjusted prices for consistent holding-cost treatment.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 

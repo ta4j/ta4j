@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators;
 
+import static org.junit.Assert.assertEquals;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
@@ -47,6 +48,7 @@ public class WilliamsRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
     public void williamsRUsingBarCount5UsingClosePrice() {
         var wr = new WilliamsRIndicator(new ClosePriceIndicator(data), 5, new HighPriceIndicator(data),
                 new LowPriceIndicator(data));
+        assertEquals(4, wr.getCountOfUnstableBars());
 
         assertNumEquals(-47.2222, wr.getValue(4));
         assertNumEquals(-54.5454, wr.getValue(5));

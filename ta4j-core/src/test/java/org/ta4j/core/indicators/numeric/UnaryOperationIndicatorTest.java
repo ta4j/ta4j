@@ -243,7 +243,7 @@ public class UnaryOperationIndicatorTest extends AbstractIndicatorTest<UnaryOper
 
         final var result = UnaryOperationIndicator.sqrt(indicator);
 
-        assertEquals(0, result.getCountOfUnstableBars());
+        assertEquals(1, result.getCountOfUnstableBars());
     }
 
     @Test

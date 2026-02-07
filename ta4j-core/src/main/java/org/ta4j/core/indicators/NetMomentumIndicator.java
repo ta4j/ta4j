@@ -10,6 +10,8 @@ import org.ta4j.core.num.NumFactory;
 
 import java.util.Objects;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Net Momentum Indicator.
  *
@@ -115,6 +117,7 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
     private final Num decayFactor;
     private final Num decayFactorAtWindowLimit;
     private final Num zero;
+    private final int unstableBars;
 
     /**
      * Constructor for Net Momentum Indicator.
@@ -176,6 +179,10 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
         this.decayFactor = numFactory.numOf(decayFactor);
         this.decayFactorAtWindowLimit = this.decayFactor.pow(timeFrame);
         this.zero = numFactory.zero();
+        int smoothingUnstable = Math.max(oscillatingIndicator.getCountOfUnstableBars(),
+                smoothedIndicator.getCountOfUnstableBars());
+        int windowUnstable = Math.max(0, timeFrame - 1);
+        this.unstableBars = smoothingUnstable + windowUnstable;
     }
 
     /**
@@ -214,9 +221,13 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
+
         Num delta = deltaFromNeutralIndicator.getValue(index);
-        if (delta.isNaN()) {
-            delta = zero;
+        if (Num.isNaNOrNull(delta)) {
+            return NaN;
         }
 
         if (index == 0) {
@@ -224,14 +235,16 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
         }
 
         Num previousValue = getValue(index - 1);
-        if (previousValue.isNaN()) {
+        if (Num.isNaNOrNull(previousValue)) {
             previousValue = zero;
         }
         Num decayedWithCurrent = previousValue.multipliedBy(decayFactor).plus(delta);
 
         if (index >= timeFrame) {
-            Num expiredContribution = deltaFromNeutralIndicator.getValue(index - timeFrame);
-            if (expiredContribution.isNaN()) {
+            int expiredIndex = index - timeFrame;
+            Num expiredContribution = expiredIndex < getCountOfUnstableBars() ? zero
+                    : deltaFromNeutralIndicator.getValue(expiredIndex);
+            if (Num.isNaNOrNull(expiredContribution)) {
                 expiredContribution = zero;
             }
             expiredContribution = expiredContribution.multipliedBy(decayFactorAtWindowLimit);
@@ -243,7 +256,6 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(timeFrame,
-                Math.max(oscillatingIndicator.getCountOfUnstableBars(), smoothedIndicator.getCountOfUnstableBars()));
+        return unstableBars;
     }
 }

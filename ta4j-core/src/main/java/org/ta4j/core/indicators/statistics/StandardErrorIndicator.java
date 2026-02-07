@@ -36,6 +36,6 @@ public class StandardErrorIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return sdev.getCountOfUnstableBars();
     }
 }
