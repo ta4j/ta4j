@@ -68,7 +68,7 @@ public class StochasticRSIIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return this.barCount;
+        return this.stochasticIndicator.getCountOfUnstableBars();
     }
 
 }

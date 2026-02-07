@@ -12,6 +12,8 @@ import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Kihon Moving Average Indicator (KiJunV2).
  *
@@ -47,6 +49,9 @@ public class KiJunV2Indicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
 
         // Get the highest high and lowest low within the barCount period
         Num highestHigh = highestValue.calculate(index);
@@ -58,7 +63,7 @@ public class KiJunV2Indicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return Math.max(highestValue.getCountOfUnstableBars(), lowestValue.getCountOfUnstableBars());
     }
 
     @Override

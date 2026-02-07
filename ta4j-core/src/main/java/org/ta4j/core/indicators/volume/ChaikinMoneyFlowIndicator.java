@@ -52,7 +52,8 @@ public class ChaikinMoneyFlowIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        int clvUnstableBars = clvIndicator.getCountOfUnstableBars() + barCount - 1;
+        return Math.max(volumeIndicator.getCountOfUnstableBars(), clvUnstableBars);
     }
 
     /**

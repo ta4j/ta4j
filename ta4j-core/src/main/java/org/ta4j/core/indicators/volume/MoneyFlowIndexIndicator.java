@@ -84,7 +84,7 @@ public class MoneyFlowIndexIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return previousTypicalPrice.getCountOfUnstableBars() + barCount - 1;
     }
 
     @Override

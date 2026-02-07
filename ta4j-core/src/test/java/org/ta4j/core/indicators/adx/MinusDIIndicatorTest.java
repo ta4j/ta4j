@@ -30,23 +30,17 @@ public class MinusDIIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> 
         Indicator<Num> indicator;
 
         indicator = getIndicator(xlsSeries, 1);
-        // With barCount=1, unstable period is 1, so index 0 returns NaN
-        // Values after unstable period will differ initially but should converge. Only
-        // check end value.
+        assertEquals(2, indicator.getCountOfUnstableBars());
         assertEquals(0.0, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsSeries, 3);
-        // With barCount=3, unstable period is 3, so indices 0-2 return NaN
-        // Values after unstable period will differ initially but should converge. Only
-        // check end value.
+        assertEquals(4, indicator.getCountOfUnstableBars());
         assertEquals(21.0711, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
 
         indicator = getIndicator(xlsSeries, 13);
-        // With barCount=13, unstable period is 13, so indices 0-12 return NaN
-        // Values after unstable period will differ initially but should converge. Only
-        // check end value.
+        assertEquals(14, indicator.getCountOfUnstableBars());
         assertEquals(20.9020, indicator.getValue(indicator.getBarSeries().getEndIndex()).doubleValue(),
                 TestUtils.GENERAL_OFFSET);
     }

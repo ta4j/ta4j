@@ -29,6 +29,7 @@
 - **VWAP analytics suite**: Added rolling and anchored VWAP indicators plus deviation/standard deviation/z-score/band indicators with shared series validation and NaN handling.
 - **Support/resistance clustering**: Added bounce-count and KDE-based price-cluster support/resistance indicators plus volume-profile KDE helpers for grouping prices with configurable lookbacks and tolerances.
 - **Wyckoff cycle analysis**: Added Wyckoff structure, volume profile, event detection, and phase indicators plus a runnable cycle example.
+- Added constructors accepting custom ATR indicator to **AverageTrueRangeStopGainRule** **AverageTrueRangeStopLossRule** and **AverageTrueRangeTrailingStopLossRule**
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
 
 ### Changed
@@ -65,6 +66,7 @@
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
+- **Indicator unstable periods**: Standardized unstable-bar aggregation and warm-up guarding across indicators so pre-warmup bars are handled consistently, including lookback-driven trend/cross indicators.
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
 - **Returns**: Mark-to-market returns now carry forward cost-adjusted prices for consistent holding-cost treatment.
 - **BarSeries MaxBarCount**: Fixed sub-series creation to preserve the original series max bars, instead of resetting it to default Integer.MAX_VALUE 

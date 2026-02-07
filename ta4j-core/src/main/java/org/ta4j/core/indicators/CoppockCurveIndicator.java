@@ -56,6 +56,6 @@ public class CoppockCurveIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return wma.getCountOfUnstableBars();
     }
 }

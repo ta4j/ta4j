@@ -7,6 +7,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Triple exponential moving average indicator (also called "TRIX").
  *
@@ -22,9 +24,11 @@ import org.ta4j.core.num.Num;
 public class TripleEMAIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
-    private final EMAIndicator ema;
-    private final EMAIndicator emaEma;
-    private final EMAIndicator emaEmaEma;
+    private final Indicator<Num> indicator;
+    private final transient EMAIndicator ema;
+    private final transient EMAIndicator emaEma;
+    private final transient EMAIndicator emaEmaEma;
+    private final int unstableBars;
 
     /**
      * Constructor.
@@ -35,13 +39,18 @@ public class TripleEMAIndicator extends CachedIndicator<Num> {
     public TripleEMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator);
         this.barCount = barCount;
+        this.indicator = indicator;
         this.ema = new EMAIndicator(indicator, barCount);
         this.emaEma = new EMAIndicator(ema, barCount);
         this.emaEmaEma = new EMAIndicator(emaEma, barCount);
+        this.unstableBars = indicator.getCountOfUnstableBars() + (barCount * 3);
     }
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         // trix = 3 * ( ema - emaEma ) + emaEmaEma
         final var numFactory = getBarSeries().numFactory();
         return numFactory.numOf(3)
@@ -51,7 +60,7 @@ public class TripleEMAIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return unstableBars;
     }
 
     @Override

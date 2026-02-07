@@ -343,7 +343,7 @@ public class NumericIndicator implements Indicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return delegate.getCountOfUnstableBars();
     }
 
     @Override

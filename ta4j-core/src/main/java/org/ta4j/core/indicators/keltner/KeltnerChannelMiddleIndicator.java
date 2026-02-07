@@ -10,6 +10,8 @@ import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Keltner Channel (middle line) indicator.
  *
@@ -48,12 +50,15 @@ public class KeltnerChannelMiddleIndicator extends AbstractIndicator<Num> {
 
     @Override
     public Num getValue(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         return emaIndicator.getValue(index);
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return getBarCount();
+        return indicator.getCountOfUnstableBars() + getBarCount();
     }
 
     /** @return the bar count of {@link #emaIndicator} */

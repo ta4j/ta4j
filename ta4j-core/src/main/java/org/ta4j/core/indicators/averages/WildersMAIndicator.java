@@ -82,7 +82,7 @@ public class WildersMAIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount * 2;
+        return indicator.getCountOfUnstableBars() + (barCount * 2);
     }
 
     @Override

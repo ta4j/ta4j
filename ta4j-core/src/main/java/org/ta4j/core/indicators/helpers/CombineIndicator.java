@@ -56,7 +56,7 @@ public class CombineIndicator extends CachedIndicator<Num> {
     @Override
     @Deprecated
     public int getCountOfUnstableBars() {
-        return 0;
+        return Math.max(indicatorLeft.getCountOfUnstableBars(), indicatorRight.getCountOfUnstableBars());
     }
 
     /**

@@ -203,6 +203,8 @@ public class SqueezeProIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(0, barCount - 1);
+        int unstableBars = Math.max(priceSma.getCountOfUnstableBars(), priceStdDev.getCountOfUnstableBars());
+        unstableBars = Math.max(unstableBars, trueRangeSma.getCountOfUnstableBars());
+        return Math.max(unstableBars, momentum.getCountOfUnstableBars());
     }
 }

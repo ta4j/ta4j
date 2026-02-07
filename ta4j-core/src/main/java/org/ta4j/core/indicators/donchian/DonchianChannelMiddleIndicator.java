@@ -46,7 +46,7 @@ public class DonchianChannelMiddleIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return Math.max(lower.getCountOfUnstableBars(), upper.getCountOfUnstableBars());
     }
 
     @Override

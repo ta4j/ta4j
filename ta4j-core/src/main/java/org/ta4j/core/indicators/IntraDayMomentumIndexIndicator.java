@@ -68,6 +68,6 @@ public class IntraDayMomentumIndexIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return this.barCount;
+        return Math.max(averageCloseOpenDiff.getCountOfUnstableBars(), averageOpenCloseDiff.getCountOfUnstableBars());
     }
 }

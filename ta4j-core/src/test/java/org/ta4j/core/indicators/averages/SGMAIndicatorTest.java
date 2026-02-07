@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.averages;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.*;
 import static org.ta4j.core.TestUtils.*;
 
@@ -31,8 +32,12 @@ public class SGMAIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
         SGMAIndicator ma = new SGMAIndicator(new ClosePriceIndicator(barSeries), 9, 2);
 
-        for (int i = 0; i < barSeries.getBarCount(); i++) {
+        int unstableBars = ma.getCountOfUnstableBars();
+        for (int i = 0; i < unstableBars; i++) {
+            assertThat(Num.isNaNOrNull(ma.getValue(i))).isTrue();
+        }
 
+        for (int i = unstableBars; i < barSeries.getBarCount(); i++) {
             Num expected = mock.getValue(i);
             Num value = ma.getValue(i);
             assertNumEquals(expected.doubleValue(), value);

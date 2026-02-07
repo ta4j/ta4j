@@ -11,6 +11,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Savitzky-Golay Moving Average (SGMA) Indicator.
  *
@@ -62,6 +64,9 @@ public class SGMAIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         int halfWindow = barCount / 2;
         Num result = indicator.getBarSeries().numFactory().zero();
 
@@ -77,7 +82,7 @@ public class SGMAIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return indicator.getCountOfUnstableBars() + barCount - 1;
     }
 
     @Override

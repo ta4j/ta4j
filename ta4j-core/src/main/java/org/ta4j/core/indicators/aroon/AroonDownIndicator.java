@@ -74,7 +74,7 @@ public class AroonDownIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return lowestLowPriceIndicator.getCountOfUnstableBars();
     }
 
     @Override

@@ -17,6 +17,7 @@ import org.ta4j.core.num.Num;
  */
 public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
 
+    private final AccumulationDistributionIndicator accumulationDistributionIndicator;
     private final EMAIndicator emaShort;
     private final EMAIndicator emaLong;
 
@@ -29,8 +30,9 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
      */
     public ChaikinOscillatorIndicator(BarSeries series, int shortBarCount, int longBarCount) {
         super(series);
-        this.emaShort = new EMAIndicator(new AccumulationDistributionIndicator(series), shortBarCount);
-        this.emaLong = new EMAIndicator(new AccumulationDistributionIndicator(series), longBarCount);
+        this.accumulationDistributionIndicator = new AccumulationDistributionIndicator(series);
+        this.emaShort = new EMAIndicator(accumulationDistributionIndicator, shortBarCount);
+        this.emaLong = new EMAIndicator(accumulationDistributionIndicator, longBarCount);
     }
 
     /**
@@ -49,6 +51,7 @@ public class ChaikinOscillatorIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        int emaUnstableBars = Math.max(emaShort.getCountOfUnstableBars(), emaLong.getCountOfUnstableBars());
+        return accumulationDistributionIndicator.getCountOfUnstableBars() + emaUnstableBars;
     }
 }

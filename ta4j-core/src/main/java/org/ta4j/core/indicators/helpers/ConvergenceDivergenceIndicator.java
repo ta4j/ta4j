@@ -114,6 +114,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
 
     /** The minimum slope for convergence or divergence. **/
     private final Num minSlope;
+    private final int unstableBars;
 
     /**
      * Constructor. <br/>
@@ -153,6 +154,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
         this.strictType = null;
         this.minStrength = getBarSeries().numFactory().numOf(Math.min(1, Math.abs(minStrength)));
         this.minSlope = getBarSeries().numFactory().numOf(minSlope);
+        this.unstableBars = computeUnstableBars(ref, other, barCount);
     }
 
     /**
@@ -186,6 +188,7 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
         this.strictType = strictType;
         this.minStrength = null;
         this.minSlope = null;
+        this.unstableBars = computeUnstableBars(ref, other, barCount);
     }
 
     @Override
@@ -231,7 +234,14 @@ public class ConvergenceDivergenceIndicator extends CachedIndicator<Boolean> {
     /** @return {@link #barCount} */
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return unstableBars;
+    }
+
+    private static int computeUnstableBars(Indicator<Num> ref, Indicator<Num> other, int barCount) {
+        int baseUnstable = Math.max(ref.getCountOfUnstableBars(), other.getCountOfUnstableBars());
+        int correlationUnstable = new CorrelationCoefficientIndicator(ref, other, barCount).getCountOfUnstableBars();
+        int slopeUnstable = new SimpleLinearRegressionIndicator(ref, barCount).getCountOfUnstableBars();
+        return Math.max(baseUnstable, Math.max(correlationUnstable, slopeUnstable));
     }
 
     /**
