@@ -259,11 +259,24 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         KalmanFilterIndicator smoothed = new KalmanFilterIndicator(constantAbove);
         BinaryOperationIndicator deltaIndicator = BinaryOperationIndicator.difference(smoothed, 50);
 
-        Num expected = deltaIndicator.getValue(0);
-        for (int i = 1; i <= targetIndex; i++) {
+        int unstableBars = decayed.getCountOfUnstableBars();
+        Num expected = null;
+        for (int i = 0; i <= targetIndex; i++) {
+            if (i < unstableBars) {
+                assertTrue("Expected NaN at index " + i, Num.isNaNOrNull(decayed.getValue(i)));
+                continue;
+            }
+
+            if (expected == null) {
+                expected = deltaIndicator.getValue(i);
+                continue;
+            }
+
             expected = expected.multipliedBy(decay).plus(deltaIndicator.getValue(i));
             if (i >= timeFrame) {
-                expected = expected.minus(deltaIndicator.getValue(i - timeFrame).multipliedBy(decayAtWindow));
+                int expiredIndex = i - timeFrame;
+                Num expired = expiredIndex < unstableBars ? numOf(0) : deltaIndicator.getValue(expiredIndex);
+                expected = expected.minus(expired.multipliedBy(decayAtWindow));
             }
         }
 
@@ -288,7 +301,12 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         KalmanFilterIndicator smoothed = new KalmanFilterIndicator(varying);
         BinaryOperationIndicator deltaIndicator = BinaryOperationIndicator.difference(smoothed, 50);
 
-        for (int i = 0; i < series.getBarCount(); i++) {
+        int unstableBars = instant.getCountOfUnstableBars();
+        for (int i = 0; i < unstableBars; i++) {
+            assertTrue("Expected NaN at index " + i, Num.isNaNOrNull(instant.getValue(i)));
+        }
+
+        for (int i = unstableBars; i < series.getBarCount(); i++) {
             Num expected = deltaIndicator.getValue(i);
             assertTrue("Mismatch at index " + i, instant.getValue(i).isEqual(expected));
         }
@@ -409,7 +427,28 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         };
 
         NetMomentumIndicator subject = new NetMomentumIndicator(osc, 5, 50);
-        assertEquals(5, subject.getCountOfUnstableBars());
+        assertEquals(4, subject.getCountOfUnstableBars());
+    }
+
+    @Test
+    public void testUnstableBarsIncludeSourceAndWindow() {
+        CachedIndicator<Num> osc = new CachedIndicator<>(closePrice) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 3;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return numOf(55);
+            }
+        };
+
+        NetMomentumIndicator subject = new NetMomentumIndicator(osc, 6, 50);
+        assertEquals(8, subject.getCountOfUnstableBars());
+        for (int i = 0; i < subject.getCountOfUnstableBars(); i++) {
+            assertTrue("Expected NaN at index " + i, Num.isNaNOrNull(subject.getValue(i)));
+        }
     }
 
     @Test
@@ -430,9 +469,14 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         double pivot = 50.5;
         NetMomentumIndicator indicator = new NetMomentumIndicator(constant, timeFrame, pivot);
 
+        int unstableBars = indicator.getCountOfUnstableBars();
         for (int i = 0; i < series.getBarCount(); i++) {
             Num actual = indicator.getValue(i);
-            int window = Math.min(i + 1, timeFrame);
+            if (i < unstableBars) {
+                assertTrue("Expected NaN at index " + i, Num.isNaNOrNull(actual));
+                continue;
+            }
+            int window = Math.min(i - unstableBars + 1, timeFrame);
             Num expected = numOf(window * (51.25 - pivot));
             assertTrue("Unexpected value at index " + i, actual.isEqual(expected));
         }
@@ -458,8 +502,14 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
             reverseValues[i] = reverse.getValue(i);
         }
 
+        int unstableBars = sequential.getCountOfUnstableBars();
         Num tolerance = numOf(1e-9);
         for (int i = 0; i <= maxIndex; i++) {
+            if (i < unstableBars) {
+                assertTrue("Expected NaN at index " + i, Num.isNaNOrNull(forwardValues[i]));
+                assertTrue("Expected NaN at index " + i, Num.isNaNOrNull(reverseValues[i]));
+                continue;
+            }
             Num delta = forwardValues[i].minus(reverseValues[i]).abs();
             assertTrue("Access-order dependent mismatch at index " + i + " (delta=" + delta + ")",
                     delta.isLessThan(tolerance));

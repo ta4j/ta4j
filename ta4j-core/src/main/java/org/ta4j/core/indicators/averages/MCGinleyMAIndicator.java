@@ -63,7 +63,7 @@ public class MCGinleyMAIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return indicator.getCountOfUnstableBars() + barCount;
     }
 
     @Override

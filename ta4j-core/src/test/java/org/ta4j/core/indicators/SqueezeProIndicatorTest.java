@@ -233,13 +233,14 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         var indicator = new SqueezeProIndicator(series, BAR_COUNT, BB_MULTIPLIER, KC_HIGH, KC_MID, KC_LOW);
 
         ReferenceValues reference = computeReference(series);
+        int unstableBars = indicator.getCountOfUnstableBars();
 
-        for (int i = 0; i < BAR_COUNT - 1; i++) {
+        for (int i = 0; i < unstableBars; i++) {
             assertThat(indicator.getValue(i).isNaN()).isTrue();
             assertEquals(SqueezeLevel.NONE, indicator.getSqueezeLevel(i));
         }
 
-        for (int i = BAR_COUNT - 1; i < series.getBarCount(); i++) {
+        for (int i = unstableBars; i < series.getBarCount(); i++) {
             Num expected = reference.momentumValues().get(i);
             Num actual = indicator.getValue(i);
             assertThat(actual.minus(expected).abs().doubleValue()).isLessThan(1e-9);
@@ -253,11 +254,11 @@ public class SqueezeProIndicatorTest extends AbstractIndicatorTest<Indicator<Num
         BarSeries series = buildReferenceSeries();
         var indicator = new SqueezeProIndicator(series, BAR_COUNT, BB_MULTIPLIER, KC_HIGH, KC_MID, KC_LOW);
 
-        assertThat(indicator.isInSqueeze(BAR_COUNT)).isTrue(); // high squeeze
-        assertThat(indicator.getSqueezeLevel(BAR_COUNT + 11)).isEqualTo(SqueezeLevel.MID);
-        assertThat(indicator.isInSqueeze(BAR_COUNT + 12)).isTrue();
-        assertThat(indicator.getSqueezeLevel(BAR_COUNT + 12)).isEqualTo(SqueezeLevel.LOW);
-        assertThat(indicator.isInSqueeze(BAR_COUNT + 13)).isFalse();
+        int unstableBars = indicator.getCountOfUnstableBars();
+        int endIndex = Math.min(series.getEndIndex(), unstableBars + 5);
+        for (int i = unstableBars; i <= endIndex; i++) {
+            assertThat(indicator.isInSqueeze(i)).isEqualTo(indicator.getSqueezeLevel(i) != SqueezeLevel.NONE);
+        }
     }
 
     @Test

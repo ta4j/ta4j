@@ -7,6 +7,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 /**
  * Linearly Weighted Moving Average (LWMA) indicator.
  *
@@ -34,13 +36,12 @@ public class LWMAIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         final var numFactory = getBarSeries().numFactory();
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         Num sum = numFactory.zero();
         Num denominator = numFactory.zero();
         int count = 0;
-
-        if ((index + 1) < barCount) {
-            return numFactory.zero();
-        }
 
         int startIndex = (index - barCount) + 1;
         for (int i = startIndex; i <= index; i++) {
@@ -53,7 +54,7 @@ public class LWMAIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 0;
+        return indicator.getCountOfUnstableBars() + barCount - 1;
     }
 
     @Override

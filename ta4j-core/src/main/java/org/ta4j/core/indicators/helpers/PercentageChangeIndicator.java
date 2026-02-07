@@ -286,6 +286,9 @@ public class PercentageChangeIndicator extends CachedIndicator<Num> {
     /** @return {@code 1} */
     @Override
     public int getCountOfUnstableBars() {
-        return 1;
+        int indicatorUnstableBars = indicator.getCountOfUnstableBars();
+        int previousUnstableBars = previousIndicator == null ? indicatorUnstableBars
+                : previousIndicator.getCountOfUnstableBars();
+        return Math.max(indicatorUnstableBars, previousUnstableBars + 1);
     }
 }

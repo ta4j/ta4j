@@ -19,7 +19,6 @@ public class UpTrendIndicator extends AbstractIndicator<Boolean> {
     private final MinusDIIndicator minusDIIndicator;
     private final PlusDIIndicator plusDIIndicator;
     private final Num strengthThreshold;
-    private final int unstableBars;
 
     public UpTrendIndicator(final BarSeries series) {
         this(series, DEFAULT_UNSTABLE_BARS);
@@ -31,7 +30,6 @@ public class UpTrendIndicator extends AbstractIndicator<Boolean> {
 
     public UpTrendIndicator(final BarSeries series, int unstableBars, double strengthThreshold) {
         super(series);
-        this.unstableBars = unstableBars;
         this.strengthThreshold = getBarSeries().numFactory().numOf(strengthThreshold);
         this.directionStrengthIndicator = new ADXIndicator(series, unstableBars);
         this.minusDIIndicator = new MinusDIIndicator(series, unstableBars);
@@ -40,6 +38,10 @@ public class UpTrendIndicator extends AbstractIndicator<Boolean> {
 
     @Override
     public Boolean getValue(final int index) {
+        if (index < getCountOfUnstableBars()) {
+            return false;
+        }
+
         // calculate trend excluding this bar
         final var previousIndex = index - 1;
         return this.directionStrengthIndicator.getValue(index).isGreaterThan(strengthThreshold)
@@ -49,6 +51,8 @@ public class UpTrendIndicator extends AbstractIndicator<Boolean> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return unstableBars;
+        int diUnstableBars = Math.max(minusDIIndicator.getCountOfUnstableBars(),
+                plusDIIndicator.getCountOfUnstableBars());
+        return Math.max(directionStrengthIndicator.getCountOfUnstableBars(), diUnstableBars + 1);
     }
 }

@@ -52,7 +52,7 @@ public class CCIIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return Math.max(smaInd.getCountOfUnstableBars(), meanDeviationInd.getCountOfUnstableBars());
     }
 
     @Override

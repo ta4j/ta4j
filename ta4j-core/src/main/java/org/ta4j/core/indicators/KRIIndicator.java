@@ -41,6 +41,6 @@ public class KRIIndicator extends AbstractIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return kriIndicator.getCountOfUnstableBars();
     }
 }
