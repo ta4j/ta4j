@@ -80,11 +80,13 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         var std = new VWAPStandardDeviationIndicator(vwap);
         var upper = new VWAPBandIndicator(vwap, std, 2, VWAPBandIndicator.BandType.UPPER);
         var lower = new VWAPBandIndicator(vwap, std, 2, VWAPBandIndicator.BandType.LOWER);
+        var upperConvenience = new VWAPBandIndicator(vwap, 2, VWAPBandIndicator.BandType.UPPER);
 
         assertNumEquals(12.5411, upper.getValue(2));
         assertNumEquals(9.7923, lower.getValue(2));
         assertNumEquals(15.2407, upper.getValue(3));
         assertNumEquals(9.8704, lower.getValue(3));
+        assertNumEquals(12.5411, upperConvenience.getValue(2));
 
         var invalidSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         invalidSeries.barBuilder().closePrice(10).openPrice(10).highPrice(10).lowPrice(10).volume(1).add();

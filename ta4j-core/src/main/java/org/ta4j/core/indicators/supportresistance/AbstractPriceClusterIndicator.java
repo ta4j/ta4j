@@ -250,10 +250,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
     protected abstract boolean preferLowerPriceOnTie();
 
     private static boolean isInvalid(Num value) {
-        if (Num.isNaNOrNull(value)) {
-            return true;
-        }
-        return Double.isNaN(value.doubleValue());
+        return Num.isNaNOrNull(value);
     }
 
     private static final class PriceCluster {

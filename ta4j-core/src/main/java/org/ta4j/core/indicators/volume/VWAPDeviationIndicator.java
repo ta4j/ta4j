@@ -41,18 +41,11 @@ public class VWAPDeviationIndicator extends CachedIndicator<Num> {
     @Override
     protected Num calculate(int index) {
         Num value = difference.getValue(index);
-        return isInvalid(value) ? NaN.NaN : value;
+        return Num.isNaNOrNull(value) ? NaN.NaN : value;
     }
 
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(priceIndicator.getCountOfUnstableBars(), vwapIndicator.getCountOfUnstableBars());
-    }
-
-    private static boolean isInvalid(Num value) {
-        if (Num.isNaNOrNull(value)) {
-            return true;
-        }
-        return Double.isNaN(value.doubleValue());
     }
 }

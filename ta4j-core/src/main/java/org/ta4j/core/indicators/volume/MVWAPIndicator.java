@@ -3,7 +3,9 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
@@ -16,8 +18,7 @@ import org.ta4j.core.num.Num;
  */
 public class MVWAPIndicator extends CachedIndicator<Num> {
 
-    private final VWAPIndicator vwap;
-    private final int barCount;
+    private final Indicator<Num> sma;
 
     /**
      * Constructor.
@@ -27,37 +28,20 @@ public class MVWAPIndicator extends CachedIndicator<Num> {
      */
     public MVWAPIndicator(VWAPIndicator vwap, int barCount) {
         super(vwap);
-        this.vwap = vwap;
-        this.barCount = barCount;
+        this.sma = new SMAIndicator(vwap, barCount);
     }
 
     @Override
     protected Num calculate(int index) {
-        int beginIndex = getBarSeries().getBeginIndex();
-        if (index < beginIndex + getCountOfUnstableBars()) {
+        if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
             return NaN.NaN;
         }
-        Num sum = getBarSeries().numFactory().zero();
-        int startIndex = index - barCount + 1;
-        for (int i = startIndex; i <= index; i++) {
-            Num value = vwap.getValue(i);
-            if (isInvalid(value)) {
-                return NaN.NaN;
-            }
-            sum = sum.plus(value);
-        }
-        return sum.dividedBy(getBarSeries().numFactory().numOf(barCount));
+        Num value = sma.getValue(index);
+        return Num.isNaNOrNull(value) ? NaN.NaN : value;
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return vwap.getCountOfUnstableBars() + barCount - 1;
-    }
-
-    private static boolean isInvalid(Num value) {
-        if (Num.isNaNOrNull(value)) {
-            return true;
-        }
-        return Double.isNaN(value.doubleValue());
+        return sma.getCountOfUnstableBars();
     }
 }

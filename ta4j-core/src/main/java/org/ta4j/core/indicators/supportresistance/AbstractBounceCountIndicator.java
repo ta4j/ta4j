@@ -260,10 +260,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
     protected abstract boolean shouldRecordBounce(int previousDirection, int newDirection);
 
     private static boolean isInvalid(Num value) {
-        if (Num.isNaNOrNull(value)) {
-            return true;
-        }
-        return Double.isNaN(value.doubleValue());
+        return Num.isNaNOrNull(value);
     }
 
     private static final class PriceBucket {

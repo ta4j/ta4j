@@ -224,9 +224,6 @@ public final class WyckoffEventDetector {
     }
 
     private static boolean isInvalid(Num value) {
-        if (value == null) {
-            return true;
-        }
-        return value.isNaN() || Double.isNaN(value.doubleValue());
+        return Num.isNaNOrNull(value);
     }
 }

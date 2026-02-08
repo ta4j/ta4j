@@ -10,9 +10,7 @@ import java.util.Objects;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.helpers.ConstantIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
-import org.ta4j.core.num.NaN;
+import org.ta4j.core.indicators.helpers.BandIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.ComponentSerialization;
@@ -41,8 +39,7 @@ public class VWAPBandIndicator extends CachedIndicator<Num> {
     private final AbstractVWAPIndicator vwapIndicator;
     private final Indicator<Num> standardDeviationIndicator;
     private final Num multiplier;
-    private final transient Indicator<Num> scaledDeviation;
-    private final transient Indicator<Num> band;
+    private final transient BandIndicator band;
     private final BandType bandType;
 
     /**
@@ -63,19 +60,28 @@ public class VWAPBandIndicator extends CachedIndicator<Num> {
         this.bandType = Objects.requireNonNull(bandType, "bandType must not be null");
         this.multiplier = getBarSeries().numFactory()
                 .numOf(Objects.requireNonNull(multiplier, "multiplier must not be null"));
-        Indicator<Num> multiplierIndicator = new ConstantIndicator<>(getBarSeries(), this.multiplier);
-        this.scaledDeviation = BinaryOperationIndicator.product(standardDeviationIndicator, multiplierIndicator);
-        this.band = bandType == BandType.UPPER ? BinaryOperationIndicator.sum(vwapIndicator, scaledDeviation)
-                : BinaryOperationIndicator.difference(vwapIndicator, scaledDeviation);
+        if (Num.isNaNOrNull(this.multiplier)) {
+            throw new IllegalArgumentException("multiplier must be a valid number");
+        }
+        this.band = new BandIndicator(vwapIndicator, standardDeviationIndicator, this.multiplier.getDelegate(),
+                BandIndicator.BandType.valueOf(bandType.name()));
+    }
+
+    /**
+     * Convenience constructor using {@link VWAPStandardDeviationIndicator} for the
+     * supplied VWAP definition.
+     *
+     * @param vwapIndicator the VWAP indicator
+     * @param multiplier    number of standard deviations to offset
+     * @param bandType      upper or lower band selection
+     * @since 0.22.2
+     */
+    public VWAPBandIndicator(AbstractVWAPIndicator vwapIndicator, Number multiplier, BandType bandType) {
+        this(vwapIndicator, new VWAPStandardDeviationIndicator(vwapIndicator), multiplier, bandType);
     }
 
     @Override
     protected Num calculate(int index) {
-        Num vwap = vwapIndicator.getValue(index);
-        Num deviation = standardDeviationIndicator.getValue(index);
-        if (isInvalid(vwap) || isInvalid(deviation)) {
-            return NaN.NaN;
-        }
         return band.getValue(index);
     }
 
@@ -121,12 +127,5 @@ public class VWAPBandIndicator extends CachedIndicator<Num> {
         } catch (NumberFormatException ex) {
             return raw;
         }
-    }
-
-    private static boolean isInvalid(Num value) {
-        if (Num.isNaNOrNull(value)) {
-            return true;
-        }
-        return Double.isNaN(value.doubleValue());
     }
 }

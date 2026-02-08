@@ -243,9 +243,6 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
     }
 
     private static boolean isInvalid(Num value) {
-        if (Num.isNaNOrNull(value)) {
-            return true;
-        }
-        return Double.isNaN(value.doubleValue());
+        return Num.isNaNOrNull(value);
     }
 }

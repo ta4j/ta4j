@@ -41,7 +41,7 @@ public class VWAPZScoreIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         Num deviation = deviationIndicator.getValue(index);
         Num std = standardDeviationIndicator.getValue(index);
-        if (isInvalid(deviation) || isInvalid(std) || std.isZero()) {
+        if (Num.isNaNOrNull(deviation) || Num.isNaNOrNull(std) || std.isZero()) {
             return NaN.NaN;
         }
         return ratio.getValue(index);
@@ -51,12 +51,5 @@ public class VWAPZScoreIndicator extends CachedIndicator<Num> {
     public int getCountOfUnstableBars() {
         return Math.max(deviationIndicator.getCountOfUnstableBars(),
                 standardDeviationIndicator.getCountOfUnstableBars());
-    }
-
-    private static boolean isInvalid(Num value) {
-        if (Num.isNaNOrNull(value)) {
-            return true;
-        }
-        return Double.isNaN(value.doubleValue());
     }
 }
