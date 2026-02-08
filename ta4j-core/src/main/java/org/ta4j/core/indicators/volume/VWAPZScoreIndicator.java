@@ -5,8 +5,7 @@ package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
-import org.ta4j.core.num.NaN;
+import org.ta4j.core.indicators.statistics.ZScoreIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -19,7 +18,7 @@ public class VWAPZScoreIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> deviationIndicator;
     private final Indicator<Num> standardDeviationIndicator;
-    private final transient Indicator<Num> ratio;
+    private final transient ZScoreIndicator zScore;
 
     /**
      * Constructor.
@@ -34,22 +33,16 @@ public class VWAPZScoreIndicator extends CachedIndicator<Num> {
         super(IndicatorSeriesUtils.requireSameSeries(deviationIndicator, standardDeviationIndicator));
         this.deviationIndicator = deviationIndicator;
         this.standardDeviationIndicator = standardDeviationIndicator;
-        this.ratio = BinaryOperationIndicator.quotient(deviationIndicator, standardDeviationIndicator);
+        this.zScore = new ZScoreIndicator(deviationIndicator, standardDeviationIndicator);
     }
 
     @Override
     protected Num calculate(int index) {
-        Num deviation = deviationIndicator.getValue(index);
-        Num std = standardDeviationIndicator.getValue(index);
-        if (Num.isNaNOrNull(deviation) || Num.isNaNOrNull(std) || std.isZero()) {
-            return NaN.NaN;
-        }
-        return ratio.getValue(index);
+        return zScore.getValue(index);
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(deviationIndicator.getCountOfUnstableBars(),
-                standardDeviationIndicator.getCountOfUnstableBars());
+        return zScore.getCountOfUnstableBars();
     }
 }
