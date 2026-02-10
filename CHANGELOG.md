@@ -25,11 +25,11 @@
 - Added **PiercingIndicator** and **DarkCloudIndicator**
 - **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
-- **Elliott Wave analysis toolkit**: Added `ElliottWaveAnalyzer`, `ElliottAnalysisResult`, configurable `PatternSet`,
-  and the `org.ta4j.core.indicators.elliott.swing` detector/filter package for pluggable, chart-independent analysis.
-- **Elliott Wave multi-degree validation**: Added `ElliottWaveMultiDegreeAnalyzer` and
-  `ElliottMultiDegreeAnalysisResult` to run supporting degree analyses and re-rank base scenarios using
-  cross-degree compatibility.
+- **Elliott Wave one-shot analysis**: Added `ElliottWaveAnalysis` and `ElliottWaveAnalysisResult` for end-to-end
+  analysis snapshots (swings, channel, scenarios, confidence breakdowns, trend bias), with optional cross-degree
+  validation to re-rank base scenarios using supporting degree context. Includes `ElliottAnalysisResult`,
+  configurable `PatternSet`, and the `org.ta4j.core.indicators.elliott.swing` detector/filter package for pluggable
+  swing detection and noise reduction.
 - **Elliott Wave confidence modeling**: Added profile-driven confidence scoring with factor breakdowns, time
   alternation diagnostics, and granular Fibonacci relationship scoring.
 - **Elliott Wave trend bias**: Added `ElliottTrendBias` and `ElliottTrendBiasIndicator` for scenario-weighted

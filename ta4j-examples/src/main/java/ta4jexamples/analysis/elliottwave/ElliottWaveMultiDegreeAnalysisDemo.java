@@ -12,9 +12,9 @@ import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
-import org.ta4j.core.indicators.elliott.ElliottMultiDegreeAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
-import org.ta4j.core.indicators.elliott.ElliottWaveMultiDegreeAnalyzer;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysis;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
@@ -42,28 +42,28 @@ public class ElliottWaveMultiDegreeAnalysisDemo {
             return;
         }
 
-        ElliottWaveMultiDegreeAnalyzer analyzer = ElliottWaveMultiDegreeAnalyzer.builder()
-                .baseDegree(ElliottDegree.PRIMARY)
+        ElliottWaveAnalysis analyzer = ElliottWaveAnalysis.builder()
+                .degree(ElliottDegree.PRIMARY)
                 .higherDegrees(1)
                 .lowerDegrees(1)
                 .build();
 
-        ElliottMultiDegreeAnalysisResult result = analyzer.analyze(series);
+        ElliottWaveAnalysisResult result = analyzer.analyze(series);
 
-        for (ElliottMultiDegreeAnalysisResult.DegreeAnalysis analysis : result.analyses()) {
+        for (ElliottWaveAnalysisResult.DegreeAnalysis analysis : result.analyses()) {
             LOG.info("Degree {}: bars={} duration={} historyFit={} trendBias={}", analysis.degree(),
                     analysis.barCount(), analysis.barDuration(), String.format("%.2f", analysis.historyFitScore()),
                     analysis.analysis().trendBias().direction());
             analysis.analysis().scenarios().base().ifPresent(base -> logScenario("  Base", base));
         }
 
-        Optional<ElliottMultiDegreeAnalysisResult.BaseScenarioAssessment> recommended = result.recommendedScenario();
+        Optional<ElliottWaveAnalysisResult.BaseScenarioAssessment> recommended = result.recommendedScenario();
         if (recommended.isEmpty()) {
             LOG.warn("No base-degree scenarios were produced");
             return;
         }
 
-        ElliottMultiDegreeAnalysisResult.BaseScenarioAssessment assessment = recommended.orElseThrow();
+        ElliottWaveAnalysisResult.BaseScenarioAssessment assessment = recommended.orElseThrow();
         ElliottScenario scenario = assessment.scenario();
         LOG.info("Recommended base scenario: id={} phase={} type={} confidence={} crossDegree={} composite={}",
                 scenario.id(), scenario.currentPhase(), scenario.type(),
@@ -71,8 +71,8 @@ public class ElliottWaveMultiDegreeAnalysisDemo {
                 String.format("%.2f", assessment.crossDegreeScore()),
                 String.format("%.2f", assessment.compositeScore()));
 
-        List<ElliottMultiDegreeAnalysisResult.SupportingScenarioMatch> matches = assessment.supportingMatches();
-        for (ElliottMultiDegreeAnalysisResult.SupportingScenarioMatch match : matches) {
+        List<ElliottWaveAnalysisResult.SupportingScenarioMatch> matches = assessment.supportingMatches();
+        for (ElliottWaveAnalysisResult.SupportingScenarioMatch match : matches) {
             LOG.info("  Match {}: scenarioId={} compat={} weightedCompat={} historyFit={}", match.degree(),
                     match.scenarioId(), String.format("%.2f", match.compatibilityScore()),
                     String.format("%.2f", match.weightedCompatibility()),

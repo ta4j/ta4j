@@ -708,7 +708,7 @@ Time gaps are omitted; no empty bars are inserted. If your pipeline expects cont
 The Elliott Wave suite exposes two minimal entry points:
 
 - `ElliottWaveFacade` for indicator-style, per-bar access (recommended for rules and chart overlays)
-- `ElliottWaveAnalyzer` for one-shot analysis runs with pluggable detectors and confidence profiles
+- `ElliottWaveAnalysis` for one-shot analysis runs, optionally validating scenarios across neighboring degrees
 
 ```java
 BarSeries series = ...;
@@ -721,7 +721,23 @@ ElliottScenarioSet scenarios = facade.scenarios().getValue(index);
 Num invalidation = facade.invalidationLevel().getValue(index);
 ```
 
-See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and analyzer-based workflow.
+For a one-shot analysis snapshot (optionally cross-validating the base degree
+against neighboring degrees):
+
+```java
+ElliottWaveAnalysis analysis = ElliottWaveAnalysis.builder()
+        .degree(ElliottDegree.PRIMARY)
+        .higherDegrees(1)
+        .lowerDegrees(1)
+        .build();
+
+ElliottWaveAnalysisResult snapshot = analysis.analyze(series);
+snapshot.recommendedBaseScenario().ifPresent(recommended -> {
+    LOG.info(\"Recommended scenario: {} ({})\", recommended.currentPhase(), recommended.type());
+});
+```
+
+See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and one-shot analysis workflow.
 
 ## Real-world examples
 
@@ -746,7 +762,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 
 ### Analysis & Backtesting Examples
 - **[StrategyAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/StrategyAnalysis.java)** - Comprehensive strategy performance analysis
-- **[ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWaveAnalysis.java)** - Elliott Wave scenario analysis with confidence scoring and annotated charts. Supports command-line arguments for loading data from Yahoo Finance or Coinbase, or uses a default dataset if no arguments provided.
+- **[ElliottWaveIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWaveIndicatorSuiteDemo.java)** - Elliott Wave indicator suite demo with confidence scoring and annotated charts. Supports command-line arguments for loading data from Yahoo Finance or Coinbase, or uses a default dataset if no arguments provided.
 - **[BTCUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/BTCUSDElliottWaveAnalysis.java)** - Example Elliott Wave analysis for Bitcoin (BTC-USD) using Coinbase data
 - **[ETHUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ETHUSDElliottWaveAnalysis.java)** - Example Elliott Wave analysis for Ethereum (ETH-USD) using Coinbase data
 - **[SP500ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/SP500ElliottWaveAnalysis.java)** - Example Elliott Wave analysis for S&P 500 Index (^GSPC) using Yahoo Finance data

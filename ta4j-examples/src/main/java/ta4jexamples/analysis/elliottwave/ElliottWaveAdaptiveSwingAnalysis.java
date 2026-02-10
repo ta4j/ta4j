@@ -13,7 +13,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
-import org.ta4j.core.indicators.elliott.ElliottWaveAnalyzer;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysis;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceFactorResult;
 import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
 import org.ta4j.core.indicators.elliott.swing.AdaptiveZigZagConfig;
@@ -51,13 +52,16 @@ public class ElliottWaveAdaptiveSwingAnalysis {
         SwingDetector detector = SwingDetectors.composite(CompositeSwingDetector.Policy.AND, SwingDetectors.fractal(5),
                 SwingDetectors.adaptiveZigZag(config));
 
-        ElliottWaveAnalyzer analyzer = ElliottWaveAnalyzer.builder()
+        ElliottWaveAnalysis analyzer = ElliottWaveAnalysis.builder()
                 .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
                 .swingDetector(detector)
                 .swingFilter(new MinMagnitudeSwingFilter(0.2))
                 .build();
 
-        ElliottAnalysisResult result = analyzer.analyze(series);
+        ElliottWaveAnalysisResult analysisResult = analyzer.analyze(series);
+        ElliottAnalysisResult result = analysisResult.analysisFor(ElliottDegree.PRIMARY).orElseThrow().analysis();
         LOG.info("Adaptive swing analysis complete. Trend bias: {}", result.trendBias().direction());
         result.scenarios().base().ifPresent(base -> logScenario("BASE", base, result));
         List<ElliottScenario> alternatives = result.scenarios().alternatives();

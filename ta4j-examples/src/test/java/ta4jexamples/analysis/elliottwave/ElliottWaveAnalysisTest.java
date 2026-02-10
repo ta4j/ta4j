@@ -196,8 +196,8 @@ class ElliottWaveAnalysisTest {
         Instant startTime = Instant.parse("2023-01-01T00:00:00Z");
         Instant endTime = Instant.parse("2023-01-31T23:59:59Z");
 
-        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource(unsupportedDataSource, ticker, barDuration,
-                startTime, endTime);
+        BarSeries result = ElliottWaveIndicatorSuiteDemo.loadSeriesFromDataSource(unsupportedDataSource, ticker,
+                barDuration, startTime, endTime);
 
         assertNull(result, "Should return null for unsupported data source");
     }
@@ -209,8 +209,8 @@ class ElliottWaveAnalysisTest {
         Instant startTime = Instant.parse("2023-01-01T00:00:00Z");
         Instant endTime = Instant.parse("2023-01-31T23:59:59Z");
 
-        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource((String) null, ticker, barDuration, startTime,
-                endTime);
+        BarSeries result = ElliottWaveIndicatorSuiteDemo.loadSeriesFromDataSource((String) null, ticker, barDuration,
+                startTime, endTime);
 
         assertNull(result, "Should return null for null data source");
     }
@@ -220,7 +220,7 @@ class ElliottWaveAnalysisTest {
         BarSeries series = loadOssifiedSeries();
         BarSeriesDataSource source = new StubBarSeriesDataSource("Stub", series, false);
 
-        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource(source, "BTC-USD", Duration.ofDays(1),
+        BarSeries result = ElliottWaveIndicatorSuiteDemo.loadSeriesFromDataSource(source, "BTC-USD", Duration.ofDays(1),
                 Instant.parse("2023-01-01T00:00:00Z"), Instant.parse("2023-01-31T23:59:59Z"));
 
         assertEquals(series, result, "Should return the stubbed series");
@@ -230,7 +230,7 @@ class ElliottWaveAnalysisTest {
     void loadSeriesFromDataSource_withStubReturningNull_returnsNull() {
         BarSeriesDataSource source = new StubBarSeriesDataSource("Stub", null, false);
 
-        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource(source, "BTC-USD", Duration.ofDays(1),
+        BarSeries result = ElliottWaveIndicatorSuiteDemo.loadSeriesFromDataSource(source, "BTC-USD", Duration.ofDays(1),
                 Instant.parse("2023-01-01T00:00:00Z"), Instant.parse("2023-01-31T23:59:59Z"));
 
         assertNull(result, "Should return null when the data source returns null");
@@ -241,7 +241,7 @@ class ElliottWaveAnalysisTest {
         BarSeries emptySeries = new BaseBarSeriesBuilder().withName("Empty").build();
         BarSeriesDataSource source = new StubBarSeriesDataSource("Stub", emptySeries, false);
 
-        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource(source, "BTC-USD", Duration.ofDays(1),
+        BarSeries result = ElliottWaveIndicatorSuiteDemo.loadSeriesFromDataSource(source, "BTC-USD", Duration.ofDays(1),
                 Instant.parse("2023-01-01T00:00:00Z"), Instant.parse("2023-01-31T23:59:59Z"));
 
         assertNull(result, "Should return null when the data source returns an empty series");
@@ -251,7 +251,7 @@ class ElliottWaveAnalysisTest {
     void loadSeriesFromDataSource_withStubThrowingException_returnsNull() {
         BarSeriesDataSource source = new StubBarSeriesDataSource("Stub", null, true);
 
-        BarSeries result = ElliottWaveAnalysis.loadSeriesFromDataSource(source, "BTC-USD", Duration.ofDays(1),
+        BarSeries result = ElliottWaveIndicatorSuiteDemo.loadSeriesFromDataSource(source, "BTC-USD", Duration.ofDays(1),
                 Instant.parse("2023-01-01T00:00:00Z"), Instant.parse("2023-01-31T23:59:59Z"));
 
         assertNull(result, "Should return null when the data source throws");
@@ -261,7 +261,8 @@ class ElliottWaveAnalysisTest {
     void parseBarSeriesRequest_withDayBasedDuration_convertsToHours() {
         String[] args = { "Coinbase", "BTC-USD", "PT1D", "1686960000", "1697040000" };
 
-        Optional<ElliottWaveAnalysis.BarSeriesRequest> request = ElliottWaveAnalysis.parseBarSeriesRequest(args);
+        Optional<ElliottWaveIndicatorSuiteDemo.BarSeriesRequest> request = ElliottWaveIndicatorSuiteDemo
+                .parseBarSeriesRequest(args);
 
         assertTrue(request.isPresent(), "Request should parse successfully");
         assertEquals(Duration.ofDays(1), request.get().barDuration(), "Duration should normalize to 24 hours");
@@ -271,7 +272,8 @@ class ElliottWaveAnalysisTest {
     void parseBarSeriesRequest_withInvalidEpoch_returnsEmpty() {
         String[] args = { "Coinbase", "BTC-USD", "PT1D", "invalid-epoch" };
 
-        Optional<ElliottWaveAnalysis.BarSeriesRequest> request = ElliottWaveAnalysis.parseBarSeriesRequest(args);
+        Optional<ElliottWaveIndicatorSuiteDemo.BarSeriesRequest> request = ElliottWaveIndicatorSuiteDemo
+                .parseBarSeriesRequest(args);
 
         assertTrue(request.isEmpty(), "Invalid epoch should return empty request");
     }
@@ -280,7 +282,8 @@ class ElliottWaveAnalysisTest {
     void parseBarSeriesRequest_withInvalidDataSource_returnsEmpty() {
         String[] args = { "InvalidSource", "BTC-USD", "PT1D", "1686960000", "1697040000" };
 
-        Optional<ElliottWaveAnalysis.BarSeriesRequest> request = ElliottWaveAnalysis.parseBarSeriesRequest(args);
+        Optional<ElliottWaveIndicatorSuiteDemo.BarSeriesRequest> request = ElliottWaveIndicatorSuiteDemo
+                .parseBarSeriesRequest(args);
 
         assertTrue(request.isEmpty(), "Invalid data source should return empty request");
     }
@@ -289,7 +292,8 @@ class ElliottWaveAnalysisTest {
     void parseBarSeriesRequest_withInvalidTimeRange_returnsEmpty() {
         String[] args = { "Coinbase", "BTC-USD", "PT1D", "1697040000", "1686960000" };
 
-        Optional<ElliottWaveAnalysis.BarSeriesRequest> request = ElliottWaveAnalysis.parseBarSeriesRequest(args);
+        Optional<ElliottWaveIndicatorSuiteDemo.BarSeriesRequest> request = ElliottWaveIndicatorSuiteDemo
+                .parseBarSeriesRequest(args);
 
         assertTrue(request.isEmpty(), "Invalid time range should return empty request");
     }
@@ -299,7 +303,7 @@ class ElliottWaveAnalysisTest {
         BarSeries series = loadOssifiedSeries();
         String[] args = { "Coinbase", "BTC-USD", "PT1D", "PRIMARY", "1686960000", "1697040000" };
 
-        ElliottDegree resolved = ElliottWaveAnalysis.resolveDegree(args, series);
+        ElliottDegree resolved = ElliottWaveIndicatorSuiteDemo.resolveDegree(args, series);
 
         assertEquals(ElliottDegree.PRIMARY, resolved, "Explicit degree should be used");
     }
@@ -309,7 +313,7 @@ class ElliottWaveAnalysisTest {
         BarSeries series = loadOssifiedSeries();
         String[] args = { "Coinbase", "BTC-USD", "PT1D", "primary", "1686960000", "1697040000" };
 
-        ElliottDegree resolved = ElliottWaveAnalysis.resolveDegree(args, series);
+        ElliottDegree resolved = ElliottWaveIndicatorSuiteDemo.resolveDegree(args, series);
 
         assertEquals(ElliottDegree.PRIMARY, resolved, "Degree should be parsed case-insensitively");
     }
@@ -321,7 +325,7 @@ class ElliottWaveAnalysisTest {
 
         List<ElliottDegree> recommendations = ElliottDegree.getRecommendedDegrees(series.getFirstBar().getTimePeriod(),
                 series.getBarCount());
-        ElliottDegree resolved = ElliottWaveAnalysis.resolveDegree(args, series);
+        ElliottDegree resolved = ElliottWaveIndicatorSuiteDemo.resolveDegree(args, series);
 
         if (recommendations.isEmpty()) {
             assertEquals(ElliottDegree.PRIMARY, resolved, "Default degree should be used when none recommended");
@@ -335,7 +339,7 @@ class ElliottWaveAnalysisTest {
         // Test that analyze() completes successfully and generates wave labels
         // This tests buildWaveLabelsFromScenario and placementForPivot indirectly
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
         // Should not throw exception
         analysis.analyze(series, ElliottDegree.PRIMARY, FIB_TOLERANCE);
         // The analyze method internally calls buildWaveLabelsFromScenario
@@ -348,7 +352,7 @@ class ElliottWaveAnalysisTest {
         // Test that analyze() handles different scenario types
         // This indirectly tests buildWaveLabelsFromScenario with different types
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
 
         // Test with different degrees which may produce different scenario types
         analysis.analyze(series, ElliottDegree.PRIMARY, FIB_TOLERANCE);
@@ -361,7 +365,7 @@ class ElliottWaveAnalysisTest {
     @Test
     void analyze_withDifferentDegrees_completesSuccessfully() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
         // Test with different degrees
         analysis.analyze(series, ElliottDegree.INTERMEDIATE, FIB_TOLERANCE);
         analysis.analyze(series, ElliottDegree.MINOR, FIB_TOLERANCE);
@@ -370,7 +374,7 @@ class ElliottWaveAnalysisTest {
     @Test
     void analyze_withDifferentFibTolerances_completesSuccessfully() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
         // Test with different tolerances
         analysis.analyze(series, ElliottDegree.PRIMARY, 0.1);
         analysis.analyze(series, ElliottDegree.PRIMARY, 0.5);
@@ -379,8 +383,9 @@ class ElliottWaveAnalysisTest {
     @Test
     void analyze_returnsAnalysisResult() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY, FIB_TOLERANCE);
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
 
         assertNotNull(result, "Analysis result should not be null");
         assertEquals(series, result.series(), "Series should match");
@@ -411,8 +416,9 @@ class ElliottWaveAnalysisTest {
     @Test
     void analyze_withBaseCaseScenario_createsBaseCaseChartPlan() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY, FIB_TOLERANCE);
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
 
         assertTrue(result.baseCaseChartPlan().isPresent(),
                 "Base case chart plan should be present when base case scenario exists");
@@ -423,8 +429,9 @@ class ElliottWaveAnalysisTest {
     @Test
     void analyze_createsChartPlansForAllScenarios() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY, FIB_TOLERANCE);
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
 
         // Verify base case chart plan exists if base case scenario exists
         if (result.scenarioSet().base().isPresent()) {
@@ -441,8 +448,9 @@ class ElliottWaveAnalysisTest {
     @Test
     void visualizeAnalysisResult_withValidResult_completesSuccessfully() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY, FIB_TOLERANCE);
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
 
         // Should not throw exception
         analysis.visualizeAnalysisResult(result);
@@ -450,7 +458,7 @@ class ElliottWaveAnalysisTest {
 
     @Test
     void visualizeAnalysisResult_withNullResult_throwsNullPointerException() {
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
         NullPointerException exception = assertThrows(NullPointerException.class,
                 () -> analysis.visualizeAnalysisResult(null));
         assertNotNull(exception.getMessage(), "Exception message should not be null");
@@ -461,10 +469,10 @@ class ElliottWaveAnalysisTest {
     @Test
     void visualizeAnalysisResult_withDifferentDegrees_formatsWindowTitlesCorrectly() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
 
         // Test with PRIMARY degree
-        ElliottWaveAnalysis.AnalysisResult primaryResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult primaryResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
         if (primaryResult.baseCaseChartPlan().isPresent() && primaryResult.scenarioSet().base().isPresent()) {
             ElliottScenario baseCase = primaryResult.scenarioSet().base().get();
@@ -477,8 +485,8 @@ class ElliottWaveAnalysisTest {
         }
 
         // Test with INTERMEDIATE degree
-        ElliottWaveAnalysis.AnalysisResult intermediateResult = analysis.analyze(series, ElliottDegree.INTERMEDIATE,
-                FIB_TOLERANCE);
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult intermediateResult = analysis.analyze(series,
+                ElliottDegree.INTERMEDIATE, FIB_TOLERANCE);
         if (intermediateResult.baseCaseChartPlan().isPresent() && intermediateResult.scenarioSet().base().isPresent()) {
             ElliottScenario baseCase = intermediateResult.scenarioSet().base().get();
             String expectedIntermediateTitle = String.format("%s - BASE CASE: %s (%s) - %.1f%% - %s",
@@ -489,7 +497,8 @@ class ElliottWaveAnalysisTest {
         }
 
         // Test with MINOR degree
-        ElliottWaveAnalysis.AnalysisResult minorResult = analysis.analyze(series, ElliottDegree.MINOR, FIB_TOLERANCE);
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult minorResult = analysis.analyze(series, ElliottDegree.MINOR,
+                FIB_TOLERANCE);
         if (minorResult.baseCaseChartPlan().isPresent() && minorResult.scenarioSet().base().isPresent()) {
             ElliottScenario baseCase = minorResult.scenarioSet().base().get();
             String expectedMinorTitle = String.format("%s - BASE CASE: %s (%s) - %.1f%% - %s", ElliottDegree.MINOR,
@@ -501,8 +510,9 @@ class ElliottWaveAnalysisTest {
     @Test
     void visualizeAnalysisResult_withAlternativeScenarios_formatsWindowTitlesCorrectly() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY, FIB_TOLERANCE);
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
 
         List<ElliottScenario> alternatives = result.scenarioSet().alternatives();
         for (int i = 0; i < alternatives.size() && i < result.alternativeChartPlans().size(); i++) {
@@ -519,7 +529,7 @@ class ElliottWaveAnalysisTest {
     @Test
     void analyze_withEmptySeries_throwsIllegalArgumentException() {
         BarSeries emptySeries = new BaseBarSeriesBuilder().withName("Empty").build();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
 
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> analysis.analyze(emptySeries, ElliottDegree.PRIMARY, FIB_TOLERANCE));
@@ -530,7 +540,7 @@ class ElliottWaveAnalysisTest {
 
     @Test
     void analyze_withNullSeries_throwsNullPointerException() {
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
 
         NullPointerException exception = assertThrows(NullPointerException.class,
                 () -> analysis.analyze(null, ElliottDegree.PRIMARY, FIB_TOLERANCE));
@@ -542,10 +552,11 @@ class ElliottWaveAnalysisTest {
     @Test
     void analyze_separatesAnalysisFromVisualization() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
 
         // Analyze without visualization
-        ElliottWaveAnalysis.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY, FIB_TOLERANCE);
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
 
         // Verify analysis completed
         assertNotNull(result);

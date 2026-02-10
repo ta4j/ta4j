@@ -36,7 +36,7 @@ import java.time.Duration;
  * Charts will be saved to {@code temp/charts/} and displayed if running in a
  * non-headless environment.
  *
- * @see ElliottWaveAnalysis
+ * @see ElliottWaveIndicatorSuiteDemo
  * @see org.ta4j.core.indicators.elliott.ElliottWaveFacade
  * @since 0.22.0
  */
@@ -56,6 +56,6 @@ public class SP500ElliottWaveAnalysis {
         String barDuration = Duration.ofDays(1).toString();
         String startEpoch = String.valueOf(Instant.now().minus(365, ChronoUnit.DAYS).getEpochSecond());
 
-        ElliottWaveAnalysis.main(new String[] { dataSource, ticker, barDuration, startEpoch });
+        ElliottWaveIndicatorSuiteDemo.main(new String[] { dataSource, ticker, barDuration, startEpoch });
     }
 }

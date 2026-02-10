@@ -61,7 +61,7 @@ import java.time.Instant;
  * Charts will be saved to {@code temp/charts/} and displayed if running in a
  * non-headless environment.
  *
- * @see ElliottWaveAnalysis
+ * @see ElliottWaveIndicatorSuiteDemo
  * @see org.ta4j.core.indicators.elliott.ElliottWaveFacade
  * @since 0.22.0
  */
@@ -82,7 +82,7 @@ public class BTCUSDElliottWaveAnalysis {
         String degree = ElliottDegree.PRIMARY.name();
         String startEpoch = String.valueOf(Instant.now().minus(365, ChronoUnit.DAYS).getEpochSecond());
 
-        ElliottWaveAnalysis.main(new String[] { dataSource, ticker, barDuration, degree, startEpoch });
+        ElliottWaveIndicatorSuiteDemo.main(new String[] { dataSource, ticker, barDuration, degree, startEpoch });
     }
 
 }

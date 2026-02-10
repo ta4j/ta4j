@@ -48,8 +48,8 @@ import com.google.gson.Gson;
 
 /**
  * Domain model capturing all Elliott Wave analysis results currently logged via
- * {@link ElliottWaveAnalysis#logBaseCaseScenario(ElliottScenario)} and
- * {@link ElliottWaveAnalysis#logAlternativeScenarios(List)}.
+ * {@link ElliottWaveIndicatorSuiteDemo#logBaseCaseScenario(ElliottScenario)}
+ * and {@link ElliottWaveIndicatorSuiteDemo#logAlternativeScenarios(List)}.
  * <p>
  * This class provides structured access to analysis results including swing
  * snapshots, phase information, ratio and channel data, confluence scores,
@@ -65,7 +65,7 @@ import com.google.gson.Gson;
  * The class is serializable to JSON using Gson, providing a structured
  * representation suitable for storage, transmission, or further processing.
  *
- * @see ElliottWaveAnalysis
+ * @see ElliottWaveIndicatorSuiteDemo
  * @since 0.22.0
  */
 public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, SwingSnapshot swingSnapshot,

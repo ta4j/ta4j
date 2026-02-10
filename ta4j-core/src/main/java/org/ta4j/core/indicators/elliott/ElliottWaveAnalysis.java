@@ -3,32 +3,50 @@
  */
 package org.ta4j.core.indicators.elliott;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.function.Function;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.elliott.confidence.ConfidenceModel;
+import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
+import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
 import org.ta4j.core.indicators.elliott.swing.AdaptiveZigZagConfig;
 import org.ta4j.core.indicators.elliott.swing.MinMagnitudeSwingFilter;
 import org.ta4j.core.indicators.elliott.swing.SwingDetector;
+import org.ta4j.core.indicators.elliott.swing.SwingDetectorResult;
 import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
 import org.ta4j.core.indicators.elliott.swing.SwingFilter;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
- * Runs Elliott Wave analysis across multiple degrees and validates base-degree
- * scenarios against neighboring degrees.
+ * Runs Elliott Wave one-shot analysis, optionally validating scenarios across
+ * neighboring degrees.
  *
  * <p>
- * This orchestrator is intended for workflows where a single-degree analysis is
- * too ambiguous. It re-ranks the base-degree {@link ElliottScenarioSet} by
- * measuring how compatible each base scenario is with supporting degrees (for
- * example: validate {@link ElliottDegree#PRIMARY} scenarios using
- * {@link ElliottDegree#CYCLE} and {@link ElliottDegree#INTERMEDIATE} context).
+ * This is the analysis entry point for workflows where you want a complete,
+ * end-to-end snapshot (swings, channel, scenarios, confidence breakdowns, trend
+ * bias) rather than per-bar indicator outputs.
+ *
+ * <p>
+ * If configured with supporting degrees ({@link Builder#higherDegrees(int)} and
+ * {@link Builder#lowerDegrees(int)}), the analysis re-ranks the base-degree
+ * {@link ElliottScenarioSet} by measuring compatibility against the best
+ * matching scenarios in the supporting degrees.
+ *
+ * <p>
+ * For indicator-style access (rules/strategies and chart overlays), use
+ * {@link ElliottWaveFacade}.
  *
  * <p>
  * "Multi-timeframe" behavior is achieved by:
@@ -40,21 +58,16 @@ import org.ta4j.core.num.Num;
  * {@code BarSeriesUtils.aggregateBars(...)}) before analysis.</li>
  * </ul>
  *
- * <p>
- * The default runner uses {@link ElliottWaveAnalyzer} with volatility-adaptive
- * ZigZag swings and scales swing filtering/compression thresholds by degree
- * distance, so higher degrees retain fewer, larger swings.
- *
  * @since 0.22.2
  */
-public final class ElliottWaveMultiDegreeAnalyzer {
+public final class ElliottWaveAnalysis {
 
     /**
      * Executes a single-degree Elliott wave analysis.
      *
      * <p>
-     * This is a pluggable seam. Implementations may delegate to
-     * {@link ElliottWaveAnalyzer}, build results from indicator-style analysis
+     * This is a pluggable seam. Implementations may run the built-in analysis
+     * pipeline, build results from indicator-style analysis
      * ({@link ElliottWaveFacade}), or run on resampled series.
      *
      * @since 0.22.2
@@ -92,6 +105,10 @@ public final class ElliottWaveMultiDegreeAnalyzer {
         BarSeries select(BarSeries series, ElliottDegree degree);
     }
 
+    private static final AdaptiveZigZagConfig DEFAULT_ZIGZAG_CONFIG = new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 3);
+
+    private static final int DEFAULT_SCENARIO_SWING_WINDOW = 5;
+
     private static final double DEFAULT_BASE_CONFIDENCE_WEIGHT = 0.7;
     private static final double DEFAULT_NEUTRAL_CROSS_DEGREE_SCORE = 0.5;
     private static final int DEFAULT_HIGHER_DEGREES = 1;
@@ -104,17 +121,40 @@ public final class ElliottWaveMultiDegreeAnalyzer {
     private final AnalysisRunner analysisRunner;
     private final double baseConfidenceWeight;
 
-    private ElliottWaveMultiDegreeAnalyzer(final Builder builder) {
+    // Built-in single-degree analysis pipeline configuration (used by default
+    // runner only).
+    private final SwingDetector swingDetector;
+    private final SwingFilter swingFilter;
+    private final Function<NumFactory, ConfidenceModel> confidenceModelFactory;
+    private final PatternSet patternSet;
+    private final double minConfidence;
+    private final int maxScenarios;
+    private final int scenarioSwingWindow;
+
+    private ElliottWaveAnalysis(final Builder builder) {
         this.baseDegree = Objects.requireNonNull(builder.baseDegree, "baseDegree");
         this.higherDegrees = builder.higherDegrees;
         this.lowerDegrees = builder.lowerDegrees;
         this.seriesSelector = builder.seriesSelector == null ? defaultSeriesSelector() : builder.seriesSelector;
-        this.analysisRunner = builder.analysisRunner == null ? defaultRunner(baseDegree) : builder.analysisRunner;
-        this.baseConfidenceWeight = builder.baseConfidenceWeight;
+
+        this.swingDetector = builder.swingDetector == null ? SwingDetectors.adaptiveZigZag(DEFAULT_ZIGZAG_CONFIG)
+                : builder.swingDetector;
+        this.swingFilter = builder.swingFilter;
+        this.confidenceModelFactory = builder.confidenceModelFactory == null ? ConfidenceProfiles::defaultModel
+                : builder.confidenceModelFactory;
+        this.patternSet = builder.patternSet == null ? PatternSet.all() : builder.patternSet;
+        this.minConfidence = builder.minConfidence;
+        this.maxScenarios = builder.maxScenarios;
+        this.scenarioSwingWindow = builder.scenarioSwingWindow;
+
+        int supportingDegrees = Math.max(0, higherDegrees) + Math.max(0, lowerDegrees);
+        this.baseConfidenceWeight = supportingDegrees == 0 ? 1.0 : builder.baseConfidenceWeight;
+
+        this.analysisRunner = builder.analysisRunner == null ? this::runDefaultAnalysis : builder.analysisRunner;
     }
 
     /**
-     * Creates a new builder for the analyzer.
+     * Creates a new builder.
      *
      * @return builder
      * @since 0.22.2
@@ -124,13 +164,19 @@ public final class ElliottWaveMultiDegreeAnalyzer {
     }
 
     /**
-     * Runs multi-degree analysis on the supplied series.
+     * Runs analysis on the supplied series.
+     *
+     * <p>
+     * The result always contains the base-degree analysis and scenario ranking. If
+     * {@link Builder#higherDegrees(int)} or {@link Builder#lowerDegrees(int)} are
+     * configured to positive values, supporting degree analyses are included and
+     * used to re-rank base-degree scenarios.
      *
      * @param series root series
-     * @return multi-degree analysis result
+     * @return analysis result
      * @since 0.22.2
      */
-    public ElliottMultiDegreeAnalysisResult analyze(final BarSeries series) {
+    public ElliottWaveAnalysisResult analyze(final BarSeries series) {
         Objects.requireNonNull(series, "series");
         if (series.isEmpty()) {
             throw new IllegalArgumentException("series cannot be empty");
@@ -138,10 +184,9 @@ public final class ElliottWaveMultiDegreeAnalyzer {
 
         final List<String> notes = new ArrayList<>();
         final List<ElliottDegree> degrees = degreesToAnalyze(baseDegree, higherDegrees, lowerDegrees);
-        final List<ElliottMultiDegreeAnalysisResult.DegreeAnalysis> degreeAnalyses = new ArrayList<>(degrees.size());
+        final List<ElliottWaveAnalysisResult.DegreeAnalysis> degreeAnalyses = new ArrayList<>(degrees.size());
 
         ElliottAnalysisResult baseResult = null;
-        ElliottMultiDegreeAnalysisResult.DegreeAnalysis baseSnapshot = null;
 
         for (final ElliottDegree degree : degrees) {
             BarSeries selected = seriesSelector.select(series, degree);
@@ -149,6 +194,7 @@ public final class ElliottWaveMultiDegreeAnalyzer {
                 notes.add("Skipped " + degree + " analysis: selected series was empty");
                 continue;
             }
+
             Duration barDuration = selected.getFirstBar().getTimePeriod();
             int barCount = selected.getBarCount();
             double historyFitScore = safeHistoryFitScore(degree, barDuration, barCount, notes);
@@ -159,35 +205,91 @@ public final class ElliottWaveMultiDegreeAnalyzer {
                 continue;
             }
 
-            ElliottMultiDegreeAnalysisResult.DegreeAnalysis snapshot = new ElliottMultiDegreeAnalysisResult.DegreeAnalysis(
-                    degree, result.index(), barCount, barDuration, historyFitScore, result);
+            ElliottWaveAnalysisResult.DegreeAnalysis snapshot = new ElliottWaveAnalysisResult.DegreeAnalysis(degree,
+                    result.index(), barCount, barDuration, historyFitScore, result);
             degreeAnalyses.add(snapshot);
 
             if (degree == baseDegree) {
                 baseResult = result;
-                baseSnapshot = snapshot;
             }
         }
 
-        if (baseResult == null || baseSnapshot == null) {
+        if (baseResult == null) {
             throw new IllegalStateException("Base degree " + baseDegree + " analysis was not available");
         }
 
-        final List<ElliottMultiDegreeAnalysisResult.BaseScenarioAssessment> ranked = scoreBaseScenarios(baseResult,
+        final List<ElliottWaveAnalysisResult.BaseScenarioAssessment> ranked = scoreBaseScenarios(baseResult,
                 degreeAnalyses);
 
-        return new ElliottMultiDegreeAnalysisResult(baseDegree, degreeAnalyses, ranked, notes);
+        return new ElliottWaveAnalysisResult(baseDegree, degreeAnalyses, ranked, notes);
     }
 
-    private List<ElliottMultiDegreeAnalysisResult.BaseScenarioAssessment> scoreBaseScenarios(
-            final ElliottAnalysisResult baseResult,
-            final List<ElliottMultiDegreeAnalysisResult.DegreeAnalysis> analyses) {
+    private ElliottAnalysisResult runDefaultAnalysis(final BarSeries series, final ElliottDegree degree) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(degree, "degree");
+
+        SwingFilter filter = swingFilter;
+        if (filter == null) {
+            filter = new MinMagnitudeSwingFilter(scale(baseDegree, degree, 0.20, 1.5, 0.05, 0.60));
+        }
+
+        ElliottSwingCompressor compressor = new ElliottSwingCompressor(new ClosePriceIndicator(series),
+                scale(baseDegree, degree, 0.01, 1.5, 0.0025, 0.05),
+                Math.max(1, 2 + (baseDegree.ordinal() - degree.ordinal())));
+
+        return runSingleDegreePipeline(series, degree, swingDetector, filter, compressor);
+    }
+
+    private ElliottAnalysisResult runSingleDegreePipeline(final BarSeries series, final ElliottDegree degree,
+            final SwingDetector detector, final SwingFilter filter, final ElliottSwingCompressor compressor) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(degree, "degree");
+        Objects.requireNonNull(detector, "detector");
+
+        int endIndex = series.getEndIndex();
+        SwingDetectorResult detection = Objects.requireNonNull(detector.detect(series, endIndex, degree),
+                "swingDetector.detect");
+        List<ElliottSwing> rawSwings = detection.swings();
+
+        List<ElliottSwing> processed = rawSwings;
+        if (filter != null) {
+            List<ElliottSwing> filtered = filter.filter(processed);
+            processed = filtered == null ? List.of() : filtered;
+        }
+        if (compressor != null) {
+            List<ElliottSwing> compressed = compressor.compress(processed);
+            processed = compressed == null ? List.of() : compressed;
+        }
+
+        List<ElliottSwing> scenarioSwings = recentSwings(processed, scenarioSwingWindow);
+        ElliottChannel channel = computeChannel(series.numFactory(), scenarioSwings, endIndex);
+
+        ConfidenceModel confidenceModel = Objects.requireNonNull(confidenceModelFactory.apply(series.numFactory()),
+                "confidenceModelFactory");
+        ElliottScenarioGenerator generator = new ElliottScenarioGenerator(series.numFactory(), minConfidence,
+                maxScenarios, confidenceModel, patternSet);
+        ElliottScenarioSet scenarios = generator.generate(scenarioSwings, degree, channel, endIndex);
+        ElliottTrendBias trendBias = scenarios.trendBias();
+
+        Map<String, ElliottConfidenceBreakdown> breakdowns = new HashMap<>();
+        for (ElliottScenario scenario : scenarios.all()) {
+            ElliottConfidenceBreakdown breakdown = confidenceModel.score(scenario.swings(), scenario.currentPhase(),
+                    channel, scenario.type());
+            breakdowns.put(scenario.id(), breakdown);
+        }
+
+        return new ElliottAnalysisResult(degree, endIndex, rawSwings, scenarioSwings, scenarios, breakdowns, channel,
+                trendBias);
+    }
+
+    private List<ElliottWaveAnalysisResult.BaseScenarioAssessment> scoreBaseScenarios(
+            final ElliottAnalysisResult baseResult, final List<ElliottWaveAnalysisResult.DegreeAnalysis> analyses) {
         final List<ElliottScenario> baseScenarios = baseResult.scenarios().all();
         if (baseScenarios.isEmpty()) {
             return List.of();
         }
 
-        final List<ElliottMultiDegreeAnalysisResult.BaseScenarioAssessment> assessments = new ArrayList<>(
+        final List<ElliottWaveAnalysisResult.BaseScenarioAssessment> assessments = new ArrayList<>(
                 baseScenarios.size());
 
         for (final ElliottScenario baseScenario : baseScenarios) {
@@ -195,31 +297,31 @@ public final class ElliottWaveMultiDegreeAnalyzer {
                 continue;
             }
             double confidence = safeScore(baseScenario.confidenceScore());
-            List<ElliottMultiDegreeAnalysisResult.SupportingScenarioMatch> matches = new ArrayList<>();
+            List<ElliottWaveAnalysisResult.SupportingScenarioMatch> matches = new ArrayList<>();
             double crossDegreeScore = crossDegreeScore(baseScenario, analyses, matches);
             double composite = (baseConfidenceWeight * confidence) + ((1.0 - baseConfidenceWeight) * crossDegreeScore);
 
-            assessments.add(new ElliottMultiDegreeAnalysisResult.BaseScenarioAssessment(baseScenario, confidence,
+            assessments.add(new ElliottWaveAnalysisResult.BaseScenarioAssessment(baseScenario, confidence,
                     crossDegreeScore, composite, matches));
         }
 
-        assessments.sort(Comparator
-                .comparingDouble(ElliottMultiDegreeAnalysisResult.BaseScenarioAssessment::compositeScore)
-                .reversed()
-                .thenComparing(Comparator
-                        .comparingDouble(ElliottMultiDegreeAnalysisResult.BaseScenarioAssessment::confidenceScore)
-                        .reversed()));
+        assessments
+                .sort(Comparator.comparingDouble(ElliottWaveAnalysisResult.BaseScenarioAssessment::compositeScore)
+                        .reversed()
+                        .thenComparing(Comparator
+                                .comparingDouble(ElliottWaveAnalysisResult.BaseScenarioAssessment::confidenceScore)
+                                .reversed()));
 
         return List.copyOf(assessments);
     }
 
     private double crossDegreeScore(final ElliottScenario baseScenario,
-            final List<ElliottMultiDegreeAnalysisResult.DegreeAnalysis> analyses,
-            final List<ElliottMultiDegreeAnalysisResult.SupportingScenarioMatch> matchesOut) {
+            final List<ElliottWaveAnalysisResult.DegreeAnalysis> analyses,
+            final List<ElliottWaveAnalysisResult.SupportingScenarioMatch> matchesOut) {
         double totalWeightedScore = 0.0;
         double totalWeight = 0.0;
 
-        for (final ElliottMultiDegreeAnalysisResult.DegreeAnalysis analysis : analyses) {
+        for (final ElliottWaveAnalysisResult.DegreeAnalysis analysis : analyses) {
             if (analysis == null) {
                 continue;
             }
@@ -237,7 +339,7 @@ public final class ElliottWaveMultiDegreeAnalyzer {
                 continue;
             }
 
-            matchesOut.add(new ElliottMultiDegreeAnalysisResult.SupportingScenarioMatch(analysis.degree(),
+            matchesOut.add(new ElliottWaveAnalysisResult.SupportingScenarioMatch(analysis.degree(),
                     bestMatch.supportingScenarioId, bestMatch.supportingConfidence, bestMatch.compatibility,
                     bestMatch.weightedCompatibility, analysis.historyFitScore()));
 
@@ -405,6 +507,84 @@ public final class ElliottWaveMultiDegreeAnalyzer {
         return value;
     }
 
+    private static List<ElliottSwing> recentSwings(final List<ElliottSwing> swings, final int window) {
+        if (swings == null || swings.isEmpty()) {
+            return List.of();
+        }
+        if (window <= 0 || swings.size() <= window) {
+            return List.copyOf(swings);
+        }
+        return List.copyOf(swings.subList(swings.size() - window, swings.size()));
+    }
+
+    private static ElliottChannel computeChannel(final NumFactory numFactory, final List<ElliottSwing> swings,
+            final int index) {
+        if (swings == null || swings.size() < 4) {
+            return new ElliottChannel(NaN, NaN, NaN);
+        }
+
+        List<ElliottSwing> rising = latestSwingsByDirection(swings, true);
+        List<ElliottSwing> falling = latestSwingsByDirection(swings, false);
+        if (rising.size() < 2 || falling.size() < 2) {
+            return new ElliottChannel(NaN, NaN, NaN);
+        }
+
+        PivotLine upper = projectLine(numFactory, rising.get(rising.size() - 2), rising.get(rising.size() - 1), index);
+        PivotLine lower = projectLine(numFactory, falling.get(falling.size() - 2), falling.get(falling.size() - 1),
+                index);
+        if (!upper.isValid() || !lower.isValid()) {
+            return new ElliottChannel(NaN, NaN, NaN);
+        }
+
+        Num median = upper.value.plus(lower.value).dividedBy(numFactory.two());
+        return new ElliottChannel(upper.value, lower.value, median);
+    }
+
+    private static List<ElliottSwing> latestSwingsByDirection(final List<ElliottSwing> swings, final boolean rising) {
+        List<ElliottSwing> filtered = new ArrayList<>(2);
+        for (int i = swings.size() - 1; i >= 0 && filtered.size() < 2; i--) {
+            ElliottSwing swing = swings.get(i);
+            if (swing.isRising() == rising) {
+                filtered.add(swing);
+            }
+        }
+        Collections.reverse(filtered);
+        return filtered;
+    }
+
+    private static PivotLine projectLine(final NumFactory numFactory, final ElliottSwing older,
+            final ElliottSwing newer, final int index) {
+        if (older == null || newer == null) {
+            return PivotLine.invalid();
+        }
+        int span = newer.toIndex() - older.toIndex();
+        if (span == 0) {
+            return PivotLine.invalid();
+        }
+        Num spanNum = numFactory.numOf(span);
+        if (spanNum.isZero()) {
+            return PivotLine.invalid();
+        }
+        Num slope = newer.toPrice().minus(older.toPrice()).dividedBy(spanNum);
+        int distance = index - newer.toIndex();
+        Num projected = newer.toPrice().plus(slope.multipliedBy(numFactory.numOf(distance)));
+        if (Num.isNaNOrNull(projected)) {
+            return PivotLine.invalid();
+        }
+        return new PivotLine(projected);
+    }
+
+    private record PivotLine(Num value) {
+
+        private static PivotLine invalid() {
+            return new PivotLine(NaN);
+        }
+
+        private boolean isValid() {
+            return Num.isValid(value);
+        }
+    }
+
     private static List<ElliottDegree> degreesToAnalyze(final ElliottDegree base, final int higher, final int lower) {
         Objects.requireNonNull(base, "base");
 
@@ -472,32 +652,6 @@ public final class ElliottWaveMultiDegreeAnalyzer {
         };
     }
 
-    private static AnalysisRunner defaultRunner(final ElliottDegree baseDegree) {
-        Objects.requireNonNull(baseDegree, "baseDegree");
-        AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 3);
-        SwingDetector detector = SwingDetectors.adaptiveZigZag(config);
-
-        return (series, degree) -> {
-            Objects.requireNonNull(series, "series");
-            Objects.requireNonNull(degree, "degree");
-
-            SwingFilter filter = new MinMagnitudeSwingFilter(scale(baseDegree, degree, 0.20, 1.5, 0.05, 0.60));
-            double minAmplitudePct = scale(baseDegree, degree, 0.01, 1.5, 0.0025, 0.05);
-            int minBars = Math.max(1, 2 + (baseDegree.ordinal() - degree.ordinal()));
-            ElliottSwingCompressor compressor = new ElliottSwingCompressor(new ClosePriceIndicator(series),
-                    minAmplitudePct, minBars);
-
-            ElliottWaveAnalyzer analyzer = ElliottWaveAnalyzer.builder()
-                    .degree(degree)
-                    .swingDetector(detector)
-                    .swingFilter(filter)
-                    .compressor(compressor)
-                    .build();
-
-            return analyzer.analyze(series);
-        };
-    }
-
     private static double scale(final ElliottDegree base, final ElliottDegree target, final double baseValue,
             final double factorPerDegree, final double minValue, final double maxValue) {
         int delta = base.ordinal() - target.ordinal();
@@ -520,7 +674,7 @@ public final class ElliottWaveMultiDegreeAnalyzer {
     }
 
     /**
-     * Builder for {@link ElliottWaveMultiDegreeAnalyzer}.
+     * Builder for {@link ElliottWaveAnalysis}.
      *
      * @since 0.22.2
      */
@@ -533,16 +687,24 @@ public final class ElliottWaveMultiDegreeAnalyzer {
         private AnalysisRunner analysisRunner;
         private double baseConfidenceWeight = DEFAULT_BASE_CONFIDENCE_WEIGHT;
 
+        private SwingDetector swingDetector;
+        private SwingFilter swingFilter;
+        private Function<NumFactory, ConfidenceModel> confidenceModelFactory;
+        private PatternSet patternSet;
+        private double minConfidence = ElliottScenarioGenerator.DEFAULT_MIN_CONFIDENCE;
+        private int maxScenarios = ElliottScenarioGenerator.DEFAULT_MAX_SCENARIOS;
+        private int scenarioSwingWindow = DEFAULT_SCENARIO_SWING_WINDOW;
+
         private Builder() {
         }
 
         /**
-         * @param baseDegree base degree that drives scenario ranking
+         * @param degree base degree that drives scenario ranking
          * @return builder
          * @since 0.22.2
          */
-        public Builder baseDegree(final ElliottDegree baseDegree) {
-            this.baseDegree = Objects.requireNonNull(baseDegree, "baseDegree");
+        public Builder degree(final ElliottDegree degree) {
+            this.baseDegree = Objects.requireNonNull(degree, "degree");
             return this;
         }
 
@@ -583,6 +745,13 @@ public final class ElliottWaveMultiDegreeAnalyzer {
         }
 
         /**
+         * Overrides the built-in analysis pipeline for each degree.
+         *
+         * <p>
+         * Use this when you want to run analysis on resampled series, reuse
+         * indicator-style analysis ({@link ElliottWaveFacade}), or apply custom
+         * filtering/compression beyond the defaults.
+         *
          * @param analysisRunner analysis runner implementation
          * @return builder
          * @since 0.22.2
@@ -595,6 +764,10 @@ public final class ElliottWaveMultiDegreeAnalyzer {
         /**
          * Controls the blend between base scenario confidence and cross-degree
          * compatibility.
+         *
+         * <p>
+         * When no supporting degrees are configured, the analysis automatically uses
+         * weight=1.0 to preserve single-degree confidence ordering.
          *
          * @param weight weight in range [0.0, 1.0] applied to the base confidence
          * @return builder
@@ -609,16 +782,110 @@ public final class ElliottWaveMultiDegreeAnalyzer {
         }
 
         /**
-         * Builds the analyzer.
+         * Configures the swing detector used by the built-in analysis pipeline.
          *
-         * @return analyzer instance
+         * @param swingDetector swing detector implementation
+         * @return builder
          * @since 0.22.2
          */
-        public ElliottWaveMultiDegreeAnalyzer build() {
-            if (baseDegree == null) {
-                throw new IllegalStateException("baseDegree must be configured");
+        public Builder swingDetector(final SwingDetector swingDetector) {
+            this.swingDetector = Objects.requireNonNull(swingDetector, "swingDetector");
+            return this;
+        }
+
+        /**
+         * Configures the swing filter used by the built-in analysis pipeline.
+         *
+         * @param swingFilter swing filter to apply after detection
+         * @return builder
+         * @since 0.22.2
+         */
+        public Builder swingFilter(final SwingFilter swingFilter) {
+            this.swingFilter = swingFilter;
+            return this;
+        }
+
+        /**
+         * @param confidenceModel confidence model to use
+         * @return builder
+         * @since 0.22.2
+         */
+        public Builder confidenceModel(final ConfidenceModel confidenceModel) {
+            Objects.requireNonNull(confidenceModel, "confidenceModel");
+            this.confidenceModelFactory = unused -> confidenceModel;
+            return this;
+        }
+
+        /**
+         * @param confidenceModelFactory factory for confidence models
+         * @return builder
+         * @since 0.22.2
+         */
+        public Builder confidenceModelFactory(final Function<NumFactory, ConfidenceModel> confidenceModelFactory) {
+            this.confidenceModelFactory = Objects.requireNonNull(confidenceModelFactory, "confidenceModelFactory");
+            return this;
+        }
+
+        /**
+         * @param patternSet enabled pattern set
+         * @return builder
+         * @since 0.22.2
+         */
+        public Builder patternSet(final PatternSet patternSet) {
+            this.patternSet = Objects.requireNonNull(patternSet, "patternSet");
+            return this;
+        }
+
+        /**
+         * @param minConfidence minimum confidence threshold
+         * @return builder
+         * @since 0.22.2
+         */
+        public Builder minConfidence(final double minConfidence) {
+            if (minConfidence < 0.0 || minConfidence > 1.0) {
+                throw new IllegalArgumentException("minConfidence must be in [0.0, 1.0]");
             }
-            return new ElliottWaveMultiDegreeAnalyzer(this);
+            this.minConfidence = minConfidence;
+            return this;
+        }
+
+        /**
+         * @param maxScenarios maximum scenarios to retain
+         * @return builder
+         * @since 0.22.2
+         */
+        public Builder maxScenarios(final int maxScenarios) {
+            if (maxScenarios <= 0) {
+                throw new IllegalArgumentException("maxScenarios must be positive");
+            }
+            this.maxScenarios = maxScenarios;
+            return this;
+        }
+
+        /**
+         * @param scenarioSwingWindow number of swings passed to scenario generation
+         * @return builder
+         * @since 0.22.2
+         */
+        public Builder scenarioSwingWindow(final int scenarioSwingWindow) {
+            if (scenarioSwingWindow < 0) {
+                throw new IllegalArgumentException("scenarioSwingWindow must be >= 0");
+            }
+            this.scenarioSwingWindow = scenarioSwingWindow;
+            return this;
+        }
+
+        /**
+         * Builds the analysis entry point.
+         *
+         * @return analysis instance
+         * @since 0.22.2
+         */
+        public ElliottWaveAnalysis build() {
+            if (baseDegree == null) {
+                throw new IllegalStateException("degree must be configured");
+            }
+            return new ElliottWaveAnalysis(this);
         }
     }
 }

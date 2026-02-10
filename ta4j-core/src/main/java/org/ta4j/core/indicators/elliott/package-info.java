@@ -47,17 +47,13 @@
  * alternative scenarios.
  * {@link org.ta4j.core.indicators.elliott.ElliottTrendBiasIndicator} aggregates
  * directional bias across scenarios.</li>
- * <li><b>Pluggable analysis pipeline</b>:
- * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalyzer} orchestrates
+ * <li><b>Pluggable one-shot analysis</b>:
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysis} orchestrates
  * swing detection, scenario generation, and confidence profiles, with pluggable
  * detectors under {@code org.ta4j.core.indicators.elliott.swing} and profile
- * helpers in {@code org.ta4j.core.indicators.elliott.confidence}.</li>
- * <li><b>Multi-degree validation</b>:
- * {@link org.ta4j.core.indicators.elliott.ElliottWaveMultiDegreeAnalyzer}
- * orchestrates multiple degree runs and re-ranks base-degree scenarios using
- * neighboring degree context. It returns an
- * {@link org.ta4j.core.indicators.elliott.ElliottMultiDegreeAnalysisResult}
- * containing per-degree snapshots and cross-degree compatibility scores.</li>
+ * helpers in {@code org.ta4j.core.indicators.elliott.confidence}. It can also
+ * optionally validate base-degree scenarios across neighboring degrees and
+ * re-rank outcomes using cross-degree compatibility scores.</li>
  * <li><b>Invalidation and projections</b>:
  * {@link org.ta4j.core.indicators.elliott.ElliottInvalidationIndicator} flags
  * when wave counts break canonical invalidation levels,
@@ -76,12 +72,9 @@
  * {@link org.ta4j.core.indicators.elliott.ElliottWaveFacade} when you want
  * indicator-style, per-bar access to Elliott outputs (phase, ratios, scenarios,
  * invalidations). Use
- * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalyzer} when you want a
- * one-shot analysis pipeline with pluggable swing detection, filtering, and
- * confidence profiles. Use
- * {@link org.ta4j.core.indicators.elliott.ElliottWaveMultiDegreeAnalyzer} when
- * you want to validate base-degree scenarios against supporting degrees to
- * reduce ambiguity.
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysis} when you want a
+ * one-shot analysis pipeline and optionally want to validate base-degree
+ * scenarios against supporting degrees to reduce ambiguity.
  *
  * <p>
  * <b>Getting Started</b>:

@@ -9,10 +9,10 @@ import java.util.Objects;
 import java.util.Optional;
 
 /**
- * Result of running Elliott Wave analysis across multiple degrees.
+ * Result of running Elliott Wave analysis across one or more degrees.
  *
  * <p>
- * Produced by {@link ElliottWaveMultiDegreeAnalyzer}. The result contains one
+ * Produced by {@link ElliottWaveAnalysis}. The result contains one
  * {@link ElliottAnalysisResult} per analyzed degree, plus a re-ranked view of
  * the base-degree scenarios after cross-degree validation.
  *
@@ -23,10 +23,10 @@ import java.util.Optional;
  *                            skipped degrees, etc.)
  * @since 0.22.2
  */
-public record ElliottMultiDegreeAnalysisResult(ElliottDegree baseDegree, List<DegreeAnalysis> analyses,
+public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAnalysis> analyses,
         List<BaseScenarioAssessment> rankedBaseScenarios, List<String> notes) {
 
-    public ElliottMultiDegreeAnalysisResult {
+    public ElliottWaveAnalysisResult {
         Objects.requireNonNull(baseDegree, "baseDegree");
         analyses = analyses == null ? List.of() : List.copyOf(analyses);
         rankedBaseScenarios = rankedBaseScenarios == null ? List.of() : List.copyOf(rankedBaseScenarios);

@@ -36,7 +36,7 @@ import java.time.Instant;
  * non-headless environment. The analysis results are printed as JSON to
  * standard output.
  *
- * @see ElliottWaveAnalysis
+ * @see ElliottWaveIndicatorSuiteDemo
  * @see org.ta4j.core.indicators.elliott.ElliottWaveFacade
  * @since 0.22.0
  */
@@ -56,7 +56,7 @@ public class ETHUSDElliottWaveAnalysis {
         String barDuration = Duration.ofDays(1).toString();
         String startEpoch = String.valueOf(Instant.now().minus(365, ChronoUnit.DAYS).getEpochSecond());
 
-        ElliottWaveAnalysis.main(new String[] { dataSource, ticker, barDuration, startEpoch });
+        ElliottWaveIndicatorSuiteDemo.main(new String[] { dataSource, ticker, barDuration, startEpoch });
     }
 
 }

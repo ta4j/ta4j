@@ -77,8 +77,8 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * Command-line usage (optional):
  *
  * <pre>
- * java ElliottWaveAnalysis [dataSource] [ticker] [barDuration] [startEpoch] [endEpoch]
- * java ElliottWaveAnalysis [dataSource] [ticker] [barDuration] [degree] [startEpoch] [endEpoch]
+ * java ElliottWaveIndicatorSuiteDemo [dataSource] [ticker] [barDuration] [startEpoch] [endEpoch]
+ * java ElliottWaveIndicatorSuiteDemo [dataSource] [ticker] [barDuration] [degree] [startEpoch] [endEpoch]
  * </pre>
  *
  * Where:
@@ -120,9 +120,9 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * @see ETHUSDElliottWaveAnalysis
  * @see SP500ElliottWaveAnalysis
  */
-public class ElliottWaveAnalysis {
+public class ElliottWaveIndicatorSuiteDemo {
 
-    private static final Logger LOG = LogManager.getLogger(ElliottWaveAnalysis.class);
+    private static final Logger LOG = LogManager.getLogger(ElliottWaveIndicatorSuiteDemo.class);
 
     /**
      * Default OHLCV resource file loaded from classpath when no arguments provided.
@@ -178,7 +178,7 @@ public class ElliottWaveAnalysis {
         }
 
         ElliottDegree degree = resolveDegree(args, series);
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
         AnalysisResult result = analysis.analyze(series, degree, DEFAULT_FIB_TOLERANCE);
 
         // Output structured result as JSON (without chart images by default)
@@ -514,7 +514,7 @@ public class ElliottWaveAnalysis {
      *
      * <pre>
      * BarSeries series = // ... load your bar series
-     * ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+     * ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
      * AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY, 0.25);
      * // Optionally visualize
      * analysis.visualizeAnalysisResult(result);
@@ -761,7 +761,7 @@ public class ElliottWaveAnalysis {
      *         cannot be loaded
      */
     private static BarSeries loadSeries(String resource) {
-        try (InputStream stream = ElliottWaveAnalysis.class.getClassLoader().getResourceAsStream(resource)) {
+        try (InputStream stream = ElliottWaveIndicatorSuiteDemo.class.getClassLoader().getResourceAsStream(resource)) {
             if (stream == null) {
                 LOG.error("Missing resource: {}", resource);
                 return null;

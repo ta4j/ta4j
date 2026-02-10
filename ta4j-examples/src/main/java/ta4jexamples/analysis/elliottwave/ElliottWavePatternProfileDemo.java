@@ -12,7 +12,8 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
-import org.ta4j.core.indicators.elliott.ElliottWaveAnalyzer;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysis;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
 
@@ -41,20 +42,31 @@ public class ElliottWavePatternProfileDemo {
             return;
         }
 
-        ElliottWaveAnalyzer defaultAnalyzer = ElliottWaveAnalyzer.builder()
+        ElliottWaveAnalysis defaultAnalyzer = ElliottWaveAnalysis.builder()
                 .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
                 .swingDetector(SwingDetectors.fractal(5))
                 .confidenceModelFactory(ConfidenceProfiles::defaultModel)
                 .build();
 
-        ElliottWaveAnalyzer patternAwareAnalyzer = ElliottWaveAnalyzer.builder()
+        ElliottWaveAnalysis patternAwareAnalyzer = ElliottWaveAnalysis.builder()
                 .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
                 .swingDetector(SwingDetectors.fractal(5))
                 .confidenceModelFactory(ConfidenceProfiles::patternAwareModel)
                 .build();
 
-        ElliottAnalysisResult defaultResult = defaultAnalyzer.analyze(series);
-        ElliottAnalysisResult patternResult = patternAwareAnalyzer.analyze(series);
+        ElliottWaveAnalysisResult defaultSnapshot = defaultAnalyzer.analyze(series);
+        ElliottWaveAnalysisResult patternSnapshot = patternAwareAnalyzer.analyze(series);
+
+        ElliottAnalysisResult defaultResult = defaultSnapshot.analysisFor(ElliottDegree.PRIMARY)
+                .orElseThrow()
+                .analysis();
+        ElliottAnalysisResult patternResult = patternSnapshot.analysisFor(ElliottDegree.PRIMARY)
+                .orElseThrow()
+                .analysis();
 
         logBaseScenario("Default profile", defaultResult);
         logBaseScenario("Pattern-aware profile", patternResult);
