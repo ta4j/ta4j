@@ -15,6 +15,11 @@ import static org.ta4j.core.num.NaN.NaN;
 /**
  * Provides relative volume measurements to support Wyckoff event detection.
  *
+ * <p>
+ * This is a lower-level building block used by {@link WyckoffPhaseIndicator}
+ * and the higher-level entry points {@link WyckoffCycleFacade} and
+ * {@link WyckoffCycleAnalysis}.
+ *
  * @since 0.22.2
  */
 public final class WyckoffVolumeProfile {

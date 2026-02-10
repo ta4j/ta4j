@@ -19,6 +19,11 @@ import static org.ta4j.core.num.NaN.NaN;
 /**
  * Detects Wyckoff structural events using structure and volume information.
  *
+ * <p>
+ * This is a lower-level building block used by {@link WyckoffPhaseIndicator}
+ * and the higher-level entry points {@link WyckoffCycleFacade} and
+ * {@link WyckoffCycleAnalysis}.
+ *
  * @since 0.22.2
  */
 public final class WyckoffEventDetector {

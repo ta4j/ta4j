@@ -28,7 +28,7 @@
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
 - **VWAP analytics suite**: Added rolling and anchored VWAP indicators plus deviation/standard deviation/z-score/band indicators with shared series validation and NaN handling.
 - **Support/resistance clustering**: Added bounce-count and KDE-based price-cluster support/resistance indicators plus volume-profile KDE helpers for grouping prices with configurable lookbacks and tolerances.
-- **Wyckoff cycle analysis**: Added Wyckoff structure, volume profile, event detection, and phase indicators plus a runnable cycle example.
+- **Wyckoff cycle analysis**: Added simplified entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`, `WyckoffCycleAnalysisResult`) plus the underlying structure, volume profile, event detection, and phase indicators and a runnable demo.
 - Added constructors accepting custom ATR indicator to **AverageTrueRangeStopGainRule** **AverageTrueRangeStopLossRule** and **AverageTrueRangeTrailingStopLossRule**
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
 

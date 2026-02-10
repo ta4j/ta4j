@@ -17,6 +17,12 @@ import org.ta4j.core.num.NumFactory;
  * Indicator that infers Wyckoff phases by composing structural and volume
  * detectors.
  *
+ * <p>
+ * Most users should start with {@link WyckoffCycleFacade} for indicator-style
+ * access or {@link WyckoffCycleAnalysis} for one-shot analysis snapshots. This
+ * indicator is the underlying building block used by the facade and remains
+ * available for advanced customization.
+ *
  * @since 0.22.2
  */
 public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
