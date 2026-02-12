@@ -6,6 +6,11 @@ package org.ta4j.core.indicators.elliott;
 /**
  * Enumerates the sequential phases of an Elliott wave structure.
  *
+ * <p>
+ * Use this enum to label the current wave position for rules, reporting, or
+ * scenario filtering. It is produced by {@link ElliottPhaseIndicator} and used
+ * throughout scenario and confidence computations.
+ *
  * @since 0.22.0
  */
 public enum ElliottPhase {

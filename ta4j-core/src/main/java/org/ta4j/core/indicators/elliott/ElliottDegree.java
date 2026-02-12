@@ -28,6 +28,12 @@ import java.util.List;
  * </ul>
  *
  * <p>
+ * Use this enum to label the expected scale of your swings and scenarios.
+ * Degrees are consumed by {@link ElliottSwingIndicator},
+ * {@link ElliottScenarioGenerator}, and {@link ElliottWaveFacade} to keep
+ * interpretations consistent with the bar resolution.
+ *
+ * <p>
  * Practical guidance for bar-based analysis (rule of thumb):
  * <ul>
  * <li>Weekly bars: {@link #CYCLE}, {@link #PRIMARY}, {@link #INTERMEDIATE};

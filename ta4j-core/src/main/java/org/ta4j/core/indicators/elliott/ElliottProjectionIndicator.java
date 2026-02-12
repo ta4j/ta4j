@@ -26,6 +26,12 @@ import org.ta4j.core.num.NumFactory;
  * <li>Wave C target: A = C equality from Wave B terminus</li>
  * </ul>
  *
+ * <p>
+ * Use this indicator when you need actionable price targets derived from the
+ * primary scenario. For multiple target alternatives, call
+ * {@link #allTargets(int)} or use
+ * {@link ElliottScenarioComparator#commonTargetRange(java.util.Collection)}.
+ *
  * @since 0.22.0
  */
 public class ElliottProjectionIndicator extends CachedIndicator<Num> {

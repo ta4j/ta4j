@@ -21,6 +21,7 @@ import org.ta4j.core.analysis.frequency.Sample;
 import org.ta4j.core.analysis.frequency.SampleSummary;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
 import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexes;
+import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.BarSeriesUtils;

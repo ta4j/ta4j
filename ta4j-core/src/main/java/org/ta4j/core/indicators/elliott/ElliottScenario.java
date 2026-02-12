@@ -22,6 +22,11 @@ import org.ta4j.core.num.Num;
  * <li>Fibonacci-based price targets</li>
  * </ul>
  *
+ * <p>
+ * Use this record when you need to reason about or compare individual scenario
+ * interpretations. Scenarios are produced by {@link ElliottScenarioGenerator}
+ * and grouped inside {@link ElliottScenarioSet}.
+ *
  * @param id                unique scenario identifier
  * @param currentPhase      the phase this scenario assigns to current price
  *                          action

@@ -11,6 +11,11 @@ import org.ta4j.core.indicators.CachedIndicator;
 /**
  * Counts swings provided by an {@link ElliottSwingIndicator} instance.
  *
+ * <p>
+ * Use this indicator when you need a quick measure of how many swings are in
+ * the current structure. It can optionally apply an
+ * {@link ElliottSwingCompressor} to filter noisy swings before counting.
+ *
  * @since 0.22.0
  */
 public class ElliottWaveCountIndicator extends CachedIndicator<Integer> {

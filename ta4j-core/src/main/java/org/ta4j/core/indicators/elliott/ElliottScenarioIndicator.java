@@ -19,6 +19,11 @@ import org.ta4j.core.num.Num;
  * phase, this indicator generates multiple alternative interpretations ranked
  * by confidence score.
  *
+ * <p>
+ * Use this indicator when you need to reason about ambiguity or rank multiple
+ * possible wave counts per bar. It is a core building block for
+ * {@link ElliottWaveFacade} and {@link ElliottTrendBiasIndicator}.
+ *
  * @since 0.22.0
  */
 public class ElliottScenarioIndicator extends CachedIndicator<ElliottScenarioSet> {
