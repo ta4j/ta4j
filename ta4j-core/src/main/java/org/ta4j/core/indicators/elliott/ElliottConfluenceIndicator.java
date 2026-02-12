@@ -20,6 +20,13 @@ import org.ta4j.core.num.Num;
  * Aggregates Fibonacci ratio and channel alignment checks into a confluence
  * score suitable for trading rules.
  *
+ * <p>
+ * The score increases when the current price is near multiple Fibonacci
+ * retracement/extension levels and aligned with the projected Elliott channel.
+ * Use this indicator to filter entries to areas where multiple Elliott
+ * relationships agree, typically alongside {@link ElliottRatioIndicator} and
+ * {@link ElliottChannelIndicator}.
+ *
  * @since 0.22.0
  */
 public class ElliottConfluenceIndicator extends CachedIndicator<Num> {

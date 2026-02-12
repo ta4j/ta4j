@@ -18,6 +18,11 @@ import org.ta4j.core.num.Num;
  * {@link #base()} method returns the highest-confidence interpretation (base
  * case), while {@link #alternatives()} provides all other valid scenarios.
  *
+ * <p>
+ * Use this container when you need to summarize or filter multiple
+ * interpretations, derive consensus signals, or compute trend bias across
+ * scenarios.
+ *
  * @since 0.22.0
  */
 public final class ElliottScenarioSet {
@@ -196,6 +201,28 @@ public final class ElliottScenarioSet {
         final boolean allMatch = highConfidence.stream().allMatch(s -> s.currentPhase() == first);
 
         return allMatch ? first : ElliottPhase.NONE;
+    }
+
+    /**
+     * Computes the aggregate directional bias across all scenarios.
+     *
+     * @return trend bias snapshot
+     * @since 0.22.2
+     */
+    public ElliottTrendBias trendBias() {
+        return trendBias(ElliottTrendBias.DEFAULT_NEUTRAL_THRESHOLD);
+    }
+
+    /**
+     * Computes the aggregate directional bias across all scenarios using a custom
+     * neutral threshold.
+     *
+     * @param neutralThreshold absolute score below which bias is neutral
+     * @return trend bias snapshot
+     * @since 0.22.2
+     */
+    public ElliottTrendBias trendBias(final double neutralThreshold) {
+        return ElliottTrendBias.fromScenarios(scenarios, neutralThreshold);
     }
 
     /**

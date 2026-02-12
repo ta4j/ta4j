@@ -24,6 +24,12 @@ import org.ta4j.core.num.NumFactory;
  * detector, ensuring they analyze the same wave structure.
  *
  * <p>
+ * <b>Entry point</b>: Start here when you want indicator-style, per-bar access
+ * to Elliott Wave outputs (phase, ratios, scenario sets, invalidation levels,
+ * and projections). If you need a one-shot analysis pipeline with pluggable
+ * swing detectors and confidence profiles, prefer {@link ElliottWaveAnalyzer}.
+ *
+ * <p>
  * Basic usage:
  *
  * <pre>
@@ -78,6 +84,7 @@ public final class ElliottWaveFacade {
     private ElliottScenarioIndicator scenarioIndicator;
     private ElliottProjectionIndicator projectionIndicator;
     private ElliottInvalidationLevelIndicator invalidationLevelIndicator;
+    private ElliottTrendBiasIndicator trendBiasIndicator;
 
     private ElliottWaveFacade(final BarSeries series, final ElliottSwingIndicator swingIndicator,
             final Indicator<Num> priceIndicator, final Optional<Num> fibTolerance,
@@ -125,8 +132,8 @@ public final class ElliottWaveFacade {
             final Optional<Num> fibTolerance, final Optional<ElliottSwingCompressor> compressor) {
         Objects.requireNonNull(series, "series cannot be null");
         Objects.requireNonNull(degree, "degree cannot be null");
-        var swingIndicator = new ElliottSwingIndicator(series, window, degree);
-        var priceIndicator = new ClosePriceIndicator(series);
+        ElliottSwingIndicator swingIndicator = new ElliottSwingIndicator(series, window, degree);
+        ClosePriceIndicator priceIndicator = new ClosePriceIndicator(series);
         return new ElliottWaveFacade(series, swingIndicator, priceIndicator, fibTolerance, compressor);
     }
 
@@ -173,8 +180,9 @@ public final class ElliottWaveFacade {
             final Optional<ElliottSwingCompressor> compressor) {
         Objects.requireNonNull(series, "series cannot be null");
         Objects.requireNonNull(degree, "degree cannot be null");
-        var swingIndicator = new ElliottSwingIndicator(series, lookbackLength, lookforwardLength, degree);
-        var priceIndicator = new ClosePriceIndicator(series);
+        ElliottSwingIndicator swingIndicator = new ElliottSwingIndicator(series, lookbackLength, lookforwardLength,
+                degree);
+        ClosePriceIndicator priceIndicator = new ClosePriceIndicator(series);
         return new ElliottWaveFacade(series, swingIndicator, priceIndicator, fibTolerance, compressor);
     }
 
@@ -213,8 +221,8 @@ public final class ElliottWaveFacade {
             final Optional<Num> fibTolerance, final Optional<ElliottSwingCompressor> compressor) {
         Objects.requireNonNull(series, "series cannot be null");
         Objects.requireNonNull(degree, "degree cannot be null");
-        var swingIndicator = ElliottSwingIndicator.zigZag(series, degree);
-        var priceIndicator = new ClosePriceIndicator(series);
+        ElliottSwingIndicator swingIndicator = ElliottSwingIndicator.zigZag(series, degree);
+        ClosePriceIndicator priceIndicator = new ClosePriceIndicator(series);
         return new ElliottWaveFacade(series, swingIndicator, priceIndicator, fibTolerance, compressor);
     }
 
@@ -414,6 +422,17 @@ public final class ElliottWaveFacade {
             invalidationLevelIndicator = new ElliottInvalidationLevelIndicator(scenarios());
         }
         return invalidationLevelIndicator;
+    }
+
+    /**
+     * @return the trend bias indicator derived from scenario direction
+     * @since 0.22.2
+     */
+    public ElliottTrendBiasIndicator trendBias() {
+        if (trendBiasIndicator == null) {
+            trendBiasIndicator = new ElliottTrendBiasIndicator(scenarios());
+        }
+        return trendBiasIndicator;
     }
 
     /**

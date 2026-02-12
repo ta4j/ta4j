@@ -17,6 +17,10 @@ import org.ta4j.core.indicators.CachedIndicator;
  * wave four overlapping wave one territory. Downstream consumers can reset
  * their state when this indicator returns {@code true}.
  *
+ * <p>
+ * Use this indicator when you only need a boolean invalidation signal. If you
+ * need the exact price level, prefer {@link ElliottInvalidationLevelIndicator}.
+ *
  * @since 0.22.0
  */
 public class ElliottInvalidationIndicator extends CachedIndicator<Boolean> {

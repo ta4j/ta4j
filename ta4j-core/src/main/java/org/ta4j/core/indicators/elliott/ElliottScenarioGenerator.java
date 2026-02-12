@@ -10,6 +10,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.ta4j.core.indicators.elliott.confidence.ConfidenceModel;
+import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
+import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -23,6 +26,12 @@ import org.ta4j.core.num.NumFactory;
  * scenario receives a confidence score, and low-confidence interpretations are
  * pruned from the final output.
  *
+ * <p>
+ * Use this generator when you need programmatic access to alternative wave
+ * interpretations outside of the indicator framework (for example in batch
+ * analysis or custom pipelines). It is the engine behind
+ * {@link ElliottScenarioIndicator} and {@link ElliottWaveAnalyzer}.
+ *
  * @since 0.22.0
  */
 public final class ElliottScenarioGenerator {
@@ -34,9 +43,11 @@ public final class ElliottScenarioGenerator {
     public static final int DEFAULT_MAX_SCENARIOS = 5;
 
     private final NumFactory numFactory;
-    private final ElliottConfidenceScorer scorer;
     private final ElliottFibonacciValidator fibValidator;
+    private final ConfidenceModel confidenceModel;
+    private final PatternSet patternSet;
     private final double minConfidence;
+    private final Num minConfidenceNum;
     private final int maxScenarios;
     private final AtomicInteger scenarioCounter = new AtomicInteger(0);
 
@@ -47,7 +58,8 @@ public final class ElliottScenarioGenerator {
      * @since 0.22.0
      */
     public ElliottScenarioGenerator(final NumFactory numFactory) {
-        this(numFactory, DEFAULT_MIN_CONFIDENCE, DEFAULT_MAX_SCENARIOS);
+        this(numFactory, DEFAULT_MIN_CONFIDENCE, DEFAULT_MAX_SCENARIOS, ConfidenceProfiles.defaultModel(numFactory),
+                PatternSet.all());
     }
 
     /**
@@ -59,10 +71,27 @@ public final class ElliottScenarioGenerator {
      * @since 0.22.0
      */
     public ElliottScenarioGenerator(final NumFactory numFactory, final double minConfidence, final int maxScenarios) {
+        this(numFactory, minConfidence, maxScenarios, ConfidenceProfiles.defaultModel(numFactory), PatternSet.all());
+    }
+
+    /**
+     * Creates a generator with custom pruning thresholds and scoring model.
+     *
+     * @param numFactory      factory for creating numeric values
+     * @param minConfidence   minimum confidence to retain a scenario (0.0 - 1.0)
+     * @param maxScenarios    maximum number of scenarios to return
+     * @param confidenceModel confidence model used to score scenarios
+     * @param patternSet      enabled pattern set
+     * @since 0.22.2
+     */
+    public ElliottScenarioGenerator(final NumFactory numFactory, final double minConfidence, final int maxScenarios,
+            final ConfidenceModel confidenceModel, final PatternSet patternSet) {
         this.numFactory = Objects.requireNonNull(numFactory, "numFactory");
-        this.scorer = new ElliottConfidenceScorer(numFactory);
         this.fibValidator = new ElliottFibonacciValidator(numFactory);
+        this.confidenceModel = Objects.requireNonNull(confidenceModel, "confidenceModel");
+        this.patternSet = Objects.requireNonNull(patternSet, "patternSet");
         this.minConfidence = minConfidence;
+        this.minConfidenceNum = numFactory.numOf(minConfidence);
         this.maxScenarios = maxScenarios;
     }
 
@@ -107,10 +136,16 @@ public final class ElliottScenarioGenerator {
             }
 
             // Try impulse interpretation
-            generateImpulseScenarios(segment, degree, channel, startIndex, candidates, seenSignatures);
+            if (patternSet.allows(ScenarioType.IMPULSE)) {
+                generateImpulseScenarios(segment, degree, channel, startIndex, candidates, seenSignatures);
+            }
 
             // Try corrective interpretation
-            generateCorrectiveScenarios(segment, degree, channel, startIndex, candidates, seenSignatures);
+            if (patternSet.allows(ScenarioType.CORRECTIVE_ZIGZAG) || patternSet.allows(ScenarioType.CORRECTIVE_FLAT)
+                    || patternSet.allows(ScenarioType.CORRECTIVE_TRIANGLE)
+                    || patternSet.allows(ScenarioType.CORRECTIVE_COMPLEX)) {
+                generateCorrectiveScenarios(segment, degree, channel, startIndex, candidates, seenSignatures);
+            }
         }
 
         // Prune and rank scenarios
@@ -145,9 +180,11 @@ public final class ElliottScenarioGenerator {
             }
             seenSignatures.add(signature);
 
-            final ElliottConfidence confidence = scorer.score(impulseSwings, phase, channel);
+            final ElliottConfidenceBreakdown breakdown = confidenceModel.score(impulseSwings, phase, channel,
+                    ScenarioType.IMPULSE);
+            final ElliottConfidence confidence = breakdown.confidence();
 
-            if (confidence.overall().doubleValue() < minConfidence) {
+            if (confidence.overall().isLessThan(minConfidenceNum)) {
                 continue;
             }
 
@@ -180,12 +217,12 @@ public final class ElliottScenarioGenerator {
         }
 
         // Try zigzag (A-B-C with C exceeding A)
-        if (swings.size() >= 1) {
+        if (patternSet.allows(ScenarioType.CORRECTIVE_ZIGZAG) && swings.size() >= 1) {
             generateZigzagScenario(swings, degree, channel, startIndex, candidates, seenSignatures);
         }
 
         // Try flat (A-B-C with B retracing most of A)
-        if (swings.size() >= 2) {
+        if (patternSet.allows(ScenarioType.CORRECTIVE_FLAT) && swings.size() >= 2) {
             generateFlatScenario(swings, degree, channel, startIndex, candidates, seenSignatures);
         }
     }
@@ -208,9 +245,11 @@ public final class ElliottScenarioGenerator {
             }
             seenSignatures.add(signature);
 
-            final ElliottConfidence confidence = scorer.score(corrSwings, phase, channel);
+            final ElliottConfidenceBreakdown breakdown = confidenceModel.score(corrSwings, phase, channel,
+                    ScenarioType.CORRECTIVE_ZIGZAG);
+            final ElliottConfidence confidence = breakdown.confidence();
 
-            if (confidence.overall().doubleValue() < minConfidence) {
+            if (confidence.overall().isLessThan(minConfidenceNum)) {
                 continue;
             }
 
@@ -267,9 +306,11 @@ public final class ElliottScenarioGenerator {
             }
             seenSignatures.add(signature);
 
-            final ElliottConfidence confidence = scorer.score(corrSwings, phase, channel);
+            final ElliottConfidenceBreakdown breakdown = confidenceModel.score(corrSwings, phase, channel,
+                    ScenarioType.CORRECTIVE_FLAT);
+            final ElliottConfidence confidence = breakdown.confidence();
 
-            if (confidence.overall().doubleValue() < minConfidence) {
+            if (confidence.overall().isLessThan(minConfidenceNum)) {
                 continue;
             }
 
@@ -477,7 +518,7 @@ public final class ElliottScenarioGenerator {
 
     private List<ElliottScenario> prune(final List<ElliottScenario> candidates) {
         return candidates.stream()
-                .filter(s -> s.confidenceScore().doubleValue() >= minConfidence)
+                .filter(s -> s.confidenceScore().isGreaterThanOrEqual(minConfidenceNum))
                 .sorted(ElliottScenarioSet.byConfidenceDescending())
                 .limit(maxScenarios)
                 .toList();
