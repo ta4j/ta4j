@@ -111,6 +111,51 @@ class ElliottScenarioSetTest {
     }
 
     @Test
+    void trendBiasReturnsUnknownForEmptySet() {
+        ElliottScenarioSet set = ElliottScenarioSet.empty(0);
+
+        ElliottTrendBias bias = set.trendBias();
+
+        assertThat(bias.isUnknown()).isTrue();
+        assertThat(bias.score()).isNaN();
+        assertThat(bias.totalScenarios()).isZero();
+    }
+
+    @Test
+    void trendBiasWeightsBullishAndBearishScenarios() {
+        ElliottScenario bullish = ElliottScenario.builder()
+                .id("bull")
+                .currentPhase(ElliottPhase.WAVE3)
+                .confidence(createConfidence(0.8))
+                .type(ScenarioType.IMPULSE)
+                .bullishDirection(true)
+                .build();
+        ElliottScenario bearish = ElliottScenario.builder()
+                .id("bear")
+                .currentPhase(ElliottPhase.WAVE3)
+                .confidence(createConfidence(0.4))
+                .type(ScenarioType.IMPULSE)
+                .bullishDirection(false)
+                .build();
+        ElliottScenario unknown = ElliottScenario.builder()
+                .id("unknown")
+                .currentPhase(ElliottPhase.WAVE3)
+                .confidence(createConfidence(0.6))
+                .type(ScenarioType.IMPULSE)
+                .build();
+
+        ElliottScenarioSet set = ElliottScenarioSet.of(List.of(bullish, bearish, unknown), 0);
+
+        ElliottTrendBias bias = set.trendBias();
+
+        assertThat(bias.isBullish()).isTrue();
+        assertThat(bias.score()).isCloseTo(0.333, within(0.01));
+        assertThat(bias.knownDirectionCount()).isEqualTo(2);
+        assertThat(bias.totalScenarios()).isEqualTo(3);
+        assertThat(bias.consensus()).isTrue();
+    }
+
+    @Test
     void strongConsensusWithLargeSpread() {
         ElliottScenario high = createScenario("high", 0.9, ElliottPhase.WAVE3);
         ElliottScenario low = createScenario("low", 0.5, ElliottPhase.WAVE4);

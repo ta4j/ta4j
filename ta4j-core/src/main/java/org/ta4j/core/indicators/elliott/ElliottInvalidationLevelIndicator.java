@@ -25,6 +25,12 @@ import org.ta4j.core.num.Num;
  * <li>Wave 3 cannot be the shortest impulse wave</li>
  * </ul>
  *
+ * <p>
+ * Use this indicator when you need actionable price levels for stops or alerts.
+ * Choose {@link InvalidationMode} to control whether levels come from the
+ * primary scenario only, the tightest high-confidence level, or the widest
+ * aggressive view.
+ *
  * @since 0.22.0
  */
 public class ElliottInvalidationLevelIndicator extends CachedIndicator<Num> {

@@ -45,6 +45,16 @@ class ElliottConfidenceTest {
     }
 
     @Test
+    void isAboveThresholdUsesNumPrecision() {
+        NumFactory highPrecision = DecimalNumFactory.getInstance(32);
+        Num overall = highPrecision.numOf("0.69999999999999999999");
+        ElliottConfidence confidence = new ElliottConfidence(overall, overall, overall, overall, overall, overall,
+                "Test");
+
+        assertThat(confidence.isAboveThreshold(0.7)).isFalse();
+    }
+
+    @Test
     void asPercentage() {
         ElliottConfidence confidence = createConfidence(0.75);
         assertThat(confidence.asPercentage()).isCloseTo(75.0, within(0.01));

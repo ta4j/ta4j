@@ -340,7 +340,7 @@ jobs:
             semver_rules=$(cat "$semver_rules_file")
             echo "audit:semver_rules_source=file"
           else
-            semver_rules="MAJOR: Breaking API changes in public/core APIs.\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\nIf binary change count is 0 => should_release=false.\nIf binary change list empty or changelog-only => should_release=false.\nPre-1.0.0: breaking changes can be MINOR, not necessarily MAJOR."
+            semver_rules="Determine if there is enough unreleased functionality here to warrant a release:\nMAJOR: Breaking API changes in public/core APIs.\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\nIf binary change count is 0 => should_release=false.\nIf binary change list empty or changelog-only => should_release=false.\nPre-1.0.0: breaking changes can be MINOR, not necessarily MAJOR."
             echo "audit:semver_rules_source=default"
           fi
 

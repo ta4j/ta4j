@@ -25,6 +25,11 @@ import org.ta4j.core.num.NumFactory;
  * <li>Structure completeness (15%): How many expected waves are confirmed</li>
  * </ul>
  *
+ * <p>
+ * Use this record when you want to surface human-readable confidence metrics
+ * alongside scenarios, or when building rules that filter out low-confidence
+ * interpretations.
+ *
  * @param overall             aggregate confidence score (0.0 - 1.0)
  * @param fibonacciScore      how closely ratios match canonical Fib levels (0.0
  *                            - 1.0)
@@ -96,7 +101,8 @@ public record ElliottConfidence(Num overall, Num fibonacciScore, Num timeProport
         if (Num.isNaNOrNull(overall)) {
             return false;
         }
-        return overall.doubleValue() >= threshold;
+        Num thresholdNum = overall.getNumFactory().numOf(threshold);
+        return overall.isGreaterThanOrEqual(thresholdNum);
     }
 
     /**
@@ -117,7 +123,7 @@ public record ElliottConfidence(Num overall, Num fibonacciScore, Num timeProport
         if (!isValid()) {
             return Double.NaN;
         }
-        return overall.doubleValue() * 100.0;
+        return overall.multipliedBy(overall.getNumFactory().hundred()).doubleValue();
     }
 
     /**

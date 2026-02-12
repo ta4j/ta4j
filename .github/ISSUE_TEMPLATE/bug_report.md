@@ -12,7 +12,7 @@ assignees: ''
 - [ ] I could not find a solution in the [wiki](https://ta4j.github.io/ta4j-wiki/) or [faq section](https://ta4j.github.io/ta4j-wiki/FAQ.html)
 
 **Describe the bug**
-A clear and concise description of what the bug is. If possible provide a **[minimal working example](https://stackoverflow.com/help/mcve)**!
+A clear and concise description of what the bug is and what version you are using. If possible provide a **[minimal working example](https://stackoverflow.com/help/mcve)**!
 
 **To Reproduce**
 Steps to reproduce the behavior:
@@ -28,4 +28,4 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Additional context**
-Add any other context about the problem here.
+Add any other context about the problem here. Please ensure you call out the version you are on.

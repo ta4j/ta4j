@@ -25,6 +25,15 @@
 - Added **PiercingIndicator** and **DarkCloudIndicator**
 - **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
+- **Elliott Wave analysis toolkit**: Added `ElliottWaveAnalyzer`, `ElliottAnalysisResult`, configurable `PatternSet`,
+  and the `org.ta4j.core.indicators.elliott.swing` detector/filter package for pluggable, chart-independent analysis.
+- **Elliott Wave confidence modeling**: Added profile-driven confidence scoring with factor breakdowns, time
+  alternation diagnostics, and granular Fibonacci relationship scoring.
+- **Elliott Wave trend bias**: Added `ElliottTrendBias` and `ElliottTrendBiasIndicator` for scenario-weighted
+  bullish/bearish context, plus `ElliottScenarioSet#trendBias()` and `ElliottWaveFacade#trendBias()` helpers.
+- **Elliott Wave strategy demos**: Added `ElliottWaveAdaptiveSwingAnalysis`, `ElliottWavePatternProfileDemo`,
+  `ElliottWaveTrendBacktest`, and `HighRewardElliottWaveBacktest` with `HighRewardElliottWaveStrategy` for
+  selective impulse entries using confidence, alternation, and risk/reward filters.
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
 - **VWAP analytics suite**: Added rolling and anchored VWAP indicators plus deviation/standard deviation/z-score/band indicators with shared series validation and NaN handling.
 - **Support/resistance clustering**: Added bounce-count and KDE-based price-cluster support/resistance indicators plus volume-profile KDE helpers for grouping prices with configurable lookbacks and tolerances.
@@ -59,6 +68,8 @@
 - **Statistics helper**: Consolidated statistics selection into the `Statistics` enum, with Num calculations.
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 - **Dependencies**: update to latest versions
+- **Elliott Wave scoring and diagnostics**: Extension ratio scoring now penalizes under/over-extended projections,
+  chart/JSON outputs include scenario-weighted trend bias, and logs include time alternation diagnostics.
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
 
 ### Fixed
@@ -87,6 +98,7 @@
 - **Indicator serialization and stability**: Aligned VWAP, price-cluster, and Wyckoff indicators with stable descriptor ordering, NaN handling, and unstable-bar conventions.
 - **Wyckoff confidence invariants**: `WyckoffPhase` now rejects null cycle/phase values and enforces finite confidence in the `[0.0, 1.0]` range to prevent invalid state propagation.
 - **KDE Gaussian constants**: `VolumeProfileKDEIndicator` now reuses precomputed Gaussian constants and uses high-precision PI parsing for `Num` factories to reduce repeated allocations and preserve numeric precision.
+- **Full build script**: Fix macOS temp file creation in `run-full-build-quiet.sh` by using a portable mktemp template.
 
 ## 0.22.1 (2026-01-15)
 
