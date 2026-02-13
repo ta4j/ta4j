@@ -3,11 +3,8 @@
  */
 package ta4jexamples.analysis.elliottwave;
 
-import java.io.InputStream;
-
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
@@ -16,8 +13,6 @@ import org.ta4j.core.indicators.elliott.ElliottWaveAnalysis;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
-
-import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
 /**
  * Demonstrates how pattern-specific confidence profiles influence scenario
@@ -62,10 +57,10 @@ public class ElliottWavePatternProfileDemo {
         ElliottWaveAnalysisResult patternSnapshot = patternAwareAnalyzer.analyze(series);
 
         ElliottAnalysisResult defaultResult = defaultSnapshot.analysisFor(ElliottDegree.PRIMARY)
-                .orElseThrow()
+                .orElseThrow(() -> new IllegalStateException("No PRIMARY analysis in default snapshot"))
                 .analysis();
         ElliottAnalysisResult patternResult = patternSnapshot.analysisFor(ElliottDegree.PRIMARY)
-                .orElseThrow()
+                .orElseThrow(() -> new IllegalStateException("No PRIMARY analysis in pattern-aware snapshot"))
                 .analysis();
 
         logBaseScenario("Default profile", defaultResult);
@@ -94,25 +89,7 @@ public class ElliottWavePatternProfileDemo {
      * @return loaded bar series, or {@code null} if unavailable
      */
     private static BarSeries loadSeries() {
-        try (InputStream stream = ElliottWavePatternProfileDemo.class.getClassLoader()
-                .getResourceAsStream(DEFAULT_OHLCV_RESOURCE)) {
-            if (stream == null) {
-                LOG.error("Missing resource: {}", DEFAULT_OHLCV_RESOURCE);
-                return null;
-            }
-            BarSeries loaded = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(stream);
-            if (loaded == null) {
-                LOG.error("Failed to load resource: {}", DEFAULT_OHLCV_RESOURCE);
-                return null;
-            }
-            BarSeries series = new BaseBarSeriesBuilder().withName("BTC-USD_PT1D@Coinbase (ossified)").build();
-            for (int i = 0; i < loaded.getBarCount(); i++) {
-                series.addBar(loaded.getBar(i));
-            }
-            return series;
-        } catch (Exception ex) {
-            LOG.error("Failed to load dataset: {}", ex.getMessage(), ex);
-            return null;
-        }
+        return OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWavePatternProfileDemo.class, DEFAULT_OHLCV_RESOURCE,
+                "BTC-USD_PT1D@Coinbase (ossified)", LOG);
     }
 }

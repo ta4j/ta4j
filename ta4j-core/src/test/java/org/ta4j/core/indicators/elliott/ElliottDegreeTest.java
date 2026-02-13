@@ -98,6 +98,14 @@ class ElliottDegreeTest {
     }
 
     @Test
+    void historyFitScore_shouldRejectInvalidInputs() {
+        assertThrows(NullPointerException.class, () -> ElliottDegree.PRIMARY.historyFitScore(null, 10));
+        assertThrows(IllegalArgumentException.class, () -> ElliottDegree.PRIMARY.historyFitScore(Duration.ZERO, 10));
+        assertThrows(IllegalArgumentException.class,
+                () -> ElliottDegree.PRIMARY.historyFitScore(Duration.ofDays(1), 0));
+    }
+
+    @Test
     void recommendedHistoryDays_shouldExposeMaxFlag() {
         ElliottDegree.RecommendedHistory primary = ElliottDegree.PRIMARY.recommendedHistoryDays();
         assertThat(primary.minDays()).isGreaterThan(0.0);

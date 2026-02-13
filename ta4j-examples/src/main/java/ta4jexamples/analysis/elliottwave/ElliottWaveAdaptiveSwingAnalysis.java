@@ -3,12 +3,10 @@
  */
 package ta4jexamples.analysis.elliottwave;
 
-import java.io.InputStream;
 import java.util.List;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
@@ -22,8 +20,6 @@ import org.ta4j.core.indicators.elliott.swing.CompositeSwingDetector;
 import org.ta4j.core.indicators.elliott.swing.MinMagnitudeSwingFilter;
 import org.ta4j.core.indicators.elliott.swing.SwingDetector;
 import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
-
-import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
 /**
  * Demonstrates adaptive ZigZag and composite swing detection for Elliott Wave
@@ -97,25 +93,7 @@ public class ElliottWaveAdaptiveSwingAnalysis {
      * @return loaded bar series, or {@code null} if unavailable
      */
     private static BarSeries loadSeries() {
-        try (InputStream stream = ElliottWaveAdaptiveSwingAnalysis.class.getClassLoader()
-                .getResourceAsStream(DEFAULT_OHLCV_RESOURCE)) {
-            if (stream == null) {
-                LOG.error("Missing resource: {}", DEFAULT_OHLCV_RESOURCE);
-                return null;
-            }
-            BarSeries loaded = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(stream);
-            if (loaded == null) {
-                LOG.error("Failed to load resource: {}", DEFAULT_OHLCV_RESOURCE);
-                return null;
-            }
-            BarSeries series = new BaseBarSeriesBuilder().withName("BTC-USD_PT1D@Coinbase (ossified)").build();
-            for (int i = 0; i < loaded.getBarCount(); i++) {
-                series.addBar(loaded.getBar(i));
-            }
-            return series;
-        } catch (Exception ex) {
-            LOG.error("Failed to load dataset: {}", ex.getMessage(), ex);
-            return null;
-        }
+        return OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveAdaptiveSwingAnalysis.class,
+                DEFAULT_OHLCV_RESOURCE, "BTC-USD_PT1D@Coinbase (ossified)", LOG);
     }
 }

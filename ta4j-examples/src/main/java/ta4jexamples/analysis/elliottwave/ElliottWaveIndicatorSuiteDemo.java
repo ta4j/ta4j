@@ -4,7 +4,6 @@
 package ta4jexamples.analysis.elliottwave;
 
 import java.awt.GraphicsEnvironment;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.time.Duration;
 import java.util.Optional;
@@ -36,7 +35,6 @@ import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.PriceChannel;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
@@ -51,7 +49,6 @@ import ta4jexamples.charting.builder.ChartPlan;
 
 import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource;
 import ta4jexamples.datasources.CoinbaseHttpBarSeriesDataSource;
-import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 import ta4jexamples.datasources.BarSeriesDataSource;
 
 /**
@@ -187,6 +184,30 @@ public class ElliottWaveIndicatorSuiteDemo {
         LOG.info("Structured analysis result: {}", json);
 
         // Optionally visualize charts
+        analysis.visualizeAnalysisResult(result);
+    }
+
+    /**
+     * Runs the Elliott Wave suite using an ossified classpath dataset.
+     *
+     * @param resourceOwner  owner class for classpath resource resolution
+     * @param resource       classpath JSON resource to load
+     * @param seriesName     series name to assign
+     * @param explicitDegree degree override, or {@code null} to auto-select
+     */
+    static void runOssifiedResource(Class<?> resourceOwner, String resource, String seriesName,
+            ElliottDegree explicitDegree) {
+        BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(resourceOwner, resource, seriesName, LOG);
+        if (series == null || series.isEmpty()) {
+            LOG.error("No data available for resource {}", resource);
+            return;
+        }
+
+        ElliottDegree degree = explicitDegree == null ? selectRecommendedDegree(series) : explicitDegree;
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        AnalysisResult result = analysis.analyze(series, degree, DEFAULT_FIB_TOLERANCE);
+        String json = result.structuredResult().toJson(false);
+        LOG.info("Structured analysis result: {}", json);
         analysis.visualizeAnalysisResult(result);
     }
 
@@ -761,25 +782,8 @@ public class ElliottWaveIndicatorSuiteDemo {
      *         cannot be loaded
      */
     private static BarSeries loadSeries(String resource) {
-        try (InputStream stream = ElliottWaveIndicatorSuiteDemo.class.getClassLoader().getResourceAsStream(resource)) {
-            if (stream == null) {
-                LOG.error("Missing resource: {}", resource);
-                return null;
-            }
-            BarSeries loaded = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(stream);
-            if (loaded == null) {
-                return null;
-            }
-
-            BarSeries series = new BaseBarSeriesBuilder().withName("BTC-USD_PT1D@Coinbase (daily)").build();
-            for (int i = 0; i < loaded.getBarCount(); i++) {
-                series.addBar(loaded.getBar(i));
-            }
-            return series;
-        } catch (Exception ex) {
-            LOG.error("Failed to load Elliott wave dataset: {}", ex.getMessage(), ex);
-            return null;
-        }
+        return OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveIndicatorSuiteDemo.class, resource,
+                "BTC-USD_PT1D@Coinbase (daily)", LOG);
     }
 
     /**

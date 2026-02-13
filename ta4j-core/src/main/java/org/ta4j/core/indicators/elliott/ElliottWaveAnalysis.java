@@ -113,6 +113,9 @@ public final class ElliottWaveAnalysis {
     private static final double DEFAULT_NEUTRAL_CROSS_DEGREE_SCORE = 0.5;
     private static final int DEFAULT_HIGHER_DEGREES = 1;
     private static final int DEFAULT_LOWER_DEGREES = 1;
+    private static final double DIRECTION_COMPATIBILITY_WEIGHT = 0.55;
+    private static final double STRUCTURE_COMPATIBILITY_WEIGHT = 0.30;
+    private static final double INVALIDATION_COMPATIBILITY_WEIGHT = 0.15;
 
     private final ElliottDegree baseDegree;
     private final int higherDegrees;
@@ -381,13 +384,15 @@ public final class ElliottWaveAnalysis {
             return 0.0;
         }
 
-        DegreeRelation relation = supporting.ordinal() < base.ordinal() ? DegreeRelation.HIGHER : DegreeRelation.LOWER;
+        DegreeRelation relation = supporting.isHigherOrEqual(base) ? DegreeRelation.HIGHER : DegreeRelation.LOWER;
 
         double directionScore = directionCompatibility(baseScenario, supportingScenario);
         double structureScore = structureCompatibility(baseScenario, supportingScenario);
         double invalidationScore = invalidationCompatibility(baseScenario, supportingScenario, relation);
 
-        double score = (0.55 * directionScore) + (0.30 * structureScore) + (0.15 * invalidationScore);
+        double score = (DIRECTION_COMPATIBILITY_WEIGHT * directionScore)
+                + (STRUCTURE_COMPATIBILITY_WEIGHT * structureScore)
+                + (INVALIDATION_COMPATIBILITY_WEIGHT * invalidationScore);
         return clamp01(score);
     }
 
@@ -498,6 +503,9 @@ public final class ElliottWaveAnalysis {
     }
 
     private static double clamp01(final double value) {
+        if (Double.isNaN(value)) {
+            return 0.0;
+        }
         if (value < 0.0) {
             return 0.0;
         }

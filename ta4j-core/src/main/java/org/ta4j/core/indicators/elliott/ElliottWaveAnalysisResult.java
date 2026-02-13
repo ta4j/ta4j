@@ -61,11 +61,17 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
     public Optional<DegreeAnalysis> analysisFor(final ElliottDegree degree) {
         Objects.requireNonNull(degree, "degree");
         for (final DegreeAnalysis analysis : analyses) {
-            if (analysis != null && analysis.degree() == degree) {
+            if (analysis.degree() == degree) {
                 return Optional.of(analysis);
             }
         }
         return Optional.empty();
+    }
+
+    private static void validateUnitIntervalScore(final String fieldName, final double score) {
+        if (Double.isNaN(score) || Double.isInfinite(score) || score < 0.0 || score > 1.0) {
+            throw new IllegalArgumentException(fieldName + " must be in [0.0, 1.0]");
+        }
     }
 
     /**
@@ -85,12 +91,11 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
         public DegreeAnalysis {
             Objects.requireNonNull(degree, "degree");
             Objects.requireNonNull(analysis, "analysis");
+            Objects.requireNonNull(barDuration, "barDuration");
             if (barCount < 0) {
                 throw new IllegalArgumentException("barCount must be >= 0");
             }
-            if (Double.isNaN(historyFitScore) || historyFitScore < 0.0 || historyFitScore > 1.0) {
-                throw new IllegalArgumentException("historyFitScore must be in [0.0, 1.0]");
-            }
+            validateUnitIntervalScore("historyFitScore", historyFitScore);
         }
     }
 
@@ -109,6 +114,9 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
 
         public BaseScenarioAssessment {
             Objects.requireNonNull(scenario, "scenario");
+            validateUnitIntervalScore("confidenceScore", confidenceScore);
+            validateUnitIntervalScore("crossDegreeScore", crossDegreeScore);
+            validateUnitIntervalScore("compositeScore", compositeScore);
             supportingMatches = supportingMatches == null ? List.of() : List.copyOf(supportingMatches);
         }
     }
@@ -134,6 +142,10 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
         public SupportingScenarioMatch {
             Objects.requireNonNull(degree, "degree");
             Objects.requireNonNull(scenarioId, "scenarioId");
+            validateUnitIntervalScore("scenarioConfidence", scenarioConfidence);
+            validateUnitIntervalScore("compatibilityScore", compatibilityScore);
+            validateUnitIntervalScore("weightedCompatibility", weightedCompatibility);
+            validateUnitIntervalScore("historyFitScore", historyFitScore);
         }
     }
 }

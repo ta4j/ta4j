@@ -11,12 +11,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.RoundingMode;
 import java.math.BigDecimal;
+import java.awt.GraphicsEnvironment;
 import java.io.InputStream;
 import java.util.Optional;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.Assume;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.indicators.elliott.ElliottRatio.RatioType;
@@ -91,6 +93,7 @@ class ElliottWaveAnalysisResultTest {
 
     @Test
     void from_withBaseCaseChartPlan_encodesChartImage() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
         ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
@@ -110,6 +113,7 @@ class ElliottWaveAnalysisResultTest {
 
     @Test
     void from_withAlternativeChartPlans_encodesChartImages() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
         ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,

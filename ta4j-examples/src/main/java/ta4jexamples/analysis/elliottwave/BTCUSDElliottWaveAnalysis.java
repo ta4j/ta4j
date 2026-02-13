@@ -1,45 +1,18 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-
-/*
- * The MIT License (MIT)
- *
- * Copyright (c) 2017-2025 Ta4j Organization & respective
- * authors (see AUTHORS)
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy of
- * this software and associated documentation files (the "Software"), to deal in
- * the Software without restriction, including without limitation the rights to
- * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
- * the Software, and to permit persons to whom the Software is furnished to do so,
- * subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
- * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
- * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
- * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
 package ta4jexamples.analysis.elliottwave;
 
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 
-import java.time.temporal.ChronoUnit;
-import java.time.Duration;
-import java.time.Instant;
-
 /**
- * Example Elliott Wave analysis for Bitcoin (BTC-USD) using Coinbase data.
+ * Example Elliott Wave analysis for Bitcoin (BTC-USD) using an ossified
+ * Coinbase dataset.
  * <p>
  * This class demonstrates a simple usage pattern for analyzing Bitcoin price
- * data with Elliott Wave indicators. It loads the last 365 days of daily (PT1D)
- * data from Coinbase and performs comprehensive Elliott Wave analysis
- * including:
+ * data with Elliott Wave indicators. It loads a committed daily (PT1D) dataset
+ * from {@code src/main/resources} and performs comprehensive Elliott Wave
+ * analysis including:
  * <ul>
  * <li>Swing detection and wave counting</li>
  * <li>Phase identification (impulse and corrective waves)</li>
@@ -70,19 +43,15 @@ public class BTCUSDElliottWaveAnalysis {
     /**
      * Main entry point for BTC-USD Elliott Wave analysis.
      * <p>
-     * Loads 365 days of daily Bitcoin data from Coinbase and performs Elliott Wave
-     * analysis using the PRIMARY degree.
+     * Loads a local daily Bitcoin dataset and performs Elliott Wave analysis using
+     * the PRIMARY degree.
      *
      * @param args command-line arguments (not used)
      */
     public static void main(String[] args) {
-        String dataSource = "Coinbase";
-        String ticker = "BTC-USD";
-        String barDuration = Duration.ofDays(1).toString();
-        String degree = ElliottDegree.PRIMARY.name();
-        String startEpoch = String.valueOf(Instant.now().minus(365, ChronoUnit.DAYS).getEpochSecond());
-
-        ElliottWaveIndicatorSuiteDemo.main(new String[] { dataSource, ticker, barDuration, degree, startEpoch });
+        ElliottWaveIndicatorSuiteDemo.runOssifiedResource(BTCUSDElliottWaveAnalysis.class,
+                "Coinbase-BTC-USD-PT1D-20230616_20231011.json", "BTC-USD_PT1D@Coinbase (ossified)",
+                ElliottDegree.PRIMARY);
     }
 
 }

@@ -3,20 +3,16 @@
  */
 package ta4jexamples.analysis.elliottwave;
 
-import java.io.InputStream;
 import java.util.List;
 import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysis;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
-
-import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
 /**
  * Demonstrates multi-degree Elliott Wave analysis, validating scenarios across
@@ -91,25 +87,7 @@ public class ElliottWaveMultiDegreeAnalysisDemo {
     }
 
     private static BarSeries loadSeries(final String resource) {
-        try (InputStream stream = ElliottWaveMultiDegreeAnalysisDemo.class.getClassLoader()
-                .getResourceAsStream(resource)) {
-            if (stream == null) {
-                LOG.error("Missing resource: {}", resource);
-                return null;
-            }
-            BarSeries loaded = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(stream);
-            if (loaded == null) {
-                LOG.error("Failed to load resource: {}", resource);
-                return null;
-            }
-            BarSeries series = new BaseBarSeriesBuilder().withName("BTC-USD_PT1D@Coinbase (ossified)").build();
-            for (int i = 0; i < loaded.getBarCount(); i++) {
-                series.addBar(loaded.getBar(i));
-            }
-            return series;
-        } catch (Exception ex) {
-            LOG.error("Failed to load dataset: {}", ex.getMessage(), ex);
-            return null;
-        }
+        return OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveMultiDegreeAnalysisDemo.class, resource,
+                "BTC-USD_PT1D@Coinbase (ossified)", LOG);
     }
 }

@@ -30,10 +30,10 @@ Make Elliott Wave (EW) usage obvious by collapsing the analysis entry points int
 ## Implementation checklist
 - Add `ElliottWaveAnalysis` (merge `ElliottWaveAnalyzer` + `ElliottWaveMultiDegreeAnalyzer` semantics).
 - Rename/align result naming to match the new single entry point.
-- Update Javadoc and `package-info.java` to clearly list only two entry points.
-- Update examples to import and demonstrate the new entry point.
-- Update README + changelog entries.
-- Update/replace tests for the renamed/consolidated API.
+- Revise Javadoc and `package-info.java` to clearly list only two entry points.
+- Refresh examples to import and demonstrate the new entry point.
+- Amend README + changelog entries.
+- Replace/adapt tests for the renamed/consolidated API.
 - Run `scripts/run-full-build-quiet.sh` and ensure green.
 
 ## Decisions
