@@ -48,7 +48,23 @@ public class AverageTrueRangeTrailingStopLossRule extends BaseVolatilityTrailing
      */
     public AverageTrueRangeTrailingStopLossRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient) {
-        super(referencePrice, createStopLossThreshold(series, atrBarCount, atrCoefficient), Integer.MAX_VALUE);
+        this(series, referencePrice, atrBarCount, atrCoefficient, Integer.MAX_VALUE);
+    }
+
+    /**
+     * Constructor with custom reference price and lookback.
+     *
+     * @param series         the bar series
+     * @param referencePrice the reference price indicator
+     * @param atrBarCount    the number of bars used for ATR calculation
+     * @param atrCoefficient the coefficient to multiply ATR
+     * @param barCount       the number of bars to look back for trailing
+     *                       calculation
+     * @since 0.22.2
+     */
+    public AverageTrueRangeTrailingStopLossRule(final BarSeries series, final Indicator<Num> referencePrice,
+            final int atrBarCount, final Number atrCoefficient, final int barCount) {
+        super(referencePrice, createStopLossThreshold(series, atrBarCount, atrCoefficient), barCount);
     }
 
     /**
@@ -79,6 +95,14 @@ public class AverageTrueRangeTrailingStopLossRule extends BaseVolatilityTrailing
         super(referencePrice, BinaryOperationIndicator.product(requireNonNull(atrIndicator), atrCoefficient), barCount);
     }
 
+    /**
+     * Builds ATR-based trailing stop-loss threshold indicator.
+     *
+     * @param series         bar series
+     * @param atrBarCount    ATR lookback length
+     * @param atrCoefficient ATR multiplier
+     * @return ATR-scaled threshold indicator
+     */
     private static Indicator<Num> createStopLossThreshold(BarSeries series, int atrBarCount, Number atrCoefficient) {
         return BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
     }

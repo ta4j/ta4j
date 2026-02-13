@@ -35,6 +35,14 @@ public class RMultipleCriterion extends AbstractAnalysisCriterion {
         this.riskModel = riskModel;
     }
 
+    /**
+     * Calculates R-multiple for a single closed position.
+     *
+     * @param series   the bar series
+     * @param position the position to evaluate
+     * @return {@code profit / risk} for the position, or zero when unavailable
+     * @since 0.22.2
+     */
     @Override
     public Num calculate(BarSeries series, Position position) {
         Num zero = series.numFactory().zero();
@@ -48,6 +56,14 @@ public class RMultipleCriterion extends AbstractAnalysisCriterion {
         return position.getProfit().dividedBy(risk);
     }
 
+    /**
+     * Calculates average R-multiple over all closed positions in a trading record.
+     *
+     * @param series        the bar series
+     * @param tradingRecord the trading record to evaluate
+     * @return mean R-multiple across positions with valid positive risk
+     * @since 0.22.2
+     */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         Num zero = series.numFactory().zero();
@@ -64,7 +80,7 @@ public class RMultipleCriterion extends AbstractAnalysisCriterion {
             if (risk == null || risk.isZero() || risk.isNegative()) {
                 continue;
             }
-            sum = sum.plus(calculate(series, position));
+            sum = sum.plus(position.getProfit().dividedBy(risk));
             count++;
         }
         if (count == 0) {
@@ -73,6 +89,13 @@ public class RMultipleCriterion extends AbstractAnalysisCriterion {
         return sum.dividedBy(series.numFactory().numOf(count));
     }
 
+    /**
+     * Indicates that higher R-multiples are better.
+     *
+     * @param criterionValue1 first value
+     * @param criterionValue2 second value
+     * @return {@code true} when first value is greater
+     */
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);

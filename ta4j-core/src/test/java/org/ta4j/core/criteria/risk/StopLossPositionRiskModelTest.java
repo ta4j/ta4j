@@ -12,6 +12,7 @@ import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.rules.FixedAmountStopLossRule;
 
 public class StopLossPositionRiskModelTest {
@@ -73,5 +74,25 @@ public class StopLossPositionRiskModelTest {
         PositionRiskModel model = new StopLossPositionRiskModel(5);
 
         assertThrows(IllegalArgumentException.class, () -> model.risk(null, new Position()));
+    }
+
+    @Test
+    public void returnsZeroRiskForNaNEntryPrice() {
+        BarSeries series = new MockBarSeriesBuilder().withData(100, 110).build();
+        Position position = new Position(Trade.buyAt(0, NaN.NaN, series.numFactory().one()),
+                Trade.sellAt(1, series.numFactory().numOf(110), series.numFactory().one()));
+        PositionRiskModel model = new StopLossPositionRiskModel(5);
+
+        assertNumEquals(0, model.risk(series, position));
+    }
+
+    @Test
+    public void returnsZeroRiskForZeroAmount() {
+        BarSeries series = new MockBarSeriesBuilder().withData(100, 110).build();
+        Position position = new Position(Trade.buyAt(0, series.numFactory().hundred(), series.numFactory().zero()),
+                Trade.sellAt(1, series.numFactory().numOf(110), series.numFactory().zero()));
+        PositionRiskModel model = new StopLossPositionRiskModel(5);
+
+        assertNumEquals(0, model.risk(series, position));
     }
 }

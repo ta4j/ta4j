@@ -25,7 +25,16 @@ abstract class BaseVolatilityTrailingStopGainRule extends AbstractRule implement
     private final Indicator<Num> referencePrice;
     private final Indicator<Num> stopGainThreshold;
     private final int barCount;
+    private final transient HighestValueIndicator highestReferencePriceWithMaxLookback;
+    private final transient LowestValueIndicator lowestReferencePriceWithMaxLookback;
 
+    /**
+     * Constructor.
+     *
+     * @param referencePrice    reference price indicator
+     * @param stopGainThreshold volatility-scaled stop-gain threshold indicator
+     * @param barCount          maximum lookback for trailing reference calculation
+     */
     protected BaseVolatilityTrailingStopGainRule(Indicator<Num> referencePrice, Indicator<Num> stopGainThreshold,
             int barCount) {
         if (referencePrice == null) {
@@ -40,8 +49,18 @@ abstract class BaseVolatilityTrailingStopGainRule extends AbstractRule implement
         this.referencePrice = referencePrice;
         this.stopGainThreshold = stopGainThreshold;
         this.barCount = barCount;
+        this.highestReferencePriceWithMaxLookback = new HighestValueIndicator(referencePrice, barCount);
+        this.lowestReferencePriceWithMaxLookback = new LowestValueIndicator(referencePrice, barCount);
     }
 
+    /**
+     * Evaluates whether trailing stop-gain condition is satisfied for the current
+     * open position.
+     *
+     * @param index         current bar index
+     * @param tradingRecord trading record containing the open position
+     * @return {@code true} when trailing stop-gain condition is satisfied
+     */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         if (tradingRecord != null && !tradingRecord.isClosed()) {
@@ -58,8 +77,7 @@ abstract class BaseVolatilityTrailingStopGainRule extends AbstractRule implement
                 int lookback = Math.min(barsSinceEntry, barCount);
 
                 if (position.getEntry().isBuy()) {
-                    HighestValueIndicator highestPrice = new HighestValueIndicator(referencePrice, lookback);
-                    Num highestValue = highestPrice.getValue(index);
+                    Num highestValue = highestReferencePrice(index, lookback);
                     Num gainActivationThreshold = StopGainRule.stopGainPriceFromDistance(entryPrice, threshold, true);
                     if (highestValue.isLessThan(gainActivationThreshold)) {
                         return false;
@@ -68,8 +86,7 @@ abstract class BaseVolatilityTrailingStopGainRule extends AbstractRule implement
                     Num thresholdPrice = StopGainRule.trailingStopGainPriceFromDistance(reference, threshold, true);
                     return currentPrice.isLessThanOrEqual(thresholdPrice);
                 }
-                LowestValueIndicator lowestPrice = new LowestValueIndicator(referencePrice, lookback);
-                Num lowestValue = lowestPrice.getValue(index);
+                Num lowestValue = lowestReferencePrice(index, lookback);
                 Num gainActivationThreshold = StopGainRule.stopGainPriceFromDistance(entryPrice, threshold, false);
                 if (lowestValue.isGreaterThan(gainActivationThreshold)) {
                     return false;
@@ -82,6 +99,13 @@ abstract class BaseVolatilityTrailingStopGainRule extends AbstractRule implement
         return false;
     }
 
+    /**
+     * Returns the initial trailing stop-gain price at position entry.
+     *
+     * @param series   the bar series
+     * @param position the position being evaluated
+     * @return initial trailing stop-gain price, or {@code null} if unavailable
+     */
     @Override
     public Num stopPrice(BarSeries series, Position position) {
         if (position == null || position.getEntry() == null) {
@@ -100,12 +124,46 @@ abstract class BaseVolatilityTrailingStopGainRule extends AbstractRule implement
         // stopPrice models the initial trailing stop at entry time.
         int lookback = 1;
         if (position.getEntry().isBuy()) {
-            HighestValueIndicator highestPrice = new HighestValueIndicator(referencePrice, lookback);
-            Num reference = entryPrice.max(highestPrice.getValue(entryIndex));
+            Num reference = entryPrice.max(highestReferencePrice(entryIndex, lookback));
             return StopGainRule.trailingStopGainPriceFromDistance(reference, threshold, true);
         }
-        LowestValueIndicator lowestPrice = new LowestValueIndicator(referencePrice, lookback);
-        Num reference = entryPrice.min(lowestPrice.getValue(entryIndex));
+        Num reference = entryPrice.min(lowestReferencePrice(entryIndex, lookback));
         return StopGainRule.trailingStopGainPriceFromDistance(reference, threshold, false);
+    }
+
+    /**
+     * Returns the highest reference price for the requested lookback.
+     *
+     * <p>
+     * The max-lookback indicator is cached and reused; shorter warm-up lookbacks
+     * are computed with a temporary indicator.
+     *
+     * @param index    current bar index
+     * @param lookback lookback window size
+     * @return highest reference price within the window
+     */
+    private Num highestReferencePrice(int index, int lookback) {
+        if (lookback == barCount) {
+            return highestReferencePriceWithMaxLookback.getValue(index);
+        }
+        return new HighestValueIndicator(referencePrice, lookback).getValue(index);
+    }
+
+    /**
+     * Returns the lowest reference price for the requested lookback.
+     *
+     * <p>
+     * The max-lookback indicator is cached and reused; shorter warm-up lookbacks
+     * are computed with a temporary indicator.
+     *
+     * @param index    current bar index
+     * @param lookback lookback window size
+     * @return lowest reference price within the window
+     */
+    private Num lowestReferencePrice(int index, int lookback) {
+        if (lookback == barCount) {
+            return lowestReferencePriceWithMaxLookback.getValue(index);
+        }
+        return new LowestValueIndicator(referencePrice, lookback).getValue(index);
     }
 }

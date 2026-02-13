@@ -52,6 +52,19 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
         this.stopLossModel = stopLossModel;
     }
 
+    /**
+     * Computes monetary risk for a position as absolute price distance to stop
+     * times position amount.
+     *
+     * <p>
+     * This method returns zero when the position context is missing or unusable
+     * (missing entry, NaN values, zero amount, or unavailable stop price).
+     *
+     * @param series   the bar series, must not be {@code null}
+     * @param position the position to evaluate
+     * @return monetary risk amount for the position
+     * @since 0.22.2
+     */
     @Override
     public Num risk(BarSeries series, Position position) {
         if (series == null) {
@@ -74,6 +87,12 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
         return perUnitRisk.multipliedBy(amount.abs());
     }
 
+    /**
+     * Creates a stop-loss model from a fixed percentage.
+     *
+     * @param lossPercentage fixed stop-loss percentage
+     * @return a stop-loss model based on the provided percentage
+     */
     private static StopLossPriceModel fixedPercentageModel(Number lossPercentage) {
         if (lossPercentage == null) {
             throw new IllegalArgumentException("lossPercentage must not be null");
@@ -90,9 +109,6 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
                 return null;
             }
             Num lossPercent = series.numFactory().numOf(lossPercentage);
-            if (lossPercent.isZero() || lossPercent.isNegative()) {
-                return series.numFactory().zero();
-            }
             return StopLossRule.stopLossPrice(entryPrice, lossPercent, position.getEntry().isBuy());
         };
     }

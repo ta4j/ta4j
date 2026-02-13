@@ -19,6 +19,12 @@ abstract class BaseVolatilityStopLossRule extends AbstractRule implements StopLo
     private final Indicator<Num> referencePrice;
     private final Indicator<Num> stopLossThreshold;
 
+    /**
+     * Constructor.
+     *
+     * @param referencePrice    reference price indicator
+     * @param stopLossThreshold volatility-scaled stop-loss threshold indicator
+     */
     protected BaseVolatilityStopLossRule(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold) {
         if (referencePrice == null) {
             throw new IllegalArgumentException("referencePrice must not be null");
@@ -30,6 +36,14 @@ abstract class BaseVolatilityStopLossRule extends AbstractRule implements StopLo
         this.stopLossThreshold = stopLossThreshold;
     }
 
+    /**
+     * Evaluates whether the stop-loss condition is satisfied for the current open
+     * position.
+     *
+     * @param index         current bar index
+     * @param tradingRecord trading record containing the open position
+     * @return {@code true} when stop-loss condition is satisfied
+     */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         if (tradingRecord != null && !tradingRecord.isClosed()) {
@@ -53,6 +67,13 @@ abstract class BaseVolatilityStopLossRule extends AbstractRule implements StopLo
         return false;
     }
 
+    /**
+     * Returns the initial stop-loss price at position entry.
+     *
+     * @param series   the bar series
+     * @param position the position being evaluated
+     * @return stop-loss price at entry, or {@code null} if unavailable
+     */
     @Override
     public Num stopPrice(BarSeries series, Position position) {
         if (position == null || position.getEntry() == null) {
@@ -66,6 +87,8 @@ abstract class BaseVolatilityStopLossRule extends AbstractRule implements StopLo
         if (Num.isNaNOrNull(threshold)) {
             return null;
         }
+        // stopPrice models the initial stop at entry time, so threshold is read at
+        // the entry index rather than the current evaluation index.
         return StopLossRule.stopLossPriceFromDistance(entryPrice, threshold, position.getEntry().isBuy());
     }
 }

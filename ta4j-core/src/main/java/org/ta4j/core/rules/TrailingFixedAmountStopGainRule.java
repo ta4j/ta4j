@@ -33,6 +33,8 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
 
     /** The gain distance as an absolute amount. */
     private final Num gainAmount;
+    private final transient HighestValueIndicator highestPriceWithMaxLookback;
+    private final transient LowestValueIndicator lowestPriceWithMaxLookback;
 
     /**
      * Constructor.
@@ -54,6 +56,8 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
         this.priceIndicator = indicator;
         this.barCount = barCount;
         this.gainAmount = gainAmount;
+        this.highestPriceWithMaxLookback = new HighestValueIndicator(priceIndicator, barCount);
+        this.lowestPriceWithMaxLookback = new LowestValueIndicator(priceIndicator, barCount);
     }
 
     /**
@@ -109,10 +113,17 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
         return satisfied;
     }
 
+    /**
+     * Evaluates trailing stop-gain condition for a long position.
+     *
+     * @param entryPrice    position entry price
+     * @param currentPrice  current reference price
+     * @param index         current bar index
+     * @param positionIndex entry bar index
+     * @return {@code true} when trailing stop-gain condition is satisfied
+     */
     private boolean isBuySatisfied(Num entryPrice, Num currentPrice, int index, int positionIndex) {
-        HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, positionIndex));
-        Num highestCloseNum = highest.getValue(index);
+        Num highestCloseNum = highestClosePrice(index, getValueIndicatorBarCount(index, positionIndex));
         Num gainActivationThreshold = StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, true);
         if (highestCloseNum.isLessThan(gainActivationThreshold)) {
             return false;
@@ -122,10 +133,17 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
         return currentPrice.isLessThanOrEqual(currentStopGainLimitActivation);
     }
 
+    /**
+     * Evaluates trailing stop-gain condition for a short position.
+     *
+     * @param entryPrice    position entry price
+     * @param currentPrice  current reference price
+     * @param index         current bar index
+     * @param positionIndex entry bar index
+     * @return {@code true} when trailing stop-gain condition is satisfied
+     */
     private boolean isSellSatisfied(Num entryPrice, Num currentPrice, int index, int positionIndex) {
-        LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, positionIndex));
-        Num lowestCloseNum = lowest.getValue(index);
+        Num lowestCloseNum = lowestClosePrice(index, getValueIndicatorBarCount(index, positionIndex));
         Num gainActivationThreshold = StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, false);
         if (lowestCloseNum.isGreaterThan(gainActivationThreshold)) {
             return false;
@@ -152,15 +170,56 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
         // stopPrice models the initial trailing stop at entry time.
         int lookback = 1;
         if (position.getEntry().isBuy()) {
-            HighestValueIndicator highest = new HighestValueIndicator(priceIndicator, lookback);
-            Num highestCloseNum = highest.getValue(entryIndex);
+            Num highestCloseNum = highestClosePrice(entryIndex, lookback);
             return StopGainRule.trailingStopGainPriceFromDistance(highestCloseNum, gainAmount, true);
         }
-        LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator, lookback);
-        Num lowestCloseNum = lowest.getValue(entryIndex);
+        Num lowestCloseNum = lowestClosePrice(entryIndex, lookback);
         return StopGainRule.trailingStopGainPriceFromDistance(lowestCloseNum, gainAmount, false);
     }
 
+    /**
+     * Returns the highest observed close for the provided lookback window.
+     *
+     * <p>
+     * The max-lookback indicator is cached and reused; shorter warm-up lookbacks
+     * are computed with a temporary indicator.
+     *
+     * @param index    current bar index
+     * @param lookback lookback window size
+     * @return highest close value in the window
+     */
+    private Num highestClosePrice(int index, int lookback) {
+        if (lookback == barCount) {
+            return highestPriceWithMaxLookback.getValue(index);
+        }
+        return new HighestValueIndicator(priceIndicator, lookback).getValue(index);
+    }
+
+    /**
+     * Returns the lowest observed close for the provided lookback window.
+     *
+     * <p>
+     * The max-lookback indicator is cached and reused; shorter warm-up lookbacks
+     * are computed with a temporary indicator.
+     *
+     * @param index    current bar index
+     * @param lookback lookback window size
+     * @return lowest close value in the window
+     */
+    private Num lowestClosePrice(int index, int lookback) {
+        if (lookback == barCount) {
+            return lowestPriceWithMaxLookback.getValue(index);
+        }
+        return new LowestValueIndicator(priceIndicator, lookback).getValue(index);
+    }
+
+    /**
+     * Returns effective lookback length between entry bar and current bar.
+     *
+     * @param index         current bar index
+     * @param positionIndex position entry index
+     * @return lookback length constrained by {@link #barCount}
+     */
     private int getValueIndicatorBarCount(int index, int positionIndex) {
         return Math.min(index - positionIndex + 1, this.barCount);
     }

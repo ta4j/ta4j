@@ -56,7 +56,7 @@ public class VolatilityStopGainRule extends BaseVolatilityStopGainRule {
      */
     public VolatilityStopGainRule(Indicator<Num> referencePrice, Indicator<Num> volatilityIndicator,
             Number coefficient) {
-        super(referencePrice, BinaryOperationIndicator.product(volatilityIndicator, coefficient));
+        super(referencePrice, createStopGainThreshold(volatilityIndicator, coefficient));
     }
 
     /**
@@ -68,5 +68,22 @@ public class VolatilityStopGainRule extends BaseVolatilityStopGainRule {
      */
     public VolatilityStopGainRule(Indicator<Num> referencePrice, Indicator<Num> volatilityIndicator) {
         this(referencePrice, volatilityIndicator, 1);
+    }
+
+    /**
+     * Builds the volatility-scaled stop-gain threshold indicator.
+     *
+     * @param volatilityIndicator volatility source indicator
+     * @param coefficient         volatility multiplier
+     * @return indicator representing stop-gain distance
+     */
+    private static Indicator<Num> createStopGainThreshold(Indicator<Num> volatilityIndicator, Number coefficient) {
+        if (volatilityIndicator == null) {
+            throw new IllegalArgumentException("volatilityIndicator must not be null");
+        }
+        if (coefficient == null || Double.isNaN(coefficient.doubleValue()) || coefficient.doubleValue() <= 0) {
+            throw new IllegalArgumentException("coefficient must be positive");
+        }
+        return BinaryOperationIndicator.product(volatilityIndicator, coefficient);
     }
 }

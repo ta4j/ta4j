@@ -21,7 +21,16 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
     private final Indicator<Num> referencePrice;
     private final Indicator<Num> stopLossThreshold;
     private final int barCount;
+    private final transient HighestValueIndicator highestReferencePriceWithMaxLookback;
+    private final transient LowestValueIndicator lowestReferencePriceWithMaxLookback;
 
+    /**
+     * Constructor.
+     *
+     * @param referencePrice    reference price indicator
+     * @param stopLossThreshold volatility-scaled stop-loss threshold indicator
+     * @param barCount          maximum lookback for trailing reference calculation
+     */
     protected BaseVolatilityTrailingStopLossRule(Indicator<Num> referencePrice, Indicator<Num> stopLossThreshold,
             int barCount) {
         if (referencePrice == null) {
@@ -36,8 +45,18 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
         this.referencePrice = referencePrice;
         this.stopLossThreshold = stopLossThreshold;
         this.barCount = barCount;
+        this.highestReferencePriceWithMaxLookback = new HighestValueIndicator(referencePrice, barCount);
+        this.lowestReferencePriceWithMaxLookback = new LowestValueIndicator(referencePrice, barCount);
     }
 
+    /**
+     * Evaluates whether trailing stop-loss condition is satisfied for the current
+     * open position.
+     *
+     * @param index         current bar index
+     * @param tradingRecord trading record containing the open position
+     * @return {@code true} when trailing stop-loss condition is satisfied
+     */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         if (tradingRecord != null && !tradingRecord.isClosed()) {
@@ -54,13 +73,11 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
                 int lookback = Math.min(barsSinceEntry, barCount);
 
                 if (position.getEntry().isBuy()) {
-                    HighestValueIndicator highestPrice = new HighestValueIndicator(referencePrice, lookback);
-                    Num reference = entryPrice.max(highestPrice.getValue(index));
+                    Num reference = entryPrice.max(highestReferencePrice(index, lookback));
                     Num thresholdPrice = StopLossRule.stopLossPriceFromDistance(reference, threshold, true);
                     return currentPrice.isLessThanOrEqual(thresholdPrice);
                 }
-                LowestValueIndicator lowestPrice = new LowestValueIndicator(referencePrice, lookback);
-                Num reference = entryPrice.min(lowestPrice.getValue(index));
+                Num reference = entryPrice.min(lowestReferencePrice(index, lookback));
                 Num thresholdPrice = StopLossRule.stopLossPriceFromDistance(reference, threshold, false);
                 return currentPrice.isGreaterThanOrEqual(thresholdPrice);
             }
@@ -68,6 +85,13 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
         return false;
     }
 
+    /**
+     * Returns the initial trailing stop-loss price at position entry.
+     *
+     * @param series   the bar series
+     * @param position the position being evaluated
+     * @return initial trailing stop-loss price, or {@code null} if unavailable
+     */
     @Override
     public Num stopPrice(BarSeries series, Position position) {
         if (position == null || position.getEntry() == null) {
@@ -86,12 +110,46 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
         // stopPrice models the initial trailing stop at entry time.
         int lookback = 1;
         if (position.getEntry().isBuy()) {
-            HighestValueIndicator highestPrice = new HighestValueIndicator(referencePrice, lookback);
-            Num reference = entryPrice.max(highestPrice.getValue(entryIndex));
+            Num reference = entryPrice.max(highestReferencePrice(entryIndex, lookback));
             return StopLossRule.stopLossPriceFromDistance(reference, threshold, true);
         }
-        LowestValueIndicator lowestPrice = new LowestValueIndicator(referencePrice, lookback);
-        Num reference = entryPrice.min(lowestPrice.getValue(entryIndex));
+        Num reference = entryPrice.min(lowestReferencePrice(entryIndex, lookback));
         return StopLossRule.stopLossPriceFromDistance(reference, threshold, false);
+    }
+
+    /**
+     * Returns the highest reference price for the requested lookback.
+     *
+     * <p>
+     * The max-lookback indicator is cached and reused; shorter warm-up lookbacks
+     * are computed with a temporary indicator.
+     *
+     * @param index    current bar index
+     * @param lookback lookback window size
+     * @return highest reference price within the window
+     */
+    private Num highestReferencePrice(int index, int lookback) {
+        if (lookback == barCount) {
+            return highestReferencePriceWithMaxLookback.getValue(index);
+        }
+        return new HighestValueIndicator(referencePrice, lookback).getValue(index);
+    }
+
+    /**
+     * Returns the lowest reference price for the requested lookback.
+     *
+     * <p>
+     * The max-lookback indicator is cached and reused; shorter warm-up lookbacks
+     * are computed with a temporary indicator.
+     *
+     * @param index    current bar index
+     * @param lookback lookback window size
+     * @return lowest reference price within the window
+     */
+    private Num lowestReferencePrice(int index, int lookback) {
+        if (lookback == barCount) {
+            return lowestReferencePriceWithMaxLookback.getValue(index);
+        }
+        return new LowestValueIndicator(referencePrice, lookback).getValue(index);
     }
 }

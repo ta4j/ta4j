@@ -92,7 +92,8 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
     /**
      * Returns the stop-loss price for the supplied position entry.
      *
-     * @param series   the price series
+     * @param series   the price series (unused in this implementation; required by
+     *                 {@link StopLossPriceModel})
      * @param position the position being evaluated
      * @return the stop-loss price, or {@code null} if unavailable
      * @since 0.22.2
@@ -132,11 +133,25 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
         return satisfied;
     }
 
+    /**
+     * Checks stop-loss trigger condition for a long position.
+     *
+     * @param entryPrice   entry price
+     * @param currentPrice current price
+     * @return {@code true} when current price reaches long stop-loss threshold
+     */
     private boolean isBuyStopSatisfied(Num entryPrice, Num currentPrice) {
         var threshold = stopLossPrice(entryPrice, lossPercentage, true);
         return currentPrice.isLessThanOrEqual(threshold);
     }
 
+    /**
+     * Checks stop-loss trigger condition for a short position.
+     *
+     * @param entryPrice   entry price
+     * @param currentPrice current price
+     * @return {@code true} when current price reaches short stop-loss threshold
+     */
     private boolean isSellStopSatisfied(Num entryPrice, Num currentPrice) {
         var threshold = stopLossPrice(entryPrice, lossPercentage, false);
         return currentPrice.isGreaterThanOrEqual(threshold);

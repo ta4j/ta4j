@@ -9,6 +9,7 @@ import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
@@ -20,7 +21,7 @@ import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.Indicator;
 
-public class VolatilityStopGainRuleTest extends AbstractIndicatorTest<Object, Object> {
+public class VolatilityStopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     public VolatilityStopGainRuleTest(NumFactory numFactory) {
         super(numFactory);
@@ -100,7 +101,12 @@ public class VolatilityStopGainRuleTest extends AbstractIndicatorTest<Object, Ob
     public void constructorValidation() {
         var series = StopRuleTestSupport.series(numFactory, 100, 95, 89);
         var volatility = new ConstantIndicator<>(series, numFactory.numOf(5));
+        var closePrice = new ClosePriceIndicator(series);
         assertThrows(IllegalArgumentException.class,
                 () -> new VolatilityStopGainRule((Indicator<Num>) null, volatility, 2));
+        assertThrows(IllegalArgumentException.class,
+                () -> new VolatilityStopGainRule(closePrice, (Indicator<Num>) null, 2));
+        assertThrows(IllegalArgumentException.class, () -> new VolatilityStopGainRule(closePrice, volatility, 0));
+        assertThrows(IllegalArgumentException.class, () -> new VolatilityStopGainRule(closePrice, volatility, -1));
     }
 }
