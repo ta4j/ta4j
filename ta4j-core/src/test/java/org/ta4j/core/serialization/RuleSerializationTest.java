@@ -4,6 +4,7 @@
 package org.ta4j.core.serialization;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import java.time.DayOfWeek;
 import java.time.Instant;
@@ -29,6 +30,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.AndRule;
+import org.ta4j.core.rules.AbstractRule;
 import org.ta4j.core.rules.BooleanRule;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
@@ -343,6 +345,38 @@ public class RuleSerializationTest {
         Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
         ComponentDescriptor restoredDescriptor = RuleSerialization.describe(restored);
         assertThat(restoredDescriptor.getParameters()).isEqualTo(descriptor.getParameters());
+    }
+
+    @Test
+    public void deserializePrefersNumConstructorOverNumberWhenBothMatch() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
+                .withData(1, 2, 3)
+                .build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType(ConstructorPreferenceRule.class.getName())
+                .withParameters(Map.of("amount", "7", "barCount", 2))
+                .build();
+
+        Rule restored = RuleSerialization.fromDescriptor(series, descriptor);
+
+        assertThat(restored).isInstanceOf(ConstructorPreferenceRule.class);
+        ConstructorPreferenceRule constructorPreferenceRule = (ConstructorPreferenceRule) restored;
+        assertThat(constructorPreferenceRule.getConstructorUsed()).isEqualTo("num");
+        assertThat(constructorPreferenceRule.getAmount().toString()).isEqualTo("7");
+        assertThat(constructorPreferenceRule.getBarCount()).isEqualTo(2);
+    }
+
+    @Test
+    public void deserializeRejectsAmbiguousConstructorInferenceWhenSpecificityTies() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType(AmbiguousNumericRule.class.getName())
+                .withParameters(Map.of("amount", 7, "barCount", 2))
+                .build();
+
+        RuleSerializationException exception = assertThrows(RuleSerializationException.class,
+                () -> RuleSerialization.fromDescriptor(series, descriptor));
+        assertThat(exception.getMessage()).contains("Ambiguous constructor inference");
     }
 
     @Test
@@ -746,6 +780,71 @@ public class RuleSerializationTest {
         Rule restored = Rule.fromJson(series, json);
         assertThat(restored.getName()).isEqualTo("my-custom-rule");
         assertThat(((AndRule) restored).getRule1().getName()).isEqualTo("left-label");
+    }
+
+    private static final class ConstructorPreferenceRule extends AbstractRule {
+
+        private final Num amount;
+        private final int barCount;
+        private final String constructorUsed;
+
+        ConstructorPreferenceRule(Num amount, int barCount) {
+            this.amount = amount;
+            this.barCount = barCount;
+            this.constructorUsed = "num";
+        }
+
+        ConstructorPreferenceRule(Number amount, int barCount) {
+            this.amount = DecimalNumFactory.getInstance().numOf(amount);
+            this.barCount = barCount;
+            this.constructorUsed = "number";
+        }
+
+        @Override
+        public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+            return false;
+        }
+
+        private Num getAmount() {
+            return amount;
+        }
+
+        private int getBarCount() {
+            return barCount;
+        }
+
+        private String getConstructorUsed() {
+            return constructorUsed;
+        }
+    }
+
+    private static final class AmbiguousNumericRule extends AbstractRule {
+
+        private final Number amount;
+        private final Number barCount;
+
+        AmbiguousNumericRule(Integer amount, Long barCount) {
+            this.amount = amount;
+            this.barCount = barCount;
+        }
+
+        AmbiguousNumericRule(Long amount, Integer barCount) {
+            this.amount = amount;
+            this.barCount = barCount;
+        }
+
+        @Override
+        public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+            return false;
+        }
+
+        private Number getAmount() {
+            return amount;
+        }
+
+        private Number getBarCount() {
+            return barCount;
+        }
     }
 
     private record Fixture(BarSeries series, Rule andRule, Strategy strategy) {
