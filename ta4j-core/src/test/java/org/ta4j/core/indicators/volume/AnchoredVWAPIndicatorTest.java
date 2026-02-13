@@ -25,10 +25,16 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     private BarSeries series;
 
+    /**
+     * Creates a new AnchoredVWAPIndicatorTest instance.
+     */
     public AnchoredVWAPIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Initializes the test fixtures used by these scenarios.
+     */
     @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -39,6 +45,9 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
         series.barBuilder().openPrice(14).closePrice(14).highPrice(14).lowPrice(14).volume(250).add();
     }
 
+    /**
+     * Implements anchored from fixed index.
+     */
     @Test
     public void anchoredFromFixedIndex() {
         var anchored = new AnchoredVWAPIndicator(series, 2);
@@ -48,6 +57,9 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertNumEquals((12 * 150 + 13 * 300 + 14 * 250) / 700d, anchored.getValue(4));
     }
 
+    /**
+     * Implements anchor resets on signal.
+     */
     @Test
     public void anchorResetsOnSignal() {
         var signal = new AnchorSignal(series, 0, 0, 3);
@@ -63,6 +75,9 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertNumEquals((13 * 300 + 14 * 250) / 550d, anchored.getValue(4));
     }
 
+    /**
+     * Implements clamps anchor before series start.
+     */
     @Test
     public void clampsAnchorBeforeSeriesStart() {
         var anchored = new AnchoredVWAPIndicator(series, -5);
@@ -71,6 +86,9 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertNumEquals(10d, anchored.getValue(0));
     }
 
+    /**
+     * Implements rejects anchor signal from different series.
+     */
     @Test
     public void rejectsAnchorSignalFromDifferentSeries() {
         var otherSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -82,6 +100,9 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
                 .hasMessageContaining("bar series");
     }
 
+    /**
+     * Verifies that round trip serialize and deserialize.
+     */
     @Test
     public void shouldRoundTripSerializeAndDeserialize() {
         var anchored = new AnchoredVWAPIndicator(series, 1);
@@ -98,6 +119,9 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
         }
     }
 
+    /**
+     * Verifies that unstable bars track input warmup.
+     */
     @Test
     public void unstableBarsTrackInputWarmup() {
         BarSeries syntheticSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
@@ -114,6 +138,9 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertNumEquals(12, indicator.getValue(4));
     }
 
+    /**
+     * Verifies that unstable bars include anchor signal warmup.
+     */
     @Test
     public void unstableBarsIncludeAnchorSignalWarmup() {
         BarSeries syntheticSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
@@ -136,6 +163,9 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
         private final Set<Integer> anchors;
         private final int unstableBars;
 
+        /**
+         * Implements anchor signal.
+         */
         private AnchorSignal(BarSeries series, int unstableBars, int... anchorIndexes) {
             this.series = series;
             this.unstableBars = unstableBars;
@@ -145,16 +175,25 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
             }
         }
 
+        /**
+         * Returns the value at the requested index.
+         */
         @Override
         public Boolean getValue(int index) {
             return anchors.contains(index);
         }
 
+        /**
+         * Returns the bar series bound to this indicator.
+         */
         @Override
         public BarSeries getBarSeries() {
             return series;
         }
 
+        /**
+         * Returns the number of unstable bars required before values become reliable.
+         */
         @Override
         public int getCountOfUnstableBars() {
             return unstableBars;

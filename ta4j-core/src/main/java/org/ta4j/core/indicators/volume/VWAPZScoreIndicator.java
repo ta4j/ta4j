@@ -41,17 +41,26 @@ public class VWAPZScoreIndicator extends CachedIndicator<Num> {
         this.zScore = new ZScoreIndicator(deviationIndicator, standardDeviationIndicator);
     }
 
+    /**
+     * Calculates the indicator value at the requested index.
+     */
     @Override
     protected Num calculate(int index) {
         return zScore().getValue(index);
     }
 
+    /**
+     * Returns the number of unstable bars required before values become reliable.
+     */
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(deviationIndicator.getCountOfUnstableBars(),
                 standardDeviationIndicator.getCountOfUnstableBars());
     }
 
+    /**
+     * Implements to descriptor.
+     */
     @Override
     public ComponentDescriptor toDescriptor() {
         return ComponentDescriptor.builder()
@@ -61,11 +70,17 @@ public class VWAPZScoreIndicator extends CachedIndicator<Num> {
                 .build();
     }
 
+    /**
+     * Returns the JSON representation of this component.
+     */
     @Override
     public String toJson() {
         return ComponentSerialization.toJson(toDescriptor());
     }
 
+    /**
+     * Implements z score.
+     */
     private ZScoreIndicator zScore() {
         if (zScore == null) {
             zScore = new ZScoreIndicator(deviationIndicator, standardDeviationIndicator);

@@ -102,6 +102,9 @@ public class AnchoredVWAPIndicator extends AbstractVWAPIndicator {
         }
     }
 
+    /**
+     * Resolves window start index.
+     */
     @Override
     protected int resolveWindowStartIndex(int index) {
         return resolveAnchorIndex(index);
@@ -119,6 +122,9 @@ public class AnchoredVWAPIndicator extends AbstractVWAPIndicator {
         return resolveAnchorIndex(index);
     }
 
+    /**
+     * Resolves anchor index.
+     */
     private int resolveAnchorIndex(int index) {
         synchronized (anchorIndexCache) {
             ensureAnchorCacheLocked(index);
@@ -130,6 +136,9 @@ public class AnchoredVWAPIndicator extends AbstractVWAPIndicator {
         }
     }
 
+    /**
+     * Ensures anchor cache locked.
+     */
     private void ensureAnchorCacheLocked(int index) {
         int offset = index - baseIndex;
         if (offset < 0) {
@@ -156,6 +165,9 @@ public class AnchoredVWAPIndicator extends AbstractVWAPIndicator {
         }
     }
 
+    /**
+     * Returns the number of unstable bars required before values become reliable.
+     */
     @Override
     public int getCountOfUnstableBars() {
         int unstableBars = Math.max(priceIndicator.getCountOfUnstableBars(), volumeIndicator.getCountOfUnstableBars());
@@ -165,6 +177,9 @@ public class AnchoredVWAPIndicator extends AbstractVWAPIndicator {
         return unstableBars;
     }
 
+    /**
+     * Implements to descriptor.
+     */
     @Override
     public ComponentDescriptor toDescriptor() {
         Map<String, Object> parameters = new LinkedHashMap<>();
@@ -180,11 +195,17 @@ public class AnchoredVWAPIndicator extends AbstractVWAPIndicator {
         return builder.build();
     }
 
+    /**
+     * Returns the JSON representation of this component.
+     */
     @Override
     public String toJson() {
         return ComponentSerialization.toJson(toDescriptor());
     }
 
+    /**
+     * Returns a string representation of this component.
+     */
     @Override
     public String toString() {
         return getClass().getSimpleName() + " defaultAnchorIndex: " + defaultAnchorIndex;

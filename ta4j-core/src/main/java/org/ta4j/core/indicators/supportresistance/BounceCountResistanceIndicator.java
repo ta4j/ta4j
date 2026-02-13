@@ -55,16 +55,25 @@ public class BounceCountResistanceIndicator extends AbstractBounceCountIndicator
         super(priceIndicator, lookbackCount, bucketSize);
     }
 
+    /**
+     * Implements prefer lower price on tie.
+     */
     @Override
     protected boolean preferLowerPriceOnTie() {
         return false;
     }
 
+    /**
+     * Verifies that record bounce.
+     */
     @Override
     protected boolean shouldRecordBounce(int previousDirection, int newDirection) {
         return previousDirection > 0 && newDirection < 0;
     }
 
+    /**
+     * Returns the number of unstable bars required before values become reliable.
+     */
     @Override
     public int getCountOfUnstableBars() {
         return super.getCountOfUnstableBars();

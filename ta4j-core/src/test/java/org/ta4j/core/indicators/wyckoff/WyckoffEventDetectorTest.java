@@ -20,10 +20,16 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
 
     private BarSeries series;
 
+    /**
+     * Creates a new WyckoffEventDetectorTest instance.
+     */
     public WyckoffEventDetectorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Initializes the test fixtures used by these scenarios.
+     */
     @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -36,6 +42,9 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
         addBar(series, 9.6, 9.9, 9.1, 9.3);
     }
 
+    /**
+     * Verifies that detect climax extremes before range forms.
+     */
     @Test
     public void shouldDetectClimaxExtremesBeforeRangeForms() {
         var detector = new WyckoffEventDetector(series, numOf(0.05));
@@ -47,6 +56,9 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
         assertThat(events).containsExactly(WyckoffEvent.SELLING_CLIMAX);
     }
 
+    /**
+     * Verifies that detect range breakout and sign of strength.
+     */
     @Test
     public void shouldDetectRangeBreakoutAndSignOfStrength() {
         var detector = new WyckoffEventDetector(series, numOf(0.05));
@@ -60,6 +72,9 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
         assertThat(events).containsExactlyInAnyOrder(WyckoffEvent.RANGE_BREAKOUT, WyckoffEvent.SIGN_OF_STRENGTH);
     }
 
+    /**
+     * Verifies that detect dry up support and secondary test.
+     */
     @Test
     public void shouldDetectDryUpSupportAndSecondaryTest() {
         var detector = new WyckoffEventDetector(series, numOf(0.05));
@@ -78,6 +93,9 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
         assertThat(neutralEvents).contains(WyckoffEvent.SECONDARY_TEST);
     }
 
+    /**
+     * Verifies that detect upthrust after distribution.
+     */
     @Test
     public void shouldDetectUpthrustAfterDistribution() {
         var detector = new WyckoffEventDetector(series, numOf(0.05));
@@ -93,6 +111,9 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
         assertThat(events).contains(WyckoffEvent.UPTHRUST);
     }
 
+    /**
+     * Verifies that only flag climaxes when compatible with prior cycle.
+     */
     @Test
     public void shouldOnlyFlagClimaxesWhenCompatibleWithPriorCycle() {
         var detector = new WyckoffEventDetector(series, numOf(0.05));
@@ -109,6 +130,9 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
         assertThat(accumulationEvents).contains(WyckoffEvent.SELLING_CLIMAX);
     }
 
+    /**
+     * Verifies that detect only new extremes before range forms.
+     */
     @Test
     public void shouldDetectOnlyNewExtremesBeforeRangeForms() {
         var detector = new WyckoffEventDetector(series, numOf(0.05));
@@ -123,6 +147,9 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
         assertThat(secondBarEvents).containsExactly(WyckoffEvent.SELLING_CLIMAX);
     }
 
+    /**
+     * Verifies that detect extremes on long series without recursive overflow.
+     */
     @Test
     public void shouldDetectExtremesOnLongSeriesWithoutRecursiveOverflow() {
         BarSeries longSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -140,6 +167,9 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
         assertThat(events).contains(WyckoffEvent.SELLING_CLIMAX);
     }
 
+    /**
+     * Adds bar.
+     */
     private void addBar(BarSeries target, double open, double high, double low, double close) {
         target.barBuilder().openPrice(open).highPrice(high).lowPrice(low).closePrice(close).volume(1000).add();
     }

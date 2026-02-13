@@ -80,16 +80,25 @@ public class VWAPBandIndicator extends CachedIndicator<Num> {
         this(vwapIndicator, new VWAPStandardDeviationIndicator(vwapIndicator), multiplier, bandType);
     }
 
+    /**
+     * Calculates the indicator value at the requested index.
+     */
     @Override
     protected Num calculate(int index) {
         return band.getValue(index);
     }
 
+    /**
+     * Returns the number of unstable bars required before values become reliable.
+     */
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(vwapIndicator.getCountOfUnstableBars(), standardDeviationIndicator.getCountOfUnstableBars());
     }
 
+    /**
+     * Implements to descriptor.
+     */
     @Override
     public ComponentDescriptor toDescriptor() {
         Map<String, Object> parameters = new LinkedHashMap<>();
@@ -103,16 +112,25 @@ public class VWAPBandIndicator extends CachedIndicator<Num> {
                 .build();
     }
 
+    /**
+     * Returns the JSON representation of this component.
+     */
     @Override
     public String toJson() {
         return ComponentSerialization.toJson(toDescriptor());
     }
 
+    /**
+     * Returns a string representation of this component.
+     */
     @Override
     public String toString() {
         return getClass().getSimpleName() + " bandType: " + bandType;
     }
 
+    /**
+     * Implements normalize multiplier.
+     */
     private static String normalizeMultiplier(Num value) {
         if (value == null) {
             return null;

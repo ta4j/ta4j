@@ -31,6 +31,9 @@ public class MVWAPIndicator extends CachedIndicator<Num> {
         this.sma = new SMAIndicator(vwap, barCount);
     }
 
+    /**
+     * Calculates the indicator value at the requested index.
+     */
     @Override
     protected Num calculate(int index) {
         if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
@@ -40,6 +43,9 @@ public class MVWAPIndicator extends CachedIndicator<Num> {
         return Num.isNaNOrNull(value) ? NaN.NaN : value;
     }
 
+    /**
+     * Returns the number of unstable bars required before values become reliable.
+     */
     @Override
     public int getCountOfUnstableBars() {
         return sma.getCountOfUnstableBars();

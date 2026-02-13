@@ -19,10 +19,17 @@ import org.ta4j.core.num.NumFactory;
 
 public class PriceClusterResistanceIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
+    /**
+     * Creates a new PriceClusterResistanceIndicatorTest instance.
+     */
     public PriceClusterResistanceIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Implements support and resistance should choose different clusters when
+     * frequencies tie.
+     */
     @Test
     public void supportAndResistanceShouldChooseDifferentClustersWhenFrequenciesTie() {
         BarSeries series = buildSeries(new double[] { 10, 10.1, 10.2, 15, 15.1, 15.2 },
@@ -39,6 +46,9 @@ public class PriceClusterResistanceIndicatorTest extends AbstractIndicatorTest<I
         assertThat(support.getValue(5)).isLessThan(resistance.getValue(5));
     }
 
+    /**
+     * Verifies that favor heavier high cluster for resistance.
+     */
     @Test
     public void shouldFavorHeavierHighClusterForResistance() {
         BarSeries series = buildSeries(new double[] { 10, 10, 15 }, new double[] { 20, 20, 200 });
@@ -52,6 +62,9 @@ public class PriceClusterResistanceIndicatorTest extends AbstractIndicatorTest<I
         assertThat(resistance.getClusterIndex(2)).isEqualTo(2);
     }
 
+    /**
+     * Verifies that round trip serialize and deserialize.
+     */
     @Test
     public void shouldRoundTripSerializeAndDeserialize() {
         BarSeries series = buildSeries(new double[] { 10, 10.1, 10.2, 15, 15.1, 15.2 },
@@ -70,6 +83,9 @@ public class PriceClusterResistanceIndicatorTest extends AbstractIndicatorTest<I
         assertThat(restoredIndicator.getClusterIndex(index)).isEqualTo(indicator.getClusterIndex(index));
     }
 
+    /**
+     * Verifies that unstable bars include input warmup and lookback.
+     */
     @Test
     public void unstableBarsIncludeInputWarmupAndLookback() {
         BarSeries series = buildSeries(new double[] { 10, 10, 10, 15, 15, 15, 15 },
@@ -85,6 +101,9 @@ public class PriceClusterResistanceIndicatorTest extends AbstractIndicatorTest<I
         assertThat(indicator.getValue(5).isNaN()).isFalse();
     }
 
+    /**
+     * Builds series.
+     */
     private BarSeries buildSeries(double[] closes, double[] volumes) {
         var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         BarSeries barSeries = builder.build();

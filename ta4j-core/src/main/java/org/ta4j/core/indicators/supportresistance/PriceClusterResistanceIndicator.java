@@ -107,23 +107,38 @@ public class PriceClusterResistanceIndicator extends AbstractPriceClusterIndicat
         this.bandwidth = bandwidth;
     }
 
+    /**
+     * Builds the default volume indicator.
+     */
     private static VolumeIndicator defaultVolumeIndicator(Indicator<Num> priceIndicator) {
         return new VolumeIndicator(requireSeries(priceIndicator), 1);
     }
 
+    /**
+     * Validates and returns series.
+     */
     private static BarSeries requireSeries(Indicator<Num> indicator) {
         return Objects.requireNonNull(indicator.getBarSeries(), "indicator must reference a bar series");
     }
 
+    /**
+     * Implements zero tolerance.
+     */
     private static Num zeroTolerance(Indicator<Num> indicator) {
         return requireSeries(indicator).numFactory().zero();
     }
 
+    /**
+     * Implements prefer lower price on tie.
+     */
     @Override
     protected boolean preferLowerPriceOnTie() {
         return false;
     }
 
+    /**
+     * Returns the number of unstable bars required before values become reliable.
+     */
     @Override
     public int getCountOfUnstableBars() {
         return super.getCountOfUnstableBars();

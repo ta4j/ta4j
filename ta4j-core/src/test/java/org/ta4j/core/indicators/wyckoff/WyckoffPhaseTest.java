@@ -10,6 +10,9 @@ import org.junit.Test;
 
 public class WyckoffPhaseTest {
 
+    /**
+     * Verifies that provide convenience mutators.
+     */
     @Test
     public void shouldProvideConvenienceMutators() {
         WyckoffPhase base = new WyckoffPhase(WyckoffCycleType.ACCUMULATION, WyckoffPhaseType.PHASE_A, 0.4, 5);
@@ -23,6 +26,9 @@ public class WyckoffPhaseTest {
         assertThat(updatedEvent.confidence()).isEqualTo(0.4);
     }
 
+    /**
+     * Verifies that reject invalid confidence values.
+     */
     @Test
     public void shouldRejectInvalidConfidenceValues() {
         assertThrows(IllegalArgumentException.class,
@@ -35,6 +41,9 @@ public class WyckoffPhaseTest {
                 WyckoffPhaseType.PHASE_A, Double.POSITIVE_INFINITY, 3));
     }
 
+    /**
+     * Verifies that reject null cycle or phase.
+     */
     @Test
     public void shouldRejectNullCycleOrPhase() {
         assertThrows(NullPointerException.class, () -> new WyckoffPhase(null, WyckoffPhaseType.PHASE_A, 0.4, 3));

@@ -15,6 +15,9 @@ import org.ta4j.core.Indicator;
  */
 final class IndicatorSeriesUtils {
 
+    /**
+     * Creates a new IndicatorSeriesUtils instance.
+     */
     private IndicatorSeriesUtils() {
     }
 

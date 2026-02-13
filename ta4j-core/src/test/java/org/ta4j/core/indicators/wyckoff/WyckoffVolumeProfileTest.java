@@ -19,10 +19,16 @@ public class WyckoffVolumeProfileTest extends AbstractIndicatorTest<BarSeries, N
 
     private BarSeries series;
 
+    /**
+     * Creates a new WyckoffVolumeProfileTest instance.
+     */
     public WyckoffVolumeProfileTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Initializes the test fixtures used by these scenarios.
+     */
     @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -34,6 +40,9 @@ public class WyckoffVolumeProfileTest extends AbstractIndicatorTest<BarSeries, N
         addBar(series, 420);
     }
 
+    /**
+     * Verifies that identify climax and dry up conditions.
+     */
     @Test
     public void shouldIdentifyClimaxAndDryUpConditions() {
         var profile = new WyckoffVolumeProfile(series, 2, 4, numOf(1.4), numOf(0.8));
@@ -55,6 +64,9 @@ public class WyckoffVolumeProfileTest extends AbstractIndicatorTest<BarSeries, N
         assertThat(climaxSnapshot.dryUp()).isFalse();
     }
 
+    /**
+     * Verifies that return empty snapshot when volume is na n.
+     */
     @Test
     public void shouldReturnEmptySnapshotWhenVolumeIsNaN() {
         var nanSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -68,18 +80,27 @@ public class WyckoffVolumeProfileTest extends AbstractIndicatorTest<BarSeries, N
         assertThat(snapshot.dryUp()).isFalse();
     }
 
+    /**
+     * Verifies that require positive short window.
+     */
     @Test
     public void shouldRequirePositiveShortWindow() {
         assertThrows(IllegalArgumentException.class,
                 () -> new WyckoffVolumeProfile(series, 0, 1, numOf(1.2), numOf(0.8)));
     }
 
+    /**
+     * Verifies that require long window not shorter than short window.
+     */
     @Test
     public void shouldRequireLongWindowNotShorterThanShortWindow() {
         assertThrows(IllegalArgumentException.class,
                 () -> new WyckoffVolumeProfile(series, 3, 2, numOf(1.2), numOf(0.8)));
     }
 
+    /**
+     * Verifies that handle unavailable averages gracefully.
+     */
     @Test
     public void shouldHandleUnavailableAveragesGracefully() {
         var shortOnlySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -103,6 +124,9 @@ public class WyckoffVolumeProfileTest extends AbstractIndicatorTest<BarSeries, N
         assertThat(missingAverageSnapshot.dryUp()).isFalse();
     }
 
+    /**
+     * Adds bar.
+     */
     private void addBar(BarSeries target, double volume) {
         target.barBuilder().openPrice(1).highPrice(1.1).lowPrice(0.9).closePrice(1.0).volume(volume).add();
     }

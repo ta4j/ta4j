@@ -18,10 +18,16 @@ import org.ta4j.core.num.NumFactory;
 public class MVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     protected BarSeries data;
 
+    /**
+     * Creates a new MVWAPIndicatorTest instance.
+     */
     public MVWAPIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Initializes the test fixtures used by these scenarios.
+     */
     @Before
     public void setUp() {
 
@@ -48,6 +54,9 @@ public class MVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         data.barBuilder().openPrice(43.93).closePrice(44.47).highPrice(44.58).lowPrice(43.93).volume(1).add();
     }
 
+    /**
+     * Implements mvwap.
+     */
     @Test
     public void mvwap() {
         VWAPIndicator vwap = new VWAPIndicator(data, 5);

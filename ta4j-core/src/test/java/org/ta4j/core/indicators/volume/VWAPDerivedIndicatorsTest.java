@@ -25,10 +25,16 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
     private VolumeIndicator volume;
     private VWAPIndicator vwap;
 
+    /**
+     * Creates a new VWAPDerivedIndicatorsTest instance.
+     */
     public VWAPDerivedIndicatorsTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Initializes the test fixtures used by these scenarios.
+     */
     @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -41,6 +47,9 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         vwap = new VWAPIndicator(closePrice, volume, 3);
     }
 
+    /**
+     * Implements vwap standard deviation and deviation.
+     */
     @Test
     public void vwapStandardDeviationAndDeviation() {
         var std = new VWAPStandardDeviationIndicator(vwap);
@@ -57,6 +66,9 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         assertThat(std.getWindowStartIndex(3)).isEqualTo(1);
     }
 
+    /**
+     * Implements vwap zscore.
+     */
     @Test
     public void vwapZScore() {
         var std = new VWAPStandardDeviationIndicator(vwap);
@@ -78,6 +90,9 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         assertThat(flatZScore.getValue(1).isNaN()).isTrue();
     }
 
+    /**
+     * Implements vwap bands.
+     */
     @Test
     public void vwapBands() {
         var std = new VWAPStandardDeviationIndicator(vwap);
@@ -103,6 +118,9 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         assertThat(invalidUpper.getValue(1).isNaN()).isTrue();
     }
 
+    /**
+     * Verifies that round trip serialize and deserialize.
+     */
     @Test
     public void shouldRoundTripSerializeAndDeserialize() {
         var std = new VWAPStandardDeviationIndicator(vwap);
@@ -116,6 +134,9 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         assertRoundTrip(upper, 3);
     }
 
+    /**
+     * Implements z score unstable bars track source indicators.
+     */
     @Test
     public void zScoreUnstableBarsTrackSourceIndicators() {
         MockIndicator deviation = new MockIndicator(series, 4, numOf(0), numOf(0.5), numOf(1.0), numOf(1.5));
@@ -125,6 +146,9 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         assertThat(zScore.getCountOfUnstableBars()).isEqualTo(4);
     }
 
+    /**
+     * Implements assert round trip.
+     */
     @SuppressWarnings("unchecked")
     private void assertRoundTrip(Indicator<Num> indicator, int index) {
         String json = indicator.toJson();

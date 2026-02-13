@@ -82,6 +82,9 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
         this.lastPrunedCacheBeginIndex = series.getBeginIndex() - 1;
     }
 
+    /**
+     * Calculates the indicator value at the requested index.
+     */
     @Override
     protected Num calculate(int index) {
         BarSeries series = getBarSeries();
@@ -135,6 +138,9 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
         return bounceIndexCache().getOrDefault(index, -1);
     }
 
+    /**
+     * Computes start index.
+     */
     private int computeStartIndex(int index, BarSeries series) {
         if (lookbackCount <= 0) {
             return series.getBeginIndex();
@@ -143,6 +149,9 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
         return Math.max(series.getBeginIndex(), desiredStart);
     }
 
+    /**
+     * Implements tally bounces.
+     */
     private List<PriceBucket> tallyBounces(int startIndex, int endIndex) {
         List<PriceBucket> buckets = new ArrayList<>();
         Num zero = getBarSeries().numFactory().zero();
@@ -192,6 +201,9 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
         return buckets;
     }
 
+    /**
+     * Seeds previous index.
+     */
     private int seedPreviousIndex(int startIndex) {
         for (int i = startIndex - 1; i >= getBarSeries().getBeginIndex(); i--) {
             Num value = priceIndicator.getValue(i);
@@ -202,6 +214,9 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
         return -1;
     }
 
+    /**
+     * Registers bounce.
+     */
     private void registerBounce(List<PriceBucket> buckets, Num bouncePrice, int bounceIndex) {
         for (PriceBucket bucket : buckets) {
             if (bucket.tryInclude(bouncePrice, bounceIndex, bucketSize)) {
@@ -211,6 +226,9 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
         buckets.add(new PriceBucket(bouncePrice, bounceIndex, getBarSeries().numFactory()));
     }
 
+    /**
+     * Selects best bucket.
+     */
     private PriceBucket selectBestBucket(List<PriceBucket> buckets) {
         PriceBucket best = null;
         for (PriceBucket bucket : buckets) {
@@ -263,6 +281,9 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      */
     protected abstract boolean shouldRecordBounce(int previousDirection, int newDirection);
 
+    /**
+     * Returns whether invalid.
+     */
     private static boolean isInvalid(Num value) {
         return Num.isNaNOrNull(value) || (value != null && Double.isNaN(value.doubleValue()));
     }
@@ -274,6 +295,9 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
         private int lastIndex;
         private final NumFactory numFactory;
 
+        /**
+         * Implements price bucket.
+         */
         private PriceBucket(Num initialPrice, int initialIndex, NumFactory numFactory) {
             this.anchorPrice = initialPrice;
             this.representativePrice = initialPrice;
@@ -282,6 +306,9 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
             this.numFactory = numFactory;
         }
 
+        /**
+         * Implements try include.
+         */
         private boolean tryInclude(Num value, int index, Num bucketSize) {
             if (value.minus(anchorPrice).abs().isLessThanOrEqual(bucketSize)) {
                 Num scaledCurrent = representativePrice.multipliedBy(numFactory.numOf(count));
@@ -293,19 +320,31 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
             return false;
         }
 
+        /**
+         * Returns the count.
+         */
         private int getCount() {
             return count;
         }
 
+        /**
+         * Returns the representative price.
+         */
         private Num getRepresentativePrice() {
             return representativePrice;
         }
 
+        /**
+         * Returns the last index.
+         */
         private int getLastIndex() {
             return lastIndex;
         }
     }
 
+    /**
+     * Implements bounce index cache.
+     */
     private Map<Integer, Integer> bounceIndexCache() {
         if (bounceIndexCache == null) {
             bounceIndexCache = new ConcurrentHashMap<>();
@@ -313,6 +352,9 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
         return bounceIndexCache;
     }
 
+    /**
+     * Prunes bounce index cache.
+     */
     private void pruneBounceIndexCache(BarSeries series) {
         int beginIndex = series.getBeginIndex();
         if (beginIndex <= lastPrunedCacheBeginIndex) {

@@ -22,10 +22,16 @@ public class ZScoreIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
     private BarSeries series;
 
+    /**
+     * Creates a new ZScoreIndicatorTest instance.
+     */
     public ZScoreIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Initializes the test fixtures used by these scenarios.
+     */
     @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -33,6 +39,9 @@ public class ZScoreIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         series.barBuilder().closePrice(12).openPrice(12).highPrice(12).lowPrice(12).volume(1).add();
     }
 
+    /**
+     * Verifies that compute zscore from constant inputs.
+     */
     @Test
     public void shouldComputeZScoreFromConstantInputs() {
         var deviation = new ConstantIndicator<>(series, numFactory.numOf(5));
@@ -43,6 +52,9 @@ public class ZScoreIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertNumEquals(2.5, zScore.getValue(1));
     }
 
+    /**
+     * Verifies that return na nwhen standard deviation is zero.
+     */
     @Test
     public void shouldReturnNaNWhenStandardDeviationIsZero() {
         var deviation = new ConstantIndicator<>(series, numFactory.numOf(1));
@@ -52,6 +64,9 @@ public class ZScoreIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertThat(zScore.getValue(0).isNaN()).isTrue();
     }
 
+    /**
+     * Verifies that respect unstable bars from inputs.
+     */
     @Test
     public void shouldRespectUnstableBarsFromInputs() {
         var closePrice = new ClosePriceIndicator(series);
@@ -64,6 +79,9 @@ public class ZScoreIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         assertNumEquals(2.0, zScore.getValue(1));
     }
 
+    /**
+     * Verifies that round trip serialize and deserialize.
+     */
     @Test
     public void shouldRoundTripSerializeAndDeserialize() {
         var deviation = new ConstantIndicator<>(series, numFactory.numOf(5));

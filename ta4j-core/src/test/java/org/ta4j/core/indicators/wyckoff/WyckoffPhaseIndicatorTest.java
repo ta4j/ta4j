@@ -20,10 +20,16 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
     private BarSeries accumulationSeries;
     private BarSeries distributionSeries;
 
+    /**
+     * Creates a new WyckoffPhaseIndicatorTest instance.
+     */
     public WyckoffPhaseIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Initializes the test fixtures used by these scenarios.
+     */
     @Before
     public void setUp() {
         accumulationSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -49,6 +55,9 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         addBar(distributionSeries, 82, 83, 80, 81, 1500);
     }
 
+    /**
+     * Verifies that progress through accumulation lifecycle.
+     */
     @Test
     public void shouldProgressThroughAccumulationLifecycle() {
         var indicator = WyckoffPhaseIndicator.builder(accumulationSeries)
@@ -80,6 +89,9 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         assertThat(indicator.getLastPhaseTransitionIndex(7)).isEqualTo(7);
     }
 
+    /**
+     * Verifies that progress through distribution lifecycle.
+     */
     @Test
     public void shouldProgressThroughDistributionLifecycle() {
         var indicator = WyckoffPhaseIndicator.builder(distributionSeries)
@@ -108,6 +120,9 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         assertThat(indicator.getLastPhaseTransitionIndex(7)).isEqualTo(7);
     }
 
+    /**
+     * Verifies that expose unstable bar count from configuration.
+     */
     @Test
     public void shouldExposeUnstableBarCountFromConfiguration() {
         var indicator = WyckoffPhaseIndicator.builder(accumulationSeries)
@@ -120,6 +135,9 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         assertThat(indicator.getCountOfUnstableBars()).isEqualTo(11);
     }
 
+    /**
+     * Verifies that return unknown when no events detected.
+     */
     @Test
     public void shouldReturnUnknownWhenNoEventsDetected() {
         var quietSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -138,6 +156,9 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         assertThat(indicator.getLastPhaseTransitionIndex(quietSeries.getEndIndex())).isEqualTo(-1);
     }
 
+    /**
+     * Verifies that round trip serialize and deserialize.
+     */
     @Test
     public void shouldRoundTripSerializeAndDeserialize() {
         var indicator = WyckoffPhaseIndicator.builder(accumulationSeries)
@@ -161,6 +182,9 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
                 .isEqualTo(indicator.getLastPhaseTransitionIndex(index));
     }
 
+    /**
+     * Verifies that reject invalid builder configuration.
+     */
     @Test
     public void shouldRejectInvalidBuilderConfiguration() {
         assertThrows(IllegalArgumentException.class,
@@ -175,6 +199,9 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
                 () -> WyckoffPhaseIndicator.builder(accumulationSeries).withVolumeThresholds(numOf(1.4), numOf(-0.1)));
     }
 
+    /**
+     * Verifies that reject invalid constructor configuration.
+     */
     @Test
     public void shouldRejectInvalidConstructorConfiguration() {
         assertThrows(IllegalArgumentException.class, () -> new WyckoffPhaseIndicator(accumulationSeries, 0, 1, 0, 1, 4,
@@ -185,6 +212,9 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
                 numOf(-0.02), numOf(0.05), numOf(1.4), numOf(0.6)));
     }
 
+    /**
+     * Verifies that resolve transition lookup without recursive overflow.
+     */
     @Test
     public void shouldResolveTransitionLookupWithoutRecursiveOverflow() {
         BarSeries longSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -196,6 +226,9 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         assertThat(indicator.getLastPhaseTransitionIndex(longSeries.getEndIndex())).isEqualTo(-1);
     }
 
+    /**
+     * Adds bar.
+     */
     private void addBar(BarSeries series, double open, double high, double low, double close, double volume) {
         series.barBuilder().openPrice(open).highPrice(high).lowPrice(low).closePrice(close).volume(volume).add();
     }

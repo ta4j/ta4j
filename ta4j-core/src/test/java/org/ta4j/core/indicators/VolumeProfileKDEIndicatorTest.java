@@ -23,10 +23,16 @@ public class VolumeProfileKDEIndicatorTest extends AbstractIndicatorTest<Indicat
 
     private static final String PI = "3.1415926535897932384626433832795028841971";
 
+    /**
+     * Creates a new VolumeProfileKDEIndicatorTest instance.
+     */
     public VolumeProfileKDEIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Verifies that highlight dominant volume node.
+     */
     @Test
     public void shouldHighlightDominantVolumeNode() {
         BarSeries series = buildSeries(new double[] { 10, 10.5, 11 }, new double[] { 150, 60, 25 });
@@ -42,6 +48,9 @@ public class VolumeProfileKDEIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(indicator.getModePrice(2)).isEqualByComparingTo(numOf(10));
     }
 
+    /**
+     * Verifies that respect lookback length.
+     */
     @Test
     public void shouldRespectLookbackLength() {
         BarSeries series = buildSeries(new double[] { 10, 10.5, 11 }, new double[] { 150, 60, 25 });
@@ -57,6 +66,9 @@ public class VolumeProfileKDEIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(truncatedDensity.isLessThan(fullDensity)).isTrue();
     }
 
+    /**
+     * Verifies that sum volumes when bandwidth is zero.
+     */
     @Test
     public void shouldSumVolumesWhenBandwidthIsZero() {
         BarSeries series = buildSeries(new double[] { 10, 10, 11 }, new double[] { 100, 200, 50 });
@@ -69,6 +81,9 @@ public class VolumeProfileKDEIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(indicator.getDensityAtPrice(2, numOf(11))).isEqualByComparingTo(numOf(50));
     }
 
+    /**
+     * Verifies that compute gaussian density using num math.
+     */
     @Test
     public void shouldComputeGaussianDensityUsingNumMath() {
         BarSeries series = buildSeries(new double[] { 1, 1 }, new double[] { 1, 1 });
@@ -89,6 +104,9 @@ public class VolumeProfileKDEIndicatorTest extends AbstractIndicatorTest<Indicat
         assertNumEquals(expected, actual);
     }
 
+    /**
+     * Verifies that round trip serialize and deserialize.
+     */
     @Test
     public void shouldRoundTripSerializeAndDeserialize() {
         BarSeries series = buildSeries(new double[] { 10, 10.5, 11 }, new double[] { 150, 60, 25 });
@@ -108,6 +126,9 @@ public class VolumeProfileKDEIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(restoredIndicator.getModePrice(index)).isEqualByComparingTo(indicator.getModePrice(index));
     }
 
+    /**
+     * Verifies that unstable bars include input warmup and lookback.
+     */
     @Test
     public void unstableBarsIncludeInputWarmupAndLookback() {
         BarSeries series = buildSeries(new double[] { 10, 10.2, 10.4, 10.6, 10.8, 11.0, 11.2, 11.4 },
@@ -123,6 +144,9 @@ public class VolumeProfileKDEIndicatorTest extends AbstractIndicatorTest<Indicat
         assertThat(indicator.getValue(6).isNaN()).isFalse();
     }
 
+    /**
+     * Builds series.
+     */
     private BarSeries buildSeries(double[] closes, double[] volumes) {
         var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         BarSeries barSeries = builder.build();
@@ -138,6 +162,9 @@ public class VolumeProfileKDEIndicatorTest extends AbstractIndicatorTest<Indicat
         return barSeries;
     }
 
+    /**
+     * Implements gaussian density.
+     */
     private Num gaussianDensity(NumFactory factory, Num price, List<Num> prices, List<Num> volumes, Num bandwidth) {
         Num twoPi = factory.two().multipliedBy(factory.numOf(PI));
         Num coefficient = factory.one().dividedBy(bandwidth.multipliedBy(twoPi.sqrt()));

@@ -136,6 +136,9 @@ public final class WyckoffCycleAnalysis {
     private final Number climaxThreshold;
     private final Number dryUpThreshold;
 
+    /**
+     * Creates a new WyckoffCycleAnalysis instance.
+     */
     private WyckoffCycleAnalysis(final Builder builder) {
         this.baseDegreeOffset = 0;
         this.higherDegrees = builder.higherDegrees;
@@ -273,6 +276,9 @@ public final class WyckoffCycleAnalysis {
                 rangeHigh, lastTransitionIndex, transitions);
     }
 
+    /**
+     * Implements base configuration.
+     */
     private WyckoffCycleAnalysisResult.DegreeConfiguration baseConfiguration(BarSeries series) {
         final NumFactory numFactory = series.numFactory();
         return new WyckoffCycleAnalysisResult.DegreeConfiguration(precedingSwingBars, followingSwingBars,
@@ -280,11 +286,17 @@ public final class WyckoffCycleAnalysis {
                 numFactory.numOf(retestTolerance), numFactory.numOf(climaxThreshold), numFactory.numOf(dryUpThreshold));
     }
 
+    /**
+     * Implements safe bar duration.
+     */
     private static Duration safeBarDuration(BarSeries series) {
         Duration duration = series.getFirstBar().getTimePeriod();
         return duration == null ? Duration.ZERO : duration;
     }
 
+    /**
+     * Implements degree offsets to analyze.
+     */
     private static List<Integer> degreeOffsetsToAnalyze(final int higher, final int lower) {
         final int safeHigher = Math.max(0, higher);
         final int safeLower = Math.max(0, lower);
@@ -300,6 +312,9 @@ public final class WyckoffCycleAnalysis {
         return List.copyOf(offsets);
     }
 
+    /**
+     * Builds the default series selector.
+     */
     private static SeriesSelector defaultSeriesSelector() {
         return (series, degreeOffset) -> {
             Objects.requireNonNull(series, "series");
@@ -310,6 +325,9 @@ public final class WyckoffCycleAnalysis {
         };
     }
 
+    /**
+     * Builds the default degree configuration provider.
+     */
     private static DegreeConfigurationProvider defaultDegreeConfigurationProvider() {
         return (series, degreeOffset, baseConfiguration) -> {
             Objects.requireNonNull(series, "series");
@@ -355,6 +373,9 @@ public final class WyckoffCycleAnalysis {
         private Number climaxThreshold = DEFAULT_CLIMAX_THRESHOLD;
         private Number dryUpThreshold = DEFAULT_DRY_UP_THRESHOLD;
 
+        /**
+         * Implements builder.
+         */
         private Builder() {
         }
 

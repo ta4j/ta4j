@@ -38,6 +38,9 @@ public class VWAPDeviationIndicator extends CachedIndicator<Num> {
         this.vwapIndicator = vwapIndicator;
     }
 
+    /**
+     * Calculates the indicator value at the requested index.
+     */
     @Override
     protected Num calculate(int index) {
         int beginIndex = getBarSeries().getBeginIndex();
@@ -48,6 +51,9 @@ public class VWAPDeviationIndicator extends CachedIndicator<Num> {
         return Num.isNaNOrNull(value) ? NaN.NaN : value;
     }
 
+    /**
+     * Returns the number of unstable bars required before values become reliable.
+     */
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(priceIndicator.getCountOfUnstableBars(), vwapIndicator.getCountOfUnstableBars());

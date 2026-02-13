@@ -18,10 +18,16 @@ public class WyckoffStructureTrackerTest extends AbstractIndicatorTest<BarSeries
 
     private BarSeries series;
 
+    /**
+     * Creates a new WyckoffStructureTrackerTest instance.
+     */
     public WyckoffStructureTrackerTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Initializes the test fixtures used by these scenarios.
+     */
     @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -32,6 +38,9 @@ public class WyckoffStructureTrackerTest extends AbstractIndicatorTest<BarSeries
         addBar(series, 11.0, 11.6, 10.7, 11.5);
     }
 
+    /**
+     * Verifies that return empty snapshot for indices outside series.
+     */
     @Test
     public void shouldReturnEmptySnapshotForIndicesOutsideSeries() {
         var tracker = new WyckoffStructureTracker(series, 1, 1, 0, numOf(0.05));
@@ -45,6 +54,9 @@ public class WyckoffStructureTrackerTest extends AbstractIndicatorTest<BarSeries
         assertThat(afterEnd.rangeLow().isNaN()).isTrue();
     }
 
+    /**
+     * Verifies that track range and breakouts.
+     */
     @Test
     public void shouldTrackRangeAndBreakouts() {
         var tracker = new WyckoffStructureTracker(series, 1, 1, 0, numOf(0.05));
@@ -64,6 +76,9 @@ public class WyckoffStructureTrackerTest extends AbstractIndicatorTest<BarSeries
         assertThat(breakout.inRange()).isFalse();
     }
 
+    /**
+     * Verifies that return empty snapshot when close is na n.
+     */
     @Test
     public void shouldReturnEmptySnapshotWhenCloseIsNaN() {
         var nanSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -76,6 +91,9 @@ public class WyckoffStructureTrackerTest extends AbstractIndicatorTest<BarSeries
         assertThat(snapshot.inRange()).isFalse();
     }
 
+    /**
+     * Verifies that detect breakdown with tolerance and preserve range indices.
+     */
     @Test
     public void shouldDetectBreakdownWithToleranceAndPreserveRangeIndices() {
         var tracker = new WyckoffStructureTracker(series, 1, 1, 1, numOf(0.1));
@@ -95,6 +113,9 @@ public class WyckoffStructureTrackerTest extends AbstractIndicatorTest<BarSeries
         assertThat(breakdown.rangeLowIndex()).isEqualTo(initial.rangeLowIndex());
     }
 
+    /**
+     * Adds bar.
+     */
     private void addBar(BarSeries target, double open, double high, double low, double close) {
         target.barBuilder().openPrice(open).highPrice(high).lowPrice(low).closePrice(close).volume(100).add();
     }

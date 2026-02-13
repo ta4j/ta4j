@@ -22,9 +22,15 @@ public final class WyckoffCycleIndicatorSuiteDemo {
 
     private static final Logger LOG = LogManager.getLogger(WyckoffCycleIndicatorSuiteDemo.class);
 
+    /**
+     * Creates a new WyckoffCycleIndicatorSuiteDemo instance.
+     */
     private WyckoffCycleIndicatorSuiteDemo() {
     }
 
+    /**
+     * Executes the demo entry point.
+     */
     public static void main(String[] args) {
         BarSeries series = CsvFileBarSeriesDataSource.loadSeriesFromFile();
 

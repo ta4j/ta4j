@@ -116,6 +116,9 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
         return new Builder(series);
     }
 
+    /**
+     * Calculates the indicator value at the requested index.
+     */
     @Override
     protected WyckoffPhase calculate(int index) {
         if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
@@ -139,10 +142,16 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
         return events.isEmpty() ? next : next.withLatestEventIndex(index);
     }
 
+    /**
+     * Returns whether it has phase changed.
+     */
     private boolean hasPhaseChanged(WyckoffPhase previous, WyckoffPhase next) {
         return previous.cycleType() != next.cycleType() || previous.phaseType() != next.phaseType();
     }
 
+    /**
+     * Implements transition.
+     */
     private WyckoffPhase transition(WyckoffPhase previous, EnumSet<WyckoffEvent> events) {
         WyckoffCycleType cycle = previous.cycleType();
         WyckoffPhaseType phase = previous.phaseType();
@@ -215,6 +224,9 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
         return new WyckoffPhase(cycle, phase, Math.min(confidence, 1.0), previous.latestEventIndex());
     }
 
+    /**
+     * Returns the number of unstable bars required before values become reliable.
+     */
     @Override
     public int getCountOfUnstableBars() {
         return computeUnstableBars(precedingSwingBars, followingSwingBars, volumeLongWindow);
@@ -265,6 +277,9 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
         return -1;
     }
 
+    /**
+     * Ensures structure snapshot.
+     */
     private WyckoffStructureTracker.StructureSnapshot ensureStructureSnapshot(int index) {
         WyckoffStructureTracker.StructureSnapshot snapshot = structureSnapshots.get(index);
         if (snapshot == null) {
@@ -274,6 +289,9 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
         return snapshot;
     }
 
+    /**
+     * Validates and returns at least.
+     */
     private static int requireAtLeast(String parameterName, int value, int minimum) {
         if (value < minimum) {
             throw new IllegalArgumentException(parameterName + " must be greater than or equal to " + minimum);
@@ -281,6 +299,9 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
         return value;
     }
 
+    /**
+     * Validates and returns non negative finite.
+     */
     private static Num requireNonNegativeFinite(String parameterName, Num value) {
         Num safeValue = Objects.requireNonNull(value, parameterName);
         if (Num.isNaNOrNull(safeValue) || safeValue.isNegative()) {
@@ -289,6 +310,9 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
         return safeValue;
     }
 
+    /**
+     * Computes unstable bars.
+     */
     private static int computeUnstableBars(int precedingSwingBars, int followingSwingBars, int volumeLongWindow) {
         return Math.max(precedingSwingBars + followingSwingBars, Math.max(0, volumeLongWindow - 1));
     }
@@ -312,6 +336,9 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
         private Num climaxThreshold;
         private Num dryUpThreshold;
 
+        /**
+         * Implements builder.
+         */
         private Builder(BarSeries series) {
             this.series = Objects.requireNonNull(series, "series");
             this.numFactory = series.numFactory();

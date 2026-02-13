@@ -121,6 +121,9 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
         this(new ClosePriceIndicator(series), lookbackCount, tolerance);
     }
 
+    /**
+     * Calculates the indicator value at the requested index.
+     */
     @Override
     protected Num calculate(int index) {
         BarSeries series = getBarSeries();
@@ -175,6 +178,9 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
         return clusterIndexCache().getOrDefault(index, -1);
     }
 
+    /**
+     * Computes start index.
+     */
     private int computeStartIndex(int index, BarSeries series) {
         if (lookbackCount <= 0) {
             return series.getBeginIndex();
@@ -183,6 +189,9 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
         return Math.max(series.getBeginIndex(), desiredStart);
     }
 
+    /**
+     * Builds clusters.
+     */
     private List<PriceCluster> buildClusters(int startIndex, int endIndex) {
         List<PriceCluster> clusters = new ArrayList<>();
         for (int i = startIndex; i <= endIndex; i++) {
@@ -208,6 +217,9 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
         return clusters;
     }
 
+    /**
+     * Selects best cluster.
+     */
     private PriceCluster selectBestCluster(List<PriceCluster> clusters) {
         PriceCluster best = null;
         for (PriceCluster cluster : clusters) {
@@ -252,6 +264,9 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      */
     protected abstract boolean preferLowerPriceOnTie();
 
+    /**
+     * Returns whether invalid.
+     */
     private static boolean isInvalid(Num value) {
         return Num.isNaNOrNull(value) || (value != null && Double.isNaN(value.doubleValue()));
     }
@@ -263,6 +278,9 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
         private Num representativePrice;
         private int lastIndex;
 
+        /**
+         * Implements price cluster.
+         */
         private PriceCluster(Num value, Num weight, int index) {
             this.weightedSum = value.multipliedBy(weight);
             this.totalWeight = weight;
@@ -271,6 +289,9 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
             this.lastIndex = index;
         }
 
+        /**
+         * Implements try include.
+         */
         private boolean tryInclude(Num value, Num weight, int index, Num tolerance) {
             if (value.minus(representativePrice).abs().isLessThanOrEqual(tolerance)) {
                 weightedSum = weightedSum.plus(value.multipliedBy(weight));
@@ -283,23 +304,38 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
             return false;
         }
 
+        /**
+         * Returns the total weight.
+         */
         private Num getTotalWeight() {
             return totalWeight;
         }
 
+        /**
+         * Returns the count.
+         */
         private int getCount() {
             return count;
         }
 
+        /**
+         * Returns the representative price.
+         */
         private Num getRepresentativePrice() {
             return representativePrice;
         }
 
+        /**
+         * Returns the last index.
+         */
         private int getLastIndex() {
             return lastIndex;
         }
     }
 
+    /**
+     * Implements weight indicator.
+     */
     private Indicator<Num> weightIndicator() {
         if (weightIndicator == null) {
             weightIndicator = weightIndicatorSource;
@@ -307,6 +343,9 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
         return weightIndicator;
     }
 
+    /**
+     * Implements cluster index cache.
+     */
     private Map<Integer, Integer> clusterIndexCache() {
         if (clusterIndexCache == null) {
             clusterIndexCache = new ConcurrentHashMap<>();
@@ -314,6 +353,9 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
         return clusterIndexCache;
     }
 
+    /**
+     * Prunes cluster index cache.
+     */
     private void pruneClusterIndexCache(BarSeries series) {
         int beginIndex = series.getBeginIndex();
         if (beginIndex <= lastPrunedCacheBeginIndex) {

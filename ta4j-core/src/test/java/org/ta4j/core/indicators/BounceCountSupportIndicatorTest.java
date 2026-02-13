@@ -19,10 +19,16 @@ import org.ta4j.core.num.NumFactory;
 
 public class BounceCountSupportIndicatorTest extends AbstractIndicatorTest<BounceCountSupportIndicator, Num> {
 
+    /**
+     * Creates a new BounceCountSupportIndicatorTest instance.
+     */
     public BounceCountSupportIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Verifies that prefer lower support when bounce counts tie.
+     */
     @Test
     public void shouldPreferLowerSupportWhenBounceCountsTie() {
         BarSeries series = buildSeries(7.0, 6.0, 7.0, 5.0, 7.0);
@@ -32,6 +38,9 @@ public class BounceCountSupportIndicatorTest extends AbstractIndicatorTest<Bounc
         assertThat(indicator.getBounceIndex(4)).isEqualTo(3);
     }
 
+    /**
+     * Verifies that group bounces within bucket size.
+     */
     @Test
     public void shouldGroupBouncesWithinBucketSize() {
         BarSeries series = buildSeries(10.0, 10.6, 10.9, 10.4, 10.8, 10.2, 10.6);
@@ -42,6 +51,9 @@ public class BounceCountSupportIndicatorTest extends AbstractIndicatorTest<Bounc
         assertThat(indicator.getBounceIndex(6)).isEqualTo(5);
     }
 
+    /**
+     * Verifies that prevent bucket drift from absorbing distant bounces.
+     */
     @Test
     public void shouldPreventBucketDriftFromAbsorbingDistantBounces() {
         BarSeries series = buildSeries(12.0, 10.0, 12.0, 11.0, 12.0, 11.5, 12.0, 11.8, 12.0);
@@ -51,6 +63,9 @@ public class BounceCountSupportIndicatorTest extends AbstractIndicatorTest<Bounc
         assertThat(indicator.getBounceIndex(8)).isEqualTo(3);
     }
 
+    /**
+     * Verifies that count bounce when window starts after trend.
+     */
     @Test
     public void shouldCountBounceWhenWindowStartsAfterTrend() {
         BarSeries series = buildSeries(7.0, 6.0, 5.0, 6.0);
@@ -60,6 +75,9 @@ public class BounceCountSupportIndicatorTest extends AbstractIndicatorTest<Bounc
         assertThat(indicator.getBounceIndex(3)).isEqualTo(2);
     }
 
+    /**
+     * Verifies that ignore bounces outside window.
+     */
     @Test
     public void shouldIgnoreBouncesOutsideWindow() {
         BarSeries series = buildSeries(7.0, 6.0, 7.0, 8.0);
@@ -69,6 +87,9 @@ public class BounceCountSupportIndicatorTest extends AbstractIndicatorTest<Bounc
         assertThat(indicator.getBounceIndex(3)).isEqualTo(-1);
     }
 
+    /**
+     * Verifies that return na nwhen no bounce exists.
+     */
     @Test
     public void shouldReturnNaNWhenNoBounceExists() {
         BarSeries series = buildSeries(1.0, 2.0, 3.0, 4.0);
@@ -78,6 +99,9 @@ public class BounceCountSupportIndicatorTest extends AbstractIndicatorTest<Bounc
         assertThat(indicator.getBounceIndex(3)).isEqualTo(-1);
     }
 
+    /**
+     * Verifies that round trip serialize and deserialize.
+     */
     @Test
     public void shouldRoundTripSerializeAndDeserialize() {
         BarSeries series = buildSeries(7.0, 6.0, 7.0, 5.0, 7.0);
@@ -94,6 +118,9 @@ public class BounceCountSupportIndicatorTest extends AbstractIndicatorTest<Bounc
         assertThat(restoredIndicator.getBounceIndex(index)).isEqualTo(indicator.getBounceIndex(index));
     }
 
+    /**
+     * Verifies that unstable bars include input warmup and lookback.
+     */
     @Test
     public void unstableBarsIncludeInputWarmupAndLookback() {
         BarSeries series = buildSeries(3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0);
@@ -106,6 +133,9 @@ public class BounceCountSupportIndicatorTest extends AbstractIndicatorTest<Bounc
         assertThat(indicator.getValue(4).isNaN()).isFalse();
     }
 
+    /**
+     * Builds series.
+     */
     private BarSeries buildSeries(double... closes) {
         MockBarSeriesBuilder builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         BarSeries series = builder.build();

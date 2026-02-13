@@ -25,16 +25,25 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
 
     private BarSeries series;
 
+    /**
+     * Creates a new PriceClusterSupportIndicatorTest instance.
+     */
     public PriceClusterSupportIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Initializes the test fixtures used by these scenarios.
+     */
     @Before
     public void setUp() {
         series = buildSeries(new double[] { 20, 20, 20, 12, 12, 12, 15, 15, 15 },
                 new double[] { 5, 4, 6, 10, 11, 12, 7, 8, 9 });
     }
 
+    /**
+     * Verifies that respect lookback window.
+     */
     @Test
     public void shouldRespectLookbackWindow() {
         var price = new ClosePriceIndicator(series);
@@ -50,12 +59,18 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(indicator.getClusterIndex(5)).isEqualTo(5);
     }
 
+    /**
+     * Verifies that propagate na nwhen window contains no valid values.
+     */
     @Test
     public void shouldPropagateNaNWhenWindowContainsNoValidValues() {
         var baseIndicator = new ClosePriceIndicator(series);
         Indicator<Num> withNaN = new Indicator<>() {
             private final Set<Integer> invalidIndices = Set.of(5, 6, 7, 8);
 
+            /**
+             * Returns the value at the requested index.
+             */
             @Override
             public Num getValue(int index) {
                 if (invalidIndices.contains(index)) {
@@ -64,11 +79,17 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
                 return baseIndicator.getValue(index);
             }
 
+            /**
+             * Returns the bar series bound to this indicator.
+             */
             @Override
             public BarSeries getBarSeries() {
                 return baseIndicator.getBarSeries();
             }
 
+            /**
+             * Returns the number of unstable bars required before values become reliable.
+             */
             @Override
             public int getCountOfUnstableBars() {
                 return baseIndicator.getCountOfUnstableBars();
@@ -85,6 +106,9 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(indicator.getClusterIndex(7)).isEqualTo(-1);
     }
 
+    /**
+     * Verifies that favor volume heavier cluster before tie breakers.
+     */
     @Test
     public void shouldFavorVolumeHeavierClusterBeforeTieBreakers() {
         BarSeries customSeries = buildSeries(new double[] { 10, 15, 15 }, new double[] { 100, 30, 30 });
@@ -97,6 +121,9 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(indicator.getClusterIndex(2)).isEqualTo(0);
     }
 
+    /**
+     * Verifies that round trip serialize and deserialize.
+     */
     @Test
     public void shouldRoundTripSerializeAndDeserialize() {
         var indicator = new PriceClusterSupportIndicator(series, 3, numOf(0.25));
@@ -112,6 +139,9 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(restoredIndicator.getClusterIndex(index)).isEqualTo(indicator.getClusterIndex(index));
     }
 
+    /**
+     * Verifies that unstable bars include input warmup and lookback.
+     */
     @Test
     public void unstableBarsIncludeInputWarmupAndLookback() {
         BarSeries customSeries = buildSeries(new double[] { 10, 10, 10, 12, 12, 12, 12 },
@@ -127,6 +157,9 @@ public class PriceClusterSupportIndicatorTest extends AbstractIndicatorTest<Indi
         assertThat(indicator.getValue(5).isNaN()).isFalse();
     }
 
+    /**
+     * Builds series.
+     */
     private BarSeries buildSeries(double[] closes, double[] volumes) {
         var builder = new MockBarSeriesBuilder().withNumFactory(numFactory);
         BarSeries barSeries = builder.build();

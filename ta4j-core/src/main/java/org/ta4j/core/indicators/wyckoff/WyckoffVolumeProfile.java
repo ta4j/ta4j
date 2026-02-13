@@ -92,11 +92,17 @@ public final class WyckoffVolumeProfile {
      */
     public record VolumeSnapshot(Num volume, Num relativeVolume, boolean climax, boolean dryUp) {
 
+        /**
+         * Implements empty.
+         */
         private static VolumeSnapshot empty() {
             return new VolumeSnapshot(NaN, NaN, false, false);
         }
     }
 
+    /**
+     * Returns whether invalid.
+     */
     private static boolean isInvalid(Num value) {
         return Num.isNaNOrNull(value);
     }

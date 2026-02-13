@@ -86,6 +86,9 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         ensureGaussianConstants();
     }
 
+    /**
+     * Calculates the indicator value at the requested index.
+     */
     @Override
     protected Num calculate(int index) {
         if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
@@ -158,6 +161,9 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         return bestPrice == null ? NaN : bestPrice;
     }
 
+    /**
+     * Implements collect samples.
+     */
     private List<Sample> collectSamples(int index) {
         BarSeries series = getBarSeries();
         if (series == null || index < series.getBeginIndex()) {
@@ -194,6 +200,9 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         return componentUnstableBars + Math.max(0, lookbackLength - 1);
     }
 
+    /**
+     * Computes start index.
+     */
     private int computeStartIndex(int index, BarSeries series) {
         if (lookbackLength <= 0) {
             return series.getBeginIndex();
@@ -202,6 +211,9 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         return Math.max(series.getBeginIndex(), desiredStart);
     }
 
+    /**
+     * Implements evaluate density.
+     */
     private Num evaluateDensity(List<Sample> samples, Num price) {
         NumFactory factory = getBarSeries().numFactory();
         if (usesGaussianKernel()) {
@@ -228,20 +240,32 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         private final Num price;
         private final Num weight;
 
+        /**
+         * Implements sample.
+         */
         private Sample(Num price, Num weight) {
             this.price = price;
             this.weight = weight;
         }
     }
 
+    /**
+     * Returns whether invalid.
+     */
     private static boolean isInvalid(Num value) {
         return Num.isNaNOrNull(value) || (value != null && Double.isNaN(value.doubleValue()));
     }
 
+    /**
+     * Implements uses gaussian kernel.
+     */
     private boolean usesGaussianKernel() {
         return !bandwidth.isZero();
     }
 
+    /**
+     * Ensures gaussian constants.
+     */
     private void ensureGaussianConstants() {
         if (!usesGaussianKernel()) {
             return;

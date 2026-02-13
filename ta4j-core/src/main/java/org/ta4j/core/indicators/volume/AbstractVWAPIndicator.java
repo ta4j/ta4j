@@ -25,12 +25,18 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
     protected final Indicator<Num> priceIndicator;
     protected final Indicator<Num> volumeIndicator;
 
+    /**
+     * Creates a new AbstractVWAPIndicator instance.
+     */
     protected AbstractVWAPIndicator(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator) {
         super(IndicatorSeriesUtils.requireSameSeries(priceIndicator, volumeIndicator));
         this.priceIndicator = priceIndicator;
         this.volumeIndicator = volumeIndicator;
     }
 
+    /**
+     * Calculates the indicator value at the requested index.
+     */
     @Override
     protected final Num calculate(int index) {
         if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
@@ -138,10 +144,16 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
         private final NumFactory factory;
         private final boolean valid;
 
+        /**
+         * Implements invalid.
+         */
         private static VWAPValues invalid(NumFactory factory) {
             return new VWAPValues(NaN.NaN, NaN.NaN, NaN.NaN, factory, false);
         }
 
+        /**
+         * Implements empty.
+         */
         private static VWAPValues empty(NumFactory factory) {
             return new VWAPValues(NaN.NaN, NaN.NaN, NaN.NaN, factory, false);
         }
@@ -160,31 +172,52 @@ public abstract class AbstractVWAPIndicator extends CachedIndicator<Num> {
             this.valid = valid;
         }
 
+        /**
+         * Returns whether valid.
+         */
         public boolean isValid() {
             return valid;
         }
 
+        /**
+         * Implements as na n.
+         */
         public Num asNaN() {
             return NaN.NaN;
         }
 
+        /**
+         * Implements mean.
+         */
         public Num mean() {
             return weightedPriceSum.dividedBy(volumeSum);
         }
 
+        /**
+         * Implements weighted square mean.
+         */
         public Num weightedSquareMean() {
             return weightedSquareSum.dividedBy(volumeSum);
         }
 
+        /**
+         * Returns the volume sum.
+         */
         public Num getVolumeSum() {
             return volumeSum;
         }
 
+        /**
+         * Returns the factory.
+         */
         public NumFactory getFactory() {
             return factory;
         }
     }
 
+    /**
+     * Returns whether invalid.
+     */
     private static boolean isInvalid(Num value) {
         return Num.isNaNOrNull(value);
     }

@@ -24,10 +24,16 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     protected BarSeries data;
 
+    /**
+     * Creates a new VWAPIndicatorTest instance.
+     */
     public VWAPIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Initializes the test fixtures used by these scenarios.
+     */
     @Before
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -53,6 +59,9 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         data.barBuilder().openPrice(43.93).closePrice(44.47).highPrice(44.58).lowPrice(43.93).volume(1).add();
     }
 
+    /**
+     * Implements vwap.
+     */
     @Test
     public void vwap() {
         var vwap = new VWAPIndicator(data, 5);
@@ -75,6 +84,9 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         assertThat(vwap.getWindowStartIndex(18)).isEqualTo(14);
     }
 
+    /**
+     * Verifies support for custom price and volume indicators.
+     */
     @Test
     public void supportsCustomPriceAndVolumeIndicators() {
         var closePrice = new ClosePriceIndicator(data);
@@ -85,6 +97,9 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         assertNumEquals(45.1433, vwap.getValue(3));
     }
 
+    /**
+     * Verifies that it returns nan when encountering invalid data.
+     */
     @Test
     public void returnsNanWhenEncounteringInvalidData() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -98,6 +113,9 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         assertThat(vwap.getValue(2).isNaN()).isTrue();
     }
 
+    /**
+     * Verifies that unstable bars include input warmup and window length.
+     */
     @Test
     public void unstableBarsIncludeInputWarmupAndWindowLength() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1, 1, 1, 1).build();

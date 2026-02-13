@@ -54,11 +54,17 @@ public class VWAPIndicator extends AbstractVWAPIndicator {
         this.barCount = barCount;
     }
 
+    /**
+     * Resolves window start index.
+     */
     @Override
     protected int resolveWindowStartIndex(int index) {
         return index - barCount + 1;
     }
 
+    /**
+     * Returns the number of unstable bars required before values become reliable.
+     */
     @Override
     public int getCountOfUnstableBars() {
         int baseUnstableBars = Math.max(priceIndicator.getCountOfUnstableBars(),
@@ -66,6 +72,9 @@ public class VWAPIndicator extends AbstractVWAPIndicator {
         return baseUnstableBars + barCount - 1;
     }
 
+    /**
+     * Returns a string representation of this component.
+     */
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;

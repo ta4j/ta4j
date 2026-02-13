@@ -97,6 +97,9 @@ public final class WyckoffStructureTracker {
         return snapshotCache.get(index);
     }
 
+    /**
+     * Computes snapshot.
+     */
     private StructureSnapshot computeSnapshot(int index, StructureSnapshot previous) {
         final Num close = closePriceIndicator.getValue(index);
         if (isInvalid(close)) {
@@ -151,11 +154,17 @@ public final class WyckoffStructureTracker {
     public record StructureSnapshot(Num rangeLow, Num rangeHigh, int rangeLowIndex, int rangeHighIndex, Num closePrice,
             boolean inRange, boolean brokeAboveRange, boolean brokeBelowRange) {
 
+        /**
+         * Implements empty.
+         */
         private static StructureSnapshot empty() {
             return new StructureSnapshot(NaN, NaN, -1, -1, NaN, false, false, false);
         }
     }
 
+    /**
+     * Returns whether invalid.
+     */
     private static boolean isInvalid(Num value) {
         return Num.isNaNOrNull(value);
     }

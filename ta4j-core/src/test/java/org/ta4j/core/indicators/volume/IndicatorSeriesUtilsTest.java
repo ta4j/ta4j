@@ -14,8 +14,14 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 
+/**
+ * Unit tests for {@link IndicatorSeriesUtils}.
+ */
 public class IndicatorSeriesUtilsTest {
 
+    /**
+     * Verifies that matching indicators return their shared series.
+     */
     @Test
     public void shouldReturnSharedSeriesWhenIndicatorsMatch() {
         BarSeries series = new MockBarSeriesBuilder().withData(10, 11, 12).build();
@@ -27,6 +33,9 @@ public class IndicatorSeriesUtilsTest {
         assertThat(resolved).isSameAs(series);
     }
 
+    /**
+     * Verifies that a missing first indicator series fails fast.
+     */
     @Test
     public void shouldRejectFirstIndicatorWithoutSeries() {
         Indicator<Num> firstWithoutSeries = new SerieslessNumIndicator();
@@ -37,6 +46,9 @@ public class IndicatorSeriesUtilsTest {
                 .hasMessageContaining("firstIndicator must reference a bar series");
     }
 
+    /**
+     * Verifies that a missing second indicator series fails fast.
+     */
     @Test
     public void shouldRejectSecondIndicatorWithoutSeries() {
         BarSeries series = new MockBarSeriesBuilder().withData(10, 11, 12).build();
@@ -48,18 +60,30 @@ public class IndicatorSeriesUtilsTest {
                 .hasMessageContaining("secondIndicator must reference a bar series");
     }
 
+    /**
+     * Minimal indicator implementation used to simulate null-series inputs.
+     */
     private static final class SerieslessNumIndicator implements Indicator<Num> {
 
+        /**
+         * Returns no numeric output for this helper indicator.
+         */
         @Override
         public Num getValue(int index) {
             return null;
         }
 
+        /**
+         * Reports zero unstable bars for this helper indicator.
+         */
         @Override
         public int getCountOfUnstableBars() {
             return 0;
         }
 
+        /**
+         * Intentionally returns {@code null} to emulate an invalid indicator.
+         */
         @Override
         public BarSeries getBarSeries() {
             return null;

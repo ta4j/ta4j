@@ -45,6 +45,9 @@ public final class WyckoffCycleFacade {
 
     private final WyckoffPhaseIndicator phaseIndicator;
 
+    /**
+     * Creates a new WyckoffCycleFacade instance.
+     */
     private WyckoffCycleFacade(Builder builder) {
         this.series = builder.series;
         this.precedingSwingBars = builder.precedingSwingBars;
@@ -177,6 +180,9 @@ public final class WyckoffCycleFacade {
         private Num climaxThreshold;
         private Num dryUpThreshold;
 
+        /**
+         * Implements builder.
+         */
         private Builder(BarSeries series) {
             this.series = Objects.requireNonNull(series, "series");
             this.numFactory = series.numFactory();

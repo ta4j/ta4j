@@ -145,6 +145,9 @@ public final class WyckoffEventDetector {
         return events;
     }
 
+    /**
+     * Returns whether near.
+     */
     private boolean isNear(Num anchor, Num value) {
         if (isInvalid(anchor) || isInvalid(value)) {
             return false;
@@ -154,6 +157,9 @@ public final class WyckoffEventDetector {
         return distance.isLessThan(allowance);
     }
 
+    /**
+     * Returns whether new extreme low.
+     */
     private boolean isNewExtremeLow(int index) {
         final Num currentLow = lowPriceIndicator.getValue(index);
         if (isInvalid(currentLow)) {
@@ -169,6 +175,9 @@ public final class WyckoffEventDetector {
         return isNewLow;
     }
 
+    /**
+     * Returns whether new extreme high.
+     */
     private boolean isNewExtremeHigh(int index) {
         final Num currentHigh = highPriceIndicator.getValue(index);
         if (isInvalid(currentHigh)) {
@@ -184,6 +193,9 @@ public final class WyckoffEventDetector {
         return isNewHigh;
     }
 
+    /**
+     * Implements lowest low up to.
+     */
     private Num lowestLowUpTo(int index) {
         if (index < series.getBeginIndex()) {
             return NaN;
@@ -211,6 +223,9 @@ public final class WyckoffEventDetector {
         return lowestLowCache.get(index);
     }
 
+    /**
+     * Implements highest high up to.
+     */
     private Num highestHighUpTo(int index) {
         if (index < series.getBeginIndex()) {
             return NaN;
@@ -238,6 +253,9 @@ public final class WyckoffEventDetector {
         return highestHighCache.get(index);
     }
 
+    /**
+     * Returns whether invalid.
+     */
     private static boolean isInvalid(Num value) {
         return Num.isNaNOrNull(value);
     }

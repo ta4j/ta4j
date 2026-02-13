@@ -18,10 +18,16 @@ public class WyckoffCycleFacadeTest extends AbstractIndicatorTest<BarSeries, Num
 
     private BarSeries series;
 
+    /**
+     * Creates a new WyckoffCycleFacadeTest instance.
+     */
     public WyckoffCycleFacadeTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Initializes the test fixtures used by these scenarios.
+     */
     @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -36,6 +42,9 @@ public class WyckoffCycleFacadeTest extends AbstractIndicatorTest<BarSeries, Num
         addBar(series, 112, 115, 109, 114, 1800);
     }
 
+    /**
+     * Verifies that expose phase and trading range information.
+     */
     @Test
     public void shouldExposePhaseAndTradingRangeInformation() {
         WyckoffCycleFacade facade = WyckoffCycleFacade.builder(series)
@@ -59,12 +68,18 @@ public class WyckoffCycleFacadeTest extends AbstractIndicatorTest<BarSeries, Num
         assertThat(facade.lastPhaseTransitionIndex(7)).isEqualTo(7);
     }
 
+    /**
+     * Verifies that reject invalid swing configuration.
+     */
     @Test
     public void shouldRejectInvalidSwingConfiguration() {
         assertThrows(IllegalArgumentException.class,
                 () -> WyckoffCycleFacade.builder(series).withSwingConfiguration(0, 1, 0));
     }
 
+    /**
+     * Verifies that reject invalid tolerances.
+     */
     @Test
     public void shouldRejectInvalidTolerances() {
         assertThrows(IllegalArgumentException.class,
@@ -73,6 +88,9 @@ public class WyckoffCycleFacadeTest extends AbstractIndicatorTest<BarSeries, Num
                 () -> WyckoffCycleFacade.builder(series).withTolerances(numOf(0.02), numOf(-0.01)));
     }
 
+    /**
+     * Verifies that reject invalid volume thresholds.
+     */
     @Test
     public void shouldRejectInvalidVolumeThresholds() {
         assertThrows(IllegalArgumentException.class,
@@ -81,6 +99,9 @@ public class WyckoffCycleFacadeTest extends AbstractIndicatorTest<BarSeries, Num
                 () -> WyckoffCycleFacade.builder(series).withVolumeThresholds(numOf(1.4), numOf(-0.1)));
     }
 
+    /**
+     * Adds bar.
+     */
     private void addBar(BarSeries target, double open, double high, double low, double close, double volume) {
         target.barBuilder().openPrice(open).highPrice(high).lowPrice(low).closePrice(close).volume(volume).add();
     }

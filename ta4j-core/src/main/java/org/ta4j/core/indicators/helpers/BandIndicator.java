@@ -66,6 +66,9 @@ public class BandIndicator extends CachedIndicator<Num> {
         }
     }
 
+    /**
+     * Calculates the indicator value at the requested index.
+     */
     @Override
     protected Num calculate(int index) {
         Num middle = middleIndicator.getValue(index);
@@ -77,16 +80,25 @@ public class BandIndicator extends CachedIndicator<Num> {
         return bandType == BandType.UPPER ? middle.plus(offset) : middle.minus(offset);
     }
 
+    /**
+     * Returns the number of unstable bars required before values become reliable.
+     */
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(middleIndicator.getCountOfUnstableBars(), widthIndicator.getCountOfUnstableBars());
     }
 
+    /**
+     * Returns a string representation of this component.
+     */
     @Override
     public String toString() {
         return getClass().getSimpleName() + " bandType: " + bandType;
     }
 
+    /**
+     * Validates and returns same series.
+     */
     private static BarSeries requireSameSeries(Indicator<?> middleIndicator, Indicator<?> widthIndicator) {
         Objects.requireNonNull(middleIndicator, "middleIndicator must not be null");
         Objects.requireNonNull(widthIndicator, "widthIndicator must not be null");

@@ -33,11 +33,17 @@ public class VWAPStandardDeviationIndicator extends AbstractVWAPIndicator {
         this.reference = reference;
     }
 
+    /**
+     * Resolves window start index.
+     */
     @Override
     protected int resolveWindowStartIndex(int index) {
         return reference.getWindowStartIndex(index);
     }
 
+    /**
+     * Maps the intermediate VWAP values to the exposed indicator value.
+     */
     @Override
     protected Num map(VWAPValues values) {
         Num mean = values.mean();
@@ -49,11 +55,17 @@ public class VWAPStandardDeviationIndicator extends AbstractVWAPIndicator {
         return variance.sqrt();
     }
 
+    /**
+     * Returns the number of unstable bars required before values become reliable.
+     */
     @Override
     public int getCountOfUnstableBars() {
         return reference.getCountOfUnstableBars();
     }
 
+    /**
+     * Implements to descriptor.
+     */
     @Override
     public ComponentDescriptor toDescriptor() {
         return ComponentDescriptor.builder()
@@ -62,11 +74,17 @@ public class VWAPStandardDeviationIndicator extends AbstractVWAPIndicator {
                 .build();
     }
 
+    /**
+     * Returns the JSON representation of this component.
+     */
     @Override
     public String toJson() {
         return ComponentSerialization.toJson(toDescriptor());
     }
 
+    /**
+     * Returns a string representation of this component.
+     */
     @Override
     public String toString() {
         return getClass().getSimpleName() + " reference: " + reference;

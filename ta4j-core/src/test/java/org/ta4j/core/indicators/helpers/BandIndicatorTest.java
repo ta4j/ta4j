@@ -20,10 +20,16 @@ public class BandIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     private BarSeries series;
 
+    /**
+     * Creates a new BandIndicatorTest instance.
+     */
     public BandIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Initializes the test fixtures used by these scenarios.
+     */
     @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -31,6 +37,9 @@ public class BandIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         series.barBuilder().closePrice(12).openPrice(12).highPrice(12).lowPrice(12).volume(1).add();
     }
 
+    /**
+     * Verifies that compute upper and lower bands.
+     */
     @Test
     public void shouldComputeUpperAndLowerBands() {
         var middle = new ClosePriceIndicator(series);
@@ -45,6 +54,9 @@ public class BandIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         assertNumEquals(11.0, lower.getValue(1));
     }
 
+    /**
+     * Verifies that propagate na nfrom inputs.
+     */
     @Test
     public void shouldPropagateNaNFromInputs() {
         var middle = new ClosePriceIndicator(series);
@@ -54,6 +66,9 @@ public class BandIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         assertThat(upper.getValue(0).isNaN()).isTrue();
     }
 
+    /**
+     * Verifies that round trip serialize and deserialize.
+     */
     @Test
     public void shouldRoundTripSerializeAndDeserialize() {
         var middle = new ClosePriceIndicator(series);

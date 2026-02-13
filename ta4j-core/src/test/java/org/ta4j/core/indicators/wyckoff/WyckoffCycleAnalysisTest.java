@@ -17,10 +17,16 @@ public class WyckoffCycleAnalysisTest extends AbstractIndicatorTest<BarSeries, N
 
     private BarSeries series;
 
+    /**
+     * Creates a new WyckoffCycleAnalysisTest instance.
+     */
     public WyckoffCycleAnalysisTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Initializes the test fixtures used by these scenarios.
+     */
     @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -35,6 +41,9 @@ public class WyckoffCycleAnalysisTest extends AbstractIndicatorTest<BarSeries, N
         addBar(series, 112, 115, 109, 114, 1800);
     }
 
+    /**
+     * Verifies that run single degree analysis and return transitions.
+     */
     @Test
     public void shouldRunSingleDegreeAnalysisAndReturnTransitions() {
         WyckoffCycleAnalysis analysis = WyckoffCycleAnalysis.builder()
@@ -64,6 +73,9 @@ public class WyckoffCycleAnalysisTest extends AbstractIndicatorTest<BarSeries, N
         assertThat(snapshot.transitions().get(0).phase().phaseType()).isEqualTo(WyckoffPhaseType.PHASE_A);
     }
 
+    /**
+     * Adds bar.
+     */
     private void addBar(BarSeries target, double open, double high, double low, double close, double volume) {
         target.barBuilder().openPrice(open).highPrice(high).lowPrice(low).closePrice(close).volume(volume).add();
     }
