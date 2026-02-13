@@ -300,9 +300,28 @@ public final class RuleSerialization {
         Map<String, List<Integer>> ruleArrayComponents = extractRuleArrayComponents(components, metadataParams);
         int totalArgs = computeTotalArgumentCount(components.size(), filteredParams.size(), ruleArrayComponents);
 
-        // Try each constructor to find a match
+        // Try constructors in deterministic priority order:
+        // 1) highest parameter count
+        // 2) most specific parameter types (Num over Number, etc.)
+        // 3) stable signature ordering
         Constructor<?>[] constructors = ruleType.getDeclaredConstructors();
-        for (Constructor<?> constructor : constructors) {
+        List<Constructor<?>> orderedConstructors = new ArrayList<>(constructors.length);
+        Collections.addAll(orderedConstructors, constructors);
+        orderedConstructors.sort((left, right) -> {
+            int countComparison = Integer.compare(right.getParameterCount(), left.getParameterCount());
+            if (countComparison != 0) {
+                return countComparison;
+            }
+            int specificityComparison = Integer.compare(constructorSpecificity(right), constructorSpecificity(left));
+            if (specificityComparison != 0) {
+                return specificityComparison;
+            }
+            return left.toGenericString().compareTo(right.toGenericString());
+        });
+
+        List<DeserializationMatch> matches = new ArrayList<>();
+        List<Constructor<?>> matchedConstructors = new ArrayList<>();
+        for (Constructor<?> constructor : orderedConstructors) {
             Class<?>[] paramTypes = constructor.getParameterTypes();
             java.lang.reflect.Parameter[] params = constructor.getParameters();
 
@@ -317,10 +336,23 @@ public final class RuleSerialization {
             DeserializationMatch match = tryMatchConstructor(constructor, paramTypes, params, startIndex, components,
                     filteredParams, context, ruleArrayCopy, totalArgs);
             if (match != null) {
-                @SuppressWarnings("unchecked")
-                Constructor<? extends Rule> ruleConstructor = (Constructor<? extends Rule>) constructor;
-                return new DeserializationMatch(ruleConstructor, match.arguments, match.parameterTypes);
+                matches.add(match);
+                matchedConstructors.add(constructor);
             }
+        }
+
+        if (!matches.isEmpty()) {
+            if (matches.size() > 1) {
+                Constructor<?> best = matchedConstructors.get(0);
+                Constructor<?> secondBest = matchedConstructors.get(1);
+                if (best.getParameterCount() == secondBest.getParameterCount()
+                        && constructorSpecificity(best) == constructorSpecificity(secondBest)) {
+                    throw new RuleSerializationException(
+                            "Ambiguous constructor inference for rule type: " + ruleType.getName() + ". Candidates: "
+                                    + best.toGenericString() + " and " + secondBest.toGenericString());
+                }
+            }
+            return matches.get(0);
         }
 
         String ruleClassName = ruleType.getSimpleName();
@@ -330,6 +362,48 @@ public final class RuleSerialization {
                         + "See the TODO comment in the %s class for implementation details.",
                 ruleClassName, baseMessage, ruleClassName);
         throw new RuleSerializationException(message);
+    }
+
+    private static int constructorSpecificity(Constructor<?> constructor) {
+        int score = 0;
+        for (Class<?> type : constructor.getParameterTypes()) {
+            score += parameterSpecificity(type);
+        }
+        return score;
+    }
+
+    private static int parameterSpecificity(Class<?> type) {
+        if (type.equals(BarSeries.class)) {
+            return 80;
+        }
+        if (Rule.class.isAssignableFrom(type) || Indicator.class.isAssignableFrom(type)) {
+            return 70;
+        }
+        if (Num.class.isAssignableFrom(type)) {
+            return 60;
+        }
+        if (type.isEnum()) {
+            return 50;
+        }
+        if (type.equals(boolean.class) || type.equals(Boolean.class)) {
+            return 45;
+        }
+        if (type.isArray()) {
+            return 40 + parameterSpecificity(type.getComponentType());
+        }
+        if (type.isPrimitive()) {
+            return 35;
+        }
+        if (type.equals(String.class)) {
+            return 30;
+        }
+        if (type.equals(Number.class)) {
+            return 5;
+        }
+        if (Number.class.isAssignableFrom(type)) {
+            return 25;
+        }
+        return 10;
     }
 
     /**
