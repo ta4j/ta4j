@@ -36,7 +36,7 @@
   selective impulse entries using confidence, alternation, and risk/reward filters.
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
 - **VWAP analytics suite**: Added rolling and anchored VWAP indicators plus deviation/standard deviation/z-score/band indicators with shared series validation and NaN handling.
-- **Support/resistance clustering**: Added bounce-count and KDE-based price-cluster support/resistance indicators plus volume-profile KDE helpers for grouping prices with configurable lookbacks and tolerances.
+- **Support/resistance clustering**: Added bounce-count and price-cluster support/resistance indicators plus volume-profile KDE helpers for grouping prices with configurable lookbacks and tolerances.
 - **Wyckoff cycle analysis**: Added simplified entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`, `WyckoffCycleAnalysisResult`) plus the underlying structure, volume profile, event detection, and phase indicators and a runnable demo.
 - Added constructors accepting custom ATR indicator to **AverageTrueRangeStopGainRule** **AverageTrueRangeStopLossRule** and **AverageTrueRangeTrailingStopLossRule**
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
@@ -95,10 +95,10 @@
 - **Release scheduler redaction**: Avoid masking long Java class names in binary-change listings.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
 - **Fixed incorrect @since 0.23** by replacing with 0.22.2
+- **Full build script**: Fix macOS temp file creation in `run-full-build-quiet.sh` by using a portable mktemp template.
 - **Indicator serialization and stability**: Aligned VWAP, price-cluster, and Wyckoff indicators with stable descriptor ordering, NaN handling, and unstable-bar conventions.
 - **Wyckoff confidence invariants**: `WyckoffPhase` now rejects null cycle/phase values and enforces finite confidence in the `[0.0, 1.0]` range to prevent invalid state propagation.
 - **KDE Gaussian constants**: `VolumeProfileKDEIndicator` now reuses precomputed Gaussian constants and uses high-precision PI parsing for `Num` factories to reduce repeated allocations and preserve numeric precision.
-- **Full build script**: Fix macOS temp file creation in `run-full-build-quiet.sh` by using a portable mktemp template.
 
 ## 0.22.1 (2026-01-15)
 
