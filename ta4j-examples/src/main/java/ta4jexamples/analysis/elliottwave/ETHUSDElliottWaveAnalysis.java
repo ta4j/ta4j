@@ -3,16 +3,13 @@
  */
 package ta4jexamples.analysis.elliottwave;
 
-import java.time.temporal.ChronoUnit;
-import java.time.Duration;
-import java.time.Instant;
-
 /**
- * Example Elliott Wave analysis for Ethereum (ETH-USD) using Coinbase data.
+ * Example Elliott Wave analysis for Ethereum (ETH-USD) using an ossified
+ * Coinbase dataset.
  * <p>
  * This class demonstrates a simple usage pattern for analyzing Ethereum price
- * data with Elliott Wave indicators. It loads daily (PT1D) data from Coinbase
- * starting from a specific timestamp and performs comprehensive Elliott Wave
+ * data with Elliott Wave indicators. It loads a committed daily (PT1D) dataset
+ * from {@code src/main/resources} and performs comprehensive Elliott Wave
  * analysis including:
  * <ul>
  * <li>Swing detection and wave counting</li>
@@ -36,7 +33,7 @@ import java.time.Instant;
  * non-headless environment. The analysis results are printed as JSON to
  * standard output.
  *
- * @see ElliottWaveAnalysis
+ * @see ElliottWaveIndicatorSuiteDemo
  * @see org.ta4j.core.indicators.elliott.ElliottWaveFacade
  * @since 0.22.0
  */
@@ -45,18 +42,14 @@ public class ETHUSDElliottWaveAnalysis {
     /**
      * Main entry point for ETH-USD Elliott Wave analysis.
      * <p>
-     * Loads daily Ethereum data from Coinbase starting from the specified epoch
-     * timestamp and performs Elliott Wave analysis with auto-selected degree.
+     * Loads local daily Ethereum data and performs Elliott Wave analysis with
+     * auto-selected degree.
      *
      * @param args command-line arguments (not used)
      */
     public static void main(String[] args) {
-        String dataSource = "Coinbase";
-        String ticker = "ETH-USD";
-        String barDuration = Duration.ofDays(1).toString();
-        String startEpoch = String.valueOf(Instant.now().minus(365, ChronoUnit.DAYS).getEpochSecond());
-
-        ElliottWaveAnalysis.main(new String[] { dataSource, ticker, barDuration, startEpoch });
+        ElliottWaveIndicatorSuiteDemo.runOssifiedResource(ETHUSDElliottWaveAnalysis.class,
+                "Coinbase-ETH-USD-PT1D-20241105_20251020.json", "ETH-USD_PT1D@Coinbase (ossified)", null);
     }
 
 }

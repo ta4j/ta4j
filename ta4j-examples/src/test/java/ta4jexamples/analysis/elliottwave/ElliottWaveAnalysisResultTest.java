@@ -11,12 +11,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.RoundingMode;
 import java.math.BigDecimal;
+import java.awt.GraphicsEnvironment;
 import java.io.InputStream;
 import java.util.Optional;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.Assume;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.indicators.elliott.ElliottRatio.RatioType;
@@ -51,8 +53,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void from_withValidInputs_createsResult() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         // The structured result is now automatically created in analyze()
@@ -70,8 +72,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void from_withBaseCaseScenario_includesBaseCase() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         ElliottWaveAnalysisResult result = analysisResult.structuredResult();
@@ -91,9 +93,10 @@ class ElliottWaveAnalysisResultTest {
 
     @Test
     void from_withBaseCaseChartPlan_encodesChartImage() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         ElliottWaveAnalysisResult result = analysisResult.structuredResult();
@@ -110,9 +113,10 @@ class ElliottWaveAnalysisResultTest {
 
     @Test
     void from_withAlternativeChartPlans_encodesChartImages() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         ElliottWaveAnalysisResult result = analysisResult.structuredResult();
@@ -130,8 +134,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void from_withNullDegree_throwsNullPointerException() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         int endIndex = series.getEndIndex();
@@ -146,8 +150,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void from_withNullSwingMetadata_throwsNullPointerException() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         int endIndex = series.getEndIndex();
@@ -162,8 +166,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void from_withNullPhaseIndicator_throwsNullPointerException() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         int endIndex = series.getEndIndex();
@@ -178,8 +182,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void from_withNullScenarioSet_throwsNullPointerException() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         int endIndex = series.getEndIndex();
@@ -194,8 +198,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void from_withNullChartPlans_throwsNullPointerException() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         int endIndex = series.getEndIndex();
@@ -217,8 +221,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void toJson_serializesResultToValidJson() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         ElliottWaveAnalysisResult result = analysisResult.structuredResult();
@@ -260,8 +264,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void swingSnapshot_fromMetadata_capturesCorrectData() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         ElliottWaveAnalysisResult result = analysisResult.structuredResult();
@@ -276,8 +280,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void latestAnalysis_fromIndicators_capturesCorrectData() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         int endIndex = series.getEndIndex();
@@ -297,8 +301,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void scenarioSummary_fromScenarioSet_capturesCorrectData() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         int endIndex = series.getEndIndex();
@@ -320,8 +324,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void baseCaseScenario_fromScenario_capturesCorrectData() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         ElliottWaveAnalysisResult result = analysisResult.structuredResult();
@@ -357,8 +361,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void alternativeScenario_fromScenario_capturesCorrectData() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         ElliottWaveAnalysisResult result = analysisResult.structuredResult();
@@ -377,8 +381,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void scenarioProbabilities_sumToOne() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         ElliottWaveAnalysisResult result = analysisResult.structuredResult();
@@ -435,8 +439,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void toJson_roundsScenarioProbabilityToThreeDecimals() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         ElliottWaveAnalysisResult result = analysisResult.structuredResult();
@@ -463,8 +467,8 @@ class ElliottWaveAnalysisResultTest {
     @Test
     void swingData_fromSwing_capturesCorrectData() {
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         ElliottWaveAnalysisResult result = analysisResult.structuredResult();
@@ -488,8 +492,8 @@ class ElliottWaveAnalysisResultTest {
         // The actual integration creates the result automatically, so we test the
         // factory method directly
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         int endIndex = series.getEndIndex();
@@ -511,8 +515,8 @@ class ElliottWaveAnalysisResultTest {
         // The actual integration creates the result automatically, so we test the
         // factory method directly
         BarSeries series = loadOssifiedSeries();
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
-        ElliottWaveAnalysis.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
         int endIndex = series.getEndIndex();

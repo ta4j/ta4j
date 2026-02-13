@@ -3,18 +3,14 @@
  */
 package ta4jexamples.analysis.elliottwave;
 
-import java.time.temporal.ChronoUnit;
-import java.time.Instant;
-import java.time.Duration;
-
 /**
  * Example Elliott Wave analysis for S&P 500 Index (^GSPC) using Yahoo Finance
- * data.
+ * data from an ossified local dataset.
  * <p>
  * This class demonstrates a simple usage pattern for analyzing S&P 500 index
- * data with Elliott Wave indicators. It loads the last 365 days of daily (PT1D)
- * data from Yahoo Finance and performs comprehensive Elliott Wave analysis
- * including:
+ * data with Elliott Wave indicators. It loads a committed daily (PT1D) dataset
+ * from {@code src/main/resources} and performs comprehensive Elliott Wave
+ * analysis including:
  * <ul>
  * <li>Swing detection and wave counting</li>
  * <li>Phase identification (impulse and corrective waves)</li>
@@ -36,7 +32,7 @@ import java.time.Duration;
  * Charts will be saved to {@code temp/charts/} and displayed if running in a
  * non-headless environment.
  *
- * @see ElliottWaveAnalysis
+ * @see ElliottWaveIndicatorSuiteDemo
  * @see org.ta4j.core.indicators.elliott.ElliottWaveFacade
  * @since 0.22.0
  */
@@ -45,17 +41,13 @@ public class SP500ElliottWaveAnalysis {
     /**
      * Main entry point for S&P 500 Elliott Wave analysis.
      * <p>
-     * Loads 365 days of daily S&P 500 index data from Yahoo Finance and performs
-     * Elliott Wave analysis with auto-selected degree.
+     * Loads local daily S&P 500 index data and performs Elliott Wave analysis with
+     * auto-selected degree.
      *
      * @param args command-line arguments (not used)
      */
     public static void main(String[] args) {
-        String dataSource = "YahooFinance";
-        String ticker = "^GSPC";
-        String barDuration = Duration.ofDays(1).toString();
-        String startEpoch = String.valueOf(Instant.now().minus(365, ChronoUnit.DAYS).getEpochSecond());
-
-        ElliottWaveAnalysis.main(new String[] { dataSource, ticker, barDuration, startEpoch });
+        ElliottWaveIndicatorSuiteDemo.runOssifiedResource(SP500ElliottWaveAnalysis.class,
+                "YahooFinance-SP500-PT1D-20230616_20231011.json", "^GSPC_PT1D@YahooFinance (ossified)", null);
     }
 }

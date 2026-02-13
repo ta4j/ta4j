@@ -14,6 +14,8 @@ import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.indicators.elliott.ElliottInvalidationIndicator;
 import org.ta4j.core.indicators.elliott.ElliottConfluenceIndicator;
 import org.ta4j.core.indicators.elliott.ElliottChannelIndicator;
@@ -48,8 +50,8 @@ import com.google.gson.Gson;
 
 /**
  * Domain model capturing all Elliott Wave analysis results currently logged via
- * {@link ElliottWaveAnalysis#logBaseCaseScenario(ElliottScenario)} and
- * {@link ElliottWaveAnalysis#logAlternativeScenarios(List)}.
+ * {@link ElliottWaveIndicatorSuiteDemo#logBaseCaseScenario(ElliottScenario)}
+ * and {@link ElliottWaveIndicatorSuiteDemo#logAlternativeScenarios(List)}.
  * <p>
  * This class provides structured access to analysis results including swing
  * snapshots, phase information, ratio and channel data, confluence scores,
@@ -65,13 +67,14 @@ import com.google.gson.Gson;
  * The class is serializable to JSON using Gson, providing a structured
  * representation suitable for storage, transmission, or further processing.
  *
- * @see ElliottWaveAnalysis
+ * @see ElliottWaveIndicatorSuiteDemo
  * @since 0.22.0
  */
 public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, SwingSnapshot swingSnapshot,
         LatestAnalysis latestAnalysis, ScenarioSummary scenarioSummary, ElliottTrendBias trendBias,
         BaseCaseScenario baseCase, List<AlternativeScenario> alternatives, String baseCaseChartImage,
         List<String> alternativeChartImages) {
+    private static final Logger LOG = LogManager.getLogger(ElliottWaveAnalysisResult.class);
     private static final double SCENARIO_TYPE_OVERLAP_WEIGHT = 0.3;
     private static final double CONSENSUS_ADJUSTMENT_WEIGHT = 0.4;
     private static final double DIRECTION_OVERLAP_WEIGHT = 0.2;
@@ -565,7 +568,7 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
             byte[] pngBytes = chartWorkflow.getChartAsByteArray(chartWorkflow.render(chartPlan));
             return Base64.getEncoder().encodeToString(pngBytes);
         } catch (Exception ex) {
-            // Log error but don't fail the entire result
+            LOG.warn("Chart encoding failed for chart plan {}: {}", chartPlan, ex.getMessage(), ex);
             return null;
         }
     }
