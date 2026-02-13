@@ -50,7 +50,7 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
     @Test
     public void anchorResetsOnSignal() {
-        var signal = new AnchorSignal(series, 0, 3);
+        var signal = new AnchorSignal(series, 0, 0, 3);
         var anchored = new AnchoredVWAPIndicator(series, signal);
 
         assertThat(anchored.getAnchorIndex(2)).isEqualTo(0);
@@ -75,7 +75,7 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
     public void rejectsAnchorSignalFromDifferentSeries() {
         var otherSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         otherSeries.barBuilder().openPrice(1).closePrice(1).highPrice(1).lowPrice(1).volume(1).add();
-        var alienSignal = new AnchorSignal(otherSeries, 0);
+        var alienSignal = new AnchorSignal(otherSeries, 0, 0);
 
         assertThatThrownBy(() -> new AnchoredVWAPIndicator(series, alienSignal))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -114,13 +114,31 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertNumEquals(12, indicator.getValue(4));
     }
 
+    @Test
+    public void unstableBarsIncludeAnchorSignalWarmup() {
+        BarSeries syntheticSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1, 1, 1, 1, 1, 1)
+                .build();
+        MockIndicator price = new MockIndicator(syntheticSeries, 1,
+                List.of(numOf(10), numOf(11), numOf(12), numOf(13), numOf(14), numOf(15)));
+        MockIndicator volume = new MockIndicator(syntheticSeries, 4, List.of(numFactory.one(), numFactory.one(),
+                numFactory.one(), numFactory.one(), numFactory.one(), numFactory.one()));
+        Indicator<Boolean> signal = new AnchorSignal(syntheticSeries, 5, 2);
+
+        AnchoredVWAPIndicator indicator = new AnchoredVWAPIndicator(price, volume, signal, 0);
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(5);
+    }
+
     private static final class AnchorSignal implements Indicator<Boolean> {
 
         private final BarSeries series;
         private final Set<Integer> anchors;
+        private final int unstableBars;
 
-        private AnchorSignal(BarSeries series, int... anchorIndexes) {
+        private AnchorSignal(BarSeries series, int unstableBars, int... anchorIndexes) {
             this.series = series;
+            this.unstableBars = unstableBars;
             this.anchors = new HashSet<>();
             for (int index : anchorIndexes) {
                 anchors.add(index);
@@ -139,7 +157,7 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
 
         @Override
         public int getCountOfUnstableBars() {
-            return 0;
+            return unstableBars;
         }
     }
 }

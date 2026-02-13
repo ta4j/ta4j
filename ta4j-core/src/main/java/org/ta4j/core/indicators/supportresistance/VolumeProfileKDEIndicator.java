@@ -39,10 +39,9 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> volumeIndicator;
     private final int lookbackLength;
     private final Num bandwidth;
-    private final transient boolean gaussianKernel;
-    private final transient Num gaussianBandwidth;
-    private final transient Num gaussianCoefficient;
-    private final transient Num gaussianNegativeHalf;
+    private transient Num gaussianBandwidth;
+    private transient Num gaussianCoefficient;
+    private transient Num gaussianNegativeHalf;
 
     /**
      * Constructor using {@link ClosePriceIndicator}, {@link VolumeIndicator} with
@@ -73,7 +72,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         this.volumeIndicator = Objects.requireNonNull(volumeIndicator, "volumeIndicator must not be null");
         BarSeries series = Objects.requireNonNull(priceIndicator.getBarSeries(),
                 "priceIndicator must reference a bar series");
-        if (volumeIndicator.getBarSeries() != series) {
+        if (!Objects.equals(volumeIndicator.getBarSeries(), series)) {
             throw new IllegalArgumentException("volumeIndicator must share the same bar series as priceIndicator");
         }
         this.lookbackLength = lookbackLength;
@@ -81,18 +80,10 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
         if (isInvalid(bandwidth) || bandwidth.isLessThan(series.numFactory().zero())) {
             throw new IllegalArgumentException("bandwidth must be greater than or equal to zero");
         }
-        this.gaussianKernel = !bandwidth.isZero();
-        if (gaussianKernel) {
-            NumFactory factory = series.numFactory();
-            Num twoPi = factory.two().multipliedBy(factory.numOf(PI));
-            this.gaussianBandwidth = bandwidth;
-            this.gaussianCoefficient = factory.one().dividedBy(gaussianBandwidth.multipliedBy(twoPi.sqrt()));
-            this.gaussianNegativeHalf = factory.numOf("-0.5");
-        } else {
-            this.gaussianBandwidth = NaN;
-            this.gaussianCoefficient = NaN;
-            this.gaussianNegativeHalf = NaN;
-        }
+        this.gaussianBandwidth = NaN;
+        this.gaussianCoefficient = NaN;
+        this.gaussianNegativeHalf = NaN;
+        ensureGaussianConstants();
     }
 
     @Override
@@ -213,7 +204,8 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
 
     private Num evaluateDensity(List<Sample> samples, Num price) {
         NumFactory factory = getBarSeries().numFactory();
-        if (gaussianKernel) {
+        if (usesGaussianKernel()) {
+            ensureGaussianConstants();
             Num density = factory.zero();
             for (Sample sample : samples) {
                 Num diff = price.minus(sample.price);
@@ -243,6 +235,24 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
     }
 
     private static boolean isInvalid(Num value) {
-        return Num.isNaNOrNull(value);
+        return Num.isNaNOrNull(value) || (value != null && Double.isNaN(value.doubleValue()));
+    }
+
+    private boolean usesGaussianKernel() {
+        return !bandwidth.isZero();
+    }
+
+    private void ensureGaussianConstants() {
+        if (!usesGaussianKernel()) {
+            return;
+        }
+        if (!isInvalid(gaussianBandwidth) && !isInvalid(gaussianCoefficient) && !isInvalid(gaussianNegativeHalf)) {
+            return;
+        }
+        NumFactory factory = getBarSeries().numFactory();
+        Num twoPi = factory.two().multipliedBy(factory.numOf(PI));
+        gaussianBandwidth = bandwidth;
+        gaussianCoefficient = factory.one().dividedBy(gaussianBandwidth.multipliedBy(twoPi.sqrt()));
+        gaussianNegativeHalf = factory.numOf("-0.5");
     }
 }

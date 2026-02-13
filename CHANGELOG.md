@@ -99,6 +99,7 @@
 - **Indicator serialization and stability**: Aligned VWAP, price-cluster, and Wyckoff indicators with stable descriptor ordering, NaN handling, and unstable-bar conventions.
 - **Wyckoff confidence invariants**: `WyckoffPhase` now rejects null cycle/phase values and enforces finite confidence in the `[0.0, 1.0]` range to prevent invalid state propagation.
 - **KDE Gaussian constants**: `VolumeProfileKDEIndicator` now reuses precomputed Gaussian constants and uses high-precision PI parsing for `Num` factories to reduce repeated allocations and preserve numeric precision.
+- **Wyckoff/VWAP robustness and docs**: Removed recursion-heavy Wyckoff lookup paths, hardened Wyckoff builder/constructor validation, aligned anchored and derived VWAP unstable counts/serialization metadata, tightened support-resistance NaN and bucket-clustering behavior, and fixed README serialization/example wording.
 
 ## 0.22.1 (2026-01-15)
 

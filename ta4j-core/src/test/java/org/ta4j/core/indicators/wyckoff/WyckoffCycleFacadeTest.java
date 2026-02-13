@@ -65,6 +65,22 @@ public class WyckoffCycleFacadeTest extends AbstractIndicatorTest<BarSeries, Num
                 () -> WyckoffCycleFacade.builder(series).withSwingConfiguration(0, 1, 0));
     }
 
+    @Test
+    public void shouldRejectInvalidTolerances() {
+        assertThrows(IllegalArgumentException.class,
+                () -> WyckoffCycleFacade.builder(series).withTolerances(numOf(-0.01), numOf(0.05)));
+        assertThrows(IllegalArgumentException.class,
+                () -> WyckoffCycleFacade.builder(series).withTolerances(numOf(0.02), numOf(-0.01)));
+    }
+
+    @Test
+    public void shouldRejectInvalidVolumeThresholds() {
+        assertThrows(IllegalArgumentException.class,
+                () -> WyckoffCycleFacade.builder(series).withVolumeThresholds(numOf(-1.0), numOf(0.6)));
+        assertThrows(IllegalArgumentException.class,
+                () -> WyckoffCycleFacade.builder(series).withVolumeThresholds(numOf(1.4), numOf(-0.1)));
+    }
+
     private void addBar(BarSeries target, double open, double high, double low, double close, double volume) {
         target.barBuilder().openPrice(open).highPrice(high).lowPrice(low).closePrice(close).volume(volume).add();
     }

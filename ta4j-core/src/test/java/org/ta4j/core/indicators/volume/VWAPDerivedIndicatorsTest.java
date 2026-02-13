@@ -14,6 +14,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -44,6 +45,8 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
     public void vwapStandardDeviationAndDeviation() {
         var std = new VWAPStandardDeviationIndicator(vwap);
         var deviation = new VWAPDeviationIndicator(closePrice, vwap);
+
+        assertThat(deviation.getValue(1).isNaN()).isTrue();
 
         assertNumEquals(0.6872, std.getValue(2));
         assertNumEquals(1.3426, std.getValue(3));
@@ -111,6 +114,15 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         assertRoundTrip(deviation, 3);
         assertRoundTrip(zScore, 3);
         assertRoundTrip(upper, 3);
+    }
+
+    @Test
+    public void zScoreUnstableBarsTrackSourceIndicators() {
+        MockIndicator deviation = new MockIndicator(series, 4, numOf(0), numOf(0.5), numOf(1.0), numOf(1.5));
+        MockIndicator standardDeviation = new MockIndicator(series, 2, numOf(1), numOf(1), numOf(1), numOf(1));
+        VWAPZScoreIndicator zScore = new VWAPZScoreIndicator(deviation, standardDeviation);
+
+        assertThat(zScore.getCountOfUnstableBars()).isEqualTo(4);
     }
 
     @SuppressWarnings("unchecked")

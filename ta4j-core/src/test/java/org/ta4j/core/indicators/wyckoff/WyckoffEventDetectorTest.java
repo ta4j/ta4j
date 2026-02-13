@@ -123,6 +123,23 @@ public class WyckoffEventDetectorTest extends AbstractIndicatorTest<BarSeries, N
         assertThat(secondBarEvents).containsExactly(WyckoffEvent.SELLING_CLIMAX);
     }
 
+    @Test
+    public void shouldDetectExtremesOnLongSeriesWithoutRecursiveOverflow() {
+        BarSeries longSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 12000; i++) {
+            double base = 200 - (i * 0.001);
+            addBar(longSeries, base + 0.5, base + 1.0, base - 1.0, base);
+        }
+        var detector = new WyckoffEventDetector(longSeries, numOf(0.05));
+        var structure = new WyckoffStructureTracker.StructureSnapshot(NaN, NaN, -1, -1, NaN, false, false, false);
+        var volume = new WyckoffVolumeProfile.VolumeSnapshot(numOf(1000), numOf(2.0), true, false);
+
+        EnumSet<WyckoffEvent> events = detector.detect(longSeries.getEndIndex(), structure, volume,
+                WyckoffPhase.UNKNOWN);
+
+        assertThat(events).contains(WyckoffEvent.SELLING_CLIMAX);
+    }
+
     private void addBar(BarSeries target, double open, double high, double low, double close) {
         target.barBuilder().openPrice(open).highPrice(high).lowPrice(low).closePrice(close).volume(1000).add();
     }

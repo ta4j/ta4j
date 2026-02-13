@@ -301,11 +301,18 @@ public final class WyckoffCycleAnalysis {
     }
 
     private static SeriesSelector defaultSeriesSelector() {
-        return (series, offset) -> series;
+        return (series, degreeOffset) -> {
+            Objects.requireNonNull(series, "series");
+            if (degreeOffset == 0) {
+                return series;
+            }
+            return series;
+        };
     }
 
     private static DegreeConfigurationProvider defaultDegreeConfigurationProvider() {
         return (series, degreeOffset, baseConfiguration) -> {
+            Objects.requireNonNull(series, "series");
             Objects.requireNonNull(baseConfiguration, "baseConfiguration");
             if (degreeOffset == 0) {
                 return baseConfiguration;

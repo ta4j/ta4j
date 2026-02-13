@@ -21,6 +21,8 @@ import org.ta4j.core.num.NumFactory;
 
 public class VolumeProfileKDEIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
+    private static final String PI = "3.1415926535897932384626433832795028841971";
+
     public VolumeProfileKDEIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
@@ -137,9 +139,9 @@ public class VolumeProfileKDEIndicatorTest extends AbstractIndicatorTest<Indicat
     }
 
     private Num gaussianDensity(NumFactory factory, Num price, List<Num> prices, List<Num> volumes, Num bandwidth) {
-        Num twoPi = factory.two().multipliedBy(factory.numOf(Math.PI));
+        Num twoPi = factory.two().multipliedBy(factory.numOf(PI));
         Num coefficient = factory.one().dividedBy(bandwidth.multipliedBy(twoPi.sqrt()));
-        Num negativeHalf = factory.numOf(-0.5);
+        Num negativeHalf = factory.numOf("-0.5");
         Num density = factory.zero();
         for (int i = 0; i < prices.size(); i++) {
             Num diff = price.minus(prices.get(i));

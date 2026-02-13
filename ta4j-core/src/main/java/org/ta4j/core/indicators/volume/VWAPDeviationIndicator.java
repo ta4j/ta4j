@@ -40,6 +40,10 @@ public class VWAPDeviationIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        int beginIndex = getBarSeries().getBeginIndex();
+        if (index < beginIndex || index < beginIndex + getCountOfUnstableBars()) {
+            return NaN.NaN;
+        }
         Num value = difference.getValue(index);
         return Num.isNaNOrNull(value) ? NaN.NaN : value;
     }

@@ -54,12 +54,12 @@ public final class WyckoffStructureTracker {
     public WyckoffStructureTracker(BarSeries series, int precedingSwingBars, int followingSwingBars,
             int allowedEqualBars, Num breakoutTolerance) {
         this.series = Objects.requireNonNull(series, "series");
-        this.swingHighIndicator = new RecentFractalSwingHighIndicator(new HighPriceIndicator(series),
-                precedingSwingBars, followingSwingBars, allowedEqualBars);
-        this.swingLowIndicator = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), precedingSwingBars,
-                followingSwingBars, allowedEqualBars);
         this.highPriceIndicator = new HighPriceIndicator(series);
         this.lowPriceIndicator = new LowPriceIndicator(series);
+        this.swingHighIndicator = new RecentFractalSwingHighIndicator(highPriceIndicator, precedingSwingBars,
+                followingSwingBars, allowedEqualBars);
+        this.swingLowIndicator = new RecentFractalSwingLowIndicator(lowPriceIndicator, precedingSwingBars,
+                followingSwingBars, allowedEqualBars);
         this.closePriceIndicator = new ClosePriceIndicator(series);
         this.breakoutTolerance = Objects.requireNonNull(breakoutTolerance, "breakoutTolerance");
         if (isInvalid(this.breakoutTolerance)) {

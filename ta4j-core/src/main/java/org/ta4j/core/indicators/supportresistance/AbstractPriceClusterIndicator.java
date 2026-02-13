@@ -31,12 +31,12 @@ import org.ta4j.core.num.NumFactory;
 public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> priceIndicator;
-    @SuppressWarnings("unused")
     private final Indicator<Num> weightIndicatorSource;
     private final int lookbackCount;
     private final Num tolerance;
-    private final transient Indicator<Num> weightIndicator;
-    private final transient Map<Integer, Integer> clusterIndexCache = new ConcurrentHashMap<>();
+    private transient Indicator<Num> weightIndicator;
+    private transient Map<Integer, Integer> clusterIndexCache;
+    private transient int lastPrunedCacheBeginIndex;
 
     /**
      * Constructor.
@@ -104,6 +104,8 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
         }
         this.weightIndicator = resolvedWeight;
         this.weightIndicatorSource = resolvedSource;
+        this.clusterIndexCache = new ConcurrentHashMap<>();
+        this.lastPrunedCacheBeginIndex = series.getBeginIndex() - 1;
     }
 
     /**
@@ -123,11 +125,12 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
     protected Num calculate(int index) {
         BarSeries series = getBarSeries();
         if (series == null || index < series.getBeginIndex()) {
-            clusterIndexCache.put(index, -1);
+            clusterIndexCache().put(index, -1);
             return NaN;
         }
+        pruneClusterIndexCache(series);
         if (index < series.getBeginIndex() + getCountOfUnstableBars()) {
-            clusterIndexCache.put(index, -1);
+            clusterIndexCache().put(index, -1);
             return NaN;
         }
 
@@ -136,11 +139,11 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
         PriceCluster bestCluster = selectBestCluster(clusters);
 
         if (bestCluster == null) {
-            clusterIndexCache.put(index, -1);
+            clusterIndexCache().put(index, -1);
             return NaN;
         }
 
-        clusterIndexCache.put(index, bestCluster.getLastIndex());
+        clusterIndexCache().put(index, bestCluster.getLastIndex());
         return bestCluster.getRepresentativePrice();
     }
 
@@ -154,7 +157,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
     @Override
     public int getCountOfUnstableBars() {
         int componentUnstableBars = Math.max(priceIndicator.getCountOfUnstableBars(),
-                weightIndicator.getCountOfUnstableBars());
+                weightIndicator().getCountOfUnstableBars());
         return componentUnstableBars + Math.max(0, lookbackCount - 1);
     }
 
@@ -169,7 +172,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      */
     public int getClusterIndex(int index) {
         getValue(index);
-        return clusterIndexCache.getOrDefault(index, -1);
+        return clusterIndexCache().getOrDefault(index, -1);
     }
 
     private int computeStartIndex(int index, BarSeries series) {
@@ -187,7 +190,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
             if (isInvalid(value)) {
                 continue;
             }
-            Num weight = weightIndicator.getValue(i);
+            Num weight = weightIndicator().getValue(i);
             if (isInvalid(weight) || !weight.isPositive()) {
                 continue;
             }
@@ -250,7 +253,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
     protected abstract boolean preferLowerPriceOnTie();
 
     private static boolean isInvalid(Num value) {
-        return Num.isNaNOrNull(value);
+        return Num.isNaNOrNull(value) || (value != null && Double.isNaN(value.doubleValue()));
     }
 
     private static final class PriceCluster {
@@ -295,5 +298,28 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
         private int getLastIndex() {
             return lastIndex;
         }
+    }
+
+    private Indicator<Num> weightIndicator() {
+        if (weightIndicator == null) {
+            weightIndicator = weightIndicatorSource;
+        }
+        return weightIndicator;
+    }
+
+    private Map<Integer, Integer> clusterIndexCache() {
+        if (clusterIndexCache == null) {
+            clusterIndexCache = new ConcurrentHashMap<>();
+        }
+        return clusterIndexCache;
+    }
+
+    private void pruneClusterIndexCache(BarSeries series) {
+        int beginIndex = series.getBeginIndex();
+        if (beginIndex <= lastPrunedCacheBeginIndex) {
+            return;
+        }
+        clusterIndexCache().keySet().removeIf(cacheIndex -> cacheIndex < beginIndex);
+        lastPrunedCacheBeginIndex = beginIndex;
     }
 }

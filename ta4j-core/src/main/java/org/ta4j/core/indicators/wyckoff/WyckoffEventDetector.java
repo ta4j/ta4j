@@ -192,18 +192,23 @@ public final class WyckoffEventDetector {
         if (cached != null) {
             return cached;
         }
-        final Num previous = index == series.getBeginIndex() ? NaN : lowestLowUpTo(index - 1);
-        final Num candidate = lowPriceIndicator.getValue(index);
-        final Num next;
-        if (isInvalid(previous)) {
-            next = isInvalid(candidate) ? NaN : candidate;
-        } else if (!isInvalid(candidate) && candidate.isLessThan(previous)) {
-            next = candidate;
-        } else {
-            next = previous;
+        int begin = series.getBeginIndex();
+        int anchor = index - 1;
+        while (anchor >= begin && !lowestLowCache.containsKey(anchor)) {
+            anchor--;
         }
-        lowestLowCache.put(index, next);
-        return next;
+        Num running = anchor >= begin ? lowestLowCache.get(anchor) : NaN;
+        int start = Math.max(begin, anchor + 1);
+        for (int i = start; i <= index; i++) {
+            Num candidate = lowPriceIndicator.getValue(i);
+            if (isInvalid(running)) {
+                running = isInvalid(candidate) ? NaN : candidate;
+            } else if (!isInvalid(candidate) && candidate.isLessThan(running)) {
+                running = candidate;
+            }
+            lowestLowCache.put(i, running);
+        }
+        return lowestLowCache.get(index);
     }
 
     private Num highestHighUpTo(int index) {
@@ -214,18 +219,23 @@ public final class WyckoffEventDetector {
         if (cached != null) {
             return cached;
         }
-        final Num previous = index == series.getBeginIndex() ? NaN : highestHighUpTo(index - 1);
-        final Num candidate = highPriceIndicator.getValue(index);
-        final Num next;
-        if (isInvalid(previous)) {
-            next = isInvalid(candidate) ? NaN : candidate;
-        } else if (!isInvalid(candidate) && candidate.isGreaterThan(previous)) {
-            next = candidate;
-        } else {
-            next = previous;
+        int begin = series.getBeginIndex();
+        int anchor = index - 1;
+        while (anchor >= begin && !highestHighCache.containsKey(anchor)) {
+            anchor--;
         }
-        highestHighCache.put(index, next);
-        return next;
+        Num running = anchor >= begin ? highestHighCache.get(anchor) : NaN;
+        int start = Math.max(begin, anchor + 1);
+        for (int i = start; i <= index; i++) {
+            Num candidate = highPriceIndicator.getValue(i);
+            if (isInvalid(running)) {
+                running = isInvalid(candidate) ? NaN : candidate;
+            } else if (!isInvalid(candidate) && candidate.isGreaterThan(running)) {
+                running = candidate;
+            }
+            highestHighCache.put(i, running);
+        }
+        return highestHighCache.get(index);
     }
 
     private static boolean isInvalid(Num value) {

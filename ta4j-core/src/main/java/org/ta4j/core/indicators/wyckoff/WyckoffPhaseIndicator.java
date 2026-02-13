@@ -40,7 +40,6 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
     private final transient WyckoffStructureTracker structureTracker;
     private final transient WyckoffVolumeProfile volumeProfile;
     private final transient WyckoffEventDetector eventDetector;
-    private final transient int unstableBars;
 
     private final transient Map<Integer, WyckoffStructureTracker.StructureSnapshot> structureSnapshots;
     private final transient Map<Integer, Integer> lastTransitionIndices;
@@ -75,21 +74,33 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
             int allowedEqualSwingBars, int volumeShortWindow, int volumeLongWindow, Num breakoutTolerance,
             Num retestTolerance, Num climaxThreshold, Num dryUpThreshold) {
         super(Objects.requireNonNull(series, "series"));
-        this.precedingSwingBars = precedingSwingBars;
-        this.followingSwingBars = followingSwingBars;
-        this.allowedEqualSwingBars = allowedEqualSwingBars;
-        this.volumeShortWindow = volumeShortWindow;
-        this.volumeLongWindow = volumeLongWindow;
-        this.breakoutTolerance = Objects.requireNonNull(breakoutTolerance, "breakoutTolerance");
-        this.retestTolerance = Objects.requireNonNull(retestTolerance, "retestTolerance");
-        this.climaxThreshold = Objects.requireNonNull(climaxThreshold, "climaxThreshold");
-        this.dryUpThreshold = Objects.requireNonNull(dryUpThreshold, "dryUpThreshold");
-        this.structureTracker = new WyckoffStructureTracker(series, precedingSwingBars, followingSwingBars,
-                allowedEqualSwingBars, this.breakoutTolerance);
-        this.volumeProfile = new WyckoffVolumeProfile(series, volumeShortWindow, volumeLongWindow, this.climaxThreshold,
-                this.dryUpThreshold);
+        int safePrecedingSwingBars = requireAtLeast("precedingSwingBars", precedingSwingBars, 1);
+        int safeFollowingSwingBars = requireAtLeast("followingSwingBars", followingSwingBars, 0);
+        int safeAllowedEqualSwingBars = requireAtLeast("allowedEqualSwingBars", allowedEqualSwingBars, 0);
+        int safeVolumeShortWindow = requireAtLeast("volumeShortWindow", volumeShortWindow, 1);
+        if (volumeLongWindow < safeVolumeShortWindow) {
+            throw new IllegalArgumentException("volumeLongWindow must be greater than or equal to volumeShortWindow");
+        }
+        int safeVolumeLongWindow = volumeLongWindow;
+        Num safeBreakoutTolerance = requireNonNegativeFinite("breakoutTolerance", breakoutTolerance);
+        Num safeRetestTolerance = requireNonNegativeFinite("retestTolerance", retestTolerance);
+        Num safeClimaxThreshold = requireNonNegativeFinite("climaxThreshold", climaxThreshold);
+        Num safeDryUpThreshold = requireNonNegativeFinite("dryUpThreshold", dryUpThreshold);
+
+        this.precedingSwingBars = safePrecedingSwingBars;
+        this.followingSwingBars = safeFollowingSwingBars;
+        this.allowedEqualSwingBars = safeAllowedEqualSwingBars;
+        this.volumeShortWindow = safeVolumeShortWindow;
+        this.volumeLongWindow = safeVolumeLongWindow;
+        this.breakoutTolerance = safeBreakoutTolerance;
+        this.retestTolerance = safeRetestTolerance;
+        this.climaxThreshold = safeClimaxThreshold;
+        this.dryUpThreshold = safeDryUpThreshold;
+        this.structureTracker = new WyckoffStructureTracker(series, safePrecedingSwingBars, safeFollowingSwingBars,
+                safeAllowedEqualSwingBars, this.breakoutTolerance);
+        this.volumeProfile = new WyckoffVolumeProfile(series, safeVolumeShortWindow, safeVolumeLongWindow,
+                this.climaxThreshold, this.dryUpThreshold);
         this.eventDetector = new WyckoffEventDetector(series, this.retestTolerance);
-        this.unstableBars = Math.max(precedingSwingBars + followingSwingBars, Math.max(0, volumeLongWindow - 1));
         this.structureSnapshots = new ConcurrentHashMap<>();
         this.lastTransitionIndices = new ConcurrentHashMap<>();
     }
@@ -136,6 +147,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
         WyckoffCycleType cycle = previous.cycleType();
         WyckoffPhaseType phase = previous.phaseType();
         double confidence = previous.confidence();
+        boolean transitionedToDistributionPhaseC = false;
 
         if (events.contains(WyckoffEvent.SELLING_CLIMAX)) {
             cycle = WyckoffCycleType.ACCUMULATION;
@@ -180,6 +192,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
         if (events.contains(WyckoffEvent.UPTHRUST_AFTER_DISTRIBUTION)
                 || events.contains(WyckoffEvent.LAST_POINT_OF_SUPPLY)) {
             if (cycle == WyckoffCycleType.DISTRIBUTION && phase.ordinal() <= WyckoffPhaseType.PHASE_C.ordinal()) {
+                transitionedToDistributionPhaseC = phase.ordinal() < WyckoffPhaseType.PHASE_C.ordinal();
                 phase = WyckoffPhaseType.PHASE_C;
                 confidence = Math.max(confidence, 0.7);
             }
@@ -191,7 +204,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
             }
         }
         if (events.contains(WyckoffEvent.LAST_POINT_OF_SUPPLY) && cycle == WyckoffCycleType.DISTRIBUTION
-                && phase.ordinal() <= WyckoffPhaseType.PHASE_D.ordinal()) {
+                && !transitionedToDistributionPhaseC && phase.ordinal() <= WyckoffPhaseType.PHASE_D.ordinal()) {
             phase = WyckoffPhaseType.PHASE_D;
             confidence = Math.max(confidence, 0.85);
         }
@@ -204,7 +217,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return unstableBars;
+        return computeUnstableBars(precedingSwingBars, followingSwingBars, volumeLongWindow);
     }
 
     /**
@@ -242,10 +255,14 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
         if (transition != null) {
             return transition;
         }
-        if (index <= getBarSeries().getBeginIndex()) {
-            return -1;
+        int begin = getBarSeries().getBeginIndex();
+        for (int i = index - 1; i >= begin; i--) {
+            Integer priorTransition = lastTransitionIndices.get(i);
+            if (priorTransition != null) {
+                return priorTransition;
+            }
         }
-        return getLastPhaseTransitionIndex(index - 1);
+        return -1;
     }
 
     private WyckoffStructureTracker.StructureSnapshot ensureStructureSnapshot(int index) {
@@ -255,6 +272,25 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
             structureSnapshots.put(index, snapshot);
         }
         return snapshot;
+    }
+
+    private static int requireAtLeast(String parameterName, int value, int minimum) {
+        if (value < minimum) {
+            throw new IllegalArgumentException(parameterName + " must be greater than or equal to " + minimum);
+        }
+        return value;
+    }
+
+    private static Num requireNonNegativeFinite(String parameterName, Num value) {
+        Num safeValue = Objects.requireNonNull(value, parameterName);
+        if (Num.isNaNOrNull(safeValue) || safeValue.isNegative()) {
+            throw new IllegalArgumentException(parameterName + " must be finite and >= 0");
+        }
+        return safeValue;
+    }
+
+    private static int computeUnstableBars(int precedingSwingBars, int followingSwingBars, int volumeLongWindow) {
+        return Math.max(precedingSwingBars + followingSwingBars, Math.max(0, volumeLongWindow - 1));
     }
 
     /**
@@ -295,6 +331,15 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
          * @since 0.22.2
          */
         public Builder withSwingConfiguration(int precedingSwingBars, int followingSwingBars, int allowedEqualBars) {
+            if (precedingSwingBars < 1) {
+                throw new IllegalArgumentException("precedingSwingBars must be greater than 0");
+            }
+            if (followingSwingBars < 0) {
+                throw new IllegalArgumentException("followingSwingBars must be 0 or greater");
+            }
+            if (allowedEqualBars < 0) {
+                throw new IllegalArgumentException("allowedEqualBars must be 0 or greater");
+            }
             this.precedingSwingBars = precedingSwingBars;
             this.followingSwingBars = followingSwingBars;
             this.allowedEqualSwingBars = allowedEqualBars;
@@ -310,6 +355,12 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
          * @since 0.22.2
          */
         public Builder withVolumeWindows(int shortWindow, int longWindow) {
+            if (shortWindow < 1) {
+                throw new IllegalArgumentException("shortWindow must be greater than 0");
+            }
+            if (longWindow < shortWindow) {
+                throw new IllegalArgumentException("longWindow must be greater than or equal to shortWindow");
+            }
             this.volumeShortWindow = shortWindow;
             this.volumeLongWindow = longWindow;
             return this;
@@ -324,8 +375,16 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
          * @since 0.22.2
          */
         public Builder withTolerances(Num breakoutTolerance, Num retestTolerance) {
-            this.breakoutTolerance = Objects.requireNonNull(breakoutTolerance, "breakoutTolerance");
-            this.retestTolerance = Objects.requireNonNull(retestTolerance, "retestTolerance");
+            Num safeBreakoutTolerance = Objects.requireNonNull(breakoutTolerance, "breakoutTolerance");
+            Num safeRetestTolerance = Objects.requireNonNull(retestTolerance, "retestTolerance");
+            if (Num.isNaNOrNull(safeBreakoutTolerance) || safeBreakoutTolerance.isNegative()) {
+                throw new IllegalArgumentException("breakoutTolerance must be finite and >= 0");
+            }
+            if (Num.isNaNOrNull(safeRetestTolerance) || safeRetestTolerance.isNegative()) {
+                throw new IllegalArgumentException("retestTolerance must be finite and >= 0");
+            }
+            this.breakoutTolerance = safeBreakoutTolerance;
+            this.retestTolerance = safeRetestTolerance;
             return this;
         }
 
@@ -338,8 +397,16 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
          * @since 0.22.2
          */
         public Builder withVolumeThresholds(Num climaxThreshold, Num dryUpThreshold) {
-            this.climaxThreshold = Objects.requireNonNull(climaxThreshold, "climaxThreshold");
-            this.dryUpThreshold = Objects.requireNonNull(dryUpThreshold, "dryUpThreshold");
+            Num safeClimaxThreshold = Objects.requireNonNull(climaxThreshold, "climaxThreshold");
+            Num safeDryUpThreshold = Objects.requireNonNull(dryUpThreshold, "dryUpThreshold");
+            if (Num.isNaNOrNull(safeClimaxThreshold) || safeClimaxThreshold.isNegative()) {
+                throw new IllegalArgumentException("climaxThreshold must be finite and >= 0");
+            }
+            if (Num.isNaNOrNull(safeDryUpThreshold) || safeDryUpThreshold.isNegative()) {
+                throw new IllegalArgumentException("dryUpThreshold must be finite and >= 0");
+            }
+            this.climaxThreshold = safeClimaxThreshold;
+            this.dryUpThreshold = safeDryUpThreshold;
             return this;
         }
 

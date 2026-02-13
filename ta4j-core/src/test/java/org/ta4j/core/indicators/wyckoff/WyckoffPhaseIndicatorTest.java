@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.wyckoff;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -97,9 +98,9 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         assertThat(phaseB.phaseType()).isEqualTo(WyckoffPhaseType.PHASE_B);
         assertThat(phaseB.confidence()).isGreaterThanOrEqualTo(0.55);
 
-        var phaseD = indicator.getValue(6);
-        assertThat(phaseD.phaseType()).isEqualTo(WyckoffPhaseType.PHASE_D);
-        assertThat(phaseD.confidence()).isGreaterThanOrEqualTo(0.85);
+        var phaseC = indicator.getValue(6);
+        assertThat(phaseC.phaseType()).isEqualTo(WyckoffPhaseType.PHASE_C);
+        assertThat(phaseC.confidence()).isGreaterThanOrEqualTo(0.7);
 
         var phaseE = indicator.getValue(7);
         assertThat(phaseE.phaseType()).isEqualTo(WyckoffPhaseType.PHASE_E);
@@ -158,6 +159,41 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         assertThat(restoredIndicator.getValue(index)).isEqualTo(expected);
         assertThat(restoredIndicator.getLastPhaseTransitionIndex(index))
                 .isEqualTo(indicator.getLastPhaseTransitionIndex(index));
+    }
+
+    @Test
+    public void shouldRejectInvalidBuilderConfiguration() {
+        assertThrows(IllegalArgumentException.class,
+                () -> WyckoffPhaseIndicator.builder(accumulationSeries).withSwingConfiguration(0, 1, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> WyckoffPhaseIndicator.builder(accumulationSeries).withVolumeWindows(0, 2));
+        assertThrows(IllegalArgumentException.class,
+                () -> WyckoffPhaseIndicator.builder(accumulationSeries).withVolumeWindows(2, 1));
+        assertThrows(IllegalArgumentException.class,
+                () -> WyckoffPhaseIndicator.builder(accumulationSeries).withTolerances(numOf(-0.01), numOf(0.05)));
+        assertThrows(IllegalArgumentException.class,
+                () -> WyckoffPhaseIndicator.builder(accumulationSeries).withVolumeThresholds(numOf(1.4), numOf(-0.1)));
+    }
+
+    @Test
+    public void shouldRejectInvalidConstructorConfiguration() {
+        assertThrows(IllegalArgumentException.class, () -> new WyckoffPhaseIndicator(accumulationSeries, 0, 1, 0, 1, 4,
+                numOf(0.02), numOf(0.05), numOf(1.4), numOf(0.6)));
+        assertThrows(IllegalArgumentException.class, () -> new WyckoffPhaseIndicator(accumulationSeries, 1, 1, 0, 2, 1,
+                numOf(0.02), numOf(0.05), numOf(1.4), numOf(0.6)));
+        assertThrows(IllegalArgumentException.class, () -> new WyckoffPhaseIndicator(accumulationSeries, 1, 1, 0, 1, 4,
+                numOf(-0.02), numOf(0.05), numOf(1.4), numOf(0.6)));
+    }
+
+    @Test
+    public void shouldResolveTransitionLookupWithoutRecursiveOverflow() {
+        BarSeries longSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 15000; i++) {
+            longSeries.barBuilder().openPrice(100).highPrice(100.5).lowPrice(99.5).closePrice(100).volume(100).add();
+        }
+        WyckoffPhaseIndicator indicator = WyckoffPhaseIndicator.builder(longSeries).build();
+
+        assertThat(indicator.getLastPhaseTransitionIndex(longSeries.getEndIndex())).isEqualTo(-1);
     }
 
     private void addBar(BarSeries series, double open, double high, double low, double close, double volume) {

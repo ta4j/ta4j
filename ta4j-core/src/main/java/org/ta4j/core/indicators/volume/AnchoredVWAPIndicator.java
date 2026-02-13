@@ -158,7 +158,11 @@ public class AnchoredVWAPIndicator extends AbstractVWAPIndicator {
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(priceIndicator.getCountOfUnstableBars(), volumeIndicator.getCountOfUnstableBars());
+        int unstableBars = Math.max(priceIndicator.getCountOfUnstableBars(), volumeIndicator.getCountOfUnstableBars());
+        if (anchorSignal != null) {
+            unstableBars = Math.max(unstableBars, anchorSignal.getCountOfUnstableBars());
+        }
+        return unstableBars;
     }
 
     @Override

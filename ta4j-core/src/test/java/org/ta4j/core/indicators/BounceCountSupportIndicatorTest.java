@@ -43,6 +43,15 @@ public class BounceCountSupportIndicatorTest extends AbstractIndicatorTest<Bounc
     }
 
     @Test
+    public void shouldPreventBucketDriftFromAbsorbingDistantBounces() {
+        BarSeries series = buildSeries(12.0, 10.0, 12.0, 11.0, 12.0, 11.5, 12.0, 11.8, 12.0);
+        var indicator = new BounceCountSupportIndicator(series, numOf(1.0));
+
+        assertThat(indicator.getValue(8)).isEqualByComparingTo(numOf(10.5));
+        assertThat(indicator.getBounceIndex(8)).isEqualTo(3);
+    }
+
+    @Test
     public void shouldCountBounceWhenWindowStartsAfterTrend() {
         BarSeries series = buildSeries(7.0, 6.0, 5.0, 6.0);
         var indicator = new BounceCountSupportIndicator(new ClosePriceIndicator(series), 2, numOf(0));

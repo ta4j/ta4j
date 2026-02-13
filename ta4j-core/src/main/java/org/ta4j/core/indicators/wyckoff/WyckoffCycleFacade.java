@@ -43,7 +43,7 @@ public final class WyckoffCycleFacade {
     private final Num climaxThreshold;
     private final Num dryUpThreshold;
 
-    private WyckoffPhaseIndicator phaseIndicator;
+    private final WyckoffPhaseIndicator phaseIndicator;
 
     private WyckoffCycleFacade(Builder builder) {
         this.series = builder.series;
@@ -56,6 +56,9 @@ public final class WyckoffCycleFacade {
         this.retestTolerance = builder.retestTolerance;
         this.climaxThreshold = builder.climaxThreshold;
         this.dryUpThreshold = builder.dryUpThreshold;
+        this.phaseIndicator = new WyckoffPhaseIndicator(series, precedingSwingBars, followingSwingBars,
+                allowedEqualSwingBars, volumeShortWindow, volumeLongWindow, breakoutTolerance, retestTolerance,
+                climaxThreshold, dryUpThreshold);
     }
 
     /**
@@ -97,11 +100,6 @@ public final class WyckoffCycleFacade {
      * @since 0.22.2
      */
     public WyckoffPhaseIndicator phase() {
-        if (phaseIndicator == null) {
-            phaseIndicator = new WyckoffPhaseIndicator(series, precedingSwingBars, followingSwingBars,
-                    allowedEqualSwingBars, volumeShortWindow, volumeLongWindow, breakoutTolerance, retestTolerance,
-                    climaxThreshold, dryUpThreshold);
-        }
         return phaseIndicator;
     }
 
@@ -243,8 +241,16 @@ public final class WyckoffCycleFacade {
          * @since 0.22.2
          */
         public Builder withTolerances(Num breakoutTolerance, Num retestTolerance) {
-            this.breakoutTolerance = Objects.requireNonNull(breakoutTolerance, "breakoutTolerance");
-            this.retestTolerance = Objects.requireNonNull(retestTolerance, "retestTolerance");
+            Num safeBreakoutTolerance = Objects.requireNonNull(breakoutTolerance, "breakoutTolerance");
+            Num safeRetestTolerance = Objects.requireNonNull(retestTolerance, "retestTolerance");
+            if (Num.isNaNOrNull(safeBreakoutTolerance) || safeBreakoutTolerance.isNegative()) {
+                throw new IllegalArgumentException("breakoutTolerance must be finite and >= 0");
+            }
+            if (Num.isNaNOrNull(safeRetestTolerance) || safeRetestTolerance.isNegative()) {
+                throw new IllegalArgumentException("retestTolerance must be finite and >= 0");
+            }
+            this.breakoutTolerance = safeBreakoutTolerance;
+            this.retestTolerance = safeRetestTolerance;
             return this;
         }
 
@@ -257,8 +263,16 @@ public final class WyckoffCycleFacade {
          * @since 0.22.2
          */
         public Builder withVolumeThresholds(Num climaxThreshold, Num dryUpThreshold) {
-            this.climaxThreshold = Objects.requireNonNull(climaxThreshold, "climaxThreshold");
-            this.dryUpThreshold = Objects.requireNonNull(dryUpThreshold, "dryUpThreshold");
+            Num safeClimaxThreshold = Objects.requireNonNull(climaxThreshold, "climaxThreshold");
+            Num safeDryUpThreshold = Objects.requireNonNull(dryUpThreshold, "dryUpThreshold");
+            if (Num.isNaNOrNull(safeClimaxThreshold) || safeClimaxThreshold.isNegative()) {
+                throw new IllegalArgumentException("climaxThreshold must be finite and >= 0");
+            }
+            if (Num.isNaNOrNull(safeDryUpThreshold) || safeDryUpThreshold.isNegative()) {
+                throw new IllegalArgumentException("dryUpThreshold must be finite and >= 0");
+            }
+            this.climaxThreshold = safeClimaxThreshold;
+            this.dryUpThreshold = safeDryUpThreshold;
             return this;
         }
 

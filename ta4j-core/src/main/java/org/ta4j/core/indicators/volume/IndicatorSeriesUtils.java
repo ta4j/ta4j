@@ -30,8 +30,11 @@ final class IndicatorSeriesUtils {
     static BarSeries requireSameSeries(Indicator<?> firstIndicator, Indicator<?> secondIndicator) {
         Objects.requireNonNull(firstIndicator, "firstIndicator must not be null");
         Objects.requireNonNull(secondIndicator, "secondIndicator must not be null");
-        BarSeries firstSeries = firstIndicator.getBarSeries();
-        if (!Objects.equals(firstSeries, secondIndicator.getBarSeries())) {
+        BarSeries firstSeries = Objects.requireNonNull(firstIndicator.getBarSeries(),
+                "firstIndicator must reference a bar series");
+        BarSeries secondSeries = Objects.requireNonNull(secondIndicator.getBarSeries(),
+                "secondIndicator must reference a bar series");
+        if (!Objects.equals(firstSeries, secondSeries)) {
             throw new IllegalArgumentException("Indicators must share the same bar series");
         }
         return firstSeries;
