@@ -79,8 +79,6 @@
 ### Fixed
 - **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.
 - **Stop rule semantics**: Trailing stop-gain variants now arm only after the required favorable move is reached, volatility stop-loss variants trigger on exact threshold touches, and trailing stop-gain implementations now use gain-specific helper APIs for clearer intent.
-- **Risk-control validation hardening**: `StopLossPositionRiskModel` now rejects null series inputs and returns zero risk for missing position context; fixed-amount stop rule `Number` constructors now throw consistent `IllegalArgumentException`s for null inputs; `AverageTrueRangeTrailingStopGainRule` now rejects non-positive ATR coefficients.
-- **Trailing stop initial-price clarity**: trailing `stopPrice(...)` implementations now explicitly use an entry-bar (`lookback = 1`) snapshot to reflect initial-stop semantics.
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
