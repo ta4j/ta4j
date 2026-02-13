@@ -20,9 +20,22 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  */
 final class OssifiedElliottWaveSeriesLoader {
 
+    /**
+     * Utility class.
+     */
     private OssifiedElliottWaveSeriesLoader() {
     }
 
+    /**
+     * Loads an ossified classpath dataset into a detached {@link BarSeries} with a
+     * caller-provided display name.
+     *
+     * @param resourceOwner class used to resolve classpath resources
+     * @param resource      classpath resource path
+     * @param seriesName    name assigned to the returned series
+     * @param logger        logger used for diagnostics
+     * @return loaded series, or {@code null} when loading fails
+     */
     static BarSeries loadSeries(final Class<?> resourceOwner, final String resource, final String seriesName,
             final Logger logger) {
         Objects.requireNonNull(resourceOwner, "resourceOwner");

@@ -227,6 +227,14 @@ public final class ElliottWaveAnalysis {
         return new ElliottWaveAnalysisResult(baseDegree, degreeAnalyses, ranked, notes);
     }
 
+    /**
+     * Runs the built-in single-degree pipeline with default noise filtering and
+     * swing compression parameters scaled to the requested degree.
+     *
+     * @param series series to analyze
+     * @param degree degree to analyze
+     * @return one-degree Elliott analysis snapshot
+     */
     private ElliottAnalysisResult runDefaultAnalysis(final BarSeries series, final ElliottDegree degree) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(degree, "degree");
@@ -243,6 +251,17 @@ public final class ElliottWaveAnalysis {
         return runSingleDegreePipeline(series, degree, swingDetector, filter, compressor);
     }
 
+    /**
+     * Executes the core one-degree flow: detect swings, apply optional filtering
+     * and compression, build scenarios, and compute confidence breakdowns.
+     *
+     * @param series     input series
+     * @param degree     analysis degree
+     * @param detector   swing detector
+     * @param filter     optional swing filter
+     * @param compressor optional swing compressor
+     * @return one-degree Elliott analysis snapshot
+     */
     private ElliottAnalysisResult runSingleDegreePipeline(final BarSeries series, final ElliottDegree degree,
             final SwingDetector detector, final SwingFilter filter, final ElliottSwingCompressor compressor) {
         Objects.requireNonNull(series, "series");
@@ -285,6 +304,14 @@ public final class ElliottWaveAnalysis {
                 trendBias);
     }
 
+    /**
+     * Produces ranked base-degree scenario assessments by blending base confidence
+     * with cross-degree compatibility.
+     *
+     * @param baseResult base-degree result
+     * @param analyses   all degree snapshots, including supporting degrees
+     * @return ranked scenario assessments (highest composite score first)
+     */
     private List<ElliottWaveAnalysisResult.BaseScenarioAssessment> scoreBaseScenarios(
             final ElliottAnalysisResult baseResult, final List<ElliottWaveAnalysisResult.DegreeAnalysis> analyses) {
         final List<ElliottScenario> baseScenarios = baseResult.scenarios().all();
@@ -318,6 +345,15 @@ public final class ElliottWaveAnalysis {
         return List.copyOf(assessments);
     }
 
+    /**
+     * Aggregates compatibility against supporting-degree best matches. Each
+     * supporting degree contributes proportionally to its history fit score.
+     *
+     * @param baseScenario base-degree scenario to score
+     * @param analyses     per-degree analyses
+     * @param matchesOut   collector for best supporting matches
+     * @return normalized cross-degree score in {@code [0.0, 1.0]}
+     */
     private double crossDegreeScore(final ElliottScenario baseScenario,
             final List<ElliottWaveAnalysisResult.DegreeAnalysis> analyses,
             final List<ElliottWaveAnalysisResult.SupportingScenarioMatch> matchesOut) {
@@ -358,6 +394,16 @@ public final class ElliottWaveAnalysis {
         return clamp01(totalWeightedScore / totalWeight);
     }
 
+    /**
+     * Finds the most compatible supporting scenario for the provided base scenario.
+     * The selection criterion is weighted compatibility
+     * ({@code compatibility * supportingConfidence}).
+     *
+     * @param baseScenario     base-degree scenario
+     * @param candidates       candidate supporting scenarios
+     * @param supportingDegree degree of the supporting scenarios
+     * @return best match, or {@code null} when no valid candidate exists
+     */
     private Match bestMatch(final ElliottScenario baseScenario, final List<ElliottScenario> candidates,
             final ElliottDegree supportingDegree) {
         Match best = null;
@@ -375,6 +421,16 @@ public final class ElliottWaveAnalysis {
         return best;
     }
 
+    /**
+     * Computes scenario compatibility for a base/supporting pair by blending
+     * directional, structural, and invalidation consistency.
+     *
+     * @param baseScenario       base-degree scenario
+     * @param supportingScenario supporting-degree scenario
+     * @param base               base degree
+     * @param supporting         supporting degree
+     * @return compatibility score in {@code [0.0, 1.0]}
+     */
     private double compatibilityScore(final ElliottScenario baseScenario, final ElliottScenario supportingScenario,
             final ElliottDegree base, final ElliottDegree supporting) {
         if (baseScenario == null || supportingScenario == null) {
@@ -396,6 +452,13 @@ public final class ElliottWaveAnalysis {
         return clamp01(score);
     }
 
+    /**
+     * Scores directional agreement between base and supporting scenarios.
+     *
+     * @param baseScenario       base scenario
+     * @param supportingScenario supporting scenario
+     * @return directional compatibility score in {@code [0.0, 1.0]}
+     */
     private double directionCompatibility(final ElliottScenario baseScenario,
             final ElliottScenario supportingScenario) {
         if (!baseScenario.hasKnownDirection() || !supportingScenario.hasKnownDirection()) {
@@ -414,6 +477,13 @@ public final class ElliottWaveAnalysis {
         return 0.0;
     }
 
+    /**
+     * Scores structural agreement (impulse/corrective family) between scenarios.
+     *
+     * @param baseScenario       base scenario
+     * @param supportingScenario supporting scenario
+     * @return structure compatibility score in {@code [0.0, 1.0]}
+     */
     private double structureCompatibility(final ElliottScenario baseScenario,
             final ElliottScenario supportingScenario) {
         ScenarioType baseType = baseScenario.type();
@@ -437,6 +507,16 @@ public final class ElliottWaveAnalysis {
         return 0.5;
     }
 
+    /**
+     * Scores invalidation-level compatibility using degree relation semantics:
+     * higher degrees should generally be looser; lower degrees should generally be
+     * tighter.
+     *
+     * @param baseScenario       base scenario
+     * @param supportingScenario supporting scenario
+     * @param relation           relationship of supporting degree to base degree
+     * @return invalidation compatibility score in {@code [0.0, 1.0]}
+     */
     private double invalidationCompatibility(final ElliottScenario baseScenario,
             final ElliottScenario supportingScenario, final DegreeRelation relation) {
         if (!baseScenario.hasKnownDirection() || !supportingScenario.hasKnownDirection()) {
@@ -471,6 +551,16 @@ public final class ElliottWaveAnalysis {
         return ok ? 1.0 : 0.0;
     }
 
+    /**
+     * Safely computes {@link ElliottDegree#historyFitScore(Duration, int)} while
+     * collecting diagnostics in {@code notes}.
+     *
+     * @param degree      degree to evaluate
+     * @param barDuration duration per bar
+     * @param barCount    number of bars
+     * @param notes       collector for human-readable diagnostics
+     * @return history-fit score in {@code [0.0, 1.0]}
+     */
     private double safeHistoryFitScore(final ElliottDegree degree, final Duration barDuration, final int barCount,
             final List<String> notes) {
         if (barDuration == null || barDuration.isZero() || barDuration.isNegative()) {
@@ -491,6 +581,12 @@ public final class ElliottWaveAnalysis {
         }
     }
 
+    /**
+     * Converts a {@link Num} score to a finite unit-interval double.
+     *
+     * @param score numeric score
+     * @return clamped score in {@code [0.0, 1.0]}; invalid values return {@code 0}
+     */
     private double safeScore(final Num score) {
         if (!Num.isValid(score)) {
             return 0.0;
@@ -502,6 +598,12 @@ public final class ElliottWaveAnalysis {
         return clamp01(value);
     }
 
+    /**
+     * Clamps a score to the unit interval and guards against NaN.
+     *
+     * @param value value to clamp
+     * @return clamped value in {@code [0.0, 1.0]}
+     */
     private static double clamp01(final double value) {
         if (Double.isNaN(value)) {
             return 0.0;
@@ -515,6 +617,13 @@ public final class ElliottWaveAnalysis {
         return value;
     }
 
+    /**
+     * Returns the most recent swings bounded by the configured scenario window.
+     *
+     * @param swings swing sequence
+     * @param window requested maximum window size
+     * @return bounded immutable swing list
+     */
     private static List<ElliottSwing> recentSwings(final List<ElliottSwing> swings, final int window) {
         if (swings == null || swings.isEmpty()) {
             return List.of();
@@ -525,6 +634,15 @@ public final class ElliottWaveAnalysis {
         return List.copyOf(swings.subList(swings.size() - window, swings.size()));
     }
 
+    /**
+     * Builds a simple projected price channel from the most recent two rising and
+     * two falling swings.
+     *
+     * @param numFactory numeric factory for arithmetic
+     * @param swings     candidate swings
+     * @param index      projection target index
+     * @return projected channel, or a NaN channel when projection is not possible
+     */
     private static ElliottChannel computeChannel(final NumFactory numFactory, final List<ElliottSwing> swings,
             final int index) {
         if (swings == null || swings.size() < 4) {
@@ -548,6 +666,13 @@ public final class ElliottWaveAnalysis {
         return new ElliottChannel(upper.value, lower.value, median);
     }
 
+    /**
+     * Selects the latest two swings matching the requested direction.
+     *
+     * @param swings swing sequence
+     * @param rising {@code true} for rising swings; {@code false} for falling
+     * @return up to two swings in chronological order
+     */
     private static List<ElliottSwing> latestSwingsByDirection(final List<ElliottSwing> swings, final boolean rising) {
         List<ElliottSwing> filtered = new ArrayList<>(2);
         for (int i = swings.size() - 1; i >= 0 && filtered.size() < 2; i--) {
@@ -560,6 +685,16 @@ public final class ElliottWaveAnalysis {
         return filtered;
     }
 
+    /**
+     * Projects a pivot line at {@code index} using two swing endpoints.
+     *
+     * @param numFactory numeric factory for arithmetic
+     * @param older      older swing
+     * @param newer      newer swing
+     * @param index      target index for projection
+     * @return projected pivot line, or invalid when projection inputs are
+     *         insufficient
+     */
     private static PivotLine projectLine(final NumFactory numFactory, final ElliottSwing older,
             final ElliottSwing newer, final int index) {
         if (older == null || newer == null) {
@@ -582,17 +717,37 @@ public final class ElliottWaveAnalysis {
         return new PivotLine(projected);
     }
 
+    /**
+     * Lightweight projected line wrapper used for channel boundary calculations.
+     *
+     * @param value projected price value
+     */
     private record PivotLine(Num value) {
 
+        /**
+         * @return invalid pivot line marker
+         */
         private static PivotLine invalid() {
             return new PivotLine(NaN);
         }
 
+        /**
+         * @return {@code true} when the projected value is finite
+         */
         private boolean isValid() {
             return Num.isValid(value);
         }
     }
 
+    /**
+     * Builds the ordered degree list to analyze: higher degrees (outer to inner),
+     * base degree, then lower degrees (inner to outer).
+     *
+     * @param base   base degree
+     * @param higher number of higher degrees to include
+     * @param lower  number of lower degrees to include
+     * @return ordered immutable degree list
+     */
     private static List<ElliottDegree> degreesToAnalyze(final ElliottDegree base, final int higher, final int lower) {
         Objects.requireNonNull(base, "base");
 
@@ -625,6 +780,12 @@ public final class ElliottWaveAnalysis {
         return List.copyOf(degrees);
     }
 
+    /**
+     * Creates the default selector that trims each degree to its recommended
+     * maximum history window while preserving the latest bars.
+     *
+     * @return default series selector
+     */
     private static SeriesSelector defaultSeriesSelector() {
         return (series, degree) -> {
             Objects.requireNonNull(series, "series");
@@ -660,6 +821,17 @@ public final class ElliottWaveAnalysis {
         };
     }
 
+    /**
+     * Scales a base value by degree distance and clamps it to configured bounds.
+     *
+     * @param base            base degree
+     * @param target          target degree
+     * @param baseValue       value at the base degree
+     * @param factorPerDegree multiplicative factor per degree step
+     * @param minValue        lower clamp bound
+     * @param maxValue        upper clamp bound
+     * @return scaled and clamped value
+     */
     private static double scale(final ElliottDegree base, final ElliottDegree target, final double baseValue,
             final double factorPerDegree, final double minValue, final double maxValue) {
         int delta = base.ordinal() - target.ordinal();

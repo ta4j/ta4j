@@ -68,6 +68,12 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
         return Optional.empty();
     }
 
+    /**
+     * Validates that a score is finite and inside the unit interval.
+     *
+     * @param fieldName field name for error messaging
+     * @param score     score to validate
+     */
     private static void validateUnitIntervalScore(final String fieldName, final double score) {
         if (Double.isNaN(score) || Double.isInfinite(score) || score < 0.0 || score > 1.0) {
             throw new IllegalArgumentException(fieldName + " must be in [0.0, 1.0]");
