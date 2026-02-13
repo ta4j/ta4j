@@ -97,9 +97,6 @@ public class AnchoredVWAPIndicator extends AbstractVWAPIndicator {
         this.baseIndex = getBarSeries().getBeginIndex();
         int clampedDefault = Math.max(defaultAnchorIndex, baseIndex);
         this.baseAnchorIndex = clampedDefault;
-        synchronized (anchorIndexCache) {
-            ensureAnchorCacheLocked(baseIndex - 1);
-        }
     }
 
     /**

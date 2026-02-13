@@ -113,6 +113,7 @@ public class AnchoredVWAPIndicatorTest extends AbstractIndicatorTest<Indicator<N
         assertThat(restored).isInstanceOf(AnchoredVWAPIndicator.class);
         var restoredIndicator = (AnchoredVWAPIndicator) restored;
         assertThat(restoredIndicator.toDescriptor()).isEqualTo(anchored.toDescriptor());
+        assertThat(restoredIndicator.getCountOfUnstableBars()).isEqualTo(anchored.getCountOfUnstableBars());
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertThat(restoredIndicator.getValue(i)).isEqualByComparingTo(anchored.getValue(i));
             assertThat(restoredIndicator.getAnchorIndex(i)).isEqualTo(anchored.getAnchorIndex(i));

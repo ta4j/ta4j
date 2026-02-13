@@ -83,6 +83,7 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         assertThat(indicator.getTradingRangeLow(5)).isEqualByComparingTo(numOf(79));
         assertThat(indicator.getTradingRangeHigh(5)).isEqualByComparingTo(numOf(104));
 
+        // The synthetic sequence transitions directly from Phase C to a breakout.
         var phaseE = indicator.getValue(7);
         assertThat(phaseE.phaseType()).isEqualTo(WyckoffPhaseType.PHASE_E);
         assertThat(phaseE.confidence()).isGreaterThanOrEqualTo(0.95);
@@ -180,6 +181,7 @@ public class WyckoffPhaseIndicatorTest extends AbstractIndicatorTest<BarSeries, 
         assertThat(restoredIndicator.getValue(index)).isEqualTo(expected);
         assertThat(restoredIndicator.getLastPhaseTransitionIndex(index))
                 .isEqualTo(indicator.getLastPhaseTransitionIndex(index));
+        assertThat(restoredIndicator.getCountOfUnstableBars()).isEqualTo(indicator.getCountOfUnstableBars());
     }
 
     /**

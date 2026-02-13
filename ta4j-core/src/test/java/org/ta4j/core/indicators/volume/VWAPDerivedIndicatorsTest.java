@@ -55,6 +55,8 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         var std = new VWAPStandardDeviationIndicator(vwap);
         var deviation = new VWAPDeviationIndicator(closePrice, vwap);
 
+        assertThat(std.getCountOfUnstableBars()).isEqualTo(vwap.getCountOfUnstableBars());
+        assertThat(deviation.getCountOfUnstableBars()).isEqualTo(vwap.getCountOfUnstableBars());
         assertThat(deviation.getValue(1).isNaN()).isTrue();
 
         assertNumEquals(0.6872, std.getValue(2));
@@ -75,6 +77,8 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         var deviation = new VWAPDeviationIndicator(closePrice, vwap);
         var zScore = new VWAPZScoreIndicator(deviation, std);
 
+        assertThat(zScore.getCountOfUnstableBars())
+                .isEqualTo(Math.max(deviation.getCountOfUnstableBars(), std.getCountOfUnstableBars()));
         assertNumEquals(1.0759, zScore.getValue(3));
 
         var flatSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -100,6 +104,10 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         var lower = new VWAPBandIndicator(vwap, std, 2, VWAPBandIndicator.BandType.LOWER);
         var upperConvenience = new VWAPBandIndicator(vwap, 2, VWAPBandIndicator.BandType.UPPER);
 
+        assertThat(upper.getCountOfUnstableBars())
+                .isEqualTo(Math.max(vwap.getCountOfUnstableBars(), std.getCountOfUnstableBars()));
+        assertThat(lower.getCountOfUnstableBars()).isEqualTo(upper.getCountOfUnstableBars());
+        assertThat(upperConvenience.getCountOfUnstableBars()).isEqualTo(upper.getCountOfUnstableBars());
         assertNumEquals(12.5411, upper.getValue(2));
         assertNumEquals(9.7923, lower.getValue(2));
         assertNumEquals(15.2407, upper.getValue(3));
@@ -157,6 +165,7 @@ public class VWAPDerivedIndicatorsTest extends AbstractIndicatorTest<Indicator<N
         assertThat(restored).isInstanceOf(indicator.getClass());
         assertThat(restored.toDescriptor()).isEqualTo(indicator.toDescriptor());
         Indicator<Num> restoredIndicator = (Indicator<Num>) restored;
+        assertThat(restoredIndicator.getCountOfUnstableBars()).isEqualTo(indicator.getCountOfUnstableBars());
         assertThat(restoredIndicator.getValue(index)).isEqualByComparingTo(indicator.getValue(index));
     }
 }

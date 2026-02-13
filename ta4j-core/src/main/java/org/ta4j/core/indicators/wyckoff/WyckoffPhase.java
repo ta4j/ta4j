@@ -20,7 +20,13 @@ import java.util.Objects;
 public record WyckoffPhase(WyckoffCycleType cycleType, WyckoffPhaseType phaseType, double confidence,
         int latestEventIndex) {
 
-    /** Constant describing an indeterminate phase with zero confidence. */
+    /**
+     * Constant describing an indeterminate phase with zero confidence.
+     *
+     * <p>
+     * {@link WyckoffPhaseType#PHASE_A} acts as a placeholder because
+     * {@link WyckoffPhaseType} does not define an explicit unknown value.
+     */
     public static final WyckoffPhase UNKNOWN = new WyckoffPhase(WyckoffCycleType.UNKNOWN, WyckoffPhaseType.PHASE_A, 0.0,
             -1);
 

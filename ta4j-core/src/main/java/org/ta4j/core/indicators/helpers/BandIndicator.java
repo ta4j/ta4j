@@ -71,6 +71,9 @@ public class BandIndicator extends CachedIndicator<Num> {
      */
     @Override
     protected Num calculate(int index) {
+        if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
+            return NaN.NaN;
+        }
         Num middle = middleIndicator.getValue(index);
         Num width = widthIndicator.getValue(index);
         if (Num.isNaNOrNull(middle) || Num.isNaNOrNull(width)) {

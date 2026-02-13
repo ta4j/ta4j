@@ -93,6 +93,7 @@ public class ZScoreIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         assertThat(restored).isInstanceOf(ZScoreIndicator.class);
         assertThat(restored.toDescriptor()).isEqualTo(zScore.toDescriptor());
+        assertThat(restored.getCountOfUnstableBars()).isEqualTo(zScore.getCountOfUnstableBars());
         @SuppressWarnings("unchecked")
         Indicator<Num> restoredIndicator = (Indicator<Num>) restored;
         assertThat(restoredIndicator.getValue(1)).isEqualByComparingTo(zScore.getValue(1));

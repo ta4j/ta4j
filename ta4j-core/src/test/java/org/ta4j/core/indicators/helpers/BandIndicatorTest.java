@@ -48,6 +48,8 @@ public class BandIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         var upper = new BandIndicator(middle, width, 2, BandIndicator.BandType.UPPER);
         var lower = new BandIndicator(middle, width, 2, BandIndicator.BandType.LOWER);
 
+        assertThat(upper.getCountOfUnstableBars()).isEqualTo(0);
+        assertThat(lower.getCountOfUnstableBars()).isEqualTo(0);
         assertNumEquals(11.0, upper.getValue(0));
         assertNumEquals(9.0, lower.getValue(0));
         assertNumEquals(13.0, upper.getValue(1));
@@ -80,6 +82,7 @@ public class BandIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
         assertThat(restored).isInstanceOf(BandIndicator.class);
         assertThat(restored.toDescriptor()).isEqualTo(upper.toDescriptor());
+        assertThat(restored.getCountOfUnstableBars()).isEqualTo(upper.getCountOfUnstableBars());
         @SuppressWarnings("unchecked")
         Indicator<Num> restoredIndicator = (Indicator<Num>) restored;
         assertThat(restoredIndicator.getValue(1)).isEqualByComparingTo(upper.getValue(1));

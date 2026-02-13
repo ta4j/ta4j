@@ -71,6 +71,10 @@ public final class WyckoffStructureTracker {
     /**
      * Returns the current structure snapshot.
      *
+     * <p>
+     * The tracked range is monotonically non-contracting: once an extreme is
+     * observed, later snapshots may widen the range but do not narrow it.
+     *
      * @param index the bar index to inspect
      * @return immutable structure snapshot
      * @since 0.22.2

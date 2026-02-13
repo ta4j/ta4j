@@ -285,7 +285,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      * Returns whether invalid.
      */
     private static boolean isInvalid(Num value) {
-        return Num.isNaNOrNull(value) || (value != null && Double.isNaN(value.doubleValue()));
+        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
     }
 
     private static final class PriceBucket {

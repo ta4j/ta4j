@@ -105,6 +105,7 @@ public class BounceCountResistanceIndicatorTest extends AbstractIndicatorTest<Bo
         int index = series.getEndIndex();
         assertThat(restoredIndicator.getValue(index)).isEqualByComparingTo(indicator.getValue(index));
         assertThat(restoredIndicator.getBounceIndex(index)).isEqualTo(indicator.getBounceIndex(index));
+        assertThat(restoredIndicator.getCountOfUnstableBars()).isEqualTo(indicator.getCountOfUnstableBars());
     }
 
     /**

@@ -124,6 +124,7 @@ public class VolumeProfileKDEIndicatorTest extends AbstractIndicatorTest<Indicat
         int index = series.getEndIndex();
         assertThat(restoredIndicator.getValue(index)).isEqualByComparingTo(indicator.getValue(index));
         assertThat(restoredIndicator.getModePrice(index)).isEqualByComparingTo(indicator.getModePrice(index));
+        assertThat(restoredIndicator.getCountOfUnstableBars()).isEqualTo(indicator.getCountOfUnstableBars());
     }
 
     /**

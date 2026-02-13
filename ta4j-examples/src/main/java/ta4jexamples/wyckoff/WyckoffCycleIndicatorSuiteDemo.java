@@ -42,7 +42,7 @@ public final class WyckoffCycleIndicatorSuiteDemo {
                 .withVolumeThresholds(numFactory.numOf(1.5), numFactory.numOf(0.7))
                 .build();
 
-        int begin = Math.max(series.getBeginIndex() + facade.unstableBars(), series.getBeginIndex());
+        int begin = series.getBeginIndex() + facade.unstableBars();
         for (int i = begin; i <= series.getEndIndex(); i++) {
             WyckoffPhase phase = facade.phase(i);
             if (phase.cycleType() == WyckoffCycleType.UNKNOWN) {
