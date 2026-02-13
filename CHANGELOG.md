@@ -71,9 +71,6 @@
 - **Elliott Wave scoring and diagnostics**: Extension ratio scoring now penalizes under/over-extended projections,
   chart/JSON outputs include scenario-weighted trend bias, and logs include time alternation diagnostics.
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
-- **Elliott Wave demo data loading**: `BTCUSDElliottWaveAnalysis`, `ETHUSDElliottWaveAnalysis`, and
-  `SP500ElliottWaveAnalysis` now load committed ossified datasets from `ta4j-examples/src/main/resources` instead of
-  making live HTTP calls at runtime.
 
 ### Fixed
 - **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.
@@ -99,9 +96,6 @@
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
 - **Fixed incorrect @since 0.23** by replacing with 0.22.2
 - **Full build script**: Fix macOS temp file creation in `run-full-build-quiet.sh` by using a portable mktemp template.
-- **Elliott Wave analysis invariants and diagnostics**: Hardened cross-degree scoring and result model validation by
-  adding null/range guards in `ElliottWaveAnalysisResult`, replacing ordinal-based degree relation checks with
-  semantic helpers, and ensuring NaN-safe score clamping in `ElliottWaveAnalysis`.
 
 ## 0.22.1 (2026-01-15)
 
