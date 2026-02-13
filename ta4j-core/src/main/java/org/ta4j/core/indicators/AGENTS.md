@@ -5,6 +5,8 @@
 - Default to canonical time frames (e.g., 12/26/9 for MACD-style oscillators) when meaningful.
 
 ## Implementation guidelines
+- **Mandatory:** reuse existing indicators/helpers wherever possible. Before adding new math/statistics logic, search the codebase (especially `helpers`, `numeric`, and `statistics`) and compose existing indicators instead of duplicating logic.
+- Prefer extracting generic building blocks (e.g., `BandIndicator`, `ZScoreIndicator`) and then composing them into context-specific indicators (e.g., VWAP-specific wrappers) for discoverability and stable serialization.
 - Prefer composing with existing helper indicators (e.g., `BinaryOperationIndicator`, `VolumeIndicator`) rather than reimplementing arithmetic.
 - Prefer immutability but if stateful properties are required, make sure they are thread-safe and declared as transient
 - When composing indicators avoid declaring any as global that are not referenced outside the constructor. 
