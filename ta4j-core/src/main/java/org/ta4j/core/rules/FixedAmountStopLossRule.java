@@ -41,7 +41,7 @@ public class FixedAmountStopLossRule extends AbstractRule implements StopLossPri
      * @param lossAmount     the absolute loss amount
      */
     public FixedAmountStopLossRule(Indicator<Num> priceIndicator, Number lossAmount) {
-        this(priceIndicator, priceIndicator.getBarSeries().numFactory().numOf(lossAmount));
+        this(priceIndicator, toNumLossAmount(priceIndicator, lossAmount));
     }
 
     /**
@@ -110,5 +110,15 @@ public class FixedAmountStopLossRule extends AbstractRule implements StopLossPri
             log.trace("{}#isSatisfied({}): {}. Current price: {}", getTraceDisplayName(), index, isSatisfied,
                     priceIndicator.getValue(index));
         }
+    }
+
+    private static Num toNumLossAmount(Indicator<Num> priceIndicator, Number lossAmount) {
+        if (priceIndicator == null) {
+            throw new IllegalArgumentException("priceIndicator must not be null");
+        }
+        if (lossAmount == null) {
+            throw new IllegalArgumentException("lossAmount must be positive");
+        }
+        return priceIndicator.getBarSeries().numFactory().numOf(lossAmount);
     }
 }

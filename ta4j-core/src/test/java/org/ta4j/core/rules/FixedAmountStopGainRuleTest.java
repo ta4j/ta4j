@@ -12,6 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -85,6 +86,8 @@ public class FixedAmountStopGainRuleTest extends AbstractIndicatorTest<BarSeries
     @Test
     public void constructorValidation() {
         assertThrows(IllegalArgumentException.class, () -> new FixedAmountStopGainRule(null, numFactory.one()));
+        assertThrows(IllegalArgumentException.class, () -> new FixedAmountStopGainRule((Indicator<Num>) null, 1));
+        assertThrows(IllegalArgumentException.class, () -> new FixedAmountStopGainRule(closePrice, (Number) null));
         assertThrows(IllegalArgumentException.class, () -> new FixedAmountStopGainRule(closePrice, numFactory.zero()));
         assertThrows(IllegalArgumentException.class,
                 () -> new FixedAmountStopGainRule(closePrice, numFactory.minusOne()));

@@ -7,6 +7,7 @@ import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -56,5 +57,21 @@ public class StopLossPositionRiskModelTest {
     public void rejectsNonPositiveLossPercentage() {
         assertThrows(IllegalArgumentException.class, () -> new StopLossPositionRiskModel(0));
         assertThrows(IllegalArgumentException.class, () -> new StopLossPositionRiskModel(-1));
+    }
+
+    @Test
+    public void returnsZeroRiskForMissingPositionContext() {
+        BarSeries series = new MockBarSeriesBuilder().withData(100, 110).build();
+        PositionRiskModel model = new StopLossPositionRiskModel(5);
+
+        assertNumEquals(0, model.risk(series, null));
+        assertNumEquals(0, model.risk(series, new Position()));
+    }
+
+    @Test
+    public void rejectsNullSeriesWhenCalculatingRisk() {
+        PositionRiskModel model = new StopLossPositionRiskModel(5);
+
+        assertThrows(IllegalArgumentException.class, () -> model.risk(null, new Position()));
     }
 }

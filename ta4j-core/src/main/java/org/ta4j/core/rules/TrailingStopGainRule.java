@@ -126,7 +126,8 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
             return null;
         }
         int entryIndex = position.getEntry().getIndex();
-        int lookback = Math.min(1, barCount);
+        // stopPrice models the initial trailing stop at entry time.
+        int lookback = 1;
         if (position.getEntry().isBuy()) {
             HighestValueIndicator highest = new HighestValueIndicator(priceIndicator, lookback);
             Num highestCloseNum = highest.getValue(entryIndex);

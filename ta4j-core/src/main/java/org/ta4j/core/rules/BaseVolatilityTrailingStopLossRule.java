@@ -83,7 +83,8 @@ abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implement
             return null;
         }
 
-        int lookback = Math.min(1, barCount);
+        // stopPrice models the initial trailing stop at entry time.
+        int lookback = 1;
         if (position.getEntry().isBuy()) {
             HighestValueIndicator highestPrice = new HighestValueIndicator(referencePrice, lookback);
             Num reference = entryPrice.max(highestPrice.getValue(entryIndex));

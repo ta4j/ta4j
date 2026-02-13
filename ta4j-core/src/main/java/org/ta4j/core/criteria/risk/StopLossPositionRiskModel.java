@@ -54,8 +54,11 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
 
     @Override
     public Num risk(BarSeries series, Position position) {
-        if (series == null || position == null || position.getEntry() == null) {
-            return null;
+        if (series == null) {
+            throw new IllegalArgumentException("series must not be null");
+        }
+        if (position == null || position.getEntry() == null) {
+            return series.numFactory().zero();
         }
         Num entryPrice = position.getEntry().getNetPrice();
         Num amount = position.getEntry().getAmount();

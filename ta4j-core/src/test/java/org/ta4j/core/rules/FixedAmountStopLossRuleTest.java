@@ -5,12 +5,14 @@ package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
@@ -81,5 +83,15 @@ public class FixedAmountStopLossRuleTest extends AbstractIndicatorTest<BarSeries
         var rule = new FixedAmountStopLossRule(closePrice, numFactory.numOf(8));
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(closePrice.getBarSeries(), rule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(closePrice.getBarSeries(), rule);
+    }
+
+    @Test
+    public void constructorValidation() {
+        assertThrows(IllegalArgumentException.class, () -> new FixedAmountStopLossRule(null, numFactory.one()));
+        assertThrows(IllegalArgumentException.class, () -> new FixedAmountStopLossRule((Indicator<Num>) null, 1));
+        assertThrows(IllegalArgumentException.class, () -> new FixedAmountStopLossRule(closePrice, (Number) null));
+        assertThrows(IllegalArgumentException.class, () -> new FixedAmountStopLossRule(closePrice, numFactory.zero()));
+        assertThrows(IllegalArgumentException.class,
+                () -> new FixedAmountStopLossRule(closePrice, numFactory.minusOne()));
     }
 }

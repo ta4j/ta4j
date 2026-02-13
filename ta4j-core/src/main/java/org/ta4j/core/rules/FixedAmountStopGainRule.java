@@ -36,7 +36,7 @@ public class FixedAmountStopGainRule extends AbstractRule implements StopGainPri
      * @param gainAmount     the absolute gain amount
      */
     public FixedAmountStopGainRule(Indicator<Num> priceIndicator, Number gainAmount) {
-        this(priceIndicator, priceIndicator.getBarSeries().numFactory().numOf(gainAmount));
+        this(priceIndicator, toNumGainAmount(priceIndicator, gainAmount));
     }
 
     /**
@@ -105,5 +105,15 @@ public class FixedAmountStopGainRule extends AbstractRule implements StopGainPri
             log.trace("{}#isSatisfied({}): {}. Current price: {}", getTraceDisplayName(), index, isSatisfied,
                     priceIndicator.getValue(index));
         }
+    }
+
+    private static Num toNumGainAmount(Indicator<Num> priceIndicator, Number gainAmount) {
+        if (priceIndicator == null) {
+            throw new IllegalArgumentException("priceIndicator must not be null");
+        }
+        if (gainAmount == null) {
+            throw new IllegalArgumentException("gainAmount must be positive");
+        }
+        return priceIndicator.getBarSeries().numFactory().numOf(gainAmount);
     }
 }

@@ -95,6 +95,10 @@ public class AverageTrueRangeTrailingStopGainRuleTest {
         assertThrows(IllegalArgumentException.class,
                 () -> new AverageTrueRangeTrailingStopGainRule(series, reference, 0, 1.0, 2));
         assertThrows(IllegalArgumentException.class,
+                () -> new AverageTrueRangeTrailingStopGainRule(series, reference, 3, 0, 2));
+        assertThrows(IllegalArgumentException.class,
+                () -> new AverageTrueRangeTrailingStopGainRule(series, reference, 3, -1.0, 2));
+        assertThrows(IllegalArgumentException.class,
                 () -> new AverageTrueRangeTrailingStopGainRule(series, reference, 3, 1.0, 0));
     }
 }

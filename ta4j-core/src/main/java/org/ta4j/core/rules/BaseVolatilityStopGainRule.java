@@ -32,25 +32,26 @@ abstract class BaseVolatilityStopGainRule extends AbstractRule implements StopGa
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        if (tradingRecord != null && !tradingRecord.isClosed()) {
+        boolean satisfied = false;
+        if (tradingRecord != null) {
             Position position = tradingRecord.getCurrentPosition();
             if (position.isOpened()) {
                 Num entryPrice = position.getEntry().getNetPrice();
                 Num currentPrice = referencePrice.getValue(index);
                 Num threshold = stopGainThreshold.getValue(index);
-                if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(threshold)) {
-                    return false;
+                if (!Num.isNaNOrNull(entryPrice) && !Num.isNaNOrNull(currentPrice) && !Num.isNaNOrNull(threshold)) {
+                    if (position.getEntry().isBuy()) {
+                        satisfied = currentPrice.isGreaterThanOrEqual(
+                                StopGainRule.stopGainPriceFromDistance(entryPrice, threshold, true));
+                    } else {
+                        satisfied = currentPrice.isLessThanOrEqual(
+                                StopGainRule.stopGainPriceFromDistance(entryPrice, threshold, false));
+                    }
                 }
-
-                if (position.getEntry().isBuy()) {
-                    return currentPrice
-                            .isGreaterThanOrEqual(StopGainRule.stopGainPriceFromDistance(entryPrice, threshold, true));
-                }
-                return currentPrice
-                        .isLessThanOrEqual(StopGainRule.stopGainPriceFromDistance(entryPrice, threshold, false));
             }
         }
-        return false;
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 
     @Override

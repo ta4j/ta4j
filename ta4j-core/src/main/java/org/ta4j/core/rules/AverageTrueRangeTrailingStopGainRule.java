@@ -89,10 +89,19 @@ public class AverageTrueRangeTrailingStopGainRule extends BaseVolatilityTrailing
      */
     public AverageTrueRangeTrailingStopGainRule(final Indicator<Num> referencePrice, final ATRIndicator atrIndicator,
             final Number atrCoefficient, int barCount) {
-        super(referencePrice, BinaryOperationIndicator.product(requireNonNull(atrIndicator), atrCoefficient), barCount);
+        super(referencePrice, BinaryOperationIndicator.product(requireNonNull(atrIndicator),
+                requirePositiveAtrCoefficient(atrCoefficient)), barCount);
     }
 
     private static Indicator<Num> createStopGainThreshold(BarSeries series, int atrBarCount, Number atrCoefficient) {
-        return BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
+        return BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount),
+                requirePositiveAtrCoefficient(atrCoefficient));
+    }
+
+    private static Number requirePositiveAtrCoefficient(Number atrCoefficient) {
+        if (atrCoefficient == null || Double.isNaN(atrCoefficient.doubleValue()) || atrCoefficient.doubleValue() <= 0) {
+            throw new IllegalArgumentException("atrCoefficient must be positive");
+        }
+        return atrCoefficient;
     }
 }
