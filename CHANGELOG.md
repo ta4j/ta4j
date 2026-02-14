@@ -16,6 +16,12 @@
   or short-first behavior explicitly.
 - **Open position analytics**: Added `PositionLedger`, `OpenPositionCostBasisCriterion`,
   `OpenPositionUnrealizedProfitCriterion`, and `TotalFeesCriterion` for live exposure and fee analysis.
+- **R-multiple criterion**: Added `PositionRiskModel` and `RMultipleCriterion` to compute profit per unit of risk.
+- **Stop-loss/gain tooling**: Added `StopLossPositionRiskModel`, `StopLossPriceModel`, `StopGainPriceModel`,
+  fixed/trailing stop-loss rules, and matching stop-gain counterparts (`FixedAmountStopGainRule`,
+  `TrailingStopGainRule`, `TrailingFixedAmountStopGainRule`, `VolatilityStopGainRule`,
+  `VolatilityTrailingStopGainRule`, `AverageTrueRangeTrailingStopGainRule`) to cover fixed-percentage,
+  fixed-amount, and volatility-scaled stops.
 - **Sharpe Ratio**: Added `SharpeRatioCriterion` and its related calculation classes
 - **Equity-curve controls**: Added `OpenPositionHandling` and `PerformanceIndicator` to standardize mark-to-market vs
   realized behavior across performance metrics.
@@ -68,9 +74,13 @@
 - **Elliott Wave scoring and diagnostics**: Extension ratio scoring now penalizes under/over-extended projections,
   chart/JSON outputs include scenario-weighted trend bias, and logs include time alternation diagnostics.
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
+- **Stop-rule tests**: Expanded constructor validation coverage for stop-gain variants and introduced shared stop-rule fixture helpers to reduce duplicated test setup.
+- **Risk/stop-rule review polish**: Added stricter volatility stop-gain coefficient validation, removed redundant risk recomputation in `RMultipleCriterion`, added the missing `AverageTrueRangeTrailingStopLossRule` lookback constructor overload, and expanded stop/risk test coverage and Javadoc for these APIs.
 
 ### Fixed
 - **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.
+- **Stop rule semantics**: Trailing stop-gain variants now arm only after the required favorable move is reached, volatility stop-loss variants trigger on exact threshold touches, and trailing stop-gain implementations now use gain-specific helper APIs for clearer intent.
+- **Trailing stop evaluation efficiency**: Volatility trailing stop-gain/loss and trailing fixed-amount stop-gain rules now reuse max-lookback helper indicators once lookback stabilizes, reducing repeated hot-path allocations during backtests.
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
