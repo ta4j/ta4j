@@ -46,7 +46,7 @@ public class RMultipleCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, Position position) {
         PositionEvaluation evaluation = evaluatePosition(series, position);
-        return evaluation.rMultiple;
+        return evaluation.rMultiple();
     }
 
     /**
@@ -67,10 +67,10 @@ public class RMultipleCriterion extends AbstractAnalysisCriterion {
         int count = 0;
         for (Position position : tradingRecord.getPositions()) {
             PositionEvaluation evaluation = evaluatePosition(series, position);
-            if (!evaluation.validForAverage) {
+            if (!evaluation.validForAverage()) {
                 continue;
             }
-            sum = sum.plus(evaluation.rMultiple);
+            sum = sum.plus(evaluation.rMultiple());
             count++;
         }
         if (count == 0) {
@@ -91,14 +91,7 @@ public class RMultipleCriterion extends AbstractAnalysisCriterion {
         return new PositionEvaluation(position.getProfit().dividedBy(risk), true);
     }
 
-    private static final class PositionEvaluation {
-        private final Num rMultiple;
-        private final boolean validForAverage;
-
-        private PositionEvaluation(Num rMultiple, boolean validForAverage) {
-            this.rMultiple = rMultiple;
-            this.validForAverage = validForAverage;
-        }
+    private record PositionEvaluation(Num rMultiple, boolean validForAverage) {
     }
 
     /**
