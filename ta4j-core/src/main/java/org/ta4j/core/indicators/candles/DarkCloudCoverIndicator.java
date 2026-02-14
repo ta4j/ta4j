@@ -57,7 +57,8 @@ public class DarkCloudCoverIndicator extends CachedIndicator<Boolean> {
      *                                       to second open
      * @param penetrationThresholdPercentage minimum penetration ratio into the
      *                                       first body measured from first close
-     *                                       downward
+     *                                       downward (uses strict {@code <}
+     *                                       comparison)
      */
     public DarkCloudCoverIndicator(final BarSeries series, final Num bigBodyThresholdPercentage,
             final Num gapThresholdPercentage, final Num penetrationThresholdPercentage) {

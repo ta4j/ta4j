@@ -95,6 +95,28 @@ public class DarkCloudCoverIndicatorTest extends AbstractIndicatorTest<Indicator
     }
 
     @Test
+    public void shouldRespectConfiguredPenetrationThreshold() {
+        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
+        series.barBuilder().openPrice(27).closePrice(20).highPrice(28).lowPrice(19).add();
+
+        final DarkCloudCoverIndicator indicator = new DarkCloudCoverIndicator(series, numFactory.numOf(0.03),
+                numFactory.zero(), numFactory.numOf(0.7));
+
+        assertThat(indicator.getValue(18)).isFalse();
+    }
+
+    @Test
+    public void shouldDetectPatternWhenPenetrationMeetsConfiguredThreshold() {
+        series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
+        series.barBuilder().openPrice(27).closePrice(20).highPrice(28).lowPrice(19).add();
+
+        final DarkCloudCoverIndicator indicator = new DarkCloudCoverIndicator(series, numFactory.numOf(0.03),
+                numFactory.zero(), numFactory.numOf(0.6));
+
+        assertThat(indicator.getValue(18)).isTrue();
+    }
+
+    @Test
     public void shouldDetectPatternWithEqualRealBodies() {
         series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();
         series.barBuilder().openPrice(27).closePrice(19).highPrice(28).lowPrice(18).add();
