@@ -118,7 +118,7 @@ public class ForceIndexIndicator extends CachedIndicator<Num> {
         }
 
         final Num forceIndexValue = smoothedForceIndexIndicator.getValue(index);
-        if (isInvalid(forceIndexValue)) {
+        if (Num.isNaNOrNull(forceIndexValue) || Double.isNaN(forceIndexValue.doubleValue())) {
             return NaN;
         }
 
@@ -141,9 +141,5 @@ public class ForceIndexIndicator extends CachedIndicator<Num> {
         if (barCount <= 0) {
             throw new IllegalArgumentException("Force Index barCount must be greater than 0");
         }
-    }
-
-    private static boolean isInvalid(final Num value) {
-        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
     }
 }
