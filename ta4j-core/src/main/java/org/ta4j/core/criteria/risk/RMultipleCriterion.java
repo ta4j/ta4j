@@ -45,15 +45,8 @@ public class RMultipleCriterion extends AbstractAnalysisCriterion {
      */
     @Override
     public Num calculate(BarSeries series, Position position) {
-        Num zero = series.numFactory().zero();
-        if (position == null || !position.isClosed()) {
-            return zero;
-        }
-        Num risk = riskModel.risk(series, position);
-        if (risk == null || risk.isZero() || risk.isNegative()) {
-            return zero;
-        }
-        return position.getProfit().dividedBy(risk);
+        PositionEvaluation evaluation = evaluatePosition(series, position);
+        return evaluation.rMultiple;
     }
 
     /**
@@ -73,20 +66,39 @@ public class RMultipleCriterion extends AbstractAnalysisCriterion {
         Num sum = zero;
         int count = 0;
         for (Position position : tradingRecord.getPositions()) {
-            if (position == null || !position.isClosed()) {
+            PositionEvaluation evaluation = evaluatePosition(series, position);
+            if (!evaluation.validForAverage) {
                 continue;
             }
-            Num risk = riskModel.risk(series, position);
-            if (risk == null || risk.isZero() || risk.isNegative()) {
-                continue;
-            }
-            sum = sum.plus(position.getProfit().dividedBy(risk));
+            sum = sum.plus(evaluation.rMultiple);
             count++;
         }
         if (count == 0) {
             return zero;
         }
         return sum.dividedBy(series.numFactory().numOf(count));
+    }
+
+    private PositionEvaluation evaluatePosition(BarSeries series, Position position) {
+        Num zero = series.numFactory().zero();
+        if (position == null || !position.isClosed()) {
+            return new PositionEvaluation(zero, false);
+        }
+        Num risk = riskModel.risk(series, position);
+        if (risk == null || risk.isZero() || risk.isNegative()) {
+            return new PositionEvaluation(zero, false);
+        }
+        return new PositionEvaluation(position.getProfit().dividedBy(risk), true);
+    }
+
+    private static final class PositionEvaluation {
+        private final Num rMultiple;
+        private final boolean validForAverage;
+
+        private PositionEvaluation(Num rMultiple, boolean validForAverage) {
+            this.rMultiple = rMultiple;
+            this.validForAverage = validForAverage;
+        }
     }
 
     /**
