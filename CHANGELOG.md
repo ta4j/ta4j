@@ -40,6 +40,7 @@
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
 - **Trend confirmation oscillators**: Added `VortexIndicator` (+VI, -VI, and oscillator output) and `UltimateOscillatorIndicator` with configurable periods, warm-up guards, and regression tests against published reference values.
 - **Volume indicator coverage**: Added `ForceIndexIndicator`, `EaseOfMovementIndicator`, and `KlingerVolumeOscillatorIndicator` with documented formulas and bullish/bearish/sideways spreadsheet regression fixtures.
+- **Composable Klinger building blocks**: Added `DailyMeasurementIndicator`, `TrendDirectionIndicator`, `CumulativeMeasurementIndicator`, and `VolumeForceIndicator` as reusable volume-analysis bricks.
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
