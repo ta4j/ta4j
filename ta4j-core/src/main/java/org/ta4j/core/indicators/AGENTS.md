@@ -34,9 +34,8 @@
 - `getCountOfUnstableBars()` must return the first index at which indicator output is considered stable and safe to consume.
 - For `Indicator<Num>`, guard `calculate` with `if (index < getCountOfUnstableBars()) return NaN;` unless the indicator intentionally delegates that guard to a composed indicator.
 - For non-`Num` indicators (for example boolean signal indicators), do not read pre-warmup history (`index - 1`, backtracking loops) before the unstable boundary; return a deterministic fallback (`false`/`NONE`) during warm-up.
-- Never hardcode unstable counts when they depend on component indicators; derive from the current component graph so constructor and deserialized instances behave identically.
+- Never hardcode unstable counts when they depend on component indicators; derive from the current component graph so constructor and deserialized instances behave identically. For pattern indicators that combine a fixed candle lookback with trend/confirmation indicators, use the stricter boundary: `Math.max(patternLookback, trendIndicator.getCountOfUnstableBars())`.
 - Include lookback offsets explicitly: if logic requires previous bars (`index - n`) beyond component unstable bars, add that offset (`+ n`) to the unstable count.
-- For pattern indicators that also depend on a trend/confirmation indicator, unstable bars are the stricter boundary: `Math.max(patternLookback, trendIndicator.getCountOfUnstableBars())`.
 - Keep unstable count formulas aligned with dataflow shape:
   - Sequential chain where each stage adds new warm-up: sum stage contributions.
   - Parallel branch merge: max branch unstable counts.
