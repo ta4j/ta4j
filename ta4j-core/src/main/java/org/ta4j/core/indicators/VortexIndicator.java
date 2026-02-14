@@ -5,14 +5,13 @@ package org.ta4j.core.indicators;
 
 import static org.ta4j.core.num.NaN.NaN;
 
-import java.util.Objects;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.indicators.helpers.RunningTotalIndicator;
+import org.ta4j.core.indicators.helpers.TRIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -95,12 +94,11 @@ public class VortexIndicator extends CachedIndicator<Num> {
      */
     public VortexIndicator(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
             Indicator<Num> closePriceIndicator, int barCount) {
-        super(Objects.requireNonNull(closePriceIndicator, "closePriceIndicator must not be null"));
-        this.highPriceIndicator = Objects.requireNonNull(highPriceIndicator, "highPriceIndicator must not be null");
-        this.lowPriceIndicator = Objects.requireNonNull(lowPriceIndicator, "lowPriceIndicator must not be null");
+        super(IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator, closePriceIndicator));
+        this.highPriceIndicator = highPriceIndicator;
+        this.lowPriceIndicator = lowPriceIndicator;
         this.closePriceIndicator = closePriceIndicator;
 
-        validateSeriesConsistency(this.highPriceIndicator, this.lowPriceIndicator, this.closePriceIndicator);
         validateBarCount(barCount);
         this.barCount = barCount;
 
@@ -108,8 +106,8 @@ public class VortexIndicator extends CachedIndicator<Num> {
                 this.lowPriceIndicator);
         VortexMovementIndicator negativeMovementIndicator = new VortexMovementIndicator(this.lowPriceIndicator,
                 this.highPriceIndicator);
-        VortexTrueRangeIndicator trueRangeIndicator = new VortexTrueRangeIndicator(this.highPriceIndicator,
-                this.lowPriceIndicator, this.closePriceIndicator);
+        TRIndicator trueRangeIndicator = new TRIndicator(this.highPriceIndicator, this.lowPriceIndicator,
+                this.closePriceIndicator);
 
         this.positiveMovementSumIndicator = new RunningTotalIndicator(positiveMovementIndicator, barCount);
         this.negativeMovementSumIndicator = new RunningTotalIndicator(negativeMovementIndicator, barCount);
@@ -188,14 +186,6 @@ public class VortexIndicator extends CachedIndicator<Num> {
         }
     }
 
-    private static void validateSeriesConsistency(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
-            Indicator<Num> closePriceIndicator) {
-        BarSeries series = highPriceIndicator.getBarSeries();
-        if (series != lowPriceIndicator.getBarSeries() || series != closePriceIndicator.getBarSeries()) {
-            throw new IllegalArgumentException("Vortex source indicators must belong to the same BarSeries");
-        }
-    }
-
     private static boolean isInvalid(Num value) {
         return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
     }
@@ -228,49 +218,6 @@ public class VortexIndicator extends CachedIndicator<Num> {
             }
 
             return current.minus(previous).abs();
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return unstableBars;
-        }
-    }
-
-    private static final class VortexTrueRangeIndicator extends CachedIndicator<Num> {
-
-        private final Indicator<Num> highPriceIndicator;
-        private final Indicator<Num> lowPriceIndicator;
-        private final Indicator<Num> closePriceIndicator;
-        private final int unstableBars;
-
-        private VortexTrueRangeIndicator(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
-                Indicator<Num> closePriceIndicator) {
-            super(closePriceIndicator);
-            this.highPriceIndicator = highPriceIndicator;
-            this.lowPriceIndicator = lowPriceIndicator;
-            this.closePriceIndicator = closePriceIndicator;
-            this.unstableBars = Math.max(highPriceIndicator.getCountOfUnstableBars(),
-                    Math.max(lowPriceIndicator.getCountOfUnstableBars(), closePriceIndicator.getCountOfUnstableBars()))
-                    + 1;
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            int beginIndex = getBarSeries().getBeginIndex();
-            if (index <= beginIndex) {
-                return NaN;
-            }
-
-            Num high = highPriceIndicator.getValue(index);
-            Num low = lowPriceIndicator.getValue(index);
-            Num previousClose = closePriceIndicator.getValue(index - 1);
-            if (isInvalid(high) || isInvalid(low) || isInvalid(previousClose)) {
-                return NaN;
-            }
-
-            Num highOrPreviousClose = high.max(previousClose);
-            Num lowOrPreviousClose = low.min(previousClose);
-            return highOrPreviousClose.minus(lowOrPreviousClose);
         }
 
         @Override
