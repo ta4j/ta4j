@@ -97,6 +97,6 @@ public class DarkCloudCoverIndicator extends CachedIndicator<Boolean> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return 1;
+        return Math.max(1, trendIndicator.getCountOfUnstableBars());
     }
 }

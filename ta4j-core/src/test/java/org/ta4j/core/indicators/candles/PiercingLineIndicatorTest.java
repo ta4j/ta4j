@@ -14,6 +14,7 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.trend.DownTrendIndicator;
 import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -45,9 +46,10 @@ public class PiercingLineIndicatorTest extends AbstractIndicatorTest<Indicator<B
     @Test
     public void shouldReturnFalseBeforeUnstableBoundary() {
         final PiercingLineIndicator indicator = new PiercingLineIndicator(series);
+        final int expectedUnstableBars = Math.max(1, new DownTrendIndicator(series).getCountOfUnstableBars());
 
-        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(1);
-        assertThat(indicator.getValue(0)).isFalse();
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(expectedUnstableBars);
+        assertThat(indicator.getValue(expectedUnstableBars - 1)).isFalse();
     }
 
     @Test
