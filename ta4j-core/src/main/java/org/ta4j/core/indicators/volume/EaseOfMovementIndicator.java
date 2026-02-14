@@ -51,7 +51,6 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
     public static final long DEFAULT_VOLUME_DIVISOR = 100_000_000L;
 
     private final int barCount;
-    private final Num barCountAsNum;
     private final Num volumeDivisor;
 
     @SuppressWarnings("unused")
@@ -146,8 +145,11 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
         validateBarCount(barCount);
 
         this.barCount = barCount;
-        this.barCountAsNum = getBarSeries().numFactory().numOf(barCount);
-        this.volumeDivisor = toValidatedVolumeDivisor(volumeDivisor);
+        final Number validatedDivisor = Objects.requireNonNull(volumeDivisor, "volumeDivisor must not be null");
+        this.volumeDivisor = getBarSeries().numFactory().numOf(validatedDivisor);
+        if (this.volumeDivisor.isLessThanOrEqual(getBarSeries().numFactory().zero())) {
+            throw new IllegalArgumentException("Ease of Movement volumeDivisor must be greater than 0");
+        }
 
         this.highPriceIndicator = highPriceIndicator;
         this.lowPriceIndicator = lowPriceIndicator;
@@ -173,7 +175,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
             sum = sum.plus(rawValue);
         }
 
-        return sum.dividedBy(barCountAsNum);
+        return sum.dividedBy(getBarSeries().numFactory().numOf(barCount));
     }
 
     @Override
@@ -184,15 +186,6 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount + " volumeDivisor: " + volumeDivisor;
-    }
-
-    private Num toValidatedVolumeDivisor(final Number volumeDivisor) {
-        final Number validatedDivisor = Objects.requireNonNull(volumeDivisor, "volumeDivisor must not be null");
-        final Num numericDivisor = getBarSeries().numFactory().numOf(validatedDivisor);
-        if (numericDivisor.isLessThanOrEqual(getBarSeries().numFactory().zero())) {
-            throw new IllegalArgumentException("Ease of Movement volumeDivisor must be greater than 0");
-        }
-        return numericDivisor;
     }
 
     private static void validateBarCount(final int barCount) {
@@ -230,7 +223,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
         @Override
         protected Num calculate(final int index) {
             final int beginIndex = getBarSeries().getBeginIndex();
-            if (index <= beginIndex) {
+            if (beginIndex < 0 || index <= beginIndex) {
                 // Keep the seed deterministic so windowed smoothing can warm up
                 // without NaN contamination from the first bar.
                 return getBarSeries().numFactory().zero();

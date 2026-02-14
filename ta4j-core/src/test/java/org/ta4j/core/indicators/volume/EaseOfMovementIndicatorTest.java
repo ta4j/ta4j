@@ -11,6 +11,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -77,6 +78,15 @@ public class EaseOfMovementIndicatorTest extends AbstractIndicatorTest<BarSeries
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertSameNumOrNaN(original.getValue(i), restoredBase.getValue(i));
         }
+    }
+
+    @Test
+    public void handlesEmptySeriesWithoutNegativeIndexAccess() {
+        final BarSeries emptySeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        final EaseOfMovementIndicator indicator = new EaseOfMovementIndicator(emptySeries, 1, 1000);
+
+        assertThat(Num.isNaNOrNull(indicator.getValue(0))).isTrue();
+        assertNumEquals(0, indicator.getValue(1));
     }
 
     private void assertScenarioMatches(final BarSeries series, final double[] expectedStableValues) {
