@@ -23,6 +23,7 @@
 - Added **MorningStarIndicator** and **EveningStarIndicator**
 - Added **BullishKickerIndicator** and **BearishKickerIndicator**
 - Added **PiercingIndicator** and **DarkCloudIndicator**
+- Added **PiercingLineIndicator** and **DarkCloudCoverIndicator** with configurable body-size, gap, and penetration thresholds for candlestick pattern detection.
 - **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
 - **Elliott Wave analysis toolkit**: Added `ElliottWaveAnalyzer`, `ElliottAnalysisResult`, configurable `PatternSet`,
