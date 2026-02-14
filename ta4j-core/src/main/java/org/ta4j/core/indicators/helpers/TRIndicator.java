@@ -15,8 +15,12 @@ import static org.ta4j.core.num.NaN.NaN;
  * True range indicator.
  *
  * <pre>
- * TrueRange = MAX(high - low, high - previousClose, previousClose - low)
+ * TR(i) = max(|high(i) - low(i)|, |high(i) - close(i-1)|, |close(i-1) - low(i)|)
  * </pre>
+ *
+ * <p>
+ * For the first available bar ({@code i == beginIndex}), no previous close is
+ * available, so this implementation returns {@code |high - low|}.
  */
 public class TRIndicator extends CachedIndicator<Num> {
 

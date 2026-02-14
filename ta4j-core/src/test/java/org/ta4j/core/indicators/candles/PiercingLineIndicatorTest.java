@@ -95,6 +95,28 @@ public class PiercingLineIndicatorTest extends AbstractIndicatorTest<Indicator<B
     }
 
     @Test
+    public void shouldRespectConfiguredPenetrationThreshold() {
+        series.barBuilder().openPrice(29).closePrice(23).highPrice(29).lowPrice(22).add();
+        series.barBuilder().openPrice(22).closePrice(27).highPrice(28).lowPrice(21).add();
+
+        final PiercingLineIndicator indicator = new PiercingLineIndicator(series, numFactory.numOf(0.03),
+                numFactory.zero(), numFactory.numOf(0.8));
+
+        assertThat(indicator.getValue(18)).isFalse();
+    }
+
+    @Test
+    public void shouldDetectPatternWhenPenetrationMeetsConfiguredThreshold() {
+        series.barBuilder().openPrice(29).closePrice(23).highPrice(29).lowPrice(22).add();
+        series.barBuilder().openPrice(22).closePrice(27).highPrice(28).lowPrice(21).add();
+
+        final PiercingLineIndicator indicator = new PiercingLineIndicator(series, numFactory.numOf(0.03),
+                numFactory.zero(), numFactory.numOf(0.6));
+
+        assertThat(indicator.getValue(18)).isTrue();
+    }
+
+    @Test
     public void shouldDetectPatternWithEqualRealBodies() {
         series.barBuilder().openPrice(29).closePrice(23).highPrice(29).lowPrice(22).add();
         series.barBuilder().openPrice(22).closePrice(28).highPrice(28).lowPrice(21).add();
