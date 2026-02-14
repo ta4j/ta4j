@@ -161,6 +161,11 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         return shortValue.minus(longValue);
     }
 
+    /**
+     * Returns the first stable index for Klinger oscillator values.
+     *
+     * @return unstable bar count
+     */
     @Override
     public int getCountOfUnstableBars() {
         final int emaUnstableBars = Math.max(shortEmaIndicator.getCountOfUnstableBars(),
@@ -168,6 +173,11 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         return volumeForceIndicator.getCountOfUnstableBars() + emaUnstableBars;
     }
 
+    /**
+     * Returns the indicator label including configured EMA periods.
+     *
+     * @return string representation
+     */
     @Override
     public String toString() {
         return getClass().getSimpleName() + " shortPeriod: " + shortPeriod + " longPeriod: " + longPeriod;
@@ -183,6 +193,6 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
     }
 
     private static boolean isInvalid(final Num value) {
-        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
+        return Num.isNaNOrNull(value);
     }
 }

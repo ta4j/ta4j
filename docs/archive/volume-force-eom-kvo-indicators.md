@@ -6,6 +6,7 @@
 - Add `KlingerVolumeOscillatorIndicator` in `org.ta4j.core.indicators.volume`.
 - Add regression tests under `ta4j-core/src/test/java/org/ta4j/core/indicators/volume`.
 - Use inline spreadsheet reference sequences for bullish, bearish, and sideways scenarios.
+- Extract Klinger component steps into reusable indicator bricks.
 
 ## Requirements
 - Reuse helper indicators and composition where practical.
@@ -13,6 +14,7 @@
 - Guard against invalid input conditions (`NaN`, zero volume, zero range).
 - Include complete Javadoc formulas with credible references.
 - Include serialization round-trip tests for each indicator.
+- Include dedicated unit tests for newly extracted helper indicators.
 - Update `CHANGELOG.md` under Unreleased.
 
 ## Design Notes
@@ -38,6 +40,10 @@
   - Sideways scenario regression against spreadsheet sequence.
   - Unstable-bar count assertion and boundary checks (`unstable-1`, `unstable`).
   - Serialization round-trip equality checks.
+- For extracted helper indicators:
+  - Constructor validation (mismatched series / invalid parameters).
+  - Unstable-boundary assertions.
+  - Serialization round-trip equality checks.
 
 ## Progress Checklist
 - [x] Create branch/worktree from `master`.
@@ -47,9 +53,18 @@
 - [x] Implement `EaseOfMovementIndicator`.
 - [x] Implement `KlingerVolumeOscillatorIndicator`.
 - [x] Add spreadsheet-regression tests for all three indicators.
+- [x] Extract reusable helper indicators for Klinger composition.
+- [x] Add dedicated tests for extracted helper indicators.
 - [x] Update `CHANGELOG.md`.
 - [x] Run full build script and confirm green.
-- [ ] Stage and commit.
+- [x] Stage and commit.
 
 ## Decisions
 - Use `KlingerVolumeOscillatorIndicator` naming to align with ta4j indicator conventions.
+- Favor decomposition into small reusable indicators when feasible, prioritizing composability over monolithic implementations.
+
+## Final Outcome
+- Added production indicators: `ForceIndexIndicator`, `EaseOfMovementIndicator`, `KlingerVolumeOscillatorIndicator`.
+- Added reusable building blocks: `DailyMeasurementIndicator`, `TrendDirectionIndicator`,
+  `CumulativeMeasurementIndicator`, `VolumeForceIndicator`.
+- Added spreadsheet-regression scenarios and comprehensive unit tests (including serialization and constructor validation).

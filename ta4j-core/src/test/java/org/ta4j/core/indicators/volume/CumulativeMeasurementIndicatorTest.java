@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.volume;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -59,5 +60,19 @@ public class CumulativeMeasurementIndicatorTest extends AbstractIndicatorTest<Ba
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertThat(restored.getValue(i)).isEqualByComparingTo(original.getValue(i));
         }
+    }
+
+    @Test
+    public void throwsForMismatchedSourceIndicators() {
+        final BarSeries firstSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d)
+                .build();
+        final BarSeries secondSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(1d, 2d, 3d)
+                .build();
+        final FixedNumIndicator measurement = new FixedNumIndicator(firstSeries, 1, 2, 3);
+        final FixedNumIndicator trend = new FixedNumIndicator(secondSeries, 1, 1, 1);
+
+        assertThrows(IllegalArgumentException.class, () -> new CumulativeMeasurementIndicator(measurement, trend));
     }
 }

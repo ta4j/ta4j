@@ -93,10 +93,11 @@ public class VolumeForceIndicator extends CachedIndicator<Num> {
 
         this.one = getBarSeries().numFactory().one();
         this.two = getBarSeries().numFactory().two();
-        this.unstableBars = Math.max(volumeIndicator.getCountOfUnstableBars(),
-                Math.max(measurementIndicator.getCountOfUnstableBars(),
-                        Math.max(trendIndicator.getCountOfUnstableBars(),
-                                cumulativeMeasurementIndicator.getCountOfUnstableBars())));
+        this.unstableBars = Math.max(1,
+                Math.max(volumeIndicator.getCountOfUnstableBars(),
+                        Math.max(measurementIndicator.getCountOfUnstableBars(),
+                                Math.max(trendIndicator.getCountOfUnstableBars(),
+                                        cumulativeMeasurementIndicator.getCountOfUnstableBars()))));
     }
 
     @Override
@@ -125,17 +126,27 @@ public class VolumeForceIndicator extends CachedIndicator<Num> {
         return volume.multipliedBy(trend).multipliedBy(magnitude).multipliedBy(scaleMultiplier);
     }
 
+    /**
+     * Returns the first stable index for volume-force values.
+     *
+     * @return unstable bar count
+     */
     @Override
     public int getCountOfUnstableBars() {
         return unstableBars;
     }
 
+    /**
+     * Returns the indicator label including configured scale multiplier.
+     *
+     * @return string representation
+     */
     @Override
     public String toString() {
         return getClass().getSimpleName() + " scaleMultiplier: " + scaleMultiplier;
     }
 
     private static boolean isInvalid(final Num value) {
-        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
+        return Num.isNaNOrNull(value);
     }
 }

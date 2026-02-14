@@ -95,13 +95,18 @@ public class TrendDirectionIndicator extends RecursiveCachedIndicator<Num> {
         return isInvalid(previousTrend) ? NaN : previousTrend;
     }
 
+    /**
+     * Returns the first stable index for trend-direction values.
+     *
+     * @return unstable bar count
+     */
     @Override
     public int getCountOfUnstableBars() {
         return unstableBars;
     }
 
     private static boolean isInvalid(final Num value) {
-        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
+        return Num.isNaNOrNull(value);
     }
 
     private static Indicator<Num> buildTrendBasis(final Indicator<Num> highPriceIndicator,

@@ -178,11 +178,21 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
         return sum.dividedBy(getBarSeries().numFactory().numOf(barCount));
     }
 
+    /**
+     * Returns the first stable index for smoothed EMV values.
+     *
+     * @return unstable bar count
+     */
     @Override
     public int getCountOfUnstableBars() {
         return rawEaseOfMovementIndicator.getCountOfUnstableBars() + barCount - 1;
     }
 
+    /**
+     * Returns the indicator label including configured smoothing settings.
+     *
+     * @return string representation
+     */
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount + " volumeDivisor: " + volumeDivisor;
@@ -195,7 +205,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
     }
 
     private static boolean isInvalid(final Num value) {
-        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
+        return Num.isNaNOrNull(value);
     }
 
     private static final class RawEaseOfMovementIndicator extends CachedIndicator<Num> {
@@ -259,6 +269,11 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
             return distanceMoved.dividedBy(boxRatio);
         }
 
+        /**
+         * Returns the first stable index for one-period EMV values.
+         *
+         * @return unstable bar count
+         */
         @Override
         public int getCountOfUnstableBars() {
             return unstableBars;

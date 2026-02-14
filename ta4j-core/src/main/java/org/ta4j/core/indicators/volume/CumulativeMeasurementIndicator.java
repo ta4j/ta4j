@@ -77,12 +77,17 @@ public class CumulativeMeasurementIndicator extends RecursiveCachedIndicator<Num
         return previousMeasurement.plus(measurement);
     }
 
+    /**
+     * Returns the first stable index for cumulative measurement values.
+     *
+     * @return unstable bar count
+     */
     @Override
     public int getCountOfUnstableBars() {
         return unstableBars;
     }
 
     private static boolean isInvalid(final Num value) {
-        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
+        return Num.isNaNOrNull(value);
     }
 }

@@ -41,8 +41,9 @@ public class VolumeForceIndicatorTest extends AbstractIndicatorTest<BarSeries, N
 
         final VolumeForceIndicator indicator = new VolumeForceIndicator(volume, measurement, trend, cumulative, 100);
 
-        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(0);
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(1);
         assertThat(Num.isNaNOrNull(indicator.getValue(0))).isTrue();
+        assertThat(Num.isNaNOrNull(indicator.getValue(1))).isFalse();
         for (int i = 1; i <= series.getEndIndex(); i++) {
             assertNumEquals(EXPECTED[i - 1], indicator.getValue(i));
         }
@@ -58,6 +59,31 @@ public class VolumeForceIndicatorTest extends AbstractIndicatorTest<BarSeries, N
 
         assertThrows(IllegalArgumentException.class,
                 () -> new VolumeForceIndicator(volume, measurement, trend, cumulative, 0));
+    }
+
+    @Test
+    public void throwsForMismatchedSourceIndicators() {
+        final BarSeries firstSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 1d).build();
+        final BarSeries secondSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 1d).build();
+        final FixedNumIndicator volume = new FixedNumIndicator(firstSeries, 1, 1);
+        final FixedNumIndicator measurement = new FixedNumIndicator(firstSeries, 1, 1);
+        final FixedNumIndicator trend = new FixedNumIndicator(firstSeries, 1, 1);
+        final FixedNumIndicator cumulative = new FixedNumIndicator(secondSeries, 1, 1);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new VolumeForceIndicator(volume, measurement, trend, cumulative));
+    }
+
+    @Test
+    public void throwsForNullScaleMultiplier() {
+        final BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 1d).build();
+        final FixedNumIndicator volume = new FixedNumIndicator(series, 1, 1);
+        final FixedNumIndicator measurement = new FixedNumIndicator(series, 1, 1);
+        final FixedNumIndicator trend = new FixedNumIndicator(series, 1, 1);
+        final FixedNumIndicator cumulative = new FixedNumIndicator(series, 1, 1);
+
+        assertThrows(NullPointerException.class,
+                () -> new VolumeForceIndicator(volume, measurement, trend, cumulative, null));
     }
 
     @Test

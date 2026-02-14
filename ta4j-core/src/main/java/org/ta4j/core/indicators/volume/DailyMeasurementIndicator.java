@@ -61,13 +61,17 @@ public class DailyMeasurementIndicator extends CachedIndicator<Num> {
 
         final Num high = highPriceIndicator.getValue(index);
         final Num low = lowPriceIndicator.getValue(index);
-        if (Num.isNaNOrNull(high) || Num.isNaNOrNull(low) || Double.isNaN(high.doubleValue())
-                || Double.isNaN(low.doubleValue())) {
+        if (Num.isNaNOrNull(high) || Num.isNaNOrNull(low)) {
             return NaN;
         }
         return high.minus(low);
     }
 
+    /**
+     * Returns the first stable index for daily measurement values.
+     *
+     * @return unstable bar count
+     */
     @Override
     public int getCountOfUnstableBars() {
         return Math.max(highPriceIndicator.getCountOfUnstableBars(), lowPriceIndicator.getCountOfUnstableBars());

@@ -118,13 +118,18 @@ public class ForceIndexIndicator extends CachedIndicator<Num> {
         }
 
         final Num forceIndexValue = smoothedForceIndexIndicator.getValue(index);
-        if (Num.isNaNOrNull(forceIndexValue) || Double.isNaN(forceIndexValue.doubleValue())) {
+        if (Num.isNaNOrNull(forceIndexValue)) {
             return NaN;
         }
 
         return forceIndexValue;
     }
 
+    /**
+     * Returns the first stable index for Force Index values.
+     *
+     * @return unstable bar count
+     */
     @Override
     public int getCountOfUnstableBars() {
         final int rawUnstableBars = Math.max(closePriceDifferenceIndicator.getCountOfUnstableBars(),
@@ -132,6 +137,11 @@ public class ForceIndexIndicator extends CachedIndicator<Num> {
         return rawUnstableBars + smoothedForceIndexIndicator.getCountOfUnstableBars();
     }
 
+    /**
+     * Returns the indicator label including configured period.
+     *
+     * @return string representation
+     */
     @Override
     public String toString() {
         return getClass().getSimpleName() + " barCount: " + barCount;

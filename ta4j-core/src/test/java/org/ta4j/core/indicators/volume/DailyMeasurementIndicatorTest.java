@@ -4,11 +4,15 @@
 package org.ta4j.core.indicators.volume;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -50,5 +54,15 @@ public class DailyMeasurementIndicatorTest extends AbstractIndicatorTest<BarSeri
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertThat(restored.getValue(i)).isEqualByComparingTo(original.getValue(i));
         }
+    }
+
+    @Test
+    public void throwsForMismatchedSourceIndicators() {
+        final BarSeries firstSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d).build();
+        final BarSeries secondSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d).build();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new DailyMeasurementIndicator(new HighPriceIndicator(firstSeries),
+                        new LowPriceIndicator(secondSeries)));
     }
 }
