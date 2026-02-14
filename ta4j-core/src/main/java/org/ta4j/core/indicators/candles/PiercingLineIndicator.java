@@ -58,7 +58,8 @@ public class PiercingLineIndicator extends CachedIndicator<Boolean> {
      *                                       to second open
      * @param penetrationThresholdPercentage minimum penetration ratio into the
      *                                       first body measured from first close
-     *                                       upward
+     *                                       upward (uses strict {@code >}
+     *                                       comparison)
      */
     public PiercingLineIndicator(final BarSeries series, final Num bigBodyThresholdPercentage,
             final Num gapThresholdPercentage, final Num penetrationThresholdPercentage) {
