@@ -50,6 +50,14 @@ public class IndicatorUtilsTest {
     }
 
     @Test
+    public void requireSameSeriesRejectsNullAdditionalIndicator() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+
+        assertThrows(NullPointerException.class, () -> IndicatorUtils.requireSameSeries(new ClosePriceIndicator(series),
+                new HighPriceIndicator(series), (Indicator<?>) null));
+    }
+
+    @Test
     public void requireSameSeriesRejectsIndicatorWithoutSeries() {
         Indicator<Num> withoutSeries = new Indicator<>() {
             @Override

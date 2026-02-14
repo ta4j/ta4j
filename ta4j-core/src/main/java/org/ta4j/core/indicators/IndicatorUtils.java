@@ -21,6 +21,9 @@ public final class IndicatorUtils {
     /**
      * Ensures all indicators reference the same {@link BarSeries} instance.
      *
+     * <p>
+     * Series matching is based on instance identity, not {@code equals()}.
+     *
      * @param firstIndicator       first indicator to validate
      * @param secondIndicator      second indicator to validate
      * @param additionalIndicators additional indicators to validate
