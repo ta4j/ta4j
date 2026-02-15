@@ -66,7 +66,7 @@ Add Ta4j from Maven Central:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.22.1</version>
+  <version>0.22.2</version>
 </dependency>
 ```
 
@@ -85,7 +85,7 @@ Prefer living on the edge? Use the snapshot repository and version:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.22.2-SNAPSHOT</version>
+  <version>0.22.3-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -99,7 +99,7 @@ Sample applications are also published so you can copy/paste entire flows:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.22.1</version>
+  <version>0.22.2</version>
 </dependency>
 ```
 
@@ -113,7 +113,7 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.22.2-SNAPSHOT</version>
+  <version>0.22.3-SNAPSHOT</version>
 </dependency>
 ```
 
