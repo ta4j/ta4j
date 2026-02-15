@@ -11,6 +11,17 @@
     <url>https://github.com/ta4j/ta4j</url>
     <inceptionYear>2014</inceptionYear>
 
+    <developers>
+        <developer>
+            <id>mdeverdelhan</id>
+            <name>Marc de Verdelhan</name>
+        </developer>
+        <developer>
+            <id>team172011</id>
+            <name>Simon-Justus Wimmer</name>
+        </developer>
+    </developers>
+
     <licenses>
         <license>
             <name>MIT License</name>
