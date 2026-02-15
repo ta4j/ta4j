@@ -1,7 +1,13 @@
 ## Unreleased
 
+### Changed
+- **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
+  `./mvnw` when present (falling back to `mvn`), so wrapper adoption does not require a second build command.
+
 ### Fixed
 - **Publish-release manual dispatch inputs**: `publish-release.yml` now reads `workflow_dispatch` metadata from event inputs so manual reruns correctly receive `releaseVersion`/`releaseCommit`.
+- **README snippet synchronization line endings**: `ReadmeContentManager.updateReadmeSnippets(...)` now preserves the
+  target README's dominant line separator (LF/CRLF), with regression tests covering both newline modes.
 
 ## 0.22.2 (2026-02-15)
 
@@ -44,10 +50,6 @@
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
 
 ### Changed
-- **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
-  `./mvnw` when present (falling back to `mvn`), so wrapper adoption does not require a second build command.
-- **README snippet synchronization line endings**: `ReadmeContentManager.updateReadmeSnippets(...)` now preserves the
-  target README's dominant line separator (LF/CRLF), with regression tests covering both newline modes.
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
 - **Charting overlays**: Refactored overlay renderer construction and centralized time-axis domain value selection to reduce branching without changing chart output.
 - **Charting defaults**: Centralized chart styling defaults (anti-aliasing, background, title paint) for consistency across chart types.
