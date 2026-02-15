@@ -1,6 +1,7 @@
 ## Unreleased
 
-- _No changes yet._
+### Fixed
+- **Publish-release manual dispatch inputs**: `publish-release.yml` now reads `workflow_dispatch` metadata from event inputs so manual reruns correctly receive `releaseVersion`/`releaseCommit`.
 
 ## 0.22.2 (2026-02-15)
 
