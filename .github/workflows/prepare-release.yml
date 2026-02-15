@@ -522,7 +522,6 @@ jobs:
         with:
           github-token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
           script: |
-            const core = require("@actions/core");
             const releaseVersion = process.env.RELEASE_VERSION;
             const nextVersion = process.env.NEXT_VERSION;
             const releaseCommit = process.env.RELEASE_COMMIT;
@@ -591,7 +590,7 @@ jobs:
                 labels: ["release"]
               });
             } catch (error) {
-              core.warning(`Failed to add release label: ${error.message}`);
+              console.warn(`Failed to add release label: ${error.message}`);
             }
 
       # -----------------------
