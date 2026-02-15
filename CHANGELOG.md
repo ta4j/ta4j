@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.22.2 (2026-02-15)
+
 ### Breaking
 - **Trade model split**: `Trade` is now an interface; the previous concrete implementation is `SimulatedTrade` (backtesting/simulation), and live executions are represented by `LiveTrade`.
 - **Swing indicator interfaces**: Removed deprecated `RecentSwingHighIndicator` and `RecentSwingLowIndicator`; use `RecentSwingIndicator` and concrete implementations directly.
