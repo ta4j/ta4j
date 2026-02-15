@@ -112,22 +112,29 @@ jobs:
               print("::error::Unable to resolve repository context for permission preflight.")
               sys.exit(1)
 
+          def request_json(url: str, payload=None):
+              headers = {
+                  "Authorization": f"Bearer {token}",
+                  "User-Agent": "ta4j-release-preflight",
+                  "Accept": "application/vnd.github+json",
+              }
+              data = None
+              if payload is not None:
+                  headers["Content-Type"] = "application/json"
+                  data = json.dumps(payload).encode("utf-8")
+              req = urllib.request.Request(url, data=data, headers=headers)
+              with urllib.request.urlopen(req) as resp:
+                  body = json.load(resp)
+                  response_headers = {k.lower(): v for k, v in resp.headers.items()}
+              return body, response_headers
+
           query = {
               "query": "query($owner:String!,$repo:String!){repository(owner:$owner,name:$repo){viewerPermission}}",
               "variables": {"owner": owner, "repo": repo},
           }
-          req = urllib.request.Request(
-              "https://api.github.com/graphql",
-              data=json.dumps(query).encode("utf-8"),
-              headers={
-                  "Authorization": f"Bearer {token}",
-                  "Content-Type": "application/json",
-                  "User-Agent": "ta4j-release-preflight",
-              },
-          )
           try:
-              with urllib.request.urlopen(req) as resp:
-                  data = json.load(resp)
+              graphql_data, _ = request_json("https://api.github.com/graphql", query)
+              repo_data, repo_headers = request_json(f"https://api.github.com/repos/{owner}/{repo}")
           except Exception as exc:
               msg = f"GH_TA4J_REPO_TOKEN permission check failed: {exc}"
               should_fail = warn_or_error(msg)
@@ -137,8 +144,8 @@ jobs:
                   sys.exit(1)
               sys.exit(0)
 
-          if "errors" in data:
-              msg = f"GH_TA4J_REPO_TOKEN permission check failed: {data['errors']}"
+          if "errors" in graphql_data:
+              msg = f"GH_TA4J_REPO_TOKEN permission check failed: {graphql_data['errors']}"
               should_fail = warn_or_error(msg)
               write_output("repo_token_present=true")
               write_output("use_repo_token=false")
@@ -146,21 +153,45 @@ jobs:
                   sys.exit(1)
               sys.exit(0)
 
-          permission = data.get("data", {}).get("repository", {}).get("viewerPermission")
-          allowed = permission in ("WRITE", "MAINTAIN", "ADMIN")
+          permission = graphql_data.get("data", {}).get("repository", {}).get("viewerPermission")
+          push_permission = bool(repo_data.get("permissions", {}).get("push"))
+          scopes_header = repo_headers.get("x-oauth-scopes", "")
+          scopes = [scope.strip() for scope in scopes_header.split(",") if scope.strip()]
+          has_repo_scope = any(scope == "repo" or scope.startswith("repo:") for scope in scopes)
+          has_public_repo_scope = "public_repo" in scopes
+          scope_check = "unknown"
+          scope_allows_push = True
+          if scopes:
+              scope_check = "pass" if (has_repo_scope or has_public_repo_scope) else "fail"
+              scope_allows_push = scope_check == "pass"
+
+          permission_allows_push = permission in ("WRITE", "MAINTAIN", "ADMIN") or push_permission
+          allowed = permission_allows_push and scope_allows_push
 
           write_output("repo_token_present=true")
           write_output(f"repo_token_permission={permission}")
+          write_output(f"repo_token_push_permission={'true' if push_permission else 'false'}")
+          write_output(f"repo_token_scope_check={scope_check}")
           write_output(f"use_repo_token={'true' if allowed else 'false'}")
 
           if not allowed:
-              msg = f"GH_TA4J_REPO_TOKEN permission '{permission}' lacks write access."
+              reasons = []
+              if not permission_allows_push:
+                  reasons.append(
+                      f"viewerPermission={permission}, permissions.push={'true' if push_permission else 'false'}"
+                  )
+              if not scope_allows_push:
+                  reasons.append(f"oauth_scopes='{scopes_header}'")
+              reason_text = "; ".join(reasons) if reasons else "unknown policy mismatch"
+              msg = f"GH_TA4J_REPO_TOKEN lacks push capability ({reason_text})."
               should_fail = warn_or_error(msg)
               if should_fail:
                   sys.exit(1)
               sys.exit(0)
 
           print(f"audit:repo_token_permission={permission}")
+          print(f"audit:repo_token_push_permission={'true' if push_permission else 'false'}")
+          print(f"audit:repo_token_scope_check={scope_check}")
           print("audit:repo_token_usable=true")
           PY
 
@@ -306,6 +337,45 @@ jobs:
           echo "release=$RELEASE" >> $GITHUB_OUTPUT
           echo "next=$NEXT" >> $GITHUB_OUTPUT
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
+
+      - name: Preflight git push capability
+        if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          DIRECT_PUSH: ${{ steps.direct_push.outputs.enabled }}
+          TARGET_BRANCH: ${{ github.event.repository.default_branch }}
+          RELEASE_BRANCH: release/${{ steps.versions.outputs.release }}
+          USE_REPO_TOKEN: ${{ steps.token_preflight.outputs.use_repo_token }}
+        run: |
+          set -euo pipefail
+          if [ "${DIRECT_PUSH}" = "true" ]; then
+            if [ -z "${TARGET_BRANCH:-}" ]; then
+              echo "Default branch was not set; refusing to probe push capability."
+              exit 1
+            fi
+            refspec="HEAD:refs/heads/${TARGET_BRANCH}"
+            mode="default-branch"
+          else
+            refspec="HEAD:refs/heads/${RELEASE_BRANCH}"
+            mode="release-branch"
+          fi
+
+          echo "audit:push_probe_mode=${mode} refspec=${refspec} use_repo_token=${USE_REPO_TOKEN:-false}"
+
+          set +e
+          if [ "${DIRECT_PUSH}" = "true" ]; then
+            output=$(git push --dry-run origin "${refspec}" 2>&1)
+          else
+            output=$(git push --dry-run --force-with-lease origin "${refspec}" 2>&1)
+          fi
+          status=$?
+          set -e
+
+          printf '%s\n' "$output"
+
+          if [ "$status" -ne 0 ]; then
+            echo "::error::Push capability probe failed for ${mode}. Check token/repository permissions."
+            exit "$status"
+          fi
 
       # -----------------------
       # Release Preparation
