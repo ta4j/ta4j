@@ -41,6 +41,10 @@
 - **Trend confirmation oscillators**: Added `VortexIndicator` (+VI, -VI, and oscillator output) and `UltimateOscillatorIndicator` with configurable periods, warm-up guards, and regression tests against published reference values.
 
 ### Changed
+- **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
+  `./mvnw` when present (falling back to `mvn`), so wrapper adoption does not require a second build command.
+- **README snippet synchronization line endings**: `ReadmeContentManager.updateReadmeSnippets(...)` now preserves the
+  target README's dominant line separator (LF/CRLF), with regression tests covering both newline modes.
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
 - **Indicator composition reuse**: Added `IndicatorUtils.requireSameSeries(...)` to centralize same-series validation and refactored `VortexIndicator`, `UltimateOscillatorIndicator`, and `TRIndicator` to compose shared true-range/series-validation logic instead of duplicating private helpers.
 - **Charting overlays**: Refactored overlay renderer construction and centralized time-axis domain value selection to reduce branching without changing chart output.

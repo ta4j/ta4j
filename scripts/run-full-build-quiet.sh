@@ -135,7 +135,18 @@ if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
 fi
 
 GOALS=(clean license:format formatter:format test install)
-MVN_CMD=(mvn "${MAVEN_FLAGS[@]}")
+MAVEN_CMD_PREFIX=(mvn)
+if [[ -x "./mvnw" ]]; then
+    MAVEN_CMD_PREFIX=("./mvnw")
+    echo "Using Maven Wrapper: ./mvnw"
+elif [[ -f "./mvnw" ]]; then
+    MAVEN_CMD_PREFIX=(sh "./mvnw")
+    echo "Using Maven Wrapper via sh: ./mvnw"
+else
+    echo "Using system Maven from PATH: mvn"
+fi
+
+MVN_CMD=("${MAVEN_CMD_PREFIX[@]}" "${MAVEN_FLAGS[@]}")
 if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
     MVN_CMD+=("${EXTRA_MAVEN_ARGS[@]}")
 fi
