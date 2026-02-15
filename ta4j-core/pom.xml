@@ -4,7 +4,7 @@
     <parent>
         <groupId>org.ta4j</groupId>
         <artifactId>ta4j-parent</artifactId>
-        <version>0.22.2-SNAPSHOT</version>
+        <version>0.22.3-SNAPSHOT</version>
     </parent>
     <artifactId>ta4j-core</artifactId>
 
