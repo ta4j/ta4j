@@ -1,5 +1,10 @@
 ## Unreleased
 
+### Fixed
+- **Publish-release manual dispatch inputs**: `publish-release.yml` now reads `workflow_dispatch` metadata from event inputs so manual reruns correctly receive `releaseVersion`/`releaseCommit`.
+
+## 0.22.2 (2026-02-15)
+
 ### Breaking
 - **Trade model split**: `Trade` is now an interface; the previous concrete implementation is `SimulatedTrade` (backtesting/simulation), and live executions are represented by `LiveTrade`.
 - **Swing indicator interfaces**: Removed deprecated `RecentSwingHighIndicator` and `RecentSwingLowIndicator`; use `RecentSwingIndicator` and concrete implementations directly.
@@ -83,6 +88,8 @@
 - **Trailing stop evaluation efficiency**: Volatility trailing stop-gain/loss and trailing fixed-amount stop-gain rules now reuse max-lookback helper indicators once lookback stabilizes, reducing repeated hot-path allocations during backtests.
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
+- **Release workflow hardening**: Improved `prepare-release.yml` token preflight with push-capability checks and an early `git push --dry-run` probe, and fixed `github-script` `core` redeclaration errors in both `prepare-release.yml` and `publish-release.yml`.
+- **Maven Central publication metadata**: Restored `<developers>` information in the parent POM so Central Portal validation accepts ta4j release bundles.
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
 - **Indicator unstable periods**: Standardized unstable-bar aggregation and warm-up guarding across indicators so pre-warmup bars are handled consistently, including lookback-driven trend/cross indicators.
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
