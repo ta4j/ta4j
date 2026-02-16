@@ -20,6 +20,10 @@
             <id>team172011</id>
             <name>Simon-Justus Wimmer</name>
         </developer>
+        <developer>
+            <id>TheCookieLab</id>
+            <name>David Pang</name>
+        </developer>
     </developers>
 
     <licenses>
