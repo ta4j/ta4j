@@ -3,13 +3,24 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.ta4j</groupId>
     <artifactId>ta4j-parent</artifactId>
-    <version>0.22.2-SNAPSHOT</version>
+    <version>0.22.3-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Ta4j Parent</name>
     <description>ta4j is a Java library providing a simple API for technical analysis.</description>
     <url>https://github.com/ta4j/ta4j</url>
     <inceptionYear>2014</inceptionYear>
+
+    <developers>
+        <developer>
+            <id>mdeverdelhan</id>
+            <name>Marc de Verdelhan</name>
+        </developer>
+        <developer>
+            <id>team172011</id>
+            <name>Simon-Justus Wimmer</name>
+        </developer>
+    </developers>
 
     <licenses>
         <license>

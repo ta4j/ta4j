@@ -66,7 +66,7 @@ Add Ta4j from Maven Central:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.22.1</version>
+  <version>0.22.2</version>
 </dependency>
 ```
 
@@ -85,7 +85,7 @@ Prefer living on the edge? Use the snapshot repository and version:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.22.2-SNAPSHOT</version>
+  <version>0.22.3-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -99,7 +99,7 @@ Sample applications are also published so you can copy/paste entire flows:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.22.1</version>
+  <version>0.22.2</version>
 </dependency>
 ```
 
@@ -113,7 +113,7 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.22.2-SNAPSHOT</version>
+  <version>0.22.3-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -702,6 +702,26 @@ LOG.info("Second bar begin: {}", series.getBar(1).getBeginTime()); // 2024-01-01
 ```
 
 Time gaps are omitted; no empty bars are inserted. If your pipeline expects continuous prices, reconcile and backfill OHLCV data upstream before ingestion.
+
+## Elliott Wave quickstart
+
+The Elliott Wave suite exposes two minimal entry points:
+
+- `ElliottWaveFacade` for indicator-style, per-bar access (recommended for rules and chart overlays)
+- `ElliottWaveAnalyzer` for one-shot analysis runs with pluggable detectors and confidence profiles
+
+```java
+BarSeries series = ...;
+int index = series.getEndIndex();
+
+ElliottWaveFacade facade = ElliottWaveFacade.fractal(series, 5, ElliottDegree.INTERMEDIATE);
+
+ElliottPhase phase = facade.phase().getValue(index);
+ElliottScenarioSet scenarios = facade.scenarios().getValue(index);
+Num invalidation = facade.invalidationLevel().getValue(index);
+```
+
+See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and analyzer-based workflow.
 
 ## Real-world examples
 

@@ -1,5 +1,10 @@
 ## Unreleased
 
+### Fixed
+- **Publish-release manual dispatch inputs**: `publish-release.yml` now reads `workflow_dispatch` metadata from event inputs so manual reruns correctly receive `releaseVersion`/`releaseCommit`.
+
+## 0.22.2 (2026-02-15)
+
 ### Breaking
 - **Trade model split**: `Trade` is now an interface; the previous concrete implementation is `SimulatedTrade` (backtesting/simulation), and live executions are represented by `LiveTrade`.
 - **Swing indicator interfaces**: Removed deprecated `RecentSwingHighIndicator` and `RecentSwingLowIndicator`; use `RecentSwingIndicator` and concrete implementations directly.
@@ -25,6 +30,15 @@
 - Added **PiercingIndicator** and **DarkCloudIndicator**
 - **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
+- **Elliott Wave analysis toolkit**: Added `ElliottWaveAnalyzer`, `ElliottAnalysisResult`, configurable `PatternSet`,
+  and the `org.ta4j.core.indicators.elliott.swing` detector/filter package for pluggable, chart-independent analysis.
+- **Elliott Wave confidence modeling**: Added profile-driven confidence scoring with factor breakdowns, time
+  alternation diagnostics, and granular Fibonacci relationship scoring.
+- **Elliott Wave trend bias**: Added `ElliottTrendBias` and `ElliottTrendBiasIndicator` for scenario-weighted
+  bullish/bearish context, plus `ElliottScenarioSet#trendBias()` and `ElliottWaveFacade#trendBias()` helpers.
+- **Elliott Wave strategy demos**: Added `ElliottWaveAdaptiveSwingAnalysis`, `ElliottWavePatternProfileDemo`,
+  `ElliottWaveTrendBacktest`, and `HighRewardElliottWaveBacktest` with `HighRewardElliottWaveStrategy` for
+  selective impulse entries using confidence, alternation, and risk/reward filters.
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
 - Added constructors accepting custom ATR indicator to **AverageTrueRangeStopGainRule** **AverageTrueRangeStopLossRule** and **AverageTrueRangeTrailingStopLossRule**
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
@@ -56,6 +70,8 @@
 - **Statistics helper**: Consolidated statistics selection into the `Statistics` enum, with Num calculations.
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 - **Dependencies**: update to latest versions
+- **Elliott Wave scoring and diagnostics**: Extension ratio scoring now penalizes under/over-extended projections,
+  chart/JSON outputs include scenario-weighted trend bias, and logs include time alternation diagnostics.
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
 - **JDK**: updated to Java 25
 
@@ -63,6 +79,8 @@
 - **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
+- **Release workflow hardening**: Improved `prepare-release.yml` token preflight with push-capability checks and an early `git push --dry-run` probe, and fixed `github-script` `core` redeclaration errors in both `prepare-release.yml` and `publish-release.yml`.
+- **Maven Central publication metadata**: Restored `<developers>` information in the parent POM so Central Portal validation accepts ta4j release bundles.
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
 - **Indicator unstable periods**: Standardized unstable-bar aggregation and warm-up guarding across indicators so pre-warmup bars are handled consistently, including lookback-driven trend/cross indicators.
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
@@ -82,6 +100,7 @@
 - **Release scheduler redaction**: Avoid masking long Java class names in binary-change listings.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
 - **Fixed incorrect @since 0.23** by replacing with 0.22.2
+- **Full build script**: Fix macOS temp file creation in `run-full-build-quiet.sh` by using a portable mktemp template.
 
 ## 0.22.1 (2026-01-15)
 

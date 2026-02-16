@@ -20,6 +20,10 @@ import org.ta4j.core.num.Num;
  * provides all standard channel operations including validity checks, width
  * calculation, and price containment tests.
  *
+ * <p>
+ * Use this value object when you need to pass channel boundaries to charting,
+ * confidence scoring, or rule logic without re-computing projection math.
+ *
  * @param upper  expected resistance boundary
  * @param lower  expected support boundary
  * @param median arithmetic midline between upper and lower bounds
