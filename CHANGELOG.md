@@ -1,5 +1,8 @@
 ## Unreleased
 
+### Added
+- **Trade-sampled Sharpe/Sortino**: Added `SamplingFrequency.TRADE` support to `SharpeRatioCriterion` and `SortinoRatioCriterion`.
+
 ### Fixed
 - **Publish-release manual dispatch inputs**: `publish-release.yml` now reads `workflow_dispatch` metadata from event inputs so manual reruns correctly receive `releaseVersion`/`releaseCommit`.
 - **Prepare-release metadata guard**: Added a Maven Central metadata validation gate in `prepare-release.yml` (including dry-run mode) to fail early when required POM metadata (including developers) is missing.
