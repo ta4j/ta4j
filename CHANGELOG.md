@@ -43,6 +43,8 @@
 ### Changed
 - **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
   `./mvnw` when present (falling back to `mvn`), so wrapper adoption does not require a second build command.
+- **Full build script portability**: `scripts/run-full-build-quiet.sh` no longer requires Python; timeout handling,
+  quiet-output filtering, heartbeat logging, and test-summary aggregation now run in Bash.
 - **README snippet synchronization line endings**: `ReadmeContentManager.updateReadmeSnippets(...)` now preserves the
   target README's dominant line separator (LF/CRLF), with regression tests covering both newline modes.
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
