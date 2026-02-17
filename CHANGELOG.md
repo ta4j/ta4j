@@ -3,6 +3,8 @@
 ### Changed
 - **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
   `./mvnw` when present (falling back to `mvn`), so wrapper adoption does not require a second build command.
+- **Full build script portability**: `scripts/run-full-build-quiet.sh` no longer requires Python; timeout handling,
+  quiet-output filtering, heartbeat logging, and test-summary aggregation now run in Bash.
 
 ### Fixed
 - **Publish-release manual dispatch inputs**: `publish-release.yml` now reads `workflow_dispatch` metadata from event inputs so manual reruns correctly receive `releaseVersion`/`releaseCommit`.
