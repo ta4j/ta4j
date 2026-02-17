@@ -74,6 +74,7 @@
 - **Elliott Wave scoring and diagnostics**: Extension ratio scoring now penalizes under/over-extended projections,
   chart/JSON outputs include scenario-weighted trend bias, and logs include time alternation diagnostics.
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
+- **JDK**: updated to Java 25
 
 ### Fixed
 - **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.

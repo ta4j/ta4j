@@ -178,11 +178,11 @@ jobs:
       #   - *-javadoc.jar
       #   - *-sources.jar
       # ------------------------------------------------------------
-      - name: Set up JDK 21
+      - name: Set up JDK
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
 
       - name: Build all module artifacts
         run: mvn -B -DskipTests -Dgpg.skip=true -Pproduction-release package
