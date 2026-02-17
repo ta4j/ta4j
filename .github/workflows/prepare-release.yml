@@ -411,6 +411,11 @@ jobs:
         run: |
           mvn -B versions:commit
 
+      - name: Validate Maven Central metadata
+        run: |
+          chmod +x scripts/validate-central-metadata.sh
+          scripts/validate-central-metadata.sh
+
       - name: Commit release version and notes
         if: steps.dry_run.outputs.dryRun != 'true'
         run: |
