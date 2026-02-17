@@ -388,25 +388,103 @@ public class SharpeRatioCriterionTest extends AbstractCriterionTest {
         BarSeries series = buildDailySeries(getBarSeries("daily_series"), new double[] { 100d, 110d, 90d, 120d },
                 Instant.parse("2024-01-01T00:00:00Z"));
 
-        Num amount = series.numFactory().one();
-        TradingRecord tradingRecord = new BaseTradingRecord();
+        var amount = series.numFactory().one();
+        var tradingRecord = new BaseTradingRecord();
         tradingRecord.enter(series.getBeginIndex(), series.getBar(series.getBeginIndex()).getClosePrice(), amount);
         tradingRecord.exit(series.getBeginIndex() + 1, series.getBar(series.getBeginIndex() + 1).getClosePrice(),
                 amount);
         tradingRecord.enter(series.getBeginIndex() + 2, series.getBar(series.getBeginIndex() + 2).getClosePrice(),
                 amount);
 
-        SharpeRatioCriterion criterion = new SharpeRatioCriterion(0d, SamplingFrequency.BAR, Annualization.PERIOD,
-                ZoneOffset.UTC, CashReturnPolicy.CASH_EARNS_RISK_FREE, OpenPositionHandling.IGNORE);
-        Num actual = criterion.calculate(series, tradingRecord);
+        var criterion = new SharpeRatioCriterion(0d, SamplingFrequency.BAR, Annualization.PERIOD, ZoneOffset.UTC,
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, OpenPositionHandling.IGNORE);
+        var actual = criterion.calculate(series, tradingRecord);
 
         double return1 = 110d / 100d - 1d;
         double mean = return1 / 3d;
         double variance = (Math.pow(return1 - mean, 2) + Math.pow(-mean, 2) + Math.pow(-mean, 2));
         double stdev = Math.sqrt(variance / 2d);
-        Num expected = numFactory.numOf(mean / stdev);
+        var expected = numFactory.numOf(mean / stdev);
 
         assertNumEquals(expected, actual, 1e-12);
+    }
+
+    @Test
+    public void tradeSamplingUsesOneSamplePerClosedPosition() {
+        var series = buildDailySeries(getBarSeries("trade_sampling_series"), new double[] { 100d, 110d, 99d, 118.8d },
+                Instant.parse("2024-01-01T00:00:00Z"));
+
+        var amount = series.numFactory().one();
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), amount);
+        tradingRecord.exit(1, series.getBar(1).getClosePrice(), amount);
+        tradingRecord.enter(1, series.getBar(1).getClosePrice(), amount);
+        tradingRecord.exit(2, series.getBar(2).getClosePrice(), amount);
+        tradingRecord.enter(2, series.getBar(2).getClosePrice(), amount);
+        tradingRecord.exit(3, series.getBar(3).getClosePrice(), amount);
+
+        var criterion = criterion(SamplingFrequency.TRADE, Annualization.PERIOD);
+        var actual = criterion.calculate(series, tradingRecord);
+
+        double[] tradeReturns = new double[] { 0.1d, -0.1d, 0.2d };
+        double mean = (tradeReturns[0] + tradeReturns[1] + tradeReturns[2]) / 3d;
+        double sumSquares = Math.pow(tradeReturns[0] - mean, 2d) + Math.pow(tradeReturns[1] - mean, 2d)
+                + Math.pow(tradeReturns[2] - mean, 2d);
+        double stdev = Math.sqrt(sumSquares / 2d);
+        var expected = numFactory.numOf(mean / stdev);
+
+        assertNumEquals(expected, actual, 1e-12);
+    }
+
+    @Test
+    public void tradeSamplingMarkToMarketIncludesOpenPositionAndIgnoreExcludesIt() {
+        var series = buildDailySeries(getBarSeries("trade_sampling_open_series"),
+                new double[] { 100d, 110d, 99d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+
+        var amount = series.numFactory().one();
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), amount);
+        tradingRecord.exit(1, series.getBar(1).getClosePrice(), amount);
+        tradingRecord.enter(1, series.getBar(1).getClosePrice(), amount);
+        tradingRecord.exit(2, series.getBar(2).getClosePrice(), amount);
+        tradingRecord.enter(2, series.getBar(2).getClosePrice(), amount);
+
+        var markToMarket = new SharpeRatioCriterion(0d, SamplingFrequency.TRADE, Annualization.PERIOD, ZoneOffset.UTC,
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        var ignore = new SharpeRatioCriterion(0d, SamplingFrequency.TRADE, Annualization.PERIOD, ZoneOffset.UTC,
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.IGNORE);
+
+        var sharpeMarkToMarket = markToMarket.calculate(series, tradingRecord);
+        var sharpeIgnore = ignore.calculate(series, tradingRecord);
+
+        assertTrue(sharpeMarkToMarket.isGreaterThan(sharpeIgnore));
+        assertNumEquals(series.numFactory().zero(), sharpeIgnore, 1e-12);
+    }
+
+    @Test
+    public void realizedTradeSamplingForcesOpenPositionIgnore() {
+        var series = buildDailySeries(getBarSeries("trade_sampling_realized_series"),
+                new double[] { 100d, 110d, 99d, 120d }, Instant.parse("2024-01-01T00:00:00Z"));
+
+        var amount = series.numFactory().one();
+        var tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(0, series.getBar(0).getClosePrice(), amount);
+        tradingRecord.exit(1, series.getBar(1).getClosePrice(), amount);
+        tradingRecord.enter(1, series.getBar(1).getClosePrice(), amount);
+        tradingRecord.exit(2, series.getBar(2).getClosePrice(), amount);
+        tradingRecord.enter(2, series.getBar(2).getClosePrice(), amount);
+
+        var realizedWithMarkToMarketRequest = new SharpeRatioCriterion(0d, SamplingFrequency.TRADE,
+                Annualization.PERIOD, ZoneOffset.UTC, CashReturnPolicy.CASH_EARNS_RISK_FREE, EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+        var realizedIgnore = new SharpeRatioCriterion(0d, SamplingFrequency.TRADE, Annualization.PERIOD, ZoneOffset.UTC,
+                CashReturnPolicy.CASH_EARNS_RISK_FREE, EquityCurveMode.REALIZED, OpenPositionHandling.IGNORE);
+
+        var realizedUsingMarkToMarketRequest = realizedWithMarkToMarketRequest.calculate(series, tradingRecord);
+        var realizedUsingIgnore = realizedIgnore.calculate(series, tradingRecord);
+
+        assertNumEquals(realizedUsingIgnore, realizedUsingMarkToMarketRequest, 1e-12);
     }
 
     private SharpeRatioCriterion criterion(ZoneId zoneId) {
