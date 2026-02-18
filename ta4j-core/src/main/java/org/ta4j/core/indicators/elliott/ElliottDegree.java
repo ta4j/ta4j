@@ -120,7 +120,7 @@ public enum ElliottDegree {
      * {@link #getRecommendedDegrees(Duration, int)}.
      *
      * @return recommended history span in days
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public RecommendedHistory recommendedHistoryDays() {
         final DegreeRange range = RECOMMENDED_DAYS[ordinal()];
@@ -142,7 +142,7 @@ public enum ElliottDegree {
      * @return fit score (0.0 - 1.0)
      * @throws IllegalArgumentException if {@code barCount <= 0} or the duration is
      *                                  zero/negative
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public double historyFitScore(final Duration barDuration, final int barCount) {
         Objects.requireNonNull(barDuration, "barDuration cannot be null");
@@ -294,7 +294,7 @@ public enum ElliottDegree {
      * @param minDays minimum recommended days (&gt; 0)
      * @param maxDays maximum recommended days (&gt;= 0) or {@code 0.0} when
      *                unbounded
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public record RecommendedHistory(double minDays, double maxDays) {
 
@@ -309,7 +309,7 @@ public enum ElliottDegree {
 
         /**
          * @return {@code true} when {@code maxDays} is a positive upper bound
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public boolean hasMax() {
             return maxDays > 0.0;

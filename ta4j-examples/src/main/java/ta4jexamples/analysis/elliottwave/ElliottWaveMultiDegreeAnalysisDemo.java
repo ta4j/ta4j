@@ -24,7 +24,7 @@ import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
  * degree higher ({@link ElliottDegree#CYCLE}) and lower
  * ({@link ElliottDegree#INTERMEDIATE}).
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class ElliottWaveMultiDegreeAnalysisDemo {
 

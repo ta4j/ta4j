@@ -1,5 +1,14 @@
 ## Unreleased
 
+### Added
+- **Elliott Wave one-shot analysis APIs**: Added `ElliottWaveAnalysis` and `ElliottWaveAnalysisResult` for snapshot-style analysis (swings, channels, ranked scenarios, confidence factors, trend bias) with optional cross-degree scenario re-ranking, plus `ElliottAnalysisResult`, `PatternSet`, and pluggable `SwingDetector`/`SwingFilter` components.
+- **Elliott confidence and trend-bias modeling**: Added profile-driven confidence scoring with factor/time-alternation diagnostics and granular Fibonacci relationship scoring, plus scenario-weighted trend context via `ElliottTrendBias`, `ElliottTrendBiasIndicator`, `ElliottScenarioSet#trendBias()`, and `ElliottWaveFacade#trendBias()`.
+- **Elliott strategy demos**: Added `ElliottWaveAdaptiveSwingAnalysis`, `ElliottWavePatternProfileDemo`, `ElliottWaveTrendBacktest`, and `HighRewardElliottWaveBacktest` with `HighRewardElliottWaveStrategy`.
+
+### Changed
+- **Elliott scenario weighting**: Scenario probability weighting now uses adaptive confidence contrast so closely scored alternatives separate more clearly.
+- **Elliott scoring diagnostics**: Extension-ratio scoring now penalizes under/over-extended projections; chart/JSON outputs include scenario-weighted trend bias, and logs include time alternation diagnostics.
+
 ### Fixed
 - **Publish-release manual dispatch inputs**: `publish-release.yml` now reads `workflow_dispatch` metadata from event inputs so manual reruns correctly receive `releaseVersion`/`releaseCommit`.
 - **Prepare-release metadata guard**: Added a Maven Central metadata validation gate in `prepare-release.yml` (including dry-run mode) to fail early when required POM metadata (including developers) is missing.
@@ -31,18 +40,6 @@
 - Added **PiercingIndicator** and **DarkCloudIndicator**
 - **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
-- **Elliott Wave one-shot analysis**: Added `ElliottWaveAnalysis` and `ElliottWaveAnalysisResult` for end-to-end
-  analysis snapshots (swings, channel, scenarios, confidence breakdowns, trend bias), with optional cross-degree
-  validation to re-rank base scenarios using supporting degree context. Includes `ElliottAnalysisResult`,
-  configurable `PatternSet`, and the `org.ta4j.core.indicators.elliott.swing` detector/filter package for pluggable
-  swing detection and noise reduction.
-- **Elliott Wave confidence modeling**: Added profile-driven confidence scoring with factor breakdowns, time
-  alternation diagnostics, and granular Fibonacci relationship scoring.
-- **Elliott Wave trend bias**: Added `ElliottTrendBias` and `ElliottTrendBiasIndicator` for scenario-weighted
-  bullish/bearish context, plus `ElliottScenarioSet#trendBias()` and `ElliottWaveFacade#trendBias()` helpers.
-- **Elliott Wave strategy demos**: Added `ElliottWaveAdaptiveSwingAnalysis`, `ElliottWavePatternProfileDemo`,
-  `ElliottWaveTrendBacktest`, and `HighRewardElliottWaveBacktest` with `HighRewardElliottWaveStrategy` for
-  selective impulse entries using confidence, alternation, and risk/reward filters.
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
 - Added constructors accepting custom ATR indicator to **AverageTrueRangeStopGainRule** **AverageTrueRangeStopLossRule** and **AverageTrueRangeTrailingStopLossRule**
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
@@ -69,13 +66,10 @@
 - **Recorded fee semantics**: Live-trading positions and criteria now use recorded `LiveTrade` fees via
   `RecordedTradeCostModel` so PnL reflects actual execution costs.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
-- **Elliott Wave analysis example**: Scenario probability weighting now applies adaptive confidence contrast so closely scored scenarios separate more clearly.
 - **Position duration criterion**: implemented `PositionDurationCriterion` to measure positions duration.
 - **Statistics helper**: Consolidated statistics selection into the `Statistics` enum, with Num calculations.
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 - **Dependencies**: update to latest versions
-- **Elliott Wave scoring and diagnostics**: Extension ratio scoring now penalizes under/over-extended projections,
-  chart/JSON outputs include scenario-weighted trend bias, and logs include time alternation diagnostics.
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
 
 ### Fixed

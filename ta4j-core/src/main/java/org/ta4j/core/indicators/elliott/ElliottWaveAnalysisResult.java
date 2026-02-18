@@ -21,7 +21,7 @@ import java.util.Optional;
  * @param rankedBaseScenarios base-degree scenarios ranked by composite score
  * @param notes               human-readable notes (insufficient history,
  *                            skipped degrees, etc.)
- * @since 0.22.2
+ * @since 0.22.3
  */
 public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAnalysis> analyses,
         List<BaseScenarioAssessment> rankedBaseScenarios, List<String> notes) {
@@ -36,7 +36,7 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
     /**
      * @return the recommended base-degree scenario assessment (highest composite
      *         score), if present
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Optional<BaseScenarioAssessment> recommendedScenario() {
         return rankedBaseScenarios.isEmpty() ? Optional.empty() : Optional.of(rankedBaseScenarios.get(0));
@@ -45,7 +45,7 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
     /**
      * @return the recommended base-degree scenario (highest composite score), if
      *         present
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Optional<ElliottScenario> recommendedBaseScenario() {
         return recommendedScenario().map(BaseScenarioAssessment::scenario);
@@ -56,7 +56,7 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
      *
      * @param degree degree to look up
      * @return matching analysis snapshot
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Optional<DegreeAnalysis> analysisFor(final ElliottDegree degree) {
         Objects.requireNonNull(degree, "degree");
@@ -89,7 +89,7 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
      * @param barDuration     duration of bars used for analysis
      * @param historyFitScore how well the bar span fits the degree (0.0 - 1.0)
      * @param analysis        analysis result for the degree
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public record DegreeAnalysis(ElliottDegree degree, int index, int barCount, Duration barDuration,
             double historyFitScore, ElliottAnalysisResult analysis) {
@@ -113,7 +113,7 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
      * @param crossDegreeScore  aggregated cross-degree compatibility score
      * @param compositeScore    blended score used for ranking
      * @param supportingMatches per-supporting-degree best-match snapshots
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public record BaseScenarioAssessment(ElliottScenario scenario, double confidenceScore, double crossDegreeScore,
             double compositeScore, List<SupportingScenarioMatch> supportingMatches) {
@@ -140,7 +140,7 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
      *                              confidence (0.0 - 1.0)
      * @param historyFitScore       history fit score for the supporting degree
      *                              series (0.0 - 1.0)
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public record SupportingScenarioMatch(ElliottDegree degree, String scenarioId, double scenarioConfidence,
             double compatibilityScore, double weightedCompatibility, double historyFitScore) {
