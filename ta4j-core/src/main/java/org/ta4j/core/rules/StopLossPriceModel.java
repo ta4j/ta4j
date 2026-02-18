@@ -20,7 +20,7 @@ import org.ta4j.core.num.Num;
  * <a href="https://www.investopedia.com/terms/s/stop-lossorder.asp">Stop-loss
  * orders</a> for background on stop-loss concepts.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 @FunctionalInterface
 public interface StopLossPriceModel {
@@ -31,7 +31,7 @@ public interface StopLossPriceModel {
      * @param series   the price series
      * @param position the position being evaluated
      * @return the stop-loss price, or {@code null} if it cannot be determined
-     * @since 0.22.2
+     * @since 0.22.3
      */
     Num stopPrice(BarSeries series, Position position);
 }

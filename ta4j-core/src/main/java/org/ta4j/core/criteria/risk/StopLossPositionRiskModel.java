@@ -23,7 +23,7 @@ import org.ta4j.core.rules.StopLossRule;
  * <a href="https://www.investopedia.com/terms/s/stop-lossorder.asp">Stop-loss
  * orders</a> for background on stop-loss concepts.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public final class StopLossPositionRiskModel implements PositionRiskModel {
 
@@ -43,7 +43,7 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
      * Constructor.
      *
      * @param stopLossModel stop-loss price model to use for risk calculations
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public StopLossPositionRiskModel(StopLossPriceModel stopLossModel) {
         if (stopLossModel == null) {
@@ -63,7 +63,7 @@ public final class StopLossPositionRiskModel implements PositionRiskModel {
      * @param series   the bar series, must not be {@code null}
      * @param position the position to evaluate
      * @return monetary risk amount for the position
-     * @since 0.22.2
+     * @since 0.22.3
      */
     @Override
     public Num risk(BarSeries series, Position position) {

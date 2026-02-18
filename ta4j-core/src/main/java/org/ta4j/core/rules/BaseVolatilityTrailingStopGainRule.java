@@ -18,7 +18,7 @@ import org.ta4j.core.num.Num;
  * This models a trailing take-profit: the stop price trails the most favorable
  * price by a volatility-scaled distance and triggers on retracement.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 abstract class BaseVolatilityTrailingStopGainRule extends AbstractRule implements StopGainPriceModel {
 

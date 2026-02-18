@@ -19,7 +19,7 @@ import org.ta4j.core.num.Num;
  * See <a href="https://www.investopedia.com/terms/s/stoporder.asp">Stop
  * orders</a> for background on stop-gain concepts.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 @FunctionalInterface
 public interface StopGainPriceModel {
@@ -30,7 +30,7 @@ public interface StopGainPriceModel {
      * @param series   the price series
      * @param position the position being evaluated
      * @return the stop-gain price, or {@code null} if it cannot be determined
-     * @since 0.22.2
+     * @since 0.22.3
      */
     Num stopPrice(BarSeries series, Position position);
 }

@@ -14,7 +14,7 @@ import org.ta4j.core.num.Num;
 /**
  * Shared trailing stop-loss logic for volatility-based stop rules.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 abstract class BaseVolatilityTrailingStopLossRule extends AbstractRule implements StopLossPriceModel {
 

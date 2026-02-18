@@ -15,7 +15,7 @@ import org.ta4j.core.num.Num;
  * per-trade risk (for example, distance to an initial stop multiplied by
  * position size). This value is used to normalize profit/loss into R-multiples.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 @FunctionalInterface
 public interface PositionRiskModel {

@@ -17,7 +17,7 @@ import org.ta4j.core.num.Num;
  * {@link PositionRiskModel}. For a trading record, the criterion returns the
  * average R-multiple across closed positions with valid risk values.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class RMultipleCriterion extends AbstractAnalysisCriterion {
 
@@ -41,7 +41,7 @@ public class RMultipleCriterion extends AbstractAnalysisCriterion {
      * @param series   the bar series
      * @param position the position to evaluate
      * @return {@code profit / risk} for the position, or zero when unavailable
-     * @since 0.22.2
+     * @since 0.22.3
      */
     @Override
     public Num calculate(BarSeries series, Position position) {
@@ -55,7 +55,7 @@ public class RMultipleCriterion extends AbstractAnalysisCriterion {
      * @param series        the bar series
      * @param tradingRecord the trading record to evaluate
      * @return mean R-multiple across positions with valid positive risk
-     * @since 0.22.2
+     * @since 0.22.3
      */
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {

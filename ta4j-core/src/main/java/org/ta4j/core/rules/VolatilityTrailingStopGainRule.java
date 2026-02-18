@@ -19,7 +19,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * This rule uses the {@code tradingRecord}.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class VolatilityTrailingStopGainRule extends BaseVolatilityTrailingStopGainRule {
 

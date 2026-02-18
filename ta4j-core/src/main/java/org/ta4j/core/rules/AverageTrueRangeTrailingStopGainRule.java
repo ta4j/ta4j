@@ -22,7 +22,7 @@ import static java.util.Objects.requireNonNull;
  * <p>
  * This rule uses the {@code tradingRecord}.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class AverageTrueRangeTrailingStopGainRule extends BaseVolatilityTrailingStopGainRule {
 
@@ -70,7 +70,7 @@ public class AverageTrueRangeTrailingStopGainRule extends BaseVolatilityTrailing
      * @param referencePrice the reference price indicator
      * @param atrIndicator   ATR indicator
      * @param atrCoefficient the coefficient to multiply ATR
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public AverageTrueRangeTrailingStopGainRule(final Indicator<Num> referencePrice, final ATRIndicator atrIndicator,
             final Number atrCoefficient) {
@@ -85,7 +85,7 @@ public class AverageTrueRangeTrailingStopGainRule extends BaseVolatilityTrailing
      * @param atrCoefficient the coefficient to multiply ATR
      * @param barCount       the number of bars to look back for trailing
      *                       calculation
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public AverageTrueRangeTrailingStopGainRule(final Indicator<Num> referencePrice, final ATRIndicator atrIndicator,
             final Number atrCoefficient, int barCount) {

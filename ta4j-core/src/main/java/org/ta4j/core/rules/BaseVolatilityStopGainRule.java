@@ -12,7 +12,7 @@ import org.ta4j.core.num.Num;
 /**
  * Shared stop-gain logic for volatility-based stop rules.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 abstract class BaseVolatilityStopGainRule extends AbstractRule implements StopGainPriceModel {
 

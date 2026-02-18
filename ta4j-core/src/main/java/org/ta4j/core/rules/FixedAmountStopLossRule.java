@@ -24,7 +24,7 @@ import org.ta4j.core.num.Num;
  * <a href="https://www.investopedia.com/terms/s/stop-lossorder.asp">Stop-loss
  * orders</a> for background on stop-loss concepts.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class FixedAmountStopLossRule extends AbstractRule implements StopLossPriceModel {
 
@@ -90,7 +90,7 @@ public class FixedAmountStopLossRule extends AbstractRule implements StopLossPri
      * @param series   the price series
      * @param position the position being evaluated
      * @return the stop-loss price, or {@code null} if unavailable
-     * @since 0.22.2
+     * @since 0.22.3
      */
     @Override
     public Num stopPrice(BarSeries series, Position position) {

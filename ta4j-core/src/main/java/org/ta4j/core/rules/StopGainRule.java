@@ -54,7 +54,7 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      * @param gainPercentage the gain percentage
      * @param isBuy          true for long positions, false for short positions
      * @return the stop-gain price
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static Num stopGainPrice(Num entryPrice, Num gainPercentage, boolean isBuy) {
         if (entryPrice == null) {
@@ -77,7 +77,7 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      * @param gainDistance the absolute price distance to the gain target
      * @param isBuy        true for long positions, false for short positions
      * @return the stop-gain price
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static Num stopGainPriceFromDistance(Num entryPrice, Num gainDistance, boolean isBuy) {
         if (entryPrice == null) {
@@ -98,7 +98,7 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      * @param isBuy                 true for long positions, false for short
      *                              positions
      * @return the trailing stop-gain retracement price
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static Num trailingStopGainPrice(Num favorablePrice, Num retracementPercentage, boolean isBuy) {
         if (favorablePrice == null) {
@@ -121,7 +121,7 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      * @param retracementDistance the retracement distance
      * @param isBuy               true for long positions, false for short positions
      * @return the trailing stop-gain retracement price
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static Num trailingStopGainPriceFromDistance(Num favorablePrice, Num retracementDistance, boolean isBuy) {
         if (favorablePrice == null) {
@@ -139,7 +139,7 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      * @param series   the price series
      * @param position the position being evaluated
      * @return the stop-gain price, or {@code null} if unavailable
-     * @since 0.22.2
+     * @since 0.22.3
      */
     @Override
     public Num stopPrice(BarSeries series, Position position) {

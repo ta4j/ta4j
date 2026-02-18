@@ -54,7 +54,7 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      * @param lossPercentage the loss percentage
      * @param isBuy          true for long positions, false for short positions
      * @return the stop-loss price
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static Num stopLossPrice(Num entryPrice, Num lossPercentage, boolean isBuy) {
         if (entryPrice == null) {
@@ -77,7 +77,7 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      * @param lossDistance the absolute price distance to the stop
      * @param isBuy        true for long positions, false for short positions
      * @return the stop-loss price
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static Num stopLossPriceFromDistance(Num entryPrice, Num lossDistance, boolean isBuy) {
         if (entryPrice == null) {
@@ -96,7 +96,7 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      *                 {@link StopLossPriceModel})
      * @param position the position being evaluated
      * @return the stop-loss price, or {@code null} if unavailable
-     * @since 0.22.2
+     * @since 0.22.3
      */
     @Override
     public Num stopPrice(BarSeries series, Position position) {

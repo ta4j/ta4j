@@ -20,7 +20,7 @@ import org.ta4j.core.num.Num;
  * <p>
  * This rule uses the {@code tradingRecord}.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class TrailingFixedAmountStopLossRule extends AbstractRule implements StopLossPriceModel {
 
@@ -129,7 +129,7 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
      * @param series   the price series
      * @param position the position being evaluated
      * @return the stop-loss price, or {@code null} if unavailable
-     * @since 0.22.2
+     * @since 0.22.3
      */
     @Override
     public Num stopPrice(BarSeries series, Position position) {
