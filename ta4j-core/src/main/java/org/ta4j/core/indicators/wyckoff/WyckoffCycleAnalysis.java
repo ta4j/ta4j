@@ -38,7 +38,7 @@ import org.ta4j.core.num.NumFactory;
  * scaling based on the degree offset. For full control, provide a custom
  * configuration provider via {@link Builder#configurationProvider}.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public final class WyckoffCycleAnalysis {
 
@@ -50,7 +50,7 @@ public final class WyckoffCycleAnalysis {
      * pipeline, build results from indicator-style analysis
      * ({@link WyckoffCycleFacade}), or run on resampled series.
      *
-     * @since 0.22.2
+     * @since 0.22.3
      */
     @FunctionalInterface
     public interface AnalysisRunner {
@@ -61,7 +61,7 @@ public final class WyckoffCycleAnalysis {
          * @param series        series to analyze
          * @param configuration configuration for this run
          * @return cycle snapshot
-         * @since 0.22.2
+         * @since 0.22.3
          */
         WyckoffCycleAnalysisResult.CycleSnapshot analyze(BarSeries series,
                 WyckoffCycleAnalysisResult.DegreeConfiguration configuration);
@@ -71,7 +71,7 @@ public final class WyckoffCycleAnalysis {
      * Selects the series window (or transformed series) to use for a given degree
      * offset.
      *
-     * @since 0.22.2
+     * @since 0.22.3
      */
     @FunctionalInterface
     public interface SeriesSelector {
@@ -82,7 +82,7 @@ public final class WyckoffCycleAnalysis {
          * @param series       root input series
          * @param degreeOffset degree offset to select for
          * @return selected series (may be a subseries)
-         * @since 0.22.2
+         * @since 0.22.3
          */
         BarSeries select(BarSeries series, int degreeOffset);
     }
@@ -90,7 +90,7 @@ public final class WyckoffCycleAnalysis {
     /**
      * Produces degree-specific configurations from a base configuration.
      *
-     * @since 0.22.2
+     * @since 0.22.3
      */
     @FunctionalInterface
     public interface DegreeConfigurationProvider {
@@ -103,7 +103,7 @@ public final class WyckoffCycleAnalysis {
          * @param baseConfiguration base configuration normalized to the series
          *                          {@link NumFactory}
          * @return configuration for the degree offset
-         * @since 0.22.2
+         * @since 0.22.3
          */
         WyckoffCycleAnalysisResult.DegreeConfiguration configurationFor(BarSeries series, int degreeOffset,
                 WyckoffCycleAnalysisResult.DegreeConfiguration baseConfiguration);
@@ -163,7 +163,7 @@ public final class WyckoffCycleAnalysis {
      * Creates a new builder.
      *
      * @return builder
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static Builder builder() {
         return new Builder();
@@ -179,7 +179,7 @@ public final class WyckoffCycleAnalysis {
      *
      * @param series root series
      * @return analysis result
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public WyckoffCycleAnalysisResult analyze(final BarSeries series) {
         Objects.requireNonNull(series, "series");
@@ -353,7 +353,7 @@ public final class WyckoffCycleAnalysis {
     /**
      * Builder for {@link WyckoffCycleAnalysis}.
      *
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static final class Builder {
 
@@ -384,7 +384,7 @@ public final class WyckoffCycleAnalysis {
          *
          * @param higherDegrees number of higher degree offsets
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder higherDegrees(int higherDegrees) {
             this.higherDegrees = higherDegrees;
@@ -396,7 +396,7 @@ public final class WyckoffCycleAnalysis {
          *
          * @param lowerDegrees number of lower degree offsets
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder lowerDegrees(int lowerDegrees) {
             this.lowerDegrees = lowerDegrees;
@@ -408,7 +408,7 @@ public final class WyckoffCycleAnalysis {
          *
          * @param seriesSelector series selector
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder seriesSelector(SeriesSelector seriesSelector) {
             this.seriesSelector = seriesSelector;
@@ -421,7 +421,7 @@ public final class WyckoffCycleAnalysis {
          *
          * @param configurationProvider configuration provider
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder configurationProvider(DegreeConfigurationProvider configurationProvider) {
             this.configurationProvider = configurationProvider;
@@ -433,7 +433,7 @@ public final class WyckoffCycleAnalysis {
          *
          * @param analysisRunner analysis runner
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder analysisRunner(AnalysisRunner analysisRunner) {
             this.analysisRunner = analysisRunner;
@@ -448,7 +448,7 @@ public final class WyckoffCycleAnalysis {
          * @param allowedEqualBars   number of equal bars allowed in swing detection
          *                           (must be {@code >= 0})
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder withSwingConfiguration(int precedingSwingBars, int followingSwingBars, int allowedEqualBars) {
             if (precedingSwingBars < 1) {
@@ -472,7 +472,7 @@ public final class WyckoffCycleAnalysis {
          * @param shortWindow short volume SMA window (must be {@code >= 1})
          * @param longWindow  long volume SMA window (must be {@code >= shortWindow})
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder withVolumeWindows(int shortWindow, int longWindow) {
             if (shortWindow < 1) {
@@ -494,7 +494,7 @@ public final class WyckoffCycleAnalysis {
          * @param retestTolerance   retest tolerance applied to range bounds (must be be
          *                          finite and {@code >= 0})
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder withTolerances(Number breakoutTolerance, Number retestTolerance) {
             Objects.requireNonNull(breakoutTolerance, "breakoutTolerance");
@@ -520,7 +520,7 @@ public final class WyckoffCycleAnalysis {
          * @param dryUpThreshold  ratio below which volume is treated as drying up (must
          *                        be finite and {@code >= 0})
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder withVolumeThresholds(Number climaxThreshold, Number dryUpThreshold) {
             Objects.requireNonNull(climaxThreshold, "climaxThreshold");
@@ -542,7 +542,7 @@ public final class WyckoffCycleAnalysis {
          * Builds the configured analysis orchestrator.
          *
          * @return analysis instance
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public WyckoffCycleAnalysis build() {
             return new WyckoffCycleAnalysis(this);

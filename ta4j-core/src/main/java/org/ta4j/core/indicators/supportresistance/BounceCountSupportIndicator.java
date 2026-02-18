@@ -16,7 +16,7 @@ import org.ta4j.core.num.Num;
  * A bounce is recorded each time the price direction flips from down-to-up;
  * bounces are grouped into price buckets to tolerate small price differences.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class BounceCountSupportIndicator extends AbstractBounceCountIndicator {
 
@@ -25,7 +25,7 @@ public class BounceCountSupportIndicator extends AbstractBounceCountIndicator {
      *
      * @param series     the backing bar series
      * @param bucketSize the absolute bucket size for grouping bounce prices
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public BounceCountSupportIndicator(BarSeries series, Num bucketSize) {
         super(series, bucketSize);
@@ -36,7 +36,7 @@ public class BounceCountSupportIndicator extends AbstractBounceCountIndicator {
      *
      * @param priceIndicator the price indicator to analyse
      * @param bucketSize     the absolute bucket size for grouping bounce prices
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public BounceCountSupportIndicator(Indicator<Num> priceIndicator, Num bucketSize) {
         super(priceIndicator, bucketSize);
@@ -49,7 +49,7 @@ public class BounceCountSupportIndicator extends AbstractBounceCountIndicator {
      * @param lookbackCount  the number of bars to evaluate (non-positive for the
      *                       full history)
      * @param bucketSize     the absolute bucket size for grouping bounce prices
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public BounceCountSupportIndicator(Indicator<Num> priceIndicator, int lookbackCount, Num bucketSize) {
         super(priceIndicator, lookbackCount, bucketSize);

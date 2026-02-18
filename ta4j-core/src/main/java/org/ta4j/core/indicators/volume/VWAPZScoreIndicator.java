@@ -16,7 +16,7 @@ import org.ta4j.core.serialization.ComponentSerialization;
  * Z-score of price relative to VWAP using volume-weighted standard deviation.
  * Uses the same VWAP window/anchor definition as the supplied VWAP indicators.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class VWAPZScoreIndicator extends CachedIndicator<Num> {
 
@@ -31,7 +31,7 @@ public class VWAPZScoreIndicator extends CachedIndicator<Num> {
      * @param standardDeviationIndicator indicator providing the VWAP standard
      *                                   deviation
      *
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public VWAPZScoreIndicator(Indicator<Num> deviationIndicator, Indicator<Num> standardDeviationIndicator) {
         super(IndicatorSeriesUtils.requireSameSeries(deviationIndicator, standardDeviationIndicator));

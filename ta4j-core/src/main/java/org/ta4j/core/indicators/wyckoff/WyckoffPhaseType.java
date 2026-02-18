@@ -6,7 +6,7 @@ package org.ta4j.core.indicators.wyckoff;
 /**
  * Enumerates the lettered Wyckoff phases within a market cycle.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public enum WyckoffPhaseType {
 
@@ -35,7 +35,7 @@ public enum WyckoffPhaseType {
      * Returns the canonical phase letter.
      *
      * @return the letter representing the phase
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public char getLetter() {
         return letter;

@@ -23,7 +23,7 @@ import org.ta4j.core.num.NumFactory;
  * indicator is the underlying building block used by the facade and remains
  * available for advanced customization.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
 
@@ -48,7 +48,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      * Creates a Wyckoff phase indicator with default configuration.
      *
      * @param series underlying bar series
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public WyckoffPhaseIndicator(BarSeries series) {
         this(Objects.requireNonNull(series, "series"), 3, 3, 1, 5, 20, series.numFactory().numOf(0.02),
@@ -68,7 +68,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      * @param retestTolerance       retest tolerance applied to range bounds
      * @param climaxThreshold       ratio above which volume is a climax
      * @param dryUpThreshold        ratio below which volume is drying up
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public WyckoffPhaseIndicator(BarSeries series, int precedingSwingBars, int followingSwingBars,
             int allowedEqualSwingBars, int volumeShortWindow, int volumeLongWindow, Num breakoutTolerance,
@@ -110,7 +110,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      *
      * @param series underlying bar series
      * @return configured builder
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static Builder builder(BarSeries series) {
         return new Builder(series);
@@ -237,7 +237,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      *
      * @param index bar index
      * @return trading-range high or {@code NaN}
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Num getTradingRangeHigh(int index) {
         return ensureStructureSnapshot(index).rangeHigh();
@@ -248,7 +248,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      *
      * @param index bar index
      * @return trading-range low or {@code NaN}
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Num getTradingRangeLow(int index) {
         return ensureStructureSnapshot(index).rangeLow();
@@ -260,7 +260,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
      * @param index bar index
      * @return index of the last phase transition or {@code -1} if none were
      *         recorded yet
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public int getLastPhaseTransitionIndex(int index) {
         final Integer transition = lastTransitionIndices.get(index);
@@ -320,7 +320,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
     /**
      * Fluent builder for {@link WyckoffPhaseIndicator}.
      *
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static final class Builder {
 
@@ -355,7 +355,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
          * @param followingSwingBars bars following a swing point
          * @param allowedEqualBars   number of equal bars allowed in swing detection
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder withSwingConfiguration(int precedingSwingBars, int followingSwingBars, int allowedEqualBars) {
             if (precedingSwingBars < 1) {
@@ -379,7 +379,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
          * @param shortWindow short volume SMA window
          * @param longWindow  long volume SMA window
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder withVolumeWindows(int shortWindow, int longWindow) {
             if (shortWindow < 1) {
@@ -399,7 +399,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
          * @param breakoutTolerance breakout tolerance applied to range bounds
          * @param retestTolerance   retest tolerance applied to range bounds
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder withTolerances(Num breakoutTolerance, Num retestTolerance) {
             Num safeBreakoutTolerance = Objects.requireNonNull(breakoutTolerance, "breakoutTolerance");
@@ -421,7 +421,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
          * @param climaxThreshold ratio above which volume is treated as a climax
          * @param dryUpThreshold  ratio below which volume is treated as drying up
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder withVolumeThresholds(Num climaxThreshold, Num dryUpThreshold) {
             Num safeClimaxThreshold = Objects.requireNonNull(climaxThreshold, "climaxThreshold");
@@ -441,7 +441,7 @@ public final class WyckoffPhaseIndicator extends CachedIndicator<WyckoffPhase> {
          * Builds the configured indicator.
          *
          * @return WyckoffPhaseIndicator instance
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public WyckoffPhaseIndicator build() {
             return new WyckoffPhaseIndicator(series, precedingSwingBars, followingSwingBars, allowedEqualSwingBars,

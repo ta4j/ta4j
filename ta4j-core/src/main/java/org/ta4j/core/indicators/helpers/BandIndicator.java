@@ -26,14 +26,14 @@ import org.ta4j.core.num.Num;
  * VWAP, or other custom bands when the middle and width indicators are supplied
  * explicitly.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class BandIndicator extends CachedIndicator<Num> {
 
     /**
      * Band direction relative to the middle.
      *
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public enum BandType {
         UPPER, LOWER
@@ -51,7 +51,7 @@ public class BandIndicator extends CachedIndicator<Num> {
      * @param widthIndicator  the width indicator (for example a standard deviation)
      * @param multiplier      scaling factor applied to the width
      * @param bandType        whether to compute the upper or lower band
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public BandIndicator(Indicator<Num> middleIndicator, Indicator<Num> widthIndicator, Number multiplier,
             BandType bandType) {

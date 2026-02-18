@@ -20,7 +20,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * and the higher-level entry points {@link WyckoffCycleFacade} and
  * {@link WyckoffCycleAnalysis}.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public final class WyckoffVolumeProfile {
 
@@ -38,7 +38,7 @@ public final class WyckoffVolumeProfile {
      * @param longWindow      size of the slow moving average window
      * @param climaxThreshold ratio above which volume is treated as a climax
      * @param dryUpThreshold  ratio below which volume is treated as drying up
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public WyckoffVolumeProfile(BarSeries series, int shortWindow, int longWindow, Num climaxThreshold,
             Num dryUpThreshold) {
@@ -63,7 +63,7 @@ public final class WyckoffVolumeProfile {
      *
      * @param index the bar index
      * @return snapshot capturing the current relative volume conditions
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public VolumeSnapshot snapshot(int index) {
         final Num rawVolume = volumeIndicator.getValue(index);
@@ -88,7 +88,7 @@ public final class WyckoffVolumeProfile {
      * @param relativeVolume ratio of short to long averages
      * @param climax         whether the ratio indicates a volume climax
      * @param dryUp          whether the ratio indicates volume dry-up
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public record VolumeSnapshot(Num volume, Num relativeVolume, boolean climax, boolean dryUp) {
 

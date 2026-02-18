@@ -15,7 +15,7 @@ import org.ta4j.core.num.Num;
  * Estimates resistance levels by clustering bar closes within a configurable
  * tolerance.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class PriceClusterResistanceIndicator extends AbstractPriceClusterIndicator {
 
@@ -27,7 +27,7 @@ public class PriceClusterResistanceIndicator extends AbstractPriceClusterIndicat
      * tolerance.
      *
      * @param series the backing bar series
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public PriceClusterResistanceIndicator(BarSeries series) {
         this(new ClosePriceIndicator(series), new VolumeIndicator(series, 1), 0, series.numFactory().zero(),
@@ -41,7 +41,7 @@ public class PriceClusterResistanceIndicator extends AbstractPriceClusterIndicat
      * @param lookbackCount the number of bars to evaluate (non-positive for the
      *                      full history)
      * @param tolerance     the absolute tolerance for bucket membership
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public PriceClusterResistanceIndicator(BarSeries series, int lookbackCount, Num tolerance) {
         this(new ClosePriceIndicator(series), new VolumeIndicator(series, 1), lookbackCount, tolerance, tolerance);
@@ -52,7 +52,7 @@ public class PriceClusterResistanceIndicator extends AbstractPriceClusterIndicat
      * tolerance.
      *
      * @param priceIndicator the price indicator to cluster
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public PriceClusterResistanceIndicator(Indicator<Num> priceIndicator) {
         this(priceIndicator, defaultVolumeIndicator(priceIndicator), 0, zeroTolerance(priceIndicator),
@@ -66,7 +66,7 @@ public class PriceClusterResistanceIndicator extends AbstractPriceClusterIndicat
      * @param lookbackCount  the number of bars to evaluate (non-positive for the
      *                       full history)
      * @param tolerance      the absolute tolerance for bucket membership
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public PriceClusterResistanceIndicator(Indicator<Num> priceIndicator, int lookbackCount, Num tolerance) {
         this(priceIndicator, defaultVolumeIndicator(priceIndicator), lookbackCount, tolerance, tolerance);
@@ -80,7 +80,7 @@ public class PriceClusterResistanceIndicator extends AbstractPriceClusterIndicat
      * @param lookbackCount   the number of bars to evaluate (non-positive for the
      *                        full history)
      * @param tolerance       the absolute tolerance for bucket membership
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public PriceClusterResistanceIndicator(Indicator<Num> priceIndicator, Indicator<Num> weightIndicator,
             int lookbackCount, Num tolerance) {
@@ -98,7 +98,7 @@ public class PriceClusterResistanceIndicator extends AbstractPriceClusterIndicat
      *                        full history)
      * @param tolerance       the absolute tolerance for bucket membership
      * @param bandwidth       the bandwidth passed to the volume profile KDE
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public PriceClusterResistanceIndicator(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator,
             int lookbackCount, Num tolerance, Num bandwidth) {

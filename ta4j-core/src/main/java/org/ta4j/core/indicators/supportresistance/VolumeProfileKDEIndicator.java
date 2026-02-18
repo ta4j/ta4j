@@ -29,7 +29,7 @@ import org.ta4j.core.num.NumFactory;
  * "https://www.investopedia.com/terms/v/volume-profile.asp">Investopedia:
  * Volume Profile</a> for an overview of the trading concept.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
 
@@ -49,7 +49,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
      *
      * @param series    the backing bar series
      * @param bandwidth the kernel bandwidth (non-negative)
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public VolumeProfileKDEIndicator(BarSeries series, Num bandwidth) {
         this(new ClosePriceIndicator(series), new VolumeIndicator(series, 1), 0, bandwidth);
@@ -63,7 +63,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
      * @param lookbackLength  number of bars to consider (non-positive for the full
      *                        history)
      * @param bandwidth       kernel bandwidth (non-negative)
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public VolumeProfileKDEIndicator(Indicator<Num> priceIndicator, Indicator<Num> volumeIndicator, int lookbackLength,
             Num bandwidth) {
@@ -111,7 +111,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
      * @param index the bar index
      * @param price the price to evaluate
      * @return the estimated density or {@code NaN} when unavailable
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Num getDensityAtPrice(int index, Num price) {
         if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
@@ -137,7 +137,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
      *
      * @param index the bar index
      * @return the modal price or {@code NaN} when no samples are available
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Num getModePrice(int index) {
         if (index < getBarSeries().getBeginIndex() + getCountOfUnstableBars()) {
@@ -191,7 +191,7 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
      * configured look-back window.
      *
      * @return number of unstable bars
-     * @since 0.22.2
+     * @since 0.22.3
      */
     @Override
     public int getCountOfUnstableBars() {

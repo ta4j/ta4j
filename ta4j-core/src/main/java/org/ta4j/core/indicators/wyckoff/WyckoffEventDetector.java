@@ -24,7 +24,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * and the higher-level entry points {@link WyckoffCycleFacade} and
  * {@link WyckoffCycleAnalysis}.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public final class WyckoffEventDetector {
 
@@ -42,7 +42,7 @@ public final class WyckoffEventDetector {
      * @param series          the series under analysis
      * @param retestTolerance tolerance applied when checking for retests relative
      *                        to the trading range bounds
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public WyckoffEventDetector(BarSeries series, Num retestTolerance) {
         this.series = Objects.requireNonNull(series, "series");
@@ -65,7 +65,7 @@ public final class WyckoffEventDetector {
      * @param volume        volume snapshot for the index
      * @param previousPhase previously inferred phase (or {@code null})
      * @return set of events observed at the index
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public EnumSet<WyckoffEvent> detect(int index, WyckoffStructureTracker.StructureSnapshot structure,
             WyckoffVolumeProfile.VolumeSnapshot volume, WyckoffPhase previousPhase) {

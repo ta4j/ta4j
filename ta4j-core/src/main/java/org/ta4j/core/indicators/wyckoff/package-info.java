@@ -23,6 +23,6 @@
  * @see <a href=
  *      "https://www.investopedia.com/terms/w/wyckoff-method.asp">Investopedia:
  *      Wyckoff Method</a>
- * @since 0.22.2
+ * @since 0.22.3
  */
 package org.ta4j.core.indicators.wyckoff;

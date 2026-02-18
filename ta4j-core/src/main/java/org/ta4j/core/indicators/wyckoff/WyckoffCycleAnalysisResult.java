@@ -22,7 +22,7 @@ import org.ta4j.core.num.Num;
  *                         (typically {@code 0})
  * @param analyses         per-degree analysis snapshots (includes base)
  * @param notes            human-readable notes (skipped degrees, etc.)
- * @since 0.22.2
+ * @since 0.22.3
  */
 public record WyckoffCycleAnalysisResult(int baseDegreeOffset, List<DegreeAnalysis> analyses, List<String> notes) {
 
@@ -36,7 +36,7 @@ public record WyckoffCycleAnalysisResult(int baseDegreeOffset, List<DegreeAnalys
      *
      * @param degreeOffset degree offset to look up
      * @return matching analysis snapshot, if present
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Optional<DegreeAnalysis> analysisFor(final int degreeOffset) {
         for (final DegreeAnalysis analysis : analyses) {
@@ -49,7 +49,7 @@ public record WyckoffCycleAnalysisResult(int baseDegreeOffset, List<DegreeAnalys
 
     /**
      * @return the base-degree analysis snapshot, if present
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Optional<DegreeAnalysis> baseAnalysis() {
         return analysisFor(baseDegreeOffset);
@@ -63,7 +63,7 @@ public record WyckoffCycleAnalysisResult(int baseDegreeOffset, List<DegreeAnalys
      * @param barDuration   duration of bars used for analysis
      * @param configuration configuration applied for this degree
      * @param cycleSnapshot computed cycle snapshot
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public record DegreeAnalysis(int degreeOffset, int barCount, Duration barDuration,
             DegreeConfiguration configuration, CycleSnapshot cycleSnapshot) {
@@ -90,7 +90,7 @@ public record WyckoffCycleAnalysisResult(int baseDegreeOffset, List<DegreeAnalys
      * @param retestTolerance       retest tolerance applied to range bounds
      * @param climaxThreshold       ratio above which volume is treated as a climax
      * @param dryUpThreshold        ratio below which volume is treated as drying up
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public record DegreeConfiguration(int precedingSwingBars, int followingSwingBars, int allowedEqualSwingBars,
             int volumeShortWindow, int volumeLongWindow, Num breakoutTolerance, Num retestTolerance,
@@ -115,7 +115,7 @@ public record WyckoffCycleAnalysisResult(int baseDegreeOffset, List<DegreeAnalys
      * @param tradingRangeHigh    trading-range high at {@code endIndex}
      * @param lastTransitionIndex last phase transition index at {@code endIndex}
      * @param transitions         list of detected phase transitions
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public record CycleSnapshot(int startIndex, int endIndex, int unstableBars, WyckoffPhase finalPhase,
             Num tradingRangeLow, Num tradingRangeHigh, int lastTransitionIndex, List<PhaseTransition> transitions) {
@@ -135,7 +135,7 @@ public record WyckoffCycleAnalysisResult(int baseDegreeOffset, List<DegreeAnalys
      * @param phase            inferred phase at {@code index}
      * @param tradingRangeLow  trading-range low at {@code index}
      * @param tradingRangeHigh trading-range high at {@code index}
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public record PhaseTransition(int index, WyckoffPhase phase, Num tradingRangeLow, Num tradingRangeHigh) {
 

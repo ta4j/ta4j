@@ -74,7 +74,7 @@ public class VWAPBandIndicator extends CachedIndicator<Num> {
      * @param vwapIndicator the VWAP indicator
      * @param multiplier    number of standard deviations to offset
      * @param bandType      upper or lower band selection
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public VWAPBandIndicator(AbstractVWAPIndicator vwapIndicator, Number multiplier, BandType bandType) {
         this(vwapIndicator, new VWAPStandardDeviationIndicator(vwapIndicator), multiplier, bandType);

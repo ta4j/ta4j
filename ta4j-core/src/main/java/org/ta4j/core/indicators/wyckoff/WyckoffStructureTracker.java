@@ -26,7 +26,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * and the higher-level entry points {@link WyckoffCycleFacade} and
  * {@link WyckoffCycleAnalysis}.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public final class WyckoffStructureTracker {
 
@@ -49,7 +49,7 @@ public final class WyckoffStructureTracker {
      *                           swing
      * @param breakoutTolerance  tolerance applied when classifying breakouts
      *                           relative to the range bounds
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public WyckoffStructureTracker(BarSeries series, int precedingSwingBars, int followingSwingBars,
             int allowedEqualBars, Num breakoutTolerance) {
@@ -77,7 +77,7 @@ public final class WyckoffStructureTracker {
      *
      * @param index the bar index to inspect
      * @return immutable structure snapshot
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public StructureSnapshot snapshot(int index) {
         if (index < series.getBeginIndex() || index > series.getEndIndex()) {
@@ -153,7 +153,7 @@ public final class WyckoffStructureTracker {
      * @param inRange         whether the close resides within the trading range
      * @param brokeAboveRange {@code true} if the close broke above the range high
      * @param brokeBelowRange {@code true} if the close broke below the range low
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public record StructureSnapshot(Num rangeLow, Num rangeHigh, int rangeLowIndex, int rangeHighIndex, Num closePrice,
             boolean inRange, boolean brokeAboveRange, boolean brokeBelowRange) {

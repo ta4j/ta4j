@@ -30,7 +30,7 @@ import org.ta4j.core.num.Num;
  *
  * @see <a href="https://en.wikipedia.org/wiki/Standard_score">Wikipedia:
  *      Standard score</a>
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class ZScoreIndicator extends CachedIndicator<Num> {
 
@@ -43,7 +43,7 @@ public class ZScoreIndicator extends CachedIndicator<Num> {
      * @param deviationIndicator         deviation from the reference mean (for
      *                                   example {@code value - mean})
      * @param standardDeviationIndicator standard deviation of the observation set
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public ZScoreIndicator(Indicator<Num> deviationIndicator, Indicator<Num> standardDeviationIndicator) {
         super(requireSameSeries(deviationIndicator, standardDeviationIndicator));

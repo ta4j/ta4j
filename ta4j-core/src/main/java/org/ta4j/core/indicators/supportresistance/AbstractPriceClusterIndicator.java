@@ -26,7 +26,7 @@ import org.ta4j.core.num.NumFactory;
  * Concrete implementations provide the tie-breaking behaviour for equally
  * popular clusters.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num> {
 
@@ -45,7 +45,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      * @param lookbackCount  the number of bars to evaluate (non-positive for the
      *                       full history)
      * @param tolerance      the absolute tolerance for bucket membership
-     * @since 0.22.2
+     * @since 0.22.3
      */
     protected AbstractPriceClusterIndicator(Indicator<Num> priceIndicator, int lookbackCount, Num tolerance) {
         this(priceIndicator, null, lookbackCount, tolerance);
@@ -60,7 +60,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      * @param lookbackCount   the number of bars to evaluate (non-positive for the
      *                        full history)
      * @param tolerance       the absolute tolerance for bucket membership
-     * @since 0.22.2
+     * @since 0.22.3
      */
     protected AbstractPriceClusterIndicator(Indicator<Num> priceIndicator, Indicator<Num> weightIndicator,
             int lookbackCount, Num tolerance) {
@@ -77,7 +77,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      * @param lookbackCount         the number of bars to evaluate (non-positive for
      *                              the full history)
      * @param tolerance             the absolute tolerance for bucket membership
-     * @since 0.22.2
+     * @since 0.22.3
      */
     protected AbstractPriceClusterIndicator(Indicator<Num> priceIndicator, Indicator<Num> weightIndicator,
             Indicator<Num> weightIndicatorSource, int lookbackCount, Num tolerance) {
@@ -115,7 +115,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      * @param lookbackCount the number of bars to evaluate (non-positive for the
      *                      full history)
      * @param tolerance     the absolute tolerance for bucket membership
-     * @since 0.22.2
+     * @since 0.22.3
      */
     protected AbstractPriceClusterIndicator(BarSeries series, int lookbackCount, Num tolerance) {
         this(new ClosePriceIndicator(series), lookbackCount, tolerance);
@@ -155,7 +155,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      * configured look-back window.
      *
      * @return number of unstable bars
-     * @since 0.22.2
+     * @since 0.22.3
      */
     @Override
     public int getCountOfUnstableBars() {
@@ -171,7 +171,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      * @param index the bar index
      * @return the most recent cluster member index or {@code -1} when no cluster is
      *         available
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public int getClusterIndex(int index) {
         getValue(index);
@@ -260,7 +260,7 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      *
      * @return {@code true} to prefer lower prices, {@code false} to prefer higher
      *         prices
-     * @since 0.22.2
+     * @since 0.22.3
      */
     protected abstract boolean preferLowerPriceOnTie();
 

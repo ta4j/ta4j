@@ -28,7 +28,7 @@ import org.ta4j.core.num.NumFactory;
  * Num rangeHigh = facade.tradingRangeHigh(index);
  * </pre>
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public final class WyckoffCycleFacade {
 
@@ -69,7 +69,7 @@ public final class WyckoffCycleFacade {
      *
      * @param series bar series under analysis
      * @return configured facade
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static WyckoffCycleFacade of(BarSeries series) {
         return builder(series).build();
@@ -80,7 +80,7 @@ public final class WyckoffCycleFacade {
      *
      * @param series bar series under analysis
      * @return builder
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static Builder builder(BarSeries series) {
         return new Builder(series);
@@ -90,7 +90,7 @@ public final class WyckoffCycleFacade {
      * Returns the underlying bar series.
      *
      * @return bar series
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public BarSeries series() {
         return series;
@@ -100,7 +100,7 @@ public final class WyckoffCycleFacade {
      * Returns the phase indicator configured by this facade.
      *
      * @return Wyckoff phase indicator
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public WyckoffPhaseIndicator phase() {
         return phaseIndicator;
@@ -111,7 +111,7 @@ public final class WyckoffCycleFacade {
      *
      * @param index bar index
      * @return inferred phase
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public WyckoffPhase phase(int index) {
         return phase().getValue(index);
@@ -122,7 +122,7 @@ public final class WyckoffCycleFacade {
      *
      * @param index bar index
      * @return trading-range high or {@code NaN}
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Num tradingRangeHigh(int index) {
         return phase().getTradingRangeHigh(index);
@@ -133,7 +133,7 @@ public final class WyckoffCycleFacade {
      *
      * @param index bar index
      * @return trading-range low or {@code NaN}
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Num tradingRangeLow(int index) {
         return phase().getTradingRangeLow(index);
@@ -145,7 +145,7 @@ public final class WyckoffCycleFacade {
      * @param index bar index
      * @return index of the most recent phase transition, or {@code -1} if none were
      *         recorded
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public int lastPhaseTransitionIndex(int index) {
         return phase().getLastPhaseTransitionIndex(index);
@@ -155,7 +155,7 @@ public final class WyckoffCycleFacade {
      * Returns the number of unstable bars for the configured phase indicator.
      *
      * @return unstable bar count
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public int unstableBars() {
         return phase().getCountOfUnstableBars();
@@ -164,7 +164,7 @@ public final class WyckoffCycleFacade {
     /**
      * Fluent builder for {@link WyckoffCycleFacade}.
      *
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static final class Builder {
 
@@ -200,7 +200,7 @@ public final class WyckoffCycleFacade {
          * @param allowedEqualBars   number of equal bars allowed in swing detection
          *                           (must be {@code >= 0})
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder withSwingConfiguration(int precedingSwingBars, int followingSwingBars, int allowedEqualBars) {
             if (precedingSwingBars < 1) {
@@ -224,7 +224,7 @@ public final class WyckoffCycleFacade {
          * @param shortWindow short volume SMA window (must be {@code >= 1})
          * @param longWindow  long volume SMA window (must be {@code >= shortWindow})
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder withVolumeWindows(int shortWindow, int longWindow) {
             if (shortWindow < 1) {
@@ -244,7 +244,7 @@ public final class WyckoffCycleFacade {
          * @param breakoutTolerance breakout tolerance applied to range bounds
          * @param retestTolerance   retest tolerance applied to range bounds
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder withTolerances(Num breakoutTolerance, Num retestTolerance) {
             Num safeBreakoutTolerance = Objects.requireNonNull(breakoutTolerance, "breakoutTolerance");
@@ -266,7 +266,7 @@ public final class WyckoffCycleFacade {
          * @param climaxThreshold ratio above which volume is treated as a climax
          * @param dryUpThreshold  ratio below which volume is treated as drying up
          * @return builder
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public Builder withVolumeThresholds(Num climaxThreshold, Num dryUpThreshold) {
             Num safeClimaxThreshold = Objects.requireNonNull(climaxThreshold, "climaxThreshold");
@@ -286,7 +286,7 @@ public final class WyckoffCycleFacade {
          * Builds the configured facade.
          *
          * @return facade instance
-         * @since 0.22.2
+         * @since 0.22.3
          */
         public WyckoffCycleFacade build() {
             return new WyckoffCycleFacade(this);

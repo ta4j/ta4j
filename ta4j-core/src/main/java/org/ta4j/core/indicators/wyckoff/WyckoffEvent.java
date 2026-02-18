@@ -6,7 +6,7 @@ package org.ta4j.core.indicators.wyckoff;
 /**
  * Enumerates the structural and volume events referenced in Wyckoff analysis.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public enum WyckoffEvent {
 

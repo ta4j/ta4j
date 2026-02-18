@@ -15,7 +15,7 @@ import java.util.Objects;
  * @param latestEventIndex index of the latest structural event backing the
  *                         inference, or {@code -1} if none
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public record WyckoffPhase(WyckoffCycleType cycleType, WyckoffPhaseType phaseType, double confidence,
         int latestEventIndex) {
@@ -50,7 +50,7 @@ public record WyckoffPhase(WyckoffCycleType cycleType, WyckoffPhaseType phaseTyp
      *
      * @param confidenceValue the confidence to apply
      * @return a copy with the updated confidence
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public WyckoffPhase withConfidence(double confidenceValue) {
         return new WyckoffPhase(cycleType, phaseType, confidenceValue, latestEventIndex);
@@ -61,7 +61,7 @@ public record WyckoffPhase(WyckoffCycleType cycleType, WyckoffPhaseType phaseTyp
      *
      * @param eventIndex index of the latest structural event
      * @return a copy pointing to the supplied event index
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public WyckoffPhase withLatestEventIndex(int eventIndex) {
         return new WyckoffPhase(cycleType, phaseType, confidence, eventIndex);

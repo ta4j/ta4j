@@ -11,7 +11,7 @@ import org.ta4j.core.Indicator;
 /**
  * Utility methods for validating indicator inputs in the volume package.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 final class IndicatorSeriesUtils {
 
@@ -28,7 +28,7 @@ final class IndicatorSeriesUtils {
      * @param secondIndicator second indicator to validate
      * @return shared bar series instance
      * @throws IllegalArgumentException if the indicators use different series
-     * @since 0.22.2
+     * @since 0.22.3
      */
     static BarSeries requireSameSeries(Indicator<?> firstIndicator, Indicator<?> secondIndicator) {
         Objects.requireNonNull(firstIndicator, "firstIndicator must not be null");

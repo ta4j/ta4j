@@ -27,7 +27,7 @@ import org.ta4j.core.num.NumFactory;
  * down-to-up). The class groups these turning-point prices into configurable
  * buckets and returns the representative price of the most frequent bucket.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> {
 
@@ -42,7 +42,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      *
      * @param series     the backing bar series
      * @param bucketSize the absolute bucket size for grouping bounce prices
-     * @since 0.22.2
+     * @since 0.22.3
      */
     protected AbstractBounceCountIndicator(BarSeries series, Num bucketSize) {
         this(new ClosePriceIndicator(series), 0, bucketSize);
@@ -53,7 +53,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      *
      * @param priceIndicator the price indicator to analyse
      * @param bucketSize     the absolute bucket size for grouping bounce prices
-     * @since 0.22.2
+     * @since 0.22.3
      */
     protected AbstractBounceCountIndicator(Indicator<Num> priceIndicator, Num bucketSize) {
         this(priceIndicator, 0, bucketSize);
@@ -66,7 +66,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      * @param lookbackCount  the number of bars to evaluate (non-positive for the
      *                       full history)
      * @param bucketSize     the absolute bucket size for grouping bounce prices
-     * @since 0.22.2
+     * @since 0.22.3
      */
     protected AbstractBounceCountIndicator(Indicator<Num> priceIndicator, int lookbackCount, Num bucketSize) {
         super(priceIndicator);
@@ -116,7 +116,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      * configured look-back window.
      *
      * @return number of unstable bars
-     * @since 0.22.2
+     * @since 0.22.3
      */
     @Override
     public int getCountOfUnstableBars() {
@@ -131,7 +131,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      * @param index the bar index
      * @return the most recent bounce index or {@code -1} when no bounce is
      *         available
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public int getBounceIndex(int index) {
         getValue(index);
@@ -263,7 +263,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      *
      * @return {@code true} to prefer lower prices, {@code false} to prefer higher
      *         prices
-     * @since 0.22.2
+     * @since 0.22.3
      */
     protected abstract boolean preferLowerPriceOnTie();
 
@@ -277,7 +277,7 @@ public abstract class AbstractBounceCountIndicator extends CachedIndicator<Num> 
      *                          {@code -1} for down)
      * @return {@code true} when the flip counts as a bounce, {@code false}
      *         otherwise
-     * @since 0.22.2
+     * @since 0.22.3
      */
     protected abstract boolean shouldRecordBounce(int previousDirection, int newDirection);
 
