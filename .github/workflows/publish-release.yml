@@ -160,10 +160,29 @@ jobs:
             let prNumber = "";
 
             if (eventName === "workflow_dispatch") {
-              releaseVersion = core.getInput("releaseVersion");
-              releaseCommit = core.getInput("releaseCommit");
+              const dispatchInputs = context.payload.inputs || {};
+              const readDispatchInput = (key) => {
+                const candidateKeys = [key, key.toLowerCase()];
+                for (const candidate of candidateKeys) {
+                  const value = dispatchInputs[candidate];
+                  if (typeof value === "string" && value.trim()) {
+                    return value.trim();
+                  }
+                }
+
+                const fromCore = core.getInput(key, { required: false });
+                return typeof fromCore === "string" ? fromCore.trim() : "";
+              };
+
+              releaseVersion = readDispatchInput("releaseVersion");
+              releaseCommit = readDispatchInput("releaseCommit");
               if (!releaseVersion) {
-                throw new Error("releaseVersion is required for workflow_dispatch.");
+                const providedKeys = Object.keys(dispatchInputs);
+                throw new Error(
+                  `releaseVersion is required for workflow_dispatch. Provided inputs: ${
+                    providedKeys.length > 0 ? providedKeys.join(", ") : "(none)"
+                  }`
+                );
               }
               if (!releaseCommit) {
                 const defaultBranch = context.payload.repository?.default_branch || "";

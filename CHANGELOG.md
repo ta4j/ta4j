@@ -1,5 +1,11 @@
 ## Unreleased
 
+### Fixed
+- **Publish-release manual dispatch inputs**: `publish-release.yml` now reads `workflow_dispatch` metadata from event inputs so manual reruns correctly receive `releaseVersion`/`releaseCommit`.
+- **Prepare-release metadata guard**: Added a Maven Central metadata validation gate in `prepare-release.yml` (including dry-run mode) to fail early when required POM metadata (including developers) is missing.
+
+## 0.22.2 (2026-02-15)
+
 ### Breaking
 - **Trade model split**: `Trade` is now an interface; the previous concrete implementation is `SimulatedTrade` (backtesting/simulation), and live executions are represented by `LiveTrade`.
 - **Swing indicator interfaces**: Removed deprecated `RecentSwingHighIndicator` and `RecentSwingLowIndicator`; use `RecentSwingIndicator` and concrete implementations directly.
@@ -88,6 +94,8 @@
 - **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
+- **Release workflow hardening**: Improved `prepare-release.yml` token preflight with push-capability checks and an early `git push --dry-run` probe, and fixed `github-script` `core` redeclaration errors in both `prepare-release.yml` and `publish-release.yml`.
+- **Maven Central publication metadata**: Restored `<developers>` information in the parent POM so Central Portal validation accepts ta4j release bundles.
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
 - **Indicator unstable periods**: Standardized unstable-bar aggregation and warm-up guarding across indicators so pre-warmup bars are handled consistently, including lookback-driven trend/cross indicators.
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.

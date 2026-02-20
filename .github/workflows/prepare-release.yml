@@ -123,7 +123,7 @@ jobs:
                   headers["Content-Type"] = "application/json"
                   data = json.dumps(payload).encode("utf-8")
               req = urllib.request.Request(url, data=data, headers=headers)
-              with urllib.request.urlopen(req) as resp:
+              with urllib.request.urlopen(req, timeout=30) as resp:
                   body = json.load(resp)
                   response_headers = {k.lower(): v for k, v in resp.headers.items()}
               return body, response_headers
@@ -157,7 +157,7 @@ jobs:
           push_permission = bool(repo_data.get("permissions", {}).get("push"))
           scopes_header = repo_headers.get("x-oauth-scopes", "")
           scopes = [scope.strip() for scope in scopes_header.split(",") if scope.strip()]
-          has_repo_scope = any(scope == "repo" or scope.startswith("repo:") for scope in scopes)
+          has_repo_scope = "repo" in scopes
           has_public_repo_scope = "public_repo" in scopes
           scope_check = "unknown"
           scope_allows_push = True
@@ -410,6 +410,11 @@ jobs:
         if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           mvn -B versions:commit
+
+      - name: Validate Maven Central metadata
+        run: |
+          chmod +x scripts/validate-central-metadata.sh
+          scripts/validate-central-metadata.sh
 
       - name: Commit release version and notes
         if: steps.dry_run.outputs.dryRun != 'true'
