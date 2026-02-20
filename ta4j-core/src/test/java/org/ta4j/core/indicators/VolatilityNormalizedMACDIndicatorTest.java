@@ -202,6 +202,10 @@ public class VolatilityNormalizedMACDIndicatorTest extends AbstractIndicatorTest
 
     @Test
     public void classifiesMomentumStateUsingDefaultThresholds() {
+        assertThat(MACDVMomentumState.fromMacdV(numFactory.zero(), (MACDVMomentumProfile) null))
+                .isEqualTo(MACDVMomentumState.UNDEFINED);
+        assertThat(MACDVMomentumState.fromMacdV(numFactory.zero(), (NumFactory) null))
+                .isEqualTo(MACDVMomentumState.UNDEFINED);
         assertThat(MACDVMomentumState.fromMacdV(NaN.NaN, numFactory)).isEqualTo(MACDVMomentumState.UNDEFINED);
         assertThat(MACDVMomentumState.fromMacdV(numFactory.numOf(151), numFactory))
                 .isEqualTo(MACDVMomentumState.HIGH_RISK);
@@ -218,6 +222,16 @@ public class VolatilityNormalizedMACDIndicatorTest extends AbstractIndicatorTest
                 .isEqualTo(MACDVMomentumState.REBOUNDING_OR_REVERSING);
         assertThat(MACDVMomentumState.fromMacdV(numFactory.numOf(-151), numFactory))
                 .isEqualTo(MACDVMomentumState.LOW_RISK);
+    }
+
+    @Test
+    public void histogramModeComputeMatchesExpectedPolarity() {
+        Num macd = numFactory.numOf(12);
+        Num signal = numFactory.numOf(5);
+
+        assertThat(MACDHistogramMode.MACD_MINUS_SIGNAL.compute(macd, signal)).isEqualByComparingTo(numFactory.numOf(7));
+        assertThat(MACDHistogramMode.SIGNAL_MINUS_MACD.compute(macd, signal))
+                .isEqualByComparingTo(numFactory.numOf(-7));
     }
 
     @Test

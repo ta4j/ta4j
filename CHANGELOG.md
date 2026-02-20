@@ -40,6 +40,8 @@
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
 - **Trend confirmation oscillators**: Added `VortexIndicator` (+VI, -VI, and oscillator output) and `UltimateOscillatorIndicator` with configurable periods, warm-up guards, and regression tests against published reference values.
 - **Volatility-normalized MACD-V toolkit**: Added `VolatilityNormalizedMACDIndicator` with canonical ATR-normalized MACD-V calculation, configurable signal/histogram helpers, and `MACDVMomentumState` classification utilities.
+- **MACD-V momentum helper components**: Added `MACDHistogramMode`, `MACDLineValues`, `MACDVMomentumProfile`, `MACDVMomentumStateIndicator`, and `MomentumStateRule` to support configurable histogram polarity, bundled line snapshots, and momentum-state rule composition.
+- **MACD-V strategy demo**: Added `MACDVMomentumStateStrategy` to `ta4j-examples`, demonstrating custom signal-line injection and momentum-state filtered entry/exit rules.
 
 ### Changed
 - **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
@@ -80,6 +82,7 @@
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
 - **MACD-V signal-line extensibility**: `VolatilityNormalizedMACDIndicator` now supports custom signal-line indicator injection for both signal and histogram generation.
 - **MACDVIndicator API robustness and clarity**: Clarified that `MACDVIndicator` is a volume/ATR-weighted MACD variant (not ATR-normalized MACD-V), added default signal/histogram conveniences and constructor overloads, and hardened warm-up/NaN handling with lazy transient sub-indicator rebuild.
+- **MACD-V indicator ergonomics**: `MACDVIndicator` and `VolatilityNormalizedMACDIndicator` now expose configuration/sub-indicator getters, line bundle helpers, momentum-state indicator factories, and crossover/momentum rule helpers for strategy composition.
 
 ### Fixed
 - **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.

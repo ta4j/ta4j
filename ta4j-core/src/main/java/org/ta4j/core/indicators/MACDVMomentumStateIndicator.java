@@ -12,11 +12,16 @@ import org.ta4j.core.num.Num;
 /**
  * Classifies MACD-V values into momentum states.
  *
+ * <p>
+ * During the unstable window inherited from the source MACD-V indicator, this
+ * indicator returns {@link MACDVMomentumState#UNDEFINED}.
+ *
  * @since 0.22.2
  */
 public class MACDVMomentumStateIndicator extends CachedIndicator<MACDVMomentumState> {
 
     private final Indicator<Num> macdVIndicator;
+    private final MACDVMomentumProfile momentumProfile;
     private final BigDecimal positiveRangeThreshold;
     private final BigDecimal positiveRiskThreshold;
     private final BigDecimal negativeRangeThreshold;
@@ -59,12 +64,12 @@ public class MACDVMomentumStateIndicator extends CachedIndicator<MACDVMomentumSt
             Number positiveRiskThreshold, Number negativeRangeThreshold, Number negativeRiskThreshold) {
         super(Objects.requireNonNull(macdVIndicator, "macdVIndicator"));
         this.macdVIndicator = macdVIndicator;
-        MACDVMomentumProfile profile = new MACDVMomentumProfile(positiveRangeThreshold, positiveRiskThreshold,
+        this.momentumProfile = new MACDVMomentumProfile(positiveRangeThreshold, positiveRiskThreshold,
                 negativeRangeThreshold, negativeRiskThreshold);
-        this.positiveRangeThreshold = toDecimal(profile.positiveRangeThreshold());
-        this.positiveRiskThreshold = toDecimal(profile.positiveRiskThreshold());
-        this.negativeRangeThreshold = toDecimal(profile.negativeRangeThreshold());
-        this.negativeRiskThreshold = toDecimal(profile.negativeRiskThreshold());
+        this.positiveRangeThreshold = toDecimal(momentumProfile.positiveRangeThreshold());
+        this.positiveRiskThreshold = toDecimal(momentumProfile.positiveRiskThreshold());
+        this.negativeRangeThreshold = toDecimal(momentumProfile.negativeRangeThreshold());
+        this.negativeRiskThreshold = toDecimal(momentumProfile.negativeRiskThreshold());
     }
 
     private static BigDecimal toDecimal(Number threshold) {
@@ -76,7 +81,7 @@ public class MACDVMomentumStateIndicator extends CachedIndicator<MACDVMomentumSt
         if (index < getCountOfUnstableBars()) {
             return MACDVMomentumState.UNDEFINED;
         }
-        return getMomentumProfile().classify(macdVIndicator.getValue(index));
+        return momentumProfile.classify(macdVIndicator.getValue(index));
     }
 
     @Override
@@ -129,7 +134,6 @@ public class MACDVMomentumStateIndicator extends CachedIndicator<MACDVMomentumSt
      * @since 0.22.2
      */
     public MACDVMomentumProfile getMomentumProfile() {
-        return new MACDVMomentumProfile(positiveRangeThreshold, positiveRiskThreshold, negativeRangeThreshold,
-                negativeRiskThreshold);
+        return momentumProfile;
     }
 }

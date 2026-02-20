@@ -46,13 +46,34 @@ public enum MACDVMomentumState {
      * @param macdV      MACD-V value
      * @param numFactory numeric factory used to create threshold values
      * @return momentum state for the provided value
+     *
+     *         Returns {@link #UNDEFINED} when {@code macdV} or {@code numFactory}
+     *         is null/NaN.
      * @since 0.22.2
      */
     public static MACDVMomentumState fromMacdV(Num macdV, NumFactory numFactory) {
-        if (numFactory == null) {
+        if (Num.isNaNOrNull(macdV) || numFactory == null) {
             return UNDEFINED;
         }
-        return fromMacdV(macdV, MACDVMomentumProfile.defaultProfile());
+        MACDVMomentumProfile defaultProfile = MACDVMomentumProfile.defaultProfile();
+        Num positiveRangeThreshold = numFactory.numOf(defaultProfile.positiveRangeThreshold());
+        Num positiveRiskThreshold = numFactory.numOf(defaultProfile.positiveRiskThreshold());
+        Num negativeRangeThreshold = numFactory.numOf(defaultProfile.negativeRangeThreshold());
+        Num negativeRiskThreshold = numFactory.numOf(defaultProfile.negativeRiskThreshold());
+
+        if (macdV.isGreaterThan(positiveRiskThreshold)) {
+            return HIGH_RISK;
+        }
+        if (macdV.isGreaterThanOrEqual(positiveRangeThreshold)) {
+            return RALLYING_OR_RETRACING;
+        }
+        if (macdV.isGreaterThanOrEqual(negativeRangeThreshold)) {
+            return RANGING;
+        }
+        if (macdV.isGreaterThanOrEqual(negativeRiskThreshold)) {
+            return REBOUNDING_OR_REVERSING;
+        }
+        return LOW_RISK;
     }
 
     /**
