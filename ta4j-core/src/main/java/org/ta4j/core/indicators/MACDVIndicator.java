@@ -3,8 +3,12 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.Objects;
+import java.util.function.BiFunction;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.VWMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -12,6 +16,9 @@ import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.rules.CrossedDownIndicatorRule;
+import org.ta4j.core.rules.CrossedUpIndicatorRule;
+import org.ta4j.core.rules.MomentumStateRule;
 
 /**
  * Moving average convergence divergence volume (MACD-V) indicator.
@@ -44,6 +51,8 @@ public class MACDVIndicator extends CachedIndicator<Num> {
 
     private transient VWMAIndicator shortTermVwema;
     private transient VWMAIndicator longTermVwema;
+    private transient ATRIndicator shortAtrIndicator;
+    private transient ATRIndicator longAtrIndicator;
 
     /**
      * Constructor with:
@@ -127,7 +136,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
         super(priceIndicator);
         validateBarCounts(shortBarCount, longBarCount);
         validateSignalBarCount(signalBarCount);
-        this.priceIndicator = priceIndicator;
+        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
         this.shortBarCount = shortBarCount;
         this.longBarCount = longBarCount;
         this.defaultSignalBarCount = signalBarCount;
@@ -152,25 +161,88 @@ public class MACDVIndicator extends CachedIndicator<Num> {
         }
     }
 
+    private static void validateHistogramMode(MACDHistogramMode histogramMode) {
+        if (histogramMode == null) {
+            throw new IllegalArgumentException("Histogram mode must not be null");
+        }
+    }
+
+    private static void validateSignalLineFactory(
+            BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
+        if (signalLineFactory == null) {
+            throw new IllegalArgumentException("Signal line factory must not be null");
+        }
+    }
+
     /**
-     * @return the short-term volume-weighted EMA indicator.
+     * @return source price indicator
+     * @since 0.22.2
+     */
+    public Indicator<Num> getPriceIndicator() {
+        return priceIndicator;
+    }
+
+    /**
+     * @return short period configured for this indicator
+     * @since 0.22.2
+     */
+    public int getShortBarCount() {
+        return shortBarCount;
+    }
+
+    /**
+     * @return long period configured for this indicator
+     * @since 0.22.2
+     */
+    public int getLongBarCount() {
+        return longBarCount;
+    }
+
+    /**
+     * @return default signal period configured for this indicator
+     * @since 0.22.2
+     */
+    public int getDefaultSignalBarCount() {
+        return defaultSignalBarCount;
+    }
+
+    /**
+     * @return short-term volume-weighted EMA indicator
      * @since 0.19
      */
-    public Indicator<Num> getShortTermVolumeWeightedEma() {
+    public VWMAIndicator getShortTermVolumeWeightedEma() {
         return getShortTermVwema();
     }
 
     /**
-     * @return the long-term volume-weighted EMA indicator.
+     * @return long-term volume-weighted EMA indicator
      * @since 0.19
      */
-    public Indicator<Num> getLongTermVolumeWeightedEma() {
+    public VWMAIndicator getLongTermVolumeWeightedEma() {
         return getLongTermVwema();
     }
 
     /**
+     * @return short-term ATR indicator used by the weighting chain
+     * @since 0.22.2
+     */
+    public ATRIndicator getShortAtrIndicator() {
+        ensureSubIndicatorsInitialized();
+        return shortAtrIndicator;
+    }
+
+    /**
+     * @return long-term ATR indicator used by the weighting chain
+     * @since 0.22.2
+     */
+    public ATRIndicator getLongAtrIndicator() {
+        ensureSubIndicatorsInitialized();
+        return longAtrIndicator;
+    }
+
+    /**
      * @return signal line for this MACD-V indicator using the configured default
-     *         signal bar count
+     *         signal period
      * @since 0.22.2
      */
     public EMAIndicator getSignalLine() {
@@ -178,32 +250,121 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @param barCount of signal line
+     * @param signalBarCount signal period
      * @return signal line for this MACD-V indicator
      * @since 0.19
      */
-    public EMAIndicator getSignalLine(int barCount) {
-        validateSignalBarCount(barCount);
-        return new EMAIndicator(this, barCount);
+    public EMAIndicator getSignalLine(int signalBarCount) {
+        validateSignalBarCount(signalBarCount);
+        return new EMAIndicator(this, signalBarCount);
     }
 
     /**
-     * @return histogram of this MACD-V indicator using the configured default
-     *         signal bar count
+     * @param signalLineFactory signal-line factory
+     * @return signal line using default signal period and custom factory
+     * @since 0.22.2
+     */
+    public Indicator<Num> getSignalLine(BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
+        return getSignalLine(defaultSignalBarCount, signalLineFactory);
+    }
+
+    /**
+     * @param signalBarCount    signal period
+     * @param signalLineFactory signal-line factory
+     * @return signal line using custom factory
+     * @since 0.22.2
+     */
+    public Indicator<Num> getSignalLine(int signalBarCount,
+            BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
+        validateSignalBarCount(signalBarCount);
+        validateSignalLineFactory(signalLineFactory);
+        Indicator<Num> signalLine = signalLineFactory.apply(this, signalBarCount);
+        if (signalLine == null) {
+            throw new IllegalArgumentException("Signal line factory must not return null");
+        }
+        if (!Objects.equals(signalLine.getBarSeries(), getBarSeries())) {
+            throw new IllegalArgumentException("Signal line must share the same bar series");
+        }
+        return signalLine;
+    }
+
+    /**
+     * @return histogram using default signal period and default polarity
+     *         ({@link MACDHistogramMode#MACD_MINUS_SIGNAL})
      * @since 0.22.2
      */
     public NumericIndicator getHistogram() {
-        return getHistogram(defaultSignalBarCount);
+        return getHistogram(defaultSignalBarCount, MACDHistogramMode.MACD_MINUS_SIGNAL);
     }
 
     /**
-     * @param barCount of signal line
-     * @return histogram of this MACD-V indicator
+     * @param signalBarCount signal period
+     * @return histogram using default polarity
+     *         ({@link MACDHistogramMode#MACD_MINUS_SIGNAL})
      * @since 0.19
      */
-    public NumericIndicator getHistogram(int barCount) {
-        validateSignalBarCount(barCount);
-        return NumericIndicator.of(this).minus(getSignalLine(barCount));
+    public NumericIndicator getHistogram(int signalBarCount) {
+        return getHistogram(signalBarCount, MACDHistogramMode.MACD_MINUS_SIGNAL);
+    }
+
+    /**
+     * @param histogramMode histogram polarity mode
+     * @return histogram using default signal period and provided polarity
+     * @since 0.22.2
+     */
+    public NumericIndicator getHistogram(MACDHistogramMode histogramMode) {
+        return getHistogram(defaultSignalBarCount, histogramMode);
+    }
+
+    /**
+     * @param signalBarCount signal period
+     * @param histogramMode  histogram polarity mode
+     * @return histogram for the configured polarity
+     * @since 0.22.2
+     */
+    public NumericIndicator getHistogram(int signalBarCount, MACDHistogramMode histogramMode) {
+        validateSignalBarCount(signalBarCount);
+        validateHistogramMode(histogramMode);
+        Indicator<Num> signalLine = getSignalLine(signalBarCount);
+        return histogramMode == MACDHistogramMode.SIGNAL_MINUS_MACD ? NumericIndicator.of(signalLine).minus(this)
+                : NumericIndicator.of(this).minus(signalLine);
+    }
+
+    /**
+     * @param signalLineFactory signal-line factory
+     * @return histogram using default signal period, default polarity, and custom
+     *         signal-line factory
+     * @since 0.22.2
+     */
+    public NumericIndicator getHistogram(BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
+        return getHistogram(defaultSignalBarCount, signalLineFactory, MACDHistogramMode.MACD_MINUS_SIGNAL);
+    }
+
+    /**
+     * @param signalBarCount    signal period
+     * @param signalLineFactory signal-line factory
+     * @return histogram using default polarity and custom signal-line factory
+     * @since 0.22.2
+     */
+    public NumericIndicator getHistogram(int signalBarCount,
+            BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
+        return getHistogram(signalBarCount, signalLineFactory, MACDHistogramMode.MACD_MINUS_SIGNAL);
+    }
+
+    /**
+     * @param signalBarCount    signal period
+     * @param signalLineFactory signal-line factory
+     * @param histogramMode     histogram polarity mode
+     * @return histogram using custom signal-line factory and polarity
+     * @since 0.22.2
+     */
+    public NumericIndicator getHistogram(int signalBarCount,
+            BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory, MACDHistogramMode histogramMode) {
+        validateSignalBarCount(signalBarCount);
+        validateHistogramMode(histogramMode);
+        Indicator<Num> signalLine = getSignalLine(signalBarCount, signalLineFactory);
+        return histogramMode == MACDHistogramMode.SIGNAL_MINUS_MACD ? NumericIndicator.of(signalLine).minus(this)
+                : NumericIndicator.of(this).minus(signalLine);
     }
 
     /**
@@ -212,6 +373,185 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      */
     public MACDVIndicator getMacd() {
         return this;
+    }
+
+    /**
+     * Bundles MACD, signal, and histogram values for a bar index using default
+     * signal period and default histogram polarity.
+     *
+     * @param index bar index
+     * @return line values bundle
+     * @since 0.22.2
+     */
+    public MACDLineValues getLineValues(int index) {
+        return getLineValues(index, defaultSignalBarCount, MACDHistogramMode.MACD_MINUS_SIGNAL);
+    }
+
+    /**
+     * Bundles MACD, signal, and histogram values for a bar index using default
+     * histogram polarity.
+     *
+     * @param index          bar index
+     * @param signalBarCount signal period
+     * @return line values bundle
+     * @since 0.22.2
+     */
+    public MACDLineValues getLineValues(int index, int signalBarCount) {
+        return getLineValues(index, signalBarCount, MACDHistogramMode.MACD_MINUS_SIGNAL);
+    }
+
+    /**
+     * Bundles MACD, signal, and histogram values for a bar index.
+     *
+     * @param index          bar index
+     * @param signalBarCount signal period
+     * @param histogramMode  histogram polarity
+     * @return line values bundle
+     * @since 0.22.2
+     */
+    public MACDLineValues getLineValues(int index, int signalBarCount, MACDHistogramMode histogramMode) {
+        Num macd = getValue(index);
+        Num signal = getSignalLine(signalBarCount).getValue(index);
+        Num histogram = getHistogram(signalBarCount, histogramMode).getValue(index);
+        return new MACDLineValues(macd, signal, histogram);
+    }
+
+    /**
+     * @param index             bar index
+     * @param signalBarCount    signal period
+     * @param signalLineFactory signal-line factory
+     * @param histogramMode     histogram polarity
+     * @return line values bundle
+     * @since 0.22.2
+     */
+    public MACDLineValues getLineValues(int index, int signalBarCount,
+            BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory, MACDHistogramMode histogramMode) {
+        Num macd = getValue(index);
+        Num signal = getSignalLine(signalBarCount, signalLineFactory).getValue(index);
+        Num histogram = getHistogram(signalBarCount, signalLineFactory, histogramMode).getValue(index);
+        return new MACDLineValues(macd, signal, histogram);
+    }
+
+    /**
+     * Classifies the current value using the default momentum profile.
+     *
+     * @param index bar index
+     * @return momentum state
+     * @since 0.22.2
+     */
+    public MACDVMomentumState getMomentumState(int index) {
+        return getMomentumState(index, MACDVMomentumProfile.defaultProfile());
+    }
+
+    /**
+     * Classifies the current value using a custom momentum profile.
+     *
+     * @param index           bar index
+     * @param momentumProfile momentum profile
+     * @return momentum state
+     * @since 0.22.2
+     */
+    public MACDVMomentumState getMomentumState(int index, MACDVMomentumProfile momentumProfile) {
+        if (index < getCountOfUnstableBars()) {
+            return MACDVMomentumState.UNDEFINED;
+        }
+        return MACDVMomentumState.fromMacdV(getValue(index), momentumProfile);
+    }
+
+    /**
+     * @return momentum-state indicator using default profile
+     * @since 0.22.2
+     */
+    public MACDVMomentumStateIndicator getMomentumStateIndicator() {
+        return new MACDVMomentumStateIndicator(this);
+    }
+
+    /**
+     * @param momentumProfile momentum profile
+     * @return momentum-state indicator using custom profile
+     * @since 0.22.2
+     */
+    public MACDVMomentumStateIndicator getMomentumStateIndicator(MACDVMomentumProfile momentumProfile) {
+        return new MACDVMomentumStateIndicator(this, momentumProfile);
+    }
+
+    /**
+     * @return rule that is satisfied when MACD crosses above the default signal
+     *         line
+     * @since 0.22.2
+     */
+    public Rule crossedUpSignal() {
+        return crossedUpSignal(defaultSignalBarCount);
+    }
+
+    /**
+     * @param signalBarCount signal period
+     * @return rule that is satisfied when MACD crosses above the signal line
+     * @since 0.22.2
+     */
+    public Rule crossedUpSignal(int signalBarCount) {
+        return new CrossedUpIndicatorRule(this, getSignalLine(signalBarCount));
+    }
+
+    /**
+     * @param signalBarCount    signal period
+     * @param signalLineFactory signal-line factory
+     * @return rule that is satisfied when MACD crosses above a custom signal line
+     * @since 0.22.2
+     */
+    public Rule crossedUpSignal(int signalBarCount,
+            BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
+        return new CrossedUpIndicatorRule(this, getSignalLine(signalBarCount, signalLineFactory));
+    }
+
+    /**
+     * @return rule that is satisfied when MACD crosses below the default signal
+     *         line
+     * @since 0.22.2
+     */
+    public Rule crossedDownSignal() {
+        return crossedDownSignal(defaultSignalBarCount);
+    }
+
+    /**
+     * @param signalBarCount signal period
+     * @return rule that is satisfied when MACD crosses below the signal line
+     * @since 0.22.2
+     */
+    public Rule crossedDownSignal(int signalBarCount) {
+        return new CrossedDownIndicatorRule(this, getSignalLine(signalBarCount));
+    }
+
+    /**
+     * @param signalBarCount    signal period
+     * @param signalLineFactory signal-line factory
+     * @return rule that is satisfied when MACD crosses below a custom signal line
+     * @since 0.22.2
+     */
+    public Rule crossedDownSignal(int signalBarCount,
+            BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
+        return new CrossedDownIndicatorRule(this, getSignalLine(signalBarCount, signalLineFactory));
+    }
+
+    /**
+     * @param expectedState expected momentum state
+     * @return rule that is satisfied when the default-profile momentum state
+     *         matches the expected state
+     * @since 0.22.2
+     */
+    public Rule inMomentumState(MACDVMomentumState expectedState) {
+        return inMomentumState(MACDVMomentumProfile.defaultProfile(), expectedState);
+    }
+
+    /**
+     * @param momentumProfile momentum profile
+     * @param expectedState   expected momentum state
+     * @return rule that is satisfied when the momentum state matches the expected
+     *         state
+     * @since 0.22.2
+     */
+    public Rule inMomentumState(MACDVMomentumProfile momentumProfile, MACDVMomentumState expectedState) {
+        return new MomentumStateRule(getMomentumStateIndicator(momentumProfile), expectedState);
     }
 
     @Override
@@ -247,25 +587,25 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     }
 
     private void ensureSubIndicatorsInitialized() {
-        if (shortTermVwema != null && longTermVwema != null) {
+        if (shortTermVwema != null && longTermVwema != null && shortAtrIndicator != null && longAtrIndicator != null) {
             return;
         }
-        Indicator<Num> shortVolumeWeights = buildVolumeWeights(shortBarCount);
+
+        BarSeries series = priceIndicator.getBarSeries();
+        VolumeIndicator volumeIndicator = new VolumeIndicator(series);
+
+        shortAtrIndicator = new ATRIndicator(series, shortBarCount);
+        Indicator<Num> shortVolumeWeights = NumericIndicator.of(volumeIndicator).dividedBy(shortAtrIndicator);
         shortTermVwema = new VWMAIndicator(priceIndicator, shortVolumeWeights, shortBarCount, EMAIndicator::new);
 
         if (shortBarCount == longBarCount) {
+            longAtrIndicator = shortAtrIndicator;
             longTermVwema = new VWMAIndicator(priceIndicator, shortVolumeWeights, longBarCount, EMAIndicator::new);
             return;
         }
-        Indicator<Num> longVolumeWeights = buildVolumeWeights(longBarCount);
+
+        longAtrIndicator = new ATRIndicator(series, longBarCount);
+        Indicator<Num> longVolumeWeights = NumericIndicator.of(volumeIndicator).dividedBy(longAtrIndicator);
         longTermVwema = new VWMAIndicator(priceIndicator, longVolumeWeights, longBarCount, EMAIndicator::new);
     }
-
-    private Indicator<Num> buildVolumeWeights(int atrBarCount) {
-        BarSeries series = priceIndicator.getBarSeries();
-        VolumeIndicator volumeIndicator = new VolumeIndicator(series);
-        ATRIndicator atrIndicator = new ATRIndicator(series, atrBarCount);
-        return NumericIndicator.of(volumeIndicator).dividedBy(atrIndicator);
-    }
-
 }

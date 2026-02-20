@@ -250,3 +250,14 @@ This produces a production‑grade, canonical MACD‑V implementation suitable f
 - [x] Add lazy transient rebuild and NaN/unstable protections in `MACDVIndicator`.
 - [x] Add/refresh `MACDVIndicatorTest` coverage (compatibility, signal/histogram, unstable bars, serialization).
 - [x] Run full build script and verify zero failures/errors.
+
+## QoL Enhancements Checklist
+
+- [x] Expose indicator configuration and composed sub-indicators via public getters.
+- [x] Support custom signal-line injection for both `MACDVIndicator` and `VolatilityNormalizedMACDIndicator`.
+- [x] Add configurable histogram polarity via `MACDHistogramMode`.
+- [x] Add bundled line snapshots via `MACDLineValues`.
+- [x] Add configurable momentum thresholds via `MACDVMomentumProfile`.
+- [x] Add momentum-state indicator wrapper via `MACDVMomentumStateIndicator`.
+- [x] Add helper crossover and momentum-state rules (including `MomentumStateRule`).
+- [x] Add runnable strategy example and README entry documenting the new workflow.

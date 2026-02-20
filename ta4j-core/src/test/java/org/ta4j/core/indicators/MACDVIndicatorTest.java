@@ -8,19 +8,24 @@ import static org.junit.Assert.assertThrows;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.function.BiFunction;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.averages.VWMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
+import org.ta4j.core.rules.CrossedDownIndicatorRule;
+import org.ta4j.core.rules.CrossedUpIndicatorRule;
 
 public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
 
@@ -76,6 +81,91 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
             } else {
                 assertThat(defaultHist).isEqualByComparingTo(explicitHist);
             }
+        }
+    }
+
+    @Test
+    public void exposesConfiguredParametersAndComposedIndicators() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        MACDVIndicator indicator = new MACDVIndicator(closePrice, 5, 10, 4);
+
+        assertThat(indicator.getPriceIndicator()).isSameAs(closePrice);
+        assertThat(indicator.getShortBarCount()).isEqualTo(5);
+        assertThat(indicator.getLongBarCount()).isEqualTo(10);
+        assertThat(indicator.getDefaultSignalBarCount()).isEqualTo(4);
+        assertThat(indicator.getShortAtrIndicator().getBarCount()).isEqualTo(5);
+        assertThat(indicator.getLongAtrIndicator().getBarCount()).isEqualTo(10);
+        assertThat(indicator.getShortTermVolumeWeightedEma()).isNotNull();
+        assertThat(indicator.getLongTermVolumeWeightedEma()).isNotNull();
+    }
+
+    @Test
+    public void supportsCustomSignalFactoryHistogramModesAndLineValues() {
+        MACDVIndicator indicator = new MACDVIndicator(series, 5, 10, 4);
+        BiFunction<Indicator<Num>, Integer, Indicator<Num>> customSignalFactory = SMAIndicator::new;
+
+        Indicator<Num> customSignal = indicator.getSignalLine(4, customSignalFactory);
+        assertThat(customSignal).isInstanceOf(SMAIndicator.class);
+
+        int stableIndex = Math.max(indicator.getCountOfUnstableBars(), customSignal.getCountOfUnstableBars());
+        Num defaultHistogram = indicator.getHistogram(4, MACDHistogramMode.MACD_MINUS_SIGNAL).getValue(stableIndex);
+        Num invertedHistogram = indicator.getHistogram(4, MACDHistogramMode.SIGNAL_MINUS_MACD).getValue(stableIndex);
+        assertThat(invertedHistogram).isEqualByComparingTo(defaultHistogram.multipliedBy(numFactory.minusOne()));
+
+        Num customHistogram = indicator.getHistogram(4, customSignalFactory, MACDHistogramMode.MACD_MINUS_SIGNAL)
+                .getValue(stableIndex);
+        Num expectedCustomHistogram = indicator.getValue(stableIndex).minus(customSignal.getValue(stableIndex));
+        assertThat(customHistogram).isEqualByComparingTo(expectedCustomHistogram);
+
+        MACDLineValues lineValues = indicator.getLineValues(stableIndex, 4, customSignalFactory,
+                MACDHistogramMode.SIGNAL_MINUS_MACD);
+        Num expectedSignal = customSignal.getValue(stableIndex);
+        Num expectedHistogram = expectedSignal.minus(indicator.getValue(stableIndex));
+        assertThat(lineValues.macd()).isEqualByComparingTo(indicator.getValue(stableIndex));
+        assertThat(lineValues.signal()).isEqualByComparingTo(expectedSignal);
+        assertThat(lineValues.histogram()).isEqualByComparingTo(expectedHistogram);
+    }
+
+    @Test
+    public void rejectsInvalidFactoriesAndHistogramModes() {
+        MACDVIndicator indicator = new MACDVIndicator(series, 5, 10, 4);
+        BarSeries otherSeries = buildSeries(20);
+
+        assertThrows(IllegalArgumentException.class, () -> indicator.getSignalLine(4, null));
+        assertThrows(IllegalArgumentException.class, () -> indicator.getSignalLine(4, (src, bars) -> null));
+        assertThrows(IllegalArgumentException.class, () -> indicator.getSignalLine(4,
+                (src, bars) -> new EMAIndicator(new ClosePriceIndicator(otherSeries), bars)));
+        assertThrows(IllegalArgumentException.class, () -> indicator.getHistogram(4, (MACDHistogramMode) null));
+        assertThrows(IllegalArgumentException.class, () -> indicator.getHistogram(4, SMAIndicator::new, null));
+    }
+
+    @Test
+    public void momentumAndRuleHelpersMatchExplicitComposition() {
+        MACDVIndicator indicator = new MACDVIndicator(series, 5, 10, 4);
+        MACDVMomentumProfile profile = new MACDVMomentumProfile(20, 40, -20, -40);
+        int unstableBars = indicator.getCountOfUnstableBars();
+
+        assertThat(indicator.getMomentumState(unstableBars - 1, profile)).isEqualTo(MACDVMomentumState.UNDEFINED);
+        Num macdValue = indicator.getValue(unstableBars);
+        MACDVMomentumState expectedState = MACDVMomentumState.fromMacdV(macdValue, profile);
+        assertThat(indicator.getMomentumState(unstableBars, profile)).isEqualTo(expectedState);
+        assertThat(indicator.getMomentumStateIndicator(profile).getValue(unstableBars)).isEqualTo(expectedState);
+
+        Rule crossedUpRule = indicator.crossedUpSignal();
+        Rule explicitCrossedUpRule = new CrossedUpIndicatorRule(indicator, indicator.getSignalLine());
+        Rule crossedDownRule = indicator.crossedDownSignal();
+        Rule explicitCrossedDownRule = new CrossedDownIndicatorRule(indicator, indicator.getSignalLine());
+        Rule customCrossedUpRule = indicator.crossedUpSignal(4, SMAIndicator::new);
+        Rule explicitCustomCrossedUpRule = new CrossedUpIndicatorRule(indicator,
+                indicator.getSignalLine(4, SMAIndicator::new));
+        Rule inStateRule = indicator.inMomentumState(profile, MACDVMomentumState.RANGING);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertThat(crossedUpRule.isSatisfied(i)).isEqualTo(explicitCrossedUpRule.isSatisfied(i));
+            assertThat(crossedDownRule.isSatisfied(i)).isEqualTo(explicitCrossedDownRule.isSatisfied(i));
+            assertThat(customCrossedUpRule.isSatisfied(i)).isEqualTo(explicitCustomCrossedUpRule.isSatisfied(i));
+            assertThat(inStateRule.isSatisfied(i))
+                    .isEqualTo(indicator.getMomentumState(i, profile) == MACDVMomentumState.RANGING);
         }
     }
 

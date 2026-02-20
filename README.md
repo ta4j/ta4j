@@ -733,6 +733,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[ADXStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/ADXStrategy.java)** - Trend-following strategy using ADX and DI indicators
 - **[CCICorrectionStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/CCICorrectionStrategy.java)** - Commodity Channel Index-based correction strategy
 - **[MovingMomentumStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/MovingMomentumStrategy.java)** - Momentum-based strategy with moving averages
+- **[MACDVMomentumStateStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/MACDVMomentumStateStrategy.java)** - Volatility-normalized MACD-V strategy with custom signal injection and momentum-state filters
 - **[GlobalExtremaStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/GlobalExtremaStrategy.java)** - Strategy using global price extrema for entries/exits
 - **[NetMomentumStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/NetMomentumStrategy.java)** - Net momentum calculation with multiple indicators
 
@@ -856,6 +857,5 @@ What *is* certain is this: whoever they are, and whatever motivates them, they d
 <a href = https://github.com/ta4j/ta4j/graphs/contributors>
   <img src = https://contrib.rocks/image?repo=ta4j/ta4j>
 </a>
-
 
 

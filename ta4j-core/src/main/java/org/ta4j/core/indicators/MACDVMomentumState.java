@@ -49,27 +49,24 @@ public enum MACDVMomentumState {
      * @since 0.22.2
      */
     public static MACDVMomentumState fromMacdV(Num macdV, NumFactory numFactory) {
-        if (Num.isNaNOrNull(macdV) || numFactory == null) {
+        if (numFactory == null) {
             return UNDEFINED;
         }
+        return fromMacdV(macdV, MACDVMomentumProfile.defaultProfile());
+    }
 
-        Num positiveRangeThreshold = numFactory.numOf(50);
-        Num positiveRiskThreshold = numFactory.numOf(150);
-        Num negativeRangeThreshold = numFactory.numOf(-50);
-        Num negativeRiskThreshold = numFactory.numOf(-150);
-
-        if (macdV.isGreaterThan(positiveRiskThreshold)) {
-            return HIGH_RISK;
+    /**
+     * Classifies a MACD-V value using a custom momentum profile.
+     *
+     * @param macdV           MACD-V value
+     * @param momentumProfile momentum thresholds profile
+     * @return momentum state for the provided value
+     * @since 0.22.2
+     */
+    public static MACDVMomentumState fromMacdV(Num macdV, MACDVMomentumProfile momentumProfile) {
+        if (momentumProfile == null) {
+            return UNDEFINED;
         }
-        if (macdV.isGreaterThanOrEqual(positiveRangeThreshold)) {
-            return RALLYING_OR_RETRACING;
-        }
-        if (macdV.isGreaterThanOrEqual(negativeRangeThreshold)) {
-            return RANGING;
-        }
-        if (macdV.isGreaterThanOrEqual(negativeRiskThreshold)) {
-            return REBOUNDING_OR_REVERSING;
-        }
-        return LOW_RISK;
+        return momentumProfile.classify(macdV);
     }
 }
