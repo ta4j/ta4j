@@ -3,6 +3,9 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.Objects;
+import java.util.function.BiFunction;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
@@ -202,6 +205,46 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
+     * Returns a signal line created by the provided factory using this indicator
+     * and the configured default signal period.
+     *
+     * @param signalLineFactory factory that creates a signal-line indicator from
+     *                          {@code (this, signalBarCount)}
+     * @return custom signal line indicator
+     * @since 0.22.2
+     */
+    public Indicator<Num> getSignalLine(BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
+        return getSignalLine(defaultSignalBarCount, signalLineFactory);
+    }
+
+    /**
+     * Returns a signal line created by the provided factory.
+     *
+     * @param signalBarCount    signal line period
+     * @param signalLineFactory factory that creates a signal-line indicator from
+     *                          {@code (this, signalBarCount)}
+     * @return custom signal line indicator
+     * @since 0.22.2
+     */
+    public Indicator<Num> getSignalLine(int signalBarCount,
+            BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
+        if (signalBarCount < 1) {
+            throw new IllegalArgumentException("Signal period must be greater than 0");
+        }
+        if (signalLineFactory == null) {
+            throw new IllegalArgumentException("Signal line factory must not be null");
+        }
+        Indicator<Num> signalLine = signalLineFactory.apply(this, signalBarCount);
+        if (signalLine == null) {
+            throw new IllegalArgumentException("Signal line factory must not return null");
+        }
+        if (!Objects.equals(signalLine.getBarSeries(), getBarSeries())) {
+            throw new IllegalArgumentException("Signal line must share the same bar series");
+        }
+        return signalLine;
+    }
+
+    /**
      * @return histogram using the configured default signal period
      * @since 0.22.2
      */
@@ -222,11 +265,51 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
+     * Returns a histogram built with a custom signal-line factory and the
+     * configured default signal period.
+     *
+     * @param signalLineFactory factory that creates a signal-line indicator
+     * @return histogram as {@code macdV - signal}
+     * @since 0.22.2
+     */
+    public NumericIndicator getHistogram(BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
+        return getHistogram(defaultSignalBarCount, signalLineFactory);
+    }
+
+    /**
+     * Returns a histogram built with a custom signal-line factory.
+     *
+     * @param signalBarCount    signal line period
+     * @param signalLineFactory factory that creates a signal-line indicator
+     * @return histogram as {@code macdV - signal}
+     * @since 0.22.2
+     */
+    public NumericIndicator getHistogram(int signalBarCount,
+            BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
+        if (signalBarCount < 1) {
+            throw new IllegalArgumentException("Signal period must be greater than 0");
+        }
+        return NumericIndicator.of(this).minus(getSignalLine(signalBarCount, signalLineFactory));
+    }
+
+    /**
      * @return this MACD-V line
      * @since 0.22.2
      */
     public VolatilityNormalizedMACDIndicator getMacdV() {
         return this;
+    }
+
+    /**
+     * Classifies the current MACD-V value into a momentum state using the default
+     * MACD-V lifecycle thresholds.
+     *
+     * @param index the bar index
+     * @return momentum state for {@code getValue(index)}
+     * @since 0.22.2
+     */
+    public MACDVMomentumState getMomentumState(int index) {
+        return MACDVMomentumState.fromMacdV(getValue(index), getBarSeries().numFactory());
     }
 
     @Override

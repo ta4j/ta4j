@@ -8,6 +8,7 @@ import static org.junit.Assert.assertThrows;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.function.BiFunction;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -15,7 +16,9 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -126,6 +129,61 @@ public class VolatilityNormalizedMACDIndicatorTest extends AbstractIndicatorTest
                 assertThat(histogram).isEqualByComparingTo(expectedHistogram);
             }
         }
+    }
+
+    @Test
+    public void supportsInjectingCustomSignalLineIndicatorFactory() {
+        VolatilityNormalizedMACDIndicator indicator = new VolatilityNormalizedMACDIndicator(series, 12, 26, 9);
+        BiFunction<Indicator<Num>, Integer, Indicator<Num>> customSignalFactory = SMAIndicator::new;
+
+        Indicator<Num> customSignalLine = indicator.getSignalLine(9, customSignalFactory);
+        Indicator<Num> customHistogram = indicator.getHistogram(9, customSignalFactory);
+
+        assertThat(customSignalLine).isInstanceOf(SMAIndicator.class);
+
+        int firstStableIndex = Math.max(indicator.getCountOfUnstableBars(), customSignalLine.getCountOfUnstableBars());
+        Num expected = indicator.getValue(firstStableIndex).minus(customSignalLine.getValue(firstStableIndex));
+        assertThat(customHistogram.getValue(firstStableIndex)).isEqualByComparingTo(expected);
+    }
+
+    @Test
+    public void rejectsInvalidCustomSignalLineFactories() {
+        VolatilityNormalizedMACDIndicator indicator = new VolatilityNormalizedMACDIndicator(series, 12, 26, 9);
+        BarSeries otherSeries = buildOscillatingSeries(40);
+
+        assertThrows(IllegalArgumentException.class, () -> indicator.getSignalLine(9, null));
+        assertThrows(IllegalArgumentException.class, () -> indicator.getSignalLine(9, (src, bars) -> null));
+        assertThrows(IllegalArgumentException.class, () -> indicator.getSignalLine(9,
+                (src, bars) -> new EMAIndicator(new ClosePriceIndicator(otherSeries), bars)));
+    }
+
+    @Test
+    public void classifiesMomentumStateUsingDefaultThresholds() {
+        assertThat(MACDVMomentumState.fromMacdV(NaN.NaN, numFactory)).isEqualTo(MACDVMomentumState.UNDEFINED);
+        assertThat(MACDVMomentumState.fromMacdV(numFactory.numOf(151), numFactory))
+                .isEqualTo(MACDVMomentumState.HIGH_RISK);
+        assertThat(MACDVMomentumState.fromMacdV(numFactory.numOf(150), numFactory))
+                .isEqualTo(MACDVMomentumState.RALLYING_OR_RETRACING);
+        assertThat(MACDVMomentumState.fromMacdV(numFactory.numOf(50), numFactory))
+                .isEqualTo(MACDVMomentumState.RALLYING_OR_RETRACING);
+        assertThat(MACDVMomentumState.fromMacdV(numFactory.zero(), numFactory)).isEqualTo(MACDVMomentumState.RANGING);
+        assertThat(MACDVMomentumState.fromMacdV(numFactory.numOf(-50), numFactory))
+                .isEqualTo(MACDVMomentumState.RANGING);
+        assertThat(MACDVMomentumState.fromMacdV(numFactory.numOf(-51), numFactory))
+                .isEqualTo(MACDVMomentumState.REBOUNDING_OR_REVERSING);
+        assertThat(MACDVMomentumState.fromMacdV(numFactory.numOf(-150), numFactory))
+                .isEqualTo(MACDVMomentumState.REBOUNDING_OR_REVERSING);
+        assertThat(MACDVMomentumState.fromMacdV(numFactory.numOf(-151), numFactory))
+                .isEqualTo(MACDVMomentumState.LOW_RISK);
+    }
+
+    @Test
+    public void getMomentumStateReturnsUndefinedDuringUnstableWindow() {
+        VolatilityNormalizedMACDIndicator indicator = new VolatilityNormalizedMACDIndicator(series, 12, 26, 9);
+        int unstableBars = indicator.getCountOfUnstableBars();
+
+        assertThat(indicator.getMomentumState(unstableBars - 1)).isEqualTo(MACDVMomentumState.UNDEFINED);
+        assertThat(indicator.getMomentumState(unstableBars)).isNotEqualTo(MACDVMomentumState.UNDEFINED);
     }
 
     @Test
