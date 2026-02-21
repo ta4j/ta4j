@@ -29,31 +29,11 @@ to_host_path() {
     printf '%s' "$posix_path"
 }
 
-python_supports_py3() {
-    local -a candidate=("$@")
-    if "${candidate[@]}" -c 'import sys; sys.exit(0 if sys.version_info >= (3, 6) else 1)' >/dev/null 2>&1; then
-        return 0
-    fi
-    return 1
-}
-
-PYTHON_CMD=()
-if command -v python3 >/dev/null 2>&1 && python_supports_py3 python3; then
-    PYTHON_CMD=(python3)
-elif command -v python >/dev/null 2>&1 && python_supports_py3 python; then
-    PYTHON_CMD=(python)
-elif command -v py >/dev/null 2>&1 && python_supports_py3 py -3; then
-    PYTHON_CMD=(py -3)
-else
-    echo "Error: Python 3.6 or newer is required to run this script." >&2
-    exit 1
-fi
-
 TMP_FILES=()
 cleanup() {
     local file
     for file in "${TMP_FILES[@]:-}"; do
-        if [[ -n "${file:-}" && -f "$file" ]]; then
+        if [[ -n "${file:-}" && -e "$file" ]]; then
             rm -f "$file"
         fi
     done
@@ -103,15 +83,19 @@ cleanup_old_logs "$LOG_DIR"
 
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 LOG_FILE="$LOG_DIR/full-build-${TIMESTAMP}.log"
-LOG_FILE_FOR_PYTHON="$(to_host_path "$LOG_FILE")"
 LOG_FILE_FOR_DISPLAY="$LOG_FILE"
 if [[ "$RUNNING_IN_MINGW" == "true" ]]; then
-    LOG_FILE_FOR_DISPLAY="$LOG_FILE_FOR_PYTHON"
+    LOG_FILE_FOR_DISPLAY="$(to_host_path "$LOG_FILE")"
 fi
 
 BUILD_TIMEOUT_SECONDS="${QUIET_BUILD_TIMEOUT_SECONDS:-180}"
 if ! [[ "$BUILD_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]]; then
     BUILD_TIMEOUT_SECONDS=180
+fi
+
+HEARTBEAT_INTERVAL_SECONDS="${QUIET_BUILD_HEARTBEAT_SECONDS:-60}"
+if ! [[ "$HEARTBEAT_INTERVAL_SECONDS" =~ ^[0-9]+$ ]] || ((HEARTBEAT_INTERVAL_SECONDS < 1)); then
+    HEARTBEAT_INTERVAL_SECONDS=60
 fi
 
 MAVEN_FLAGS=(
@@ -135,7 +119,18 @@ if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
 fi
 
 GOALS=(clean license:format formatter:format test install)
-MVN_CMD=(mvn "${MAVEN_FLAGS[@]}")
+MAVEN_CMD_PREFIX=(mvn)
+if [[ -x "./mvnw" ]]; then
+    MAVEN_CMD_PREFIX=("./mvnw")
+    echo "Using Maven Wrapper: ./mvnw"
+elif [[ -f "./mvnw" ]]; then
+    MAVEN_CMD_PREFIX=(sh "./mvnw")
+    echo "Using Maven Wrapper via sh: ./mvnw"
+else
+    echo "Using system Maven from PATH: mvn"
+fi
+
+MVN_CMD=("${MAVEN_CMD_PREFIX[@]}" "${MAVEN_FLAGS[@]}")
 if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
     MVN_CMD+=("${EXTRA_MAVEN_ARGS[@]}")
 fi
@@ -145,195 +140,230 @@ echo "Running ta4j full build quietly..."
 echo "Full log: $LOG_FILE_FOR_DISPLAY"
 echo
 
-FILTER_SCRIPT="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-filter.XXXXXX")"
-TMP_FILES+=("$FILTER_SCRIPT")
-cat >"$FILTER_SCRIPT" <<'PY'
-import os
-import sys
-import threading
-import time
-from pathlib import Path
+format_elapsed() {
+    local total_seconds="$1"
+    local hours=$((total_seconds / 3600))
+    local minutes=$(((total_seconds % 3600) / 60))
+    local seconds=$((total_seconds % 60))
+    if ((hours > 0)); then
+        printf '%dh%02dm%02ds' "$hours" "$minutes" "$seconds"
+    elif ((minutes > 0)); then
+        printf '%dm%02ds' "$minutes" "$seconds"
+    else
+        printf '%ds' "$seconds"
+    fi
+}
 
+should_print_line() {
+    local text="$1"
+    case "$text" in
+        *"[ERROR]"*|*"[WARNING]"*|*"BUILD SUCCESS"*|*"BUILD FAILURE"*|*"Failed to execute goal"*|*"Reactor Summary"*)
+            return 0
+            ;;
+        *)
+            return 1
+            ;;
+    esac
+}
 
-def format_elapsed(seconds):
-    seconds = int(seconds)
-    minutes, secs = divmod(seconds, 60)
-    hours, minutes = divmod(minutes, 60)
-    if hours:
-        return f"{hours}h{minutes:02d}m{secs:02d}s"
-    if minutes:
-        return f"{minutes}m{secs:02d}s"
-    return f"{secs}s"
+trim_whitespace() {
+    local value="$1"
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    printf '%s' "$value"
+}
 
+run_with_timeout() {
+    local timeout_marker_file="$1"
+    local timeout_seconds="$2"
+    shift 2
+    : >"$timeout_marker_file"
 
-def main(log_path):
-    keywords = (
-        "[ERROR]",
-        "[WARNING]",
-        "BUILD SUCCESS",
-        "BUILD FAILURE",
-        "Failed to execute goal",
-        "Reactor Summary",
-    )
-    try:
-        heartbeat_interval = int(os.environ.get("QUIET_BUILD_HEARTBEAT_SECONDS", "60"))
-    except ValueError:
-        heartbeat_interval = 60
-    if heartbeat_interval < 1:
-        heartbeat_interval = 60
+    "$@" &
+    local command_pid=$!
 
-    printed_once = set()
-    suppressed_counts = {}
-    start_time = time.monotonic()
-    last_visible = {"value": start_time}
-    lock = threading.Lock()
-    stop_event = threading.Event()
+    (
+        local elapsed=0
+        while ((elapsed < timeout_seconds)); do
+            sleep 1
+            if ! kill -0 "$command_pid" >/dev/null 2>&1; then
+                exit 0
+            fi
+            elapsed=$((elapsed + 1))
+        done
+        if kill -0 "$command_pid" >/dev/null 2>&1; then
+            echo "timeout" >"$timeout_marker_file"
+            kill -TERM "$command_pid" >/dev/null 2>&1 || true
+            sleep 5
+            if kill -0 "$command_pid" >/dev/null 2>&1; then
+                kill -KILL "$command_pid" >/dev/null 2>&1 || true
+            fi
+        fi
+    ) &
+    local timeout_watcher_pid=$!
 
-    def update_last_visible():
-        with lock:
-            last_visible["value"] = time.monotonic()
+    set +e
+    wait "$command_pid"
+    local command_status=$?
+    set -e
 
-    def heartbeat_worker():
-        while not stop_event.wait(heartbeat_interval):
-            now = time.monotonic()
-            with lock:
-                last_time = last_visible["value"]
-            if now - last_time >= heartbeat_interval:
-                message = (
-                    f"[quiet-build] still running... "
-                    f"({format_elapsed(now - start_time)})\n"
-                )
-                try:
-                    sys.stdout.write(message)
-                except UnicodeEncodeError:
-                    # Write bytes directly, replacing problematic characters with '?' for Windows console compatibility
-                    stdout_encoding = sys.stdout.encoding or "utf-8"
-                    safe_bytes = message.encode(stdout_encoding, errors="replace")
-                    sys.stdout.buffer.write(safe_bytes)
-                sys.stdout.flush()
-                update_last_visible()
+    wait "$timeout_watcher_pid" >/dev/null 2>&1 || true
 
-    heartbeat_thread = threading.Thread(target=heartbeat_worker, daemon=True)
-    heartbeat_thread.start()
-
-    with Path(log_path).open("w", encoding="utf-8") as log_file:
-        for raw_line in sys.stdin.buffer:
-            text = raw_line.decode("utf-8", errors="replace")
-            log_file.write(text)
-            if any(keyword in text for keyword in keywords):
-                if "Tests run:" in text and "Time elapsed" in text:
-                    continue
-                if text in printed_once:
-                    suppressed_counts[text] = suppressed_counts.get(text, 0) + 1
-                else:
-                    printed_once.add(text)
-                    # Handle encoding errors when writing to stdout (Windows cp1252 can't encode all Unicode)
-                    try:
-                        sys.stdout.write(text)
-                    except UnicodeEncodeError:
-                        # Write bytes directly, replacing problematic characters with '?' for Windows console compatibility
-                        stdout_encoding = sys.stdout.encoding or "utf-8"
-                        safe_bytes = text.encode(stdout_encoding, errors="replace")
-                        sys.stdout.buffer.write(safe_bytes)
-                    sys.stdout.flush()
-                    update_last_visible()
-        log_file.flush()
-
-    stop_event.set()
-    heartbeat_thread.join()
-
-    if suppressed_counts:
-        sys.stdout.write("\n[quiet-build] Suppressed duplicate warnings:\n")
-        for message, count in suppressed_counts.items():
-            try:
-                sys.stdout.write(f"[quiet-build]   ({count} more) {message.strip()}\n")
-            except UnicodeEncodeError:
-                # Write bytes directly, replacing problematic characters with '?' for Windows console compatibility
-                stdout_encoding = sys.stdout.encoding or "utf-8"
-                output = f"[quiet-build]   ({count} more) {message.strip()}\n"
-                safe_bytes = output.encode(stdout_encoding, errors="replace")
-                sys.stdout.buffer.write(safe_bytes)
-        sys.stdout.flush()
-
-
-if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        sys.stderr.write("Usage: quiet_build_filter.py <log_path>\n")
-        sys.exit(1)
-    main(sys.argv[1])
-PY
-
-TIMEOUT_WRAPPER=()
-if ((BUILD_TIMEOUT_SECONDS > 0)); then
-    TIMEOUT_SCRIPT="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-timeout.XXXXXX")"
-    TMP_FILES+=("$TIMEOUT_SCRIPT")
-    cat >"$TIMEOUT_SCRIPT" <<'PY'
-import sys
-import subprocess
-import threading
-import time
-
-
-def forward_output(stream):
-    for chunk in iter(stream.readline, b""):
-        sys.stdout.buffer.write(chunk)
-        sys.stdout.buffer.flush()
-
-
-def main():
-    if len(sys.argv) < 3:
-        sys.stderr.write("Usage: timeout_runner.py <timeout_seconds> <cmd...>\n")
-        return 2
-    try:
-        timeout_seconds = int(sys.argv[1])
-    except ValueError:
-        timeout_seconds = 0
-    command = sys.argv[2:]
-    if timeout_seconds < 0:
-        timeout_seconds = 0
-
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    if proc.stdout is None:
-        return 1
-    reader = threading.Thread(target=forward_output, args=(proc.stdout,), daemon=True)
-    reader.start()
-    try:
-        if timeout_seconds:
-            proc.wait(timeout=timeout_seconds)
-        else:
-            proc.wait()
-    except subprocess.TimeoutExpired:
-        proc.terminate()
-        try:
-            proc.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-            proc.wait()
-        sys.stdout.write(
-            f"[quiet-build] Timeout after {timeout_seconds}s. Maven was terminated.\n"
-        )
-        sys.stdout.flush()
+    if [[ -s "$timeout_marker_file" ]]; then
         return 124
-    return proc.returncode
+    fi
+    return "$command_status"
+}
 
+update_last_visible() {
+    date +%s >"$LAST_VISIBLE_FILE"
+}
 
-if __name__ == "__main__":
-    sys.exit(main())
-PY
-    TIMEOUT_WRAPPER=("${PYTHON_CMD[@]}" -u "$TIMEOUT_SCRIPT" "$BUILD_TIMEOUT_SECONDS" "${MVN_CMD[@]}")
-else
-    TIMEOUT_WRAPPER=("${MVN_CMD[@]}")
+heartbeat_worker() {
+    local build_pid="$1"
+    local start_time="$2"
+    local heartbeat_interval="$3"
+    while kill -0 "$build_pid" >/dev/null 2>&1; do
+        sleep "$heartbeat_interval"
+        if ! kill -0 "$build_pid" >/dev/null 2>&1; then
+            break
+        fi
+        local now
+        now="$(date +%s)"
+        local last_visible="$start_time"
+        if [[ -f "$LAST_VISIBLE_FILE" ]]; then
+            last_visible="$(cat "$LAST_VISIBLE_FILE" 2>/dev/null || echo "$start_time")"
+        fi
+        if ! [[ "$last_visible" =~ ^[0-9]+$ ]]; then
+            last_visible="$start_time"
+        fi
+        if ((now - last_visible >= heartbeat_interval)); then
+            echo "[quiet-build] still running... ($(format_elapsed $((now - start_time))))"
+            update_last_visible
+        fi
+    done
+}
+
+run_maven_build() {
+    if ((BUILD_TIMEOUT_SECONDS > 0)); then
+        run_with_timeout "$TIMEOUT_MARKER_FILE" "$BUILD_TIMEOUT_SECONDS" "${MVN_CMD[@]}"
+        return $?
+    fi
+    "${MVN_CMD[@]}"
+}
+
+emit_suppressed_duplicates() {
+    if [[ ! -s "$SUPPRESSED_DUPLICATES_FILE" ]]; then
+        return 0
+    fi
+    echo
+    echo "[quiet-build] Suppressed duplicate warnings:"
+    local line
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if grep -Fqx -- "$line" "$SUPPRESSED_REPORTED_FILE"; then
+            continue
+        fi
+        local count
+        count=$(grep -Fxc -- "$line" "$SUPPRESSED_DUPLICATES_FILE" || true)
+        echo "[quiet-build]   (${count} more) $(trim_whitespace "$line")"
+        printf '%s\n' "$line" >>"$SUPPRESSED_REPORTED_FILE"
+    done <"$SUPPRESSED_DUPLICATES_FILE"
+}
+
+extract_test_summary() {
+    local total_run=0
+    local total_failures=0
+    local total_errors=0
+    local total_skipped=0
+    local has_aggregated="false"
+    local fallback_summary=""
+    local line
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        if [[ "$line" =~ ^\[(INFO|WARNING)\][[:space:]]+Tests\ run:\ ([0-9]+),\ Failures:\ ([0-9]+),\ Errors:\ ([0-9]+),\ Skipped:\ ([0-9]+)[[:space:]]*$ ]]; then
+            has_aggregated="true"
+            total_run=$((total_run + ${BASH_REMATCH[2]}))
+            total_failures=$((total_failures + ${BASH_REMATCH[3]}))
+            total_errors=$((total_errors + ${BASH_REMATCH[4]}))
+            total_skipped=$((total_skipped + ${BASH_REMATCH[5]}))
+        elif [[ "$line" =~ Tests\ run:\ ([0-9]+),\ Failures:\ ([0-9]+),\ Errors:\ ([0-9]+),\ Skipped:\ ([0-9]+) ]]; then
+            fallback_summary="Tests run: ${BASH_REMATCH[1]}, Failures: ${BASH_REMATCH[2]}, Errors: ${BASH_REMATCH[3]}, Skipped: ${BASH_REMATCH[4]}"
+        fi
+    done <"$LOG_FILE"
+
+    if [[ "$has_aggregated" == "true" ]]; then
+        printf 'Tests run: %d, Failures: %d, Errors: %d, Skipped: %d' "$total_run" "$total_failures" "$total_errors" "$total_skipped"
+        return 0
+    fi
+    if [[ -n "$fallback_summary" ]]; then
+        printf '%s' "$fallback_summary"
+    fi
+}
+
+LAST_VISIBLE_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-last-visible.XXXXXX")"
+TMP_FILES+=("$LAST_VISIBLE_FILE")
+BUILD_START_TIME="$(date +%s)"
+echo "$BUILD_START_TIME" >"$LAST_VISIBLE_FILE"
+
+SEEN_VISIBLE_LINES_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-seen-visible.XXXXXX")"
+TMP_FILES+=("$SEEN_VISIBLE_LINES_FILE")
+
+SUPPRESSED_DUPLICATES_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-suppressed-duplicates.XXXXXX")"
+TMP_FILES+=("$SUPPRESSED_DUPLICATES_FILE")
+
+SUPPRESSED_REPORTED_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-suppressed-reported.XXXXXX")"
+TMP_FILES+=("$SUPPRESSED_REPORTED_FILE")
+
+OUTPUT_FIFO="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-output.XXXXXX")"
+TMP_FILES+=("$OUTPUT_FIFO")
+rm -f "$OUTPUT_FIFO"
+mkfifo "$OUTPUT_FIFO"
+
+TIMEOUT_MARKER_FILE=""
+if ((BUILD_TIMEOUT_SECONDS > 0)); then
+    TIMEOUT_MARKER_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-timeout-marker.XXXXXX")"
+    TMP_FILES+=("$TIMEOUT_MARKER_FILE")
 fi
+
+: >"$LOG_FILE"
+: >"$SEEN_VISIBLE_LINES_FILE"
+: >"$SUPPRESSED_DUPLICATES_FILE"
+: >"$SUPPRESSED_REPORTED_FILE"
 
 set +o pipefail
 set +e
-"${TIMEOUT_WRAPPER[@]}" 2>&1 | "${PYTHON_CMD[@]}" -u "$FILTER_SCRIPT" "$LOG_FILE_FOR_PYTHON"
-statuses=("${PIPESTATUS[@]}")
+run_maven_build >"$OUTPUT_FIFO" 2>&1 &
+build_runner_pid=$!
+
+heartbeat_worker "$build_runner_pid" "$BUILD_START_TIME" "$HEARTBEAT_INTERVAL_SECONDS" &
+heartbeat_pid=$!
+
+while IFS= read -r line || [[ -n "$line" ]]; do
+    printf '%s\n' "$line" >>"$LOG_FILE"
+    if ! should_print_line "$line"; then
+        continue
+    fi
+    if [[ "$line" == *"Tests run:"* && "$line" == *"Time elapsed"* ]]; then
+        continue
+    fi
+    if grep -Fqx -- "$line" "$SEEN_VISIBLE_LINES_FILE"; then
+        printf '%s\n' "$line" >>"$SUPPRESSED_DUPLICATES_FILE"
+    else
+        printf '%s\n' "$line" >>"$SEEN_VISIBLE_LINES_FILE"
+        printf '%s\n' "$line"
+        update_last_visible
+    fi
+done <"$OUTPUT_FIFO"
+filter_status=$?
+
+wait "$build_runner_pid"
+mvn_status=$?
 set -e
 set -o pipefail
 
-mvn_status=${statuses[0]:-0}
-filter_status=${statuses[1]:-0}
+kill "$heartbeat_pid" >/dev/null 2>&1 || true
+wait "$heartbeat_pid" >/dev/null 2>&1 || true
+
+emit_suppressed_duplicates
 
 if ((mvn_status != 0 || filter_status != 0)); then
     echo
@@ -345,49 +375,7 @@ if ((mvn_status != 0 || filter_status != 0)); then
     exit 1
 fi
 
-summary=$("${PYTHON_CMD[@]}" - "$LOG_FILE_FOR_PYTHON" <<'PY'
-import re
-import sys
-
-log_path = sys.argv[1]
-aggregated_pattern = re.compile(
-    r"^\[(?:INFO|WARNING)\]\s+Tests run: (\d+), Failures: (\d+), Errors: (\d+), Skipped: (\d+)\s*$"
-)
-fallback_pattern = re.compile(
-    r"Tests run: (\d+), Failures: (\d+), Errors: (\d+), Skipped: (\d+)"
-)
-
-totals = [0, 0, 0, 0]
-had_aggregated = False
-fallback_line = None
-
-with open(log_path, "r", errors="ignore") as handle:
-    for line in handle:
-        match = aggregated_pattern.match(line)
-        if match:
-            had_aggregated = True
-            for index in range(4):
-                totals[index] += int(match.group(index + 1))
-        else:
-            fallback_match = fallback_pattern.search(line)
-            if fallback_match:
-                fallback_line = fallback_match.groups()
-
-if had_aggregated:
-    print(
-        f"Tests run: {totals[0]}, Failures: {totals[1]}, "
-        f"Errors: {totals[2]}, Skipped: {totals[3]}"
-    )
-elif fallback_line:
-    tests_run, failures, errors, skipped = fallback_line
-    print(
-        f"Tests run: {tests_run}, Failures: {failures}, "
-        f"Errors: {errors}, Skipped: {skipped}"
-    )
-PY
-)
-
-summary="${summary//$'\n'/}"
+summary="$(extract_test_summary)"
 
 echo
 if [[ -n "$summary" ]]; then
