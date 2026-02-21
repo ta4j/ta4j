@@ -1,5 +1,24 @@
 ## Unreleased
 
+### Added
+- **VWAP and Wyckoff market-structure toolkit**: Added rolling/anchored VWAP analytics (deviation, standard deviation, z-score, bands), support/resistance clustering (bounce-count, price-cluster, KDE volume profile), and Wyckoff cycle analysis APIs with a runnable demo.
+
+### Changed
+- **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
+  `./mvnw` when present (falling back to `mvn`), so wrapper adoption does not require a second build command.
+- **Full build script portability**: `scripts/run-full-build-quiet.sh` no longer requires Python; timeout handling,
+  quiet-output filtering, heartbeat logging, and test-summary aggregation now run in Bash.
+
+### Fixed
+- **Release workflow dispatch and metadata checks**: `publish-release.yml` now reads `workflow_dispatch` inputs correctly for manual reruns, and `prepare-release.yml` now fails early when required Maven Central POM metadata is missing.
+- **README snippet synchronization line endings**: `ReadmeContentManager.updateReadmeSnippets(...)` now preserves the
+  target README's dominant line separator (LF/CRLF), with regression tests covering both newline modes.
+- **Indicator serialization and stability**: Aligned VWAP, price-cluster, and Wyckoff indicators on descriptor ordering, NaN handling, and unstable-bar conventions.
+- **Wyckoff confidence invariants**: `WyckoffPhase` now rejects null cycle/phase values and enforces finite confidence in the `[0.0, 1.0]` range.
+- **KDE Gaussian constants**: `VolumeProfileKDEIndicator` now reuses precomputed Gaussian constants and parses PI with higher precision for `Num` factories.
+
+## 0.22.2 (2026-02-15)
+
 ### Breaking
 - **Trade model split**: `Trade` is now an interface; the previous concrete implementation is `SimulatedTrade` (backtesting/simulation), and live executions are represented by `LiveTrade`.
 - **Swing indicator interfaces**: Removed deprecated `RecentSwingHighIndicator` and `RecentSwingLowIndicator`; use `RecentSwingIndicator` and concrete implementations directly.
@@ -73,6 +92,8 @@
 - **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
+- **Release workflow hardening**: Improved `prepare-release.yml` token preflight with push-capability checks and an early `git push --dry-run` probe, and fixed `github-script` `core` redeclaration errors in both `prepare-release.yml` and `publish-release.yml`.
+- **Maven Central publication metadata**: Restored `<developers>` information in the parent POM so Central Portal validation accepts ta4j release bundles.
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
 - **Indicator unstable periods**: Standardized unstable-bar aggregation and warm-up guarding across indicators so pre-warmup bars are handled consistently, including lookback-driven trend/cross indicators.
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
