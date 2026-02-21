@@ -10,6 +10,9 @@
 - **Stop-rule behavior and efficiency**: Trailing stop-gain variants now arm only after the configured favorable move, volatility stop-loss variants trigger on exact threshold touches, gain-side helpers are used consistently, and trailing volatility/fixed-amount rules now reuse stabilized max-lookback indicators to reduce hot-path allocations.
 - **Publish-release manual dispatch inputs**: `publish-release.yml` now reads `workflow_dispatch` metadata from event inputs so manual reruns correctly receive `releaseVersion`/`releaseCommit`.
 - **Prepare-release metadata guard**: Added a Maven Central metadata validation gate in `prepare-release.yml` (including dry-run mode) to fail early when required POM metadata (including developers) is missing.
+- **VWAP and Wyckoff market-structure toolkit**: Added rolling/anchored VWAP analytics (deviation, standard deviation, z-score, bands), support/resistance clustering (bounce-count, price-cluster, KDE volume profile), and Wyckoff cycle analysis APIs with a runnable demo.
+- **Release workflow dispatch and metadata checks**: `publish-release.yml` now reads `workflow_dispatch` inputs correctly for manual reruns, and `prepare-release.yml` now fails early when required Maven Central POM metadata is missing.
+- **Indicator serialization and stability**: Aligned VWAP, price-cluster, and Wyckoff indicators on descriptor ordering, NaN handling, and unstable-bar conventions.
 
 ## 0.22.2 (2026-02-15)
 
