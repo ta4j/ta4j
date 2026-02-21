@@ -8,4 +8,4 @@
 - Ensure new strategy fixtures include `@since` annotations in the corresponding production code and assert validation rules where practical.
 
 ## Cross-cutting repository guidance
-- Remember the root [`AGENTS.md`](../../../../../../../../AGENTS.md) requirements for updating the changelog and using the prescribed formatting commands when changes affect these strategies.
+- Remember the root [`AGENTS.md`](../../../../../../../../AGENTS.md) PR-gated changelog requirement (update changelog only when the user indicates PR readiness or asks for PR creation) and use the prescribed formatting commands when changes affect these strategies.

@@ -3,14 +3,20 @@
  */
 package org.ta4j.core.indicators.volume;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.ta4j.core.TestUtils.assertNumEquals;
+
+import java.util.List;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -18,10 +24,16 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
 
     protected BarSeries data;
 
+    /**
+     * Creates a new VWAPIndicatorTest instance.
+     */
     public VWAPIndicatorTest(NumFactory numFactory) {
         super(numFactory);
     }
 
+    /**
+     * Initializes the test fixtures used by these scenarios.
+     */
     @Before
     public void setUp() {
         data = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
@@ -47,6 +59,9 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         data.barBuilder().openPrice(43.93).closePrice(44.47).highPrice(44.58).lowPrice(43.93).volume(1).add();
     }
 
+    /**
+     * Implements vwap.
+     */
     @Test
     public void vwap() {
         var vwap = new VWAPIndicator(data, 5);
@@ -65,5 +80,54 @@ public class VWAPIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num
         assertNumEquals(44.5033, vwap.getValue(16));
         assertNumEquals(44.0840, vwap.getValue(17));
         assertNumEquals(43.8247, vwap.getValue(18));
+
+        assertThat(vwap.getWindowStartIndex(18)).isEqualTo(14);
     }
+
+    /**
+     * Verifies support for custom price and volume indicators.
+     */
+    @Test
+    public void supportsCustomPriceAndVolumeIndicators() {
+        var closePrice = new ClosePriceIndicator(data);
+        var volume = new VolumeIndicator(data);
+        var vwap = new VWAPIndicator(closePrice, volume, 3);
+
+        assertNumEquals(45.1133, vwap.getValue(2));
+        assertNumEquals(45.1433, vwap.getValue(3));
+    }
+
+    /**
+     * Verifies that it returns nan when encountering invalid data.
+     */
+    @Test
+    public void returnsNanWhenEncounteringInvalidData() {
+        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().closePrice(10).highPrice(10).lowPrice(10).volume(1).add();
+        series.barBuilder().closePrice(11).highPrice(11).lowPrice(11).volume(-1).add();
+        series.barBuilder().closePrice(12).highPrice(12).lowPrice(12).volume(1).add();
+
+        var vwap = new VWAPIndicator(series, 2);
+
+        assertThat(vwap.getValue(1).isNaN()).isTrue();
+        assertThat(vwap.getValue(2).isNaN()).isTrue();
+    }
+
+    /**
+     * Verifies that unstable bars include input warmup and window length.
+     */
+    @Test
+    public void unstableBarsIncludeInputWarmupAndWindowLength() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 1, 1, 1, 1, 1, 1).build();
+        MockIndicator price = new MockIndicator(series, 2,
+                List.of(numOf(10), numOf(11), numOf(12), numOf(13), numOf(14), numOf(15), numOf(16)));
+        MockIndicator volume = new MockIndicator(series, 1, List.of(numFactory.one(), numFactory.one(),
+                numFactory.one(), numFactory.one(), numFactory.one(), numFactory.one(), numFactory.one()));
+        VWAPIndicator indicator = new VWAPIndicator(price, volume, 3);
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(4);
+        assertThat(indicator.getValue(3).isNaN()).isTrue();
+        assertNumEquals(13, indicator.getValue(4));
+    }
+
 }

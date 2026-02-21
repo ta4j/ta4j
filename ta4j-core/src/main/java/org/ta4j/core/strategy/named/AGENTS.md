@@ -19,4 +19,4 @@
 - Validate inputs eagerly; surface informative `IllegalArgumentException`s for bad parameters before strategy execution begins.
 
 ## Cross-cutting repository guidance
-- Follow the root [`AGENTS.md`](../../../../../../../AGENTS.md) for changelog expectations and the Maven-driven formatting pipeline described there.
+- Follow the root [`AGENTS.md`](../../../../../../../AGENTS.md) for PR-gated changelog expectations (update changelog only when the user indicates PR readiness or asks for PR creation) and the Maven-driven formatting pipeline described there.
