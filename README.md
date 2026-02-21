@@ -373,7 +373,7 @@ BacktestExecutionResult result = new BacktestExecutor(series)
     .executeWithRuntimeReport(strategies, 
         series.numFactory().numOf(1),  // position size: 1 unit
         Trade.TradeType.BUY,           // long positions (use Trade.TradeType.SELL for shorts)
-        ProgressCompletion.loggingWithMemory(); // logs progress with memory stats
+        ProgressCompletion.loggingWithMemory()); // logs progress with memory stats
 
 // Get top 10 strategies sorted by net profit, then by RoMaD (for ties)
 // You can sort by any combination of AnalysisCriterion - mix and match to find strategies that meet your goals
@@ -517,7 +517,7 @@ JFreeChart chart = chartWorkflow.builder()
 
 This comprehensive chart demonstrates combining multiple indicators (MACD, RSI) in separate subcharts with performance metrics, giving you a complete view of strategy behavior.
 
-See the [chart at the top of this README](#ta4j) for another example, or check the [wiki's charting guide](https://ta4j.github.io/ta4j-wiki/Charting.html) for more examples.
+See the chart at the top of this README for another example, or check the [wiki's charting guide](https://ta4j.github.io/ta4j-wiki/Charting.html) for more examples.
 
 **Export to any stack** (Python, TypeScript, etc.):
 
@@ -818,17 +818,17 @@ Ta4j uses automated workflows for publishing both snapshot and stable releases.
 
 ### Snapshots
 
-Every push to `master` triggers a snapshot deployment via the `snapshot.yml` Github workflow:
+Every push to `master` triggers a snapshot deployment via the `snapshot.yml` GitHub workflow:
 
 Snapshots are available at:
 
-```
+```text
 https://central.sonatype.com/repository/maven-snapshots/
 ```
 
 ### Stable releases
 
-Releases are also automated via Github workflows. For detailed information about the release process, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
+Releases are also automated via GitHub workflows. For detailed information about the release process, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
 
 
 ## Warranty
@@ -856,5 +856,4 @@ What *is* certain is this: whoever they are, and whatever motivates them, they d
 <a href = https://github.com/ta4j/ta4j/graphs/contributors>
   <img src = https://contrib.rocks/image?repo=ta4j/ta4j>
 </a>
-
 
