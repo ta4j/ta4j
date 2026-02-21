@@ -566,7 +566,7 @@ LOG.info("Output: {}", strategyJson);
 Restore from JSON:
 ```java
 // Restore indicators and strategies from JSON
-Indicator<?> restoredIndicator = Indicator.fromJson(series, indicatorJson);
+Indicator<?> restoredIndicator = Indicator.fromJson(series, rsiJson);
 Strategy restoredStrategy = Strategy.fromJson(series, strategyJson);
 ```
 
@@ -746,10 +746,11 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 
 ### Analysis & Backtesting Examples
 - **[StrategyAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/StrategyAnalysis.java)** - Comprehensive strategy performance analysis
-- **[ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWaveAnalysis.java)** - Elliott Wave scenario analysis with confidence scoring and annotated charts. Supports command-line arguments for loading data from Yahoo Finance or Coinbase, or uses a default dataset if no arguments provided.
-- **[BTCUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/BTCUSDElliottWaveAnalysis.java)** - Example Elliott Wave analysis for Bitcoin (BTC-USD) using Coinbase data
-- **[ETHUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ETHUSDElliottWaveAnalysis.java)** - Example Elliott Wave analysis for Ethereum (ETH-USD) using Coinbase data
-- **[SP500ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/SP500ElliottWaveAnalysis.java)** - Example Elliott Wave analysis for S&P 500 Index (^GSPC) using Yahoo Finance data
+- **[ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWaveAnalysis.java)** - Elliott Wave scenario analysis with confidence scoring and annotated charts. Defaults to an ossified classpath dataset when run without arguments; optional command-line arguments can load Yahoo Finance or Coinbase data.
+- **[BTCUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/BTCUSDElliottWaveAnalysis.java)** - Convenience launcher for Bitcoin (BTC-USD) that invokes `ElliottWaveAnalysis` with Coinbase arguments (network-backed input)
+- **[ETHUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ETHUSDElliottWaveAnalysis.java)** - Convenience launcher for Ethereum (ETH-USD) that invokes `ElliottWaveAnalysis` with Coinbase arguments (network-backed input)
+- **[SP500ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/SP500ElliottWaveAnalysis.java)** - Convenience launcher for S&P 500 Index (^GSPC) that invokes `ElliottWaveAnalysis` with Yahoo Finance arguments (network-backed input)
+- **[WyckoffCycleIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleIndicatorSuiteDemo.java)** - Demonstrates the Wyckoff cycle entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`) and prints phase transitions on an ossified bar series dataset
 - **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
 
@@ -855,6 +856,5 @@ What *is* certain is this: whoever they are, and whatever motivates them, they d
 <a href = https://github.com/ta4j/ta4j/graphs/contributors>
   <img src = https://contrib.rocks/image?repo=ta4j/ta4j>
 </a>
-
 
 
