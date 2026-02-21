@@ -5,6 +5,7 @@ package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -31,6 +32,17 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
         closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 120, 100, 150, 110, 100)
                 .build());
+    }
+
+    @Test
+    public void stopLossPriceCalculatesThresholds() {
+        Num entryPrice = numFactory.hundred();
+        Num lossPercent = numFactory.numOf(5);
+
+        assertNumEquals(95, StopLossRule.stopLossPrice(entryPrice, lossPercent, true));
+        assertNumEquals(105, StopLossRule.stopLossPrice(entryPrice, lossPercent, false));
+        assertNumEquals(95, StopLossRule.stopLossPriceFromDistance(entryPrice, numFactory.numOf(5), true));
+        assertNumEquals(105, StopLossRule.stopLossPriceFromDistance(entryPrice, numFactory.numOf(5), false));
     }
 
     @Test
