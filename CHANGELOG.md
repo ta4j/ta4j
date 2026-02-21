@@ -1,8 +1,13 @@
 ## Unreleased
 
+### Added
+- **VWAP and Wyckoff market-structure toolkit**: Added rolling/anchored VWAP analytics (deviation, standard deviation, z-score, bands), support/resistance clustering (bounce-count, price-cluster, KDE volume profile), and Wyckoff cycle analysis APIs with a runnable demo.
+
 ### Fixed
-- **Publish-release manual dispatch inputs**: `publish-release.yml` now reads `workflow_dispatch` metadata from event inputs so manual reruns correctly receive `releaseVersion`/`releaseCommit`.
-- **Prepare-release metadata guard**: Added a Maven Central metadata validation gate in `prepare-release.yml` (including dry-run mode) to fail early when required POM metadata (including developers) is missing.
+- **Release workflow dispatch and metadata checks**: `publish-release.yml` now reads `workflow_dispatch` inputs correctly for manual reruns, and `prepare-release.yml` now fails early when required Maven Central POM metadata is missing.
+- **Indicator serialization and stability**: Aligned VWAP, price-cluster, and Wyckoff indicators on descriptor ordering, NaN handling, and unstable-bar conventions.
+- **Wyckoff confidence invariants**: `WyckoffPhase` now rejects null cycle/phase values and enforces finite confidence in the `[0.0, 1.0]` range.
+- **KDE Gaussian constants**: `VolumeProfileKDEIndicator` now reuses precomputed Gaussian constants and parses PI with higher precision for `Num` factories.
 
 ## 0.22.2 (2026-02-15)
 
