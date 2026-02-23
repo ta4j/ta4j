@@ -365,6 +365,26 @@ public class StrategySerializationTest {
         assertThat(restored.shouldExit(3, record)).isFalse();
     }
 
+    @Test
+    public void strategyFromLegacyChildrenPayloadRoundTrips() {
+        // Regression: BaseStrategy JSON using legacy "children" instead of "rules"
+        // must parse and reconstruct correctly (ComponentSerialization routing)
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+        String legacyJson = "{\"type\":\"BaseStrategy\",\"label\":\"Legacy\",\"parameters\":{\"unstableBars\":2},"
+                + "\"children\":[{\"type\":\"" + SerializableRule.class.getName()
+                + "\",\"label\":\"entry\",\"parameters\":{\"satisfied\":true}}," + "{\"type\":\""
+                + SerializableRule.class.getName() + "\",\"label\":\"exit\",\"parameters\":{\"satisfied\":false}}]}";
+
+        Strategy restored = StrategySerialization.fromJson(series, legacyJson);
+
+        assertThat(restored).isInstanceOf(BaseStrategy.class);
+        assertThat(restored.getName()).isEqualTo("Legacy");
+        assertThat(restored.getUnstableBars()).isEqualTo(2);
+        TradingRecord record = new BaseTradingRecord();
+        assertThat(restored.shouldEnter(3, record)).isTrue();
+        assertThat(restored.shouldExit(3, record)).isFalse();
+    }
+
     private static final class SerializableRule extends org.ta4j.core.rules.AbstractRule {
 
         private final boolean satisfied;
