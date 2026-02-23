@@ -20,10 +20,10 @@ import org.ta4j.core.num.Num;
  * each index {@code i}, the sum is computed as:
  * {@code sum(i) = sum(i-1) + volume(i) - volume(i - barCount)} when
  * {@code i >= barCount}, otherwise {@code sum(i) = sum(i-1) + volume(i)} with
- * {@code sum(-1) = 0}. This reduces per-index work from O(barCount) to O(1),
- * improving performance when {@code barCount} is large or when many indices are
- * evaluated. The base case {@code index == 0} returns {@code volume(0)}
- * directly.
+ * {@code sum(beginIndex - 1) = 0}. This reduces per-index work from O(barCount)
+ * to O(1), improving performance when {@code barCount} is large or when many
+ * indices are evaluated. The base case {@code index <= beginIndex} returns
+ * {@code volume(index)} directly.
  */
 public class VolumeIndicator extends CachedIndicator<Num> {
 
@@ -51,14 +51,16 @@ public class VolumeIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        if (index == 0) {
-            return getBarSeries().getBar(0).getVolume();
+        int beginIndex = getBarSeries().getBeginIndex();
+        if (index <= beginIndex) {
+            return getBarSeries().getBar(index).getVolume();
         }
         Num prevSum = getValue(index - 1);
         Num currentVolume = getBarSeries().getBar(index).getVolume();
         Num newSum = prevSum.plus(currentVolume);
-        if (index >= barCount) {
-            Num dropVolume = getBarSeries().getBar(index - barCount).getVolume();
+        int dropIndex = index - barCount;
+        if (dropIndex >= beginIndex) {
+            Num dropVolume = getBarSeries().getBar(dropIndex).getVolume();
             return newSum.minus(dropVolume);
         }
         return newSum;

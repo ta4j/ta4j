@@ -95,4 +95,20 @@ public class VolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         }
         assertNumEquals(expected, volumeIndicator.getValue(19));
     }
+
+    @Test
+    public void rollingSumRespectsBeginIndexAfterConstrainedEviction() {
+        final var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withMaxBarCount(3).build();
+        series.barBuilder().closePrice(0).volume(10).add(); // index 0
+        series.barBuilder().closePrice(0).volume(11).add(); // index 1
+        series.barBuilder().closePrice(0).volume(12).add(); // index 2
+        series.barBuilder().closePrice(0).volume(13).add(); // index 3 (index 0 removed)
+
+        var volumeIndicator = new VolumeIndicator(series, 2);
+
+        assertEquals(1, series.getBeginIndex());
+        assertNumEquals(11, volumeIndicator.getValue(1));
+        assertNumEquals(23, volumeIndicator.getValue(2));
+        assertNumEquals(25, volumeIndicator.getValue(3));
+    }
 }
