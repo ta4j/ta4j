@@ -242,9 +242,45 @@ public final class ComponentSerialization {
             return builder.build();
         }
 
+        /**
+         * Resolves which JSON array contains child components for deserialization.
+         * <p>
+         * Uses type-based precedence when both {@code rules} and {@code components} are
+         * present (mixed payloads): Strategy types prefer {@code rules}; Indicator/Rule
+         * types prefer {@code components}. This ensures correct routing for migrated or
+         * hand-edited payloads that include both fields.
+         * <p>
+         * Legacy fields {@code children} and {@code baseIndicators} are supported when
+         * no canonical field is present.
+         *
+         * @param object JSON object being deserialized
+         * @return the child array element, or null if none found
+         */
         private JsonElement resolveRulesElement(JsonObject object) {
-            // Check for rules (strategies), then components (indicators/rules), then legacy
-            // field names
+            String type = object.has(FIELD_TYPE) && !object.get(FIELD_TYPE).isJsonNull()
+                    ? object.get(FIELD_TYPE).getAsString()
+                    : null;
+
+            // Type-based precedence for mixed payloads (rules + components both present)
+            if (type != null) {
+                if (type.endsWith("Strategy")) {
+                    if (object.has(FIELD_RULES)) {
+                        return object.get(FIELD_RULES);
+                    }
+                    if (object.has(FIELD_COMPONENTS)) {
+                        return object.get(FIELD_COMPONENTS);
+                    }
+                } else if (type.endsWith("Indicator") || type.endsWith("Rule")) {
+                    if (object.has(FIELD_COMPONENTS)) {
+                        return object.get(FIELD_COMPONENTS);
+                    }
+                    if (object.has(FIELD_RULES)) {
+                        return object.get(FIELD_RULES);
+                    }
+                }
+            }
+
+            // Fallback: canonical order when type is unknown or no type-specific match
             if (object.has(FIELD_RULES)) {
                 return object.get(FIELD_RULES);
             }

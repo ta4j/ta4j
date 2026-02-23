@@ -7,6 +7,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -556,15 +557,23 @@ public final class StrategySerialization {
             Class<? extends Strategy> resolvedType) {
         String label = descriptor.getLabel();
         if (label == null || label.isBlank()) {
-            throw new IllegalArgumentException("Named strategy descriptor missing label");
+            throw new IllegalArgumentException(
+                    "Named strategy descriptor missing label (type=" + descriptor.getType() + ")");
         }
 
         List<String> labelTokens = NamedStrategy.splitLabel(label);
         if (labelTokens.isEmpty()) {
-            throw new IllegalArgumentException("Named strategy label missing strategy identifier");
+            throw new IllegalArgumentException(
+                    "Named strategy label missing strategy identifier: label='" + label + "'");
         }
 
         String simpleName = labelTokens.get(0);
+        if (simpleName == null || simpleName.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Named strategy label missing strategy identifier (leading underscore or empty token): label='"
+                            + label + "'");
+        }
+
         String[] parameters = labelTokens.size() == 1 ? new String[0]
                 : labelTokens.subList(1, labelTokens.size()).toArray(new String[0]);
 
@@ -573,13 +582,17 @@ public final class StrategySerialization {
         try {
             return constructor.newInstance(new Object[] { series, parameters });
         } catch (InstantiationException | IllegalAccessException ex) {
-            throw new IllegalStateException("Failed to construct named strategy: " + strategyType.getName(), ex);
+            throw new IllegalStateException(
+                    "Failed to construct named strategy: " + strategyType.getName() + " (label='" + label + "')", ex);
         } catch (InvocationTargetException ex) {
             Throwable cause = ex.getCause();
             if (cause instanceof IllegalArgumentException) {
-                throw (IllegalArgumentException) cause;
+                throw new IllegalArgumentException("Named strategy reconstruction failed for label='" + label
+                        + "' params=" + Arrays.toString(parameters) + ": " + cause.getMessage(), cause);
             }
-            throw new IllegalStateException("Failed to construct named strategy: " + strategyType.getName(), cause);
+            throw new IllegalStateException(
+                    "Failed to construct named strategy: " + strategyType.getName() + " (label='" + label + "')",
+                    cause);
         }
     }
 
