@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 
 import com.google.gson.JsonParseException;
+import java.util.Map;
 
 import org.junit.Test;
 
@@ -361,7 +362,7 @@ public class ComponentSerializationTest {
         ComponentDescriptor indicator = ComponentDescriptor.builder()
                 .withType("SMAIndicator")
                 .withLabel("ignored")
-                .withParameters(java.util.Map.of("barCount", 2))
+                .withParameters(Map.of("barCount", 2))
                 .addComponent(ComponentDescriptor.typeOnly("ClosePriceIndicator"))
                 .build();
 
@@ -370,6 +371,7 @@ public class ComponentSerializationTest {
         assertThat(json).doesNotContain("\"label\"");
         ComponentDescriptor parsed = ComponentSerialization.parse(json);
         assertThat(parsed.getType()).isEqualTo("SMAIndicator");
+        assertThat(parsed.getLabel()).isNull();
         assertThat(parsed.getComponents()).hasSize(1);
     }
 }
