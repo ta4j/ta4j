@@ -276,7 +276,83 @@ public class StrategySerializationTest {
 
         assertThatThrownBy(() -> StrategySerialization.fromDescriptor(series, descriptor))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unknown named strategy");
+                .hasMessageContaining("missing strategy identifier")
+                .hasMessageContaining("_missingType");
+    }
+
+    @Test
+    public void namedStrategyMissingLabelThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder().withType(NamedStrategy.SERIALIZED_TYPE).build();
+
+        assertThatThrownBy(() -> StrategySerialization.fromDescriptor(series, descriptor))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("missing label")
+                .hasMessageContaining("type=");
+    }
+
+    @Test
+    public void namedStrategyBlankLabelThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType(NamedStrategy.SERIALIZED_TYPE)
+                .withLabel("   ")
+                .build();
+
+        assertThatThrownBy(() -> StrategySerialization.fromDescriptor(series, descriptor))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("missing label");
+    }
+
+    @Test
+    public void namedStrategyMalformedVarargWrongCountThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(1, 2, 3)
+                .build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType(NamedStrategy.SERIALIZED_TYPE)
+                .withLabel("NamedStrategyFixture_1.0")
+                .build();
+
+        assertThatThrownBy(() -> StrategySerialization.fromDescriptor(series, descriptor))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("reconstruction failed")
+                .hasMessageContaining("label='NamedStrategyFixture_1.0'")
+                .hasMessageContaining("params=")
+                .hasMessageContaining("NamedStrategyFixture expects");
+    }
+
+    @Test
+    public void namedStrategyMalformedVarargInvalidNumberThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(1, 2, 3)
+                .build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType(NamedStrategy.SERIALIZED_TYPE)
+                .withLabel("NamedStrategyFixture_1.0_xyz")
+                .build();
+
+        assertThatThrownBy(() -> StrategySerialization.fromDescriptor(series, descriptor))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("reconstruction failed")
+                .hasMessageContaining("label='NamedStrategyFixture_1.0_xyz'")
+                .hasMessageContaining("1.0")
+                .hasMessageContaining("xyz");
+    }
+
+    @Test
+    public void namedStrategyLabelLeadingUnderscoreThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        ComponentDescriptor descriptor = ComponentDescriptor.builder()
+                .withType(NamedStrategy.SERIALIZED_TYPE)
+                .withLabel("_paramOnly")
+                .build();
+
+        assertThatThrownBy(() -> StrategySerialization.fromDescriptor(series, descriptor))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("missing strategy identifier")
+                .hasMessageContaining("leading underscore")
+                .hasMessageContaining("_paramOnly");
     }
 
     @Test
