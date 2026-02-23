@@ -161,6 +161,11 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
         Objects.requireNonNull(neutralPivotValue, "Neutral pivot value must not be null");
         Objects.requireNonNull(decayFactor, "Decay factor must not be null");
 
+        double rawPivot = neutralPivotValue.doubleValue();
+        if (Double.isNaN(rawPivot) || Double.isInfinite(rawPivot)) {
+            throw new IllegalArgumentException("Neutral pivot value must be finite (not NaN or infinite)");
+        }
+
         if (timeFrame <= 0) {
             throw new IllegalArgumentException("Time frame must be greater than 0");
         }
