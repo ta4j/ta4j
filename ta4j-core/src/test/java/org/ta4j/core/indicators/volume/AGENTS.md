@@ -1,6 +1,6 @@
-# Volume indicator test notes
+# AGENTS instructions for volume indicator tests
 
-- Exercise anchored resets explicitly (for example, call `getAnchorIndex` or
-  `getWindowStartIndex`) so regressions in window handling surface quickly.
-- When comparing floating-point results, prefer `assertNumEquals` for clarity
-  and AssertJ for boolean helpers like `isNaN()`.
+Follow `ta4j-core/src/test/java/AGENTS.md` and `.../indicators/AGENTS.md`; this file adds volume-window specifics.
+
+- Exercise anchored reset behavior explicitly (for example `getAnchorIndex` / `getWindowStartIndex`).
+- Prefer `assertNumEquals` for numeric comparisons and AssertJ for boolean/`isNaN()` assertions.
