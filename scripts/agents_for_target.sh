@@ -45,8 +45,8 @@ if ! command -v rg >/dev/null 2>&1; then
   exit 127
 fi
 
-# Find matches under root. Respect ignore files by default.
-# If you want to include ignored + hidden: add --no-ignore --hidden
+# Find matches under root, including hidden and ignored files,
+# so AGENTS candidates are discovered even in filtered directories.
 rg --files --no-ignore --hidden -g "$target_glob" "$root" 2>/dev/null \
 | while IFS= read -r file; do
     [ -z "$file" ] && continue

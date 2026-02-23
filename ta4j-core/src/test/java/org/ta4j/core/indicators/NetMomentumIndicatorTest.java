@@ -355,6 +355,10 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
                 () -> new NetMomentumIndicator(oscillator, 5, Double.POSITIVE_INFINITY));
         assertThrows(IllegalArgumentException.class,
                 () -> new NetMomentumIndicator(oscillator, 5, Double.NEGATIVE_INFINITY));
+        assertThrows(IllegalArgumentException.class,
+                () -> new NetMomentumIndicator(oscillator, 5, Double.POSITIVE_INFINITY, 1.0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new NetMomentumIndicator(oscillator, 5, Double.NEGATIVE_INFINITY, 1.0));
     }
 
     @Test

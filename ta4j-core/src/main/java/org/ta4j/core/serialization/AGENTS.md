@@ -25,7 +25,7 @@ Apply this guide when changing component descriptor schemas, JSON serialization,
 - Check boolean parameters before numeric primitives to avoid primitive coercion mistakes.
 - Preserve enum metadata keys (`__enumType_*`) and exclude them from constructor argument matching.
 - Rule reconstruction should rebuild indicator children directly from indicator descriptors; do not rely on positional matching.
-- `ReconstructionContext` should cache labeled descriptors for strategy-level cross references and use parent-context lookup for nested rules.
+- `ReconstructionContext` should cache labeled descriptors for strategy-level cross-references and use parent-context lookup for nested rules.
 
 ## Serialization guardrails
 
