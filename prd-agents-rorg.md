@@ -355,8 +355,23 @@ That directly tests the paper’s claim in your exact environment, with your exa
 
 Run each task once in worktree A (`feature/agents-reorg`) and once in worktree B (`feature/agents-reorg-b`) with the same model/prompt settings. For each run, capture completion status, time-to-green, number of full-build invocations, targeted test invocations, total tool calls, and token usage (if available).
 
-- [ ] **A/B Task 1 - TimeBarBuilder Gap Regression:** Add or update tests proving `TimeBarBuilder` preserves chronological gap placement without backfilling missing periods.
-- [ ] **A/B Task 2 - NetMomentum Decay Behavior:** Add/adjust unit tests for decay semantics (`decay=1` legacy behavior and `decay<1` exponential fade) using deterministic steady-state expectations.
-- [ ] **A/B Task 3 - Serialization Schema Compatibility:** Implement a small serialization change that must preserve `rules` vs `components`, indicator label suppression, and legacy `children`/`baseIndicators` compatibility; extend regression tests accordingly.
-- [ ] **A/B Task 4 - Named Strategy Reconstruction Hardening:** Add validation and tests for malformed vararg constructor inputs while preserving `<SimpleName>_<param...>` label reconstruction behavior.
-- [ ] **A/B Task 5 - Cross-Package Feature Patch:** Implement a small indicator enhancement plus corresponding docs/Javadoc and mirrored tests to measure multi-file navigation overhead under A vs B AGENTS layouts.
+Global decision protocol for every task:
+1. Correctness gate first: a run only counts if the required code/tests are implemented and the full build is green.
+2. If only one variant (A or B) passes the correctness gate, that variant wins the task.
+3. If both pass, compare efficiency in this order: lower time-to-green, then fewer total tool calls, then lower token usage, then fewer full-build invocations.
+4. If still tied, run one extra replicate for that task and select the variant with the lower median time-to-green across replicates.
+
+- [ ] **A/B Task 1 - TimeBarBuilder Gap Regression:** Add or update tests proving `TimeBarBuilder` preserves chronological gap placement without backfilling missing periods.  
+Task-specific winner check: both runs must include explicit gap-case assertions (at least one contiguous series and one gapped series) and pass all touched tests. Better variant is the one that reaches green with fewer repo-navigation reads/tool calls while preserving identical semantic assertions.
+
+- [ ] **A/B Task 2 - NetMomentum Decay Behavior:** Add/adjust unit tests for decay semantics (`decay=1` legacy behavior and `decay<1` exponential fade) using deterministic steady-state expectations.  
+Task-specific winner check: both runs must assert legacy parity at `decay=1` and formula-based expectations for `decay<1`. Better variant is the one that delivers complete decay coverage (including boundary cases) with lower time-to-green and fewer correction cycles.
+
+- [ ] **A/B Task 3 - Serialization Schema Compatibility:** Implement a small serialization change that must preserve `rules` vs `components`, indicator label suppression, and legacy `children`/`baseIndicators` compatibility; extend regression tests accordingly.  
+Task-specific winner check: both runs must keep backward compatibility and pass serialization round-trip suites without schema regressions. Better variant is the one that achieves this with fewer failed test iterations and fewer full-build reruns.
+
+- [ ] **A/B Task 4 - Named Strategy Reconstruction Hardening:** Add validation and tests for malformed vararg constructor inputs while preserving `<SimpleName>_<param...>` label reconstruction behavior.  
+Task-specific winner check: both runs must include positive reconstruction tests plus malformed-input negative tests (`IllegalArgumentException` paths). Better variant is the one with complete constructor-contract coverage and the lower total tool-call/token cost.
+
+- [ ] **A/B Task 5 - Cross-Package Feature Patch:** Implement a small indicator enhancement plus corresponding docs/Javadoc and mirrored tests to measure multi-file navigation overhead under A vs B AGENTS layouts.  
+Task-specific winner check: both runs must touch all required artifact types (production code, tests, and docs/Javadoc) and finish with green build. Better variant is the one that completes the multi-file workflow with lower navigation overhead (fewer file reads/searches) and faster time-to-green.
