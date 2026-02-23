@@ -355,6 +355,23 @@ That directly tests the paper’s claim in your exact environment, with your exa
 
 Run each task once in worktree A (`feature/agents-reorg`) and once in worktree B (`feature/agents-reorg-b`) with the same model/prompt settings. For each run, capture completion status, time-to-green, number of full-build invocations, targeted test invocations, total tool calls, and token usage (if available).
 
+### Time-to-completion capture protocol
+1. Start timestamp: when the task prompt is submitted to the agent.
+2. End timestamp: when the agent returns a completion message and the run has a green full build.
+3. Compute `time_to_completion_minutes = ceil((end_timestamp - start_timestamp) / 60)`.
+4. Precision requirement: coarse timing is acceptable; minute-level granularity is enough.
+5. Speed significance threshold: treat a speed gap as meaningful when either:
+   - absolute delta is `>= 10` minutes, or
+   - ratio is `>= 2x` (e.g., 20 minutes vs 5 minutes).
+
+### Standardized launch method (recommended)
+1. Use a fresh agent session per run (do not reuse prior task context).
+2. Use the same prompt template and acceptance criteria for A and B.
+3. Keep model/settings fixed across variants for the same task.
+4. Run A and B serially on the same machine to reduce hardware/load variance.
+5. Alternate execution order across tasks (A-first for odd tasks, B-first for even tasks) to reduce order bias.
+6. Log each run in a single results table with: task id, variant, start time, end time, completion minutes, correctness pass/fail, and key efficiency counters.
+
 Global decision protocol for every task:
 1. Correctness gate first: a run only counts if the required code/tests are implemented and the full build is green.
 2. If only one variant (A or B) passes the correctness gate, that variant wins the task.
