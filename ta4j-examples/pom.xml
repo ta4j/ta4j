@@ -104,6 +104,18 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <!-- Keep chart tests non-interactive by default in local builds -->
+                        <ta4j.chart.disableDisplay>true</ta4j.chart.disableDisplay>
+                        <!-- On macOS, avoid dock/focus activation for AWT test JVMs -->
+                        <apple.awt.UIElement>true</apple.awt.UIElement>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.6.3</version>
