@@ -8,12 +8,17 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Instant;
 import java.util.Locale;
 import java.util.Optional;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializer;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.analysis.confluence.ConfluenceReport;
 
@@ -37,6 +42,8 @@ import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource.YahooFinance
  */
 public final class SP500ConfluenceAnalysis {
 
+    private static final Logger LOG = LogManager.getLogger(SP500ConfluenceAnalysis.class);
+
     private SP500ConfluenceAnalysis() {
     }
 
@@ -51,11 +58,11 @@ public final class SP500ConfluenceAnalysis {
         int bars = args.length > 1 ? Integer.parseInt(args[1]) : 2520;
         Path outputDir = args.length > 2 ? Paths.get(args[2]) : Paths.get("temp", "charts", "confluence");
 
-        System.out.printf("Loading %s daily candles (%d bars)%n", ticker, bars);
+        LOG.info("Loading {} daily candles ({} bars)", ticker, bars);
         YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(true);
         BarSeries series = dataSource.loadSeriesInstance(ticker, YahooFinanceInterval.DAY_1, bars);
         if (series == null || series.getBarCount() == 0) {
-            System.err.println("Failed to load series from Yahoo Finance.");
+            LOG.error("Failed to load series from Yahoo Finance");
             return;
         }
 
@@ -71,27 +78,38 @@ public final class SP500ConfluenceAnalysis {
         String safeTicker = ticker.replaceAll("[^A-Za-z0-9._-]", "_");
         String chartFile = safeTicker + "-confluence.png";
         Optional<Path> chartPath = workflow.save(plan, outputDir, chartFile);
-        chartPath.ifPresent(path -> System.out.println("Chart saved: " + path));
+        chartPath.ifPresent(path -> LOG.info("Chart saved: {}", path));
 
         if (!GraphicsEnvironment.isHeadless()) {
+            LOG.info("Displaying chart in realtime for {}", ticker);
             workflow.display(plan, title);
+        } else {
+            LOG.warn("Headless environment detected; realtime display skipped");
         }
 
         try {
             Files.createDirectories(outputDir);
             Path jsonPath = outputDir.resolve(safeTicker + "-confluence-report.json");
-            Gson gson = new GsonBuilder().setPrettyPrinting().create();
+            Gson gson = new GsonBuilder()
+                    .registerTypeAdapter(Instant.class, (JsonSerializer<Instant>) (source, type, context) -> {
+                        if (source == null) {
+                            return null;
+                        }
+                        return new JsonPrimitive(source.toString());
+                    })
+                    .setPrettyPrinting()
+                    .create();
             Files.writeString(jsonPath, gson.toJson(report));
-            System.out.println("Report JSON saved: " + jsonPath);
+            LOG.info("Report JSON saved: {}", jsonPath);
         } catch (IOException e) {
-            System.err.println("Failed to write report artifacts: " + e.getMessage());
+            LOG.error("Failed to write report artifacts", e);
         }
     }
 
     private static void printSummary(ConfluenceReport report) {
         ConfluenceReport.Snapshot snapshot = report.snapshot();
-        System.out.printf(Locale.US, "Snapshot: %s close %.2f, raw %.1f, decorrelated %.1f%n", snapshot.ticker(),
-                snapshot.closePrice(), snapshot.rawConfluenceScore(), snapshot.decorrelatedConfluenceScore());
+        LOG.info(String.format(Locale.US, "Snapshot: %s close %.2f, raw %.1f, decorrelated %.1f", snapshot.ticker(),
+                snapshot.closePrice(), snapshot.rawConfluenceScore(), snapshot.decorrelatedConfluenceScore()));
 
         ConfluenceReport.HorizonProbability oneMonth = report.horizonProbabilities()
                 .stream()
@@ -105,25 +123,25 @@ public final class SP500ConfluenceAnalysis {
                 .orElse(null);
 
         if (oneMonth != null) {
-            System.out.printf(Locale.US, "1M: up %.1f%%, down %.1f%%, range %.1f%%%n",
+            LOG.info(String.format(Locale.US, "1M: up %.1f%%, down %.1f%%, range %.1f%%",
                     oneMonth.upProbability() * 100.0d, oneMonth.downProbability() * 100.0d,
-                    oneMonth.rangeProbability() * 100.0d);
+                    oneMonth.rangeProbability() * 100.0d));
         }
         if (threeMonth != null) {
-            System.out.printf(Locale.US, "3M: up %.1f%%, down %.1f%%, range %.1f%%%n",
+            LOG.info(String.format(Locale.US, "3M: up %.1f%%, down %.1f%%, range %.1f%%",
                     threeMonth.upProbability() * 100.0d, threeMonth.downProbability() * 100.0d,
-                    threeMonth.rangeProbability() * 100.0d);
+                    threeMonth.rangeProbability() * 100.0d));
         }
 
-        System.out.println("Top supports:");
+        LOG.info("Top supports:");
         for (ConfluenceReport.LevelConfidence level : report.topSupports(3)) {
-            System.out.printf(Locale.US, "  %s %.2f (confidence %.1f)%n", level.name(), level.level(),
-                    level.confidence());
+            LOG.info(String.format(Locale.US, "  %s %.2f (confidence %.1f)", level.name(), level.level(),
+                    level.confidence()));
         }
-        System.out.println("Top resistances:");
+        LOG.info("Top resistances:");
         for (ConfluenceReport.LevelConfidence level : report.topResistances(3)) {
-            System.out.printf(Locale.US, "  %s %.2f (confidence %.1f)%n", level.name(), level.level(),
-                    level.confidence());
+            LOG.info(String.format(Locale.US, "  %s %.2f (confidence %.1f)", level.name(), level.level(),
+                    level.confidence()));
         }
     }
 }
