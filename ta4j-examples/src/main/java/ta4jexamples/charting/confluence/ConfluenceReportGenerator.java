@@ -202,11 +202,13 @@ public final class ConfluenceReportGenerator {
         double sma50 = latestFinite(indicators.sma50, endIndex, close);
         double sma200 = latestFinite(indicators.sma200, endIndex, close);
         double ema21 = latestFinite(indicators.ema21, endIndex, close);
-        double ema21Prev = latestFinite(indicators.ema21, Math.max(indicators.series.getBeginIndex(), endIndex - 5),
-                ema21);
+        int ema21PrevIndex = Math.max(indicators.series.getBeginIndex(), endIndex - 5);
+        double ema21Prev = latestFinite(indicators.ema21, ema21PrevIndex, Double.NaN);
 
         double stackScore = movingAverageStackScore(close, sma20, sma50, sma200);
-        double emaSlopeScore = 50.0d + clamp(((ema21 - ema21Prev) / Math.max(EPSILON, atr)) * 22.0d, -45.0d, 45.0d);
+        double emaSlopeScore = Double.isFinite(ema21Prev)
+                ? 50.0d + clamp(((ema21 - ema21Prev) / Math.max(EPSILON, atr)) * 22.0d, -45.0d, 45.0d)
+                : 50.0d;
         double distanceScore = 50.0d + clamp(((close - sma200) / Math.max(EPSILON, sma200)) * 800.0d, -45.0d, 45.0d);
         double weightedScore = 0.45d * stackScore + 0.30d * emaSlopeScore + 0.25d * distanceScore;
         ConfluenceReport.Direction direction = directionFromCenter(weightedScore);
