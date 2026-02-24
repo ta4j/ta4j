@@ -198,6 +198,289 @@ Priority order:
 
 All components and final value are bounded in `[0, 100]`.
 
+## Detailed Capability Sections (Requested Additions)
+
+### 1) Regime Models: Hidden-State Regime Detection
+#### Current known state
+- The toolkit has trend/volatility proxies (`ADX`, `ATR`, `Chop`, moving-average slope, Kalman filter), but no explicit hidden-state regime model.
+- Existing decisions often infer regime from thresholds (for example ADX>20), which is brittle during transitions.
+
+#### Target design
+- Introduce a regime engine with explicit latent states and state probabilities.
+- Initial state taxonomy (daily):
+  - `TREND_UP_LOW_VOL`
+  - `TREND_UP_HIGH_VOL`
+  - `TREND_DOWN_LOW_VOL`
+  - `TREND_DOWN_HIGH_VOL`
+  - `RANGE_LOW_VOL`
+  - `RANGE_HIGH_VOL`
+- Core outputs:
+  - `regimeState`
+  - `stateProbabilities[]`
+  - `regimeConfidence`
+  - `transitionRisk` (probability of state change over next N bars)
+
+#### Implementation steps
+1. Add `RegimeFeatureVector` and `RegimeSnapshot` domain objects under `ta4j-examples` first.
+2. Build deterministic baseline classifier from existing indicators (for immediate use and fallback).
+3. Implement HMM module (Gaussian emissions, EM training, Viterbi decode) in a dedicated package.
+4. Train with walk-forward windows and emit out-of-sample state probabilities.
+5. Add transition-stability features (`statePersistence`, entropy of state distribution).
+6. Feed regime outputs into confluence weighting and confidence decomposition.
+7. Promote stable APIs to `ta4j-core` after validation.
+
+### 2) Probability Calibration Tools: Isotonic/Platt + Reliability
+#### Current known state
+- PRD already specifies isotonic and Platt methods plus Brier/ECE/log loss targets.
+- No reusable calibration utility layer exists yet.
+
+#### Target design
+- Add a calibration pipeline that transforms raw model probabilities into calibrated probabilities by horizon and class.
+- Multi-class handling:
+  - one-vs-rest calibrators (`up/down/range`) with post-normalization
+  - fallback to binary directional calibration + range residual
+- Mandatory artifacts:
+  - reliability diagrams
+  - calibration tables by probability bucket
+  - metric history by training window
+
+#### Implementation steps
+1. Add `CalibrationDataset`, `Calibrator`, `IsotonicCalibrator`, `PlattCalibrator`.
+2. Persist out-of-sample raw predictions and realized labels from walk-forward runs.
+3. Fit calibrators per horizon (`1M`, `3M`) and per class.
+4. Generate reliability diagrams as chart artifacts in `temp/charts` and optional JSON summaries.
+5. Enforce calibration metadata in `ConfluenceReport` schema.
+6. Add guardrails: if calibration sample is insufficient, downgrade `calibrationConfidence`.
+
+### 3) Robust Anti-Overfitting Statistics
+#### Current known state
+- Current workflow emphasizes walk-forward and criterion-based evaluation, but does not include formal anti-overfitting diagnostics like DSR/PBO/SPA.
+
+#### Target design
+- Add a validation statistics suite for strategy/model-selection robustness:
+  - Deflated Sharpe Ratio (DSR)
+  - Probability of Backtest Overfitting (PBO, CSCV style)
+  - SPA / Reality Check style significance testing (bootstrap-based)
+- Diagnostics must be computed for candidate model families and reported with confidence penalties.
+
+#### Implementation steps
+1. Add `OverfittingDiagnostics` module with DSR and PBO calculators.
+2. Implement combinatorially symmetric cross-validation utility for PBO.
+3. Add block-bootstrap significance test utilities for SPA/Reality Check style p-values.
+4. Integrate diagnostics into model selection and calibration reports.
+5. Penalize `modelConfidence` when overfitting diagnostics exceed configured thresholds.
+6. Add regression tests using synthetic data with known overfit behavior.
+
+### 4) Breadth and Internals Feeds
+#### Current known state
+- Current analysis is mostly single-instrument OHLCV.
+- Breadth/internals are not currently first-class features in the report.
+
+#### Target design
+- Add breadth feature ingestion and derived metrics:
+  - `%SPX above 50DMA`
+  - `%SPX above 200DMA`
+  - Advance/decline line and oscillator
+  - New highs minus new lows (rolling windows)
+  - Sector breadth composite (for example GICS sector ETF proxies when constituent feed unavailable)
+- Provide `breadthConfidence` and feed-quality diagnostics.
+
+#### Implementation steps
+1. Define `BreadthDataSource` interface and cache format.
+2. Implement initial adapters for daily breadth snapshots (constituent-level or proxy mode).
+3. Compute standardized breadth features and z-scores.
+4. Add breadth pillar contributions to confluence engine.
+5. Add stale-data handling and penalties in `dataConfidence`.
+6. Add fixture datasets for deterministic unit tests.
+
+### 5) Volatility Structure Feeds
+#### Current known state
+- Realized volatility proxies exist (`ATR`, Bollinger width), but implied-vol structure is not integrated.
+
+#### Target design
+- Add volatility-structure feature set:
+  - VIX term structure proxies (`VIX`, `VIX3M`, contango/backwardation spread)
+  - Realized vs implied spread (`IV - RV`)
+  - Skew proxies (for example CBOE SKEW index or put-skew surrogates)
+- Output:
+  - `volRegimeState`
+  - `volRiskFlag`
+  - feature contributions to Volatility pillar
+
+#### Implementation steps
+1. Define `VolStructureDataSource` with symbol map and fallback policy.
+2. Add daily ingestion and normalization pipeline for implied-vol metrics.
+3. Compute derived features (term slope, IV-RV spread percentile, skew percentile).
+4. Integrate into volatility pillar scoring and regime confidence.
+5. Add alert thresholds for stress regimes (for example inverted term structure).
+6. Backtest impact of vol-structure features on directional and range forecasts.
+
+### 6) Intermarket Layer
+#### Current known state
+- Macro/intermarket was explicitly marked placeholder in Phase 1.
+
+#### Target design
+- Build cross-asset context features:
+  - Rates: UST 2Y/10Y levels and slope
+  - Credit: IG/HY spread proxies
+  - FX: broad USD strength
+  - Commodities: oil and gold trend/volatility states
+  - Composite risk-on/off index from standardized components
+- Output:
+  - `intermarketScore`
+  - `riskOnOffState`
+  - confidence impact and explanations
+
+#### Implementation steps
+1. Define `IntermarketSnapshot` schema and source adapters.
+2. Build daily feature engineering pipeline with robust missing-data fallback.
+3. Add composite risk-on/off model with transparent weights.
+4. Integrate intermarket score as part of Macro/Intermarket pillar.
+5. Add feature-attribution reporting to explain directional impact.
+6. Add walk-forward validation to measure incremental lift over no-intermarket baseline.
+
+### 7) Options Positioning Proxies
+#### Current known state
+- No dedicated options positioning metrics are currently integrated.
+
+#### Target design
+- Add proxies for positioning and convexity pressure:
+  - put/call ratios (equity/index/total where available)
+  - estimated dealer gamma regime proxy (positive/negative gamma state)
+  - optional skew-related positioning pressure
+- Output:
+  - `optionsPositioningScore`
+  - `gammaRegime` (`POSITIVE`, `NEGATIVE`, `NEUTRAL`)
+  - data-quality flags when only proxy approximations are available
+
+#### Implementation steps
+1. Define `OptionsPositioningDataSource` and daily cache format.
+2. Implement put/call ingestion and normalization pipeline.
+3. Add gamma proxy model with configurable fallback hierarchy.
+4. Integrate into Participation or Macro/Intermarket pillar (configurable).
+5. Add confidence penalties when raw options depth is unavailable.
+6. Validate whether options features improve regime transitions and tail-risk detection.
+
+### 8) Six-Pillar Confluence Engine
+#### Current known state
+- PRD and quick-win scope define pillars and starter indicators.
+
+#### Target design
+- Final pillar framework:
+  - Structure
+  - Trend
+  - Momentum
+  - Volatility
+  - Participation
+  - Macro/Intermarket
+- Each pillar emits:
+  - score
+  - directional vote
+  - uncertainty
+  - feature-level attribution
+
+#### Implementation steps
+1. Implement `PillarCalculator` interface and one implementation per pillar.
+2. Build shared normalization utilities (z-score, percentile rank, bounded transforms).
+3. Implement attribution registry for feature contribution auditing.
+4. Add pillar-specific reliability diagnostics (coverage, data completeness, stability).
+5. Feed pillar outputs into raw and decorrelated confluence aggregators.
+6. Add configurable weighting presets for conservative/balanced/aggressive modes.
+
+### 9) Indicator Family Grouping, Caps, Correlation Discovery Engine
+#### Current known state
+- PRD currently states family grouping and penalties but not the full discovery engine design.
+
+#### Target design
+- Define indicator families (example):
+  - Trend-following
+  - Momentum oscillators
+  - Volatility
+  - Volume/participation
+  - Structure/levels
+  - Intermarket/options
+- Correlation discovery:
+  - rolling Spearman and rank-IC style dependence
+  - optional distance correlation for non-linear dependence
+- Outputs:
+  - dynamic family caps
+  - redundancy penalty matrix
+  - effective feature count
+
+#### Implementation steps
+1. Add `IndicatorFamilyCatalog` with explicit mapping and versioning.
+2. Build `CorrelationDiscoveryEngine` on rolling feature histories.
+3. Compute family-level dependence and derive dynamic caps.
+4. Apply penalties before final confluence score aggregation.
+5. Add diagnostics endpoint/report section showing penalized features.
+6. Add ablation tests to verify reduced overconfidence under redundant indicators.
+
+### 10) Enhanced Confidence Model
+#### Current known state
+- Current decomposition formula is defined, but advanced confidence adaptation is not.
+
+#### Target design
+- Extend confidence to include:
+  - disagreement/conflict penalty across pillars
+  - forecast horizon-specific uncertainty scaling
+  - confidence bands (point estimate + interval)
+- Final confidence should be explainable and reproducible from component traces.
+
+#### Implementation steps
+1. Implement `ConfidenceModel` with configurable component weights and penalties.
+2. Add disagreement metrics (entropy of pillar votes, directional conflict index).
+3. Add horizon-specific transforms for `1M` vs `3M`.
+4. Emit confidence intervals from bootstrap/resampling diagnostics.
+5. Add drift monitors to reduce confidence under calibration degradation.
+6. Add threshold policies for report labels (`LOW`, `MEDIUM`, `HIGH`).
+
+### 11) Enhanced Support/Resistance Modeling
+#### Current known state
+- Toolkit already includes trendline, cluster, and bounce indicators.
+- Current quick-win confidence is mostly segment-score based.
+
+#### Target design
+- Multi-source level fusion:
+  - trendline levels
+  - price-cluster levels
+  - bounce-count levels
+  - pivot levels and Elliott invalidation/targets
+  - optional anchored VWAP anchors
+- Level object should include:
+  - hold probability
+  - breach probability
+  - expected time-to-test band
+  - supporting evidence set
+
+#### Implementation steps
+1. Add `LevelCandidate` and `LevelFusionEngine` abstractions.
+2. Generate candidates from each level family and deduplicate by volatility-scaled distance.
+3. Score and rank levels with recency, touches, violations, confluence, and regime context.
+4. Add hold/breach probability estimation from historical analog windows.
+5. Render top levels on chart with confidence labels.
+6. Add regression tests for level stability under small data perturbations.
+
+### 12) Better Validation Standards
+#### Current known state
+- Validation plan currently includes walk-forward and calibration metrics.
+
+#### Target design
+- Expand standards to include:
+  - purged + embargoed walk-forward CV
+  - nested model-selection loops
+  - realistic frictions (transaction cost and slippage assumptions)
+  - stability testing by regime bucket
+  - anti-overfitting diagnostics (DSR/PBO/SPA)
+  - confidence calibration quality gates
+
+#### Implementation steps
+1. Define `ValidationProtocol` with mandatory gates and reproducible seeds.
+2. Build reusable splitters for purged/embargoed CV.
+3. Add benchmark suite (naive, buy/hold, simple trend baseline).
+4. Add statistical significance and calibration pass/fail thresholds.
+5. Add automated report card artifact per run (`validation-summary.json` + charts).
+6. Block promotion of model profiles that fail minimum validation gates.
+
 ## Implementation Plan
 
 ### Phase 1: Quick Win (`ConfluenceReport` v1)
