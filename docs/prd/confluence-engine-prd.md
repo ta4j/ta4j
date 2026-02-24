@@ -100,6 +100,7 @@ Deliver a practical, high-signal report quickly using existing `ta4j` capabiliti
 - Build confluence across first 5 operational pillars; macro/intermarket remains a placeholder contribution with explicit `N/A` flag.
 - Provide level confidence for top support/resistance levels.
 - Provide chart output via `ta4jexamples.charting.workflow.ChartWorkflow`.
+- Keep the report architecture pluggable with defaults, not hardcoded to a single indicator stack.
 
 ### Proposed initial indicators
 - Structure: `TrendLineSupportIndicator`, `TrendLineResistanceIndicator`, `PriceClusterSupportIndicator`, `PriceClusterResistanceIndicator`, `BounceCountSupportIndicator`, `BounceCountResistanceIndicator`, Elliott invalidation/targets when available.
@@ -485,7 +486,8 @@ All components and final value are bounded in `[0, 100]`.
 
 ### Phase 1: Quick Win (`ConfluenceReport` v1)
 - Deliverable: S&P 500 daily confluence report + chart export.
-- Code location (initial): `ta4j-examples/src/main/java/ta4jexamples/analysis/confluence/`
+- Code location (core contract): `ta4j-core/src/main/java/org/ta4j/core/analysis/confluence/`
+- Adapter examples (data + visualization): `ta4j-examples/src/main/java/ta4jexamples/charting/confluence/`
 - Key classes:
   - `ConfluenceReport`
   - `ConfluenceReportGenerator`
@@ -523,17 +525,27 @@ All components and final value are bounded in `[0, 100]`.
   - Drift warnings are emitted when metrics breach thresholds.
 
 ## Engineering Checklist
-- [ ] Create confluence analysis package in `ta4j-examples`.
-- [ ] Implement report DTOs and serialization.
-- [ ] Implement pillar calculators and structured evidence output.
-- [ ] Implement level confidence calculator.
-- [ ] Add chart generation for confluence overlays.
-- [ ] Add unit tests for scoring and level confidence.
+- [x] Create confluence analysis package in `ta4j-core` for core report contracts and scoring interfaces.
+- [x] Add adapter package in `ta4j-examples` for datasource wiring, charting, and runnable analysis flows.
+- [x] Implement report DTOs and serialization.
+- [x] Implement pillar calculators and structured evidence output.
+- [x] Implement level confidence calculator.
+- [x] Add chart generation for confluence overlays.
+- [x] Add unit tests for scoring and level confidence.
 - [ ] Add regression test fixture for deterministic output.
-- [ ] Implement decorrelation/family-cap logic.
+- [x] Implement decorrelation/family-cap logic.
 - [ ] Implement walk-forward calibration pipeline.
 - [ ] Implement confidence decomposition and drift warnings.
 - [ ] Add user and agent usage docs.
+
+## Cross-Repo Execution Plan (ta4j + CF)
+- Use coordinated worktrees and a shared feature branch name for cross-repo implementation.
+- Keep `ta4j-core` generic and pluggable; place opinionated feed/provider integrations in adapter layers (`ta4j-examples` and/or `CF`).
+- Define portability contract:
+  - core types and interfaces in `ta4j-core`
+  - market/feed plugins in external repos
+  - neutral defaults in `ta4j-examples` for demonstration only
+- Track compatibility with versioned schema so CF-side adapters can evolve without breaking core APIs.
 
 ## Validation Plan
 - Mandatory full build gate at completion: `scripts/run-full-build-quiet.sh`
@@ -558,8 +570,18 @@ All components and final value are bounded in `[0, 100]`.
 - Better directional hit rate in high-confidence buckets.
 - Reduced false positives in high-correlation indicator conditions.
 
-## Open Questions
-- What minimum backtest history is required for stable calibration per horizon?
-- Should `range` class thresholds be volatility-adaptive by regime cluster?
-- Which external feeds are approved for macro/intermarket pillar in later phases?
-- Should Phase 1 output live in `ta4j-core` immediately or remain in `ta4j-examples` until stabilized?
+## Resolved Decisions (Integrated from Inline Review)
+- Minimum backtest history for stable calibration:
+  - Baseline recommendation: at least 10 years of daily history where available.
+  - Operational minimum per horizon/class/regime bucket: at least 120 effective out-of-sample observations before trusting calibration.
+  - If below minimum, emit calibration warning and cap `calibrationConfidence`.
+- `range` thresholds are volatility-adaptive by regime cluster: approved.
+  - Implement regime-conditional thresholding as default behavior for label generation.
+- External feed/provider policy:
+  - `ta4j-core` remains provider-agnostic and non-opinionated.
+  - `ConfluenceReport` and scoring interfaces must be pluggable with neutral defaults.
+  - Opinionated provider choices live in adapter layers (`ta4j-examples` and/or `CF`).
+- Phase 1 location:
+  - Core `ConfluenceReport` contract implemented in `ta4j-core`.
+  - Cross-repo execution using worktrees for `ta4j` and `CF`.
+  - Additional components may be distributed across repos while keeping core API stable.
