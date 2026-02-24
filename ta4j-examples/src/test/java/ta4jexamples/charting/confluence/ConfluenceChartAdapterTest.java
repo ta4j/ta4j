@@ -5,16 +5,24 @@ package ta4jexamples.charting.confluence;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.nio.file.Path;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.jfree.chart.JFreeChart;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.analysis.confluence.ConfluenceReport;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 import ta4jexamples.charting.builder.ChartPlan;
+import ta4jexamples.charting.compose.TradingChartFactory;
+import ta4jexamples.charting.display.ChartDisplayer;
+import ta4jexamples.charting.storage.ChartStorage;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ConfluenceChartAdapterTest {
@@ -34,6 +42,46 @@ public class ConfluenceChartAdapterTest {
         assertEquals(3, plan.definition().subplots().get(0).horizontalMarkers().size(), "RSI guide markers expected");
         assertEquals(1, plan.definition().subplots().get(1).horizontalMarkers().size(), "MACD zero marker expected");
         assertTrue(plan.metadata().title().contains("Confluence"));
+    }
+
+    @Test
+    public void constructorAndBuildPlanRejectInvalidInputs() {
+        BarSeries series = buildSeries(320, 4300.0d, 1.8d);
+        ConfluenceReport report = new ConfluenceReportGenerator().generate("^GSPC", series);
+        ConfluenceChartAdapter adapter = new ConfluenceChartAdapter(new ChartWorkflow());
+
+        assertThrows(NullPointerException.class, () -> new ConfluenceChartAdapter(null));
+        assertThrows(NullPointerException.class, () -> adapter.buildPlan(null, report, "title"));
+        assertThrows(NullPointerException.class, () -> adapter.buildPlan(series, null, "title"));
+        assertThrows(IllegalArgumentException.class, () -> adapter.buildPlan(series, report, "   "));
+    }
+
+    @Test
+    public void saveDelegatesToWorkflowAndReturnsRecordedPath() {
+        BarSeries series = buildSeries(340, 4300.0d, 2.1d);
+        ConfluenceReport report = new ConfluenceReportGenerator().generate("^GSPC", series);
+        RecordingChartWorkflow workflow = new RecordingChartWorkflow();
+        ConfluenceChartAdapter adapter = new ConfluenceChartAdapter(workflow);
+        Path directory = Path.of("temp", "charts", "confluence-tests");
+
+        Optional<Path> saved = adapter.save(series, report, "Confluence Save Test", directory, "chart.png");
+
+        assertTrue(saved.isPresent());
+        assertEquals(directory.resolve("chart.png"), saved.get());
+        assertNotNull(workflow.lastPlan);
+        assertEquals(directory, workflow.lastDirectory);
+        assertEquals("chart.png", workflow.lastFilename);
+    }
+
+    @Test
+    public void saveRejectsInvalidDirectoryAndFilename() {
+        BarSeries series = buildSeries(340, 4300.0d, 2.1d);
+        ConfluenceReport report = new ConfluenceReportGenerator().generate("^GSPC", series);
+        ConfluenceChartAdapter adapter = new ConfluenceChartAdapter(new ChartWorkflow());
+        Path directory = Path.of("temp", "charts", "confluence-tests");
+
+        assertThrows(NullPointerException.class, () -> adapter.save(series, report, "x", null, "chart.png"));
+        assertThrows(IllegalArgumentException.class, () -> adapter.save(series, report, "x", directory, " "));
     }
 
     private static BarSeries buildSeries(int bars, double basePrice, double driftPerBar) {
@@ -60,5 +108,33 @@ public class ConfluenceChartAdapterTest {
                     .add();
         }
         return series;
+    }
+
+    private static final class RecordingChartWorkflow extends ChartWorkflow {
+        private ChartPlan lastPlan;
+        private Path lastDirectory;
+        private String lastFilename;
+
+        private RecordingChartWorkflow() {
+            super(new TradingChartFactory(), new NoOpChartDisplayer(), ChartStorage.noOp());
+        }
+
+        @Override
+        public Optional<Path> save(ChartPlan plan, Path directory, String filename) {
+            this.lastPlan = plan;
+            this.lastDirectory = directory;
+            this.lastFilename = filename;
+            return Optional.of(directory.resolve(filename));
+        }
+    }
+
+    private static final class NoOpChartDisplayer implements ChartDisplayer {
+        @Override
+        public void display(JFreeChart chart) {
+        }
+
+        @Override
+        public void display(JFreeChart chart, String windowTitle) {
+        }
     }
 }

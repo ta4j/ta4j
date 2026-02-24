@@ -11,6 +11,7 @@ import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Objects;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -54,33 +55,46 @@ public final class SP500ConfluenceAnalysis {
      * @since 0.22.3
      */
     public static void main(String[] args) {
+        YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(true);
+        run(args, (ticker, bars) -> dataSource.loadSeriesInstance(ticker, YahooFinanceInterval.DAY_1, bars),
+                new ConfluenceReportGenerator(), outputDir -> new ChartWorkflow(outputDir.toString()),
+                GraphicsEnvironment::isHeadless, SP500ConfluenceAnalysis::writeJsonReport);
+    }
+
+    static void run(String[] args, SeriesLoader seriesLoader, ConfluenceReportGenerator generator,
+            WorkflowFactory workflowFactory, HeadlessProbe headlessProbe, JsonReportWriter jsonReportWriter) {
+        Objects.requireNonNull(args, "args cannot be null");
+        Objects.requireNonNull(seriesLoader, "seriesLoader cannot be null");
+        Objects.requireNonNull(generator, "generator cannot be null");
+        Objects.requireNonNull(workflowFactory, "workflowFactory cannot be null");
+        Objects.requireNonNull(headlessProbe, "headlessProbe cannot be null");
+        Objects.requireNonNull(jsonReportWriter, "jsonReportWriter cannot be null");
+
         String ticker = args.length > 0 ? args[0] : "^GSPC";
         int bars = args.length > 1 ? Integer.parseInt(args[1]) : 2520;
         Path outputDir = args.length > 2 ? Paths.get(args[2]) : Paths.get("temp", "charts", "confluence");
 
         LOG.info("Loading {} daily candles ({} bars)", ticker, bars);
-        YahooFinanceHttpBarSeriesDataSource dataSource = new YahooFinanceHttpBarSeriesDataSource(true);
-        BarSeries series = dataSource.loadSeriesInstance(ticker, YahooFinanceInterval.DAY_1, bars);
+        BarSeries series = seriesLoader.load(ticker, bars);
         if (series == null || series.getBarCount() == 0) {
             LOG.error("Failed to load series from Yahoo Finance");
             return;
         }
 
-        ConfluenceReportGenerator generator = new ConfluenceReportGenerator();
         ConfluenceReport report = generator.generate(ticker, series);
         printSummary(report);
 
-        ChartWorkflow workflow = new ChartWorkflow(outputDir.toString());
+        ChartWorkflow workflow = workflowFactory.create(outputDir);
         ConfluenceChartAdapter chartAdapter = new ConfluenceChartAdapter(workflow);
         String title = "Confluence Report - " + ticker + " (" + report.snapshot().timeframe() + ")";
         ChartPlan plan = chartAdapter.buildPlan(series, report, title);
 
-        String safeTicker = ticker.replaceAll("[^A-Za-z0-9._-]", "_");
+        String safeTicker = sanitizeTicker(ticker);
         String chartFile = safeTicker + "-confluence.png";
         Optional<Path> chartPath = workflow.save(plan, outputDir, chartFile);
         chartPath.ifPresent(path -> LOG.info("Chart saved: {}", path));
 
-        if (!GraphicsEnvironment.isHeadless()) {
+        if (!headlessProbe.isHeadless()) {
             LOG.info("Displaying chart in realtime for {}", ticker);
             workflow.display(plan, title);
         } else {
@@ -88,18 +102,7 @@ public final class SP500ConfluenceAnalysis {
         }
 
         try {
-            Files.createDirectories(outputDir);
-            Path jsonPath = outputDir.resolve(safeTicker + "-confluence-report.json");
-            Gson gson = new GsonBuilder()
-                    .registerTypeAdapter(Instant.class, (JsonSerializer<Instant>) (source, type, context) -> {
-                        if (source == null) {
-                            return null;
-                        }
-                        return new JsonPrimitive(source.toString());
-                    })
-                    .setPrettyPrinting()
-                    .create();
-            Files.writeString(jsonPath, gson.toJson(report));
+            Path jsonPath = jsonReportWriter.write(outputDir, safeTicker, report);
             LOG.info("Report JSON saved: {}", jsonPath);
         } catch (IOException e) {
             LOG.error("Failed to write report artifacts", e);
@@ -143,5 +146,45 @@ public final class SP500ConfluenceAnalysis {
             LOG.info(String.format(Locale.US, "  %s %.2f (confidence %.1f)", level.name(), level.level(),
                     level.confidence()));
         }
+    }
+
+    static String sanitizeTicker(String ticker) {
+        return ticker.replaceAll("[^A-Za-z0-9._-]", "_");
+    }
+
+    static Path writeJsonReport(Path outputDir, String safeTicker, ConfluenceReport report) throws IOException {
+        Files.createDirectories(outputDir);
+        Path jsonPath = outputDir.resolve(safeTicker + "-confluence-report.json");
+        Gson gson = new GsonBuilder()
+                .registerTypeAdapter(Instant.class, (JsonSerializer<Instant>) (source, type, context) -> {
+                    if (source == null) {
+                        return null;
+                    }
+                    return new JsonPrimitive(source.toString());
+                })
+                .setPrettyPrinting()
+                .create();
+        Files.writeString(jsonPath, gson.toJson(report));
+        return jsonPath;
+    }
+
+    @FunctionalInterface
+    interface SeriesLoader {
+        BarSeries load(String ticker, int bars);
+    }
+
+    @FunctionalInterface
+    interface WorkflowFactory {
+        ChartWorkflow create(Path outputDir);
+    }
+
+    @FunctionalInterface
+    interface HeadlessProbe {
+        boolean isHeadless();
+    }
+
+    @FunctionalInterface
+    interface JsonReportWriter {
+        Path write(Path outputDir, String safeTicker, ConfluenceReport report) throws IOException;
     }
 }
