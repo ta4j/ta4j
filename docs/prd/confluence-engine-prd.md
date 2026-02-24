@@ -532,7 +532,7 @@ All components and final value are bounded in `[0, 100]`.
 - [x] Implement level confidence calculator.
 - [x] Add chart generation for confluence overlays.
 - [x] Add unit tests for scoring and level confidence.
-- [ ] Add regression test fixture for deterministic output.
+- [x] Add regression test fixture for deterministic output.
 - [x] Implement decorrelation/family-cap logic.
 - [ ] Implement walk-forward calibration pipeline.
 - [ ] Implement confidence decomposition and drift warnings.

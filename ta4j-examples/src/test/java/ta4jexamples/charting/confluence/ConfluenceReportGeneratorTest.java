@@ -49,6 +49,19 @@ public class ConfluenceReportGeneratorTest {
         assertTrue(exception.getMessage().contains("at least"));
     }
 
+    @Test
+    public void deterministicFixtureFingerprintRemainsStable() {
+        BarSeries series = buildSeries(420, 4200.0d, 2.5d);
+        ConfluenceReport report = new ConfluenceReportGenerator().generate("^GSPC", series);
+
+        String fingerprint = String.format("%.3f|%.3f|%.3f|%.3f|%.3f|%.3f", report.snapshot().rawConfluenceScore(),
+                report.snapshot().decorrelatedConfluenceScore(), report.confidenceBreakdown().finalConfidence(),
+                report.horizonProbabilities().get(0).upProbability(),
+                report.horizonProbabilities().get(1).upProbability(), report.levelConfidences().get(0).confidence());
+
+        assertEquals("68.082|68.387|47.374|0.598|0.691|40.696", fingerprint);
+    }
+
     private static BarSeries buildSeries(int bars, double basePrice, double driftPerBar) {
         BarSeries series = new MockBarSeriesBuilder().withName("confluence-series").build();
         Instant start = Instant.parse("2023-01-01T00:00:00Z");
