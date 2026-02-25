@@ -1,5 +1,36 @@
 ## Unreleased
 
+### Added
+- **Risk controls APIs**: Added `PositionRiskModel`, `StopLossPositionRiskModel`, and `RMultipleCriterion` for risk-unit (R-multiple) evaluation, plus `StopLossPriceModel`/`StopGainPriceModel` and fixed/trailing/volatility/ATR stop-loss and stop-gain rule variants.
+- **Agent guidance tooling and docs**: Reorganized project `AGENTS.md` into scoped, task-local guides and added `scripts/agents_for_target.sh` to resolve effective instructions for any target path.
+- **Regression coverage additions**: Added explicit tests for `TimeBarBuilder` gap placement, `NetMomentumIndicator` pivot/decay edge handling, mixed-field serialization routing, named-strategy label/vararg diagnostics, and `VolumeIndicator` rolling-window behavior.
+
+### Changed
+- **Risk/stop-rule refinements**: Tightened volatility stop-gain coefficient validation, removed redundant risk recomputation in `RMultipleCriterion`, added the missing `AverageTrueRangeTrailingStopLossRule` lookback overload, and expanded shared stop-rule fixtures/tests and Javadocs.
+- **VolumeIndicator performance**: Replaced O(barCount) per-index summation with an O(1) rolling partial-sum update, including clearer algorithm/complexity Javadocs.
+- **Serialization routing precedence**: `ComponentSerialization` now resolves mixed payloads by descriptor type so strategies prefer `rules` while indicators/rules prefer `components`, while keeping legacy `children`/`baseIndicators` compatibility.
+- **NamedStrategy reconstruction diagnostics**: Strategy reconstruction now emits richer, label-aware errors for missing identifiers, malformed labels, and constructor/parameter failures.
+
+### Changed
+- **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
+  `./mvnw` when present (falling back to `mvn`), so wrapper adoption does not require a second build command.
+- **Full build script portability**: `scripts/run-full-build-quiet.sh` no longer requires Python; timeout handling,
+  quiet-output filtering, heartbeat logging, and test-summary aggregation now run in Bash.
+
+### Fixed
+- **Stop-rule behavior and efficiency**: Trailing stop-gain variants now arm only after the configured favorable move, volatility stop-loss variants trigger on exact threshold touches, gain-side helpers are used consistently, and trailing volatility/fixed-amount rules now reuse stabilized max-lookback indicators to reduce hot-path allocations.
+- **NetMomentum neutral pivot validation**: Constructor now rejects `NaN`/infinite neutral pivot values to prevent undefined momentum output states.
+- **VolumeIndicator constrained-window correctness**: Rolling sums now anchor to the series `beginIndex` so max-bar-count eviction does not double-count or backtrack into pruned history.
+- **Publish-release manual dispatch inputs**: `publish-release.yml` now reads `workflow_dispatch` metadata from event inputs so manual reruns correctly receive `releaseVersion`/`releaseCommit`.
+- **Prepare-release metadata guard**: Added a Maven Central metadata validation gate in `prepare-release.yml` (including dry-run mode) to fail early when required POM metadata (including developers) is missing.
+- **VWAP and Wyckoff market-structure toolkit**: Added rolling/anchored VWAP analytics (deviation, standard deviation, z-score, bands), support/resistance clustering (bounce-count, price-cluster, KDE volume profile), and Wyckoff cycle analysis APIs with a runnable demo.
+- **Release workflow dispatch and metadata checks**: `publish-release.yml` now reads `workflow_dispatch` inputs correctly for manual reruns, and `prepare-release.yml` now fails early when required Maven Central POM metadata is missing.
+- **README snippet synchronization line endings**: `ReadmeContentManager.updateReadmeSnippets(...)` now preserves the
+  target README's dominant line separator (LF/CRLF), with regression tests covering both newline modes.
+- **Indicator serialization and stability**: Aligned VWAP, price-cluster, and Wyckoff indicators on descriptor ordering, NaN handling, and unstable-bar conventions.
+
+## 0.22.2 (2026-02-15)
+
 ### Breaking
 - **Trade model split**: `Trade` is now an interface; the previous concrete implementation is `SimulatedTrade` (backtesting/simulation), and live executions are represented by `LiveTrade`.
 - **Swing indicator interfaces**: Removed deprecated `RecentSwingHighIndicator` and `RecentSwingLowIndicator`; use `RecentSwingIndicator` and concrete implementations directly.
@@ -78,6 +109,8 @@
 - **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
+- **Release workflow hardening**: Improved `prepare-release.yml` token preflight with push-capability checks and an early `git push --dry-run` probe, and fixed `github-script` `core` redeclaration errors in both `prepare-release.yml` and `publish-release.yml`.
+- **Maven Central publication metadata**: Restored `<developers>` information in the parent POM so Central Portal validation accepts ta4j release bundles.
 - **Release health workflow**: Ensure discussion notifications are posted even when summary generation fails and avoid `github-script` core redeclaration errors.
 - **Indicator unstable periods**: Standardized unstable-bar aggregation and warm-up guarding across indicators so pre-warmup bars are handled consistently, including lookback-driven trend/cross indicators.
 - **CashFlow**: Prevented NaN values when a position opens and closes on the same bar index.
@@ -192,6 +225,7 @@
 - Fixed **SuperTrendUpperBandIndicator** NaN contamination by recovering once ATR leaves its unstable window and aligning unstable-bar counts across SuperTrend components so values stabilize after ATR warms up.
 - **Consistent NaN handling across all SuperTrend indicators**: `SuperTrendLowerBandIndicator` and `SuperTrendIndicator` now return NaN during the unstable period (when ATR values are not yet reliable), consistent with `SuperTrendUpperBandIndicator` and the project convention that indicators should return NaN during their unstable period. Previously, these indicators returned zero during the unstable period, which was inconsistent with other indicators and could lead to misleading calculations.
 - **Test improvements for headless environment compatibility**: Updated strategy and charting tests (`RSI2StrategyTest`, `CCICorrectionStrategyTest`, `GlobalExtremaStrategyTest`, `MovingMomentumStrategyTest`, `ChartWorkflowTest`) to use `SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY` instead of `Assume.assumeFalse()` for headless environment checks. This allows tests to run reliably in both headless and non-headless environments without skipping, improving CI/CD compatibility and test coverage.
+- **Cross-platform non-interactive chart test JVMs**: `ta4j-examples` Surefire now sets `java.awt.headless=true` and `ta4j.chart.disableDisplay=true` during tests, and swing-overlay chart assertions no longer skip in headless mode.
 
 ## 0.21.0 (2025-11-29) Skipped 0.20.0 due to a double version incrementing bug in the release-scheduler workflow
 

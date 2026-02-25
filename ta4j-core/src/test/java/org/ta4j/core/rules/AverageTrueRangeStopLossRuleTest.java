@@ -59,10 +59,10 @@ public class AverageTrueRangeStopLossRuleTest {
         // Price remains above stop loss
         series.barBuilder()
                 .endTime(series.getLastBar().getEndTime().plus(Duration.ofDays(1)))
-                .openPrice(90)
+                .openPrice(91)
                 .highPrice(95)
                 .lowPrice(85)
-                .closePrice(90)
+                .closePrice(91)
                 .add();
 
         for (var rule : rules) {

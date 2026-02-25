@@ -299,6 +299,7 @@ public abstract class NamedStrategy extends BaseStrategy {
      *
      * @param label serialized label
      * @return immutable token list where index {@code 0} is the simple class name
+     * @throws IllegalArgumentException if label is null or blank
      */
     public static List<String> splitLabel(String label) {
         Objects.requireNonNull(label, "label");

@@ -3,7 +3,7 @@
     <parent>
         <groupId>org.ta4j</groupId>
         <artifactId>ta4j-parent</artifactId>
-        <version>0.22.2-SNAPSHOT</version>
+        <version>0.22.3-SNAPSHOT</version>
     </parent>
     <artifactId>ta4j-examples</artifactId>
 
@@ -101,6 +101,17 @@
                 <artifactId>formatter-maven-plugin</artifactId>
                 <configuration>
                     <configFile>${project.parent.basedir}/code-formatter.xml</configFile>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <systemPropertyVariables>
+                        <!-- Keep chart tests non-interactive by default across all platforms -->
+                        <java.awt.headless>true</java.awt.headless>
+                        <ta4j.chart.disableDisplay>true</ta4j.chart.disableDisplay>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
             <plugin>
