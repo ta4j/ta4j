@@ -62,8 +62,7 @@ public class GatorOscillatorIndicator extends CachedIndicator<Num> {
         this.jawMinusTeeth = BinaryOperationIndicator.difference(jaw, teeth);
         this.teethMinusLips = BinaryOperationIndicator.difference(teeth, lips);
         this.upperHistogram = upperHistogram;
-        this.unstableBars = upperHistogram
-                ? Math.max(jaw.getCountOfUnstableBars(), teeth.getCountOfUnstableBars())
+        this.unstableBars = upperHistogram ? Math.max(jaw.getCountOfUnstableBars(), teeth.getCountOfUnstableBars())
                 : Math.max(teeth.getCountOfUnstableBars(), lips.getCountOfUnstableBars());
     }
 
