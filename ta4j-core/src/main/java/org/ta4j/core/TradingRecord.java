@@ -62,8 +62,14 @@ public interface TradingRecord extends Serializable {
      * single entry or exit trade.
      * </p>
      *
+     * <p>
+     * The default implementation delegates to {@link #operate(int, Num, Num)} and
+     * therefore supports only index/price/amount semantics. Implementations that
+     * store additional execution metadata should override this method.
+     * </p>
+     *
      * @param trade the trade to place
-     * @since 0.22.2
+     * @since 0.22.3
      */
     default void operate(Trade trade) {
         Objects.requireNonNull(trade, "trade");
@@ -95,7 +101,7 @@ public interface TradingRecord extends Serializable {
      *
      * @param trade the entry trade to place
      * @return true if the entry has been placed, false otherwise
-     * @since 0.22.2
+     * @since 0.22.3
      */
     default boolean enter(Trade trade) {
         Objects.requireNonNull(trade, "trade");
@@ -131,7 +137,7 @@ public interface TradingRecord extends Serializable {
      *
      * @param trade the exit trade to place
      * @return true if the exit has been placed, false otherwise
-     * @since 0.22.2
+     * @since 0.22.3
      */
     default boolean exit(Trade trade) {
         Objects.requireNonNull(trade, "trade");

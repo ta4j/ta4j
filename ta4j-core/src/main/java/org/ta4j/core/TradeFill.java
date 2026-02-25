@@ -13,7 +13,7 @@ import org.ta4j.core.num.Num;
  * @param price  execution price per asset
  * @param amount executed amount
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public record TradeFill(int index, Num price, Num amount) {
 
@@ -21,7 +21,7 @@ public record TradeFill(int index, Num price, Num amount) {
      * Creates a trade fill.
      *
      * @throws NullPointerException if price or amount is null
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public TradeFill {
         Objects.requireNonNull(price, "price");

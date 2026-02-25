@@ -147,6 +147,15 @@ public class PositionTest {
         assertThrows(IllegalStateException.class, () -> position.operate(exit));
     }
 
+    @Test
+    public void operateWithPrebuiltTradeRejectsMismatchedCostModel() {
+        Position position = new Position(TradeType.BUY, transactionModel, holdingModel);
+        Trade entry = new AggregatedTrade(TradeType.BUY,
+                List.of(new TradeFill(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1))), new ZeroCostModel());
+
+        assertThrows(IllegalArgumentException.class, () -> position.operate(entry));
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void shouldThrowIllegalArgumentExceptionWhenOrderTypeIsNull() {
         new Position(null);

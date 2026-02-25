@@ -18,7 +18,7 @@ import org.ta4j.core.num.Num;
  * volume-weighted average execution price.
  * </p>
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class AggregatedTrade extends SimulatedTrade {
 
@@ -29,7 +29,7 @@ public class AggregatedTrade extends SimulatedTrade {
      *
      * @param type  trade type
      * @param fills execution fills (must not be empty)
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public AggregatedTrade(TradeType type, List<TradeFill> fills) {
         this(type, fills, new ZeroCostModel());
@@ -41,7 +41,7 @@ public class AggregatedTrade extends SimulatedTrade {
      * @param type                 trade type
      * @param fills                execution fills (must not be empty)
      * @param transactionCostModel transaction cost model
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public AggregatedTrade(TradeType type, List<TradeFill> fills, CostModel transactionCostModel) {
         this(type, summarizeFills(fills), transactionCostModel);
@@ -65,6 +65,7 @@ public class AggregatedTrade extends SimulatedTrade {
         }
         Num totalAmount = fills.getFirst().amount().getNumFactory().zero();
         Num weightedPrice = fills.getFirst().price().getNumFactory().zero();
+        int earliestFillIndex = fills.getFirst().index();
         for (TradeFill fill : fills) {
             if (fill.price().isNaN()) {
                 throw new IllegalArgumentException("fill price must be set");
@@ -72,10 +73,11 @@ public class AggregatedTrade extends SimulatedTrade {
             if (fill.amount().isNaN() || fill.amount().isZero() || fill.amount().isNegative()) {
                 throw new IllegalArgumentException("fill amount must be positive");
             }
+            earliestFillIndex = Math.min(earliestFillIndex, fill.index());
             totalAmount = totalAmount.plus(fill.amount());
             weightedPrice = weightedPrice.plus(fill.price().multipliedBy(fill.amount()));
         }
-        return new FillSummary(List.copyOf(fills), fills.getFirst().index(), totalAmount,
+        return new FillSummary(List.copyOf(fills), earliestFillIndex, totalAmount,
                 weightedPrice.dividedBy(totalAmount));
     }
 

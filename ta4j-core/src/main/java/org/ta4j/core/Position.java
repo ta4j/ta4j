@@ -200,10 +200,14 @@ public class Position implements Serializable {
      *
      * @param trade the trade to apply
      * @return the trade
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Trade operate(Trade trade) {
         Objects.requireNonNull(trade, "trade");
+        CostModel effectiveTransactionCostModel = getTransactionCostModel();
+        if (!trade.getCostModel().equals(effectiveTransactionCostModel)) {
+            throw new IllegalArgumentException("Trades and the position must incorporate the same trading cost model");
+        }
         if (isNew()) {
             if (trade.getType() != startingType) {
                 throw new IllegalArgumentException("The first trade type must match the starting type");
