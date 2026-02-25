@@ -20,7 +20,6 @@ import org.jfree.chart.ui.TextAnchor;
 import org.jfree.data.time.TimeSeriesCollection;
 import org.jfree.data.xy.OHLCDataset;
 import org.jfree.data.xy.XYSeriesCollection;
-import org.junit.Assume;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -45,7 +44,6 @@ import org.ta4j.core.num.Num;
 
 import java.awt.BasicStroke;
 import java.awt.Color;
-import java.awt.GraphicsEnvironment;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
@@ -382,8 +380,6 @@ class TradingChartFactoryTest {
 
     @Test
     void testSwingPointOverlayChartMatchesSwingPointAnalysisFlow() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-
         BarSeries swingSeries = swingPointSeries();
         LowPriceIndicator lowPrice = new LowPriceIndicator(swingSeries);
         HighPriceIndicator highPrice = new HighPriceIndicator(swingSeries);
@@ -467,8 +463,6 @@ class TradingChartFactoryTest {
 
     @Test
     void testSwingPointOverlayRespectsConnectAcrossNaNDisabled() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-
         BarSeries swingSeries = swingPointSeries();
         LowPriceIndicator lowPrice = new LowPriceIndicator(swingSeries);
         HighPriceIndicator highPrice = new HighPriceIndicator(swingSeries);
@@ -504,8 +498,6 @@ class TradingChartFactoryTest {
 
     @Test
     void testSwingPointOverlayUsesCircularDotsScaledByLineWidth() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-
         BarSeries swingSeries = swingPointSeries();
         SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(swingSeries,
                 new RecentFractalSwingLowIndicator(new LowPriceIndicator(swingSeries), 5, 5, 0));
@@ -555,8 +547,6 @@ class TradingChartFactoryTest {
 
     @Test
     void testSwingPointOverlayRespectsOpacity() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-
         BarSeries swingSeries = swingPointSeries();
         SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(swingSeries,
                 new RecentFractalSwingLowIndicator(new LowPriceIndicator(swingSeries), 5, 5, 0));
@@ -597,8 +587,6 @@ class TradingChartFactoryTest {
 
     @Test
     void testSwingMarkerDefaultOpacityIs90Percent() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-
         BarSeries swingSeries = swingPointSeries();
         SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(swingSeries,
                 new RecentFractalSwingLowIndicator(new LowPriceIndicator(swingSeries), 5, 5, 0));
@@ -632,8 +620,6 @@ class TradingChartFactoryTest {
 
     @Test
     void testSwingMarkersRenderedAfterBaseDataset() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-
         BarSeries swingSeries = swingPointSeries();
         SwingPointMarkerIndicator swingLowMarkers = new SwingPointMarkerIndicator(swingSeries,
                 new RecentFractalSwingLowIndicator(new LowPriceIndicator(swingSeries), 5, 5, 0));
@@ -668,8 +654,6 @@ class TradingChartFactoryTest {
 
     @Test
     void testSwingMarkerDatasetFallsBackToClosePriceWhenIndicatorIsNaN() {
-        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
-
         BarSeries series = swingPointSeries();
         NaNPriceIndicator priceIndicator = new NaNPriceIndicator(series);
         StubSwingIndicator swingIndicator = new StubSwingIndicator(priceIndicator, List.of(2, 5));
