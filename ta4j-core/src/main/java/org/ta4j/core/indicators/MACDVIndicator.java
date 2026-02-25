@@ -8,11 +8,17 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
 /**
- * @deprecated use {@link org.ta4j.core.indicators.macd.MACDVIndicator}
+ * @deprecated use {@link org.ta4j.core.indicators.macd.MACDVIndicator}. This
+ *             compatibility shim is scheduled for removal in 0.24.0.
  * @since 0.19
  */
-@Deprecated(since = "0.22.3", forRemoval = false)
+@Deprecated(since = "0.22.3", forRemoval = true)
 public class MACDVIndicator extends org.ta4j.core.indicators.macd.MACDVIndicator {
+
+    {
+        DeprecationNotifier.warnOnce(MACDVIndicator.class, org.ta4j.core.indicators.macd.MACDVIndicator.class.getName(),
+                "0.24.0");
+    }
 
     /**
      * Constructor with defaults.
