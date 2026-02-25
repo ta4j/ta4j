@@ -7,6 +7,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Before;
@@ -214,5 +215,57 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         // no trade happened within [9-9]
         positions = manager.run(aStrategy, 9, 9).getPositions();
         assertTrue(positions.isEmpty());
+    }
+
+    @Test
+    public void invokesExecutionModelOnBarForEachVisitedIndex() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d, 40d).build();
+        List<Integer> visitedIndices = new ArrayList<>();
+        TradeExecutionModel model = new TradeExecutionModel() {
+            @Override
+            public void onBar(int index, TradingRecord tradingRecord, BarSeries barSeries) {
+                visitedIndices.add(index);
+            }
+
+            @Override
+            public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
+                // no-op
+            }
+        };
+        BarSeriesManager localManager = new BarSeriesManager(series, model);
+        Strategy noSignalStrategy = new BaseStrategy(new FixedRule(), new FixedRule());
+
+        localManager.run(noSignalStrategy, 1, 3);
+
+        assertEquals(List.of(1, 2, 3), visitedIndices);
+    }
+
+    @Test
+    public void onBarCanOperateWithoutAnyStrategySignal() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        TradeExecutionModel model = new TradeExecutionModel() {
+            @Override
+            public void onBar(int index, TradingRecord tradingRecord, BarSeries barSeries) {
+                if (index == 1 && tradingRecord.isClosed()) {
+                    tradingRecord.operate(index, barSeries.getBar(index).getClosePrice(), barSeries.numFactory().one());
+                } else if (index == 2 && !tradingRecord.isClosed()) {
+                    tradingRecord.operate(index, barSeries.getBar(index).getClosePrice(), barSeries.numFactory().one());
+                }
+            }
+
+            @Override
+            public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
+                // no-op
+            }
+        };
+        BarSeriesManager localManager = new BarSeriesManager(series, model);
+        Strategy noSignalStrategy = new BaseStrategy(new FixedRule(), new FixedRule());
+
+        TradingRecord tradingRecord = localManager.run(noSignalStrategy);
+
+        assertEquals(1, tradingRecord.getPositionCount());
+        Position position = tradingRecord.getPositions().getFirst();
+        assertEquals(1, position.getEntry().getIndex());
+        assertEquals(2, position.getExit().getIndex());
     }
 }
