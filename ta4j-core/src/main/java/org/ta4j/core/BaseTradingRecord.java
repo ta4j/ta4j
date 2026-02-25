@@ -186,7 +186,7 @@ public class BaseTradingRecord implements TradingRecord {
                 // BUY, SELL
                 currentPosition = new Position(o.getType(), transactionCostModel, holdingCostModel);
             }
-            Trade newTrade = currentPosition.operate(o.getIndex(), o.getPricePerAsset(), o.getAmount());
+            Trade newTrade = currentPosition.operate(o);
             recordTrade(newTrade, newTradeWillBeAnEntry);
         }
     }
@@ -221,12 +221,24 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public void operate(int index, Num price, Num amount) {
+        Trade newTrade;
         if (currentPosition.isClosed()) {
             // Current position closed, should not occur
             throw new IllegalStateException("Current position should not be closed");
         }
         boolean newTradeWillBeAnEntry = currentPosition.isNew();
-        Trade newTrade = currentPosition.operate(index, price, amount);
+        newTrade = currentPosition.operate(index, price, amount);
+        recordTrade(newTrade, newTradeWillBeAnEntry);
+    }
+
+    @Override
+    public void operate(Trade trade) {
+        if (currentPosition.isClosed()) {
+            // Current position closed, should not occur
+            throw new IllegalStateException("Current position should not be closed");
+        }
+        boolean newTradeWillBeAnEntry = currentPosition.isNew();
+        Trade newTrade = currentPosition.operate(trade);
         recordTrade(newTrade, newTradeWillBeAnEntry);
     }
 
