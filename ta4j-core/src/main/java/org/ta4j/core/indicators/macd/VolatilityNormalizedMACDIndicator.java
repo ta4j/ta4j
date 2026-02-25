@@ -332,7 +332,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
         if (signalLine == null) {
             throw new IllegalArgumentException("Signal line factory must not return null");
         }
-        if (!Objects.equals(signalLine.getBarSeries(), getBarSeries())) {
+        if (signalLine.getBarSeries() != getBarSeries()) {
             throw new IllegalArgumentException("Signal line must share the same bar series");
         }
         return signalLine;

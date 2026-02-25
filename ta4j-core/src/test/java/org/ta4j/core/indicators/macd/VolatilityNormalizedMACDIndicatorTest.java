@@ -8,11 +8,13 @@ import static org.junit.Assert.assertThrows;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.BaseBarSeries;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.Indicator;
@@ -223,6 +225,15 @@ public class VolatilityNormalizedMACDIndicatorTest extends AbstractIndicatorTest
     }
 
     @Test
+    public void rejectsSignalLineFactoriesThatReturnDifferentSeriesEvenWhenEqual() {
+        VolatilityNormalizedMACDIndicator indicator = new VolatilityNormalizedMACDIndicator(series, 12, 26, 9);
+        BarSeries equalityCompatibleSeries = new EqualityCompatibleBarSeries(series);
+
+        assertThrows(IllegalArgumentException.class, () -> indicator.getSignalLine(9,
+                (src, bars) -> new EMAIndicator(new ClosePriceIndicator(equalityCompatibleSeries), bars)));
+    }
+
+    @Test
     public void classifiesMomentumStateUsingDefaultThresholds() {
         assertThat(MACDVMomentumState.fromMacdV(numFactory.zero(), (MACDVMomentumProfile) null))
                 .isEqualTo(MACDVMomentumState.UNDEFINED);
@@ -398,5 +409,22 @@ public class VolatilityNormalizedMACDIndicatorTest extends AbstractIndicatorTest
                     .add();
         }
         return result;
+    }
+
+    private static final class EqualityCompatibleBarSeries extends BaseBarSeries {
+
+        EqualityCompatibleBarSeries(BarSeries delegate) {
+            super(delegate.getName() + "-equal-copy", new ArrayList<>(delegate.getBarData()));
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof BarSeries;
+        }
+
+        @Override
+        public int hashCode() {
+            return 31;
+        }
     }
 }

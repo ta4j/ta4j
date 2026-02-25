@@ -76,7 +76,16 @@ public final class DeprecationNotifier {
         warnOnce(deprecatedType, replacementType, null);
     }
 
-    static void resetForTests() {
+    /**
+     * Clears the once-per-type emission cache.
+     *
+     * <p>
+     * Intended for test isolation when multiple test classes validate
+     * deprecation-warning output in the same JVM.
+     *
+     * @since 0.22.3
+     */
+    public static void resetForTests() {
         EMITTED_TYPES.clear();
     }
 }

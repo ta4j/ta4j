@@ -6,6 +6,7 @@ package org.ta4j.core.indicators.macd;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -51,16 +52,15 @@ public class MACDVMomentumStateIndicatorTest
         VolatilityNormalizedMACDIndicator macdV = new VolatilityNormalizedMACDIndicator(series, 12, 26, 9);
         MACDVMomentumStateIndicator stateIndicator = new MACDVMomentumStateIndicator(macdV, 20, 40, -20, -40);
         int unstableBars = stateIndicator.getCountOfUnstableBars();
-
-        assertThat(stateIndicator.getPositiveRangeThreshold().toString()).isEqualTo("20");
-        assertThat(stateIndicator.getPositiveRiskThreshold().toString()).isEqualTo("40");
-        assertThat(stateIndicator.getNegativeRangeThreshold().toString()).isEqualTo("-20");
-        assertThat(stateIndicator.getNegativeRiskThreshold().toString()).isEqualTo("-40");
+        assertThat((BigDecimal) stateIndicator.getPositiveRangeThreshold()).isEqualByComparingTo("20");
+        assertThat((BigDecimal) stateIndicator.getPositiveRiskThreshold()).isEqualByComparingTo("40");
+        assertThat((BigDecimal) stateIndicator.getNegativeRangeThreshold()).isEqualByComparingTo("-20");
+        assertThat((BigDecimal) stateIndicator.getNegativeRiskThreshold()).isEqualByComparingTo("-40");
         MACDVMomentumProfile momentumProfile = stateIndicator.getMomentumProfile();
-        assertThat(momentumProfile.positiveRangeThreshold().toString()).isEqualTo("20");
-        assertThat(momentumProfile.positiveRiskThreshold().toString()).isEqualTo("40");
-        assertThat(momentumProfile.negativeRangeThreshold().toString()).isEqualTo("-20");
-        assertThat(momentumProfile.negativeRiskThreshold().toString()).isEqualTo("-40");
+        assertThat(momentumProfile.positiveRangeThreshold().doubleValue()).isEqualTo(20D);
+        assertThat(momentumProfile.positiveRiskThreshold().doubleValue()).isEqualTo(40D);
+        assertThat(momentumProfile.negativeRangeThreshold().doubleValue()).isEqualTo(-20D);
+        assertThat(momentumProfile.negativeRiskThreshold().doubleValue()).isEqualTo(-40D);
         assertThat(stateIndicator.getValue(unstableBars)).isEqualTo(
                 MACDVMomentumState.fromMacdV(macdV.getValue(unstableBars), stateIndicator.getMomentumProfile()));
     }

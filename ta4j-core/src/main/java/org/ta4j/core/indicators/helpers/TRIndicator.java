@@ -51,6 +51,10 @@ public class TRIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
+
         Num high = highPriceIndicator.getValue(index);
         Num low = lowPriceIndicator.getValue(index);
         if (Num.isNaNOrNull(high) || Num.isNaNOrNull(low)) {
@@ -73,7 +77,10 @@ public class TRIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(highPriceIndicator.getCountOfUnstableBars(),
-                Math.max(lowPriceIndicator.getCountOfUnstableBars(), closePriceIndicator.getCountOfUnstableBars()));
+        int highUnstable = highPriceIndicator.getCountOfUnstableBars();
+        int lowUnstable = lowPriceIndicator.getCountOfUnstableBars();
+        int closeUnstable = closePriceIndicator.getCountOfUnstableBars();
+        int previousCloseUnstable = closeUnstable == 0 ? 0 : closeUnstable + 1;
+        return Math.max(highUnstable, Math.max(lowUnstable, previousCloseUnstable));
     }
 }

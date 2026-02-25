@@ -16,6 +16,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.utils.DeprecationNotifier;
 
 import java.io.StringWriter;
 import java.time.Duration;
@@ -35,6 +36,8 @@ class DeprecatedJsonDataSourcesNotifierTest {
 
     @BeforeEach
     void setUp() {
+        DeprecationNotifier.resetForTests();
+
         loggerContext = (LoggerContext) LogManager.getContext(false);
         Configuration config = loggerContext.getConfiguration();
         loggerConfig = config.getLoggerConfig("org.ta4j.core.utils.DeprecationNotifier");
@@ -66,6 +69,7 @@ class DeprecatedJsonDataSourcesNotifierTest {
         if (loggerContext != null) {
             loggerContext.updateLoggers();
         }
+        DeprecationNotifier.resetForTests();
     }
 
     @Test

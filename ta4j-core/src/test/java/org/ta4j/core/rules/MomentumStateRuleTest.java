@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.rules;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -56,7 +57,7 @@ public class MomentumStateRuleTest {
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
 
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            assertTrue(restored.isSatisfied(i) == rule.isSatisfied(i));
+            assertEquals("Mismatch at index " + i, rule.isSatisfied(i), restored.isSatisfied(i));
         }
     }
 }

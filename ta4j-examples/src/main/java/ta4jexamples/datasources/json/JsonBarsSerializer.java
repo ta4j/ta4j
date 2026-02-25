@@ -13,7 +13,7 @@ import org.ta4j.core.utils.DeprecationNotifier;
 import java.io.*;
 
 /**
- * @deprecated // TODO: Remove in 0.20
+ * @deprecated
  *             <p>
  *             Use {@link JsonFileBarSeriesDataSource} instead. Scheduled for
  *             removal in 0.24.0.

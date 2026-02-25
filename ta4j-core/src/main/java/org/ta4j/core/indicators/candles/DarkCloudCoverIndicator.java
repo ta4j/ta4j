@@ -47,7 +47,8 @@ public class DarkCloudCoverIndicator extends CachedIndicator<Boolean> {
      * @param series the bar series
      */
     public DarkCloudCoverIndicator(final BarSeries series) {
-        this(series, series.numFactory().numOf(0.03), series.numFactory().zero(), series.numFactory().numOf(0.5));
+        this(Objects.requireNonNull(series, "series must not be null"), series.numFactory().numOf(0.03),
+                series.numFactory().zero(), series.numFactory().numOf(0.5));
     }
 
     /**
