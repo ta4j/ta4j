@@ -82,6 +82,7 @@ class DeprecatedJsonDataSourcesNotifierTest {
         assertTrue(logContent.contains("ta4jexamples.datasources.json.GsonBarSeries is deprecated"));
         assertTrue(logContent.contains("ta4jexamples.datasources.json.GsonBarData is deprecated"));
         assertTrue(logContent.contains("Use ta4jexamples.datasources.json.JsonFileBarSeriesDataSource instead."));
+        assertTrue(logContent.contains("scheduled for removal in 0.24.0"));
 
         assertEquals(1, countOccurrences(logContent, "ta4jexamples.datasources.json.JsonBarsSerializer is deprecated"));
         assertEquals(1, countOccurrences(logContent, "ta4jexamples.datasources.json.GsonBarSeries is deprecated"));

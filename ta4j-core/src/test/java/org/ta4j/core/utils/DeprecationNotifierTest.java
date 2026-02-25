@@ -109,10 +109,10 @@ public class DeprecationNotifierTest {
 
         String logContent = logOutput.toString();
         assertThat(logContent).contains(
-                "org.ta4j.core.criteria.MaximumDrawdownCriterion is deprecated and will be removed at some point in the future.");
+                "org.ta4j.core.criteria.MaximumDrawdownCriterion is deprecated since 0.19 and is scheduled for removal in 0.24.0.");
         assertThat(logContent).contains("Use org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion instead.");
         assertThat(logContent).contains(
-                "org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion is deprecated and will be removed at some point in the future.");
+                "org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion is deprecated since 0.19 and is scheduled for removal in 0.24.0.");
         assertThat(logContent).contains("Use org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion instead.");
 
         assertThat(countOccurrences(logContent, "org.ta4j.core.criteria.MaximumDrawdownCriterion is deprecated"))

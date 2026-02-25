@@ -12,19 +12,21 @@ import org.ta4j.core.utils.DeprecationNotifier;
 import java.util.LinkedList;
 import java.util.List;
 
-@Deprecated(since = "0.19")
+@Deprecated(since = "0.19", forRemoval = true)
 public class GsonBarSeries {
 
     private String name;
     private List<GsonBarData> ohlc = new LinkedList<>();
 
     public GsonBarSeries() {
-        DeprecationNotifier.warnOnce(GsonBarSeries.class, "ta4jexamples.datasources.json.JsonFileBarSeriesDataSource");
+        DeprecationNotifier.warnOnce(GsonBarSeries.class, "ta4jexamples.datasources.json.JsonFileBarSeriesDataSource",
+                "0.24.0");
     }
 
-    @Deprecated
+    @Deprecated(since = "0.19", forRemoval = true)
     public static GsonBarSeries from(BarSeries series) {
-        DeprecationNotifier.warnOnce(GsonBarSeries.class, "ta4jexamples.datasources.json.JsonFileBarSeriesDataSource");
+        DeprecationNotifier.warnOnce(GsonBarSeries.class, "ta4jexamples.datasources.json.JsonFileBarSeriesDataSource",
+                "0.24.0");
         GsonBarSeries result = new GsonBarSeries();
         result.name = series.getName();
         List<Bar> barData = series.getBarData();
@@ -35,9 +37,10 @@ public class GsonBarSeries {
         return result;
     }
 
-    @Deprecated
+    @Deprecated(since = "0.19", forRemoval = true)
     public BarSeries toBarSeries() {
-        DeprecationNotifier.warnOnce(GsonBarSeries.class, "ta4jexamples.datasources.json.JsonFileBarSeriesDataSource");
+        DeprecationNotifier.warnOnce(GsonBarSeries.class, "ta4jexamples.datasources.json.JsonFileBarSeriesDataSource",
+                "0.24.0");
         BaseBarSeries result = new BaseBarSeriesBuilder().withName(this.name).build();
         for (GsonBarData data : ohlc) {
             data.addTo(result);

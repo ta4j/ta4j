@@ -15,10 +15,11 @@ import java.io.*;
 /**
  * @deprecated // TODO: Remove in 0.20
  *             <p>
- *             Use {@link JsonFileBarSeriesDataSource} instead.
+ *             Use {@link JsonFileBarSeriesDataSource} instead. Scheduled for
+ *             removal in 0.24.0.
  *             </p>
  */
-@Deprecated(since = "0.19")
+@Deprecated(since = "0.19", forRemoval = true)
 public class JsonBarsSerializer {
 
     private static final Logger LOG = LogManager.getLogger(JsonBarsSerializer.class);
@@ -29,10 +30,10 @@ public class JsonBarsSerializer {
 
     private static void warnDeprecatedUse() {
         DeprecationNotifier.warnOnce(JsonBarsSerializer.class,
-                "ta4jexamples.datasources.json.JsonFileBarSeriesDataSource");
+                "ta4jexamples.datasources.json.JsonFileBarSeriesDataSource", "0.24.0");
     }
 
-    @Deprecated
+    @Deprecated(since = "0.19", forRemoval = true)
     public static void persistSeries(BarSeries series, String filename) {
         warnDeprecatedUse();
         GsonBarSeries exportableSeries = GsonBarSeries.from(series);
@@ -56,7 +57,7 @@ public class JsonBarsSerializer {
         }
     }
 
-    @Deprecated
+    @Deprecated(since = "0.19", forRemoval = true)
     public static BarSeries loadSeries(String filename) {
         warnDeprecatedUse();
         Gson gson = new Gson();
@@ -97,7 +98,7 @@ public class JsonBarsSerializer {
      * @return the loaded BarSeries object, or null if loading fails or input stream
      *         is null
      */
-    @Deprecated(since = "0.19")
+    @Deprecated(since = "0.19", forRemoval = true)
     public static BarSeries loadSeries(InputStream inputStream) {
         warnDeprecatedUse();
         if (inputStream == null) {
