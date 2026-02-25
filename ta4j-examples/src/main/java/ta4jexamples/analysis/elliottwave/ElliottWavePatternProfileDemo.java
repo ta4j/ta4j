@@ -9,7 +9,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
-import org.ta4j.core.indicators.elliott.ElliottWaveAnalysis;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
@@ -37,7 +37,7 @@ public class ElliottWavePatternProfileDemo {
             return;
         }
 
-        ElliottWaveAnalysis defaultAnalyzer = ElliottWaveAnalysis.builder()
+        ElliottWaveAnalysisRunner defaultAnalyzer = ElliottWaveAnalysisRunner.builder()
                 .degree(ElliottDegree.PRIMARY)
                 .higherDegrees(0)
                 .lowerDegrees(0)
@@ -45,7 +45,7 @@ public class ElliottWavePatternProfileDemo {
                 .confidenceModelFactory(ConfidenceProfiles::defaultModel)
                 .build();
 
-        ElliottWaveAnalysis patternAwareAnalyzer = ElliottWaveAnalysis.builder()
+        ElliottWaveAnalysisRunner patternAwareAnalyzer = ElliottWaveAnalysisRunner.builder()
                 .degree(ElliottDegree.PRIMARY)
                 .higherDegrees(0)
                 .lowerDegrees(0)

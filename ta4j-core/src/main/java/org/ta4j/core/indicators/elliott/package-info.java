@@ -48,10 +48,11 @@
  * {@link org.ta4j.core.indicators.elliott.ElliottTrendBiasIndicator} aggregates
  * directional bias across scenarios.</li>
  * <li><b>Pluggable one-shot analysis</b>:
- * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysis} orchestrates
- * swing detection, scenario generation, and confidence profiles, with pluggable
- * detectors under {@code org.ta4j.core.indicators.elliott.swing} and profile
- * helpers in {@code org.ta4j.core.indicators.elliott.confidence}, returning an
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner}
+ * orchestrates swing detection, scenario generation, and confidence profiles,
+ * with pluggable detectors under {@code org.ta4j.core.indicators.elliott.swing}
+ * and profile helpers in {@code org.ta4j.core.indicators.elliott.confidence},
+ * returning an
  * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult} with
  * per-degree analyses, ranked scenarios, and analysis metadata. It can also
  * optionally validate base-degree scenarios across neighboring degrees and
@@ -74,8 +75,8 @@
  * {@link org.ta4j.core.indicators.elliott.ElliottWaveFacade} when you want
  * indicator-style, per-bar access to Elliott outputs (phase, ratios, scenarios,
  * invalidations). Use
- * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysis} when you want a
- * one-shot analysis pipeline and optionally want to validate base-degree
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner} when you
+ * want a one-shot analysis pipeline and optionally want to validate base-degree
  * scenarios against supporting degrees to reduce ambiguity.
  *
  * <p>

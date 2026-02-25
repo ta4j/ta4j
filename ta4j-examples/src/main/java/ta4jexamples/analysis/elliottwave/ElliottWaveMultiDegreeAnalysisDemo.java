@@ -11,7 +11,7 @@ import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
-import org.ta4j.core.indicators.elliott.ElliottWaveAnalysis;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 
 /**
@@ -38,7 +38,7 @@ public class ElliottWaveMultiDegreeAnalysisDemo {
             return;
         }
 
-        ElliottWaveAnalysis analyzer = ElliottWaveAnalysis.builder()
+        ElliottWaveAnalysisRunner analyzer = ElliottWaveAnalysisRunner.builder()
                 .degree(ElliottDegree.PRIMARY)
                 .higherDegrees(1)
                 .lowerDegrees(1)

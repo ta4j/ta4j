@@ -12,7 +12,7 @@ import java.util.Set;
  *
  * <p>
  * Use this helper to constrain {@link ElliottScenarioGenerator} or
- * {@link ElliottWaveAnalysis} to a subset of pattern types (for example,
+ * {@link ElliottWaveAnalysisRunner} to a subset of pattern types (for example,
  * impulse-only analysis).
  *
  * @since 0.22.2

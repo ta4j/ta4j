@@ -16,9 +16,9 @@ import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
  * Result of an Elliott Wave analysis run.
  *
  * <p>
- * Produced by {@link ElliottWaveAnalysis} to capture a complete snapshot of the
- * analysis pipeline for a given bar index. Use this record when you need to
- * inspect raw versus processed swings, scenario rankings, confidence
+ * Produced by {@link ElliottWaveAnalysisRunner} to capture a complete snapshot
+ * of the analysis pipeline for a given bar index. Use this record when you need
+ * to inspect raw versus processed swings, scenario rankings, confidence
  * breakdowns, projected channels, and the aggregate trend bias in one place.
  *
  * @param degree               Elliott degree used for analysis

@@ -70,11 +70,11 @@ import com.google.gson.Gson;
  * @see ElliottWaveIndicatorSuiteDemo
  * @since 0.22.0
  */
-public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, SwingSnapshot swingSnapshot,
+public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, SwingSnapshot swingSnapshot,
         LatestAnalysis latestAnalysis, ScenarioSummary scenarioSummary, ElliottTrendBias trendBias,
         BaseCaseScenario baseCase, List<AlternativeScenario> alternatives, String baseCaseChartImage,
         List<String> alternativeChartImages) {
-    private static final Logger LOG = LogManager.getLogger(ElliottWaveAnalysisResult.class);
+    private static final Logger LOG = LogManager.getLogger(ElliottWaveAnalysisReport.class);
     private static final double SCENARIO_TYPE_OVERLAP_WEIGHT = 0.3;
     private static final double CONSENSUS_ADJUSTMENT_WEIGHT = 0.4;
     private static final double DIRECTION_OVERLAP_WEIGHT = 0.2;
@@ -121,7 +121,7 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
      * @param alternativeChartPlans chart plans for alternative scenarios
      * @return analysis result capturing all logged data and chart images
      */
-    public static ElliottWaveAnalysisResult from(ElliottDegree degree, ElliottSwingMetadata swingMetadata,
+    public static ElliottWaveAnalysisReport from(ElliottDegree degree, ElliottSwingMetadata swingMetadata,
             ElliottPhaseIndicator phaseIndicator, ElliottRatioIndicator ratioIndicator,
             ElliottChannelIndicator channelIndicator, ElliottConfluenceIndicator confluenceIndicator,
             ElliottInvalidationIndicator invalidationIndicator, ElliottScenarioSet scenarioSet, int endIndex,
@@ -160,7 +160,7 @@ public record ElliottWaveAnalysisResult(ElliottDegree degree, int endIndex, Swin
                 .map(plan -> encodeChartAsBase64(chartWorkflow, plan))
                 .toList();
 
-        return new ElliottWaveAnalysisResult(degree, endIndex, snapshot, latest, summary, trendBias, baseCase,
+        return new ElliottWaveAnalysisReport(degree, endIndex, snapshot, latest, summary, trendBias, baseCase,
                 alternatives, baseCaseChartImage, alternativeChartImages);
     }
 

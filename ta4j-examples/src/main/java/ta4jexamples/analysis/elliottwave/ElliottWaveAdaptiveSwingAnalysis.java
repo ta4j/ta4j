@@ -11,7 +11,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
-import org.ta4j.core.indicators.elliott.ElliottWaveAnalysis;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceFactorResult;
 import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
@@ -48,7 +48,7 @@ public class ElliottWaveAdaptiveSwingAnalysis {
         SwingDetector detector = SwingDetectors.composite(CompositeSwingDetector.Policy.AND, SwingDetectors.fractal(5),
                 SwingDetectors.adaptiveZigZag(config));
 
-        ElliottWaveAnalysis analyzer = ElliottWaveAnalysis.builder()
+        ElliottWaveAnalysisRunner analyzer = ElliottWaveAnalysisRunner.builder()
                 .degree(ElliottDegree.PRIMARY)
                 .higherDegrees(0)
                 .lowerDegrees(0)

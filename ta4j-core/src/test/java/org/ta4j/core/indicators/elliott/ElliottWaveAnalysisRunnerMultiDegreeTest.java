@@ -12,12 +12,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.analysis.AnalysisRunner;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-class ElliottWaveAnalysisMultiDegreeTest {
+class ElliottWaveAnalysisRunnerMultiDegreeTest {
 
     @Test
     void reranksBaseScenariosUsingSupportingDegreeContext() {
@@ -41,14 +42,14 @@ class ElliottWaveAnalysisMultiDegreeTest {
         ElliottScenarioSet intermediateScenarios = ElliottScenarioSet.of(List.of(bearishIntermediate),
                 series.getEndIndex());
 
-        ElliottWaveAnalysis.AnalysisRunner runner = (selected, degree) -> switch (degree) {
+        AnalysisRunner<ElliottDegree, ElliottAnalysisResult> runner = (selected, degree) -> switch (degree) {
         case PRIMARY -> analysis(degree, selected, primaryScenarios);
         case CYCLE -> analysis(degree, selected, cycleScenarios);
         case INTERMEDIATE -> analysis(degree, selected, intermediateScenarios);
         default -> throw new IllegalArgumentException("Unexpected degree: " + degree);
         };
 
-        ElliottWaveAnalysis analyzer = ElliottWaveAnalysis.builder()
+        ElliottWaveAnalysisRunner analyzer = ElliottWaveAnalysisRunner.builder()
                 .degree(ElliottDegree.PRIMARY)
                 .higherDegrees(1)
                 .lowerDegrees(1)
@@ -75,14 +76,14 @@ class ElliottWaveAnalysisMultiDegreeTest {
     @Test
     void builderRequiresDegree() {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> ElliottWaveAnalysis.builder().build());
+                () -> ElliottWaveAnalysisRunner.builder().build());
         assertThat(exception).hasMessage("degree must be configured");
     }
 
     @Test
     void rejectsInvalidConfidenceWeight() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> ElliottWaveAnalysis.builder().degree(ElliottDegree.PRIMARY).baseConfidenceWeight(1.1));
+                () -> ElliottWaveAnalysisRunner.builder().degree(ElliottDegree.PRIMARY).baseConfidenceWeight(1.1));
         assertThat(exception).hasMessage("baseConfidenceWeight must be in [0.0, 1.0]");
     }
 

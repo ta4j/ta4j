@@ -12,7 +12,7 @@ import java.util.Optional;
  * Result of running Elliott Wave analysis across one or more degrees.
  *
  * <p>
- * Produced by {@link ElliottWaveAnalysis}. The result contains one
+ * Produced by {@link ElliottWaveAnalysisRunner}. The result contains one
  * {@link ElliottAnalysisResult} per analyzed degree, plus a re-ranked view of
  * the base-degree scenarios after cross-degree validation.
  *

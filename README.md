@@ -722,7 +722,7 @@ Time gaps are omitted; no empty bars are inserted. If your pipeline expects cont
 The Elliott Wave suite exposes two minimal entry points:
 
 - `ElliottWaveFacade` for indicator-style, per-bar access (recommended for rules and chart overlays)
-- `ElliottWaveAnalysis` (`ElliottWaveAnalysisResult`) for one-shot analysis runs with pluggable detectors and confidence profiles
+- `ElliottWaveAnalysisRunner` (`ElliottWaveAnalysisResult`) for one-shot analysis runs with pluggable detectors and confidence profiles
 
 ```java
 BarSeries series = ...;
@@ -760,10 +760,10 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 
 ### Analysis & Backtesting Examples
 - **[StrategyAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/StrategyAnalysis.java)** - Comprehensive strategy performance analysis
-- **[ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWaveAnalysis.java)** - Elliott Wave scenario analysis with confidence scoring and annotated charts. Defaults to an ossified classpath dataset when run without arguments; optional command-line arguments can load Yahoo Finance or Coinbase data.
-- **[BTCUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/BTCUSDElliottWaveAnalysis.java)** - Convenience launcher for Bitcoin (BTC-USD) that invokes `ElliottWaveAnalysis` with Coinbase arguments (network-backed input)
-- **[ETHUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ETHUSDElliottWaveAnalysis.java)** - Convenience launcher for Ethereum (ETH-USD) that invokes `ElliottWaveAnalysis` with Coinbase arguments (network-backed input)
-- **[SP500ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/SP500ElliottWaveAnalysis.java)** - Convenience launcher for S&P 500 Index (^GSPC) that invokes `ElliottWaveAnalysis` with Yahoo Finance arguments (network-backed input)
+- **[ElliottWaveIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWaveIndicatorSuiteDemo.java)** - Elliott Wave scenario analysis with confidence scoring and annotated charts. Defaults to an ossified classpath dataset when run without arguments; optional command-line arguments can load Yahoo Finance or Coinbase data.
+- **[BTCUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/BTCUSDElliottWaveAnalysis.java)** - Convenience launcher for Bitcoin (BTC-USD) that invokes `ElliottWaveIndicatorSuiteDemo` with Coinbase arguments (network-backed input)
+- **[ETHUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ETHUSDElliottWaveAnalysis.java)** - Convenience launcher for Ethereum (ETH-USD) that invokes `ElliottWaveIndicatorSuiteDemo` with Coinbase arguments (network-backed input)
+- **[SP500ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/SP500ElliottWaveAnalysis.java)** - Convenience launcher for S&P 500 Index (^GSPC) that invokes `ElliottWaveIndicatorSuiteDemo` with Yahoo Finance arguments (network-backed input)
 - **[WyckoffCycleIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleIndicatorSuiteDemo.java)** - Demonstrates the Wyckoff cycle entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`) and prints phase transitions on an ossified bar series dataset
 - **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)

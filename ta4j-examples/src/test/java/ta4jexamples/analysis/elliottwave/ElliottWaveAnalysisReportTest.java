@@ -39,7 +39,7 @@ import ta4jexamples.charting.display.SwingChartDisplayer;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-class ElliottWaveAnalysisResultTest {
+class ElliottWaveAnalysisReportTest {
 
     private static final String OSSIFIED_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
     private static final double FIB_TOLERANCE = 0.25;
@@ -58,7 +58,7 @@ class ElliottWaveAnalysisResultTest {
                 FIB_TOLERANCE);
 
         // The structured result is now automatically created in analyze()
-        ElliottWaveAnalysisResult result = analysisResult.structuredResult();
+        ElliottWaveAnalysisReport result = analysisResult.structuredResult();
 
         assertNotNull(result, "Result should not be null");
         assertEquals(ElliottDegree.PRIMARY, result.degree(), "Degree should match");
@@ -76,7 +76,7 @@ class ElliottWaveAnalysisResultTest {
         ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
-        ElliottWaveAnalysisResult result = analysisResult.structuredResult();
+        ElliottWaveAnalysisReport result = analysisResult.structuredResult();
 
         if (analysisResult.scenarioSet().base().isPresent()) {
             assertNotNull(result.baseCase(), "Base case should not be null when scenario exists");
@@ -99,7 +99,7 @@ class ElliottWaveAnalysisResultTest {
         ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
-        ElliottWaveAnalysisResult result = analysisResult.structuredResult();
+        ElliottWaveAnalysisReport result = analysisResult.structuredResult();
 
         if (analysisResult.baseCaseChartPlan().isPresent()) {
             assertNotNull(result.baseCaseChartImage(), "Base case chart image should not be null");
@@ -119,7 +119,7 @@ class ElliottWaveAnalysisResultTest {
         ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
-        ElliottWaveAnalysisResult result = analysisResult.structuredResult();
+        ElliottWaveAnalysisReport result = analysisResult.structuredResult();
 
         assertEquals(analysisResult.alternativeChartPlans().size(), result.alternativeChartImages().size(),
                 "Number of alternative chart images should match number of chart plans");
@@ -140,7 +140,7 @@ class ElliottWaveAnalysisResultTest {
 
         int endIndex = series.getEndIndex();
         assertThrows(NullPointerException.class,
-                () -> ElliottWaveAnalysisResult.from(null, analysisResult.swingMetadata(),
+                () -> ElliottWaveAnalysisReport.from(null, analysisResult.swingMetadata(),
                         analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
                         analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
                         analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
@@ -156,7 +156,7 @@ class ElliottWaveAnalysisResultTest {
 
         int endIndex = series.getEndIndex();
         assertThrows(NullPointerException.class,
-                () -> ElliottWaveAnalysisResult.from(analysisResult.degree(), null, analysisResult.phaseIndicator(),
+                () -> ElliottWaveAnalysisReport.from(analysisResult.degree(), null, analysisResult.phaseIndicator(),
                         analysisResult.ratioIndicator(), analysisResult.channelIndicator(),
                         analysisResult.confluenceIndicator(), analysisResult.invalidationIndicator(),
                         analysisResult.scenarioSet(), endIndex, analysisResult.baseCaseChartPlan(),
@@ -172,7 +172,7 @@ class ElliottWaveAnalysisResultTest {
 
         int endIndex = series.getEndIndex();
         assertThrows(NullPointerException.class,
-                () -> ElliottWaveAnalysisResult.from(analysisResult.degree(), analysisResult.swingMetadata(), null,
+                () -> ElliottWaveAnalysisReport.from(analysisResult.degree(), analysisResult.swingMetadata(), null,
                         analysisResult.ratioIndicator(), analysisResult.channelIndicator(),
                         analysisResult.confluenceIndicator(), analysisResult.invalidationIndicator(),
                         analysisResult.scenarioSet(), endIndex, analysisResult.baseCaseChartPlan(),
@@ -188,7 +188,7 @@ class ElliottWaveAnalysisResultTest {
 
         int endIndex = series.getEndIndex();
         assertThrows(NullPointerException.class,
-                () -> ElliottWaveAnalysisResult.from(analysisResult.degree(), analysisResult.swingMetadata(),
+                () -> ElliottWaveAnalysisReport.from(analysisResult.degree(), analysisResult.swingMetadata(),
                         analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
                         analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
                         analysisResult.invalidationIndicator(), null, endIndex, analysisResult.baseCaseChartPlan(),
@@ -204,14 +204,14 @@ class ElliottWaveAnalysisResultTest {
 
         int endIndex = series.getEndIndex();
         assertThrows(NullPointerException.class,
-                () -> ElliottWaveAnalysisResult.from(analysisResult.degree(), analysisResult.swingMetadata(),
+                () -> ElliottWaveAnalysisReport.from(analysisResult.degree(), analysisResult.swingMetadata(),
                         analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
                         analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
                         analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex, null,
                         analysisResult.alternativeChartPlans()));
 
         assertThrows(NullPointerException.class,
-                () -> ElliottWaveAnalysisResult.from(analysisResult.degree(), analysisResult.swingMetadata(),
+                () -> ElliottWaveAnalysisReport.from(analysisResult.degree(), analysisResult.swingMetadata(),
                         analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
                         analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
                         analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
@@ -225,7 +225,7 @@ class ElliottWaveAnalysisResultTest {
         ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
-        ElliottWaveAnalysisResult result = analysisResult.structuredResult();
+        ElliottWaveAnalysisReport result = analysisResult.structuredResult();
 
         String json = result.toJson();
         assertNotNull(json, "JSON should not be null");
@@ -240,14 +240,14 @@ class ElliottWaveAnalysisResultTest {
 
     @Test
     void toJson_withNaNValues_serializesNulls() {
-        ElliottWaveAnalysisResult.SwingSnapshot snapshot = new ElliottWaveAnalysisResult.SwingSnapshot(false, 0,
+        ElliottWaveAnalysisReport.SwingSnapshot snapshot = new ElliottWaveAnalysisReport.SwingSnapshot(false, 0,
                 Double.NaN, Double.NaN);
-        ElliottWaveAnalysisResult.LatestAnalysis latest = new ElliottWaveAnalysisResult.LatestAnalysis(
+        ElliottWaveAnalysisReport.LatestAnalysis latest = new ElliottWaveAnalysisReport.LatestAnalysis(
                 ElliottPhase.NONE, false, false, RatioType.NONE, Double.NaN, null, Double.NaN, false, false);
-        ElliottWaveAnalysisResult.ScenarioSummary summary = new ElliottWaveAnalysisResult.ScenarioSummary("summary",
+        ElliottWaveAnalysisReport.ScenarioSummary summary = new ElliottWaveAnalysisReport.ScenarioSummary("summary",
                 false, ElliottPhase.NONE);
         ElliottTrendBias trendBias = ElliottTrendBias.unknown();
-        ElliottWaveAnalysisResult result = new ElliottWaveAnalysisResult(ElliottDegree.PRIMARY, 0, snapshot, latest,
+        ElliottWaveAnalysisReport result = new ElliottWaveAnalysisReport(ElliottDegree.PRIMARY, 0, snapshot, latest,
                 summary, trendBias, null, List.of(), null, List.of());
 
         String json = result.toJson();
@@ -268,9 +268,9 @@ class ElliottWaveAnalysisResultTest {
         ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
-        ElliottWaveAnalysisResult result = analysisResult.structuredResult();
+        ElliottWaveAnalysisReport result = analysisResult.structuredResult();
 
-        ElliottWaveAnalysisResult.SwingSnapshot snapshot = result.swingSnapshot();
+        ElliottWaveAnalysisReport.SwingSnapshot snapshot = result.swingSnapshot();
         assertNotNull(snapshot, "Swing snapshot should not be null");
         assertEquals(analysisResult.swingMetadata().isValid(), snapshot.valid(), "Valid flag should match");
         assertEquals(analysisResult.swingMetadata().size(), snapshot.swings(), "Swing count should match");
@@ -285,9 +285,9 @@ class ElliottWaveAnalysisResultTest {
                 FIB_TOLERANCE);
 
         int endIndex = series.getEndIndex();
-        ElliottWaveAnalysisResult result = analysisResult.structuredResult();
+        ElliottWaveAnalysisReport result = analysisResult.structuredResult();
 
-        ElliottWaveAnalysisResult.LatestAnalysis latest = result.latestAnalysis();
+        ElliottWaveAnalysisReport.LatestAnalysis latest = result.latestAnalysis();
         assertNotNull(latest, "Latest analysis should not be null");
         assertNotNull(latest.phase(), "Phase should not be null");
         assertEquals(analysisResult.phaseIndicator().getValue(endIndex), latest.phase(), "Phase should match");
@@ -306,13 +306,13 @@ class ElliottWaveAnalysisResultTest {
                 FIB_TOLERANCE);
 
         int endIndex = series.getEndIndex();
-        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+        ElliottWaveAnalysisReport result = ElliottWaveAnalysisReport.from(analysisResult.degree(),
                 analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
                 analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
                 analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
                 analysisResult.baseCaseChartPlan(), analysisResult.alternativeChartPlans());
 
-        ElliottWaveAnalysisResult.ScenarioSummary summary = result.scenarioSummary();
+        ElliottWaveAnalysisReport.ScenarioSummary summary = result.scenarioSummary();
         assertNotNull(summary, "Scenario summary should not be null");
         assertNotNull(summary.summary(), "Summary string should not be null");
         assertEquals(analysisResult.scenarioSet().hasStrongConsensus(), summary.strongConsensus(),
@@ -328,10 +328,10 @@ class ElliottWaveAnalysisResultTest {
         ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
-        ElliottWaveAnalysisResult result = analysisResult.structuredResult();
+        ElliottWaveAnalysisReport result = analysisResult.structuredResult();
 
         if (result.baseCase() != null) {
-            ElliottWaveAnalysisResult.BaseCaseScenario baseCase = result.baseCase();
+            ElliottWaveAnalysisReport.BaseCaseScenario baseCase = result.baseCase();
             assertNotNull(baseCase.currentPhase(), "Current phase should not be null");
             assertNotNull(baseCase.type(), "Type should not be null");
             assertTrue(baseCase.overallConfidence() >= 0 && baseCase.overallConfidence() <= 100,
@@ -365,9 +365,9 @@ class ElliottWaveAnalysisResultTest {
         ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
-        ElliottWaveAnalysisResult result = analysisResult.structuredResult();
+        ElliottWaveAnalysisReport result = analysisResult.structuredResult();
 
-        for (ElliottWaveAnalysisResult.AlternativeScenario alt : result.alternatives()) {
+        for (ElliottWaveAnalysisReport.AlternativeScenario alt : result.alternatives()) {
             assertNotNull(alt.currentPhase(), "Current phase should not be null");
             assertNotNull(alt.type(), "Type should not be null");
             assertTrue(alt.confidencePercent() >= 0 && alt.confidencePercent() <= 100,
@@ -385,14 +385,14 @@ class ElliottWaveAnalysisResultTest {
         ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
-        ElliottWaveAnalysisResult result = analysisResult.structuredResult();
+        ElliottWaveAnalysisReport result = analysisResult.structuredResult();
         if (result.baseCase() == null) {
             assertTrue(result.alternatives().isEmpty(), "No base case implies no alternatives");
             return;
         }
 
         double totalProbability = result.baseCase().scenarioProbability();
-        for (ElliottWaveAnalysisResult.AlternativeScenario alt : result.alternatives()) {
+        for (ElliottWaveAnalysisReport.AlternativeScenario alt : result.alternatives()) {
             totalProbability += alt.scenarioProbability();
         }
         assertEquals(1.0, totalProbability, 0.0001, "Scenario probabilities should sum to 1");
@@ -406,7 +406,7 @@ class ElliottWaveAnalysisResultTest {
                 false);
 
         ElliottScenarioSet scenarioSet = ElliottScenarioSet.of(List.of(scenarioA, scenarioB, scenarioC), 0);
-        Map<String, Double> probabilities = ElliottWaveAnalysisResult.computeScenarioProbabilities(scenarioSet);
+        Map<String, Double> probabilities = ElliottWaveAnalysisReport.computeScenarioProbabilities(scenarioSet);
 
         double normalizedConsensus = (0.8 + 0.6) / 1.8;
         double normalizedOutlier = 0.4 / 1.8;
@@ -428,7 +428,7 @@ class ElliottWaveAnalysisResultTest {
         ElliottScenario scenarioC = buildScenario("C", 0.53, ElliottPhase.WAVE3, ScenarioType.IMPULSE, true);
 
         ElliottScenarioSet scenarioSet = ElliottScenarioSet.of(List.of(scenarioA, scenarioB, scenarioC), 0);
-        Map<String, Double> probabilities = ElliottWaveAnalysisResult.computeScenarioProbabilities(scenarioSet);
+        Map<String, Double> probabilities = ElliottWaveAnalysisReport.computeScenarioProbabilities(scenarioSet);
 
         double rawRatio = 0.55 / 0.53;
         double adjustedRatio = probabilities.get("A") / probabilities.get("C");
@@ -443,7 +443,7 @@ class ElliottWaveAnalysisResultTest {
         ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
-        ElliottWaveAnalysisResult result = analysisResult.structuredResult();
+        ElliottWaveAnalysisReport result = analysisResult.structuredResult();
         String json = result.toJson();
         JsonObject root = JsonParser.parseString(json).getAsJsonObject();
 
@@ -453,7 +453,7 @@ class ElliottWaveAnalysisResultTest {
             assertEquals(expected, actual, 0.0001, "Base case scenario probability should be rounded to 3 decimals");
         }
         if (!result.alternatives().isEmpty()) {
-            ElliottWaveAnalysisResult.AlternativeScenario alt = result.alternatives().get(0);
+            ElliottWaveAnalysisReport.AlternativeScenario alt = result.alternatives().get(0);
             double expected = roundScenarioProbability(alt.scenarioProbability());
             double actual = root.getAsJsonArray("alternatives")
                     .get(0)
@@ -471,10 +471,10 @@ class ElliottWaveAnalysisResultTest {
         ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
                 FIB_TOLERANCE);
 
-        ElliottWaveAnalysisResult result = analysisResult.structuredResult();
+        ElliottWaveAnalysisReport result = analysisResult.structuredResult();
 
         if (result.baseCase() != null && !result.baseCase().swings().isEmpty()) {
-            ElliottWaveAnalysisResult.SwingData swingData = result.baseCase().swings().get(0);
+            ElliottWaveAnalysisReport.SwingData swingData = result.baseCase().swings().get(0);
             assertTrue(swingData.fromIndex() >= 0, "From index should be non-negative");
             assertTrue(swingData.toIndex() >= 0, "To index should be non-negative");
             assertTrue(swingData.toIndex() != swingData.fromIndex(), "To index should differ from from index");
@@ -498,7 +498,7 @@ class ElliottWaveAnalysisResultTest {
 
         int endIndex = series.getEndIndex();
         // Test factory method with empty list
-        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+        ElliottWaveAnalysisReport result = ElliottWaveAnalysisReport.from(analysisResult.degree(),
                 analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
                 analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
                 analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex,
@@ -521,7 +521,7 @@ class ElliottWaveAnalysisResultTest {
 
         int endIndex = series.getEndIndex();
         // Test factory method with empty optional
-        ElliottWaveAnalysisResult result = ElliottWaveAnalysisResult.from(analysisResult.degree(),
+        ElliottWaveAnalysisReport result = ElliottWaveAnalysisReport.from(analysisResult.degree(),
                 analysisResult.swingMetadata(), analysisResult.phaseIndicator(), analysisResult.ratioIndicator(),
                 analysisResult.channelIndicator(), analysisResult.confluenceIndicator(),
                 analysisResult.invalidationIndicator(), analysisResult.scenarioSet(), endIndex, Optional.empty(),
@@ -556,7 +556,7 @@ class ElliottWaveAnalysisResultTest {
      * Helper method to load the ossified dataset used in tests.
      */
     private static BarSeries loadOssifiedSeries() {
-        try (InputStream stream = ElliottWaveAnalysisResultTest.class.getClassLoader()
+        try (InputStream stream = ElliottWaveAnalysisReportTest.class.getClassLoader()
                 .getResourceAsStream(OSSIFIED_OHLCV_RESOURCE)) {
             assertNotNull(stream, "Missing resource: " + OSSIFIED_OHLCV_RESOURCE);
 

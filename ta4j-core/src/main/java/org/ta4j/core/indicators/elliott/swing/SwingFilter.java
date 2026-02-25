@@ -12,7 +12,7 @@ import org.ta4j.core.indicators.elliott.ElliottSwing;
  *
  * <p>
  * Implement this interface to plug additional filtering into
- * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysis}.
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner}.
  *
  * @since 0.22.2
  */

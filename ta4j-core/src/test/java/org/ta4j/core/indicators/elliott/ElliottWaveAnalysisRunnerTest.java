@@ -20,7 +20,7 @@ import org.ta4j.core.indicators.elliott.swing.SwingFilter;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
-class ElliottWaveAnalysisTest {
+class ElliottWaveAnalysisRunnerTest {
 
     @Test
     void appliesSwingFiltersBeforeScenarioGeneration() {
@@ -38,7 +38,7 @@ class ElliottWaveAnalysisTest {
                         series.numFactory().numOf(0.9), series.numFactory().numOf(0.9), series.numFactory().numOf(0.9),
                         series.numFactory().numOf(0.9), series.numFactory().numOf(0.9), "stub"), List.of());
 
-        ElliottWaveAnalysis analysis = ElliottWaveAnalysis.builder()
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
                 .degree(degree)
                 .higherDegrees(0)
                 .lowerDegrees(0)
@@ -60,29 +60,29 @@ class ElliottWaveAnalysisTest {
     @Test
     void buildRequiresDegree() {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> ElliottWaveAnalysis.builder().build());
+                () -> ElliottWaveAnalysisRunner.builder().build());
         assertThat(exception).hasMessage("degree must be configured");
     }
 
     @Test
     void rejectsInvalidConfidenceThresholds() {
         IllegalArgumentException low = assertThrows(IllegalArgumentException.class,
-                () -> ElliottWaveAnalysis.builder().minConfidence(-0.01));
+                () -> ElliottWaveAnalysisRunner.builder().minConfidence(-0.01));
         assertThat(low).hasMessage("minConfidence must be in [0.0, 1.0]");
 
         IllegalArgumentException high = assertThrows(IllegalArgumentException.class,
-                () -> ElliottWaveAnalysis.builder().minConfidence(1.01));
+                () -> ElliottWaveAnalysisRunner.builder().minConfidence(1.01));
         assertThat(high).hasMessage("minConfidence must be in [0.0, 1.0]");
     }
 
     @Test
     void rejectsInvalidScenarioParameters() {
         IllegalArgumentException maxScenarios = assertThrows(IllegalArgumentException.class,
-                () -> ElliottWaveAnalysis.builder().maxScenarios(0));
+                () -> ElliottWaveAnalysisRunner.builder().maxScenarios(0));
         assertThat(maxScenarios).hasMessage("maxScenarios must be positive");
 
         IllegalArgumentException window = assertThrows(IllegalArgumentException.class,
-                () -> ElliottWaveAnalysis.builder().scenarioSwingWindow(-1));
+                () -> ElliottWaveAnalysisRunner.builder().scenarioSwingWindow(-1));
         assertThat(window).hasMessage("scenarioSwingWindow must be >= 0");
     }
 

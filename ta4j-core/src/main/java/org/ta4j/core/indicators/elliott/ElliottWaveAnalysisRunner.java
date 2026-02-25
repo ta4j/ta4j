@@ -16,6 +16,8 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.analysis.AnalysisRunner;
+import org.ta4j.core.analysis.SeriesSelector;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceModel;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
@@ -60,50 +62,7 @@ import org.ta4j.core.num.NumFactory;
  *
  * @since 0.22.3
  */
-public final class ElliottWaveAnalysis {
-
-    /**
-     * Executes a single-degree Elliott wave analysis.
-     *
-     * <p>
-     * This is a pluggable seam. Implementations may run the built-in analysis
-     * pipeline, build results from indicator-style analysis
-     * ({@link ElliottWaveFacade}), or run on resampled series.
-     *
-     * @since 0.22.3
-     */
-    @FunctionalInterface
-    public interface AnalysisRunner {
-
-        /**
-         * Runs analysis for a given degree.
-         *
-         * @param series series to analyze
-         * @param degree degree to analyze at
-         * @return analysis snapshot
-         * @since 0.22.3
-         */
-        ElliottAnalysisResult analyze(BarSeries series, ElliottDegree degree);
-    }
-
-    /**
-     * Selects the series window (or transformed series) to use for a given degree.
-     *
-     * @since 0.22.3
-     */
-    @FunctionalInterface
-    public interface SeriesSelector {
-
-        /**
-         * Selects a series for the requested degree.
-         *
-         * @param series root input series
-         * @param degree degree to select for
-         * @return selected series (may be a subseries)
-         * @since 0.22.3
-         */
-        BarSeries select(BarSeries series, ElliottDegree degree);
-    }
+public final class ElliottWaveAnalysisRunner {
 
     private static final AdaptiveZigZagConfig DEFAULT_ZIGZAG_CONFIG = new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 3);
 
@@ -120,8 +79,8 @@ public final class ElliottWaveAnalysis {
     private final ElliottDegree baseDegree;
     private final int higherDegrees;
     private final int lowerDegrees;
-    private final SeriesSelector seriesSelector;
-    private final AnalysisRunner analysisRunner;
+    private final SeriesSelector<ElliottDegree> seriesSelector;
+    private final AnalysisRunner<ElliottDegree, ElliottAnalysisResult> analysisRunner;
     private final double baseConfidenceWeight;
 
     // Built-in single-degree analysis pipeline configuration (used by default
@@ -134,7 +93,7 @@ public final class ElliottWaveAnalysis {
     private final int maxScenarios;
     private final int scenarioSwingWindow;
 
-    private ElliottWaveAnalysis(final Builder builder) {
+    private ElliottWaveAnalysisRunner(final Builder builder) {
         this.baseDegree = Objects.requireNonNull(builder.baseDegree, "baseDegree");
         this.higherDegrees = builder.higherDegrees;
         this.lowerDegrees = builder.lowerDegrees;
@@ -786,7 +745,7 @@ public final class ElliottWaveAnalysis {
      *
      * @return default series selector
      */
-    private static SeriesSelector defaultSeriesSelector() {
+    private static SeriesSelector<ElliottDegree> defaultSeriesSelector() {
         return (series, degree) -> {
             Objects.requireNonNull(series, "series");
             Objects.requireNonNull(degree, "degree");
@@ -854,7 +813,7 @@ public final class ElliottWaveAnalysis {
     }
 
     /**
-     * Builder for {@link ElliottWaveAnalysis}.
+     * Builder for {@link ElliottWaveAnalysisRunner}.
      *
      * @since 0.22.3
      */
@@ -863,8 +822,8 @@ public final class ElliottWaveAnalysis {
         private ElliottDegree baseDegree;
         private int higherDegrees = DEFAULT_HIGHER_DEGREES;
         private int lowerDegrees = DEFAULT_LOWER_DEGREES;
-        private SeriesSelector seriesSelector;
-        private AnalysisRunner analysisRunner;
+        private SeriesSelector<ElliottDegree> seriesSelector;
+        private AnalysisRunner<ElliottDegree, ElliottAnalysisResult> analysisRunner;
         private double baseConfidenceWeight = DEFAULT_BASE_CONFIDENCE_WEIGHT;
 
         private SwingDetector swingDetector;
@@ -919,7 +878,7 @@ public final class ElliottWaveAnalysis {
          * @return builder
          * @since 0.22.3
          */
-        public Builder seriesSelector(final SeriesSelector seriesSelector) {
+        public Builder seriesSelector(final SeriesSelector<ElliottDegree> seriesSelector) {
             this.seriesSelector = Objects.requireNonNull(seriesSelector, "seriesSelector");
             return this;
         }
@@ -936,7 +895,7 @@ public final class ElliottWaveAnalysis {
          * @return builder
          * @since 0.22.3
          */
-        public Builder analysisRunner(final AnalysisRunner analysisRunner) {
+        public Builder analysisRunner(final AnalysisRunner<ElliottDegree, ElliottAnalysisResult> analysisRunner) {
             this.analysisRunner = Objects.requireNonNull(analysisRunner, "analysisRunner");
             return this;
         }
@@ -1063,11 +1022,11 @@ public final class ElliottWaveAnalysis {
          * @return analysis instance
          * @since 0.22.3
          */
-        public ElliottWaveAnalysis build() {
+        public ElliottWaveAnalysisRunner build() {
             if (baseDegree == null) {
                 throw new IllegalStateException("degree must be configured");
             }
-            return new ElliottWaveAnalysis(this);
+            return new ElliottWaveAnalysisRunner(this);
         }
     }
 }

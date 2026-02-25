@@ -179,7 +179,7 @@ public class ElliottWaveIndicatorSuiteDemo {
         AnalysisResult result = analysis.analyze(series, degree, DEFAULT_FIB_TOLERANCE);
 
         // Output structured result as JSON (without chart images by default)
-        ElliottWaveAnalysisResult structuredResult = result.structuredResult();
+        ElliottWaveAnalysisReport structuredResult = result.structuredResult();
         String json = structuredResult.toJson(false);
         LOG.info("Structured analysis result: {}", json);
 
@@ -606,7 +606,7 @@ public class ElliottWaveIndicatorSuiteDemo {
         }
 
         // Create structured analysis result with embedded chart images
-        ElliottWaveAnalysisResult structuredResult = ElliottWaveAnalysisResult.from(degree, swingMetadata,
+        ElliottWaveAnalysisReport structuredResult = ElliottWaveAnalysisReport.from(degree, swingMetadata,
                 phaseIndicator, ratioIndicator, channelIndicator, confluenceIndicator, invalidationIndicator,
                 scenarioSet, endIndex, baseCaseChartPlan, alternativeChartPlans);
 
@@ -704,20 +704,20 @@ public class ElliottWaveIndicatorSuiteDemo {
     /**
      * Logs the structured analysis result, replacing the previous logging methods.
      * <p>
-     * This method logs all the data captured in {@link ElliottWaveAnalysisResult},
+     * This method logs all the data captured in {@link ElliottWaveAnalysisReport},
      * maintaining backward compatibility with the previous logging format.
      *
      * @param result the structured analysis result
      */
-    private static void logStructuredAnalysisResult(ElliottWaveAnalysisResult result, ElliottScenarioSet scenarioSet,
+    private static void logStructuredAnalysisResult(ElliottWaveAnalysisReport result, ElliottScenarioSet scenarioSet,
             NumFactory numFactory) {
         // Log swing snapshot
-        ElliottWaveAnalysisResult.SwingSnapshot snapshot = result.swingSnapshot();
+        ElliottWaveAnalysisReport.SwingSnapshot snapshot = result.swingSnapshot();
         LOG.info("Elliott swing snapshot valid={}, swings={}, high={}, low={}", snapshot.valid(), snapshot.swings(),
                 snapshot.high(), snapshot.low());
 
         // Log latest analysis
-        ElliottWaveAnalysisResult.LatestAnalysis latest = result.latestAnalysis();
+        ElliottWaveAnalysisReport.LatestAnalysis latest = result.latestAnalysis();
         LOG.info("Latest phase={} impulseConfirmed={} correctiveConfirmed={}", latest.phase(),
                 latest.impulseConfirmed(), latest.correctiveConfirmed());
         LOG.info("Latest ratio type={} value={}", latest.ratioType(), latest.ratioValue());
@@ -731,7 +731,7 @@ public class ElliottWaveIndicatorSuiteDemo {
         LOG.info("Latest invalidation={}", latest.invalidation());
 
         // Log scenario summary
-        ElliottWaveAnalysisResult.ScenarioSummary summary = result.scenarioSummary();
+        ElliottWaveAnalysisReport.ScenarioSummary summary = result.scenarioSummary();
         LOG.info("=== Elliott Wave Scenario Analysis ===");
         LOG.info("Scenario summary: {}", summary.summary());
         LOG.info("Strong consensus: {} | Consensus phase: {}", summary.strongConsensus(), summary.consensusPhase());
@@ -739,7 +739,7 @@ public class ElliottWaveIndicatorSuiteDemo {
 
         // Log base case scenario
         if (result.baseCase() != null) {
-            ElliottWaveAnalysisResult.BaseCaseScenario baseCase = result.baseCase();
+            ElliottWaveAnalysisReport.BaseCaseScenario baseCase = result.baseCase();
             LOG.info("BASE CASE SCENARIO: {} ({})", baseCase.currentPhase(), baseCase.type());
             LOG.info("  Overall confidence: {}% ({})", String.format("%.1f", baseCase.overallConfidence()),
                     baseCase.confidenceLevel());
@@ -756,11 +756,11 @@ public class ElliottWaveIndicatorSuiteDemo {
         }
 
         // Log alternative scenarios
-        List<ElliottWaveAnalysisResult.AlternativeScenario> alternatives = result.alternatives();
+        List<ElliottWaveAnalysisReport.AlternativeScenario> alternatives = result.alternatives();
         if (!alternatives.isEmpty()) {
             LOG.info("ALTERNATIVE SCENARIOS ({}):", alternatives.size());
             for (int i = 0; i < Math.min(alternatives.size(), 3); i++) {
-                ElliottWaveAnalysisResult.AlternativeScenario alt = alternatives.get(i);
+                ElliottWaveAnalysisReport.AlternativeScenario alt = alternatives.get(i);
                 LOG.info("  {}. {} ({}) - {}% confidence | {}% probability", i + 1, alt.currentPhase(), alt.type(),
                         String.format("%.1f", alt.confidencePercent()),
                         String.format("%.1f", alt.scenarioProbability() * 100.0));
@@ -1225,7 +1225,7 @@ public class ElliottWaveIndicatorSuiteDemo {
             ElliottSwingMetadata swingMetadata, ElliottScenarioSet scenarioSet, Indicator<Num> ratioValue,
             Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
             Optional<ChartPlan> baseCaseChartPlan, List<ChartPlan> alternativeChartPlans,
-            ElliottWaveAnalysisResult structuredResult) {
+            ElliottWaveAnalysisReport structuredResult) {
     }
 
 }
