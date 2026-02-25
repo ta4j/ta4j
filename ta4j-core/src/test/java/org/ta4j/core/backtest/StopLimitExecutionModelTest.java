@@ -133,6 +133,21 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
     }
 
     @Test
+    public void rejectsSignalWhenNextOpenReferenceCannotBeResolved() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d).build();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                numFactory.one(), 2);
+        TradingRecord tradingRecord = new BaseTradingRecord();
+
+        model.execute(0, tradingRecord, series, numFactory.one());
+
+        assertTrue(model.getPendingOrder(tradingRecord).isEmpty());
+        assertEquals(1, model.getRejectedOrders(tradingRecord).size());
+        StopLimitExecutionModel.RejectedOrder rejection = model.getRejectedOrders(tradingRecord).getFirst();
+        assertTrue(rejection.reason().contains("Unable to resolve reference bar"));
+    }
+
+    @Test
     public void exposesCurrentCloseReferenceInPendingOrder() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(10d).add();
