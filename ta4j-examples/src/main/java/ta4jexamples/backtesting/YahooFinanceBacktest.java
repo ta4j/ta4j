@@ -25,6 +25,8 @@ import org.ta4j.core.criteria.VersusEnterAndHoldCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.indicators.UltimateOscillatorIndicator;
+import org.ta4j.core.indicators.VortexIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.bollinger.BollingerBandsLowerIndicator;
 import org.ta4j.core.indicators.bollinger.BollingerBandsMiddleIndicator;
@@ -52,6 +54,7 @@ import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource;
  * <li>ATR-based dynamic stop-loss (adapts to market volatility)</li>
  * <li>RSI for momentum confirmation</li>
  * <li>Volume analysis with On-Balance Volume (OBV)</li>
+ * <li>Trend confirmation with Vortex and Ultimate Oscillator</li>
  * <li>Indicator composition using BinaryOperationIndicator</li>
  * <li>Advanced performance metrics (Expectancy, SQN, Maximum Drawdown)</li>
  * <li>Multi-subchart visualization</li>
@@ -131,6 +134,10 @@ public class YahooFinanceBacktest {
         // On-Balance Volume: Volume-based trend indicator
         OnBalanceVolumeIndicator obv = new OnBalanceVolumeIndicator(series);
 
+        // Trend confirmation indicators
+        VortexIndicator vortex = new VortexIndicator(series, 14);
+        UltimateOscillatorIndicator ultimateOscillator = new UltimateOscillatorIndicator(series);
+
         // Note: ATR is used in the AverageTrueRangeStopLossRule below
         // Advanced: You can also create custom indicators using
         // BinaryOperationIndicator
@@ -143,6 +150,8 @@ public class YahooFinanceBacktest {
         System.out.println("   [OK] Created RSI (14-period)");
         System.out.println("   [OK] Created ATR (14-period) for dynamic stops");
         System.out.println("   [OK] Created On-Balance Volume indicator");
+        System.out.println("   [OK] Created Vortex oscillator (14-period) for trend direction");
+        System.out.println("   [OK] Created Ultimate Oscillator (7/14/28) for trend strength");
         System.out.println("   [OK] Created custom price-to-middle-band ratio indicator");
         System.out.println();
 
@@ -159,27 +168,36 @@ public class YahooFinanceBacktest {
         // Optional: OBV rising provides additional confirmation (but not required)
         // This makes the strategy more tradeable while still using volume analysis
         Rule obvRising = new OverIndicatorRule(obv, new PreviousValueIndicator(obv, 1));
+        Rule vortexBullish = new OverIndicatorRule(vortex, series.numFactory().zero());
+        Rule ultimateBullish = new OverIndicatorRule(ultimateOscillator, series.numFactory().numOf(50));
 
         // Entry: Price at lower BB + RSI oversold + (OBV rising OR price below middle
-        // band)
+        // band) + trend confirmation from Vortex and Ultimate Oscillator
         // This allows entries when either volume confirms OR price is clearly oversold
         Rule priceBelowMiddle = new UnderIndicatorRule(closePrice, bbMiddle);
-        Rule buyingRule = priceAtLowerBB.and(rsiOversold).and(obvRising.or(priceBelowMiddle));
+        Rule buyingRule = priceAtLowerBB.and(rsiOversold)
+                .and(obvRising.or(priceBelowMiddle))
+                .and(vortexBullish)
+                .and(ultimateBullish);
 
         // Exit rule: Sell when price reaches upper Bollinger Band (overbought)
         // OR RSI crosses above 65 (overbought - less strict than 70 for more exits)
         // OR ATR-based stop loss triggers (dynamic, adapts to volatility)
+        // OR Vortex turns bearish
         Rule exitCondition1 = new CrossedUpIndicatorRule(closePrice, bbUpper)
                 .or(new OverIndicatorRule(closePrice, bbUpper));
         Rule exitCondition2 = new OverIndicatorRule(rsi, series.numFactory().numOf(65));
         // ATR-based stop: 2.5x ATR below entry price (allows for some volatility)
         Rule exitCondition3 = new AverageTrueRangeStopLossRule(series, 14, 2.5);
+        Rule exitCondition4 = new UnderIndicatorRule(vortex, series.numFactory().zero());
 
-        Rule sellingRule = exitCondition1.or(exitCondition2).or(exitCondition3);
+        Rule sellingRule = exitCondition1.or(exitCondition2).or(exitCondition3).or(exitCondition4);
 
-        Strategy strategy = new BaseStrategy("Bollinger Bands Mean Reversion (Multi-Confirm)", buyingRule, sellingRule);
-        System.out.println("   [OK] Entry: Price at/below lower BB + RSI < 45 + (OBV rising OR price below middle)");
-        System.out.println("   [OK] Exit: Price at/above upper BB OR RSI > 65 OR ATR stop (2.5x ATR)");
+        Strategy strategy = new BaseStrategy("Bollinger Bands Mean Reversion (Trend-Confirmed)", buyingRule,
+                sellingRule);
+        System.out.println(
+                "   [OK] Entry: Price at/below lower BB + RSI < 45 + (OBV rising OR price below middle) + Vortex > 0 + Ultimate > 50");
+        System.out.println("   [OK] Exit: Price at/above upper BB OR RSI > 65 OR ATR stop (2.5x ATR) OR Vortex < 0");
         System.out.println();
 
         // Step 4: Run backtest
@@ -251,12 +269,14 @@ public class YahooFinanceBacktest {
                         .withIndicatorOverlay(bbLower) // Lower band overlay
                         .withSubChart(rsi) // RSI in first subchart
                         .withSubChart(obv) // OBV in second subchart
-                        .withSubChart(new NetProfitLossCriterion(), tradingRecord) // Net profit/loss in third subchart
+                        .withSubChart(vortex) // Vortex oscillator in third subchart
+                        .withSubChart(ultimateOscillator) // Ultimate Oscillator in fourth subchart
+                        .withSubChart(new NetProfitLossCriterion(), tradingRecord) // Net profit/loss in fifth subchart
                         .toChart();
 
                 chartWorkflow.displayChart(chart, "ta4j Yahoo Finance Backtest - Advanced Mean Reversion Strategy");
                 System.out.println("   [OK] Multi-subchart displayed in new window");
-                System.out.println("   [TIP] Chart shows: Price with BB bands, RSI, OBV, and P&L");
+                System.out.println("   [TIP] Chart shows: Price with BB bands, RSI, OBV, Vortex, Ultimate, and P&L");
             } catch (Exception ex) {
                 LOG.warn("Failed to display chart: {}", ex.getMessage(), ex);
                 System.out.println("   [WARN] Could not display chart: " + ex.getMessage());
@@ -278,6 +298,8 @@ public class YahooFinanceBacktest {
         System.out.println("   ✓ Multi-Indicator Confirmation: Reduces false signals");
         System.out.println("     - RSI confirms oversold/overbought conditions");
         System.out.println("     - OBV confirms volume support for price moves");
+        System.out.println("     - Vortex confirms directional trend bias (+VI vs -VI)");
+        System.out.println("     - Ultimate Oscillator confirms multi-timeframe buying pressure");
         System.out.println();
         System.out.println("   ✓ Advanced Metrics: Deeper performance insights");
         System.out.println("     - Expectancy: Average profit per trade");
@@ -298,10 +320,13 @@ public class YahooFinanceBacktest {
         System.out.println("      - RSI (momentum confirmation)");
         System.out.println("      - ATR (volatility for dynamic stops)");
         System.out.println("      - OBV (volume trend confirmation)");
+        System.out.println("      - Vortex oscillator (trend direction confirmation)");
+        System.out.println("      - Ultimate Oscillator (trend strength confirmation)");
         System.out.println("      - Custom price-to-middle-band ratio (indicator composition)");
         System.out.println("   3. Built a sophisticated mean reversion strategy:");
-        System.out.println("      - Entry: Price at/below lower BB + RSI < 45 + (OBV rising OR price below middle)");
-        System.out.println("      - Exit: Price at/above upper BB OR RSI > 65 OR ATR stop (2.5x ATR)");
+        System.out.println(
+                "      - Entry: Price at/below lower BB + RSI < 45 + (OBV rising OR price below middle) + Vortex > 0 + Ultimate > 50");
+        System.out.println("      - Exit: Price at/above upper BB OR RSI > 65 OR ATR stop (2.5x ATR) OR Vortex < 0");
         System.out.println("   4. Backtested with ATR-based dynamic stop-loss (adapts to volatility)");
         System.out.println("   5. Analyzed with advanced metrics (Expectancy, SQN, Max Drawdown)");
         if (!isHeadless) {
@@ -311,7 +336,7 @@ public class YahooFinanceBacktest {
         System.out.println("Advanced Features Demonstrated:");
         System.out.println("   ✓ Bollinger Bands for mean reversion trading");
         System.out.println("   ✓ ATR-based dynamic stop-loss (better than fixed %)");
-        System.out.println("   ✓ Multi-indicator confirmation (reduces false signals)");
+        System.out.println("   ✓ Multi-indicator trend confirmation (RSI, OBV, Vortex, Ultimate)");
         System.out.println("   ✓ Indicator composition (BinaryOperationIndicator)");
         System.out.println("   ✓ Advanced performance metrics (Expectancy, SQN)");
         System.out.println("   ✓ Multi-subchart visualization");
