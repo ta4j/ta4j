@@ -9,6 +9,7 @@ import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
@@ -116,6 +117,15 @@ public class RenkoBarAggregatorTest extends AbstractIndicatorTest<BarSeries, Num
     @Test
     public void aggregateRejectsInconsistentSourceTimePeriods() {
         List<Bar> bars = AggregatorTestFixtures.inconsistentPeriodBars(numFactory);
+        RenkoBarAggregator aggregator = new RenkoBarAggregator(2d, 2);
+
+        assertThrows(IllegalArgumentException.class, () -> aggregator.aggregate(bars));
+    }
+
+    @Test
+    public void aggregateRejectsNullSourceBars() {
+        List<Bar> bars = new ArrayList<>(AggregatorTestFixtures.trendingBars(numFactory));
+        bars.set(3, null);
         RenkoBarAggregator aggregator = new RenkoBarAggregator(2d, 2);
 
         assertThrows(IllegalArgumentException.class, () -> aggregator.aggregate(bars));

@@ -8,6 +8,7 @@ import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
@@ -99,6 +100,15 @@ public class RangeBarAggregatorTest extends AbstractIndicatorTest<BarSeries, Num
     @Test
     public void aggregateRejectsInconsistentSourceTimePeriods() {
         List<Bar> bars = AggregatorTestFixtures.inconsistentPeriodBars(numFactory);
+        RangeBarAggregator aggregator = new RangeBarAggregator(2d);
+
+        assertThrows(IllegalArgumentException.class, () -> aggregator.aggregate(bars));
+    }
+
+    @Test
+    public void aggregateRejectsNullSourceBars() {
+        List<Bar> bars = new ArrayList<>(AggregatorTestFixtures.trendingBars(numFactory));
+        bars.set(2, null);
         RangeBarAggregator aggregator = new RangeBarAggregator(2d);
 
         assertThrows(IllegalArgumentException.class, () -> aggregator.aggregate(bars));

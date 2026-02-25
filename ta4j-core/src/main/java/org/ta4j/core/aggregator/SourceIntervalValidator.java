@@ -48,6 +48,10 @@ final class SourceIntervalValidator {
     }
 
     private static Duration requireConsistentPeriod(Bar bar, String aggregatorName, int index) {
+        if (bar == null) {
+            throw new IllegalArgumentException(
+                    String.format("%s requires non-null source bars: bar %d is null.", aggregatorName, index));
+        }
         Duration timePeriod = bar.getTimePeriod();
         if (timePeriod == null || timePeriod.isNegative() || timePeriod.isZero()) {
             throw new IllegalArgumentException(
