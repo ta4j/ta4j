@@ -4,6 +4,7 @@
 package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
@@ -74,6 +75,24 @@ public class SlippageExecutionModelTest extends AbstractIndicatorTest<BarSeries,
                 new SlippageExecutionModel(numOf(0.01), SlippageExecutionModel.ExecutionPrice.NEXT_OPEN)).run(strategy);
 
         assertTrue(tradingRecord.getTrades().isEmpty());
+    }
+
+    @Test
+    public void rejectsInvalidSlippageRatios() {
+        assertThrows(IllegalArgumentException.class, () -> new SlippageExecutionModel(numFactory.minusOne(),
+                SlippageExecutionModel.ExecutionPrice.NEXT_OPEN));
+        assertThrows(IllegalArgumentException.class,
+                () -> new SlippageExecutionModel(numFactory.one(), SlippageExecutionModel.ExecutionPrice.NEXT_OPEN));
+    }
+
+    @Test
+    public void exposesConfiguredParameters() {
+        Num slippage = numFactory.numOf(0.02);
+        SlippageExecutionModel model = new SlippageExecutionModel(slippage,
+                SlippageExecutionModel.ExecutionPrice.CURRENT_CLOSE);
+
+        assertEquals(slippage, model.getSlippageRatio());
+        assertEquals(SlippageExecutionModel.ExecutionPrice.CURRENT_CLOSE, model.getExecutionPrice());
     }
 
     private BarSeries buildSeries() {

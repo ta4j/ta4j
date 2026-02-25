@@ -193,6 +193,50 @@ public class TradingRecordTest {
         assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(new Trade[0]));
     }
 
+    @Test
+    public void operateWithPrebuiltTradePreservesExecutionFills() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        TradingRecord record = new BaseTradingRecord();
+        Trade aggregatedEntry = new AggregatedTrade(Trade.TradeType.BUY,
+                List.of(new TradeFill(1, numFactory.hundred(), numFactory.one()),
+                        new TradeFill(2, numFactory.numOf(101), numFactory.one())));
+        Trade aggregatedExit = new AggregatedTrade(Trade.TradeType.SELL,
+                List.of(new TradeFill(4, numFactory.numOf(110), numFactory.two())));
+
+        record.operate(aggregatedEntry);
+        assertFalse(record.isClosed());
+        assertEquals(2, record.getLastTrade().getFills().size());
+
+        record.operate(aggregatedExit);
+        assertTrue(record.isClosed());
+        assertEquals(1, record.getPositionCount());
+        assertEquals(2, record.getLastPosition().getEntry().getFills().size());
+        assertEquals(1, record.getLastPosition().getExit().getFills().size());
+    }
+
+    @Test
+    public void enterAndExitWithTradeRespectOpenCloseState() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        TradingRecord record = new BaseTradingRecord();
+        Trade firstEntry = Trade.buyAt(1, numFactory.hundred(), numFactory.one());
+        Trade duplicateEntry = Trade.buyAt(2, numFactory.numOf(101), numFactory.one());
+        Trade exit = Trade.sellAt(3, numFactory.numOf(110), numFactory.one());
+
+        assertTrue(record.enter(firstEntry));
+        assertFalse(record.enter(duplicateEntry));
+        assertTrue(record.exit(exit));
+        assertFalse(record.exit(Trade.sellAt(4, numFactory.numOf(120), numFactory.one())));
+    }
+
+    @Test
+    public void tradeDefaultOperationsRejectNullTrades() {
+        TradingRecord record = new BaseTradingRecord();
+
+        assertThrows(NullPointerException.class, () -> record.operate((Trade) null));
+        assertThrows(NullPointerException.class, () -> record.enter((Trade) null));
+        assertThrows(NullPointerException.class, () -> record.exit((Trade) null));
+    }
+
     private Position roundTrip(Position position) throws Exception {
         var outputStream = new ByteArrayOutputStream();
         try (var objectOutputStream = new ObjectOutputStream(outputStream)) {

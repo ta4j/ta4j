@@ -5,10 +5,12 @@ package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
@@ -96,5 +98,105 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         StopLimitExecutionModel.RejectedOrder rejection = model.getRejectedOrders(tradingRecord).getFirst();
         assertEquals(numFactory.numOf(5), rejection.requestedAmount());
         assertEquals(numFactory.numOf(3), rejection.filledAmount());
+    }
+
+    @Test
+    public void rejectsInvalidRequestedAmount() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 101d).build();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numOf(0.5),
+                2);
+        TradingRecord tradingRecord = new BaseTradingRecord();
+
+        model.execute(0, tradingRecord, series, numFactory.zero());
+
+        assertTrue(model.getPendingOrder(tradingRecord).isEmpty());
+        assertEquals(1, model.getRejectedOrders(tradingRecord).size());
+        StopLimitExecutionModel.RejectedOrder rejection = model.getRejectedOrders(tradingRecord).getFirst();
+        assertTrue(rejection.reason().contains("Invalid requested amount"));
+        assertEquals(numFactory.zero(), rejection.filledAmount());
+    }
+
+    @Test
+    public void rejectsSignalWhenAnotherOrderIsAlreadyPending() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 101d, 102d).build();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numOf(0.5),
+                3);
+        TradingRecord tradingRecord = new BaseTradingRecord();
+
+        model.execute(0, tradingRecord, series, numFactory.two());
+        model.execute(0, tradingRecord, series, numFactory.two());
+
+        assertTrue(model.getPendingOrder(tradingRecord).isPresent());
+        assertEquals(1, model.getRejectedOrders(tradingRecord).size());
+        StopLimitExecutionModel.RejectedOrder rejection = model.getRejectedOrders(tradingRecord).getFirst();
+        assertTrue(rejection.reason().contains("another stop-limit order is pending"));
+    }
+
+    @Test
+    public void exposesCurrentCloseReferenceInPendingOrder() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(10d).add();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(10d).add();
+
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                numFactory.one(), 2, StopLimitExecutionModel.ReferencePrice.CURRENT_CLOSE);
+        TradingRecord tradingRecord = new BaseTradingRecord();
+
+        model.execute(0, tradingRecord, series, numFactory.one());
+        StopLimitExecutionModel.PendingOrderSnapshot pendingOrder = model.getPendingOrder(tradingRecord).orElseThrow();
+
+        assertEquals(0, pendingOrder.activationIndex());
+        assertEquals(series.getBar(0).getClosePrice(), pendingOrder.stopPrice());
+        assertEquals(series.getBar(0).getClosePrice(), pendingOrder.limitPrice());
+    }
+
+    @Test
+    public void exitOrderUsesCurrentOpenPositionAmount() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(10d).add();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(10d).add();
+
+        TradingRecord tradingRecord = new BaseTradingRecord();
+        tradingRecord.operate(0, numFactory.hundred(), numFactory.numOf(5));
+
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                numFactory.one(), 2, StopLimitExecutionModel.ReferencePrice.CURRENT_CLOSE);
+        model.execute(1, tradingRecord, series, numFactory.one());
+
+        StopLimitExecutionModel.PendingOrderSnapshot pendingOrder = model.getPendingOrder(tradingRecord).orElseThrow();
+        assertEquals(numFactory.numOf(5), pendingOrder.requestedAmount());
+    }
+
+    @Test
+    public void partialExitOrderExpiryDoesNotMutateTradingRecord() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(20d).add();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(2d).add();
+
+        TradingRecord tradingRecord = new BaseTradingRecord();
+        tradingRecord.operate(0, numFactory.hundred(), numFactory.numOf(5));
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numOf(0.5), 1,
+                StopLimitExecutionModel.ReferencePrice.CURRENT_CLOSE);
+
+        model.execute(1, tradingRecord, series, numFactory.one());
+        model.onBar(1, tradingRecord, series);
+
+        assertEquals(1, tradingRecord.getTrades().size());
+        assertTrue(tradingRecord.getCurrentPosition().isOpened());
+        assertEquals(1, model.getRejectedOrders(tradingRecord).size());
+        StopLimitExecutionModel.RejectedOrder rejection = model.getRejectedOrders(tradingRecord).getFirst();
+        assertEquals(numFactory.one(), rejection.filledAmount());
+    }
+
+    @Test
+    public void rejectsInvalidConstructorArguments() {
+        assertThrows(IllegalArgumentException.class,
+                () -> new StopLimitExecutionModel(numFactory.zero(), numFactory.minusOne(), numFactory.one(), 1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new StopLimitExecutionModel(numFactory.one(), numFactory.zero(), numFactory.one(), 1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numFactory.zero(), 1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numFactory.one(), 0));
     }
 }

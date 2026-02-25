@@ -7,10 +7,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Trade.TradeType;
@@ -100,6 +102,49 @@ public class PositionTest {
         newPosition.operate(3);
         newPosition.operate(3);
         assertTrue(newPosition.isClosed());
+    }
+
+    @Test
+    public void operateWithPrebuiltTradesSupportsEntryAndExit() {
+        Position position = new Position(TradeType.BUY);
+        Trade entry = new AggregatedTrade(TradeType.BUY,
+                List.of(new TradeFill(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1)),
+                        new TradeFill(2, DoubleNum.valueOf(101), DoubleNum.valueOf(1))));
+        Trade exit = new AggregatedTrade(TradeType.SELL,
+                List.of(new TradeFill(3, DoubleNum.valueOf(110), DoubleNum.valueOf(2))));
+
+        position.operate(entry);
+        position.operate(exit);
+
+        assertEquals(entry, position.getEntry());
+        assertEquals(exit, position.getExit());
+        assertTrue(position.isClosed());
+    }
+
+    @Test
+    public void operateWithPrebuiltTradeRejectsMismatchedEntryType() {
+        Position position = new Position(TradeType.BUY);
+        Trade entry = Trade.sellAt(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+
+        assertThrows(IllegalArgumentException.class, () -> position.operate(entry));
+    }
+
+    @Test
+    public void operateWithPrebuiltTradeRejectsMismatchedExitType() {
+        Position position = new Position(TradeType.BUY);
+        position.operate(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        Trade exit = Trade.buyAt(2, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
+
+        assertThrows(IllegalArgumentException.class, () -> position.operate(exit));
+    }
+
+    @Test
+    public void operateWithPrebuiltTradeRejectsExitBeforeEntryIndex() {
+        Position position = new Position(TradeType.BUY);
+        position.operate(3, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        Trade exit = Trade.sellAt(2, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
+
+        assertThrows(IllegalStateException.class, () -> position.operate(exit));
     }
 
     @Test(expected = IllegalArgumentException.class)
