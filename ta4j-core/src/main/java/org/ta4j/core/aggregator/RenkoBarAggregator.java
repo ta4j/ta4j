@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.aggregator;
 
-import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -22,7 +21,9 @@ import org.ta4j.core.num.NumFactory;
  * Bricks are generated from close-price movement using a configurable
  * {@code boxSize}. Reversals require a move of
  * {@code reversalAmount * boxSize}. Source bars must be contiguous and evenly
- * spaced.
+ * spaced. When multiple bricks are emitted from a single source bar, aggregated
+ * volume/amount/trades are attached to the first emitted brick and set to zero
+ * for additional bricks from the same source bar.
  *
  * <p>
  * Usage:
@@ -47,6 +48,9 @@ public class RenkoBarAggregator implements BarAggregator {
      * Creates a Renko aggregator with a two-brick reversal.
      *
      * @param boxSize the price movement represented by one brick
+     * @throws NullPointerException     if {@code boxSize} is {@code null}
+     * @throws IllegalArgumentException if {@code boxSize} is not a finite, positive
+     *                                  value
      *
      * @since 0.22.3
      */
@@ -59,17 +63,30 @@ public class RenkoBarAggregator implements BarAggregator {
      *
      * @param boxSize        the price movement represented by one brick
      * @param reversalAmount the number of boxes required for reversal
+     * @throws NullPointerException     if {@code boxSize} is {@code null}
+     * @throws IllegalArgumentException if {@code boxSize} is not a finite, positive
+     *                                  value, or if {@code reversalAmount <= 0}
      *
      * @since 0.22.3
      */
     public RenkoBarAggregator(Number boxSize, int reversalAmount) {
-        this.boxSize = requirePositive(boxSize, "boxSize");
+        this.boxSize = AggregationParameterValidator.requirePositive(boxSize, "boxSize");
         if (reversalAmount <= 0) {
             throw new IllegalArgumentException("reversalAmount must be greater than zero.");
         }
         this.reversalAmount = reversalAmount;
     }
 
+    /**
+     * Aggregates bars into Renko bricks.
+     *
+     * @param bars source bars in chronological order
+     * @return Renko bricks
+     * @throws NullPointerException     if {@code bars} is {@code null}
+     * @throws IllegalArgumentException if source intervals are uneven or
+     *                                  non-contiguous, or if any source bar has a
+     *                                  null close price
+     */
     @Override
     public List<Bar> aggregate(List<Bar> bars) {
         Objects.requireNonNull(bars, "bars");
@@ -242,14 +259,5 @@ public class RenkoBarAggregator implements BarAggregator {
 
     private static Instant resolveBrickEndTime(Instant sourceBarEndTime, Instant nextBrickEndTime) {
         return sourceBarEndTime.isAfter(nextBrickEndTime) ? sourceBarEndTime : nextBrickEndTime;
-    }
-
-    private static Number requirePositive(Number value, String parameterName) {
-        Objects.requireNonNull(value, parameterName);
-        BigDecimal decimal = new BigDecimal(value.toString());
-        if (decimal.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException(parameterName + " must be greater than zero.");
-        }
-        return value;
     }
 }

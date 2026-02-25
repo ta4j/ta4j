@@ -79,10 +79,46 @@ public class RangeBarAggregatorTest extends AbstractIndicatorTest<BarSeries, Num
     }
 
     @Test
+    public void aggregateFlatSeriesDropsPendingBarByDefault() {
+        List<Bar> bars = AggregatorTestFixtures.flatBars(numFactory);
+        RangeBarAggregator aggregator = new RangeBarAggregator(4d);
+
+        List<Bar> aggregated = aggregator.aggregate(bars);
+
+        assertEquals(0, aggregated.size());
+    }
+
+    @Test
     public void aggregateRejectsUnevenIntervals() {
         List<Bar> bars = AggregatorTestFixtures.unevenIntervalBars(numFactory);
         RangeBarAggregator aggregator = new RangeBarAggregator(2d);
 
         assertThrows(IllegalArgumentException.class, () -> aggregator.aggregate(bars));
+    }
+
+    @Test
+    public void aggregateRejectsInconsistentSourceTimePeriods() {
+        List<Bar> bars = AggregatorTestFixtures.inconsistentPeriodBars(numFactory);
+        RangeBarAggregator aggregator = new RangeBarAggregator(2d);
+
+        assertThrows(IllegalArgumentException.class, () -> aggregator.aggregate(bars));
+    }
+
+    @Test
+    public void aggregateEmptyBarsReturnsEmptyList() {
+        RangeBarAggregator aggregator = new RangeBarAggregator(2d);
+
+        List<Bar> aggregated = aggregator.aggregate(List.of());
+
+        assertEquals(0, aggregated.size());
+    }
+
+    @Test
+    public void constructorRejectsInvalidRangeSize() {
+        assertThrows(NullPointerException.class, () -> new RangeBarAggregator(null));
+        assertThrows(IllegalArgumentException.class, () -> new RangeBarAggregator(0d));
+        assertThrows(IllegalArgumentException.class, () -> new RangeBarAggregator(-1d));
+        assertThrows(IllegalArgumentException.class, () -> new RangeBarAggregator(Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> new RangeBarAggregator(Double.POSITIVE_INFINITY));
     }
 }

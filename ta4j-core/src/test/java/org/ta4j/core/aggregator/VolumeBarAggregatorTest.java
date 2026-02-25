@@ -81,10 +81,46 @@ public class VolumeBarAggregatorTest extends AbstractIndicatorTest<BarSeries, Nu
     }
 
     @Test
+    public void aggregateFlatSeriesDropsPendingBarByDefault() {
+        List<Bar> bars = AggregatorTestFixtures.flatBars(numFactory);
+        VolumeBarAggregator aggregator = new VolumeBarAggregator(200d);
+
+        List<Bar> aggregated = aggregator.aggregate(bars);
+
+        assertEquals(0, aggregated.size());
+    }
+
+    @Test
     public void aggregateRejectsUnevenIntervals() {
         List<Bar> bars = AggregatorTestFixtures.unevenIntervalBars(numFactory);
         VolumeBarAggregator aggregator = new VolumeBarAggregator(20d);
 
         assertThrows(IllegalArgumentException.class, () -> aggregator.aggregate(bars));
+    }
+
+    @Test
+    public void aggregateRejectsInconsistentSourceTimePeriods() {
+        List<Bar> bars = AggregatorTestFixtures.inconsistentPeriodBars(numFactory);
+        VolumeBarAggregator aggregator = new VolumeBarAggregator(20d);
+
+        assertThrows(IllegalArgumentException.class, () -> aggregator.aggregate(bars));
+    }
+
+    @Test
+    public void aggregateEmptyBarsReturnsEmptyList() {
+        VolumeBarAggregator aggregator = new VolumeBarAggregator(20d);
+
+        List<Bar> aggregated = aggregator.aggregate(List.of());
+
+        assertEquals(0, aggregated.size());
+    }
+
+    @Test
+    public void constructorRejectsInvalidVolumeThreshold() {
+        assertThrows(NullPointerException.class, () -> new VolumeBarAggregator(null));
+        assertThrows(IllegalArgumentException.class, () -> new VolumeBarAggregator(0d));
+        assertThrows(IllegalArgumentException.class, () -> new VolumeBarAggregator(-1d));
+        assertThrows(IllegalArgumentException.class, () -> new VolumeBarAggregator(Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> new VolumeBarAggregator(Double.NEGATIVE_INFINITY));
     }
 }

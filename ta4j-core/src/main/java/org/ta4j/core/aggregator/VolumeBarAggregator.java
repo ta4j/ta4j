@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.aggregator;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -27,6 +26,10 @@ import org.ta4j.core.num.NumFactory;
  * List<Bar> volumeBars = volumeAggregator.aggregate(sourceBars);
  * }</pre>
  *
+ * <p>
+ * Source bars that do not complete the configured volume threshold are emitted
+ * only when {@code onlyFinalBars} is {@code false}.
+ *
  * @since 0.22.3
  */
 public class VolumeBarAggregator implements BarAggregator {
@@ -38,6 +41,9 @@ public class VolumeBarAggregator implements BarAggregator {
      * Creates a volume-bar aggregator that emits only completed volume bars.
      *
      * @param volumeThreshold the minimum aggregated volume required to close a bar
+     * @throws NullPointerException     if {@code volumeThreshold} is {@code null}
+     * @throws IllegalArgumentException if {@code volumeThreshold} is not a finite,
+     *                                  positive value
      *
      * @since 0.22.3
      */
@@ -50,14 +56,26 @@ public class VolumeBarAggregator implements BarAggregator {
      *
      * @param volumeThreshold the minimum aggregated volume required to close a bar
      * @param onlyFinalBars   if {@code true}, incomplete trailing bars are omitted
+     * @throws NullPointerException     if {@code volumeThreshold} is {@code null}
+     * @throws IllegalArgumentException if {@code volumeThreshold} is not a finite,
+     *                                  positive value
      *
      * @since 0.22.3
      */
     public VolumeBarAggregator(Number volumeThreshold, boolean onlyFinalBars) {
-        this.volumeThreshold = requirePositive(volumeThreshold, "volumeThreshold");
+        this.volumeThreshold = AggregationParameterValidator.requirePositive(volumeThreshold, "volumeThreshold");
         this.onlyFinalBars = onlyFinalBars;
     }
 
+    /**
+     * Aggregates bars into volume bars.
+     *
+     * @param bars source bars in chronological order
+     * @return volume bars
+     * @throws NullPointerException     if {@code bars} is {@code null}
+     * @throws IllegalArgumentException if source intervals are uneven or
+     *                                  non-contiguous
+     */
     @Override
     public List<Bar> aggregate(List<Bar> bars) {
         Objects.requireNonNull(bars, "bars");
@@ -85,14 +103,5 @@ public class VolumeBarAggregator implements BarAggregator {
         }
 
         return aggregated;
-    }
-
-    private static Number requirePositive(Number value, String parameterName) {
-        Objects.requireNonNull(value, parameterName);
-        BigDecimal decimal = new BigDecimal(value.toString());
-        if (decimal.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException(parameterName + " must be greater than zero.");
-        }
-        return value;
     }
 }

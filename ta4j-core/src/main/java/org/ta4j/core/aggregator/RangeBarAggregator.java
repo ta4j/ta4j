@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.aggregator;
 
-import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -27,6 +26,10 @@ import org.ta4j.core.num.NumFactory;
  * List<Bar> rangeBars = rangeAggregator.aggregate(sourceBars);
  * }</pre>
  *
+ * <p>
+ * Source bars that do not complete the configured range are emitted only when
+ * {@code onlyFinalBars} is {@code false}.
+ *
  * @since 0.22.3
  */
 public class RangeBarAggregator implements BarAggregator {
@@ -38,6 +41,9 @@ public class RangeBarAggregator implements BarAggregator {
      * Creates a range-bar aggregator that emits only completed range bars.
      *
      * @param rangeSize the minimum high-low range required to close a bar
+     * @throws NullPointerException     if {@code rangeSize} is {@code null}
+     * @throws IllegalArgumentException if {@code rangeSize} is not a finite,
+     *                                  positive value
      *
      * @since 0.22.3
      */
@@ -50,14 +56,26 @@ public class RangeBarAggregator implements BarAggregator {
      *
      * @param rangeSize     the minimum high-low range required to close a bar
      * @param onlyFinalBars if {@code true}, incomplete trailing bars are omitted
+     * @throws NullPointerException     if {@code rangeSize} is {@code null}
+     * @throws IllegalArgumentException if {@code rangeSize} is not a finite,
+     *                                  positive value
      *
      * @since 0.22.3
      */
     public RangeBarAggregator(Number rangeSize, boolean onlyFinalBars) {
-        this.rangeSize = requirePositive(rangeSize, "rangeSize");
+        this.rangeSize = AggregationParameterValidator.requirePositive(rangeSize, "rangeSize");
         this.onlyFinalBars = onlyFinalBars;
     }
 
+    /**
+     * Aggregates bars into range bars.
+     *
+     * @param bars source bars in chronological order
+     * @return range bars
+     * @throws NullPointerException     if {@code bars} is {@code null}
+     * @throws IllegalArgumentException if source intervals are uneven or
+     *                                  non-contiguous
+     */
     @Override
     public List<Bar> aggregate(List<Bar> bars) {
         Objects.requireNonNull(bars, "bars");
@@ -85,14 +103,5 @@ public class RangeBarAggregator implements BarAggregator {
         }
 
         return aggregated;
-    }
-
-    private static Number requirePositive(Number value, String parameterName) {
-        Objects.requireNonNull(value, parameterName);
-        BigDecimal decimal = new BigDecimal(value.toString());
-        if (decimal.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException(parameterName + " must be greater than zero.");
-        }
-        return value;
     }
 }

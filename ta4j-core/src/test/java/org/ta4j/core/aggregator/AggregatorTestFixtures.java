@@ -47,6 +47,41 @@ final class AggregatorTestFixtures {
         return fromRows(numFactory, rows, List.of(1, 2, 5));
     }
 
+    static List<Bar> inconsistentPeriodBars(NumFactory numFactory) {
+        List<Bar> bars = new ArrayList<>();
+        bars.add(new MockBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
+                .endTime(BASE_END_TIME)
+                .openPrice(100d)
+                .highPrice(101d)
+                .lowPrice(99d)
+                .closePrice(100d)
+                .volume(10d)
+                .amount(1000d)
+                .trades(2)
+                .build());
+        bars.add(new MockBarBuilder(numFactory).timePeriod(Duration.ofMinutes(2))
+                .endTime(BASE_END_TIME.plus(Duration.ofMinutes(2)))
+                .openPrice(100d)
+                .highPrice(102d)
+                .lowPrice(98d)
+                .closePrice(101d)
+                .volume(11d)
+                .amount(1111d)
+                .trades(2)
+                .build());
+        bars.add(new MockBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
+                .endTime(BASE_END_TIME.plus(Duration.ofMinutes(3)))
+                .openPrice(101d)
+                .highPrice(103d)
+                .lowPrice(100d)
+                .closePrice(102d)
+                .volume(12d)
+                .amount(1224d)
+                .trades(3)
+                .build());
+        return bars;
+    }
+
     static List<Bar> barsFromClosePrices(NumFactory numFactory, double... closePrices) {
         List<Bar> bars = new ArrayList<>();
         for (int i = 0; i < closePrices.length; i++) {
