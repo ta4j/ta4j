@@ -10,7 +10,7 @@
 - **VolumeIndicator performance**: Replaced O(barCount) per-index summation with an O(1) rolling partial-sum update, including clearer algorithm/complexity Javadocs.
 - **Serialization routing precedence**: `ComponentSerialization` now resolves mixed payloads by descriptor type so strategies prefer `rules` while indicators/rules prefer `components`, while keeping legacy `children`/`baseIndicators` compatibility.
 - **NamedStrategy reconstruction diagnostics**: Strategy reconstruction now emits richer, label-aware errors for missing identifiers, malformed labels, and constructor/parameter failures.
-- **Confluence branch hygiene**: Removed workspace-local `.vscode/settings.json` and deleted the draft `docs/prd/confluence-engine-prd.md` document from version control.
+- **Confluence analysis toolkit**: Added confluence report/scoring APIs in `ta4j-core` plus S&P 500 charting/report generation in `ta4j-examples`, including multi-pillar scoring, confidence breakdown, support/resistance confidence, and horizon probabilities.
 
 ### Changed
 - **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
