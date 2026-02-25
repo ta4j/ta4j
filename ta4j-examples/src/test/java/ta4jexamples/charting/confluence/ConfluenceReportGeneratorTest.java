@@ -3,8 +3,10 @@
  */
 package ta4jexamples.charting.confluence;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -55,14 +57,16 @@ public class ConfluenceReportGeneratorTest {
     @Test
     public void deterministicFixtureFingerprintRemainsStable() {
         BarSeries series = buildSeries(420, 4200.0d, 2.5d);
-        ConfluenceReport report = new ConfluenceReportGenerator().generate("^GSPC", series);
+        Instant referenceNow = Instant.parse("2024-02-25T00:00:00Z");
+        ConfluenceReportGenerator generator = new ConfluenceReportGenerator(Clock.fixed(referenceNow, ZoneOffset.UTC));
+        ConfluenceReport report = generator.generate("^GSPC", series);
 
         String fingerprint = String.format("%.3f|%.3f|%.3f|%.3f|%.3f|%.3f", report.snapshot().rawConfluenceScore(),
                 report.snapshot().decorrelatedConfluenceScore(), report.confidenceBreakdown().finalConfidence(),
                 report.horizonProbabilities().get(0).upProbability(),
                 report.horizonProbabilities().get(1).upProbability(), report.levelConfidences().get(0).confidence());
 
-        assertEquals("68.082|68.387|47.374|0.598|0.691|40.696", fingerprint);
+        assertEquals("68.082|68.387|52.481|0.598|0.691|40.696", fingerprint);
     }
 
     @Test
@@ -76,6 +80,7 @@ public class ConfluenceReportGeneratorTest {
                 () -> new ConfluenceReportGenerator(null, new LevelConfidenceCalculator()));
         assertThrows(NullPointerException.class,
                 () -> new ConfluenceReportGenerator(new ConfluenceScoringEngine(), null));
+        assertThrows(NullPointerException.class, () -> new ConfluenceReportGenerator((Clock) null));
     }
 
     @Test

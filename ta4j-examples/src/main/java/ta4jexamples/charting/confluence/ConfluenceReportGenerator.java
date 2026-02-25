@@ -3,6 +3,7 @@
  */
 package ta4jexamples.charting.confluence;
 
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -64,6 +65,7 @@ public final class ConfluenceReportGenerator {
 
     private final ConfluenceScoringEngine scoringEngine;
     private final LevelConfidenceCalculator levelConfidenceCalculator;
+    private final Clock clock;
 
     /**
      * Creates a generator with default family-cap and correlation-penalty policy.
@@ -75,6 +77,18 @@ public final class ConfluenceReportGenerator {
     }
 
     /**
+     * Creates a generator with a custom clock and default scoring/level-confidence.
+     * Useful for tests that need deterministic data-confidence from fixed
+     * historical fixtures.
+     *
+     * @param clock reference instant for "now" (e.g. for data freshness)
+     * @since 0.22.3
+     */
+    public ConfluenceReportGenerator(Clock clock) {
+        this(defaultScoringEngine(), new LevelConfidenceCalculator(), clock);
+    }
+
+    /**
      * Creates a generator with injected scoring and level-confidence components.
      *
      * @param scoringEngine             confluence scoring engine
@@ -83,9 +97,26 @@ public final class ConfluenceReportGenerator {
      */
     public ConfluenceReportGenerator(ConfluenceScoringEngine scoringEngine,
             LevelConfidenceCalculator levelConfidenceCalculator) {
+        this(scoringEngine, levelConfidenceCalculator, Clock.systemUTC());
+    }
+
+    /**
+     * Creates a generator with injected scoring, level-confidence, and clock. The
+     * clock is used when computing data freshness for confidence so that tests can
+     * obtain deterministic results with fixed historical fixtures.
+     *
+     * @param scoringEngine             confluence scoring engine
+     * @param levelConfidenceCalculator level confidence scorer
+     * @param clock                     reference instant for "now" (e.g. for data
+     *                                  freshness)
+     * @since 0.22.3
+     */
+    public ConfluenceReportGenerator(ConfluenceScoringEngine scoringEngine,
+            LevelConfidenceCalculator levelConfidenceCalculator, Clock clock) {
         this.scoringEngine = Objects.requireNonNull(scoringEngine, "scoringEngine cannot be null");
         this.levelConfidenceCalculator = Objects.requireNonNull(levelConfidenceCalculator,
                 "levelConfidenceCalculator cannot be null");
+        this.clock = Objects.requireNonNull(clock, "clock cannot be null");
     }
 
     /**
@@ -453,7 +484,7 @@ public final class ConfluenceReportGenerator {
         double regimeConfidence = clamp(45.0d + thresholdDistance * 2.0d, 0.0d, 92.0d);
 
         Instant barTime = series.getLastBar().getEndTime();
-        long ageDays = Math.max(0L, Duration.between(barTime, Instant.now()).toDays());
+        long ageDays = Math.max(0L, Duration.between(barTime, clock.instant()).toDays());
         double freshness = clamp(1.0d - (ageDays / 14.0d), 0.0d, 1.0d);
         double depth = clamp(series.getBarCount() / 1200.0d, 0.0d, 1.0d);
         double dataConfidence = clamp(100.0d * (0.55d * freshness + 0.45d * depth), 0.0d, 100.0d);
