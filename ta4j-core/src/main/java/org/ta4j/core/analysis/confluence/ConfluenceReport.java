@@ -60,6 +60,31 @@ public record ConfluenceReport(Snapshot snapshot, List<PillarScore> pillarScores
         this.extensions = Map.copyOf(extensions);
     }
 
+    @Override
+    public List<PillarScore> pillarScores() {
+        return List.copyOf(pillarScores);
+    }
+
+    @Override
+    public List<LevelConfidence> levelConfidences() {
+        return List.copyOf(levelConfidences);
+    }
+
+    @Override
+    public List<HorizonProbability> horizonProbabilities() {
+        return List.copyOf(horizonProbabilities);
+    }
+
+    @Override
+    public List<String> outlookNarrative() {
+        return List.copyOf(outlookNarrative);
+    }
+
+    @Override
+    public Map<String, String> extensions() {
+        return Map.copyOf(extensions);
+    }
+
     /**
      * Returns the top-N support levels sorted by descending confidence.
      *
@@ -192,6 +217,16 @@ public record ConfluenceReport(Snapshot snapshot, List<PillarScore> pillarScores
             this.featureContributions = List.copyOf(featureContributions);
             this.explanations = List.copyOf(explanations);
         }
+
+        @Override
+        public List<FeatureContribution> featureContributions() {
+            return List.copyOf(featureContributions);
+        }
+
+        @Override
+        public List<String> explanations() {
+            return List.copyOf(explanations);
+        }
     }
 
     /**
@@ -282,6 +317,11 @@ public record ConfluenceReport(Snapshot snapshot, List<PillarScore> pillarScores
             this.finalConfidence = finalConfidence;
             this.notes = List.copyOf(notes);
         }
+
+        @Override
+        public List<String> notes() {
+            return List.copyOf(notes);
+        }
     }
 
     /**
@@ -322,6 +362,11 @@ public record ConfluenceReport(Snapshot snapshot, List<PillarScore> pillarScores
             this.logLoss = logLoss;
             this.reliabilityArtifactPath = reliabilityArtifactPath;
             this.warnings = List.copyOf(warnings);
+        }
+
+        @Override
+        public List<String> warnings() {
+            return List.copyOf(warnings);
         }
     }
 

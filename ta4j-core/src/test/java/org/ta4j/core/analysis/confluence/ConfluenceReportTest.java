@@ -71,6 +71,27 @@ public class ConfluenceReportTest {
     }
 
     @Test
+    public void confidenceAndValidationCreateDefensiveCopies() {
+        List<String> notes = new ArrayList<>();
+        notes.add("calibration-note");
+        List<String> warnings = new ArrayList<>();
+        warnings.add("warning");
+
+        ConfluenceReport.ConfidenceBreakdown confidence = new ConfluenceReport.ConfidenceBreakdown(60.0d, 55.0d, 50.0d,
+                90.0d, 62.0d, notes);
+        ConfluenceReport.ValidationMetadata validation = new ConfluenceReport.ValidationMetadata("isotonic",
+                "2014-2025", "2026-02-24", 0.19d, 0.03d, 0.58d, "temp/charts/reliability.png", warnings);
+
+        notes.clear();
+        warnings.clear();
+
+        assertEquals(1, confidence.notes().size());
+        assertEquals(1, validation.warnings().size());
+        assertThrows(UnsupportedOperationException.class, () -> confidence.notes().add("new"));
+        assertThrows(UnsupportedOperationException.class, () -> validation.warnings().add("new"));
+    }
+
+    @Test
     public void horizonProbabilityRequiresSumToOne() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> new ConfluenceReport.HorizonProbability(ConfluenceReport.Horizon.ONE_MONTH, 0.60d, 0.30d, 0.05d,
