@@ -96,8 +96,13 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * For simpler usage examples with specific assets, see:
  * <ul>
  * <li>{@link BTCUSDElliottWaveAnalysis} - Bitcoin analysis example</li>
+ * <li>{@link BTCUSDLiveElliottWaveAnalysis} - live Bitcoin analysis
+ * example</li>
  * <li>{@link ETHUSDElliottWaveAnalysis} - Ethereum analysis example</li>
+ * <li>{@link ETHUSDLiveElliottWaveAnalysis} - live Ethereum analysis
+ * example</li>
  * <li>{@link SP500ElliottWaveAnalysis} - S&P 500 index analysis example</li>
+ * <li>{@link SP500LiveElliottWaveAnalysis} - live S&P 500 analysis example</li>
  * <li>{@link ElliottWaveAdaptiveSwingAnalysis} - adaptive swing detection
  * demo</li>
  * <li>{@link ElliottWaveMultiDegreeAnalysisDemo} - cross-degree scenario
