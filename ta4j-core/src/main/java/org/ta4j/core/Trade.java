@@ -5,6 +5,7 @@ package org.ta4j.core;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.List;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.num.Num;
 
@@ -169,6 +170,21 @@ public interface Trade extends Serializable {
      */
     default Num getValue() {
         return getPricePerAsset().multipliedBy(getAmount());
+    }
+
+    /**
+     * Returns execution fills for this trade.
+     *
+     * <p>
+     * Default simulated trades expose a single fill. Aggregated/partial trades may
+     * return multiple fills.
+     * </p>
+     *
+     * @return execution fills of this trade
+     * @since 0.22.2
+     */
+    default List<TradeFill> getFills() {
+        return List.of(new TradeFill(getIndex(), getPricePerAsset(), getAmount()));
     }
 
     /**

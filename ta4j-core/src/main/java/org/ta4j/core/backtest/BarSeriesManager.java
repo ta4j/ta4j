@@ -196,6 +196,7 @@ public class BarSeriesManager {
                 holdingCostModel);
 
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
+            tradeExecutionModel.onBar(i, tradingRecord, barSeries);
             // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {
                 tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
@@ -208,6 +209,7 @@ public class BarSeriesManager {
             // to give an opportunity to close this position.
             int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
             for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
+                tradeExecutionModel.onBar(i, tradingRecord, barSeries);
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
                 if (strategy.shouldOperate(i, tradingRecord)) {

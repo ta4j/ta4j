@@ -184,16 +184,44 @@ public class Position implements Serializable {
     public Trade operate(int index, Num price, Num amount) {
         Trade trade = null;
         if (isNew()) {
-            trade = new SimulatedTrade(index, startingType, price, amount, transactionCostModel);
-            entry = trade;
+            trade = operate(new SimulatedTrade(index, startingType, price, amount, transactionCostModel));
         } else if (isOpened()) {
             if (index < entry.getIndex()) {
                 throw new IllegalStateException("The index i is less than the entryTrade index");
             }
-            trade = new SimulatedTrade(index, startingType.complementType(), price, amount, transactionCostModel);
-            exit = trade;
+            trade = operate(
+                    new SimulatedTrade(index, startingType.complementType(), price, amount, transactionCostModel));
         }
         return trade;
+    }
+
+    /**
+     * Operates the position with a pre-built trade.
+     *
+     * @param trade the trade to apply
+     * @return the trade
+     * @since 0.22.2
+     */
+    public Trade operate(Trade trade) {
+        Objects.requireNonNull(trade, "trade");
+        if (isNew()) {
+            if (trade.getType() != startingType) {
+                throw new IllegalArgumentException("The first trade type must match the starting type");
+            }
+            entry = trade;
+            return trade;
+        }
+        if (isOpened()) {
+            if (trade.getType() != startingType.complementType()) {
+                throw new IllegalArgumentException("The exit trade type must complement the entry trade type");
+            }
+            if (trade.getIndex() < entry.getIndex()) {
+                throw new IllegalStateException("The index i is less than the entryTrade index");
+            }
+            exit = trade;
+            return trade;
+        }
+        return null;
     }
 
     /**

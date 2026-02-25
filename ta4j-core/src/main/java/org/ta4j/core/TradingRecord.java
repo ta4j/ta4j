@@ -7,6 +7,7 @@ import static org.ta4j.core.num.NaN.NaN;
 
 import java.io.Serializable;
 import java.util.List;
+import java.util.Objects;
 
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
@@ -54,6 +55,22 @@ public interface TradingRecord extends Serializable {
     void operate(int index, Num price, Num amount);
 
     /**
+     * Places a pre-built trade in the trading record.
+     *
+     * <p>
+     * This is useful for execution models that aggregate partial fills into a
+     * single entry or exit trade.
+     * </p>
+     *
+     * @param trade the trade to place
+     * @since 0.22.2
+     */
+    default void operate(Trade trade) {
+        Objects.requireNonNull(trade, "trade");
+        operate(trade.getIndex(), trade.getPricePerAsset(), trade.getAmount());
+    }
+
+    /**
      * Places an entry trade in the trading record.
      *
      * @param index the index to place the entry
@@ -74,6 +91,22 @@ public interface TradingRecord extends Serializable {
     boolean enter(int index, Num price, Num amount);
 
     /**
+     * Places an entry trade in the trading record.
+     *
+     * @param trade the entry trade to place
+     * @return true if the entry has been placed, false otherwise
+     * @since 0.22.2
+     */
+    default boolean enter(Trade trade) {
+        Objects.requireNonNull(trade, "trade");
+        if (isClosed()) {
+            operate(trade);
+            return true;
+        }
+        return false;
+    }
+
+    /**
      * Places an exit trade in the trading record.
      *
      * @param index the index to place the exit
@@ -92,6 +125,22 @@ public interface TradingRecord extends Serializable {
      * @return true if the exit has been placed, false otherwise
      */
     boolean exit(int index, Num price, Num amount);
+
+    /**
+     * Places an exit trade in the trading record.
+     *
+     * @param trade the exit trade to place
+     * @return true if the exit has been placed, false otherwise
+     * @since 0.22.2
+     */
+    default boolean exit(Trade trade) {
+        Objects.requireNonNull(trade, "trade");
+        if (!isClosed()) {
+            operate(trade);
+            return true;
+        }
+        return false;
+    }
 
     /**
      * @return true if no position is open, false otherwise
