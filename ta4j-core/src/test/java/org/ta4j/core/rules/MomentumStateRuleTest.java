@@ -11,9 +11,9 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
-import org.ta4j.core.indicators.MACDVMomentumState;
-import org.ta4j.core.indicators.MACDVMomentumStateIndicator;
-import org.ta4j.core.indicators.VolatilityNormalizedMACDIndicator;
+import org.ta4j.core.indicators.macd.MACDVMomentumState;
+import org.ta4j.core.indicators.macd.MACDVMomentumStateIndicator;
+import org.ta4j.core.indicators.macd.VolatilityNormalizedMACDIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 

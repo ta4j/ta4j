@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.macd;
 
 import java.util.Objects;
 import java.util.function.BiFunction;
@@ -9,8 +9,12 @@ import java.util.function.BiFunction;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
+import org.ta4j.core.indicators.ATRIndicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.averages.VWMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -19,178 +23,143 @@ import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.MomentumStateRule;
 
 /**
- * Volatility-normalized MACD (MACD-V) indicator.
+ * Moving average convergence divergence volume (MACD-V) indicator.
  *
  * <p>
- * This implementation follows the volatility-normalized formulation where the
- * EMA spread is divided by average true range (ATR) and scaled:
+ * This implementation is a volume/ATR-weighted MACD variant. It computes short
+ * and long variable-weighted EMAs (VWEMAs), where each weight is
+ * {@code volume / ATR(period)}, and returns their difference.
  *
- * <pre>
- * MACD-V = ((EMA(fast) - EMA(slow)) / ATR(atrPeriod)) * scale
- * </pre>
- *
- * Typical defaults are {@code fast=12}, {@code slow=26}, {@code atrPeriod=26},
- * {@code signal=9}, and {@code scale=100}.
+ * <p>
+ * Unlike volatility-normalized MACD-V formulations that divide the EMA spread
+ * by ATR, this indicator uses ATR only inside the weighting term.
  *
  * @see <a href=
  *      "https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-indicators/macd-v">
  *      https://chartschool.stockcharts.com/table-of-contents/technical-indicators-and-overlays/technical-indicators/macd-v
  *      </a>
- * @since 0.22.3
+ * @since 0.19
  */
-public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
+public class MACDVIndicator extends CachedIndicator<Num> {
 
-    private static final int DEFAULT_FAST_BAR_COUNT = 12;
-    private static final int DEFAULT_SLOW_BAR_COUNT = 26;
+    private static final int DEFAULT_SHORT_BAR_COUNT = 12;
+    private static final int DEFAULT_LONG_BAR_COUNT = 26;
     private static final int DEFAULT_SIGNAL_BAR_COUNT = 9;
-    private static final int DEFAULT_SCALE_FACTOR = 100;
 
     private final Indicator<Num> priceIndicator;
-    private final int fastBarCount;
-    private final int slowBarCount;
-    private final int atrBarCount;
+    private final int shortBarCount;
+    private final int longBarCount;
     private final int defaultSignalBarCount;
-    private final Num scaleFactor;
 
-    private transient EMAIndicator fastEma;
-    private transient EMAIndicator slowEma;
-    private transient ATRIndicator averageTrueRange;
+    private transient VWMAIndicator shortTermVwema;
+    private transient VWMAIndicator longTermVwema;
+    private transient ATRIndicator shortAtrIndicator;
+    private transient ATRIndicator longAtrIndicator;
 
     /**
-     * Constructor with defaults:
+     * Constructor with:
      *
      * <ul>
-     * <li>{@code fastBarCount} = 12
-     * <li>{@code slowBarCount} = 26
-     * <li>{@code atrBarCount} = 26
+     * <li>{@code shortBarCount} = 12
+     * <li>{@code longBarCount} = 26
      * <li>{@code signalBarCount} = 9
-     * <li>{@code scaleFactor} = 100
      * </ul>
      *
-     * @param series the bar series
-     * @since 0.22.3
+     * @param series the bar series {@link BarSeries}
+     * @since 0.19
      */
-    public VolatilityNormalizedMACDIndicator(BarSeries series) {
+    public MACDVIndicator(BarSeries series) {
         this(new ClosePriceIndicator(series));
     }
 
     /**
-     * Constructor with defaults:
+     * Constructor with:
      *
      * <ul>
-     * <li>{@code fastBarCount} = 12
-     * <li>{@code slowBarCount} = 26
-     * <li>{@code atrBarCount} = 26
+     * <li>{@code shortBarCount} = 12
+     * <li>{@code longBarCount} = 26
      * <li>{@code signalBarCount} = 9
-     * <li>{@code scaleFactor} = 100
      * </ul>
      *
-     * @param priceIndicator the price indicator
-     * @since 0.22.3
+     * @param priceIndicator the price-based {@link Indicator}
+     * @since 0.19
      */
-    public VolatilityNormalizedMACDIndicator(Indicator<Num> priceIndicator) {
-        this(priceIndicator, DEFAULT_FAST_BAR_COUNT, DEFAULT_SLOW_BAR_COUNT, DEFAULT_SLOW_BAR_COUNT,
-                DEFAULT_SIGNAL_BAR_COUNT, DEFAULT_SCALE_FACTOR);
+    public MACDVIndicator(Indicator<Num> priceIndicator) {
+        this(priceIndicator, DEFAULT_SHORT_BAR_COUNT, DEFAULT_LONG_BAR_COUNT, DEFAULT_SIGNAL_BAR_COUNT);
     }
 
     /**
      * Constructor.
      *
-     * @param series         the bar series
-     * @param fastBarCount   fast EMA period (normally 12)
-     * @param slowBarCount   slow EMA period (normally 26)
-     * @param signalBarCount default signal EMA period (normally 9)
-     * @since 0.22.3
+     * @param series        the bar series {@link BarSeries}
+     * @param shortBarCount the short time frame (normally 12)
+     * @param longBarCount  the long time frame (normally 26)
+     * @since 0.19
      */
-    public VolatilityNormalizedMACDIndicator(BarSeries series, int fastBarCount, int slowBarCount, int signalBarCount) {
-        this(new ClosePriceIndicator(series), fastBarCount, slowBarCount, slowBarCount, signalBarCount,
-                DEFAULT_SCALE_FACTOR);
+    public MACDVIndicator(BarSeries series, int shortBarCount, int longBarCount) {
+        this(new ClosePriceIndicator(series), shortBarCount, longBarCount, DEFAULT_SIGNAL_BAR_COUNT);
     }
 
     /**
      * Constructor.
      *
-     * @param priceIndicator the price indicator
-     * @param fastBarCount   fast EMA period (normally 12)
-     * @param slowBarCount   slow EMA period (normally 26)
-     * @param signalBarCount default signal EMA period (normally 9)
+     * @param series         the bar series {@link BarSeries}
+     * @param shortBarCount  the short time frame (normally 12)
+     * @param longBarCount   the long time frame (normally 26)
+     * @param signalBarCount the default signal time frame (normally 9)
      * @since 0.22.3
      */
-    public VolatilityNormalizedMACDIndicator(Indicator<Num> priceIndicator, int fastBarCount, int slowBarCount,
-            int signalBarCount) {
-        this(priceIndicator, fastBarCount, slowBarCount, slowBarCount, signalBarCount, DEFAULT_SCALE_FACTOR);
+    public MACDVIndicator(BarSeries series, int shortBarCount, int longBarCount, int signalBarCount) {
+        this(new ClosePriceIndicator(series), shortBarCount, longBarCount, signalBarCount);
     }
 
     /**
-     * Fully-specified constructor.
+     * Constructor.
      *
-     * @param series         the bar series
-     * @param fastBarCount   fast EMA period
-     * @param slowBarCount   slow EMA period
-     * @param atrBarCount    ATR period
-     * @param signalBarCount default signal EMA period
-     * @param scaleFactor    scalar multiplier (typically 100)
-     * @since 0.22.3
+     * @param priceIndicator the price-based {@link Indicator}
+     * @param shortBarCount  the short time frame (normally 12)
+     * @param longBarCount   the long time frame (normally 26)
+     * @since 0.19
      */
-    public VolatilityNormalizedMACDIndicator(BarSeries series, int fastBarCount, int slowBarCount, int atrBarCount,
-            int signalBarCount, Number scaleFactor) {
-        this(new ClosePriceIndicator(series), fastBarCount, slowBarCount, atrBarCount, signalBarCount, scaleFactor);
+    public MACDVIndicator(Indicator<Num> priceIndicator, int shortBarCount, int longBarCount) {
+        this(priceIndicator, shortBarCount, longBarCount, DEFAULT_SIGNAL_BAR_COUNT);
     }
 
     /**
-     * Fully-specified constructor.
+     * Constructor.
      *
-     * @param priceIndicator the price indicator
-     * @param fastBarCount   fast EMA period
-     * @param slowBarCount   slow EMA period
-     * @param atrBarCount    ATR period
-     * @param signalBarCount default signal EMA period
-     * @param scaleFactor    scalar multiplier (typically 100)
+     * @param priceIndicator the price-based {@link Indicator}
+     * @param shortBarCount  the short time frame (normally 12)
+     * @param longBarCount   the long time frame (normally 26)
+     * @param signalBarCount the default signal time frame (normally 9)
      * @since 0.22.3
      */
-    public VolatilityNormalizedMACDIndicator(Indicator<Num> priceIndicator, int fastBarCount, int slowBarCount,
-            int atrBarCount, int signalBarCount, Number scaleFactor) {
+    public MACDVIndicator(Indicator<Num> priceIndicator, int shortBarCount, int longBarCount, int signalBarCount) {
         super(priceIndicator);
-        validatePeriods(fastBarCount, slowBarCount, atrBarCount, signalBarCount);
-        if (scaleFactor == null) {
-            throw new IllegalArgumentException("Scale factor must not be null");
-        }
-
-        Num resolvedScaleFactor = priceIndicator.getBarSeries().numFactory().numOf(scaleFactor);
-        if (Num.isNaNOrNull(resolvedScaleFactor) || resolvedScaleFactor.isNegativeOrZero()) {
-            throw new IllegalArgumentException("Scale factor must be greater than 0");
-        }
-
+        validateBarCounts(shortBarCount, longBarCount);
+        validateSignalBarCount(signalBarCount);
         this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
-        this.fastBarCount = fastBarCount;
-        this.slowBarCount = slowBarCount;
-        this.atrBarCount = atrBarCount;
+        this.shortBarCount = shortBarCount;
+        this.longBarCount = longBarCount;
         this.defaultSignalBarCount = signalBarCount;
-        this.scaleFactor = resolvedScaleFactor;
         ensureSubIndicatorsInitialized();
     }
 
-    private static void validatePeriods(int fastBarCount, int slowBarCount, int atrBarCount, int signalBarCount) {
-        if (fastBarCount < 1) {
-            throw new IllegalArgumentException("Fast EMA period must be greater than 0");
+    private static void validateBarCounts(int shortBarCount, int longBarCount) {
+        if (shortBarCount < 1) {
+            throw new IllegalArgumentException("Short term period count must be greater than 0");
         }
-        if (slowBarCount < 1) {
-            throw new IllegalArgumentException("Slow EMA period must be greater than 0");
+        if (longBarCount < 1) {
+            throw new IllegalArgumentException("Long term period count must be greater than 0");
         }
-        if (atrBarCount < 1) {
-            throw new IllegalArgumentException("ATR period must be greater than 0");
-        }
-        if (signalBarCount < 1) {
-            throw new IllegalArgumentException("Signal period must be greater than 0");
-        }
-        if (fastBarCount > slowBarCount) {
-            throw new IllegalArgumentException("Slow EMA period must be greater than or equal to fast EMA period");
+        if (shortBarCount > longBarCount) {
+            throw new IllegalArgumentException("Long term period count must be greater than short term period count");
         }
     }
 
     private static void validateSignalBarCount(int signalBarCount) {
         if (signalBarCount < 1) {
-            throw new IllegalArgumentException("Signal period must be greater than 0");
+            throw new IllegalArgumentException("Signal bar count must be greater than 0");
         }
     }
 
@@ -216,31 +185,23 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @return configured fast EMA period
+     * @return short period configured for this indicator
      * @since 0.22.3
      */
-    public int getFastBarCount() {
-        return fastBarCount;
+    public int getShortBarCount() {
+        return shortBarCount;
     }
 
     /**
-     * @return configured slow EMA period
+     * @return long period configured for this indicator
      * @since 0.22.3
      */
-    public int getSlowBarCount() {
-        return slowBarCount;
+    public int getLongBarCount() {
+        return longBarCount;
     }
 
     /**
-     * @return configured ATR period
-     * @since 0.22.3
-     */
-    public int getAtrBarCount() {
-        return atrBarCount;
-    }
-
-    /**
-     * @return configured default signal period
+     * @return default signal period configured for this indicator
      * @since 0.22.3
      */
     public int getDefaultSignalBarCount() {
@@ -248,48 +209,42 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @return configured scale factor
-     * @since 0.22.3
+     * @return short-term volume-weighted EMA indicator
+     * @since 0.19
      */
-    public Num getScaleFactor() {
-        return scaleFactor;
+    public VWMAIndicator getShortTermVolumeWeightedEma() {
+        return getShortTermVwema();
     }
 
     /**
-     * @return fast EMA indicator
-     * @since 0.22.3
+     * @return long-term volume-weighted EMA indicator
+     * @since 0.19
      */
-    public EMAIndicator getFastEma() {
-        if (fastEma == null) {
-            fastEma = new EMAIndicator(priceIndicator, fastBarCount);
-        }
-        return fastEma;
+    public VWMAIndicator getLongTermVolumeWeightedEma() {
+        return getLongTermVwema();
     }
 
     /**
-     * @return slow EMA indicator
+     * @return short-term ATR indicator used by the weighting chain
      * @since 0.22.3
      */
-    public EMAIndicator getSlowEma() {
-        if (slowEma == null) {
-            slowEma = new EMAIndicator(priceIndicator, slowBarCount);
-        }
-        return slowEma;
+    public ATRIndicator getShortAtrIndicator() {
+        ensureSubIndicatorsInitialized();
+        return shortAtrIndicator;
     }
 
     /**
-     * @return ATR indicator used for normalization
+     * @return long-term ATR indicator used by the weighting chain
      * @since 0.22.3
      */
-    public ATRIndicator getAtrIndicator() {
-        if (averageTrueRange == null) {
-            averageTrueRange = new ATRIndicator(getBarSeries(), atrBarCount);
-        }
-        return averageTrueRange;
+    public ATRIndicator getLongAtrIndicator() {
+        ensureSubIndicatorsInitialized();
+        return longAtrIndicator;
     }
 
     /**
-     * @return signal line using the configured default signal period
+     * @return signal line for this MACD-V indicator using the configured default
+     *         signal period
      * @since 0.22.3
      */
     public EMAIndicator getSignalLine() {
@@ -297,9 +252,9 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @param signalBarCount signal line period
+     * @param signalBarCount signal period
      * @return signal line for this MACD-V indicator
-     * @since 0.22.3
+     * @since 0.19
      */
     public EMAIndicator getSignalLine(int signalBarCount) {
         validateSignalBarCount(signalBarCount);
@@ -316,10 +271,9 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @param signalBarCount    signal line period
-     * @param signalLineFactory factory that creates a signal-line indicator from
-     *                          {@code (this, signalBarCount)}
-     * @return custom signal line indicator
+     * @param signalBarCount    signal period
+     * @param signalLineFactory signal-line factory
+     * @return signal line using custom factory
      * @since 0.22.3
      */
     public Indicator<Num> getSignalLine(int signalBarCount,
@@ -337,8 +291,8 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @return histogram using the configured default signal period and default
-     *         polarity ({@link MACDHistogramMode#MACD_MINUS_SIGNAL})
+     * @return histogram using default signal period and default polarity
+     *         ({@link MACDHistogramMode#MACD_MINUS_SIGNAL})
      * @since 0.22.3
      */
     public NumericIndicator getHistogram() {
@@ -346,9 +300,10 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @param signalBarCount signal line period
-     * @return histogram as {@code macdV - signal}
-     * @since 0.22.3
+     * @param signalBarCount signal period
+     * @return histogram using default polarity
+     *         ({@link MACDHistogramMode#MACD_MINUS_SIGNAL})
+     * @since 0.19
      */
     public NumericIndicator getHistogram(int signalBarCount) {
         return getHistogram(signalBarCount, MACDHistogramMode.MACD_MINUS_SIGNAL);
@@ -364,7 +319,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @param signalBarCount signal line period
+     * @param signalBarCount signal period
      * @param histogramMode  histogram polarity mode
      * @return histogram for the configured polarity
      * @since 0.22.3
@@ -378,7 +333,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @param signalLineFactory factory that creates a signal-line indicator
+     * @param signalLineFactory signal-line factory
      * @return histogram using default signal period, default polarity, and custom
      *         signal-line factory
      * @since 0.22.3
@@ -388,9 +343,9 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @param signalBarCount    signal line period
-     * @param signalLineFactory factory that creates a signal-line indicator
-     * @return histogram using custom signal-line factory and default polarity
+     * @param signalBarCount    signal period
+     * @param signalLineFactory signal-line factory
+     * @return histogram using default polarity and custom signal-line factory
      * @since 0.22.3
      */
     public NumericIndicator getHistogram(int signalBarCount,
@@ -399,10 +354,10 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @param signalBarCount    signal line period
-     * @param signalLineFactory factory that creates a signal-line indicator
+     * @param signalBarCount    signal period
+     * @param signalLineFactory signal-line factory
      * @param histogramMode     histogram polarity mode
-     * @return histogram with custom signal-line factory and polarity
+     * @return histogram using custom signal-line factory and polarity
      * @since 0.22.3
      */
     public NumericIndicator getHistogram(int signalBarCount,
@@ -415,10 +370,10 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @return this MACD-V line
+     * @return this MACD line
      * @since 0.22.3
      */
-    public VolatilityNormalizedMACDIndicator getMacdV() {
+    public MACDVIndicator getMacd() {
         return this;
     }
 
@@ -464,9 +419,6 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Bundles MACD, signal, and histogram values for a bar index with a custom
-     * signal-line factory.
-     *
      * @param index             bar index
      * @param signalBarCount    signal period
      * @param signalLineFactory signal-line factory
@@ -485,10 +437,10 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Classifies the current MACD-V value using the default momentum profile.
+     * Classifies the current value using the default momentum profile.
      *
      * @param index bar index
-     * @return momentum state for {@code getValue(index)}
+     * @return momentum state
      * @since 0.22.3
      */
     public MACDVMomentumState getMomentumState(int index) {
@@ -496,11 +448,11 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * Classifies the current MACD-V value using a custom momentum profile.
+     * Classifies the current value using a custom momentum profile.
      *
      * @param index           bar index
      * @param momentumProfile momentum profile
-     * @return momentum state for {@code getValue(index)}
+     * @return momentum state
      * @since 0.22.3
      */
     public MACDVMomentumState getMomentumState(int index, MACDVMomentumProfile momentumProfile) {
@@ -511,7 +463,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @return momentum-state indicator using the default profile
+     * @return momentum-state indicator using default profile
      * @since 0.22.3
      */
     public MACDVMomentumStateIndicator getMomentumStateIndicator() {
@@ -520,7 +472,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
 
     /**
      * @param momentumProfile momentum profile
-     * @return momentum-state indicator using a custom profile
+     * @return momentum-state indicator using custom profile
      * @since 0.22.3
      */
     public MACDVMomentumStateIndicator getMomentumStateIndicator(MACDVMomentumProfile momentumProfile) {
@@ -528,7 +480,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @return rule that is satisfied when MACD-V crosses above the default signal
+     * @return rule that is satisfied when MACD crosses above the default signal
      *         line
      * @since 0.22.3
      */
@@ -538,7 +490,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
 
     /**
      * @param signalBarCount signal period
-     * @return rule that is satisfied when MACD-V crosses above the signal line
+     * @return rule that is satisfied when MACD crosses above the signal line
      * @since 0.22.3
      */
     public Rule crossedUpSignal(int signalBarCount) {
@@ -548,7 +500,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     /**
      * @param signalBarCount    signal period
      * @param signalLineFactory signal-line factory
-     * @return rule that is satisfied when MACD-V crosses above a custom signal line
+     * @return rule that is satisfied when MACD crosses above a custom signal line
      * @since 0.22.3
      */
     public Rule crossedUpSignal(int signalBarCount,
@@ -557,7 +509,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     }
 
     /**
-     * @return rule that is satisfied when MACD-V crosses below the default signal
+     * @return rule that is satisfied when MACD crosses below the default signal
      *         line
      * @since 0.22.3
      */
@@ -567,7 +519,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
 
     /**
      * @param signalBarCount signal period
-     * @return rule that is satisfied when MACD-V crosses below the signal line
+     * @return rule that is satisfied when MACD crosses below the signal line
      * @since 0.22.3
      */
     public Rule crossedDownSignal(int signalBarCount) {
@@ -577,7 +529,7 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
     /**
      * @param signalBarCount    signal period
      * @param signalLineFactory signal-line factory
-     * @return rule that is satisfied when MACD-V crosses below a custom signal line
+     * @return rule that is satisfied when MACD crosses below a custom signal line
      * @since 0.22.3
      */
     public Rule crossedDownSignal(int signalBarCount,
@@ -611,36 +563,53 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
         if (index < getCountOfUnstableBars()) {
             return NaN.NaN;
         }
-
-        Num fastValue = getFastEma().getValue(index);
-        Num slowValue = getSlowEma().getValue(index);
-        Num atrValue = getAtrIndicator().getValue(index);
-        if (Num.isNaNOrNull(fastValue) || Num.isNaNOrNull(slowValue) || Num.isNaNOrNull(atrValue)) {
+        Num shortValue = getShortTermVwema().getValue(index);
+        Num longValue = getLongTermVwema().getValue(index);
+        if (Num.isNaNOrNull(shortValue) || Num.isNaNOrNull(longValue)) {
             return NaN.NaN;
         }
-
-        Num spread = fastValue.minus(slowValue);
-        if (Num.isNaNOrNull(spread)) {
+        Num macdValue = shortValue.minus(longValue);
+        if (Num.isNaNOrNull(macdValue)) {
             return NaN.NaN;
         }
-        if (atrValue.isZero()) {
-            return spread.isZero() ? getBarSeries().numFactory().zero() : NaN.NaN;
-        }
-
-        Num macdV = spread.dividedBy(atrValue).multipliedBy(scaleFactor);
-        return Num.isNaNOrNull(macdV) ? NaN.NaN : macdV;
+        return macdValue;
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        int emaUnstableBars = Math.max(getFastEma().getCountOfUnstableBars(), getSlowEma().getCountOfUnstableBars());
-        int spreadUnstableBars = priceIndicator.getCountOfUnstableBars() + emaUnstableBars;
-        return Math.max(spreadUnstableBars, getAtrIndicator().getCountOfUnstableBars());
+        return Math.max(getShortTermVwema().getCountOfUnstableBars(), getLongTermVwema().getCountOfUnstableBars());
+    }
+
+    private VWMAIndicator getShortTermVwema() {
+        ensureSubIndicatorsInitialized();
+        return shortTermVwema;
+    }
+
+    private VWMAIndicator getLongTermVwema() {
+        ensureSubIndicatorsInitialized();
+        return longTermVwema;
     }
 
     private void ensureSubIndicatorsInitialized() {
-        getFastEma();
-        getSlowEma();
-        getAtrIndicator();
+        if (shortTermVwema != null && longTermVwema != null && shortAtrIndicator != null && longAtrIndicator != null) {
+            return;
+        }
+
+        BarSeries series = priceIndicator.getBarSeries();
+        VolumeIndicator volumeIndicator = new VolumeIndicator(series);
+
+        shortAtrIndicator = new ATRIndicator(series, shortBarCount);
+        Indicator<Num> shortVolumeWeights = NumericIndicator.of(volumeIndicator).dividedBy(shortAtrIndicator);
+        shortTermVwema = new VWMAIndicator(priceIndicator, shortVolumeWeights, shortBarCount, EMAIndicator::new);
+
+        if (shortBarCount == longBarCount) {
+            longAtrIndicator = shortAtrIndicator;
+            longTermVwema = new VWMAIndicator(priceIndicator, shortVolumeWeights, longBarCount, EMAIndicator::new);
+            return;
+        }
+
+        longAtrIndicator = new ATRIndicator(series, longBarCount);
+        Indicator<Num> longVolumeWeights = NumericIndicator.of(volumeIndicator).dividedBy(longAtrIndicator);
+        longTermVwema = new VWMAIndicator(priceIndicator, longVolumeWeights, longBarCount, EMAIndicator::new);
     }
 }

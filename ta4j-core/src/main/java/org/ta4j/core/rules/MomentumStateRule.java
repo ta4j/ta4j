@@ -7,7 +7,7 @@ import java.util.Objects;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.MACDVMomentumState;
+import org.ta4j.core.indicators.macd.MACDVMomentumState;
 
 /**
  * Satisfied when a momentum-state indicator matches the expected state.

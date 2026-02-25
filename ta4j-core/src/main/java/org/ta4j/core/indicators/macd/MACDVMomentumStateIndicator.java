@@ -1,12 +1,13 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.indicators.macd;
 
 import java.math.BigDecimal;
 import java.util.Objects;
 
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
