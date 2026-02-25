@@ -4,12 +4,17 @@
 - **Risk controls APIs**: Added `PositionRiskModel`, `StopLossPositionRiskModel`, and `RMultipleCriterion` for risk-unit (R-multiple) evaluation, plus `StopLossPriceModel`/`StopGainPriceModel` and fixed/trailing/volatility/ATR stop-loss and stop-gain rule variants.
 - **Agent guidance tooling and docs**: Reorganized project `AGENTS.md` into scoped, task-local guides and added `scripts/agents_for_target.sh` to resolve effective instructions for any target path.
 - **Regression coverage additions**: Added explicit tests for `TimeBarBuilder` gap placement, `NetMomentumIndicator` pivot/decay edge handling, mixed-field serialization routing, named-strategy label/vararg diagnostics, and `VolumeIndicator` rolling-window behavior.
+- **Elliott multi-degree one-shot analysis API**: Added `ElliottWaveAnalysis` and `ElliottWaveAnalysisResult` to run pluggable, chart-independent analysis across a base degree plus optional neighboring degrees, with ranked scenario assessments and cross-degree compatibility scoring.
+- **Elliott one-shot result model and diagnostics**: Added structured per-degree outputs (`DegreeAnalysis` records), recommended base-scenario selection helpers, and confidence-breakdown metadata for deeper scenario diagnostics.
+- **Elliott analysis demos and datasets**: Added `ElliottWaveMultiDegreeAnalysisDemo`, shared `OssifiedElliottWaveSeriesLoader` utilities for ossified JSON resources, and an S&P 500 example dataset (`YahooFinance-SP500-PT1D-20230616_20231011.json`) for non-crypto walkthroughs.
 
 ### Changed
 - **Risk/stop-rule refinements**: Tightened volatility stop-gain coefficient validation, removed redundant risk recomputation in `RMultipleCriterion`, added the missing `AverageTrueRangeTrailingStopLossRule` lookback overload, and expanded shared stop-rule fixtures/tests and Javadocs.
 - **VolumeIndicator performance**: Replaced O(barCount) per-index summation with an O(1) rolling partial-sum update, including clearer algorithm/complexity Javadocs.
 - **Serialization routing precedence**: `ComponentSerialization` now resolves mixed payloads by descriptor type so strategies prefer `rules` while indicators/rules prefer `components`, while keeping legacy `children`/`baseIndicators` compatibility.
 - **NamedStrategy reconstruction diagnostics**: Strategy reconstruction now emits richer, label-aware errors for missing identifiers, malformed labels, and constructor/parameter failures.
+- **Elliott one-shot entrypoint consolidation**: Replaced legacy `ElliottWaveAnalyzer` naming/usages with the consolidated `ElliottWaveAnalysis` API across core docs, tests, and examples.
+- **Elliott package and quickstart guidance**: Expanded package-level and README documentation to call out one-shot/facade entrypoints, `scenarioSwingWindow` behavior, and returned result semantics.
 
 ### Changed
 - **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
