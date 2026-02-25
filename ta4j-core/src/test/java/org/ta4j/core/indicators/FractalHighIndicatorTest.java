@@ -12,6 +12,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -73,6 +74,24 @@ public class FractalHighIndicatorTest extends AbstractIndicatorTest<Indicator<Bo
     }
 
     @Test
+    public void shouldRejectNaNValuesInCandidateAndNeighborWindows() {
+        final var baseSeries = createSeriesFromHighs(10, 12, 15, 11, 9, 8, 7);
+        final var baseIndicator = new HighPriceIndicator(baseSeries);
+
+        final var candidateNaNIndicator = new FractalHighIndicator(withNaNAtIndex(baseIndicator, 2), 2, 2);
+        assertThat(candidateNaNIndicator.getValue(4)).isFalse();
+        assertThat(candidateNaNIndicator.getConfirmedFractalIndex(4)).isEqualTo(-1);
+
+        final var leftNeighborNaNIndicator = new FractalHighIndicator(withNaNAtIndex(baseIndicator, 1), 2, 2);
+        assertThat(leftNeighborNaNIndicator.getValue(4)).isFalse();
+        assertThat(leftNeighborNaNIndicator.getConfirmedFractalIndex(4)).isEqualTo(-1);
+
+        final var rightNeighborNaNIndicator = new FractalHighIndicator(withNaNAtIndex(baseIndicator, 3), 2, 2);
+        assertThat(rightNeighborNaNIndicator.getValue(4)).isFalse();
+        assertThat(rightNeighborNaNIndicator.getConfirmedFractalIndex(4)).isEqualTo(-1);
+    }
+
+    @Test
     public void shouldRejectInvalidWindowLengths() {
         series = createSeriesFromHighs(10, 12, 11, 13, 12);
         final var highPrice = new HighPriceIndicator(series);
@@ -109,5 +128,24 @@ public class FractalHighIndicatorTest extends AbstractIndicatorTest<Indicator<Bo
             barSeries.barBuilder().openPrice(high).closePrice(high).highPrice(high).lowPrice(low).volume(10).add();
         }
         return barSeries;
+    }
+
+    private Indicator<Num> withNaNAtIndex(Indicator<Num> delegate, int nanIndex) {
+        return new Indicator<>() {
+            @Override
+            public Num getValue(int index) {
+                return index == nanIndex ? NaN.NaN : delegate.getValue(index);
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return delegate.getBarSeries();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return delegate.getCountOfUnstableBars();
+            }
+        };
     }
 }
