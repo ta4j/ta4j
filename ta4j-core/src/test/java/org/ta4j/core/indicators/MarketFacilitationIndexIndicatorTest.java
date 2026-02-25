@@ -138,6 +138,23 @@ public class MarketFacilitationIndexIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
+    public void shouldReturnNaNBeforeDeclaredUnstableBoundaryEvenWhenSourcesEmitNumbers() {
+        series.barBuilder().openPrice(10).closePrice(10).highPrice(11).lowPrice(9).volume(2).add();
+        series.barBuilder().openPrice(11).closePrice(11).highPrice(12).lowPrice(10).volume(2).add();
+        series.barBuilder().openPrice(12).closePrice(12).highPrice(13).lowPrice(11).volume(2).add();
+        series.barBuilder().openPrice(13).closePrice(13).highPrice(14).lowPrice(12).volume(2).add();
+
+        final Indicator<Num> high = withDeclaredUnstableBars(new HighPriceIndicator(series), 2);
+        final Indicator<Num> low = withDeclaredUnstableBars(new LowPriceIndicator(series), 2);
+        final Indicator<Num> volume = withDeclaredUnstableBars(new VolumeIndicator(series), 2);
+        final var indicator = new MarketFacilitationIndexIndicator(high, low, volume);
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(2);
+        assertThat(indicator.getValue(1).isNaN()).isTrue();
+        assertThat(indicator.getValue(2)).isEqualByComparingTo(numFactory.one());
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void serializationRoundTrip() {
         series.barBuilder().openPrice(10).closePrice(10).highPrice(12).lowPrice(10).volume(4).add();
@@ -164,6 +181,25 @@ public class MarketFacilitationIndexIndicatorTest extends AbstractIndicatorTest<
             @Override
             public Num getValue(int index) {
                 return index < unstableBars ? NaN : delegate.getValue(index);
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return delegate.getBarSeries();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return unstableBars;
+            }
+        };
+    }
+
+    private Indicator<Num> withDeclaredUnstableBars(Indicator<Num> delegate, int unstableBars) {
+        return new Indicator<>() {
+            @Override
+            public Num getValue(int index) {
+                return delegate.getValue(index);
             }
 
             @Override
