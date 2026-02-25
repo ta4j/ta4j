@@ -477,6 +477,12 @@ public final class ConfluenceReportGenerator {
     private ConfluenceReport.ConfidenceBreakdown buildConfidenceBreakdown(BarSeries series,
             ConfluenceScoringEngine.ConfluenceScores confluenceScores, double adx, double adaptiveRangeThreshold,
             List<ConfluenceReport.HorizonProbability> probabilities) {
+        Objects.requireNonNull(probabilities, "probabilities cannot be null");
+        ConfluenceReport.HorizonProbability oneMonth = findProbability(probabilities,
+                ConfluenceReport.Horizon.ONE_MONTH);
+        ConfluenceReport.HorizonProbability threeMonth = findProbability(probabilities,
+                ConfluenceReport.Horizon.THREE_MONTH);
+
         double modelConfidence = clamp(Math.abs(confluenceScores.decorrelatedScore() - 50.0d) * 2.0d, 0.0d, 100.0d);
         double calibrationConfidence = clamp(35.0d + (series.getBarCount() / 1500.0d) * 30.0d, 0.0d, 70.0d);
 
@@ -494,8 +500,8 @@ public final class ConfluenceReportGenerator {
 
         List<String> notes = List.of("Final confidence blends model/calibration/regime/data components (45/25/20/10)",
                 String.format(Locale.US, "Adaptive range threshold %.2f vs ADX %.2f", adaptiveRangeThreshold, adx),
-                String.format(Locale.US, "1M P(up)=%.3f, 3M P(up)=%.3f", probabilities.get(0).upProbability(),
-                        probabilities.get(1).upProbability()));
+                String.format(Locale.US, "1M P(up)=%.3f, 3M P(up)=%.3f", oneMonth.upProbability(),
+                        threeMonth.upProbability()));
         return new ConfluenceReport.ConfidenceBreakdown(modelConfidence, calibrationConfidence, regimeConfidence,
                 dataConfidence, finalConfidence, notes);
     }
@@ -518,6 +524,11 @@ public final class ConfluenceReportGenerator {
 
     private static List<String> buildNarrative(ConfluenceReport.Snapshot snapshot,
             List<ConfluenceReport.HorizonProbability> probabilities, List<ConfluenceReport.LevelConfidence> levels) {
+        ConfluenceReport.HorizonProbability oneMonth = findProbability(probabilities,
+                ConfluenceReport.Horizon.ONE_MONTH);
+        ConfluenceReport.HorizonProbability threeMonth = findProbability(probabilities,
+                ConfluenceReport.Horizon.THREE_MONTH);
+
         List<ConfluenceReport.LevelConfidence> supports = levels.stream()
                 .filter(level -> level.type() == ConfluenceReport.LevelType.SUPPORT)
                 .sorted((a, b) -> Double.compare(b.confidence(), a.confidence()))
@@ -529,8 +540,6 @@ public final class ConfluenceReportGenerator {
                 .limit(2)
                 .toList();
 
-        ConfluenceReport.HorizonProbability oneMonth = probabilities.get(0);
-        ConfluenceReport.HorizonProbability threeMonth = probabilities.get(1);
         return List.of(
                 String.format(Locale.US, "1M bias: up %.1f%% / down %.1f%% / range %.1f%%",
                         oneMonth.upProbability() * 100.0d, oneMonth.downProbability() * 100.0d,
@@ -542,6 +551,16 @@ public final class ConfluenceReportGenerator {
                 String.format(Locale.US, "Top resistances: %s", renderLevels(resistances)),
                 String.format(Locale.US, "Raw %.1f / decorrelated %.1f (penalty %.1f)", snapshot.rawConfluenceScore(),
                         snapshot.decorrelatedConfluenceScore(), snapshot.correlationPenalty()));
+    }
+
+    private static ConfluenceReport.HorizonProbability findProbability(
+            List<ConfluenceReport.HorizonProbability> probabilities, ConfluenceReport.Horizon horizon) {
+        for (ConfluenceReport.HorizonProbability probability : probabilities) {
+            if (probability.horizon() == horizon) {
+                return probability;
+            }
+        }
+        throw new IllegalArgumentException("Missing horizon probability for " + horizon);
     }
 
     private static String renderLevels(List<ConfluenceReport.LevelConfidence> levels) {

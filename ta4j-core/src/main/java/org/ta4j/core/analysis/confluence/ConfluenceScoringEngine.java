@@ -160,12 +160,16 @@ public final class ConfluenceScoringEngine {
      */
     public record ConfluenceScores(double rawScore, double decorrelatedScore, double correlationPenalty,
             Map<String, Double> effectiveFamilyWeights) {
-        public ConfluenceScores {
+        public ConfluenceScores(double rawScore, double decorrelatedScore, double correlationPenalty,
+                Map<String, Double> effectiveFamilyWeights) {
             validateScore(rawScore, "rawScore");
             validateScore(decorrelatedScore, "decorrelatedScore");
             validateNonNegative(correlationPenalty, "correlationPenalty");
             Objects.requireNonNull(effectiveFamilyWeights, "effectiveFamilyWeights cannot be null");
-            effectiveFamilyWeights = Map.copyOf(effectiveFamilyWeights);
+            this.rawScore = rawScore;
+            this.decorrelatedScore = decorrelatedScore;
+            this.correlationPenalty = correlationPenalty;
+            this.effectiveFamilyWeights = Map.copyOf(effectiveFamilyWeights);
         }
     }
 

@@ -9,11 +9,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertThrows;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ConfluenceReportTest {
 
@@ -135,6 +135,8 @@ public class ConfluenceReportTest {
                 "2014-2025", "2026-02-24", -0.1d, null, null, null, List.of()));
         assertThrows(IllegalArgumentException.class, () -> new ConfluenceReport.ValidationMetadata("isotonic",
                 "2014-2025", "2026-02-24", null, null, null, "   ", List.of()));
+        assertThrows(IllegalArgumentException.class, () -> new ConfluenceReport.ValidationMetadata("isotonic",
+                "2014-2025", "not-a-date", null, null, null, null, List.of()));
         assertThrows(IllegalArgumentException.class, () -> new ConfluenceReport.Snapshot("^GSPC", "PT1D",
                 Instant.parse("2026-02-24T19:39:46Z"), 0, 5000.0d, 60.0d, 58.0d, 2.0d));
     }

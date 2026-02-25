@@ -4,6 +4,8 @@
 package org.ta4j.core.analysis.confluence;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -33,8 +35,12 @@ public record ConfluenceReport(Snapshot snapshot, List<PillarScore> pillarScores
 
     /**
      * Canonical constructor that validates and snapshots collection inputs.
+     *
+     * @since 0.22.3
      */
-    public ConfluenceReport {
+    public ConfluenceReport(Snapshot snapshot, List<PillarScore> pillarScores, List<LevelConfidence> levelConfidences,
+            List<HorizonProbability> horizonProbabilities, ConfidenceBreakdown confidenceBreakdown,
+            ValidationMetadata validationMetadata, List<String> outlookNarrative, Map<String, String> extensions) {
         Objects.requireNonNull(snapshot, "snapshot cannot be null");
         Objects.requireNonNull(pillarScores, "pillarScores cannot be null");
         Objects.requireNonNull(levelConfidences, "levelConfidences cannot be null");
@@ -44,11 +50,14 @@ public record ConfluenceReport(Snapshot snapshot, List<PillarScore> pillarScores
         Objects.requireNonNull(outlookNarrative, "outlookNarrative cannot be null");
         Objects.requireNonNull(extensions, "extensions cannot be null");
 
-        pillarScores = List.copyOf(pillarScores);
-        levelConfidences = List.copyOf(levelConfidences);
-        horizonProbabilities = List.copyOf(horizonProbabilities);
-        outlookNarrative = List.copyOf(outlookNarrative);
-        extensions = Map.copyOf(extensions);
+        this.snapshot = snapshot;
+        this.pillarScores = List.copyOf(pillarScores);
+        this.levelConfidences = List.copyOf(levelConfidences);
+        this.horizonProbabilities = List.copyOf(horizonProbabilities);
+        this.confidenceBreakdown = confidenceBreakdown;
+        this.validationMetadata = validationMetadata;
+        this.outlookNarrative = List.copyOf(outlookNarrative);
+        this.extensions = Map.copyOf(extensions);
     }
 
     /**
@@ -78,7 +87,8 @@ public record ConfluenceReport(Snapshot snapshot, List<PillarScore> pillarScores
      * confidence.
      *
      * @param levelType the level type to filter
-     * @param limit     maximum number of levels to return
+     * @param limit     maximum number of levels to return; non-positive values
+     *                  return an empty result
      * @return immutable list of matching levels
      * @since 0.22.3
      */
@@ -165,16 +175,22 @@ public record ConfluenceReport(Snapshot snapshot, List<PillarScore> pillarScores
      */
     public record PillarScore(Pillar pillar, String family, double score, double weight, Direction direction,
             List<FeatureContribution> featureContributions, List<String> explanations) {
-        public PillarScore {
+        public PillarScore(Pillar pillar, String family, double score, double weight, Direction direction,
+                List<FeatureContribution> featureContributions, List<String> explanations) {
             Objects.requireNonNull(pillar, "pillar cannot be null");
-            family = normalizeFamily(family, pillar);
+            String normalizedFamily = normalizeFamily(family, pillar);
             requirePercentage(score, "score");
             requireNonNegative(weight, "weight");
             Objects.requireNonNull(direction, "direction cannot be null");
             Objects.requireNonNull(featureContributions, "featureContributions cannot be null");
             Objects.requireNonNull(explanations, "explanations cannot be null");
-            featureContributions = List.copyOf(featureContributions);
-            explanations = List.copyOf(explanations);
+            this.pillar = pillar;
+            this.family = normalizedFamily;
+            this.score = score;
+            this.weight = weight;
+            this.direction = direction;
+            this.featureContributions = List.copyOf(featureContributions);
+            this.explanations = List.copyOf(explanations);
         }
     }
 
@@ -251,14 +267,20 @@ public record ConfluenceReport(Snapshot snapshot, List<PillarScore> pillarScores
      */
     public record ConfidenceBreakdown(double modelConfidence, double calibrationConfidence, double regimeConfidence,
             double dataConfidence, double finalConfidence, List<String> notes) {
-        public ConfidenceBreakdown {
+        public ConfidenceBreakdown(double modelConfidence, double calibrationConfidence, double regimeConfidence,
+                double dataConfidence, double finalConfidence, List<String> notes) {
             requirePercentage(modelConfidence, "modelConfidence");
             requirePercentage(calibrationConfidence, "calibrationConfidence");
             requirePercentage(regimeConfidence, "regimeConfidence");
             requirePercentage(dataConfidence, "dataConfidence");
             requirePercentage(finalConfidence, "finalConfidence");
             Objects.requireNonNull(notes, "notes cannot be null");
-            notes = List.copyOf(notes);
+            this.modelConfidence = modelConfidence;
+            this.calibrationConfidence = calibrationConfidence;
+            this.regimeConfidence = regimeConfidence;
+            this.dataConfidence = dataConfidence;
+            this.finalConfidence = finalConfidence;
+            this.notes = List.copyOf(notes);
         }
     }
 
@@ -278,10 +300,13 @@ public record ConfluenceReport(Snapshot snapshot, List<PillarScore> pillarScores
     public record ValidationMetadata(String calibrationMethod, String trainingWindow, String lastCalibrationDate,
             Double brierScore, Double expectedCalibrationError, Double logLoss, String reliabilityArtifactPath,
             List<String> warnings) {
-        public ValidationMetadata {
+        public ValidationMetadata(String calibrationMethod, String trainingWindow, String lastCalibrationDate,
+                Double brierScore, Double expectedCalibrationError, Double logLoss, String reliabilityArtifactPath,
+                List<String> warnings) {
             requireNonBlank(calibrationMethod, "calibrationMethod");
             requireNonBlank(trainingWindow, "trainingWindow");
             requireNonBlank(lastCalibrationDate, "lastCalibrationDate");
+            requireIsoDate(lastCalibrationDate, "lastCalibrationDate");
             requireOptionalNonNegative(brierScore, "brierScore");
             requireOptionalNonNegative(expectedCalibrationError, "expectedCalibrationError");
             requireOptionalNonNegative(logLoss, "logLoss");
@@ -289,7 +314,14 @@ public record ConfluenceReport(Snapshot snapshot, List<PillarScore> pillarScores
                 throw new IllegalArgumentException("reliabilityArtifactPath cannot be blank when provided");
             }
             Objects.requireNonNull(warnings, "warnings cannot be null");
-            warnings = List.copyOf(warnings);
+            this.calibrationMethod = calibrationMethod;
+            this.trainingWindow = trainingWindow;
+            this.lastCalibrationDate = lastCalibrationDate;
+            this.brierScore = brierScore;
+            this.expectedCalibrationError = expectedCalibrationError;
+            this.logLoss = logLoss;
+            this.reliabilityArtifactPath = reliabilityArtifactPath;
+            this.warnings = List.copyOf(warnings);
         }
     }
 
@@ -325,6 +357,14 @@ public record ConfluenceReport(Snapshot snapshot, List<PillarScore> pillarScores
     private static void requireNonBlank(String value, String field) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(field + " cannot be null or blank");
+        }
+    }
+
+    private static void requireIsoDate(String value, String field) {
+        try {
+            LocalDate.parse(value);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException(field + " must be an ISO-8601 date", ex);
         }
     }
 

@@ -3,11 +3,13 @@
  */
 package ta4jexamples.charting.confluence;
 
+import java.awt.GraphicsEnvironment;
 import java.time.Duration;
 import java.time.Instant;
 import java.nio.file.Path;
 import java.util.Optional;
 
+import org.junit.Assume;
 import org.junit.jupiter.api.Test;
 import org.jfree.chart.JFreeChart;
 import org.ta4j.core.BarSeries;
@@ -29,6 +31,7 @@ public class ConfluenceChartAdapterTest {
 
     @Test
     public void buildsPlanWithSupportResistanceMarkersAndSignalSubcharts() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         BarSeries series = buildSeries(380, 4300.0d, 2.0d);
         ConfluenceReport report = new ConfluenceReportGenerator().generate("^GSPC", series);
 
@@ -46,6 +49,7 @@ public class ConfluenceChartAdapterTest {
 
     @Test
     public void constructorAndBuildPlanRejectInvalidInputs() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         BarSeries series = buildSeries(320, 4300.0d, 1.8d);
         ConfluenceReport report = new ConfluenceReportGenerator().generate("^GSPC", series);
         ConfluenceChartAdapter adapter = new ConfluenceChartAdapter(new ChartWorkflow());

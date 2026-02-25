@@ -3,15 +3,18 @@
  */
 package ta4jexamples.charting.confluence;
 
+import java.awt.GraphicsEnvironment;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import org.jfree.chart.JFreeChart;
+import org.junit.Assume;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.BarSeries;
@@ -51,6 +54,7 @@ public class SP500ConfluenceAnalysisTest {
 
     @Test
     public void createsChartAndJsonArtifactsAndDisplaysWhenNotHeadless(@TempDir Path tempDir) {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         RecordingChartWorkflow workflow = new RecordingChartWorkflow();
         AtomicReference<Path> jsonPathRef = new AtomicReference<>();
         AtomicReference<String> safeTickerRef = new AtomicReference<>();
@@ -70,6 +74,18 @@ public class SP500ConfluenceAnalysisTest {
         assertNotNull(workflow.lastPlan);
         assertNotNull(jsonPathRef.get());
         assertTrue(Files.exists(jsonPathRef.get()));
+    }
+
+    @Test
+    public void invalidBarsArgumentFallsBackToDefault(@TempDir Path tempDir) {
+        AtomicInteger observedBars = new AtomicInteger(-1);
+        SP500ConfluenceAnalysis.run(new String[] { "^GSPC", "invalid-bars", tempDir.toString() }, (ticker, bars) -> {
+            observedBars.set(bars);
+            return buildSeries(bars, 4200.0d, 2.5d);
+        }, new ConfluenceReportGenerator(), outputDir -> new RecordingChartWorkflow(), () -> true,
+                (outputDir, safeTicker, report) -> outputDir.resolve("report.json"));
+
+        assertEquals(2520, observedBars.get());
     }
 
     @Test

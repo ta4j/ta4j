@@ -21,6 +21,15 @@ public final class LevelConfidenceCalculator {
 
     private static final double MAX_CONFIDENCE = 95.0d;
     private static final double MIN_ATR = 1.0e-9d;
+    /**
+     * Normalizes level distance in ATR units. Levels farther than 6 ATR score 0 for
+     * volatility context.
+     */
+    private static final double ATR_DISTANCE_NORMALIZER = 6.0d;
+    /**
+     * Fallback recency score when interaction indices are missing or inconsistent.
+     */
+    private static final double DEFAULT_RECENCY_FALLBACK = 0.20d;
 
     /**
      * Scores a structural level and returns the immutable level confidence model.
@@ -52,12 +61,12 @@ public final class LevelConfidenceCalculator {
         }
         double normalizedAtr = Math.max(MIN_ATR, Math.abs(atr));
         double atrDistance = Math.abs(currentPrice - level) / normalizedAtr;
-        return clamp01(1.0d - atrDistance / 6.0d);
+        return clamp01(1.0d - atrDistance / ATR_DISTANCE_NORMALIZER);
     }
 
     private static double recencyScore(int lastInteractionIndex, int endIndex, int lookbackBars) {
         if (lastInteractionIndex < 0 || endIndex < 0 || lastInteractionIndex > endIndex) {
-            return 0.20d;
+            return DEFAULT_RECENCY_FALLBACK;
         }
         int bars = Math.max(1, lookbackBars);
         double distance = (double) (endIndex - lastInteractionIndex) / (double) bars;

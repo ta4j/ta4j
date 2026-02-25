@@ -71,7 +71,14 @@ public final class SP500ConfluenceAnalysis {
         Objects.requireNonNull(jsonReportWriter, "jsonReportWriter cannot be null");
 
         String ticker = args.length > 0 ? args[0] : "^GSPC";
-        int bars = args.length > 1 ? Integer.parseInt(args[1]) : 2520;
+        int bars = 2520;
+        if (args.length > 1) {
+            try {
+                bars = Integer.parseInt(args[1]);
+            } catch (NumberFormatException ex) {
+                LOG.warn("Invalid bar count '{}', defaulting to {}", args[1], bars);
+            }
+        }
         Path outputDir = args.length > 2 ? Paths.get(args[2]) : Paths.get("temp", "charts", "confluence");
 
         LOG.info("Loading {} daily candles ({} bars)", ticker, bars);
