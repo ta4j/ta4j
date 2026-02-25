@@ -143,29 +143,27 @@ public class ElliottWaveIndicatorSuiteDemo {
      * <p>
      * Supports two modes of operation:
      * <ol>
-     * <li><b>With arguments (4-6 args):</b> Loads data from an external data source
-     * (YahooFinance or Coinbase) using the provided parameters.</li>
-     * <li><b>Without arguments:</b> Loads a default ossified dataset from the
-     * classpath resources.</li>
+     * <li><b>External/live load via positional args:</b> loads market data from a
+     * datasource and runs the full analysis + chart workflow.</li>
+     * <li><b>No args:</b> loads the default ossified classpath dataset.</li>
      * </ol>
      * <p>
-     * When using external data sources, the required arguments are:
+     * Positional argument contracts are definitive:
      * <ol>
-     * <li>Data source name: "YahooFinance" or "Coinbase"</li>
-     * <li>Ticker symbol: e.g., "BTC-USD", "AAPL"</li>
-     * <li>Bar duration: ISO-8601 duration string (e.g., "PT1D", "PT4H",
-     * "PT5M")</li>
-     * <li>Elliott degree: One of the {@link ElliottDegree} enum values
-     * (case-insensitive, optional). If omitted the degree is auto-selected based on
-     * bar duration and bar count.</li>
-     * <li>Start epoch: Unix timestamp in seconds</li>
-     * <li>End epoch: Unix timestamp in seconds (optional, defaults to current
-     * time)</li>
+     * <li><b>Auto-degree form (4-5 args):</b>
+     * {@code [0]=dataSource, [1]=ticker, [2]=barDuration, [3]=startEpochSeconds, [4]=endEpochSeconds(optional)}</li>
+     * <li><b>Explicit-degree form (5-6 args):</b>
+     * {@code [0]=dataSource, [1]=ticker, [2]=barDuration, [3]=degree, [4]=startEpochSeconds, [5]=endEpochSeconds(optional)}</li>
      * </ol>
+     * <p>
+     * For the 5-argument case, {@code args[3]} is disambiguated as:
+     * <ul>
+     * <li>epoch seconds when numeric (auto-degree form)</li>
+     * <li>{@link ElliottDegree} token when non-numeric (explicit-degree form)</li>
+     * </ul>
      *
-     * @param args command-line arguments (optional). If 4-6 arguments are provided,
-     *             they are used to load data from an external source. Otherwise, a
-     *             default dataset is loaded from resources.
+     * @param args command-line arguments following one of the positional contracts
+     *             above
      */
     public static void main(String[] args) {
         BarSeries series = loadBarSeries(args);
@@ -221,6 +219,9 @@ public class ElliottWaveIndicatorSuiteDemo {
      * <p>
      * If 4-6 arguments are provided, loads from an external data source. Otherwise,
      * loads the default ossified dataset from classpath resources.
+     * <p>
+     * Argument layout (0-based indices) is the same as documented in
+     * {@link #loadBarSeriesFromArgs(String[])}.
      *
      * @param args command-line arguments
      * @return the loaded bar series, or {@code null} if loading fails
@@ -236,6 +237,34 @@ public class ElliottWaveIndicatorSuiteDemo {
     /**
      * Parses command-line arguments and loads a bar series from an external data
      * source.
+     * <p>
+     * Argument layout (0-based indices):
+     * <ul>
+     * <li>{@code args[0]}: data source name ("YahooFinance" or "Coinbase")</li>
+     * <li>{@code args[1]}: ticker symbol (e.g., "BTC-USD", "AAPL")</li>
+     * <li>{@code args[2]}: bar duration (ISO-8601, e.g., "PT1D", "PT4H",
+     * "PT5M")</li>
+     * <li>{@code args[3]}: either {@link ElliottDegree} (case-insensitive) or start
+     * epoch seconds, depending on the overall argument count and whether the token
+     * parses as epoch seconds</li>
+     * <li>{@code args[4]}: start epoch seconds when degree is supplied, otherwise
+     * end epoch seconds</li>
+     * <li>{@code args[5]}: end epoch seconds (only when degree is supplied and an
+     * explicit end time is provided)</li>
+     * </ul>
+     * <p>
+     * Supported forms (with {@code startEpoch} and {@code endEpoch} in Unix epoch
+     * seconds):
+     * <ul>
+     * <li>4 args: dataSource, ticker, barDuration, startEpoch (endEpoch defaults to
+     * now)</li>
+     * <li>5 args without degree: dataSource, ticker, barDuration, startEpoch,
+     * endEpoch</li>
+     * <li>5 args with degree: dataSource, ticker, barDuration, degree, startEpoch
+     * (endEpoch defaults to now)</li>
+     * <li>6 args: dataSource, ticker, barDuration, degree, startEpoch,
+     * endEpoch</li>
+     * </ul>
      *
      * @param args command-line arguments (must have at least 4 elements)
      * @return the loaded bar series, or {@code null} if parsing or loading fails
@@ -255,6 +284,26 @@ public class ElliottWaveIndicatorSuiteDemo {
         return series;
     }
 
+    /**
+     * Parses command-line arguments into a {@link BarSeriesRequest}.
+     * <p>
+     * Argument layout and supported forms match
+     * {@link #loadBarSeriesFromArgs(String[])}. In summary:
+     * <ul>
+     * <li>{@code args[0]}: data source ("YahooFinance" or "Coinbase")</li>
+     * <li>{@code args[1]}: ticker symbol</li>
+     * <li>{@code args[2]}: bar duration (ISO-8601)</li>
+     * <li>{@code args[3]}: {@link ElliottDegree} or start epoch seconds</li>
+     * <li>{@code args[4]}: start epoch seconds when degree is supplied, otherwise
+     * end epoch seconds</li>
+     * <li>{@code args[5]}: end epoch seconds (only when degree is supplied and an
+     * explicit end time is provided)</li>
+     * </ul>
+     *
+     * @param args command-line arguments
+     * @return a populated {@link BarSeriesRequest} when arguments are valid, or
+     *         {@link Optional#empty()} when parsing fails
+     */
     static Optional<BarSeriesRequest> parseBarSeriesRequest(String[] args) {
         if (args.length < 4) {
             LOG.error(
@@ -387,6 +436,15 @@ public class ElliottWaveIndicatorSuiteDemo {
         return Optional.of(new BarSeriesRequest(dataSource, ticker, barDuration, startTime, endTime));
     }
 
+    /**
+     * Parsed market-data request derived from positional command-line arguments.
+     *
+     * @param dataSource  normalized datasource token (YahooFinance or Coinbase)
+     * @param ticker      market symbol (for example BTC-USD, ^GSPC)
+     * @param barDuration parsed bar duration
+     * @param startTime   parsed start time (inclusive)
+     * @param endTime     parsed end time (inclusive)
+     */
     record BarSeriesRequest(String dataSource, String ticker, Duration barDuration, Instant startTime,
             Instant endTime) {
     }
@@ -437,12 +495,15 @@ public class ElliottWaveIndicatorSuiteDemo {
     }
 
     /**
-     * Resolves the Elliott degree from command-line arguments or auto-selects one
-     * based on the series characteristics.
+     * Resolves the Elliott degree from positional command-line arguments.
+     * <p>
+     * If an explicit degree token is present at {@code args[3]} (as determined by
+     * {@link #hasDegreeToken(String[])}), that value is used. Otherwise the degree
+     * is auto-selected from {@code series} characteristics.
      *
      * @param args   command-line arguments
-     * @param series bar series used for auto-selection
-     * @return the resolved Elliott degree
+     * @param series bar series used for auto-selection fallback
+     * @return resolved analysis degree
      */
     static ElliottDegree resolveDegree(String[] args, BarSeries series) {
         Optional<ElliottDegree> explicitDegree = parseExplicitDegree(args);
@@ -452,6 +513,16 @@ public class ElliottWaveIndicatorSuiteDemo {
         return selectRecommendedDegree(series);
     }
 
+    /**
+     * Parses an explicit degree token from {@code args[3]} when present.
+     * <p>
+     * This method is only active when {@link #hasDegreeToken(String[])} returns
+     * {@code true}.
+     *
+     * @param args command-line arguments
+     * @return parsed degree, {@link #DEFAULT_DEGREE} for invalid degree tokens, or
+     *         empty when no explicit degree token exists
+     */
     private static Optional<ElliottDegree> parseExplicitDegree(String[] args) {
         if (!hasDegreeToken(args)) {
             return Optional.empty();
@@ -499,6 +570,23 @@ public class ElliottWaveIndicatorSuiteDemo {
         }
     }
 
+    /**
+     * Determines whether the argument array contains an explicit degree token at
+     * {@code args[3]}.
+     * <p>
+     * Rules:
+     * <ul>
+     * <li>{@code args.length < 5}: no explicit degree token</li>
+     * <li>{@code args.length >= 6}: explicit degree token is required at
+     * {@code args[3]}</li>
+     * <li>{@code args.length == 5}: {@code args[3]} is treated as degree only when
+     * it is not numeric epoch seconds</li>
+     * </ul>
+     *
+     * @param args command-line arguments
+     * @return {@code true} when {@code args[3]} should be interpreted as a degree
+     *         token
+     */
     private static boolean hasDegreeToken(String[] args) {
         if (args.length < 5) {
             return false;
@@ -509,6 +597,12 @@ public class ElliottWaveIndicatorSuiteDemo {
         return !isEpochSeconds(args[3]);
     }
 
+    /**
+     * Checks whether a token can be parsed as Unix epoch seconds.
+     *
+     * @param value raw token from argument parsing
+     * @return {@code true} when token is a valid {@code long} value
+     */
     private static boolean isEpochSeconds(String value) {
         if (value == null || value.trim().isEmpty()) {
             return false;
