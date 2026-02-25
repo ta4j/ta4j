@@ -148,6 +148,24 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
     }
 
     @Test
+    public void zeroVolumeBarsDoNotFillPendingOrders() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(10d).add();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(0d).add();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(0d).add();
+
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numOf(0.5),
+                2);
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule());
+        TradingRecord tradingRecord = new BarSeriesManager(series, model).run(strategy, strategy.getStartingType(),
+                numFactory.one());
+
+        assertTrue(tradingRecord.getTrades().isEmpty());
+        assertEquals(1, model.getRejectedOrders(tradingRecord).size());
+        assertEquals(numFactory.zero(), model.getRejectedOrders(tradingRecord).getFirst().filledAmount());
+    }
+
+    @Test
     public void exposesCurrentCloseReferenceInPendingOrder() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(10d).add();

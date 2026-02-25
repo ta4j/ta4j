@@ -55,4 +55,13 @@ public class AggregatedTradeTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertThrows(IllegalArgumentException.class,
                 () -> new AggregatedTrade(TradeType.BUY, List.of(negativeAmountFill)));
     }
+
+    @Test
+    public void usesEarliestFillIndexWhenFillsAreUnordered() {
+        AggregatedTrade trade = new AggregatedTrade(TradeType.BUY,
+                List.of(new TradeFill(5, numFactory.hundred(), numFactory.one()),
+                        new TradeFill(2, numFactory.numOf(101), numFactory.one())));
+
+        assertEquals(2, trade.getIndex());
+    }
 }

@@ -117,6 +117,34 @@ class LiveTradingRecordTest {
     }
 
     @Test
+    void operateWithAggregatedTradeReplaysAllFills() {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        Trade aggregatedEntry = new AggregatedTrade(TradeType.BUY,
+                List.of(new TradeFill(4, numFactory.hundred(), numFactory.one()),
+                        new TradeFill(5, numFactory.numOf(101), numFactory.two())));
+
+        record.operate(aggregatedEntry);
+
+        assertEquals(2, record.getTrades().size());
+        assertEquals(4, record.getTrades().get(0).getIndex());
+        assertEquals(5, record.getTrades().get(1).getIndex());
+        OpenPosition net = record.getNetOpenPosition();
+        assertNotNull(net);
+        assertEquals(numFactory.three(), net.amount());
+    }
+
+    @Test
+    void operateWithMismatchedTradeTypeThrows() {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        Trade exitTradeWithoutEntry = new AggregatedTrade(TradeType.SELL,
+                List.of(new TradeFill(1, numFactory.hundred(), numFactory.one())));
+
+        assertThrows(IllegalStateException.class, () -> record.operate(exitTradeWithoutEntry));
+    }
+
+    @Test
     void shortCriteriaMatchBaseTradingRecord() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90, 100, 110).build();
         TradingRecord baseRecord = buildBaseShortRecord(series);

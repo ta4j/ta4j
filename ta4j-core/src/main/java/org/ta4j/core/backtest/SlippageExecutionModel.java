@@ -17,14 +17,14 @@ import org.ta4j.core.num.Num;
  * are filled at a worse price ({@code -slippage}).
  * </p>
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class SlippageExecutionModel implements TradeExecutionModel {
 
     /**
      * Base price source used before applying slippage.
      *
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public enum ExecutionPrice {
         /** Use the current bar close price. */
@@ -40,7 +40,7 @@ public class SlippageExecutionModel implements TradeExecutionModel {
      * Creates a slippage execution model based on next-bar open prices.
      *
      * @param slippageRatio slippage ratio (for example 0.001 for 10 bps)
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public SlippageExecutionModel(Num slippageRatio) {
         this(slippageRatio, ExecutionPrice.NEXT_OPEN);
@@ -51,7 +51,7 @@ public class SlippageExecutionModel implements TradeExecutionModel {
      *
      * @param slippageRatio  slippage ratio in [0,1)
      * @param executionPrice base price source
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public SlippageExecutionModel(Num slippageRatio, ExecutionPrice executionPrice) {
         Objects.requireNonNull(slippageRatio, "slippageRatio");
@@ -69,7 +69,7 @@ public class SlippageExecutionModel implements TradeExecutionModel {
 
     /**
      * @return configured slippage ratio
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Num getSlippageRatio() {
         return slippageRatio;
@@ -77,7 +77,7 @@ public class SlippageExecutionModel implements TradeExecutionModel {
 
     /**
      * @return configured base execution price source
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public ExecutionPrice getExecutionPrice() {
         return executionPrice;

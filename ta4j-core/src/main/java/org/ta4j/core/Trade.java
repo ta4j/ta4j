@@ -181,7 +181,7 @@ public interface Trade extends Serializable {
      * </p>
      *
      * @return execution fills of this trade
-     * @since 0.22.2
+     * @since 0.22.3
      */
     default List<TradeFill> getFills() {
         return List.of(new TradeFill(getIndex(), getPricePerAsset(), getAmount()));
