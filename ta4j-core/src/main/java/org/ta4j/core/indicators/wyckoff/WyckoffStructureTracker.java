@@ -24,7 +24,7 @@ import static org.ta4j.core.num.NaN.NaN;
  * <p>
  * This is a lower-level building block used by {@link WyckoffPhaseIndicator}
  * and the higher-level entry points {@link WyckoffCycleFacade} and
- * {@link WyckoffCycleAnalysis}.
+ * {@link WyckoffCycleAnalysisRunner}.
  *
  * @since 0.22.3
  */

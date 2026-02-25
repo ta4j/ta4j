@@ -42,7 +42,7 @@ import org.ta4j.core.num.NumFactory;
  *
  * @since 0.22.3
  */
-public final class WyckoffCycleAnalysis {
+public final class WyckoffCycleAnalysisRunner {
 
     /**
      * Produces degree-specific configurations from a base configuration.
@@ -94,9 +94,9 @@ public final class WyckoffCycleAnalysis {
     private final Number dryUpThreshold;
 
     /**
-     * Creates a new WyckoffCycleAnalysis instance.
+     * Creates a new WyckoffCycleAnalysisRunner instance.
      */
-    private WyckoffCycleAnalysis(final Builder builder) {
+    private WyckoffCycleAnalysisRunner(final Builder builder) {
         this.baseDegreeOffset = 0;
         this.higherDegrees = builder.higherDegrees;
         this.lowerDegrees = builder.lowerDegrees;
@@ -308,7 +308,7 @@ public final class WyckoffCycleAnalysis {
     }
 
     /**
-     * Builder for {@link WyckoffCycleAnalysis}.
+     * Builder for {@link WyckoffCycleAnalysisRunner}.
      *
      * @since 0.22.3
      */
@@ -502,8 +502,8 @@ public final class WyckoffCycleAnalysis {
          * @return analysis instance
          * @since 0.22.3
          */
-        public WyckoffCycleAnalysis build() {
-            return new WyckoffCycleAnalysis(this);
+        public WyckoffCycleAnalysisRunner build() {
+            return new WyckoffCycleAnalysisRunner(this);
         }
     }
 }
