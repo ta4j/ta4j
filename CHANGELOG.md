@@ -17,6 +17,7 @@
 - **Elliott one-shot entrypoint consolidation**: Replaced legacy `ElliottWaveAnalyzer` naming/usages with the consolidated `ElliottWaveAnalysisRunner` API across core docs, tests, and examples.
 - **Elliott package and quickstart guidance**: Expanded package-level and README documentation to call out one-shot/facade entrypoints, `scenarioSwingWindow` behavior, and returned result semantics.
 - **Elliott examples result naming**: Renamed the examples-only structured DTO to `ElliottWaveAnalysisReport` to avoid collision with core `ElliottWaveAnalysisResult`.
+- **HighRewardElliottWaveStrategy exit gating**: Removed the redundant anonymous exit-rule guard and now rely on ta4j strategy lifecycle routing (`shouldOperate`/`shouldExit`) to evaluate exits only for open positions.
 
 ### Changed
 - **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses

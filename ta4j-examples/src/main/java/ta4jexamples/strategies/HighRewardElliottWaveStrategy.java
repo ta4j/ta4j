@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
@@ -28,7 +27,6 @@ import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottSwingCompressor;
 import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.rules.AbstractRule;
 import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
@@ -246,19 +244,7 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
                 .or(new NotRule(trendRule.and(momentumRule)))
                 .or(new ElliottScenarioTimeStopRule(scenarioIndicator, MAX_WAVE_DURATION_MULTIPLIER));
 
-        Rule exitRule = new AbstractRule() {
-            @Override
-            public boolean isSatisfied(final int index, final TradingRecord record) {
-                if (record == null || record.isClosed()) {
-                    traceIsSatisfied(index, false);
-                    return false;
-                }
-                boolean satisfied = exitTriggers.isSatisfied(index, record);
-                traceIsSatisfied(index, satisfied);
-                return satisfied;
-            }
-        };
-        return exitRule;
+        return exitTriggers;
     }
 
     /**
