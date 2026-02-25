@@ -69,10 +69,17 @@ public interface TradingRecord extends Serializable {
      * </p>
      *
      * @param trade the trade to place
+     * @throws UnsupportedOperationException if {@code trade} contains multiple
+     *                                       fills and this implementation has not
+     *                                       overridden this method
      * @since 0.22.3
      */
     default void operate(Trade trade) {
         Objects.requireNonNull(trade, "trade");
+        if (trade.getFills().size() > 1) {
+            throw new UnsupportedOperationException(
+                    "This TradingRecord implementation must override operate(Trade) to preserve multi-fill trades");
+        }
         operate(trade.getIndex(), trade.getPricePerAsset(), trade.getAmount());
     }
 

@@ -237,6 +237,37 @@ public class TradingRecordTest {
         assertThrows(NullPointerException.class, () -> record.exit((Trade) null));
     }
 
+    @Test
+    public void defaultOperateTradeFallsBackToScalarOperateForSingleFillTrade() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        TradingRecord record = newTradingRecordUsingDefaultOperateImplementation();
+        Trade singleFillTrade = new AggregatedTrade(Trade.TradeType.BUY,
+                List.of(new TradeFill(2, numFactory.hundred(), numFactory.one())));
+
+        record.operate(singleFillTrade);
+
+        assertFalse(record.isClosed());
+        assertEquals(2, record.getLastTrade().getIndex());
+        assertEquals(numFactory.hundred(), record.getLastTrade().getPricePerAsset());
+        assertEquals(numFactory.one(), record.getLastTrade().getAmount());
+        assertEquals(1, record.getLastTrade().getFills().size());
+    }
+
+    @Test
+    public void defaultOperateTradeRejectsMultiFillTrade() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        TradingRecord record = newTradingRecordUsingDefaultOperateImplementation();
+        Trade multiFillTrade = new AggregatedTrade(Trade.TradeType.BUY,
+                List.of(new TradeFill(1, numFactory.hundred(), numFactory.one()),
+                        new TradeFill(2, numFactory.numOf(101), numFactory.one())));
+
+        UnsupportedOperationException exception = assertThrows(UnsupportedOperationException.class,
+                () -> record.operate(multiFillTrade));
+
+        assertEquals("This TradingRecord implementation must override operate(Trade) to preserve multi-fill trades",
+                exception.getMessage());
+    }
+
     private Position roundTrip(Position position) throws Exception {
         var outputStream = new ByteArrayOutputStream();
         try (var objectOutputStream = new ObjectOutputStream(outputStream)) {
@@ -245,6 +276,27 @@ public class TradingRecordTest {
 
         try (var objectInputStream = new ObjectInputStream(new ByteArrayInputStream(outputStream.toByteArray()))) {
             return (Position) objectInputStream.readObject();
+        }
+    }
+
+    private TradingRecord newTradingRecordUsingDefaultOperateImplementation() {
+        return new DefaultOperateTradingRecordImpl();
+    }
+
+    private interface DefaultOperateTradingRecord extends TradingRecord {
+
+        @Override
+        default void operate(Trade trade) {
+            TradingRecord.super.operate(trade);
+        }
+    }
+
+    private static final class DefaultOperateTradingRecordImpl extends BaseTradingRecord
+            implements DefaultOperateTradingRecord {
+
+        @Override
+        public void operate(Trade trade) {
+            DefaultOperateTradingRecord.super.operate(trade);
         }
     }
 }
