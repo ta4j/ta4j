@@ -21,6 +21,7 @@ public record TradeFill(int index, Num price, Num amount) {
      * Creates a trade fill.
      *
      * @throws NullPointerException if price or amount is null
+     * @since 0.22.2
      */
     public TradeFill {
         Objects.requireNonNull(price, "price");

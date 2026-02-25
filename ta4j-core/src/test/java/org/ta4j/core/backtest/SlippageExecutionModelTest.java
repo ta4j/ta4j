@@ -95,6 +95,11 @@ public class SlippageExecutionModelTest extends AbstractIndicatorTest<BarSeries,
         assertEquals(SlippageExecutionModel.ExecutionPrice.CURRENT_CLOSE, model.getExecutionPrice());
     }
 
+    @Test
+    public void rejectsNullExecutionPrice() {
+        assertThrows(NullPointerException.class, () -> new SlippageExecutionModel(numFactory.zero(), null));
+    }
+
     private BarSeries buildSeries() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
