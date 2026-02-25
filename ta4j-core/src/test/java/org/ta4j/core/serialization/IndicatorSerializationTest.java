@@ -15,7 +15,7 @@ import org.ta4j.core.indicators.ParabolicSarIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
-import org.ta4j.core.indicators.macd.VolatilityNormalizedMACDIndicator;
+import org.ta4j.core.indicators.macd.MACDVIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 
@@ -76,11 +76,11 @@ public class IndicatorSerializationTest {
     public void deserializeMacdIndicatorPrefersNonDeprecatedTypeWhenSimpleNameCollides() {
         BarSeries series = new MockBarSeriesBuilder().withData(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20).build();
         Indicator<Num> price = new ClosePriceIndicator(series);
-        Indicator<Num> original = new VolatilityNormalizedMACDIndicator(price, 12, 26, 26, 9, 100);
+        Indicator<Num> original = new MACDVIndicator(price, 12, 26, 9);
 
         Indicator<Num> restored = (Indicator<Num>) Indicator.fromJson(series, original.toJson());
 
-        assertThat(restored).isInstanceOf(VolatilityNormalizedMACDIndicator.class);
+        assertThat(restored).isInstanceOf(MACDVIndicator.class);
         assertThat(restored.getClass().isAnnotationPresent(Deprecated.class)).isFalse();
         assertThat(restored.toDescriptor()).isEqualTo(original.toDescriptor());
     }
