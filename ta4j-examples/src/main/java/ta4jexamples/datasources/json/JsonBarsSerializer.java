@@ -8,6 +8,7 @@ import com.google.gson.GsonBuilder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.utils.DeprecationNotifier;
 
 import java.io.*;
 
@@ -22,8 +23,18 @@ public class JsonBarsSerializer {
 
     private static final Logger LOG = LogManager.getLogger(JsonBarsSerializer.class);
 
+    public JsonBarsSerializer() {
+        warnDeprecatedUse();
+    }
+
+    private static void warnDeprecatedUse() {
+        DeprecationNotifier.warnOnce(JsonBarsSerializer.class,
+                "ta4jexamples.datasources.json.JsonFileBarSeriesDataSource");
+    }
+
     @Deprecated
     public static void persistSeries(BarSeries series, String filename) {
+        warnDeprecatedUse();
         GsonBarSeries exportableSeries = GsonBarSeries.from(series);
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         FileWriter writer = null;
@@ -47,6 +58,7 @@ public class JsonBarsSerializer {
 
     @Deprecated
     public static BarSeries loadSeries(String filename) {
+        warnDeprecatedUse();
         Gson gson = new Gson();
         FileReader reader = null;
         BarSeries result = null;
@@ -87,6 +99,7 @@ public class JsonBarsSerializer {
      */
     @Deprecated(since = "0.19")
     public static BarSeries loadSeries(InputStream inputStream) {
+        warnDeprecatedUse();
         if (inputStream == null) {
             LOG.warn("Input stream is null, returning null");
             return null;

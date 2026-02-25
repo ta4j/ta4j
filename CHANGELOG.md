@@ -24,7 +24,7 @@
 - **MACDVIndicator API robustness and clarity**: Clarified that `MACDVIndicator` is a volume/ATR-weighted MACD variant (not ATR-normalized MACD-V), added default signal/histogram conveniences and constructor overloads, and hardened warm-up/NaN handling with lazy transient sub-indicator rebuild.
 - **MACD-V indicator ergonomics**: `MACDVIndicator` and `VolatilityNormalizedMACDIndicator` now expose configuration/sub-indicator getters, line bundle helpers, momentum-state indicator factories, and crossover/momentum rule helpers for strategy composition.
 - **MACD-V package organization**: Grouped MACD-V specific helpers and indicators under `org.ta4j.core.indicators.macd` to reduce top-level indicators package clutter, and retained a deprecated compatibility shim for moved `MACDVIndicator` in `org.ta4j.core.indicators` so downstream projects can migrate imports without immediate build breakage.
-- **Deprecation visibility for compatibility shims**: Added runtime deprecation warnings (emitted once per classloader) for shim usage so consumers who miss release notes/changelog entries still see migration guidance directly in logs.
+- **Deprecation visibility for deprecated classes**: Added runtime deprecation warnings (emitted once per classloader) for deprecated compatibility classes in core and legacy JSON helper classes in examples so migration guidance appears directly in logs.
 
 ### Fixed
 - **Stop-rule behavior and efficiency**: Trailing stop-gain variants now arm only after the configured favorable move, volatility stop-loss variants trigger on exact threshold touches, gain-side helpers are used consistently, and trailing volatility/fixed-amount rules now reuse stabilized max-lookback indicators to reduce hot-path allocations.

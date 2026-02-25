@@ -64,6 +64,18 @@ public final class DeprecationNotifier {
                 sinceVersion, normalizedRemovalVersion, replacementType);
     }
 
+    /**
+     * Emits a one-time warning for a deprecated type without a scheduled removal
+     * version.
+     *
+     * @param deprecatedType  deprecated type that is being instantiated
+     * @param replacementType fully qualified replacement type name
+     * @since 0.22.3
+     */
+    public static void warnOnce(Class<?> deprecatedType, String replacementType) {
+        warnOnce(deprecatedType, replacementType, null);
+    }
+
     static void resetForTests() {
         EMITTED_TYPES.clear();
     }

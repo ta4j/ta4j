@@ -5,6 +5,7 @@ package ta4jexamples.datasources.json;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BaseBarSeries;
+import org.ta4j.core.utils.DeprecationNotifier;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -19,8 +20,13 @@ public class GsonBarData {
     private Number volume;
     private Number amount;
 
+    public GsonBarData() {
+        DeprecationNotifier.warnOnce(GsonBarData.class, "ta4jexamples.datasources.json.JsonFileBarSeriesDataSource");
+    }
+
     @Deprecated
     public static GsonBarData from(Bar bar) {
+        DeprecationNotifier.warnOnce(GsonBarData.class, "ta4jexamples.datasources.json.JsonFileBarSeriesDataSource");
         var result = new GsonBarData();
         result.endTime = bar.getEndTime().toEpochMilli();
         result.openPrice = bar.getOpenPrice().getDelegate();
@@ -34,6 +40,7 @@ public class GsonBarData {
 
     @Deprecated
     public void addTo(BaseBarSeries barSeries) {
+        DeprecationNotifier.warnOnce(GsonBarData.class, "ta4jexamples.datasources.json.JsonFileBarSeriesDataSource");
         var endTimeInstant = Instant.ofEpochMilli(endTime);
         barSeries.barBuilder()
                 .timePeriod(Duration.ofDays(1))
