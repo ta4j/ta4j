@@ -43,7 +43,8 @@ final class OssifiedElliottWaveSeriesLoader {
         Objects.requireNonNull(seriesName, "seriesName");
         Objects.requireNonNull(logger, "logger");
 
-        try (InputStream stream = resourceOwner.getClassLoader().getResourceAsStream(resource)) {
+        String normalizedResource = resource.startsWith("/") ? resource : "/" + resource;
+        try (InputStream stream = resourceOwner.getResourceAsStream(normalizedResource)) {
             if (stream == null) {
                 logger.error("Missing resource: {}", resource);
                 return null;

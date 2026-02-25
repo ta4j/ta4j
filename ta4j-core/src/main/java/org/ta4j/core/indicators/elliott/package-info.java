@@ -51,7 +51,9 @@
  * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysis} orchestrates
  * swing detection, scenario generation, and confidence profiles, with pluggable
  * detectors under {@code org.ta4j.core.indicators.elliott.swing} and profile
- * helpers in {@code org.ta4j.core.indicators.elliott.confidence}. It can also
+ * helpers in {@code org.ta4j.core.indicators.elliott.confidence}, returning an
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult} with
+ * per-degree analyses, ranked scenarios, and analysis metadata. It can also
  * optionally validate base-degree scenarios across neighboring degrees and
  * re-rank outcomes using cross-degree compatibility scores.</li>
  * <li><b>Invalidation and projections</b>:

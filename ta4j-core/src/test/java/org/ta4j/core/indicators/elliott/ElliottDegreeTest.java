@@ -119,6 +119,19 @@ class ElliottDegreeTest {
     }
 
     @Test
+    void recommendedHistoryConstructor_shouldRejectBoundedMaxBelowMin() {
+        assertThrows(IllegalArgumentException.class, () -> new ElliottDegree.RecommendedHistory(10.0, 9.0));
+    }
+
+    @Test
+    void recommendedHistoryConstructor_shouldAllowUnboundedRange() {
+        ElliottDegree.RecommendedHistory history = new ElliottDegree.RecommendedHistory(10.0, 0.0);
+
+        assertThat(history.hasMax()).isFalse();
+        assertThat(history.maxDays()).isEqualTo(0.0);
+    }
+
+    @Test
     void historyFitScore_shouldReturnOneWhenWithinRange() {
         double score = ElliottDegree.PRIMARY.historyFitScore(Duration.ofDays(1), 1000);
         assertThat(score).isCloseTo(1.0, within(1e-12));

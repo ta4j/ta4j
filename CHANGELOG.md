@@ -28,6 +28,9 @@
 - **README snippet synchronization line endings**: `ReadmeContentManager.updateReadmeSnippets(...)` now preserves the
   target README's dominant line separator (LF/CRLF), with regression tests covering both newline modes.
 - **Indicator serialization and stability**: Aligned VWAP, price-cluster, and Wyckoff indicators on descriptor ordering, NaN handling, and unstable-bar conventions.
+- **Elliott one-shot documentation and guards**: Updated README/package docs to reference `ElliottWaveAnalysisResult`,
+  clarified that `scenarioSwingWindow = 0` disables windowing, enforced bounded `RecommendedHistory` ranges, and hardened
+  ossified dataset resource loading for classpath edge cases.
 
 ## 0.22.2 (2026-02-15)
 

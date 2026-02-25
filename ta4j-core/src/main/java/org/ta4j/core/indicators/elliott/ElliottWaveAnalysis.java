@@ -1044,6 +1044,8 @@ public final class ElliottWaveAnalysis {
 
         /**
          * @param scenarioSwingWindow number of swings passed to scenario generation
+         *                            ({@code 0} disables windowing and uses all
+         *                            available swings)
          * @return builder
          * @since 0.22.3
          */

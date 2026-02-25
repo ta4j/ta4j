@@ -305,6 +305,9 @@ public enum ElliottDegree {
             if (maxDays < 0.0) {
                 throw new IllegalArgumentException("maxDays must be >= 0.0");
             }
+            if (maxDays > 0.0 && maxDays < minDays) {
+                throw new IllegalArgumentException("maxDays must be >= minDays when bounded");
+            }
         }
 
         /**
