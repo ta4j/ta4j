@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import java.util.Objects;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -61,12 +63,15 @@ public class DarkCloudCoverIndicator extends CachedIndicator<Boolean> {
      */
     public DarkCloudCoverIndicator(final BarSeries series, final Num bigBodyThresholdPercentage,
             final Num gapThresholdPercentage, final Num penetrationThresholdPercentage) {
-        super(series);
-        this.trendIndicator = new UpTrendIndicator(series);
-        this.realBodyIndicator = new RealBodyIndicator(series);
-        this.bigBodyThresholdPercentage = bigBodyThresholdPercentage;
-        this.gapThresholdPercentage = gapThresholdPercentage;
-        this.penetrationThresholdPercentage = penetrationThresholdPercentage;
+        super(Objects.requireNonNull(series, "series must not be null"));
+        this.trendIndicator = new UpTrendIndicator(getBarSeries());
+        this.realBodyIndicator = new RealBodyIndicator(getBarSeries());
+        this.bigBodyThresholdPercentage = Objects.requireNonNull(bigBodyThresholdPercentage,
+                "bigBodyThresholdPercentage must not be null");
+        this.gapThresholdPercentage = Objects.requireNonNull(gapThresholdPercentage,
+                "gapThresholdPercentage must not be null");
+        this.penetrationThresholdPercentage = Objects.requireNonNull(penetrationThresholdPercentage,
+                "penetrationThresholdPercentage must not be null");
     }
 
     @Override

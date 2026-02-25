@@ -476,9 +476,11 @@ public class VolatilityNormalizedMACDIndicator extends CachedIndicator<Num> {
      */
     public MACDLineValues getLineValues(int index, int signalBarCount,
             BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory, MACDHistogramMode histogramMode) {
+        validateHistogramMode(histogramMode);
+        Indicator<Num> signalLine = getSignalLine(signalBarCount, signalLineFactory);
         Num macd = getValue(index);
-        Num signal = getSignalLine(signalBarCount, signalLineFactory).getValue(index);
-        Num histogram = getHistogram(signalBarCount, signalLineFactory, histogramMode).getValue(index);
+        Num signal = signalLine.getValue(index);
+        Num histogram = histogramMode.compute(macd, signal);
         return new MACDLineValues(macd, signal, histogram);
     }
 

@@ -4,18 +4,25 @@
 - **Risk controls APIs**: Added `PositionRiskModel`, `StopLossPositionRiskModel`, and `RMultipleCriterion` for risk-unit (R-multiple) evaluation, plus `StopLossPriceModel`/`StopGainPriceModel` and fixed/trailing/volatility/ATR stop-loss and stop-gain rule variants.
 - **Agent guidance tooling and docs**: Reorganized project `AGENTS.md` into scoped, task-local guides and added `scripts/agents_for_target.sh` to resolve effective instructions for any target path.
 - **Regression coverage additions**: Added explicit tests for `TimeBarBuilder` gap placement, `NetMomentumIndicator` pivot/decay edge handling, mixed-field serialization routing, named-strategy label/vararg diagnostics, and `VolumeIndicator` rolling-window behavior.
+- Added **PiercingLineIndicator** and **DarkCloudCoverIndicator** with configurable body-size, gap, and penetration thresholds for candlestick pattern detection.
+- **Trend confirmation oscillators**: Added `VortexIndicator` (+VI, -VI, and oscillator output) and `UltimateOscillatorIndicator` with configurable periods, warm-up guards, and regression tests against published reference values.
+- **Volatility-normalized MACD-V toolkit**: Added `VolatilityNormalizedMACDIndicator` with canonical ATR-normalized MACD-V calculation, configurable signal/histogram helpers, and `MACDVMomentumState` classification utilities.
+- **MACD-V momentum helper components**: Added `MACDHistogramMode`, `MACDLineValues`, `MACDVMomentumProfile`, `MACDVMomentumStateIndicator`, and `MomentumStateRule` to support configurable histogram polarity, bundled line snapshots, and momentum-state rule composition.
+- **MACD-V strategy demo**: Added `MACDVMomentumStateStrategy` to `ta4j-examples`, demonstrating custom signal-line injection and momentum-state filtered entry/exit rules.
 
 ### Changed
 - **Risk/stop-rule refinements**: Tightened volatility stop-gain coefficient validation, removed redundant risk recomputation in `RMultipleCriterion`, added the missing `AverageTrueRangeTrailingStopLossRule` lookback overload, and expanded shared stop-rule fixtures/tests and Javadocs.
 - **VolumeIndicator performance**: Replaced O(barCount) per-index summation with an O(1) rolling partial-sum update, including clearer algorithm/complexity Javadocs.
 - **Serialization routing precedence**: `ComponentSerialization` now resolves mixed payloads by descriptor type so strategies prefer `rules` while indicators/rules prefer `components`, while keeping legacy `children`/`baseIndicators` compatibility.
 - **NamedStrategy reconstruction diagnostics**: Strategy reconstruction now emits richer, label-aware errors for missing identifiers, malformed labels, and constructor/parameter failures.
-
-### Changed
 - **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
   `./mvnw` when present (falling back to `mvn`), so wrapper adoption does not require a second build command.
 - **Full build script portability**: `scripts/run-full-build-quiet.sh` no longer requires Python; timeout handling,
   quiet-output filtering, heartbeat logging, and test-summary aggregation now run in Bash.
+- **Indicator composition reuse**: Added `IndicatorUtils.requireSameSeries(...)` to centralize same-series validation and refactored `VortexIndicator`, `UltimateOscillatorIndicator`, and `TRIndicator` to compose shared true-range/series-validation logic instead of duplicating private helpers.
+- **MACD-V signal-line extensibility**: `VolatilityNormalizedMACDIndicator` now supports custom signal-line indicator injection for both signal and histogram generation.
+- **MACDVIndicator API robustness and clarity**: Clarified that `MACDVIndicator` is a volume/ATR-weighted MACD variant (not ATR-normalized MACD-V), added default signal/histogram conveniences and constructor overloads, and hardened warm-up/NaN handling with lazy transient sub-indicator rebuild.
+- **MACD-V indicator ergonomics**: `MACDVIndicator` and `VolatilityNormalizedMACDIndicator` now expose configuration/sub-indicator getters, line bundle helpers, momentum-state indicator factories, and crossover/momentum rule helpers for strategy composition.
 
 ### Fixed
 - **Stop-rule behavior and efficiency**: Trailing stop-gain variants now arm only after the configured favorable move, volatility stop-loss variants trigger on exact threshold touches, gain-side helpers are used consistently, and trailing volatility/fixed-amount rules now reuse stabilized max-lookback indicators to reduce hot-path allocations.
@@ -54,7 +61,6 @@
 - Added **MorningStarIndicator** and **EveningStarIndicator**
 - Added **BullishKickerIndicator** and **BearishKickerIndicator**
 - Added **PiercingIndicator** and **DarkCloudIndicator**
-- Added **PiercingLineIndicator** and **DarkCloudCoverIndicator** with configurable body-size, gap, and penetration thresholds for candlestick pattern detection.
 - **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
 - **Elliott Wave analysis toolkit**: Added `ElliottWaveAnalyzer`, `ElliottAnalysisResult`, configurable `PatternSet`,
@@ -69,20 +75,9 @@
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
 - Added constructors accepting custom ATR indicator to **AverageTrueRangeStopGainRule** **AverageTrueRangeStopLossRule** and **AverageTrueRangeTrailingStopLossRule**
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
-- **Trend confirmation oscillators**: Added `VortexIndicator` (+VI, -VI, and oscillator output) and `UltimateOscillatorIndicator` with configurable periods, warm-up guards, and regression tests against published reference values.
-- **Volatility-normalized MACD-V toolkit**: Added `VolatilityNormalizedMACDIndicator` with canonical ATR-normalized MACD-V calculation, configurable signal/histogram helpers, and `MACDVMomentumState` classification utilities.
-- **MACD-V momentum helper components**: Added `MACDHistogramMode`, `MACDLineValues`, `MACDVMomentumProfile`, `MACDVMomentumStateIndicator`, and `MomentumStateRule` to support configurable histogram polarity, bundled line snapshots, and momentum-state rule composition.
-- **MACD-V strategy demo**: Added `MACDVMomentumStateStrategy` to `ta4j-examples`, demonstrating custom signal-line injection and momentum-state filtered entry/exit rules.
 
 ### Changed
-- **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
-  `./mvnw` when present (falling back to `mvn`), so wrapper adoption does not require a second build command.
-- **Full build script portability**: `scripts/run-full-build-quiet.sh` no longer requires Python; timeout handling,
-  quiet-output filtering, heartbeat logging, and test-summary aggregation now run in Bash.
-- **README snippet synchronization line endings**: `ReadmeContentManager.updateReadmeSnippets(...)` now preserves the
-  target README's dominant line separator (LF/CRLF), with regression tests covering both newline modes.
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
-- **Indicator composition reuse**: Added `IndicatorUtils.requireSameSeries(...)` to centralize same-series validation and refactored `VortexIndicator`, `UltimateOscillatorIndicator`, and `TRIndicator` to compose shared true-range/series-validation logic instead of duplicating private helpers.
 - **Charting overlays**: Refactored overlay renderer construction and centralized time-axis domain value selection to reduce branching without changing chart output.
 - **Charting defaults**: Centralized chart styling defaults (anti-aliasing, background, title paint) for consistency across chart types.
 - **Chart builder metadata**: Chart definitions now surface a shared metadata object for domain series, title, and time axis mode; chart plans expose a ChartContext and derive their primary series from it, with ChartWorkflow rendering helpers accepting contexts.
@@ -111,9 +106,6 @@
 - **Elliott Wave scoring and diagnostics**: Extension ratio scoring now penalizes under/over-extended projections,
   chart/JSON outputs include scenario-weighted trend bias, and logs include time alternation diagnostics.
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
-- **MACD-V signal-line extensibility**: `VolatilityNormalizedMACDIndicator` now supports custom signal-line indicator injection for both signal and histogram generation.
-- **MACDVIndicator API robustness and clarity**: Clarified that `MACDVIndicator` is a volume/ATR-weighted MACD variant (not ATR-normalized MACD-V), added default signal/histogram conveniences and constructor overloads, and hardened warm-up/NaN handling with lazy transient sub-indicator rebuild.
-- **MACD-V indicator ergonomics**: `MACDVIndicator` and `VolatilityNormalizedMACDIndicator` now expose configuration/sub-indicator getters, line bundle helpers, momentum-state indicator factories, and crossover/momentum rule helpers for strategy composition.
 
 ### Fixed
 - **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.

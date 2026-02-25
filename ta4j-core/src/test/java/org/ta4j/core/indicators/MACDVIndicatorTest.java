@@ -8,6 +8,7 @@ import static org.junit.Assert.assertThrows;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 
 import org.junit.Before;
@@ -124,6 +125,24 @@ public class MACDVIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         assertThat(lineValues.macd()).isEqualByComparingTo(indicator.getValue(stableIndex));
         assertThat(lineValues.signal()).isEqualByComparingTo(expectedSignal);
         assertThat(lineValues.histogram()).isEqualByComparingTo(expectedHistogram);
+    }
+
+    @Test
+    public void lineValuesWithCustomSignalFactoryUseSingleSignalLineInstance() {
+        MACDVIndicator indicator = new MACDVIndicator(series, 5, 10, 4);
+        AtomicInteger factoryInvocations = new AtomicInteger();
+        BiFunction<Indicator<Num>, Integer, Indicator<Num>> statefulFactory = (source, bars) -> {
+            int invocation = factoryInvocations.incrementAndGet();
+            return NumericIndicator.of(source).plus(invocation);
+        };
+
+        int stableIndex = indicator.getCountOfUnstableBars();
+        MACDLineValues lineValues = indicator.getLineValues(stableIndex, 4, statefulFactory,
+                MACDHistogramMode.SIGNAL_MINUS_MACD);
+
+        assertThat(factoryInvocations.get()).isEqualTo(1);
+        assertThat(lineValues.signal()).isEqualByComparingTo(lineValues.macd().plus(numFactory.one()));
+        assertThat(lineValues.histogram()).isEqualByComparingTo(numFactory.one());
     }
 
     @Test

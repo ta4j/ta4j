@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.candles;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -102,6 +103,17 @@ public class DarkCloudCoverIndicatorTest extends AbstractIndicatorTest<Indicator
         final DarkCloudCoverIndicator indicator = new DarkCloudCoverIndicator(series);
 
         assertThat(indicator.getValue(18)).isTrue();
+    }
+
+    @Test
+    public void shouldRejectNullConstructorArguments() {
+        assertThrows(NullPointerException.class, () -> new DarkCloudCoverIndicator(null));
+        assertThrows(NullPointerException.class,
+                () -> new DarkCloudCoverIndicator(series, null, numFactory.zero(), numFactory.numOf(0.5)));
+        assertThrows(NullPointerException.class,
+                () -> new DarkCloudCoverIndicator(series, numFactory.numOf(0.03), null, numFactory.numOf(0.5)));
+        assertThrows(NullPointerException.class,
+                () -> new DarkCloudCoverIndicator(series, numFactory.numOf(0.03), numFactory.zero(), null));
     }
 
     @Test

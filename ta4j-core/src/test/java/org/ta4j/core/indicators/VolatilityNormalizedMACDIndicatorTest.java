@@ -8,6 +8,7 @@ import static org.junit.Assert.assertThrows;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BiFunction;
 
 import org.junit.Before;
@@ -19,6 +20,7 @@ import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.numeric.NumericIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -143,6 +145,24 @@ public class VolatilityNormalizedMACDIndicatorTest extends AbstractIndicatorTest
     }
 
     @Test
+    public void lineValuesWithCustomSignalFactoryUseSingleSignalLineInstance() {
+        VolatilityNormalizedMACDIndicator indicator = new VolatilityNormalizedMACDIndicator(series, 12, 26, 9);
+        AtomicInteger factoryInvocations = new AtomicInteger();
+        BiFunction<Indicator<Num>, Integer, Indicator<Num>> statefulFactory = (source, bars) -> {
+            int invocation = factoryInvocations.incrementAndGet();
+            return NumericIndicator.of(source).plus(invocation);
+        };
+
+        int stableIndex = indicator.getCountOfUnstableBars();
+        MACDLineValues lineValues = indicator.getLineValues(stableIndex, 9, statefulFactory,
+                MACDHistogramMode.SIGNAL_MINUS_MACD);
+
+        assertThat(factoryInvocations.get()).isEqualTo(1);
+        assertThat(lineValues.signal()).isEqualByComparingTo(lineValues.macd().plus(numFactory.one()));
+        assertThat(lineValues.histogram()).isEqualByComparingTo(numFactory.one());
+    }
+
+    @Test
     public void signalAndHistogramConvenienceMethodsMatchExplicitCalculations() {
         VolatilityNormalizedMACDIndicator indicator = new VolatilityNormalizedMACDIndicator(series, 12, 26, 9);
         EMAIndicator signalLine = indicator.getSignalLine();
@@ -232,6 +252,8 @@ public class VolatilityNormalizedMACDIndicatorTest extends AbstractIndicatorTest
         assertThat(MACDHistogramMode.MACD_MINUS_SIGNAL.compute(macd, signal)).isEqualByComparingTo(numFactory.numOf(7));
         assertThat(MACDHistogramMode.SIGNAL_MINUS_MACD.compute(macd, signal))
                 .isEqualByComparingTo(numFactory.numOf(-7));
+        assertThrows(NullPointerException.class, () -> MACDHistogramMode.MACD_MINUS_SIGNAL.compute(null, signal));
+        assertThrows(NullPointerException.class, () -> MACDHistogramMode.MACD_MINUS_SIGNAL.compute(macd, null));
     }
 
     @Test

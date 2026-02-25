@@ -23,6 +23,7 @@ public class MACDVMomentumProfileTest extends AbstractIndicatorTest<Object, Obje
         assertThat(profile.classify(numFactory.numOf(151))).isEqualTo(MACDVMomentumState.HIGH_RISK);
         assertThat(profile.classify(numFactory.numOf(150))).isEqualTo(MACDVMomentumState.RALLYING_OR_RETRACING);
         assertThat(profile.classify(numFactory.numOf(0))).isEqualTo(MACDVMomentumState.RANGING);
+        assertThat(profile.classify(numFactory.numOf(-150))).isEqualTo(MACDVMomentumState.REBOUNDING_OR_REVERSING);
         assertThat(profile.classify(numFactory.numOf(-149))).isEqualTo(MACDVMomentumState.REBOUNDING_OR_REVERSING);
         assertThat(profile.classify(numFactory.numOf(-151))).isEqualTo(MACDVMomentumState.LOW_RISK);
     }
@@ -34,6 +35,7 @@ public class MACDVMomentumProfileTest extends AbstractIndicatorTest<Object, Obje
         assertThat(profile.classify(numFactory.numOf(21))).isEqualTo(MACDVMomentumState.HIGH_RISK);
         assertThat(profile.classify(numFactory.numOf(10))).isEqualTo(MACDVMomentumState.RALLYING_OR_RETRACING);
         assertThat(profile.classify(numFactory.numOf(0))).isEqualTo(MACDVMomentumState.RANGING);
+        assertThat(profile.classify(numFactory.numOf(-20))).isEqualTo(MACDVMomentumState.REBOUNDING_OR_REVERSING);
         assertThat(profile.classify(numFactory.numOf(-19))).isEqualTo(MACDVMomentumState.REBOUNDING_OR_REVERSING);
         assertThat(profile.classify(numFactory.numOf(-21))).isEqualTo(MACDVMomentumState.LOW_RISK);
     }

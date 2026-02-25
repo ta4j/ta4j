@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.Objects;
+
 import org.ta4j.core.num.Num;
 
 /**
@@ -26,9 +28,11 @@ public enum MACDHistogramMode {
      * @since 0.22.2
      */
     public Num compute(Num macdValue, Num signalValue) {
+        Num validatedMacdValue = Objects.requireNonNull(macdValue, "macdValue must not be null");
+        Num validatedSignalValue = Objects.requireNonNull(signalValue, "signalValue must not be null");
         if (this == SIGNAL_MINUS_MACD) {
-            return signalValue.minus(macdValue);
+            return validatedSignalValue.minus(validatedMacdValue);
         }
-        return macdValue.minus(signalValue);
+        return validatedMacdValue.minus(validatedSignalValue);
     }
 }
