@@ -5,11 +5,8 @@ package org.ta4j.core.rules;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.HighestValueIndicator;
-import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.Num;
 
@@ -25,20 +22,10 @@ import static java.util.Objects.requireNonNull;
  *
  * <p>
  * This rule uses the {@code tradingRecord}.
+ *
+ * @since 0.22.3
  */
-public class AverageTrueRangeTrailingStopLossRule extends AbstractRule {
-
-    /**
-     * The ATR-based stop loss threshold.
-     */
-    private final transient Indicator<Num> stopLossThreshold;
-
-    /**
-     * The reference price indicator.
-     */
-    private final Indicator<Num> referencePrice;
-    private final ATRIndicator atrIndicator;
-    private final Number atrCoefficient;
+public class AverageTrueRangeTrailingStopLossRule extends BaseVolatilityTrailingStopLossRule {
 
     /**
      * Constructor with default close price as reference.
@@ -61,65 +48,62 @@ public class AverageTrueRangeTrailingStopLossRule extends AbstractRule {
      */
     public AverageTrueRangeTrailingStopLossRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient) {
-        this(referencePrice, new ATRIndicator(series, atrBarCount), atrCoefficient);
+        this(series, referencePrice, atrBarCount, atrCoefficient, Integer.MAX_VALUE);
     }
 
     /**
-     * Constructor with custom reference price and ATR indicators.
+     * Constructor with custom reference price and lookback.
+     *
+     * @param series         the bar series
+     * @param referencePrice the reference price indicator
+     * @param atrBarCount    the number of bars used for ATR calculation
+     * @param atrCoefficient the coefficient to multiply ATR
+     * @param barCount       the number of bars to look back for trailing
+     *                       calculation
+     * @since 0.22.3
+     */
+    public AverageTrueRangeTrailingStopLossRule(final BarSeries series, final Indicator<Num> referencePrice,
+            final int atrBarCount, final Number atrCoefficient, final int barCount) {
+        super(referencePrice, createStopLossThreshold(series, atrBarCount, atrCoefficient), barCount);
+    }
+
+    /**
+     * Constructor with custom reference price and ATR indicator.
      *
      * @param referencePrice the reference price indicator
-     * @param atrIndicator   the ATR indicator
+     * @param atrIndicator   ATR indicator
      * @param atrCoefficient the coefficient to multiply ATR
+     * @since 0.22.3
      */
     public AverageTrueRangeTrailingStopLossRule(final Indicator<Num> referencePrice, final ATRIndicator atrIndicator,
             final Number atrCoefficient) {
-        this.referencePrice = requireNonNull(referencePrice);
-        this.atrIndicator = requireNonNull(atrIndicator);
-        this.atrCoefficient = requireNonNull(atrCoefficient);
-        this.stopLossThreshold = createStopLossThreshold();
+        this(referencePrice, atrIndicator, atrCoefficient, Integer.MAX_VALUE);
     }
 
     /**
-     * Checks if the stop loss condition is satisfied.
+     * Constructor with custom reference price, ATR indicator, and lookback.
      *
-     * <p>
-     * For long positions: satisfied when the reference price is less than the
-     * current trade's entry price (net of fees) OR the highest reference price
-     * since entry minus the ATR-based stop loss threshold. For short positions:
-     * satisfied when the reference price is greater than the current trade's entry
-     * price (net of fees) OR the lowest reference price since entry plus the
-     * ATR-based stop loss threshold.
-     *
-     * <p>
-     * This rule uses the {@code tradingRecord}.
-     *
-     * @param index         the current bar index
-     * @param tradingRecord the trading record
-     * @return true if the stop loss condition is satisfied, false otherwise
+     * @param referencePrice the reference price indicator
+     * @param atrIndicator   ATR indicator
+     * @param atrCoefficient the coefficient to multiply ATR
+     * @param barCount       the number of bars to look back for trailing
+     *                       calculation
+     * @since 0.22.3
      */
-    @Override
-    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        if (tradingRecord != null && !tradingRecord.isClosed()) {
-            Num entryPrice = tradingRecord.getCurrentPosition().getEntry().getNetPrice();
-            Num currentPrice = this.referencePrice.getValue(index);
-            Num threshold = this.stopLossThreshold.getValue(index);
-
-            int barsSinceEntry = index - tradingRecord.getCurrentPosition().getEntry().getIndex() + 1;
-
-            if (tradingRecord.getCurrentPosition().getEntry().isBuy()) {
-                HighestValueIndicator highestPrice = new HighestValueIndicator(this.referencePrice, barsSinceEntry);
-                Num thresholdPrice = entryPrice.max(highestPrice.getValue(index)).minus(threshold);
-                return currentPrice.isLessThan(thresholdPrice);
-            } else {
-                LowestValueIndicator lowestPrice = new LowestValueIndicator(this.referencePrice, barsSinceEntry);
-                Num thresholdPrice = entryPrice.min(lowestPrice.getValue(index)).plus(threshold);
-                return currentPrice.isGreaterThan(thresholdPrice);
-            }
-        }
-        return false;
+    public AverageTrueRangeTrailingStopLossRule(final Indicator<Num> referencePrice, final ATRIndicator atrIndicator,
+            final Number atrCoefficient, final int barCount) {
+        super(referencePrice, BinaryOperationIndicator.product(requireNonNull(atrIndicator), atrCoefficient), barCount);
     }
 
-    private Indicator<Num> createStopLossThreshold() {
-        return BinaryOperationIndicator.product(atrIndicator, atrCoefficient);
+    /**
+     * Builds ATR-based trailing stop-loss threshold indicator.
+     *
+     * @param series         bar series
+     * @param atrBarCount    ATR lookback length
+     * @param atrCoefficient ATR multiplier
+     * @return ATR-scaled threshold indicator
+     */
+    private static Indicator<Num> createStopLossThreshold(BarSeries series, int atrBarCount, Number atrCoefficient) {
+        return BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
     }
 }

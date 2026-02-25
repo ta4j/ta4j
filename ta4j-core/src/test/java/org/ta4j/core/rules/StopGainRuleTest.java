@@ -5,6 +5,7 @@ package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -32,6 +33,21 @@ public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
         closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 105, 110, 120, 150, 120, 160, 180, 170, 135, 104)
                 .build());
+    }
+
+    @Test
+    public void stopGainPriceCalculatesThresholds() {
+        Num entryPrice = numFactory.hundred();
+        Num gainPercent = numFactory.numOf(5);
+
+        assertNumEquals(105, StopGainRule.stopGainPrice(entryPrice, gainPercent, true));
+        assertNumEquals(95, StopGainRule.stopGainPrice(entryPrice, gainPercent, false));
+        assertNumEquals(105, StopGainRule.stopGainPriceFromDistance(entryPrice, numFactory.numOf(5), true));
+        assertNumEquals(95, StopGainRule.stopGainPriceFromDistance(entryPrice, numFactory.numOf(5), false));
+        assertNumEquals(95, StopGainRule.trailingStopGainPrice(entryPrice, gainPercent, true));
+        assertNumEquals(105, StopGainRule.trailingStopGainPrice(entryPrice, gainPercent, false));
+        assertNumEquals(95, StopGainRule.trailingStopGainPriceFromDistance(entryPrice, numFactory.numOf(5), true));
+        assertNumEquals(105, StopGainRule.trailingStopGainPriceFromDistance(entryPrice, numFactory.numOf(5), false));
     }
 
     @Test

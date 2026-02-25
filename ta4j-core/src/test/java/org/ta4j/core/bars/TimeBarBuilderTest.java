@@ -250,6 +250,40 @@ public class TimeBarBuilderTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(later.plus(period), series.getBar(1).getEndTime());
     }
 
+    /**
+     * Regression: TimeBarBuilder preserves chronological gap placement without
+     * backfilling. Missing periods remain missing; bars appear at correct positions
+     * in the series.
+     */
+    @Test
+    public void addTradePreservesChronologicalGapPlacementWithoutBackfilling() {
+        final var period = Duration.ofMinutes(1);
+        final var series = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new TimeBarBuilderFactory(period))
+                .build();
+        final var builder = series.barBuilder();
+        final var firstTrade = Instant.parse("2024-01-01T00:00:30Z");
+        final var laterTrade = Instant.parse("2024-01-01T00:04:30Z"); // skips periods 1, 2, 3
+
+        builder.addTrade(firstTrade, numFactory.one(), numFactory.hundred());
+        builder.addTrade(laterTrade, numFactory.one(), numOf(110));
+
+        // No backfill: exactly 2 bars, not 5
+        assertEquals(2, series.getBarCount());
+
+        // Chronological order: bar i end < bar i+1 begin
+        assertTrue(series.getBar(0).getEndTime().isBefore(series.getBar(1).getBeginTime()));
+
+        // Gap placement: second bar begins exactly where skipped periods would end
+        final var expectedSecondBegin = Instant.parse("2024-01-01T00:04:00Z");
+        assertEquals(expectedSecondBegin, series.getBar(1).getBeginTime());
+        assertEquals(expectedSecondBegin.plus(period), series.getBar(1).getEndTime());
+
+        // First bar aligned to period 0
+        assertEquals(Instant.parse("2024-01-01T00:00:00Z"), series.getBar(0).getBeginTime());
+        assertEquals(Instant.parse("2024-01-01T00:01:00Z"), series.getBar(0).getEndTime());
+    }
+
     @Test
     public void addTradeFlushesSeededBarBeforeSkippingPeriods() {
         final var period = Duration.ofMinutes(1);
