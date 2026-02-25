@@ -80,6 +80,8 @@ public class ConfluenceReportGeneratorTest {
                 () -> new ConfluenceReportGenerator(null, new LevelConfidenceCalculator()));
         assertThrows(NullPointerException.class,
                 () -> new ConfluenceReportGenerator(new ConfluenceScoringEngine(), null));
+        assertThrows(NullPointerException.class, () -> new ConfluenceReportGenerator(new ConfluenceScoringEngine(),
+                new LevelConfidenceCalculator(), null));
         assertThrows(NullPointerException.class, () -> new ConfluenceReportGenerator((Clock) null));
     }
 
@@ -112,10 +114,11 @@ public class ConfluenceReportGeneratorTest {
 
     @Test
     public void staleSeriesProducesLowerDataConfidenceThanFreshSeries() {
-        Instant freshStart = Instant.now().minus(Duration.ofDays(419));
-        ConfluenceReport fresh = new ConfluenceReportGenerator().generate("^GSPC",
-                buildSeries(420, 4200.0d, 2.5d, freshStart));
-        ConfluenceReport stale = new ConfluenceReportGenerator().generate("^GSPC",
+        Instant referenceNow = Instant.parse("2026-02-25T00:00:00Z");
+        ConfluenceReportGenerator generator = new ConfluenceReportGenerator(Clock.fixed(referenceNow, ZoneOffset.UTC));
+        Instant freshStart = referenceNow.minus(Duration.ofDays(419));
+        ConfluenceReport fresh = generator.generate("^GSPC", buildSeries(420, 4200.0d, 2.5d, freshStart));
+        ConfluenceReport stale = generator.generate("^GSPC",
                 buildSeries(420, 4200.0d, 2.5d, Instant.parse("2016-01-01T00:00:00Z")));
 
         assertTrue(fresh.confidenceBreakdown().dataConfidence() > stale.confidenceBreakdown().dataConfidence());
