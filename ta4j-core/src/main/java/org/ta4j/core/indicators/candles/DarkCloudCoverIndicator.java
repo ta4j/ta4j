@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
  *
  * @see <a href="https://www.investopedia.com/terms/d/darkcloudcover.asp">Dark
  *      Cloud Cover</a>
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class DarkCloudCoverIndicator extends CachedIndicator<Boolean> {
 

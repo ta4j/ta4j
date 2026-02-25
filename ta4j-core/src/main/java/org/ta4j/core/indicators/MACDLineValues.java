@@ -11,7 +11,7 @@ import org.ta4j.core.num.Num;
  * @param macd      MACD value
  * @param signal    signal-line value
  * @param histogram histogram value
- * @since 0.22.2
+ * @since 0.22.3
  */
 public record MACDLineValues(Num macd, Num signal, Num histogram) {
 }

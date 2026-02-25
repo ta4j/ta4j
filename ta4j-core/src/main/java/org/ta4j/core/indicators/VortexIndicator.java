@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
  *
  * @see <a href="https://en.wikipedia.org/wiki/Vortex_indicator">Wikipedia:
  *      Vortex Indicator</a>
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class VortexIndicator extends CachedIndicator<Num> {
 
@@ -66,7 +66,7 @@ public class VortexIndicator extends CachedIndicator<Num> {
      * Constructor using the common 14-period look-back.
      *
      * @param series the bar series
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public VortexIndicator(BarSeries series) {
         this(series, DEFAULT_BAR_COUNT);
@@ -77,7 +77,7 @@ public class VortexIndicator extends CachedIndicator<Num> {
      *
      * @param series   the bar series
      * @param barCount look-back period (must be greater than 1)
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public VortexIndicator(BarSeries series, int barCount) {
         this(new HighPriceIndicator(series), new LowPriceIndicator(series), new ClosePriceIndicator(series), barCount);
@@ -90,7 +90,7 @@ public class VortexIndicator extends CachedIndicator<Num> {
      * @param lowPriceIndicator   low-price indicator
      * @param closePriceIndicator close-price indicator
      * @param barCount            look-back period (must be greater than 1)
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public VortexIndicator(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
             Indicator<Num> closePriceIndicator, int barCount) {
@@ -119,7 +119,7 @@ public class VortexIndicator extends CachedIndicator<Num> {
      *
      * @param index bar index
      * @return positive Vortex line ({@code +VI})
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Num getPositiveValue(int index) {
         return calculateLineValue(index, positiveMovementSumIndicator);
@@ -130,7 +130,7 @@ public class VortexIndicator extends CachedIndicator<Num> {
      *
      * @param index bar index
      * @return negative Vortex line ({@code -VI})
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Num getNegativeValue(int index) {
         return calculateLineValue(index, negativeMovementSumIndicator);

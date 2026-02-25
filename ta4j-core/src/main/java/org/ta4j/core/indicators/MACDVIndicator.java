@@ -105,7 +105,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @param shortBarCount  the short time frame (normally 12)
      * @param longBarCount   the long time frame (normally 26)
      * @param signalBarCount the default signal time frame (normally 9)
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDVIndicator(BarSeries series, int shortBarCount, int longBarCount, int signalBarCount) {
         this(new ClosePriceIndicator(series), shortBarCount, longBarCount, signalBarCount);
@@ -130,7 +130,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @param shortBarCount  the short time frame (normally 12)
      * @param longBarCount   the long time frame (normally 26)
      * @param signalBarCount the default signal time frame (normally 9)
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDVIndicator(Indicator<Num> priceIndicator, int shortBarCount, int longBarCount, int signalBarCount) {
         super(priceIndicator);
@@ -176,7 +176,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
 
     /**
      * @return source price indicator
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Indicator<Num> getPriceIndicator() {
         return priceIndicator;
@@ -184,7 +184,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
 
     /**
      * @return short period configured for this indicator
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public int getShortBarCount() {
         return shortBarCount;
@@ -192,7 +192,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
 
     /**
      * @return long period configured for this indicator
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public int getLongBarCount() {
         return longBarCount;
@@ -200,7 +200,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
 
     /**
      * @return default signal period configured for this indicator
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public int getDefaultSignalBarCount() {
         return defaultSignalBarCount;
@@ -224,7 +224,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
 
     /**
      * @return short-term ATR indicator used by the weighting chain
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public ATRIndicator getShortAtrIndicator() {
         ensureSubIndicatorsInitialized();
@@ -233,7 +233,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
 
     /**
      * @return long-term ATR indicator used by the weighting chain
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public ATRIndicator getLongAtrIndicator() {
         ensureSubIndicatorsInitialized();
@@ -243,7 +243,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     /**
      * @return signal line for this MACD-V indicator using the configured default
      *         signal period
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public EMAIndicator getSignalLine() {
         return getSignalLine(defaultSignalBarCount);
@@ -262,7 +262,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     /**
      * @param signalLineFactory signal-line factory
      * @return signal line using default signal period and custom factory
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Indicator<Num> getSignalLine(BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
         return getSignalLine(defaultSignalBarCount, signalLineFactory);
@@ -272,7 +272,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @param signalBarCount    signal period
      * @param signalLineFactory signal-line factory
      * @return signal line using custom factory
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Indicator<Num> getSignalLine(int signalBarCount,
             BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
@@ -291,7 +291,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     /**
      * @return histogram using default signal period and default polarity
      *         ({@link MACDHistogramMode#MACD_MINUS_SIGNAL})
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public NumericIndicator getHistogram() {
         return getHistogram(defaultSignalBarCount, MACDHistogramMode.MACD_MINUS_SIGNAL);
@@ -310,7 +310,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     /**
      * @param histogramMode histogram polarity mode
      * @return histogram using default signal period and provided polarity
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public NumericIndicator getHistogram(MACDHistogramMode histogramMode) {
         return getHistogram(defaultSignalBarCount, histogramMode);
@@ -320,7 +320,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @param signalBarCount signal period
      * @param histogramMode  histogram polarity mode
      * @return histogram for the configured polarity
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public NumericIndicator getHistogram(int signalBarCount, MACDHistogramMode histogramMode) {
         validateSignalBarCount(signalBarCount);
@@ -334,7 +334,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @param signalLineFactory signal-line factory
      * @return histogram using default signal period, default polarity, and custom
      *         signal-line factory
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public NumericIndicator getHistogram(BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
         return getHistogram(defaultSignalBarCount, signalLineFactory, MACDHistogramMode.MACD_MINUS_SIGNAL);
@@ -344,7 +344,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @param signalBarCount    signal period
      * @param signalLineFactory signal-line factory
      * @return histogram using default polarity and custom signal-line factory
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public NumericIndicator getHistogram(int signalBarCount,
             BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
@@ -356,7 +356,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @param signalLineFactory signal-line factory
      * @param histogramMode     histogram polarity mode
      * @return histogram using custom signal-line factory and polarity
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public NumericIndicator getHistogram(int signalBarCount,
             BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory, MACDHistogramMode histogramMode) {
@@ -369,7 +369,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
 
     /**
      * @return this MACD line
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDVIndicator getMacd() {
         return this;
@@ -381,7 +381,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      *
      * @param index bar index
      * @return line values bundle
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDLineValues getLineValues(int index) {
         return getLineValues(index, defaultSignalBarCount, MACDHistogramMode.MACD_MINUS_SIGNAL);
@@ -394,7 +394,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @param index          bar index
      * @param signalBarCount signal period
      * @return line values bundle
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDLineValues getLineValues(int index, int signalBarCount) {
         return getLineValues(index, signalBarCount, MACDHistogramMode.MACD_MINUS_SIGNAL);
@@ -407,7 +407,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @param signalBarCount signal period
      * @param histogramMode  histogram polarity
      * @return line values bundle
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDLineValues getLineValues(int index, int signalBarCount, MACDHistogramMode histogramMode) {
         Num macd = getValue(index);
@@ -422,7 +422,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @param signalLineFactory signal-line factory
      * @param histogramMode     histogram polarity
      * @return line values bundle
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDLineValues getLineValues(int index, int signalBarCount,
             BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory, MACDHistogramMode histogramMode) {
@@ -439,7 +439,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      *
      * @param index bar index
      * @return momentum state
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDVMomentumState getMomentumState(int index) {
         return getMomentumState(index, MACDVMomentumProfile.defaultProfile());
@@ -451,7 +451,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @param index           bar index
      * @param momentumProfile momentum profile
      * @return momentum state
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDVMomentumState getMomentumState(int index, MACDVMomentumProfile momentumProfile) {
         if (index < getCountOfUnstableBars()) {
@@ -462,7 +462,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
 
     /**
      * @return momentum-state indicator using default profile
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDVMomentumStateIndicator getMomentumStateIndicator() {
         return new MACDVMomentumStateIndicator(this);
@@ -471,7 +471,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     /**
      * @param momentumProfile momentum profile
      * @return momentum-state indicator using custom profile
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDVMomentumStateIndicator getMomentumStateIndicator(MACDVMomentumProfile momentumProfile) {
         return new MACDVMomentumStateIndicator(this, momentumProfile);
@@ -480,7 +480,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     /**
      * @return rule that is satisfied when MACD crosses above the default signal
      *         line
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Rule crossedUpSignal() {
         return crossedUpSignal(defaultSignalBarCount);
@@ -489,7 +489,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     /**
      * @param signalBarCount signal period
      * @return rule that is satisfied when MACD crosses above the signal line
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Rule crossedUpSignal(int signalBarCount) {
         return new CrossedUpIndicatorRule(this, getSignalLine(signalBarCount));
@@ -499,7 +499,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @param signalBarCount    signal period
      * @param signalLineFactory signal-line factory
      * @return rule that is satisfied when MACD crosses above a custom signal line
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Rule crossedUpSignal(int signalBarCount,
             BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
@@ -509,7 +509,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     /**
      * @return rule that is satisfied when MACD crosses below the default signal
      *         line
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Rule crossedDownSignal() {
         return crossedDownSignal(defaultSignalBarCount);
@@ -518,7 +518,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
     /**
      * @param signalBarCount signal period
      * @return rule that is satisfied when MACD crosses below the signal line
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Rule crossedDownSignal(int signalBarCount) {
         return new CrossedDownIndicatorRule(this, getSignalLine(signalBarCount));
@@ -528,7 +528,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @param signalBarCount    signal period
      * @param signalLineFactory signal-line factory
      * @return rule that is satisfied when MACD crosses below a custom signal line
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Rule crossedDownSignal(int signalBarCount,
             BiFunction<Indicator<Num>, Integer, Indicator<Num>> signalLineFactory) {
@@ -539,7 +539,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @param expectedState expected momentum state
      * @return rule that is satisfied when the default-profile momentum state
      *         matches the expected state
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Rule inMomentumState(MACDVMomentumState expectedState) {
         return inMomentumState(MACDVMomentumProfile.defaultProfile(), expectedState);
@@ -550,7 +550,7 @@ public class MACDVIndicator extends CachedIndicator<Num> {
      * @param expectedState   expected momentum state
      * @return rule that is satisfied when the momentum state matches the expected
      *         state
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Rule inMomentumState(MACDVMomentumProfile momentumProfile, MACDVMomentumState expectedState) {
         return new MomentumStateRule(getMomentumStateIndicator(momentumProfile), expectedState);

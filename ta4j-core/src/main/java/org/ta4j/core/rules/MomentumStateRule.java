@@ -12,7 +12,7 @@ import org.ta4j.core.indicators.MACDVMomentumState;
 /**
  * Satisfied when a momentum-state indicator matches the expected state.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class MomentumStateRule extends AbstractRule {
 
@@ -24,7 +24,7 @@ public class MomentumStateRule extends AbstractRule {
      *
      * @param momentumStateIndicator momentum-state indicator
      * @param expectedState          expected momentum state
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MomentumStateRule(Indicator<MACDVMomentumState> momentumStateIndicator, MACDVMomentumState expectedState) {
         this.momentumStateIndicator = Objects.requireNonNull(momentumStateIndicator, "momentumStateIndicator");
@@ -40,7 +40,7 @@ public class MomentumStateRule extends AbstractRule {
 
     /**
      * @return momentum-state indicator
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Indicator<MACDVMomentumState> getMomentumStateIndicator() {
         return momentumStateIndicator;
@@ -48,7 +48,7 @@ public class MomentumStateRule extends AbstractRule {
 
     /**
      * @return expected momentum state
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDVMomentumState getExpectedState() {
         return expectedState;

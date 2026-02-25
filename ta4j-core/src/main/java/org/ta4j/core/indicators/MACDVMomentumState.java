@@ -23,7 +23,7 @@ import org.ta4j.core.num.NumFactory;
  * Undefined values (for example {@code NaN}) are classified as
  * {@link #UNDEFINED}.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public enum MACDVMomentumState {
 
@@ -49,7 +49,7 @@ public enum MACDVMomentumState {
      *
      *         Returns {@link #UNDEFINED} when {@code macdV} or {@code numFactory}
      *         is null/NaN.
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static MACDVMomentumState fromMacdV(Num macdV, NumFactory numFactory) {
         if (Num.isNaNOrNull(macdV) || numFactory == null) {
@@ -82,7 +82,7 @@ public enum MACDVMomentumState {
      * @param macdV           MACD-V value
      * @param momentumProfile momentum thresholds profile
      * @return momentum state for the provided value
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static MACDVMomentumState fromMacdV(Num macdV, MACDVMomentumProfile momentumProfile) {
         if (momentumProfile == null) {

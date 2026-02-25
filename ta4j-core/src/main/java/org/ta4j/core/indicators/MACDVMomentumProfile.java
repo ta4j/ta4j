@@ -21,7 +21,7 @@ import org.ta4j.core.num.Num;
  * @param positiveRiskThreshold  lower bound of positive risk range
  * @param negativeRangeThreshold upper bound of negative momentum range
  * @param negativeRiskThreshold  upper bound of negative risk range
- * @since 0.22.2
+ * @since 0.22.3
  */
 public record MACDVMomentumProfile(Number positiveRangeThreshold, Number positiveRiskThreshold,
         Number negativeRangeThreshold, Number negativeRiskThreshold) {
@@ -35,7 +35,7 @@ public record MACDVMomentumProfile(Number positiveRangeThreshold, Number positiv
      * Creates a momentum profile with default thresholds.
      *
      * @return default momentum profile ({@code +50/+150/-50/-150})
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static MACDVMomentumProfile defaultProfile() {
         return new MACDVMomentumProfile(DEFAULT_POSITIVE_RANGE_THRESHOLD, DEFAULT_POSITIVE_RISK_THRESHOLD,
@@ -49,7 +49,7 @@ public record MACDVMomentumProfile(Number positiveRangeThreshold, Number positiv
      * @param positiveRiskThreshold  lower bound of positive risk range
      * @param negativeRangeThreshold upper bound of negative momentum range
      * @param negativeRiskThreshold  upper bound of negative risk range
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDVMomentumProfile {
         Objects.requireNonNull(positiveRangeThreshold, "positiveRangeThreshold");
@@ -93,7 +93,7 @@ public record MACDVMomentumProfile(Number positiveRangeThreshold, Number positiv
      *
      * @param macdV MACD-V value
      * @return momentum state
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDVMomentumState classify(Num macdV) {
         if (Num.isNaNOrNull(macdV)) {

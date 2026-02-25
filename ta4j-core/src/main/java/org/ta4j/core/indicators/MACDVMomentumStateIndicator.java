@@ -16,7 +16,7 @@ import org.ta4j.core.num.Num;
  * During the unstable window inherited from the source MACD-V indicator, this
  * indicator returns {@link MACDVMomentumState#UNDEFINED}.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class MACDVMomentumStateIndicator extends CachedIndicator<MACDVMomentumState> {
 
@@ -31,7 +31,7 @@ public class MACDVMomentumStateIndicator extends CachedIndicator<MACDVMomentumSt
      * Creates a momentum-state indicator using the default thresholds.
      *
      * @param macdVIndicator MACD-V source indicator
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDVMomentumStateIndicator(Indicator<Num> macdVIndicator) {
         this(macdVIndicator, MACDVMomentumProfile.defaultProfile());
@@ -42,7 +42,7 @@ public class MACDVMomentumStateIndicator extends CachedIndicator<MACDVMomentumSt
      *
      * @param macdVIndicator  MACD-V source indicator
      * @param momentumProfile momentum profile
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDVMomentumStateIndicator(Indicator<Num> macdVIndicator, MACDVMomentumProfile momentumProfile) {
         this(macdVIndicator, Objects.requireNonNull(momentumProfile, "momentumProfile").positiveRangeThreshold(),
@@ -58,7 +58,7 @@ public class MACDVMomentumStateIndicator extends CachedIndicator<MACDVMomentumSt
      * @param positiveRiskThreshold  lower bound of positive risk range
      * @param negativeRangeThreshold upper bound of negative momentum range
      * @param negativeRiskThreshold  upper bound of negative risk range
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDVMomentumStateIndicator(Indicator<Num> macdVIndicator, Number positiveRangeThreshold,
             Number positiveRiskThreshold, Number negativeRangeThreshold, Number negativeRiskThreshold) {
@@ -91,7 +91,7 @@ public class MACDVMomentumStateIndicator extends CachedIndicator<MACDVMomentumSt
 
     /**
      * @return source MACD-V indicator
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Indicator<Num> getMacdVIndicator() {
         return macdVIndicator;
@@ -99,7 +99,7 @@ public class MACDVMomentumStateIndicator extends CachedIndicator<MACDVMomentumSt
 
     /**
      * @return positive momentum-range threshold
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Number getPositiveRangeThreshold() {
         return positiveRangeThreshold;
@@ -107,7 +107,7 @@ public class MACDVMomentumStateIndicator extends CachedIndicator<MACDVMomentumSt
 
     /**
      * @return positive risk-range threshold
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Number getPositiveRiskThreshold() {
         return positiveRiskThreshold;
@@ -115,7 +115,7 @@ public class MACDVMomentumStateIndicator extends CachedIndicator<MACDVMomentumSt
 
     /**
      * @return negative momentum-range threshold
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Number getNegativeRangeThreshold() {
         return negativeRangeThreshold;
@@ -123,7 +123,7 @@ public class MACDVMomentumStateIndicator extends CachedIndicator<MACDVMomentumSt
 
     /**
      * @return negative risk-range threshold
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Number getNegativeRiskThreshold() {
         return negativeRiskThreshold;
@@ -131,7 +131,7 @@ public class MACDVMomentumStateIndicator extends CachedIndicator<MACDVMomentumSt
 
     /**
      * @return momentum profile represented by this indicator
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public MACDVMomentumProfile getMomentumProfile() {
         return momentumProfile;

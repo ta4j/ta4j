@@ -10,7 +10,7 @@ import org.ta4j.core.num.Num;
 /**
  * Histogram polarity modes for MACD-style indicators.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public enum MACDHistogramMode {
 
@@ -25,7 +25,7 @@ public enum MACDHistogramMode {
      * @param macdValue   MACD line value
      * @param signalValue signal line value
      * @return histogram value
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public Num compute(Num macdValue, Num signalValue) {
         Num validatedMacdValue = Objects.requireNonNull(macdValue, "macdValue must not be null");

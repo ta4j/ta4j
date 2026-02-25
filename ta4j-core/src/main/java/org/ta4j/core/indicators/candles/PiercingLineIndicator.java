@@ -32,7 +32,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/p/piercingpattern.asp">Piercing
  *      Pattern</a>
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class PiercingLineIndicator extends CachedIndicator<Boolean> {
 

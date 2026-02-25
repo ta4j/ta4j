@@ -39,7 +39,7 @@ public class TRIndicator extends CachedIndicator<Num> {
      * @param highPriceIndicator  high-price indicator
      * @param lowPriceIndicator   low-price indicator
      * @param closePriceIndicator close-price indicator
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public TRIndicator(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
             Indicator<Num> closePriceIndicator) {
