@@ -1,9 +1,8 @@
-# Renko indicator test conventions
+# AGENTS instructions for renko indicator tests
 
-## Test structure
-- Extend `AbstractIndicatorTest<BarSeries, Num>` to exercise each scenario with both `DoubleNum` and `DecimalNum` factories.
-- Mirror the class name under test (e.g., `MyRenkoIndicator` → `MyRenkoIndicatorTest`).
+Follow `ta4j-core/src/test/java/AGENTS.md` and `.../indicators/AGENTS.md`; this file adds renko-specific expectations.
 
-## Test data and assertions
-- Use `MockBarSeriesBuilder` to assemble deterministic closing prices and keep helper methods local to the test class for readability.
-- Assert both triggering and reset behaviour (e.g., brick count resets after a reversal) with descriptive AssertJ messages.
+- Extend `AbstractIndicatorTest<BarSeries, Num>` to run scenarios against both `DoubleNum` and `DecimalNum`.
+- Mirror production class names in test class names.
+- Use `MockBarSeriesBuilder` with deterministic closing-price fixtures.
+- Assert both trigger and reset behavior (for example reversal-driven brick-count resets).

@@ -37,6 +37,35 @@ class NamedStrategyTest {
         new NamedStrategyFixture(series, "1.0", "u3");
     }
 
+    @Test
+    void splitLabelBlankThrows() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () -> NamedStrategy.splitLabel(""));
+        assertEquals("Named strategy label cannot be blank", ex.getMessage());
+
+        assertThrows(IllegalArgumentException.class, () -> NamedStrategy.splitLabel("   "));
+    }
+
+    @Test
+    void splitLabelLeadingUnderscoreProducesEmptyFirstToken() {
+        var tokens = NamedStrategy.splitLabel("_param");
+        assertEquals(2, tokens.size());
+        assertEquals("", tokens.get(0));
+        assertEquals("param", tokens.get(1));
+    }
+
+    @Test
+    void splitLabelTrailingUnderscoreProducesEmptyLastToken() {
+        var tokens = NamedStrategy.splitLabel("StrategyName_");
+        assertEquals(2, tokens.size());
+        assertEquals("StrategyName", tokens.get(0));
+        assertEquals("", tokens.get(1));
+    }
+
+    @Test
+    void splitLabelNullThrows() {
+        assertThrows(NullPointerException.class, () -> NamedStrategy.splitLabel(null));
+    }
+
     @AfterEach
     void tearDown() {
         // Clean up test fixtures after each test
