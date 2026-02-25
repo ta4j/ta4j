@@ -42,23 +42,25 @@ public class GatorOscillatorIndicatorTest extends AbstractIndicatorTest<Indicato
         final var upper = GatorOscillatorIndicator.upper(jaw, teeth, lips);
         final var lower = GatorOscillatorIndicator.lower(jaw, teeth, lips);
 
-        final int expectedUnstableBars = Math.max(
-                Math.max(jaw.getCountOfUnstableBars(), teeth.getCountOfUnstableBars()), lips.getCountOfUnstableBars());
-        assertThat(upper.getCountOfUnstableBars()).isEqualTo(expectedUnstableBars);
-        assertThat(lower.getCountOfUnstableBars()).isEqualTo(expectedUnstableBars);
+        final int expectedUpperUnstableBars = Math.max(jaw.getCountOfUnstableBars(), teeth.getCountOfUnstableBars());
+        final int expectedLowerUnstableBars = Math.max(teeth.getCountOfUnstableBars(), lips.getCountOfUnstableBars());
+        assertThat(upper.getCountOfUnstableBars()).isEqualTo(expectedUpperUnstableBars);
+        assertThat(lower.getCountOfUnstableBars()).isEqualTo(expectedLowerUnstableBars);
         assertThat(upper.isUpperHistogram()).isTrue();
         assertThat(lower.isUpperHistogram()).isFalse();
 
-        assertThat(upper.getValue(expectedUnstableBars - 1).isNaN()).isTrue();
-        assertThat(lower.getValue(expectedUnstableBars - 1).isNaN()).isTrue();
+        assertThat(upper.getValue(expectedUpperUnstableBars - 1).isNaN()).isTrue();
+        assertThat(lower.getValue(expectedLowerUnstableBars - 1).isNaN()).isTrue();
 
-        for (int i = expectedUnstableBars; i <= series.getEndIndex(); i++) {
+        for (int i = expectedUpperUnstableBars; i <= series.getEndIndex(); i++) {
             final Num expectedUpper = jaw.getValue(i).minus(teeth.getValue(i)).abs();
+            assertThat(upper.getValue(i)).isEqualByComparingTo(expectedUpper);
+        }
+        for (int i = expectedLowerUnstableBars; i <= series.getEndIndex(); i++) {
             final Num expectedLower = teeth.getValue(i)
                     .minus(lips.getValue(i))
                     .abs()
                     .multipliedBy(numFactory.minusOne());
-            assertThat(upper.getValue(i)).isEqualByComparingTo(expectedUpper);
             assertThat(lower.getValue(i)).isEqualByComparingTo(expectedLower);
         }
     }
