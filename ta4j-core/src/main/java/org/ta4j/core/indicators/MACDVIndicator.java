@@ -6,6 +6,7 @@ package org.ta4j.core.indicators;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.utils.DeprecationNotifier;
 
 /**
  * @deprecated use {@link org.ta4j.core.indicators.macd.MACDVIndicator}. This
@@ -16,8 +17,7 @@ import org.ta4j.core.num.Num;
 public class MACDVIndicator extends org.ta4j.core.indicators.macd.MACDVIndicator {
 
     {
-        DeprecationNotifier.warnOnce(MACDVIndicator.class, org.ta4j.core.indicators.macd.MACDVIndicator.class.getName(),
-                "0.24.0");
+        DeprecationNotifier.warnOnce(MACDVIndicator.class, "org.ta4j.core.indicators.macd.MACDVIndicator", "0.24.0");
     }
 
     /**

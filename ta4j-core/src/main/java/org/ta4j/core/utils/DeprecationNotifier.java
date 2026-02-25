@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.utils;
 
 import java.util.Objects;
 import java.util.Set;
@@ -18,7 +18,7 @@ import org.slf4j.LoggerFactory;
  *
  * @since 0.22.3
  */
-final class DeprecationNotifier {
+public final class DeprecationNotifier {
 
     private static final Logger LOG = LoggerFactory.getLogger(DeprecationNotifier.class);
     private static final Set<String> EMITTED_TYPES = ConcurrentHashMap.newKeySet();
@@ -26,15 +26,23 @@ final class DeprecationNotifier {
     private DeprecationNotifier() {
     }
 
-    static void warnOnce(Class<?> deprecatedType, String replacementType, String removalVersion) {
+    /**
+     * Emits a one-time warning for a deprecated compatibility type.
+     *
+     * <p>
+     * If {@code removalVersion} is null or blank, the warning highlights that
+     * removal is still planned but not scheduled for a specific release yet.
+     *
+     * @param deprecatedType  deprecated type that is being instantiated
+     * @param replacementType fully qualified replacement type name
+     * @param removalVersion  target removal version, or null/blank when unscheduled
+     * @since 0.22.3
+     */
+    public static void warnOnce(Class<?> deprecatedType, String replacementType, String removalVersion) {
         Objects.requireNonNull(deprecatedType, "deprecatedType");
         Objects.requireNonNull(replacementType, "replacementType");
-        Objects.requireNonNull(removalVersion, "removalVersion");
         if (replacementType.isBlank()) {
             throw new IllegalArgumentException("replacementType must not be blank");
-        }
-        if (removalVersion.isBlank()) {
-            throw new IllegalArgumentException("removalVersion must not be blank");
         }
 
         String deprecatedTypeName = deprecatedType.getName();
@@ -45,8 +53,15 @@ final class DeprecationNotifier {
         Deprecated deprecatedMetadata = deprecatedType.getAnnotation(Deprecated.class);
         String sinceVersion = deprecatedMetadata == null || deprecatedMetadata.since().isBlank() ? "an earlier release"
                 : deprecatedMetadata.since();
+        String normalizedRemovalVersion = removalVersion == null ? "" : removalVersion.trim();
+        if (normalizedRemovalVersion.isBlank()) {
+            LOG.warn(
+                    "{} is deprecated and will be removed at some point in the future. As these things go, that point will come sooner than you think, so start migrating now. Consider yourself fairly warned! Use {} instead.",
+                    deprecatedTypeName, replacementType);
+            return;
+        }
         LOG.warn("{} is deprecated since {} and is scheduled for removal in {}. Use {} instead.", deprecatedTypeName,
-                sinceVersion, removalVersion, replacementType);
+                sinceVersion, normalizedRemovalVersion, replacementType);
     }
 
     static void resetForTests() {

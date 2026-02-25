@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.indicators;
+package org.ta4j.core.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -19,6 +19,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.MACDVIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 @SuppressWarnings({ "deprecation", "removal" })
@@ -70,10 +71,8 @@ public class DeprecationNotifierTest {
 
     @Test
     public void warnOnceLogsSingleMessagePerDeprecatedType() {
-        DeprecationNotifier.warnOnce(MACDVIndicator.class, org.ta4j.core.indicators.macd.MACDVIndicator.class.getName(),
-                "0.24.0");
-        DeprecationNotifier.warnOnce(MACDVIndicator.class, org.ta4j.core.indicators.macd.MACDVIndicator.class.getName(),
-                "0.24.0");
+        DeprecationNotifier.warnOnce(MACDVIndicator.class, "org.ta4j.core.indicators.macd.MACDVIndicator", "0.24.0");
+        DeprecationNotifier.warnOnce(MACDVIndicator.class, "org.ta4j.core.indicators.macd.MACDVIndicator", "0.24.0");
 
         String logContent = logOutput.toString();
         assertThat(logContent).contains(
@@ -97,6 +96,30 @@ public class DeprecationNotifierTest {
         assertThat(logContent).contains("org.ta4j.core.indicators.macd.MACDVIndicator");
         assertThat(countOccurrences(logContent, "org.ta4j.core.indicators.MACDVIndicator is deprecated since"))
                 .isEqualTo(1);
+    }
+
+    @Test
+    public void warnOnceSupportsUnsetRemovalVersion() {
+        DeprecationNotifier.warnOnce(MACDVIndicator.class, "org.ta4j.core.indicators.macd.MACDVIndicator", null);
+
+        String logContent = logOutput.toString();
+        assertThat(logContent).contains(
+                "org.ta4j.core.indicators.MACDVIndicator is deprecated and will be removed at some point in the future.");
+        assertThat(logContent).contains("Consider yourself fairly warned!");
+        assertThat(logContent).contains("Use org.ta4j.core.indicators.macd.MACDVIndicator instead.");
+        assertThat(logContent).doesNotContain("scheduled for removal in");
+    }
+
+    @Test
+    public void warnOnceSupportsBlankRemovalVersion() {
+        DeprecationNotifier.warnOnce(MACDVIndicator.class, "org.ta4j.core.indicators.macd.MACDVIndicator", "   ");
+
+        String logContent = logOutput.toString();
+        assertThat(logContent).contains(
+                "org.ta4j.core.indicators.MACDVIndicator is deprecated and will be removed at some point in the future.");
+        assertThat(logContent).contains("Consider yourself fairly warned!");
+        assertThat(logContent).contains("Use org.ta4j.core.indicators.macd.MACDVIndicator instead.");
+        assertThat(logContent).doesNotContain("scheduled for removal in");
     }
 
     private static int countOccurrences(String text, String pattern) {
