@@ -72,6 +72,9 @@ public class MarketFacilitationIndexIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
         final Num high = highPrice.getValue(index);
         final Num low = lowPrice.getValue(index);
         final Num currentVolume = volume.getValue(index);
