@@ -13,6 +13,8 @@ import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
+import org.ta4j.core.indicators.elliott.swing.AdaptiveZigZagConfig;
+import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
 
 /**
  * Demonstrates multi-degree Elliott Wave analysis, validating scenarios across
@@ -29,7 +31,7 @@ import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 public class ElliottWaveMultiDegreeAnalysisDemo {
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveMultiDegreeAnalysisDemo.class);
-    private static final String DEFAULT_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
+    private static final String DEFAULT_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231020.json";
 
     public static void main(String[] args) {
         BarSeries series = loadSeries(DEFAULT_OHLCV_RESOURCE);
@@ -42,14 +44,15 @@ public class ElliottWaveMultiDegreeAnalysisDemo {
                 .degree(ElliottDegree.PRIMARY)
                 .higherDegrees(1)
                 .lowerDegrees(1)
+                .swingDetector(SwingDetectors.adaptiveZigZag(new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 1)))
                 .build();
 
         ElliottWaveAnalysisResult result = analyzer.analyze(series);
 
         for (ElliottWaveAnalysisResult.DegreeAnalysis analysis : result.analyses()) {
-            LOG.info("Degree {}: bars={} duration={} historyFit={} trendBias={}", analysis.degree(),
-                    analysis.barCount(), analysis.barDuration(), String.format("%.2f", analysis.historyFitScore()),
-                    analysis.analysis().trendBias().direction());
+            LOG.info("{} Degree {}: bars={} duration={} historyFit={} trendBias={}", series.getName(),
+                    analysis.degree(), analysis.barCount(), analysis.barDuration(),
+                    String.format("%.2f", analysis.historyFitScore()), analysis.analysis().trendBias().direction());
             analysis.analysis().scenarios().base().ifPresent(base -> logScenario("  Base", base));
         }
 
