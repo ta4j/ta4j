@@ -52,10 +52,13 @@ public class FractalHighIndicator extends CachedIndicator<Boolean> {
      * @param indicator     source indicator, typically {@link HighPriceIndicator}
      * @param precedingBars bars that must be strictly lower before the pivot
      * @param followingBars bars that must be strictly lower after the pivot
+     * @throws IllegalArgumentException if {@code indicator} is {@code null},
+     *                                  {@code precedingBars < 1}, or
+     *                                  {@code followingBars < 1}
      * @since 0.22.3
      */
     public FractalHighIndicator(Indicator<Num> indicator, int precedingBars, int followingBars) {
-        super(indicator);
+        super(requireIndicator(indicator));
         if (precedingBars < 1) {
             throw new IllegalArgumentException("precedingBars must be greater than 0");
         }
@@ -167,5 +170,12 @@ public class FractalHighIndicator extends CachedIndicator<Boolean> {
 
     private static boolean isInvalid(Num value) {
         return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
+    }
+
+    private static Indicator<Num> requireIndicator(Indicator<Num> indicator) {
+        if (indicator == null) {
+            throw new IllegalArgumentException("indicator must not be null");
+        }
+        return indicator;
     }
 }

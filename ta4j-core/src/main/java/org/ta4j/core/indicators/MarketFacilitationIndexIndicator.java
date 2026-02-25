@@ -48,10 +48,12 @@ public class MarketFacilitationIndexIndicator extends CachedIndicator<Num> {
      * @param highPrice high-price indicator
      * @param lowPrice  low-price indicator
      * @param volume    volume indicator
+     * @throws IllegalArgumentException when any indicator is null or when
+     *                                  indicators do not share the same series
      * @since 0.22.3
      */
     public MarketFacilitationIndexIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Indicator<Num> volume) {
-        super(highPrice);
+        super(requireIndicator(highPrice, "highPrice"));
         ensureSameSeries(highPrice, lowPrice, volume);
         this.highPrice = highPrice;
         this.lowPrice = lowPrice;
@@ -97,5 +99,12 @@ public class MarketFacilitationIndexIndicator extends CachedIndicator<Num> {
 
     private static boolean isInvalid(Num value) {
         return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
+    }
+
+    private static Indicator<Num> requireIndicator(Indicator<Num> indicator, String name) {
+        if (indicator == null) {
+            throw new IllegalArgumentException(name + " indicator must not be null");
+        }
+        return indicator;
     }
 }

@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -11,6 +12,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 public class FractalLowIndicatorTest extends AbstractIndicatorTest<Indicator<Boolean>, Boolean> {
@@ -68,6 +70,16 @@ public class FractalLowIndicatorTest extends AbstractIndicatorTest<Indicator<Boo
             assertThat(indicator.getValue(i)).isFalse();
             assertThat(indicator.getConfirmedFractalIndex(i)).isEqualTo(-1);
         }
+    }
+
+    @Test
+    public void shouldRejectInvalidWindowLengths() {
+        series = createSeriesFromLows(13, 11, 12, 10, 11);
+        final var lowPrice = new LowPriceIndicator(series);
+
+        assertThrows(IllegalArgumentException.class, () -> new FractalLowIndicator((Indicator<Num>) null, 1, 1));
+        assertThrows(IllegalArgumentException.class, () -> new FractalLowIndicator(lowPrice, 0, 2));
+        assertThrows(IllegalArgumentException.class, () -> new FractalLowIndicator(lowPrice, 2, 0));
     }
 
     @Test

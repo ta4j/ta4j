@@ -61,10 +61,12 @@ public class AlligatorIndicator extends CachedIndicator<Num> {
      * @param indicator source indicator (commonly median price)
      * @param barCount  smoothing window
      * @param shift     forward displacement (rendered as {@code i - shift})
+     * @throws IllegalArgumentException if {@code indicator} is {@code null},
+     *                                  {@code barCount < 1}, or {@code shift < 0}
      * @since 0.22.3
      */
     public AlligatorIndicator(Indicator<Num> indicator, int barCount, int shift) {
-        super(indicator);
+        super(requireIndicator(indicator));
         if (barCount < 1) {
             throw new IllegalArgumentException("barCount must be greater than 0");
         }
@@ -204,5 +206,12 @@ public class AlligatorIndicator extends CachedIndicator<Num> {
 
     private static boolean isInvalid(Num value) {
         return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
+    }
+
+    private static Indicator<Num> requireIndicator(Indicator<Num> indicator) {
+        if (indicator == null) {
+            throw new IllegalArgumentException("indicator must not be null");
+        }
+        return indicator;
     }
 }

@@ -110,6 +110,34 @@ public class MarketFacilitationIndexIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
+    public void shouldRejectNullIndicators() {
+        final var high = new HighPriceIndicator(series);
+        final var low = new LowPriceIndicator(series);
+        final var volume = new VolumeIndicator(series);
+
+        assertThrows(IllegalArgumentException.class, () -> new MarketFacilitationIndexIndicator(null, low, volume));
+        assertThrows(IllegalArgumentException.class, () -> new MarketFacilitationIndexIndicator(high, null, volume));
+        assertThrows(IllegalArgumentException.class, () -> new MarketFacilitationIndexIndicator(high, low, null));
+    }
+
+    @Test
+    public void shouldPropagateUnstableBarsFromSourceIndicators() {
+        series.barBuilder().openPrice(10).closePrice(10).highPrice(11).lowPrice(9).volume(2).add();
+        series.barBuilder().openPrice(11).closePrice(11).highPrice(12).lowPrice(10).volume(2).add();
+        series.barBuilder().openPrice(12).closePrice(12).highPrice(13).lowPrice(11).volume(2).add();
+        series.barBuilder().openPrice(13).closePrice(13).highPrice(14).lowPrice(12).volume(2).add();
+
+        final Indicator<Num> high = withUnstableBars(new HighPriceIndicator(series), 2);
+        final Indicator<Num> low = new LowPriceIndicator(series);
+        final Indicator<Num> volume = new VolumeIndicator(series);
+        final var indicator = new MarketFacilitationIndexIndicator(high, low, volume);
+
+        assertThat(indicator.getCountOfUnstableBars()).isEqualTo(2);
+        assertThat(indicator.getValue(1).isNaN()).isTrue();
+        assertThat(indicator.getValue(2)).isEqualByComparingTo(numFactory.numOf("1.0"));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void serializationRoundTrip() {
         series.barBuilder().openPrice(10).closePrice(10).highPrice(12).lowPrice(10).volume(4).add();
@@ -129,5 +157,24 @@ public class MarketFacilitationIndexIndicatorTest extends AbstractIndicatorTest<
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             assertThat(restored.getValue(i)).isEqualByComparingTo(original.getValue(i));
         }
+    }
+
+    private Indicator<Num> withUnstableBars(Indicator<Num> delegate, int unstableBars) {
+        return new Indicator<>() {
+            @Override
+            public Num getValue(int index) {
+                return index < unstableBars ? NaN : delegate.getValue(index);
+            }
+
+            @Override
+            public BarSeries getBarSeries() {
+                return delegate.getBarSeries();
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return unstableBars;
+            }
+        };
     }
 }

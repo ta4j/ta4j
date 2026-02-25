@@ -48,11 +48,13 @@ public class GatorOscillatorIndicator extends CachedIndicator<Num> {
      * @param lips           alligator lips line
      * @param upperHistogram {@code true} for upper branch, {@code false} for lower
      *                       branch
+     * @throws IllegalArgumentException when any indicator is null or when
+     *                                  indicators do not share the same series
      * @since 0.22.3
      */
     public GatorOscillatorIndicator(Indicator<Num> jaw, Indicator<Num> teeth, Indicator<Num> lips,
             boolean upperHistogram) {
-        super(jaw);
+        super(requireIndicator(jaw, "jaw"));
         ensureSameSeries(jaw, teeth, lips);
         this.jaw = jaw;
         this.teeth = teeth;
@@ -139,6 +141,9 @@ public class GatorOscillatorIndicator extends CachedIndicator<Num> {
         if (upperHistogram) {
             return spread;
         }
+        if (spread.isZero()) {
+            return getBarSeries().numFactory().zero();
+        }
         return spread.multipliedBy(getBarSeries().numFactory().minusOne());
     }
 
@@ -191,5 +196,12 @@ public class GatorOscillatorIndicator extends CachedIndicator<Num> {
 
     private static boolean isInvalid(Num value) {
         return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
+    }
+
+    private static Indicator<Num> requireIndicator(Indicator<Num> indicator, String name) {
+        if (indicator == null) {
+            throw new IllegalArgumentException(name + " indicator must not be null");
+        }
+        return indicator;
     }
 }

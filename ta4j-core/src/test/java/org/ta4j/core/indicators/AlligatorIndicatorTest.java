@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -79,6 +80,14 @@ public class AlligatorIndicatorTest extends AbstractIndicatorTest<Indicator<Num>
         for (int i = line.getCountOfUnstableBars(); i <= series.getEndIndex(); i++) {
             assertThat(line.getValue(i)).isEqualByComparingTo(expected.getValue(i - 1));
         }
+    }
+
+    @Test
+    public void shouldRejectInvalidParameters() {
+        final var close = new ClosePriceIndicator(series);
+        assertThrows(IllegalArgumentException.class, () -> new AlligatorIndicator((Indicator<Num>) null, 3, 1));
+        assertThrows(IllegalArgumentException.class, () -> new AlligatorIndicator(close, 0, 1));
+        assertThrows(IllegalArgumentException.class, () -> new AlligatorIndicator(close, 3, -1));
     }
 
     @Test

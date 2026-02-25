@@ -76,8 +76,22 @@ public class GatorOscillatorIndicatorTest extends AbstractIndicatorTest<Indicato
 
         for (int i = unstableBars; i <= flatSeries.getEndIndex(); i++) {
             assertThat(upper.getValue(i)).isEqualByComparingTo(numFactory.zero());
-            assertThat(lower.getValue(i).abs()).isEqualByComparingTo(numFactory.zero());
+            final Num lowerValue = lower.getValue(i);
+            assertThat(lowerValue).isEqualByComparingTo(numFactory.zero());
+            assertThat(Double.doubleToRawLongBits(lowerValue.doubleValue()))
+                    .isNotEqualTo(Double.doubleToRawLongBits(-0.0d));
         }
+    }
+
+    @Test
+    public void shouldRejectNullIndicators() {
+        final var jaw = new AlligatorIndicator(series, 5, 2);
+        final var teeth = new AlligatorIndicator(series, 3, 1);
+        final var lips = new AlligatorIndicator(series, 2, 0);
+
+        assertThrows(IllegalArgumentException.class, () -> new GatorOscillatorIndicator(null, teeth, lips, true));
+        assertThrows(IllegalArgumentException.class, () -> new GatorOscillatorIndicator(jaw, null, lips, true));
+        assertThrows(IllegalArgumentException.class, () -> new GatorOscillatorIndicator(jaw, teeth, null, true));
     }
 
     @Test
