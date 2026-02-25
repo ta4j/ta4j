@@ -14,7 +14,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.elliott.ElliottChannelIndicator;
@@ -27,6 +26,7 @@ import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottSwingCompressor;
 import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.macd.VolatilityNormalizedMACDIndicator;
 import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
@@ -57,7 +57,8 @@ import org.ta4j.core.strategy.named.NamedStrategy;
  * <li>Risk/reward meets the minimum threshold using the wave 2/4 stop and the
  * furthest Fibonacci target</li>
  * <li>Wave 2/4 time alternation exceeds the minimum ratio</li>
- * <li>Trend (SMA) and momentum (RSI or MACD) confirmation</li>
+ * <li>Trend (SMA) and momentum (RSI or volatility-normalized MACD-V)
+ * confirmation</li>
  * </ul>
  *
  * <p>
@@ -89,6 +90,7 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
     private static final double DEFAULT_RSI_THRESHOLD = 50.0;
     private static final int DEFAULT_MACD_FAST = 12;
     private static final int DEFAULT_MACD_SLOW = 26;
+    private static final int DEFAULT_MACD_SIGNAL = 9;
 
     private static final int DEFAULT_ATR_PERIOD = 14;
     private static final double DEFAULT_MIN_RELATIVE_SWING = 0.10;
@@ -172,7 +174,8 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         SMAIndicator trendSma = new SMAIndicator(close, config.trendSmaPeriod());
         RSIIndicator rsi = new RSIIndicator(close, config.rsiPeriod());
-        MACDIndicator macd = new MACDIndicator(close, config.macdFastPeriod(), config.macdSlowPeriod());
+        VolatilityNormalizedMACDIndicator macd = new VolatilityNormalizedMACDIndicator(close, config.macdFastPeriod(),
+                config.macdSlowPeriod(), DEFAULT_MACD_SIGNAL);
 
         Rule trendRule = config.direction().isBullish() ? new OverIndicatorRule(close, trendSma)
                 : new UnderIndicatorRule(close, trendSma);
@@ -221,7 +224,8 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         SMAIndicator trendSma = new SMAIndicator(close, config.trendSmaPeriod());
         RSIIndicator rsi = new RSIIndicator(close, config.rsiPeriod());
-        MACDIndicator macd = new MACDIndicator(close, config.macdFastPeriod(), config.macdSlowPeriod());
+        VolatilityNormalizedMACDIndicator macd = new VolatilityNormalizedMACDIndicator(close, config.macdFastPeriod(),
+                config.macdSlowPeriod(), DEFAULT_MACD_SIGNAL);
 
         Rule trendRule = config.direction().isBullish() ? new OverIndicatorRule(close, trendSma)
                 : new UnderIndicatorRule(close, trendSma);

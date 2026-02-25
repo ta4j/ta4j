@@ -23,6 +23,7 @@
 - **Elliott package and quickstart guidance**: Expanded package-level and README documentation to call out one-shot/facade entrypoints, `scenarioSwingWindow` behavior, and returned result semantics.
 - **Elliott examples result naming**: Renamed the examples-only structured DTO to `ElliottWaveAnalysisReport` to avoid collision with core `ElliottWaveAnalysisResult`.
 - **HighRewardElliottWaveStrategy exit gating**: Removed the redundant anonymous exit-rule guard and now rely on ta4j strategy lifecycle routing (`shouldOperate`/`shouldExit`) to evaluate exits only for open positions.
+- **HighRewardElliottWaveStrategy momentum normalization**: Replaced classic MACD momentum confirmation with `VolatilityNormalizedMACDIndicator` (MACD-V) in both entry and exit rule pipelines.
 - **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
   `./mvnw` when present (falling back to `mvn`), so wrapper adoption does not require a second build command.
 - **Full build script portability**: `scripts/run-full-build-quiet.sh` no longer requires Python; timeout handling,
