@@ -64,6 +64,23 @@ public class GatorOscillatorIndicatorTest extends AbstractIndicatorTest<Indicato
     }
 
     @Test
+    public void shouldUseOnlyTeethAndLipsWarmupForLowerHistogram() {
+        final var median = new MedianPriceIndicator(series);
+        final var jaw = new AlligatorIndicator(median, 5, 4); // unstable = 9
+        final var teeth = new AlligatorIndicator(median, 3, 1); // unstable = 4
+        final var lips = new AlligatorIndicator(median, 2, 0); // unstable = 2
+        final var lower = GatorOscillatorIndicator.lower(jaw, teeth, lips);
+
+        assertThat(lower.getCountOfUnstableBars()).isEqualTo(teeth.getCountOfUnstableBars());
+        final int firstStableIndex = lower.getCountOfUnstableBars();
+        final Num expected = teeth.getValue(firstStableIndex)
+                .minus(lips.getValue(firstStableIndex))
+                .abs()
+                .multipliedBy(numFactory.minusOne());
+        assertThat(lower.getValue(firstStableIndex)).isEqualByComparingTo(expected);
+    }
+
+    @Test
     public void shouldReturnZeroForFlatPriceSeriesAfterWarmup() {
         final BarSeries flatSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = 0; i < 70; i++) {
