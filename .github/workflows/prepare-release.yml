@@ -595,7 +595,7 @@ jobs:
                 labels: ["release"]
               });
             } catch (error) {
-              core.warning(`Failed to add release label: ${error.message}`);
+              console.warn(`Failed to add release label: ${error.message}`);
             }
 
       # -----------------------
