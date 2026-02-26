@@ -144,7 +144,7 @@ public class VortexIndicator extends CachedIndicator<Num> {
 
         Num positive = getPositiveValue(index);
         Num negative = getNegativeValue(index);
-        if (isInvalid(positive) || isInvalid(negative)) {
+        if (IndicatorUtils.isInvalid(positive) || IndicatorUtils.isInvalid(negative)) {
             return NaN;
         }
         return positive.minus(negative);
@@ -156,12 +156,12 @@ public class VortexIndicator extends CachedIndicator<Num> {
         }
 
         Num totalTrueRange = trueRangeSumIndicator.getValue(index);
-        if (isInvalid(totalTrueRange) || totalTrueRange.isZero()) {
+        if (IndicatorUtils.isInvalid(totalTrueRange) || totalTrueRange.isZero()) {
             return NaN;
         }
 
         Num totalMovement = movementSumIndicator.getValue(index);
-        if (isInvalid(totalMovement)) {
+        if (IndicatorUtils.isInvalid(totalMovement)) {
             return NaN;
         }
 
@@ -184,10 +184,6 @@ public class VortexIndicator extends CachedIndicator<Num> {
         if (barCount <= 1) {
             throw new IllegalArgumentException("Vortex look-back length must be greater than 1");
         }
-    }
-
-    private static boolean isInvalid(Num value) {
-        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
     }
 
     private static final class VortexMovementIndicator extends CachedIndicator<Num> {
@@ -213,7 +209,7 @@ public class VortexIndicator extends CachedIndicator<Num> {
 
             Num current = currentIndicator.getValue(index);
             Num previous = previousIndicator.getValue(index - 1);
-            if (isInvalid(current) || isInvalid(previous)) {
+            if (IndicatorUtils.isInvalid(current) || IndicatorUtils.isInvalid(previous)) {
                 return NaN;
             }
 

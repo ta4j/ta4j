@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.num.NaN.NaN;
 
 import org.junit.Before;
@@ -69,6 +70,17 @@ public class RecentFractalSwingHighIndicatorTest extends AbstractIndicatorTest<I
 
         assertThat(indicator.getLatestSwingIndex(7)).isEqualTo(5);
         assertThat(indicator.getValue(7)).isEqualByComparingTo(numOf(17));
+    }
+
+    @Test
+    public void shouldRejectInvalidConfiguration() {
+        final var highPrice = new HighPriceIndicator(series);
+
+        assertThrows(NullPointerException.class,
+                () -> new RecentFractalSwingHighIndicator((Indicator<Num>) null, 1, 1, 0));
+        assertThrows(IllegalArgumentException.class, () -> new RecentFractalSwingHighIndicator(highPrice, 0, 1, 0));
+        assertThrows(IllegalArgumentException.class, () -> new RecentFractalSwingHighIndicator(highPrice, 1, -1, 0));
+        assertThrows(IllegalArgumentException.class, () -> new RecentFractalSwingHighIndicator(highPrice, 1, 1, -1));
     }
 
     @Test
