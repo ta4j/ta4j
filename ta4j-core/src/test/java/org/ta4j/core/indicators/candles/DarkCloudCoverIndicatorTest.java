@@ -18,6 +18,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.trend.UpTrendIndicator;
 import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -129,6 +130,16 @@ public class DarkCloudCoverIndicatorTest extends AbstractIndicatorTest<Indicator
     @Test
     public void shouldReturnFalseWhenDenominatorIsZero() {
         series.barBuilder().openPrice(0).closePrice(8).highPrice(9).lowPrice(0).add();
+        series.barBuilder().openPrice(10).closePrice(3).highPrice(10).lowPrice(2).add();
+
+        final DarkCloudCoverIndicator indicator = new DarkCloudCoverIndicator(series);
+
+        assertThat(indicator.getValue(18)).isFalse();
+    }
+
+    @Test
+    public void shouldReturnFalseWhenDenominatorIsNaN() {
+        series.barBuilder().openPrice(NaN.NaN).closePrice(8).highPrice(9).lowPrice(0).add();
         series.barBuilder().openPrice(10).closePrice(3).highPrice(10).lowPrice(2).add();
 
         final DarkCloudCoverIndicator indicator = new DarkCloudCoverIndicator(series);

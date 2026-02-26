@@ -179,6 +179,14 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
         return weightedAverage.multipliedBy(hundred);
     }
 
+    /**
+     * Computes one buying-pressure/true-range average for a validated index.
+     *
+     * <p>
+     * Callers are expected to enforce unstable-bar boundaries before invoking this
+     * method.
+     * </p>
+     */
     private Num calculateAverage(int index, RunningTotalIndicator buyingPressureSumIndicator,
             RunningTotalIndicator trueRangeSumIndicator) {
         Num totalTrueRange = trueRangeSumIndicator.getValue(index);

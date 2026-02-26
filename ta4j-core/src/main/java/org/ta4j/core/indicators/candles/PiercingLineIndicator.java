@@ -21,6 +21,11 @@ import org.ta4j.core.num.Num;
  * </p>
  *
  * <p>
+ * Invalid ratio denominators (zero or NaN in first open, second open, or first
+ * close) are treated as non-pattern bars and return {@code false}.
+ * </p>
+ *
+ * <p>
  * Default thresholds:
  * </p>
  * <ul>
