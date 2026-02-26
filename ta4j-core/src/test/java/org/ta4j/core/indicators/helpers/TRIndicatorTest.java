@@ -43,7 +43,7 @@ public class TRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
     }
 
     @Test
-    public void unstableBarsStartImmediately() {
+    public void unstableBarsStartImmediatelyWhenCloseHasNoWarmup() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(0).closePrice(12).highPrice(15).lowPrice(8).add();
 
@@ -51,6 +51,20 @@ public class TRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
 
         assertEquals(0, tr.getCountOfUnstableBars());
         assertFalse(Num.isNaNOrNull(tr.getValue(0)));
+    }
+
+    @Test
+    public void unstableBarsIncludeCloseIndicatorWarmupPlusLookback() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(0).closePrice(12).highPrice(15).lowPrice(8).add();
+        series.barBuilder().openPrice(0).closePrice(8).highPrice(11).lowPrice(6).add();
+        series.barBuilder().openPrice(0).closePrice(15).highPrice(17).lowPrice(14).add();
+
+        Indicator<Num> closeWithWarmup = new SMAIndicator(new ClosePriceIndicator(series), 2);
+        TRIndicator tr = new TRIndicator(new HighPriceIndicator(series), new LowPriceIndicator(series),
+                closeWithWarmup);
+
+        assertEquals(closeWithWarmup.getCountOfUnstableBars() + 1, tr.getCountOfUnstableBars());
     }
 
     @Test

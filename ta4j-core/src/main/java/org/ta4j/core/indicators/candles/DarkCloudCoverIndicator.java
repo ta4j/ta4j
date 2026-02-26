@@ -21,6 +21,11 @@ import org.ta4j.core.num.Num;
  * </p>
  *
  * <p>
+ * Invalid ratio denominators (zero or NaN in first open, second open, or first
+ * close) are treated as non-pattern bars and return {@code false}.
+ * </p>
+ *
+ * <p>
  * Default thresholds:
  * </p>
  * <ul>
@@ -83,22 +88,39 @@ public class DarkCloudCoverIndicator extends CachedIndicator<Boolean> {
 
         final Bar firstBar = getBarSeries().getBar(index - 1);
         final Bar secondBar = getBarSeries().getBar(index);
-        final Num firstBodyRatio = realBodyIndicator.getValue(index - 1).abs().dividedBy(firstBar.getOpenPrice());
-        final Num secondBodyRatio = realBodyIndicator.getValue(index).abs().dividedBy(secondBar.getOpenPrice());
+        final Num firstOpenPrice = firstBar.getOpenPrice();
+        final Num secondOpenPrice = secondBar.getOpenPrice();
+        final Num firstClosePrice = firstBar.getClosePrice();
+        if (isInvalidDenominator(firstOpenPrice) || isInvalidDenominator(secondOpenPrice)
+                || isInvalidDenominator(firstClosePrice)) {
+            return false;
+        }
 
-        final Num firstBodySize = firstBar.getClosePrice().minus(firstBar.getOpenPrice());
-        final Num requiredClose = firstBar.getClosePrice()
-                .minus(firstBodySize.multipliedBy(penetrationThresholdPercentage));
-        final Num gapRatio = secondBar.getOpenPrice()
-                .minus(firstBar.getClosePrice())
-                .dividedBy(firstBar.getClosePrice());
+        final Num firstBodyRatio = realBodyIndicator.getValue(index - 1).abs().dividedBy(firstOpenPrice);
+        final Num secondBodyRatio = realBodyIndicator.getValue(index).abs().dividedBy(secondOpenPrice);
+
+        final Num firstBodySize = firstClosePrice.minus(firstOpenPrice);
+        final Num requiredClose = firstClosePrice.minus(firstBodySize.multipliedBy(penetrationThresholdPercentage));
+        final Num gapRatio = secondOpenPrice.minus(firstClosePrice).dividedBy(firstClosePrice);
+        if (isInvalidValue(firstBodyRatio) || isInvalidValue(secondBodyRatio) || isInvalidValue(requiredClose)
+                || isInvalidValue(gapRatio)) {
+            return false;
+        }
 
         return firstBar.isBullish() && firstBodyRatio.isGreaterThanOrEqual(bigBodyThresholdPercentage)
                 && secondBar.isBearish() && secondBodyRatio.isGreaterThanOrEqual(bigBodyThresholdPercentage)
-                && secondBar.getOpenPrice().isGreaterThan(firstBar.getClosePrice())
+                && secondOpenPrice.isGreaterThan(firstClosePrice)
                 && gapRatio.isGreaterThanOrEqual(gapThresholdPercentage)
                 && secondBar.getClosePrice().isLessThan(requiredClose)
-                && secondBar.getClosePrice().isGreaterThan(firstBar.getOpenPrice()) && trendIndicator.getValue(index);
+                && secondBar.getClosePrice().isGreaterThan(firstOpenPrice) && trendIndicator.getValue(index);
+    }
+
+    private static boolean isInvalidDenominator(final Num value) {
+        return isInvalidValue(value) || value.isZero();
+    }
+
+    private static boolean isInvalidValue(final Num value) {
+        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
     }
 
     @Override

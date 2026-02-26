@@ -75,6 +75,10 @@ public class TRIndicator extends CachedIndicator<Num> {
 
     }
 
+    /**
+     * Includes one additional bar only when the close input itself has a warm-up
+     * window, because true range reads {@code close(index - 1)}.
+     */
     @Override
     public int getCountOfUnstableBars() {
         int highUnstable = highPriceIndicator.getCountOfUnstableBars();
