@@ -15,12 +15,8 @@ import static org.ta4j.core.num.NaN.NaN;
  * True range indicator.
  *
  * <pre>
- * TR(i) = max(|high(i) - low(i)|, |high(i) - close(i-1)|, |close(i-1) - low(i)|)
+ * TrueRange = MAX(high - low, high - previousClose, previousClose - low)
  * </pre>
- *
- * <p>
- * For the first available bar ({@code i == beginIndex}), no previous close is
- * available, so this implementation returns {@code |high - low|}.
  */
 public class TRIndicator extends CachedIndicator<Num> {
 
@@ -43,7 +39,7 @@ public class TRIndicator extends CachedIndicator<Num> {
      * @param highPriceIndicator  high-price indicator
      * @param lowPriceIndicator   low-price indicator
      * @param closePriceIndicator close-price indicator
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public TRIndicator(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
             Indicator<Num> closePriceIndicator) {
@@ -55,6 +51,10 @@ public class TRIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
+
         Num high = highPriceIndicator.getValue(index);
         Num low = lowPriceIndicator.getValue(index);
         if (Num.isNaNOrNull(high) || Num.isNaNOrNull(low)) {
@@ -77,7 +77,10 @@ public class TRIndicator extends CachedIndicator<Num> {
 
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(highPriceIndicator.getCountOfUnstableBars(),
-                Math.max(lowPriceIndicator.getCountOfUnstableBars(), closePriceIndicator.getCountOfUnstableBars()));
+        int highUnstable = highPriceIndicator.getCountOfUnstableBars();
+        int lowUnstable = lowPriceIndicator.getCountOfUnstableBars();
+        int closeUnstable = closePriceIndicator.getCountOfUnstableBars();
+        int previousCloseUnstable = closeUnstable == 0 ? 0 : closeUnstable + 1;
+        return Math.max(highUnstable, Math.max(lowUnstable, previousCloseUnstable));
     }
 }

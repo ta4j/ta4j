@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import java.util.Objects;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -29,7 +31,7 @@ import org.ta4j.core.num.Num;
  *
  * @see <a href="https://www.investopedia.com/terms/d/darkcloudcover.asp">Dark
  *      Cloud Cover</a>
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class DarkCloudCoverIndicator extends CachedIndicator<Boolean> {
 
@@ -45,7 +47,8 @@ public class DarkCloudCoverIndicator extends CachedIndicator<Boolean> {
      * @param series the bar series
      */
     public DarkCloudCoverIndicator(final BarSeries series) {
-        this(series, series.numFactory().numOf(0.03), series.numFactory().zero(), series.numFactory().numOf(0.5));
+        this(Objects.requireNonNull(series, "series must not be null"), series.numFactory().numOf(0.03),
+                series.numFactory().zero(), series.numFactory().numOf(0.5));
     }
 
     /**
@@ -57,17 +60,19 @@ public class DarkCloudCoverIndicator extends CachedIndicator<Boolean> {
      *                                       to second open
      * @param penetrationThresholdPercentage minimum penetration ratio into the
      *                                       first body measured from first close
-     *                                       downward (uses strict {@code <}
-     *                                       comparison)
+     *                                       downward
      */
     public DarkCloudCoverIndicator(final BarSeries series, final Num bigBodyThresholdPercentage,
             final Num gapThresholdPercentage, final Num penetrationThresholdPercentage) {
-        super(series);
-        this.trendIndicator = new UpTrendIndicator(series);
-        this.realBodyIndicator = new RealBodyIndicator(series);
-        this.bigBodyThresholdPercentage = bigBodyThresholdPercentage;
-        this.gapThresholdPercentage = gapThresholdPercentage;
-        this.penetrationThresholdPercentage = penetrationThresholdPercentage;
+        super(Objects.requireNonNull(series, "series must not be null"));
+        this.trendIndicator = new UpTrendIndicator(getBarSeries());
+        this.realBodyIndicator = new RealBodyIndicator(getBarSeries());
+        this.bigBodyThresholdPercentage = Objects.requireNonNull(bigBodyThresholdPercentage,
+                "bigBodyThresholdPercentage must not be null");
+        this.gapThresholdPercentage = Objects.requireNonNull(gapThresholdPercentage,
+                "gapThresholdPercentage must not be null");
+        this.penetrationThresholdPercentage = Objects.requireNonNull(penetrationThresholdPercentage,
+                "penetrationThresholdPercentage must not be null");
     }
 
     @Override

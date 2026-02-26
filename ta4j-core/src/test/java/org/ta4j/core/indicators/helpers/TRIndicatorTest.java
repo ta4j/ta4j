@@ -6,12 +6,14 @@ package org.ta4j.core.indicators.helpers;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -77,5 +79,20 @@ public class TRIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Num> 
 
         assertThrows(IllegalArgumentException.class, () -> new TRIndicator(new HighPriceIndicator(firstSeries),
                 new LowPriceIndicator(firstSeries), new ClosePriceIndicator(secondSeries)));
+    }
+
+    @Test
+    public void accountsForPreviousCloseLookbackInUnstableBars() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(0).closePrice(12).highPrice(15).lowPrice(8).add();
+        series.barBuilder().openPrice(0).closePrice(8).highPrice(11).lowPrice(6).add();
+        series.barBuilder().openPrice(0).closePrice(15).highPrice(17).lowPrice(14).add();
+
+        Indicator<Num> delayedClose = new SMAIndicator(new ClosePriceIndicator(series), 2);
+        TRIndicator tr = new TRIndicator(new HighPriceIndicator(series), new LowPriceIndicator(series), delayedClose);
+
+        assertEquals(2, tr.getCountOfUnstableBars());
+        assertTrue(Num.isNaNOrNull(tr.getValue(1)));
+        assertNumEquals(7, tr.getValue(2));
     }
 }

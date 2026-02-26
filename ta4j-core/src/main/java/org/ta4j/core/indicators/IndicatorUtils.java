@@ -11,7 +11,7 @@ import org.ta4j.core.Indicator;
 /**
  * Utility methods for validating indicator composition contracts.
  *
- * @since 0.22.2
+ * @since 0.22.3
  */
 public final class IndicatorUtils {
 
@@ -21,9 +21,6 @@ public final class IndicatorUtils {
     /**
      * Ensures all indicators reference the same {@link BarSeries} instance.
      *
-     * <p>
-     * Series matching is based on instance identity, not {@code equals()}.
-     *
      * @param firstIndicator       first indicator to validate
      * @param secondIndicator      second indicator to validate
      * @param additionalIndicators additional indicators to validate
@@ -31,7 +28,7 @@ public final class IndicatorUtils {
      * @throws NullPointerException     if any indicator is {@code null} or does not
      *                                  reference a bar series
      * @throws IllegalArgumentException if indicators use different series instances
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public static BarSeries requireSameSeries(Indicator<?> firstIndicator, Indicator<?> secondIndicator,
             Indicator<?>... additionalIndicators) {

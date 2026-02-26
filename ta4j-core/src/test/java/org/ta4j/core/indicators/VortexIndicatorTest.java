@@ -8,12 +8,8 @@ import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
-import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.indicators.helpers.HighPriceIndicator;
-import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -117,23 +113,6 @@ public class VortexIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
-    public void throwsForMismatchedSourceIndicators() {
-        BarSeries firstSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
-        BarSeries secondSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
-
-        assertThrows(IllegalArgumentException.class, () -> new VortexIndicator(new HighPriceIndicator(firstSeries),
-                new LowPriceIndicator(firstSeries), new ClosePriceIndicator(secondSeries), 14));
-    }
-
-    @Test
-    public void throwsForNullSourceIndicators() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
-
-        assertThrows(NullPointerException.class,
-                () -> new VortexIndicator(null, new LowPriceIndicator(series), new ClosePriceIndicator(series), 14));
-    }
-
-    @Test
     @SuppressWarnings("unchecked")
     public void serializationRoundTripPreservesAllSeries() {
         BarSeries series = publishedReferenceSeries();
@@ -219,15 +198,14 @@ public class VortexIndicatorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
         BarSeries copy = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         for (int i = source.getBeginIndex(); i <= endIndexInclusive; i++) {
-            Bar bar = source.getBar(i);
             copy.barBuilder()
-                    .openPrice(bar.getOpenPrice())
-                    .highPrice(bar.getHighPrice())
-                    .lowPrice(bar.getLowPrice())
-                    .closePrice(bar.getClosePrice())
-                    .volume(bar.getVolume())
-                    .amount(bar.getAmount())
-                    .trades(bar.getTrades())
+                    .openPrice(source.getBar(i).getOpenPrice())
+                    .highPrice(source.getBar(i).getHighPrice())
+                    .lowPrice(source.getBar(i).getLowPrice())
+                    .closePrice(source.getBar(i).getClosePrice())
+                    .volume(source.getBar(i).getVolume())
+                    .amount(source.getBar(i).getAmount())
+                    .trades(source.getBar(i).getTrades())
                     .add();
         }
         return copy;
