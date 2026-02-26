@@ -32,6 +32,19 @@ final class FractalDetectionHelper {
     private FractalDetectionHelper() {
     }
 
+    /**
+     * Scans backwards from the latest confirmable candidate index and returns the
+     * most recent confirmed fractal pivot.
+     *
+     * @param indicator         source indicator
+     * @param series            backing series
+     * @param maxAvailableIndex highest index whose future context is available
+     * @param precedingBars     required dominating bars before candidate
+     * @param followingBars     required dominating bars after candidate
+     * @param allowedEqualBars  tolerated equal neighbors on each side
+     * @param direction         fractal direction
+     * @return latest confirmed pivot index, or {@code -1} when unavailable
+     */
     static int findLatestConfirmedFractalIndex(Indicator<Num> indicator, BarSeries series, int maxAvailableIndex,
             int precedingBars, int followingBars, int allowedEqualBars, Direction direction) {
         if (indicator == null || series == null || direction == null) {
@@ -59,6 +72,19 @@ final class FractalDetectionHelper {
         return -1;
     }
 
+    /**
+     * Evaluates whether a specific candidate index is a confirmed fractal pivot.
+     *
+     * @param indicator         source indicator
+     * @param series            backing series
+     * @param candidateIndex    candidate pivot index
+     * @param precedingBars     required dominating bars before candidate
+     * @param followingBars     required dominating bars after candidate
+     * @param maxAvailableIndex highest index whose future context is available
+     * @param allowedEqualBars  tolerated equal neighbors on each side
+     * @param direction         fractal direction
+     * @return {@code true} when confirmed, otherwise {@code false}
+     */
     static boolean isConfirmedFractal(Indicator<Num> indicator, BarSeries series, int candidateIndex, int precedingBars,
             int followingBars, int maxAvailableIndex, int allowedEqualBars, Direction direction) {
         if (indicator == null || series == null || direction == null) {

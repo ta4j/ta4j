@@ -92,6 +92,28 @@ public class FractalLowIndicator extends AbstractFractalConfirmationIndicator {
         this(series, DEFAULT_PRECEDING_BARS, DEFAULT_FOLLOWING_BARS);
     }
 
+    /**
+     * Returns the pivot index confirmed at {@code index}.
+     *
+     * @param index current bar index
+     * @return confirmed fractal pivot index, or {@code -1} when no confirmation
+     *         occurs at {@code index}
+     * @since 0.22.3
+     */
+    @Override
+    public int getConfirmedFractalIndex(int index) {
+        return super.getConfirmedFractalIndex(index);
+    }
+
+    /**
+     * @return source indicator used for low comparisons
+     * @since 0.22.3
+     */
+    @Override
+    public Indicator<Num> getPriceIndicator() {
+        return super.getPriceIndicator();
+    }
+
     @Override
     protected FractalDetectionHelper.Direction direction() {
         return FractalDetectionHelper.Direction.LOW;

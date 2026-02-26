@@ -8,6 +8,16 @@ import org.ta4j.core.num.Num;
 
 /**
  * Shared base for confirmation-based fractal indicators.
+ * <p>
+ * Concrete implementations provide only the directional comparison semantics
+ * ({@link FractalDetectionHelper.Direction#HIGH} or
+ * {@link FractalDetectionHelper.Direction#LOW}); this base class centralizes:
+ * <ul>
+ * <li>window validation</li>
+ * <li>warm-up/unstable-bar handling</li>
+ * <li>confirmation-bar evaluation (without look-ahead bias)</li>
+ * <li>pivot-index mapping via {@link #getConfirmedFractalIndex(int)}</li>
+ * </ul>
  */
 abstract class AbstractFractalConfirmationIndicator extends CachedIndicator<Boolean> {
 
@@ -18,6 +28,13 @@ abstract class AbstractFractalConfirmationIndicator extends CachedIndicator<Bool
 
     /**
      * Constructor.
+     *
+     * @param indicator     source price indicator
+     * @param precedingBars bars that must be dominated before the pivot
+     * @param followingBars bars that must be dominated after the pivot
+     * @throws IllegalArgumentException if {@code indicator} is {@code null},
+     *                                  {@code precedingBars < 1}, or
+     *                                  {@code followingBars < 1}
      */
     protected AbstractFractalConfirmationIndicator(Indicator<Num> indicator, int precedingBars, int followingBars) {
         super(IndicatorUtils.requireIndicator(indicator, "indicator"));
@@ -50,14 +67,14 @@ abstract class AbstractFractalConfirmationIndicator extends CachedIndicator<Bool
      * @return confirmed fractal pivot index, or {@code -1} when no confirmation
      *         occurs at {@code index}
      */
-    public final int getConfirmedFractalIndex(int index) {
+    public int getConfirmedFractalIndex(int index) {
         return Boolean.TRUE.equals(getValue(index)) ? index - followingBars : -1;
     }
 
     /**
      * @return source indicator used for fractal comparisons
      */
-    public final Indicator<Num> getPriceIndicator() {
+    public Indicator<Num> getPriceIndicator() {
         return indicator;
     }
 
@@ -67,7 +84,9 @@ abstract class AbstractFractalConfirmationIndicator extends CachedIndicator<Bool
     }
 
     /**
-     * Returns the fractal direction.
+     * Returns the directional dominance rule used for confirmation.
+     *
+     * @return fractal direction
      */
     protected abstract FractalDetectionHelper.Direction direction();
 }

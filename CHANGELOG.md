@@ -27,6 +27,9 @@
 - **Fractal hierarchy consolidation**: Extracted `AbstractFractalConfirmationIndicator` and
   `AbstractRecentFractalSwingIndicator`, and added `FractalDetectionHelper.findLatestConfirmedFractalIndex(...)` so
   high/low fractal families share confirmation and scanning logic while preserving the existing public APIs.
+- **Fractal documentation and regression hardening**: Expanded Javadocs for shared fractal internals and added
+  `FractalDetectionHelperTest` coverage for latest-pivot scanning, bounds handling, equality allowances, and invalid
+  input guards.
 - **MACD-V signal-line extensibility**: `VolatilityNormalizedMACDIndicator` now supports custom signal-line indicator injection for both signal and histogram generation.
 - **MACDVIndicator API robustness and clarity**: Clarified that `MACDVIndicator` is a volume/ATR-weighted MACD variant (not ATR-normalized MACD-V), added default signal/histogram conveniences and constructor overloads, and hardened warm-up/NaN handling with lazy transient sub-indicator rebuild.
 - **MACD-V indicator ergonomics**: `MACDVIndicator` and `VolatilityNormalizedMACDIndicator` now expose configuration/sub-indicator getters, line bundle helpers, momentum-state indicator factories, and crossover/momentum rule helpers for strategy composition.
