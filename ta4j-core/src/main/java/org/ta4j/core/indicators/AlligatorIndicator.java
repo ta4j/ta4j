@@ -66,7 +66,7 @@ public class AlligatorIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public AlligatorIndicator(Indicator<Num> indicator, int barCount, int shift) {
-        super(requireIndicator(indicator));
+        super(IndicatorUtils.requireIndicator(indicator, "indicator"));
         if (barCount < 1) {
             throw new IllegalArgumentException("barCount must be greater than 0");
         }
@@ -167,7 +167,7 @@ public class AlligatorIndicator extends CachedIndicator<Num> {
             return NaN;
         }
         final Num value = smoothedIndicator.getValue(displacedIndex);
-        return isInvalid(value) ? NaN : value;
+        return IndicatorUtils.isInvalid(value) ? NaN : value;
     }
 
     /**
@@ -204,14 +204,4 @@ public class AlligatorIndicator extends CachedIndicator<Num> {
         return getClass().getSimpleName() + " barCount: " + barCount + " shift: " + shift;
     }
 
-    private static boolean isInvalid(Num value) {
-        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
-    }
-
-    private static Indicator<Num> requireIndicator(Indicator<Num> indicator) {
-        if (indicator == null) {
-            throw new IllegalArgumentException("indicator must not be null");
-        }
-        return indicator;
-    }
 }

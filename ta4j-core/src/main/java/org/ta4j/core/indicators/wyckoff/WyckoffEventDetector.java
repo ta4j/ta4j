@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.wyckoff;
 
+import static org.ta4j.core.indicators.IndicatorUtils.isInvalid;
+import static org.ta4j.core.num.NaN.NaN;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Objects;
@@ -13,8 +15,6 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
-
-import static org.ta4j.core.num.NaN.NaN;
 
 /**
  * Detects Wyckoff structural events using structure and volume information.
@@ -253,10 +253,4 @@ public final class WyckoffEventDetector {
         return highestHighCache.get(index);
     }
 
-    /**
-     * Returns whether invalid.
-     */
-    private static boolean isInvalid(Num value) {
-        return Num.isNaNOrNull(value);
-    }
 }

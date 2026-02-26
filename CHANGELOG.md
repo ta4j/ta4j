@@ -21,6 +21,9 @@
 - **Full build script portability**: `scripts/run-full-build-quiet.sh` no longer requires Python; timeout handling,
   quiet-output filtering, heartbeat logging, and test-summary aggregation now run in Bash.
 - **Indicator composition reuse**: Added `IndicatorUtils.requireSameSeries(...)` to centralize same-series validation and refactored `VortexIndicator`, `UltimateOscillatorIndicator`, and `TRIndicator` to compose shared true-range/series-validation logic instead of duplicating private helpers.
+- **Indicator validation helper consolidation**: Merged `IndicatorSeriesUtils` into `IndicatorUtils`, added shared
+  `IndicatorUtils.requireIndicator(...)` / `IndicatorUtils.isInvalid(...)`, and refactored Bill Williams, VWAP,
+  support/resistance, and Wyckoff indicators to reuse centralized validation and NaN-guard logic.
 - **MACD-V signal-line extensibility**: `VolatilityNormalizedMACDIndicator` now supports custom signal-line indicator injection for both signal and histogram generation.
 - **MACDVIndicator API robustness and clarity**: Clarified that `MACDVIndicator` is a volume/ATR-weighted MACD variant (not ATR-normalized MACD-V), added default signal/histogram conveniences and constructor overloads, and hardened warm-up/NaN handling with lazy transient sub-indicator rebuild.
 - **MACD-V indicator ergonomics**: `MACDVIndicator` and `VolatilityNormalizedMACDIndicator` now expose configuration/sub-indicator getters, line bundle helpers, momentum-state indicator factories, and crossover/momentum rule helpers for strategy composition.

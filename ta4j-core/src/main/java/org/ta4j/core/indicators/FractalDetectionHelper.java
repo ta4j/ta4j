@@ -47,7 +47,7 @@ final class FractalDetectionHelper {
         }
 
         final Num candidateValue = indicator.getValue(candidateIndex);
-        if (isInvalid(candidateValue)) {
+        if (IndicatorUtils.isInvalid(candidateValue)) {
             return false;
         }
 
@@ -73,7 +73,7 @@ final class FractalDetectionHelper {
         int index = candidateIndex;
         while (index > beginIndex && equalsUsed < allowedEqualBars) {
             final Num previousValue = indicator.getValue(index - 1);
-            if (isInvalid(previousValue)) {
+            if (IndicatorUtils.isInvalid(previousValue)) {
                 return -1;
             }
             if (!previousValue.isEqual(candidateValue)) {
@@ -97,7 +97,7 @@ final class FractalDetectionHelper {
         int index = candidateIndex;
         while (index < maxAvailableIndex && equalsUsed < allowedEqualBars) {
             final Num nextValue = indicator.getValue(index + 1);
-            if (isInvalid(nextValue)) {
+            if (IndicatorUtils.isInvalid(nextValue)) {
                 return -1;
             }
             if (!nextValue.isEqual(candidateValue)) {
@@ -125,7 +125,7 @@ final class FractalDetectionHelper {
         }
         for (int i = plateauStartIndex - 1; i >= plateauStartIndex - precedingBars; i--) {
             final Num value = indicator.getValue(i);
-            if (isInvalid(value) || !direction.isCandidateDominant(candidateValue, value)) {
+            if (IndicatorUtils.isInvalid(value) || !direction.isCandidateDominant(candidateValue, value)) {
                 return false;
             }
         }
@@ -145,14 +145,10 @@ final class FractalDetectionHelper {
                 return false;
             }
             final Num value = indicator.getValue(i);
-            if (isInvalid(value) || !direction.isCandidateDominant(candidateValue, value)) {
+            if (IndicatorUtils.isInvalid(value) || !direction.isCandidateDominant(candidateValue, value)) {
                 return false;
             }
         }
         return true;
-    }
-
-    private static boolean isInvalid(Num value) {
-        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
     }
 }

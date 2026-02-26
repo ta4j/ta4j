@@ -6,10 +6,12 @@ package org.ta4j.core.indicators;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import java.lang.reflect.Proxy;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.helpers.ConstantIndicator;
 import org.ta4j.core.indicators.helpers.MedianPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -103,6 +105,18 @@ public class GatorOscillatorIndicatorTest extends AbstractIndicatorTest<Indicato
     }
 
     @Test
+    public void shouldReturnNaNWhenSpreadBecomesNullBeforeAbsoluteValue() {
+        final Num nullMinusNum = nullMinusResultNum(numFactory.numOf(10));
+        final var jaw = new ConstantIndicator<Num>(series, nullMinusNum);
+        final var teeth = new ConstantIndicator<Num>(series, numFactory.numOf(3));
+        final var lips = new ConstantIndicator<Num>(series, numFactory.numOf(1));
+        final var upper = GatorOscillatorIndicator.upper(jaw, teeth, lips);
+
+        final Num upperValue = upper.getValue(upper.getCountOfUnstableBars());
+        assertThat(upperValue.isNaN()).isTrue();
+    }
+
+    @Test
     public void shouldRejectNullIndicators() {
         final var jaw = new AlligatorIndicator(series, 5, 2);
         final var teeth = new AlligatorIndicator(series, 3, 1);
@@ -149,5 +163,17 @@ public class GatorOscillatorIndicatorTest extends AbstractIndicatorTest<Indicato
                 assertThat(actual).isEqualByComparingTo(expected);
             }
         }
+    }
+
+    private Num nullMinusResultNum(Num delegate) {
+        return (Num) Proxy.newProxyInstance(
+                Num.class.getClassLoader(),
+                new Class<?>[] {Num.class},
+                (proxy, method, args) -> {
+                    if ("minus".equals(method.getName())) {
+                        return null;
+                    }
+                    return method.invoke(delegate, args);
+                });
     }
 }

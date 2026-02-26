@@ -58,7 +58,7 @@ public class FractalHighIndicator extends CachedIndicator<Boolean> {
      * @since 0.22.3
      */
     public FractalHighIndicator(Indicator<Num> indicator, int precedingBars, int followingBars) {
-        super(requireIndicator(indicator));
+        super(IndicatorUtils.requireIndicator(indicator, "indicator"));
         if (precedingBars < 1) {
             throw new IllegalArgumentException("precedingBars must be greater than 0");
         }
@@ -145,10 +145,4 @@ public class FractalHighIndicator extends CachedIndicator<Boolean> {
         return unstableBars;
     }
 
-    private static Indicator<Num> requireIndicator(Indicator<Num> indicator) {
-        if (indicator == null) {
-            throw new IllegalArgumentException("indicator must not be null");
-        }
-        return indicator;
-    }
 }

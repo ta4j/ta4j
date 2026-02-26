@@ -53,8 +53,10 @@ public class MarketFacilitationIndexIndicator extends CachedIndicator<Num> {
      * @since 0.22.3
      */
     public MarketFacilitationIndexIndicator(Indicator<Num> highPrice, Indicator<Num> lowPrice, Indicator<Num> volume) {
-        super(requireIndicator(highPrice, "highPrice"));
-        ensureSameSeries(highPrice, lowPrice, volume);
+        super(IndicatorUtils.requireIndicator(highPrice, "highPrice indicator"));
+        IndicatorUtils.requireIndicator(lowPrice, "lowPrice indicator");
+        IndicatorUtils.requireIndicator(volume, "volume indicator");
+        IndicatorUtils.requireSameSeries(highPrice, lowPrice, volume);
         this.highPrice = highPrice;
         this.lowPrice = lowPrice;
         this.volume = volume;
@@ -78,7 +80,8 @@ public class MarketFacilitationIndexIndicator extends CachedIndicator<Num> {
         final Num high = highPrice.getValue(index);
         final Num low = lowPrice.getValue(index);
         final Num currentVolume = volume.getValue(index);
-        if (isInvalid(high) || isInvalid(low) || isInvalid(currentVolume) || currentVolume.isZero()) {
+        if (IndicatorUtils.isInvalid(high) || IndicatorUtils.isInvalid(low) || IndicatorUtils.isInvalid(currentVolume)
+                || currentVolume.isZero()) {
             return NaN;
         }
         return high.minus(low).dividedBy(currentVolume);
@@ -90,24 +93,4 @@ public class MarketFacilitationIndexIndicator extends CachedIndicator<Num> {
                 volume.getCountOfUnstableBars());
     }
 
-    private static void ensureSameSeries(Indicator<Num> highPrice, Indicator<Num> lowPrice, Indicator<Num> volume) {
-        if (highPrice == null || lowPrice == null || volume == null) {
-            throw new IllegalArgumentException("highPrice, lowPrice, and volume indicators must not be null");
-        }
-        final BarSeries series = highPrice.getBarSeries();
-        if (!series.equals(lowPrice.getBarSeries()) || !series.equals(volume.getBarSeries())) {
-            throw new IllegalArgumentException("highPrice, lowPrice, and volume indicators must share the same series");
-        }
-    }
-
-    private static boolean isInvalid(Num value) {
-        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
-    }
-
-    private static Indicator<Num> requireIndicator(Indicator<Num> indicator, String name) {
-        if (indicator == null) {
-            throw new IllegalArgumentException(name + " indicator must not be null");
-        }
-        return indicator;
-    }
 }

@@ -54,8 +54,10 @@ public class GatorOscillatorIndicator extends CachedIndicator<Num> {
      */
     public GatorOscillatorIndicator(Indicator<Num> jaw, Indicator<Num> teeth, Indicator<Num> lips,
             boolean upperHistogram) {
-        super(requireIndicator(jaw, "jaw"));
-        ensureSameSeries(jaw, teeth, lips);
+        super(IndicatorUtils.requireIndicator(jaw, "jaw indicator"));
+        IndicatorUtils.requireIndicator(teeth, "teeth indicator");
+        IndicatorUtils.requireIndicator(lips, "lips indicator");
+        IndicatorUtils.requireSameSeries(jaw, teeth, lips);
         this.jaw = jaw;
         this.teeth = teeth;
         this.lips = lips;
@@ -133,8 +135,13 @@ public class GatorOscillatorIndicator extends CachedIndicator<Num> {
             return NaN;
         }
 
-        final Num spread = upperHistogram ? jawMinusTeeth.getValue(index).abs() : teethMinusLips.getValue(index).abs();
-        if (isInvalid(spread)) {
+        final Num rawSpread = upperHistogram ? jawMinusTeeth.getValue(index) : teethMinusLips.getValue(index);
+        if (IndicatorUtils.isInvalid(rawSpread)) {
+            return NaN;
+        }
+
+        final Num spread = rawSpread.abs();
+        if (IndicatorUtils.isInvalid(spread)) {
             return NaN;
         }
 
@@ -184,24 +191,4 @@ public class GatorOscillatorIndicator extends CachedIndicator<Num> {
         return unstableBars;
     }
 
-    private static void ensureSameSeries(Indicator<Num> jaw, Indicator<Num> teeth, Indicator<Num> lips) {
-        if (jaw == null || teeth == null || lips == null) {
-            throw new IllegalArgumentException("jaw, teeth, and lips indicators must not be null");
-        }
-        final BarSeries series = jaw.getBarSeries();
-        if (!series.equals(teeth.getBarSeries()) || !series.equals(lips.getBarSeries())) {
-            throw new IllegalArgumentException("Alligator indicators must share the same BarSeries");
-        }
-    }
-
-    private static boolean isInvalid(Num value) {
-        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
-    }
-
-    private static Indicator<Num> requireIndicator(Indicator<Num> indicator, String name) {
-        if (indicator == null) {
-            throw new IllegalArgumentException(name + " indicator must not be null");
-        }
-        return indicator;
-    }
 }

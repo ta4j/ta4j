@@ -10,6 +10,7 @@ import java.util.Map;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.helpers.TypicalPriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
@@ -90,7 +91,7 @@ public class AnchoredVWAPIndicator extends AbstractVWAPIndicator {
             Indicator<Boolean> anchorSignal, int defaultAnchorIndex) {
         super(priceIndicator, volumeIndicator);
         if (anchorSignal != null) {
-            IndicatorSeriesUtils.requireSameSeries(priceIndicator, anchorSignal);
+            IndicatorUtils.requireSameSeries(priceIndicator, anchorSignal);
         }
         this.anchorSignal = anchorSignal;
         this.defaultAnchorIndex = defaultAnchorIndex;
