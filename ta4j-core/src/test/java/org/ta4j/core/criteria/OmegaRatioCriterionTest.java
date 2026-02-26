@@ -13,7 +13,10 @@ import java.time.Instant;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -100,6 +103,47 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
         Num actual = criterion.calculate(series, (TradingRecord) null);
 
         assertNumEquals(numFactory.zero(), actual, 0d);
+    }
+
+    @Test
+    public void calculatesExpectedValueForClosedPosition() {
+        double[] closes = new double[] { 100d, 120d, 90d, 99d };
+        BarSeries series = buildSeries("omega_closed_position", closes);
+
+        BaseTradingRecord tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(series.getBeginIndex(), series.getBar(series.getBeginIndex()).getClosePrice(),
+                numFactory.one());
+        tradingRecord.exit(series.getEndIndex(), series.getBar(series.getEndIndex()).getClosePrice(), numFactory.one());
+        Position position = tradingRecord.getPositions().getFirst();
+
+        OmegaRatioCriterion criterion = (OmegaRatioCriterion) getCriterion(0d);
+        Num actual = criterion.calculate(series, position);
+        double expected = referenceOmega(returnsFromCloses(closes), 0d);
+
+        assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
+    }
+
+    @Test
+    public void openPositionHandlingIgnoreReturnsZeroForOpenPosition() {
+        BarSeries series = buildSeries("omega_open_position", new double[] { 100d, 120d, 80d });
+        BaseTradingRecord tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(series.getBeginIndex(), series.getBar(series.getBeginIndex()).getClosePrice(),
+                numFactory.one());
+
+        OmegaRatioCriterion markToMarket = new OmegaRatioCriterion(0d, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        OmegaRatioCriterion ignoreOpen = new OmegaRatioCriterion(0d, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.IGNORE);
+        OmegaRatioCriterion realized = new OmegaRatioCriterion(0d, EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        Num markToMarketValue = markToMarket.calculate(series, tradingRecord);
+        Num ignoreOpenValue = ignoreOpen.calculate(series, tradingRecord);
+        Num realizedValue = realized.calculate(series, tradingRecord);
+
+        assertNumEquals(numFactory.numOf(0.6d), markToMarketValue, 1e-12);
+        assertNumEquals(numFactory.zero(), ignoreOpenValue, 0d);
+        assertNumEquals(numFactory.zero(), realizedValue, 0d);
     }
 
     @Test

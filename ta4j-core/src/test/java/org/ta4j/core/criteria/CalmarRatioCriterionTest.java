@@ -13,7 +13,10 @@ import java.time.Instant;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.EquityCurveMode;
+import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.TimeConstants;
@@ -81,6 +84,47 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
         Num actual = criterion.calculate(series, (TradingRecord) null);
 
         assertNumEquals(numFactory.zero(), actual, 0d);
+    }
+
+    @Test
+    public void calculatesExpectedValueForClosedPosition() {
+        double[] closes = new double[] { 100d, 80d, 120d };
+        BarSeries series = buildYearlySeries("calmar_closed_position", closes);
+
+        BaseTradingRecord tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(series.getBeginIndex(), series.getBar(series.getBeginIndex()).getClosePrice(),
+                numFactory.one());
+        tradingRecord.exit(series.getEndIndex(), series.getBar(series.getEndIndex()).getClosePrice(), numFactory.one());
+        Position position = tradingRecord.getPositions().getFirst();
+
+        CalmarRatioCriterion criterion = (CalmarRatioCriterion) getCriterion();
+        Num actual = criterion.calculate(series, position);
+        double expected = referenceCalmar(series, closes);
+
+        assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
+    }
+
+    @Test
+    public void openPositionHandlingIgnoreReturnsZeroForOpenPosition() {
+        BarSeries series = buildYearlySeries("calmar_open_position", new double[] { 100d, 120d, 80d });
+        BaseTradingRecord tradingRecord = new BaseTradingRecord();
+        tradingRecord.enter(series.getBeginIndex(), series.getBar(series.getBeginIndex()).getClosePrice(),
+                numFactory.one());
+
+        CalmarRatioCriterion markToMarket = new CalmarRatioCriterion(EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+        CalmarRatioCriterion ignoreOpen = new CalmarRatioCriterion(EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.IGNORE);
+        CalmarRatioCriterion realized = new CalmarRatioCriterion(EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        Num markToMarketValue = markToMarket.calculate(series, tradingRecord);
+        Num ignoreOpenValue = ignoreOpen.calculate(series, tradingRecord);
+        Num realizedValue = realized.calculate(series, tradingRecord);
+
+        assertTrue(markToMarketValue.isNegative());
+        assertNumEquals(numFactory.zero(), ignoreOpenValue, 0d);
+        assertNumEquals(numFactory.zero(), realizedValue, 0d);
     }
 
     @Test
