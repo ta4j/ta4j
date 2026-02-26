@@ -142,8 +142,6 @@
   denominators, with regression coverage for zero and NaN inputs.
 - **TRIndicator unstable bars**: `getCountOfUnstableBars()` now includes the previous-close lookback when the close
   input has warm-up bars.
-- **README polish**: Fixed top-chart anchor text, standardized `GitHub` capitalization, and added `text` fencing for
-  the snapshot repository URL block.
 - **Fixed incorrect @since 0.23** by replacing with 0.22.2
 - **Full build script**: Fix macOS temp file creation in `run-full-build-quiet.sh` by using a portable mktemp template.
 
