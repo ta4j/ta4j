@@ -130,5 +130,37 @@ public class RangeBarAggregatorTest extends AbstractIndicatorTest<BarSeries, Num
         assertThrows(IllegalArgumentException.class, () -> new RangeBarAggregator(-1d));
         assertThrows(IllegalArgumentException.class, () -> new RangeBarAggregator(Double.NaN));
         assertThrows(IllegalArgumentException.class, () -> new RangeBarAggregator(Double.POSITIVE_INFINITY));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RangeBarAggregator(new NonDecimalNumberRepresentation()));
+    }
+
+    private static final class NonDecimalNumberRepresentation extends Number {
+
+        private static final long serialVersionUID = 1L;
+
+        @Override
+        public int intValue() {
+            return 1;
+        }
+
+        @Override
+        public long longValue() {
+            return 1L;
+        }
+
+        @Override
+        public float floatValue() {
+            return 1f;
+        }
+
+        @Override
+        public double doubleValue() {
+            return 1d;
+        }
+
+        @Override
+        public String toString() {
+            return "non-decimal";
+        }
     }
 }

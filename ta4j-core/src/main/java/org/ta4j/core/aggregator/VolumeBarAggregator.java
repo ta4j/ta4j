@@ -66,7 +66,7 @@ public class VolumeBarAggregator implements BarAggregator {
      * @since 0.22.3
      */
     public VolumeBarAggregator(Number volumeThreshold, boolean onlyFinalBars) {
-        this.volumeThreshold = SourceIntervalValidator.requirePositiveFiniteNumber(volumeThreshold, "volumeThreshold");
+        this.volumeThreshold = BarAggregator.requirePositiveFiniteNumber(volumeThreshold, "volumeThreshold");
         this.onlyFinalBars = onlyFinalBars;
     }
 
@@ -87,7 +87,7 @@ public class VolumeBarAggregator implements BarAggregator {
             return aggregated;
         }
 
-        SourceIntervalValidator.requireEvenIntervals(bars, getClass().getSimpleName());
+        requireEvenIntervals(bars);
 
         NumFactory numFactory = bars.getFirst().numFactory();
         Num resolvedVolumeThreshold = numFactory.numOf(volumeThreshold);

@@ -66,7 +66,7 @@ public class RangeBarAggregator implements BarAggregator {
      * @since 0.22.3
      */
     public RangeBarAggregator(Number rangeSize, boolean onlyFinalBars) {
-        this.rangeSize = SourceIntervalValidator.requirePositiveFiniteNumber(rangeSize, "rangeSize");
+        this.rangeSize = BarAggregator.requirePositiveFiniteNumber(rangeSize, "rangeSize");
         this.onlyFinalBars = onlyFinalBars;
     }
 
@@ -87,7 +87,7 @@ public class RangeBarAggregator implements BarAggregator {
             return aggregated;
         }
 
-        SourceIntervalValidator.requireEvenIntervals(bars, getClass().getSimpleName());
+        requireEvenIntervals(bars);
 
         NumFactory numFactory = bars.getFirst().numFactory();
         Num resolvedRangeSize = numFactory.numOf(rangeSize);

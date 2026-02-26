@@ -70,7 +70,7 @@ public class RenkoBarAggregator implements BarAggregator {
      * @since 0.22.3
      */
     public RenkoBarAggregator(Number boxSize, int reversalAmount) {
-        this.boxSize = SourceIntervalValidator.requirePositiveFiniteNumber(boxSize, "boxSize");
+        this.boxSize = BarAggregator.requirePositiveFiniteNumber(boxSize, "boxSize");
         if (reversalAmount <= 0) {
             throw new IllegalArgumentException("reversalAmount must be greater than zero.");
         }
@@ -95,7 +95,7 @@ public class RenkoBarAggregator implements BarAggregator {
             return renkoBars;
         }
 
-        Duration sourcePeriod = SourceIntervalValidator.requireEvenIntervals(bars, getClass().getSimpleName());
+        Duration sourcePeriod = requireEvenIntervals(bars);
         NumFactory numFactory = bars.getFirst().numFactory();
         Num resolvedBoxSize = numFactory.numOf(boxSize);
         Num reversalDistance = resolvedBoxSize.multipliedBy(numFactory.numOf(reversalAmount));
