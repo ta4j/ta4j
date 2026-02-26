@@ -166,9 +166,7 @@ public class GatorOscillatorIndicatorTest extends AbstractIndicatorTest<Indicato
     }
 
     private Num nullMinusResultNum(Num delegate) {
-        return (Num) Proxy.newProxyInstance(
-                Num.class.getClassLoader(),
-                new Class<?>[] {Num.class},
+        return (Num) Proxy.newProxyInstance(Num.class.getClassLoader(), new Class<?>[] { Num.class },
                 (proxy, method, args) -> {
                     if ("minus".equals(method.getName())) {
                         return null;
