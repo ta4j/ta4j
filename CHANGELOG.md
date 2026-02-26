@@ -7,11 +7,13 @@
 - **Regression coverage additions**: Added explicit tests for `TimeBarBuilder` gap placement, `NetMomentumIndicator` pivot/decay edge handling, mixed-field serialization routing, named-strategy label/vararg diagnostics, and `VolumeIndicator` rolling-window behavior.
 - Added **PiercingLineIndicator** and **DarkCloudCoverIndicator** with configurable body-size, gap, and penetration thresholds for candlestick pattern detection.
 - **Trend confirmation oscillators**: Added `VortexIndicator` (+VI, -VI, and oscillator output) and `UltimateOscillatorIndicator` with configurable periods, warm-up guards, and regression tests against published reference values.
+- **Price-structure aggregators**: Added `RangeBarAggregator`, `VolumeBarAggregator`, and `RenkoBarAggregator` to build derived bar series from configurable range thresholds, volume thresholds, and Renko box/reversal settings, with interval-continuity guards and regression coverage for trending, volatile, and flat fixtures.
 - **Volatility-normalized MACD-V toolkit**: Added `VolatilityNormalizedMACDIndicator` with canonical ATR-normalized MACD-V calculation, configurable signal/histogram helpers, and `MACDVMomentumState` classification utilities.
 - **MACD-V momentum helper components**: Added `MACDHistogramMode`, `MACDLineValues`, `MACDVMomentumProfile`, `MACDVMomentumStateIndicator`, and `MomentumStateRule` to support configurable histogram polarity, bundled line snapshots, and momentum-state rule composition.
 - **MACD-V strategy demo**: Added `MACDVMomentumStateStrategy` to `ta4j-examples`, demonstrating custom signal-line injection and momentum-state filtered entry/exit rules.
 
 ### Changed
+- **Aggregator validation reuse**: Folded interval and threshold validation helpers into `BarAggregator` default/static methods, removing separate validator classes while preserving range/volume/Renko behavior and error semantics.
 - **Risk/stop-rule refinements**: Tightened volatility stop-gain coefficient validation, removed redundant risk recomputation in `RMultipleCriterion`, added the missing `AverageTrueRangeTrailingStopLossRule` lookback overload, and expanded shared stop-rule fixtures/tests and Javadocs.
 - **VolumeIndicator performance**: Replaced O(barCount) per-index summation with an O(1) rolling partial-sum update, including clearer algorithm/complexity Javadocs.
 - **Serialization routing precedence**: `ComponentSerialization` now resolves mixed payloads by descriptor type so strategies prefer `rules` while indicators/rules prefer `components`, while keeping legacy `children`/`baseIndicators` compatibility.
@@ -37,6 +39,7 @@
 - **Deprecation visibility for deprecated classes**: Added runtime deprecation warnings (emitted once per classloader) for deprecated compatibility classes in core and legacy JSON helper classes in examples so migration guidance appears directly in logs.
 
 ### Fixed
+- **Aggregator interval validation diagnostics**: `BarAggregator` now rejects source bars with null begin/end timestamps using contextual `IllegalArgumentException` messages (aggregator + index) instead of surfacing raw `NullPointerException`s.
 - **Stop-rule behavior and efficiency**: Trailing stop-gain variants now arm only after the configured favorable move, volatility stop-loss variants trigger on exact threshold touches, gain-side helpers are used consistently, and trailing volatility/fixed-amount rules now reuse stabilized max-lookback indicators to reduce hot-path allocations.
 - **NetMomentum neutral pivot validation**: Constructor now rejects `NaN`/infinite neutral pivot values to prevent undefined momentum output states.
 - **VolumeIndicator constrained-window correctness**: Rolling sums now anchor to the series `beginIndex` so max-bar-count eviction does not double-count or backtrack into pruned history.
