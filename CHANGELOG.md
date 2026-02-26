@@ -110,6 +110,7 @@
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
 
 ### Fixed
+- **Chart window focus stealing**: `ta4j-examples` chart display paths now set `setFocusableWindowState(false)` so chart-related test/example runs do not steal desktop focus.
 - **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
