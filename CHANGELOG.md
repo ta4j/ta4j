@@ -29,6 +29,7 @@
 - **Deprecation visibility for deprecated classes**: Added runtime deprecation warnings (emitted once per classloader) for deprecated compatibility classes in core and legacy JSON helper classes in examples so migration guidance appears directly in logs.
 
 ### Fixed
+- **Aggregator interval validation diagnostics**: `BarAggregator` now rejects source bars with null begin/end timestamps using contextual `IllegalArgumentException` messages (aggregator + index) instead of surfacing raw `NullPointerException`s.
 - **Stop-rule behavior and efficiency**: Trailing stop-gain variants now arm only after the configured favorable move, volatility stop-loss variants trigger on exact threshold touches, gain-side helpers are used consistently, and trailing volatility/fixed-amount rules now reuse stabilized max-lookback indicators to reduce hot-path allocations.
 - **NetMomentum neutral pivot validation**: Constructor now rejects `NaN`/infinite neutral pivot values to prevent undefined momentum output states.
 - **VolumeIndicator constrained-window correctness**: Rolling sums now anchor to the series `beginIndex` so max-bar-count eviction does not double-count or backtrack into pruned history.

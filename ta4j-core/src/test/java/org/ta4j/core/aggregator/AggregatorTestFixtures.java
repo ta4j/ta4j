@@ -5,6 +5,7 @@ package org.ta4j.core.aggregator;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 import org.ta4j.core.Bar;
@@ -78,6 +79,20 @@ final class AggregatorTestFixtures {
         return List.copyOf(series.getBarData());
     }
 
+    static List<Bar> barsWithNullBeginTime(NumFactory numFactory) {
+        List<Bar> bars = new ArrayList<>(trendingBars(numFactory));
+        Bar targetBar = bars.get(1);
+        bars.set(1, new TimestampOverrideBar(targetBar, null, targetBar.getEndTime()));
+        return List.copyOf(bars);
+    }
+
+    static List<Bar> barsWithNullEndTime(NumFactory numFactory) {
+        List<Bar> bars = new ArrayList<>(trendingBars(numFactory));
+        Bar targetBar = bars.get(1);
+        bars.set(1, new TimestampOverrideBar(targetBar, targetBar.getBeginTime(), null));
+        return List.copyOf(bars);
+    }
+
     private static List<Bar> fromRows(NumFactory numFactory, double[][] rows, List<Integer> endOffsetsInMinutes) {
         BarSeries series = newSeries(numFactory);
         for (int i = 0; i < rows.length; i++) {
@@ -108,5 +123,79 @@ final class AggregatorTestFixtures {
             barBuilder.closePrice(close);
         }
         barBuilder.volume(volume).amount(amount).trades(trades).add();
+    }
+
+    private static final class TimestampOverrideBar implements Bar {
+
+        private static final long serialVersionUID = 1L;
+        private final Bar delegate;
+        private final Instant beginTime;
+        private final Instant endTime;
+
+        private TimestampOverrideBar(Bar delegate, Instant beginTime, Instant endTime) {
+            this.delegate = delegate;
+            this.beginTime = beginTime;
+            this.endTime = endTime;
+        }
+
+        @Override
+        public Duration getTimePeriod() {
+            return delegate.getTimePeriod();
+        }
+
+        @Override
+        public Instant getBeginTime() {
+            return beginTime;
+        }
+
+        @Override
+        public Instant getEndTime() {
+            return endTime;
+        }
+
+        @Override
+        public Num getOpenPrice() {
+            return delegate.getOpenPrice();
+        }
+
+        @Override
+        public Num getHighPrice() {
+            return delegate.getHighPrice();
+        }
+
+        @Override
+        public Num getLowPrice() {
+            return delegate.getLowPrice();
+        }
+
+        @Override
+        public Num getClosePrice() {
+            return delegate.getClosePrice();
+        }
+
+        @Override
+        public Num getVolume() {
+            return delegate.getVolume();
+        }
+
+        @Override
+        public Num getAmount() {
+            return delegate.getAmount();
+        }
+
+        @Override
+        public long getTrades() {
+            return delegate.getTrades();
+        }
+
+        @Override
+        public void addTrade(Num tradeVolume, Num tradePrice) {
+            delegate.addTrade(tradeVolume, tradePrice);
+        }
+
+        @Override
+        public void addPrice(Num price) {
+            delegate.addPrice(price);
+        }
     }
 }

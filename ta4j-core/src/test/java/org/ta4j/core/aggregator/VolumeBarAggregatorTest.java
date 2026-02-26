@@ -108,6 +108,16 @@ public class VolumeBarAggregatorTest extends AbstractIndicatorTest<BarSeries, Nu
     }
 
     @Test
+    public void aggregateRejectsNullSourceTimestamps() {
+        VolumeBarAggregator aggregator = new VolumeBarAggregator(20d);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> aggregator.aggregate(AggregatorTestFixtures.barsWithNullBeginTime(numFactory)));
+        assertThrows(IllegalArgumentException.class,
+                () -> aggregator.aggregate(AggregatorTestFixtures.barsWithNullEndTime(numFactory)));
+    }
+
+    @Test
     public void aggregateRejectsNullSourceBars() {
         List<Bar> bars = new ArrayList<>(AggregatorTestFixtures.trendingBars(numFactory));
         bars.set(1, null);

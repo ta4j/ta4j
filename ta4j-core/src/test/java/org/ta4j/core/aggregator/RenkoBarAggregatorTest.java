@@ -120,6 +120,16 @@ public class RenkoBarAggregatorTest extends AbstractIndicatorTest<BarSeries, Num
     }
 
     @Test
+    public void aggregateRejectsNullSourceTimestamps() {
+        RenkoBarAggregator aggregator = new RenkoBarAggregator(2d, 2);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> aggregator.aggregate(AggregatorTestFixtures.barsWithNullBeginTime(numFactory)));
+        assertThrows(IllegalArgumentException.class,
+                () -> aggregator.aggregate(AggregatorTestFixtures.barsWithNullEndTime(numFactory)));
+    }
+
+    @Test
     public void aggregateRejectsNullSourceBars() {
         List<Bar> bars = new ArrayList<>(AggregatorTestFixtures.trendingBars(numFactory));
         bars.set(3, null);

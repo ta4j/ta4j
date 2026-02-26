@@ -106,6 +106,16 @@ public class RangeBarAggregatorTest extends AbstractIndicatorTest<BarSeries, Num
     }
 
     @Test
+    public void aggregateRejectsNullSourceTimestamps() {
+        RangeBarAggregator aggregator = new RangeBarAggregator(2d);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> aggregator.aggregate(AggregatorTestFixtures.barsWithNullBeginTime(numFactory)));
+        assertThrows(IllegalArgumentException.class,
+                () -> aggregator.aggregate(AggregatorTestFixtures.barsWithNullEndTime(numFactory)));
+    }
+
+    @Test
     public void aggregateRejectsNullSourceBars() {
         List<Bar> bars = new ArrayList<>(AggregatorTestFixtures.trendingBars(numFactory));
         bars.set(2, null);

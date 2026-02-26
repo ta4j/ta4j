@@ -5,6 +5,7 @@ package org.ta4j.core.aggregator;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 
@@ -101,7 +102,14 @@ public interface BarAggregator {
                     String.format("%s requires positive source intervals: bar %d has invalid period %s.",
                             aggregatorName, index, timePeriod));
         }
-        Duration measuredPeriod = Duration.between(bar.getBeginTime(), bar.getEndTime());
+        Instant beginTime = bar.getBeginTime();
+        Instant endTime = bar.getEndTime();
+        if (beginTime == null || endTime == null) {
+            throw new IllegalArgumentException(
+                    String.format("%s requires non-null source timestamps: bar %d has begin=%s, end=%s.",
+                            aggregatorName, index, beginTime, endTime));
+        }
+        Duration measuredPeriod = Duration.between(beginTime, endTime);
         if (!measuredPeriod.equals(timePeriod)) {
             throw new IllegalArgumentException(
                     String.format("%s requires consistent source intervals: bar %d spans %s but period is %s.",
