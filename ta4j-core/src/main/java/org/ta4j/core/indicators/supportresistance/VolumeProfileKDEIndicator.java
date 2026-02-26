@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.indicators.supportresistance;
 
+import static org.ta4j.core.indicators.IndicatorUtils.isInvalid;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -247,13 +248,6 @@ public class VolumeProfileKDEIndicator extends CachedIndicator<Num> {
             this.price = price;
             this.weight = weight;
         }
-    }
-
-    /**
-     * Returns whether invalid.
-     */
-    private static boolean isInvalid(Num value) {
-        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
     }
 
     /**

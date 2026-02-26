@@ -1,6 +1,7 @@
 ## Unreleased
 
 ### Added
+- **Bill Williams indicator suite**: Added `FractalHighIndicator`, `FractalLowIndicator`, `AlligatorIndicator` (jaw/teeth/lips defaults), `GatorOscillatorIndicator` (upper/lower histogram branches), and `MarketFacilitationIndexIndicator` with comprehensive regression coverage for confirmation delays, overlapping windows, flat-price/zero-volume edge cases, constructor validation, unstable-bar boundaries, and lower-histogram signed-zero handling.
 - **Risk controls APIs**: Added `PositionRiskModel`, `StopLossPositionRiskModel`, and `RMultipleCriterion` for risk-unit (R-multiple) evaluation, plus `StopLossPriceModel`/`StopGainPriceModel` and fixed/trailing/volatility/ATR stop-loss and stop-gain rule variants.
 - **Agent guidance tooling and docs**: Reorganized project `AGENTS.md` into scoped, task-local guides and added `scripts/agents_for_target.sh` to resolve effective instructions for any target path.
 - **Regression coverage additions**: Added explicit tests for `TimeBarBuilder` gap placement, `NetMomentumIndicator` pivot/decay edge handling, mixed-field serialization routing, named-strategy label/vararg diagnostics, and `VolumeIndicator` rolling-window behavior.
@@ -20,6 +21,15 @@
 - **Full build script portability**: `scripts/run-full-build-quiet.sh` no longer requires Python; timeout handling,
   quiet-output filtering, heartbeat logging, and test-summary aggregation now run in Bash.
 - **Indicator composition reuse**: Added `IndicatorUtils.requireSameSeries(...)` to centralize same-series validation and refactored `VortexIndicator`, `UltimateOscillatorIndicator`, and `TRIndicator` to compose shared true-range/series-validation logic instead of duplicating private helpers.
+- **Indicator validation helper consolidation**: Merged `IndicatorSeriesUtils` into `IndicatorUtils`, added shared
+  `IndicatorUtils.requireIndicator(...)` / `IndicatorUtils.isInvalid(...)`, and refactored Bill Williams, VWAP,
+  support/resistance, and Wyckoff indicators to reuse centralized validation and NaN-guard logic.
+- **Fractal hierarchy consolidation**: Extracted `AbstractFractalConfirmationIndicator` and
+  `AbstractRecentFractalSwingIndicator`, and added `FractalDetectionHelper.findLatestConfirmedFractalIndex(...)` so
+  high/low fractal families share confirmation and scanning logic while preserving the existing public APIs.
+- **Fractal documentation and regression hardening**: Expanded Javadocs for shared fractal internals and added
+  `FractalDetectionHelperTest` coverage for latest-pivot scanning, bounds handling, equality allowances, and invalid
+  input guards.
 - **MACD-V signal-line extensibility**: `VolatilityNormalizedMACDIndicator` now supports custom signal-line indicator injection for both signal and histogram generation.
 - **MACDVIndicator API robustness and clarity**: Clarified that `MACDVIndicator` is a volume/ATR-weighted MACD variant (not ATR-normalized MACD-V), added default signal/histogram conveniences and constructor overloads, and hardened warm-up/NaN handling with lazy transient sub-indicator rebuild.
 - **MACD-V indicator ergonomics**: `MACDVIndicator` and `VolatilityNormalizedMACDIndicator` now expose configuration/sub-indicator getters, line bundle helpers, momentum-state indicator factories, and crossover/momentum rule helpers for strategy composition.
