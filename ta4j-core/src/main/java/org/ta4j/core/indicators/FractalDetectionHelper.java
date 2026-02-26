@@ -32,6 +32,33 @@ final class FractalDetectionHelper {
     private FractalDetectionHelper() {
     }
 
+    static int findLatestConfirmedFractalIndex(Indicator<Num> indicator, BarSeries series, int maxAvailableIndex,
+            int precedingBars, int followingBars, int allowedEqualBars, Direction direction) {
+        if (indicator == null || series == null || direction == null) {
+            return -1;
+        }
+        if (precedingBars < 0 || followingBars < 0 || allowedEqualBars < 0) {
+            return -1;
+        }
+        final int beginIndex = series.getBeginIndex();
+        final int endIndex = series.getEndIndex();
+        if (maxAvailableIndex < beginIndex || maxAvailableIndex > endIndex) {
+            return -1;
+        }
+        final int latestConfirmable = maxAvailableIndex - followingBars;
+        final int earliestCandidate = beginIndex + precedingBars;
+        if (latestConfirmable < earliestCandidate) {
+            return -1;
+        }
+        for (int candidateIndex = latestConfirmable; candidateIndex >= earliestCandidate; candidateIndex--) {
+            if (isConfirmedFractal(indicator, series, candidateIndex, precedingBars, followingBars, maxAvailableIndex,
+                    allowedEqualBars, direction)) {
+                return candidateIndex;
+            }
+        }
+        return -1;
+    }
+
     static boolean isConfirmedFractal(Indicator<Num> indicator, BarSeries series, int candidateIndex, int precedingBars,
             int followingBars, int maxAvailableIndex, int allowedEqualBars, Direction direction) {
         if (indicator == null || series == null || direction == null) {

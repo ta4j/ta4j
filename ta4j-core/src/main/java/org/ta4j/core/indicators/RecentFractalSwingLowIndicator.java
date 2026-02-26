@@ -23,9 +23,8 @@ import org.ta4j.core.num.Num;
  *      Low</a>
  * @since 0.20
  */
-public class RecentFractalSwingLowIndicator extends AbstractRecentSwingIndicator {
+public class RecentFractalSwingLowIndicator extends AbstractRecentFractalSwingIndicator {
 
-    private final Indicator<Num> indicator;
     private final int precedingHigherBars;
     private final int followingHigherBars;
     private final int allowedEqualBars;
@@ -51,17 +50,8 @@ public class RecentFractalSwingLowIndicator extends AbstractRecentSwingIndicator
      */
     public RecentFractalSwingLowIndicator(Indicator<Num> indicator, int precedingHigherBars, int followingHigherBars,
             int allowedEqualBars) {
-        super(indicator, precedingHigherBars + followingHigherBars);
-        if (precedingHigherBars < 1) {
-            throw new IllegalArgumentException("precedingHigherBars must be greater than 0");
-        }
-        if (followingHigherBars < 0) {
-            throw new IllegalArgumentException("followingHigherBars must be 0 or greater");
-        }
-        if (allowedEqualBars < 0) {
-            throw new IllegalArgumentException("allowedEqualBars must be 0 or greater");
-        }
-        this.indicator = indicator;
+        super(indicator, validateWindowConfiguration(precedingHigherBars, followingHigherBars, allowedEqualBars,
+                "precedingHigherBars", "followingHigherBars"));
         this.precedingHigherBars = precedingHigherBars;
         this.followingHigherBars = followingHigherBars;
         this.allowedEqualBars = allowedEqualBars;
@@ -89,37 +79,24 @@ public class RecentFractalSwingLowIndicator extends AbstractRecentSwingIndicator
         this(series, 3);
     }
 
-    /**
-     * Returns the index of the most recent confirmed swing low that can be
-     * evaluated with the data available up to {@code index}.
-     *
-     * @param index the current evaluation index
-     * @return the index of the most recent swing low or {@code -1} if none can be
-     *         confirmed yet
-     * @since 0.19
-     */
     @Override
-    protected int detectLatestSwingIndex(int index) {
-        if (index < getBarSeries().getBeginIndex() || index > getBarSeries().getEndIndex()) {
-            return -1;
-        }
-        final int latestConfirmable = index - followingHigherBars;
-        final int earliestCandidate = getBarSeries().getBeginIndex() + precedingHigherBars;
-        if (latestConfirmable < earliestCandidate) {
-            return -1;
-        }
-        for (int candidate = latestConfirmable; candidate >= earliestCandidate; candidate--) {
-            if (FractalDetectionHelper.isConfirmedFractal(indicator, getBarSeries(), candidate, precedingHigherBars,
-                    followingHigherBars, index, allowedEqualBars, FractalDetectionHelper.Direction.LOW)) {
-                return candidate;
-            }
-        }
-        return -1;
+    protected int precedingBars() {
+        return precedingHigherBars;
     }
 
     @Override
-    public Indicator<Num> getPriceIndicator() {
-        return indicator;
+    protected int followingBars() {
+        return followingHigherBars;
+    }
+
+    @Override
+    protected int allowedEqualBars() {
+        return allowedEqualBars;
+    }
+
+    @Override
+    protected FractalDetectionHelper.Direction direction() {
+        return FractalDetectionHelper.Direction.LOW;
     }
 
     @Override

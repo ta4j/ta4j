@@ -24,6 +24,9 @@
 - **Indicator validation helper consolidation**: Merged `IndicatorSeriesUtils` into `IndicatorUtils`, added shared
   `IndicatorUtils.requireIndicator(...)` / `IndicatorUtils.isInvalid(...)`, and refactored Bill Williams, VWAP,
   support/resistance, and Wyckoff indicators to reuse centralized validation and NaN-guard logic.
+- **Fractal hierarchy consolidation**: Extracted `AbstractFractalConfirmationIndicator` and
+  `AbstractRecentFractalSwingIndicator`, and added `FractalDetectionHelper.findLatestConfirmedFractalIndex(...)` so
+  high/low fractal families share confirmation and scanning logic while preserving the existing public APIs.
 - **MACD-V signal-line extensibility**: `VolatilityNormalizedMACDIndicator` now supports custom signal-line indicator injection for both signal and histogram generation.
 - **MACDVIndicator API robustness and clarity**: Clarified that `MACDVIndicator` is a volume/ATR-weighted MACD variant (not ATR-normalized MACD-V), added default signal/histogram conveniences and constructor overloads, and hardened warm-up/NaN handling with lazy transient sub-indicator rebuild.
 - **MACD-V indicator ergonomics**: `MACDVIndicator` and `VolatilityNormalizedMACDIndicator` now expose configuration/sub-indicator getters, line bundle helpers, momentum-state indicator factories, and crossover/momentum rule helpers for strategy composition.

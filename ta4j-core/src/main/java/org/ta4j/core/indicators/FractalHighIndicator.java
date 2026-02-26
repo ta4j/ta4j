@@ -33,18 +33,13 @@ import org.ta4j.core.num.Num;
  *      Indicator</a>
  * @since 0.22.3
  */
-public class FractalHighIndicator extends CachedIndicator<Boolean> {
+public class FractalHighIndicator extends AbstractFractalConfirmationIndicator {
 
     /** Classic Bill Williams preceding-bar count. */
     public static final int DEFAULT_PRECEDING_BARS = 2;
 
     /** Classic Bill Williams following-bar count. */
     public static final int DEFAULT_FOLLOWING_BARS = 2;
-
-    private final Indicator<Num> indicator;
-    private final int precedingBars;
-    private final int followingBars;
-    private final int unstableBars;
 
     /**
      * Constructor.
@@ -58,17 +53,7 @@ public class FractalHighIndicator extends CachedIndicator<Boolean> {
      * @since 0.22.3
      */
     public FractalHighIndicator(Indicator<Num> indicator, int precedingBars, int followingBars) {
-        super(IndicatorUtils.requireIndicator(indicator, "indicator"));
-        if (precedingBars < 1) {
-            throw new IllegalArgumentException("precedingBars must be greater than 0");
-        }
-        if (followingBars < 1) {
-            throw new IllegalArgumentException("followingBars must be greater than 0");
-        }
-        this.indicator = indicator;
-        this.precedingBars = precedingBars;
-        this.followingBars = followingBars;
-        this.unstableBars = indicator.getCountOfUnstableBars() + precedingBars + followingBars;
+        super(indicator, precedingBars, followingBars);
     }
 
     /**
@@ -108,41 +93,7 @@ public class FractalHighIndicator extends CachedIndicator<Boolean> {
     }
 
     @Override
-    protected Boolean calculate(int index) {
-        if (index < getCountOfUnstableBars()) {
-            return Boolean.FALSE;
-        }
-
-        final BarSeries series = getBarSeries();
-        final int candidateIndex = index - followingBars;
-        return FractalDetectionHelper.isConfirmedFractal(indicator, series, candidateIndex, precedingBars,
-                followingBars, index, 0, FractalDetectionHelper.Direction.HIGH);
+    protected FractalDetectionHelper.Direction direction() {
+        return FractalDetectionHelper.Direction.HIGH;
     }
-
-    /**
-     * Returns the pivot index confirmed at {@code index}.
-     *
-     * @param index current bar index
-     * @return confirmed fractal pivot index, or {@code -1} when no confirmation
-     *         occurs at {@code index}
-     * @since 0.22.3
-     */
-    public int getConfirmedFractalIndex(int index) {
-        return Boolean.TRUE.equals(getValue(index)) ? index - followingBars : -1;
-    }
-
-    /**
-     * @return source indicator used for high comparisons
-     * @since 0.22.3
-     */
-    public Indicator<Num> getPriceIndicator() {
-        return indicator;
-    }
-
-    /** @return the number of bars required before confirmations can appear */
-    @Override
-    public int getCountOfUnstableBars() {
-        return unstableBars;
-    }
-
 }
