@@ -168,7 +168,8 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
         Num middleAverage = calculateAverage(index, middleBuyingPressureSumIndicator, middleTrueRangeSumIndicator);
         Num longAverage = calculateAverage(index, longBuyingPressureSumIndicator, longTrueRangeSumIndicator);
 
-        if (isInvalid(shortAverage) || isInvalid(middleAverage) || isInvalid(longAverage)) {
+        if (IndicatorUtils.isInvalid(shortAverage) || IndicatorUtils.isInvalid(middleAverage)
+                || IndicatorUtils.isInvalid(longAverage)) {
             return NaN;
         }
 
@@ -186,12 +187,12 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
         }
 
         Num totalTrueRange = trueRangeSumIndicator.getValue(index);
-        if (isInvalid(totalTrueRange) || totalTrueRange.isZero()) {
+        if (IndicatorUtils.isInvalid(totalTrueRange) || totalTrueRange.isZero()) {
             return NaN;
         }
 
         Num totalBuyingPressure = buyingPressureSumIndicator.getValue(index);
-        if (isInvalid(totalBuyingPressure)) {
+        if (IndicatorUtils.isInvalid(totalBuyingPressure)) {
             return NaN;
         }
 
@@ -227,10 +228,6 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
         }
     }
 
-    private static boolean isInvalid(Num value) {
-        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
-    }
-
     private static final class BuyingPressureIndicator extends CachedIndicator<Num> {
 
         private final Indicator<Num> lowPriceIndicator;
@@ -255,7 +252,8 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
             Num close = closePriceIndicator.getValue(index);
             Num low = lowPriceIndicator.getValue(index);
             Num previousClose = closePriceIndicator.getValue(index - 1);
-            if (isInvalid(close) || isInvalid(low) || isInvalid(previousClose)) {
+            if (IndicatorUtils.isInvalid(close) || IndicatorUtils.isInvalid(low)
+                    || IndicatorUtils.isInvalid(previousClose)) {
                 return NaN;
             }
 
