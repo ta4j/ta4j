@@ -99,8 +99,8 @@
   serialization plus explicit cost-model rehydration.
 - **Recorded fee semantics**: Live-trading positions and criteria now use recorded `LiveTrade` fees via
   `RecordedTradeCostModel` so PnL reflects actual execution costs.
-- **Quiet full-build lifecycle**: `scripts/run-full-build-quiet.sh` now traps `SIGINT`/`SIGTERM` in addition to `EXIT`
-  and terminates/waits for build and heartbeat background jobs during cleanup to avoid orphaned processes.
+- **Quiet full-build lifecycle**: `scripts/run-full-build-quiet.sh` now traps `SIGINT`/`SIGTERM`/`EXIT` and cleanly
+  terminates background build/heartbeat processes.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
 - **Elliott Wave analysis example**: Scenario probability weighting now applies adaptive confidence contrast so closely scored scenarios separate more clearly.
 - **Position duration criterion**: implemented `PositionDurationCriterion` to measure positions duration.
@@ -136,15 +136,14 @@
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
 - **Release scheduler redaction**: Avoid masking long Java class names in binary-change listings.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
-- **Release token preflight hardening**: `prepare-release.yml` now treats only literal `repo` (plus `public_repo`) as
-  push-capable OAuth scope and applies a 30-second timeout to GitHub API checks to fail fast on unresponsive requests.
-- **Candlestick denominator guards**: `DarkCloudCoverIndicator` and `PiercingLineIndicator` now reject zero/NaN
-  denominator inputs before ratio calculations, and regression tests cover zero-denominator scenarios.
-- **TRIndicator unstable-bar accounting**: `getCountOfUnstableBars()` now includes the previous-close dependency when
-  the close input has a warm-up period (`close unstable > 0`), while preserving immediate stability for plain
-  close-price inputs.
-- **README polish**: Fixed the top-chart anchor target, standardized `GitHub` capitalization, and marked the snapshot
-  repository URL fence as `text` for markdown lint compliance.
+- **Release token preflight hardening**: `prepare-release.yml` now requires literal `repo`/`public_repo` scopes for
+  push capability and uses a 30-second GitHub API timeout.
+- **Candlestick ratio safety**: `DarkCloudCoverIndicator` and `PiercingLineIndicator` now short-circuit on zero/NaN
+  denominators, with regression coverage for zero and NaN inputs.
+- **TRIndicator unstable bars**: `getCountOfUnstableBars()` now includes the previous-close lookback when the close
+  input has warm-up bars.
+- **README polish**: Fixed top-chart anchor text, standardized `GitHub` capitalization, and added `text` fencing for
+  the snapshot repository URL block.
 - **Fixed incorrect @since 0.23** by replacing with 0.22.2
 - **Full build script**: Fix macOS temp file creation in `run-full-build-quiet.sh` by using a portable mktemp template.
 
