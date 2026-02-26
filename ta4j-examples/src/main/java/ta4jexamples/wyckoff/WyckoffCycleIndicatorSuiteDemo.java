@@ -8,7 +8,7 @@ import java.util.Locale;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.wyckoff.WyckoffCycleAnalysis;
+import org.ta4j.core.indicators.wyckoff.WyckoffCycleAnalysisRunner;
 import org.ta4j.core.indicators.wyckoff.WyckoffCycleFacade;
 import org.ta4j.core.indicators.wyckoff.WyckoffCycleType;
 import org.ta4j.core.indicators.wyckoff.WyckoffPhase;
@@ -58,7 +58,7 @@ public final class WyckoffCycleIndicatorSuiteDemo {
                     phase.phaseType(), String.format(Locale.US, "%.2f", phase.confidence()), low, high);
         }
 
-        var analysis = WyckoffCycleAnalysis.builder()
+        var analysis = WyckoffCycleAnalysisRunner.builder()
                 .withSwingConfiguration(3, 3, 1)
                 .withVolumeWindows(5, 20)
                 .withTolerances(0.02, 0.05)

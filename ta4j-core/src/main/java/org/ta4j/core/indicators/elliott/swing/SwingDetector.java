@@ -11,7 +11,7 @@ import org.ta4j.core.indicators.elliott.ElliottDegree;
  *
  * <p>
  * Implement this interface to plug custom swing detection algorithms into
- * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalyzer}.
+ * {@link org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner}.
  *
  * @since 0.22.2
  */

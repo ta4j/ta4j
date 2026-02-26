@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.analysis.AnalysisRunner;
+import org.ta4j.core.analysis.SeriesSelector;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -40,52 +42,7 @@ import org.ta4j.core.num.NumFactory;
  *
  * @since 0.22.3
  */
-public final class WyckoffCycleAnalysis {
-
-    /**
-     * Executes a single-degree Wyckoff analysis.
-     *
-     * <p>
-     * This is a pluggable seam. Implementations may run the built-in analysis
-     * pipeline, build results from indicator-style analysis
-     * ({@link WyckoffCycleFacade}), or run on resampled series.
-     *
-     * @since 0.22.3
-     */
-    @FunctionalInterface
-    public interface AnalysisRunner {
-
-        /**
-         * Runs analysis for a given configuration.
-         *
-         * @param series        series to analyze
-         * @param configuration configuration for this run
-         * @return cycle snapshot
-         * @since 0.22.3
-         */
-        WyckoffCycleAnalysisResult.CycleSnapshot analyze(BarSeries series,
-                WyckoffCycleAnalysisResult.DegreeConfiguration configuration);
-    }
-
-    /**
-     * Selects the series window (or transformed series) to use for a given degree
-     * offset.
-     *
-     * @since 0.22.3
-     */
-    @FunctionalInterface
-    public interface SeriesSelector {
-
-        /**
-         * Selects a series for the requested degree offset.
-         *
-         * @param series       root input series
-         * @param degreeOffset degree offset to select for
-         * @return selected series (may be a subseries)
-         * @since 0.22.3
-         */
-        BarSeries select(BarSeries series, int degreeOffset);
-    }
+public final class WyckoffCycleAnalysisRunner {
 
     /**
      * Produces degree-specific configurations from a base configuration.
@@ -122,9 +79,9 @@ public final class WyckoffCycleAnalysis {
     private final int baseDegreeOffset;
     private final int higherDegrees;
     private final int lowerDegrees;
-    private final SeriesSelector seriesSelector;
+    private final SeriesSelector<Integer> seriesSelector;
     private final DegreeConfigurationProvider configurationProvider;
-    private final AnalysisRunner analysisRunner;
+    private final AnalysisRunner<WyckoffCycleAnalysisResult.DegreeConfiguration, WyckoffCycleAnalysisResult.CycleSnapshot> analysisRunner;
 
     private final int precedingSwingBars;
     private final int followingSwingBars;
@@ -137,9 +94,9 @@ public final class WyckoffCycleAnalysis {
     private final Number dryUpThreshold;
 
     /**
-     * Creates a new WyckoffCycleAnalysis instance.
+     * Creates a new WyckoffCycleAnalysisRunner instance.
      */
-    private WyckoffCycleAnalysis(final Builder builder) {
+    private WyckoffCycleAnalysisRunner(final Builder builder) {
         this.baseDegreeOffset = 0;
         this.higherDegrees = builder.higherDegrees;
         this.lowerDegrees = builder.lowerDegrees;
@@ -315,7 +272,7 @@ public final class WyckoffCycleAnalysis {
     /**
      * Builds the default series selector.
      */
-    private static SeriesSelector defaultSeriesSelector() {
+    private static SeriesSelector<Integer> defaultSeriesSelector() {
         return (series, degreeOffset) -> {
             Objects.requireNonNull(series, "series");
             if (degreeOffset == 0) {
@@ -351,7 +308,7 @@ public final class WyckoffCycleAnalysis {
     }
 
     /**
-     * Builder for {@link WyckoffCycleAnalysis}.
+     * Builder for {@link WyckoffCycleAnalysisRunner}.
      *
      * @since 0.22.3
      */
@@ -359,9 +316,9 @@ public final class WyckoffCycleAnalysis {
 
         private int higherDegrees;
         private int lowerDegrees;
-        private SeriesSelector seriesSelector;
+        private SeriesSelector<Integer> seriesSelector;
         private DegreeConfigurationProvider configurationProvider;
-        private AnalysisRunner analysisRunner;
+        private AnalysisRunner<WyckoffCycleAnalysisResult.DegreeConfiguration, WyckoffCycleAnalysisResult.CycleSnapshot> analysisRunner;
 
         private int precedingSwingBars = DEFAULT_PRECEDING_SWING_BARS;
         private int followingSwingBars = DEFAULT_FOLLOWING_SWING_BARS;
@@ -410,7 +367,7 @@ public final class WyckoffCycleAnalysis {
          * @return builder
          * @since 0.22.3
          */
-        public Builder seriesSelector(SeriesSelector seriesSelector) {
+        public Builder seriesSelector(SeriesSelector<Integer> seriesSelector) {
             this.seriesSelector = seriesSelector;
             return this;
         }
@@ -435,7 +392,8 @@ public final class WyckoffCycleAnalysis {
          * @return builder
          * @since 0.22.3
          */
-        public Builder analysisRunner(AnalysisRunner analysisRunner) {
+        public Builder analysisRunner(
+                AnalysisRunner<WyckoffCycleAnalysisResult.DegreeConfiguration, WyckoffCycleAnalysisResult.CycleSnapshot> analysisRunner) {
             this.analysisRunner = analysisRunner;
             return this;
         }
@@ -544,8 +502,8 @@ public final class WyckoffCycleAnalysis {
          * @return analysis instance
          * @since 0.22.3
          */
-        public WyckoffCycleAnalysis build() {
-            return new WyckoffCycleAnalysis(this);
+        public WyckoffCycleAnalysisRunner build() {
+            return new WyckoffCycleAnalysisRunner(this);
         }
     }
 }

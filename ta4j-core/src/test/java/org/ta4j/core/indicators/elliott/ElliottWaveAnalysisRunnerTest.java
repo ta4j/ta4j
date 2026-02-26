@@ -20,7 +20,7 @@ import org.ta4j.core.indicators.elliott.swing.SwingFilter;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.NumFactory;
 
-class ElliottWaveAnalyzerTest {
+class ElliottWaveAnalysisRunnerTest {
 
     @Test
     void appliesSwingFiltersBeforeScenarioGeneration() {
@@ -38,57 +38,51 @@ class ElliottWaveAnalyzerTest {
                         series.numFactory().numOf(0.9), series.numFactory().numOf(0.9), series.numFactory().numOf(0.9),
                         series.numFactory().numOf(0.9), series.numFactory().numOf(0.9), "stub"), List.of());
 
-        ElliottWaveAnalyzer analyzer = ElliottWaveAnalyzer.builder()
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
                 .degree(degree)
+                .higherDegrees(0)
+                .lowerDegrees(0)
                 .swingDetector(detector)
                 .swingFilter(filter)
                 .minConfidence(0.0)
                 .confidenceModel(model)
                 .build();
 
-        ElliottAnalysisResult result = analyzer.analyze(series);
+        ElliottWaveAnalysisResult result = analysis.analyze(series);
+        ElliottAnalysisResult base = result.analysisFor(degree).orElseThrow().analysis();
 
-        assertThat(result.rawSwings()).hasSize(3);
-        assertThat(result.processedSwings()).hasSize(2);
-        assertThat(result.scenarios().isEmpty()).isFalse();
-        assertThat(result.confidenceBreakdowns()).hasSize(result.scenarios().size());
-    }
-
-    @Test
-    void buildRequiresSwingDetector() {
-        IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> ElliottWaveAnalyzer.builder().degree(ElliottDegree.PRIMARY).build());
-        assertThat(exception).hasMessage("swingDetector must be configured");
+        assertThat(base.rawSwings()).hasSize(3);
+        assertThat(base.processedSwings()).hasSize(2);
+        assertThat(base.scenarios().isEmpty()).isFalse();
+        assertThat(base.confidenceBreakdowns()).hasSize(base.scenarios().size());
     }
 
     @Test
     void buildRequiresDegree() {
-        SwingDetector detector = (series, index, degree) -> SwingDetectorResult.fromSwings(List.of());
-
         IllegalStateException exception = assertThrows(IllegalStateException.class,
-                () -> ElliottWaveAnalyzer.builder().swingDetector(detector).build());
+                () -> ElliottWaveAnalysisRunner.builder().build());
         assertThat(exception).hasMessage("degree must be configured");
     }
 
     @Test
     void rejectsInvalidConfidenceThresholds() {
         IllegalArgumentException low = assertThrows(IllegalArgumentException.class,
-                () -> ElliottWaveAnalyzer.builder().minConfidence(-0.01));
+                () -> ElliottWaveAnalysisRunner.builder().minConfidence(-0.01));
         assertThat(low).hasMessage("minConfidence must be in [0.0, 1.0]");
 
         IllegalArgumentException high = assertThrows(IllegalArgumentException.class,
-                () -> ElliottWaveAnalyzer.builder().minConfidence(1.01));
+                () -> ElliottWaveAnalysisRunner.builder().minConfidence(1.01));
         assertThat(high).hasMessage("minConfidence must be in [0.0, 1.0]");
     }
 
     @Test
     void rejectsInvalidScenarioParameters() {
         IllegalArgumentException maxScenarios = assertThrows(IllegalArgumentException.class,
-                () -> ElliottWaveAnalyzer.builder().maxScenarios(0));
+                () -> ElliottWaveAnalysisRunner.builder().maxScenarios(0));
         assertThat(maxScenarios).hasMessage("maxScenarios must be positive");
 
         IllegalArgumentException window = assertThrows(IllegalArgumentException.class,
-                () -> ElliottWaveAnalyzer.builder().scenarioSwingWindow(-1));
+                () -> ElliottWaveAnalysisRunner.builder().scenarioSwingWindow(-1));
         assertThat(window).hasMessage("scenarioSwingWindow must be >= 0");
     }
 

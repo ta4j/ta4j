@@ -14,8 +14,8 @@
  * <ul>
  * <li>{@link org.ta4j.core.indicators.wyckoff.WyckoffCycleFacade}:
  * indicator-style, per-bar access for strategy composition.</li>
- * <li>{@link org.ta4j.core.indicators.wyckoff.WyckoffCycleAnalysis}: one-shot
- * analysis that returns a
+ * <li>{@link org.ta4j.core.indicators.wyckoff.WyckoffCycleAnalysisRunner}:
+ * one-shot analysis that returns a
  * {@link org.ta4j.core.indicators.wyckoff.WyckoffCycleAnalysisResult} snapshot,
  * optionally across multiple degrees/configurations.</li>
  * </ul>

@@ -4,7 +4,6 @@
 package ta4jexamples.analysis.elliottwave;
 
 import java.awt.GraphicsEnvironment;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.time.Duration;
 import java.util.Optional;
@@ -36,7 +35,6 @@ import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.PriceChannel;
-import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
@@ -51,7 +49,6 @@ import ta4jexamples.charting.builder.ChartPlan;
 
 import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource;
 import ta4jexamples.datasources.CoinbaseHttpBarSeriesDataSource;
-import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 import ta4jexamples.datasources.BarSeriesDataSource;
 
 /**
@@ -77,8 +74,8 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * Command-line usage (optional):
  *
  * <pre>
- * java ElliottWaveAnalysis [dataSource] [ticker] [barDuration] [startEpoch] [endEpoch]
- * java ElliottWaveAnalysis [dataSource] [ticker] [barDuration] [degree] [startEpoch] [endEpoch]
+ * java ElliottWaveIndicatorSuiteDemo [dataSource] [ticker] [barDuration] [startEpoch] [endEpoch]
+ * java ElliottWaveIndicatorSuiteDemo [dataSource] [ticker] [barDuration] [degree] [startEpoch] [endEpoch]
  * </pre>
  *
  * Where:
@@ -99,10 +96,17 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * For simpler usage examples with specific assets, see:
  * <ul>
  * <li>{@link BTCUSDElliottWaveAnalysis} - Bitcoin analysis example</li>
+ * <li>{@link BTCUSDLiveElliottWaveAnalysis} - live Bitcoin analysis
+ * example</li>
  * <li>{@link ETHUSDElliottWaveAnalysis} - Ethereum analysis example</li>
+ * <li>{@link ETHUSDLiveElliottWaveAnalysis} - live Ethereum analysis
+ * example</li>
  * <li>{@link SP500ElliottWaveAnalysis} - S&P 500 index analysis example</li>
+ * <li>{@link SP500LiveElliottWaveAnalysis} - live S&P 500 analysis example</li>
  * <li>{@link ElliottWaveAdaptiveSwingAnalysis} - adaptive swing detection
  * demo</li>
+ * <li>{@link ElliottWaveMultiDegreeAnalysisDemo} - cross-degree scenario
+ * validation demo</li>
  * <li>{@link ElliottWavePatternProfileDemo} - pattern-aware profile demo</li>
  * </ul>
  * <p>
@@ -118,9 +122,9 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * @see ETHUSDElliottWaveAnalysis
  * @see SP500ElliottWaveAnalysis
  */
-public class ElliottWaveAnalysis {
+public class ElliottWaveIndicatorSuiteDemo {
 
-    private static final Logger LOG = LogManager.getLogger(ElliottWaveAnalysis.class);
+    private static final Logger LOG = LogManager.getLogger(ElliottWaveIndicatorSuiteDemo.class);
 
     /**
      * Default OHLCV resource file loaded from classpath when no arguments provided.
@@ -139,29 +143,27 @@ public class ElliottWaveAnalysis {
      * <p>
      * Supports two modes of operation:
      * <ol>
-     * <li><b>With arguments (4-6 args):</b> Loads data from an external data source
-     * (YahooFinance or Coinbase) using the provided parameters.</li>
-     * <li><b>Without arguments:</b> Loads a default ossified dataset from the
-     * classpath resources.</li>
+     * <li><b>External/live load via positional args:</b> loads market data from a
+     * datasource and runs the full analysis + chart workflow.</li>
+     * <li><b>No args:</b> loads the default ossified classpath dataset.</li>
      * </ol>
      * <p>
-     * When using external data sources, the required arguments are:
+     * Positional argument contracts are definitive:
      * <ol>
-     * <li>Data source name: "YahooFinance" or "Coinbase"</li>
-     * <li>Ticker symbol: e.g., "BTC-USD", "AAPL"</li>
-     * <li>Bar duration: ISO-8601 duration string (e.g., "PT1D", "PT4H",
-     * "PT5M")</li>
-     * <li>Elliott degree: One of the {@link ElliottDegree} enum values
-     * (case-insensitive, optional). If omitted the degree is auto-selected based on
-     * bar duration and bar count.</li>
-     * <li>Start epoch: Unix timestamp in seconds</li>
-     * <li>End epoch: Unix timestamp in seconds (optional, defaults to current
-     * time)</li>
+     * <li><b>Auto-degree form (4-5 args):</b>
+     * {@code [0]=dataSource, [1]=ticker, [2]=barDuration, [3]=startEpochSeconds, [4]=endEpochSeconds(optional)}</li>
+     * <li><b>Explicit-degree form (5-6 args):</b>
+     * {@code [0]=dataSource, [1]=ticker, [2]=barDuration, [3]=degree, [4]=startEpochSeconds, [5]=endEpochSeconds(optional)}</li>
      * </ol>
+     * <p>
+     * For the 5-argument case, {@code args[3]} is disambiguated as:
+     * <ul>
+     * <li>epoch seconds when numeric (auto-degree form)</li>
+     * <li>{@link ElliottDegree} token when non-numeric (explicit-degree form)</li>
+     * </ul>
      *
-     * @param args command-line arguments (optional). If 4-6 arguments are provided,
-     *             they are used to load data from an external source. Otherwise, a
-     *             default dataset is loaded from resources.
+     * @param args command-line arguments following one of the positional contracts
+     *             above
      */
     public static void main(String[] args) {
         BarSeries series = loadBarSeries(args);
@@ -176,11 +178,11 @@ public class ElliottWaveAnalysis {
         }
 
         ElliottDegree degree = resolveDegree(args, series);
-        ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
         AnalysisResult result = analysis.analyze(series, degree, DEFAULT_FIB_TOLERANCE);
 
         // Output structured result as JSON (without chart images by default)
-        ElliottWaveAnalysisResult structuredResult = result.structuredResult();
+        ElliottWaveAnalysisReport structuredResult = result.structuredResult();
         String json = structuredResult.toJson(false);
         LOG.info("Structured analysis result: {}", json);
 
@@ -189,10 +191,37 @@ public class ElliottWaveAnalysis {
     }
 
     /**
+     * Runs the Elliott Wave suite using an ossified classpath dataset.
+     *
+     * @param resourceOwner  owner class for classpath resource resolution
+     * @param resource       classpath JSON resource to load
+     * @param seriesName     series name to assign
+     * @param explicitDegree degree override, or {@code null} to auto-select
+     */
+    static void runOssifiedResource(Class<?> resourceOwner, String resource, String seriesName,
+            ElliottDegree explicitDegree) {
+        BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(resourceOwner, resource, seriesName, LOG);
+        if (series == null || series.isEmpty()) {
+            LOG.error("No data available for resource {}", resource);
+            return;
+        }
+
+        ElliottDegree degree = explicitDegree == null ? selectRecommendedDegree(series) : explicitDegree;
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        AnalysisResult result = analysis.analyze(series, degree, DEFAULT_FIB_TOLERANCE);
+        String json = result.structuredResult().toJson(false);
+        LOG.info("Structured analysis result: {}", json);
+        analysis.visualizeAnalysisResult(result);
+    }
+
+    /**
      * Loads a bar series based on command-line arguments or defaults.
      * <p>
      * If 4-6 arguments are provided, loads from an external data source. Otherwise,
      * loads the default ossified dataset from classpath resources.
+     * <p>
+     * Argument layout (0-based indices) is the same as documented in
+     * {@link #loadBarSeriesFromArgs(String[])}.
      *
      * @param args command-line arguments
      * @return the loaded bar series, or {@code null} if loading fails
@@ -208,6 +237,34 @@ public class ElliottWaveAnalysis {
     /**
      * Parses command-line arguments and loads a bar series from an external data
      * source.
+     * <p>
+     * Argument layout (0-based indices):
+     * <ul>
+     * <li>{@code args[0]}: data source name ("YahooFinance" or "Coinbase")</li>
+     * <li>{@code args[1]}: ticker symbol (e.g., "BTC-USD", "AAPL")</li>
+     * <li>{@code args[2]}: bar duration (ISO-8601, e.g., "PT1D", "PT4H",
+     * "PT5M")</li>
+     * <li>{@code args[3]}: either {@link ElliottDegree} (case-insensitive) or start
+     * epoch seconds, depending on the overall argument count and whether the token
+     * parses as epoch seconds</li>
+     * <li>{@code args[4]}: start epoch seconds when degree is supplied, otherwise
+     * end epoch seconds</li>
+     * <li>{@code args[5]}: end epoch seconds (only when degree is supplied and an
+     * explicit end time is provided)</li>
+     * </ul>
+     * <p>
+     * Supported forms (with {@code startEpoch} and {@code endEpoch} in Unix epoch
+     * seconds):
+     * <ul>
+     * <li>4 args: dataSource, ticker, barDuration, startEpoch (endEpoch defaults to
+     * now)</li>
+     * <li>5 args without degree: dataSource, ticker, barDuration, startEpoch,
+     * endEpoch</li>
+     * <li>5 args with degree: dataSource, ticker, barDuration, degree, startEpoch
+     * (endEpoch defaults to now)</li>
+     * <li>6 args: dataSource, ticker, barDuration, degree, startEpoch,
+     * endEpoch</li>
+     * </ul>
      *
      * @param args command-line arguments (must have at least 4 elements)
      * @return the loaded bar series, or {@code null} if parsing or loading fails
@@ -227,6 +284,26 @@ public class ElliottWaveAnalysis {
         return series;
     }
 
+    /**
+     * Parses command-line arguments into a {@link BarSeriesRequest}.
+     * <p>
+     * Argument layout and supported forms match
+     * {@link #loadBarSeriesFromArgs(String[])}. In summary:
+     * <ul>
+     * <li>{@code args[0]}: data source ("YahooFinance" or "Coinbase")</li>
+     * <li>{@code args[1]}: ticker symbol</li>
+     * <li>{@code args[2]}: bar duration (ISO-8601)</li>
+     * <li>{@code args[3]}: {@link ElliottDegree} or start epoch seconds</li>
+     * <li>{@code args[4]}: start epoch seconds when degree is supplied, otherwise
+     * end epoch seconds</li>
+     * <li>{@code args[5]}: end epoch seconds (only when degree is supplied and an
+     * explicit end time is provided)</li>
+     * </ul>
+     *
+     * @param args command-line arguments
+     * @return a populated {@link BarSeriesRequest} when arguments are valid, or
+     *         {@link Optional#empty()} when parsing fails
+     */
     static Optional<BarSeriesRequest> parseBarSeriesRequest(String[] args) {
         if (args.length < 4) {
             LOG.error(
@@ -359,6 +436,15 @@ public class ElliottWaveAnalysis {
         return Optional.of(new BarSeriesRequest(dataSource, ticker, barDuration, startTime, endTime));
     }
 
+    /**
+     * Parsed market-data request derived from positional command-line arguments.
+     *
+     * @param dataSource  normalized datasource token (YahooFinance or Coinbase)
+     * @param ticker      market symbol (for example BTC-USD, ^GSPC)
+     * @param barDuration parsed bar duration
+     * @param startTime   parsed start time (inclusive)
+     * @param endTime     parsed end time (inclusive)
+     */
     record BarSeriesRequest(String dataSource, String ticker, Duration barDuration, Instant startTime,
             Instant endTime) {
     }
@@ -409,12 +495,15 @@ public class ElliottWaveAnalysis {
     }
 
     /**
-     * Resolves the Elliott degree from command-line arguments or auto-selects one
-     * based on the series characteristics.
+     * Resolves the Elliott degree from positional command-line arguments.
+     * <p>
+     * If an explicit degree token is present at {@code args[3]} (as determined by
+     * {@link #hasDegreeToken(String[])}), that value is used. Otherwise the degree
+     * is auto-selected from {@code series} characteristics.
      *
      * @param args   command-line arguments
-     * @param series bar series used for auto-selection
-     * @return the resolved Elliott degree
+     * @param series bar series used for auto-selection fallback
+     * @return resolved analysis degree
      */
     static ElliottDegree resolveDegree(String[] args, BarSeries series) {
         Optional<ElliottDegree> explicitDegree = parseExplicitDegree(args);
@@ -424,6 +513,16 @@ public class ElliottWaveAnalysis {
         return selectRecommendedDegree(series);
     }
 
+    /**
+     * Parses an explicit degree token from {@code args[3]} when present.
+     * <p>
+     * This method is only active when {@link #hasDegreeToken(String[])} returns
+     * {@code true}.
+     *
+     * @param args command-line arguments
+     * @return parsed degree, {@link #DEFAULT_DEGREE} for invalid degree tokens, or
+     *         empty when no explicit degree token exists
+     */
     private static Optional<ElliottDegree> parseExplicitDegree(String[] args) {
         if (!hasDegreeToken(args)) {
             return Optional.empty();
@@ -471,6 +570,23 @@ public class ElliottWaveAnalysis {
         }
     }
 
+    /**
+     * Determines whether the argument array contains an explicit degree token at
+     * {@code args[3]}.
+     * <p>
+     * Rules:
+     * <ul>
+     * <li>{@code args.length < 5}: no explicit degree token</li>
+     * <li>{@code args.length >= 6}: explicit degree token is required at
+     * {@code args[3]}</li>
+     * <li>{@code args.length == 5}: {@code args[3]} is treated as degree only when
+     * it is not numeric epoch seconds</li>
+     * </ul>
+     *
+     * @param args command-line arguments
+     * @return {@code true} when {@code args[3]} should be interpreted as a degree
+     *         token
+     */
     private static boolean hasDegreeToken(String[] args) {
         if (args.length < 5) {
             return false;
@@ -481,6 +597,12 @@ public class ElliottWaveAnalysis {
         return !isEpochSeconds(args[3]);
     }
 
+    /**
+     * Checks whether a token can be parsed as Unix epoch seconds.
+     *
+     * @param value raw token from argument parsing
+     * @return {@code true} when token is a valid {@code long} value
+     */
     private static boolean isEpochSeconds(String value) {
         if (value == null || value.trim().isEmpty()) {
             return false;
@@ -512,7 +634,7 @@ public class ElliottWaveAnalysis {
      *
      * <pre>
      * BarSeries series = // ... load your bar series
-     * ElliottWaveAnalysis analysis = new ElliottWaveAnalysis();
+     * ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
      * AnalysisResult result = analysis.analyze(series, ElliottDegree.PRIMARY, 0.25);
      * // Optionally visualize
      * analysis.visualizeAnalysisResult(result);
@@ -583,7 +705,7 @@ public class ElliottWaveAnalysis {
         }
 
         // Create structured analysis result with embedded chart images
-        ElliottWaveAnalysisResult structuredResult = ElliottWaveAnalysisResult.from(degree, swingMetadata,
+        ElliottWaveAnalysisReport structuredResult = ElliottWaveAnalysisReport.from(degree, swingMetadata,
                 phaseIndicator, ratioIndicator, channelIndicator, confluenceIndicator, invalidationIndicator,
                 scenarioSet, endIndex, baseCaseChartPlan, alternativeChartPlans);
 
@@ -681,20 +803,20 @@ public class ElliottWaveAnalysis {
     /**
      * Logs the structured analysis result, replacing the previous logging methods.
      * <p>
-     * This method logs all the data captured in {@link ElliottWaveAnalysisResult},
+     * This method logs all the data captured in {@link ElliottWaveAnalysisReport},
      * maintaining backward compatibility with the previous logging format.
      *
      * @param result the structured analysis result
      */
-    private static void logStructuredAnalysisResult(ElliottWaveAnalysisResult result, ElliottScenarioSet scenarioSet,
+    private static void logStructuredAnalysisResult(ElliottWaveAnalysisReport result, ElliottScenarioSet scenarioSet,
             NumFactory numFactory) {
         // Log swing snapshot
-        ElliottWaveAnalysisResult.SwingSnapshot snapshot = result.swingSnapshot();
+        ElliottWaveAnalysisReport.SwingSnapshot snapshot = result.swingSnapshot();
         LOG.info("Elliott swing snapshot valid={}, swings={}, high={}, low={}", snapshot.valid(), snapshot.swings(),
                 snapshot.high(), snapshot.low());
 
         // Log latest analysis
-        ElliottWaveAnalysisResult.LatestAnalysis latest = result.latestAnalysis();
+        ElliottWaveAnalysisReport.LatestAnalysis latest = result.latestAnalysis();
         LOG.info("Latest phase={} impulseConfirmed={} correctiveConfirmed={}", latest.phase(),
                 latest.impulseConfirmed(), latest.correctiveConfirmed());
         LOG.info("Latest ratio type={} value={}", latest.ratioType(), latest.ratioValue());
@@ -708,7 +830,7 @@ public class ElliottWaveAnalysis {
         LOG.info("Latest invalidation={}", latest.invalidation());
 
         // Log scenario summary
-        ElliottWaveAnalysisResult.ScenarioSummary summary = result.scenarioSummary();
+        ElliottWaveAnalysisReport.ScenarioSummary summary = result.scenarioSummary();
         LOG.info("=== Elliott Wave Scenario Analysis ===");
         LOG.info("Scenario summary: {}", summary.summary());
         LOG.info("Strong consensus: {} | Consensus phase: {}", summary.strongConsensus(), summary.consensusPhase());
@@ -716,7 +838,7 @@ public class ElliottWaveAnalysis {
 
         // Log base case scenario
         if (result.baseCase() != null) {
-            ElliottWaveAnalysisResult.BaseCaseScenario baseCase = result.baseCase();
+            ElliottWaveAnalysisReport.BaseCaseScenario baseCase = result.baseCase();
             LOG.info("BASE CASE SCENARIO: {} ({})", baseCase.currentPhase(), baseCase.type());
             LOG.info("  Overall confidence: {}% ({})", String.format("%.1f", baseCase.overallConfidence()),
                     baseCase.confidenceLevel());
@@ -733,11 +855,11 @@ public class ElliottWaveAnalysis {
         }
 
         // Log alternative scenarios
-        List<ElliottWaveAnalysisResult.AlternativeScenario> alternatives = result.alternatives();
+        List<ElliottWaveAnalysisReport.AlternativeScenario> alternatives = result.alternatives();
         if (!alternatives.isEmpty()) {
             LOG.info("ALTERNATIVE SCENARIOS ({}):", alternatives.size());
             for (int i = 0; i < Math.min(alternatives.size(), 3); i++) {
-                ElliottWaveAnalysisResult.AlternativeScenario alt = alternatives.get(i);
+                ElliottWaveAnalysisReport.AlternativeScenario alt = alternatives.get(i);
                 LOG.info("  {}. {} ({}) - {}% confidence | {}% probability", i + 1, alt.currentPhase(), alt.type(),
                         String.format("%.1f", alt.confidencePercent()),
                         String.format("%.1f", alt.scenarioProbability() * 100.0));
@@ -759,25 +881,8 @@ public class ElliottWaveAnalysis {
      *         cannot be loaded
      */
     private static BarSeries loadSeries(String resource) {
-        try (InputStream stream = ElliottWaveAnalysis.class.getClassLoader().getResourceAsStream(resource)) {
-            if (stream == null) {
-                LOG.error("Missing resource: {}", resource);
-                return null;
-            }
-            BarSeries loaded = JsonFileBarSeriesDataSource.DEFAULT_INSTANCE.loadSeries(stream);
-            if (loaded == null) {
-                return null;
-            }
-
-            BarSeries series = new BaseBarSeriesBuilder().withName("BTC-USD_PT1D@Coinbase (daily)").build();
-            for (int i = 0; i < loaded.getBarCount(); i++) {
-                series.addBar(loaded.getBar(i));
-            }
-            return series;
-        } catch (Exception ex) {
-            LOG.error("Failed to load Elliott wave dataset: {}", ex.getMessage(), ex);
-            return null;
-        }
+        return OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveIndicatorSuiteDemo.class, resource,
+                "BTC-USD_PT1D@Coinbase (daily)", LOG);
     }
 
     /**
@@ -1219,7 +1324,7 @@ public class ElliottWaveAnalysis {
             ElliottSwingMetadata swingMetadata, ElliottScenarioSet scenarioSet, Indicator<Num> ratioValue,
             Indicator<Num> swingCountAsNum, Indicator<Num> filteredSwingCountAsNum,
             Optional<ChartPlan> baseCaseChartPlan, List<ChartPlan> alternativeChartPlans,
-            ElliottWaveAnalysisResult structuredResult) {
+            ElliottWaveAnalysisReport structuredResult) {
     }
 
 }

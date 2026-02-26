@@ -13,14 +13,14 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
-public class WyckoffCycleAnalysisTest extends AbstractIndicatorTest<BarSeries, Num> {
+public class WyckoffCycleAnalysisRunnerTest extends AbstractIndicatorTest<BarSeries, Num> {
 
     private BarSeries series;
 
     /**
-     * Creates a new WyckoffCycleAnalysisTest instance.
+     * Creates a new WyckoffCycleAnalysisRunnerTest instance.
      */
-    public WyckoffCycleAnalysisTest(NumFactory numFactory) {
+    public WyckoffCycleAnalysisRunnerTest(NumFactory numFactory) {
         super(numFactory);
     }
 
@@ -46,7 +46,7 @@ public class WyckoffCycleAnalysisTest extends AbstractIndicatorTest<BarSeries, N
      */
     @Test
     public void shouldRunSingleDegreeAnalysisAndReturnTransitions() {
-        WyckoffCycleAnalysis analysis = WyckoffCycleAnalysis.builder()
+        WyckoffCycleAnalysisRunner analysis = WyckoffCycleAnalysisRunner.builder()
                 .withSwingConfiguration(1, 1, 0)
                 .withVolumeWindows(1, 4)
                 .withTolerances(0.02, 0.05)

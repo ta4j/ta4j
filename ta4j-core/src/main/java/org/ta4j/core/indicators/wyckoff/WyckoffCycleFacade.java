@@ -17,7 +17,7 @@ import org.ta4j.core.num.NumFactory;
  * <b>Entry point</b>: Start here when you want indicator-style, per-bar access
  * to Wyckoff outputs for composing into rules and strategies. If you need a
  * one-shot analysis snapshot across one or more degrees/configurations, prefer
- * {@link WyckoffCycleAnalysis}.
+ * {@link WyckoffCycleAnalysisRunner}.
  *
  * <p>
  * Basic usage:
