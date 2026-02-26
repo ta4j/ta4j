@@ -184,6 +184,7 @@ public class CandlestickChartWithChopIndicator {
         frame.setContentPane(combinedChartPanel);
         frame.pack();
         UIUtils.centerFrameOnScreen(frame);
+        frame.setFocusableWindowState(false);
         frame.setVisible(true);
         frame.setAlwaysOnTop(false);
         frame.setAutoRequestFocus(false);

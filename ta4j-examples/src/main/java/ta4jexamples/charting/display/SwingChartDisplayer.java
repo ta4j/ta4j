@@ -197,6 +197,7 @@ public final class SwingChartDisplayer implements ChartDisplayer {
         frame.pack();
         frame.setAlwaysOnTop(false);
         frame.setAutoRequestFocus(false);
+        frame.setFocusableWindowState(false);
         // Set to DISPOSE_ON_CLOSE so closing one window doesn't close all windows
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 

@@ -68,6 +68,7 @@ public class IndicatorsToChart {
         frame.setContentPane(panel);
         frame.pack();
         UIUtils.centerFrameOnScreen(frame);
+        frame.setFocusableWindowState(false);
         frame.setVisible(true);
         frame.setAlwaysOnTop(false);
         frame.setAutoRequestFocus(false);
