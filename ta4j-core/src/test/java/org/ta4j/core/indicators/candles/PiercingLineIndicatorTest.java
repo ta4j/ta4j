@@ -127,6 +127,16 @@ public class PiercingLineIndicatorTest extends AbstractIndicatorTest<Indicator<B
     }
 
     @Test
+    public void shouldReturnFalseWhenDenominatorIsZero() {
+        series.barBuilder().openPrice(20).closePrice(14).highPrice(20).lowPrice(13).add();
+        series.barBuilder().openPrice(0).closePrice(18).highPrice(19).lowPrice(0).add();
+
+        final PiercingLineIndicator indicator = new PiercingLineIndicator(series);
+
+        assertThat(indicator.getValue(18)).isFalse();
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void shouldRoundTripSerializeAndDeserialize() {
         series.barBuilder().openPrice(29).closePrice(23).highPrice(29).lowPrice(22).add();

@@ -127,6 +127,16 @@ public class DarkCloudCoverIndicatorTest extends AbstractIndicatorTest<Indicator
     }
 
     @Test
+    public void shouldReturnFalseWhenDenominatorIsZero() {
+        series.barBuilder().openPrice(0).closePrice(8).highPrice(9).lowPrice(0).add();
+        series.barBuilder().openPrice(10).closePrice(3).highPrice(10).lowPrice(2).add();
+
+        final DarkCloudCoverIndicator indicator = new DarkCloudCoverIndicator(series);
+
+        assertThat(indicator.getValue(18)).isFalse();
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void shouldRoundTripSerializeAndDeserialize() {
         series.barBuilder().openPrice(17).closePrice(25).highPrice(25).lowPrice(17).add();

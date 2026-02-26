@@ -181,10 +181,6 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
 
     private Num calculateAverage(int index, RunningTotalIndicator buyingPressureSumIndicator,
             RunningTotalIndicator trueRangeSumIndicator) {
-        if (index < getCountOfUnstableBars()) {
-            return NaN;
-        }
-
         Num totalTrueRange = trueRangeSumIndicator.getValue(index);
         if (isInvalid(totalTrueRange) || totalTrueRange.isZero()) {
             return NaN;
