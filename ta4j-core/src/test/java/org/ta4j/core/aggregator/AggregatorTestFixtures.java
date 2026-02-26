@@ -5,11 +5,13 @@ package org.ta4j.core.aggregator;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 
 import org.ta4j.core.Bar;
-import org.ta4j.core.mocks.MockBarBuilder;
+import org.ta4j.core.BarBuilder;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 final class AggregatorTestFixtures {
@@ -48,75 +50,63 @@ final class AggregatorTestFixtures {
     }
 
     static List<Bar> inconsistentPeriodBars(NumFactory numFactory) {
-        List<Bar> bars = new ArrayList<>();
-        bars.add(new MockBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
-                .endTime(BASE_END_TIME)
-                .openPrice(100d)
-                .highPrice(101d)
-                .lowPrice(99d)
-                .closePrice(100d)
-                .volume(10d)
-                .amount(1000d)
-                .trades(2)
-                .build());
-        bars.add(new MockBarBuilder(numFactory).timePeriod(Duration.ofMinutes(2))
-                .endTime(BASE_END_TIME.plus(Duration.ofMinutes(2)))
-                .openPrice(100d)
-                .highPrice(102d)
-                .lowPrice(98d)
-                .closePrice(101d)
-                .volume(11d)
-                .amount(1111d)
-                .trades(2)
-                .build());
-        bars.add(new MockBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
-                .endTime(BASE_END_TIME.plus(Duration.ofMinutes(3)))
-                .openPrice(101d)
-                .highPrice(103d)
-                .lowPrice(100d)
-                .closePrice(102d)
-                .volume(12d)
-                .amount(1224d)
-                .trades(3)
-                .build());
-        return bars;
+        BarSeries series = newSeries(numFactory);
+        addBar(series, Duration.ofMinutes(1), BASE_END_TIME, 100d, 101d, 99d, 100d, 10d);
+        addBar(series, Duration.ofMinutes(2), BASE_END_TIME.plus(Duration.ofMinutes(2)), 100d, 102d, 98d, 101d, 11d);
+        addBar(series, Duration.ofMinutes(1), BASE_END_TIME.plus(Duration.ofMinutes(3)), 101d, 103d, 100d, 102d, 12d);
+        return List.copyOf(series.getBarData());
     }
 
     static List<Bar> barsFromClosePrices(NumFactory numFactory, double... closePrices) {
-        List<Bar> bars = new ArrayList<>();
+        BarSeries series = newSeries(numFactory);
         for (int i = 0; i < closePrices.length; i++) {
             double closePrice = closePrices[i];
             double openPrice = i == 0 ? closePrice : closePrices[i - 1];
             double highPrice = Math.max(openPrice, closePrice);
             double lowPrice = Math.min(openPrice, closePrice);
             double volume = 10d;
-            bars.add(buildBar(numFactory, i + 1, openPrice, highPrice, lowPrice, closePrice, volume));
+            Instant endTime = BASE_END_TIME.plus(Duration.ofMinutes(i));
+            addBar(series, SOURCE_PERIOD, endTime, openPrice, highPrice, lowPrice, closePrice, volume);
         }
-        return bars;
+        return List.copyOf(series.getBarData());
+    }
+
+    static List<Bar> barsWithMissingClosePrice(NumFactory numFactory) {
+        BarSeries series = newSeries(numFactory);
+        addBar(series, SOURCE_PERIOD, BASE_END_TIME, 100d, 101d, 99d, 100d, 10d);
+        addBar(series, SOURCE_PERIOD, BASE_END_TIME.plus(Duration.ofMinutes(1)), 100d, 102d, 98d, null, 10d);
+        return List.copyOf(series.getBarData());
     }
 
     private static List<Bar> fromRows(NumFactory numFactory, double[][] rows, List<Integer> endOffsetsInMinutes) {
-        List<Bar> bars = new ArrayList<>();
+        BarSeries series = newSeries(numFactory);
         for (int i = 0; i < rows.length; i++) {
             double[] row = rows[i];
-            bars.add(buildBar(numFactory, endOffsetsInMinutes.get(i), row[0], row[1], row[2], row[3], row[4]));
+            Instant endTime = BASE_END_TIME.plus(Duration.ofMinutes(endOffsetsInMinutes.get(i) - 1L));
+            addBar(series, SOURCE_PERIOD, endTime, row[0], row[1], row[2], row[3], row[4]);
         }
-        return bars;
+        return List.copyOf(series.getBarData());
     }
 
-    private static Bar buildBar(NumFactory numFactory, int endOffsetInMinutes, double open, double high, double low,
-            double close, double volume) {
+    private static BarSeries newSeries(NumFactory numFactory) {
+        return new MockBarSeriesBuilder().withNumFactory(numFactory).withName("aggregator-fixtures").build();
+    }
+
+    private static void addBar(BarSeries series, Duration period, Instant endTime, double open, double high, double low,
+            Double close, double volume) {
         long trades = Math.max(1L, Math.round(volume / 5d));
-        double amount = close * volume;
-        return new MockBarBuilder(numFactory).timePeriod(SOURCE_PERIOD)
-                .endTime(BASE_END_TIME.plus(Duration.ofMinutes(endOffsetInMinutes - 1L)))
+        Num amount = close == null ? series.numFactory().zero() : series.numFactory().numOf(close * volume);
+        BarBuilder barBuilder = series.barBuilder()
+                .timePeriod(period)
+                .endTime(endTime)
                 .openPrice(open)
                 .highPrice(high)
-                .lowPrice(low)
-                .closePrice(close)
-                .volume(volume)
-                .amount(amount)
-                .trades(trades)
-                .build();
+                .lowPrice(low);
+        if (close == null) {
+            barBuilder.closePrice((Num) null);
+        } else {
+            barBuilder.closePrice(close);
+        }
+        barBuilder.volume(volume).amount(amount).trades(trades).add();
     }
 }

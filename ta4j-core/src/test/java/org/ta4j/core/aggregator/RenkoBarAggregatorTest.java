@@ -7,15 +7,12 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
-import java.time.Duration;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -133,30 +130,10 @@ public class RenkoBarAggregatorTest extends AbstractIndicatorTest<BarSeries, Num
 
     @Test
     public void aggregateRejectsMissingClosePrice() {
-        Instant endTime = Instant.parse("2026-01-02T00:01:00Z");
-        Bar firstBar = new MockBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
-                .endTime(endTime)
-                .openPrice(100d)
-                .highPrice(101d)
-                .lowPrice(99d)
-                .closePrice(100d)
-                .volume(10d)
-                .amount(1000d)
-                .trades(1)
-                .build();
-        Bar secondBar = new MockBarBuilder(numFactory).timePeriod(Duration.ofMinutes(1))
-                .endTime(endTime.plus(Duration.ofMinutes(1)))
-                .openPrice(100d)
-                .highPrice(102d)
-                .lowPrice(98d)
-                .closePrice((Num) null)
-                .volume(10d)
-                .amount(1000d)
-                .trades(1)
-                .build();
         RenkoBarAggregator aggregator = new RenkoBarAggregator(2d, 2);
 
-        assertThrows(IllegalArgumentException.class, () -> aggregator.aggregate(List.of(firstBar, secondBar)));
+        assertThrows(IllegalArgumentException.class,
+                () -> aggregator.aggregate(AggregatorTestFixtures.barsWithMissingClosePrice(numFactory)));
     }
 
     @Test
