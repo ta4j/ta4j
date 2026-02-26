@@ -28,10 +28,13 @@ This PRD proposes a design for an offline, leakage-safe walk-forward tuning syst
 4. Online/live auto-retraining.
 
 ## 4. Confirmed Decisions
-1. Horizon strategy: start with fixed horizon evaluation.
-2. Primary objective style: phase/event-first scoring.
-3. Tuning granularity: one global EW configuration (no per-asset-family configs).
-4. Calibration default: Platt scaling first; isotonic only as challenger under data sufficiency gates.
+1. Horizon strategy: fixed horizon evaluation.
+2. Primary optimization horizon: `H = 60` bars.
+3. Additional horizon reporting: `H = 30` and `H = 150` bars (diagnostic only).
+4. Primary objective style: phase/event-first scoring.
+5. Ranking depth policy: optimize with `top-k = 3`; report adjacent `k = 1` and `k = 5`.
+6. Tuning granularity: one global EW configuration (no per-asset-family configs).
+7. Calibration default: Platt scaling first; isotonic only as challenger under data sufficiency gates.
 
 ## 5. Decision Rationale and Tradeoffs
 
@@ -159,7 +162,7 @@ Decision:
 1. Ingest historical bars and segment into walk-forward folds.
 2. For each candidate config and decision index `t`:
    - Run EW analysis on bars `[0..t]` only.
-   - Store top-k scenarios with counts, confidence, and probabilities.
+   - Store top 5 scenarios with counts, confidence, and probabilities to support `k = 1/3/5` reporting.
 3. Evaluate realized outcomes in `[t+1..t+H]`.
 4. Score prediction quality and calibration.
 5. Aggregate by fold and globally; select champion config.
@@ -187,6 +190,11 @@ Within `[t+1..t+H]`:
 2. Determine realized phase progression proxy.
 3. Build coarse realized count proxy for diagnostics.
 
+### 7.4 Horizon Reporting Policy
+1. Optimize candidate selection on `H = 60` only.
+2. Report secondary diagnostics on `H = 30` and `H = 150`.
+3. Secondary horizons must not override champion selection unless policy is explicitly revised in this PRD.
+
 ## 8. Metrics and Objective Function
 
 ### 8.1 Primary Metrics (optimization)
@@ -197,8 +205,9 @@ Within `[t+1..t+H]`:
    - Log loss
    - Expected calibration error (ECE)
 4. Ranking quality:
-   - Top-k hit rate
-   - NDCG over scenario ranking
+   - Top-k hit rate (primary at `k = 3`)
+   - NDCG over scenario ranking (primary at `k = 3`)
+   - Adjacent diagnostics reported at `k = 1` and `k = 5`
 
 ### 8.2 Secondary Diagnostics (non-primary)
 1. Exact/near wave-count agreement.
@@ -274,14 +283,12 @@ Isotonic can be evaluated only if:
 5. Phase E: Integrate recurring champion/challenger evaluation workflow.
 
 ## 16. Open Questions
-1. Final fixed horizon `H` default (for example 20, 40, or 60 bars).
-2. Minimum top-k scenario depth for ranking metrics.
-3. Whether to use a single horizon or multi-horizon reporting (optimize one, report several).
+1. Final walk-forward fold geometry values (train length, test length, purge, embargo).
 
 ## 17. Immediate Next Step
 After PRD approval, the first implementation deliverable should be a minimal offline evaluator that:
 1. Produces snapshot predictions at each `t`.
-2. Scores fixed-horizon event outcomes.
+2. Scores fixed-horizon event outcomes (primary `H = 60`).
 3. Outputs calibration and phase/event agreement reports per fold.
 
 ## 18. Ordered Implementation Checklist (Execution Backlog)
@@ -291,8 +298,8 @@ Objective:
 - Freeze a reproducible baseline and remove remaining design ambiguity before implementation starts.
 
 Checklist:
-1. [ ] Lock fixed horizon `H` for v1 (single value).
-2. [ ] Lock top-k scenario depth used in ranking metrics.
+1. [ ] Encode fixed horizon defaults in configuration (`H = 60`, with diagnostics at `30` and `150`).
+2. [ ] Encode ranking defaults in configuration (`k = 3`, with diagnostics at `1` and `5`).
 3. [ ] Lock walk-forward fold geometry (train length, test length, purge, embargo, holdout).
 4. [ ] Freeze baseline EW runner configuration for comparison.
 5. [ ] Freeze datasets and date boundaries used for tuning and holdout.
