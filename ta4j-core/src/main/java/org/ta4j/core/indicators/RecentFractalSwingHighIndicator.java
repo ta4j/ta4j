@@ -107,7 +107,8 @@ public class RecentFractalSwingHighIndicator extends AbstractRecentSwingIndicato
             return -1;
         }
         for (int candidate = latestConfirmable; candidate >= earliestCandidate; candidate--) {
-            if (isSwingHigh(candidate, index)) {
+            if (FractalDetectionHelper.isConfirmedFractal(indicator, getBarSeries(), candidate, precedingLowerBars,
+                    followingLowerBars, index, allowedEqualBars, FractalDetectionHelper.Direction.HIGH)) {
                 return candidate;
             }
         }
@@ -121,106 +122,6 @@ public class RecentFractalSwingHighIndicator extends AbstractRecentSwingIndicato
 
     @Override
     protected boolean purgeOnNegativeDetection() {
-        return true;
-    }
-
-    private boolean isSwingHigh(int candidateIndex, int maxAvailableIndex) {
-        final Num candidateValue = indicator.getValue(candidateIndex);
-        if (candidateValue.isNaN()) {
-            return false;
-        }
-        final int plateauStart = findPlateauStart(candidateIndex, candidateValue);
-        if (plateauStart < 0) {
-            return false;
-        }
-        final int plateauEnd = findPlateauEnd(candidateIndex, maxAvailableIndex, candidateValue);
-        if (plateauEnd < 0) {
-            return false;
-        }
-        return hasLowerPrecedingBars(plateauStart, candidateValue)
-                && hasLowerFollowingBars(plateauEnd, maxAvailableIndex, candidateValue);
-    }
-
-    private int findPlateauStart(int candidateIndex, Num candidateValue) {
-        final int beginIndex = getBarSeries().getBeginIndex();
-        int equalsUsed = 0;
-        int index = candidateIndex;
-        while (index > beginIndex && equalsUsed < allowedEqualBars) {
-            final Num previousValue = indicator.getValue(index - 1);
-            if (previousValue.isNaN()) {
-                return -1;
-            }
-            if (!previousValue.isEqual(candidateValue)) {
-                break;
-            }
-            equalsUsed++;
-            index--;
-        }
-        if (index > beginIndex) {
-            final Num previousValue = indicator.getValue(index - 1);
-            if (previousValue.isEqual(candidateValue)) {
-                return -1;
-            }
-        }
-        return index;
-    }
-
-    private int findPlateauEnd(int candidateIndex, int maxAvailableIndex, Num candidateValue) {
-        int equalsUsed = 0;
-        int index = candidateIndex;
-        while (index < maxAvailableIndex && equalsUsed < allowedEqualBars) {
-            final Num nextValue = indicator.getValue(index + 1);
-            if (nextValue.isNaN()) {
-                return -1;
-            }
-            if (!nextValue.isEqual(candidateValue)) {
-                break;
-            }
-            equalsUsed++;
-            index++;
-        }
-        if (index < maxAvailableIndex) {
-            final Num nextValue = indicator.getValue(index + 1);
-            if (nextValue.isEqual(candidateValue)) {
-                return -1;
-            }
-        }
-        return index;
-    }
-
-    private boolean hasLowerPrecedingBars(int plateauStartIndex, Num candidateValue) {
-        if (precedingLowerBars == 0) {
-            return true;
-        }
-        final int beginIndex = getBarSeries().getBeginIndex();
-        if (plateauStartIndex - precedingLowerBars < beginIndex) {
-            return false;
-        }
-        for (int i = plateauStartIndex - 1; i >= plateauStartIndex - precedingLowerBars; i--) {
-            final Num value = indicator.getValue(i);
-            if (value.isNaN() || !value.isLessThan(candidateValue)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private boolean hasLowerFollowingBars(int plateauEndIndex, int maxAvailableIndex, Num candidateValue) {
-        if (followingLowerBars == 0) {
-            return true;
-        }
-        if (maxAvailableIndex - plateauEndIndex < followingLowerBars) {
-            return false;
-        }
-        for (int i = plateauEndIndex + 1; i <= plateauEndIndex + followingLowerBars; i++) {
-            if (i > maxAvailableIndex) {
-                return false;
-            }
-            final Num value = indicator.getValue(i);
-            if (value.isNaN() || !value.isLessThan(candidateValue)) {
-                return false;
-            }
-        }
         return true;
     }
 }

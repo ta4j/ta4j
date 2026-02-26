@@ -114,32 +114,9 @@ public class FractalHighIndicator extends CachedIndicator<Boolean> {
         }
 
         final BarSeries series = getBarSeries();
-        final int beginIndex = series.getBeginIndex();
         final int candidateIndex = index - followingBars;
-        if (candidateIndex - precedingBars < beginIndex) {
-            return Boolean.FALSE;
-        }
-
-        final Num candidateValue = indicator.getValue(candidateIndex);
-        if (isInvalid(candidateValue)) {
-            return Boolean.FALSE;
-        }
-
-        for (int i = 1; i <= precedingBars; i++) {
-            final Num previousValue = indicator.getValue(candidateIndex - i);
-            if (isInvalid(previousValue) || !candidateValue.isGreaterThan(previousValue)) {
-                return Boolean.FALSE;
-            }
-        }
-
-        for (int i = 1; i <= followingBars; i++) {
-            final Num nextValue = indicator.getValue(candidateIndex + i);
-            if (isInvalid(nextValue) || !candidateValue.isGreaterThan(nextValue)) {
-                return Boolean.FALSE;
-            }
-        }
-
-        return Boolean.TRUE;
+        return FractalDetectionHelper.isConfirmedFractal(indicator, series, candidateIndex, precedingBars,
+                followingBars, index, 0, FractalDetectionHelper.Direction.HIGH);
     }
 
     /**
@@ -166,10 +143,6 @@ public class FractalHighIndicator extends CachedIndicator<Boolean> {
     @Override
     public int getCountOfUnstableBars() {
         return unstableBars;
-    }
-
-    private static boolean isInvalid(Num value) {
-        return value == null || value.isNaN() || Double.isNaN(value.doubleValue());
     }
 
     private static Indicator<Num> requireIndicator(Indicator<Num> indicator) {
