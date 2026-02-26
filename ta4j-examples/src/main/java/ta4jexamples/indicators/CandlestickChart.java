@@ -82,7 +82,8 @@ public class CandlestickChart {
     }
 
     /**
-     * Displays a chart in a frame.
+     * Displays a chart in a frame. The frame is configured to avoid stealing focus
+     * when launched from tests or scripts.
      *
      * @param chart the chart to be displayed
      */

@@ -13,6 +13,9 @@ import org.junit.jupiter.api.Test;
 import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.GraphicsEnvironment;
+import java.util.UUID;
+
+import javax.swing.JFrame;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -136,6 +139,25 @@ class SwingChartDisplayerTest {
     @Test
     void testDisplayWithNullChart() {
         assertThrows(Exception.class, () -> displayer.display(null), "Display should throw exception for null chart");
+    }
+
+    @Test
+    void testDisplayCreatesNonFocusableWindowWhenEnabled() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        String title = "Focusability Test " + UUID.randomUUID();
+        System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
+
+        JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
+        displayer.display(chart, title);
+
+        JFrame frame = findFrameByTitle(title);
+        assertNotNull(frame, "Expected frame created by public display API");
+        assertFalse(frame.getFocusableWindowState(), "Displayed chart frame should not be focusable");
+
+        // Keep cleanup deterministic in tests and avoid exit-on-close behavior.
+        System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
+        frame.dispose();
     }
 
     /**
@@ -425,6 +447,16 @@ class SwingChartDisplayerTest {
         } finally {
             System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
         }
+    }
+
+    private JFrame findFrameByTitle(String title) {
+        Frame[] frames = Frame.getFrames();
+        for (Frame frame : frames) {
+            if (frame instanceof JFrame jFrame && title.equals(jFrame.getTitle())) {
+                return jFrame;
+            }
+        }
+        return null;
     }
 
 }
