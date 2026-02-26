@@ -3,11 +3,14 @@
  */
 package org.ta4j.core.aggregator;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import org.ta4j.core.Bar;
+import org.ta4j.core.bars.TimeBarBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -63,7 +66,7 @@ public class VolumeBarAggregator implements BarAggregator {
      * @since 0.22.3
      */
     public VolumeBarAggregator(Number volumeThreshold, boolean onlyFinalBars) {
-        this.volumeThreshold = AggregationParameterValidator.requirePositive(volumeThreshold, "volumeThreshold");
+        this.volumeThreshold = SourceIntervalValidator.requirePositiveFiniteNumber(volumeThreshold, "volumeThreshold");
         this.onlyFinalBars = onlyFinalBars;
     }
 
@@ -88,20 +91,82 @@ public class VolumeBarAggregator implements BarAggregator {
 
         NumFactory numFactory = bars.getFirst().numFactory();
         Num resolvedVolumeThreshold = numFactory.numOf(volumeThreshold);
-        AggregatedBarWindow currentWindow = new AggregatedBarWindow(numFactory);
+        Num zero = numFactory.zero();
+
+        Instant currentBeginTime = null;
+        Instant currentEndTime = null;
+        Num currentOpenPrice = null;
+        Num currentHighPrice = null;
+        Num currentLowPrice = null;
+        Num currentClosePrice = null;
+        Num currentVolume = zero;
+        Num currentAmount = zero;
+        long currentTrades = 0L;
 
         for (Bar bar : bars) {
-            currentWindow.add(bar);
-            if (currentWindow.volume().isGreaterThanOrEqual(resolvedVolumeThreshold)) {
-                aggregated.add(currentWindow.build());
-                currentWindow.reset();
+            if (currentBeginTime == null) {
+                currentBeginTime = bar.getBeginTime();
+                currentOpenPrice = bar.getOpenPrice();
+                currentHighPrice = bar.getHighPrice();
+                currentLowPrice = bar.getLowPrice();
+            } else {
+                if (currentHighPrice == null
+                        || (bar.getHighPrice() != null && bar.getHighPrice().isGreaterThan(currentHighPrice))) {
+                    currentHighPrice = bar.getHighPrice();
+                }
+                if (currentLowPrice == null
+                        || (bar.getLowPrice() != null && bar.getLowPrice().isLessThan(currentLowPrice))) {
+                    currentLowPrice = bar.getLowPrice();
+                }
+            }
+
+            currentEndTime = bar.getEndTime();
+            currentClosePrice = bar.getClosePrice();
+            if (bar.getVolume() != null) {
+                currentVolume = currentVolume.plus(bar.getVolume());
+            }
+            if (bar.getAmount() != null) {
+                currentAmount = currentAmount.plus(bar.getAmount());
+            }
+            currentTrades += bar.getTrades();
+
+            if (currentVolume.isGreaterThanOrEqual(resolvedVolumeThreshold)) {
+                aggregated.add(buildAggregatedBar(numFactory, currentBeginTime, currentEndTime, currentOpenPrice,
+                        currentHighPrice, currentLowPrice, currentClosePrice, currentVolume, currentAmount,
+                        currentTrades));
+
+                currentBeginTime = null;
+                currentEndTime = null;
+                currentOpenPrice = null;
+                currentHighPrice = null;
+                currentLowPrice = null;
+                currentClosePrice = null;
+                currentVolume = zero;
+                currentAmount = zero;
+                currentTrades = 0L;
             }
         }
 
-        if (!onlyFinalBars && !currentWindow.isEmpty()) {
-            aggregated.add(currentWindow.build());
+        if (!onlyFinalBars && currentBeginTime != null) {
+            aggregated.add(buildAggregatedBar(numFactory, currentBeginTime, currentEndTime, currentOpenPrice,
+                    currentHighPrice, currentLowPrice, currentClosePrice, currentVolume, currentAmount, currentTrades));
         }
 
         return aggregated;
+    }
+
+    private static Bar buildAggregatedBar(NumFactory numFactory, Instant beginTime, Instant endTime, Num openPrice,
+            Num highPrice, Num lowPrice, Num closePrice, Num volume, Num amount, long trades) {
+        Duration aggregatedPeriod = Duration.between(beginTime, endTime);
+        return new TimeBarBuilder(numFactory).timePeriod(aggregatedPeriod)
+                .endTime(endTime)
+                .openPrice(openPrice)
+                .highPrice(highPrice)
+                .lowPrice(lowPrice)
+                .closePrice(closePrice)
+                .volume(volume)
+                .amount(amount)
+                .trades(trades)
+                .build();
     }
 }

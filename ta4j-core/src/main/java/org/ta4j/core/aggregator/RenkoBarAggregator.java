@@ -70,7 +70,7 @@ public class RenkoBarAggregator implements BarAggregator {
      * @since 0.22.3
      */
     public RenkoBarAggregator(Number boxSize, int reversalAmount) {
-        this.boxSize = AggregationParameterValidator.requirePositive(boxSize, "boxSize");
+        this.boxSize = SourceIntervalValidator.requirePositiveFiniteNumber(boxSize, "boxSize");
         if (reversalAmount <= 0) {
             throw new IllegalArgumentException("reversalAmount must be greater than zero.");
         }
