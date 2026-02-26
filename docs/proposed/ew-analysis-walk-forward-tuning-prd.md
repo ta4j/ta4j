@@ -283,3 +283,201 @@ After PRD approval, the first implementation deliverable should be a minimal off
 1. Produces snapshot predictions at each `t`.
 2. Scores fixed-horizon event outcomes.
 3. Outputs calibration and phase/event agreement reports per fold.
+
+## 18. Ordered Implementation Checklist (Execution Backlog)
+
+### 18.1 Milestone M0: Scope Lock and Baseline Freeze
+Objective:
+- Freeze a reproducible baseline and remove remaining design ambiguity before implementation starts.
+
+Checklist:
+1. [ ] Lock fixed horizon `H` for v1 (single value).
+2. [ ] Lock top-k scenario depth used in ranking metrics.
+3. [ ] Lock walk-forward fold geometry (train length, test length, purge, embargo, holdout).
+4. [ ] Freeze baseline EW runner configuration for comparison.
+5. [ ] Freeze datasets and date boundaries used for tuning and holdout.
+
+Deliverables:
+1. Baseline config manifest.
+2. Dataset manifest with deterministic identifiers.
+3. Fold definition manifest.
+
+Exit criteria:
+1. No unresolved design decisions blocking coding.
+
+### 18.2 Milestone M1: Data Contracts and Persistence
+Objective:
+- Define stable, serializable records for predictions, realized outcomes, and metrics.
+
+Checklist:
+1. [ ] Define `PredictionSnapshot` schema with runner output fields at index `t`.
+2. [ ] Define `RealizedOutcome` schema for fixed-horizon outcomes.
+3. [ ] Define `FoldMetricSummary` schema for per-fold and global aggregates.
+4. [ ] Define experiment manifest schema (dataset hash, config hash, seed, fold IDs).
+5. [ ] Implement deterministic serialization format for all artifacts.
+
+Dependencies:
+1. M0 complete.
+
+Deliverables:
+1. Documented schemas and serialization examples.
+
+Exit criteria:
+1. Re-run with identical inputs reproduces byte-stable artifacts.
+
+### 18.3 Milestone M2: Walk-Forward Engine (No Tuning Yet)
+Objective:
+- Build the leakage-safe evaluator loop with snapshot generation and horizon slicing.
+
+Checklist:
+1. [ ] Implement fold iterator using locked split geometry.
+2. [ ] Implement per-index snapshot generation using bars `[0..t]` only.
+3. [ ] Implement fixed-horizon evaluator using `[t+1..t+H]`.
+4. [ ] Add leakage guards and audit traces for each snapshot.
+5. [ ] Emit snapshot and realized outcome artifacts per fold.
+
+Dependencies:
+1. M1 complete.
+
+Deliverables:
+1. End-to-end evaluator for one config and one dataset.
+
+Exit criteria:
+1. Leakage audit passes for all folds.
+
+### 18.4 Milestone M3: Metric Engine (Phase/Event-First Primary)
+Objective:
+- Implement optimization and diagnostic metrics with explicit primary/secondary separation.
+
+Checklist:
+1. [ ] Implement event outcome accuracy and F1.
+2. [ ] Implement phase progression agreement metric.
+3. [ ] Implement ranking metrics (`Top-k hit`, `NDCG`).
+4. [ ] Implement calibration metrics (`Brier`, `LogLoss`, `ECE`).
+5. [ ] Implement secondary diagnostics (exact/near count agreement, distance errors).
+6. [ ] Implement composite objective function and variance penalty.
+
+Dependencies:
+1. M2 complete.
+
+Deliverables:
+1. Per-fold and global metric reports for baseline config.
+
+Exit criteria:
+1. Primary metrics are computed for every fold with no missing values.
+
+### 18.5 Milestone M4: Coarse Global Tuner
+Objective:
+- Add search over coarse EW parameter space with strict global configuration constraint.
+
+Checklist:
+1. [ ] Define coarse search space (no per-asset-family branches).
+2. [ ] Implement deterministic candidate generation (seeded).
+3. [ ] Evaluate each candidate across all training folds.
+4. [ ] Apply objective + stability constraints for candidate ranking.
+5. [ ] Select global champion and challenger set.
+
+Dependencies:
+1. M3 complete.
+
+Deliverables:
+1. Candidate leaderboard with fold-level breakdown.
+
+Exit criteria:
+1. Champion chosen by predefined objective and constraints, not manual cherry-picking.
+
+### 18.6 Milestone M5: Calibration Layer (Platt Default, Isotonic Challenger)
+Objective:
+- Improve probability calibration with low-overfit default behavior.
+
+Checklist:
+1. [ ] Implement Platt scaling fit on training folds only.
+2. [ ] Evaluate calibrated probabilities on validation/test folds.
+3. [ ] Implement isotonic challenger behind explicit data sufficiency gate.
+4. [ ] Compare Platt vs isotonic with fold-stability constraints.
+5. [ ] Select default calibrator per policy (Platt unless isotonic passes all gates).
+
+Dependencies:
+1. M4 complete.
+
+Deliverables:
+1. Calibration comparison report with reliability diagnostics.
+
+Exit criteria:
+1. Selected calibrator improves out-of-sample calibration without violating stability guardrails.
+
+### 18.7 Milestone M6: Holdout Validation and Sign-off
+Objective:
+- Validate selected champion on untouched holdout period.
+
+Checklist:
+1. [ ] Run frozen champion config on untouched holdout.
+2. [ ] Compare holdout metrics versus baseline and tuning-period expectations.
+3. [ ] Document degradation or lift across primary metrics.
+4. [ ] Produce release recommendation: accept, revise, or reject champion.
+
+Dependencies:
+1. M5 complete.
+
+Deliverables:
+1. Holdout sign-off report and decision record.
+
+Exit criteria:
+1. Holdout metrics satisfy predefined acceptance thresholds.
+
+## 19. Test Plan
+
+### 19.1 Unit Test Plan
+1. Fold splitter tests:
+   - Verify chronological ordering, purge, embargo, and holdout boundaries.
+2. Snapshot generator tests:
+   - Verify no future bars are visible at index `t`.
+3. Horizon evaluator tests:
+   - Verify realized window is exactly `[t+1..t+H]`.
+4. Label builder tests:
+   - Verify deterministic event outcomes (`target-first`, `invalidation-first`, `neither`).
+5. Metric tests:
+   - Verify exact numeric outputs on controlled synthetic fixtures.
+6. Calibration tests:
+   - Verify Platt and isotonic implementations fit and apply correctly on toy datasets.
+
+### 19.2 Integration Test Plan
+1. End-to-end single-fold smoke:
+   - Run one dataset, one config, one fold; verify artifacts emitted.
+2. Multi-fold deterministic replay:
+   - Repeat identical run and assert stable outputs and metric equality.
+3. Baseline-vs-candidate comparison flow:
+   - Ensure leaderboard generation and champion selection execute without manual intervention.
+
+### 19.3 Leakage and Integrity Tests
+1. Prefix-only audit:
+   - For every snapshot, assert max seen index equals `t`.
+2. Boundary integrity:
+   - Assert no test label window overlaps train bars with forbidden lookahead.
+3. Holdout isolation:
+   - Assert holdout segment is not read during tuning/selection.
+
+### 19.4 Statistical Validation Tests
+1. Calibration sanity:
+   - Reliability bins should show monotonic improvement versus raw probabilities for selected calibrator.
+2. Variance guard:
+   - Reject candidates with fold variance above threshold even with high mean score.
+3. Stability check:
+   - Ensure gains are not driven by a single fold.
+
+### 19.5 Performance and Scalability Tests
+1. Runtime budget test on representative dataset bundle.
+2. Memory pressure test for full snapshot artifact generation.
+3. Parallelization safety test if concurrent fold evaluation is enabled.
+
+### 19.6 Acceptance Test Suite (Release Gate)
+1. Primary objective improvement vs baseline on validation folds.
+2. Calibration improvement (`Brier` and `ECE`) vs baseline.
+3. Holdout degradation within allowed threshold.
+4. Full reproducibility with same seed and manifests.
+
+## 20. Definition of Done for Implementation Phase
+1. All Milestones M0-M6 exit criteria are met.
+2. Acceptance test suite passes.
+3. Champion configuration and calibrator are frozen and versioned.
+4. Reports and manifests are archived for auditability.
