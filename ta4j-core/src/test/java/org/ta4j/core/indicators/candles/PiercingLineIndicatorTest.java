@@ -140,7 +140,7 @@ public class PiercingLineIndicatorTest extends AbstractIndicatorTest<Indicator<B
     @Test
     public void shouldReturnFalseWhenDenominatorIsNaN() {
         series.barBuilder().openPrice(NaN.NaN).closePrice(14).highPrice(20).lowPrice(13).add();
-        series.barBuilder().openPrice(0).closePrice(18).highPrice(19).lowPrice(0).add();
+        series.barBuilder().openPrice(16).closePrice(18).highPrice(19).lowPrice(15).add();
 
         final PiercingLineIndicator indicator = new PiercingLineIndicator(series);
 
