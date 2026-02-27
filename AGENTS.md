@@ -35,3 +35,16 @@ Before editing a feature area, discover and follow all applicable scoped `AGENTS
 
 ## 5) Process/worktree guidance
 Worktree lifecycle and PRD/checklist process conventions live in `scripts/AGENTS.md`.
+
+## 6) Reuse-first policy (MUST)
+
+- Before adding a new type or API, search for existing equivalents and reuse them when possible.
+- Do not introduce a new enum when an existing project enum already models the behavior.
+- Prefer extending/adapting existing classes over creating parallel abstractions.
+- If a new type is still required, document in the PRD/checklist or PR notes why existing types were insufficient.
+
+## 7) Local typing style (MUST)
+
+- Prefer explicit local variable types.
+- Use `var` only when the type is immediately and unambiguously obvious from the right-hand side.
+- Do not use `var` for method-return values unless the type is trivial and fully clear from constructor/factory literal context.

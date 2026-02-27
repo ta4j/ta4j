@@ -19,3 +19,5 @@ These are cross-cutting test rules for ta4j-core. Deeper package guides can add 
 
 - Keep diffs surgical in test files (touch only lines relevant to the behavior change).
 - Add imports incrementally rather than replacing entire import blocks.
+- Match production typing standards in tests: prefer explicit local variable types.
+- Use `var` in tests only when the type is immediately obvious from a constructor or literal.
