@@ -1,5 +1,11 @@
 # PRD: Window-Aware `AnalysisCriterion` API
 
+## Execution Status
+- Last updated: 2026-02-27 12:24:02 EST
+- Active phase: Completed
+- Active task: None
+- Overall: 44/44 checklist items complete
+
 ## 1. Context
 Today, `AnalysisCriterion` evaluates either:
 - a single `Position`, or
@@ -141,47 +147,47 @@ Decision rationale:
 - Javadocs clearly define boundary and policy semantics with examples.
 
 ## 11. Step-by-Step Implementation Checklist (Option B)
-- [ ] 1. Define new immutable API contracts in `ta4j-core`:
-  - [ ] Add `AnalysisWindow` with builders/factories for:
-    - [ ] bar-range windows,
-    - [ ] lookback-bars windows,
-    - [ ] absolute time-range windows,
-    - [ ] lookback-duration windows.
-  - [ ] Add `AnalysisContext` with defaults for:
-    - [ ] missing history policy (`STRICT`, `CLAMP`),
-    - [ ] position inclusion policy,
-    - [ ] open-position valuation policy,
-    - [ ] optional anchor/as-of instant.
-- [ ] 2. Extend `AnalysisCriterion` with one window-aware entry point:
-  - [ ] Add `calculate(series, tradingRecord, window, context)`.
-  - [ ] Add a convenience overload with default context.
-  - [ ] Keep existing methods unchanged for backward compatibility.
-- [ ] 3. Implement shared window normalization:
-  - [ ] Resolve time windows to effective index ranges using bar end-time membership.
-  - [ ] Enforce boundary semantics (index: inclusive/inclusive, time: inclusive/exclusive).
-  - [ ] Apply `STRICT` vs `CLAMP` consistently before criterion math.
-  - [ ] Guarantee normalization is based on logical series indices (`beginIndex`..`endIndex`), not raw backing-list offsets.
-- [ ] 4. Implement trading-record projection for windowed evaluation:
-  - [ ] Filter/select positions per inclusion policy.
-  - [ ] Handle boundary-crossing positions according to policy.
-  - [ ] Handle open position treatment (exclude by default; optional mark-to-market mode).
-  - [ ] Ensure projection remains deterministic for constrained/moving series.
-- [ ] 5. Integrate window-aware calculation into criterion hierarchy:
-  - [ ] Reuse existing `calculate(series, tradingRecord)` logic where possible.
-  - [ ] Verify compatibility for PnL, return, drawdown, and helper criteria.
-  - [ ] Add guardrails for empty effective windows and empty/partial records.
-- [ ] 6. Add comprehensive unit tests:
-  - [ ] API-level tests for each `AnalysisWindow` variant.
-  - [ ] Normalization tests for moving series with removed bars.
-  - [ ] `STRICT` behavior tests (out-of-range requests fail with clear errors).
-  - [ ] `CLAMP` behavior tests (window intersection and empty-intersection neutrality).
-  - [ ] Boundary-crossing and open-position policy tests.
-  - [ ] Regression tests proving existing non-windowed behavior is unchanged.
-- [ ] 7. Add Javadocs and user documentation:
-  - [ ] Javadocs for all new public API surface with examples (7-day, 30-day, explicit date range).
-  - [ ] Clarify default policies and boundary conventions in docs.
-  - [ ] Document constrained/moving series caveats and expected behavior.
-- [ ] 8. Verification and rollout:
-  - [ ] Run targeted tests while iterating.
-  - [ ] Run `scripts/run-full-build-quiet.sh` on candidate final patch.
-  - [ ] Capture aggregated test summary and build log path in the delivery notes.
+- [x] 1. Define new immutable API contracts in `ta4j-core`:
+  - [x] Add `AnalysisWindow` with builders/factories for:
+    - [x] bar-range windows,
+    - [x] lookback-bars windows,
+    - [x] absolute time-range windows,
+    - [x] lookback-duration windows.
+  - [x] Add `AnalysisContext` with defaults for:
+    - [x] missing history policy (`STRICT`, `CLAMP`),
+    - [x] position inclusion policy,
+    - [x] open-position valuation policy,
+    - [x] optional anchor/as-of instant.
+- [x] 2. Extend `AnalysisCriterion` with one window-aware entry point:
+  - [x] Add `calculate(series, tradingRecord, window, context)`.
+  - [x] Add a convenience overload with default context.
+  - [x] Keep existing methods unchanged for backward compatibility.
+- [x] 3. Implement shared window normalization:
+  - [x] Resolve time windows to effective index ranges using bar end-time membership.
+  - [x] Enforce boundary semantics (index: inclusive/inclusive, time: inclusive/exclusive).
+  - [x] Apply `STRICT` vs `CLAMP` consistently before criterion math.
+  - [x] Guarantee normalization is based on logical series indices (`beginIndex`..`endIndex`), not raw backing-list offsets.
+- [x] 4. Implement trading-record projection for windowed evaluation:
+  - [x] Filter/select positions per inclusion policy.
+  - [x] Handle boundary-crossing positions according to policy.
+  - [x] Handle open position treatment (exclude by default; optional mark-to-market mode).
+  - [x] Ensure projection remains deterministic for constrained/moving series.
+- [x] 5. Integrate window-aware calculation into criterion hierarchy:
+  - [x] Reuse existing `calculate(series, tradingRecord)` logic where possible.
+  - [x] Verify compatibility for PnL, return, drawdown, and helper criteria.
+  - [x] Add guardrails for empty effective windows and empty/partial records.
+- [x] 6. Add comprehensive unit tests:
+  - [x] API-level tests for each `AnalysisWindow` variant.
+  - [x] Normalization tests for moving series with removed bars.
+  - [x] `STRICT` behavior tests (out-of-range requests fail with clear errors).
+  - [x] `CLAMP` behavior tests (window intersection and empty-intersection neutrality).
+  - [x] Boundary-crossing and open-position policy tests.
+  - [x] Regression tests proving existing non-windowed behavior is unchanged.
+- [x] 7. Add Javadocs and user documentation:
+  - [x] Javadocs for all new public API surface with examples (7-day, 30-day, explicit date range).
+  - [x] Clarify default policies and boundary conventions in docs.
+  - [x] Document constrained/moving series caveats and expected behavior.
+- [x] 8. Verification and rollout:
+  - [x] Run targeted tests while iterating.
+  - [x] Run `scripts/run-full-build-quiet.sh` on candidate final patch.
+  - [x] Capture aggregated test summary and build log path in the delivery notes.
