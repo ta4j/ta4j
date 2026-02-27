@@ -122,14 +122,13 @@ Introduce a single extensible window/context abstraction and one new `calculate`
 - Constrained subseries:
   - preserve externally visible index semantics and ensure normalization is done on logical series indices, not raw backing-list offsets.
 
-## 9. Recommendation
-Preferred: **Approach B** for long-term maintainability.
+## 9. Decision
+Selected approach: **Approach B (Window Object + Context)**.
 
-Reasoning:
-- Windowed analytics typically grow new knobs quickly.
-- A single window/context model avoids interface clutter and keeps behavior coherent across criterion families.
-
-If faster incremental delivery is required, start with Approach A using default overloads, then evolve to Approach B in a staged deprecation path.
+Decision rationale:
+- Windowed analytics typically accumulate options quickly.
+- A dedicated window/context model keeps API growth controlled and semantics centralized.
+- A single normalization pipeline reduces divergence across criterion families.
 
 ## 10. Acceptance Criteria for Implementation Phase
 - Users can request criterion calculations for:
@@ -140,3 +139,49 @@ If faster incremental delivery is required, start with Approach A using default 
 - Position boundary/open-position behavior is documented and enforced by tests.
 - Existing criterion implementations compile and preserve previous behavior when no window is provided.
 - Javadocs clearly define boundary and policy semantics with examples.
+
+## 11. Step-by-Step Implementation Checklist (Option B)
+- [ ] 1. Define new immutable API contracts in `ta4j-core`:
+  - [ ] Add `AnalysisWindow` with builders/factories for:
+    - [ ] bar-range windows,
+    - [ ] lookback-bars windows,
+    - [ ] absolute time-range windows,
+    - [ ] lookback-duration windows.
+  - [ ] Add `AnalysisContext` with defaults for:
+    - [ ] missing history policy (`STRICT`, `CLAMP`),
+    - [ ] position inclusion policy,
+    - [ ] open-position valuation policy,
+    - [ ] optional anchor/as-of instant.
+- [ ] 2. Extend `AnalysisCriterion` with one window-aware entry point:
+  - [ ] Add `calculate(series, tradingRecord, window, context)`.
+  - [ ] Add a convenience overload with default context.
+  - [ ] Keep existing methods unchanged for backward compatibility.
+- [ ] 3. Implement shared window normalization:
+  - [ ] Resolve time windows to effective index ranges using bar end-time membership.
+  - [ ] Enforce boundary semantics (index: inclusive/inclusive, time: inclusive/exclusive).
+  - [ ] Apply `STRICT` vs `CLAMP` consistently before criterion math.
+  - [ ] Guarantee normalization is based on logical series indices (`beginIndex`..`endIndex`), not raw backing-list offsets.
+- [ ] 4. Implement trading-record projection for windowed evaluation:
+  - [ ] Filter/select positions per inclusion policy.
+  - [ ] Handle boundary-crossing positions according to policy.
+  - [ ] Handle open position treatment (exclude by default; optional mark-to-market mode).
+  - [ ] Ensure projection remains deterministic for constrained/moving series.
+- [ ] 5. Integrate window-aware calculation into criterion hierarchy:
+  - [ ] Reuse existing `calculate(series, tradingRecord)` logic where possible.
+  - [ ] Verify compatibility for PnL, return, drawdown, and helper criteria.
+  - [ ] Add guardrails for empty effective windows and empty/partial records.
+- [ ] 6. Add comprehensive unit tests:
+  - [ ] API-level tests for each `AnalysisWindow` variant.
+  - [ ] Normalization tests for moving series with removed bars.
+  - [ ] `STRICT` behavior tests (out-of-range requests fail with clear errors).
+  - [ ] `CLAMP` behavior tests (window intersection and empty-intersection neutrality).
+  - [ ] Boundary-crossing and open-position policy tests.
+  - [ ] Regression tests proving existing non-windowed behavior is unchanged.
+- [ ] 7. Add Javadocs and user documentation:
+  - [ ] Javadocs for all new public API surface with examples (7-day, 30-day, explicit date range).
+  - [ ] Clarify default policies and boundary conventions in docs.
+  - [ ] Document constrained/moving series caveats and expected behavior.
+- [ ] 8. Verification and rollout:
+  - [ ] Run targeted tests while iterating.
+  - [ ] Run `scripts/run-full-build-quiet.sh` on candidate final patch.
+  - [ ] Capture aggregated test summary and build log path in the delivery notes.
