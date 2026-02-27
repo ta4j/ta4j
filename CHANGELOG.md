@@ -1,6 +1,7 @@
 ## Unreleased
 
 ### Added
+- **Window-aware criterion evaluation API**: Added `AnalysisWindow`/`AnalysisContext` and new `AnalysisCriterion#calculate(series, tradingRecord, window[, context])` overloads for bar-range, lookback-bars, time-range, and lookback-duration analysis with strict/clamp history policies and configurable open-position handling.
 - **Bill Williams indicator suite**: Added `FractalHighIndicator`, `FractalLowIndicator`, `AlligatorIndicator` (jaw/teeth/lips defaults), `GatorOscillatorIndicator` (upper/lower histogram branches), and `MarketFacilitationIndexIndicator` with comprehensive regression coverage for confirmation delays, overlapping windows, flat-price/zero-volume edge cases, constructor validation, unstable-bar boundaries, and lower-histogram signed-zero handling.
 - **Risk controls APIs**: Added `PositionRiskModel`, `StopLossPositionRiskModel`, and `RMultipleCriterion` for risk-unit (R-multiple) evaluation, plus `StopLossPriceModel`/`StopGainPriceModel` and fixed/trailing/volatility/ATR stop-loss and stop-gain rule variants.
 - **Agent guidance tooling and docs**: Reorganized project `AGENTS.md` into scoped, task-local guides and added `scripts/agents_for_target.sh` to resolve effective instructions for any target path.
