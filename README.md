@@ -365,6 +365,28 @@ System.out.printf("Max drawdown: %.2f%%%n",
 // See the wiki for the full list of available criteria
 ```
 
+You can also swap in execution models that simulate slippage and order-book style
+fills:
+
+```java
+import org.ta4j.core.backtest.SlippageExecutionModel;
+import org.ta4j.core.backtest.StopLimitExecutionModel;
+
+// Example 1: next-open execution with 5 bps slippage
+TradingRecord slippageRecord = new BarSeriesManager(series,
+        new SlippageExecutionModel(series.numFactory().numOf(0.0005)))
+        .run(strategy);
+
+// Example 2: stop-limit orders with partial fills (max 25% bar-volume participation)
+TradingRecord stopLimitRecord = new BarSeriesManager(series,
+        new StopLimitExecutionModel(
+                series.numFactory().numOf(0.003),  // stop trigger ratio
+                series.numFactory().numOf(0.004),  // limit offset ratio
+                series.numFactory().numOf(0.25),   // max bar participation
+                4))                                // order TTL in bars
+        .run(strategy, strategy.getStartingType(), series.numFactory().numOf(10));
+```
+
 ### Backtest hundreds or even thousands of strategies
 
 Want to find the top performers? Generate strategies with varying parameters and compare them:

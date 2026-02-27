@@ -246,6 +246,32 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         this.name = name;
     }
 
+    /**
+     * Records a pre-built trade while preserving its fill progression.
+     *
+     * <p>
+     * Multi-fill trades are replayed as individual live fills using the trade type
+     * side.
+     * </p>
+     *
+     * @param trade trade to record
+     * @since 0.22.3
+     */
+    @Override
+    public void operate(Trade trade) {
+        Objects.requireNonNull(trade, "trade");
+        List<TradeFill> fills = trade.getFills();
+        if (fills.isEmpty()) {
+            recordTradeFill(trade.getType(), trade.getIndex(), trade.getPricePerAsset(), trade.getAmount(),
+                    trade.getOrderId(), trade.getCorrelationId(), trade.getTime());
+            return;
+        }
+        for (TradeFill fill : fills) {
+            recordTradeFill(trade.getType(), fill.index(), fill.price(), fill.amount(), trade.getOrderId(),
+                    trade.getCorrelationId(), trade.getTime());
+        }
+    }
+
     @Override
     public void operate(int index, Num price, Num amount) {
         lock.writeLock().lock();
@@ -257,6 +283,13 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         } finally {
             lock.writeLock().unlock();
         }
+    }
+
+    private void recordTradeFill(TradeType tradeType, int index, Num price, Num amount, String orderId,
+            String correlationId, Instant tradeTime) {
+        ExecutionSide side = tradeType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        Instant executionTime = tradeTime == null ? Instant.EPOCH : tradeTime;
+        recordFill(index, new LiveTrade(index, executionTime, price, amount, null, side, orderId, correlationId));
     }
 
     @Override

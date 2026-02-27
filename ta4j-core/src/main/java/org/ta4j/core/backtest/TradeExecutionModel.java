@@ -16,6 +16,24 @@ import org.ta4j.core.num.Num;
 public interface TradeExecutionModel {
 
     /**
+     * Processes per-bar execution state before strategy signals are evaluated.
+     *
+     * <p>
+     * Implementations can use this hook to progress pending orders (for example,
+     * stop/limit orders with partial fills) even when no new strategy signal is
+     * emitted on the current bar.
+     * </p>
+     *
+     * @param index         current bar index
+     * @param tradingRecord trading record to mutate
+     * @param barSeries     bar series
+     * @since 0.22.3
+     */
+    default void onBar(int index, TradingRecord tradingRecord, BarSeries barSeries) {
+        // Default no-op for immediate execution models.
+    }
+
+    /**
      * Executes a trade in the given {@code tradingRecord}.
      *
      * @param index         the trade index from {@code barSeries}

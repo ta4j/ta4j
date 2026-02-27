@@ -64,6 +64,8 @@
   partial-fill tracking, multi-lot bookkeeping, and configurable matching (`FIFO`, `LIFO`, `AVG_COST`, `SPECIFIC_ID`).
 - **Strategy trade direction**: Added `Strategy#getStartingType()` (default `BUY`) so strategies can declare long-first
   or short-first behavior explicitly.
+- **Backtest execution model controls**: Added `SlippageExecutionModel` and `StopLimitExecutionModel` with configurable
+  stop/limit thresholds, per-bar fill participation, order expiry, and rejection tracking.
 - **Open position analytics**: Added `PositionLedger`, `OpenPositionCostBasisCriterion`,
   `OpenPositionUnrealizedProfitCriterion`, and `TotalFeesCriterion` for live exposure and fee analysis.
 - **Sharpe Ratio**: Added `SharpeRatioCriterion` and its related calculation classes
@@ -105,6 +107,9 @@
   indices, support explicit equity/open-position handling, and correctly account for multiple live lots.
 - **Live vs simulated record boundaries**: `BaseTradingRecord` now rejects `LiveTrade`, while charting/analysis paths can
   build partial `LiveTradingRecord` instances so recorded live fees are preserved.
+- **Trade fill exposure in backtests**: `Trade` now exposes execution fills via `getFills()`, `TradingRecord` supports
+  placing pre-built trades, and backtest stop-limit execution records aggregated partial fills without breaking existing
+  `operate(index, price, amount)` flows.
 - **Live persistence simplification**: Removed `LiveTradingRecordSnapshot`; persistence now uses `LiveTradingRecord`
   serialization plus explicit cost-model rehydration.
 - **Recorded fee semantics**: Live-trading positions and criteria now use recorded `LiveTrade` fees via

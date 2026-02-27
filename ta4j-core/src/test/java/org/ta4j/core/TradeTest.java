@@ -16,6 +16,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Trade.TradeType;
@@ -232,6 +233,18 @@ public class TradeTest {
 
         assertNumEquals(numFactory.hundred(), buyTrade.getNetPrice());
         assertNumEquals(numFactory.hundred(), sellTrade.getNetPrice());
+    }
+
+    @Test
+    public void defaultTradeFillsExposeSingleExecution() {
+        var numFactory = DoubleNumFactory.getInstance();
+        Trade trade = Trade.buyAt(3, numFactory.hundred(), numFactory.two());
+
+        List<TradeFill> fills = trade.getFills();
+        assertEquals(1, fills.size());
+        assertEquals(3, fills.getFirst().index());
+        assertNumEquals(numFactory.hundred(), fills.getFirst().price());
+        assertNumEquals(numFactory.two(), fills.getFirst().amount());
     }
 
     @Test
