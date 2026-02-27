@@ -26,9 +26,13 @@ import org.ta4j.core.analysis.OpenPositionHandling;
  *                                window
  * @param openPositionHandling    handling strategy for open position at window
  *                                end; reuses the existing shared enum
- *                                {@link OpenPositionHandling}
+ *                                {@link OpenPositionHandling} where
+ *                                {@link OpenPositionHandling#IGNORE} excludes
+ *                                open positions and
+ *                                {@link OpenPositionHandling#MARK_TO_MARKET}
+ *                                synthesizes window-end valuation
  * @param asOf                    optional anchor/as-of instant; when null, the
- *                                series end is used
+ *                                series end is used for lookback windows
  * @since 0.22.3
  */
 public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
@@ -133,7 +137,8 @@ public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
     /**
      * Returns a copy with a different anchor/as-of instant.
      *
-     * @param asOf the anchor instant, or null to use series end
+     * @param asOf the anchor instant used by lookback windows, or null to use
+     *             series end
      * @return updated context
      * @since 0.22.3
      */

@@ -75,6 +75,43 @@ public class AnalysisCriterionWindowedCalculationTest {
     }
 
     @Test
+    public void lookbackBarsUsesSeriesEndAnchorByDefault() {
+        BarSeries series = buildSeries(10);
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(2, series),
+                Trade.buyAt(5, series), Trade.sellAt(7, series), Trade.buyAt(8, series), Trade.sellAt(9, series));
+        NumberOfPositionsCriterion criterion = new NumberOfPositionsCriterion();
+
+        Num positions = criterion.calculate(series, record, AnalysisWindow.lookbackBars(3));
+        assertNumEquals(2, positions);
+    }
+
+    @Test
+    public void lookbackBarsHonorsExplicitAsOfAnchor() {
+        BarSeries series = buildSeries(10);
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(3, series),
+                Trade.buyAt(4, series), Trade.sellAt(5, series), Trade.buyAt(5, series), Trade.sellAt(6, series));
+        NumberOfPositionsCriterion criterion = new NumberOfPositionsCriterion();
+        Instant asOf = series.getBar(6).getEndTime();
+        AnalysisContext context = AnalysisContext.defaults().withAsOf(asOf);
+
+        Num positions = criterion.calculate(series, record, AnalysisWindow.lookbackBars(3), context);
+        assertNumEquals(2, positions);
+    }
+
+    @Test
+    public void lookbackBarsStrictModeThrowsWhenAsOfIsOutsideAvailableHistory() {
+        BarSeries series = buildSeries(10);
+        series.setMaximumBarCount(5); // available logical indices: 5..9
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(5, series), Trade.sellAt(6, series));
+        NumberOfPositionsCriterion criterion = new NumberOfPositionsCriterion();
+        Instant asOf = series.getBar(5).getEndTime().minus(Duration.ofDays(3));
+        AnalysisContext context = AnalysisContext.defaults().withAsOf(asOf);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> criterion.calculate(series, record, AnalysisWindow.lookbackBars(3), context));
+    }
+
+    @Test
     public void fullyContainedPolicyExcludesBoundaryCrossingPosition() {
         BarSeries series = buildSeries(10);
         TradingRecord record = new BaseTradingRecord(Trade.buyAt(2, series), Trade.sellAt(5, series),
@@ -100,6 +137,19 @@ public class AnalysisCriterionWindowedCalculationTest {
                 .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
         Num included = criterion.calculate(series, record, AnalysisWindow.barRange(4, 8), context);
         assertNumEquals(2, included);
+    }
+
+    @Test
+    public void fullyContainedPolicyExcludesMarkToMarketWhenEntryIsBeforeWindow() {
+        BarSeries series = buildSeries(10);
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(2, series));
+        NetProfitLossCriterion criterion = new NetProfitLossCriterion();
+        AnalysisContext context = AnalysisContext.defaults()
+                .withPositionInclusionPolicy(PositionInclusionPolicy.FULLY_CONTAINED)
+                .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
+
+        Num result = criterion.calculate(series, record, AnalysisWindow.barRange(4, 8), context);
+        assertNumEquals(0, result);
     }
 
     @Test
