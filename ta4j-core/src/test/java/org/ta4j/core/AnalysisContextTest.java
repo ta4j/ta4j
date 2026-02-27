@@ -11,8 +11,8 @@ import java.time.Instant;
 
 import org.junit.Test;
 import org.ta4j.core.AnalysisContext.MissingHistoryPolicy;
-import org.ta4j.core.AnalysisContext.OpenPositionPolicy;
 import org.ta4j.core.AnalysisContext.PositionInclusionPolicy;
+import org.ta4j.core.analysis.OpenPositionHandling;
 
 /**
  * Unit tests for {@link AnalysisContext}.
@@ -21,36 +21,36 @@ public class AnalysisContextTest {
 
     @Test
     public void defaultsUseConservativePolicies() {
-        var defaults = AnalysisContext.defaults();
+        AnalysisContext defaults = AnalysisContext.defaults();
 
         assertEquals(MissingHistoryPolicy.STRICT, defaults.missingHistoryPolicy());
         assertEquals(PositionInclusionPolicy.EXIT_IN_WINDOW, defaults.positionInclusionPolicy());
-        assertEquals(OpenPositionPolicy.EXCLUDE, defaults.openPositionPolicy());
+        assertEquals(OpenPositionHandling.IGNORE, defaults.openPositionHandling());
         assertNull(defaults.asOf());
     }
 
     @Test
     public void constructorRejectsNullPolicies() {
         assertThrows(NullPointerException.class, () -> new AnalysisContext(null, PositionInclusionPolicy.EXIT_IN_WINDOW,
-                OpenPositionPolicy.EXCLUDE, null));
+                OpenPositionHandling.IGNORE, null));
         assertThrows(NullPointerException.class,
-                () -> new AnalysisContext(MissingHistoryPolicy.STRICT, null, OpenPositionPolicy.EXCLUDE, null));
+                () -> new AnalysisContext(MissingHistoryPolicy.STRICT, null, OpenPositionHandling.IGNORE, null));
         assertThrows(NullPointerException.class, () -> new AnalysisContext(MissingHistoryPolicy.STRICT,
                 PositionInclusionPolicy.EXIT_IN_WINDOW, null, null));
     }
 
     @Test
     public void withMethodsReturnUpdatedCopies() {
-        var asOf = Instant.parse("2026-02-14T00:00:00Z");
-        var context = AnalysisContext.defaults()
+        Instant asOf = Instant.parse("2026-02-14T00:00:00Z");
+        AnalysisContext context = AnalysisContext.defaults()
                 .withMissingHistoryPolicy(MissingHistoryPolicy.CLAMP)
                 .withPositionInclusionPolicy(PositionInclusionPolicy.FULLY_CONTAINED)
-                .withOpenPositionPolicy(OpenPositionPolicy.MARK_TO_MARKET_AT_WINDOW_END)
+                .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET)
                 .withAsOf(asOf);
 
         assertEquals(MissingHistoryPolicy.CLAMP, context.missingHistoryPolicy());
         assertEquals(PositionInclusionPolicy.FULLY_CONTAINED, context.positionInclusionPolicy());
-        assertEquals(OpenPositionPolicy.MARK_TO_MARKET_AT_WINDOW_END, context.openPositionPolicy());
+        assertEquals(OpenPositionHandling.MARK_TO_MARKET, context.openPositionHandling());
         assertEquals(asOf, context.asOf());
     }
 }

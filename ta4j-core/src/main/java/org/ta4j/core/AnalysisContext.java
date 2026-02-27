@@ -6,6 +6,8 @@ package org.ta4j.core;
 import java.time.Instant;
 import java.util.Objects;
 
+import org.ta4j.core.analysis.OpenPositionHandling;
+
 /**
  * Options controlling how windowed criterion analysis is resolved.
  *
@@ -15,21 +17,22 @@ import java.util.Objects;
  * <ul>
  * <li>{@link MissingHistoryPolicy#STRICT}</li>
  * <li>{@link PositionInclusionPolicy#EXIT_IN_WINDOW}</li>
- * <li>{@link OpenPositionPolicy#EXCLUDE}</li>
+ * <li>{@link OpenPositionHandling#IGNORE}</li>
  * <li>no explicit anchor/as-of instant</li>
  * </ul>
  *
  * @param missingHistoryPolicy    behavior when requested history is unavailable
  * @param positionInclusionPolicy policy used to include closed positions in the
  *                                window
- * @param openPositionPolicy      handling strategy for open position at window
- *                                end
+ * @param openPositionHandling    handling strategy for open position at window
+ *                                end; reuses the existing shared enum
+ *                                {@link OpenPositionHandling}
  * @param asOf                    optional anchor/as-of instant; when null, the
  *                                series end is used
  * @since 0.22.3
  */
 public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
-        PositionInclusionPolicy positionInclusionPolicy, OpenPositionPolicy openPositionPolicy, Instant asOf) {
+        PositionInclusionPolicy positionInclusionPolicy, OpenPositionHandling openPositionHandling, Instant asOf) {
 
     /**
      * Policy for unavailable historical bars.
@@ -64,28 +67,12 @@ public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
     }
 
     /**
-     * Policy controlling how to handle open position at the window end.
-     *
-     * @since 0.22.3
-     */
-    public enum OpenPositionPolicy {
-        /**
-         * Exclude the open position.
-         */
-        EXCLUDE,
-        /**
-         * Synthesize a window-end close for the open position.
-         */
-        MARK_TO_MARKET_AT_WINDOW_END
-    }
-
-    /**
      * Creates a default context.
      *
      * @since 0.22.3
      */
     public AnalysisContext() {
-        this(MissingHistoryPolicy.STRICT, PositionInclusionPolicy.EXIT_IN_WINDOW, OpenPositionPolicy.EXCLUDE, null);
+        this(MissingHistoryPolicy.STRICT, PositionInclusionPolicy.EXIT_IN_WINDOW, OpenPositionHandling.IGNORE, null);
     }
 
     /**
@@ -94,7 +81,7 @@ public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
     public AnalysisContext {
         Objects.requireNonNull(missingHistoryPolicy, "missingHistoryPolicy");
         Objects.requireNonNull(positionInclusionPolicy, "positionInclusionPolicy");
-        Objects.requireNonNull(openPositionPolicy, "openPositionPolicy");
+        Objects.requireNonNull(openPositionHandling, "openPositionHandling");
     }
 
     /**
@@ -116,7 +103,7 @@ public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
      */
     public AnalysisContext withMissingHistoryPolicy(MissingHistoryPolicy policy) {
         return new AnalysisContext(Objects.requireNonNull(policy, "policy"), positionInclusionPolicy,
-                openPositionPolicy, asOf);
+                openPositionHandling, asOf);
     }
 
     /**
@@ -127,20 +114,20 @@ public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
      * @since 0.22.3
      */
     public AnalysisContext withPositionInclusionPolicy(PositionInclusionPolicy policy) {
-        return new AnalysisContext(missingHistoryPolicy, Objects.requireNonNull(policy, "policy"), openPositionPolicy,
+        return new AnalysisContext(missingHistoryPolicy, Objects.requireNonNull(policy, "policy"), openPositionHandling,
                 asOf);
     }
 
     /**
-     * Returns a copy with a different open-position policy.
+     * Returns a copy with a different open-position handling.
      *
-     * @param policy the policy to use
+     * @param handling the handling to use
      * @return updated context
      * @since 0.22.3
      */
-    public AnalysisContext withOpenPositionPolicy(OpenPositionPolicy policy) {
+    public AnalysisContext withOpenPositionHandling(OpenPositionHandling handling) {
         return new AnalysisContext(missingHistoryPolicy, positionInclusionPolicy,
-                Objects.requireNonNull(policy, "policy"), asOf);
+                Objects.requireNonNull(handling, "handling"), asOf);
     }
 
     /**
@@ -151,6 +138,6 @@ public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
      * @since 0.22.3
      */
     public AnalysisContext withAsOf(Instant asOf) {
-        return new AnalysisContext(missingHistoryPolicy, positionInclusionPolicy, openPositionPolicy, asOf);
+        return new AnalysisContext(missingHistoryPolicy, positionInclusionPolicy, openPositionHandling, asOf);
     }
 }

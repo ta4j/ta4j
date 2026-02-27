@@ -19,10 +19,10 @@ public class AnalysisWindowTest {
 
     @Test
     public void barRangeFactoryCreatesBarRangeWindow() {
-        var window = AnalysisWindow.barRange(5, 12);
+        AnalysisWindow window = AnalysisWindow.barRange(5, 12);
 
         assertTrue(window instanceof AnalysisWindow.BarRange);
-        var barRange = (AnalysisWindow.BarRange) window;
+        AnalysisWindow.BarRange barRange = (AnalysisWindow.BarRange) window;
         assertEquals(5, barRange.startIndexInclusive());
         assertEquals(12, barRange.endIndexInclusive());
     }
@@ -39,7 +39,7 @@ public class AnalysisWindowTest {
 
     @Test
     public void lookbackBarsFactoryCreatesLookbackBarsWindow() {
-        var window = AnalysisWindow.lookbackBars(30);
+        AnalysisWindow window = AnalysisWindow.lookbackBars(30);
 
         assertTrue(window instanceof AnalysisWindow.LookbackBars);
         assertEquals(30, ((AnalysisWindow.LookbackBars) window).barCount());
@@ -52,26 +52,26 @@ public class AnalysisWindowTest {
 
     @Test
     public void timeRangeFactoryCreatesTimeRangeWindow() {
-        var start = Instant.parse("2026-02-10T00:00:00Z");
-        var end = Instant.parse("2026-02-14T00:00:00Z");
-        var window = AnalysisWindow.timeRange(start, end);
+        Instant start = Instant.parse("2026-02-10T00:00:00Z");
+        Instant end = Instant.parse("2026-02-14T00:00:00Z");
+        AnalysisWindow window = AnalysisWindow.timeRange(start, end);
 
         assertTrue(window instanceof AnalysisWindow.TimeRange);
-        var timeRange = (AnalysisWindow.TimeRange) window;
+        AnalysisWindow.TimeRange timeRange = (AnalysisWindow.TimeRange) window;
         assertEquals(start, timeRange.startInclusive());
         assertEquals(end, timeRange.endExclusive());
     }
 
     @Test
     public void timeRangeRejectsStartAtOrAfterEnd() {
-        var instant = Instant.parse("2026-02-10T00:00:00Z");
+        Instant instant = Instant.parse("2026-02-10T00:00:00Z");
         assertThrows(IllegalArgumentException.class, () -> AnalysisWindow.timeRange(instant, instant));
     }
 
     @Test
     public void lookbackDurationFactoryCreatesLookbackDurationWindow() {
-        var duration = Duration.ofDays(7);
-        var window = AnalysisWindow.lookbackDuration(duration);
+        Duration duration = Duration.ofDays(7);
+        AnalysisWindow window = AnalysisWindow.lookbackDuration(duration);
 
         assertTrue(window instanceof AnalysisWindow.LookbackDuration);
         assertEquals(duration, ((AnalysisWindow.LookbackDuration) window).duration());

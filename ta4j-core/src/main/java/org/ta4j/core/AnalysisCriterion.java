@@ -111,8 +111,9 @@ public interface AnalysisCriterion {
             return calculate(series, tradingRecord);
         }
 
-        var resolved = AnalysisWindowing.resolve(series, window, context);
-        var projectedRecord = AnalysisWindowing.projectTradingRecord(series, tradingRecord, resolved, context);
+        AnalysisWindowing.ResolvedWindow resolved = AnalysisWindowing.resolve(series, window, context);
+        TradingRecord projectedRecord = AnalysisWindowing.projectTradingRecord(series, tradingRecord, resolved,
+                context);
         return calculate(series, projectedRecord);
     }
 

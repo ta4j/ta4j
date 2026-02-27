@@ -5,15 +5,18 @@ package org.ta4j.core;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
 import org.ta4j.core.AnalysisContext.MissingHistoryPolicy;
-import org.ta4j.core.AnalysisContext.OpenPositionPolicy;
 import org.ta4j.core.AnalysisContext.PositionInclusionPolicy;
+import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.num.Num;
 
 /**
  * Utilities for resolving and projecting analysis windows.
@@ -53,7 +56,7 @@ final class AnalysisWindowing {
 
         int availableStart = series.getBeginIndex();
         int availableEnd = series.getEndIndex();
-        var requested = requestedRange(series, window, context, availableStart, availableEnd);
+        RequestedRange requested = requestedRange(series, window, context, availableStart, availableEnd);
 
         if (context.missingHistoryPolicy() == MissingHistoryPolicy.STRICT
                 && (requested.lowerBoundBeforeAvailable() || requested.upperBoundAfterAvailable())) {
@@ -194,13 +197,13 @@ final class AnalysisWindowing {
         Objects.requireNonNull(resolved, "resolved");
         Objects.requireNonNull(context, "context");
 
-        var txModel = Objects.requireNonNullElseGet(source.getTransactionCostModel(), ZeroCostModel::new);
-        var holdingModel = Objects.requireNonNullElseGet(source.getHoldingCostModel(), ZeroCostModel::new);
-        var start = resolved.startIndexInclusive();
-        var end = resolved.endIndexInclusive();
-        var inclusionPolicy = context.positionInclusionPolicy();
+        CostModel txModel = Objects.requireNonNullElseGet(source.getTransactionCostModel(), ZeroCostModel::new);
+        CostModel holdingModel = Objects.requireNonNullElseGet(source.getHoldingCostModel(), ZeroCostModel::new);
+        int start = resolved.startIndexInclusive();
+        int end = resolved.endIndexInclusive();
+        PositionInclusionPolicy inclusionPolicy = context.positionInclusionPolicy();
 
-        var positions = new ArrayList<Position>();
+        List<Position> positions = new ArrayList<>();
         if (resolved.hasBars()) {
             for (Position position : source.getPositions()) {
                 if (includeClosedPosition(position, start, end, inclusionPolicy)) {
@@ -209,12 +212,12 @@ final class AnalysisWindowing {
             }
         }
 
-        var currentPosition = new Position(source.getStartingType(), txModel, holdingModel);
-        if (resolved.hasBars() && context.openPositionPolicy() == OpenPositionPolicy.MARK_TO_MARKET_AT_WINDOW_END) {
+        Position currentPosition = new Position(source.getStartingType(), txModel, holdingModel);
+        if (resolved.hasBars() && context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
             Position synthetic = createMarkToMarketPosition(series, source.getCurrentPosition(), end, holdingModel);
             if (synthetic != null && includeClosedPosition(synthetic, start, end, inclusionPolicy)) {
                 positions.add(synthetic);
-                positions.sort(Comparator.comparingInt(p -> p.getExit().getIndex()));
+                positions.sort(Comparator.comparingInt(position -> position.getExit().getIndex()));
             }
         }
 
@@ -227,14 +230,15 @@ final class AnalysisWindowing {
         if (current == null || !current.isOpened()) {
             return null;
         }
+
         Trade entry = current.getEntry();
         if (entry == null || entry.getIndex() > windowEndIndex) {
             return null;
         }
 
-        var amount = entry.getAmount();
-        var closePrice = series.getBar(windowEndIndex).getClosePrice();
-        var transactionCostModel = entry.getCostModel();
+        Num amount = entry.getAmount();
+        Num closePrice = series.getBar(windowEndIndex).getClosePrice();
+        CostModel transactionCostModel = entry.getCostModel();
         Trade exit = entry.isBuy() ? Trade.sellAt(windowEndIndex, closePrice, amount, transactionCostModel)
                 : Trade.buyAt(windowEndIndex, closePrice, amount, transactionCostModel);
 
@@ -267,5 +271,181 @@ final class AnalysisWindowing {
      */
     private record RequestedRange(int startIndexInclusive, int endIndexInclusive, boolean empty,
             boolean lowerBoundBeforeAvailable, boolean upperBoundAfterAvailable) {
+    }
+
+    /**
+     * Read-only projected trading record used for windowed analysis.
+     */
+    private static final class WindowedTradingRecord implements TradingRecord {
+
+        private final String name;
+        private final TradeType startingType;
+        private final Integer startIndex;
+        private final Integer endIndex;
+        private final CostModel transactionCostModel;
+        private final CostModel holdingCostModel;
+        private final List<Position> positions;
+        private final Position currentPosition;
+        private final List<Trade> trades;
+        private final List<Trade> buyTrades;
+        private final List<Trade> sellTrades;
+        private final List<Trade> entryTrades;
+        private final List<Trade> exitTrades;
+
+        private WindowedTradingRecord(String name, TradeType startingType, Integer startIndex, Integer endIndex,
+                CostModel transactionCostModel, CostModel holdingCostModel, List<Position> positions,
+                Position currentPosition) {
+            this.name = name == null ? "windowed-record" : name;
+            this.startingType = Objects.requireNonNull(startingType, "startingType");
+            this.startIndex = startIndex;
+            this.endIndex = endIndex;
+            this.transactionCostModel = Objects.requireNonNullElseGet(transactionCostModel, ZeroCostModel::new);
+            this.holdingCostModel = Objects.requireNonNullElseGet(holdingCostModel, ZeroCostModel::new);
+            this.positions = Collections
+                    .unmodifiableList(new ArrayList<>(Objects.requireNonNull(positions, "positions")));
+            this.currentPosition = Objects.requireNonNullElseGet(currentPosition,
+                    () -> new Position(startingType, this.transactionCostModel, this.holdingCostModel));
+
+            List<Trade> projectedTrades = new ArrayList<>();
+            List<Trade> projectedEntryTrades = new ArrayList<>();
+            List<Trade> projectedExitTrades = new ArrayList<>();
+            List<Trade> projectedBuyTrades = new ArrayList<>();
+            List<Trade> projectedSellTrades = new ArrayList<>();
+
+            for (Position position : this.positions) {
+                Trade entry = position.getEntry();
+                Trade exit = position.getExit();
+                if (entry != null) {
+                    projectedEntryTrades.add(entry);
+                    projectedTrades.add(entry);
+                    if (entry.isBuy()) {
+                        projectedBuyTrades.add(entry);
+                    } else {
+                        projectedSellTrades.add(entry);
+                    }
+                }
+                if (exit != null) {
+                    projectedExitTrades.add(exit);
+                    projectedTrades.add(exit);
+                    if (exit.isBuy()) {
+                        projectedBuyTrades.add(exit);
+                    } else {
+                        projectedSellTrades.add(exit);
+                    }
+                }
+            }
+
+            if (this.currentPosition.isOpened() && this.currentPosition.getEntry() != null) {
+                Trade entry = this.currentPosition.getEntry();
+                projectedEntryTrades.add(entry);
+                projectedTrades.add(entry);
+                if (entry.isBuy()) {
+                    projectedBuyTrades.add(entry);
+                } else {
+                    projectedSellTrades.add(entry);
+                }
+            }
+
+            this.trades = Collections.unmodifiableList(projectedTrades);
+            this.entryTrades = Collections.unmodifiableList(projectedEntryTrades);
+            this.exitTrades = Collections.unmodifiableList(projectedExitTrades);
+            this.buyTrades = Collections.unmodifiableList(projectedBuyTrades);
+            this.sellTrades = Collections.unmodifiableList(projectedSellTrades);
+        }
+
+        @Override
+        public TradeType getStartingType() {
+            return startingType;
+        }
+
+        @Override
+        public String getName() {
+            return name;
+        }
+
+        @Override
+        public void operate(int index, Num price, Num amount) {
+            throw new UnsupportedOperationException("WindowedTradingRecord is read-only");
+        }
+
+        @Override
+        public boolean enter(int index, Num price, Num amount) {
+            throw new UnsupportedOperationException("WindowedTradingRecord is read-only");
+        }
+
+        @Override
+        public boolean exit(int index, Num price, Num amount) {
+            throw new UnsupportedOperationException("WindowedTradingRecord is read-only");
+        }
+
+        @Override
+        public CostModel getTransactionCostModel() {
+            return transactionCostModel;
+        }
+
+        @Override
+        public CostModel getHoldingCostModel() {
+            return holdingCostModel;
+        }
+
+        @Override
+        public List<Position> getPositions() {
+            return positions;
+        }
+
+        @Override
+        public Position getCurrentPosition() {
+            return currentPosition;
+        }
+
+        @Override
+        public List<Trade> getTrades() {
+            return trades;
+        }
+
+        @Override
+        public Trade getLastTrade() {
+            if (trades.isEmpty()) {
+                return null;
+            }
+            return trades.getLast();
+        }
+
+        @Override
+        public Trade getLastTrade(TradeType tradeType) {
+            if (tradeType == TradeType.BUY && !buyTrades.isEmpty()) {
+                return buyTrades.getLast();
+            }
+            if (tradeType == TradeType.SELL && !sellTrades.isEmpty()) {
+                return sellTrades.getLast();
+            }
+            return null;
+        }
+
+        @Override
+        public Trade getLastEntry() {
+            if (entryTrades.isEmpty()) {
+                return null;
+            }
+            return entryTrades.getLast();
+        }
+
+        @Override
+        public Trade getLastExit() {
+            if (exitTrades.isEmpty()) {
+                return null;
+            }
+            return exitTrades.getLast();
+        }
+
+        @Override
+        public Integer getStartIndex() {
+            return startIndex;
+        }
+
+        @Override
+        public Integer getEndIndex() {
+            return endIndex;
+        }
     }
 }

@@ -5,7 +5,7 @@
 ## Quick examples
 
 ```java
-var criterion = new NetProfitLossCriterion();
+AnalysisCriterion criterion = new NetProfitLossCriterion();
 
 // Past 7 days (relative to series end)
 Num pnl7d = criterion.calculate(series, record, AnalysisWindow.lookbackDuration(Duration.ofDays(7)));
@@ -32,7 +32,7 @@ Num pnlDateRange = criterion.calculate(
 
 - `MissingHistoryPolicy.STRICT`
 - `PositionInclusionPolicy.EXIT_IN_WINDOW`
-- `OpenPositionPolicy.EXCLUDE`
+- `OpenPositionHandling.IGNORE`
 - `asOf = null` (series end anchor)
 
 ## Moving/constrained series behavior
