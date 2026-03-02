@@ -153,11 +153,61 @@ jobs:
             const { execSync } = require("child_process");
 
             const eventName = context.eventName;
+            const defaultBranch = context.payload.repository?.default_branch || "";
             let releaseVersion = "";
             let releaseCommit = "";
             let nextVersion = "";
             let mergeCommit = "";
             let prNumber = "";
+
+            const normalizeSha = (candidate) => {
+              const value = typeof candidate === "string" ? candidate.trim() : "";
+              return /^[0-9a-f]{7,40}$/i.test(value) ? value : "";
+            };
+
+            const fetchDefaultBranch = () => {
+              if (!defaultBranch) {
+                throw new Error("Default branch not available; cannot resolve release metadata.");
+              }
+              execSync(`git fetch origin ${defaultBranch} --tags`, { stdio: "inherit" });
+            };
+
+            const detectReleaseCommit = (version) => {
+              const releaseNotesPath = `release/${version}.md`;
+              let output = "";
+              try {
+                output = execSync(
+                  `git log --diff-filter=A --format=%H origin/${defaultBranch} -- ${releaseNotesPath}`,
+                  { encoding: "utf8" }
+                ).trim();
+              } catch (error) {
+                throw new Error(`Failed to search for release commit on origin/${defaultBranch}: ${error.message}`);
+              }
+              if (!output) {
+                throw new Error(
+                  `Unable to auto-detect release commit. '${releaseNotesPath}' not found on origin/${defaultBranch}.`
+                );
+              }
+              return output.split(/\r?\n/)[0].trim();
+            };
+
+            const commitExists = (sha) => {
+              try {
+                execSync(`git cat-file -e ${sha}^{commit}`, { stdio: "ignore" });
+                return true;
+              } catch (error) {
+                return false;
+              }
+            };
+
+            const isOnDefaultBranch = (sha) => {
+              try {
+                execSync(`git merge-base --is-ancestor ${sha} origin/${defaultBranch}`, { stdio: "ignore" });
+                return true;
+              } catch (error) {
+                return false;
+              }
+            };
 
             if (eventName === "workflow_dispatch") {
               const dispatchInputs = context.payload.inputs || {};
@@ -184,32 +234,6 @@ jobs:
                   }`
                 );
               }
-              if (!releaseCommit) {
-                const defaultBranch = context.payload.repository?.default_branch || "";
-                if (!defaultBranch) {
-                  throw new Error("Default branch not available; cannot auto-detect release commit.");
-                }
-                const releaseNotesPath = `release/${releaseVersion}.md`;
-                execSync(`git fetch origin ${defaultBranch} --tags`, { stdio: "inherit" });
-                let output = "";
-                try {
-                  output = execSync(
-                    `git log --diff-filter=A --format=%H origin/${defaultBranch} -- ${releaseNotesPath}`,
-                    { encoding: "utf8" }
-                  ).trim();
-                } catch (error) {
-                  throw new Error(`Failed to search for release commit on origin/${defaultBranch}: ${error.message}`);
-                }
-                if (!output) {
-                  throw new Error(
-                    `Unable to auto-detect release commit. '${releaseNotesPath}' not found on origin/${defaultBranch}.`
-                  );
-                }
-                releaseCommit = output.split(/\r?\n/)[0].trim();
-                core.info(
-                  `Auto-detected release commit ${releaseCommit} from ${releaseNotesPath} on origin/${defaultBranch}.`
-                );
-              }
             } else {
               const pr = context.payload.pull_request;
               prNumber = pr?.number ? String(pr.number) : "";
@@ -230,8 +254,31 @@ jobs:
               releaseCommit = valueFor("releaseCommit");
             }
 
-            if (!releaseVersion || !releaseCommit) {
-              throw new Error("Missing releaseVersion or releaseCommit in metadata.");
+            if (!releaseVersion) {
+              throw new Error("Missing releaseVersion in metadata.");
+            }
+
+            fetchDefaultBranch();
+            const detectedReleaseCommit = detectReleaseCommit(releaseVersion);
+            const suppliedReleaseCommit = normalizeSha(releaseCommit);
+
+            if (!suppliedReleaseCommit) {
+              releaseCommit = detectedReleaseCommit;
+              core.info(
+                `Using auto-detected release commit ${releaseCommit} for ${releaseVersion}.`
+              );
+            } else if (!commitExists(suppliedReleaseCommit)) {
+              core.warning(
+                `Provided release commit ${suppliedReleaseCommit} not found; using auto-detected ${detectedReleaseCommit}.`
+              );
+              releaseCommit = detectedReleaseCommit;
+            } else if (!isOnDefaultBranch(suppliedReleaseCommit)) {
+              core.warning(
+                `Provided release commit ${suppliedReleaseCommit} is not on origin/${defaultBranch}; using auto-detected ${detectedReleaseCommit}.`
+              );
+              releaseCommit = detectedReleaseCommit;
+            } else {
+              releaseCommit = suppliedReleaseCommit;
             }
 
             core.setOutput("release_version", releaseVersion);
@@ -281,13 +328,16 @@ jobs:
               echo "Merge commit SHA missing for release PR." >&2
               exit 1
             fi
-            parents=$(git cat-file -p "${MERGE_COMMIT}" | awk '/^parent / {count++} END {print count+0}')
-            if [ "${parents:-0}" -lt 2 ]; then
-              echo "Release PR was not merged with a merge commit (parents=${parents})." >&2
+            if ! git cat-file -e "${MERGE_COMMIT}^{commit}" 2>/dev/null; then
+              echo "Merge commit ${MERGE_COMMIT} not found." >&2
+              exit 1
+            fi
+            if ! git merge-base --is-ancestor "${MERGE_COMMIT}" "origin/${DEFAULT_BRANCH}"; then
+              echo "Merge commit ${MERGE_COMMIT} is not on origin/${DEFAULT_BRANCH}." >&2
               exit 1
             fi
             if ! git merge-base --is-ancestor "${RELEASE_COMMIT}" "${MERGE_COMMIT}"; then
-              echo "Release commit is not an ancestor of the merge commit." >&2
+              echo "Release commit ${RELEASE_COMMIT} is not an ancestor of merge commit ${MERGE_COMMIT}." >&2
               exit 1
             fi
           fi
