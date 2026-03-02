@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.22.3 (2026-03-01)
+
 ### Added
 - **Window-aware criterion evaluation API**: Added `AnalysisWindow`/`AnalysisContext` and new `AnalysisCriterion#calculate(series, tradingRecord, window[, context])` overloads for bar-range, lookback-bars, time-range, and lookback-duration analysis with strict/clamp history policies and configurable open-position handling.
 - **Bill Williams indicator suite**: Added `FractalHighIndicator`, `FractalLowIndicator`, `AlligatorIndicator` (jaw/teeth/lips defaults), `GatorOscillatorIndicator` (upper/lower histogram branches), and `MarketFacilitationIndexIndicator` with comprehensive regression coverage for confirmation delays, overlapping windows, flat-price/zero-volume edge cases, constructor validation, unstable-bar boundaries, and lower-histogram signed-zero handling.
