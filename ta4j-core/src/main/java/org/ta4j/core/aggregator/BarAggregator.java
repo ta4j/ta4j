@@ -35,7 +35,7 @@ public interface BarAggregator {
      *                                  measured-period mismatch, an uneven
      *                                  interval, or a gap between intervals
      *
-     * @since 0.22.3
+     * @since 0.22.4
      */
     default Duration requireEvenIntervals(List<Bar> bars) {
         Objects.requireNonNull(bars, "bars");
@@ -79,7 +79,7 @@ public interface BarAggregator {
      *                                  decimal-representable, or not greater than
      *                                  zero
      *
-     * @since 0.22.3
+     * @since 0.22.4
      */
     static Number requirePositiveFiniteNumber(Number value, String parameterName) {
         Objects.requireNonNull(value, parameterName);

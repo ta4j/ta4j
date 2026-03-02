@@ -30,7 +30,7 @@ import org.ta4j.core.num.NumFactory;
  * Source bars that do not complete the configured volume threshold are emitted
  * only when {@code onlyFinalBars} is {@code false}.
  *
- * @since 0.22.3
+ * @since 0.22.4
  */
 public class VolumeBarAggregator implements BarAggregator {
 
@@ -45,7 +45,7 @@ public class VolumeBarAggregator implements BarAggregator {
      * @throws IllegalArgumentException if {@code volumeThreshold} is not a finite,
      *                                  positive value
      *
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public VolumeBarAggregator(Number volumeThreshold) {
         this(volumeThreshold, true);
@@ -60,7 +60,7 @@ public class VolumeBarAggregator implements BarAggregator {
      * @throws IllegalArgumentException if {@code volumeThreshold} is not a finite,
      *                                  positive value
      *
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public VolumeBarAggregator(Number volumeThreshold, boolean onlyFinalBars) {
         this.volumeThreshold = BarAggregator.requirePositiveFiniteNumber(volumeThreshold, "volumeThreshold");

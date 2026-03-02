@@ -33,7 +33,7 @@ import org.ta4j.core.num.NumFactory;
  * List<Bar> renkoBars = renkoAggregator.aggregate(sourceBars);
  * }</pre>
  *
- * @since 0.22.3
+ * @since 0.22.4
  */
 public class RenkoBarAggregator implements BarAggregator {
 
@@ -52,7 +52,7 @@ public class RenkoBarAggregator implements BarAggregator {
      * @throws IllegalArgumentException if {@code boxSize} is not a finite, positive
      *                                  value
      *
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public RenkoBarAggregator(Number boxSize) {
         this(boxSize, 2);
@@ -67,7 +67,7 @@ public class RenkoBarAggregator implements BarAggregator {
      * @throws IllegalArgumentException if {@code boxSize} is not a finite, positive
      *                                  value, or if {@code reversalAmount <= 0}
      *
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public RenkoBarAggregator(Number boxSize, int reversalAmount) {
         this.boxSize = BarAggregator.requirePositiveFiniteNumber(boxSize, "boxSize");

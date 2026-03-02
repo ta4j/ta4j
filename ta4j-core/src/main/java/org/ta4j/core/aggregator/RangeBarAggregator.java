@@ -30,7 +30,7 @@ import org.ta4j.core.num.NumFactory;
  * Source bars that do not complete the configured range are emitted only when
  * {@code onlyFinalBars} is {@code false}.
  *
- * @since 0.22.3
+ * @since 0.22.4
  */
 public class RangeBarAggregator implements BarAggregator {
 
@@ -45,7 +45,7 @@ public class RangeBarAggregator implements BarAggregator {
      * @throws IllegalArgumentException if {@code rangeSize} is not a finite,
      *                                  positive value
      *
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public RangeBarAggregator(Number rangeSize) {
         this(rangeSize, true);
@@ -60,7 +60,7 @@ public class RangeBarAggregator implements BarAggregator {
      * @throws IllegalArgumentException if {@code rangeSize} is not a finite,
      *                                  positive value
      *
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public RangeBarAggregator(Number rangeSize, boolean onlyFinalBars) {
         this.rangeSize = BarAggregator.requirePositiveFiniteNumber(rangeSize, "rangeSize");
