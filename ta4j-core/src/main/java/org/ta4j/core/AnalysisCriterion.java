@@ -62,7 +62,7 @@ public interface AnalysisCriterion {
      * @param tradingRecord the trading record, not null
      * @param window        the requested analysis window, not null
      * @return the criterion value for the window
-     * @since 0.22.3
+     * @since 0.22.4
      */
     default Num calculate(BarSeries series, TradingRecord tradingRecord, AnalysisWindow window) {
         return calculate(series, tradingRecord, window, AnalysisContext.defaults());
@@ -98,7 +98,7 @@ public interface AnalysisCriterion {
      * @param window        the requested analysis window, not null
      * @param context       window resolution and projection options, not null
      * @return the criterion value for the window
-     * @since 0.22.3
+     * @since 0.22.4
      */
     default Num calculate(BarSeries series, TradingRecord tradingRecord, AnalysisWindow window,
             AnalysisContext context) {

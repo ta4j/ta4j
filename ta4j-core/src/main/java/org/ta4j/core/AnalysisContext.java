@@ -33,7 +33,7 @@ import org.ta4j.core.analysis.OpenPositionHandling;
  *                                synthesizes window-end valuation
  * @param asOf                    optional anchor/as-of instant; when null, the
  *                                series end is used for lookback windows
- * @since 0.22.3
+ * @since 0.22.4
  */
 public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
         PositionInclusionPolicy positionInclusionPolicy, OpenPositionHandling openPositionHandling, Instant asOf) {
@@ -41,7 +41,7 @@ public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
     /**
      * Policy for unavailable historical bars.
      *
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public enum MissingHistoryPolicy {
         /**
@@ -57,7 +57,7 @@ public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
     /**
      * Policy controlling which closed positions are included in a window.
      *
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public enum PositionInclusionPolicy {
         /**
@@ -73,7 +73,7 @@ public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
     /**
      * Creates a default context.
      *
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public AnalysisContext() {
         this(MissingHistoryPolicy.STRICT, PositionInclusionPolicy.EXIT_IN_WINDOW, OpenPositionHandling.IGNORE, null);
@@ -92,7 +92,7 @@ public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
      * Creates a default context.
      *
      * @return default window analysis context
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public static AnalysisContext defaults() {
         return new AnalysisContext();
@@ -103,7 +103,7 @@ public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
      *
      * @param policy the policy to use
      * @return updated context
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public AnalysisContext withMissingHistoryPolicy(MissingHistoryPolicy policy) {
         return new AnalysisContext(Objects.requireNonNull(policy, "policy"), positionInclusionPolicy,
@@ -115,7 +115,7 @@ public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
      *
      * @param policy the policy to use
      * @return updated context
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public AnalysisContext withPositionInclusionPolicy(PositionInclusionPolicy policy) {
         return new AnalysisContext(missingHistoryPolicy, Objects.requireNonNull(policy, "policy"), openPositionHandling,
@@ -127,7 +127,7 @@ public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
      *
      * @param handling the handling to use
      * @return updated context
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public AnalysisContext withOpenPositionHandling(OpenPositionHandling handling) {
         return new AnalysisContext(missingHistoryPolicy, positionInclusionPolicy,
@@ -140,7 +140,7 @@ public record AnalysisContext(MissingHistoryPolicy missingHistoryPolicy,
      * @param asOf the anchor instant used by lookback windows, or null to use
      *             series end
      * @return updated context
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public AnalysisContext withAsOf(Instant asOf) {
         return new AnalysisContext(missingHistoryPolicy, positionInclusionPolicy, openPositionHandling, asOf);

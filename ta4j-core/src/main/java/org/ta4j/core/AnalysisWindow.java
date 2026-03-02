@@ -24,7 +24,7 @@ import java.util.Objects;
  * Use one of the static factory methods to create an immutable window.
  * </p>
  *
- * @since 0.22.3
+ * @since 0.22.4
  */
 public sealed interface AnalysisWindow permits AnalysisWindow.BarRange, AnalysisWindow.LookbackBars,
         AnalysisWindow.TimeRange, AnalysisWindow.LookbackDuration {
@@ -35,7 +35,7 @@ public sealed interface AnalysisWindow permits AnalysisWindow.BarRange, Analysis
      * @param startIndexInclusive the first bar index to include
      * @param endIndexInclusive   the last bar index to include
      * @return the requested bar-range window
-     * @since 0.22.3
+     * @since 0.22.4
      */
     static AnalysisWindow barRange(int startIndexInclusive, int endIndexInclusive) {
         return new BarRange(startIndexInclusive, endIndexInclusive);
@@ -51,7 +51,7 @@ public sealed interface AnalysisWindow permits AnalysisWindow.BarRange, Analysis
      *
      * @param barCount the number of bars to include
      * @return the requested lookback-bars window
-     * @since 0.22.3
+     * @since 0.22.4
      */
     static AnalysisWindow lookbackBars(int barCount) {
         return new LookbackBars(barCount);
@@ -67,7 +67,7 @@ public sealed interface AnalysisWindow permits AnalysisWindow.BarRange, Analysis
      * @param startInclusive the start instant (inclusive)
      * @param endExclusive   the end instant (exclusive)
      * @return the requested time-range window
-     * @since 0.22.3
+     * @since 0.22.4
      */
     static AnalysisWindow timeRange(Instant startInclusive, Instant endExclusive) {
         return new TimeRange(startInclusive, endExclusive);
@@ -83,7 +83,7 @@ public sealed interface AnalysisWindow permits AnalysisWindow.BarRange, Analysis
      *
      * @param duration the lookback duration
      * @return the requested lookback-duration window
-     * @since 0.22.3
+     * @since 0.22.4
      */
     static AnalysisWindow lookbackDuration(Duration duration) {
         return new LookbackDuration(duration);
@@ -94,7 +94,7 @@ public sealed interface AnalysisWindow permits AnalysisWindow.BarRange, Analysis
      *
      * @param startIndexInclusive the start index (inclusive)
      * @param endIndexInclusive   the end index (inclusive)
-     * @since 0.22.3
+     * @since 0.22.4
      */
     record BarRange(int startIndexInclusive, int endIndexInclusive) implements AnalysisWindow {
 
@@ -118,7 +118,7 @@ public sealed interface AnalysisWindow permits AnalysisWindow.BarRange, Analysis
      * Lookback-bar-count window.
      *
      * @param barCount number of bars to include
-     * @since 0.22.3
+     * @since 0.22.4
      */
     record LookbackBars(int barCount) implements AnalysisWindow {
 
@@ -139,7 +139,7 @@ public sealed interface AnalysisWindow permits AnalysisWindow.BarRange, Analysis
      *
      * @param startInclusive the start instant (inclusive)
      * @param endExclusive   the end instant (exclusive)
-     * @since 0.22.3
+     * @since 0.22.4
      */
     record TimeRange(Instant startInclusive, Instant endExclusive) implements AnalysisWindow {
 
@@ -162,7 +162,7 @@ public sealed interface AnalysisWindow permits AnalysisWindow.BarRange, Analysis
      * Lookback-duration window.
      *
      * @param duration the lookback duration
-     * @since 0.22.3
+     * @since 0.22.4
      */
     record LookbackDuration(Duration duration) implements AnalysisWindow {
 
