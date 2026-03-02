@@ -394,8 +394,6 @@ jobs:
           else
             echo "Release commit ${RELEASE_COMMIT} is on origin/${DEFAULT_BRANCH}."
           fi
-            fi
-          fi
 
       - name: Check if tag already exists
         id: check_tag
