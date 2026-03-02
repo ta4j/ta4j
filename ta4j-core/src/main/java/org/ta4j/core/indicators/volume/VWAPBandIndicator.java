@@ -10,6 +10,7 @@ import java.util.Objects;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.helpers.BandIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.serialization.ComponentDescriptor;
@@ -54,7 +55,7 @@ public class VWAPBandIndicator extends CachedIndicator<Num> {
      */
     public VWAPBandIndicator(AbstractVWAPIndicator vwapIndicator, Indicator<Num> standardDeviationIndicator,
             Number multiplier, BandType bandType) {
-        super(IndicatorSeriesUtils.requireSameSeries(vwapIndicator, standardDeviationIndicator));
+        super(IndicatorUtils.requireSameSeries(vwapIndicator, standardDeviationIndicator));
         this.vwapIndicator = vwapIndicator;
         this.standardDeviationIndicator = standardDeviationIndicator;
         this.bandType = Objects.requireNonNull(bandType, "bandType must not be null");

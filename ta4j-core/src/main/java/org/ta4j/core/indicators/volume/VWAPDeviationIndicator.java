@@ -5,6 +5,7 @@ package org.ta4j.core.indicators.volume;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -32,7 +33,7 @@ public class VWAPDeviationIndicator extends CachedIndicator<Num> {
      * @since 0.19
      */
     public VWAPDeviationIndicator(Indicator<Num> priceIndicator, AbstractVWAPIndicator vwapIndicator) {
-        super(IndicatorSeriesUtils.requireSameSeries(priceIndicator, vwapIndicator));
+        super(IndicatorUtils.requireSameSeries(priceIndicator, vwapIndicator));
         this.priceIndicator = priceIndicator;
         this.difference = BinaryOperationIndicator.difference(priceIndicator, vwapIndicator);
         this.vwapIndicator = vwapIndicator;

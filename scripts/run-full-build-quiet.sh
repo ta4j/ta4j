@@ -30,7 +30,22 @@ to_host_path() {
 }
 
 TMP_FILES=()
+build_runner_pid=""
+heartbeat_pid=""
 cleanup() {
+    if [[ -n "${build_runner_pid:-}" ]] && kill -0 "$build_runner_pid" >/dev/null 2>&1; then
+        kill "$build_runner_pid" >/dev/null 2>&1 || true
+    fi
+    if [[ -n "${heartbeat_pid:-}" ]] && kill -0 "$heartbeat_pid" >/dev/null 2>&1; then
+        kill "$heartbeat_pid" >/dev/null 2>&1 || true
+    fi
+    if [[ -n "${build_runner_pid:-}" ]]; then
+        wait "$build_runner_pid" >/dev/null 2>&1 || true
+    fi
+    if [[ -n "${heartbeat_pid:-}" ]]; then
+        wait "$heartbeat_pid" >/dev/null 2>&1 || true
+    fi
+
     local file
     for file in "${TMP_FILES[@]:-}"; do
         if [[ -n "${file:-}" && -e "$file" ]]; then
@@ -38,7 +53,7 @@ cleanup() {
         fi
     done
 }
-trap cleanup EXIT
+trap cleanup SIGINT SIGTERM EXIT
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"

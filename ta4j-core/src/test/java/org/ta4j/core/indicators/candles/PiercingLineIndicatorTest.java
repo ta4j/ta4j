@@ -18,6 +18,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.trend.DownTrendIndicator;
 import org.ta4j.core.mocks.MockBarBuilder;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -120,6 +121,26 @@ public class PiercingLineIndicatorTest extends AbstractIndicatorTest<Indicator<B
     public void shouldNotDetectPatternWhenBullishCloseTouchesFirstOpen() {
         series.barBuilder().openPrice(29).closePrice(23).highPrice(29).lowPrice(22).add();
         series.barBuilder().openPrice(22).closePrice(29).highPrice(30).lowPrice(21).add();
+
+        final PiercingLineIndicator indicator = new PiercingLineIndicator(series);
+
+        assertThat(indicator.getValue(18)).isFalse();
+    }
+
+    @Test
+    public void shouldReturnFalseWhenDenominatorIsZero() {
+        series.barBuilder().openPrice(20).closePrice(14).highPrice(20).lowPrice(13).add();
+        series.barBuilder().openPrice(0).closePrice(18).highPrice(19).lowPrice(0).add();
+
+        final PiercingLineIndicator indicator = new PiercingLineIndicator(series);
+
+        assertThat(indicator.getValue(18)).isFalse();
+    }
+
+    @Test
+    public void shouldReturnFalseWhenDenominatorIsNaN() {
+        series.barBuilder().openPrice(NaN.NaN).closePrice(14).highPrice(20).lowPrice(13).add();
+        series.barBuilder().openPrice(16).closePrice(18).highPrice(19).lowPrice(15).add();
 
         final PiercingLineIndicator indicator = new PiercingLineIndicator(series);
 
