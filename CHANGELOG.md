@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.22.3 (2026-03-01)
+
 ### Added
 - **Bill Williams indicator suite**: Added `FractalHighIndicator`, `FractalLowIndicator`, `AlligatorIndicator` (jaw/teeth/lips defaults), `GatorOscillatorIndicator` (upper/lower histogram branches), and `MarketFacilitationIndexIndicator` with comprehensive regression coverage for confirmation delays, overlapping windows, flat-price/zero-volume edge cases, constructor validation, unstable-bar boundaries, and lower-histogram signed-zero handling.
 - **Risk controls APIs**: Added `PositionRiskModel`, `StopLossPositionRiskModel`, and `RMultipleCriterion` for risk-unit (R-multiple) evaluation, plus `StopLossPriceModel`/`StopGainPriceModel` and fixed/trailing/volatility/ATR stop-loss and stop-gain rule variants.
