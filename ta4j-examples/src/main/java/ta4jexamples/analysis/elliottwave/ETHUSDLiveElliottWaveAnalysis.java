@@ -16,7 +16,7 @@ import java.util.Objects;
  * {@link ElliottWaveIndicatorSuiteDemo} for analysis, logging, and chart
  * workflow rendering.
  *
- * @since 0.22.3
+ * @since 0.22.4
  */
 public class ETHUSDLiveElliottWaveAnalysis {
 

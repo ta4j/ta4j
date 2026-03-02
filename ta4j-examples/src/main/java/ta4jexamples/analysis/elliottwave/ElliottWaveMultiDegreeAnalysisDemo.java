@@ -26,7 +26,7 @@ import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
  * degree higher ({@link ElliottDegree#CYCLE}) and lower
  * ({@link ElliottDegree#INTERMEDIATE}).
  *
- * @since 0.22.3
+ * @since 0.22.4
  */
 public class ElliottWaveMultiDegreeAnalysisDemo {
 

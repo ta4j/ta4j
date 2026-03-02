@@ -1,6 +1,20 @@
 ## Unreleased
 
-- _No changes yet._
+### Added
+- **Elliott multi-degree one-shot analysis API**: Added `ElliottWaveAnalysisRunner` and `ElliottWaveAnalysisResult` to run pluggable, chart-independent analysis across a base degree plus optional neighboring degrees, with ranked scenario assessments and cross-degree compatibility scoring.
+- **Elliott one-shot result model and diagnostics**: Added structured per-degree outputs (`DegreeAnalysis` records), recommended base-scenario selection helpers, and confidence-breakdown metadata for deeper scenario diagnostics.
+- **Elliott analysis demos and datasets**: Added `ElliottWaveMultiDegreeAnalysisDemo`, shared `OssifiedElliottWaveSeriesLoader` utilities for ossified JSON resources, and an S&P 500 example dataset (`YahooFinance-SP500-PT1D-20230616_20231011.json`) for non-crypto walkthroughs.
+- **Shared one-shot analysis interfaces**: Added `org.ta4j.core.analysis.AnalysisRunner` and `org.ta4j.core.analysis.SeriesSelector` as reusable, library-level contracts for pluggable analysis orchestration.
+
+### Changed
+- **Elliott one-shot entrypoint consolidation**: Replaced legacy `ElliottWaveAnalyzer` naming/usages with the consolidated `ElliottWaveAnalysisRunner` API across core docs, tests, and examples.
+- **Elliott package and quickstart guidance**: Expanded package-level and README documentation to call out one-shot/facade entrypoints, `scenarioSwingWindow` behavior, and returned result semantics.
+- **Elliott examples result naming**: Renamed the examples-only structured DTO to `ElliottWaveAnalysisReport` to avoid collision with core `ElliottWaveAnalysisResult`.
+- **HighRewardElliottWaveStrategy exit gating**: Removed the redundant anonymous exit-rule guard and now rely on ta4j strategy lifecycle routing (`shouldOperate`/`shouldExit`) to evaluate exits only for open positions.
+- **HighRewardElliottWaveStrategy momentum normalization**: Replaced classic MACD momentum confirmation with `VolatilityNormalizedMACDIndicator` (MACD-V) in both entry and exit rule pipelines.
+
+### Fixed
+- **Elliott one-shot documentation and guards**: Updated README/package docs to reference `ElliottWaveAnalysisResult`, clarified that `scenarioSwingWindow = 0` disables windowing, enforced bounded `RecommendedHistory` ranges, and hardened ossified dataset resource loading for classpath edge cases.
 
 ## 0.22.3 (2026-03-01)
 
@@ -9,10 +23,6 @@
 - **Risk controls APIs**: Added `PositionRiskModel`, `StopLossPositionRiskModel`, and `RMultipleCriterion` for risk-unit (R-multiple) evaluation, plus `StopLossPriceModel`/`StopGainPriceModel` and fixed/trailing/volatility/ATR stop-loss and stop-gain rule variants.
 - **Agent guidance tooling and docs**: Reorganized project `AGENTS.md` into scoped, task-local guides and added `scripts/agents_for_target.sh` to resolve effective instructions for any target path.
 - **Regression coverage additions**: Added explicit tests for `TimeBarBuilder` gap placement, `NetMomentumIndicator` pivot/decay edge handling, mixed-field serialization routing, named-strategy label/vararg diagnostics, and `VolumeIndicator` rolling-window behavior.
-- **Elliott multi-degree one-shot analysis API**: Added `ElliottWaveAnalysisRunner` and `ElliottWaveAnalysisResult` to run pluggable, chart-independent analysis across a base degree plus optional neighboring degrees, with ranked scenario assessments and cross-degree compatibility scoring.
-- **Elliott one-shot result model and diagnostics**: Added structured per-degree outputs (`DegreeAnalysis` records), recommended base-scenario selection helpers, and confidence-breakdown metadata for deeper scenario diagnostics.
-- **Elliott analysis demos and datasets**: Added `ElliottWaveMultiDegreeAnalysisDemo`, shared `OssifiedElliottWaveSeriesLoader` utilities for ossified JSON resources, and an S&P 500 example dataset (`YahooFinance-SP500-PT1D-20230616_20231011.json`) for non-crypto walkthroughs.
-- **Shared one-shot analysis interfaces**: Added `org.ta4j.core.analysis.AnalysisRunner` and `org.ta4j.core.analysis.SeriesSelector` as reusable, library-level contracts for pluggable analysis orchestration.
 - Added **PiercingLineIndicator** and **DarkCloudCoverIndicator** with configurable body-size, gap, and penetration thresholds for candlestick pattern detection.
 - **Trend confirmation oscillators**: Added `VortexIndicator` (+VI, -VI, and oscillator output) and `UltimateOscillatorIndicator` with configurable periods, warm-up guards, and regression tests against published reference values.
 - **Volatility-normalized MACD-V toolkit**: Added `VolatilityNormalizedMACDIndicator` with canonical ATR-normalized MACD-V calculation, configurable signal/histogram helpers, and `MACDVMomentumState` classification utilities.
@@ -24,11 +34,6 @@
 - **VolumeIndicator performance**: Replaced O(barCount) per-index summation with an O(1) rolling partial-sum update, including clearer algorithm/complexity Javadocs.
 - **Serialization routing precedence**: `ComponentSerialization` now resolves mixed payloads by descriptor type so strategies prefer `rules` while indicators/rules prefer `components`, while keeping legacy `children`/`baseIndicators` compatibility.
 - **NamedStrategy reconstruction diagnostics**: Strategy reconstruction now emits richer, label-aware errors for missing identifiers, malformed labels, and constructor/parameter failures.
-- **Elliott one-shot entrypoint consolidation**: Replaced legacy `ElliottWaveAnalyzer` naming/usages with the consolidated `ElliottWaveAnalysisRunner` API across core docs, tests, and examples.
-- **Elliott package and quickstart guidance**: Expanded package-level and README documentation to call out one-shot/facade entrypoints, `scenarioSwingWindow` behavior, and returned result semantics.
-- **Elliott examples result naming**: Renamed the examples-only structured DTO to `ElliottWaveAnalysisReport` to avoid collision with core `ElliottWaveAnalysisResult`.
-- **HighRewardElliottWaveStrategy exit gating**: Removed the redundant anonymous exit-rule guard and now rely on ta4j strategy lifecycle routing (`shouldOperate`/`shouldExit`) to evaluate exits only for open positions.
-- **HighRewardElliottWaveStrategy momentum normalization**: Replaced classic MACD momentum confirmation with `VolatilityNormalizedMACDIndicator` (MACD-V) in both entry and exit rule pipelines.
 - **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
   `./mvnw` when present (falling back to `mvn`), so wrapper adoption does not require a second build command.
 - **Full build script portability**: `scripts/run-full-build-quiet.sh` no longer requires Python; timeout handling,
@@ -60,9 +65,6 @@
 - **README snippet synchronization line endings**: `ReadmeContentManager.updateReadmeSnippets(...)` now preserves the
   target README's dominant line separator (LF/CRLF), with regression tests covering both newline modes.
 - **Indicator serialization and stability**: Aligned VWAP, price-cluster, and Wyckoff indicators on descriptor ordering, NaN handling, and unstable-bar conventions.
-- **Elliott one-shot documentation and guards**: Updated README/package docs to reference `ElliottWaveAnalysisResult`,
-  clarified that `scenarioSwingWindow = 0` disables windowing, enforced bounded `RecommendedHistory` ranges, and hardened
-  ossified dataset resource loading for classpath edge cases.
 
 ## 0.22.2 (2026-02-15)
 

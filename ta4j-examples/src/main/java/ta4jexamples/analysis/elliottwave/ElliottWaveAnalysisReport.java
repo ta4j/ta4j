@@ -68,7 +68,7 @@ import com.google.gson.Gson;
  * representation suitable for storage, transmission, or further processing.
  *
  * @see ElliottWaveIndicatorSuiteDemo
- * @since 0.22.0
+ * @since 0.22.4
  */
 public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, SwingSnapshot swingSnapshot,
         LatestAnalysis latestAnalysis, ScenarioSummary scenarioSummary, ElliottTrendBias trendBias,

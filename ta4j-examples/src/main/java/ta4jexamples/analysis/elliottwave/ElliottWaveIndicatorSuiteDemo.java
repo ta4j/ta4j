@@ -121,6 +121,7 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * @see BTCUSDElliottWaveAnalysis
  * @see ETHUSDElliottWaveAnalysis
  * @see SP500ElliottWaveAnalysis
+ * @since 0.22.4
  */
 public class ElliottWaveIndicatorSuiteDemo {
 

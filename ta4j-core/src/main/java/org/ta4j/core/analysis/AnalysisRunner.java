@@ -11,7 +11,7 @@ import org.ta4j.core.BarSeries;
  * @param <C> analysis context type (for example degree, configuration, or
  *            request object)
  * @param <R> analysis result type
- * @since 0.22.3
+ * @since 0.22.4
  */
 @FunctionalInterface
 public interface AnalysisRunner<C, R> {
@@ -22,7 +22,7 @@ public interface AnalysisRunner<C, R> {
      * @param series  series to analyze
      * @param context caller-provided analysis context
      * @return analysis result
-     * @since 0.22.3
+     * @since 0.22.4
      */
     R analyze(BarSeries series, C context);
 }

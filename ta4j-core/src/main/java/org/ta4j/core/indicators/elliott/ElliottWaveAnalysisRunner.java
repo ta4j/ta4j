@@ -60,7 +60,7 @@ import org.ta4j.core.num.NumFactory;
  * {@code BarSeriesUtils.aggregateBars(...)}) before analysis.</li>
  * </ul>
  *
- * @since 0.22.3
+ * @since 0.22.4
  */
 public final class ElliottWaveAnalysisRunner {
 
@@ -119,7 +119,7 @@ public final class ElliottWaveAnalysisRunner {
      * Creates a new builder.
      *
      * @return builder
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public static Builder builder() {
         return new Builder();
@@ -136,7 +136,7 @@ public final class ElliottWaveAnalysisRunner {
      *
      * @param series root series
      * @return analysis result
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public ElliottWaveAnalysisResult analyze(final BarSeries series) {
         Objects.requireNonNull(series, "series");
@@ -815,7 +815,7 @@ public final class ElliottWaveAnalysisRunner {
     /**
      * Builder for {@link ElliottWaveAnalysisRunner}.
      *
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public static final class Builder {
 
@@ -840,7 +840,7 @@ public final class ElliottWaveAnalysisRunner {
         /**
          * @param degree base degree that drives scenario ranking
          * @return builder
-         * @since 0.22.3
+         * @since 0.22.4
          */
         public Builder degree(final ElliottDegree degree) {
             this.baseDegree = Objects.requireNonNull(degree, "degree");
@@ -850,7 +850,7 @@ public final class ElliottWaveAnalysisRunner {
         /**
          * @param higherDegrees number of higher degrees to include (0 for none)
          * @return builder
-         * @since 0.22.3
+         * @since 0.22.4
          */
         public Builder higherDegrees(final int higherDegrees) {
             if (higherDegrees < 0) {
@@ -863,7 +863,7 @@ public final class ElliottWaveAnalysisRunner {
         /**
          * @param lowerDegrees number of lower degrees to include (0 for none)
          * @return builder
-         * @since 0.22.3
+         * @since 0.22.4
          */
         public Builder lowerDegrees(final int lowerDegrees) {
             if (lowerDegrees < 0) {
@@ -876,7 +876,7 @@ public final class ElliottWaveAnalysisRunner {
         /**
          * @param seriesSelector series selector used per degree
          * @return builder
-         * @since 0.22.3
+         * @since 0.22.4
          */
         public Builder seriesSelector(final SeriesSelector<ElliottDegree> seriesSelector) {
             this.seriesSelector = Objects.requireNonNull(seriesSelector, "seriesSelector");
@@ -893,7 +893,7 @@ public final class ElliottWaveAnalysisRunner {
          *
          * @param analysisRunner analysis runner implementation
          * @return builder
-         * @since 0.22.3
+         * @since 0.22.4
          */
         public Builder analysisRunner(final AnalysisRunner<ElliottDegree, ElliottAnalysisResult> analysisRunner) {
             this.analysisRunner = Objects.requireNonNull(analysisRunner, "analysisRunner");
@@ -910,7 +910,7 @@ public final class ElliottWaveAnalysisRunner {
          *
          * @param weight weight in range [0.0, 1.0] applied to the base confidence
          * @return builder
-         * @since 0.22.3
+         * @since 0.22.4
          */
         public Builder baseConfidenceWeight(final double weight) {
             if (weight < 0.0 || weight > 1.0) {
@@ -925,7 +925,7 @@ public final class ElliottWaveAnalysisRunner {
          *
          * @param swingDetector swing detector implementation
          * @return builder
-         * @since 0.22.3
+         * @since 0.22.4
          */
         public Builder swingDetector(final SwingDetector swingDetector) {
             this.swingDetector = Objects.requireNonNull(swingDetector, "swingDetector");
@@ -937,7 +937,7 @@ public final class ElliottWaveAnalysisRunner {
          *
          * @param swingFilter swing filter to apply after detection
          * @return builder
-         * @since 0.22.3
+         * @since 0.22.4
          */
         public Builder swingFilter(final SwingFilter swingFilter) {
             this.swingFilter = swingFilter;
@@ -947,7 +947,7 @@ public final class ElliottWaveAnalysisRunner {
         /**
          * @param confidenceModel confidence model to use
          * @return builder
-         * @since 0.22.3
+         * @since 0.22.4
          */
         public Builder confidenceModel(final ConfidenceModel confidenceModel) {
             Objects.requireNonNull(confidenceModel, "confidenceModel");
@@ -958,7 +958,7 @@ public final class ElliottWaveAnalysisRunner {
         /**
          * @param confidenceModelFactory factory for confidence models
          * @return builder
-         * @since 0.22.3
+         * @since 0.22.4
          */
         public Builder confidenceModelFactory(final Function<NumFactory, ConfidenceModel> confidenceModelFactory) {
             this.confidenceModelFactory = Objects.requireNonNull(confidenceModelFactory, "confidenceModelFactory");
@@ -968,7 +968,7 @@ public final class ElliottWaveAnalysisRunner {
         /**
          * @param patternSet enabled pattern set
          * @return builder
-         * @since 0.22.3
+         * @since 0.22.4
          */
         public Builder patternSet(final PatternSet patternSet) {
             this.patternSet = Objects.requireNonNull(patternSet, "patternSet");
@@ -978,7 +978,7 @@ public final class ElliottWaveAnalysisRunner {
         /**
          * @param minConfidence minimum confidence threshold
          * @return builder
-         * @since 0.22.3
+         * @since 0.22.4
          */
         public Builder minConfidence(final double minConfidence) {
             if (minConfidence < 0.0 || minConfidence > 1.0) {
@@ -991,7 +991,7 @@ public final class ElliottWaveAnalysisRunner {
         /**
          * @param maxScenarios maximum scenarios to retain
          * @return builder
-         * @since 0.22.3
+         * @since 0.22.4
          */
         public Builder maxScenarios(final int maxScenarios) {
             if (maxScenarios <= 0) {
@@ -1006,7 +1006,7 @@ public final class ElliottWaveAnalysisRunner {
          *                            ({@code 0} disables windowing and uses all
          *                            available swings)
          * @return builder
-         * @since 0.22.3
+         * @since 0.22.4
          */
         public Builder scenarioSwingWindow(final int scenarioSwingWindow) {
             if (scenarioSwingWindow < 0) {
@@ -1020,7 +1020,7 @@ public final class ElliottWaveAnalysisRunner {
          * Builds the analysis entry point.
          *
          * @return analysis instance
-         * @since 0.22.3
+         * @since 0.22.4
          */
         public ElliottWaveAnalysisRunner build() {
             if (baseDegree == null) {

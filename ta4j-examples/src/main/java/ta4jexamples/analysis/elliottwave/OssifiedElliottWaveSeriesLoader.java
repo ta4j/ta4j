@@ -16,7 +16,7 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  * Utility for loading ossified Elliott Wave demo series from classpath JSON
  * resources.
  *
- * @since 0.22.3
+ * @since 0.22.4
  */
 final class OssifiedElliottWaveSeriesLoader {
 
