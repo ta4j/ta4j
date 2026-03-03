@@ -27,7 +27,7 @@ import org.ta4j.core.num.NumFactory;
 /**
  * Live trading record that supports partial fills and multi-lot positions.
  *
- * @since 0.22.2
+ * @since 0.22.4
  */
 public class LiveTradingRecord implements TradingRecord, PositionLedger {
 
@@ -56,7 +56,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     /**
      * Creates a live trading record with BUY entries and FIFO matching.
      *
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public LiveTradingRecord() {
         this(TradeType.BUY);
@@ -66,7 +66,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * Creates a live trading record.
      *
      * @param startingType entry trade type
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public LiveTradingRecord(TradeType startingType) {
         this(startingType, ExecutionMatchPolicy.FIFO, new ZeroCostModel(), new ZeroCostModel(), null, null);
@@ -82,7 +82,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * @param holdingCostModel     holding cost model
      * @param startIndex           optional start index
      * @param endIndex             optional end index
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public LiveTradingRecord(TradeType startingType, ExecutionMatchPolicy matchPolicy, CostModel transactionCostModel,
             CostModel holdingCostModel, Integer startIndex, Integer endIndex) {
@@ -111,7 +111,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      *
      * @param trade live trade
      * @throws IllegalArgumentException when trade price or amount is NaN/invalid
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public void recordFill(LiveTrade trade) {
         recordFill(nextIndex(), trade);
@@ -127,7 +127,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      *
      * @param fill execution fill
      * @throws IllegalArgumentException when fill price or amount is NaN/invalid
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public void recordExecutionFill(ExecutionFill fill) {
         Objects.requireNonNull(fill, "fill");
@@ -152,7 +152,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * @param index trade index
      * @param trade live trade
      * @throws IllegalArgumentException when trade price or amount is NaN/invalid
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public void recordFill(int index, LiveTrade trade) {
         Objects.requireNonNull(trade, "trade");
@@ -188,7 +188,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * Returns open positions as lots.
      *
      * @return open positions
-     * @since 0.22.2
+     * @since 0.22.4
      */
     @Override
     public List<OpenPosition> getOpenPositions() {
@@ -204,7 +204,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * Returns the aggregated net open position.
      *
      * @return net open position, or null if none
-     * @since 0.22.2
+     * @since 0.22.4
      */
     @Override
     public OpenPosition getNetOpenPosition() {
@@ -225,7 +225,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * Returns the execution match policy used by this record.
      *
      * @return match policy
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public ExecutionMatchPolicy getMatchPolicy() {
         return matchPolicy;
@@ -240,7 +240,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * Sets the name of this record.
      *
      * @param name record name
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public void setName(String name) {
         this.name = name;
@@ -463,7 +463,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * Returns the total execution fees recorded by this record.
      *
      * @return total fees (zero if no fills)
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public Num getTotalFees() {
         lock.readLock().lock();
@@ -529,7 +529,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      *
      * @param holdingCostModel holding cost model, null defaults to
      *                         {@link ZeroCostModel}
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public void rehydrate(CostModel holdingCostModel) {
         rehydrate(null, holdingCostModel);
@@ -547,7 +547,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * @param transactionCostModel ignored for live trading records
      * @param holdingCostModel     holding cost model, null defaults to
      *                             {@link ZeroCostModel}
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public void rehydrate(CostModel transactionCostModel, CostModel holdingCostModel) {
         CostModel resolvedTransaction = RecordedTradeCostModel.INSTANCE;

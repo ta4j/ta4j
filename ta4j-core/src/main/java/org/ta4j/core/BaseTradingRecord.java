@@ -148,7 +148,7 @@ public class BaseTradingRecord implements TradingRecord {
      * Constructor.
      *
      * @param position the position to be recorded (entry required)
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public BaseTradingRecord(Position position) {
         this(defaultCostModel(position.getTransactionCostModel()), defaultCostModel(position.getHoldingCostModel()),
@@ -159,7 +159,7 @@ public class BaseTradingRecord implements TradingRecord {
      * Constructor.
      *
      * @param positions the positions to be recorded (cannot be empty)
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public BaseTradingRecord(List<Position> positions) {
         this(positionsToTrades(positions));
