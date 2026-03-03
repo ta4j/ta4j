@@ -25,7 +25,7 @@ final class ThresholdBarAggregationSupport {
     }
 
     static List<Bar> aggregate(List<Bar> bars, NumFactory numFactory, boolean onlyFinalBars,
-            Predicate<WindowView> completionPredicate, Function<WindowView, Bar> barBuilder) {
+            Predicate<MutableWindow> completionPredicate, Function<MutableWindow, Bar> barBuilder) {
         Objects.requireNonNull(bars, "bars");
         Objects.requireNonNull(numFactory, "numFactory");
         Objects.requireNonNull(completionPredicate, "completionPredicate");
@@ -52,7 +52,7 @@ final class ThresholdBarAggregationSupport {
         return aggregated;
     }
 
-    static Bar buildTimeBar(NumFactory numFactory, WindowView window) {
+    static Bar buildTimeBar(NumFactory numFactory, MutableWindow window) {
         Duration aggregatedPeriod = Duration.between(window.beginTime(), window.endTime());
         return new TimeBarBuilder(numFactory).timePeriod(aggregatedPeriod)
                 .endTime(window.endTime())
@@ -66,28 +66,7 @@ final class ThresholdBarAggregationSupport {
                 .build();
     }
 
-    interface WindowView {
-
-        Instant beginTime();
-
-        Instant endTime();
-
-        Num openPrice();
-
-        Num highPrice();
-
-        Num lowPrice();
-
-        Num closePrice();
-
-        Num volume();
-
-        Num amount();
-
-        long trades();
-    }
-
-    private static final class MutableWindow implements WindowView {
+    static final class MutableWindow {
 
         private final Num zero;
         private Instant beginTime;
@@ -147,47 +126,38 @@ final class ThresholdBarAggregationSupport {
             trades = 0L;
         }
 
-        @Override
         public Instant beginTime() {
             return beginTime;
         }
 
-        @Override
         public Instant endTime() {
             return endTime;
         }
 
-        @Override
         public Num openPrice() {
             return openPrice;
         }
 
-        @Override
         public Num highPrice() {
             return highPrice;
         }
 
-        @Override
         public Num lowPrice() {
             return lowPrice;
         }
 
-        @Override
         public Num closePrice() {
             return closePrice;
         }
 
-        @Override
         public Num volume() {
             return volume;
         }
 
-        @Override
         public Num amount() {
             return amount;
         }
 
-        @Override
         public long trades() {
             return trades;
         }
