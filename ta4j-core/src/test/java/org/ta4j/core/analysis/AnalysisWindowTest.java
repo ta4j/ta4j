@@ -104,6 +104,62 @@ public class AnalysisWindowTest {
     }
 
     @Test
+    public void windowedCalculateOverloadMatchesExplicitDefaultContext() {
+        BarSeries series = buildSeries(10);
+        TradingRecord record = new BaseTradingRecord(Trade.buyAt(6, series));
+        NetProfitLossCriterion criterion = new NetProfitLossCriterion();
+        AnalysisWindow window = AnalysisWindow.barRange(4, 8);
+
+        Num fromOverload = criterion.calculate(series, record, window);
+        Num fromExplicitDefaults = criterion.calculate(series, record, window, AnalysisContext.defaults());
+
+        assertNumEquals(fromExplicitDefaults, fromOverload);
+    }
+
+    @Test
+    public void windowedCalculateRejectsNullSeries() {
+        TradingRecord record = new BaseTradingRecord();
+        AnalysisWindow window = AnalysisWindow.barRange(0, 1);
+        NumberOfPositionsCriterion criterion = new NumberOfPositionsCriterion();
+
+        assertThrows(NullPointerException.class,
+                () -> criterion.calculate(null, record, window, AnalysisContext.defaults()));
+        assertThrows(NullPointerException.class, () -> criterion.calculate(null, record, window));
+    }
+
+    @Test
+    public void windowedCalculateRejectsNullTradingRecord() {
+        BarSeries series = buildSeries(2);
+        AnalysisWindow window = AnalysisWindow.barRange(0, 1);
+        NumberOfPositionsCriterion criterion = new NumberOfPositionsCriterion();
+
+        assertThrows(NullPointerException.class,
+                () -> criterion.calculate(series, null, window, AnalysisContext.defaults()));
+        assertThrows(NullPointerException.class, () -> criterion.calculate(series, null, window));
+    }
+
+    @Test
+    public void windowedCalculateRejectsNullWindow() {
+        BarSeries series = buildSeries(2);
+        TradingRecord record = new BaseTradingRecord();
+        NumberOfPositionsCriterion criterion = new NumberOfPositionsCriterion();
+
+        assertThrows(NullPointerException.class,
+                () -> criterion.calculate(series, record, null, AnalysisContext.defaults()));
+        assertThrows(NullPointerException.class, () -> criterion.calculate(series, record, null));
+    }
+
+    @Test
+    public void windowedCalculateRejectsNullContext() {
+        BarSeries series = buildSeries(2);
+        TradingRecord record = new BaseTradingRecord();
+        AnalysisWindow window = AnalysisWindow.barRange(0, 1);
+        NumberOfPositionsCriterion criterion = new NumberOfPositionsCriterion();
+
+        assertThrows(NullPointerException.class, () -> criterion.calculate(series, record, window, null));
+    }
+
+    @Test
     public void defaultWindowedCalculateUsesStrictHistoryPolicy() {
         BarSeries series = buildSeries(10);
         series.setMaximumBarCount(5);
