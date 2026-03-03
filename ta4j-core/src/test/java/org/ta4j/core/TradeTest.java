@@ -8,6 +8,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
@@ -245,6 +246,58 @@ public class TradeTest {
         assertEquals(3, fills.getFirst().index());
         assertNumEquals(numFactory.hundred(), fills.getFirst().price());
         assertNumEquals(numFactory.two(), fills.getFirst().amount());
+    }
+
+    @Test
+    public void executionFillsOfFallsBackToScalarTradeFields() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        Trade trade = new SimulatedTrade(3, TradeType.BUY, numFactory.hundred(), numFactory.two()) {
+            @Override
+            public List<TradeFill> getFills() {
+                return List.of();
+            }
+        };
+
+        List<TradeFill> fills = Trade.executionFillsOf(trade);
+
+        assertEquals(1, fills.size());
+        assertEquals(3, fills.getFirst().index());
+        assertNumEquals(numFactory.hundred(), fills.getFirst().price());
+        assertNumEquals(numFactory.two(), fills.getFirst().amount());
+    }
+
+    @Test
+    public void fromFillsCreatesSimulatedTradeForSingleFill() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(2, numFactory.hundred(), numFactory.one())),
+                new FixedTransactionCostModel(1.0));
+
+        assertTrue(trade instanceof SimulatedTrade);
+        assertEquals(1, trade.getFills().size());
+        assertEquals(2, trade.getIndex());
+        assertNumEquals(numFactory.hundred(), trade.getPricePerAsset());
+        assertNumEquals(numFactory.one(), trade.getAmount());
+    }
+
+    @Test
+    public void fromFillsCreatesAggregatedTradeForMultipleFills() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(1, numFactory.hundred(), numFactory.one()),
+                new TradeFill(2, numFactory.numOf(101), numFactory.one())));
+
+        assertTrue(trade instanceof AggregatedTrade);
+        assertEquals(2, trade.getFills().size());
+    }
+
+    @Test
+    public void fromFillsRejectsInvalidSingleFill() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        assertThrows(IllegalArgumentException.class,
+                () -> Trade.fromFills(TradeType.BUY, List.of(new TradeFill(1, NaN, numFactory.one()))));
+        assertThrows(IllegalArgumentException.class, () -> Trade.fromFills(TradeType.BUY,
+                List.of(new TradeFill(1, numFactory.hundred(), numFactory.zero()))));
+        assertThrows(IllegalArgumentException.class, () -> Trade.fromFills(TradeType.BUY,
+                List.of(new TradeFill(1, numFactory.hundred(), numFactory.minusOne()))));
     }
 
     @Test

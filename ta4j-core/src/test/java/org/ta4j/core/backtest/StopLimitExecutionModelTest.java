@@ -12,6 +12,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.SimulatedTrade;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradeFill;
@@ -70,6 +71,23 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         assertEquals(numFactory.numOf(3), entry.getFills().get(2).amount());
         assertFalse(model.getPendingOrder(tradingRecord).isPresent());
         assertTrue(model.getRejectedOrders(tradingRecord).isEmpty());
+    }
+
+    @Test
+    public void singleFillStopLimitOrderUsesScalarTradeRepresentation() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(100d).add();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(100d).add();
+
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                numFactory.one(), 2);
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule());
+        TradingRecord tradingRecord = new BarSeriesManager(series, model).run(strategy, strategy.getStartingType(),
+                numFactory.one());
+
+        Trade entry = tradingRecord.getTrades().getFirst();
+        assertTrue(entry instanceof SimulatedTrade);
+        assertEquals(1, entry.getFills().size());
     }
 
     @Test

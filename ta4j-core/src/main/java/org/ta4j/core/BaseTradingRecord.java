@@ -221,18 +221,16 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public void operate(int index, Num price, Num amount) {
-        Trade newTrade;
-        if (currentPosition.isClosed()) {
-            // Current position closed, should not occur
-            throw new IllegalStateException("Current position should not be closed");
-        }
-        boolean newTradeWillBeAnEntry = currentPosition.isNew();
-        newTrade = currentPosition.operate(index, price, amount);
-        recordTrade(newTrade, newTradeWillBeAnEntry);
+        Trade syntheticTrade = new SimulatedTrade(index, nextTradeType(), price, amount, transactionCostModel);
+        applyTrade(syntheticTrade);
     }
 
     @Override
     public void operate(Trade trade) {
+        applyTrade(trade);
+    }
+
+    private void applyTrade(Trade trade) {
         if (currentPosition.isClosed()) {
             // Current position closed, should not occur
             throw new IllegalStateException("Current position should not be closed");
@@ -384,6 +382,16 @@ public class BaseTradingRecord implements TradingRecord {
 
     private static CostModel defaultCostModel(CostModel costModel) {
         return costModel == null ? new ZeroCostModel() : costModel;
+    }
+
+    private TradeType nextTradeType() {
+        if (currentPosition.isNew()) {
+            return startingType;
+        }
+        if (currentPosition.isOpened()) {
+            return currentPosition.getEntry().getType().complementType();
+        }
+        throw new IllegalStateException("Current position should not be closed");
     }
 
     @Override

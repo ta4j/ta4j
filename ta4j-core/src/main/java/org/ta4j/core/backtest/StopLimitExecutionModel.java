@@ -9,12 +9,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import org.ta4j.core.AggregatedTrade;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.ExecutionModelSupport.ExecutionTarget;
 import org.ta4j.core.num.Num;
 
 /**
@@ -126,8 +127,9 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         Objects.requireNonNull(barSeries, "barSeries");
         if (amount == null || amount.isNaN() || amount.isZero() || amount.isNegative()) {
             Num requestedAmount = amountOrZero(amount, barSeries);
-            addRejectedOrder(tradingRecord, new RejectedOrder(index, index, nextTradeType(tradingRecord),
-                    requestedAmount, requestedAmount.getNumFactory().zero(), "Invalid requested amount"));
+            addRejectedOrder(tradingRecord,
+                    new RejectedOrder(index, index, ExecutionModelSupport.nextTradeType(tradingRecord), requestedAmount,
+                            requestedAmount.getNumFactory().zero(), "Invalid requested amount"));
             return;
         }
         Num requestedAmount = resolveRequestedAmount(tradingRecord, amount);
@@ -138,20 +140,20 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
                             pendingOrder.filledAmount, "Signal ignored while another stop-limit order is pending"));
             return;
         }
-        ReferenceTarget referenceTarget = resolveReferenceTarget(index, barSeries);
+        ExecutionTarget referenceTarget = ExecutionModelSupport.resolveExecutionTarget(index, barSeries, priceSource);
         if (referenceTarget == null) {
             addRejectedOrder(tradingRecord,
-                    new RejectedOrder(index, index, nextTradeType(tradingRecord), requestedAmount,
+                    new RejectedOrder(index, index, ExecutionModelSupport.nextTradeType(tradingRecord), requestedAmount,
                             requestedAmount.getNumFactory().zero(),
                             "Unable to resolve reference bar for stop-limit order"));
             return;
         }
 
-        TradeType tradeType = nextTradeType(tradingRecord);
-        Num stopPrice = toStopPrice(referenceTarget.price, tradeType);
-        Num limitPrice = toLimitPrice(referenceTarget.price, tradeType);
-        pendingOrders.put(tradingRecord, new PendingOrder(index, referenceTarget.index, tradeType, requestedAmount,
-                stopPrice, limitPrice, referenceTarget.index + maxBarsToFill - 1));
+        TradeType tradeType = ExecutionModelSupport.nextTradeType(tradingRecord);
+        Num stopPrice = toStopPrice(referenceTarget.price(), tradeType);
+        Num limitPrice = toLimitPrice(referenceTarget.price(), tradeType);
+        pendingOrders.put(tradingRecord, new PendingOrder(index, referenceTarget.index(), tradeType, requestedAmount,
+                stopPrice, limitPrice, referenceTarget.index() + maxBarsToFill - 1));
     }
 
     @Override
@@ -193,17 +195,6 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         if (ratio.isNaN() || ratio.isNegative()) {
             throw new IllegalArgumentException(name + " must be positive or zero");
         }
-    }
-
-    private ReferenceTarget resolveReferenceTarget(int signalIndex, BarSeries barSeries) {
-        if (priceSource == PriceSource.CURRENT_CLOSE) {
-            return new ReferenceTarget(signalIndex, barSeries.getBar(signalIndex).getClosePrice());
-        }
-        int referenceIndex = signalIndex + 1;
-        if (referenceIndex > barSeries.getEndIndex()) {
-            return null;
-        }
-        return new ReferenceTarget(referenceIndex, barSeries.getBar(referenceIndex).getOpenPrice());
     }
 
     private Num toStopPrice(Num reference, TradeType tradeType) {
@@ -251,13 +242,6 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             return bar.getLowPrice().isLessThanOrEqual(limitPrice);
         }
         return bar.getHighPrice().isGreaterThanOrEqual(limitPrice);
-    }
-
-    private static TradeType nextTradeType(TradingRecord tradingRecord) {
-        if (tradingRecord.isClosed()) {
-            return tradingRecord.getStartingType();
-        }
-        return tradingRecord.getCurrentPosition().getEntry().getType().complementType();
     }
 
     private static Num amountOrZero(Num amount, BarSeries barSeries) {
@@ -313,9 +297,6 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             List<TradeFill> fills) {
     }
 
-    private record ReferenceTarget(int index, Num price) {
-    }
-
     private static final class PendingOrder {
         private final int signalIndex;
         private final int activationIndex;
@@ -359,8 +340,8 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             return filledAmount.isPositive();
         }
 
-        private AggregatedTrade toTrade(TradingRecord tradingRecord) {
-            return new AggregatedTrade(tradeType, List.copyOf(fills), tradingRecord.getTransactionCostModel());
+        private Trade toTrade(TradingRecord tradingRecord) {
+            return Trade.fromFills(tradeType, fills, tradingRecord.getTransactionCostModel());
         }
 
         private RejectedOrder toExpiryRejection(int rejectionIndex) {

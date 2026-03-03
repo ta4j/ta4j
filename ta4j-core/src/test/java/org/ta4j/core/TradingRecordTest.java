@@ -254,6 +254,27 @@ public class TradingRecordTest {
     }
 
     @Test
+    public void defaultOperateTradeFallsBackWhenCustomTradeProvidesNoFills() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        TradingRecord record = newTradingRecordUsingDefaultOperateImplementation();
+        Trade customTradeWithoutFills = new SimulatedTrade(3, Trade.TradeType.BUY, numFactory.hundred(),
+                numFactory.one()) {
+            @Override
+            public List<TradeFill> getFills() {
+                return List.of();
+            }
+        };
+
+        record.operate(customTradeWithoutFills);
+
+        assertFalse(record.isClosed());
+        assertEquals(3, record.getLastTrade().getIndex());
+        assertEquals(numFactory.hundred(), record.getLastTrade().getPricePerAsset());
+        assertEquals(numFactory.one(), record.getLastTrade().getAmount());
+        assertEquals(1, record.getLastTrade().getFills().size());
+    }
+
+    @Test
     public void defaultOperateTradeRejectsMultiFillTrade() {
         DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
         TradingRecord record = newTradingRecordUsingDefaultOperateImplementation();

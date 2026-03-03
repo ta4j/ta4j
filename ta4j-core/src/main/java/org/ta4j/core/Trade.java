@@ -6,7 +6,9 @@ package org.ta4j.core;
 import java.io.Serializable;
 import java.time.Instant;
 import java.util.List;
+import java.util.Objects;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**
@@ -185,6 +187,76 @@ public interface Trade extends Serializable {
      */
     default List<TradeFill> getFills() {
         return List.of(new TradeFill(getIndex(), getPricePerAsset(), getAmount()));
+    }
+
+    /**
+     * Resolves execution fills for the provided trade.
+     *
+     * <p>
+     * Trades should expose fills via {@link #getFills()}. When an implementation
+     * returns an empty list, this method falls back to index/price/amount to
+     * preserve compatibility with legacy scalar trade semantics.
+     * </p>
+     *
+     * @param trade trade to inspect
+     * @return immutable execution fills for the trade
+     * @since 0.22.4
+     */
+    static List<TradeFill> executionFillsOf(Trade trade) {
+        Objects.requireNonNull(trade, "trade");
+        List<TradeFill> fills = List.copyOf(trade.getFills());
+        if (!fills.isEmpty()) {
+            return fills;
+        }
+        return List.of(new TradeFill(trade.getIndex(), trade.getPricePerAsset(), trade.getAmount()));
+    }
+
+    /**
+     * Creates a trade from one or more execution fills using zero transaction
+     * costs.
+     *
+     * @param type  trade type
+     * @param fills execution fills (must not be empty)
+     * @return a trade representing the provided fills
+     * @since 0.22.4
+     */
+    static Trade fromFills(TradeType type, List<TradeFill> fills) {
+        return fromFills(type, fills, new ZeroCostModel());
+    }
+
+    /**
+     * Creates a trade from one or more execution fills.
+     *
+     * <p>
+     * A single fill is represented as {@link SimulatedTrade}. Multiple fills are
+     * represented as {@link AggregatedTrade}.
+     * </p>
+     *
+     * @param type                 trade type
+     * @param fills                execution fills (must not be empty)
+     * @param transactionCostModel transaction cost model
+     * @return a trade representing the provided fills
+     * @throws IllegalArgumentException when fills are empty or invalid
+     * @since 0.22.4
+     */
+    static Trade fromFills(TradeType type, List<TradeFill> fills, CostModel transactionCostModel) {
+        Objects.requireNonNull(type, "type");
+        Objects.requireNonNull(fills, "fills");
+        Objects.requireNonNull(transactionCostModel, "transactionCostModel");
+        if (fills.isEmpty()) {
+            throw new IllegalArgumentException("fills must not be empty");
+        }
+        if (fills.size() == 1) {
+            TradeFill fill = fills.getFirst();
+            if (fill.price().isNaN()) {
+                throw new IllegalArgumentException("fill price must be set");
+            }
+            if (fill.amount().isNaN() || fill.amount().isZero() || fill.amount().isNegative()) {
+                throw new IllegalArgumentException("fill amount must be positive");
+            }
+            return new SimulatedTrade(fill.index(), type, fill.price(), fill.amount(), transactionCostModel);
+        }
+        return new AggregatedTrade(type, fills, transactionCostModel);
     }
 
     /**

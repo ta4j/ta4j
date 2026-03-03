@@ -260,12 +260,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     @Override
     public void operate(Trade trade) {
         Objects.requireNonNull(trade, "trade");
-        List<TradeFill> fills = trade.getFills();
-        if (fills.isEmpty()) {
-            recordTradeFill(trade.getType(), trade.getIndex(), trade.getPricePerAsset(), trade.getAmount(),
-                    trade.getOrderId(), trade.getCorrelationId(), trade.getTime());
-            return;
-        }
+        List<TradeFill> fills = Trade.executionFillsOf(trade);
         for (TradeFill fill : fills) {
             recordTradeFill(trade.getType(), fill.index(), fill.price(), fill.amount(), trade.getOrderId(),
                     trade.getCorrelationId(), trade.getTime());
@@ -276,9 +271,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     public void operate(int index, Num price, Num amount) {
         lock.writeLock().lock();
         try {
-            ExecutionSide side = positionBook.openLots().isEmpty()
-                    ? (startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL)
-                    : (startingType == TradeType.BUY ? ExecutionSide.SELL : ExecutionSide.BUY);
+            ExecutionSide side = positionBook.openLots().isEmpty() ? startingExecutionSide() : exitExecutionSide();
             recordFill(index, new LiveTrade(index, Instant.EPOCH, price, amount, null, side, null, null));
         } finally {
             lock.writeLock().unlock();
@@ -299,8 +292,8 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
             if (!positionBook.openLots().isEmpty()) {
                 return false;
             }
-            recordFill(index, new LiveTrade(index, Instant.EPOCH, price, amount, null,
-                    startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL, null, null));
+            recordFill(index,
+                    new LiveTrade(index, Instant.EPOCH, price, amount, null, startingExecutionSide(), null, null));
             return true;
         } finally {
             lock.writeLock().unlock();
@@ -314,8 +307,8 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
             if (positionBook.openLots().isEmpty()) {
                 return false;
             }
-            recordFill(index, new LiveTrade(index, Instant.EPOCH, price, amount, null,
-                    startingType == TradeType.BUY ? ExecutionSide.SELL : ExecutionSide.BUY, null, null));
+            recordFill(index,
+                    new LiveTrade(index, Instant.EPOCH, price, amount, null, exitExecutionSide(), null, null));
             return true;
         } finally {
             lock.writeLock().unlock();
@@ -429,6 +422,14 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         } finally {
             lock.writeLock().unlock();
         }
+    }
+
+    private ExecutionSide startingExecutionSide() {
+        return startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+    }
+
+    private ExecutionSide exitExecutionSide() {
+        return startingExecutionSide() == ExecutionSide.BUY ? ExecutionSide.SELL : ExecutionSide.BUY;
     }
 
     private static void validateFill(LiveTrade trade) {

@@ -3,6 +3,9 @@
 ### Added
 - **Window-aware criterion evaluation API**: `AnalysisCriterion` can now analyze exactly the slice you care about, including specific bar ranges, date/time ranges, lookback bars, and lookback durations, via `AnalysisWindow`/`AnalysisContext` and `AnalysisCriterion#calculate(series, tradingRecord, window[, context])`, with strict/clamp history policies and configurable open-position handling.
 
+### Changed
+- **Trade-fill flow is now shared across backtest/live trade paths**: You can normalize execution fills with `Trade.executionFillsOf(...)` and build trades directly from fills via `Trade.fromFills(...)`, so stop-limit execution, `TradingRecord` defaults, and `LiveTradingRecord` all follow the same fill progression semantics while still keeping lightweight single-fill trades.
+
 ## 0.22.3 (2026-03-01)
 
 ### Added
