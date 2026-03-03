@@ -3,6 +3,8 @@
  */
 package org.ta4j.core;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.Objects;
 import org.ta4j.core.num.Num;
 
@@ -15,7 +17,10 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.22.4
  */
-public record TradeFill(int index, Num price, Num amount) {
+public record TradeFill(int index, Num price, Num amount) implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = -258216480640174496L;
 
     /**
      * Creates a trade fill.

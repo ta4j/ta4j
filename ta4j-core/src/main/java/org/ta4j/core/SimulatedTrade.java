@@ -6,6 +6,7 @@ package org.ta4j.core;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.io.Serial;
+import java.util.List;
 import java.util.Objects;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -52,6 +53,9 @@ public class SimulatedTrade implements Trade {
     /** The trade amount. */
     private final Num amount;
 
+    /** Execution fills for this trade (single fill for scalar simulated trades). */
+    private final List<TradeFill> fills;
+
     /**
      * The simulated execution cost for this trade, derived from the configured
      * {@link CostModel}.
@@ -95,10 +99,12 @@ public class SimulatedTrade implements Trade {
      */
     protected SimulatedTrade(int index, BarSeries series, Trade.TradeType type, Num amount,
             CostModel transactionCostModel) {
+        Num executionPrice = series.getBar(index).getClosePrice();
         this.type = type;
         this.index = index;
         this.amount = amount;
-        setPricesAndCost(series.getBar(index).getClosePrice(), amount, transactionCostModel);
+        this.fills = List.of(new TradeFill(index, executionPrice, amount));
+        setPricesAndCost(executionPrice, amount, transactionCostModel);
     }
 
     /**
@@ -138,8 +144,27 @@ public class SimulatedTrade implements Trade {
         this.type = type;
         this.index = index;
         this.amount = amount;
-
+        this.fills = List.of(new TradeFill(index, pricePerAsset, amount));
         setPricesAndCost(pricePerAsset, amount, transactionCostModel);
+    }
+
+    /**
+     * Constructor for multi-fill simulated trades.
+     *
+     * @param type                 trade type
+     * @param fills                execution fills (must not be empty)
+     * @param transactionCostModel the cost model for trade execution
+     * @since 0.22.4
+     */
+    protected SimulatedTrade(Trade.TradeType type, List<TradeFill> fills, CostModel transactionCostModel) {
+        Objects.requireNonNull(type, "type");
+        Objects.requireNonNull(transactionCostModel, "transactionCostModel");
+        FillSummary fillSummary = summarizeFills(fills);
+        this.type = type;
+        this.index = fillSummary.firstFillIndex();
+        this.amount = fillSummary.totalAmount();
+        this.fills = fillSummary.fills();
+        setPricesAndCost(fillSummary.weightedAveragePrice(), fillSummary.totalAmount(), transactionCostModel);
     }
 
     @Override
@@ -180,6 +205,11 @@ public class SimulatedTrade implements Trade {
         return amount;
     }
 
+    @Override
+    public List<TradeFill> getFills() {
+        return fills;
+    }
+
     /**
      * @return the configured cost model, or a zero-cost model after deserialization
      *         when the transient model is unset
@@ -199,6 +229,7 @@ public class SimulatedTrade implements Trade {
      * @param transactionCostModel the cost model for trade execution
      */
     private void setPricesAndCost(Num pricePerAsset, Num amount, CostModel transactionCostModel) {
+        Objects.requireNonNull(transactionCostModel, "transactionCostModel");
         this.costModel = transactionCostModel;
         this.pricePerAsset = pricePerAsset;
         this.cost = transactionCostModel.calculate(this.pricePerAsset, amount);
@@ -214,6 +245,29 @@ public class SimulatedTrade implements Trade {
         } else {
             this.netPrice = this.pricePerAsset.minus(costPerAsset);
         }
+    }
+
+    private static FillSummary summarizeFills(List<TradeFill> fills) {
+        Objects.requireNonNull(fills, "fills");
+        if (fills.isEmpty()) {
+            throw new IllegalArgumentException("fills must not be empty");
+        }
+        Num totalAmount = fills.getFirst().amount().getNumFactory().zero();
+        Num weightedPrice = fills.getFirst().price().getNumFactory().zero();
+        int earliestFillIndex = fills.getFirst().index();
+        for (TradeFill fill : fills) {
+            if (fill.price().isNaN()) {
+                throw new IllegalArgumentException("fill price must be set");
+            }
+            if (fill.amount().isNaN() || fill.amount().isZero() || fill.amount().isNegative()) {
+                throw new IllegalArgumentException("fill amount must be positive");
+            }
+            earliestFillIndex = Math.min(earliestFillIndex, fill.index());
+            totalAmount = totalAmount.plus(fill.amount());
+            weightedPrice = weightedPrice.plus(fill.price().multipliedBy(fill.amount()));
+        }
+        return new FillSummary(List.copyOf(fills), earliestFillIndex, totalAmount,
+                weightedPrice.dividedBy(totalAmount));
     }
 
     @Override
@@ -365,6 +419,9 @@ public class SimulatedTrade implements Trade {
      */
     public static SimulatedTrade sellAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
         return new SimulatedTrade(index, series, Trade.TradeType.SELL, amount, transactionCostModel);
+    }
+
+    private record FillSummary(List<TradeFill> fills, int firstFillIndex, Num totalAmount, Num weightedAveragePrice) {
     }
 
 }

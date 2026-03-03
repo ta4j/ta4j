@@ -7,6 +7,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -63,5 +67,30 @@ public class AggregatedTradeTest extends AbstractIndicatorTest<BarSeries, Num> {
                         new TradeFill(2, numFactory.numOf(101), numFactory.one())));
 
         assertEquals(2, trade.getIndex());
+    }
+
+    @Test
+    public void serializationPreservesFills() throws Exception {
+        AggregatedTrade original = new AggregatedTrade(TradeType.BUY,
+                List.of(new TradeFill(1, numFactory.hundred(), numFactory.one()),
+                        new TradeFill(2, numFactory.numOf(101), numFactory.one())));
+
+        byte[] data;
+        try (ByteArrayOutputStream output = new ByteArrayOutputStream();
+                ObjectOutputStream objectOutput = new ObjectOutputStream(output)) {
+            objectOutput.writeObject(original);
+            objectOutput.flush();
+            data = output.toByteArray();
+        }
+
+        Trade restored;
+        try (ByteArrayInputStream input = new ByteArrayInputStream(data);
+                ObjectInputStream objectInput = new ObjectInputStream(input)) {
+            restored = (Trade) objectInput.readObject();
+        }
+
+        assertEquals(2, restored.getFills().size());
+        assertNumEquals(original.getPricePerAsset(), restored.getPricePerAsset());
+        assertNumEquals(original.getAmount(), restored.getAmount());
     }
 }
