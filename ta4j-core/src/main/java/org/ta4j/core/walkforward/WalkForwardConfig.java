@@ -78,9 +78,10 @@ public record WalkForwardConfig(int minTrainBars, int testBars, int stepBars, in
      * Creates the default global walk-forward configuration.
      *
      * <p>
-     * Defaults match the approved PRD policy: primary horizon {@code H=60},
+     * Defaults match the locked baseline policy: primary horizon {@code H=60},
      * reporting horizons {@code 30/150}, optimize at {@code k=3}, report
-     * {@code k=1/5}.
+     * {@code k=1/5}, and fold geometry
+     * {@code minTrain=252,test=200,step=65,purge=5,embargo=5,holdout=320}.
      *
      * <p>
      * Treat these defaults as a baseline profile for a comparison cycle. If you
@@ -90,7 +91,7 @@ public record WalkForwardConfig(int minTrainBars, int testBars, int stepBars, in
      * @since 0.22.4
      */
     public static WalkForwardConfig defaultConfig() {
-        return new WalkForwardConfig(252, 60, 30, 5, 5, 150, 60, List.of(30, 150), 3, List.of(1, 5), 42L);
+        return new WalkForwardConfig(252, 200, 65, 5, 5, 320, 60, List.of(30, 150), 3, List.of(1, 5), 42L);
     }
 
     /**

@@ -9,8 +9,8 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.walkforward.RankedPrediction;
+import org.ta4j.core.walkforward.WalkForwardConfig;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
@@ -18,17 +18,19 @@ class ElliottWavePredictionProviderTest {
 
     @Test
     void baselineProfileBuildsConfiguredContext() {
-        ElliottWaveWalkForwardContext context = ElliottWaveWalkForwardProfiles.baseline(ElliottDegree.MINOR);
+        ElliottWaveWalkForwardContext context = ElliottWaveWalkForwardProfiles.baseline();
 
         assertThat(context.runner()).isNotNull();
         assertThat(context.maxPredictions()).isEqualTo(5);
-        assertThat(context.metadata()).containsEntry("profile", "baseline");
+        assertThat(context.metadata()).containsEntry("profile", "baseline-minute-f2-h2l2-max25-sw0")
+                .containsEntry("degree", ElliottWaveWalkForwardProfiles.BASELINE_DEGREE.name());
+        assertThat(ElliottWaveWalkForwardProfiles.baselineConfig()).isEqualTo(WalkForwardConfig.defaultConfig());
     }
 
     @Test
     void providerReturnsRankedPredictionsBoundedByContextLimit() {
         BarSeries series = new MockBarSeriesBuilder().withData(prices(360)).build();
-        ElliottWaveWalkForwardContext context = ElliottWaveWalkForwardProfiles.baseline(ElliottDegree.MINOR);
+        ElliottWaveWalkForwardContext context = ElliottWaveWalkForwardProfiles.baseline();
         ElliottWavePredictionProvider provider = new ElliottWavePredictionProvider();
 
         List<RankedPrediction<ElliottWaveAnalysisResult.BaseScenarioAssessment>> predictions = provider.predict(series,

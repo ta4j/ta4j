@@ -41,6 +41,13 @@ The key product need is broader than Elliott Wave:
 5. Adjacent reported depths: `k=1` and `k=5`.
 6. One global configuration (no per-asset-family forks).
 7. Calibration default: Platt scaling; isotonic only as gated challenger.
+8. Baseline fold geometry:
+   - `minTrainBars=252`
+   - `testBars=200`
+   - `stepBars=65`
+   - `purgeBars=5`
+   - `embargoBars=5`
+   - `holdoutBars=320`
 
 ## 6. Reuse-First Inventory (Mandatory Before New API)
 
@@ -350,8 +357,7 @@ Constraint:
 5. Gains are fold-stable and holdout-safe.
 
 ## 16. Open Questions
-1. Final numeric fold geometry (`minTrainBars`, `testBars`, `stepBars`, `purgeBars`, `embargoBars`).
-2. Whether `WalkForwardMetric` should remain a dedicated interface or align with an expanded generic reporting abstraction in a future iteration.
+1. Whether `WalkForwardMetric` should remain a dedicated interface or align with an expanded generic reporting abstraction in a future iteration.
 
 ## 17. Immediate Next Step
 After PRD sign-off, deliver M1 contracts and M2 engine skeleton in `ta4j-core`, with EW adapter limited to provider/labeler classes, keeping the core walk-forward API domain-neutral.

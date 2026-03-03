@@ -15,9 +15,15 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 class WalkForwardConfigAndSplitterTest {
 
     @Test
-    void defaultConfigCarriesApprovedHorizonAndTopKPolicy() {
+    void defaultConfigCarriesLockedBaselinePolicy() {
         WalkForwardConfig config = WalkForwardConfig.defaultConfig();
 
+        assertThat(config.minTrainBars()).isEqualTo(252);
+        assertThat(config.testBars()).isEqualTo(200);
+        assertThat(config.stepBars()).isEqualTo(65);
+        assertThat(config.purgeBars()).isEqualTo(5);
+        assertThat(config.embargoBars()).isEqualTo(5);
+        assertThat(config.holdoutBars()).isEqualTo(320);
         assertThat(config.primaryHorizonBars()).isEqualTo(60);
         assertThat(config.reportingHorizons()).containsExactly(30, 150);
         assertThat(config.optimizationTopK()).isEqualTo(3);
