@@ -7,6 +7,8 @@ import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.backtest.ExecutionModelSupport.ExecutionTarget;
+import org.ta4j.core.backtest.ExecutionModelSupport.PriceSource;
 import org.ta4j.core.num.Num;
 
 /**
@@ -85,31 +87,21 @@ public class SlippageExecutionModel implements TradeExecutionModel {
 
     @Override
     public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
-        ExecutionTarget executionTarget = resolveExecutionTarget(index, barSeries);
+        ExecutionTarget executionTarget = ExecutionModelSupport.resolveExecutionTarget(index, barSeries,
+                toPriceSource(executionPrice));
         if (executionTarget == null) {
             return;
         }
-        TradeType tradeType = nextTradeType(tradingRecord);
+        TradeType tradeType = ExecutionModelSupport.nextTradeType(tradingRecord);
         Num slippedPrice = applySlippage(executionTarget.price(), tradeType, slippageRatio);
         tradingRecord.operate(executionTarget.index(), slippedPrice, amount);
     }
 
-    private ExecutionTarget resolveExecutionTarget(int signalIndex, BarSeries barSeries) {
+    private static PriceSource toPriceSource(ExecutionPrice executionPrice) {
         if (executionPrice == ExecutionPrice.CURRENT_CLOSE) {
-            return new ExecutionTarget(signalIndex, barSeries.getBar(signalIndex).getClosePrice());
+            return PriceSource.CURRENT_CLOSE;
         }
-        int executionIndex = signalIndex + 1;
-        if (executionIndex > barSeries.getEndIndex()) {
-            return null;
-        }
-        return new ExecutionTarget(executionIndex, barSeries.getBar(executionIndex).getOpenPrice());
-    }
-
-    private static TradeType nextTradeType(TradingRecord tradingRecord) {
-        if (tradingRecord.isClosed()) {
-            return tradingRecord.getStartingType();
-        }
-        return tradingRecord.getCurrentPosition().getEntry().getType().complementType();
+        return PriceSource.NEXT_OPEN;
     }
 
     private static Num applySlippage(Num price, TradeType tradeType, Num slippageRatio) {
@@ -118,8 +110,5 @@ public class SlippageExecutionModel implements TradeExecutionModel {
             return price.multipliedBy(one.plus(slippageRatio));
         }
         return price.multipliedBy(one.minus(slippageRatio));
-    }
-
-    private record ExecutionTarget(int index, Num price) {
     }
 }
