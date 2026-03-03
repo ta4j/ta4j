@@ -45,7 +45,7 @@ public class ElliottWaveAdaptiveSwingAnalysis {
         }
 
         AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 3);
-        SwingDetector detector = SwingDetectors.composite(CompositeSwingDetector.Policy.AND, SwingDetectors.fractal(5),
+        SwingDetector detector = SwingDetectors.composite(CompositeSwingDetector.Policy.OR, SwingDetectors.fractal(5),
                 SwingDetectors.adaptiveZigZag(config));
 
         ElliottWaveAnalysisRunner analyzer = ElliottWaveAnalysisRunner.builder()
