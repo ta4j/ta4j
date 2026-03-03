@@ -4,13 +4,6 @@
 - **Window-aware criterion evaluation API**: `AnalysisCriterion` can now analyze exactly the slice you care about, including specific bar ranges, date/time ranges, lookback bars, and lookback durations, via `AnalysisWindow`/`AnalysisContext` and `AnalysisCriterion#calculate(series, tradingRecord, window[, context])`, with strict/clamp history policies and configurable open-position handling.
 - **Price-structure aggregators**: Added `RangeBarAggregator`, `VolumeBarAggregator`, and `RenkoBarAggregator` for range-, volume-, and Renko-brick derived bar series with externally configurable thresholds and comprehensive fixture-driven regression coverage.
 
-### Changed
-- **Aggregator validation consolidation**: Folded source-interval and positive-finite threshold validation into shared `BarAggregator` helper methods, removing separate validator classes while preserving behavior and error semantics.
-- **Threshold aggregation internals**: Range and volume aggregation now reuse a shared mutable accumulation window without per-source-bar snapshot objects.
-
-### Fixed
-- **Aggregator interval validation diagnostics**: `BarAggregator` now rejects source bars with null begin/end timestamps using contextual `IllegalArgumentException` messages (aggregator name + bar index) instead of raw `NullPointerException`s.
-
 ## 0.22.3 (2026-03-01)
 
 ### Added
