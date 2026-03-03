@@ -1,7 +1,7 @@
 ## Unreleased
 
 ### Added
-- **Window-aware criterion evaluation API**: Added `AnalysisWindow`/`AnalysisContext` and new `AnalysisCriterion#calculate(series, tradingRecord, window[, context])` overloads for bar-range, lookback-bars, time-range, and lookback-duration analysis with strict/clamp history policies and configurable open-position handling.
+- **Window-aware criterion evaluation API**: `AnalysisCriterion` can now analyze exactly the slice you care about, including specific bar ranges, date/time ranges, lookback bars, and lookback durations, via `AnalysisWindow`/`AnalysisContext` and `AnalysisCriterion#calculate(series, tradingRecord, window[, context])`, with strict/clamp history policies and configurable open-position handling.
 
 ## 0.22.3 (2026-03-01)
 
