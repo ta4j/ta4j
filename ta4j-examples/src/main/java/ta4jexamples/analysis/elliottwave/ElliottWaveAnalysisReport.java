@@ -392,7 +392,7 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
 
             final boolean eligible = strongConsensus && directionalConsensus && knownTrend && strongTrend
                     && topProbabilityPass && spreadPass;
-            final String label = eligible && trendBias != null ? trendBias.direction().name() : "NEUTRAL";
+            final String label = eligible ? trendBias.direction().name() : "NEUTRAL";
             final String reason;
             if (eligible) {
                 reason = "Directional outlook passed consensus and spread gates";
