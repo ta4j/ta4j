@@ -2,6 +2,7 @@
 
 ### Added
 - **Window-aware criterion evaluation API**: `AnalysisCriterion` can now analyze exactly the slice you care about, including specific bar ranges, date/time ranges, lookback bars, and lookback durations, via `AnalysisWindow`/`AnalysisContext` and `AnalysisCriterion#calculate(series, tradingRecord, window[, context])`, with strict/clamp history policies and configurable open-position handling.
+- **Price-structure aggregators**: Added `RangeBarAggregator`, `VolumeBarAggregator`, and `RenkoBarAggregator` for range-, volume-, and Renko-brick derived bar series with externally configurable thresholds and comprehensive fixture-driven regression coverage.
 
 ## 0.22.3 (2026-03-01)
 
