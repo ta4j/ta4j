@@ -7,6 +7,12 @@
 - First domain adapter: Elliott Wave analysis runner
 - Branch context: `feature/ew-multi-timeframe-analysis`
 
+## Execution Status
+- Last updated: 2026-03-03T12:34:49-05:00
+- Active phase: Completed
+- Active task: Completed
+- Overall: 16/16 tasks complete
+
 ## 2. Background and Problem Statement
 `ElliottWaveAnalysisRunner` emits ranked scenarios with confidence/probability signals, but we do not yet have a deterministic, leakage-safe, library-grade walk-forward framework to evaluate calibration quality over time.
 
@@ -276,39 +282,39 @@ Constraint:
 ## 13. Implementation Phases with Class-Level Scope
 
 ### M0: Baseline and Geometry Lock
-1. Freeze dataset/date manifests and baseline EW config.
-2. Lock fold geometry constants and defaults.
-3. Finalize `WalkForwardConfig` field set.
+- [x] Freeze dataset/date manifests and baseline EW config.
+- [x] Lock fold geometry constants and defaults.
+- [x] Finalize `WalkForwardConfig` field set.
 
 ### M1: Core Contracts
-1. Add records/interfaces:
-   - `WalkForwardConfig`, `WalkForwardSplit`, `RankedPrediction`, `PredictionSnapshot`, `WalkForwardObservation`.
-2. Add interfaces:
-   - `WalkForwardSplitter`, `PredictionProvider`, `OutcomeLabeler`, `WalkForwardMetric`.
-3. Add `WalkForwardRunResult` and `WalkForwardRuntimeReport`.
+- [x] Add records/interfaces:
+  - `WalkForwardConfig`, `WalkForwardSplit`, `RankedPrediction`, `PredictionSnapshot`, `WalkForwardObservation`.
+- [x] Add interfaces:
+  - `WalkForwardSplitter`, `PredictionProvider`, `OutcomeLabeler`, `WalkForwardMetric`.
+- [x] Add `WalkForwardRunResult` and `WalkForwardRuntimeReport`.
 
 ### M2: Engine
-1. Implement `AnchoredExpandingWalkForwardSplitter`.
-2. Implement `WalkForwardEngine` deterministic loop.
-3. Add leakage audit traces and validation hooks.
+- [x] Implement `AnchoredExpandingWalkForwardSplitter`.
+- [x] Implement `WalkForwardEngine` deterministic loop.
+- [x] Add leakage audit traces and validation hooks.
 
 ### M3: Metrics
-1. Implement generic metrics framework and baseline metric implementations.
-2. Implement composite objective and guardrail evaluator.
+- [x] Implement generic metrics framework and baseline metric implementations.
+- [x] Implement composite objective and guardrail evaluator.
 
 ### M4: Tuning Layer
-1. Implement `WalkForwardCandidate`, `WalkForwardObjective`, `WalkForwardTuner`, `WalkForwardLeaderboard`.
-2. Use batched/top-k ranking strategies inspired by `BacktestExecutor` patterns.
+- [x] Implement `WalkForwardCandidate`, `WalkForwardObjective`, `WalkForwardTuner`, `WalkForwardLeaderboard`.
+- [x] Use batched/top-k ranking strategies inspired by `BacktestExecutor` patterns.
 
 ### M5: Elliott Adapter
-1. Implement `ElliottWavePredictionProvider`.
-2. Implement `ElliottWaveOutcome` + `ElliottWaveOutcomeLabeler`.
-3. Wire EW context record and baseline run profile.
+- [x] Implement `ElliottWavePredictionProvider`.
+- [x] Implement `ElliottWaveOutcome` + `ElliottWaveOutcomeLabeler`.
+- [x] Wire EW context record and baseline run profile.
 
 ### M6: Calibration and Holdout
-1. Add Platt calibrator integration in tuning flow.
-2. Add isotonic challenger behind gates.
-3. Run final holdout validation and sign-off report.
+- [x] Add Platt calibrator integration in tuning flow.
+- [x] Add isotonic challenger behind gates.
+- [x] Run final holdout validation and sign-off report.
 
 ## 14. Testing Strategy (Class-Aware)
 
