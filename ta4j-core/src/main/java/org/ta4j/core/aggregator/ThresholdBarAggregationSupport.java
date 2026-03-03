@@ -25,7 +25,7 @@ final class ThresholdBarAggregationSupport {
     }
 
     static List<Bar> aggregate(List<Bar> bars, NumFactory numFactory, boolean onlyFinalBars,
-            Predicate<WindowSnapshot> completionPredicate, Function<WindowSnapshot, Bar> barBuilder) {
+            Predicate<WindowView> completionPredicate, Function<WindowView, Bar> barBuilder) {
         Objects.requireNonNull(bars, "bars");
         Objects.requireNonNull(numFactory, "numFactory");
         Objects.requireNonNull(completionPredicate, "completionPredicate");
@@ -39,97 +39,55 @@ final class ThresholdBarAggregationSupport {
         MutableWindow mutableWindow = new MutableWindow(numFactory);
         for (Bar bar : bars) {
             mutableWindow.add(bar);
-            WindowSnapshot snapshot = mutableWindow.snapshot();
-            if (completionPredicate.test(snapshot)) {
-                aggregated.add(barBuilder.apply(snapshot));
+            if (completionPredicate.test(mutableWindow)) {
+                aggregated.add(barBuilder.apply(mutableWindow));
                 mutableWindow.reset();
             }
         }
 
         if (!onlyFinalBars && !mutableWindow.isEmpty()) {
-            aggregated.add(barBuilder.apply(mutableWindow.snapshot()));
+            aggregated.add(barBuilder.apply(mutableWindow));
         }
 
         return aggregated;
     }
 
-    static Bar buildTimeBar(NumFactory numFactory, WindowSnapshot snapshot) {
-        Duration aggregatedPeriod = Duration.between(snapshot.beginTime(), snapshot.endTime());
+    static Bar buildTimeBar(NumFactory numFactory, WindowView window) {
+        Duration aggregatedPeriod = Duration.between(window.beginTime(), window.endTime());
         return new TimeBarBuilder(numFactory).timePeriod(aggregatedPeriod)
-                .endTime(snapshot.endTime())
-                .openPrice(snapshot.openPrice())
-                .highPrice(snapshot.highPrice())
-                .lowPrice(snapshot.lowPrice())
-                .closePrice(snapshot.closePrice())
-                .volume(snapshot.volume())
-                .amount(snapshot.amount())
-                .trades(snapshot.trades())
+                .endTime(window.endTime())
+                .openPrice(window.openPrice())
+                .highPrice(window.highPrice())
+                .lowPrice(window.lowPrice())
+                .closePrice(window.closePrice())
+                .volume(window.volume())
+                .amount(window.amount())
+                .trades(window.trades())
                 .build();
     }
 
-    static final class WindowSnapshot {
+    interface WindowView {
 
-        private final Instant beginTime;
-        private final Instant endTime;
-        private final Num openPrice;
-        private final Num highPrice;
-        private final Num lowPrice;
-        private final Num closePrice;
-        private final Num volume;
-        private final Num amount;
-        private final long trades;
+        Instant beginTime();
 
-        private WindowSnapshot(Instant beginTime, Instant endTime, Num openPrice, Num highPrice, Num lowPrice,
-                Num closePrice, Num volume, Num amount, long trades) {
-            this.beginTime = beginTime;
-            this.endTime = endTime;
-            this.openPrice = openPrice;
-            this.highPrice = highPrice;
-            this.lowPrice = lowPrice;
-            this.closePrice = closePrice;
-            this.volume = volume;
-            this.amount = amount;
-            this.trades = trades;
-        }
+        Instant endTime();
 
-        Instant beginTime() {
-            return beginTime;
-        }
+        Num openPrice();
 
-        Instant endTime() {
-            return endTime;
-        }
+        Num highPrice();
 
-        Num openPrice() {
-            return openPrice;
-        }
+        Num lowPrice();
 
-        Num highPrice() {
-            return highPrice;
-        }
+        Num closePrice();
 
-        Num lowPrice() {
-            return lowPrice;
-        }
+        Num volume();
 
-        Num closePrice() {
-            return closePrice;
-        }
+        Num amount();
 
-        Num volume() {
-            return volume;
-        }
-
-        Num amount() {
-            return amount;
-        }
-
-        long trades() {
-            return trades;
-        }
+        long trades();
     }
 
-    private static final class MutableWindow {
+    private static final class MutableWindow implements WindowView {
 
         private final Num zero;
         private Instant beginTime;
@@ -173,11 +131,6 @@ final class ThresholdBarAggregationSupport {
             trades += bar.getTrades();
         }
 
-        private WindowSnapshot snapshot() {
-            return new WindowSnapshot(beginTime, endTime, openPrice, highPrice, lowPrice, closePrice, volume, amount,
-                    trades);
-        }
-
         private boolean isEmpty() {
             return beginTime == null;
         }
@@ -192,6 +145,51 @@ final class ThresholdBarAggregationSupport {
             volume = zero;
             amount = zero;
             trades = 0L;
+        }
+
+        @Override
+        public Instant beginTime() {
+            return beginTime;
+        }
+
+        @Override
+        public Instant endTime() {
+            return endTime;
+        }
+
+        @Override
+        public Num openPrice() {
+            return openPrice;
+        }
+
+        @Override
+        public Num highPrice() {
+            return highPrice;
+        }
+
+        @Override
+        public Num lowPrice() {
+            return lowPrice;
+        }
+
+        @Override
+        public Num closePrice() {
+            return closePrice;
+        }
+
+        @Override
+        public Num volume() {
+            return volume;
+        }
+
+        @Override
+        public Num amount() {
+            return amount;
+        }
+
+        @Override
+        public long trades() {
+            return trades;
         }
     }
 }
