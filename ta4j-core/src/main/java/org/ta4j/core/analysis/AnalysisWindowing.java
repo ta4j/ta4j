@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core;
+package org.ta4j.core.analysis;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -10,20 +10,23 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
+import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.analysis.AnalysisContext;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.AnalysisContext.MissingHistoryPolicy;
 import org.ta4j.core.analysis.AnalysisContext.PositionInclusionPolicy;
-import org.ta4j.core.analysis.AnalysisWindow;
-import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**
  * Utilities for resolving and projecting analysis windows.
+ *
+ * @since 0.22.4
  */
-final class AnalysisWindowing {
+public final class AnalysisWindowing {
 
     private AnalysisWindowing() {
     }
@@ -35,8 +38,9 @@ final class AnalysisWindowing {
      * @param endIndexInclusive   end index used for record scoping
      * @param hasBars             true if at least one bar matches the requested
      *                            window
+     * @since 0.22.4
      */
-    record ResolvedWindow(int startIndexInclusive, int endIndexInclusive, boolean hasBars) {
+    public record ResolvedWindow(int startIndexInclusive, int endIndexInclusive, boolean hasBars) {
     }
 
     /**
@@ -46,8 +50,9 @@ final class AnalysisWindowing {
      * @param window  requested window
      * @param context resolution context
      * @return resolved window
+     * @since 0.22.4
      */
-    static ResolvedWindow resolve(BarSeries series, AnalysisWindow window, AnalysisContext context) {
+    public static ResolvedWindow resolve(BarSeries series, AnalysisWindow window, AnalysisContext context) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(window, "window");
         Objects.requireNonNull(context, "context");
@@ -191,8 +196,9 @@ final class AnalysisWindowing {
      * @param resolved resolved analysis window
      * @param context  projection context
      * @return projected read-only trading record
+     * @since 0.22.4
      */
-    static TradingRecord projectTradingRecord(BarSeries series, TradingRecord source, ResolvedWindow resolved,
+    public static TradingRecord projectTradingRecord(BarSeries series, TradingRecord source, ResolvedWindow resolved,
             AnalysisContext context) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(source, "source");

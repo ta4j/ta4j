@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core;
+package org.ta4j.core.analysis;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
@@ -10,10 +10,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.time.Instant;
 
 import org.junit.Test;
-import org.ta4j.core.analysis.AnalysisContext;
 import org.ta4j.core.analysis.AnalysisContext.MissingHistoryPolicy;
 import org.ta4j.core.analysis.AnalysisContext.PositionInclusionPolicy;
-import org.ta4j.core.analysis.OpenPositionHandling;
 
 /**
  * Unit tests for {@link AnalysisContext}.

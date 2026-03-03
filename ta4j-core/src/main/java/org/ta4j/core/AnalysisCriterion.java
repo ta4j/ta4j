@@ -9,6 +9,7 @@ import java.util.Objects;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.AnalysisContext;
 import org.ta4j.core.analysis.AnalysisWindow;
+import org.ta4j.core.analysis.AnalysisWindowing;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.num.Num;
 

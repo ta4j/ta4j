@@ -1,8 +1,10 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core;
+package org.ta4j.core.analysis;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -10,11 +12,12 @@ import java.time.Duration;
 import java.time.Instant;
 
 import org.junit.Test;
-import org.ta4j.core.analysis.AnalysisContext;
-import org.ta4j.core.analysis.AnalysisContext.MissingHistoryPolicy;
-import org.ta4j.core.analysis.AnalysisContext.PositionInclusionPolicy;
-import org.ta4j.core.analysis.AnalysisWindow;
-import org.ta4j.core.analysis.OpenPositionHandling;
+import org.ta4j.core.AnalysisCriterion;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.criteria.ReturnRepresentation;
 import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
@@ -24,9 +27,75 @@ import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.num.Num;
 
 /**
- * Unit tests for window-aware {@link AnalysisCriterion} calculations.
+ * Unit tests for {@link AnalysisWindow} and window-aware
+ * {@link AnalysisCriterion} calculations.
  */
-public class AnalysisCriterionWindowedCalculationTest {
+public class AnalysisWindowTest {
+
+    @Test
+    public void barRangeFactoryCreatesBarRangeWindow() {
+        AnalysisWindow window = AnalysisWindow.barRange(5, 12);
+
+        assertTrue(window instanceof AnalysisWindow.BarRange);
+        AnalysisWindow.BarRange barRange = (AnalysisWindow.BarRange) window;
+        assertEquals(5, barRange.startIndexInclusive());
+        assertEquals(12, barRange.endIndexInclusive());
+    }
+
+    @Test
+    public void barRangeRejectsNegativeStart() {
+        assertThrows(IllegalArgumentException.class, () -> AnalysisWindow.barRange(-1, 10));
+    }
+
+    @Test
+    public void barRangeRejectsEndBeforeStart() {
+        assertThrows(IllegalArgumentException.class, () -> AnalysisWindow.barRange(10, 5));
+    }
+
+    @Test
+    public void lookbackBarsFactoryCreatesLookbackBarsWindow() {
+        AnalysisWindow window = AnalysisWindow.lookbackBars(30);
+
+        assertTrue(window instanceof AnalysisWindow.LookbackBars);
+        assertEquals(30, ((AnalysisWindow.LookbackBars) window).barCount());
+    }
+
+    @Test
+    public void lookbackBarsRejectsNonPositiveCount() {
+        assertThrows(IllegalArgumentException.class, () -> AnalysisWindow.lookbackBars(0));
+    }
+
+    @Test
+    public void timeRangeFactoryCreatesTimeRangeWindow() {
+        Instant start = Instant.parse("2026-02-10T00:00:00Z");
+        Instant end = Instant.parse("2026-02-14T00:00:00Z");
+        AnalysisWindow window = AnalysisWindow.timeRange(start, end);
+
+        assertTrue(window instanceof AnalysisWindow.TimeRange);
+        AnalysisWindow.TimeRange timeRange = (AnalysisWindow.TimeRange) window;
+        assertEquals(start, timeRange.startInclusive());
+        assertEquals(end, timeRange.endExclusive());
+    }
+
+    @Test
+    public void timeRangeRejectsStartAtOrAfterEnd() {
+        Instant instant = Instant.parse("2026-02-10T00:00:00Z");
+        assertThrows(IllegalArgumentException.class, () -> AnalysisWindow.timeRange(instant, instant));
+    }
+
+    @Test
+    public void lookbackDurationFactoryCreatesLookbackDurationWindow() {
+        Duration duration = Duration.ofDays(7);
+        AnalysisWindow window = AnalysisWindow.lookbackDuration(duration);
+
+        assertTrue(window instanceof AnalysisWindow.LookbackDuration);
+        assertEquals(duration, ((AnalysisWindow.LookbackDuration) window).duration());
+    }
+
+    @Test
+    public void lookbackDurationRejectsNonPositiveDuration() {
+        assertThrows(IllegalArgumentException.class, () -> AnalysisWindow.lookbackDuration(Duration.ZERO));
+    }
 
     @Test
     public void defaultWindowedCalculateUsesStrictHistoryPolicy() {
@@ -46,7 +115,8 @@ public class AnalysisCriterionWindowedCalculationTest {
         TradingRecord record = new BaseTradingRecord(Trade.buyAt(5, series), Trade.sellAt(6, series),
                 Trade.buyAt(7, series), Trade.sellAt(8, series));
         NumberOfPositionsCriterion criterion = new NumberOfPositionsCriterion();
-        AnalysisContext context = AnalysisContext.defaults().withMissingHistoryPolicy(MissingHistoryPolicy.CLAMP);
+        AnalysisContext context = AnalysisContext.defaults()
+                .withMissingHistoryPolicy(AnalysisContext.MissingHistoryPolicy.CLAMP);
 
         Num positions = criterion.calculate(series, record, AnalysisWindow.barRange(2, 8), context);
         assertNumEquals(2, positions);
@@ -120,7 +190,7 @@ public class AnalysisCriterionWindowedCalculationTest {
                 Trade.buyAt(6, series), Trade.sellAt(8, series));
         NetProfitLossCriterion criterion = new NetProfitLossCriterion();
         AnalysisContext context = AnalysisContext.defaults()
-                .withPositionInclusionPolicy(PositionInclusionPolicy.FULLY_CONTAINED);
+                .withPositionInclusionPolicy(AnalysisContext.PositionInclusionPolicy.FULLY_CONTAINED);
 
         Num pnl = criterion.calculate(series, record, AnalysisWindow.barRange(4, 8), context);
         assertNumEquals(2, pnl);
@@ -147,7 +217,7 @@ public class AnalysisCriterionWindowedCalculationTest {
         TradingRecord record = new BaseTradingRecord(Trade.buyAt(2, series));
         NetProfitLossCriterion criterion = new NetProfitLossCriterion();
         AnalysisContext context = AnalysisContext.defaults()
-                .withPositionInclusionPolicy(PositionInclusionPolicy.FULLY_CONTAINED)
+                .withPositionInclusionPolicy(AnalysisContext.PositionInclusionPolicy.FULLY_CONTAINED)
                 .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
 
         Num result = criterion.calculate(series, record, AnalysisWindow.barRange(4, 8), context);
@@ -160,7 +230,8 @@ public class AnalysisCriterionWindowedCalculationTest {
         series.setMaximumBarCount(5); // available logical indices: 5..9
         TradingRecord record = new BaseTradingRecord(Trade.buyAt(5, series), Trade.sellAt(6, series));
         NumberOfPositionsCriterion criterion = new NumberOfPositionsCriterion();
-        AnalysisContext context = AnalysisContext.defaults().withMissingHistoryPolicy(MissingHistoryPolicy.CLAMP);
+        AnalysisContext context = AnalysisContext.defaults()
+                .withMissingHistoryPolicy(AnalysisContext.MissingHistoryPolicy.CLAMP);
 
         Num result = criterion.calculate(series, record, AnalysisWindow.barRange(20, 25), context);
         assertNumEquals(0, result);
@@ -172,7 +243,8 @@ public class AnalysisCriterionWindowedCalculationTest {
         series.setMaximumBarCount(5); // available logical indices: 5..9
         TradingRecord record = new BaseTradingRecord(Trade.buyAt(5, series), Trade.sellAt(6, series));
         NetReturnCriterion criterion = new NetReturnCriterion(ReturnRepresentation.MULTIPLICATIVE);
-        AnalysisContext context = AnalysisContext.defaults().withMissingHistoryPolicy(MissingHistoryPolicy.CLAMP);
+        AnalysisContext context = AnalysisContext.defaults()
+                .withMissingHistoryPolicy(AnalysisContext.MissingHistoryPolicy.CLAMP);
 
         Num result = criterion.calculate(series, record, AnalysisWindow.barRange(20, 25), context);
         assertNumEquals(1, result);
@@ -183,7 +255,8 @@ public class AnalysisCriterionWindowedCalculationTest {
         BarSeries series = buildSeries(10);
         TradingRecord record = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(2, series));
         NumberOfPositionsCriterion criterion = new NumberOfPositionsCriterion();
-        AnalysisContext context = AnalysisContext.defaults().withMissingHistoryPolicy(MissingHistoryPolicy.CLAMP);
+        AnalysisContext context = AnalysisContext.defaults()
+                .withMissingHistoryPolicy(AnalysisContext.MissingHistoryPolicy.CLAMP);
         AnalysisWindowing.ResolvedWindow resolved = AnalysisWindowing.resolve(series, AnalysisWindow.barRange(0, 3),
                 context);
         TradingRecord projected = AnalysisWindowing.projectTradingRecord(series, record, resolved, context);
