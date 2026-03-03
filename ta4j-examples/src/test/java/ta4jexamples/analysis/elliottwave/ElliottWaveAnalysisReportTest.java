@@ -66,6 +66,8 @@ class ElliottWaveAnalysisReportTest {
         assertNotNull(result.swingSnapshot(), "Swing snapshot should not be null");
         assertNotNull(result.latestAnalysis(), "Latest analysis should not be null");
         assertNotNull(result.scenarioSummary(), "Scenario summary should not be null");
+        assertNotNull(result.probabilityCalibration(), "Probability calibration should not be null");
+        assertNotNull(result.outlookGate(), "Outlook gate should not be null");
         assertNotNull(result.alternatives(), "Alternatives list should not be null");
     }
 
@@ -86,6 +88,9 @@ class ElliottWaveAnalysisReportTest {
                     "Confidence should be between 0 and 100");
             assertTrue(result.baseCase().scenarioProbability() >= 0 && result.baseCase().scenarioProbability() <= 1.0,
                     "Scenario probability should be between 0 and 1");
+            assertTrue(
+                    result.baseCase().calibratedProbability() >= 0 && result.baseCase().calibratedProbability() <= 1.0,
+                    "Calibrated probability should be between 0 and 1");
             assertNotNull(result.baseCase().confidenceLevel(), "Confidence level should not be null");
             assertNotNull(result.baseCase().swings(), "Swings list should not be null");
         }
@@ -236,6 +241,8 @@ class ElliottWaveAnalysisReportTest {
         assertTrue(json.contains("\"latestAnalysis\""), "JSON should contain latestAnalysis field");
         assertTrue(json.contains("\"scenarioSummary\""), "JSON should contain scenarioSummary field");
         assertTrue(json.contains("\"trendBias\""), "JSON should contain trendBias field");
+        assertTrue(json.contains("\"probabilityCalibration\""), "JSON should contain probabilityCalibration field");
+        assertTrue(json.contains("\"outlookGate\""), "JSON should contain outlookGate field");
     }
 
     @Test
@@ -247,8 +254,12 @@ class ElliottWaveAnalysisReportTest {
         ElliottWaveAnalysisReport.ScenarioSummary summary = new ElliottWaveAnalysisReport.ScenarioSummary("summary",
                 false, ElliottPhase.NONE);
         ElliottTrendBias trendBias = ElliottTrendBias.unknown();
+        ElliottWaveAnalysisReport.ProbabilityCalibration calibration = new ElliottWaveAnalysisReport.ProbabilityCalibration(
+                "test-profile", "test-method", 0.5);
+        ElliottWaveAnalysisReport.OutlookGate outlookGate = new ElliottWaveAnalysisReport.OutlookGate(false, "NEUTRAL",
+                "test", Double.NaN, Double.NaN, Double.NaN, Double.NaN, false, false, Double.NaN);
         ElliottWaveAnalysisReport result = new ElliottWaveAnalysisReport(ElliottDegree.PRIMARY, 0, snapshot, latest,
-                summary, trendBias, null, List.of(), null, List.of());
+                summary, trendBias, calibration, outlookGate, null, List.of(), null, List.of());
 
         String json = result.toJson();
 
@@ -336,6 +347,10 @@ class ElliottWaveAnalysisReportTest {
             assertNotNull(baseCase.type(), "Type should not be null");
             assertTrue(baseCase.overallConfidence() >= 0 && baseCase.overallConfidence() <= 100,
                     "Overall confidence should be between 0 and 100");
+            assertTrue(baseCase.scenarioProbability() >= 0 && baseCase.scenarioProbability() <= 1.0,
+                    "Scenario probability should be between 0 and 1");
+            assertTrue(baseCase.calibratedProbability() >= 0 && baseCase.calibratedProbability() <= 1.0,
+                    "Calibrated probability should be between 0 and 1");
             assertTrue(
                     baseCase.confidenceLevel().equals("HIGH") || baseCase.confidenceLevel().equals("MEDIUM")
                             || baseCase.confidenceLevel().equals("LOW"),
@@ -374,6 +389,8 @@ class ElliottWaveAnalysisReportTest {
                     "Confidence percent should be between 0 and 100");
             assertTrue(alt.scenarioProbability() >= 0 && alt.scenarioProbability() <= 1.0,
                     "Scenario probability should be between 0 and 1");
+            assertTrue(alt.calibratedProbability() >= 0 && alt.calibratedProbability() <= 1.0,
+                    "Calibrated scenario probability should be between 0 and 1");
             assertNotNull(alt.swings(), "Swings list should not be null");
         }
     }
@@ -392,10 +409,34 @@ class ElliottWaveAnalysisReportTest {
         }
 
         double totalProbability = result.baseCase().scenarioProbability();
+        double totalCalibratedProbability = result.baseCase().calibratedProbability();
         for (ElliottWaveAnalysisReport.AlternativeScenario alt : result.alternatives()) {
             totalProbability += alt.scenarioProbability();
+            totalCalibratedProbability += alt.calibratedProbability();
         }
         assertEquals(1.0, totalProbability, 0.0001, "Scenario probabilities should sum to 1");
+        assertEquals(1.0, totalCalibratedProbability, 0.0001, "Calibrated probabilities should sum to 1");
+    }
+
+    @Test
+    void probabilityCalibration_containsExpectedMetadata() {
+        BarSeries series = loadOssifiedSeries();
+        ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
+        ElliottWaveIndicatorSuiteDemo.AnalysisResult analysisResult = analysis.analyze(series, ElliottDegree.PRIMARY,
+                FIB_TOLERANCE);
+
+        ElliottWaveAnalysisReport result = analysisResult.structuredResult();
+        ElliottWaveAnalysisReport.ProbabilityCalibration calibration = result.probabilityCalibration();
+        assertNotNull(calibration, "Calibration metadata should be present");
+        assertNotNull(calibration.profile(), "Calibration profile should be present");
+        assertNotNull(calibration.method(), "Calibration method should be present");
+        assertTrue(calibration.shrinkFactor() >= 0.0 && calibration.shrinkFactor() <= 1.0,
+                "Shrink factor should be in [0,1]");
+
+        ElliottWaveAnalysisReport.OutlookGate outlookGate = result.outlookGate();
+        assertNotNull(outlookGate, "Outlook gate should be present");
+        assertNotNull(outlookGate.outlookLabel(), "Outlook label should be present");
+        assertNotNull(outlookGate.reason(), "Outlook reason should be present");
     }
 
     @Test
@@ -451,6 +492,10 @@ class ElliottWaveAnalysisReportTest {
             double expected = roundScenarioProbability(result.baseCase().scenarioProbability());
             double actual = root.getAsJsonObject("baseCase").get("scenarioProbability").getAsDouble();
             assertEquals(expected, actual, 0.0001, "Base case scenario probability should be rounded to 3 decimals");
+            double expectedCalibrated = roundScenarioProbability(result.baseCase().calibratedProbability());
+            double actualCalibrated = root.getAsJsonObject("baseCase").get("calibratedProbability").getAsDouble();
+            assertEquals(expectedCalibrated, actualCalibrated, 0.0001,
+                    "Base case calibrated probability should be rounded to 3 decimals");
         }
         if (!result.alternatives().isEmpty()) {
             ElliottWaveAnalysisReport.AlternativeScenario alt = result.alternatives().get(0);
@@ -461,6 +506,14 @@ class ElliottWaveAnalysisReportTest {
                     .get("scenarioProbability")
                     .getAsDouble();
             assertEquals(expected, actual, 0.0001, "Alternative scenario probability should be rounded to 3 decimals");
+            double expectedCalibrated = roundScenarioProbability(alt.calibratedProbability());
+            double actualCalibrated = root.getAsJsonArray("alternatives")
+                    .get(0)
+                    .getAsJsonObject()
+                    .get("calibratedProbability")
+                    .getAsDouble();
+            assertEquals(expectedCalibrated, actualCalibrated, 0.0001,
+                    "Alternative calibrated probability should be rounded to 3 decimals");
         }
     }
 

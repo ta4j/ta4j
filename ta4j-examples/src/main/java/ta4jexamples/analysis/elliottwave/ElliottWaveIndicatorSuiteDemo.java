@@ -738,7 +738,8 @@ public class ElliottWaveIndicatorSuiteDemo {
 
         ChartWorkflow chartWorkflow = new ChartWorkflow();
         boolean isHeadless = GraphicsEnvironment.isHeadless();
-        String trendLabel = formatTrendBiasLabel(result.structuredResult().trendBias());
+        String trendLabel = formatTrendBiasLabel(result.structuredResult().trendBias(),
+                result.structuredResult().outlookGate());
 
         // Display and save base case scenario chart
         if (result.baseCaseChartPlan().isPresent()) {
@@ -836,6 +837,22 @@ public class ElliottWaveIndicatorSuiteDemo {
         LOG.info("Scenario summary: {}", summary.summary());
         LOG.info("Strong consensus: {} | Consensus phase: {}", summary.strongConsensus(), summary.consensusPhase());
         logTrendBias(result.trendBias());
+        ElliottWaveAnalysisReport.ProbabilityCalibration calibration = result.probabilityCalibration();
+        if (calibration != null) {
+            LOG.info("Probability calibration: profile={} method={} shrink={}", calibration.profile(),
+                    calibration.method(), String.format("%.3f", calibration.shrinkFactor()));
+        }
+        ElliottWaveAnalysisReport.OutlookGate outlookGate = result.outlookGate();
+        if (outlookGate != null) {
+            LOG.info(
+                    "Outlook gate: eligible={} label={} reason={} topRaw={} topCalibrated={} spread12={} spread13={} strongConsensus={} directionalConsensus={} trendStrength={}",
+                    outlookGate.eligible(), outlookGate.outlookLabel(), outlookGate.reason(),
+                    String.format("%.1f%%", outlookGate.topScenarioProbability() * 100.0),
+                    String.format("%.1f%%", outlookGate.calibratedTopProbability() * 100.0),
+                    String.format("%.1f%%", outlookGate.topTwoSpread() * 100.0),
+                    String.format("%.1f%%", outlookGate.topThreeSpread() * 100.0), outlookGate.strongConsensus(),
+                    outlookGate.directionalConsensus(), String.format("%.1f%%", outlookGate.trendStrength() * 100.0));
+        }
 
         // Log base case scenario
         if (result.baseCase() != null) {
@@ -843,7 +860,9 @@ public class ElliottWaveIndicatorSuiteDemo {
             LOG.info("BASE CASE SCENARIO: {} ({})", baseCase.currentPhase(), baseCase.type());
             LOG.info("  Overall confidence: {}% ({})", String.format("%.1f", baseCase.overallConfidence()),
                     baseCase.confidenceLevel());
-            LOG.info("  Scenario probability: {}%", String.format("%.1f", baseCase.scenarioProbability() * 100.0));
+            LOG.info("  Scenario probability: raw={}%, calibrated={}%",
+                    String.format("%.1f", baseCase.scenarioProbability() * 100.0),
+                    String.format("%.1f", baseCase.calibratedProbability() * 100.0));
             LOG.info("  Factor scores: Fibonacci={}% | Time={}% | Alternation={}% | Channel={}% | Completeness={}%",
                     String.format("%.1f", baseCase.fibonacciScore()), String.format("%.1f", baseCase.timeScore()),
                     String.format("%.1f", baseCase.alternationScore()), String.format("%.1f", baseCase.channelScore()),
@@ -861,9 +880,10 @@ public class ElliottWaveIndicatorSuiteDemo {
             LOG.info("ALTERNATIVE SCENARIOS ({}):", alternatives.size());
             for (int i = 0; i < Math.min(alternatives.size(), 3); i++) {
                 ElliottWaveAnalysisReport.AlternativeScenario alt = alternatives.get(i);
-                LOG.info("  {}. {} ({}) - {}% confidence | {}% probability", i + 1, alt.currentPhase(), alt.type(),
-                        String.format("%.1f", alt.confidencePercent()),
-                        String.format("%.1f", alt.scenarioProbability() * 100.0));
+                LOG.info("  {}. {} ({}) - {}% confidence | raw={}%, calibrated={}%", i + 1, alt.currentPhase(),
+                        alt.type(), String.format("%.1f", alt.confidencePercent()),
+                        String.format("%.1f", alt.scenarioProbability() * 100.0),
+                        String.format("%.1f", alt.calibratedProbability() * 100.0));
             }
         }
         LOG.info("======================================");
@@ -1153,17 +1173,30 @@ public class ElliottWaveIndicatorSuiteDemo {
     }
 
     private static String formatTrendBiasLabel(ElliottTrendBias trendBias) {
+        return formatTrendBiasLabel(trendBias, null);
+    }
+
+    private static String formatTrendBiasLabel(ElliottTrendBias trendBias,
+            ElliottWaveAnalysisReport.OutlookGate outlookGate) {
         if (trendBias == null || trendBias.isUnknown()) {
-            return "TREND: UNKNOWN";
+            return appendLowConvictionSuffix("TREND: UNKNOWN", outlookGate);
         }
         if (trendBias.isNeutral()) {
-            return "TREND: NEUTRAL";
+            return appendLowConvictionSuffix("TREND: NEUTRAL", outlookGate);
         }
         double strength = trendBias.strength();
         if (Double.isNaN(strength)) {
-            return "TREND: " + trendBias.direction();
+            return appendLowConvictionSuffix("TREND: " + trendBias.direction(), outlookGate);
         }
-        return String.format("TREND: %s (%.0f%%)", trendBias.direction(), strength * 100.0);
+        return appendLowConvictionSuffix(String.format("TREND: %s (%.0f%%)", trendBias.direction(), strength * 100.0),
+                outlookGate);
+    }
+
+    private static String appendLowConvictionSuffix(String label, ElliottWaveAnalysisReport.OutlookGate outlookGate) {
+        if (outlookGate != null && !outlookGate.eligible()) {
+            return label + " [LOW-CONVICTION]";
+        }
+        return label;
     }
 
     private static void logTrendBias(ElliottTrendBias trendBias) {

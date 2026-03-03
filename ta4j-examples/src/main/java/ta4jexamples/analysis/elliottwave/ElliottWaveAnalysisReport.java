@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.util.Optional;
 import java.util.EnumMap;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Objects;
 import java.util.Base64;
 import java.util.List;
@@ -33,6 +34,7 @@ import org.ta4j.core.indicators.elliott.ElliottRatio;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.indicators.elliott.ElliottTrendBias;
+import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardProfiles;
 import org.ta4j.core.num.Num;
 
 import ta4jexamples.charting.workflow.ChartWorkflow;
@@ -72,8 +74,8 @@ import com.google.gson.Gson;
  */
 public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, SwingSnapshot swingSnapshot,
         LatestAnalysis latestAnalysis, ScenarioSummary scenarioSummary, ElliottTrendBias trendBias,
-        BaseCaseScenario baseCase, List<AlternativeScenario> alternatives, String baseCaseChartImage,
-        List<String> alternativeChartImages) {
+        ProbabilityCalibration probabilityCalibration, OutlookGate outlookGate, BaseCaseScenario baseCase,
+        List<AlternativeScenario> alternatives, String baseCaseChartImage, List<String> alternativeChartImages) {
     private static final Logger LOG = LogManager.getLogger(ElliottWaveAnalysisReport.class);
     private static final double SCENARIO_TYPE_OVERLAP_WEIGHT = 0.3;
     private static final double CONSENSUS_ADJUSTMENT_WEIGHT = 0.4;
@@ -82,6 +84,19 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
     private static final double MIN_CONFIDENCE_CONTRAST_EXPONENT = 1.5;
     private static final double MAX_CONFIDENCE_CONTRAST_EXPONENT = 6.0;
     private static final double CONFIDENCE_SPREAD_TARGET = 0.25;
+    private static final String CALIBRATION_METHOD = "centered_shrinkage_renormalized";
+    private static final String CALIBRATION_PROFILE = "wf-baseline-minute-f2-h2l2-max25-sw0__k1-200-65-320";
+    private static final double CALIBRATION_BASE_SHRINK_FACTOR = 0.72;
+    private static final double CALIBRATION_STRONG_CONSENSUS_BONUS = 0.08;
+    private static final double CALIBRATION_DIRECTIONAL_CONSENSUS_BONUS = 0.06;
+    private static final double CALIBRATION_WEAK_TREND_PENALTY = 0.06;
+    private static final double CALIBRATION_MIN_SHRINK_FACTOR = 0.45;
+    private static final double CALIBRATION_MAX_SHRINK_FACTOR = 0.95;
+    private static final double OUTLOOK_MIN_TOP_PROBABILITY = 0.30;
+    private static final double OUTLOOK_MIN_TOP_TWO_SPREAD = 0.03;
+    private static final double OUTLOOK_MIN_TOP_THREE_SPREAD = 0.08;
+    private static final double OUTLOOK_MIN_TREND_STRENGTH = 0.15;
+    private static final double CALIBRATION_EPSILON = 1.0e-12;
 
     private static final TypeAdapter<Double> NULLING_DOUBLE_ADAPTER = new TypeAdapter<>() {
         @Override
@@ -143,14 +158,19 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
         ScenarioSummary summary = ScenarioSummary.from(scenarioSet);
         ElliottTrendBias trendBias = scenarioSet.trendBias();
         Map<String, Double> scenarioProbabilities = computeScenarioProbabilities(scenarioSet);
+        CalibrationResult calibrationResult = calibrateScenarioProbabilities(scenarioProbabilities, summary, trendBias);
+        Map<String, Double> calibratedProbabilities = calibrationResult.calibratedProbabilities();
+        ProbabilityCalibration probabilityCalibration = calibrationResult.calibration();
+        OutlookGate outlookGate = OutlookGate.from(scenarioProbabilities, calibratedProbabilities, summary, trendBias);
         BaseCaseScenario baseCase = scenarioSet.base()
-                .map(scenario -> BaseCaseScenario.from(scenario,
-                        scenarioProbabilities.getOrDefault(scenario.id(), 0.0)))
+                .map(scenario -> BaseCaseScenario.from(scenario, scenarioProbabilities.getOrDefault(scenario.id(), 0.0),
+                        calibratedProbabilities.getOrDefault(scenario.id(), 0.0)))
                 .orElse(null);
         List<AlternativeScenario> alternatives = scenarioSet.alternatives()
                 .stream()
                 .map(scenario -> AlternativeScenario.from(scenario,
-                        scenarioProbabilities.getOrDefault(scenario.id(), 0.0)))
+                        scenarioProbabilities.getOrDefault(scenario.id(), 0.0),
+                        calibratedProbabilities.getOrDefault(scenario.id(), 0.0)))
                 .toList();
 
         ChartWorkflow chartWorkflow = new ChartWorkflow();
@@ -160,8 +180,9 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
                 .map(plan -> encodeChartAsBase64(chartWorkflow, plan))
                 .toList();
 
-        return new ElliottWaveAnalysisReport(degree, endIndex, snapshot, latest, summary, trendBias, baseCase,
-                alternatives, baseCaseChartImage, alternativeChartImages);
+        return new ElliottWaveAnalysisReport(degree, endIndex, snapshot, latest, summary, trendBias,
+                probabilityCalibration, outlookGate, baseCase, alternatives, baseCaseChartImage,
+                alternativeChartImages);
     }
 
     /**
@@ -296,32 +317,141 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
     }
 
     /**
+     * Metadata describing how probabilities were calibrated for this analysis run.
+     *
+     * @param profile      calibration profile id sourced from walk-forward tuning
+     * @param method       calibration transform identifier
+     * @param shrinkFactor shrink factor applied to centered scenario probabilities
+     */
+    public record ProbabilityCalibration(String profile, String method, double shrinkFactor) {
+        static ProbabilityCalibration from(double shrinkFactor) {
+            final String profile = CALIBRATION_PROFILE + "|cfg="
+                    + ElliottWaveWalkForwardProfiles.baselineConfig().configHash();
+            return new ProbabilityCalibration(profile, CALIBRATION_METHOD, shrinkFactor);
+        }
+    }
+
+    /**
+     * Directional outlook gate status.
+     *
+     * <p>
+     * The gate blocks directional publication when scenario probabilities are too
+     * crowded or consensus signals are weak.
+     *
+     * @param eligible                 whether directional outlook can be published
+     * @param outlookLabel             directional label or {@code NEUTRAL}
+     * @param reason                   concise gate decision explanation
+     * @param topScenarioProbability   top raw scenario probability
+     * @param calibratedTopProbability top calibrated scenario probability
+     * @param topTwoSpread             spread between top-1 and top-2 raw
+     *                                 probabilities
+     * @param topThreeSpread           spread between top-1 and top-3 raw
+     *                                 probabilities
+     * @param strongConsensus          whether strong scenario consensus is present
+     * @param directionalConsensus     whether directional consensus is present
+     * @param trendStrength            trend bias strength (0.0-1.0)
+     */
+    public record OutlookGate(boolean eligible, String outlookLabel, String reason, double topScenarioProbability,
+            double calibratedTopProbability, double topTwoSpread, double topThreeSpread, boolean strongConsensus,
+            boolean directionalConsensus, double trendStrength) {
+        static OutlookGate from(Map<String, Double> rawProbabilities, Map<String, Double> calibratedProbabilities,
+                ScenarioSummary summary, ElliottTrendBias trendBias) {
+            if (rawProbabilities == null || rawProbabilities.isEmpty()) {
+                return new OutlookGate(false, "NEUTRAL", "No scenarios available", Double.NaN, Double.NaN, Double.NaN,
+                        Double.NaN, false, false, Double.NaN);
+            }
+
+            final List<Double> rawSorted = rawProbabilities.values()
+                    .stream()
+                    .filter(Double::isFinite)
+                    .sorted((a, b) -> Double.compare(b, a))
+                    .toList();
+            final List<Double> calibratedSorted = calibratedProbabilities.values()
+                    .stream()
+                    .filter(Double::isFinite)
+                    .sorted((a, b) -> Double.compare(b, a))
+                    .toList();
+            if (rawSorted.isEmpty()) {
+                return new OutlookGate(false, "NEUTRAL", "Scenario probabilities were not finite", Double.NaN,
+                        Double.NaN, Double.NaN, Double.NaN, false, false, Double.NaN);
+            }
+
+            final double top = rawSorted.get(0);
+            final double topTwoSpread = rawSorted.size() > 1 ? top - rawSorted.get(1) : top;
+            final double topThreeSpread = rawSorted.size() > 2 ? top - rawSorted.get(2) : topTwoSpread;
+            final double calibratedTop = calibratedSorted.isEmpty() ? Double.NaN : calibratedSorted.get(0);
+
+            final boolean strongConsensus = summary != null && summary.strongConsensus();
+            final boolean directionalConsensus = trendBias != null && trendBias.consensus();
+            final boolean knownTrend = trendBias != null && !trendBias.isUnknown() && !trendBias.isNeutral();
+            final double trendStrength = trendBias == null ? Double.NaN : trendBias.strength();
+            final boolean strongTrend = Double.isFinite(trendStrength) && trendStrength >= OUTLOOK_MIN_TREND_STRENGTH;
+            final boolean topProbabilityPass = top >= OUTLOOK_MIN_TOP_PROBABILITY;
+            final boolean spreadPass = topTwoSpread >= OUTLOOK_MIN_TOP_TWO_SPREAD
+                    && topThreeSpread >= OUTLOOK_MIN_TOP_THREE_SPREAD;
+
+            final boolean eligible = strongConsensus && directionalConsensus && knownTrend && strongTrend
+                    && topProbabilityPass && spreadPass;
+            final String label = eligible && trendBias != null ? trendBias.direction().name() : "NEUTRAL";
+            final String reason;
+            if (eligible) {
+                reason = "Directional outlook passed consensus and spread gates";
+            } else if (!strongConsensus) {
+                reason = "Strong scenario consensus not established";
+            } else if (!directionalConsensus || !knownTrend) {
+                reason = "Directional consensus is weak or trend is neutral";
+            } else if (!strongTrend) {
+                reason = "Trend strength is below baseline threshold";
+            } else if (!topProbabilityPass) {
+                reason = "Top scenario probability is below publication threshold";
+            } else {
+                reason = "Top scenarios are too close; low-conviction outlook";
+            }
+
+            return new OutlookGate(eligible, label, reason, top, calibratedTop, topTwoSpread, topThreeSpread,
+                    strongConsensus, directionalConsensus, trendStrength);
+        }
+    }
+
+    /**
+     * Internal result container for calibrated probabilities and calibration
+     * metadata.
+     */
+    private record CalibrationResult(Map<String, Double> calibratedProbabilities, ProbabilityCalibration calibration) {
+    }
+
+    /**
      * Base case scenario details.
      *
-     * @param currentPhase        the phase this scenario assigns to current price
-     *                            action
-     * @param type                pattern type classification
-     * @param overallConfidence   overall confidence percentage (0-100)
-     * @param scenarioProbability scenario probability ratio (0.0-1.0)
-     * @param confidenceLevel     confidence level (HIGH, MEDIUM, or LOW)
-     * @param fibonacciScore      Fibonacci proximity score as percentage (0-100)
-     * @param timeScore           time proportion score as percentage (0-100)
-     * @param alternationScore    alternation quality score as percentage (0-100)
-     * @param channelScore        channel adherence score as percentage (0-100)
-     * @param completenessScore   structure completeness score as percentage (0-100)
-     * @param primaryReason       human-readable description of dominant factor
-     * @param weakestFactor       description of the weakest scoring factor
-     * @param direction           direction (BULLISH or BEARISH)
-     * @param invalidationPrice   price level that would invalidate this count
-     * @param primaryTarget       primary Fibonacci projection target
-     * @param swings              swing sequence for building wave labels
+     * @param currentPhase          the phase this scenario assigns to current price
+     *                              action
+     * @param type                  pattern type classification
+     * @param overallConfidence     overall confidence percentage (0-100)
+     * @param scenarioProbability   raw scenario probability ratio (0.0-1.0)
+     * @param calibratedProbability walk-forward calibrated scenario probability
+     *                              ratio (0.0-1.0)
+     * @param confidenceLevel       confidence level (HIGH, MEDIUM, or LOW)
+     * @param fibonacciScore        Fibonacci proximity score as percentage (0-100)
+     * @param timeScore             time proportion score as percentage (0-100)
+     * @param alternationScore      alternation quality score as percentage (0-100)
+     * @param channelScore          channel adherence score as percentage (0-100)
+     * @param completenessScore     structure completeness score as percentage
+     *                              (0-100)
+     * @param primaryReason         human-readable description of dominant factor
+     * @param weakestFactor         description of the weakest scoring factor
+     * @param direction             direction (BULLISH or BEARISH)
+     * @param invalidationPrice     price level that would invalidate this count
+     * @param primaryTarget         primary Fibonacci projection target
+     * @param swings                swing sequence for building wave labels
      */
     public record BaseCaseScenario(ElliottPhase currentPhase, ScenarioType type, double overallConfidence,
-            @JsonAdapter(ScenarioProbabilityAdapter.class) double scenarioProbability, String confidenceLevel,
+            @JsonAdapter(ScenarioProbabilityAdapter.class) double scenarioProbability,
+            @JsonAdapter(ScenarioProbabilityAdapter.class) double calibratedProbability, String confidenceLevel,
             double fibonacciScore, double timeScore, double alternationScore, double channelScore,
             double completenessScore, String primaryReason, String weakestFactor, String direction,
             double invalidationPrice, double primaryTarget, List<SwingData> swings) {
-        static BaseCaseScenario from(ElliottScenario scenario, double scenarioProbability) {
+        static BaseCaseScenario from(ElliottScenario scenario, double scenarioProbability,
+                double calibratedProbability) {
             ElliottConfidence confidence = scenario.confidence();
             double overallConfidence = confidence.asPercentage();
             String confidenceLevel = confidence.isHighConfidence() ? "HIGH"
@@ -340,28 +470,32 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
             List<SwingData> swings = scenario.swings().stream().map(SwingData::from).toList();
 
             return new BaseCaseScenario(scenario.currentPhase(), scenario.type(), overallConfidence,
-                    scenarioProbability, confidenceLevel, fibonacciScore, timeScore, alternationScore, channelScore,
-                    completenessScore, confidence.primaryReason(), confidence.weakestFactor(), direction,
-                    invalidationPrice, primaryTarget, swings);
+                    scenarioProbability, calibratedProbability, confidenceLevel, fibonacciScore, timeScore,
+                    alternationScore, channelScore, completenessScore, confidence.primaryReason(),
+                    confidence.weakestFactor(), direction, invalidationPrice, primaryTarget, swings);
         }
     }
 
     /**
      * Alternative scenario details.
      *
-     * @param currentPhase        the phase this scenario assigns to current price
-     *                            action
-     * @param type                pattern type classification
-     * @param confidencePercent   overall confidence percentage (0-100)
-     * @param scenarioProbability scenario probability ratio (0.0-1.0)
-     * @param swings              swing sequence for building wave labels
+     * @param currentPhase          the phase this scenario assigns to current price
+     *                              action
+     * @param type                  pattern type classification
+     * @param confidencePercent     overall confidence percentage (0-100)
+     * @param scenarioProbability   raw scenario probability ratio (0.0-1.0)
+     * @param calibratedProbability walk-forward calibrated scenario probability
+     *                              ratio (0.0-1.0)
+     * @param swings                swing sequence for building wave labels
      */
     public record AlternativeScenario(ElliottPhase currentPhase, ScenarioType type, double confidencePercent,
-            @JsonAdapter(ScenarioProbabilityAdapter.class) double scenarioProbability, List<SwingData> swings) {
-        static AlternativeScenario from(ElliottScenario scenario, double scenarioProbability) {
+            @JsonAdapter(ScenarioProbabilityAdapter.class) double scenarioProbability,
+            @JsonAdapter(ScenarioProbabilityAdapter.class) double calibratedProbability, List<SwingData> swings) {
+        static AlternativeScenario from(ElliottScenario scenario, double scenarioProbability,
+                double calibratedProbability) {
             List<SwingData> swings = scenario.swings().stream().map(SwingData::from).toList();
             return new AlternativeScenario(scenario.currentPhase(), scenario.type(),
-                    scenario.confidence().asPercentage(), scenarioProbability, swings);
+                    scenario.confidence().asPercentage(), scenarioProbability, calibratedProbability, swings);
         }
     }
 
@@ -501,6 +635,55 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
         return Map.copyOf(probabilities);
     }
 
+    /**
+     * Applies walk-forward-informed probability calibration using centered
+     * shrinkage followed by renormalization.
+     *
+     * <p>
+     * The transform shrinks probabilities toward the uniform prior to reduce
+     * over-confident tails while preserving ordering signals from the raw scenario
+     * model.
+     */
+    private static CalibrationResult calibrateScenarioProbabilities(Map<String, Double> rawProbabilities,
+            ScenarioSummary summary, ElliottTrendBias trendBias) {
+        if (rawProbabilities == null || rawProbabilities.isEmpty()) {
+            ProbabilityCalibration calibration = ProbabilityCalibration.from(CALIBRATION_BASE_SHRINK_FACTOR);
+            return new CalibrationResult(Map.of(), calibration);
+        }
+
+        Map<String, Double> normalizedRaw = normalizeProbabilityMap(rawProbabilities);
+        if (normalizedRaw.isEmpty()) {
+            ProbabilityCalibration calibration = ProbabilityCalibration.from(CALIBRATION_BASE_SHRINK_FACTOR);
+            return new CalibrationResult(Map.of(), calibration);
+        }
+
+        double shrinkFactor = CALIBRATION_BASE_SHRINK_FACTOR;
+        if (summary != null && summary.strongConsensus()) {
+            shrinkFactor += CALIBRATION_STRONG_CONSENSUS_BONUS;
+        }
+        if (trendBias != null && trendBias.consensus()) {
+            shrinkFactor += CALIBRATION_DIRECTIONAL_CONSENSUS_BONUS;
+        }
+        if (trendBias == null || trendBias.isUnknown() || trendBias.isNeutral()
+                || !Double.isFinite(trendBias.strength()) || trendBias.strength() < OUTLOOK_MIN_TREND_STRENGTH) {
+            shrinkFactor -= CALIBRATION_WEAK_TREND_PENALTY;
+        }
+        shrinkFactor = clamp(shrinkFactor, CALIBRATION_MIN_SHRINK_FACTOR, CALIBRATION_MAX_SHRINK_FACTOR);
+
+        int scenarioCount = normalizedRaw.size();
+        double uniformPrior = 1.0 / scenarioCount;
+        Map<String, Double> centered = new LinkedHashMap<>();
+        for (Map.Entry<String, Double> entry : normalizedRaw.entrySet()) {
+            double raw = entry.getValue();
+            double calibrated = uniformPrior + (shrinkFactor * (raw - uniformPrior));
+            centered.put(entry.getKey(), Math.max(CALIBRATION_EPSILON, calibrated));
+        }
+
+        Map<String, Double> calibratedProbabilities = normalizeProbabilityMap(centered);
+        ProbabilityCalibration calibration = ProbabilityCalibration.from(shrinkFactor);
+        return new CalibrationResult(calibratedProbabilities, calibration);
+    }
+
     private static double overlapScoreForScenario(ElliottScenario scenario, EnumMap<ElliottPhase, Integer> phaseCounts,
             int knownPhaseCount, EnumMap<ScenarioType, Integer> typeCounts, int knownTypeCount, int bullishCount,
             int bearishCount, int knownDirectionCount) {
@@ -554,6 +737,42 @@ public record ElliottWaveAnalysisReport(ElliottDegree degree, int endIndex, Swin
             return confidence;
         }
         return Math.pow(confidence, exponent);
+    }
+
+    private static Map<String, Double> normalizeProbabilityMap(Map<String, Double> probabilities) {
+        if (probabilities == null || probabilities.isEmpty()) {
+            return Map.of();
+        }
+        Map<String, Double> finitePositive = new LinkedHashMap<>();
+        double total = 0.0;
+        for (Map.Entry<String, Double> entry : probabilities.entrySet()) {
+            if (entry.getKey() == null) {
+                continue;
+            }
+            Double raw = entry.getValue();
+            if (raw == null || !Double.isFinite(raw)) {
+                continue;
+            }
+            double sanitized = Math.max(0.0, raw.doubleValue());
+            if (sanitized <= 0.0) {
+                continue;
+            }
+            finitePositive.put(entry.getKey(), sanitized);
+            total += sanitized;
+        }
+        if (finitePositive.isEmpty() || total <= CALIBRATION_EPSILON) {
+            return Map.of();
+        }
+
+        Map<String, Double> normalized = new LinkedHashMap<>();
+        for (Map.Entry<String, Double> entry : finitePositive.entrySet()) {
+            normalized.put(entry.getKey(), entry.getValue() / total);
+        }
+        return Map.copyOf(normalized);
+    }
+
+    private static double clamp(double value, double min, double max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     /**
