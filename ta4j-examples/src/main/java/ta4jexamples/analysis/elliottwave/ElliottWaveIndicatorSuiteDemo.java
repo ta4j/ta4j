@@ -561,8 +561,10 @@ public class ElliottWaveIndicatorSuiteDemo {
                 return DEFAULT_DEGREE;
             }
             ElliottDegree selected = recommendations.get(0);
-            LOG.info("Auto-selected Elliott degree {} for {} bars at {}. Candidates: {}", selected, barCount,
-                    barDuration, recommendations);
+            String seriesName = series.getName() == null || series.getName().isBlank() ? "<unnamed-series>"
+                    : series.getName();
+            LOG.info("Auto-selected Elliott degree {} for {} {} bars at {}. Candidates: {}", selected, seriesName,
+                    barCount, barDuration, recommendations);
             return selected;
         } catch (Exception ex) {
             LOG.warn("Failed to auto-select degree for {} bars at {}, using default: {}", barCount, barDuration,
