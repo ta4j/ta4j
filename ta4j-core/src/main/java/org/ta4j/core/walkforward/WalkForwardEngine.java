@@ -83,7 +83,8 @@ public final class WalkForwardEngine<C, P, O> {
      *
      * @param series  input series
      * @param context provider context
-     * @param config  run configuration
+     * @param config  run configuration. Keep this configuration fixed as a baseline
+     *                when comparing candidates inside the same tuning cycle.
      * @return run result bundle
      * @since 0.22.4
      */
@@ -97,7 +98,9 @@ public final class WalkForwardEngine<C, P, O> {
      *
      * @param series           input series
      * @param context          provider context
-     * @param config           run configuration
+     * @param config           run configuration. Keep this configuration fixed as a
+     *                         baseline when comparing candidates inside the same
+     *                         tuning cycle.
      * @param candidateId      candidate id for manifesting
      * @param manifestMetadata additional manifest metadata
      * @return run result bundle

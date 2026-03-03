@@ -16,6 +16,12 @@ import java.util.Set;
  * The configuration defines fold geometry, optimization and reporting horizons,
  * ranking depth, holdout behavior, and deterministic seed values.
  *
+ * <p>
+ * For tuning governance and fair candidate comparison, choose one baseline
+ * configuration for a given study and keep it fixed across all candidate runs.
+ * You can still inject a custom configuration, but changing fold geometry or
+ * horizon settings between runs invalidates direct metric comparability.
+ *
  * @param minTrainBars       minimum number of bars required in each training
  *                           prefix
  * @param testBars           number of bars in each test fold
@@ -75,6 +81,10 @@ public record WalkForwardConfig(int minTrainBars, int testBars, int stepBars, in
      * Defaults match the approved PRD policy: primary horizon {@code H=60},
      * reporting horizons {@code 30/150}, optimize at {@code k=3}, report
      * {@code k=1/5}.
+     *
+     * <p>
+     * Treat these defaults as a baseline profile for a comparison cycle. If you
+     * override them, keep your chosen overrides fixed for the full cycle.
      *
      * @return default configuration
      * @since 0.22.4
