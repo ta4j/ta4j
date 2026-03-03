@@ -118,9 +118,6 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.6.3</version>
-                <configuration>
-                    <mainClass>ta4jexamples.Quickstart</mainClass>
-                </configuration>
             </plugin>
         </plugins>
     </build>
