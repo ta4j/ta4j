@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.22.3 (2026-03-01)
+
 ### Added
 - **Price-structure aggregators**: Added `RangeBarAggregator`, `VolumeBarAggregator`, and `RenkoBarAggregator` to build derived bar series from configurable range thresholds, volume thresholds, and Renko box/reversal settings, with interval-continuity guards and regression coverage for trending, volatile, and flat fixtures.
 
