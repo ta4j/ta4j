@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package ta4jexamples.analysis.elliottwave;
+package ta4jexamples.analysis.elliottwave.demo;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,15 +16,17 @@ import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.swing.AdaptiveZigZagConfig;
 import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
 
+import ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo;
+import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
+
 /**
  * Demonstrates multi-degree Elliott Wave analysis, validating scenarios across
  * neighboring degrees and re-ranking base-degree outcomes.
  *
  * <p>
  * This demo uses an ossified BTC-USD dataset from classpath resources and runs
- * a base-degree {@link ElliottDegree#PRIMARY} analysis, plus one supporting
- * degree higher ({@link ElliottDegree#CYCLE}) and lower
- * ({@link ElliottDegree#INTERMEDIATE}).
+ * an auto-selected base-degree analysis, plus one supporting degree higher and
+ * lower.
  *
  * @since 0.22.4
  */
@@ -40,14 +42,17 @@ public class ElliottWaveMultiDegreeAnalysisDemo {
             return;
         }
 
+        ElliottDegree baseDegree = ElliottWaveIndicatorSuiteDemo.autoSelectDegree(series);
+
         ElliottWaveAnalysisRunner analyzer = ElliottWaveAnalysisRunner.builder()
-                .degree(ElliottDegree.PRIMARY)
+                .degree(baseDegree)
                 .higherDegrees(1)
                 .lowerDegrees(1)
                 .swingDetector(SwingDetectors.adaptiveZigZag(new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 1)))
                 .build();
 
         ElliottWaveAnalysisResult result = analyzer.analyze(series);
+        LOG.info("Auto-selected base degree: {}", baseDegree);
 
         for (ElliottWaveAnalysisResult.DegreeAnalysis analysis : result.analyses()) {
             LOG.info("{} Degree {}: bars={} duration={} historyFit={} trendBias={}", series.getName(),

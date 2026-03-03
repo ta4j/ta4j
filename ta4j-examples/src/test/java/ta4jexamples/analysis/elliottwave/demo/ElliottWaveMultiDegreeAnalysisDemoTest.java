@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package ta4jexamples.analysis.elliottwave;
+package ta4jexamples.analysis.elliottwave.demo;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -19,6 +19,9 @@ import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
 import org.ta4j.core.indicators.elliott.swing.AdaptiveZigZagConfig;
 import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
 
+import ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo;
+import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
+
 class ElliottWaveMultiDegreeAnalysisDemoTest {
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveMultiDegreeAnalysisDemoTest.class);
@@ -30,9 +33,10 @@ class ElliottWaveMultiDegreeAnalysisDemoTest {
                 OSSIFIED_OHLCV_RESOURCE, "BTC-USD_PT1D@Coinbase (ossified)", LOG);
         assertNotNull(series, "Series should load from ossified classpath resource");
         assertFalse(series.isEmpty(), "Series should contain bars");
+        ElliottDegree baseDegree = ElliottWaveIndicatorSuiteDemo.autoSelectDegree(series);
 
         ElliottWaveAnalysisRunner analyzer = ElliottWaveAnalysisRunner.builder()
-                .degree(ElliottDegree.PRIMARY)
+                .degree(baseDegree)
                 .higherDegrees(1)
                 .lowerDegrees(1)
                 .swingDetector(SwingDetectors.adaptiveZigZag(new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 1)))
@@ -44,9 +48,9 @@ class ElliottWaveMultiDegreeAnalysisDemoTest {
 
         Optional<ElliottWaveAnalysisResult.DegreeAnalysis> primary = result.analyses()
                 .stream()
-                .filter(analysis -> analysis.degree() == ElliottDegree.PRIMARY)
+                .filter(analysis -> analysis.degree() == baseDegree)
                 .findFirst();
-        assertTrue(primary.isPresent(), "Primary degree analysis should be available");
+        assertTrue(primary.isPresent(), "Base degree analysis should be available");
         assertFalse(primary.orElseThrow().analysis().rawSwings().isEmpty(),
                 "Primary degree should have detected swings");
     }

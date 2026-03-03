@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package ta4jexamples.analysis.elliottwave;
+package ta4jexamples.analysis.elliottwave.demo;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -13,6 +13,9 @@ import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
+
+import ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo;
+import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 
 /**
  * Demonstrates how pattern-specific confidence profiles influence scenario
@@ -37,18 +40,20 @@ public class ElliottWavePatternProfileDemo {
             return;
         }
 
+        ElliottDegree baseDegree = ElliottWaveIndicatorSuiteDemo.autoSelectDegree(series);
+
         ElliottWaveAnalysisRunner defaultAnalyzer = ElliottWaveAnalysisRunner.builder()
-                .degree(ElliottDegree.PRIMARY)
-                .higherDegrees(0)
-                .lowerDegrees(0)
+                .degree(baseDegree)
+                .higherDegrees(1)
+                .lowerDegrees(1)
                 .swingDetector(SwingDetectors.fractal(5))
                 .confidenceModelFactory(ConfidenceProfiles::defaultModel)
                 .build();
 
         ElliottWaveAnalysisRunner patternAwareAnalyzer = ElliottWaveAnalysisRunner.builder()
-                .degree(ElliottDegree.PRIMARY)
-                .higherDegrees(0)
-                .lowerDegrees(0)
+                .degree(baseDegree)
+                .higherDegrees(1)
+                .lowerDegrees(1)
                 .swingDetector(SwingDetectors.fractal(5))
                 .confidenceModelFactory(ConfidenceProfiles::patternAwareModel)
                 .build();
@@ -56,11 +61,11 @@ public class ElliottWavePatternProfileDemo {
         ElliottWaveAnalysisResult defaultSnapshot = defaultAnalyzer.analyze(series);
         ElliottWaveAnalysisResult patternSnapshot = patternAwareAnalyzer.analyze(series);
 
-        ElliottAnalysisResult defaultResult = defaultSnapshot.analysisFor(ElliottDegree.PRIMARY)
-                .orElseThrow(() -> new IllegalStateException("No PRIMARY analysis in default snapshot"))
+        ElliottAnalysisResult defaultResult = defaultSnapshot.analysisFor(baseDegree)
+                .orElseThrow(() -> new IllegalStateException("No base-degree analysis in default snapshot"))
                 .analysis();
-        ElliottAnalysisResult patternResult = patternSnapshot.analysisFor(ElliottDegree.PRIMARY)
-                .orElseThrow(() -> new IllegalStateException("No PRIMARY analysis in pattern-aware snapshot"))
+        ElliottAnalysisResult patternResult = patternSnapshot.analysisFor(baseDegree)
+                .orElseThrow(() -> new IllegalStateException("No base-degree analysis in pattern-aware snapshot"))
                 .analysis();
 
         logBaseScenario("Default profile", defaultResult);

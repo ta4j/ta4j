@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package ta4jexamples.analysis.elliottwave;
+package ta4jexamples.analysis.elliottwave.demo;
 
 import java.util.List;
 
@@ -20,6 +20,9 @@ import org.ta4j.core.indicators.elliott.swing.CompositeSwingDetector;
 import org.ta4j.core.indicators.elliott.swing.MinMagnitudeSwingFilter;
 import org.ta4j.core.indicators.elliott.swing.SwingDetector;
 import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
+
+import ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo;
+import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 
 /**
  * Demonstrates adaptive ZigZag and composite swing detection for Elliott Wave
@@ -44,20 +47,22 @@ public class ElliottWaveAdaptiveSwingAnalysis {
             return;
         }
 
+        ElliottDegree baseDegree = ElliottWaveIndicatorSuiteDemo.autoSelectDegree(series);
+
         AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 3);
         SwingDetector detector = SwingDetectors.composite(CompositeSwingDetector.Policy.OR, SwingDetectors.fractal(5),
                 SwingDetectors.adaptiveZigZag(config));
 
         ElliottWaveAnalysisRunner analyzer = ElliottWaveAnalysisRunner.builder()
-                .degree(ElliottDegree.PRIMARY)
-                .higherDegrees(0)
-                .lowerDegrees(0)
+                .degree(baseDegree)
+                .higherDegrees(1)
+                .lowerDegrees(1)
                 .swingDetector(detector)
                 .swingFilter(new MinMagnitudeSwingFilter(0.2))
                 .build();
 
         ElliottWaveAnalysisResult analysisResult = analyzer.analyze(series);
-        ElliottAnalysisResult result = analysisResult.analysisFor(ElliottDegree.PRIMARY).orElseThrow().analysis();
+        ElliottAnalysisResult result = analysisResult.analysisFor(baseDegree).orElseThrow().analysis();
         LOG.info("Adaptive swing analysis complete. Trend bias: {}", result.trendBias().direction());
         result.scenarios().base().ifPresent(base -> logScenario("BASE", base, result));
         List<ElliottScenario> alternatives = result.scenarios().alternatives();

@@ -50,6 +50,7 @@ import ta4jexamples.charting.builder.ChartPlan;
 import ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource;
 import ta4jexamples.datasources.CoinbaseHttpBarSeriesDataSource;
 import ta4jexamples.datasources.BarSeriesDataSource;
+import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 
 /**
  * Demonstrates the Elliott Wave indicator suite (swings, phases, Fibonacci
@@ -97,11 +98,12 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * <ul>
  * <li>{@link ElliottWavePresetDemo} - preset launcher for ossified and live
  * runs</li>
- * <li>{@link ElliottWaveAdaptiveSwingAnalysis} - adaptive swing detection
- * demo</li>
- * <li>{@link ElliottWaveMultiDegreeAnalysisDemo} - cross-degree scenario
- * validation demo</li>
- * <li>{@link ElliottWavePatternProfileDemo} - pattern-aware profile demo</li>
+ * <li>{@link ta4jexamples.analysis.elliottwave.demo.ElliottWaveAdaptiveSwingAnalysis}
+ * - adaptive swing detection demo</li>
+ * <li>{@link ta4jexamples.analysis.elliottwave.demo.ElliottWaveMultiDegreeAnalysisDemo}
+ * - cross-degree scenario validation demo</li>
+ * <li>{@link ta4jexamples.analysis.elliottwave.demo.ElliottWavePatternProfileDemo}
+ * - pattern-aware profile demo</li>
  * </ul>
  * <p>
  * For programmatic usage, see
@@ -503,6 +505,20 @@ public class ElliottWaveIndicatorSuiteDemo {
         if (explicitDegree.isPresent()) {
             return explicitDegree.get();
         }
+        return autoSelectDegree(series);
+    }
+
+    /**
+     * Auto-selects an Elliott degree from the bar series duration and history size.
+     * <p>
+     * This helper is exposed for demo entry points that should default to the same
+     * recommendation logic as this suite.
+     *
+     * @param series bar series used for recommendation
+     * @return recommended degree, or {@link #DEFAULT_DEGREE} when recommendation
+     *         cannot be derived
+     */
+    public static ElliottDegree autoSelectDegree(BarSeries series) {
         return selectRecommendedDegree(series);
     }
 

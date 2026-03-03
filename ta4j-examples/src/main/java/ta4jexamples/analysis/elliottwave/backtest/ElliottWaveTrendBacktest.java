@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package ta4jexamples.analysis.elliottwave;
+package ta4jexamples.analysis.elliottwave.backtest;
 
 import java.time.format.DateTimeFormatter;
 import java.time.ZoneOffset;

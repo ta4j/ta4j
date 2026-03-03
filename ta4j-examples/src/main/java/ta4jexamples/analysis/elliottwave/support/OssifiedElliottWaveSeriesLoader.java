@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package ta4jexamples.analysis.elliottwave;
+package ta4jexamples.analysis.elliottwave.support;
 
 import java.io.InputStream;
 import java.util.Objects;
@@ -18,7 +18,7 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  *
  * @since 0.22.4
  */
-final class OssifiedElliottWaveSeriesLoader {
+public final class OssifiedElliottWaveSeriesLoader {
 
     /**
      * Utility class.
@@ -36,7 +36,7 @@ final class OssifiedElliottWaveSeriesLoader {
      * @param logger        logger used for diagnostics
      * @return loaded series, or {@code null} when loading fails
      */
-    static BarSeries loadSeries(final Class<?> resourceOwner, final String resource, final String seriesName,
+    public static BarSeries loadSeries(final Class<?> resourceOwner, final String resource, final String seriesName,
             final Logger logger) {
         Objects.requireNonNull(resourceOwner, "resourceOwner");
         Objects.requireNonNull(resource, "resource");

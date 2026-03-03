@@ -162,8 +162,7 @@ public class ElliottWavePresetDemo {
     }
 
     private enum OssifiedPreset {
-        BTC("Coinbase-BTC-USD-PT1D-20230616_20231011.json", "BTC-USD_PT1D@Coinbase (ossified)",
-                Optional.of(ElliottDegree.PRIMARY)),
+        BTC("Coinbase-BTC-USD-PT1D-20230616_20231011.json", "BTC-USD_PT1D@Coinbase (ossified)", Optional.empty()),
         ETH("Coinbase-ETH-USD-PT1D-20241105_20251020.json", "ETH-USD_PT1D@Coinbase (ossified)", Optional.empty()),
         SP500("YahooFinance-SP500-PT1D-20230616_20231011.json", "^GSPC_PT1D@YahooFinance (ossified)", Optional.empty());
 
