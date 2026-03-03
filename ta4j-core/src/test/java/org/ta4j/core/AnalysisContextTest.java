@@ -10,8 +10,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.time.Instant;
 
 import org.junit.Test;
-import org.ta4j.core.AnalysisContext.MissingHistoryPolicy;
-import org.ta4j.core.AnalysisContext.PositionInclusionPolicy;
+import org.ta4j.core.analysis.AnalysisContext;
+import org.ta4j.core.analysis.AnalysisContext.MissingHistoryPolicy;
+import org.ta4j.core.analysis.AnalysisContext.PositionInclusionPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
 
 /**

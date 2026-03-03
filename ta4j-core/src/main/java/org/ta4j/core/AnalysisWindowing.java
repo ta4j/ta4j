@@ -10,9 +10,11 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
-import org.ta4j.core.AnalysisContext.MissingHistoryPolicy;
-import org.ta4j.core.AnalysisContext.PositionInclusionPolicy;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.AnalysisContext;
+import org.ta4j.core.analysis.AnalysisContext.MissingHistoryPolicy;
+import org.ta4j.core.analysis.AnalysisContext.PositionInclusionPolicy;
+import org.ta4j.core.analysis.AnalysisWindow;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;

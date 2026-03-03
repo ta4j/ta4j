@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core;
+package org.ta4j.core.analysis;
 
 import java.time.Duration;
 import java.time.Instant;

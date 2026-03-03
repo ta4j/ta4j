@@ -10,8 +10,10 @@ import java.time.Duration;
 import java.time.Instant;
 
 import org.junit.Test;
-import org.ta4j.core.AnalysisContext.MissingHistoryPolicy;
-import org.ta4j.core.AnalysisContext.PositionInclusionPolicy;
+import org.ta4j.core.analysis.AnalysisContext;
+import org.ta4j.core.analysis.AnalysisContext.MissingHistoryPolicy;
+import org.ta4j.core.analysis.AnalysisContext.PositionInclusionPolicy;
+import org.ta4j.core.analysis.AnalysisWindow;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.criteria.ReturnRepresentation;

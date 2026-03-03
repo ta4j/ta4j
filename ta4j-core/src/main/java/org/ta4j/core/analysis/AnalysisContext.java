@@ -1,12 +1,10 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core;
+package org.ta4j.core.analysis;
 
 import java.time.Instant;
 import java.util.Objects;
-
-import org.ta4j.core.analysis.OpenPositionHandling;
 
 /**
  * Options controlling how windowed criterion analysis is resolved.

@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.time.Instant;
 
 import org.junit.Test;
+import org.ta4j.core.analysis.AnalysisWindow;
 
 /**
  * Unit tests for {@link AnalysisWindow}.
