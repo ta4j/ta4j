@@ -42,8 +42,16 @@ Worktree lifecycle and PRD/checklist process conventions live in `scripts/AGENTS
 - Do not introduce a new enum when an existing project enum already models the behavior.
 - Prefer extending/adapting existing classes over creating parallel abstractions.
 - If a new type is still required, document in the PRD/checklist or PR notes why existing types were insufficient.
+- Reuse audit checkpoint: before introducing a new type, run a targeted code search for equivalent behavior and capture the reuse decision in 1-2 lines in PRD/checklist or PR notes.
 
-## 7) Local typing style (MUST)
+## 7) Consolidation and API exposure (MUST)
+
+- Consolidation-first helper rule: inline new logic into the owning type (private static methods or package-private nested helpers) before creating a new utility class.
+- Only extract to a dedicated helper/utility class after at least two concrete call sites require shared behavior, or when testability/complexity clearly demands extraction.
+- New classes and methods should be package-private by default; treat public API additions as exceptional and require a short rationale in PRD/checklist or PR notes.
+- Redundancy cleanup requirement: when new code overlaps existing behavior, remove or fold the redundant abstraction in the same change unless there is a documented blocker.
+
+## 8) Local typing style (MUST)
 
 - Prefer explicit local variable types.
 - Use `var` only when the type is immediately and unambiguously obvious from the right-hand side.
