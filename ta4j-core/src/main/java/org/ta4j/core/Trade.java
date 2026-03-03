@@ -31,7 +31,7 @@ import org.ta4j.core.num.Num;
  * {@link LiveTrade} for live fills.
  * </p>
  *
- * @since 0.22.4
+ * @since 0.22.2
  */
 public interface Trade extends Serializable {
 
@@ -112,7 +112,7 @@ public interface Trade extends Serializable {
 
     /**
      * @return execution timestamp if available, otherwise {@code null}
-     * @since 0.22.4
+     * @since 0.22.2
      */
     default Instant getTime() {
         return null;
@@ -120,7 +120,7 @@ public interface Trade extends Serializable {
 
     /**
      * @return exchange-provided trade id if available, otherwise {@code null}
-     * @since 0.22.4
+     * @since 0.22.2
      */
     default String getId() {
         return null;
@@ -129,7 +129,7 @@ public interface Trade extends Serializable {
     /**
      * @return instrument identifier (symbol/pair) if available, otherwise
      *         {@code null}
-     * @since 0.22.4
+     * @since 0.22.2
      */
     default String getInstrument() {
         return null;
@@ -137,7 +137,7 @@ public interface Trade extends Serializable {
 
     /**
      * @return originating order id if available, otherwise {@code null}
-     * @since 0.22.4
+     * @since 0.22.2
      */
     default String getOrderId() {
         return null;
@@ -145,7 +145,7 @@ public interface Trade extends Serializable {
 
     /**
      * @return correlation id if available, otherwise {@code null}
-     * @since 0.22.4
+     * @since 0.22.2
      */
     default String getCorrelationId() {
         return null;

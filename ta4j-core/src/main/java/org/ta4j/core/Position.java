@@ -118,7 +118,7 @@ public class Position implements Serializable {
      * @param entry                the entry {@link Trade trade}
      * @param transactionCostModel the cost model for transactions of the asset
      * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
-     * @since 0.22.4
+     * @since 0.22.2
      */
     public Position(Trade entry, CostModel transactionCostModel, CostModel holdingCostModel) {
         Objects.requireNonNull(entry, "entry");
@@ -447,7 +447,7 @@ public class Position implements Serializable {
      * @return the transaction cost model, or a zero-cost model after
      *         deserialization when the model is unset
      *
-     * @since 0.22.4
+     * @since 0.22.2
      */
     public CostModel getTransactionCostModel() {
         return transactionCostModel == null ? new ZeroCostModel() : transactionCostModel;
@@ -457,7 +457,7 @@ public class Position implements Serializable {
      * @return the holding cost model, or a zero-cost model after deserialization
      *         when the model is unset
      *
-     * @since 0.22.4
+     * @since 0.22.2
      */
     public CostModel getHoldingCostModel() {
         return holdingCostModel == null ? new ZeroCostModel() : holdingCostModel;
