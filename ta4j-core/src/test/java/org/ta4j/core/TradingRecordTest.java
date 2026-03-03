@@ -197,10 +197,10 @@ public class TradingRecordTest {
     public void operateWithPrebuiltTradePreservesExecutionFills() {
         DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
         TradingRecord record = new BaseTradingRecord();
-        Trade aggregatedEntry = new AggregatedTrade(Trade.TradeType.BUY,
+        Trade aggregatedEntry = Trade.fromFills(Trade.TradeType.BUY,
                 List.of(new TradeFill(1, numFactory.hundred(), numFactory.one()),
                         new TradeFill(2, numFactory.numOf(101), numFactory.one())));
-        Trade aggregatedExit = new AggregatedTrade(Trade.TradeType.SELL,
+        Trade aggregatedExit = Trade.fromFills(Trade.TradeType.SELL,
                 List.of(new TradeFill(4, numFactory.numOf(110), numFactory.two())));
 
         record.operate(aggregatedEntry);
@@ -241,7 +241,7 @@ public class TradingRecordTest {
     public void defaultOperateTradeFallsBackToScalarOperateForSingleFillTrade() {
         DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
         TradingRecord record = newTradingRecordUsingDefaultOperateImplementation();
-        Trade singleFillTrade = new AggregatedTrade(Trade.TradeType.BUY,
+        Trade singleFillTrade = Trade.fromFills(Trade.TradeType.BUY,
                 List.of(new TradeFill(2, numFactory.hundred(), numFactory.one())));
 
         record.operate(singleFillTrade);
@@ -278,7 +278,7 @@ public class TradingRecordTest {
     public void defaultOperateTradeRejectsMultiFillTrade() {
         DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
         TradingRecord record = newTradingRecordUsingDefaultOperateImplementation();
-        Trade multiFillTrade = new AggregatedTrade(Trade.TradeType.BUY,
+        Trade multiFillTrade = Trade.fromFills(Trade.TradeType.BUY,
                 List.of(new TradeFill(1, numFactory.hundred(), numFactory.one()),
                         new TradeFill(2, numFactory.numOf(101), numFactory.one())));
 

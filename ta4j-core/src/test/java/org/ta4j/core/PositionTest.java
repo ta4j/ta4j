@@ -107,10 +107,10 @@ public class PositionTest {
     @Test
     public void operateWithPrebuiltTradesSupportsEntryAndExit() {
         Position position = new Position(TradeType.BUY);
-        Trade entry = new AggregatedTrade(TradeType.BUY,
+        Trade entry = Trade.fromFills(TradeType.BUY,
                 List.of(new TradeFill(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1)),
                         new TradeFill(2, DoubleNum.valueOf(101), DoubleNum.valueOf(1))));
-        Trade exit = new AggregatedTrade(TradeType.SELL,
+        Trade exit = Trade.fromFills(TradeType.SELL,
                 List.of(new TradeFill(3, DoubleNum.valueOf(110), DoubleNum.valueOf(2))));
 
         position.operate(entry);
@@ -150,7 +150,7 @@ public class PositionTest {
     @Test
     public void operateWithPrebuiltTradeRejectsMismatchedCostModel() {
         Position position = new Position(TradeType.BUY, transactionModel, holdingModel);
-        Trade entry = new AggregatedTrade(TradeType.BUY,
+        Trade entry = Trade.fromFills(TradeType.BUY,
                 List.of(new TradeFill(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1))), new ZeroCostModel());
 
         assertThrows(IllegalArgumentException.class, () -> position.operate(entry));

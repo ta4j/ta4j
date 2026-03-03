@@ -280,12 +280,12 @@ public class TradeTest {
     }
 
     @Test
-    public void fromFillsCreatesAggregatedTradeForMultipleFills() {
+    public void fromFillsCreatesFillBackedSimulatedTradeForMultipleFills() {
         DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
         Trade trade = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(1, numFactory.hundred(), numFactory.one()),
                 new TradeFill(2, numFactory.numOf(101), numFactory.one())));
 
-        assertTrue(trade instanceof AggregatedTrade);
+        assertTrue(trade instanceof SimulatedTrade);
         assertEquals(2, trade.getFills().size());
     }
 

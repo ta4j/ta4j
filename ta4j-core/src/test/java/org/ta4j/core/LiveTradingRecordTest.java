@@ -120,7 +120,7 @@ class LiveTradingRecordTest {
     void operateWithAggregatedTradeReplaysAllFills() {
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
-        Trade aggregatedEntry = new AggregatedTrade(TradeType.BUY,
+        Trade aggregatedEntry = Trade.fromFills(TradeType.BUY,
                 List.of(new TradeFill(4, numFactory.hundred(), numFactory.one()),
                         new TradeFill(5, numFactory.numOf(101), numFactory.two())));
 
@@ -138,7 +138,7 @@ class LiveTradingRecordTest {
     void operateWithMismatchedTradeTypeThrows() {
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
-        Trade exitTradeWithoutEntry = new AggregatedTrade(TradeType.SELL,
+        Trade exitTradeWithoutEntry = Trade.fromFills(TradeType.SELL,
                 List.of(new TradeFill(1, numFactory.hundred(), numFactory.one())));
 
         assertThrows(IllegalStateException.class, () -> record.operate(exitTradeWithoutEntry));

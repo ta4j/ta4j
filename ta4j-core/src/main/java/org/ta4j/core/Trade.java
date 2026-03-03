@@ -228,8 +228,9 @@ public interface Trade extends Serializable {
      * Creates a trade from one or more execution fills.
      *
      * <p>
-     * A single fill is represented as {@link SimulatedTrade}. Multiple fills are
-     * represented as {@link AggregatedTrade}.
+     * The returned trade is a {@link SimulatedTrade}. Single-fill inputs keep
+     * scalar semantics; multi-fill inputs preserve full fill progression while
+     * exposing aggregated price/amount views.
      * </p>
      *
      * @param type                 trade type
@@ -256,7 +257,7 @@ public interface Trade extends Serializable {
             }
             return new SimulatedTrade(fill.index(), type, fill.price(), fill.amount(), transactionCostModel);
         }
-        return new AggregatedTrade(type, fills, transactionCostModel);
+        return new SimulatedTrade(type, fills, transactionCostModel);
     }
 
     /**
