@@ -10,6 +10,8 @@
 - **Elliott one-shot entrypoint consolidation**: Replaced legacy `ElliottWaveAnalyzer` naming/usages with the consolidated `ElliottWaveAnalysisRunner` API across core docs, tests, and examples.
 - **Elliott package and quickstart guidance**: Expanded package-level and README documentation to call out one-shot/facade entrypoints, `scenarioSwingWindow` behavior, and returned result semantics.
 - **Elliott examples result naming**: Renamed the examples-only structured DTO to `ElliottWaveAnalysisReport` to avoid collision with core `ElliottWaveAnalysisResult`.
+- **Elliott demo package organization**: Grouped Elliott Wave examples into `analysis.elliottwave.demo`, `analysis.elliottwave.backtest`, and `analysis.elliottwave.support` to reduce root-package sprawl while preserving runnable entrypoints.
+- **Elliott demo defaults**: Updated demo entrypoints to auto-select base degree from series history and run with multi-degree context by default (`higherDegrees=1`, `lowerDegrees=1`), and removed the BTC ossified preset's forced `PRIMARY` override.
 - **HighRewardElliottWaveStrategy exit gating**: Removed the redundant anonymous exit-rule guard and now rely on ta4j strategy lifecycle routing (`shouldOperate`/`shouldExit`) to evaluate exits only for open positions.
 - **HighRewardElliottWaveStrategy momentum normalization**: Replaced classic MACD momentum confirmation with `VolatilityNormalizedMACDIndicator` (MACD-V) in both entry and exit rule pipelines.
 
