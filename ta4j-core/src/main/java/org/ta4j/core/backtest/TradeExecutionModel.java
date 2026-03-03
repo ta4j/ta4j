@@ -27,7 +27,7 @@ public interface TradeExecutionModel {
      * @param index         current bar index
      * @param tradingRecord trading record to mutate
      * @param barSeries     bar series
-     * @since 0.22.3
+     * @since 0.22.4
      */
     default void onBar(int index, TradingRecord tradingRecord, BarSeries barSeries) {
         // Default no-op for immediate execution models.

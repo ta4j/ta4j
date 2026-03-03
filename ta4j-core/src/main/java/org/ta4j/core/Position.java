@@ -200,7 +200,7 @@ public class Position implements Serializable {
      *
      * @param trade the trade to apply
      * @return the trade
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public Trade operate(Trade trade) {
         Objects.requireNonNull(trade, "trade");

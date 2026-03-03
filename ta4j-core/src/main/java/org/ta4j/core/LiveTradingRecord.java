@@ -255,7 +255,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * </p>
      *
      * @param trade trade to record
-     * @since 0.22.3
+     * @since 0.22.4
      */
     @Override
     public void operate(Trade trade) {

@@ -18,7 +18,7 @@ import org.ta4j.core.num.Num;
  * volume-weighted average execution price.
  * </p>
  *
- * @since 0.22.3
+ * @since 0.22.4
  */
 public class AggregatedTrade extends SimulatedTrade {
 
@@ -29,7 +29,7 @@ public class AggregatedTrade extends SimulatedTrade {
      *
      * @param type  trade type
      * @param fills execution fills (must not be empty)
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public AggregatedTrade(TradeType type, List<TradeFill> fills) {
         this(type, fills, new ZeroCostModel());
@@ -41,7 +41,7 @@ public class AggregatedTrade extends SimulatedTrade {
      * @param type                 trade type
      * @param fills                execution fills (must not be empty)
      * @param transactionCostModel transaction cost model
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public AggregatedTrade(TradeType type, List<TradeFill> fills, CostModel transactionCostModel) {
         this(type, summarizeFills(fills), transactionCostModel);

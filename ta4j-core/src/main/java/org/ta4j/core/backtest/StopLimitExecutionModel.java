@@ -29,14 +29,14 @@ import org.ta4j.core.num.Num;
  * trading records.
  * </p>
  *
- * @since 0.22.3
+ * @since 0.22.4
  */
 public class StopLimitExecutionModel implements TradeExecutionModel {
 
     /**
      * Base price source used when creating stop/limit levels from a signal.
      *
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public enum ReferencePrice {
         /** Use the current bar close. */
@@ -62,7 +62,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      * @param limitOffsetRatio    limit offset ratio
      * @param maxBarParticipation max per-bar fill participation in (0,1]
      * @param maxBarsToFill       order time-to-live in bars (>= 1)
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public StopLimitExecutionModel(Num stopTriggerRatio, Num limitOffsetRatio, Num maxBarParticipation,
             int maxBarsToFill) {
@@ -77,7 +77,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      * @param maxBarParticipation max per-bar fill participation in (0,1]
      * @param maxBarsToFill       order time-to-live in bars (>= 1)
      * @param referencePrice      base signal price source
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public StopLimitExecutionModel(Num stopTriggerRatio, Num limitOffsetRatio, Num maxBarParticipation,
             int maxBarsToFill, ReferencePrice referencePrice) {
@@ -110,7 +110,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      *
      * @param tradingRecord trading record
      * @return rejected orders
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public List<RejectedOrder> getRejectedOrders(TradingRecord tradingRecord) {
         List<RejectedOrder> rejected = rejectedOrders.get(tradingRecord);
@@ -122,7 +122,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      *
      * @param tradingRecord trading record
      * @return pending order snapshot
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public Optional<PendingOrderSnapshot> getPendingOrder(TradingRecord tradingRecord) {
         PendingOrder order = pendingOrders.get(tradingRecord);
@@ -299,7 +299,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      * @param requestedAmount requested amount
      * @param filledAmount    amount filled before rejection
      * @param reason          rejection reason
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public record RejectedOrder(int signalIndex, int rejectionIndex, TradeType tradeType, Num requestedAmount,
             Num filledAmount, String reason) {
@@ -318,7 +318,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      * @param expiryIndex     last fillable bar index
      * @param triggered       true if stop trigger was reached
      * @param fills           current fills
-     * @since 0.22.3
+     * @since 0.22.4
      */
     public record PendingOrderSnapshot(int signalIndex, int activationIndex, TradeType tradeType, Num requestedAmount,
             Num filledAmount, Num stopPrice, Num limitPrice, int expiryIndex, boolean triggered,

@@ -72,7 +72,7 @@ public interface TradingRecord extends Serializable {
      * @throws UnsupportedOperationException if {@code trade} contains multiple
      *                                       fills and this implementation has not
      *                                       overridden this method
-     * @since 0.22.3
+     * @since 0.22.4
      */
     default void operate(Trade trade) {
         Objects.requireNonNull(trade, "trade");
@@ -108,7 +108,7 @@ public interface TradingRecord extends Serializable {
      *
      * @param trade the entry trade to place
      * @return true if the entry has been placed, false otherwise
-     * @since 0.22.3
+     * @since 0.22.4
      */
     default boolean enter(Trade trade) {
         Objects.requireNonNull(trade, "trade");
@@ -144,7 +144,7 @@ public interface TradingRecord extends Serializable {
      *
      * @param trade the exit trade to place
      * @return true if the exit has been placed, false otherwise
-     * @since 0.22.3
+     * @since 0.22.4
      */
     default boolean exit(Trade trade) {
         Objects.requireNonNull(trade, "trade");
