@@ -6,7 +6,6 @@ package org.ta4j.core.backtest;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.backtest.ExecutionModelSupport.ExecutionTarget;
-import org.ta4j.core.backtest.ExecutionModelSupport.PriceSource;
 import org.ta4j.core.num.Num;
 
 /**
@@ -23,7 +22,7 @@ public class TradeOnNextOpenModel implements TradeExecutionModel {
     @Override
     public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
         ExecutionTarget executionTarget = ExecutionModelSupport.resolveExecutionTarget(index, barSeries,
-                PriceSource.NEXT_OPEN);
+                TradeExecutionModel.PriceSource.NEXT_OPEN);
         if (executionTarget != null) {
             tradingRecord.operate(executionTarget.index(), executionTarget.price(), amount);
         }

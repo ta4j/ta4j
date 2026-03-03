@@ -33,23 +33,11 @@ import org.ta4j.core.num.Num;
  */
 public class StopLimitExecutionModel implements TradeExecutionModel {
 
-    /**
-     * Base price source used when creating stop/limit levels from a signal.
-     *
-     * @since 0.22.4
-     */
-    public enum ReferencePrice {
-        /** Use the current bar close. */
-        CURRENT_CLOSE,
-        /** Use the next bar open. */
-        NEXT_OPEN
-    }
-
     private final Num stopTriggerRatio;
     private final Num limitOffsetRatio;
     private final Num maxBarParticipationRate;
     private final int maxBarsToFill;
-    private final ReferencePrice referencePrice;
+    private final PriceSource priceSource;
 
     private final Map<TradingRecord, PendingOrder> pendingOrders = new IdentityHashMap<>();
     private final Map<TradingRecord, List<RejectedOrder>> rejectedOrders = new IdentityHashMap<>();
@@ -66,7 +54,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      */
     public StopLimitExecutionModel(Num stopTriggerRatio, Num limitOffsetRatio, Num maxBarParticipation,
             int maxBarsToFill) {
-        this(stopTriggerRatio, limitOffsetRatio, maxBarParticipation, maxBarsToFill, ReferencePrice.NEXT_OPEN);
+        this(stopTriggerRatio, limitOffsetRatio, maxBarParticipation, maxBarsToFill, PriceSource.NEXT_OPEN);
     }
 
     /**
@@ -76,15 +64,15 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      * @param limitOffsetRatio    limit offset ratio (must be >= stop ratio)
      * @param maxBarParticipation max per-bar fill participation in (0,1]
      * @param maxBarsToFill       order time-to-live in bars (>= 1)
-     * @param referencePrice      base signal price source
+     * @param priceSource         base signal price source
      * @since 0.22.4
      */
     public StopLimitExecutionModel(Num stopTriggerRatio, Num limitOffsetRatio, Num maxBarParticipation,
-            int maxBarsToFill, ReferencePrice referencePrice) {
+            int maxBarsToFill, PriceSource priceSource) {
         validateRatio(stopTriggerRatio, "stopTriggerRatio");
         validateRatio(limitOffsetRatio, "limitOffsetRatio");
         validateRatio(maxBarParticipation, "maxBarParticipation");
-        Objects.requireNonNull(referencePrice, "referencePrice");
+        Objects.requireNonNull(priceSource, "priceSource");
         Num one = stopTriggerRatio.getNumFactory().one();
         if (maxBarParticipation.isZero()) {
             throw new IllegalArgumentException("maxBarParticipation must be > 0");
@@ -102,7 +90,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         this.limitOffsetRatio = limitOffsetRatio;
         this.maxBarParticipationRate = maxBarParticipation;
         this.maxBarsToFill = maxBarsToFill;
-        this.referencePrice = referencePrice;
+        this.priceSource = priceSource;
     }
 
     /**
@@ -208,7 +196,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     }
 
     private ReferenceTarget resolveReferenceTarget(int signalIndex, BarSeries barSeries) {
-        if (referencePrice == ReferencePrice.CURRENT_CLOSE) {
+        if (priceSource == PriceSource.CURRENT_CLOSE) {
             return new ReferenceTarget(signalIndex, barSeries.getBar(signalIndex).getClosePrice());
         }
         int referenceIndex = signalIndex + 1;

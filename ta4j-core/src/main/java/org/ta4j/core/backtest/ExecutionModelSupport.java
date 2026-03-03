@@ -18,15 +18,12 @@ import org.ta4j.core.num.Num;
  */
 final class ExecutionModelSupport {
 
-    enum PriceSource {
-        CURRENT_CLOSE, NEXT_OPEN
-    }
-
     private ExecutionModelSupport() {
     }
 
-    static ExecutionTarget resolveExecutionTarget(int signalIndex, BarSeries barSeries, PriceSource priceSource) {
-        if (priceSource == PriceSource.CURRENT_CLOSE) {
+    static ExecutionTarget resolveExecutionTarget(int signalIndex, BarSeries barSeries,
+            TradeExecutionModel.PriceSource priceSource) {
+        if (priceSource == TradeExecutionModel.PriceSource.CURRENT_CLOSE) {
             return new ExecutionTarget(signalIndex, barSeries.getBar(signalIndex).getClosePrice());
         }
         int executionIndex = signalIndex + 1;

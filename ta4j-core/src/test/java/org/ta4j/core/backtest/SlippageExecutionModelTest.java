@@ -32,7 +32,7 @@ public class SlippageExecutionModelTest extends AbstractIndicatorTest<BarSeries,
 
         Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
         TradingRecord tradingRecord = new BarSeriesManager(series,
-                new SlippageExecutionModel(slippage, SlippageExecutionModel.ExecutionPrice.NEXT_OPEN)).run(strategy);
+                new SlippageExecutionModel(slippage, TradeExecutionModel.PriceSource.NEXT_OPEN)).run(strategy);
 
         assertEquals(1, tradingRecord.getPositions().size());
         Position position = tradingRecord.getPositions().getFirst();
@@ -52,8 +52,7 @@ public class SlippageExecutionModelTest extends AbstractIndicatorTest<BarSeries,
 
         Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
         TradingRecord tradingRecord = new BarSeriesManager(series,
-                new SlippageExecutionModel(slippage, SlippageExecutionModel.ExecutionPrice.CURRENT_CLOSE))
-                .run(strategy);
+                new SlippageExecutionModel(slippage, TradeExecutionModel.PriceSource.CURRENT_CLOSE)).run(strategy);
 
         assertEquals(1, tradingRecord.getPositions().size());
         Position position = tradingRecord.getPositions().getFirst();
@@ -72,31 +71,31 @@ public class SlippageExecutionModelTest extends AbstractIndicatorTest<BarSeries,
         Strategy strategy = new BaseStrategy(new FixedRule(2), new FixedRule(2));
 
         TradingRecord tradingRecord = new BarSeriesManager(series,
-                new SlippageExecutionModel(numOf(0.01), SlippageExecutionModel.ExecutionPrice.NEXT_OPEN)).run(strategy);
+                new SlippageExecutionModel(numOf(0.01), TradeExecutionModel.PriceSource.NEXT_OPEN)).run(strategy);
 
         assertTrue(tradingRecord.getTrades().isEmpty());
     }
 
     @Test
     public void rejectsInvalidSlippageRatios() {
-        assertThrows(IllegalArgumentException.class, () -> new SlippageExecutionModel(numFactory.minusOne(),
-                SlippageExecutionModel.ExecutionPrice.NEXT_OPEN));
         assertThrows(IllegalArgumentException.class,
-                () -> new SlippageExecutionModel(numFactory.one(), SlippageExecutionModel.ExecutionPrice.NEXT_OPEN));
+                () -> new SlippageExecutionModel(numFactory.minusOne(), TradeExecutionModel.PriceSource.NEXT_OPEN));
+        assertThrows(IllegalArgumentException.class,
+                () -> new SlippageExecutionModel(numFactory.one(), TradeExecutionModel.PriceSource.NEXT_OPEN));
     }
 
     @Test
     public void exposesConfiguredParameters() {
         Num slippage = numFactory.numOf(0.02);
         SlippageExecutionModel model = new SlippageExecutionModel(slippage,
-                SlippageExecutionModel.ExecutionPrice.CURRENT_CLOSE);
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
 
         assertEquals(slippage, model.getSlippageRatio());
-        assertEquals(SlippageExecutionModel.ExecutionPrice.CURRENT_CLOSE, model.getExecutionPrice());
+        assertEquals(TradeExecutionModel.PriceSource.CURRENT_CLOSE, model.getPriceSource());
     }
 
     @Test
-    public void rejectsNullExecutionPrice() {
+    public void rejectsNullPriceSource() {
         assertThrows(NullPointerException.class, () -> new SlippageExecutionModel(numFactory.zero(), null));
     }
 

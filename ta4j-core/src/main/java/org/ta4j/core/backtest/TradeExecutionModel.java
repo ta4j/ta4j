@@ -16,6 +16,18 @@ import org.ta4j.core.num.Num;
 public interface TradeExecutionModel {
 
     /**
+     * Common price-source contract for execution models.
+     *
+     * @since 0.22.4
+     */
+    enum PriceSource {
+        /** Use the current bar close price. */
+        CURRENT_CLOSE,
+        /** Use the next bar open price. */
+        NEXT_OPEN
+    }
+
+    /**
      * Processes per-bar execution state before strategy signals are evaluated.
      *
      * <p>

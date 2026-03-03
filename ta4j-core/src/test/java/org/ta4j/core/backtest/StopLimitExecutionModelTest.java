@@ -172,7 +172,7 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(10d).add();
 
         StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
-                numFactory.one(), 2, StopLimitExecutionModel.ReferencePrice.CURRENT_CLOSE);
+                numFactory.one(), 2, TradeExecutionModel.PriceSource.CURRENT_CLOSE);
         TradingRecord tradingRecord = new BaseTradingRecord();
 
         model.execute(0, tradingRecord, series, numFactory.one());
@@ -193,7 +193,7 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         tradingRecord.operate(0, numFactory.hundred(), numFactory.numOf(5));
 
         StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
-                numFactory.one(), 2, StopLimitExecutionModel.ReferencePrice.CURRENT_CLOSE);
+                numFactory.one(), 2, TradeExecutionModel.PriceSource.CURRENT_CLOSE);
         model.execute(1, tradingRecord, series, numFactory.one());
 
         StopLimitExecutionModel.PendingOrderSnapshot pendingOrder = model.getPendingOrder(tradingRecord).orElseThrow();
@@ -209,7 +209,7 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         TradingRecord tradingRecord = new BaseTradingRecord();
         tradingRecord.operate(0, numFactory.hundred(), numFactory.numOf(5));
         StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numOf(0.5), 1,
-                StopLimitExecutionModel.ReferencePrice.CURRENT_CLOSE);
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
 
         model.execute(1, tradingRecord, series, numFactory.one());
         model.onBar(1, tradingRecord, series);
