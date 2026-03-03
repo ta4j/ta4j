@@ -16,7 +16,12 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ExecutionMatchPolicy;
+import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.LiveTrade;
+import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.Trade;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.criteria.ReturnRepresentation;
@@ -24,6 +29,7 @@ import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
 import org.ta4j.core.criteria.helpers.AverageCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**
@@ -222,6 +228,24 @@ public class AnalysisWindowTest {
 
         Num result = criterion.calculate(series, record, AnalysisWindow.barRange(4, 8), context);
         assertNumEquals(0, result);
+    }
+
+    @Test
+    public void fullyContainedPolicyIncludesEligibleLiveOpenLotsWithMarkToMarket() {
+        BarSeries series = buildSeries(10);
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        record.recordFill(6, new LiveTrade(6, series.getBar(6).getEndTime(), series.getBar(6).getClosePrice(),
+                series.numFactory().one(), null, ExecutionSide.BUY, null, null));
+        record.recordFill(7, new LiveTrade(7, series.getBar(7).getEndTime(), series.getBar(7).getClosePrice(),
+                series.numFactory().one(), null, ExecutionSide.BUY, null, null));
+        NetProfitLossCriterion criterion = new NetProfitLossCriterion();
+        AnalysisContext context = AnalysisContext.defaults()
+                .withPositionInclusionPolicy(AnalysisContext.PositionInclusionPolicy.FULLY_CONTAINED)
+                .withOpenPositionHandling(OpenPositionHandling.MARK_TO_MARKET);
+
+        Num result = criterion.calculate(series, record, AnalysisWindow.barRange(7, 8), context);
+        assertNumEquals(1, result);
     }
 
     @Test

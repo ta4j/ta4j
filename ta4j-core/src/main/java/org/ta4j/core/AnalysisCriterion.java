@@ -281,10 +281,14 @@ public interface AnalysisCriterion {
         }
 
         if (context.openPositionHandling() == OpenPositionHandling.MARK_TO_MARKET) {
-            Position syntheticPosition = createMarkToMarketPosition(series, source.getCurrentPosition(), end,
+            List<Position> openPositions = openPositionsForMarkToMarket(source, end, transactionCostModel,
                     holdingCostModel);
-            if (syntheticPosition != null && includeClosedPosition(syntheticPosition, start, end, inclusionPolicy)) {
-                includedPositions.add(syntheticPosition);
+            for (Position openPosition : openPositions) {
+                Position syntheticPosition = createMarkToMarketPosition(series, openPosition, end, holdingCostModel);
+                if (syntheticPosition != null
+                        && includeClosedPosition(syntheticPosition, start, end, inclusionPolicy)) {
+                    includedPositions.add(syntheticPosition);
+                }
             }
         }
 
@@ -316,6 +320,36 @@ public interface AnalysisCriterion {
                 ? Trade.sellAt(windowEndIndex, closePrice, amount, transactionCostModel)
                 : Trade.buyAt(windowEndIndex, closePrice, amount, transactionCostModel);
         return new Position(entryTrade, syntheticExit, transactionCostModel, holdingCostModel);
+    }
+
+    private static List<Position> openPositionsForMarkToMarket(TradingRecord source, int windowEndIndex,
+            CostModel transactionCostModel, CostModel holdingCostModel) {
+        if (source instanceof PositionLedger positionLedger) {
+            return openPositionsFromLedger(positionLedger, source.getStartingType(), windowEndIndex,
+                    transactionCostModel, holdingCostModel);
+        }
+        Position currentPosition = source.getCurrentPosition();
+        if (currentPosition == null || !currentPosition.isOpened()) {
+            return List.of();
+        }
+        return List.of(currentPosition);
+    }
+
+    private static List<Position> openPositionsFromLedger(PositionLedger positionLedger, TradeType startingType,
+            int windowEndIndex, CostModel transactionCostModel, CostModel holdingCostModel) {
+        ExecutionSide entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        List<Position> positions = new ArrayList<>();
+        for (OpenPosition openPosition : positionLedger.getOpenPositions()) {
+            for (PositionLot lot : openPosition.lots()) {
+                if (lot.entryIndex() > windowEndIndex) {
+                    continue;
+                }
+                LiveTrade entryTrade = new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
+                        lot.fee(), entrySide, lot.orderId(), lot.correlationId());
+                positions.add(new Position(entryTrade, transactionCostModel, holdingCostModel));
+            }
+        }
+        return positions;
     }
 
     private static boolean includeClosedPosition(Position position, int start, int end,
