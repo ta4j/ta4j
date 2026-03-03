@@ -251,18 +251,20 @@ public class AnalysisWindowTest {
     }
 
     @Test
-    public void projectedTradingRecordIsReadOnly() {
+    public void windowedCalculationDoesNotMutateSourceRecord() {
         BarSeries series = buildSeries(10);
         TradingRecord record = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(2, series));
         NumberOfPositionsCriterion criterion = new NumberOfPositionsCriterion();
         AnalysisContext context = AnalysisContext.defaults()
                 .withMissingHistoryPolicy(AnalysisContext.MissingHistoryPolicy.CLAMP);
-        AnalysisWindowing.ResolvedWindow resolved = AnalysisWindowing.resolve(series, AnalysisWindow.barRange(0, 3),
-                context);
-        TradingRecord projected = AnalysisWindowing.projectTradingRecord(series, record, resolved, context);
+        int originalTradeCount = record.getTrades().size();
+        int originalPositionCount = record.getPositionCount();
 
-        assertNumEquals(1, criterion.calculate(series, projected));
-        assertThrows(UnsupportedOperationException.class, () -> projected.enter(0));
+        Num result = criterion.calculate(series, record, AnalysisWindow.barRange(0, 3), context);
+
+        assertNumEquals(1, result);
+        assertEquals(originalTradeCount, record.getTrades().size());
+        assertEquals(originalPositionCount, record.getPositionCount());
     }
 
     @Test
