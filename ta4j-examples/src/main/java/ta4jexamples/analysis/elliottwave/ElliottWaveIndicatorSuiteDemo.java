@@ -95,14 +95,8 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * <p>
  * For simpler usage examples with specific assets, see:
  * <ul>
- * <li>{@link BTCUSDElliottWaveAnalysis} - Bitcoin analysis example</li>
- * <li>{@link BTCUSDLiveElliottWaveAnalysis} - live Bitcoin analysis
- * example</li>
- * <li>{@link ETHUSDElliottWaveAnalysis} - Ethereum analysis example</li>
- * <li>{@link ETHUSDLiveElliottWaveAnalysis} - live Ethereum analysis
- * example</li>
- * <li>{@link SP500ElliottWaveAnalysis} - S&P 500 index analysis example</li>
- * <li>{@link SP500LiveElliottWaveAnalysis} - live S&P 500 analysis example</li>
+ * <li>{@link ElliottWavePresetDemo} - preset launcher for ossified and live
+ * runs</li>
  * <li>{@link ElliottWaveAdaptiveSwingAnalysis} - adaptive swing detection
  * demo</li>
  * <li>{@link ElliottWaveMultiDegreeAnalysisDemo} - cross-degree scenario
@@ -118,9 +112,7 @@ import ta4jexamples.datasources.BarSeriesDataSource;
  * @see org.ta4j.core.indicators.elliott.ElliottSwingIndicator
  * @see org.ta4j.core.indicators.elliott.ElliottPhaseIndicator
  * @see org.ta4j.core.indicators.elliott.ElliottScenarioIndicator
- * @see BTCUSDElliottWaveAnalysis
- * @see ETHUSDElliottWaveAnalysis
- * @see SP500ElliottWaveAnalysis
+ * @see ElliottWavePresetDemo
  * @since 0.22.4
  */
 public class ElliottWaveIndicatorSuiteDemo {
