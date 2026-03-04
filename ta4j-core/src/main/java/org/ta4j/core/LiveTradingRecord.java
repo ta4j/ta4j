@@ -270,7 +270,13 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
 
     @Override
     public void operate(int index, Num price, Num amount) {
-        core().applySynthetic(index, nextSyntheticTradeType(), price, amount, transactionCostModel);
+        lock.writeLock().lock();
+        try {
+            TradeType tradeType = positionBook.openLots().isEmpty() ? startingType : startingType.complementType();
+            core().applySynthetic(index, tradeType, price, amount, transactionCostModel);
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
     private void recordTradeFill(TradeType tradeType, TradeFill fill, String tradeOrderId, String tradeCorrelationId,
@@ -357,13 +363,6 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         } finally {
             lock.writeLock().unlock();
         }
-    }
-
-    private TradeType nextSyntheticTradeType() {
-        if (core().getOpenPositionsSnapshot().isEmpty()) {
-            return startingType;
-        }
-        return startingType.complementType();
     }
 
     private List<OpenPosition> openPositionsSnapshot() {

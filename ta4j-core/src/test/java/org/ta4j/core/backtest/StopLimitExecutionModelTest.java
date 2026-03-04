@@ -14,10 +14,13 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.BaseTrade;
+import org.ta4j.core.ExecutionMatchPolicy;
+import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -248,6 +251,49 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         assertEquals(1, model.getRejectedOrders(tradingRecord).size());
         StopLimitExecutionModel.RejectedOrder rejection = model.getRejectedOrders(tradingRecord).getFirst();
         assertEquals(numFactory.one(), rejection.filledAmount());
+    }
+
+    @Test
+    public void partialExitOrderExpiryCommitsFilledPortionForLiveTradingRecord() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(20d).add();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(2d).add();
+
+        LiveTradingRecord tradingRecord = new LiveTradingRecord(Trade.TradeType.BUY, ExecutionMatchPolicy.FIFO,
+                new ZeroCostModel(), new ZeroCostModel(), null, null);
+        tradingRecord.operate(0, numFactory.hundred(), numFactory.numOf(5));
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numOf(0.5), 1,
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+
+        model.execute(1, tradingRecord, series, numFactory.one());
+        model.onBar(1, tradingRecord, series);
+
+        assertEquals(3, tradingRecord.getTrades().size());
+        assertTrue(tradingRecord.getCurrentPosition().isOpened());
+        assertEquals(numFactory.numOf(4), tradingRecord.getCurrentPosition().getEntry().getAmount());
+        assertEquals(1, model.getRejectedOrders(tradingRecord).size());
+        StopLimitExecutionModel.RejectedOrder rejection = model.getRejectedOrders(tradingRecord).getFirst();
+        assertEquals(numFactory.one(), rejection.filledAmount());
+    }
+
+    @Test
+    public void stalePendingOrderExpiresWhenNextSignalArrives() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 101d, 102d, 103d)
+                .build();
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numOf(0.5), numOf(0.6), numFactory.one(), 1);
+        TradingRecord tradingRecord = new BaseTradingRecord();
+
+        model.execute(0, tradingRecord, series, numFactory.one());
+        assertTrue(model.getPendingOrder(tradingRecord).isPresent());
+
+        model.execute(2, tradingRecord, series, numFactory.one());
+
+        StopLimitExecutionModel.PendingOrderSnapshot pendingOrder = model.getPendingOrder(tradingRecord).orElseThrow();
+        assertEquals(2, pendingOrder.signalIndex());
+        assertEquals(1, model.getRejectedOrders(tradingRecord).size());
+        StopLimitExecutionModel.RejectedOrder rejection = model.getRejectedOrders(tradingRecord).getFirst();
+        assertTrue(rejection.reason().contains("expired"));
     }
 
     @Test

@@ -12,6 +12,7 @@ import java.util.Optional;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.PositionLedger;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradeFill;
@@ -26,9 +27,8 @@ import org.ta4j.core.num.Num;
  * Strategy signals place stop-limit orders. Pending orders are evaluated on
  * each bar through {@link #onBar(int, TradingRecord, BarSeries)} and can be
  * filled progressively based on available bar volume participation. Partially
- * filled entry orders are committed on expiry; partially filled exit orders are
- * rejected to keep position accounting consistent with single-entry/single-exit
- * trading records. Generated fills include execution side and bar end
+ * filled orders are committed on expiry when the target trading record supports
+ * partial-exit accounting. Generated fills include execution side and bar end
  * timestamps so backtest fills match live-fill metadata shape.
  * </p>
  *
@@ -127,6 +127,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
         Objects.requireNonNull(tradingRecord, "tradingRecord");
         Objects.requireNonNull(barSeries, "barSeries");
+        expireIfStale(index, tradingRecord);
         if (amount == null || amount.isNaN() || amount.isZero() || amount.isNegative()) {
             Num requestedAmount = amountOrZero(amount, barSeries);
             addRejectedOrder(tradingRecord,
@@ -184,12 +185,34 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         }
 
         if (index >= order.expiryIndex) {
-            if (order.hasAnyFill() && order.tradeType == tradingRecord.getStartingType()) {
-                tradingRecord.operate(order.toTrade(tradingRecord));
-            }
-            addRejectedOrder(tradingRecord, order.toExpiryRejection(index));
-            pendingOrders.remove(tradingRecord);
+            expireOrder(index, tradingRecord, order);
         }
+    }
+
+    private void expireIfStale(int index, TradingRecord tradingRecord) {
+        PendingOrder order = pendingOrders.get(tradingRecord);
+        if (order == null || index <= order.expiryIndex) {
+            return;
+        }
+        expireOrder(index, tradingRecord, order);
+    }
+
+    private void expireOrder(int index, TradingRecord tradingRecord, PendingOrder order) {
+        if (shouldCommitPartial(order, tradingRecord)) {
+            tradingRecord.operate(order.toTrade(tradingRecord));
+        }
+        addRejectedOrder(tradingRecord, order.toExpiryRejection(index));
+        pendingOrders.remove(tradingRecord);
+    }
+
+    private static boolean shouldCommitPartial(PendingOrder order, TradingRecord tradingRecord) {
+        if (!order.hasAnyFill()) {
+            return false;
+        }
+        if (order.tradeType == tradingRecord.getStartingType()) {
+            return true;
+        }
+        return tradingRecord instanceof PositionLedger;
     }
 
     private static void validateRatio(Num ratio, String name) {
