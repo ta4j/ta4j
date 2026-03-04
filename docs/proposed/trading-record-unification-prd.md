@@ -119,25 +119,25 @@ No new public top-level abstractions unless unavoidable.
 - [x] Consolidate redundant last-trade caches:
   - removed `buyTrades`, `sellTrades`, `entryTrades`, `exitTrades` from `BaseTradingRecord`
   - unified `getLastTrade(...)` / `getLastEntry()` / `getLastExit()` logic via `TradingRecord` default methods
-- [ ] Delegate instead to core snapshots and derived views.
-- [ ] Rewire these methods:
+- [x] Delegate instead to core snapshots and derived views.
+- [x] Rewire these methods:
   - [x] `operate(int, Num, Num)`
   - [x] `operate(Trade)`
   - [x] `enter(int, Num, Num)`
   - [x] `exit(int, Num, Num)`
-  - [ ] `getPositions()`
-  - [ ] `getTrades()`
-  - [ ] `getLastTrade()`
-  - [ ] `getLastTrade(TradeType)`
-  - [ ] `getLastEntry()`
-  - [ ] `getLastExit()`
-  - [ ] `getCurrentPosition()`
+  - [x] `getPositions()`
+  - [x] `getTrades()`
+  - [x] `getLastTrade()`
+  - [x] `getLastTrade(TradeType)`
+  - [x] `getLastEntry()`
+  - [x] `getLastExit()`
+  - [x] `getCurrentPosition()`
 
 - [x] Constructor migration:
   - [x] `BaseTradingRecord(TradeType, Integer, Integer, CostModel, CostModel)` should initialize the core.
   - [x] trade/position bootstrap constructors should call `operate(Trade)` through facade methods so construction path is identical to runtime path.
 
-- [ ] Compatibility requirement:
+- [x] Compatibility requirement:
   - Preserve current `BaseTradingRecord` behavior for sequence-based entry/exit flow and start/end index semantics.
 
 ## Phase D: Align `BarSeriesManager` to unified record path
@@ -157,9 +157,9 @@ No new public top-level abstractions unless unavoidable.
 
 ## Phase E: Final consolidation and deprecation strategy
 
-- [ ] Keep `LiveTradingRecord` and `BaseTradingRecord` as compatibility facades.
+- [x] Keep `LiveTradingRecord` and `BaseTradingRecord` as compatibility facades.
 - [ ] Mark duplicated behavior-only helpers for removal once facade parity is proven.
-- [ ] Remove any remaining internal code paths that bypass unified core.
+- [x] Remove any remaining internal code paths that bypass unified core.
 
 ## 7) QoL additions recommended
 
@@ -241,8 +241,8 @@ Mitigation: add micro-bench checks for `run(...)` hot path and large trade histo
 
 ## 12) Exit criteria
 
-- [ ] Both `BaseTradingRecord` and `LiveTradingRecord` mutate through one shared internal path.
-- [ ] No public method in core backtest/live flow requires concrete trade implementation types.
+- [x] Both `BaseTradingRecord` and `LiveTradingRecord` mutate through one shared internal path.
+- [x] No public method in core backtest/live flow requires concrete trade implementation types.
 - [x] All targeted and full-build tests are green.
-- [ ] Javadocs and changelog updated to reflect the unified model.
-- [ ] No unresolved parity regressions between backtest and live-shaped inputs.
+- [x] Javadocs and changelog updated to reflect the unified model.
+- [x] No unresolved parity regressions between backtest and live-shaped inputs.

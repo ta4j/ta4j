@@ -99,12 +99,28 @@ final class TradingRecordCore {
         return List.copyOf(trades);
     }
 
+    List<Trade> getTradesView() {
+        List<Trade> trades = tradesSupplier.get();
+        if (trades == null) {
+            return List.of();
+        }
+        return trades;
+    }
+
     List<Position> getClosedPositionsSnapshot() {
         List<Position> closedPositions = closedPositionsSupplier.get();
         if (closedPositions == null) {
             return List.of();
         }
         return List.copyOf(closedPositions);
+    }
+
+    List<Position> getClosedPositionsView() {
+        List<Position> closedPositions = closedPositionsSupplier.get();
+        if (closedPositions == null) {
+            return List.of();
+        }
+        return closedPositions;
     }
 
     List<OpenPosition> getOpenPositionsSnapshot() {

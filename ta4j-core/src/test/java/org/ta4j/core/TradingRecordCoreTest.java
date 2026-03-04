@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
@@ -86,6 +87,24 @@ class TradingRecordCoreTest {
         assertEquals(price, capturedPrice.get());
         assertEquals(amount, capturedAmount.get());
         assertEquals(transactionCostModel, capturedCostModel.get());
+    }
+
+    @Test
+    void exposesMutableViewsAndImmutableSnapshotsIndependently() {
+        List<Trade> trades = new ArrayList<>();
+        List<Position> positions = new ArrayList<>();
+        TradingRecordCore core = new TradingRecordCore(TradeType.BUY, () -> trades, () -> positions,
+                () -> new Position(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel()), List::of, () -> null,
+                () -> numFactory.zero(), null, null);
+
+        List<Trade> tradeView = core.getTradesView();
+        List<Position> closedPositionsView = core.getClosedPositionsView();
+
+        assertSame(trades, tradeView);
+        assertSame(positions, closedPositionsView);
+        assertThrows(UnsupportedOperationException.class, () -> core.getTradesSnapshot().add(trade(TradeType.BUY)));
+        assertThrows(UnsupportedOperationException.class, () -> core.getClosedPositionsSnapshot()
+                .add(new Position(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel())));
     }
 
     private TradingRecordCore emptyCore(TradingRecordCore.TradeApplier tradeApplier,

@@ -206,7 +206,7 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public Position getCurrentPosition() {
-        return currentPosition;
+        return core().getCurrentPositionView();
     }
 
     @Override
@@ -258,12 +258,12 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public List<Position> getPositions() {
-        return positions;
+        return core().getClosedPositionsView();
     }
 
     @Override
     public List<Trade> getTrades() {
-        return trades;
+        return core().getTradesView();
     }
 
     @Override
