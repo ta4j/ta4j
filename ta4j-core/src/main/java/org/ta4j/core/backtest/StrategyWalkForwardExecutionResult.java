@@ -4,12 +4,17 @@
 package org.ta4j.core.backtest;
 
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.TradingRecord;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
@@ -79,26 +84,104 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
     }
 
     /**
+     * @return fold trading records in execution order
+     * @since 0.22.4
+     */
+    public List<TradingRecord> tradingRecords() {
+        return folds.stream().map(FoldResult::tradingRecord).toList();
+    }
+
+    /**
+     * Evaluates one criterion for every fold.
+     *
+     * @param criterion analysis criterion
+     * @return criterion values in fold execution order
+     * @since 0.22.4
+     */
+    public List<Num> criterionValues(AnalysisCriterion criterion) {
+        return criterionValuesFor(criterion, folds);
+    }
+
+    /**
+     * Evaluates one criterion for every in-sample fold.
+     *
+     * @param criterion analysis criterion
+     * @return criterion values in fold execution order
+     * @since 0.22.4
+     */
+    public List<Num> inSampleCriterionValues(AnalysisCriterion criterion) {
+        return criterionValuesFor(criterion, inSampleFolds());
+    }
+
+    /**
+     * Evaluates one criterion for every out-of-sample fold.
+     *
+     * @param criterion analysis criterion
+     * @return criterion values in fold execution order
+     * @since 0.22.4
+     */
+    public List<Num> outOfSampleCriterionValues(AnalysisCriterion criterion) {
+        return criterionValuesFor(criterion, outOfSampleFolds());
+    }
+
+    /**
+     * Evaluates one criterion for the holdout fold when present.
+     *
+     * @param criterion analysis criterion
+     * @return optional criterion value for the holdout fold
+     * @since 0.22.4
+     */
+    public Optional<Num> holdoutCriterionValue(AnalysisCriterion criterion) {
+        Objects.requireNonNull(criterion, "criterion");
+        return holdoutFold().map(fold -> criterion.calculate(barSeries, fold.tradingRecord()));
+    }
+
+    /**
+     * Evaluates one criterion and returns values keyed by fold id.
+     *
+     * @param criterion analysis criterion
+     * @return ordered fold-id to criterion value map
+     * @since 0.22.4
+     */
+    public Map<String, Num> criterionValuesByFold(AnalysisCriterion criterion) {
+        Objects.requireNonNull(criterion, "criterion");
+        Map<String, Num> values = new LinkedHashMap<>();
+        for (FoldResult fold : folds) {
+            values.put(fold.split().foldId(), criterion.calculate(barSeries, fold.tradingRecord()));
+        }
+        return Map.copyOf(values);
+    }
+
+    private List<Num> criterionValuesFor(AnalysisCriterion criterion, List<FoldResult> selectedFolds) {
+        Objects.requireNonNull(criterion, "criterion");
+        return selectedFolds.stream().map(fold -> criterion.calculate(barSeries, fold.tradingRecord())).toList();
+    }
+
+    /**
      * Fold-level walk-forward execution output.
      *
      * @param split            fold boundary metadata
+     * @param tradingRecord    generated trading record for the fold's test window
      * @param tradingStatement generated trading statement for the fold's test
      *                         window
      * @param runtime          fold runtime duration
      * @since 0.22.4
      */
-    public record FoldResult(WalkForwardSplit split, TradingStatement tradingStatement, Duration runtime) {
+    public record FoldResult(WalkForwardSplit split, TradingRecord tradingRecord, TradingStatement tradingStatement,
+            Duration runtime) {
 
         /**
          * Creates a validated fold result.
          *
          * @param split            fold boundary metadata
+         * @param tradingRecord    generated trading record for the fold
          * @param tradingStatement generated trading statement for the fold
          * @param runtime          fold runtime duration
          * @since 0.22.4
          */
         public FoldResult {
             split = Objects.requireNonNull(split, "split");
+            tradingRecord = Objects.requireNonNull(tradingRecord, "tradingRecord");
             tradingStatement = Objects.requireNonNull(tradingStatement, "tradingStatement");
             runtime = Objects.requireNonNull(runtime, "runtime");
             if (runtime.isNegative()) {

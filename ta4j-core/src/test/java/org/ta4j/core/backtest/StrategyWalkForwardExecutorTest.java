@@ -6,17 +6,20 @@ package org.ta4j.core.backtest;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.Test;
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.criteria.NumberOfPositionsCriterion;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -80,12 +83,12 @@ public class StrategyWalkForwardExecutorTest extends AbstractIndicatorTest<BarSe
         StrategyWalkForwardExecutionResult result = executor.execute(strategy, config);
         StrategyWalkForwardExecutionResult.FoldResult tradedFold = result.folds()
                 .stream()
-                .filter(fold -> !fold.tradingStatement().getTradingRecord().getPositions().isEmpty())
+                .filter(fold -> !fold.tradingRecord().getPositions().isEmpty())
                 .findFirst()
                 .orElse(null);
 
         assertNotNull(tradedFold);
-        Trade entry = tradedFold.tradingStatement().getTradingRecord().getPositions().getFirst().getEntry();
+        Trade entry = tradedFold.tradingRecord().getPositions().getFirst().getEntry();
         assertEquals(Trade.TradeType.SELL, entry.getType());
         assertEquals(series.numFactory().one(), entry.getAmount());
     }
@@ -104,6 +107,51 @@ public class StrategyWalkForwardExecutorTest extends AbstractIndicatorTest<BarSe
 
         assertEquals(foldCount, inSampleCount + outOfSampleCount);
         assertEquals(result.holdoutFold().isPresent(), outOfSampleCount > 0);
+    }
+
+    @Test
+    public void resultExposesFoldTradingRecords() {
+        BarSeries series = buildSeries(48);
+        Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series);
+
+        StrategyWalkForwardExecutionResult result = executor.execute(strategy, walkForwardConfig());
+
+        assertEquals(result.folds().size(), result.tradingRecords().size());
+        for (StrategyWalkForwardExecutionResult.FoldResult fold : result.folds()) {
+            assertSame(fold.tradingRecord(), fold.tradingStatement().getTradingRecord());
+        }
+    }
+
+    @Test
+    public void resultCriterionHelpersUseAnalysisCriterionOnFoldTradingRecords() {
+        BarSeries series = buildSeries(48);
+        Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series);
+        StrategyWalkForwardExecutionResult result = executor.execute(strategy, walkForwardConfig());
+        AnalysisCriterion criterion = new NumberOfPositionsCriterion();
+
+        List<Num> expectedAll = result.folds()
+                .stream()
+                .map(fold -> criterion.calculate(series, fold.tradingRecord()))
+                .toList();
+
+        assertEquals(expectedAll, result.criterionValues(criterion));
+        assertEquals(result.inSampleFolds().size(), result.inSampleCriterionValues(criterion).size());
+        assertEquals(result.outOfSampleFolds().size(), result.outOfSampleCriterionValues(criterion).size());
+        assertEquals(result.folds().size(), result.criterionValuesByFold(criterion).size());
+        for (StrategyWalkForwardExecutionResult.FoldResult fold : result.folds()) {
+            assertEquals(criterion.calculate(series, fold.tradingRecord()),
+                    result.criterionValuesByFold(criterion).get(fold.split().foldId()));
+        }
+
+        if (result.holdoutFold().isPresent()) {
+            Num expectedHoldout = criterion.calculate(series, result.holdoutFold().orElseThrow().tradingRecord());
+            assertTrue(result.holdoutCriterionValue(criterion).isPresent());
+            assertEquals(expectedHoldout, result.holdoutCriterionValue(criterion).orElseThrow());
+        } else {
+            assertFalse(result.holdoutCriterionValue(criterion).isPresent());
+        }
     }
 
     private BarSeries buildSeries(int bars) {
