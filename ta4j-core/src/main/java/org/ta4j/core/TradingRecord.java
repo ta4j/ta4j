@@ -22,6 +22,18 @@ import org.ta4j.core.num.Num;
  * <li>check whether some {@link Rule rules} are satisfied (while running a
  * strategy)
  * </ul>
+ *
+ * <p>
+ * {@link Trade} is the public trade contract. Concrete trade implementations
+ * are internal details and should not be required by strategy or backtest code.
+ * </p>
+ *
+ * <p>
+ * Execution metadata on trades/fills ({@code time}, {@code side},
+ * {@code orderId}, {@code correlationId}) may be missing in simulated
+ * environments. Implementations should preserve this metadata when provided and
+ * apply deterministic fallbacks when it is absent.
+ * </p>
  */
 public interface TradingRecord extends Serializable {
 

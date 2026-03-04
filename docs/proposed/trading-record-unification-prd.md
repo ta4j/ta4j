@@ -211,12 +211,12 @@ No new public top-level abstractions unless unavoidable.
 
 ## 9) Documentation and Javadoc work
 
-- [ ] `TradingRecord` Javadoc:
-  - clarify `Trade` is public contract and metadata optionality.
+- [x] `TradingRecord` Javadoc:
+  - clarified `Trade` as public contract and metadata optionality/fallback expectations.
 - [ ] `BaseTradingRecord` and `LiveTradingRecord` Javadocs:
   - explicitly state they are facades over shared internals (once done).
-- [ ] `BarSeriesManager` docs:
-  - clarify record creation strategy and default behavior.
+- [x] `BarSeriesManager` docs:
+  - clarified record creation strategy and default behavior via `TradingRecordFactory`.
 - [ ] `CHANGELOG.md` unreleased notes:
   - explain user-visible unification in plain terms with examples.
 

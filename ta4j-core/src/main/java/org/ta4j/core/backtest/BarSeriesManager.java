@@ -18,6 +18,13 @@ import org.ta4j.core.num.Num;
 /**
  * A manager for {@link BarSeries} objects used for backtesting. Allows to run a
  * {@link Strategy trading strategy} over the managed bar series.
+ *
+ * <p>
+ * Default {@code run(...)} overloads create a fresh trading record through this
+ * manager's configured {@link TradingRecordFactory}. Existing behavior remains
+ * unchanged by default ({@link BaseTradingRecord}), while callers can inject a
+ * custom record implementation for unified backtest/live execution paths.
+ * </p>
  */
 public class BarSeriesManager {
 
