@@ -32,7 +32,8 @@ import org.ta4j.core.walkforward.WalkForwardSplit;
  * @since 0.22.4
  */
 public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy strategy, WalkForwardConfig config,
-        List<FoldResult> folds, WalkForwardRuntimeReport runtimeReport) {
+        List<FoldResult> folds,
+        WalkForwardRuntimeReport runtimeReport) implements TradingStatementExecutionResult<WalkForwardRuntimeReport> {
 
     /**
      * Creates a validated result.

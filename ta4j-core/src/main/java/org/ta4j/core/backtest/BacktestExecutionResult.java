@@ -24,7 +24,7 @@ import java.util.*;
  * @since 0.19
  */
 public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement> tradingStatements,
-        BacktestRuntimeReport runtimeReport) {
+        BacktestRuntimeReport runtimeReport) implements TradingStatementExecutionResult<BacktestRuntimeReport> {
 
     /**
      * Ensures properties are non-null.
@@ -43,6 +43,12 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
     /**
      * Returns the top strategies sorted by the provided analysis criteria in order
      * of importance.
+     * <p>
+     * This method preserves the legacy lexicographic behavior where the first
+     * criterion is primary and later criteria are tie-breakers. For weighted and
+     * normalized ranking, use
+     * {@link #getTopStrategiesWeighted(int, RankingProfile)}.
+     * </p>
      *
      * @param limit    the maximum number of strategies to return
      * @param criteria the analysis criteria to sort by, in order of importance
@@ -67,6 +73,12 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
     /**
      * Returns the top strategies sorted by the provided analysis criteria in order
      * of importance.
+     * <p>
+     * This method preserves the legacy lexicographic behavior where the first
+     * criterion is primary and later criteria are tie-breakers. For weighted and
+     * normalized ranking, use
+     * {@link #getTopStrategiesWeighted(int, RankingProfile)}.
+     * </p>
      * <p>
      * Performance: Uses a hybrid approach that selects the optimal algorithm based
      * on the limit size relative to the total number of strategies. For small
@@ -127,6 +139,41 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         }
 
         // Attach criterion scores to the returned statements
+        return attachCriterionScores(topStatements, criterionScoresMap);
+    }
+
+    /**
+     * Returns the top strategies using weighted, normalized criterion ranking.
+     * <p>
+     * Multipliers are normalized internally so any positive scale is accepted (for
+     * example {@code 1.5/1.1/0.8} and {@code 15/11/8} produce equivalent weight
+     * proportions).
+     * </p>
+     *
+     * @param limit   the maximum number of strategies to return
+     * @param profile weighted ranking profile
+     * @return the top trading statements ordered by composite weighted score
+     * @throws NullPointerException     if profile is null
+     * @throws IllegalArgumentException if limit is negative
+     * @since 0.22.4
+     */
+    public List<TradingStatement> getTopStrategiesWeighted(int limit, RankingProfile profile) {
+        if (limit < 0) {
+            throw new IllegalArgumentException("limit must not be negative");
+        }
+        if (limit == 0 || tradingStatements.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<RankedTradingStatement> rankedStatements = rankTradingStatements(profile);
+        int effectiveLimit = Math.min(limit, rankedStatements.size());
+        List<TradingStatement> topStatements = new ArrayList<>(effectiveLimit);
+        Map<TradingStatement, Map<AnalysisCriterion, Num>> criterionScoresMap = new IdentityHashMap<>(effectiveLimit);
+        for (int i = 0; i < effectiveLimit; i++) {
+            RankedTradingStatement rankedStatement = rankedStatements.get(i);
+            topStatements.add(rankedStatement.statement());
+            criterionScoresMap.put(rankedStatement.statement(), rankedStatement.rawScores());
+        }
         return attachCriterionScores(topStatements, criterionScoresMap);
     }
 
