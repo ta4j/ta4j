@@ -34,18 +34,6 @@ public class BaseTradingRecord implements TradingRecord {
     /** The recorded trades. */
     private final List<Trade> trades = new ArrayList<>();
 
-    /** The recorded BUY trades. */
-    private final List<Trade> buyTrades = new ArrayList<>();
-
-    /** The recorded SELL trades. */
-    private final List<Trade> sellTrades = new ArrayList<>();
-
-    /** The recorded entry trades. */
-    private final List<Trade> entryTrades = new ArrayList<>();
-
-    /** The recorded exit trades. */
-    private final List<Trade> exitTrades = new ArrayList<>();
-
     /** The entry type (BUY or SELL) in the trading session. */
     private final TradeType startingType;
 
@@ -176,8 +164,7 @@ public class BaseTradingRecord implements TradingRecord {
     public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Trade... trades) {
         this(validateTrades(trades), transactionCostModel, holdingCostModel);
         for (Trade o : trades) {
-            boolean newTradeWillBeAnEntry = currentPosition.isNew();
-            if (newTradeWillBeAnEntry && o.getType() != startingType) {
+            if (currentPosition.isNew() && o.getType() != startingType) {
                 // Special case for entry/exit types reversal
                 // E.g.: BUY, SELL,
                 // BUY, SELL,
@@ -186,7 +173,7 @@ public class BaseTradingRecord implements TradingRecord {
                 currentPosition = new Position(o.getType(), transactionCostModel, holdingCostModel);
             }
             Trade newTrade = currentPosition.operate(o);
-            recordTrade(newTrade, newTradeWillBeAnEntry);
+            recordTrade(newTrade);
         }
     }
 
@@ -228,9 +215,8 @@ public class BaseTradingRecord implements TradingRecord {
             // Current position closed, should not occur
             throw new IllegalStateException("Current position should not be closed");
         }
-        boolean newTradeWillBeAnEntry = currentPosition.isNew();
         Trade newTrade = currentPosition.operate(trade);
-        recordTrade(newTrade, newTradeWillBeAnEntry);
+        recordTrade(newTrade);
     }
 
     @Override
@@ -272,40 +258,6 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
-    public Trade getLastTrade() {
-        if (!trades.isEmpty()) {
-            return trades.getLast();
-        }
-        return null;
-    }
-
-    @Override
-    public Trade getLastTrade(TradeType tradeType) {
-        if (TradeType.BUY == tradeType && !buyTrades.isEmpty()) {
-            return buyTrades.getLast();
-        } else if (TradeType.SELL == tradeType && !sellTrades.isEmpty()) {
-            return sellTrades.getLast();
-        }
-        return null;
-    }
-
-    @Override
-    public Trade getLastEntry() {
-        if (!entryTrades.isEmpty()) {
-            return entryTrades.getLast();
-        }
-        return null;
-    }
-
-    @Override
-    public Trade getLastExit() {
-        if (!exitTrades.isEmpty()) {
-            return exitTrades.getLast();
-        }
-        return null;
-    }
-
-    @Override
     public Integer getStartIndex() {
         return startIndex;
     }
@@ -318,29 +270,14 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Records a trade and the corresponding position (if closed).
      *
-     * @param trade   the trade to be recorded
-     * @param isEntry true if the trade is an entry, false otherwise (exit)
+     * @param trade the trade to be recorded
      * @throws NullPointerException if trade is null
      */
-    private void recordTrade(Trade trade, boolean isEntry) {
+    private void recordTrade(Trade trade) {
         Objects.requireNonNull(trade, "Trade should not be null");
-
-        // Storing the new trade in entries/exits lists
-        if (isEntry) {
-            entryTrades.add(trade);
-        } else {
-            exitTrades.add(trade);
-        }
 
         // Storing the new trade in trades list
         trades.add(trade);
-        if (TradeType.BUY == trade.getType()) {
-            // Storing the new trade in buy trades list
-            buyTrades.add(trade);
-        } else if (TradeType.SELL == trade.getType()) {
-            // Storing the new trade in sell trades list
-            sellTrades.add(trade);
-        }
 
         // Storing the position if closed
         if (currentPosition.isClosed()) {

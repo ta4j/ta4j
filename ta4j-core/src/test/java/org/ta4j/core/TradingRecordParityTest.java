@@ -80,6 +80,11 @@ class TradingRecordParityTest {
     private void assertEquivalent(TradingRecord expected, TradingRecord actual) {
         assertEquals(expected.getStartingType(), actual.getStartingType());
         assertEquals(expected.isClosed(), actual.isClosed());
+        assertNullableTradeEqual(expected.getLastTrade(), actual.getLastTrade());
+        assertNullableTradeEqual(expected.getLastTrade(TradeType.BUY), actual.getLastTrade(TradeType.BUY));
+        assertNullableTradeEqual(expected.getLastTrade(TradeType.SELL), actual.getLastTrade(TradeType.SELL));
+        assertNullableTradeEqual(expected.getLastEntry(), actual.getLastEntry());
+        assertNullableTradeEqual(expected.getLastExit(), actual.getLastExit());
 
         assertEquals(expected.getTrades().size(), actual.getTrades().size());
         for (int i = 0; i < expected.getTrades().size(); i++) {
@@ -112,6 +117,14 @@ class TradingRecordParityTest {
             assertNotNull(actualCurrent.getEntry());
             assertTradeEqual(expectedCurrent.getEntry(), actualCurrent.getEntry());
         }
+    }
+
+    private void assertNullableTradeEqual(Trade expected, Trade actual) {
+        if (expected == null || actual == null) {
+            assertEquals(expected, actual);
+            return;
+        }
+        assertTradeEqual(expected, actual);
     }
 
     private void assertTradeEqual(Trade expected, Trade actual) {

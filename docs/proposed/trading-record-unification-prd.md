@@ -116,6 +116,9 @@ No new public top-level abstractions unless unavoidable.
 
 - [ ] Replace internal duplicated collections:
   - `trades`, `buyTrades`, `sellTrades`, `entryTrades`, `exitTrades`, `positions`, `currentPosition`.
+- [x] Consolidate redundant last-trade caches:
+  - removed `buyTrades`, `sellTrades`, `entryTrades`, `exitTrades` from `BaseTradingRecord`
+  - unified `getLastTrade(...)` / `getLastEntry()` / `getLastExit()` logic via `TradingRecord` default methods
 - [ ] Delegate instead to core snapshots and derived views.
 - [ ] Rewire these methods:
   - [ ] `operate(int, Num, Num)`
@@ -181,16 +184,16 @@ No new public top-level abstractions unless unavoidable.
 
 ## Core parity tests
 
-- [ ] Add `ta4j-core/src/test/java/org/ta4j/core/TradingRecordParityTest.java`:
-  - [ ] simple long entry/exit
-  - [ ] simple short entry/exit
+- [x] Add `ta4j-core/src/test/java/org/ta4j/core/TradingRecordParityTest.java`:
+  - [x] simple long entry/exit
+  - [x] simple short entry/exit
   - [ ] partial fills with weighted average
   - [ ] mixed lot closes across FIFO/LIFO/AVG_COST/SPECIFIC_ID
   - [ ] metadata missing (`time/orderId/correlationId`) fallback behavior
 
 ## Regression tests
 
-- [ ] Ensure existing suites stay green:
+- [x] Ensure existing suites stay green:
   - `LiveTradingRecordTest`
   - `BaseTradingRecordTest` / `TradingRecordTest`
   - `PositionBookTest`
@@ -199,10 +202,10 @@ No new public top-level abstractions unless unavoidable.
 
 ## Required commands
 
-- [ ] Fast loop while implementing:
+- [x] Fast loop while implementing:
   - `mvn -pl ta4j-core test -Dtest=LiveTradingRecordTest,TradingRecordTest,PositionBookTest`
   - `mvn -pl ta4j-core test '-Dtest=*ExecutionModelTest'`
-- [ ] Final gate:
+- [x] Final gate:
   - `scripts/run-full-build-quiet.sh`
   - Must end with `Failures: 0`, `Errors: 0` and include log path.
 

@@ -210,23 +210,42 @@ public interface TradingRecord extends Serializable {
     /**
      * @return the last trade recorded
      */
-    Trade getLastTrade();
+    default Trade getLastTrade() {
+        List<Trade> trades = getTrades();
+        if (!trades.isEmpty()) {
+            return trades.getLast();
+        }
+        return null;
+    }
 
     /**
      * @param tradeType the type of the trade to get the last of
      * @return the last trade (of the provided type) recorded
      */
-    Trade getLastTrade(TradeType tradeType);
+    default Trade getLastTrade(TradeType tradeType) {
+        List<Trade> trades = getTrades();
+        for (int i = trades.size() - 1; i >= 0; i--) {
+            Trade trade = trades.get(i);
+            if (trade.getType() == tradeType) {
+                return trade;
+            }
+        }
+        return null;
+    }
 
     /**
      * @return the last entry trade recorded
      */
-    Trade getLastEntry();
+    default Trade getLastEntry() {
+        return getLastTrade(getStartingType());
+    }
 
     /**
      * @return the last exit trade recorded
      */
-    Trade getLastExit();
+    default Trade getLastExit() {
+        return getLastTrade(getStartingType().complementType());
+    }
 
     /**
      * @return the start of the recording (included)

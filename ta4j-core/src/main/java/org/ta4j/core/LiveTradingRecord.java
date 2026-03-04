@@ -378,34 +378,6 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     }
 
     @Override
-    public Trade getLastTrade() {
-        List<Trade> trades = getTrades();
-        return trades.isEmpty() ? null : trades.getLast();
-    }
-
-    @Override
-    public Trade getLastTrade(TradeType tradeType) {
-        List<Trade> trades = getTrades();
-        for (int i = trades.size() - 1; i >= 0; i--) {
-            Trade trade = trades.get(i);
-            if (trade.getType() == tradeType) {
-                return trade;
-            }
-        }
-        return null;
-    }
-
-    @Override
-    public Trade getLastEntry() {
-        return getLastTrade(startingType);
-    }
-
-    @Override
-    public Trade getLastExit() {
-        return getLastTrade(startingType.complementType());
-    }
-
-    @Override
     public Integer getStartIndex() {
         return startIndex;
     }
