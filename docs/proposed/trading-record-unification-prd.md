@@ -160,7 +160,7 @@ No new public top-level abstractions unless unavoidable.
 
 ## 7) QoL additions recommended
 
-- [ ] Add a `TradingRecord` parity fixture in tests:
+- [x] Add a `TradingRecord` parity fixture in tests:
   - one utility that runs the same sequence against both facades and asserts:
     - trades (index/type/amount/price/cost)
     - closed positions
