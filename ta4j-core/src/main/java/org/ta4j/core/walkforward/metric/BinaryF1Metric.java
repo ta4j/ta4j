@@ -1,12 +1,16 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.walkforward;
+package org.ta4j.core.walkforward.metric;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiPredicate;
 import java.util.function.Predicate;
+
+import org.ta4j.core.walkforward.RankedPrediction;
+import org.ta4j.core.walkforward.WalkForwardMetric;
+import org.ta4j.core.walkforward.WalkForwardObservation;
 
 /**
  * Binary F1 score metric for selected prediction rank.

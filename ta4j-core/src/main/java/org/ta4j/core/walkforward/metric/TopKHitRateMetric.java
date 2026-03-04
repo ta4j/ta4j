@@ -1,12 +1,16 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.walkforward;
+package org.ta4j.core.walkforward.metric;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiPredicate;
+
+import org.ta4j.core.walkforward.RankedPrediction;
+import org.ta4j.core.walkforward.WalkForwardMetric;
+import org.ta4j.core.walkforward.WalkForwardObservation;
 
 /**
  * Top-k hit-rate metric.
@@ -48,8 +52,7 @@ public final class TopKHitRateMetric<P, O> implements WalkForwardMetric<P, O> {
 
     @Override
     public double compute(List<WalkForwardObservation<P, O>> observations) {
-        Map<String, List<WalkForwardObservation<P, O>>> grouped = WalkForwardMetricSupport
-                .groupBySnapshot(observations);
+        Map<String, List<WalkForwardObservation<P, O>>> grouped = WalkForwardMetric.groupBySnapshot(observations);
         if (grouped.isEmpty()) {
             return Double.NaN;
         }

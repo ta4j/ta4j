@@ -1,11 +1,14 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.walkforward;
+package org.ta4j.core.walkforward.metric;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Function;
+
+import org.ta4j.core.walkforward.WalkForwardMetric;
+import org.ta4j.core.walkforward.WalkForwardObservation;
 
 /**
  * Expected calibration error (ECE) for probabilistic predictions.
@@ -65,9 +68,8 @@ public final class ExpectedCalibrationErrorMetric<P, O> implements WalkForwardMe
             if (observation.prediction().rank() != rank) {
                 continue;
             }
-            double predicted = WalkForwardMetricSupport.clamp01(observation.prediction().probability());
-            double actual = WalkForwardMetricSupport
-                    .clamp01(actualProbabilityExtractor.apply(observation.realizedOutcome()));
+            double predicted = WalkForwardMetric.clamp01(observation.prediction().probability());
+            double actual = WalkForwardMetric.clamp01(actualProbabilityExtractor.apply(observation.realizedOutcome()));
             int index = Math.min(bins - 1, (int) Math.floor(predicted * bins));
             predictedSums[index] += predicted;
             actualSums[index] += actual;

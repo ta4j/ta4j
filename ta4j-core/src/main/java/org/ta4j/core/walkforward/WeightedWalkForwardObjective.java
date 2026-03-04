@@ -41,7 +41,7 @@ public final class WeightedWalkForwardObjective implements WalkForwardObjective 
     }
 
     @Override
-    public WalkForwardObjectiveScore evaluate(Map<String, Double> globalMetrics,
+    public WalkForwardObjective.Score evaluate(Map<String, Double> globalMetrics,
             Map<String, Map<String, Double>> foldMetrics) {
         Objects.requireNonNull(globalMetrics, "globalMetrics");
         Objects.requireNonNull(foldMetrics, "foldMetrics");
@@ -75,7 +75,7 @@ public final class WeightedWalkForwardObjective implements WalkForwardObjective 
             total = Double.NEGATIVE_INFINITY;
         }
 
-        return new WalkForwardObjectiveScore(total, weightedScore, variance, guardrailPassed, List.copyOf(violations),
+        return new WalkForwardObjective.Score(total, weightedScore, variance, guardrailPassed, List.copyOf(violations),
                 Map.copyOf(globalMetrics));
     }
 

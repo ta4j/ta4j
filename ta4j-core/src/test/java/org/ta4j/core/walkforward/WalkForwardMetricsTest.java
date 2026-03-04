@@ -9,6 +9,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.walkforward.metric.AgreementMetric;
+import org.ta4j.core.walkforward.metric.BinaryF1Metric;
+import org.ta4j.core.walkforward.metric.BrierScoreMetric;
+import org.ta4j.core.walkforward.metric.ExpectedCalibrationErrorMetric;
+import org.ta4j.core.walkforward.metric.LogLossMetric;
+import org.ta4j.core.walkforward.metric.NdcgMetric;
+import org.ta4j.core.walkforward.metric.TopKHitRateMetric;
 
 class WalkForwardMetricsTest {
 
@@ -56,13 +63,13 @@ class WalkForwardMetricsTest {
         WeightedWalkForwardObjective objective = new WeightedWalkForwardObjective(
                 Map.of("eventAgreement", 1.0, "brier", -1.0), Map.of("eventAgreement", 0.6), Map.of("brier", 0.3), 0.5);
 
-        WalkForwardObjectiveScore passing = objective.evaluate(Map.of("eventAgreement", 0.8, "brier", 0.1),
+        WalkForwardObjective.Score passing = objective.evaluate(Map.of("eventAgreement", 0.8, "brier", 0.1),
                 Map.of("fold-1", Map.of("eventAgreement", 0.8, "brier", 0.1), "fold-2",
                         Map.of("eventAgreement", 0.6, "brier", 0.2)));
         assertThat(passing.guardrailPassed()).isTrue();
         assertThat(passing.totalScore()).isLessThan(passing.weightedScore());
 
-        WalkForwardObjectiveScore failing = objective.evaluate(Map.of("eventAgreement", 0.2, "brier", 0.4),
+        WalkForwardObjective.Score failing = objective.evaluate(Map.of("eventAgreement", 0.2, "brier", 0.4),
                 Map.of("fold-1", Map.of("eventAgreement", 0.2, "brier", 0.4)));
         assertThat(failing.guardrailPassed()).isFalse();
         assertThat(failing.totalScore()).isEqualTo(Double.NEGATIVE_INFINITY);

@@ -25,7 +25,7 @@ public final class WalkForwardHoldoutValidator {
      * @return holdout validation report
      * @since 0.22.4
      */
-    public WalkForwardHoldoutReport validate(WalkForwardRunResult<?, ?> runResult, String candidateId,
+    public Report validate(WalkForwardRunResult<?, ?> runResult, String candidateId,
             Map<String, Double> minimumMetricValues, Map<String, Double> maximumMetricValues) {
         Objects.requireNonNull(runResult, "runResult");
         Objects.requireNonNull(candidateId, "candidateId");
@@ -37,7 +37,7 @@ public final class WalkForwardHoldoutValidator {
         List<String> notes = new ArrayList<>();
         if (holdoutMetrics.isEmpty()) {
             notes.add("holdout metrics unavailable");
-            return new WalkForwardHoldoutReport(candidateId, primaryHorizon, Map.of(), false, notes);
+            return new Report(candidateId, primaryHorizon, Map.of(), false, notes);
         }
 
         Map<String, Double> minValues = minimumMetricValues == null ? Map.of() : minimumMetricValues;
@@ -63,6 +63,20 @@ public final class WalkForwardHoldoutValidator {
             notes.add("holdout metrics satisfied all guardrails");
         }
 
-        return new WalkForwardHoldoutReport(candidateId, primaryHorizon, holdoutMetrics, passed, List.copyOf(notes));
+        return new Report(candidateId, primaryHorizon, holdoutMetrics, passed, List.copyOf(notes));
+    }
+
+    /**
+     * Holdout validation summary for a tuned candidate.
+     *
+     * @param candidateId  candidate id
+     * @param horizonBars  horizon used for validation
+     * @param metricValues holdout metric values
+     * @param passed       whether all guardrails passed
+     * @param notes        validation notes and guardrail violations
+     * @since 0.22.4
+     */
+    public record Report(String candidateId, int horizonBars, Map<String, Double> metricValues, boolean passed,
+            List<String> notes) {
     }
 }

@@ -1,11 +1,15 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.walkforward;
+package org.ta4j.core.walkforward.metric;
 
 import java.util.List;
 import java.util.Objects;
 import java.util.function.BiPredicate;
+
+import org.ta4j.core.walkforward.RankedPrediction;
+import org.ta4j.core.walkforward.WalkForwardMetric;
+import org.ta4j.core.walkforward.WalkForwardObservation;
 
 /**
  * Generic agreement ratio metric at a selected rank.

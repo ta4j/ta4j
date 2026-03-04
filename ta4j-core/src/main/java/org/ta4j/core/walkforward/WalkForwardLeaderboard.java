@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.ta4j.core.walkforward.calibration.CalibrationSelection;
+
 /**
  * Candidate ranking output from walk-forward tuning.
  *
@@ -47,7 +49,7 @@ public record WalkForwardLeaderboard<C>(List<Entry<C>> entries, int evaluatedCou
      * @param runResult            full run result
      * @since 0.22.4
      */
-    public record Entry<C>(WalkForwardCandidate<C> candidate, WalkForwardObjectiveScore objectiveScore,
+    public record Entry<C>(WalkForwardCandidate<C> candidate, WalkForwardObjective.Score objectiveScore,
             Map<String, Double> globalMetrics, CalibrationSelection calibrationSelection,
             WalkForwardRunResult<?, ?> runResult) {
 

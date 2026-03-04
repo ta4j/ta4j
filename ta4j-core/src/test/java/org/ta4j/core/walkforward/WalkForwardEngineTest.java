@@ -11,6 +11,9 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.walkforward.metric.AgreementMetric;
+import org.ta4j.core.walkforward.metric.BrierScoreMetric;
+import org.ta4j.core.walkforward.metric.TopKHitRateMetric;
 
 class WalkForwardEngineTest {
 
@@ -19,7 +22,7 @@ class WalkForwardEngineTest {
         BarSeries series = new MockBarSeriesBuilder().withData(prices(220)).build();
         WalkForwardConfig config = new WalkForwardConfig(80, 30, 30, 2, 2, 0, 5, List.of(3), 2, List.of(1), 7L);
 
-        List<LeakageAuditRecord> auditRecords = new ArrayList<>();
+        List<WalkForwardRunResult.LeakageAudit> auditRecords = new ArrayList<>();
         PredictionProvider<String, String> provider = (fullSeries, decisionIndex, context) -> List.of(
                 new RankedPrediction<>(context + "-bull", 1, 0.7, 0.8, "bull"),
                 new RankedPrediction<>(context + "-bear", 2, 0.3, 0.4, "bear"));
@@ -53,7 +56,7 @@ class WalkForwardEngineTest {
         assertThat(first.manifest().configHash()).isEqualTo(config.configHash());
 
         assertThat(auditRecords).isNotEmpty();
-        for (LeakageAuditRecord audit : auditRecords) {
+        for (WalkForwardRunResult.LeakageAudit audit : auditRecords) {
             assertThat(audit.visibleEndIndex()).isEqualTo(audit.decisionIndex());
             assertThat(audit.labelStartIndex()).isEqualTo(audit.decisionIndex() + 1);
         }

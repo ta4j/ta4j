@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.walkforward;
+package org.ta4j.core.walkforward.calibration;
 
 /**
  * Calibration modes for tuner evaluation.

@@ -13,6 +13,11 @@ import java.util.PriorityQueue;
 import java.util.function.Function;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.walkforward.calibration.CalibrationGate;
+import org.ta4j.core.walkforward.calibration.CalibrationMode;
+import org.ta4j.core.walkforward.calibration.CalibrationSelection;
+import org.ta4j.core.walkforward.calibration.IsotonicCalibrator;
+import org.ta4j.core.walkforward.calibration.PlattCalibrator;
 
 /**
  * Generic candidate tuner built on top of {@link WalkForwardEngine}.
@@ -128,7 +133,7 @@ public final class WalkForwardTuner<C, P, O> {
                 CalibrationSelection calibrationSelection = applyCalibrationIfEnabled(runResult,
                         config.primaryHorizonBars(), metricBundle.globalMetrics, metricBundle.foldMetrics);
 
-                WalkForwardObjectiveScore objectiveScore = objective.evaluate(metricBundle.globalMetrics,
+                WalkForwardObjective.Score objectiveScore = objective.evaluate(metricBundle.globalMetrics,
                         metricBundle.foldMetrics);
 
                 WalkForwardLeaderboard.Entry<C> entry = new WalkForwardLeaderboard.Entry<>(candidate, objectiveScore,
@@ -173,8 +178,8 @@ public final class WalkForwardTuner<C, P, O> {
             if (row.prediction().rank() != calibrationRank) {
                 continue;
             }
-            double p = WalkForwardMetricSupport.clamp01(row.prediction().probability());
-            double y = WalkForwardMetricSupport.clamp01(observedProbabilityExtractor.apply(row.realizedOutcome()));
+            double p = WalkForwardMetric.clamp01(row.prediction().probability());
+            double y = WalkForwardMetric.clamp01(observedProbabilityExtractor.apply(row.realizedOutcome()));
             predicted.add(p);
             observed.add(y);
             foldPredicted.computeIfAbsent(row.foldId(), ignored -> new ArrayList<>()).add(p);
@@ -301,8 +306,8 @@ public final class WalkForwardTuner<C, P, O> {
 
             for (int i = 0; i < predicted.size(); i++) {
                 double p = transformer == null ? predicted.get(i) : transformer.apply(predicted.get(i));
-                p = WalkForwardMetricSupport.clamp01(p);
-                double y = WalkForwardMetricSupport.clamp01(observed.get(i));
+                p = WalkForwardMetric.clamp01(p);
+                double y = WalkForwardMetric.clamp01(observed.get(i));
                 int index = Math.min(bins - 1, (int) Math.floor(p * bins));
                 predSums[index] += p;
                 obsSums[index] += y;

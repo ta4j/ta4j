@@ -28,7 +28,7 @@ import java.util.Optional;
 public record WalkForwardRunResult<P, O>(WalkForwardConfig config, List<WalkForwardSplit> splits,
         List<PredictionSnapshot<P>> snapshots, Map<Integer, List<WalkForwardObservation<P, O>>> observationsByHorizon,
         Map<Integer, Map<String, Double>> globalMetricsByHorizon,
-        Map<Integer, Map<String, Map<String, Double>>> foldMetricsByHorizon, List<LeakageAuditRecord> leakageAudit,
+        Map<Integer, Map<String, Map<String, Double>>> foldMetricsByHorizon, List<LeakageAudit> leakageAudit,
         WalkForwardRuntimeReport runtimeReport, WalkForwardExperimentManifest manifest) {
 
     /**
@@ -74,5 +74,27 @@ public record WalkForwardRunResult<P, O>(WalkForwardConfig config, List<WalkForw
      */
     public Optional<WalkForwardSplit> holdoutSplit() {
         return splits.stream().filter(WalkForwardSplit::holdout).findFirst();
+    }
+
+    /**
+     * Audit record capturing decision and evaluation-window boundaries for leakage
+     * checks.
+     *
+     * @param foldId            fold id
+     * @param decisionIndex     prediction decision index
+     * @param visibleStartIndex lower bound of visible series for prediction
+     * @param visibleEndIndex   upper bound of visible series for prediction
+     * @param labelStartIndex   start index of realized label window
+     * @param labelEndIndex     end index of realized label window
+     * @param horizonBars       horizon in bars
+     * @param withinFoldBounds  whether the label window is fully inside the fold
+     *                          test
+     * @param holdout           whether the snapshot belongs to holdout
+     * @param note              diagnostic note
+     * @since 0.22.4
+     */
+    public record LeakageAudit(String foldId, int decisionIndex, int visibleStartIndex, int visibleEndIndex,
+            int labelStartIndex, int labelEndIndex, int horizonBars, boolean withinFoldBounds, boolean holdout,
+            String note) {
     }
 }

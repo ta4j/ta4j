@@ -36,7 +36,7 @@ public final class WalkForwardEngine<C, P, O> {
     private final OutcomeLabeler<P, O> outcomeLabeler;
     private final List<WalkForwardMetric<P, O>> metrics;
     private final Consumer<Integer> progressCallback;
-    private final Consumer<LeakageAuditRecord> leakageAuditHook;
+    private final Consumer<WalkForwardRunResult.LeakageAudit> leakageAuditHook;
 
     /**
      * Creates an engine with no-op progress and audit hooks.
@@ -67,7 +67,7 @@ public final class WalkForwardEngine<C, P, O> {
      */
     public WalkForwardEngine(WalkForwardSplitter splitter, PredictionProvider<C, P> predictionProvider,
             OutcomeLabeler<P, O> outcomeLabeler, List<WalkForwardMetric<P, O>> metrics,
-            Consumer<Integer> progressCallback, Consumer<LeakageAuditRecord> leakageAuditHook) {
+            Consumer<Integer> progressCallback, Consumer<WalkForwardRunResult.LeakageAudit> leakageAuditHook) {
         this.splitter = Objects.requireNonNull(splitter, "splitter");
         this.predictionProvider = Objects.requireNonNull(predictionProvider, "predictionProvider");
         this.outcomeLabeler = Objects.requireNonNull(outcomeLabeler, "outcomeLabeler");
@@ -119,7 +119,7 @@ public final class WalkForwardEngine<C, P, O> {
 
         List<WalkForwardSplit> splits = splitter.split(series, config);
         List<PredictionSnapshot<P>> snapshots = new ArrayList<>();
-        List<LeakageAuditRecord> leakageAudit = new ArrayList<>();
+        List<WalkForwardRunResult.LeakageAudit> leakageAudit = new ArrayList<>();
 
         Map<Integer, List<WalkForwardObservation<P, O>>> observationsByHorizon = new LinkedHashMap<>();
         Map<Integer, Map<String, List<WalkForwardObservation<P, O>>>> foldObservationsByHorizon = new LinkedHashMap<>();
@@ -154,9 +154,9 @@ public final class WalkForwardEngine<C, P, O> {
                     String note = withinFoldBounds ? "label window bounded to test fold"
                             : "skipped: label window exceeds fold bounds";
 
-                    LeakageAuditRecord audit = new LeakageAuditRecord(split.foldId(), decisionIndex,
-                            series.getBeginIndex(), decisionIndex, labelStart, labelEnd, horizon, withinFoldBounds,
-                            split.holdout(), note);
+                    WalkForwardRunResult.LeakageAudit audit = new WalkForwardRunResult.LeakageAudit(split.foldId(),
+                            decisionIndex, series.getBeginIndex(), decisionIndex, labelStart, labelEnd, horizon,
+                            withinFoldBounds, split.holdout(), note);
                     leakageAudit.add(audit);
                     leakageAuditHook.accept(audit);
 

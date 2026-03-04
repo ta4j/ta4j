@@ -11,6 +11,11 @@ import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.walkforward.calibration.CalibrationGate;
+import org.ta4j.core.walkforward.calibration.CalibrationMode;
+import org.ta4j.core.walkforward.metric.AgreementMetric;
+import org.ta4j.core.walkforward.metric.BrierScoreMetric;
+import org.ta4j.core.walkforward.metric.ExpectedCalibrationErrorMetric;
 
 class WalkForwardTunerTest {
 
@@ -94,8 +99,8 @@ class WalkForwardTunerTest {
 
         WalkForwardRunResult<Double, Boolean> result = engine.run(series, 0.8, config, "candidate-a", Map.of());
         WalkForwardHoldoutValidator validator = new WalkForwardHoldoutValidator();
-        WalkForwardHoldoutReport report = validator.validate(result, "candidate-a", Map.of("eventAgreement", 0.9),
-                Map.of());
+        WalkForwardHoldoutValidator.Report report = validator.validate(result, "candidate-a",
+                Map.of("eventAgreement", 0.9), Map.of());
 
         assertThat(report.candidateId()).isEqualTo("candidate-a");
         assertThat(report.horizonBars()).isEqualTo(config.primaryHorizonBars());
