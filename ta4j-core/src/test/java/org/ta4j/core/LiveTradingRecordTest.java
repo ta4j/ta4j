@@ -135,6 +135,31 @@ class LiveTradingRecordTest {
     }
 
     @Test
+    void operatePreservesFillLevelMetadataWhenPresent() {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        Instant firstFillTime = Instant.parse("2025-01-01T00:00:00Z");
+        Instant secondFillTime = Instant.parse("2025-01-01T00:01:00Z");
+        Trade aggregatedEntry = Trade.fromFills(TradeType.BUY,
+                List.of(new TradeFill(4, firstFillTime, numFactory.hundred(), numFactory.one(), numFactory.numOf(0.1),
+                        ExecutionSide.BUY, "order-1", "corr-1"),
+                        new TradeFill(5, secondFillTime, numFactory.numOf(101), numFactory.two(), numFactory.numOf(0.2),
+                                ExecutionSide.BUY, "order-2", "corr-2")));
+
+        record.operate(aggregatedEntry);
+
+        List<Trade> trades = record.getTrades();
+        assertEquals(2, trades.size());
+        assertEquals(firstFillTime, trades.get(0).getTime());
+        assertEquals(secondFillTime, trades.get(1).getTime());
+        assertEquals("order-1", trades.get(0).getOrderId());
+        assertEquals("order-2", trades.get(1).getOrderId());
+        assertEquals("corr-1", trades.get(0).getCorrelationId());
+        assertEquals("corr-2", trades.get(1).getCorrelationId());
+        assertEquals(numFactory.numOf(0.3), record.getTotalFees());
+    }
+
+    @Test
     void operateWithMismatchedTradeTypeThrows() {
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);

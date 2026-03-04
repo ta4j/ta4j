@@ -6,6 +6,7 @@ package org.ta4j.core;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.io.Serial;
+import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import org.ta4j.core.analysis.cost.CostModel;
@@ -100,10 +101,11 @@ public class SimulatedTrade implements Trade {
     protected SimulatedTrade(int index, BarSeries series, Trade.TradeType type, Num amount,
             CostModel transactionCostModel) {
         Num executionPrice = series.getBar(index).getClosePrice();
+        Instant executionTime = series.getBar(index).getEndTime();
         this.type = type;
         this.index = index;
         this.amount = amount;
-        this.fills = List.of(new TradeFill(index, executionPrice, amount));
+        this.fills = List.of(new TradeFill(index, executionTime, executionPrice, amount, executionSide(type)));
         setPricesAndCost(executionPrice, amount, transactionCostModel);
     }
 
@@ -144,7 +146,7 @@ public class SimulatedTrade implements Trade {
         this.type = type;
         this.index = index;
         this.amount = amount;
-        this.fills = List.of(new TradeFill(index, pricePerAsset, amount));
+        this.fills = List.of(new TradeFill(index, null, pricePerAsset, amount, executionSide(type)));
         setPricesAndCost(pricePerAsset, amount, transactionCostModel);
     }
 
@@ -268,6 +270,13 @@ public class SimulatedTrade implements Trade {
         }
         return new FillSummary(List.copyOf(fills), earliestFillIndex, totalAmount,
                 weightedPrice.dividedBy(totalAmount));
+    }
+
+    private static ExecutionSide executionSide(Trade.TradeType tradeType) {
+        if (tradeType == Trade.TradeType.BUY) {
+            return ExecutionSide.BUY;
+        }
+        return ExecutionSide.SELL;
     }
 
     @Override

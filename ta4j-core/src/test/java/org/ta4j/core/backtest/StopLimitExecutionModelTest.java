@@ -12,6 +12,7 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.SimulatedTrade;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
@@ -69,6 +70,12 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         assertEquals(numFactory.numOf(3), entry.getFills().get(0).amount());
         assertEquals(numFactory.numOf(4), entry.getFills().get(1).amount());
         assertEquals(numFactory.numOf(3), entry.getFills().get(2).amount());
+        assertEquals(ExecutionSide.BUY, entry.getFills().get(0).side());
+        assertEquals(ExecutionSide.BUY, entry.getFills().get(1).side());
+        assertEquals(ExecutionSide.BUY, entry.getFills().get(2).side());
+        assertEquals(series.getBar(1).getEndTime(), entry.getFills().get(0).time());
+        assertEquals(series.getBar(2).getEndTime(), entry.getFills().get(1).time());
+        assertEquals(series.getBar(3).getEndTime(), entry.getFills().get(2).time());
         assertFalse(model.getPendingOrder(tradingRecord).isPresent());
         assertTrue(model.getRejectedOrders(tradingRecord).isEmpty());
     }
@@ -111,6 +118,10 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         TradeFill secondFill = trade.getFills().get(1);
         assertEquals(numFactory.numOf(2), firstFill.amount());
         assertEquals(numFactory.one(), secondFill.amount());
+        assertEquals(ExecutionSide.BUY, firstFill.side());
+        assertEquals(ExecutionSide.BUY, secondFill.side());
+        assertEquals(series.getBar(1).getEndTime(), firstFill.time());
+        assertEquals(series.getBar(2).getEndTime(), secondFill.time());
 
         assertEquals(1, model.getRejectedOrders(tradingRecord).size());
         StopLimitExecutionModel.RejectedOrder rejection = model.getRejectedOrders(tradingRecord).getFirst();
@@ -249,5 +260,22 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
                 () -> new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numFactory.zero(), 1));
         assertThrows(IllegalArgumentException.class,
                 () -> new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numFactory.one(), 0));
+    }
+
+    @Test
+    public void sellOrdersTagFillsWithSellExecutionSide() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(10d).add();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(10d).add();
+
+        TradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.SELL);
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                numFactory.one(), 1);
+
+        model.execute(0, tradingRecord, series, numFactory.one());
+        model.onBar(1, tradingRecord, series);
+
+        assertEquals(1, tradingRecord.getTrades().size());
+        assertEquals(ExecutionSide.SELL, tradingRecord.getTrades().getFirst().getFills().getFirst().side());
     }
 }

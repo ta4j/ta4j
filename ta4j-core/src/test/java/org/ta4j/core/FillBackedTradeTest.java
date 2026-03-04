@@ -11,6 +11,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.time.Instant;
 import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -90,5 +91,17 @@ public class FillBackedTradeTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(2, restored.getFills().size());
         assertNumEquals(original.getPricePerAsset(), restored.getPricePerAsset());
         assertNumEquals(original.getAmount(), restored.getAmount());
+    }
+
+    @Test
+    public void singleFillMetadataIsPreserved() {
+        Instant fillTime = Instant.parse("2025-01-01T00:00:00Z");
+        TradeFill fill = new TradeFill(3, fillTime, numFactory.hundred(), numFactory.one(), numFactory.numOf(0.1),
+                ExecutionSide.BUY, "order-1", "corr-1");
+
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(fill));
+
+        assertEquals(1, trade.getFills().size());
+        assertEquals(fill, trade.getFills().getFirst());
     }
 }

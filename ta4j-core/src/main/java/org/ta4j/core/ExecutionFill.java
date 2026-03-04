@@ -11,9 +11,13 @@ import org.ta4j.core.num.Num;
  * Generic execution fill contract for live trading.
  *
  * <p>
- * Implementations should provide execution price/amount/fee, side, and
- * timestamps. The optional correlation id can be used to associate a fill with
- * an {@link ExecutionIntent} or external decision id when available.
+ * Implementations must provide execution {@link #price()} and
+ * {@link #amount()}. Metadata fields ({@link #time()}, {@link #fee()},
+ * {@link #side()}, ids) are optional and default to {@code null}.
+ *
+ * <p>
+ * The optional correlation id can be used to associate a fill with an
+ * {@link ExecutionIntent} or external decision id when available.
  * </p>
  *
  * @since 0.22.2
@@ -24,7 +28,9 @@ public interface ExecutionFill extends Serializable {
      * @return the execution timestamp (UTC)
      * @since 0.22.2
      */
-    Instant time();
+    default Instant time() {
+        return null;
+    }
 
     /**
      * @return the execution price per asset
@@ -42,25 +48,33 @@ public interface ExecutionFill extends Serializable {
      * @return the execution fee (nullable, zero when unknown)
      * @since 0.22.2
      */
-    Num fee();
+    default Num fee() {
+        return null;
+    }
 
     /**
      * @return the execution side
      * @since 0.22.2
      */
-    ExecutionSide side();
+    default ExecutionSide side() {
+        return null;
+    }
 
     /**
      * @return the exchange order id if available
      * @since 0.22.2
      */
-    String orderId();
+    default String orderId() {
+        return null;
+    }
 
     /**
      * @return the correlation id if available
      * @since 0.22.2
      */
-    String correlationId();
+    default String correlationId() {
+        return null;
+    }
 
     /**
      * @return the associated intent id, defaulting to {@link #correlationId()}

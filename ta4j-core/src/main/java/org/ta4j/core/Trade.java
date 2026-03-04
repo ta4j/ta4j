@@ -179,14 +179,17 @@ public interface Trade extends Serializable {
      *
      * <p>
      * Default simulated trades expose a single fill. Aggregated/partial trades may
-     * return multiple fills.
+     * return multiple fills. The default single fill mirrors trade-level metadata
+     * (time, fee, order/correlation ids) when available.
      * </p>
      *
      * @return execution fills of this trade
      * @since 0.22.4
      */
     default List<TradeFill> getFills() {
-        return List.of(new TradeFill(getIndex(), getPricePerAsset(), getAmount()));
+        ExecutionSide side = getType() == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        return List.of(new TradeFill(getIndex(), getTime(), getPricePerAsset(), getAmount(), getCost(), side,
+                getOrderId(), getCorrelationId()));
     }
 
     /**
@@ -208,7 +211,9 @@ public interface Trade extends Serializable {
         if (!fills.isEmpty()) {
             return fills;
         }
-        return List.of(new TradeFill(trade.getIndex(), trade.getPricePerAsset(), trade.getAmount()));
+        ExecutionSide side = trade.getType() == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        return List.of(new TradeFill(trade.getIndex(), trade.getTime(), trade.getPricePerAsset(), trade.getAmount(),
+                trade.getCost(), side, trade.getOrderId(), trade.getCorrelationId()));
     }
 
     /**
@@ -246,16 +251,6 @@ public interface Trade extends Serializable {
         Objects.requireNonNull(transactionCostModel, "transactionCostModel");
         if (fills.isEmpty()) {
             throw new IllegalArgumentException("fills must not be empty");
-        }
-        if (fills.size() == 1) {
-            TradeFill fill = fills.getFirst();
-            if (fill.price().isNaN()) {
-                throw new IllegalArgumentException("fill price must be set");
-            }
-            if (fill.amount().isNaN() || fill.amount().isZero() || fill.amount().isNegative()) {
-                throw new IllegalArgumentException("fill amount must be positive");
-            }
-            return new SimulatedTrade(fill.index(), type, fill.price(), fill.amount(), transactionCostModel);
         }
         return new SimulatedTrade(type, fills, transactionCostModel);
     }

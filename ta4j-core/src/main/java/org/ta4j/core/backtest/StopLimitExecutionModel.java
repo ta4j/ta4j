@@ -11,6 +11,7 @@ import java.util.Objects;
 import java.util.Optional;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradeFill;
@@ -27,7 +28,8 @@ import org.ta4j.core.num.Num;
  * filled progressively based on available bar volume participation. Partially
  * filled entry orders are committed on expiry; partially filled exit orders are
  * rejected to keep position accounting consistent with single-entry/single-exit
- * trading records.
+ * trading records. Generated fills include execution side and bar end
+ * timestamps so backtest fills match live-fill metadata shape.
  * </p>
  *
  * @since 0.22.4
@@ -171,7 +173,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         if (order.triggered && limitReachable(order.tradeType, bar, order.limitPrice)) {
             Num fillAmount = fillAmount(order.remainingAmount(), bar.getVolume());
             if (fillAmount.isPositive()) {
-                order.recordFill(index, order.limitPrice, fillAmount);
+                order.recordFill(index, bar, order.limitPrice, fillAmount);
             }
         }
 
@@ -327,8 +329,8 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             return requestedAmount.minus(filledAmount);
         }
 
-        private void recordFill(int index, Num price, Num amount) {
-            fills.add(new TradeFill(index, price, amount));
+        private void recordFill(int index, Bar bar, Num price, Num amount) {
+            fills.add(new TradeFill(index, bar.getEndTime(), price, amount, sideOf(tradeType)));
             filledAmount = filledAmount.plus(amount);
         }
 
@@ -352,6 +354,13 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         private PendingOrderSnapshot snapshot() {
             return new PendingOrderSnapshot(signalIndex, activationIndex, tradeType, requestedAmount, filledAmount,
                     stopPrice, limitPrice, expiryIndex, triggered, List.copyOf(fills));
+        }
+
+        private static ExecutionSide sideOf(TradeType tradeType) {
+            if (tradeType == TradeType.BUY) {
+                return ExecutionSide.BUY;
+            }
+            return ExecutionSide.SELL;
         }
     }
 }

@@ -10,6 +10,7 @@ import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.TradingRecord;
@@ -43,6 +44,8 @@ public class SlippageExecutionModelTest extends AbstractIndicatorTest<BarSeries,
 
         assertEquals(expectedEntryPrice, position.getEntry().getPricePerAsset());
         assertEquals(expectedExitPrice, position.getExit().getPricePerAsset());
+        assertEquals(ExecutionSide.BUY, position.getEntry().getFills().getFirst().side());
+        assertEquals(ExecutionSide.SELL, position.getExit().getFills().getFirst().side());
     }
 
     @Test

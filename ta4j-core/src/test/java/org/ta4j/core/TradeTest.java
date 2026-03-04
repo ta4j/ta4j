@@ -118,6 +118,8 @@ public class TradeTest {
         assertNumEquals(numFactory.numOf(110), trade.getPricePerAsset());
         assertNumEquals(numFactory.one(), trade.getAmount());
         assertNumEquals(numFactory.numOf(110), trade.getNetPrice());
+        assertEquals(series.getBar(1).getEndTime(), trade.getFills().getFirst().time());
+        assertEquals(ExecutionSide.BUY, trade.getFills().getFirst().side());
 
         Trade tradeWithAmount = Trade.buyAt(1, series, numFactory.two());
         assertEquals(TradeType.BUY, tradeWithAmount.getType());
@@ -145,6 +147,8 @@ public class TradeTest {
         assertNumEquals(numFactory.numOf(110), trade.getPricePerAsset());
         assertNumEquals(numFactory.one(), trade.getAmount());
         assertNumEquals(numFactory.numOf(110), trade.getNetPrice());
+        assertEquals(series.getBar(1).getEndTime(), trade.getFills().getFirst().time());
+        assertEquals(ExecutionSide.SELL, trade.getFills().getFirst().side());
 
         Trade tradeWithAmount = Trade.sellAt(1, series, numFactory.two());
         assertEquals(TradeType.SELL, tradeWithAmount.getType());
@@ -246,6 +250,8 @@ public class TradeTest {
         assertEquals(3, fills.getFirst().index());
         assertNumEquals(numFactory.hundred(), fills.getFirst().price());
         assertNumEquals(numFactory.two(), fills.getFirst().amount());
+        assertEquals(ExecutionSide.BUY, fills.getFirst().side());
+        assertNull(fills.getFirst().time());
     }
 
     @Test
@@ -264,6 +270,7 @@ public class TradeTest {
         assertEquals(3, fills.getFirst().index());
         assertNumEquals(numFactory.hundred(), fills.getFirst().price());
         assertNumEquals(numFactory.two(), fills.getFirst().amount());
+        assertEquals(ExecutionSide.BUY, fills.getFirst().side());
     }
 
     @Test

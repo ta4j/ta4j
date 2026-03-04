@@ -136,8 +136,10 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         if (fill instanceof LiveTrade liveTrade) {
             trade = liveTrade;
         } else {
-            trade = new LiveTrade(index >= 0 ? index : 0, fill.time(), fill.price(), fill.amount(), fill.fee(),
-                    fill.side(), fill.orderId(), fill.correlationId());
+            ExecutionSide side = resolveExecutionSide(fill.side());
+            Instant time = resolveExecutionTime(fill.time(), null);
+            trade = new LiveTrade(index >= 0 ? index : 0, time, fill.price(), fill.amount(), fill.fee(), side,
+                    fill.orderId(), fill.correlationId());
         }
         if (index >= 0) {
             recordFill(index, trade);
@@ -262,8 +264,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         Objects.requireNonNull(trade, "trade");
         List<TradeFill> fills = Trade.executionFillsOf(trade);
         for (TradeFill fill : fills) {
-            recordTradeFill(trade.getType(), fill.index(), fill.price(), fill.amount(), trade.getOrderId(),
-                    trade.getCorrelationId(), trade.getTime());
+            recordTradeFill(trade.getType(), fill, trade.getOrderId(), trade.getCorrelationId(), trade.getTime());
         }
     }
 
@@ -278,11 +279,14 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         }
     }
 
-    private void recordTradeFill(TradeType tradeType, int index, Num price, Num amount, String orderId,
-            String correlationId, Instant tradeTime) {
-        ExecutionSide side = tradeType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
-        Instant executionTime = tradeTime == null ? Instant.EPOCH : tradeTime;
-        recordFill(index, new LiveTrade(index, executionTime, price, amount, null, side, orderId, correlationId));
+    private void recordTradeFill(TradeType tradeType, TradeFill fill, String tradeOrderId, String tradeCorrelationId,
+            Instant tradeTime) {
+        ExecutionSide side = fill.side() == null ? sideOf(tradeType) : fill.side();
+        Instant executionTime = resolveExecutionTime(fill.time(), tradeTime);
+        String orderId = chooseValue(fill.orderId(), tradeOrderId);
+        String correlationId = chooseValue(fill.correlationId(), tradeCorrelationId);
+        recordFill(fill.index(), new LiveTrade(fill.index(), executionTime, fill.price(), fill.amount(), fill.fee(),
+                side, orderId, correlationId));
     }
 
     @Override
@@ -430,6 +434,45 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
 
     private ExecutionSide exitExecutionSide() {
         return startingExecutionSide() == ExecutionSide.BUY ? ExecutionSide.SELL : ExecutionSide.BUY;
+    }
+
+    private ExecutionSide resolveExecutionSide(ExecutionSide side) {
+        if (side != null) {
+            return side;
+        }
+        lock.readLock().lock();
+        try {
+            if (positionBook.openLots().isEmpty()) {
+                return startingExecutionSide();
+            }
+            return exitExecutionSide();
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    private static ExecutionSide sideOf(TradeType tradeType) {
+        if (tradeType == TradeType.BUY) {
+            return ExecutionSide.BUY;
+        }
+        return ExecutionSide.SELL;
+    }
+
+    private static Instant resolveExecutionTime(Instant fillTime, Instant fallbackTime) {
+        if (fillTime != null) {
+            return fillTime;
+        }
+        if (fallbackTime != null) {
+            return fallbackTime;
+        }
+        return Instant.EPOCH;
+    }
+
+    private static String chooseValue(String preferred, String fallback) {
+        if (preferred != null) {
+            return preferred;
+        }
+        return fallback;
     }
 
     private static void validateFill(LiveTrade trade) {
