@@ -29,8 +29,13 @@ import org.ta4j.core.num.Num;
  * </p>
  *
  * <p>
- * Use {@link SimulatedTrade} as the default implementation for both simulation
- * and live-recorded fills.
+ * Use {@link BaseTrade} as the default implementation for both simulation and
+ * live-recorded fills.
+ * </p>
+ *
+ * <p>
+ * {@link SimulatedTrade} and {@link LiveTrade} are retained as deprecated
+ * compatibility wrappers over {@link BaseTrade}.
  * </p>
  *
  * @since 0.22.2
@@ -233,9 +238,9 @@ public interface Trade extends Serializable {
      * Creates a trade from one or more execution fills.
      *
      * <p>
-     * The returned trade is a {@link SimulatedTrade}. Single-fill inputs keep
-     * scalar semantics; multi-fill inputs preserve full fill progression while
-     * exposing aggregated price/amount views.
+     * The returned trade is a {@link BaseTrade}. Single-fill inputs keep scalar
+     * semantics; multi-fill inputs preserve full fill progression while exposing
+     * aggregated price/amount views.
      * </p>
      *
      * @param type                 trade type
@@ -252,7 +257,7 @@ public interface Trade extends Serializable {
         if (fills.isEmpty()) {
             throw new IllegalArgumentException("fills must not be empty");
         }
-        return new SimulatedTrade(type, fills, transactionCostModel);
+        return new BaseTrade(type, fills, transactionCostModel);
     }
 
     /**
@@ -261,7 +266,7 @@ public interface Trade extends Serializable {
      * @return a BUY trade
      */
     static Trade buyAt(int index, BarSeries series) {
-        return new SimulatedTrade(index, series, TradeType.BUY);
+        return new BaseTrade(index, series, TradeType.BUY);
     }
 
     /**
@@ -272,7 +277,7 @@ public interface Trade extends Serializable {
      * @return a BUY trade
      */
     static Trade buyAt(int index, Num price, Num amount, CostModel transactionCostModel) {
-        return new SimulatedTrade(index, TradeType.BUY, price, amount, transactionCostModel);
+        return new BaseTrade(index, TradeType.BUY, price, amount, transactionCostModel);
     }
 
     /**
@@ -282,7 +287,7 @@ public interface Trade extends Serializable {
      * @return a BUY trade
      */
     static Trade buyAt(int index, Num price, Num amount) {
-        return new SimulatedTrade(index, TradeType.BUY, price, amount);
+        return new BaseTrade(index, TradeType.BUY, price, amount);
     }
 
     /**
@@ -292,7 +297,7 @@ public interface Trade extends Serializable {
      * @return a BUY trade
      */
     static Trade buyAt(int index, BarSeries series, Num amount) {
-        return new SimulatedTrade(index, series, TradeType.BUY, amount);
+        return new BaseTrade(index, series, TradeType.BUY, amount);
     }
 
     /**
@@ -303,7 +308,7 @@ public interface Trade extends Serializable {
      * @return a BUY trade
      */
     static Trade buyAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
-        return new SimulatedTrade(index, series, TradeType.BUY, amount, transactionCostModel);
+        return new BaseTrade(index, series, TradeType.BUY, amount, transactionCostModel);
     }
 
     /**
@@ -312,7 +317,7 @@ public interface Trade extends Serializable {
      * @return a SELL trade
      */
     static Trade sellAt(int index, BarSeries series) {
-        return new SimulatedTrade(index, series, TradeType.SELL);
+        return new BaseTrade(index, series, TradeType.SELL);
     }
 
     /**
@@ -322,7 +327,7 @@ public interface Trade extends Serializable {
      * @return a SELL trade
      */
     static Trade sellAt(int index, Num price, Num amount) {
-        return new SimulatedTrade(index, TradeType.SELL, price, amount);
+        return new BaseTrade(index, TradeType.SELL, price, amount);
     }
 
     /**
@@ -333,7 +338,7 @@ public interface Trade extends Serializable {
      * @return a SELL trade
      */
     static Trade sellAt(int index, Num price, Num amount, CostModel transactionCostModel) {
-        return new SimulatedTrade(index, TradeType.SELL, price, amount, transactionCostModel);
+        return new BaseTrade(index, TradeType.SELL, price, amount, transactionCostModel);
     }
 
     /**
@@ -343,7 +348,7 @@ public interface Trade extends Serializable {
      * @return a SELL trade
      */
     static Trade sellAt(int index, BarSeries series, Num amount) {
-        return new SimulatedTrade(index, series, TradeType.SELL, amount);
+        return new BaseTrade(index, series, TradeType.SELL, amount);
     }
 
     /**
@@ -354,6 +359,6 @@ public interface Trade extends Serializable {
      * @return a SELL trade
      */
     static Trade sellAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
-        return new SimulatedTrade(index, series, TradeType.SELL, amount, transactionCostModel);
+        return new BaseTrade(index, series, TradeType.SELL, amount, transactionCostModel);
     }
 }

@@ -182,8 +182,8 @@ public class TradingRecordTest {
     @Test
     public void baseTradingRecordRejectsLiveTrades() {
         var numFactory = DoubleNumFactory.getInstance();
-        var trade = new SimulatedTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), null,
-                ExecutionSide.BUY, null, null);
+        var trade = new BaseTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), null, ExecutionSide.BUY,
+                null, null);
 
         assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(trade));
     }
@@ -257,8 +257,7 @@ public class TradingRecordTest {
     public void defaultOperateTradeFallsBackWhenCustomTradeProvidesNoFills() {
         DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
         TradingRecord record = newTradingRecordUsingDefaultOperateImplementation();
-        Trade customTradeWithoutFills = new SimulatedTrade(3, Trade.TradeType.BUY, numFactory.hundred(),
-                numFactory.one()) {
+        Trade customTradeWithoutFills = new BaseTrade(3, Trade.TradeType.BUY, numFactory.hundred(), numFactory.one()) {
             @Override
             public List<TradeFill> getFills() {
                 return List.of();

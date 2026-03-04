@@ -63,7 +63,7 @@ public class TradeTest {
     @Test
     public void initializeWithCostsTest() {
         var transactionCostModel = new LinearTransactionCostModel(0.05);
-        var trade = new SimulatedTrade(0, TradeType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(20),
+        var trade = new BaseTrade(0, TradeType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(20),
                 transactionCostModel);
         Num expectedCost = DoubleNum.valueOf(100);
         Num expectedValue = DoubleNum.valueOf(2000);
@@ -104,7 +104,7 @@ public class TradeTest {
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 95, 100, 80, 85, 130)
                 .build();
-        Trade trade = new SimulatedTrade(1, TradeType.BUY, NaN);
+        Trade trade = new BaseTrade(1, TradeType.BUY, NaN);
         assertNumEquals(DoubleNum.valueOf(95), trade.getPricePerAsset(series));
     }
 
@@ -257,7 +257,7 @@ public class TradeTest {
     @Test
     public void executionFillsOfFallsBackToScalarTradeFields() {
         DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
-        Trade trade = new SimulatedTrade(3, TradeType.BUY, numFactory.hundred(), numFactory.two()) {
+        Trade trade = new BaseTrade(3, TradeType.BUY, numFactory.hundred(), numFactory.two()) {
             @Override
             public List<TradeFill> getFills() {
                 return List.of();
@@ -274,12 +274,12 @@ public class TradeTest {
     }
 
     @Test
-    public void fromFillsCreatesSimulatedTradeForSingleFill() {
+    public void fromFillsCreatesBaseTradeForSingleFill() {
         DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
         Trade trade = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(2, numFactory.hundred(), numFactory.one())),
                 new FixedTransactionCostModel(1.0));
 
-        assertTrue(trade instanceof SimulatedTrade);
+        assertTrue(trade instanceof BaseTrade);
         assertEquals(1, trade.getFills().size());
         assertEquals(2, trade.getIndex());
         assertNumEquals(numFactory.hundred(), trade.getPricePerAsset());
@@ -287,12 +287,12 @@ public class TradeTest {
     }
 
     @Test
-    public void fromFillsCreatesFillBackedSimulatedTradeForMultipleFills() {
+    public void fromFillsCreatesFillBackedBaseTradeForMultipleFills() {
         DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
         Trade trade = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(1, numFactory.hundred(), numFactory.one()),
                 new TradeFill(2, numFactory.numOf(101), numFactory.one())));
 
-        assertTrue(trade instanceof SimulatedTrade);
+        assertTrue(trade instanceof BaseTrade);
         assertEquals(2, trade.getFills().size());
     }
 
@@ -308,7 +308,7 @@ public class TradeTest {
     }
 
     @Test
-    public void simulatedTradeToStringSupportsDecimalNum() {
+    public void baseTradeToStringSupportsDecimalNum() {
         var decimalFactory = DecimalNumFactory.getInstance();
         Trade trade = Trade.buyAt(0, decimalFactory.hundred(), decimalFactory.one());
 

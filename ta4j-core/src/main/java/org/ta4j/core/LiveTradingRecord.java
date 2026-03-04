@@ -105,7 +105,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      *
      * <p>
      * The trade index is overwritten by the record's auto-incremented index. Use
-     * {@link #recordFill(int, SimulatedTrade)} when you need to preserve a specific
+     * {@link #recordFill(int, BaseTrade)} when you need to preserve a specific
      * index.
      * </p>
      *
@@ -113,8 +113,34 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * @throws IllegalArgumentException when trade price or amount is NaN/invalid
      * @since 0.22.2
      */
-    public void recordFill(SimulatedTrade trade) {
+    public void recordFill(BaseTrade trade) {
         recordFill(nextIndex(), trade);
+    }
+
+    /**
+     * Records a simulated trade using an auto-incremented trade index.
+     *
+     * @param trade simulated trade
+     * @since 0.22.4
+     * @deprecated since 0.22.4; use {@link #recordFill(BaseTrade)}
+     */
+    @Deprecated(since = "0.22.4", forRemoval = true)
+    @SuppressWarnings("removal")
+    public void recordFill(SimulatedTrade trade) {
+        recordFill((BaseTrade) trade);
+    }
+
+    /**
+     * Records a live trade using an auto-incremented trade index.
+     *
+     * @param trade live trade
+     * @since 0.22.4
+     * @deprecated since 0.22.4; use {@link #recordFill(BaseTrade)}
+     */
+    @Deprecated(since = "0.22.4", forRemoval = true)
+    @SuppressWarnings("removal")
+    public void recordFill(LiveTrade trade) {
+        recordFill((BaseTrade) trade);
     }
 
     /**
@@ -134,8 +160,8 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         int index = fill.index();
         ExecutionSide side = resolveExecutionSide(fill.side());
         Instant time = resolveExecutionTime(fill.time(), null);
-        SimulatedTrade trade = new SimulatedTrade(index >= 0 ? index : 0, time, fill.price(), fill.amount(), fill.fee(),
-                side, fill.orderId(), fill.correlationId());
+        BaseTrade trade = new BaseTrade(index >= 0 ? index : 0, time, fill.price(), fill.amount(), fill.fee(), side,
+                fill.orderId(), fill.correlationId());
         if (index >= 0) {
             recordFill(index, trade);
         } else {
@@ -151,12 +177,12 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * @throws IllegalArgumentException when trade price or amount is NaN/invalid
      * @since 0.22.2
      */
-    public void recordFill(int index, SimulatedTrade trade) {
+    public void recordFill(int index, BaseTrade trade) {
         Objects.requireNonNull(trade, "trade");
         if (index < 0) {
             throw new IllegalArgumentException("index must be >= 0");
         }
-        SimulatedTrade resolved = trade.getIndex() == index ? trade : trade.withIndex(index);
+        BaseTrade resolved = trade.getIndex() == index ? trade : trade.withIndex(index);
         validateFill(resolved);
         lock.writeLock().lock();
         try {
@@ -179,6 +205,34 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         } finally {
             lock.writeLock().unlock();
         }
+    }
+
+    /**
+     * Records a simulated trade using the provided trade index.
+     *
+     * @param index trade index
+     * @param trade simulated trade
+     * @since 0.22.4
+     * @deprecated since 0.22.4; use {@link #recordFill(int, BaseTrade)}
+     */
+    @Deprecated(since = "0.22.4", forRemoval = true)
+    @SuppressWarnings("removal")
+    public void recordFill(int index, SimulatedTrade trade) {
+        recordFill(index, (BaseTrade) trade);
+    }
+
+    /**
+     * Records a live trade using the provided trade index.
+     *
+     * @param index trade index
+     * @param trade live trade
+     * @since 0.22.4
+     * @deprecated since 0.22.4; use {@link #recordFill(int, BaseTrade)}
+     */
+    @Deprecated(since = "0.22.4", forRemoval = true)
+    @SuppressWarnings("removal")
+    public void recordFill(int index, LiveTrade trade) {
+        recordFill(index, (BaseTrade) trade);
     }
 
     /**
@@ -268,7 +322,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         lock.writeLock().lock();
         try {
             ExecutionSide side = positionBook.openLots().isEmpty() ? startingExecutionSide() : exitExecutionSide();
-            recordFill(index, new SimulatedTrade(index, Instant.EPOCH, price, amount, null, side, null, null));
+            recordFill(index, new BaseTrade(index, Instant.EPOCH, price, amount, null, side, null, null));
         } finally {
             lock.writeLock().unlock();
         }
@@ -280,8 +334,8 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         Instant executionTime = resolveExecutionTime(fill.time(), tradeTime);
         String orderId = chooseValue(fill.orderId(), tradeOrderId);
         String correlationId = chooseValue(fill.correlationId(), tradeCorrelationId);
-        recordFill(fill.index(), new SimulatedTrade(fill.index(), executionTime, fill.price(), fill.amount(),
-                fill.fee(), side, orderId, correlationId));
+        recordFill(fill.index(), new BaseTrade(fill.index(), executionTime, fill.price(), fill.amount(), fill.fee(),
+                side, orderId, correlationId));
     }
 
     @Override
@@ -292,7 +346,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
                 return false;
             }
             recordFill(index,
-                    new SimulatedTrade(index, Instant.EPOCH, price, amount, null, startingExecutionSide(), null, null));
+                    new BaseTrade(index, Instant.EPOCH, price, amount, null, startingExecutionSide(), null, null));
             return true;
         } finally {
             lock.writeLock().unlock();
@@ -307,7 +361,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
                 return false;
             }
             recordFill(index,
-                    new SimulatedTrade(index, Instant.EPOCH, price, amount, null, exitExecutionSide(), null, null));
+                    new BaseTrade(index, Instant.EPOCH, price, amount, null, exitExecutionSide(), null, null));
             return true;
         } finally {
             lock.writeLock().unlock();
@@ -345,7 +399,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
             int entryIndex = positionBook.openLots().stream().mapToInt(PositionLot::entryIndex).min().orElse(0);
             ExecutionSide entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
             Instant entryTime = net.earliestEntryTime() == null ? Instant.EPOCH : net.earliestEntryTime();
-            SimulatedTrade entryTrade = new SimulatedTrade(entryIndex, entryTime, net.averageEntryPrice(), net.amount(),
+            BaseTrade entryTrade = new BaseTrade(entryIndex, entryTime, net.averageEntryPrice(), net.amount(),
                     net.totalFees(), entrySide, null, null);
             return new Position(entryTrade, transactionCostModel, holdingCostModel);
         } finally {
@@ -470,7 +524,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         return fallback;
     }
 
-    private static void validateFill(SimulatedTrade trade) {
+    private static void validateFill(BaseTrade trade) {
         if (trade.amount().isNaN() || trade.amount().isZero() || trade.amount().isNegative()) {
             throw new IllegalArgumentException("Fill amount must be positive");
         }
@@ -490,7 +544,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         }
         for (PositionLot lot : positionBook.openLots()) {
             ExecutionSide entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
-            trades.add(new SequencedTrade(new SimulatedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(),
+            trades.add(new SequencedTrade(new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(),
                     lot.amount(), lot.fee(), entrySide, lot.orderId(), lot.correlationId()), lot.entrySequence()));
         }
         trades.sort(Comparator.comparingInt((SequencedTrade trade) -> trade.trade().getIndex())

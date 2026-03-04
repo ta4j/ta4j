@@ -146,7 +146,7 @@ public class PositionBookTest {
         var book = new PositionBook(Trade.TradeType.BUY, ExecutionMatchPolicy.FIFO, transactionCostModel,
                 holdingCostModel);
 
-        assertThrows(IllegalArgumentException.class, () -> book.recordEntry(0, null, 0L));
+        assertThrows(IllegalArgumentException.class, () -> book.recordEntry(0, (BaseTrade) null, 0L));
         assertThrows(IllegalArgumentException.class,
                 () -> book.recordEntry(0, buyTrade(0, numFactory.hundred(), numFactory.zero(), null, null), 0L));
         assertThrows(IllegalArgumentException.class,
@@ -197,20 +197,20 @@ public class PositionBookTest {
         }
     }
 
-    private SimulatedTrade buyTrade(int index, Num price, Num amount, String orderId, String correlationId) {
+    private BaseTrade buyTrade(int index, Num price, Num amount, String orderId, String correlationId) {
         return buyTrade(index, price, amount, orderId, correlationId, null);
     }
 
-    private SimulatedTrade buyTrade(int index, Num price, Num amount, String orderId, String correlationId, Num fee) {
-        return new SimulatedTrade(index, Instant.EPOCH, price, amount, fee, ExecutionSide.BUY, orderId, correlationId);
+    private BaseTrade buyTrade(int index, Num price, Num amount, String orderId, String correlationId, Num fee) {
+        return new BaseTrade(index, Instant.EPOCH, price, amount, fee, ExecutionSide.BUY, orderId, correlationId);
     }
 
-    private SimulatedTrade sellTrade(int index, Num price, Num amount, String orderId, String correlationId) {
+    private BaseTrade sellTrade(int index, Num price, Num amount, String orderId, String correlationId) {
         return sellTrade(index, price, amount, orderId, correlationId, null);
     }
 
-    private SimulatedTrade sellTrade(int index, Num price, Num amount, String orderId, String correlationId, Num fee) {
-        return new SimulatedTrade(index, Instant.EPOCH, price, amount, fee, ExecutionSide.SELL, orderId, correlationId);
+    private BaseTrade sellTrade(int index, Num price, Num amount, String orderId, String correlationId, Num fee) {
+        return new BaseTrade(index, Instant.EPOCH, price, amount, fee, ExecutionSide.SELL, orderId, correlationId);
     }
 
     private PositionBook roundTrip(PositionBook book) throws Exception {

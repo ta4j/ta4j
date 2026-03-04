@@ -323,7 +323,7 @@ class LiveTradingRecordTest {
     void openPositionsExposeSnapshotLots() {
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
-        record.recordFill(new SimulatedTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+        record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
                 numFactory.one(), numFactory.zero(), ExecutionSide.BUY, null, null));
 
         OpenPosition first = record.getOpenPositions().getFirst();
@@ -337,11 +337,11 @@ class LiveTradingRecordTest {
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
-        record.recordFill(new SimulatedTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+        record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
                 numFactory.one(), numFactory.zero(), ExecutionSide.BUY, null, null));
-        record.recordFill(new SimulatedTrade(0, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
+        record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
                 numFactory.one(), numFactory.zero(), ExecutionSide.BUY, null, null));
-        record.recordFill(new SimulatedTrade(0, Instant.parse("2025-01-01T00:00:02Z"), numFactory.numOf(120),
+        record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:02Z"), numFactory.numOf(120),
                 numFactory.two(), numFactory.zero(), ExecutionSide.SELL, null, null));
 
         List<Trade> trades = record.getTrades();
@@ -357,9 +357,9 @@ class LiveTradingRecordTest {
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
-        record.recordFill(new SimulatedTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+        record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
                 numFactory.one(), numFactory.numOf(0.1), ExecutionSide.BUY, null, null));
-        record.recordFill(new SimulatedTrade(0, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
+        record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
                 numFactory.one(), numFactory.numOf(0.2), ExecutionSide.BUY, null, null));
 
         OpenPosition net = record.getNetOpenPosition();
@@ -372,9 +372,9 @@ class LiveTradingRecordTest {
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
-        record.recordFill(new SimulatedTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+        record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
                 numFactory.one(), numFactory.numOf(0.1), ExecutionSide.BUY, null, null));
-        record.recordFill(new SimulatedTrade(0, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
+        record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
                 numFactory.one(), numFactory.numOf(0.2), ExecutionSide.SELL, null, null));
 
         assertEquals(numFactory.numOf(0.3), record.getTotalFees());
@@ -419,8 +419,8 @@ class LiveTradingRecordTest {
     void rejectsNaNFee() {
         LiveTradingRecord record = new LiveTradingRecord();
         assertThrows(IllegalArgumentException.class,
-                () -> record.recordFill(new SimulatedTrade(0, Instant.parse("2025-01-01T00:00:00Z"),
-                        numFactory.hundred(), numFactory.one(), NaN.NaN, ExecutionSide.BUY, null, null)));
+                () -> record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+                        numFactory.one(), NaN.NaN, ExecutionSide.BUY, null, null)));
     }
 
     @Test
@@ -510,7 +510,7 @@ class LiveTradingRecordTest {
         LiveTradingRecord liveFillRecord = new LiveTradingRecord();
         LiveTradingRecord genericFillRecord = new LiveTradingRecord();
 
-        SimulatedTrade liveFill = new SimulatedTrade(42, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+        BaseTrade liveFill = new BaseTrade(42, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
                 numFactory.one(), numFactory.zero(), ExecutionSide.BUY, "live-order", "live-correlation");
         TradeFill genericFill = fillContract(42, ExecutionSide.BUY, numFactory.hundred(), numFactory.one(),
                 "generic-order", "generic-correlation");
@@ -541,7 +541,7 @@ class LiveTradingRecordTest {
     void toStringSupportsDecimalNumValues() {
         var decimalFactory = DecimalNumFactory.getInstance();
         LiveTradingRecord record = new LiveTradingRecord();
-        record.recordFill(new SimulatedTrade(0, Instant.parse("2025-01-01T00:00:00Z"), decimalFactory.hundred(),
+        record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), decimalFactory.hundred(),
                 decimalFactory.one(), decimalFactory.zero(), ExecutionSide.BUY, "order-1", "corr-1"));
 
         String recordJson = record.toString();
@@ -553,17 +553,16 @@ class LiveTradingRecordTest {
         assertTrue(lotJson.contains("\"entryIndex\":0"));
     }
 
-    private SimulatedTrade fill(ExecutionSide side, Num price, Num amount) {
-        return new SimulatedTrade(0, Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, side, null, null);
+    private BaseTrade fill(ExecutionSide side, Num price, Num amount) {
+        return new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, side, null, null);
     }
 
-    private SimulatedTrade fill(int index, ExecutionSide side, Num price) {
-        return new SimulatedTrade(index, Instant.EPOCH, price, numFactory.one(), numFactory.zero(), side, null, null);
+    private BaseTrade fill(int index, ExecutionSide side, Num price) {
+        return new BaseTrade(index, Instant.EPOCH, price, numFactory.one(), numFactory.zero(), side, null, null);
     }
 
-    private SimulatedTrade fillWithIds(ExecutionSide side, Num price, Num amount, String orderId,
-            String correlationId) {
-        return new SimulatedTrade(0, Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, side, orderId,
+    private BaseTrade fillWithIds(ExecutionSide side, Num price, Num amount, String orderId, String correlationId) {
+        return new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, side, orderId,
                 correlationId);
     }
 

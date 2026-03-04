@@ -671,7 +671,7 @@ import java.time.Instant;
 
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
-import org.ta4j.core.SimulatedTrade;
+import org.ta4j.core.BaseTrade;
 import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.Trade.TradeType;
@@ -688,7 +688,7 @@ LiveTradingRecord record = new LiveTradingRecord(
         null,
         null);
 
-record.recordFill(new SimulatedTrade(
+record.recordFill(new BaseTrade(
         barIndex,
         Instant.now(),
         price,

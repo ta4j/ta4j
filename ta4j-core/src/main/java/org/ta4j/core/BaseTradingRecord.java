@@ -214,7 +214,7 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public void operate(int index, Num price, Num amount) {
-        Trade syntheticTrade = new SimulatedTrade(index, nextTradeType(), price, amount, transactionCostModel);
+        Trade syntheticTrade = new BaseTrade(index, nextTradeType(), price, amount, transactionCostModel);
         applyTrade(syntheticTrade);
     }
 

@@ -13,7 +13,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.ExecutionSide;
-import org.ta4j.core.SimulatedTrade;
+import org.ta4j.core.BaseTrade;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradeFill;
@@ -93,7 +93,7 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
                 numFactory.one());
 
         Trade entry = tradingRecord.getTrades().getFirst();
-        assertTrue(entry instanceof SimulatedTrade);
+        assertTrue(entry instanceof BaseTrade);
         assertEquals(1, entry.getFills().size());
     }
 
