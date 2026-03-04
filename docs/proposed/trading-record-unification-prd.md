@@ -1,0 +1,243 @@
+# PRD: TradingRecord Stack Unification (Backtest + Live)
+
+Status: Proposed  
+Owner: Core maintainers  
+Branch: `feature/backtest-execution-models`  
+Date: 2026-03-04
+
+## 1) Why this exists
+
+Backtesting should be as close to live execution as we can make it. Right now, strategy logic can still be evaluated through different internal stacks (`BaseTradingRecord` vs `LiveTradingRecord`), which creates avoidable behavior drift and duplicate maintenance.
+
+The goal of this effort is to converge to one trade-processing core while keeping public API compatibility stable during migration.
+
+## 2) Premises and design rules
+
+1. The closer simulation is to live behavior, the more predictive the backtest is.  
+2. Strategy evaluation logic is part of the environment fidelity problem.  
+3. The closest simulation can get to reality is sharing the same execution path and state transitions.
+
+Practical constraint:
+- Simulation can legitimately have missing real-world fields (`time`, `orderId`, `correlationId`, etc.).  
+- Missing fields are acceptable gaps and should be modeled as optional metadata, not as separate logic paths.
+
+## 3) Scope
+
+In scope:
+- Unify `TradingRecord` internals so live and backtest use one mutation/state engine.
+- Keep `Trade` as the public-facing trade abstraction.
+- Keep existing public constructors/methods source-compatible where feasible.
+- Lock behavior with parity-focused tests.
+
+Out of scope (for this PRD):
+- Exchange adapter redesign.
+- Rule semantics changes.
+- Breaking removal of deprecated wrappers in the same release.
+
+## 4) Current-state pain points
+
+1. Duplicate logic stacks:
+- `BaseTradingRecord` uses `currentPosition` + list bookkeeping.
+- `LiveTradingRecord` uses `PositionBook` + fill-based lot accounting.
+
+2. Behavioral drift risks:
+- Different trade ingestion paths and validation rules.
+- Different open-position and fee handling mechanics.
+
+3. Operational complexity:
+- Backtest execution models must reason about which record implementation they mutate.
+- Consolidation work keeps surfacing due to overlapping semantics.
+
+## 5) Target architecture
+
+One internal engine, two thin facades:
+
+- Public API:
+  - `Trade`, `TradeFill`, `TradingRecord`, `Position`, `OpenPosition`
+- Internal core:
+  - A single package-private record core responsible for:
+    - trade/fill ingestion
+    - lot matching
+    - open/closed position snapshots
+    - fees + ordering
+    - deterministic serialization support hooks
+- Facades:
+  - `LiveTradingRecord`: live-oriented API surface and metadata expectations.
+  - `BaseTradingRecord`: compatibility surface for classic backtest usage, delegating to same core.
+
+No new public top-level abstractions unless unavoidable.
+
+## 6) Detailed implementation plan (class/method level)
+
+## Phase A: Establish unification core behind existing APIs
+
+- [ ] Add one package-private engine type in `org.ta4j.core` (name TBD, e.g. `TradingRecordCore`) used by both records.
+  - Rationale: two call sites (`BaseTradingRecord`, `LiveTradingRecord`) justify extraction.
+- [ ] Core responsibilities to implement:
+  - [ ] `applyTrade(int index, Trade trade, long sequence)`
+  - [ ] `applySynthetic(int index, Trade.TradeType type, Num price, Num amount, CostModel txCostModel)`
+  - [ ] `getTradesSnapshot()`
+  - [ ] `getClosedPositionsSnapshot()`
+  - [ ] `getOpenPositionsSnapshot()`
+  - [ ] `getNetOpenPositionSnapshot()`
+  - [ ] `getCurrentPositionView()`
+  - [ ] `getTotalFees()`
+
+- [ ] Move lot matching and close/open bookkeeping from:
+  - `PositionBook#recordEntry`
+  - `PositionBook#recordExit`
+  - `PositionBook#closeLot`
+  - into the core (or keep `PositionBook` as a strict internal collaborator owned by the core).
+
+- [ ] Keep sequence ordering deterministic (equivalent to current `LiveTradingRecord#nextSequence` behavior).
+
+## Phase B: Migrate `LiveTradingRecord` to thin facade
+
+- [ ] Keep current public API shape in `LiveTradingRecord`.
+- [ ] Delegate these methods to core:
+  - [ ] `recordFill(Trade)`
+  - [ ] `recordFill(int, Trade)`
+  - [ ] `recordExecutionFill(TradeFill)`
+  - [ ] `operate(Trade)`
+  - [ ] `operate(int, Num, Num)`
+  - [ ] `enter(int, Num, Num)`
+  - [ ] `exit(int, Num, Num)`
+  - [ ] `getTrades()`
+  - [ ] `getPositions()`
+  - [ ] `getCurrentPosition()`
+  - [ ] `getOpenPositions()`
+  - [ ] `getNetOpenPosition()`
+  - [ ] `getTotalFees()`
+
+- [ ] Preserve thread-safety semantics:
+  - Keep `ReentrantReadWriteLock` at facade boundary, or move lock into core with equivalent guarantees.
+
+## Phase C: Migrate `BaseTradingRecord` to same core
+
+- [ ] Replace internal duplicated collections:
+  - `trades`, `buyTrades`, `sellTrades`, `entryTrades`, `exitTrades`, `positions`, `currentPosition`.
+- [ ] Delegate instead to core snapshots and derived views.
+- [ ] Rewire these methods:
+  - [ ] `operate(int, Num, Num)`
+  - [ ] `operate(Trade)`
+  - [ ] `enter(int, Num, Num)`
+  - [ ] `exit(int, Num, Num)`
+  - [ ] `getPositions()`
+  - [ ] `getTrades()`
+  - [ ] `getLastTrade()`
+  - [ ] `getLastTrade(TradeType)`
+  - [ ] `getLastEntry()`
+  - [ ] `getLastExit()`
+  - [ ] `getCurrentPosition()`
+
+- [ ] Constructor migration:
+  - [ ] `BaseTradingRecord(TradeType, Integer, Integer, CostModel, CostModel)` should initialize the core.
+  - [ ] trade/position bootstrap constructors should call `operate(Trade)` through facade methods so construction path is identical to runtime path.
+
+- [ ] Compatibility requirement:
+  - Preserve current `BaseTradingRecord` behavior for sequence-based entry/exit flow and start/end index semantics.
+
+## Phase D: Align `BarSeriesManager` to unified record path
+
+- [ ] In `org.ta4j.core.backtest.BarSeriesManager`, replace direct instantiation:
+  - current: `new BaseTradingRecord(...)`
+  - target: internal factory that still returns `TradingRecord` but can be configured.
+
+- [ ] Add overload(s) to allow record creation strategy without breaking existing constructors:
+  - [ ] `BarSeriesManager(..., TradingRecordFactory tradingRecordFactory)` (package-private or public based on necessity).
+  - [ ] default factory must preserve existing behavior.
+
+- [ ] Ensure all `TradeExecutionModel` implementations can mutate any `TradingRecord` produced by manager without implementation-specific assumptions.
+
+## Phase E: Final consolidation and deprecation strategy
+
+- [ ] Keep `LiveTradingRecord` and `BaseTradingRecord` as compatibility facades.
+- [ ] Mark duplicated behavior-only helpers for removal once facade parity is proven.
+- [ ] Remove any remaining internal code paths that bypass unified core.
+
+## 7) QoL additions recommended
+
+- [ ] Add a `TradingRecord` parity fixture in tests:
+  - one utility that runs the same sequence against both facades and asserts:
+    - trades (index/type/amount/price/cost)
+    - closed positions
+    - open position snapshots
+    - fees
+
+- [ ] Add explicit diagnostics hooks for debugging strategy drift:
+  - snapshot helper for per-bar state (`open lots`, `net open`, `total fees`, `last trade`).
+  - keep package-private unless a public API use case is proven.
+
+- [ ] Add backtest/live parity example in `ta4j-examples`:
+  - same strategy + same synthetic fills + compare record outputs.
+
+- [ ] Add migration note to README/CHANGELOG:
+  - “Trade interface is public surface; concrete record implementations are façade details.”
+
+## 8) Testing and quality gates
+
+## Core parity tests
+
+- [ ] Add `ta4j-core/src/test/java/org/ta4j/core/TradingRecordParityTest.java`:
+  - [ ] simple long entry/exit
+  - [ ] simple short entry/exit
+  - [ ] partial fills with weighted average
+  - [ ] mixed lot closes across FIFO/LIFO/AVG_COST/SPECIFIC_ID
+  - [ ] metadata missing (`time/orderId/correlationId`) fallback behavior
+
+## Regression tests
+
+- [ ] Ensure existing suites stay green:
+  - `LiveTradingRecordTest`
+  - `BaseTradingRecordTest` / `TradingRecordTest`
+  - `PositionBookTest`
+  - `*ExecutionModelTest`
+  - relevant criterion tests that depend on trade/position semantics
+
+## Required commands
+
+- [ ] Fast loop while implementing:
+  - `mvn -pl ta4j-core test -Dtest=LiveTradingRecordTest,TradingRecordTest,PositionBookTest`
+  - `mvn -pl ta4j-core test '-Dtest=*ExecutionModelTest'`
+- [ ] Final gate:
+  - `scripts/run-full-build-quiet.sh`
+  - Must end with `Failures: 0`, `Errors: 0` and include log path.
+
+## 9) Documentation and Javadoc work
+
+- [ ] `TradingRecord` Javadoc:
+  - clarify `Trade` is public contract and metadata optionality.
+- [ ] `BaseTradingRecord` and `LiveTradingRecord` Javadocs:
+  - explicitly state they are facades over shared internals (once done).
+- [ ] `BarSeriesManager` docs:
+  - clarify record creation strategy and default behavior.
+- [ ] `CHANGELOG.md` unreleased notes:
+  - explain user-visible unification in plain terms with examples.
+
+## 10) Risks and mitigations
+
+Risk: behavior drift in entry/exit ordering.  
+Mitigation: parity tests + deterministic sequence assertions.
+
+Risk: hidden coupling to concrete classes in tests/examples.  
+Mitigation: harden tests to `Trade`/`TradingRecord` interfaces and keep only required internal casts.
+
+Risk: performance regressions from abstraction layering.  
+Mitigation: add micro-bench checks for `run(...)` hot path and large trade histories.
+
+## 11) Rollout plan
+
+1. Land internal core + facade delegation with no public API removals.  
+2. Run parity suites and full build gate.  
+3. Update examples/docs.  
+4. Deprecate any newly redundant internal helpers only after parity confidence.  
+5. Consider later major-version removals of obsolete compatibility surfaces.
+
+## 12) Exit criteria
+
+- [ ] Both `BaseTradingRecord` and `LiveTradingRecord` mutate through one shared internal path.
+- [ ] No public method in core backtest/live flow requires concrete trade implementation types.
+- [ ] All targeted and full-build tests are green.
+- [ ] Javadocs and changelog updated to reflect the unified model.
+- [ ] No unresolved parity regressions between backtest and live-shaped inputs.
+
