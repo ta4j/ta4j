@@ -6,6 +6,7 @@
 
 ### Fixed
 - **Release workflow drift guardrails**: Release maintainers now get near-immediate drift detection because `release-health.yml` runs on every `master` push and after `Publish Release to Maven Central` completes, and `publish-release.yml` now hard-fails if the pushed release tag does not resolve to the expected `releaseCommit` or is not reachable from `origin/<default_branch>`.
+- **Rolling variance now matches sample-statistics expectations by default**: `VarianceIndicator` now computes sample variance out of the box (`n-1` divisor), so spreadsheet-style checks like issue `#1152` line up directly. You can now choose behavior explicitly with `SampleType`/factory helpers across `VarianceIndicator`, `StandardDeviationIndicator`, `StandardErrorIndicator`, `SigmaIndicator`, and `CorrelationCoefficientIndicator` (for example: `VarianceIndicator.ofSample(...)`, `VarianceIndicator.ofPopulation(...)`, `StandardDeviationIndicator.ofSample(...)`, or `CorrelationCoefficientIndicator.ofPopulation(...)`).
 
 ## 0.22.3 (2026-03-01)
 
