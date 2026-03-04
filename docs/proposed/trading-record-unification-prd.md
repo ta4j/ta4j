@@ -83,11 +83,12 @@ No new public top-level abstractions unless unavoidable.
   - [x] `getCurrentPositionView()`
   - [x] `getTotalFees()`
 
-- [ ] Move lot matching and close/open bookkeeping from:
+- [x] Move lot matching and close/open bookkeeping from:
   - `PositionBook#recordEntry`
   - `PositionBook#recordExit`
   - `PositionBook#closeLot`
   - into the core (or keep `PositionBook` as a strict internal collaborator owned by the core).
+  - Status: kept `PositionBook` as the strict collaborator behind `TradingRecordCore` mutation/snapshot hooks.
 
 - [x] Keep sequence ordering deterministic (equivalent to current `LiveTradingRecord#nextSequence` behavior).
 
@@ -114,7 +115,7 @@ No new public top-level abstractions unless unavoidable.
 
 ## Phase C: Migrate `BaseTradingRecord` to same core
 
-- [ ] Replace internal duplicated collections:
+- [x] Replace internal duplicated collections:
   - `trades`, `buyTrades`, `sellTrades`, `entryTrades`, `exitTrades`, `positions`, `currentPosition`.
 - [x] Consolidate redundant last-trade caches:
   - removed `buyTrades`, `sellTrades`, `entryTrades`, `exitTrades` from `BaseTradingRecord`

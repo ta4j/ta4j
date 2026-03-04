@@ -360,15 +360,10 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     }
 
     private TradeType nextSyntheticTradeType() {
-        lock.readLock().lock();
-        try {
-            if (positionBook.openLots().isEmpty()) {
-                return startingType;
-            }
-            return startingType.complementType();
-        } finally {
-            lock.readLock().unlock();
+        if (core().getOpenPositionsSnapshot().isEmpty()) {
+            return startingType;
         }
+        return startingType.complementType();
     }
 
     private List<OpenPosition> openPositionsSnapshot() {
@@ -442,15 +437,10 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         if (side != null) {
             return side;
         }
-        lock.readLock().lock();
-        try {
-            if (positionBook.openLots().isEmpty()) {
-                return sideOf(startingType);
-            }
-            return sideOf(startingType.complementType());
-        } finally {
-            lock.readLock().unlock();
+        if (core().getOpenPositionsSnapshot().isEmpty()) {
+            return sideOf(startingType);
         }
+        return sideOf(startingType.complementType());
     }
 
     private static ExecutionSide sideOf(TradeType tradeType) {
@@ -555,34 +545,29 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
 
     @Override
     public String toString() {
-        lock.readLock().lock();
-        try {
-            JsonObject json = new JsonObject();
-            json.addProperty("name", name);
-            json.addProperty("startingType", startingType.name());
-            json.addProperty("matchPolicy", matchPolicy.name());
-            json.addProperty("startIndex", startIndex);
-            json.addProperty("endIndex", endIndex);
-            json.addProperty("nextTradeIndex", nextTradeIndex);
-            json.addProperty("openPositionCount", positionBook.openPositions().size());
-            json.addProperty("closedPositionCount", positionBook.closedPositions().size());
-            json.addProperty("totalFees", getTotalFees().toString());
+        JsonObject json = new JsonObject();
+        json.addProperty("name", name);
+        json.addProperty("startingType", startingType.name());
+        json.addProperty("matchPolicy", matchPolicy.name());
+        json.addProperty("startIndex", startIndex);
+        json.addProperty("endIndex", endIndex);
+        json.addProperty("nextTradeIndex", nextTradeIndex);
+        json.addProperty("openPositionCount", core().getOpenPositionsSnapshot().size());
+        json.addProperty("closedPositionCount", core().getClosedPositionsSnapshot().size());
+        json.addProperty("totalFees", getTotalFees().toString());
 
-            List<Trade> trades = buildTrades();
-            json.addProperty("tradeCount", trades.size());
-            JsonArray tradesJson = new JsonArray();
-            for (Trade trade : trades) {
-                try {
-                    tradesJson.add(JsonParser.parseString(trade.toString()));
-                } catch (RuntimeException parseFailure) {
-                    tradesJson.add(trade.toString());
-                }
+        List<Trade> trades = core().getTradesSnapshot();
+        json.addProperty("tradeCount", trades.size());
+        JsonArray tradesJson = new JsonArray();
+        for (Trade trade : trades) {
+            try {
+                tradesJson.add(JsonParser.parseString(trade.toString()));
+            } catch (RuntimeException parseFailure) {
+                tradesJson.add(trade.toString());
             }
-            json.add("trades", tradesJson);
-            return GSON.toJson(json);
-        } finally {
-            lock.readLock().unlock();
         }
+        json.add("trades", tradesJson);
+        return GSON.toJson(json);
     }
 
     @Serial

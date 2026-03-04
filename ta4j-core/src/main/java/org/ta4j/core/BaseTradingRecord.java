@@ -44,11 +44,14 @@ public class BaseTradingRecord implements TradingRecord {
     /** The entry type (BUY or SELL) in the trading session. */
     private final TradeType startingType;
 
-    /** The recorded positions. */
-    private final List<Position> positions = new ArrayList<>();
-
     /** The current non-closed position (there's always one). */
     private Position currentPosition;
+
+    /** Cached closed positions derived from recorded trades. */
+    private transient List<Position> closedPositionsView;
+
+    /** Trade-count marker for {@link #closedPositionsView}. */
+    private transient int closedPositionsTradeCount = -1;
 
     /** The cost model for transactions of the asset. */
     private final transient CostModel transactionCostModel;
@@ -291,10 +294,11 @@ public class BaseTradingRecord implements TradingRecord {
 
         // Storing the new trade in trades list
         trades.add(trade);
+        closedPositionsTradeCount = -1;
+        closedPositionsView = null;
 
         // Storing the position if closed
         if (currentPosition.isClosed()) {
-            positions.add(currentPosition);
             currentPosition = new Position(startingType, transactionCostModel, holdingCostModel);
         }
     }
@@ -339,13 +343,33 @@ public class BaseTradingRecord implements TradingRecord {
 
     private TradingRecordCore core() {
         if (tradingRecordCore == null) {
-            tradingRecordCore = new TradingRecordCore(startingType, () -> trades, () -> positions,
+            tradingRecordCore = new TradingRecordCore(startingType, () -> trades, this::closedPositionsView,
                     () -> currentPosition, this::openPositionsSnapshot, this::netOpenPositionSnapshot,
                     this::totalFeesSnapshot, (index, trade, sequence) -> applyTradeInternal(trade),
                     (index, type, price, amount, transactionCostModel) -> applyTradeInternal(
                             new BaseTrade(index, type, price, amount, transactionCostModel)));
         }
         return tradingRecordCore;
+    }
+
+    private List<Position> closedPositionsView() {
+        int closedTradeCount = trades.size();
+        if (currentPosition.isOpened()) {
+            closedTradeCount--;
+        }
+        if (closedTradeCount < 0) {
+            closedTradeCount = 0;
+        }
+        if (closedPositionsView != null && closedPositionsTradeCount == closedTradeCount) {
+            return closedPositionsView;
+        }
+        List<Position> derived = new ArrayList<>(closedTradeCount / 2);
+        for (int i = 0; i + 1 < closedTradeCount; i += 2) {
+            derived.add(new Position(trades.get(i), trades.get(i + 1), transactionCostModel, holdingCostModel));
+        }
+        closedPositionsView = derived;
+        closedPositionsTradeCount = closedTradeCount;
+        return closedPositionsView;
     }
 
     private List<OpenPosition> openPositionsSnapshot() {
