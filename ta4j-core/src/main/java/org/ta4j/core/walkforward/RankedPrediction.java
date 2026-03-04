@@ -5,6 +5,8 @@ package org.ta4j.core.walkforward;
 
 import java.util.Objects;
 
+import org.ta4j.core.num.Num;
+
 /**
  * Ranked prediction candidate with probability and confidence values.
  *
@@ -16,7 +18,7 @@ import java.util.Objects;
  * @param payload      domain payload
  * @since 0.22.4
  */
-public record RankedPrediction<P>(String predictionId, int rank, double probability, double confidence, P payload) {
+public record RankedPrediction<P>(String predictionId, int rank, Num probability, Num confidence, P payload) {
 
     /**
      * Creates a validated ranked prediction.
@@ -29,6 +31,8 @@ public record RankedPrediction<P>(String predictionId, int rank, double probabil
         if (rank <= 0) {
             throw new IllegalArgumentException("rank must be > 0");
         }
+        Objects.requireNonNull(probability, "probability");
+        Objects.requireNonNull(confidence, "confidence");
         validateUnitInterval("probability", probability);
         validateUnitInterval("confidence", confidence);
     }
@@ -40,12 +44,17 @@ public record RankedPrediction<P>(String predictionId, int rank, double probabil
      * @return copied prediction
      * @since 0.22.4
      */
-    public RankedPrediction<P> withProbability(double calibratedProbability) {
+    public RankedPrediction<P> withProbability(Num calibratedProbability) {
         return new RankedPrediction<>(predictionId, rank, calibratedProbability, confidence, payload);
     }
 
-    private static void validateUnitInterval(String field, double value) {
-        if (Double.isNaN(value) || Double.isInfinite(value) || value < 0.0 || value > 1.0) {
+    private static void validateUnitInterval(String field, Num value) {
+        if (Num.isNaNOrNull(value)) {
+            throw new IllegalArgumentException(field + " must be finite and in [0.0, 1.0]");
+        }
+        Num zero = value.getNumFactory().zero();
+        Num one = value.getNumFactory().one();
+        if (value.isLessThan(zero) || value.isGreaterThan(one)) {
             throw new IllegalArgumentException(field + " must be in [0.0, 1.0]");
         }
     }

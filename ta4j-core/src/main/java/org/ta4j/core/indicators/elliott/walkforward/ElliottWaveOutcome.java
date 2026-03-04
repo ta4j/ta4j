@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.elliott.walkforward;
 
+import org.ta4j.core.num.Num;
+
 /**
  * Fixed-horizon realized outcome for Elliott scenario evaluation.
  *
@@ -14,7 +16,7 @@ package org.ta4j.core.indicators.elliott.walkforward;
  * @param breachedInvalidation whether invalidation was breached in the horizon
  * @since 0.22.4
  */
-public record ElliottWaveOutcome(EventOutcome eventOutcome, PhaseProgression phaseProgression, double realizedReturn,
+public record ElliottWaveOutcome(EventOutcome eventOutcome, PhaseProgression phaseProgression, Num realizedReturn,
         boolean reachedPrimaryTarget, boolean breachedInvalidation) {
 
     /**

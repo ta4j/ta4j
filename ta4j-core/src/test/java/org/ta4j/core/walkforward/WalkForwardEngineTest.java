@@ -11,21 +11,20 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.walkforward.metric.AgreementMetric;
-import org.ta4j.core.walkforward.metric.BrierScoreMetric;
-import org.ta4j.core.walkforward.metric.TopKHitRateMetric;
+import org.ta4j.core.num.NumFactory;
 
 class WalkForwardEngineTest {
 
     @Test
     void engineBuildsSnapshotsObservationsMetricsAndAuditDeterministically() {
         BarSeries series = new MockBarSeriesBuilder().withData(prices(220)).build();
+        NumFactory numFactory = series.numFactory();
         WalkForwardConfig config = new WalkForwardConfig(80, 30, 30, 2, 2, 0, 5, List.of(3), 2, List.of(1), 7L);
 
         List<WalkForwardRunResult.LeakageAudit> auditRecords = new ArrayList<>();
         PredictionProvider<String, String> provider = (fullSeries, decisionIndex, context) -> List.of(
-                new RankedPrediction<>(context + "-bull", 1, 0.7, 0.8, "bull"),
-                new RankedPrediction<>(context + "-bear", 2, 0.3, 0.4, "bear"));
+                new RankedPrediction<>(context + "-bull", 1, numFactory.numOf(0.7), numFactory.numOf(0.8), "bull"),
+                new RankedPrediction<>(context + "-bear", 2, numFactory.numOf(0.3), numFactory.numOf(0.4), "bear"));
 
         OutcomeLabeler<String, Boolean> labeler = (fullSeries, decisionIndex, horizonBars, prediction) -> {
             double start = fullSeries.getBar(decisionIndex).getClosePrice().doubleValue();
@@ -35,9 +34,9 @@ class WalkForwardEngineTest {
         };
 
         List<WalkForwardMetric<String, Boolean>> metrics = List.of(
-                new AgreementMetric<>("eventAgreement", 1, (prediction, outcome) -> outcome),
-                new TopKHitRateMetric<>("top2Hit", 2, (prediction, outcome) -> outcome),
-                new BrierScoreMetric<>("brier", 1, outcome -> outcome ? 1.0 : 0.0));
+                WalkForwardMetric.agreement("eventAgreement", 1, (prediction, outcome) -> outcome),
+                WalkForwardMetric.topKHitRate("top2Hit", 2, (prediction, outcome) -> outcome),
+                WalkForwardMetric.brierScore("brier", 1, outcome -> outcome ? numFactory.one() : numFactory.zero()));
 
         WalkForwardEngine<String, String, Boolean> engine = new WalkForwardEngine<>(
                 new AnchoredExpandingWalkForwardSplitter(), provider, labeler, metrics, ignored -> {
@@ -73,9 +72,11 @@ class WalkForwardEngineTest {
 
         WalkForwardEngine<String, String, Boolean> engine = new WalkForwardEngine<>(
                 new AnchoredExpandingWalkForwardSplitter(),
-                (fullSeries, decisionIndex, context) -> List.of(new RankedPrediction<>("p", 1, 0.5, 0.5, "p")),
+                (fullSeries, decisionIndex,
+                        context) -> List.of(new RankedPrediction<>("p", 1, fullSeries.numFactory().numOf(0.5),
+                                fullSeries.numFactory().numOf(0.5), "p")),
                 (fullSeries, decisionIndex, horizonBars, prediction) -> true,
-                List.of(new AgreementMetric<>("agreement", 1, (prediction, outcome) -> outcome)));
+                List.of(WalkForwardMetric.agreement("agreement", 1, (prediction, outcome) -> outcome)));
 
         WalkForwardRunResult<String, Boolean> result = engine.run(series, "ctx", config);
 

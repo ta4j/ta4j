@@ -11,27 +11,35 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
-import org.ta4j.core.walkforward.calibration.CalibrationSelection;
+import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.NumFactory;
 
 class WalkForwardModelRecordsTest {
 
+    private static final NumFactory NUM_FACTORY = DoubleNumFactory.getInstance();
+
     @Test
     void rankedPredictionValidatesAndSupportsProbabilityCopy() {
-        RankedPrediction<String> prediction = new RankedPrediction<>("p-1", 1, 0.6, 0.7, "bull");
-        RankedPrediction<String> copied = prediction.withProbability(0.8);
+        RankedPrediction<String> prediction = new RankedPrediction<>("p-1", 1, NUM_FACTORY.numOf(0.6),
+                NUM_FACTORY.numOf(0.7), "bull");
+        RankedPrediction<String> copied = prediction.withProbability(NUM_FACTORY.numOf(0.8));
 
-        assertThat(copied.probability()).isEqualTo(0.8);
-        assertThat(copied.confidence()).isEqualTo(0.7);
+        assertThat(copied.probability()).isEqualTo(NUM_FACTORY.numOf(0.8));
+        assertThat(copied.confidence()).isEqualTo(NUM_FACTORY.numOf(0.7));
         assertThat(copied.payload()).isEqualTo("bull");
 
-        assertThrows(IllegalArgumentException.class, () -> new RankedPrediction<>("p-1", 0, 0.2, 0.4, "x"));
-        assertThrows(IllegalArgumentException.class, () -> new RankedPrediction<>("p-1", 1, -0.1, 0.4, "x"));
-        assertThrows(IllegalArgumentException.class, () -> new RankedPrediction<>("p-1", 1, 0.2, 1.1, "x"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RankedPrediction<>("p-1", 0, NUM_FACTORY.numOf(0.2), NUM_FACTORY.numOf(0.4), "x"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RankedPrediction<>("p-1", 1, NUM_FACTORY.numOf(-0.1), NUM_FACTORY.numOf(0.4), "x"));
+        assertThrows(IllegalArgumentException.class,
+                () -> new RankedPrediction<>("p-1", 1, NUM_FACTORY.numOf(0.2), NUM_FACTORY.numOf(1.1), "x"));
     }
 
     @Test
     void predictionSnapshotValidatesAndBuildsStableKey() {
-        RankedPrediction<String> prediction = new RankedPrediction<>("p-1", 1, 0.5, 0.5, "payload");
+        RankedPrediction<String> prediction = new RankedPrediction<>("p-1", 1, NUM_FACTORY.numOf(0.5),
+                NUM_FACTORY.numOf(0.5), "payload");
         PredictionSnapshot<String> snapshot = new PredictionSnapshot<>("fold-1", 42, List.of(prediction),
                 Map.of("source", "test"));
 
@@ -45,7 +53,8 @@ class WalkForwardModelRecordsTest {
 
     @Test
     void observationValidatesHorizonAndExposesFoldId() {
-        RankedPrediction<String> prediction = new RankedPrediction<>("p-1", 1, 0.6, 0.6, "payload");
+        RankedPrediction<String> prediction = new RankedPrediction<>("p-1", 1, NUM_FACTORY.numOf(0.6),
+                NUM_FACTORY.numOf(0.6), "payload");
         PredictionSnapshot<String> snapshot = new PredictionSnapshot<>("fold-a", 8, List.of(prediction), Map.of());
         WalkForwardObservation<String, Boolean> observation = new WalkForwardObservation<>(snapshot, prediction, true,
                 5);
@@ -118,10 +127,11 @@ class WalkForwardModelRecordsTest {
         WalkForwardRunResult<String, Boolean> runResult = new WalkForwardRunResult<>(config, List.of(), List.of(),
                 Map.of(), Map.of(), Map.of(), List.of(), WalkForwardRuntimeReport.empty(), manifest);
         WalkForwardCandidate<String> candidate = new WalkForwardCandidate<>("c-1", "ctx");
-        WalkForwardObjective.Score score = new WalkForwardObjective.Score(1.0, 1.2, 0.1, true, List.of(), Map.of());
+        WalkForwardObjective.Score score = new WalkForwardObjective.Score(NUM_FACTORY.one(), NUM_FACTORY.numOf(1.2),
+                NUM_FACTORY.numOf(0.1), true, List.of(), Map.of());
 
         WalkForwardLeaderboard.Entry<String> entry = new WalkForwardLeaderboard.Entry<>(candidate, score, Map.of(),
-                CalibrationSelection.none(), runResult);
+                WalkForwardTuner.CalibrationSelection.none(), runResult);
         WalkForwardLeaderboard<String> leaderboard = new WalkForwardLeaderboard<>(List.of(entry), 1, 1,
                 config.primaryHorizonBars());
 
@@ -130,6 +140,6 @@ class WalkForwardModelRecordsTest {
 
         assertThrows(IllegalArgumentException.class, () -> new WalkForwardLeaderboard<>(List.of(), -1, 0, 1));
         assertThrows(NullPointerException.class, () -> new WalkForwardLeaderboard.Entry<>(null, score, Map.of(),
-                CalibrationSelection.none(), runResult));
+                WalkForwardTuner.CalibrationSelection.none(), runResult));
     }
 }

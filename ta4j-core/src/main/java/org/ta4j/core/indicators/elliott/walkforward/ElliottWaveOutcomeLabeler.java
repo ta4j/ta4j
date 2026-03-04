@@ -8,6 +8,7 @@ import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.walkforward.OutcomeLabeler;
 import org.ta4j.core.walkforward.RankedPrediction;
@@ -36,14 +37,14 @@ public final class ElliottWaveOutcomeLabeler
         ElliottScenario scenario = prediction.payload().scenario();
         if (scenario == null || !scenario.hasKnownDirection()) {
             return new ElliottWaveOutcome(ElliottWaveOutcome.EventOutcome.NEITHER,
-                    ElliottWaveOutcome.PhaseProgression.UNKNOWN, Double.NaN, false, false);
+                    ElliottWaveOutcome.PhaseProgression.UNKNOWN, NaN.NaN, false, false);
         }
 
         int labelStart = decisionIndex + 1;
         int labelEnd = Math.min(fullSeries.getEndIndex(), decisionIndex + horizonBars);
         if (labelStart > labelEnd) {
             return new ElliottWaveOutcome(ElliottWaveOutcome.EventOutcome.NEITHER,
-                    ElliottWaveOutcome.PhaseProgression.UNKNOWN, Double.NaN, false, false);
+                    ElliottWaveOutcome.PhaseProgression.UNKNOWN, NaN.NaN, false, false);
         }
 
         Num startClose = fullSeries.getBar(decisionIndex).getClosePrice();
@@ -83,9 +84,9 @@ public final class ElliottWaveOutcomeLabeler
             }
         }
 
-        double realizedReturn = Double.NaN;
+        Num realizedReturn = NaN.NaN;
         if (Num.isValid(startClose) && Num.isValid(endClose) && !startClose.isZero()) {
-            realizedReturn = endClose.minus(startClose).dividedBy(startClose).doubleValue();
+            realizedReturn = endClose.minus(startClose).dividedBy(startClose);
         }
 
         ElliottWaveOutcome.PhaseProgression phaseProgression = progression(bullish, startClose, endClose);

@@ -29,7 +29,7 @@ class ElliottWaveOutcomeLabelerTest {
         ElliottWaveAnalysisResult.BaseScenarioAssessment assessment = new ElliottWaveAnalysisResult.BaseScenarioAssessment(
                 scenario, 0.8, 0.5, 0.7, List.of());
         RankedPrediction<ElliottWaveAnalysisResult.BaseScenarioAssessment> prediction = new RankedPrediction<>(
-                scenario.id(), 1, 0.7, 0.8, assessment);
+                scenario.id(), 1, series.numFactory().numOf(0.7), series.numFactory().numOf(0.8), assessment);
 
         ElliottWaveOutcomeLabeler labeler = new ElliottWaveOutcomeLabeler();
         ElliottWaveOutcome outcome = labeler.label(series, 0, 3, prediction);
@@ -48,7 +48,7 @@ class ElliottWaveOutcomeLabelerTest {
         ElliottWaveAnalysisResult.BaseScenarioAssessment assessment = new ElliottWaveAnalysisResult.BaseScenarioAssessment(
                 scenario, 0.8, 0.5, 0.7, List.of());
         RankedPrediction<ElliottWaveAnalysisResult.BaseScenarioAssessment> prediction = new RankedPrediction<>(
-                scenario.id(), 1, 0.7, 0.8, assessment);
+                scenario.id(), 1, series.numFactory().numOf(0.7), series.numFactory().numOf(0.8), assessment);
 
         ElliottWaveOutcomeLabeler labeler = new ElliottWaveOutcomeLabeler();
         ElliottWaveOutcome outcome = labeler.label(series, 0, 3, prediction);
@@ -66,7 +66,7 @@ class ElliottWaveOutcomeLabelerTest {
         ElliottWaveAnalysisResult.BaseScenarioAssessment assessment = new ElliottWaveAnalysisResult.BaseScenarioAssessment(
                 scenario, 0.8, 0.5, 0.7, List.of());
         RankedPrediction<ElliottWaveAnalysisResult.BaseScenarioAssessment> prediction = new RankedPrediction<>(
-                scenario.id(), 1, 0.7, 0.8, assessment);
+                scenario.id(), 1, series.numFactory().numOf(0.7), series.numFactory().numOf(0.8), assessment);
 
         ElliottWaveOutcomeLabeler labeler = new ElliottWaveOutcomeLabeler();
         ElliottWaveOutcome outcome = labeler.label(series, 0, 2, prediction);

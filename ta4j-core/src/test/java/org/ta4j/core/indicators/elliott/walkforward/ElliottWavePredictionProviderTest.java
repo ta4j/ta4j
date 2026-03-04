@@ -13,6 +13,7 @@ import org.ta4j.core.walkforward.RankedPrediction;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
 
 class ElliottWavePredictionProviderTest {
 
@@ -36,11 +37,13 @@ class ElliottWavePredictionProviderTest {
         List<RankedPrediction<ElliottWaveAnalysisResult.BaseScenarioAssessment>> predictions = provider.predict(series,
                 series.getEndIndex(), context);
 
+        Num zero = series.numFactory().zero();
+        Num one = series.numFactory().one();
         assertThat(predictions.size()).isLessThanOrEqualTo(context.maxPredictions());
         for (int i = 0; i < predictions.size(); i++) {
             assertThat(predictions.get(i).rank()).isEqualTo(i + 1);
-            assertThat(predictions.get(i).probability()).isBetween(0.0, 1.0);
-            assertThat(predictions.get(i).confidence()).isBetween(0.0, 1.0);
+            assertThat(predictions.get(i).probability()).isGreaterThanOrEqualTo(zero).isLessThanOrEqualTo(one);
+            assertThat(predictions.get(i).confidence()).isGreaterThanOrEqualTo(zero).isLessThanOrEqualTo(one);
         }
     }
 

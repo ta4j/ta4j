@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.ta4j.core.num.Num;
+
 /**
  * Complete output bundle from a walk-forward engine run.
  *
@@ -27,8 +29,8 @@ import java.util.Optional;
  */
 public record WalkForwardRunResult<P, O>(WalkForwardConfig config, List<WalkForwardSplit> splits,
         List<PredictionSnapshot<P>> snapshots, Map<Integer, List<WalkForwardObservation<P, O>>> observationsByHorizon,
-        Map<Integer, Map<String, Double>> globalMetricsByHorizon,
-        Map<Integer, Map<String, Map<String, Double>>> foldMetricsByHorizon, List<LeakageAudit> leakageAudit,
+        Map<Integer, Map<String, Num>> globalMetricsByHorizon,
+        Map<Integer, Map<String, Map<String, Num>>> foldMetricsByHorizon, List<LeakageAudit> leakageAudit,
         WalkForwardRuntimeReport runtimeReport, WalkForwardExperimentManifest manifest) {
 
     /**
@@ -53,7 +55,7 @@ public record WalkForwardRunResult<P, O>(WalkForwardConfig config, List<WalkForw
      * @return metrics map
      * @since 0.22.4
      */
-    public Map<String, Double> globalMetricsForHorizon(int horizonBars) {
+    public Map<String, Num> globalMetricsForHorizon(int horizonBars) {
         return globalMetricsByHorizon.getOrDefault(horizonBars, Map.of());
     }
 
@@ -64,7 +66,7 @@ public record WalkForwardRunResult<P, O>(WalkForwardConfig config, List<WalkForw
      * @return fold metric map
      * @since 0.22.4
      */
-    public Map<String, Map<String, Double>> foldMetricsForHorizon(int horizonBars) {
+    public Map<String, Map<String, Num>> foldMetricsForHorizon(int horizonBars) {
         return foldMetricsByHorizon.getOrDefault(horizonBars, Map.of());
     }
 

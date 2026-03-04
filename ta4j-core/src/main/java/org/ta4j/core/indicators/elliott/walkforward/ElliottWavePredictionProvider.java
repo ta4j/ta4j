@@ -9,8 +9,10 @@ import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
+import org.ta4j.core.num.Num;
 import org.ta4j.core.walkforward.PredictionProvider;
 import org.ta4j.core.walkforward.RankedPrediction;
+import org.ta4j.core.walkforward.WalkForwardMetric;
 
 /**
  * Elliott-specific prediction provider for generic walk-forward engines.
@@ -48,23 +50,10 @@ public final class ElliottWavePredictionProvider
         for (int i = 0; i < max; i++) {
             ElliottWaveAnalysisResult.BaseScenarioAssessment assessment = scenarios.get(i);
             String id = assessment.scenario().id();
-            double probability = clamp01(assessment.compositeScore());
-            double confidence = clamp01(assessment.confidenceScore());
+            Num probability = WalkForwardMetric.normalizeAndClamp01(assessment.compositeScore(), selected.numFactory());
+            Num confidence = WalkForwardMetric.normalizeAndClamp01(assessment.confidenceScore(), selected.numFactory());
             predictions.add(new RankedPrediction<>(id, i + 1, probability, confidence, assessment));
         }
         return List.copyOf(predictions);
-    }
-
-    private static double clamp01(double value) {
-        if (Double.isNaN(value)) {
-            return 0.0;
-        }
-        if (value < 0.0) {
-            return 0.0;
-        }
-        if (value > 1.0) {
-            return 1.0;
-        }
-        return value;
     }
 }

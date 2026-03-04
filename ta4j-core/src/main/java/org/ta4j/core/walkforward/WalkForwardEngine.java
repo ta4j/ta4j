@@ -16,6 +16,7 @@ import java.util.function.Consumer;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.backtest.ProgressCompletion;
+import org.ta4j.core.num.Num;
 
 /**
  * Generic walk-forward execution engine.
@@ -185,8 +186,8 @@ public final class WalkForwardEngine<C, P, O> {
             foldRuntimes.add(new WalkForwardRuntimeReport.FoldRuntime(split.foldId(), foldRuntime, foldSnapshots));
         }
 
-        Map<Integer, Map<String, Double>> globalMetricsByHorizon = computeGlobalMetrics(observationsByHorizon);
-        Map<Integer, Map<String, Map<String, Double>>> foldMetricsByHorizon = computeFoldMetrics(
+        Map<Integer, Map<String, Num>> globalMetricsByHorizon = computeGlobalMetrics(observationsByHorizon);
+        Map<Integer, Map<String, Map<String, Num>>> foldMetricsByHorizon = computeFoldMetrics(
                 foldObservationsByHorizon);
 
         WalkForwardRuntimeReport runtimeReport = buildRuntimeReport(foldRuntimes,
@@ -213,11 +214,11 @@ public final class WalkForwardEngine<C, P, O> {
         return List.copyOf(sorted);
     }
 
-    private Map<Integer, Map<String, Double>> computeGlobalMetrics(
+    private Map<Integer, Map<String, Num>> computeGlobalMetrics(
             Map<Integer, List<WalkForwardObservation<P, O>>> observationsByHorizon) {
-        Map<Integer, Map<String, Double>> result = new LinkedHashMap<>();
+        Map<Integer, Map<String, Num>> result = new LinkedHashMap<>();
         for (Map.Entry<Integer, List<WalkForwardObservation<P, O>>> entry : observationsByHorizon.entrySet()) {
-            Map<String, Double> metricValues = new LinkedHashMap<>();
+            Map<String, Num> metricValues = new LinkedHashMap<>();
             for (WalkForwardMetric<P, O> metric : metrics) {
                 metricValues.put(metric.name(), metric.compute(entry.getValue()));
             }
@@ -226,14 +227,14 @@ public final class WalkForwardEngine<C, P, O> {
         return result;
     }
 
-    private Map<Integer, Map<String, Map<String, Double>>> computeFoldMetrics(
+    private Map<Integer, Map<String, Map<String, Num>>> computeFoldMetrics(
             Map<Integer, Map<String, List<WalkForwardObservation<P, O>>>> foldObservationsByHorizon) {
-        Map<Integer, Map<String, Map<String, Double>>> result = new LinkedHashMap<>();
+        Map<Integer, Map<String, Map<String, Num>>> result = new LinkedHashMap<>();
         for (Map.Entry<Integer, Map<String, List<WalkForwardObservation<P, O>>>> horizonEntry : foldObservationsByHorizon
                 .entrySet()) {
-            Map<String, Map<String, Double>> perFold = new LinkedHashMap<>();
+            Map<String, Map<String, Num>> perFold = new LinkedHashMap<>();
             for (Map.Entry<String, List<WalkForwardObservation<P, O>>> foldEntry : horizonEntry.getValue().entrySet()) {
-                Map<String, Double> metricValues = new LinkedHashMap<>();
+                Map<String, Num> metricValues = new LinkedHashMap<>();
                 for (WalkForwardMetric<P, O> metric : metrics) {
                     metricValues.put(metric.name(), metric.compute(foldEntry.getValue()));
                 }
@@ -287,20 +288,20 @@ public final class WalkForwardEngine<C, P, O> {
         return Map.copyOf(immutable);
     }
 
-    private static Map<Integer, Map<String, Double>> immutableMetricMap(Map<Integer, Map<String, Double>> mutable) {
-        Map<Integer, Map<String, Double>> immutable = new LinkedHashMap<>();
-        for (Map.Entry<Integer, Map<String, Double>> entry : mutable.entrySet()) {
+    private static Map<Integer, Map<String, Num>> immutableMetricMap(Map<Integer, Map<String, Num>> mutable) {
+        Map<Integer, Map<String, Num>> immutable = new LinkedHashMap<>();
+        for (Map.Entry<Integer, Map<String, Num>> entry : mutable.entrySet()) {
             immutable.put(entry.getKey(), Map.copyOf(entry.getValue()));
         }
         return Map.copyOf(immutable);
     }
 
-    private static Map<Integer, Map<String, Map<String, Double>>> immutableFoldMetricMap(
-            Map<Integer, Map<String, Map<String, Double>>> mutable) {
-        Map<Integer, Map<String, Map<String, Double>>> immutable = new LinkedHashMap<>();
-        for (Map.Entry<Integer, Map<String, Map<String, Double>>> horizonEntry : mutable.entrySet()) {
-            Map<String, Map<String, Double>> perFold = new LinkedHashMap<>();
-            for (Map.Entry<String, Map<String, Double>> foldEntry : horizonEntry.getValue().entrySet()) {
+    private static Map<Integer, Map<String, Map<String, Num>>> immutableFoldMetricMap(
+            Map<Integer, Map<String, Map<String, Num>>> mutable) {
+        Map<Integer, Map<String, Map<String, Num>>> immutable = new LinkedHashMap<>();
+        for (Map.Entry<Integer, Map<String, Map<String, Num>>> horizonEntry : mutable.entrySet()) {
+            Map<String, Map<String, Num>> perFold = new LinkedHashMap<>();
+            for (Map.Entry<String, Map<String, Num>> foldEntry : horizonEntry.getValue().entrySet()) {
                 perFold.put(foldEntry.getKey(), Map.copyOf(foldEntry.getValue()));
             }
             immutable.put(horizonEntry.getKey(), Map.copyOf(perFold));
