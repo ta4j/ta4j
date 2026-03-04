@@ -23,6 +23,9 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedRule;
+import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
+import org.ta4j.core.walkforward.WalkForwardConfig;
+import org.ta4j.core.walkforward.WalkForwardSplit;
 
 public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -214,5 +217,38 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         // no trade happened within [9-9]
         positions = manager.run(aStrategy, 9, 9).getPositions();
         assertTrue(positions.isEmpty());
+    }
+
+    @Test
+    public void runWalkForwardReturnsAllConfiguredSplits() {
+        WalkForwardConfig config = new WalkForwardConfig(3, 2, 2, 0, 0, 2, 1, List.of(), 1, List.of(1), 7L);
+        StrategyWalkForwardExecutionResult result = manager.runWalkForward(strategy, config);
+        List<WalkForwardSplit> expectedSplits = new AnchoredExpandingWalkForwardSplitter().split(seriesForRun, config);
+
+        assertEquals(expectedSplits.size(), result.folds().size());
+        assertEquals(expectedSplits.size(), result.runtimeReport().foldRuntimes().size());
+        assertTrue(result.holdoutFold().isPresent());
+    }
+
+    @Test
+    public void runWalkForwardRespectsExplicitTradeTypeAndAmount() {
+        WalkForwardConfig config = new WalkForwardConfig(3, 2, 2, 0, 0, 2, 1, List.of(), 1, List.of(1), 7L);
+        List<WalkForwardSplit> splits = new AnchoredExpandingWalkForwardSplitter().split(seriesForRun, config);
+        WalkForwardSplit firstSplit = splits.getFirst();
+        Strategy foldStrategy = new BaseStrategy(new FixedRule(firstSplit.testStart()),
+                new FixedRule(firstSplit.testEnd()), TradeType.SELL);
+
+        StrategyWalkForwardExecutionResult result = manager.runWalkForward(foldStrategy, TradeType.SELL, HUNDRED,
+                config);
+        Trade entry = result.folds()
+                .getFirst()
+                .tradingStatement()
+                .getTradingRecord()
+                .getPositions()
+                .getFirst()
+                .getEntry();
+
+        assertEquals(TradeType.SELL, entry.getType());
+        assertEquals(HUNDRED, entry.getAmount());
     }
 }
