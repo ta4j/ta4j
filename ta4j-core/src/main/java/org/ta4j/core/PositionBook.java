@@ -83,7 +83,7 @@ public final class PositionBook implements Serializable, PositionLedger {
      * @param sequence insertion sequence for ordering
      * @since 0.22.2
      */
-    public void recordEntry(int index, LiveTrade trade, long sequence) {
+    public void recordEntry(int index, SimulatedTrade trade, long sequence) {
         if (trade == null) {
             throw new IllegalArgumentException("trade must not be null");
         }
@@ -112,7 +112,7 @@ public final class PositionBook implements Serializable, PositionLedger {
      * @return closed positions
      * @since 0.22.2
      */
-    public List<Position> recordExit(int index, LiveTrade trade, long sequence) {
+    public List<Position> recordExit(int index, SimulatedTrade trade, long sequence) {
         if (trade == null) {
             throw new IllegalArgumentException("trade must not be null");
         }
@@ -231,7 +231,7 @@ public final class PositionBook implements Serializable, PositionLedger {
         return netOpenPosition();
     }
 
-    private PositionLot nextLot(LiveTrade trade) {
+    private PositionLot nextLot(SimulatedTrade trade) {
         if (openLots.isEmpty()) {
             return null;
         }
@@ -244,7 +244,7 @@ public final class PositionBook implements Serializable, PositionLedger {
         return openLots.peekFirst();
     }
 
-    private PositionLot matchSpecificLot(LiveTrade trade) {
+    private PositionLot matchSpecificLot(SimulatedTrade trade) {
         String key = trade.correlationId() == null ? trade.orderId() : trade.correlationId();
         if (key == null || key.isBlank()) {
             throw new IllegalStateException("Specific-id matching requires correlationId or orderId");
@@ -271,8 +271,8 @@ public final class PositionBook implements Serializable, PositionLedger {
         }
     }
 
-    private ClosedPosition closeLot(PositionLot lot, LiveTrade trade, int index, Num closeAmount, Num exitFeePortion,
-            long exitSequence) {
+    private ClosedPosition closeLot(PositionLot lot, SimulatedTrade trade, int index, Num closeAmount,
+            Num exitFeePortion, long exitSequence) {
         Num lotAmount = lot.amount();
         Num entryFeePortion = lot.fee().isZero() ? lot.fee() : lot.fee().multipliedBy(closeAmount).dividedBy(lotAmount);
         if (closeAmount.isEqual(lotAmount)) {
@@ -281,9 +281,9 @@ public final class PositionBook implements Serializable, PositionLedger {
             lot.reduce(closeAmount, entryFeePortion);
         }
         ExecutionSide entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
-        Trade entry = new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount, entryFeePortion,
-                entrySide, lot.orderId(), lot.correlationId());
-        Trade exit = new LiveTrade(index, trade.time(), trade.price(), closeAmount, exitFeePortion, trade.side(),
+        Trade entry = new SimulatedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount,
+                entryFeePortion, entrySide, lot.orderId(), lot.correlationId());
+        Trade exit = new SimulatedTrade(index, trade.time(), trade.price(), closeAmount, exitFeePortion, trade.side(),
                 trade.orderId(), trade.correlationId());
         return new ClosedPosition(new Position(entry, exit, transactionCostModel, holdingCostModel),
                 lot.entrySequence(), exitSequence);

@@ -6,7 +6,7 @@ package ta4jexamples.charting;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.LiveTrade;
+import org.ta4j.core.SimulatedTrade;
 import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -110,10 +110,11 @@ public class AnalysisCriterionIndicator extends CachedIndicator<Num> {
             if (trade.getIndex() > upToIndex) {
                 break;
             }
-            if (trade instanceof LiveTrade liveTrade) {
-                partialRecord.recordFill(trade.getIndex(), liveTrade);
+            if (trade instanceof SimulatedTrade simulatedTrade && simulatedTrade.getTime() != null) {
+                partialRecord.recordFill(trade.getIndex(), simulatedTrade);
             } else {
-                throw new IllegalArgumentException("LiveTradingRecord must provide LiveTrade trades");
+                throw new IllegalArgumentException(
+                        "LiveTradingRecord must provide live-shaped SimulatedTrade fills with non-null time");
             }
         }
         return partialRecord;

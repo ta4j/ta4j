@@ -172,7 +172,6 @@ public class BaseTradingRecord implements TradingRecord {
      * @param holdingCostModel     the cost model for holding the asset (e.g.
      *                             borrowing)
      * @param trades               the trades to be recorded (cannot be empty)
-     * @throws IllegalArgumentException if trades contain {@link LiveTrade}
      */
     public BaseTradingRecord(CostModel transactionCostModel, CostModel holdingCostModel, Trade... trades) {
         this(validateTrades(trades), transactionCostModel, holdingCostModel);
@@ -194,12 +193,6 @@ public class BaseTradingRecord implements TradingRecord {
     private static TradeType validateTrades(Trade... trades) {
         if (trades == null || trades.length == 0) {
             throw new IllegalArgumentException("At least one trade is required");
-        }
-        for (Trade trade : trades) {
-            if (trade instanceof LiveTrade) {
-                throw new IllegalArgumentException("LiveTrade is not supported by BaseTradingRecord. "
-                        + "Use LiveTradingRecord for live executions.");
-            }
         }
         return trades[0].getType();
     }

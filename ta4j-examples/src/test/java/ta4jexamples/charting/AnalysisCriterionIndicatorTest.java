@@ -10,7 +10,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
-import org.ta4j.core.LiveTrade;
+import org.ta4j.core.SimulatedTrade;
 import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Trade;
@@ -215,13 +215,13 @@ class AnalysisCriterionIndicatorTest {
         record.setName("Live Record");
 
         record.recordFill(
-                new LiveTrade(0, Instant.EPOCH, barSeries.getBar(0).getClosePrice(), barSeries.numFactory().one(),
+                new SimulatedTrade(0, Instant.EPOCH, barSeries.getBar(0).getClosePrice(), barSeries.numFactory().one(),
                         barSeries.numFactory().numOf(0.1), ExecutionSide.BUY, "order-1", "corr-1"));
         record.recordFill(
-                new LiveTrade(1, Instant.EPOCH, barSeries.getBar(1).getClosePrice(), barSeries.numFactory().one(),
+                new SimulatedTrade(1, Instant.EPOCH, barSeries.getBar(1).getClosePrice(), barSeries.numFactory().one(),
                         barSeries.numFactory().numOf(0.1), ExecutionSide.SELL, "order-1", "corr-1"));
         record.recordFill(
-                new LiveTrade(2, Instant.EPOCH, barSeries.getBar(2).getClosePrice(), barSeries.numFactory().one(),
+                new SimulatedTrade(2, Instant.EPOCH, barSeries.getBar(2).getClosePrice(), barSeries.numFactory().one(),
                         barSeries.numFactory().numOf(0.1), ExecutionSide.BUY, "order-2", "corr-2"));
 
         AnalysisCriterion criterion = new NumberOfPositionsCriterion();

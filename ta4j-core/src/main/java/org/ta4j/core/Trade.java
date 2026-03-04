@@ -29,8 +29,8 @@ import org.ta4j.core.num.Num;
  * </p>
  *
  * <p>
- * Use {@link SimulatedTrade} as the default simulated implementation and
- * {@link LiveTrade} for live fills.
+ * Use {@link SimulatedTrade} as the default implementation for both simulation
+ * and live-recorded fills.
  * </p>
  *
  * @since 0.22.2

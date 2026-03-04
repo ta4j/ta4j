@@ -197,20 +197,20 @@ public class PositionBookTest {
         }
     }
 
-    private LiveTrade buyTrade(int index, Num price, Num amount, String orderId, String correlationId) {
+    private SimulatedTrade buyTrade(int index, Num price, Num amount, String orderId, String correlationId) {
         return buyTrade(index, price, amount, orderId, correlationId, null);
     }
 
-    private LiveTrade buyTrade(int index, Num price, Num amount, String orderId, String correlationId, Num fee) {
-        return new LiveTrade(index, Instant.EPOCH, price, amount, fee, ExecutionSide.BUY, orderId, correlationId);
+    private SimulatedTrade buyTrade(int index, Num price, Num amount, String orderId, String correlationId, Num fee) {
+        return new SimulatedTrade(index, Instant.EPOCH, price, amount, fee, ExecutionSide.BUY, orderId, correlationId);
     }
 
-    private LiveTrade sellTrade(int index, Num price, Num amount, String orderId, String correlationId) {
+    private SimulatedTrade sellTrade(int index, Num price, Num amount, String orderId, String correlationId) {
         return sellTrade(index, price, amount, orderId, correlationId, null);
     }
 
-    private LiveTrade sellTrade(int index, Num price, Num amount, String orderId, String correlationId, Num fee) {
-        return new LiveTrade(index, Instant.EPOCH, price, amount, fee, ExecutionSide.SELL, orderId, correlationId);
+    private SimulatedTrade sellTrade(int index, Num price, Num amount, String orderId, String correlationId, Num fee) {
+        return new SimulatedTrade(index, Instant.EPOCH, price, amount, fee, ExecutionSide.SELL, orderId, correlationId);
     }
 
     private PositionBook roundTrip(PositionBook book) throws Exception {

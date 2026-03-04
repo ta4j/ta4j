@@ -182,8 +182,8 @@ public class TradingRecordTest {
     @Test
     public void baseTradingRecordRejectsLiveTrades() {
         var numFactory = DoubleNumFactory.getInstance();
-        var trade = new LiveTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), null, ExecutionSide.BUY,
-                null, null);
+        var trade = new SimulatedTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), null,
+                ExecutionSide.BUY, null, null);
 
         assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(trade));
     }

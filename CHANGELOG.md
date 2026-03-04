@@ -5,6 +5,7 @@
 
 ### Breaking
 - **Live fill API hard cut to one type**: `ExecutionFill` has been removed so you can use `TradeFill` everywhere, including `LiveTradingRecord.recordExecutionFill(TradeFill)`, instead of juggling two near-identical fill models.
+- **One trade class for both engines**: `LiveTrade` has been removed; use `SimulatedTrade` for both backtesting and live-recorded fills (including `LiveTradingRecord.recordFill(...)`), so code paths and behavior stay aligned between simulation and production.
 
 ### Changed
 - **Trade-fill flow is now shared across backtest/live trade paths**: You can normalize execution fills with `Trade.executionFillsOf(...)` and build trades directly from fills via `Trade.fromFills(...)`, so stop-limit execution, `TradingRecord` defaults, and `LiveTradingRecord` all follow the same fill progression semantics while still keeping lightweight single-fill trades.

@@ -10,11 +10,12 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**
- * Simulated {@link Trade} implementation backed by a {@link CostModel}.
+ * Unified {@link Trade} implementation for backtest and live flows.
  *
  * <ul>
  * <li>the index (in the {@link BarSeries bar series}) on which the trade is
@@ -25,6 +26,12 @@ import org.ta4j.core.num.Num;
  * </ul>
  *
  * A {@link Position position} is a pair of complementary trades.
+ *
+ * <p>
+ * Trades are backed by one or more {@link TradeFill} entries. Scalar
+ * constructors create a single fill; aggregated constructors preserve full fill
+ * progression.
+ * </p>
  *
  * @since 0.22.2
  */
@@ -56,6 +63,18 @@ public class SimulatedTrade implements Trade {
 
     /** Execution fills for this trade (single fill for scalar simulated trades). */
     private final List<TradeFill> fills;
+
+    /** Execution timestamp. */
+    private final Instant time;
+
+    /** Execution side. */
+    private final ExecutionSide side;
+
+    /** Optional order id. */
+    private final String orderId;
+
+    /** Optional correlation id. */
+    private final String correlationId;
 
     /**
      * The simulated execution cost for this trade, derived from the configured
@@ -105,8 +124,12 @@ public class SimulatedTrade implements Trade {
         this.type = type;
         this.index = index;
         this.amount = amount;
-        this.fills = List.of(new TradeFill(index, executionTime, executionPrice, amount, executionSide(type)));
-        setPricesAndCost(executionPrice, amount, transactionCostModel);
+        this.time = executionTime;
+        this.side = executionSide(type);
+        this.orderId = null;
+        this.correlationId = null;
+        this.fills = List.of(new TradeFill(index, executionTime, executionPrice, amount, side));
+        setPricesAndCost(executionPrice, amount, transactionCostModel, this.fills);
     }
 
     /**
@@ -146,8 +169,12 @@ public class SimulatedTrade implements Trade {
         this.type = type;
         this.index = index;
         this.amount = amount;
-        this.fills = List.of(new TradeFill(index, null, pricePerAsset, amount, executionSide(type)));
-        setPricesAndCost(pricePerAsset, amount, transactionCostModel);
+        this.time = null;
+        this.side = executionSide(type);
+        this.orderId = null;
+        this.correlationId = null;
+        this.fills = List.of(new TradeFill(index, null, pricePerAsset, amount, side));
+        setPricesAndCost(pricePerAsset, amount, transactionCostModel, this.fills);
     }
 
     /**
@@ -162,11 +189,52 @@ public class SimulatedTrade implements Trade {
         Objects.requireNonNull(type, "type");
         Objects.requireNonNull(transactionCostModel, "transactionCostModel");
         FillSummary fillSummary = summarizeFills(fills);
+        FillMetadata metadata = summarizeMetadata(type, fillSummary.fills());
         this.type = type;
         this.index = fillSummary.firstFillIndex();
         this.amount = fillSummary.totalAmount();
+        this.time = metadata.time();
+        this.side = metadata.side();
+        this.orderId = metadata.orderId();
+        this.correlationId = metadata.correlationId();
         this.fills = fillSummary.fills();
-        setPricesAndCost(fillSummary.weightedAveragePrice(), fillSummary.totalAmount(), transactionCostModel);
+        setPricesAndCost(fillSummary.weightedAveragePrice(), fillSummary.totalAmount(), transactionCostModel,
+                this.fills);
+    }
+
+    /**
+     * Constructor for live execution trades.
+     *
+     * @param index         trade index
+     * @param time          execution timestamp
+     * @param pricePerAsset execution price per asset
+     * @param amount        execution amount
+     * @param fee           recorded execution fee (nullable, defaults to zero)
+     * @param side          execution side
+     * @param orderId       optional order id
+     * @param correlationId optional correlation id
+     * @since 0.22.4
+     */
+    public SimulatedTrade(int index, Instant time, Num pricePerAsset, Num amount, Num fee, ExecutionSide side,
+            String orderId, String correlationId) {
+        if (index < 0) {
+            throw new IllegalArgumentException("index must be >= 0");
+        }
+        Objects.requireNonNull(time, "time");
+        Objects.requireNonNull(pricePerAsset, "pricePerAsset");
+        Objects.requireNonNull(amount, "amount");
+        Objects.requireNonNull(side, "side");
+        Num normalizedFee = fee == null ? pricePerAsset.getNumFactory().zero() : fee;
+        this.type = side.toTradeType();
+        this.index = index;
+        this.amount = amount;
+        this.time = time;
+        this.side = side;
+        this.orderId = orderId;
+        this.correlationId = correlationId;
+        this.fills = List
+                .of(new TradeFill(index, time, pricePerAsset, amount, normalizedFee, side, orderId, correlationId));
+        setPricesAndCost(pricePerAsset, amount, RecordedTradeCostModel.INSTANCE, this.fills);
     }
 
     @Override
@@ -208,8 +276,79 @@ public class SimulatedTrade implements Trade {
     }
 
     @Override
+    public Instant getTime() {
+        return time;
+    }
+
+    @Override
+    public String getOrderId() {
+        return orderId;
+    }
+
+    @Override
+    public String getCorrelationId() {
+        return correlationId;
+    }
+
+    @Override
     public List<TradeFill> getFills() {
         return fills;
+    }
+
+    /**
+     * @return execution timestamp
+     * @since 0.22.4
+     */
+    public Instant time() {
+        return time;
+    }
+
+    /**
+     * @return execution price per asset
+     * @since 0.22.4
+     */
+    public Num price() {
+        return pricePerAsset;
+    }
+
+    /**
+     * @return execution amount
+     * @since 0.22.4
+     */
+    public Num amount() {
+        return amount;
+    }
+
+    /**
+     * @return recorded fee/cost
+     * @since 0.22.4
+     */
+    public Num fee() {
+        return cost;
+    }
+
+    /**
+     * @return execution side
+     * @since 0.22.4
+     */
+    public ExecutionSide side() {
+        return side;
+    }
+
+    /**
+     * @return optional order id
+     * @since 0.22.4
+     */
+    public String orderId() {
+        return orderId;
+    }
+
+    /**
+     * @return optional correlation id
+     * @since 0.22.4
+     */
+    public String correlationId() {
+        return correlationId;
     }
 
     /**
@@ -230,11 +369,12 @@ public class SimulatedTrade implements Trade {
      * @param amount               the amount of assets ordered
      * @param transactionCostModel the cost model for trade execution
      */
-    private void setPricesAndCost(Num pricePerAsset, Num amount, CostModel transactionCostModel) {
+    private void setPricesAndCost(Num pricePerAsset, Num amount, CostModel transactionCostModel,
+            List<TradeFill> fills) {
         Objects.requireNonNull(transactionCostModel, "transactionCostModel");
         this.costModel = transactionCostModel;
         this.pricePerAsset = pricePerAsset;
-        this.cost = transactionCostModel.calculate(this.pricePerAsset, amount);
+        this.cost = resolveCost(transactionCostModel, this.pricePerAsset, amount, fills);
 
         if (amount.isZero()) {
             this.netPrice = this.pricePerAsset;
@@ -247,6 +387,22 @@ public class SimulatedTrade implements Trade {
         } else {
             this.netPrice = this.pricePerAsset.minus(costPerAsset);
         }
+    }
+
+    private static Num resolveCost(CostModel transactionCostModel, Num pricePerAsset, Num amount,
+            List<TradeFill> fills) {
+        if (transactionCostModel instanceof RecordedTradeCostModel) {
+            return sumFillFees(pricePerAsset.getNumFactory().zero(), fills);
+        }
+        return transactionCostModel.calculate(pricePerAsset, amount);
+    }
+
+    private static Num sumFillFees(Num zero, List<TradeFill> fills) {
+        Num totalFee = zero;
+        for (TradeFill fill : fills) {
+            totalFee = totalFee.plus(fill.fee());
+        }
+        return totalFee;
     }
 
     private static FillSummary summarizeFills(List<TradeFill> fills) {
@@ -272,6 +428,15 @@ public class SimulatedTrade implements Trade {
                 weightedPrice.dividedBy(totalAmount));
     }
 
+    private static FillMetadata summarizeMetadata(Trade.TradeType tradeType, List<TradeFill> fills) {
+        TradeFill firstFill = fills.getFirst();
+        Instant firstTime = firstFill.time();
+        String firstOrderId = firstFill.orderId();
+        String firstCorrelationId = firstFill.correlationId();
+        ExecutionSide resolvedSide = firstFill.side() == null ? executionSide(tradeType) : firstFill.side();
+        return new FillMetadata(firstTime, resolvedSide, firstOrderId, firstCorrelationId);
+    }
+
     private static ExecutionSide executionSide(Trade.TradeType tradeType) {
         if (tradeType == Trade.TradeType.BUY) {
             return ExecutionSide.BUY;
@@ -291,7 +456,7 @@ public class SimulatedTrade implements Trade {
 
     @Override
     public int hashCode() {
-        return Objects.hash(type, index, pricePerAsset, amount);
+        return Objects.hash(type, index, time, pricePerAsset, amount, cost, side, orderId, correlationId);
     }
 
     @Override
@@ -303,7 +468,10 @@ public class SimulatedTrade implements Trade {
             return false;
         }
         return Objects.equals(type, other.type) && Objects.equals(index, other.index)
-                && Objects.equals(pricePerAsset, other.pricePerAsset) && Objects.equals(amount, other.amount);
+                && Objects.equals(time, other.time) && Objects.equals(pricePerAsset, other.pricePerAsset)
+                && Objects.equals(amount, other.amount) && Objects.equals(cost, other.cost)
+                && Objects.equals(side, other.side) && Objects.equals(orderId, other.orderId)
+                && Objects.equals(correlationId, other.correlationId);
     }
 
     @Override
@@ -311,11 +479,44 @@ public class SimulatedTrade implements Trade {
         JsonObject json = new JsonObject();
         json.addProperty("type", type == null ? null : type.name());
         json.addProperty("index", index);
+        json.addProperty("time", time == null ? null : time.toString());
         json.addProperty("pricePerAsset", pricePerAsset == null ? null : pricePerAsset.toString());
         json.addProperty("netPrice", netPrice == null ? null : netPrice.toString());
         json.addProperty("amount", amount == null ? null : amount.toString());
         json.addProperty("cost", cost == null ? null : cost.toString());
+        json.addProperty("side", side == null ? null : side.name());
+        json.addProperty("orderId", orderId);
+        json.addProperty("correlationId", correlationId);
         return GSON.toJson(json);
+    }
+
+    /**
+     * Returns a copy of this trade with a new index.
+     *
+     * @param index trade index
+     * @return trade with the provided index
+     * @since 0.22.4
+     */
+    public SimulatedTrade withIndex(int index) {
+        if (index < 0) {
+            throw new IllegalArgumentException("index must be >= 0");
+        }
+        List<TradeFill> indexedFills = fills.stream()
+                .map(fill -> new TradeFill(index, fill.time(), fill.price(), fill.amount(), fill.fee(), fill.side(),
+                        fill.orderId(), fill.correlationId()))
+                .toList();
+        return new SimulatedTrade(type, indexedFills, resolveCopyCostModel(indexedFills));
+    }
+
+    private CostModel resolveCopyCostModel(List<TradeFill> indexedFills) {
+        if (costModel != null) {
+            return costModel;
+        }
+        Num fillFeeTotal = sumFillFees(cost.getNumFactory().zero(), indexedFills);
+        if (cost.equals(fillFeeTotal)) {
+            return RecordedTradeCostModel.INSTANCE;
+        }
+        return new PreservedTradeCostModel(cost);
     }
 
     /**
@@ -431,6 +632,41 @@ public class SimulatedTrade implements Trade {
     }
 
     private record FillSummary(List<TradeFill> fills, int firstFillIndex, Num totalAmount, Num weightedAveragePrice) {
+    }
+
+    private record FillMetadata(Instant time, ExecutionSide side, String orderId, String correlationId) {
+    }
+
+    private static final class PreservedTradeCostModel implements CostModel {
+
+        private final Num preservedCost;
+
+        private PreservedTradeCostModel(Num preservedCost) {
+            this.preservedCost = Objects.requireNonNull(preservedCost, "preservedCost");
+        }
+
+        @Override
+        public Num calculate(Position position, int finalIndex) {
+            return preservedCost;
+        }
+
+        @Override
+        public Num calculate(Position position) {
+            return preservedCost;
+        }
+
+        @Override
+        public Num calculate(Num price, Num amount) {
+            return preservedCost;
+        }
+
+        @Override
+        public boolean equals(CostModel otherModel) {
+            if (!(otherModel instanceof PreservedTradeCostModel other)) {
+                return false;
+            }
+            return preservedCost.equals(other.preservedCost);
+        }
     }
 
 }

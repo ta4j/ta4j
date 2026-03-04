@@ -344,8 +344,8 @@ public interface AnalysisCriterion {
                 if (lot.entryIndex() > windowEndIndex) {
                     continue;
                 }
-                LiveTrade entryTrade = new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
-                        lot.fee(), entrySide, lot.orderId(), lot.correlationId());
+                SimulatedTrade entryTrade = new SimulatedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(),
+                        lot.amount(), lot.fee(), entrySide, lot.orderId(), lot.correlationId());
                 positions.add(new Position(entryTrade, transactionCostModel, holdingCostModel));
             }
         }

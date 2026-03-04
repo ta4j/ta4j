@@ -18,7 +18,7 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
-import org.ta4j.core.LiveTrade;
+import org.ta4j.core.SimulatedTrade;
 import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
@@ -291,9 +291,9 @@ public class AnalysisWindowTest {
         BarSeries series = buildSeries(10);
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
-        record.recordFill(6, new LiveTrade(6, series.getBar(6).getEndTime(), series.getBar(6).getClosePrice(),
+        record.recordFill(6, new SimulatedTrade(6, series.getBar(6).getEndTime(), series.getBar(6).getClosePrice(),
                 series.numFactory().one(), null, ExecutionSide.BUY, null, null));
-        record.recordFill(7, new LiveTrade(7, series.getBar(7).getEndTime(), series.getBar(7).getClosePrice(),
+        record.recordFill(7, new SimulatedTrade(7, series.getBar(7).getEndTime(), series.getBar(7).getClosePrice(),
                 series.numFactory().one(), null, ExecutionSide.BUY, null, null));
         NetProfitLossCriterion criterion = new NetProfitLossCriterion();
         AnalysisContext context = AnalysisContext.defaults()

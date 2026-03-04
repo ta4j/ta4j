@@ -81,8 +81,8 @@ final class AnalysisPositionSupport {
                 if (lot.entryIndex() > finalIndex) {
                     continue;
                 }
-                LiveTrade entryTrade = new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
-                        lot.fee(), entrySide, lot.orderId(), lot.correlationId());
+                SimulatedTrade entryTrade = new SimulatedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(),
+                        lot.amount(), lot.fee(), entrySide, lot.orderId(), lot.correlationId());
                 Position position = new Position(entryTrade, transactionCostModel, holdingCostModel);
                 positions.add(position);
             }
