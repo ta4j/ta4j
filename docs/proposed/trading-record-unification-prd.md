@@ -134,8 +134,8 @@ No new public top-level abstractions unless unavoidable.
   - [ ] `getCurrentPosition()`
 
 - [ ] Constructor migration:
-  - [ ] `BaseTradingRecord(TradeType, Integer, Integer, CostModel, CostModel)` should initialize the core.
-  - [ ] trade/position bootstrap constructors should call `operate(Trade)` through facade methods so construction path is identical to runtime path.
+  - [x] `BaseTradingRecord(TradeType, Integer, Integer, CostModel, CostModel)` should initialize the core.
+  - [x] trade/position bootstrap constructors should call `operate(Trade)` through facade methods so construction path is identical to runtime path.
 
 - [ ] Compatibility requirement:
   - Preserve current `BaseTradingRecord` behavior for sequence-based entry/exit flow and start/end index semantics.

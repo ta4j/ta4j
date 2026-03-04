@@ -131,6 +131,7 @@ public class BaseTradingRecord implements TradingRecord {
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
         currentPosition = new Position(entryTradeType, transactionCostModel, holdingCostModel);
+        core();
     }
 
     /**
@@ -182,8 +183,7 @@ public class BaseTradingRecord implements TradingRecord {
                 // BUY, SELL
                 currentPosition = new Position(o.getType(), transactionCostModel, holdingCostModel);
             }
-            Trade newTrade = currentPosition.operate(o);
-            recordTrade(newTrade);
+            operate(o);
         }
     }
 
