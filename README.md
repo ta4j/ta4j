@@ -661,6 +661,20 @@ while (true) {
 - **Deterministic**: Same inputs always produce same outputs - critical for testing and debugging
 - **Type-safe**: Compile-time checks catch errors before they cost money
 
+### Migration note: Trade and TradingRecord surfaces
+
+Treat `Trade` and `TradingRecord` as the primary APIs. Concrete implementations (`BaseTrade`, `BaseTradingRecord`,
+`LiveTradingRecord`) are boundary details you can choose per environment.
+
+```java
+TradingRecord defaultBacktest = new BarSeriesManager(series).run(strategy);
+
+TradingRecord parityBacktest = new BarSeriesManager(series).run(
+        strategy,
+        new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+                new ZeroCostModel(), new ZeroCostModel(), null, null));
+```
+
 ## Recording live executions
 
 When you route orders to an exchange, record the fills in a `LiveTradingRecord`. It tracks partial fills, multiple open

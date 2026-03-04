@@ -177,8 +177,8 @@ No new public top-level abstractions unless unavoidable.
 - [ ] Add backtest/live parity example in `ta4j-examples`:
   - same strategy + same synthetic fills + compare record outputs.
 
-- [ ] Add migration note to README/CHANGELOG:
-  - “Trade interface is public surface; concrete record implementations are façade details.”
+- [x] Add migration note to README/CHANGELOG:
+  - documented that `Trade`/`TradingRecord` are the public surface and concrete implementations are façade details.
 
 ## 8) Testing and quality gates
 
