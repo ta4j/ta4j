@@ -6,6 +6,7 @@ package org.ta4j.core;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -71,6 +72,28 @@ class TradingRecordParityTest {
         TradingRecord liveBacktestRecord = manager.run(strategy, liveRecord, numFactory.one(), 0, series.getEndIndex());
 
         assertEquivalent(baseRecord, liveBacktestRecord);
+    }
+
+    @Test
+    void partialFillWeightedAverageParity() {
+        BaseTradingRecord baseRecord = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+        LiveTradingRecord liveRecord = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+                new ZeroCostModel(), new ZeroCostModel(), null, null);
+        Trade aggregatedEntry = Trade.fromFills(TradeType.BUY,
+                List.of(new TradeFill(1, numOf(100), numOf(1)), new TradeFill(2, numOf(101), numOf(2))));
+        Num expectedAverage = numOf(302).dividedBy(numOf(3));
+
+        baseRecord.operate(aggregatedEntry);
+        liveRecord.operate(aggregatedEntry);
+
+        Position baseCurrent = baseRecord.getCurrentPosition();
+        Position liveCurrent = liveRecord.getCurrentPosition();
+        assertNotNull(baseCurrent.getEntry());
+        assertNotNull(liveCurrent.getEntry());
+        assertEquals(numOf(3), baseCurrent.getEntry().getAmount());
+        assertEquals(numOf(3), liveCurrent.getEntry().getAmount());
+        assertEquals(expectedAverage, baseCurrent.getEntry().getPricePerAsset());
+        assertEquals(expectedAverage, liveCurrent.getEntry().getPricePerAsset());
     }
 
     private void applySyntheticTrade(TradingRecord record, int index, Num price, Num amount) {

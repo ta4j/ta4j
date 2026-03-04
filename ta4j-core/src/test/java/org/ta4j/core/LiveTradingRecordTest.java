@@ -46,6 +46,7 @@ import org.ta4j.core.num.NumFactory;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -133,6 +134,7 @@ class LiveTradingRecordTest {
         OpenPosition net = record.getNetOpenPosition();
         assertNotNull(net);
         assertEquals(numFactory.three(), net.amount());
+        assertEquals(numFactory.numOf(302).dividedBy(numFactory.three()), net.averageEntryPrice());
     }
 
     @Test
@@ -158,6 +160,51 @@ class LiveTradingRecordTest {
         assertEquals("corr-1", trades.get(0).getCorrelationId());
         assertEquals("corr-2", trades.get(1).getCorrelationId());
         assertEquals(numFactory.numOf(0.3), record.getTotalFees());
+    }
+
+    @Test
+    void operateFallsBackToTradeMetadataWhenFillMetadataMissing() {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        Instant tradeTime = Instant.parse("2025-01-01T00:05:00Z");
+        List<TradeFill> fills = List.of(
+                new TradeFill(4, null, numFactory.hundred(), numFactory.one(), numFactory.numOf(0.1), null, null, null),
+                new TradeFill(5, null, numFactory.numOf(101), numFactory.two(), numFactory.numOf(0.2), null, null,
+                        null));
+        Trade aggregatedEntry = tradeViewWithFills(TradeType.BUY, tradeTime, "trade-order", "trade-correlation", fills);
+
+        record.operate(aggregatedEntry);
+
+        List<Trade> trades = record.getTrades();
+        assertEquals(2, trades.size());
+        assertEquals(tradeTime, trades.get(0).getTime());
+        assertEquals(tradeTime, trades.get(1).getTime());
+        assertEquals("trade-order", trades.get(0).getOrderId());
+        assertEquals("trade-order", trades.get(1).getOrderId());
+        assertEquals("trade-correlation", trades.get(0).getCorrelationId());
+        assertEquals("trade-correlation", trades.get(1).getCorrelationId());
+        assertEquals(TradeType.BUY, trades.get(0).getType());
+        assertEquals(TradeType.BUY, trades.get(1).getType());
+    }
+
+    @Test
+    void operateDefaultsMissingMetadataToEpochAndNullIds() {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        List<TradeFill> fills = List.of(new TradeFill(4, numFactory.hundred(), numFactory.one()),
+                new TradeFill(5, numFactory.numOf(101), numFactory.two()));
+        Trade aggregatedEntry = tradeViewWithFills(TradeType.BUY, null, null, null, fills);
+
+        record.operate(aggregatedEntry);
+
+        List<Trade> trades = record.getTrades();
+        assertEquals(2, trades.size());
+        assertEquals(Instant.EPOCH, trades.get(0).getTime());
+        assertEquals(Instant.EPOCH, trades.get(1).getTime());
+        assertNull(trades.get(0).getOrderId());
+        assertNull(trades.get(1).getOrderId());
+        assertNull(trades.get(0).getCorrelationId());
+        assertNull(trades.get(1).getCorrelationId());
     }
 
     @Test
@@ -643,6 +690,67 @@ class LiveTradingRecordTest {
             @Override
             public String getCorrelationId() {
                 return correlationId;
+            }
+        };
+    }
+
+    private Trade tradeViewWithFills(TradeType type, Instant time, String orderId, String correlationId,
+            List<TradeFill> fills) {
+        Trade aggregatedTrade = Trade.fromFills(type, fills);
+        return new Trade() {
+            @Override
+            public TradeType getType() {
+                return type;
+            }
+
+            @Override
+            public int getIndex() {
+                return aggregatedTrade.getIndex();
+            }
+
+            @Override
+            public Num getPricePerAsset() {
+                return aggregatedTrade.getPricePerAsset();
+            }
+
+            @Override
+            public Num getNetPrice() {
+                return aggregatedTrade.getNetPrice();
+            }
+
+            @Override
+            public Num getAmount() {
+                return aggregatedTrade.getAmount();
+            }
+
+            @Override
+            public Num getCost() {
+                return aggregatedTrade.getCost();
+            }
+
+            @Override
+            public CostModel getCostModel() {
+                return aggregatedTrade.getCostModel();
+            }
+
+            @Override
+            public Instant getTime() {
+                return time;
+            }
+
+            @Override
+            public String getOrderId() {
+                return orderId;
+            }
+
+            @Override
+            public String getCorrelationId() {
+                return correlationId;
+            }
+
+            @Override
+            public List<TradeFill> getFills() {
+                return fills;
             }
         };
     }

@@ -187,9 +187,9 @@ No new public top-level abstractions unless unavoidable.
 - [x] Add `ta4j-core/src/test/java/org/ta4j/core/TradingRecordParityTest.java`:
   - [x] simple long entry/exit
   - [x] simple short entry/exit
-  - [ ] partial fills with weighted average
-  - [ ] mixed lot closes across FIFO/LIFO/AVG_COST/SPECIFIC_ID
-  - [ ] metadata missing (`time/orderId/correlationId`) fallback behavior
+  - [x] partial fills with weighted average
+  - [x] mixed lot closes across FIFO/LIFO/AVG_COST/SPECIFIC_ID (covered by `LiveTradingRecordTest` + `PositionBookTest`)
+  - [x] metadata missing (`time/orderId/correlationId`) fallback behavior
 
 ## Regression tests
 
