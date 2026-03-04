@@ -5,8 +5,15 @@ concurrency:
   cancel-in-progress: true
 
 on:
+  push:
+    branches:
+      - master
   schedule:
     - cron: "0 9 * * *"
+  workflow_run:
+    workflows: ["Publish Release to Maven Central"]
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       staleDays:
@@ -24,6 +31,11 @@ jobs:
   health:
     name: Release health checks
     runs-on: ubuntu-latest
+    if: |
+      github.event_name != 'workflow_run' ||
+      (
+        github.event.workflow_run.head_repository.full_name == github.repository
+      )
 
     steps:
       - name: Checkout repository
