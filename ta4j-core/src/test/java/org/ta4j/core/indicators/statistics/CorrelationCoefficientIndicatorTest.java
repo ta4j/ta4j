@@ -97,4 +97,17 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
             assertNumEquals(population.getValue(i), sample.getValue(i), 1.0e-12);
         }
     }
+
+    @Test
+    public void nonPositiveBarCountFallsBackToOne() {
+        var populationWithOne = CorrelationCoefficientIndicator.ofPopulation(close, volume, 1);
+        var populationWithZero = CorrelationCoefficientIndicator.ofPopulation(close, volume, 0);
+        var sampleWithOne = CorrelationCoefficientIndicator.ofSample(close, volume, 1);
+        var sampleWithNegative = CorrelationCoefficientIndicator.ofSample(close, volume, -5);
+
+        for (int i = 0; i <= 19; i++) {
+            assertNumEquals(populationWithOne.getValue(i), populationWithZero.getValue(i), 1.0e-12);
+            assertNumEquals(sampleWithOne.getValue(i), sampleWithNegative.getValue(i), 1.0e-12);
+        }
+    }
 }

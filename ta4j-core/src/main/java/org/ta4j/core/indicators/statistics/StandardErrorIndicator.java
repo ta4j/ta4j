@@ -37,10 +37,10 @@ public class StandardErrorIndicator extends CachedIndicator<Num> {
      */
     public StandardErrorIndicator(Indicator<Num> indicator, int barCount, SampleType sampleType) {
         super(indicator);
-        this.barCount = barCount;
+        this.barCount = Math.max(barCount, 1);
         this.sdev = Objects.requireNonNull(sampleType, "sampleType must not be null").isSample()
-                ? StandardDeviationIndicator.ofSample(indicator, barCount)
-                : StandardDeviationIndicator.ofPopulation(indicator, barCount);
+                ? StandardDeviationIndicator.ofSample(indicator, this.barCount)
+                : StandardDeviationIndicator.ofPopulation(indicator, this.barCount);
     }
 
     /**
@@ -69,7 +69,7 @@ public class StandardErrorIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - barCount + 1);
+        final int startIndex = Math.max(0, index - this.barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
         return sdev.getValue(index).dividedBy(getBarSeries().numFactory().numOf(numberOfObservations).sqrt());
     }
