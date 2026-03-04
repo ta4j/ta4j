@@ -5,6 +5,7 @@ package org.ta4j.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -96,6 +97,43 @@ class TradingRecordParityTest {
         assertEquals(expectedAverage, liveCurrent.getEntry().getPricePerAsset());
     }
 
+    @Test
+    void debugSnapshotParityForClosedFlow() {
+        BaseTradingRecord baseRecord = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+        LiveTradingRecord liveRecord = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+                new ZeroCostModel(), new ZeroCostModel(), null, null);
+
+        applySyntheticTrade(baseRecord, 1, numOf(100), numOf(2));
+        applySyntheticTrade(baseRecord, 3, numOf(120), numOf(2));
+        applySyntheticTrade(liveRecord, 1, numOf(100), numOf(2));
+        applySyntheticTrade(liveRecord, 3, numOf(120), numOf(2));
+
+        TradingRecordDebugSnapshot baseSnapshot = baseRecord.debugSnapshot();
+        TradingRecordDebugSnapshot liveSnapshot = liveRecord.debugSnapshot();
+
+        assertSnapshotEquivalent(baseSnapshot, liveSnapshot);
+        assertThrows(UnsupportedOperationException.class, () -> baseSnapshot.trades().add(null));
+        assertThrows(UnsupportedOperationException.class, () -> liveSnapshot.closedPositions().add(null));
+    }
+
+    @Test
+    void debugSnapshotCapturesOpenExposureParity() {
+        BaseTradingRecord baseRecord = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+        LiveTradingRecord liveRecord = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+                new ZeroCostModel(), new ZeroCostModel(), null, null);
+
+        applySyntheticTrade(baseRecord, 1, numOf(100), numOf(2));
+        applySyntheticTrade(liveRecord, 1, numOf(100), numOf(2));
+
+        TradingRecordDebugSnapshot baseSnapshot = baseRecord.debugSnapshot();
+        TradingRecordDebugSnapshot liveSnapshot = liveRecord.debugSnapshot();
+
+        assertSnapshotEquivalent(baseSnapshot, liveSnapshot);
+        assertEquals(1, baseSnapshot.openPositions().size());
+        assertEquals(numOf(2), baseSnapshot.netOpenPosition().amount());
+        assertEquals(numOf(100), baseSnapshot.netOpenPosition().averageEntryPrice());
+    }
+
     private void applySyntheticTrade(TradingRecord record, int index, Num price, Num amount) {
         record.operate(index, price, amount);
     }
@@ -155,6 +193,36 @@ class TradingRecordParityTest {
         assertEquals(expected.getIndex(), actual.getIndex());
         assertEquals(expected.getPricePerAsset(), actual.getPricePerAsset());
         assertEquals(expected.getAmount(), actual.getAmount());
+    }
+
+    private void assertSnapshotEquivalent(TradingRecordDebugSnapshot expected, TradingRecordDebugSnapshot actual) {
+        assertEquals(expected.startingType(), actual.startingType());
+        assertEquals(expected.totalFees(), actual.totalFees());
+        assertEquals(expected.trades().size(), actual.trades().size());
+        assertEquals(expected.closedPositions().size(), actual.closedPositions().size());
+        assertEquals(expected.openPositions().size(), actual.openPositions().size());
+
+        for (int i = 0; i < expected.trades().size(); i++) {
+            assertTradeEqual(expected.trades().get(i), actual.trades().get(i));
+        }
+        for (int i = 0; i < expected.closedPositions().size(); i++) {
+            Position expectedPosition = expected.closedPositions().get(i);
+            Position actualPosition = actual.closedPositions().get(i);
+            assertTradeEqual(expectedPosition.getEntry(), actualPosition.getEntry());
+            assertTradeEqual(expectedPosition.getExit(), actualPosition.getExit());
+        }
+
+        OpenPosition expectedNet = expected.netOpenPosition();
+        OpenPosition actualNet = actual.netOpenPosition();
+        if (expectedNet == null || actualNet == null) {
+            assertEquals(expectedNet, actualNet);
+            return;
+        }
+        assertEquals(expectedNet.side(), actualNet.side());
+        assertEquals(expectedNet.amount(), actualNet.amount());
+        assertEquals(expectedNet.averageEntryPrice(), actualNet.averageEntryPrice());
+        assertEquals(expectedNet.totalEntryCost(), actualNet.totalEntryCost());
+        assertEquals(expectedNet.totalFees(), actualNet.totalFees());
     }
 
     private Num numOf(Number value) {

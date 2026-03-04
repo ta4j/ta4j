@@ -71,17 +71,17 @@ No new public top-level abstractions unless unavoidable.
 
 ## Phase A: Establish unification core behind existing APIs
 
-- [ ] Add one package-private engine type in `org.ta4j.core` (name TBD, e.g. `TradingRecordCore`) used by both records.
+- [x] Add one package-private engine type in `org.ta4j.core` (`TradingRecordCore`) used by both records.
   - Rationale: two call sites (`BaseTradingRecord`, `LiveTradingRecord`) justify extraction.
 - [ ] Core responsibilities to implement:
   - [ ] `applyTrade(int index, Trade trade, long sequence)`
   - [ ] `applySynthetic(int index, Trade.TradeType type, Num price, Num amount, CostModel txCostModel)`
-  - [ ] `getTradesSnapshot()`
-  - [ ] `getClosedPositionsSnapshot()`
-  - [ ] `getOpenPositionsSnapshot()`
-  - [ ] `getNetOpenPositionSnapshot()`
-  - [ ] `getCurrentPositionView()`
-  - [ ] `getTotalFees()`
+  - [x] `getTradesSnapshot()`
+  - [x] `getClosedPositionsSnapshot()`
+  - [x] `getOpenPositionsSnapshot()`
+  - [x] `getNetOpenPositionSnapshot()`
+  - [x] `getCurrentPositionView()`
+  - [x] `getTotalFees()`
 
 - [ ] Move lot matching and close/open bookkeeping from:
   - `PositionBook#recordEntry`
@@ -170,7 +170,7 @@ No new public top-level abstractions unless unavoidable.
     - open position snapshots
     - fees
 
-- [ ] Add explicit diagnostics hooks for debugging strategy drift:
+- [x] Add explicit diagnostics hooks for debugging strategy drift:
   - snapshot helper for per-bar state (`open lots`, `net open`, `total fees`, `last trade`).
   - keep package-private unless a public API use case is proven.
 

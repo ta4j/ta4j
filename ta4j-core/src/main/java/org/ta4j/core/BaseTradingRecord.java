@@ -4,14 +4,15 @@
 package org.ta4j.core;
 
 import java.io.Serial;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-
 import java.util.stream.Stream;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
 /**
@@ -48,6 +49,9 @@ public class BaseTradingRecord implements TradingRecord {
 
     /** The cost model for holding asset (e.g. borrowing). */
     private final transient CostModel holdingCostModel;
+
+    /** Shared internal snapshot core used for diagnostics/parity tooling. */
+    private transient TradingRecordCore tradingRecordCore;
 
     /** Constructor with {@link #startingType} = BUY. */
     public BaseTradingRecord() {
@@ -267,6 +271,10 @@ public class BaseTradingRecord implements TradingRecord {
         return endIndex;
     }
 
+    TradingRecordDebugSnapshot debugSnapshot() {
+        return core().snapshot();
+    }
+
     /**
      * Records a trade and the corresponding position (if closed).
      *
@@ -322,6 +330,65 @@ public class BaseTradingRecord implements TradingRecord {
             return currentPosition.getEntry().getType().complementType();
         }
         throw new IllegalStateException("Current position should not be closed");
+    }
+
+    private TradingRecordCore core() {
+        if (tradingRecordCore == null) {
+            tradingRecordCore = new TradingRecordCore(startingType, () -> trades, () -> positions,
+                    () -> currentPosition, this::openPositionsSnapshot, this::netOpenPositionSnapshot,
+                    this::totalFeesSnapshot);
+        }
+        return tradingRecordCore;
+    }
+
+    private List<OpenPosition> openPositionsSnapshot() {
+        if (!currentPosition.isOpened() || currentPosition.getEntry() == null) {
+            return List.of();
+        }
+        Trade entry = currentPosition.getEntry();
+        Num fee = feeOf(entry);
+        Instant entryTime = executionTimeOf(entry);
+        ExecutionSide side = entry.isBuy() ? ExecutionSide.BUY : ExecutionSide.SELL;
+        Num totalEntryCost = entry.getPricePerAsset().multipliedBy(entry.getAmount());
+        PositionLot lot = new PositionLot(entry.getIndex(), entryTime, entry.getPricePerAsset(), entry.getAmount(), fee,
+                entry.getOrderId(), entry.getCorrelationId(), 0L);
+        return List.of(new OpenPosition(side, entry.getAmount(), entry.getPricePerAsset(), totalEntryCost, fee,
+                entryTime, entryTime, List.of(lot)));
+    }
+
+    private OpenPosition netOpenPositionSnapshot() {
+        List<OpenPosition> openPositions = openPositionsSnapshot();
+        if (openPositions.isEmpty()) {
+            return null;
+        }
+        return openPositions.getFirst();
+    }
+
+    private Num totalFeesSnapshot() {
+        if (trades.isEmpty()) {
+            return DoubleNumFactory.getInstance().zero();
+        }
+        Num totalFees = trades.getFirst().getPricePerAsset().getNumFactory().zero();
+        for (Trade trade : trades) {
+            totalFees = totalFees.plus(feeOf(trade));
+        }
+        return totalFees;
+    }
+
+    private static Num feeOf(Trade trade) {
+        Num fee = trade.getCost();
+        if (fee != null) {
+            return fee;
+        }
+        return trade.getPricePerAsset().getNumFactory().zero();
+    }
+
+    private static Instant executionTimeOf(Trade trade) {
+        Instant time = trade.getTime();
+        if (time != null) {
+            return time;
+        }
+        return Instant.EPOCH;
     }
 
     @Override

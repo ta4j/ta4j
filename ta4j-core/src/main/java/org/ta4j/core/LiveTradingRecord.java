@@ -52,6 +52,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     private Num totalFees;
     private transient NumFactory numFactory;
     private long nextSequence;
+    private transient TradingRecordCore tradingRecordCore;
 
     /**
      * Creates a live trading record with BUY entries and FIFO matching.
@@ -387,6 +388,10 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         return endIndex;
     }
 
+    TradingRecordDebugSnapshot debugSnapshot() {
+        return core().snapshot();
+    }
+
     private int nextIndex() {
         lock.writeLock().lock();
         try {
@@ -504,6 +509,14 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         }
     }
 
+    private TradingRecordCore core() {
+        if (tradingRecordCore == null) {
+            tradingRecordCore = new TradingRecordCore(startingType, this::getTrades, this::getPositions,
+                    this::getCurrentPosition, this::getOpenPositions, this::getNetOpenPosition, this::getTotalFees);
+        }
+        return tradingRecordCore;
+    }
+
     @Override
     public String toString() {
         lock.readLock().lock();
@@ -545,6 +558,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         tradesCacheVersion = -1L;
         modificationCount = 0L;
         numFactory = null;
+        tradingRecordCore = null;
     }
 
     private record SequencedTrade(Trade trade, long sequence) {
