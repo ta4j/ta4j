@@ -73,7 +73,7 @@ No new public top-level abstractions unless unavoidable.
 
 - [x] Add one package-private engine type in `org.ta4j.core` (`TradingRecordCore`) used by both records.
   - Rationale: two call sites (`BaseTradingRecord`, `LiveTradingRecord`) justify extraction.
-- [ ] Core responsibilities to implement:
+- [x] Core responsibilities to implement:
   - [x] `applyTrade(int index, Trade trade, long sequence)`
   - [x] `applySynthetic(int index, Trade.TradeType type, Num price, Num amount, CostModel txCostModel)`
   - [x] `getTradesSnapshot()`
@@ -89,12 +89,12 @@ No new public top-level abstractions unless unavoidable.
   - `PositionBook#closeLot`
   - into the core (or keep `PositionBook` as a strict internal collaborator owned by the core).
 
-- [ ] Keep sequence ordering deterministic (equivalent to current `LiveTradingRecord#nextSequence` behavior).
+- [x] Keep sequence ordering deterministic (equivalent to current `LiveTradingRecord#nextSequence` behavior).
 
 ## Phase B: Migrate `LiveTradingRecord` to thin facade
 
-- [ ] Keep current public API shape in `LiveTradingRecord`.
-- [ ] Delegate these methods to core:
+- [x] Keep current public API shape in `LiveTradingRecord`.
+- [x] Delegate these methods to core:
   - [x] `recordFill(Trade)`
   - [x] `recordFill(int, Trade)`
   - [x] `recordExecutionFill(TradeFill)`
@@ -109,7 +109,7 @@ No new public top-level abstractions unless unavoidable.
   - [x] `getNetOpenPosition()`
   - [x] `getTotalFees()`
 
-- [ ] Preserve thread-safety semantics:
+- [x] Preserve thread-safety semantics:
   - Keep `ReentrantReadWriteLock` at facade boundary, or move lock into core with equivalent guarantees.
 
 ## Phase C: Migrate `BaseTradingRecord` to same core
@@ -133,7 +133,7 @@ No new public top-level abstractions unless unavoidable.
   - [ ] `getLastExit()`
   - [ ] `getCurrentPosition()`
 
-- [ ] Constructor migration:
+- [x] Constructor migration:
   - [x] `BaseTradingRecord(TradeType, Integer, Integer, CostModel, CostModel)` should initialize the core.
   - [x] trade/position bootstrap constructors should call `operate(Trade)` through facade methods so construction path is identical to runtime path.
 
@@ -243,6 +243,6 @@ Mitigation: add micro-bench checks for `run(...)` hot path and large trade histo
 
 - [ ] Both `BaseTradingRecord` and `LiveTradingRecord` mutate through one shared internal path.
 - [ ] No public method in core backtest/live flow requires concrete trade implementation types.
-- [ ] All targeted and full-build tests are green.
+- [x] All targeted and full-build tests are green.
 - [ ] Javadocs and changelog updated to reflect the unified model.
 - [ ] No unresolved parity regressions between backtest and live-shaped inputs.
