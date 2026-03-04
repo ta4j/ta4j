@@ -27,7 +27,8 @@ public final class ElliottWaveWalkForwardProfiles {
      * Baseline split geometry and horizon policy selected from cross-dataset
      * walk-forward tuning.
      */
-    public static final WalkForwardConfig BASELINE_CONFIG = WalkForwardConfig.defaultConfig();
+    public static final WalkForwardConfig BASELINE_CONFIG = new WalkForwardConfig(252, 200, 65, 5, 5, 320, 60,
+            List.of(30, 150), 3, List.of(1, 5), 42L);
 
     private static final int BASELINE_HIGHER_DEGREES = 2;
     private static final int BASELINE_LOWER_DEGREES = 2;

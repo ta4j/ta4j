@@ -15,21 +15,39 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 class WalkForwardConfigAndSplitterTest {
 
     @Test
-    void defaultConfigCarriesLockedBaselinePolicy() {
+    void defaultConfigCarriesGeneralPurposePolicy() {
         WalkForwardConfig config = WalkForwardConfig.defaultConfig();
 
-        assertThat(config.minTrainBars()).isEqualTo(252);
-        assertThat(config.testBars()).isEqualTo(200);
-        assertThat(config.stepBars()).isEqualTo(65);
-        assertThat(config.purgeBars()).isEqualTo(5);
-        assertThat(config.embargoBars()).isEqualTo(5);
-        assertThat(config.holdoutBars()).isEqualTo(320);
-        assertThat(config.primaryHorizonBars()).isEqualTo(60);
-        assertThat(config.reportingHorizons()).containsExactly(30, 150);
+        assertThat(config.minTrainBars()).isEqualTo(120);
+        assertThat(config.testBars()).isEqualTo(40);
+        assertThat(config.stepBars()).isEqualTo(20);
+        assertThat(config.purgeBars()).isEqualTo(1);
+        assertThat(config.embargoBars()).isEqualTo(1);
+        assertThat(config.holdoutBars()).isEqualTo(40);
+        assertThat(config.primaryHorizonBars()).isEqualTo(15);
+        assertThat(config.reportingHorizons()).containsExactly(7, 30);
         assertThat(config.optimizationTopK()).isEqualTo(3);
         assertThat(config.reportingTopKs()).containsExactly(1, 5);
-        assertThat(config.allHorizons()).containsExactly(60, 30, 150);
+        assertThat(config.allHorizons()).containsExactly(15, 7, 30);
         assertThat(config.allTopKs()).containsExactly(3, 1, 5);
+    }
+
+    @Test
+    void seriesAwareDefaultConfigDerivesDeterministicGeometry() {
+        BarSeries series = new MockBarSeriesBuilder().withData(prices(500)).build();
+
+        WalkForwardConfig configFromFactory = WalkForwardConfig.defaultConfig(series);
+        WalkForwardConfig configFromConstructor = new WalkForwardConfig(series);
+
+        assertThat(configFromFactory).isEqualTo(configFromConstructor);
+        assertThat(configFromFactory.minTrainBars()).isEqualTo(270);
+        assertThat(configFromFactory.testBars()).isEqualTo(75);
+        assertThat(configFromFactory.stepBars()).isEqualTo(37);
+        assertThat(configFromFactory.purgeBars()).isEqualTo(2);
+        assertThat(configFromFactory.embargoBars()).isEqualTo(2);
+        assertThat(configFromFactory.holdoutBars()).isEqualTo(50);
+        assertThat(configFromFactory.primaryHorizonBars()).isEqualTo(25);
+        assertThat(configFromFactory.reportingHorizons()).containsExactly(12, 50);
     }
 
     @Test

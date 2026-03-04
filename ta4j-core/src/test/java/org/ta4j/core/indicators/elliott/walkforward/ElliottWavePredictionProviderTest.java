@@ -25,7 +25,9 @@ class ElliottWavePredictionProviderTest {
         assertThat(context.maxPredictions()).isEqualTo(5);
         assertThat(context.metadata()).containsEntry("profile", "baseline-minute-f2-h2l2-max25-sw0")
                 .containsEntry("degree", ElliottWaveWalkForwardProfiles.BASELINE_DEGREE.name());
-        assertThat(ElliottWaveWalkForwardProfiles.baselineConfig()).isEqualTo(WalkForwardConfig.defaultConfig());
+        assertThat(ElliottWaveWalkForwardProfiles.baselineConfig()).isNotEqualTo(WalkForwardConfig.defaultConfig());
+        assertThat(ElliottWaveWalkForwardProfiles.baselineConfig())
+                .isEqualTo(new WalkForwardConfig(252, 200, 65, 5, 5, 320, 60, List.of(30, 150), 3, List.of(1, 5), 42L));
     }
 
     @Test

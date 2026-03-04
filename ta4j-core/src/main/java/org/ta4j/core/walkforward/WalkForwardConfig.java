@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
+import org.ta4j.core.BarSeries;
+
 /**
  * Immutable configuration for walk-forward execution and tuning.
  *
@@ -40,6 +42,18 @@ import java.util.Set;
 public record WalkForwardConfig(int minTrainBars, int testBars, int stepBars, int purgeBars, int embargoBars,
         int holdoutBars, int primaryHorizonBars, List<Integer> reportingHorizons, int optimizationTopK,
         List<Integer> reportingTopKs, long seed) {
+
+    private static final int DEFAULT_MIN_TRAIN_BARS = 120;
+    private static final int DEFAULT_TEST_BARS = 40;
+    private static final int DEFAULT_STEP_BARS = 20;
+    private static final int DEFAULT_PURGE_BARS = 1;
+    private static final int DEFAULT_EMBARGO_BARS = 1;
+    private static final int DEFAULT_HOLDOUT_BARS = 40;
+    private static final int DEFAULT_PRIMARY_HORIZON_BARS = 15;
+    private static final List<Integer> DEFAULT_REPORTING_HORIZONS = List.of(7, 30);
+    private static final int DEFAULT_OPTIMIZATION_TOP_K = 3;
+    private static final List<Integer> DEFAULT_REPORTING_TOP_KS = List.of(1, 5);
+    private static final long DEFAULT_SEED = 42L;
 
     /**
      * Creates a validated walk-forward configuration.
@@ -75,23 +89,55 @@ public record WalkForwardConfig(int minTrainBars, int testBars, int stepBars, in
     }
 
     /**
+     * Creates a walk-forward configuration auto-derived from the supplied series.
+     *
+     * <p>
+     * This constructor applies series-size heuristics intended for general-purpose
+     * walk-forward studies. The generated geometry is deterministic for a given
+     * series length.
+     *
+     * @param series input series used to derive geometry and horizons
+     * @since 0.22.4
+     */
+    public WalkForwardConfig(BarSeries series) {
+        this(deriveForSeries(series));
+    }
+
+    /**
      * Creates the default global walk-forward configuration.
      *
      * <p>
-     * Defaults match the locked baseline policy: primary horizon {@code H=60},
-     * reporting horizons {@code 30/150}, optimize at {@code k=3}, report
-     * {@code k=1/5}, and fold geometry
-     * {@code minTrain=252,test=200,step=65,purge=5,embargo=5,holdout=320}.
-     *
-     * <p>
-     * Treat these defaults as a baseline profile for a comparison cycle. If you
-     * override them, keep your chosen overrides fixed for the full cycle.
+     * These defaults are intentionally general-purpose and not tied to any
+     * asset-specific tuning profile.
      *
      * @return default configuration
      * @since 0.22.4
      */
     public static WalkForwardConfig defaultConfig() {
-        return new WalkForwardConfig(252, 200, 65, 5, 5, 320, 60, List.of(30, 150), 3, List.of(1, 5), 42L);
+        return new WalkForwardConfig(DEFAULT_MIN_TRAIN_BARS, DEFAULT_TEST_BARS, DEFAULT_STEP_BARS, DEFAULT_PURGE_BARS,
+                DEFAULT_EMBARGO_BARS, DEFAULT_HOLDOUT_BARS, DEFAULT_PRIMARY_HORIZON_BARS, DEFAULT_REPORTING_HORIZONS,
+                DEFAULT_OPTIMIZATION_TOP_K, DEFAULT_REPORTING_TOP_KS, DEFAULT_SEED);
+    }
+
+    /**
+     * Creates a series-aware default walk-forward configuration.
+     *
+     * <p>
+     * The generated values are derived from bar-count heuristics: approximately 60%
+     * training bars, 15% test bars, 10% holdout bars, and horizon depths sized from
+     * test bars.
+     *
+     * <p>
+     * Treat the generated configuration as locked for a comparison cycle. If you
+     * rerun candidate studies, avoid changing generated values run-to-run for the
+     * same dataset.
+     *
+     * @param series input series used to derive geometry and horizons
+     * @return derived configuration
+     * @since 0.22.4
+     */
+    public static WalkForwardConfig defaultConfig(BarSeries series) {
+        return new WalkForwardConfig(deriveForSeries(series));
     }
 
     /**
@@ -128,6 +174,51 @@ public record WalkForwardConfig(int minTrainBars, int testBars, int stepBars, in
                 + holdoutBars + "|" + primaryHorizonBars + "|" + reportingHorizons + "|" + optimizationTopK + "|"
                 + reportingTopKs + "|" + seed;
         return Integer.toHexString(canonical.hashCode());
+    }
+
+    private WalkForwardConfig(AutoDerivedConfig derived) {
+        this(derived.minTrainBars(), derived.testBars(), derived.stepBars(), derived.purgeBars(), derived.embargoBars(),
+                derived.holdoutBars(), derived.primaryHorizonBars(), derived.reportingHorizons(),
+                derived.optimizationTopK(), derived.reportingTopKs(), derived.seed());
+    }
+
+    private static AutoDerivedConfig deriveForSeries(BarSeries series) {
+        Objects.requireNonNull(series, "series");
+        int totalBars = series.getBarCount();
+        if (totalBars <= 0) {
+            throw new IllegalArgumentException("series must contain at least one bar");
+        }
+
+        int holdoutBars = clamp(totalBars / 10, 0, Math.max(0, totalBars / 4));
+        int purgeBars = totalBars >= 200 ? 2 : totalBars >= 80 ? 1 : 0;
+        int embargoBars = purgeBars;
+
+        int evaluationBars = Math.max(1, totalBars - holdoutBars);
+        int maxTrainBars = Math.max(1, evaluationBars - purgeBars - embargoBars - 1);
+        int minTrainBars = clamp((evaluationBars * 3) / 5, 20, maxTrainBars);
+
+        int maxTestBars = Math.max(1, evaluationBars - minTrainBars - purgeBars - embargoBars);
+        int testBars = clamp(evaluationBars / 6, 10, maxTestBars);
+        int stepBars = Math.max(1, testBars / 2);
+
+        int primaryHorizonBars = clamp(testBars / 3, 5, testBars);
+        int shortHorizon = Math.max(1, primaryHorizonBars / 2);
+        int longHorizon = Math.min(testBars, Math.max(1, primaryHorizonBars * 2));
+        List<Integer> reportingHorizons = normalizePositiveIntegers(List.of(shortHorizon, longHorizon),
+                "reportingHorizons").stream().filter(value -> value != primaryHorizonBars).toList();
+
+        return new AutoDerivedConfig(minTrainBars, testBars, stepBars, purgeBars, embargoBars, holdoutBars,
+                primaryHorizonBars, reportingHorizons, DEFAULT_OPTIMIZATION_TOP_K, DEFAULT_REPORTING_TOP_KS,
+                DEFAULT_SEED);
+    }
+
+    private static int clamp(int value, int min, int max) {
+        return Math.min(Math.max(value, min), max);
+    }
+
+    private record AutoDerivedConfig(int minTrainBars, int testBars, int stepBars, int purgeBars, int embargoBars,
+            int holdoutBars, int primaryHorizonBars, List<Integer> reportingHorizons, int optimizationTopK,
+            List<Integer> reportingTopKs, long seed) {
     }
 
     private static List<Integer> normalizePositiveIntegers(List<Integer> values, String fieldName) {
