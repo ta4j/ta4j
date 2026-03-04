@@ -27,6 +27,12 @@ import org.ta4j.core.num.NumFactory;
 /**
  * Live trading record that supports partial fills and multi-lot positions.
  *
+ * <p>
+ * This class is a compatibility facade for live-oriented APIs while delegating
+ * shared trading-record state handling through common internals used by
+ * backtesting paths.
+ * </p>
+ *
  * @since 0.22.2
  */
 public class LiveTradingRecord implements TradingRecord, PositionLedger {
@@ -114,7 +120,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * @since 0.22.2
      */
     public void recordFill(Trade trade) {
-        recordFill(nextIndex(), trade);
+        core().applyTrade(nextIndex(), trade, -1L);
     }
 
     /**
@@ -152,6 +158,10 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * @since 0.22.2
      */
     public void recordFill(int index, Trade trade) {
+        core().applyTrade(index, trade, -1L);
+    }
+
+    private void applyTradeInternal(int index, Trade trade, long sequence) {
         Objects.requireNonNull(trade, "trade");
         if (index < 0) {
             throw new IllegalArgumentException("index must be >= 0");
@@ -163,11 +173,14 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         lock.writeLock().lock();
         try {
             nextTradeIndex = Math.max(nextTradeIndex, index + 1);
-            long sequence = nextSequence++;
+            long appliedSequence = sequence >= 0 ? sequence : nextSequence++;
+            if (appliedSequence >= nextSequence) {
+                nextSequence = appliedSequence + 1;
+            }
             if (type == startingType) {
-                positionBook.recordEntry(index, trade, sequence);
+                positionBook.recordEntry(index, trade, appliedSequence);
             } else {
-                positionBook.recordExit(index, trade, sequence);
+                positionBook.recordExit(index, trade, appliedSequence);
             }
             if (numFactory == null) {
                 numFactory = price.getNumFactory();
@@ -191,12 +204,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      */
     @Override
     public List<OpenPosition> getOpenPositions() {
-        lock.readLock().lock();
-        try {
-            return List.copyOf(positionBook.openPositions());
-        } finally {
-            lock.readLock().unlock();
-        }
+        return core().getOpenPositionsSnapshot();
     }
 
     /**
@@ -207,12 +215,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      */
     @Override
     public OpenPosition getNetOpenPosition() {
-        lock.readLock().lock();
-        try {
-            return positionBook.netOpenPosition();
-        } finally {
-            lock.readLock().unlock();
-        }
+        return core().getNetOpenPositionSnapshot();
     }
 
     @Override
@@ -267,13 +270,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
 
     @Override
     public void operate(int index, Num price, Num amount) {
-        lock.writeLock().lock();
-        try {
-            ExecutionSide side = positionBook.openLots().isEmpty() ? startingExecutionSide() : exitExecutionSide();
-            recordFill(index, new BaseTrade(index, Instant.EPOCH, price, amount, null, side, null, null));
-        } finally {
-            lock.writeLock().unlock();
-        }
+        core().applySynthetic(index, nextSyntheticTradeType(), price, amount, transactionCostModel);
     }
 
     private void recordTradeFill(TradeType tradeType, TradeFill fill, String tradeOrderId, String tradeCorrelationId,
@@ -282,8 +279,8 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         Instant executionTime = resolveExecutionTime(fill.time(), tradeTime);
         String orderId = chooseValue(fill.orderId(), tradeOrderId);
         String correlationId = chooseValue(fill.correlationId(), tradeCorrelationId);
-        recordFill(fill.index(), new BaseTrade(fill.index(), executionTime, fill.price(), fill.amount(), fill.fee(),
-                side, orderId, correlationId));
+        core().applyTrade(fill.index(), new BaseTrade(fill.index(), executionTime, fill.price(), fill.amount(),
+                fill.fee(), side, orderId, correlationId), -1L);
     }
 
     @Override
@@ -293,8 +290,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
             if (!positionBook.openLots().isEmpty()) {
                 return false;
             }
-            recordFill(index,
-                    new BaseTrade(index, Instant.EPOCH, price, amount, null, startingExecutionSide(), null, null));
+            core().applySynthetic(index, startingType, price, amount, transactionCostModel);
             return true;
         } finally {
             lock.writeLock().unlock();
@@ -308,8 +304,7 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
             if (positionBook.openLots().isEmpty()) {
                 return false;
             }
-            recordFill(index,
-                    new BaseTrade(index, Instant.EPOCH, price, amount, null, exitExecutionSide(), null, null));
+            core().applySynthetic(index, startingType.complementType(), price, amount, transactionCostModel);
             return true;
         } finally {
             lock.writeLock().unlock();
@@ -328,54 +323,17 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
 
     @Override
     public List<Position> getPositions() {
-        lock.readLock().lock();
-        try {
-            return List.copyOf(positionBook.closedPositions());
-        } finally {
-            lock.readLock().unlock();
-        }
+        return core().getClosedPositionsSnapshot();
     }
 
     @Override
     public Position getCurrentPosition() {
-        lock.readLock().lock();
-        try {
-            OpenPosition net = positionBook.netOpenPosition();
-            if (net == null || net.amount() == null || net.amount().isZero()) {
-                return new Position(startingType, transactionCostModel, holdingCostModel);
-            }
-            int entryIndex = positionBook.openLots().stream().mapToInt(PositionLot::entryIndex).min().orElse(0);
-            ExecutionSide entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
-            Instant entryTime = net.earliestEntryTime() == null ? Instant.EPOCH : net.earliestEntryTime();
-            BaseTrade entryTrade = new BaseTrade(entryIndex, entryTime, net.averageEntryPrice(), net.amount(),
-                    net.totalFees(), entrySide, null, null);
-            return new Position(entryTrade, transactionCostModel, holdingCostModel);
-        } finally {
-            lock.readLock().unlock();
-        }
+        return core().getCurrentPositionView();
     }
 
     @Override
     public List<Trade> getTrades() {
-        lock.readLock().lock();
-        try {
-            if (tradesCache != null && tradesCacheVersion == modificationCount) {
-                return tradesCache;
-            }
-        } finally {
-            lock.readLock().unlock();
-        }
-        lock.writeLock().lock();
-        try {
-            if (tradesCache != null && tradesCacheVersion == modificationCount) {
-                return tradesCache;
-            }
-            tradesCache = List.copyOf(buildTrades());
-            tradesCacheVersion = modificationCount;
-            return tradesCache;
-        } finally {
-            lock.writeLock().unlock();
-        }
+        return core().getTradesSnapshot();
     }
 
     @Override
@@ -396,6 +354,85 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         lock.writeLock().lock();
         try {
             return nextTradeIndex++;
+        } finally {
+            lock.writeLock().unlock();
+        }
+    }
+
+    private TradeType nextSyntheticTradeType() {
+        lock.readLock().lock();
+        try {
+            if (positionBook.openLots().isEmpty()) {
+                return startingType;
+            }
+            return startingType.complementType();
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    private List<OpenPosition> openPositionsSnapshot() {
+        lock.readLock().lock();
+        try {
+            return List.copyOf(positionBook.openPositions());
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    private OpenPosition netOpenPositionSnapshot() {
+        lock.readLock().lock();
+        try {
+            return positionBook.netOpenPosition();
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    private List<Position> closedPositionsSnapshot() {
+        lock.readLock().lock();
+        try {
+            return List.copyOf(positionBook.closedPositions());
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    private Position currentPositionView() {
+        lock.readLock().lock();
+        try {
+            OpenPosition net = positionBook.netOpenPosition();
+            if (net == null || net.amount() == null || net.amount().isZero()) {
+                return new Position(startingType, transactionCostModel, holdingCostModel);
+            }
+            int entryIndex = positionBook.openLots().stream().mapToInt(PositionLot::entryIndex).min().orElse(0);
+            ExecutionSide entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+            Instant entryTime = net.earliestEntryTime() == null ? Instant.EPOCH : net.earliestEntryTime();
+            BaseTrade entryTrade = new BaseTrade(entryIndex, entryTime, net.averageEntryPrice(), net.amount(),
+                    net.totalFees(), entrySide, null, null);
+            return new Position(entryTrade, transactionCostModel, holdingCostModel);
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    private List<Trade> tradesSnapshot() {
+        lock.readLock().lock();
+        try {
+            if (tradesCache != null && tradesCacheVersion == modificationCount) {
+                return tradesCache;
+            }
+        } finally {
+            lock.readLock().unlock();
+        }
+        lock.writeLock().lock();
+        try {
+            if (tradesCache != null && tradesCacheVersion == modificationCount) {
+                return tradesCache;
+            }
+            tradesCache = List.copyOf(buildTrades());
+            tradesCacheVersion = modificationCount;
+            return tradesCache;
         } finally {
             lock.writeLock().unlock();
         }
@@ -497,6 +534,10 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * @since 0.22.2
      */
     public Num getTotalFees() {
+        return core().getTotalFees();
+    }
+
+    private Num totalFeesSnapshot() {
         lock.readLock().lock();
         try {
             if (totalFees == null) {
@@ -511,8 +552,11 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
 
     private TradingRecordCore core() {
         if (tradingRecordCore == null) {
-            tradingRecordCore = new TradingRecordCore(startingType, this::getTrades, this::getPositions,
-                    this::getCurrentPosition, this::getOpenPositions, this::getNetOpenPosition, this::getTotalFees);
+            tradingRecordCore = new TradingRecordCore(startingType, this::tradesSnapshot, this::closedPositionsSnapshot,
+                    this::currentPositionView, this::openPositionsSnapshot, this::netOpenPositionSnapshot,
+                    this::totalFeesSnapshot, this::applyTradeInternal,
+                    (index, type, price, amount, transactionCostModel) -> applyTradeInternal(index,
+                            new BaseTrade(index, Instant.EPOCH, price, amount, null, sideOf(type), null, null), -1L));
         }
         return tradingRecordCore;
     }

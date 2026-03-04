@@ -17,6 +17,12 @@ import org.ta4j.core.num.Num;
 
 /**
  * Base implementation of a {@link TradingRecord}.
+ *
+ * <p>
+ * This class is a compatibility facade for classic backtesting flows. Trade and
+ * position state transitions are wired through shared trading-record internals
+ * so behavior can stay aligned with live-oriented record processing.
+ * </p>
  */
 public class BaseTradingRecord implements TradingRecord {
 
@@ -205,16 +211,15 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public void operate(int index, Num price, Num amount) {
-        Trade syntheticTrade = new BaseTrade(index, nextTradeType(), price, amount, transactionCostModel);
-        applyTrade(syntheticTrade);
+        core().applySynthetic(index, nextTradeType(), price, amount, transactionCostModel);
     }
 
     @Override
     public void operate(Trade trade) {
-        applyTrade(trade);
+        core().applyTrade(trade.getIndex(), trade, -1L);
     }
 
-    private void applyTrade(Trade trade) {
+    private void applyTradeInternal(Trade trade) {
         if (currentPosition.isClosed()) {
             // Current position closed, should not occur
             throw new IllegalStateException("Current position should not be closed");
@@ -336,7 +341,9 @@ public class BaseTradingRecord implements TradingRecord {
         if (tradingRecordCore == null) {
             tradingRecordCore = new TradingRecordCore(startingType, () -> trades, () -> positions,
                     () -> currentPosition, this::openPositionsSnapshot, this::netOpenPositionSnapshot,
-                    this::totalFeesSnapshot);
+                    this::totalFeesSnapshot, (index, trade, sequence) -> applyTradeInternal(trade),
+                    (index, type, price, amount, transactionCostModel) -> applyTradeInternal(
+                            new BaseTrade(index, type, price, amount, transactionCostModel)));
         }
         return tradingRecordCore;
     }

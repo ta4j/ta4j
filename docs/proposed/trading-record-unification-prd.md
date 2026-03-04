@@ -74,8 +74,8 @@ No new public top-level abstractions unless unavoidable.
 - [x] Add one package-private engine type in `org.ta4j.core` (`TradingRecordCore`) used by both records.
   - Rationale: two call sites (`BaseTradingRecord`, `LiveTradingRecord`) justify extraction.
 - [ ] Core responsibilities to implement:
-  - [ ] `applyTrade(int index, Trade trade, long sequence)`
-  - [ ] `applySynthetic(int index, Trade.TradeType type, Num price, Num amount, CostModel txCostModel)`
+  - [x] `applyTrade(int index, Trade trade, long sequence)`
+  - [x] `applySynthetic(int index, Trade.TradeType type, Num price, Num amount, CostModel txCostModel)`
   - [x] `getTradesSnapshot()`
   - [x] `getClosedPositionsSnapshot()`
   - [x] `getOpenPositionsSnapshot()`
@@ -95,19 +95,19 @@ No new public top-level abstractions unless unavoidable.
 
 - [ ] Keep current public API shape in `LiveTradingRecord`.
 - [ ] Delegate these methods to core:
-  - [ ] `recordFill(Trade)`
-  - [ ] `recordFill(int, Trade)`
-  - [ ] `recordExecutionFill(TradeFill)`
-  - [ ] `operate(Trade)`
-  - [ ] `operate(int, Num, Num)`
-  - [ ] `enter(int, Num, Num)`
-  - [ ] `exit(int, Num, Num)`
-  - [ ] `getTrades()`
-  - [ ] `getPositions()`
-  - [ ] `getCurrentPosition()`
-  - [ ] `getOpenPositions()`
-  - [ ] `getNetOpenPosition()`
-  - [ ] `getTotalFees()`
+  - [x] `recordFill(Trade)`
+  - [x] `recordFill(int, Trade)`
+  - [x] `recordExecutionFill(TradeFill)`
+  - [x] `operate(Trade)`
+  - [x] `operate(int, Num, Num)`
+  - [x] `enter(int, Num, Num)`
+  - [x] `exit(int, Num, Num)`
+  - [x] `getTrades()`
+  - [x] `getPositions()`
+  - [x] `getCurrentPosition()`
+  - [x] `getOpenPositions()`
+  - [x] `getNetOpenPosition()`
+  - [x] `getTotalFees()`
 
 - [ ] Preserve thread-safety semantics:
   - Keep `ReentrantReadWriteLock` at facade boundary, or move lock into core with equivalent guarantees.
@@ -121,10 +121,10 @@ No new public top-level abstractions unless unavoidable.
   - unified `getLastTrade(...)` / `getLastEntry()` / `getLastExit()` logic via `TradingRecord` default methods
 - [ ] Delegate instead to core snapshots and derived views.
 - [ ] Rewire these methods:
-  - [ ] `operate(int, Num, Num)`
-  - [ ] `operate(Trade)`
-  - [ ] `enter(int, Num, Num)`
-  - [ ] `exit(int, Num, Num)`
+  - [x] `operate(int, Num, Num)`
+  - [x] `operate(Trade)`
+  - [x] `enter(int, Num, Num)`
+  - [x] `exit(int, Num, Num)`
   - [ ] `getPositions()`
   - [ ] `getTrades()`
   - [ ] `getLastTrade()`
@@ -213,7 +213,7 @@ No new public top-level abstractions unless unavoidable.
 
 - [x] `TradingRecord` Javadoc:
   - clarified `Trade` as public contract and metadata optionality/fallback expectations.
-- [ ] `BaseTradingRecord` and `LiveTradingRecord` Javadocs:
+- [x] `BaseTradingRecord` and `LiveTradingRecord` Javadocs:
   - explicitly state they are facades over shared internals (once done).
 - [x] `BarSeriesManager` docs:
   - clarified record creation strategy and default behavior via `TradingRecordFactory`.
