@@ -23,6 +23,9 @@ final class ExecutionModelSupport {
 
     static ExecutionTarget resolveExecutionTarget(int signalIndex, BarSeries barSeries,
             TradeExecutionModel.PriceSource priceSource) {
+        if (signalIndex < barSeries.getBeginIndex() || signalIndex > barSeries.getEndIndex()) {
+            return null;
+        }
         if (priceSource == TradeExecutionModel.PriceSource.CURRENT_CLOSE) {
             return new ExecutionTarget(signalIndex, barSeries.getBar(signalIndex).getClosePrice());
         }

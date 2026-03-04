@@ -49,8 +49,8 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
      * Creates a stop-limit execution model using next-bar open as the reference
      * price.
      *
-     * @param stopTriggerRatio    stop trigger ratio
-     * @param limitOffsetRatio    limit offset ratio
+     * @param stopTriggerRatio    stop trigger ratio in [0,1)
+     * @param limitOffsetRatio    limit offset ratio in [0,1)
      * @param maxBarParticipation max per-bar fill participation in (0,1]
      * @param maxBarsToFill       order time-to-live in bars (>= 1)
      * @since 0.22.4
@@ -63,8 +63,9 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     /**
      * Creates a stop-limit execution model.
      *
-     * @param stopTriggerRatio    stop trigger ratio
-     * @param limitOffsetRatio    limit offset ratio (must be >= stop ratio)
+     * @param stopTriggerRatio    stop trigger ratio in [0,1)
+     * @param limitOffsetRatio    limit offset ratio in [0,1) (must be >= stop
+     *                            ratio)
      * @param maxBarParticipation max per-bar fill participation in (0,1]
      * @param maxBarsToFill       order time-to-live in bars (>= 1)
      * @param priceSource         base signal price source
@@ -77,6 +78,12 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         validateRatio(maxBarParticipation, "maxBarParticipation");
         Objects.requireNonNull(priceSource, "priceSource");
         Num one = stopTriggerRatio.getNumFactory().one();
+        if (stopTriggerRatio.isGreaterThanOrEqual(one)) {
+            throw new IllegalArgumentException("stopTriggerRatio must be < 1");
+        }
+        if (limitOffsetRatio.isGreaterThanOrEqual(one)) {
+            throw new IllegalArgumentException("limitOffsetRatio must be < 1");
+        }
         if (maxBarParticipation.isZero()) {
             throw new IllegalArgumentException("maxBarParticipation must be > 0");
         }

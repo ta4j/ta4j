@@ -56,6 +56,18 @@ public class TradeFillTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void supportsNegativeIndexForDeferredAssignment() {
+        TradeFill fill = new TradeFill(-1, numFactory.hundred(), numFactory.one());
+
+        assertEquals(-1, fill.index());
+    }
+
+    @Test
+    public void rejectsIndexBelowDeferredAssignmentSentinel() {
+        assertThrows(IllegalArgumentException.class, () -> new TradeFill(-2, numFactory.hundred(), numFactory.one()));
+    }
+
+    @Test
     public void rejectsNullPriceOrAmount() {
         assertThrows(NullPointerException.class, () -> new TradeFill(1, null, numFactory.one()));
         assertThrows(NullPointerException.class, () -> new TradeFill(1, numFactory.one(), null));

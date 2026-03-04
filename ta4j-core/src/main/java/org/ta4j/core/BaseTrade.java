@@ -187,10 +187,10 @@ public class BaseTrade implements Trade {
     protected BaseTrade(Trade.TradeType type, List<TradeFill> fills, CostModel transactionCostModel) {
         Objects.requireNonNull(type, "type");
         Objects.requireNonNull(transactionCostModel, "transactionCostModel");
-        FillSummary fillSummary = summarizeFills(fills);
-        FillMetadata metadata = summarizeMetadata(type, fillSummary.fills());
+        FillSummary fillSummary = summarizeFills(type, fills);
+        FillMetadata metadata = summarizeMetadata(type, fillSummary.firstFill());
         this.type = type;
-        this.index = fillSummary.firstFillIndex();
+        this.index = fillSummary.firstFill().index();
         this.amount = fillSummary.totalAmount();
         this.time = metadata.time();
         this.side = metadata.side();
@@ -404,31 +404,35 @@ public class BaseTrade implements Trade {
         return totalFee;
     }
 
-    private static FillSummary summarizeFills(List<TradeFill> fills) {
+    private static FillSummary summarizeFills(Trade.TradeType tradeType, List<TradeFill> fills) {
         Objects.requireNonNull(fills, "fills");
         if (fills.isEmpty()) {
             throw new IllegalArgumentException("fills must not be empty");
         }
         Num totalAmount = fills.getFirst().amount().getNumFactory().zero();
         Num weightedPrice = fills.getFirst().price().getNumFactory().zero();
-        int earliestFillIndex = fills.getFirst().index();
+        TradeFill earliestFill = fills.getFirst();
+        ExecutionSide expectedSide = executionSide(tradeType);
         for (TradeFill fill : fills) {
+            if (fill.side() != null && fill.side() != expectedSide) {
+                throw new IllegalArgumentException("fill side must match trade type at index " + fill.index());
+            }
             if (fill.price().isNaN()) {
                 throw new IllegalArgumentException("fill price must be set");
             }
             if (fill.amount().isNaN() || fill.amount().isZero() || fill.amount().isNegative()) {
                 throw new IllegalArgumentException("fill amount must be positive");
             }
-            earliestFillIndex = Math.min(earliestFillIndex, fill.index());
+            if (fill.index() < earliestFill.index()) {
+                earliestFill = fill;
+            }
             totalAmount = totalAmount.plus(fill.amount());
             weightedPrice = weightedPrice.plus(fill.price().multipliedBy(fill.amount()));
         }
-        return new FillSummary(List.copyOf(fills), earliestFillIndex, totalAmount,
-                weightedPrice.dividedBy(totalAmount));
+        return new FillSummary(List.copyOf(fills), earliestFill, totalAmount, weightedPrice.dividedBy(totalAmount));
     }
 
-    private static FillMetadata summarizeMetadata(Trade.TradeType tradeType, List<TradeFill> fills) {
-        TradeFill firstFill = fills.getFirst();
+    private static FillMetadata summarizeMetadata(Trade.TradeType tradeType, TradeFill firstFill) {
         Instant firstTime = firstFill.time();
         String firstOrderId = firstFill.orderId();
         String firstCorrelationId = firstFill.correlationId();
@@ -630,7 +634,7 @@ public class BaseTrade implements Trade {
         return new BaseTrade(index, series, Trade.TradeType.SELL, amount, transactionCostModel);
     }
 
-    private record FillSummary(List<TradeFill> fills, int firstFillIndex, Num totalAmount, Num weightedAveragePrice) {
+    private record FillSummary(List<TradeFill> fills, TradeFill firstFill, Num totalAmount, Num weightedAveragePrice) {
     }
 
     private record FillMetadata(Instant time, ExecutionSide side, String orderId, String correlationId) {

@@ -120,4 +120,30 @@ class BaseTradeTest {
         assertNumEquals(NUM_FACTORY.numOf(101.15), trade.getNetPrice());
         assertEquals(2, trade.getFills().size());
     }
+
+    @Test
+    void fromFillsRejectsMismatchedFillSide() {
+        TradeFill sellFill = new TradeFill(1, Instant.EPOCH, NUM_FACTORY.hundred(), NUM_FACTORY.one(),
+                NUM_FACTORY.zero(), ExecutionSide.SELL, null, null);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> Trade.fromFills(TradeType.BUY, List.of(sellFill), RecordedTradeCostModel.INSTANCE));
+    }
+
+    @Test
+    void fromFillsUsesEarliestFillMetadataAsIdentityAnchor() {
+        Instant laterTime = Instant.parse("2025-01-01T00:05:00Z");
+        Instant earlierTime = Instant.parse("2025-01-01T00:01:00Z");
+        TradeFill laterFill = new TradeFill(5, laterTime, NUM_FACTORY.hundred(), NUM_FACTORY.one(), NUM_FACTORY.zero(),
+                ExecutionSide.BUY, "order-later", "corr-later");
+        TradeFill earlierFill = new TradeFill(2, earlierTime, NUM_FACTORY.numOf(101), NUM_FACTORY.one(),
+                NUM_FACTORY.zero(), ExecutionSide.BUY, "order-earlier", "corr-earlier");
+
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(laterFill, earlierFill), RecordedTradeCostModel.INSTANCE);
+
+        assertEquals(2, trade.getIndex());
+        assertEquals(earlierTime, trade.getTime());
+        assertEquals("order-earlier", trade.getOrderId());
+        assertEquals("corr-earlier", trade.getCorrelationId());
+    }
 }

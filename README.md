@@ -365,7 +365,7 @@ System.out.printf("Max drawdown: %.2f%%%n",
 // See the wiki for the full list of available criteria
 ```
 
-You can also swap in execution models that simulate slippage and order-book style
+You can also swap in execution models that simulate slippage and order-book-style
 fills:
 
 ```java

@@ -17,7 +17,8 @@ import org.ta4j.core.num.Num;
  * {@code null}. {@code fee} defaults to zero when omitted.
  * </p>
  *
- * @param index         bar index where the fill happened
+ * @param index         bar index where the fill happened; {@code -1} is
+ *                      reserved for fills awaiting recorder-assigned indices
  * @param time          optional execution timestamp (UTC)
  * @param price         execution price per asset
  * @param amount        executed amount
@@ -67,6 +68,9 @@ public record TradeFill(int index, Instant time, Num price, Num amount, Num fee,
      * @since 0.22.4
      */
     public TradeFill {
+        if (index < -1) {
+            throw new IllegalArgumentException("index must be >= -1");
+        }
         Objects.requireNonNull(price, "price");
         Objects.requireNonNull(amount, "amount");
         if (fee == null) {

@@ -219,6 +219,7 @@ public class BaseTradingRecord implements TradingRecord {
 
     @Override
     public void operate(Trade trade) {
+        Objects.requireNonNull(trade, "trade");
         core().applyTrade(trade.getIndex(), trade, -1L);
     }
 

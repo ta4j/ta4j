@@ -303,6 +303,8 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         assertThrows(IllegalArgumentException.class,
                 () -> new StopLimitExecutionModel(numFactory.one(), numFactory.zero(), numFactory.one(), 1));
         assertThrows(IllegalArgumentException.class,
+                () -> new StopLimitExecutionModel(numFactory.zero(), numFactory.one(), numFactory.one(), 1));
+        assertThrows(IllegalArgumentException.class,
                 () -> new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numFactory.zero(), 1));
         assertThrows(IllegalArgumentException.class,
                 () -> new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numFactory.one(), 0));

@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
@@ -60,6 +61,17 @@ public class TradeOnPriceExecutionModelTest extends AbstractIndicatorTest<BarSer
         Strategy strategy = new BaseStrategy(new FixedRule(2), new FixedRule(2));
 
         TradingRecord tradingRecord = new BarSeriesManager(series, new TradeOnNextOpenModel()).run(strategy);
+
+        assertTrue(tradingRecord.getTrades().isEmpty());
+    }
+
+    @Test
+    public void tradeOnCurrentCloseSkipsSignalOutsideSeriesRange() {
+        BarSeries series = buildSeries();
+        TradeOnCurrentCloseModel model = new TradeOnCurrentCloseModel();
+        TradingRecord tradingRecord = new BaseTradingRecord();
+
+        model.execute(series.getEndIndex() + 1, tradingRecord, series, numFactory.one());
 
         assertTrue(tradingRecord.getTrades().isEmpty());
     }

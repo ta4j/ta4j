@@ -122,10 +122,16 @@ public interface TradingRecord extends Serializable {
      *
      * @param trade the entry trade to place
      * @return true if the entry has been placed, false otherwise
+     * @throws IllegalArgumentException when trade type is not the configured entry
+     *                                  type
      * @since 0.22.4
      */
     default boolean enter(Trade trade) {
         Objects.requireNonNull(trade, "trade");
+        TradeType expectedEntryType = getStartingType();
+        if (trade.getType() != expectedEntryType) {
+            throw new IllegalArgumentException("Entry trade type must be " + expectedEntryType);
+        }
         if (isClosed()) {
             operate(trade);
             return true;
@@ -158,10 +164,16 @@ public interface TradingRecord extends Serializable {
      *
      * @param trade the exit trade to place
      * @return true if the exit has been placed, false otherwise
+     * @throws IllegalArgumentException when trade type is not the configured exit
+     *                                  type
      * @since 0.22.4
      */
     default boolean exit(Trade trade) {
         Objects.requireNonNull(trade, "trade");
+        TradeType expectedExitType = getStartingType().complementType();
+        if (trade.getType() != expectedExitType) {
+            throw new IllegalArgumentException("Exit trade type must be " + expectedExitType);
+        }
         if (!isClosed()) {
             operate(trade);
             return true;

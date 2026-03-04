@@ -8,7 +8,6 @@ import java.util.Objects;
 import java.util.function.Supplier;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
-import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
 /**
@@ -140,11 +139,7 @@ final class TradingRecordCore {
     }
 
     Num getTotalFees() {
-        Num totalFees = totalFeesSupplier.get();
-        if (totalFees != null) {
-            return totalFees;
-        }
-        return DoubleNumFactory.getInstance().zero();
+        return Objects.requireNonNull(totalFeesSupplier.get(), "totalFeesSupplier.get()");
     }
 
     TradingRecordDebugSnapshot snapshot() {

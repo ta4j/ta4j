@@ -229,6 +229,20 @@ public class TradingRecordTest {
     }
 
     @Test
+    public void enterAndExitWithTradeRejectWrongTradeTypes() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        TradingRecord record = new BaseTradingRecord();
+
+        assertThrows(IllegalArgumentException.class,
+                () -> record.enter(Trade.sellAt(1, numFactory.hundred(), numFactory.one())));
+
+        assertTrue(record.enter(Trade.buyAt(1, numFactory.hundred(), numFactory.one())));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> record.exit(Trade.buyAt(2, numFactory.numOf(110), numFactory.one())));
+    }
+
+    @Test
     public void tradeDefaultOperationsRejectNullTrades() {
         TradingRecord record = new BaseTradingRecord();
 

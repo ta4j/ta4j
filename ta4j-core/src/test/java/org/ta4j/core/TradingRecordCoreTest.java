@@ -107,6 +107,25 @@ class TradingRecordCoreTest {
                 .add(new Position(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel())));
     }
 
+    @Test
+    void getTotalFeesUsesSupplierNumWithoutFallbackFactoryConversion() {
+        Num fees = numFactory.numOf(2.5);
+        TradingRecordCore core = new TradingRecordCore(TradeType.BUY, List::of, List::of,
+                () -> new Position(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel()), List::of, () -> null,
+                () -> fees, null, null);
+
+        assertEquals(fees, core.getTotalFees());
+    }
+
+    @Test
+    void getTotalFeesRejectsNullSupplierValues() {
+        TradingRecordCore core = new TradingRecordCore(TradeType.BUY, List::of, List::of,
+                () -> new Position(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel()), List::of, () -> null,
+                () -> null, null, null);
+
+        assertThrows(NullPointerException.class, core::getTotalFees);
+    }
+
     private TradingRecordCore emptyCore(TradingRecordCore.TradeApplier tradeApplier,
             TradingRecordCore.SyntheticApplier syntheticApplier) {
         List<Trade> trades = new ArrayList<>();

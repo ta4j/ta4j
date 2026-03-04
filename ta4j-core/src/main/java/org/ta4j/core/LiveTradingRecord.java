@@ -532,14 +532,24 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     }
 
     private TradingRecordCore core() {
-        if (tradingRecordCore == null) {
-            tradingRecordCore = new TradingRecordCore(startingType, this::tradesSnapshot, this::closedPositionsSnapshot,
-                    this::currentPositionView, this::openPositionsSnapshot, this::netOpenPositionSnapshot,
-                    this::totalFeesSnapshot, this::applyTradeInternal,
-                    (index, type, price, amount, transactionCostModel) -> applyTradeInternal(index,
-                            new BaseTrade(index, Instant.EPOCH, price, amount, null, sideOf(type), null, null), -1L));
+        TradingRecordCore coreSnapshot = tradingRecordCore;
+        if (coreSnapshot != null) {
+            return coreSnapshot;
         }
-        return tradingRecordCore;
+        lock.writeLock().lock();
+        try {
+            if (tradingRecordCore == null) {
+                tradingRecordCore = new TradingRecordCore(startingType, this::tradesSnapshot,
+                        this::closedPositionsSnapshot, this::currentPositionView, this::openPositionsSnapshot,
+                        this::netOpenPositionSnapshot, this::totalFeesSnapshot, this::applyTradeInternal,
+                        (index, type, price, amount, transactionCostModel) -> applyTradeInternal(index,
+                                new BaseTrade(index, Instant.EPOCH, price, amount, null, sideOf(type), null, null),
+                                -1L));
+            }
+            return tradingRecordCore;
+        } finally {
+            lock.writeLock().unlock();
+        }
     }
 
     @Override

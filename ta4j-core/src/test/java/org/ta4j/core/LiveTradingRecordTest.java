@@ -505,6 +505,47 @@ class LiveTradingRecordTest {
     }
 
     @Test
+    void initializesCoreSafelyUnderConcurrentAccess() throws Exception {
+        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        var executor = Executors.newFixedThreadPool(2);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(2);
+        AtomicBoolean failed = new AtomicBoolean(false);
+        AtomicReference<Throwable> error = new AtomicReference<>();
+
+        executor.execute(() -> {
+            try {
+                startLatch.await(2, TimeUnit.SECONDS);
+                assertNotNull(record.getOpenPositions());
+            } catch (Throwable ex) {
+                failed.set(true);
+                error.set(ex);
+            } finally {
+                doneLatch.countDown();
+            }
+        });
+        executor.execute(() -> {
+            try {
+                startLatch.countDown();
+                assertNotNull(record.getTotalFees());
+            } catch (Throwable ex) {
+                failed.set(true);
+                error.set(ex);
+            } finally {
+                doneLatch.countDown();
+            }
+        });
+
+        assertTrue(doneLatch.await(5, TimeUnit.SECONDS));
+        executor.shutdown();
+        assertTrue(executor.awaitTermination(2, TimeUnit.SECONDS));
+        if (failed.get()) {
+            throw new AssertionError("Concurrent core initialization failed", error.get());
+        }
+    }
+
+    @Test
     void supportsConcurrentReadsDuringWrites() throws Exception {
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
