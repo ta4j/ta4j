@@ -4,6 +4,7 @@
 package org.ta4j.core.backtest;
 
 import java.time.Duration;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -149,7 +150,7 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
         for (FoldResult fold : folds) {
             values.put(fold.split().foldId(), criterion.calculate(barSeries, fold.tradingRecord()));
         }
-        return Map.copyOf(values);
+        return Collections.unmodifiableMap(values);
     }
 
     private List<Num> criterionValuesFor(AnalysisCriterion criterion, List<FoldResult> selectedFolds) {
