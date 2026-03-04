@@ -12,40 +12,28 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
-class ExecutionFillTest {
+class TradeFillExecutionTest {
 
     @Test
-    void liveTradeImplementsExecutionFill() {
+    void recordExecutionFillAcceptsTradeFill() {
         Num price = DoubleNumFactory.getInstance().numOf(100);
         Num amount = DoubleNumFactory.getInstance().numOf(1);
-        ExecutionFill fill = new LiveTrade(5, Instant.parse("2025-01-01T00:00:00Z"), price, amount, null,
-                ExecutionSide.BUY, "order-1", "intent-1");
-
-        assertEquals(5, fill.index());
-        assertEquals("intent-1", fill.intentId());
-        assertEquals(ExecutionSide.BUY, fill.side());
-    }
-
-    @Test
-    void recordExecutionFillAcceptsExecutionFill() {
-        Num price = DoubleNumFactory.getInstance().numOf(100);
-        Num amount = DoubleNumFactory.getInstance().numOf(1);
-        ExecutionFill fill = new TestFill(Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, ExecutionSide.BUY,
-                null, "intent-2");
+        TradeFill fill = new TradeFill(5, Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, ExecutionSide.BUY,
+                "order-1", "corr-1");
 
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
         record.recordExecutionFill(fill);
 
         assertEquals(1, record.getTrades().size());
-        assertEquals("intent-2", record.getTrades().get(0).getCorrelationId());
+        assertEquals("corr-1", record.getTrades().get(0).getCorrelationId());
     }
 
     @Test
-    void tradeFillCanBeConsumedAsExecutionFill() {
+    void recordExecutionFillKeepsExplicitIndex() {
         Num price = DoubleNumFactory.getInstance().numOf(101);
         Num amount = DoubleNumFactory.getInstance().numOf(2);
-        ExecutionFill fill = new TradeFill(7, Instant.parse("2025-01-01T00:00:00Z"), price, amount, ExecutionSide.BUY);
+        TradeFill fill = new TradeFill(7, Instant.parse("2025-01-01T00:00:00Z"), price, amount, ExecutionSide.BUY);
 
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
@@ -60,17 +48,7 @@ class ExecutionFillTest {
     void recordExecutionFillInfersMissingSideAndTime() {
         Num price = DoubleNumFactory.getInstance().numOf(100);
         Num amount = DoubleNumFactory.getInstance().numOf(1);
-        ExecutionFill fillWithoutMetadata = new ExecutionFill() {
-            @Override
-            public Num price() {
-                return price;
-            }
-
-            @Override
-            public Num amount() {
-                return amount;
-            }
-        };
+        TradeFill fillWithoutMetadata = new TradeFill(-1, null, price, amount, null, null, null, null);
 
         LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
@@ -82,9 +60,5 @@ class ExecutionFillTest {
         assertEquals(TradeType.SELL, record.getTrades().get(1).getType());
         assertEquals(Instant.EPOCH, record.getTrades().get(0).getTime());
         assertEquals(Instant.EPOCH, record.getTrades().get(1).getTime());
-    }
-
-    private record TestFill(Instant time, Num price, Num amount, Num fee, ExecutionSide side, String orderId,
-            String correlationId) implements ExecutionFill {
     }
 }

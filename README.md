@@ -669,11 +669,11 @@ lots, and recorded fees so analytics can include open exposure.
 ```java
 import java.time.Instant;
 
-import org.ta4j.core.ExecutionFill;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.LiveTrade;
 import org.ta4j.core.LiveTradingRecord;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
@@ -698,8 +698,8 @@ record.recordFill(new LiveTrade(
         orderId,
         correlationId));
 
-// If you already have exchange DTOs mapped to ExecutionFill, use the generic API.
-ExecutionFill exchangeFill = mapExchangeFill();
+// Or map exchange DTOs directly into TradeFill and record them.
+TradeFill exchangeFill = mapExchangeFill();
 record.recordExecutionFill(exchangeFill);
 
 CashFlow equity = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET,

@@ -506,16 +506,16 @@ class LiveTradingRecordTest {
     }
 
     @Test
-    void executionFillIndexIsAppliedConsistentlyForLiveAndGenericFills() {
+    void tradeFillIndexIsAppliedConsistentlyWithLiveFill() {
         LiveTradingRecord liveFillRecord = new LiveTradingRecord();
         LiveTradingRecord genericFillRecord = new LiveTradingRecord();
 
-        ExecutionFill liveFill = new LiveTrade(42, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+        LiveTrade liveFill = new LiveTrade(42, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
                 numFactory.one(), numFactory.zero(), ExecutionSide.BUY, "live-order", "live-correlation");
-        ExecutionFill genericFill = fillContract(42, ExecutionSide.BUY, numFactory.hundred(), numFactory.one(),
+        TradeFill genericFill = fillContract(42, ExecutionSide.BUY, numFactory.hundred(), numFactory.one(),
                 "generic-order", "generic-correlation");
 
-        liveFillRecord.recordExecutionFill(liveFill);
+        liveFillRecord.recordFill(42, liveFill);
         genericFillRecord.recordExecutionFill(genericFill);
 
         assertEquals(42, liveFillRecord.getLastTrade().getIndex());
@@ -523,7 +523,7 @@ class LiveTradingRecordTest {
     }
 
     @Test
-    void executionFillWithoutIndexUsesAutoIncrementedIndex() {
+    void tradeFillWithoutIndexUsesAutoIncrementedIndex() {
         LiveTradingRecord record = new LiveTradingRecord();
 
         record.recordExecutionFill(fillContract(-1, ExecutionSide.BUY, numFactory.hundred(), numFactory.one(),
@@ -566,49 +566,10 @@ class LiveTradingRecordTest {
                 correlationId);
     }
 
-    private ExecutionFill fillContract(int index, ExecutionSide side, Num price, Num amount, String orderId,
+    private TradeFill fillContract(int index, ExecutionSide side, Num price, Num amount, String orderId,
             String correlationId) {
-        return new ExecutionFill() {
-            @Override
-            public Instant time() {
-                return Instant.parse("2025-01-01T00:00:00Z");
-            }
-
-            @Override
-            public Num price() {
-                return price;
-            }
-
-            @Override
-            public Num amount() {
-                return amount;
-            }
-
-            @Override
-            public Num fee() {
-                return numFactory.zero();
-            }
-
-            @Override
-            public ExecutionSide side() {
-                return side;
-            }
-
-            @Override
-            public String orderId() {
-                return orderId;
-            }
-
-            @Override
-            public String correlationId() {
-                return correlationId;
-            }
-
-            @Override
-            public int index() {
-                return index;
-            }
-        };
+        return new TradeFill(index, Instant.parse("2025-01-01T00:00:00Z"), price, amount, numFactory.zero(), side,
+                orderId, correlationId);
     }
 
     private TradingRecord buildBaseShortRecord(BarSeries series) {

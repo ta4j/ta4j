@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
  * @since 0.22.4
  */
 public record TradeFill(int index, Instant time, Num price, Num amount, Num fee, ExecutionSide side, String orderId,
-        String correlationId) implements ExecutionFill, Serializable {
+        String correlationId) implements Serializable {
 
     @Serial
     private static final long serialVersionUID = -258216480640174496L;

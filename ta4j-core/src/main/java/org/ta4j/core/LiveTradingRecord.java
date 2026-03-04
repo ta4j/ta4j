@@ -118,29 +118,24 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
     }
 
     /**
-     * Records a live fill using an {@link ExecutionFill} contract.
+     * Records an execution fill.
      *
      * <p>
-     * If {@link ExecutionFill#index()} is non-negative, that index is used.
-     * Otherwise, the record assigns the next auto-incremented index.
+     * If {@link TradeFill#index()} is non-negative, that index is used. Otherwise,
+     * the record assigns the next auto-incremented index.
      * </p>
      *
      * @param fill execution fill
      * @throws IllegalArgumentException when fill price or amount is NaN/invalid
      * @since 0.22.2
      */
-    public void recordExecutionFill(ExecutionFill fill) {
+    public void recordExecutionFill(TradeFill fill) {
         Objects.requireNonNull(fill, "fill");
         int index = fill.index();
-        LiveTrade trade;
-        if (fill instanceof LiveTrade liveTrade) {
-            trade = liveTrade;
-        } else {
-            ExecutionSide side = resolveExecutionSide(fill.side());
-            Instant time = resolveExecutionTime(fill.time(), null);
-            trade = new LiveTrade(index >= 0 ? index : 0, time, fill.price(), fill.amount(), fill.fee(), side,
-                    fill.orderId(), fill.correlationId());
-        }
+        ExecutionSide side = resolveExecutionSide(fill.side());
+        Instant time = resolveExecutionTime(fill.time(), null);
+        LiveTrade trade = new LiveTrade(index >= 0 ? index : 0, time, fill.price(), fill.amount(), fill.fee(), side,
+                fill.orderId(), fill.correlationId());
         if (index >= 0) {
             recordFill(index, trade);
         } else {
