@@ -299,4 +299,22 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertEquals(TradeType.BUY, firstPosition.getEntry().getType());
         assertEquals(TradeType.SELL, firstPosition.getExit().getType());
     }
+
+    @Test
+    public void defaultRunCanUseConfiguredTradingRecordFactory() {
+        final int[] capturedBounds = new int[2];
+        BarSeriesManager.TradingRecordFactory recordFactory = (tradeType, startIndex, endIndex, txCost, holdCost) -> {
+            capturedBounds[0] = startIndex;
+            capturedBounds[1] = endIndex;
+            return new LiveTradingRecord(tradeType, ExecutionMatchPolicy.FIFO, txCost, holdCost, startIndex, endIndex);
+        };
+        BarSeriesManager localManager = new BarSeriesManager(seriesForRun, new ZeroCostModel(), new ZeroCostModel(),
+                new TradeOnCurrentCloseModel(), recordFactory);
+
+        TradingRecord record = localManager.run(strategy, TradeType.BUY, numOf(1), -10, 99);
+
+        assertTrue(record instanceof LiveTradingRecord);
+        assertEquals(seriesForRun.getBeginIndex(), capturedBounds[0]);
+        assertEquals(seriesForRun.getEndIndex(), capturedBounds[1]);
+    }
 }

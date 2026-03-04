@@ -24,6 +24,11 @@ public class BarSeriesManager {
     /** The logger */
     private static final Logger log = LoggerFactory.getLogger(BarSeriesManager.class);
 
+    /** Default trading record factory. */
+    private static final TradingRecordFactory DEFAULT_TRADING_RECORD_FACTORY = (tradeType, startIndex, endIndex,
+            transactionCostModel, holdingCostModel) -> new BaseTradingRecord(tradeType, startIndex, endIndex,
+                    transactionCostModel, holdingCostModel);
+
     /** The managed bar series */
     private final BarSeries barSeries;
 
@@ -33,6 +38,30 @@ public class BarSeriesManager {
 
     /** The trade execution model to use */
     private final TradeExecutionModel tradeExecutionModel;
+
+    /** The trading record factory used by default run overloads. */
+    private final TradingRecordFactory tradingRecordFactory;
+
+    /**
+     * Factory for creating trading records for backtest runs.
+     *
+     * @since 0.22.4
+     */
+    @FunctionalInterface
+    public interface TradingRecordFactory {
+        /**
+         * Creates a trading record.
+         *
+         * @param tradeType            strategy entry type
+         * @param startIndex           run start index (already clamped)
+         * @param endIndex             run end index (already clamped)
+         * @param transactionCostModel transaction cost model
+         * @param holdingCostModel     holding cost model
+         * @return a trading record instance for the run
+         */
+        TradingRecord create(TradeType tradeType, int startIndex, int endIndex, CostModel transactionCostModel,
+                CostModel holdingCostModel);
+    }
 
     /**
      * Constructor with {@link #tradeExecutionModel} = {@link TradeOnNextOpenModel}.
@@ -62,10 +91,8 @@ public class BarSeriesManager {
      *                             borrowing)
      */
     public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel) {
-        this.barSeries = barSeries;
-        this.transactionCostModel = transactionCostModel;
-        this.holdingCostModel = holdingCostModel;
-        this.tradeExecutionModel = new TradeOnNextOpenModel();
+        this(barSeries, transactionCostModel, holdingCostModel, new TradeOnNextOpenModel(),
+                DEFAULT_TRADING_RECORD_FACTORY);
     }
 
     /**
@@ -78,10 +105,31 @@ public class BarSeriesManager {
      */
     public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel,
             TradeExecutionModel tradeExecutionModel) {
+        this(barSeries, transactionCostModel, holdingCostModel, tradeExecutionModel, DEFAULT_TRADING_RECORD_FACTORY);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param barSeries            the bar series to be managed
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     * @param tradeExecutionModel  the trade execution model to use
+     * @param tradingRecordFactory factory for default run overloads
+     * @since 0.22.4
+     */
+    public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel,
+            TradeExecutionModel tradeExecutionModel, TradingRecordFactory tradingRecordFactory) {
+        Objects.requireNonNull(barSeries, "barSeries");
+        Objects.requireNonNull(transactionCostModel, "transactionCostModel");
+        Objects.requireNonNull(holdingCostModel, "holdingCostModel");
+        Objects.requireNonNull(tradeExecutionModel, "tradeExecutionModel");
+        Objects.requireNonNull(tradingRecordFactory, "tradingRecordFactory");
         this.barSeries = barSeries;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
         this.tradeExecutionModel = tradeExecutionModel;
+        this.tradingRecordFactory = tradingRecordFactory;
     }
 
     /**
@@ -275,8 +323,12 @@ public class BarSeriesManager {
     private TradingRecord createDefaultTradingRecord(TradeType tradeType, int startIndex, int finishIndex) {
         int clampedStartIndex = Math.max(startIndex, barSeries.getBeginIndex());
         int clampedEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
-        return new BaseTradingRecord(tradeType, clampedStartIndex, clampedEndIndex, transactionCostModel,
-                holdingCostModel);
+        TradingRecord tradingRecord = tradingRecordFactory.create(tradeType, clampedStartIndex, clampedEndIndex,
+                transactionCostModel, holdingCostModel);
+        if (tradingRecord == null) {
+            throw new IllegalStateException("tradingRecordFactory returned null");
+        }
+        return tradingRecord;
     }
 
 }
