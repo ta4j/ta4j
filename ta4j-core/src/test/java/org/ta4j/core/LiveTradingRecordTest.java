@@ -20,6 +20,7 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.ExpectancyCriterion;
 import org.ta4j.core.criteria.NumberOfLosingPositionsCriterion;
@@ -424,6 +425,25 @@ class LiveTradingRecordTest {
     }
 
     @Test
+    void recordsTradeInterfaceFillsAndAutoIndexes() {
+        LiveTradingRecord record = new LiveTradingRecord();
+        Trade entry = tradeView(42, TradeType.BUY, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+                numFactory.one(), null, "order-1", "corr-1");
+        Trade exit = tradeView(99, TradeType.SELL, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(120),
+                numFactory.one(), null, "order-1", "corr-1");
+
+        record.recordFill(entry);
+        record.recordFill(exit);
+
+        List<Trade> trades = record.getTrades();
+        assertEquals(2, trades.size());
+        assertEquals(0, trades.get(0).getIndex());
+        assertEquals(1, trades.get(1).getIndex());
+        assertEquals(numFactory.zero(), record.getTotalFees());
+        assertEquals(1, record.getPositions().size());
+    }
+
+    @Test
     void cachesTradesAndInvalidatesOnUpdate() {
         LiveTradingRecord record = new LiveTradingRecord();
         record.recordFill(fill(ExecutionSide.BUY, numFactory.hundred(), numFactory.one()));
@@ -570,6 +590,61 @@ class LiveTradingRecordTest {
             String correlationId) {
         return new TradeFill(index, Instant.parse("2025-01-01T00:00:00Z"), price, amount, numFactory.zero(), side,
                 orderId, correlationId);
+    }
+
+    private Trade tradeView(int index, TradeType type, Instant time, Num price, Num amount, Num cost, String orderId,
+            String correlationId) {
+        return new Trade() {
+            @Override
+            public TradeType getType() {
+                return type;
+            }
+
+            @Override
+            public int getIndex() {
+                return index;
+            }
+
+            @Override
+            public Num getPricePerAsset() {
+                return price;
+            }
+
+            @Override
+            public Num getNetPrice() {
+                return price;
+            }
+
+            @Override
+            public Num getAmount() {
+                return amount;
+            }
+
+            @Override
+            public Num getCost() {
+                return cost;
+            }
+
+            @Override
+            public CostModel getCostModel() {
+                return new ZeroCostModel();
+            }
+
+            @Override
+            public Instant getTime() {
+                return time;
+            }
+
+            @Override
+            public String getOrderId() {
+                return orderId;
+            }
+
+            @Override
+            public String getCorrelationId() {
+                return correlationId;
+            }
+        };
     }
 
     private TradingRecord buildBaseShortRecord(BarSeries series) {

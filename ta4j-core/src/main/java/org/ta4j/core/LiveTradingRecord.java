@@ -105,42 +105,15 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      *
      * <p>
      * The trade index is overwritten by the record's auto-incremented index. Use
-     * {@link #recordFill(int, BaseTrade)} when you need to preserve a specific
-     * index.
+     * {@link #recordFill(int, Trade)} when you need to preserve a specific index.
      * </p>
      *
      * @param trade live trade
      * @throws IllegalArgumentException when trade price or amount is NaN/invalid
      * @since 0.22.2
      */
-    public void recordFill(BaseTrade trade) {
+    public void recordFill(Trade trade) {
         recordFill(nextIndex(), trade);
-    }
-
-    /**
-     * Records a simulated trade using an auto-incremented trade index.
-     *
-     * @param trade simulated trade
-     * @since 0.22.4
-     * @deprecated since 0.22.4; use {@link #recordFill(BaseTrade)}
-     */
-    @Deprecated(since = "0.22.4", forRemoval = true)
-    @SuppressWarnings("removal")
-    public void recordFill(SimulatedTrade trade) {
-        recordFill((BaseTrade) trade);
-    }
-
-    /**
-     * Records a live trade using an auto-incremented trade index.
-     *
-     * @param trade live trade
-     * @since 0.22.4
-     * @deprecated since 0.22.4; use {@link #recordFill(BaseTrade)}
-     */
-    @Deprecated(since = "0.22.4", forRemoval = true)
-    @SuppressWarnings("removal")
-    public void recordFill(LiveTrade trade) {
-        recordFill((BaseTrade) trade);
     }
 
     /**
@@ -177,62 +150,36 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
      * @throws IllegalArgumentException when trade price or amount is NaN/invalid
      * @since 0.22.2
      */
-    public void recordFill(int index, BaseTrade trade) {
+    public void recordFill(int index, Trade trade) {
         Objects.requireNonNull(trade, "trade");
         if (index < 0) {
             throw new IllegalArgumentException("index must be >= 0");
         }
-        BaseTrade resolved = trade.getIndex() == index ? trade : trade.withIndex(index);
-        validateFill(resolved);
+        validateFill(trade);
+        Num fee = feeOf(trade);
+        Num price = trade.getPricePerAsset();
+        TradeType type = trade.getType();
         lock.writeLock().lock();
         try {
             nextTradeIndex = Math.max(nextTradeIndex, index + 1);
             long sequence = nextSequence++;
-            if (resolved.side().toTradeType() == startingType) {
-                positionBook.recordEntry(index, resolved, sequence);
+            if (type == startingType) {
+                positionBook.recordEntry(index, trade, sequence);
             } else {
-                positionBook.recordExit(index, resolved, sequence);
+                positionBook.recordExit(index, trade, sequence);
             }
             if (numFactory == null) {
-                numFactory = resolved.price().getNumFactory();
+                numFactory = price.getNumFactory();
             }
             if (totalFees == null) {
                 totalFees = numFactory.zero();
             }
-            totalFees = totalFees.plus(resolved.fee());
+            totalFees = totalFees.plus(fee);
             modificationCount++;
             tradesCache = null;
         } finally {
             lock.writeLock().unlock();
         }
-    }
-
-    /**
-     * Records a simulated trade using the provided trade index.
-     *
-     * @param index trade index
-     * @param trade simulated trade
-     * @since 0.22.4
-     * @deprecated since 0.22.4; use {@link #recordFill(int, BaseTrade)}
-     */
-    @Deprecated(since = "0.22.4", forRemoval = true)
-    @SuppressWarnings("removal")
-    public void recordFill(int index, SimulatedTrade trade) {
-        recordFill(index, (BaseTrade) trade);
-    }
-
-    /**
-     * Records a live trade using the provided trade index.
-     *
-     * @param index trade index
-     * @param trade live trade
-     * @since 0.22.4
-     * @deprecated since 0.22.4; use {@link #recordFill(int, BaseTrade)}
-     */
-    @Deprecated(since = "0.22.4", forRemoval = true)
-    @SuppressWarnings("removal")
-    public void recordFill(int index, LiveTrade trade) {
-        recordFill(index, (BaseTrade) trade);
     }
 
     /**
@@ -524,16 +471,30 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         return fallback;
     }
 
-    private static void validateFill(BaseTrade trade) {
-        if (trade.amount().isNaN() || trade.amount().isZero() || trade.amount().isNegative()) {
+    private static void validateFill(Trade trade) {
+        Num amount = trade.getAmount();
+        if (amount == null || amount.isNaN() || amount.isZero() || amount.isNegative()) {
             throw new IllegalArgumentException("Fill amount must be positive");
         }
-        if (trade.price().isNaN()) {
+        Num price = trade.getPricePerAsset();
+        if (price == null || price.isNaN()) {
             throw new IllegalArgumentException("Fill price must be set");
         }
-        if (trade.fee().isNaN()) {
+        if (trade.getType() == null) {
+            throw new IllegalArgumentException("Fill type must be set");
+        }
+        Num fee = trade.getCost();
+        if (fee != null && fee.isNaN()) {
             throw new IllegalArgumentException("Fill fee must be set");
         }
+    }
+
+    private static Num feeOf(Trade trade) {
+        Num fee = trade.getCost();
+        if (fee != null) {
+            return fee;
+        }
+        return trade.getPricePerAsset().getNumFactory().zero();
     }
 
     private List<Trade> buildTrades() {

@@ -7,7 +7,7 @@
 - **Live fill API hard cut to one type**: `ExecutionFill` has been removed so you can use `TradeFill` everywhere, including `LiveTradingRecord.recordExecutionFill(TradeFill)`, instead of juggling two near-identical fill models.
 
 ### Changed
-- **Trade-fill flow now centers on `BaseTrade` for both backtest and live paths**: You can normalize execution fills with `Trade.executionFillsOf(...)` and build trades directly from fills via `Trade.fromFills(...)`, and core record/position flows now use `BaseTrade` so simulation and production share the same trade model by default.
+- **Trade-first fill flow across live and backtests**: You can now drive `LiveTradingRecord#recordFill(...)` and `PositionBook#recordEntry(...)`/`recordExit(...)` with the `Trade` interface directly, while internals still materialize `BaseTrade` as needed, so calling code stays implementation-agnostic and live/backtest behavior stays aligned.
 - **Compatibility wrappers are still available while you migrate**: `SimulatedTrade` and `LiveTrade` remain usable for now, but they are deprecated and marked for removal in favor of `BaseTrade`.
 
 ## 0.22.3 (2026-03-01)
