@@ -26,7 +26,7 @@ import org.ta4j.core.num.NumFactory;
  * @param <O> realized outcome type
  * @since 0.22.4
  */
-public interface WalkForwardMetric<P, O> {
+public interface WalkForwardMetric<P, O> extends Function<List<WalkForwardObservation<P, O>>, Num> {
 
     /**
      * @return unique metric name
@@ -42,6 +42,18 @@ public interface WalkForwardMetric<P, O> {
      * @since 0.22.4
      */
     Num compute(List<WalkForwardObservation<P, O>> observations);
+
+    /**
+     * Function-style alias for {@link #compute(List)}.
+     *
+     * @param observations observations to evaluate
+     * @return metric value
+     * @since 0.22.4
+     */
+    @Override
+    default Num apply(List<WalkForwardObservation<P, O>> observations) {
+        return compute(observations);
+    }
 
     /**
      * Groups observations by originating snapshot key while preserving encounter
