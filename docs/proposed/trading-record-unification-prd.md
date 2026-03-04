@@ -174,8 +174,8 @@ No new public top-level abstractions unless unavoidable.
   - snapshot helper for per-bar state (`open lots`, `net open`, `total fees`, `last trade`).
   - keep package-private unless a public API use case is proven.
 
-- [ ] Add backtest/live parity example in `ta4j-examples`:
-  - same strategy + same synthetic fills + compare record outputs.
+- [x] Add backtest/live parity example in `ta4j-examples`:
+  - added `TradingRecordParityBacktest` to run one strategy through base/live-backed paths and compare outputs.
 
 - [x] Add migration note to README/CHANGELOG:
   - documented that `Trade`/`TradingRecord` are the public surface and concrete implementations are façade details.
