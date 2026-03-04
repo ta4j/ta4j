@@ -139,15 +139,18 @@ No new public top-level abstractions unless unavoidable.
 
 ## Phase D: Align `BarSeriesManager` to unified record path
 
-- [ ] In `org.ta4j.core.backtest.BarSeriesManager`, replace direct instantiation:
-  - current: `new BaseTradingRecord(...)`
-  - target: internal factory that still returns `TradingRecord` but can be configured.
+- [x] In `org.ta4j.core.backtest.BarSeriesManager`, replace direct instantiation with an internal helper:
+  - previous inline: `new BaseTradingRecord(...)`
+  - now: `createDefaultTradingRecord(...)` helper so default creation is centralized.
 
-- [ ] Add overload(s) to allow record creation strategy without breaking existing constructors:
-  - [ ] `BarSeriesManager(..., TradingRecordFactory tradingRecordFactory)` (package-private or public based on necessity).
-  - [ ] default factory must preserve existing behavior.
+- [x] Add overload(s) to allow record selection without breaking existing constructors:
+  - added: `run(Strategy, TradingRecord)`
+  - added: `run(Strategy, TradingRecord, Num)`
+  - added: `run(Strategy, TradingRecord, Num, int, int)`
+  - default creation behavior remains unchanged for existing `run(...)` overloads.
 
-- [ ] Ensure all `TradeExecutionModel` implementations can mutate any `TradingRecord` produced by manager without implementation-specific assumptions.
+- [x] Ensure `TradeExecutionModel` implementations can mutate non-default records:
+  - covered by manager-level test using `LiveTradingRecord` with existing execution loop.
 
 ## Phase E: Final consolidation and deprecation strategy
 
@@ -240,4 +243,3 @@ Mitigation: add micro-bench checks for `run(...)` hot path and large trade histo
 - [ ] All targeted and full-build tests are green.
 - [ ] Javadocs and changelog updated to reflect the unified model.
 - [ ] No unresolved parity regressions between backtest and live-shaped inputs.
-

@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.backtest;
 
+import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
@@ -183,17 +184,67 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount, int startIndex, int finishIndex) {
+        TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
+        return run(strategy, tradingRecord, amount, startIndex, finishIndex);
+    }
 
+    /**
+     * Runs the provided strategy over the managed series using the supplied trading
+     * record.
+     *
+     * <p>
+     * This allows callers to backtest with alternate {@link TradingRecord}
+     * implementations (for example {@code LiveTradingRecord}) while reusing
+     * {@link BarSeriesManager}'s execution loop.
+     * </p>
+     *
+     * @param strategy      the trading strategy
+     * @param tradingRecord the trading record instance to mutate
+     * @return the supplied trading record after execution
+     * @since 0.22.4
+     */
+    public TradingRecord run(Strategy strategy, TradingRecord tradingRecord) {
+        return run(strategy, tradingRecord, barSeries.numFactory().one());
+    }
+
+    /**
+     * Runs the provided strategy over the managed series using the supplied trading
+     * record.
+     *
+     * @param strategy      the trading strategy
+     * @param tradingRecord the trading record instance to mutate
+     * @param amount        the amount used to open/close the trades
+     * @return the supplied trading record after execution
+     * @since 0.22.4
+     */
+    public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount) {
+        return run(strategy, tradingRecord, amount, barSeries.getBeginIndex(), barSeries.getEndIndex());
+    }
+
+    /**
+     * Runs the provided strategy over the managed series using the supplied trading
+     * record (from startIndex to finishIndex).
+     *
+     * @param strategy      the trading strategy
+     * @param tradingRecord the trading record instance to mutate
+     * @param amount        the amount used to open/close the trades
+     * @param startIndex    the start index for the run (included)
+     * @param finishIndex   the finish index for the run (included)
+     * @return the supplied trading record after execution
+     * @since 0.22.4
+     */
+    public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount, int startIndex,
+            int finishIndex) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(tradingRecord, "tradingRecord");
+        Objects.requireNonNull(amount, "amount");
         int runBeginIndex = Math.max(startIndex, barSeries.getBeginIndex());
         int runEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
 
         if (log.isTraceEnabled()) {
             log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex,
-                    strategy, tradeType);
+                    strategy, tradingRecord.getStartingType());
         }
-
-        TradingRecord tradingRecord = new BaseTradingRecord(tradeType, runBeginIndex, runEndIndex, transactionCostModel,
-                holdingCostModel);
 
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
             tradeExecutionModel.onBar(i, tradingRecord, barSeries);
@@ -219,6 +270,13 @@ public class BarSeriesManager {
             }
         }
         return tradingRecord;
+    }
+
+    private TradingRecord createDefaultTradingRecord(TradeType tradeType, int startIndex, int finishIndex) {
+        int clampedStartIndex = Math.max(startIndex, barSeries.getBeginIndex());
+        int clampedEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
+        return new BaseTradingRecord(tradeType, clampedStartIndex, clampedEndIndex, transactionCostModel,
+                holdingCostModel);
     }
 
 }

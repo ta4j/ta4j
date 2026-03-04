@@ -4,6 +4,7 @@
 package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.time.Instant;
@@ -13,7 +14,10 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.ExecutionMatchPolicy;
+import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
@@ -24,6 +28,7 @@ import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedRule;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 
 public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -267,5 +272,31 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         Position position = tradingRecord.getPositions().getFirst();
         assertEquals(1, position.getEntry().getIndex());
         assertEquals(2, position.getExit().getIndex());
+    }
+
+    @Test
+    public void runWithProvidedTradingRecordReturnsSameInstance() {
+        TradingRecord providedRecord = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
+
+        TradingRecord returnedRecord = manager.run(strategy, providedRecord, numOf(1), 0, 8);
+
+        assertSame(providedRecord, returnedRecord);
+        assertEquals(2, returnedRecord.getPositionCount());
+    }
+
+    @Test
+    public void runWithProvidedLiveTradingRecordSupportsLiveBacktestStack() {
+        LiveTradingRecord liveRecord = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+                new ZeroCostModel(), new ZeroCostModel(), 0, 8);
+
+        TradingRecord returnedRecord = manager.run(strategy, liveRecord, numOf(1), 0, 8);
+
+        assertSame(liveRecord, returnedRecord);
+        assertEquals(2, returnedRecord.getPositionCount());
+        Position firstPosition = returnedRecord.getPositions().getFirst();
+        assertEquals(2, firstPosition.getEntry().getIndex());
+        assertEquals(4, firstPosition.getExit().getIndex());
+        assertEquals(TradeType.BUY, firstPosition.getEntry().getType());
+        assertEquals(TradeType.SELL, firstPosition.getExit().getType());
     }
 }
