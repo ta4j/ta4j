@@ -9,6 +9,7 @@
 ### Changed
 - **Trade-first fill flow across live and backtests**: You can now drive `LiveTradingRecord#recordFill(...)` and `PositionBook#recordEntry(...)`/`recordExit(...)` with the `Trade` interface directly, while internals still materialize `BaseTrade` as needed, so calling code stays implementation-agnostic and live/backtest behavior stays aligned.
 - **Compatibility wrappers are still available while you migrate**: `SimulatedTrade` and `LiveTrade` remain usable for now, but they are deprecated and marked for removal in favor of `BaseTrade`.
+- **Bring your own trading record in backtests**: `BarSeriesManager` can now run directly against a caller-provided `TradingRecord` (`run(strategy, tradingRecord[, amount, start, end])`) and can also be configured with a default `TradingRecordFactory`. In practice, that means you can keep classic `BaseTradingRecord` runs, switch to `LiveTradingRecord` for parity-heavy simulations, or wire custom record implementations without changing existing `run(...)` calls.
 
 ## 0.22.3 (2026-03-01)
 

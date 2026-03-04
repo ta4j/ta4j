@@ -217,8 +217,8 @@ No new public top-level abstractions unless unavoidable.
   - explicitly state they are facades over shared internals (once done).
 - [x] `BarSeriesManager` docs:
   - clarified record creation strategy and default behavior via `TradingRecordFactory`.
-- [ ] `CHANGELOG.md` unreleased notes:
-  - explain user-visible unification in plain terms with examples.
+- [x] `CHANGELOG.md` unreleased notes:
+  - added user-facing `BarSeriesManager`/`TradingRecord` unification guidance with concrete usage paths.
 
 ## 10) Risks and mitigations
 
