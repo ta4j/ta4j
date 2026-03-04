@@ -438,14 +438,6 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         }
     }
 
-    private ExecutionSide startingExecutionSide() {
-        return startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
-    }
-
-    private ExecutionSide exitExecutionSide() {
-        return startingExecutionSide() == ExecutionSide.BUY ? ExecutionSide.SELL : ExecutionSide.BUY;
-    }
-
     private ExecutionSide resolveExecutionSide(ExecutionSide side) {
         if (side != null) {
             return side;
@@ -453,9 +445,9 @@ public class LiveTradingRecord implements TradingRecord, PositionLedger {
         lock.readLock().lock();
         try {
             if (positionBook.openLots().isEmpty()) {
-                return startingExecutionSide();
+                return sideOf(startingType);
             }
-            return exitExecutionSide();
+            return sideOf(startingType.complementType());
         } finally {
             lock.readLock().unlock();
         }

@@ -158,7 +158,7 @@ No new public top-level abstractions unless unavoidable.
 ## Phase E: Final consolidation and deprecation strategy
 
 - [x] Keep `LiveTradingRecord` and `BaseTradingRecord` as compatibility facades.
-- [ ] Mark duplicated behavior-only helpers for removal once facade parity is proven.
+- [x] Mark duplicated behavior-only helpers for removal once facade parity is proven.
 - [x] Remove any remaining internal code paths that bypass unified core.
 
 ## 7) QoL additions recommended
