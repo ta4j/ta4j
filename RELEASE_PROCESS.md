@@ -169,8 +169,28 @@ These markers are the only supported way to programmatically identify comments; 
    - **Why**: Provides an audit trail and notifications.
 
 ### Release Health (`release-health.yml`)
-- Scheduled daily (plus manual dispatch) to verify tag reachability, snapshot drift, stale release PRs, and missing release notes.
+- Triggered on `push` to `master`, when `Publish Release to Maven Central` completes, daily schedule, and manual dispatch to verify tag reachability, snapshot drift, stale release PRs, and missing release notes.
 - Posts results to the Release Scheduler discussion and fails if drift is detected.
+
+### Publish succeeded, Health failed: what this means
+
+Yes, this is possible because `publish-release.yml` and `release-health.yml` are separate workflows.
+
+- If the failure is **tag integrity/reachability for the just-published release**, `publish-release.yml` should now fail first because it validates:
+  - the pushed tag resolves,
+  - the tag points to the expected `releaseCommit`,
+  - the tag commit is reachable from `origin/<default_branch>`.
+- `release-health.yml` can still fail after a successful publish for other drift reasons (snapshot drift, missing release notes, stale release PRs, or existing repo drift).
+
+**Remediation playbook (in order):**
+1. Open the failing **Release Health Check** run and read the `Drift reasons` section.
+2. Apply the targeted fix:
+   - `latest tag not reachable from <branch>`: make the tagged commit reachable from `master` (typically via a reachability merge commit, not retagging).
+   - `pom.xml snapshot version not ahead of latest tag`: bump `master` to the next `-SNAPSHOT`.
+   - `missing release notes for latest tag`: add the missing `release/<version>.md`.
+   - `stale release PRs detected`: merge or close stale release PRs.
+3. Re-run `release-health.yml` with `workflow_dispatch` to confirm green.
+4. Treat this as **repo-state remediation**, not a republish, when Maven Central deployment already succeeded.
 
 ### GitHub Release (`github-release.yml`)
 - Triggered by tag push; builds artifacts and publishes the GitHub Release using `release/<version>.md`.
