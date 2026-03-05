@@ -8,17 +8,21 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
+import java.util.ArrayList;
+import java.util.List;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
-import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.BaseTrade;
+import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.ExecutionMatchPolicy;
+import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -260,6 +264,25 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
     }
 
     @Test
+    public void partialExitOrderExpiryDoesNotCommitForLegacyRecordWithoutLotExposure() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(20d).add();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(2d).add();
+
+        LegacyTradingRecordWithoutLotExposure tradingRecord = new LegacyTradingRecordWithoutLotExposure(numFactory);
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numOf(0.5), 1,
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+
+        model.execute(1, tradingRecord, series, numFactory.one());
+        model.onBar(1, tradingRecord, series);
+
+        assertEquals(0, tradingRecord.recordedOperations().size());
+        assertEquals(1, model.getRejectedOrders(tradingRecord).size());
+        StopLimitExecutionModel.RejectedOrder rejection = model.getRejectedOrders(tradingRecord).getFirst();
+        assertEquals(numFactory.one(), rejection.filledAmount());
+    }
+
+    @Test
     public void partialExitOrderExpiryCommitsFilledPortionForBaseTradingRecord() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(20d).add();
@@ -331,5 +354,83 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
 
         assertEquals(1, tradingRecord.getTrades().size());
         assertEquals(ExecutionSide.SELL, tradingRecord.getTrades().getFirst().getFills().getFirst().side());
+    }
+
+    private static final class LegacyTradingRecordWithoutLotExposure implements TradingRecord {
+
+        private final List<Trade> recordedOperations = new ArrayList<>();
+        private final Position openPosition;
+        private final NumFactory numFactory;
+
+        private LegacyTradingRecordWithoutLotExposure(NumFactory numFactory) {
+            this.numFactory = numFactory;
+            Position position = new Position(Trade.TradeType.BUY);
+            position.operate(0, numFactory.hundred(), numFactory.numOf(5));
+            this.openPosition = position;
+        }
+
+        @Override
+        public Trade.TradeType getStartingType() {
+            return Trade.TradeType.BUY;
+        }
+
+        @Override
+        public String getName() {
+            return "legacy-record";
+        }
+
+        @Override
+        public void operate(int index, Num price, Num amount) {
+            recordedOperations.add(Trade.sellAt(index, price, amount));
+        }
+
+        @Override
+        public CostModel getTransactionCostModel() {
+            return new ZeroCostModel();
+        }
+
+        @Override
+        public CostModel getHoldingCostModel() {
+            return new ZeroCostModel();
+        }
+
+        @Override
+        public List<Position> getPositions() {
+            return List.of();
+        }
+
+        @Override
+        public Position getCurrentPosition() {
+            return openPosition;
+        }
+
+        @Override
+        public List<Trade> getTrades() {
+            return List.copyOf(recordedOperations);
+        }
+
+        @Override
+        public Integer getStartIndex() {
+            return 0;
+        }
+
+        @Override
+        public Integer getEndIndex() {
+            return 1;
+        }
+
+        @Override
+        public boolean enter(int index, Num price, Num amount) {
+            throw new UnsupportedOperationException("Not used by this test");
+        }
+
+        @Override
+        public boolean exit(int index, Num price, Num amount) {
+            throw new UnsupportedOperationException("Not used by this test");
+        }
+
+        private List<Trade> recordedOperations() {
+            return recordedOperations;
+        }
     }
 }

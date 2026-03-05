@@ -18,6 +18,8 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.analysis.cost.CostModel;
 
 public class TradingRecordTest {
 
@@ -312,6 +314,17 @@ public class TradingRecordTest {
                 exception.getMessage());
     }
 
+    @Test
+    public void defaultOpenPositionMethodsRemainSafeForLegacyTradingRecordImplementations() {
+        TradingRecord record = new LegacyTradingRecordStub();
+
+        record.operate(1, numFactory.hundred(), numFactory.one());
+
+        assertFalse(record.isClosed());
+        assertTrue(record.getOpenPositions().isEmpty());
+        assertNull(record.getNetOpenPosition());
+    }
+
     private Position roundTrip(Position position) throws Exception {
         var outputStream = new ByteArrayOutputStream();
         try (var objectOutputStream = new ObjectOutputStream(outputStream)) {
@@ -351,6 +364,71 @@ public class TradingRecordTest {
         @Override
         public void operate(Trade trade) {
             DefaultOperateTradingRecord.super.operate(trade);
+        }
+    }
+
+    private static final class LegacyTradingRecordStub implements TradingRecord {
+
+        private final BaseTradingRecord delegate = new BaseTradingRecord();
+
+        @Override
+        public Trade.TradeType getStartingType() {
+            return delegate.getStartingType();
+        }
+
+        @Override
+        public String getName() {
+            return delegate.getName();
+        }
+
+        @Override
+        public void operate(int index, Num price, Num amount) {
+            delegate.operate(index, price, amount);
+        }
+
+        @Override
+        public boolean enter(int index, Num price, Num amount) {
+            return delegate.enter(index, price, amount);
+        }
+
+        @Override
+        public boolean exit(int index, Num price, Num amount) {
+            return delegate.exit(index, price, amount);
+        }
+
+        @Override
+        public CostModel getTransactionCostModel() {
+            return delegate.getTransactionCostModel();
+        }
+
+        @Override
+        public CostModel getHoldingCostModel() {
+            return delegate.getHoldingCostModel();
+        }
+
+        @Override
+        public List<Position> getPositions() {
+            return delegate.getPositions();
+        }
+
+        @Override
+        public Position getCurrentPosition() {
+            return delegate.getCurrentPosition();
+        }
+
+        @Override
+        public List<Trade> getTrades() {
+            return delegate.getTrades();
+        }
+
+        @Override
+        public Integer getStartIndex() {
+            return delegate.getStartIndex();
+        }
+
+        @Override
+        public Integer getEndIndex() {
+            return delegate.getEndIndex();
         }
     }
 }

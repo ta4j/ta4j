@@ -324,8 +324,9 @@ public interface AnalysisCriterion {
 
     private static List<Position> openPositionsForMarkToMarket(TradingRecord source, int windowEndIndex,
             CostModel transactionCostModel, CostModel holdingCostModel) {
-        if (source instanceof PositionLedger positionLedger) {
-            return openPositionsFromLedger(positionLedger, windowEndIndex, transactionCostModel, holdingCostModel);
+        List<OpenPosition> openPositions = source.getOpenPositions();
+        if (!openPositions.isEmpty()) {
+            return openPositionsFromLots(openPositions, windowEndIndex, transactionCostModel, holdingCostModel);
         }
         Position currentPosition = source.getCurrentPosition();
         if (currentPosition == null || !currentPosition.isOpened()) {
@@ -334,10 +335,10 @@ public interface AnalysisCriterion {
         return List.of(currentPosition);
     }
 
-    private static List<Position> openPositionsFromLedger(PositionLedger positionLedger, int windowEndIndex,
+    private static List<Position> openPositionsFromLots(List<OpenPosition> openPositions, int windowEndIndex,
             CostModel transactionCostModel, CostModel holdingCostModel) {
         List<Position> positions = new ArrayList<>();
-        for (OpenPosition openPosition : positionLedger.getOpenPositions()) {
+        for (OpenPosition openPosition : openPositions) {
             for (PositionLot lot : openPosition.lots()) {
                 if (lot.entryIndex() > windowEndIndex) {
                     continue;

@@ -108,8 +108,8 @@ class TradingRecordParityTest {
         applySyntheticTrade(liveRecord, 1, numOf(100), numOf(2));
         applySyntheticTrade(liveRecord, 3, numOf(120), numOf(2));
 
-        TradingRecordDebugSnapshot baseSnapshot = baseRecord.debugSnapshot();
-        TradingRecordDebugSnapshot liveSnapshot = liveRecord.debugSnapshot();
+        BaseTradingRecord.DebugSnapshot baseSnapshot = baseRecord.debugSnapshot();
+        BaseTradingRecord.DebugSnapshot liveSnapshot = liveRecord.debugSnapshot();
 
         assertSnapshotEquivalent(baseSnapshot, liveSnapshot);
         assertThrows(UnsupportedOperationException.class, () -> baseSnapshot.trades().add(null));
@@ -125,8 +125,8 @@ class TradingRecordParityTest {
         applySyntheticTrade(baseRecord, 1, numOf(100), numOf(2));
         applySyntheticTrade(liveRecord, 1, numOf(100), numOf(2));
 
-        TradingRecordDebugSnapshot baseSnapshot = baseRecord.debugSnapshot();
-        TradingRecordDebugSnapshot liveSnapshot = liveRecord.debugSnapshot();
+        BaseTradingRecord.DebugSnapshot baseSnapshot = baseRecord.debugSnapshot();
+        BaseTradingRecord.DebugSnapshot liveSnapshot = liveRecord.debugSnapshot();
 
         assertSnapshotEquivalent(baseSnapshot, liveSnapshot);
         assertEquals(1, baseSnapshot.openPositions().size());
@@ -195,7 +195,8 @@ class TradingRecordParityTest {
         assertEquals(expected.getAmount(), actual.getAmount());
     }
 
-    private void assertSnapshotEquivalent(TradingRecordDebugSnapshot expected, TradingRecordDebugSnapshot actual) {
+    private void assertSnapshotEquivalent(BaseTradingRecord.DebugSnapshot expected,
+            BaseTradingRecord.DebugSnapshot actual) {
         assertEquals(expected.startingType(), actual.startingType());
         assertEquals(expected.totalFees(), actual.totalFees());
         assertEquals(expected.trades().size(), actual.trades().size());

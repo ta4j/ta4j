@@ -56,8 +56,9 @@ final class AnalysisPositionSupport {
     }
 
     static List<Position> openPositions(TradingRecord record, int finalIndex) {
-        if (record instanceof PositionLedger ledger) {
-            return openPositionsFromLedger(record, ledger, finalIndex);
+        List<OpenPosition> openPositions = record.getOpenPositions();
+        if (!openPositions.isEmpty()) {
+            return openPositionsFromLots(record, openPositions, finalIndex);
         }
         List<Position> positions = new ArrayList<>();
         Position current = record.getCurrentPosition();
@@ -68,11 +69,12 @@ final class AnalysisPositionSupport {
         return positions;
     }
 
-    private static List<Position> openPositionsFromLedger(TradingRecord record, PositionLedger ledger, int finalIndex) {
+    private static List<Position> openPositionsFromLots(TradingRecord record, List<OpenPosition> openPositions,
+            int finalIndex) {
         List<Position> positions = new ArrayList<>();
         CostModel transactionCostModel = defaultCostModel(record.getTransactionCostModel());
         CostModel holdingCostModel = defaultCostModel(record.getHoldingCostModel());
-        for (OpenPosition openPosition : ledger.getOpenPositions()) {
+        for (OpenPosition openPosition : openPositions) {
             for (PositionLot lot : openPosition.lots()) {
                 if (lot.entryIndex() > finalIndex) {
                     continue;

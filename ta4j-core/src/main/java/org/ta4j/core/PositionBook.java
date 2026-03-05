@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.22.2
  */
-public final class PositionBook implements Serializable, PositionLedger {
+public final class PositionBook implements Serializable {
 
     @Serial
     private static final long serialVersionUID = -6897162194206253952L;
@@ -171,7 +171,6 @@ public final class PositionBook implements Serializable, PositionLedger {
      * @return closed positions
      * @since 0.22.2
      */
-    @Override
     public List<Position> getPositions() {
         return closedPositions();
     }
@@ -188,7 +187,6 @@ public final class PositionBook implements Serializable, PositionLedger {
      * @return open positions (per-lot)
      * @since 0.22.2
      */
-    @Override
     public List<OpenPosition> getOpenPositions() {
         return openPositions();
     }
@@ -243,7 +241,6 @@ public final class PositionBook implements Serializable, PositionLedger {
      * @return aggregated net open position
      * @since 0.22.2
      */
-    @Override
     public OpenPosition getNetOpenPosition() {
         return netOpenPosition();
     }

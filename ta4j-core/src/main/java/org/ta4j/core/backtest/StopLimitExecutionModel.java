@@ -12,7 +12,6 @@ import java.util.Optional;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExecutionSide;
-import org.ta4j.core.PositionLedger;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradeFill;
@@ -219,7 +218,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         if (order.tradeType == tradingRecord.getStartingType()) {
             return true;
         }
-        return tradingRecord instanceof PositionLedger;
+        return !tradingRecord.getOpenPositions().isEmpty();
     }
 
     private static void validateRatio(Num ratio, String name) {

@@ -37,7 +37,7 @@ import org.ta4j.core.num.NumFactory;
  *
  * @since 0.22.2
  */
-public class BaseTradingRecord implements TradingRecord, PositionLedger {
+public class BaseTradingRecord implements TradingRecord {
 
     @Serial
     private static final long serialVersionUID = 7960596064337713648L;
@@ -60,7 +60,6 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
     private Num totalFees;
     private transient NumFactory numFactory;
     private long nextSequence;
-    private transient TradingRecordCore tradingRecordCore;
 
     /** Constructor with {@link #startingType} = BUY and FIFO matching. */
     public BaseTradingRecord() {
@@ -226,7 +225,7 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
      * @since 0.22.4
      */
     public void recordFill(Trade trade) {
-        core().applyTrade(nextIndex(), trade, -1L);
+        applyTradeInternal(nextIndex(), trade, -1L);
     }
 
     /**
@@ -237,7 +236,7 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
      * @since 0.22.4
      */
     public void recordFill(int index, Trade trade) {
-        core().applyTrade(index, trade, -1L);
+        applyTradeInternal(index, trade, -1L);
     }
 
     /**
@@ -281,7 +280,7 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
         lock.writeLock().lock();
         try {
             TradeType tradeType = positionBook.openLots().isEmpty() ? startingType : startingType.complementType();
-            core().applySynthetic(index, tradeType, price, amount, transactionCostModel);
+            applySyntheticInternal(index, tradeType, price, amount, transactionCostModel);
         } finally {
             lock.writeLock().unlock();
         }
@@ -294,7 +293,7 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
             if (!positionBook.openLots().isEmpty()) {
                 return false;
             }
-            core().applySynthetic(index, startingType, price, amount, transactionCostModel);
+            applySyntheticInternal(index, startingType, price, amount, transactionCostModel);
             return true;
         } finally {
             lock.writeLock().unlock();
@@ -308,7 +307,7 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
             if (positionBook.openLots().isEmpty()) {
                 return false;
             }
-            core().applySynthetic(index, startingType.complementType(), price, amount, transactionCostModel);
+            applySyntheticInternal(index, startingType.complementType(), price, amount, transactionCostModel);
             return true;
         } finally {
             lock.writeLock().unlock();
@@ -327,17 +326,17 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
 
     @Override
     public List<Position> getPositions() {
-        return core().getClosedPositionsSnapshot();
+        return closedPositionsSnapshot();
     }
 
     @Override
     public Position getCurrentPosition() {
-        return core().getCurrentPositionView();
+        return currentPositionView();
     }
 
     @Override
     public List<Trade> getTrades() {
-        return core().getTradesSnapshot();
+        return tradesSnapshot();
     }
 
     @Override
@@ -358,7 +357,7 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
      */
     @Override
     public List<OpenPosition> getOpenPositions() {
-        return core().getOpenPositionsSnapshot();
+        return openPositionsSnapshot();
     }
 
     /**
@@ -369,7 +368,7 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
      */
     @Override
     public OpenPosition getNetOpenPosition() {
-        return core().getNetOpenPositionSnapshot();
+        return netOpenPositionSnapshot();
     }
 
     /**
@@ -377,11 +376,12 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
      * @since 0.22.4
      */
     public Num getTotalFees() {
-        return core().getTotalFees();
+        return totalFeesSnapshot();
     }
 
-    TradingRecordDebugSnapshot debugSnapshot() {
-        return core().snapshot();
+    DebugSnapshot debugSnapshot() {
+        return new DebugSnapshot(startingType, tradesSnapshot(), closedPositionsSnapshot(), currentPositionView(),
+                openPositionsSnapshot(), netOpenPositionSnapshot(), totalFeesSnapshot());
     }
 
     private int nextIndex() {
@@ -401,7 +401,7 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
         String correlationId = chooseValue(fill.correlationId(), tradeCorrelationId);
         Num normalizedAmount = normalizeAmount(fill.amount(), fill.price());
         Num normalizedFee = normalizeFee(fill.fee(), fill.price());
-        core().applyTrade(fill.index(), new BaseTrade(fill.index(), executionTime, fill.price(), normalizedAmount,
+        applyTradeInternal(fill.index(), new BaseTrade(fill.index(), executionTime, fill.price(), normalizedAmount,
                 normalizedFee, side, orderId, correlationId), -1L);
     }
 
@@ -441,6 +441,16 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
         } finally {
             lock.writeLock().unlock();
         }
+    }
+
+    private void applySyntheticInternal(int index, TradeType type, Num price, Num amount,
+            CostModel transactionCostModel) {
+        Objects.requireNonNull(type, "type");
+        Objects.requireNonNull(price, "price");
+        Objects.requireNonNull(amount, "amount");
+        Objects.requireNonNull(transactionCostModel, "transactionCostModel");
+        Num normalizedAmount = normalizeAmount(amount, price);
+        applyTradeInternal(index, new BaseTrade(index, type, price, normalizedAmount, transactionCostModel), -1L);
     }
 
     private ExecutionSide currentOpenSide() {
@@ -552,29 +562,6 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
         }
     }
 
-    private TradingRecordCore core() {
-        TradingRecordCore coreSnapshot = tradingRecordCore;
-        if (coreSnapshot != null) {
-            return coreSnapshot;
-        }
-        lock.writeLock().lock();
-        try {
-            if (tradingRecordCore == null) {
-                tradingRecordCore = new TradingRecordCore(startingType, this::tradesSnapshot,
-                        this::closedPositionsSnapshot, this::currentPositionView, this::openPositionsSnapshot,
-                        this::netOpenPositionSnapshot, this::totalFeesSnapshot, this::applyTradeInternal,
-                        (index, type, price, amount, transactionCostModel) -> {
-                            Num normalizedAmount = normalizeAmount(amount, price);
-                            applyTradeInternal(index,
-                                    new BaseTrade(index, type, price, normalizedAmount, transactionCostModel), -1L);
-                        });
-            }
-            return tradingRecordCore;
-        } finally {
-            lock.writeLock().unlock();
-        }
-    }
-
     @Override
     public String toString() {
         JsonObject json = new JsonObject();
@@ -584,11 +571,11 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
         json.addProperty("startIndex", startIndex);
         json.addProperty("endIndex", endIndex);
         json.addProperty("nextTradeIndex", nextTradeIndex);
-        json.addProperty("openPositionCount", core().getOpenPositionsSnapshot().size());
-        json.addProperty("closedPositionCount", core().getClosedPositionsSnapshot().size());
+        json.addProperty("openPositionCount", openPositionsSnapshot().size());
+        json.addProperty("closedPositionCount", closedPositionsSnapshot().size());
         json.addProperty("totalFees", getTotalFees().toString());
 
-        List<Trade> trades = core().getTradesSnapshot();
+        List<Trade> trades = tradesSnapshot();
         json.addProperty("tradeCount", trades.size());
         JsonArray tradesJson = new JsonArray();
         for (Trade trade : trades) {
@@ -613,7 +600,6 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
         tradesCacheVersion = -1L;
         modificationCount = 0L;
         numFactory = null;
-        tradingRecordCore = null;
     }
 
     /**
@@ -648,7 +634,7 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
         if (side != null) {
             return side;
         }
-        OpenPosition net = core().getNetOpenPositionSnapshot();
+        OpenPosition net = netOpenPositionSnapshot();
         if (net == null || net.amount() == null || net.amount().isZero()) {
             return sideOf(startingType);
         }
@@ -766,5 +752,17 @@ public class BaseTradingRecord implements TradingRecord, PositionLedger {
     }
 
     private record SequencedTrade(Trade trade, long sequence) {
+    }
+
+    static record DebugSnapshot(TradeType startingType, List<Trade> trades, List<Position> closedPositions,
+            Position currentPosition, List<OpenPosition> openPositions, OpenPosition netOpenPosition, Num totalFees) {
+
+        DebugSnapshot {
+            Objects.requireNonNull(startingType, "startingType");
+            Objects.requireNonNull(totalFees, "totalFees");
+            trades = trades == null ? List.of() : List.copyOf(trades);
+            closedPositions = closedPositions == null ? List.of() : List.copyOf(closedPositions);
+            openPositions = openPositions == null ? List.of() : List.copyOf(openPositions);
+        }
     }
 }

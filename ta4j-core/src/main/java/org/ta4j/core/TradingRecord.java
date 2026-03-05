@@ -216,6 +216,38 @@ public interface TradingRecord extends Serializable {
     Position getCurrentPosition();
 
     /**
+     * Returns open positions as lots when supported by the implementation.
+     *
+     * <p>
+     * Legacy trading-record implementations that only model a single synthetic open
+     * position can rely on this default and return an empty list.
+     * </p>
+     *
+     * @return open positions as lots
+     * @since 0.22.4
+     */
+    default List<OpenPosition> getOpenPositions() {
+        return List.of();
+    }
+
+    /**
+     * Returns the aggregated net open position when supported by the
+     * implementation.
+     *
+     * <p>
+     * Legacy trading-record implementations that only model a single synthetic open
+     * position can rely on this default and return {@code null}.
+     * </p>
+     *
+     * @return net open position, or {@code null} when unsupported or when no lots
+     *         are open
+     * @since 0.22.4
+     */
+    default OpenPosition getNetOpenPosition() {
+        return null;
+    }
+
+    /**
      * @return the last closed position recorded
      */
     default Position getLastPosition() {

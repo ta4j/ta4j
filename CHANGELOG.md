@@ -23,6 +23,7 @@
 ### Breaking
 - **Live fill API hard cut to one type**: `ExecutionFill` has been removed so you can use `TradeFill` everywhere, including `BaseTradingRecord.recordExecutionFill(TradeFill)`, instead of juggling two near-identical fill models.
 - **Unified trade/record stack hard cut**: `LiveTrade`, `SimulatedTrade`, and `LiveTradingRecord` have been removed so live and backtest flows now run on the same core types: `BaseTrade` and `BaseTradingRecord`.
+- **Open-position analytics now live directly on `TradingRecord`**: `PositionLedger` has been removed, so you can query `getOpenPositions()` and `getNetOpenPosition()` from one unified record contract in both analysis and execution flows.
 
 ### Changed
 - **Trade-first fill flow across live and backtests**: You can now drive `BaseTradingRecord#recordFill(...)` and `PositionBook#recordEntry(...)`/`recordExit(...)` with the `Trade` interface directly, while internals still materialize `BaseTrade` as needed, so calling code stays implementation-agnostic and live/backtest behavior stays aligned.
