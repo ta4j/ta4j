@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.ta4j.core.analysis.WeightedValue;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -44,7 +45,8 @@ public interface WalkForwardObjective {
      */
     static WalkForwardObjective weighted(Map<String, Num> metricWeights, Map<String, Num> minimumMetricValues,
             Map<String, Num> maximumMetricValues, Num foldVariancePenalty) {
-        Map<String, Num> immutableMetricWeights = Map.copyOf(Objects.requireNonNull(metricWeights, "metricWeights"));
+        List<WeightedValue<String>> immutableMetricWeights = toWeightedValues(
+                Objects.requireNonNull(metricWeights, "metricWeights"));
         Map<String, Num> immutableMinimumMetricValues = Map
                 .copyOf(minimumMetricValues == null ? Map.of() : minimumMetricValues);
         Map<String, Num> immutableMaximumMetricValues = Map
@@ -111,20 +113,9 @@ public interface WalkForwardObjective {
             Map<String, Num> metricValues) {
     }
 
-    private static Num weightedSum(Map<String, Num> metricWeights, Map<String, Num> values, NumFactory factory) {
-        Num sum = factory.zero();
-        for (Map.Entry<String, Num> weightEntry : metricWeights.entrySet()) {
-            Num metricValue = normalizeMetric(values.get(weightEntry.getKey()), factory);
-            if (Num.isNaNOrNull(metricValue)) {
-                continue;
-            }
-            Num weight = normalizeMetric(weightEntry.getValue(), factory);
-            if (Num.isNaNOrNull(weight)) {
-                continue;
-            }
-            sum = sum.plus(weight.multipliedBy(metricValue));
-        }
-        return sum;
+    private static Num weightedSum(List<WeightedValue<String>> metricWeights, Map<String, Num> values,
+            NumFactory factory) {
+        return WeightedValue.weightedSum(metricWeights, values::get, factory);
     }
 
     private static Num variance(List<Num> values, NumFactory factory) {
@@ -175,5 +166,14 @@ public interface WalkForwardObjective {
             }
         }
         return DoubleNumFactory.getInstance();
+    }
+
+    private static List<WeightedValue<String>> toWeightedValues(Map<String, Num> metricWeights) {
+        List<WeightedValue<String>> weightedValues = new ArrayList<>(metricWeights.size());
+        for (Map.Entry<String, Num> entry : metricWeights.entrySet()) {
+            weightedValues.add(new WeightedValue<>(Objects.requireNonNull(entry.getKey(), "metric name"),
+                    Objects.requireNonNull(entry.getValue(), "metric weight")));
+        }
+        return List.copyOf(weightedValues);
     }
 }

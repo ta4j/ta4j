@@ -14,6 +14,7 @@ import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import org.ta4j.core.analysis.NamedScoreFunction;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -26,7 +27,7 @@ import org.ta4j.core.num.NumFactory;
  * @param <O> realized outcome type
  * @since 0.22.4
  */
-public interface WalkForwardMetric<P, O> extends Function<List<WalkForwardObservation<P, O>>, Num> {
+public interface WalkForwardMetric<P, O> extends NamedScoreFunction<List<WalkForwardObservation<P, O>>, Num> {
 
     /**
      * @return unique metric name
@@ -43,15 +44,8 @@ public interface WalkForwardMetric<P, O> extends Function<List<WalkForwardObserv
      */
     Num compute(List<WalkForwardObservation<P, O>> observations);
 
-    /**
-     * Function-style alias for {@link #compute(List)}.
-     *
-     * @param observations observations to evaluate
-     * @return metric value
-     * @since 0.22.4
-     */
     @Override
-    default Num apply(List<WalkForwardObservation<P, O>> observations) {
+    default Num score(List<WalkForwardObservation<P, O>> observations) {
         return compute(observations);
     }
 

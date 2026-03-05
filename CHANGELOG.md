@@ -9,6 +9,7 @@
 - **Backtest-symmetric walk-forward execution APIs**: Added `StrategyWalkForwardExecutor` and `StrategyWalkForwardExecutionResult`, plus `BacktestExecutor` entrypoints for walk-forward-only or combined backtest + walk-forward runs in one flow.
 - **Weighted multi-criterion ranking for execution results**: Added shared `TradingStatementExecutionResult` with `RankingProfile`, `WeightedCriterion`, pluggable `CriterionNormalizer`, and deterministic `RankedTradingStatement` outputs so both backtest and walk-forward results can be ranked by normalized weighted composites.
 - **Backtest convenience for weighted ranking**: Added `BacktestExecutionResult#getTopStrategiesWeighted(...)` for quick top-N selection using weighted normalized criteria while preserving stored per-criterion scores on returned statements.
+- **Shared scoring and weighting building blocks**: Added `NamedScoreFunction<I, S>` and `WeightedValue<T>` so you can reuse one library-native pattern for named scoring and weighted aggregation across backtest ranking, walk-forward objective scoring, and Elliott confidence profiles.
 - **Live Elliott preset entrypoint**: Added `ElliottWavePresetDemo` support for live mode with user-supplied tickers (for example `BTC-USD`, `ETH-USD`, `SPY`) so you can run the same workflow on non-ossified daily data without creating new demo classes.
 - **EW walk-forward baseline profiles**: Added `ElliottWaveWalkForwardProfiles` so EW-tuned values live in a dedicated profile while generic walk-forward users keep sensible framework defaults.
 

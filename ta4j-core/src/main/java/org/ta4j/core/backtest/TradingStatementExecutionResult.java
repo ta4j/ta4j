@@ -16,6 +16,7 @@ import java.util.Set;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.WeightedValue;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -122,11 +123,12 @@ public interface TradingStatementExecutionResult<R> {
         NumFactory numFactory = barSeries().numFactory();
         List<WeightedCriterion> weightedCriteria = profile.criteria();
         int criterionCount = weightedCriteria.size();
+        List<WeightedValue<AnalysisCriterion>> normalizedWeightedCriteria = normalizeCriteria(weightedCriteria,
+                numFactory);
         AnalysisCriterion[] criteria = new AnalysisCriterion[criterionCount];
         for (int i = 0; i < criterionCount; i++) {
-            criteria[i] = weightedCriteria.get(i).criterion();
+            criteria[i] = normalizedWeightedCriteria.get(i).value();
         }
-        Num[] normalizedWeights = normalizeWeights(weightedCriteria, numFactory);
 
         int statementCount = statements.size();
         Num[][] rawValuesByCriterion = new Num[criterionCount][statementCount];
@@ -159,7 +161,7 @@ public interface TradingStatementExecutionResult<R> {
 
             for (int criterionIndex = 0; criterionIndex < criterionCount; criterionIndex++) {
                 AnalysisCriterion criterion = criteria[criterionIndex];
-                Num weight = normalizedWeights[criterionIndex];
+                Num weight = normalizedWeightedCriteria.get(criterionIndex).weight();
                 Num rawValue = rawValuesByCriterion[criterionIndex][statementIndex];
                 rawScores.put(criterion, rawValue);
 
@@ -511,27 +513,17 @@ public interface TradingStatementExecutionResult<R> {
         return clamp01(normalized, numFactory);
     }
 
-    private static Num[] normalizeWeights(List<WeightedCriterion> weightedCriteria, NumFactory numFactory) {
-        Num totalMultiplier = numFactory.zero();
-        Num[] normalizedMultipliers = new Num[weightedCriteria.size()];
-        for (int i = 0; i < weightedCriteria.size(); i++) {
-            WeightedCriterion weightedCriterion = weightedCriteria.get(i);
+    private static List<WeightedValue<AnalysisCriterion>> normalizeCriteria(List<WeightedCriterion> weightedCriteria,
+            NumFactory numFactory) {
+        List<WeightedValue<AnalysisCriterion>> weightedValues = new ArrayList<>(weightedCriteria.size());
+        for (WeightedCriterion weightedCriterion : weightedCriteria) {
             Num multiplier = normalizeToFactory(weightedCriterion.multiplier(), numFactory);
             if (Num.isNaNOrNull(multiplier) || multiplier.isNegative()) {
                 throw new IllegalArgumentException("criterion multiplier must be finite and >= 0");
             }
-            normalizedMultipliers[i] = multiplier;
-            totalMultiplier = totalMultiplier.plus(multiplier);
+            weightedValues.add(new WeightedValue<>(weightedCriterion.criterion(), multiplier));
         }
-        if (totalMultiplier.isZero()) {
-            throw new IllegalArgumentException("sum of criterion multipliers must be > 0");
-        }
-
-        Num[] normalizedWeights = new Num[weightedCriteria.size()];
-        for (int i = 0; i < weightedCriteria.size(); i++) {
-            normalizedWeights[i] = normalizedMultipliers[i].dividedBy(totalMultiplier);
-        }
-        return normalizedWeights;
+        return WeightedValue.normalizeWeights(weightedValues, numFactory);
     }
 
     private static Num[] findBestWorst(Num[] values, AnalysisCriterion criterion) {
