@@ -25,14 +25,19 @@ import org.ta4j.core.num.Num;
  * @param summary     short summary text
  * @since 0.22.2
  */
-public record ConfidenceFactorResult(String name, ConfidenceFactorCategory category, Num score, double weight,
+public record ConfidenceFactorResult(String name, ConfidenceFactorCategory category, Num score, Num weight,
         Map<String, Number> diagnostics, String summary) {
 
     public ConfidenceFactorResult {
         Objects.requireNonNull(name, "name");
         Objects.requireNonNull(category, "category");
         Objects.requireNonNull(score, "score");
+        Objects.requireNonNull(weight, "weight");
         diagnostics = diagnostics == null ? Map.of() : Collections.unmodifiableMap(diagnostics);
+        if (Num.isNaNOrNull(weight) || Double.isNaN(weight.doubleValue()) || Double.isInfinite(weight.doubleValue())
+                || weight.isNegative()) {
+            throw new IllegalArgumentException("weight must be finite and >= 0");
+        }
     }
 
     /**
@@ -48,7 +53,7 @@ public record ConfidenceFactorResult(String name, ConfidenceFactorCategory categ
      */
     public static ConfidenceFactorResult of(final String name, final ConfidenceFactorCategory category, final Num score,
             final Map<String, Number> diagnostics, final String summary) {
-        return new ConfidenceFactorResult(name, category, score, 0.0, diagnostics, summary);
+        return new ConfidenceFactorResult(name, category, score, score.getNumFactory().zero(), diagnostics, summary);
     }
 
     /**
@@ -58,7 +63,18 @@ public record ConfidenceFactorResult(String name, ConfidenceFactorCategory categ
      * @return weighted result
      * @since 0.22.2
      */
-    public ConfidenceFactorResult withWeight(final double weight) {
+    public ConfidenceFactorResult withWeight(final Num weight) {
         return new ConfidenceFactorResult(name, category, score, weight, diagnostics, summary);
+    }
+
+    /**
+     * Returns a copy with the given weight applied.
+     *
+     * @param weight weight to apply
+     * @return weighted result
+     * @since 0.22.4
+     */
+    public ConfidenceFactorResult withWeight(final double weight) {
+        return withWeight(score.getNumFactory().numOf(weight));
     }
 }

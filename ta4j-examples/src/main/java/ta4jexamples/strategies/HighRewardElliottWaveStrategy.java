@@ -13,9 +13,7 @@ import java.util.stream.Collectors;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.MACDIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.elliott.ElliottChannelIndicator;
@@ -28,7 +26,7 @@ import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottSwingCompressor;
 import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.rules.AbstractRule;
+import org.ta4j.core.indicators.macd.VolatilityNormalizedMACDIndicator;
 import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
@@ -59,7 +57,8 @@ import org.ta4j.core.strategy.named.NamedStrategy;
  * <li>Risk/reward meets the minimum threshold using the wave 2/4 stop and the
  * furthest Fibonacci target</li>
  * <li>Wave 2/4 time alternation exceeds the minimum ratio</li>
- * <li>Trend (SMA) and momentum (RSI or MACD) confirmation</li>
+ * <li>Trend (SMA) and momentum (RSI or volatility-normalized MACD-V)
+ * confirmation</li>
  * </ul>
  *
  * <p>
@@ -91,6 +90,7 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
     private static final double DEFAULT_RSI_THRESHOLD = 50.0;
     private static final int DEFAULT_MACD_FAST = 12;
     private static final int DEFAULT_MACD_SLOW = 26;
+    private static final int DEFAULT_MACD_SIGNAL = 9;
 
     private static final int DEFAULT_ATR_PERIOD = 14;
     private static final double DEFAULT_MIN_RELATIVE_SWING = 0.10;
@@ -129,7 +129,8 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
      */
     HighRewardElliottWaveStrategy(final BarSeries series, final Config config,
             final Indicator<ElliottScenarioSet> scenarioIndicator) {
-        this(config, buildRules(series, config, scenarioIndicator));
+        this(config, buildEntryRule(series, config, scenarioIndicator),
+                buildExitRule(series, config, scenarioIndicator), calculateUnstableBars(config));
     }
 
     /**
@@ -145,35 +146,36 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
     /**
      * Internal constructor that wires the prepared rules into the named strategy.
      *
-     * @param config strategy configuration
-     * @param rules  precomputed rule bundle
+     * @param config       strategy configuration
+     * @param entryRule    precomputed entry rule
+     * @param exitRule     precomputed exit rule
+     * @param unstableBars unstable bar count for warm-up
      */
-    private HighRewardElliottWaveStrategy(final Config config, final RuleBundle rules) {
-        super(buildLabel(config), rules.entryRule(), rules.exitRule(), rules.unstableBars());
+    private HighRewardElliottWaveStrategy(final Config config, final Rule entryRule, final Rule exitRule,
+            final int unstableBars) {
+        super(buildLabel(config), entryRule, exitRule, unstableBars);
     }
 
     /**
-     * Builds entry/exit rules and unstable bar counts for the strategy.
+     * Builds the entry rule for the strategy.
      *
      * @param series            bar series backing indicators
      * @param config            strategy configuration
      * @param scenarioIndicator indicator supplying scenario sets
-     * @return bundled rules with unstable bar count
+     * @return entry rule
      */
-    private static RuleBundle buildRules(final BarSeries series, final Config config,
+    private static Rule buildEntryRule(final BarSeries series, final Config config,
             final Indicator<ElliottScenarioSet> scenarioIndicator) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(config, "config");
         Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
-
-        if (scenarioIndicator.getBarSeries() != series) {
-            throw new IllegalArgumentException("scenarioIndicator must use the same BarSeries instance");
-        }
+        validateScenarioIndicator(series, scenarioIndicator);
 
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         SMAIndicator trendSma = new SMAIndicator(close, config.trendSmaPeriod());
         RSIIndicator rsi = new RSIIndicator(close, config.rsiPeriod());
-        MACDIndicator macd = new MACDIndicator(close, config.macdFastPeriod(), config.macdSlowPeriod());
+        VolatilityNormalizedMACDIndicator macd = new VolatilityNormalizedMACDIndicator(close, config.macdFastPeriod(),
+                config.macdSlowPeriod(), DEFAULT_MACD_SIGNAL);
 
         Rule trendRule = config.direction().isBullish() ? new OverIndicatorRule(close, trendSma)
                 : new UnderIndicatorRule(close, trendSma);
@@ -201,6 +203,42 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
                 .and(trendRule)
                 .and(momentumRule);
 
+        return entryRule;
+    }
+
+    /**
+     * Builds the exit rule for the strategy.
+     *
+     * @param series            bar series backing indicators
+     * @param config            strategy configuration
+     * @param scenarioIndicator indicator supplying scenario sets
+     * @return exit rule
+     */
+    private static Rule buildExitRule(final BarSeries series, final Config config,
+            final Indicator<ElliottScenarioSet> scenarioIndicator) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(config, "config");
+        Objects.requireNonNull(scenarioIndicator, "scenarioIndicator");
+        validateScenarioIndicator(series, scenarioIndicator);
+
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        SMAIndicator trendSma = new SMAIndicator(close, config.trendSmaPeriod());
+        RSIIndicator rsi = new RSIIndicator(close, config.rsiPeriod());
+        VolatilityNormalizedMACDIndicator macd = new VolatilityNormalizedMACDIndicator(close, config.macdFastPeriod(),
+                config.macdSlowPeriod(), DEFAULT_MACD_SIGNAL);
+
+        Rule trendRule = config.direction().isBullish() ? new OverIndicatorRule(close, trendSma)
+                : new UnderIndicatorRule(close, trendSma);
+
+        Rule momentumRule = config.direction().isBullish()
+                ? new OverIndicatorRule(rsi, config.rsiThreshold()).or(new OverIndicatorRule(macd, 0))
+                : new UnderIndicatorRule(rsi, config.rsiThreshold()).or(new UnderIndicatorRule(macd, 0));
+
+        Rule scenarioValidRule = new ElliottScenarioValidRule(scenarioIndicator, close);
+        Rule directionRule = new ElliottScenarioDirectionRule(scenarioIndicator, config.direction().isBullish());
+        Rule trendBiasRule = new ElliottTrendBiasRule(scenarioIndicator, config.direction().isBullish(),
+                config.minTrendBiasStrength());
+
         Rule exitTriggers = new NotRule(scenarioValidRule).or(new NotRule(directionRule))
                 .or(new ElliottScenarioCompletionRule(scenarioIndicator))
                 .or(new ElliottScenarioInvalidationRule(scenarioIndicator, close))
@@ -210,21 +248,21 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
                 .or(new NotRule(trendRule.and(momentumRule)))
                 .or(new ElliottScenarioTimeStopRule(scenarioIndicator, MAX_WAVE_DURATION_MULTIPLIER));
 
-        Rule exitRule = new AbstractRule() {
-            @Override
-            public boolean isSatisfied(final int index, final TradingRecord record) {
-                if (record == null || record.isClosed()) {
-                    traceIsSatisfied(index, false);
-                    return false;
-                }
-                boolean satisfied = exitTriggers.isSatisfied(index, record);
-                traceIsSatisfied(index, satisfied);
-                return satisfied;
-            }
-        };
+        return exitTriggers;
+    }
 
-        int unstableBars = calculateUnstableBars(config);
-        return new RuleBundle(entryRule, exitRule, unstableBars);
+    /**
+     * Validates that the scenario indicator is bound to the same series instance as
+     * the strategy.
+     *
+     * @param series            strategy series
+     * @param scenarioIndicator scenario source indicator
+     */
+    private static void validateScenarioIndicator(final BarSeries series,
+            final Indicator<ElliottScenarioSet> scenarioIndicator) {
+        if (scenarioIndicator.getBarSeries() != series) {
+            throw new IllegalArgumentException("scenarioIndicator must use the same BarSeries instance");
+        }
     }
 
     /**
@@ -578,12 +616,6 @@ public class HighRewardElliottWaveStrategy extends NamedStrategy {
             }
             return EnumSet.allOf(type).stream().map(Enum::name).collect(Collectors.toSet());
         }
-    }
-
-    /**
-     * Bundles rules with their shared unstable bar count.
-     */
-    private record RuleBundle(Rule entryRule, Rule exitRule, int unstableBars) {
     }
 
     /**

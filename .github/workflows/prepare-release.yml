@@ -77,7 +77,9 @@ jobs:
           python3 - <<'PY'
           import json
           import os
+          import socket
           import sys
+          import urllib.error
           import urllib.request
 
           token = os.environ.get("GH_TA4J_REPO_TOKEN", "")
@@ -112,6 +114,8 @@ jobs:
               print("::error::Unable to resolve repository context for permission preflight.")
               sys.exit(1)
 
+          request_timeout_seconds = 30
+
           def request_json(url: str, payload=None):
               headers = {
                   "Authorization": f"Bearer {token}",
@@ -123,9 +127,20 @@ jobs:
                   headers["Content-Type"] = "application/json"
                   data = json.dumps(payload).encode("utf-8")
               req = urllib.request.Request(url, data=data, headers=headers)
-              with urllib.request.urlopen(req, timeout=30) as resp:
-                  body = json.load(resp)
-                  response_headers = {k.lower(): v for k, v in resp.headers.items()}
+              try:
+                  with urllib.request.urlopen(req, timeout=request_timeout_seconds) as resp:
+                      body = json.load(resp)
+                      response_headers = {k.lower(): v for k, v in resp.headers.items()}
+              except TimeoutError as exc:
+                  raise TimeoutError(
+                      f"Request to {url} timed out after {request_timeout_seconds}s"
+                  ) from exc
+              except urllib.error.URLError as exc:
+                  if isinstance(exc.reason, socket.timeout):
+                      raise TimeoutError(
+                          f"Request to {url} timed out after {request_timeout_seconds}s"
+                      ) from exc
+                  raise
               return body, response_headers
 
           query = {
@@ -162,8 +177,8 @@ jobs:
           scope_check = "unknown"
           scope_allows_push = True
           if scopes:
-              scope_check = "pass" if (has_repo_scope or has_public_repo_scope) else "fail"
-              scope_allows_push = scope_check == "pass"
+              scope_allows_push = has_repo_scope or has_public_repo_scope
+              scope_check = "pass" if scope_allows_push else "fail"
 
           permission_allows_push = permission in ("WRITE", "MAINTAIN", "ADMIN") or push_permission
           allowed = permission_allows_push and scope_allows_push

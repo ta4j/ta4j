@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.elliott.confidence;
 
+import org.ta4j.core.analysis.NamedScoreFunction;
+
 /**
  * Confidence factor for Elliott wave scoring.
  *
@@ -14,7 +16,7 @@ package org.ta4j.core.indicators.elliott.confidence;
  *
  * @since 0.22.2
  */
-public interface ConfidenceFactor {
+public interface ConfidenceFactor extends NamedScoreFunction<ElliottConfidenceContext, ConfidenceFactorResult> {
 
     /**
      * @return human-readable factor name

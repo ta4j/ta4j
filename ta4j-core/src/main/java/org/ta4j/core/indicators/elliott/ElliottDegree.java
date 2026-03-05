@@ -105,6 +105,60 @@ public enum ElliottDegree {
     private static final ElliottDegree[] VALUES = values();
 
     /**
+     * Returns the heuristic recommended history range for this degree in (calendar)
+     * days.
+     *
+     * <p>
+     * Degrees are not tied to a single bar duration. This range expresses the
+     * <em>total</em> history span that typically yields stable wave counts at the
+     * given degree, independent of the bar resolution. Use it to select an
+     * appropriate lookback window (for example, by trimming a long series to the
+     * most recent {@code maxDays}).
+     *
+     * <p>
+     * The range is derived from the same rule-of-thumb guidance used by
+     * {@link #getRecommendedDegrees(Duration, int)}.
+     *
+     * @return recommended history span in days
+     * @since 0.22.3
+     */
+    public RecommendedHistory recommendedHistoryDays() {
+        final DegreeRange range = RECOMMENDED_DAYS[ordinal()];
+        return new RecommendedHistory(range.minDays(), range.maxDays());
+    }
+
+    /**
+     * Computes how well a series duration and bar count fit this degree's
+     * recommended history span.
+     *
+     * <p>
+     * The score is in range {@code (0.0, 1.0]} with {@code 1.0} indicating the
+     * total series span falls inside the recommended range. Values below {@code
+     * 1.0} indicate the series is shorter than the minimum or longer than the
+     * maximum for the degree.
+     *
+     * @param barDuration duration of each bar
+     * @param barCount    number of bars available
+     * @return fit score (0.0 - 1.0)
+     * @throws IllegalArgumentException if {@code barCount <= 0} or the duration is
+     *                                  zero/negative
+     * @since 0.22.3
+     */
+    public double historyFitScore(final Duration barDuration, final int barCount) {
+        Objects.requireNonNull(barDuration, "barDuration cannot be null");
+        if (barCount <= 0) {
+            throw new IllegalArgumentException("barCount must be positive");
+        }
+        if (barDuration.isZero() || barDuration.isNegative()) {
+            throw new IllegalArgumentException("barDuration must be positive");
+        }
+
+        final double totalDays = toDays(barDuration) * barCount;
+        final DegreeRange range = RECOMMENDED_DAYS[ordinal()];
+        return range.scoreForDays(totalDays);
+    }
+
+    /**
      * Returns the next higher (larger timeframe) wave degree.
      *
      * @return the higher degree, or {@code this} if already at the highest
@@ -228,6 +282,41 @@ public enum ElliottDegree {
 
     private static double toDays(final Duration barDuration) {
         return barDuration.toMillis() / (double) Duration.ofDays(1).toMillis();
+    }
+
+    /**
+     * Recommended history span range in days.
+     *
+     * <p>
+     * {@code maxDays} may be {@code 0.0} to signal an unbounded upper range (for
+     * example for very high degrees).
+     *
+     * @param minDays minimum recommended days (&gt; 0)
+     * @param maxDays maximum recommended days (&gt;= 0) or {@code 0.0} when
+     *                unbounded
+     * @since 0.22.3
+     */
+    public record RecommendedHistory(double minDays, double maxDays) {
+
+        public RecommendedHistory {
+            if (minDays <= 0.0) {
+                throw new IllegalArgumentException("minDays must be positive");
+            }
+            if (maxDays < 0.0) {
+                throw new IllegalArgumentException("maxDays must be >= 0.0");
+            }
+            if (maxDays > 0.0 && maxDays < minDays) {
+                throw new IllegalArgumentException("maxDays must be >= minDays when bounded");
+            }
+        }
+
+        /**
+         * @return {@code true} when {@code maxDays} is a positive upper bound
+         * @since 0.22.3
+         */
+        public boolean hasMax() {
+            return maxDays > 0.0;
+        }
     }
 
     private record Recommendation(ElliottDegree degree, double score, double midpointDistance) {

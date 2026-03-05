@@ -19,9 +19,9 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * Most users should start with {@link WyckoffCycleFacade} for indicator-style
- * access or {@link WyckoffCycleAnalysis} for one-shot analysis snapshots. This
- * indicator is the underlying building block used by the facade and remains
- * available for advanced customization.
+ * access or {@link WyckoffCycleAnalysisRunner} for one-shot analysis snapshots.
+ * This indicator is the underlying building block used by the facade and
+ * remains available for advanced customization.
  *
  * @since 0.22.3
  */
