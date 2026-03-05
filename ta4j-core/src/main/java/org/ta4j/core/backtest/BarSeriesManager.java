@@ -4,6 +4,7 @@
 package org.ta4j.core.backtest;
 
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -310,6 +311,7 @@ public class BarSeriesManager {
             // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {
                 tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
+                processSignalBarOrders(i, tradingRecord);
             }
         }
 
@@ -324,11 +326,23 @@ public class BarSeriesManager {
                 // --> Trying to close the last position
                 if (strategy.shouldOperate(i, tradingRecord)) {
                     tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
+                    processSignalBarOrders(i, tradingRecord);
                     break;
                 }
             }
         }
         return tradingRecord;
+    }
+
+    private void processSignalBarOrders(int index, TradingRecord tradingRecord) {
+        if (!(tradeExecutionModel instanceof StopLimitExecutionModel stopLimitExecutionModel)) {
+            return;
+        }
+        Optional<StopLimitExecutionModel.PendingOrderSnapshot> pendingOrder = stopLimitExecutionModel
+                .getPendingOrder(tradingRecord);
+        if (pendingOrder.isPresent() && pendingOrder.get().activationIndex() == index) {
+            tradeExecutionModel.onBar(index, tradingRecord, barSeries);
+        }
     }
 
     private TradingRecord createDefaultTradingRecord(TradeType tradeType, int startIndex, int finishIndex) {
