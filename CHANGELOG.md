@@ -1,31 +1,20 @@
 ## Unreleased
 
 ### Added
-- **Window-scoped criterion APIs**: Added `AnalysisWindow` and `AnalysisContext`, plus `AnalysisCriterion#calculate(series, tradingRecord, window[, context])` overloads for explicit range/lookback evaluation with strict-or-clamp history policies and configurable open-position handling.
-- **Threshold bar aggregators**: Added `RangeBarAggregator`, `VolumeBarAggregator`, and `RenkoBarAggregator`, with shared threshold aggregation support and fixture-driven regression coverage.
-- **Elliott one-shot runner APIs**: Added `ElliottWaveAnalysisRunner`, `ElliottWaveAnalysisResult`, and reusable orchestration contracts (`AnalysisRunner`, `SeriesSelector`) for pluggable single-run analysis over base and neighboring degrees.
-- **Elliott multi-degree demo tooling**: Added `ElliottWaveMultiDegreeAnalysisDemo`, shared `OssifiedElliottWaveSeriesLoader` helpers, and an S&P 500 ossified dataset (`YahooFinance-SP500-PT1D-20230616_20231011.json`) for non-crypto walkthroughs.
-- **Reusable walk-forward framework**: Added a full core walk-forward stack (`WalkForwardEngine`, `WalkForwardSplitter`, `WalkForwardTuner`, `WalkForwardObjective`, `WalkForwardMetric`, `WalkForwardLeaderboard`, `WalkForwardHoldoutValidator`) so you can tune forecasts with fixed-horizon evaluation, rank top-k candidates, and score calibration quality over rolling folds.
-- **Backtest-symmetric walk-forward execution APIs**: Added `StrategyWalkForwardExecutor` and `StrategyWalkForwardExecutionResult`, plus `BacktestExecutor` entrypoints for walk-forward-only or combined backtest + walk-forward runs in one flow.
-- **Weighted multi-criterion ranking for execution results**: Added shared `TradingStatementExecutionResult` with `RankingProfile`, `WeightedCriterion`, pluggable `CriterionNormalizer`, and deterministic `RankedTradingStatement` outputs so both backtest and walk-forward results can be ranked by normalized weighted composites.
-- **Backtest convenience for weighted ranking**: Added `BacktestExecutionResult#getTopStrategiesWeighted(...)` for quick top-N selection using weighted normalized criteria while preserving stored per-criterion scores on returned statements.
-- **Shared scoring and weighting building blocks**: Added `NamedScoreFunction<I, S>` and `WeightedValue<T>` so you can reuse one library-native pattern for named scoring and weighted aggregation across backtest ranking, walk-forward objective scoring, and Elliott confidence profiles.
-- **Live Elliott preset entrypoint**: Added `ElliottWavePresetDemo` support for live mode with user-supplied tickers (for example `BTC-USD`, `ETH-USD`, `SPY`) so you can run the same workflow on non-ossified daily data without creating new demo classes.
-- **EW walk-forward baseline profiles**: Added `ElliottWaveWalkForwardProfiles` so EW-tuned values live in a dedicated profile while generic walk-forward users keep sensible framework defaults.
+- **Window-aware criterion evaluation API**: `AnalysisCriterion` can now analyze exactly the slice you care about, including specific bar ranges, date/time ranges, lookback bars, and lookback durations, via `AnalysisWindow`/`AnalysisContext` and `AnalysisCriterion#calculate(series, tradingRecord, window[, context])`, with strict/clamp history policies and configurable open-position handling.
+- **Price-structure aggregators**: Added `RangeBarAggregator`, `VolumeBarAggregator`, and `RenkoBarAggregator` for range-, volume-, and Renko-brick derived bar series with externally configurable thresholds and comprehensive fixture-driven regression coverage.
+- **One-shot multi-timeframe Elliott Wave analysis**: You can now run `ElliottWaveAnalysisRunner` once and get an `ElliottWaveAnalysisResult` with base + neighboring degree outputs, ranked scenarios, and confidence context in one place.
+- **Reusable walk-forward framework with backtest integration**: Added `WalkForwardEngine`, `WalkForwardTuner`, `WalkForwardObjective`, and `StrategyWalkForwardExecutor`, plus `BacktestExecutor` entrypoints so you can run backtest-only, walk-forward-only, or both in one consistent flow.
+- **Weighted strategy ranking across execution results**: `TradingStatementExecutionResult` and `BacktestExecutionResult#getTopStrategiesWeighted(...)` now support normalized weighted ranking (for example net profit + drawdown + trade count) with pluggable normalization and deterministic ordering.
+- **Shared scoring/weighting primitives for library extensions**: Added `NamedScoreFunction<I, S>` and `WeightedValue<T>` so indicator, confidence, and walk-forward components can reuse the same scoring and weighted-aggregation contracts.
+- **Live Elliott preset demo support**: `ElliottWavePresetDemo` now accepts live tickers (for example `BTC-USD`, `ETH-USD`, `SPY`) so you can run the same EW workflow on non-ossified daily data.
 
 ### Changed
-- **Elliott entrypoint consolidation**: Replaced legacy `ElliottWaveAnalyzer` usage with `ElliottWaveAnalysisRunner` naming across core APIs, tests, examples, and docs.
-- **Elliott examples organization and defaults**: Organized examples under `analysis.elliottwave.{demo,backtest,support}`, renamed the examples DTO to `ElliottWaveAnalysisReport`, and defaulted demos to auto degree selection with multi-degree context.
-- **Elliott documentation clarity**: Updated README/package docs to clarify one-shot/facade entrypoints, result semantics, and `scenarioSwingWindow=0` behavior.
-- **HighRewardElliottWaveStrategy rule pipeline**: Removed the redundant anonymous exit guard and switched momentum confirmation to `VolatilityNormalizedMACDIndicator` (MACD-V).
-- **Backtest/walk-forward result symmetry**: `BacktestExecutionResult` and `StrategyWalkForwardExecutionResult` now implement the same execution-result contract, so statement views, criterion extraction, and ranking usage patterns stay consistent across both paths.
-- **Legacy ranking behavior remains stable**: `BacktestExecutionResult#getTopStrategies(limit, criteria...)` still uses the exact primary-criterion-plus-tiebreaker ordering, while weighted ranking is available as an explicit additive API.
-- **Walk-forward criterion consistency**: Fold-level criterion evaluation now aligns with `AnalysisCriterion` conventions, and fold-index ordering is preserved end-to-end in exported criterion-value maps.
-- **WalkForward example modernization**: `ta4jexamples.walkforward.WalkForward` now follows the same core APIs used in `BarSeriesManager`/`BacktestExecutor`, so example usage matches production usage.
-- **Elliott demo UX polish**: Auto-degree logs now include the bar-series name, and demos default to auto-degree + multi-degree output for better “run-and-read” diagnostics.
+- **Elliott APIs and demos now follow runner-centric naming and defaults**: The project has moved from legacy analyzer naming to `ElliottWaveAnalysisRunner`, examples are organized under `analysis.elliottwave.{demo,backtest,support}`, and demo defaults now emphasize auto-degree selection with multi-degree context.
+- **HighRewardElliottWaveStrategy momentum confirmation now uses MACD-V**: The strategy now uses `VolatilityNormalizedMACDIndicator` and drops redundant exit-rule guarding to keep rule flow cleaner.
 
 ### Fixed
-- **Release workflow drift checks**: `release-health.yml` now verifies drift on every `master` push and post-publish, and `publish-release.yml` hard-fails when a release tag does not resolve to the expected `releaseCommit` or is not reachable from `origin/<default_branch>`.
+- **Release workflow drift guardrails**: Release maintainers now get near-immediate drift detection because `release-health.yml` runs on every `master` push and after `Publish Release to Maven Central` completes, and `publish-release.yml` now hard-fails if the pushed release tag does not resolve to the expected `releaseCommit` or is not reachable from `origin/<default_branch>`.
 - **Elliott analysis hardening**: Enforced bounded `ElliottDegree.RecommendedHistory` ranges, hardened ossified resource loading for classpath edge cases, and simplified redundant trend-bias null guarding in EW analysis reporting.
 - **Walk-forward fold metadata stability**: Fixed fold-value reporting so criterion maps and fold views remain stable and deterministic when consumers rely on fold order for downstream comparisons.
 
