@@ -8,6 +8,7 @@ import static org.ta4j.core.num.NaN.NaN;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
@@ -214,6 +215,22 @@ public interface TradingRecord extends Serializable {
      * @return the current (open) position
      */
     Position getCurrentPosition();
+
+    /**
+     * Returns recorded execution fees when the implementation maintains a fee
+     * ledger separate from modeled transaction costs.
+     *
+     * <p>
+     * Legacy trading-record implementations can rely on this default and return an
+     * empty optional when they only support model-derived transaction costs.
+     * </p>
+     *
+     * @return recorded execution fees, if available
+     * @since 0.22.4
+     */
+    default Optional<Num> getRecordedTotalFees() {
+        return Optional.empty();
+    }
 
     /**
      * Returns open positions as lots when supported by the implementation.

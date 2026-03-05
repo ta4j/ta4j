@@ -323,6 +323,7 @@ public class TradingRecordTest {
         assertFalse(record.isClosed());
         assertTrue(record.getOpenPositions().isEmpty());
         assertNull(record.getNetOpenPosition());
+        assertTrue(record.getRecordedTotalFees().isEmpty());
     }
 
     private Position roundTrip(Position position) throws Exception {
