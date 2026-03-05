@@ -555,9 +555,15 @@ class BaseTradingRecordTest {
             }
         });
 
-        assertTrue(doneLatch.await(5, TimeUnit.SECONDS));
-        executor.shutdown();
-        assertTrue(executor.awaitTermination(2, TimeUnit.SECONDS));
+        try {
+            assertTrue(doneLatch.await(5, TimeUnit.SECONDS));
+        } finally {
+            executor.shutdown();
+            if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+                assertTrue(executor.awaitTermination(2, TimeUnit.SECONDS));
+            }
+        }
         if (failed.get()) {
             throw new AssertionError("Concurrent core initialization failed", error.get());
         }
@@ -601,9 +607,15 @@ class BaseTradingRecordTest {
             }
         });
 
-        assertTrue(doneLatch.await(5, TimeUnit.SECONDS));
-        executor.shutdown();
-        assertTrue(executor.awaitTermination(2, TimeUnit.SECONDS));
+        try {
+            assertTrue(doneLatch.await(5, TimeUnit.SECONDS));
+        } finally {
+            executor.shutdown();
+            if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+                assertTrue(executor.awaitTermination(2, TimeUnit.SECONDS));
+            }
+        }
         if (failed.get()) {
             throw new AssertionError("Concurrent access failed", error.get());
         }

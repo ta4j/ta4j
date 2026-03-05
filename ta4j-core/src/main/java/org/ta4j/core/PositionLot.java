@@ -5,6 +5,7 @@ package org.ta4j.core;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import java.io.InvalidObjectException;
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.Instant;
@@ -12,14 +13,14 @@ import java.util.Objects;
 import org.ta4j.core.num.Num;
 
 /**
- * Represents an open position lot in a live trading record.
+ * Represents an open position lot in a trading record.
  *
  * @since 0.22.2
  */
 public final class PositionLot implements Serializable {
 
     @Serial
-    private static final long serialVersionUID = 3650729320159324081L;
+    private static final long serialVersionUID = -2333496329345071348L;
 
     private static final Gson GSON = new Gson();
 
@@ -143,6 +144,26 @@ public final class PositionLot implements Serializable {
     PositionLot snapshot() {
         return new PositionLot(entryIndex, entryTime, entryPrice, side, amount, fee, orderId, correlationId,
                 entrySequence);
+    }
+
+    @Serial
+    private Object readResolve() throws InvalidObjectException {
+        if (side == null) {
+            throw new InvalidObjectException("PositionLot.side is required");
+        }
+        if (entryTime == null) {
+            throw new InvalidObjectException("PositionLot.entryTime is required");
+        }
+        if (entryPrice == null) {
+            throw new InvalidObjectException("PositionLot.entryPrice is required");
+        }
+        if (amount == null) {
+            throw new InvalidObjectException("PositionLot.amount is required");
+        }
+        if (fee == null) {
+            throw new InvalidObjectException("PositionLot.fee is required");
+        }
+        return this;
     }
 
     @Override

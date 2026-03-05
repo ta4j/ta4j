@@ -663,21 +663,21 @@ while (true) {
 
 ### Migration note: Trade and TradingRecord surfaces
 
-Treat `Trade` and `TradingRecord` as the primary APIs. Concrete implementations (`BaseTrade`, `BaseTradingRecord`,
-`LiveTradingRecord`) are boundary details you can choose per environment.
+Treat `Trade` and `TradingRecord` as the primary APIs. `BaseTrade` and `BaseTradingRecord` provide the unified
+implementation for both backtests and live execution recording.
 
 ```java
 TradingRecord defaultBacktest = new BarSeriesManager(series).run(strategy);
 
 TradingRecord parityBacktest = new BarSeriesManager(series).run(
         strategy,
-        new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+        new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), null, null));
 ```
 
 ## Recording live executions
 
-When you route orders to an exchange, record the fills in a `LiveTradingRecord`. It tracks partial fills, multiple open
+When you route orders to an exchange, record the fills in a `BaseTradingRecord`. It tracks partial fills, multiple open
 lots, and recorded fees so analytics can include open exposure.
 
 ```java
@@ -686,7 +686,7 @@ import java.time.Instant;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.BaseTrade;
-import org.ta4j.core.LiveTradingRecord;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.CashFlow;
@@ -694,7 +694,7 @@ import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 
-LiveTradingRecord record = new LiveTradingRecord(
+BaseTradingRecord record = new BaseTradingRecord(
         TradeType.BUY,
         ExecutionMatchPolicy.FIFO,
         new ZeroCostModel(),
@@ -723,7 +723,7 @@ var latest = equity.getValue(series.getEndIndex());
 
 Notes:
 - `ExecutionMatchPolicy.SPECIFIC_ID` matches exits to the lot with a matching `correlationId` or `orderId`.
-- After deserializing a `LiveTradingRecord`, call `rehydrate(holdingCostModel)` to restore transient cost models.
+- After deserializing a `BaseTradingRecord`, call `rehydrate(holdingCostModel)` to restore transient cost models.
 
 ## Streaming trade ingestion (gap handling)
 

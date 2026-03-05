@@ -4,6 +4,7 @@
 package org.ta4j.core.backtest;
 
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Position;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
@@ -40,7 +41,11 @@ final class ExecutionModelSupport {
         if (tradingRecord.isClosed()) {
             return tradingRecord.getStartingType();
         }
-        return tradingRecord.getCurrentPosition().getEntry().getType().complementType();
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        if (currentPosition == null || currentPosition.getEntry() == null) {
+            return tradingRecord.getStartingType();
+        }
+        return currentPosition.getEntry().getType().complementType();
     }
 
     record ExecutionTarget(int index, Num price) {

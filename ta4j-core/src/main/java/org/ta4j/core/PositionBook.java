@@ -259,7 +259,8 @@ public final class PositionBook implements Serializable {
     }
 
     private PositionLot matchSpecificLot(Trade trade) {
-        String key = trade.getCorrelationId() == null ? trade.getOrderId() : trade.getCorrelationId();
+        String correlationId = trade.getCorrelationId();
+        String key = correlationId != null && !correlationId.isBlank() ? correlationId : trade.getOrderId();
         if (key == null || key.isBlank()) {
             throw new IllegalStateException("Specific-id matching requires correlationId or orderId");
         }
@@ -340,10 +341,14 @@ public final class PositionBook implements Serializable {
     }
 
     private static ExecutionSide sideOf(TradeType tradeType) {
+        Objects.requireNonNull(tradeType, "tradeType");
         if (tradeType == TradeType.BUY) {
             return ExecutionSide.BUY;
         }
-        return ExecutionSide.SELL;
+        if (tradeType == TradeType.SELL) {
+            return ExecutionSide.SELL;
+        }
+        throw new IllegalArgumentException("Unsupported trade type: " + tradeType);
     }
 
     List<ClosedPosition> closedPositionsWithSequence() {

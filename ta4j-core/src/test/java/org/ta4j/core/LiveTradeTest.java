@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -34,7 +35,7 @@ class LiveTradeTest {
         assertEquals(ExecutionSide.BUY, trade.side());
         assertEquals("order-5", trade.orderId());
         assertEquals("corr-5", trade.correlationId());
-        assertTrue(!trade.fee().isZero());
+        assertFalse(trade.fee().isZero());
         assertTrue(trade.getCostModel().equals(RecordedTradeCostModel.INSTANCE));
     }
 

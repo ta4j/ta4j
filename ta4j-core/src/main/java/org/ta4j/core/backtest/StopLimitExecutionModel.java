@@ -142,8 +142,8 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
             return;
         }
         Num requestedAmount = resolveRequestedAmount(tradingRecord, amount);
-        if (pendingOrders.containsKey(tradingRecord)) {
-            PendingOrder pendingOrder = pendingOrders.get(tradingRecord);
+        PendingOrder pendingOrder = pendingOrders.get(tradingRecord);
+        if (pendingOrder != null) {
             addRejectedOrder(tradingRecord,
                     new RejectedOrder(index, index, pendingOrder.tradeType, pendingOrder.requestedAmount,
                             pendingOrder.filledAmount, "Signal ignored while another stop-limit order is pending"));

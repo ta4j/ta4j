@@ -9,7 +9,7 @@
 - **Shared scoring/weighting primitives for library extensions**: Added `NamedScoreFunction<I, S>` and `WeightedValue<T>` so indicator, confidence, and walk-forward components can reuse the same scoring and weighted-aggregation contracts.
 - **Live Elliott preset demo support**: `ElliottWavePresetDemo` now accepts live tickers (for example `BTC-USD`, `ETH-USD`, `SPY`) so you can run the same EW workflow on non-ossified daily data.
 
-### Changed
+### Changed (Trading Record and Execution Flow)
 - **Elliott APIs and demos now follow runner-centric naming and defaults**: The project has moved from legacy analyzer naming to `ElliottWaveAnalysisRunner`, examples are organized under `analysis.elliottwave.{demo,backtest,support}`, and demo defaults now emphasize auto-degree selection with multi-degree context.
 - **HighRewardElliottWaveStrategy momentum confirmation now uses MACD-V**: The strategy now uses `VolatilityNormalizedMACDIndicator` and drops redundant exit-rule guarding to keep rule flow cleaner.
 

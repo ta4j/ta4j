@@ -37,7 +37,8 @@ public class TradingRecordParityBacktest {
         BarSeries series = createSeries();
         Strategy strategy = new BaseStrategy(new FixedRule(1, 4), new FixedRule(2, 5));
 
-        BarSeriesManager manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        BarSeriesManager manager = new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(),
+                new TradeOnCurrentCloseModel());
         TradingRecord baseRecord = manager.run(strategy, TradeType.BUY, series.numFactory().one(), 0,
                 series.getEndIndex());
 
