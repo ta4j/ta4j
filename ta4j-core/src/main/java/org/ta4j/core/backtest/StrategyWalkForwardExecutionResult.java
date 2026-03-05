@@ -81,6 +81,7 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
      * @return fold trading statements in execution order
      * @since 0.22.4
      */
+    @Override
     public List<TradingStatement> tradingStatements() {
         return folds.stream().map(FoldResult::tradingStatement).toList();
     }
@@ -89,6 +90,7 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
      * @return fold trading records in execution order
      * @since 0.22.4
      */
+    @Override
     public List<TradingRecord> tradingRecords() {
         return TradingStatementExecutionResult.super.tradingRecords();
     }
@@ -100,6 +102,7 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
      * @return criterion values in fold execution order
      * @since 0.22.4
      */
+    @Override
     public List<Num> criterionValues(AnalysisCriterion criterion) {
         return TradingStatementExecutionResult.super.criterionValues(criterion);
     }

@@ -33,6 +33,7 @@ public interface WalkForwardMetric<P, O> extends NamedScoreFunction<List<WalkFor
      * @return unique metric name
      * @since 0.22.4
      */
+    @Override
     String name();
 
     /**
