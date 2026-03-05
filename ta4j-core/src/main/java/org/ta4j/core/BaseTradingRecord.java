@@ -19,6 +19,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Stream;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
@@ -497,16 +498,9 @@ public class BaseTradingRecord implements TradingRecord {
             }
             int entryIndex = positionBook.openLots().stream().mapToInt(PositionLot::entryIndex).min().orElse(0);
             Instant entryTime = net.earliestEntryTime() == null ? Instant.EPOCH : net.earliestEntryTime();
-            TradeFill entryFill = new TradeFill(entryIndex, entryTime, net.averageEntryPrice(), net.amount(),
+            Trade entryTrade = new BaseTrade(entryIndex, entryTime, net.averageEntryPrice(), net.amount(),
                     net.totalFees(), net.side(), null, null);
-            Trade entryTrade;
-            if (entryFill.price().isNaN()) {
-                entryTrade = new BaseTrade(entryIndex, net.side().toTradeType(), entryFill.price(), net.amount(),
-                        transactionCostModel);
-            } else {
-                entryTrade = Trade.fromFills(net.side().toTradeType(), List.of(entryFill), transactionCostModel);
-            }
-            return new Position(entryTrade, transactionCostModel, holdingCostModel);
+            return new Position(entryTrade, RecordedTradeCostModel.INSTANCE, holdingCostModel);
         } finally {
             lock.readLock().unlock();
         }

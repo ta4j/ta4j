@@ -295,24 +295,11 @@ public final class PositionBook implements Serializable {
         } else {
             lot.reduce(closeAmount, entryFeePortion);
         }
-        TradeFill entryFill = new TradeFill(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount,
-                entryFeePortion, lot.side(), lot.orderId(), lot.correlationId());
-        TradeFill exitFill = new TradeFill(index, timeOf(trade), trade.getPricePerAsset(), closeAmount, exitFeePortion,
+        Trade entry = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount, entryFeePortion,
+                lot.side(), lot.orderId(), lot.correlationId());
+        Trade exit = new BaseTrade(index, timeOf(trade), trade.getPricePerAsset(), closeAmount, exitFeePortion,
                 sideOf(trade.getType()), trade.getOrderId(), trade.getCorrelationId());
-        Trade entry;
-        if (entryFill.price().isNaN()) {
-            entry = new BaseTrade(lot.entryIndex(), lot.side().toTradeType(), entryFill.price(), closeAmount,
-                    transactionCostModel);
-        } else {
-            entry = Trade.fromFills(lot.side().toTradeType(), List.of(entryFill), transactionCostModel);
-        }
-        Trade exit;
-        if (exitFill.price().isNaN()) {
-            exit = new BaseTrade(index, trade.getType(), exitFill.price(), closeAmount, transactionCostModel);
-        } else {
-            exit = Trade.fromFills(trade.getType(), List.of(exitFill), transactionCostModel);
-        }
-        return new ClosedPosition(new Position(entry, exit, transactionCostModel, holdingCostModel),
+        return new ClosedPosition(new Position(entry, exit, RecordedTradeCostModel.INSTANCE, holdingCostModel),
                 lot.entrySequence(), exitSequence);
     }
 
