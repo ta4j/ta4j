@@ -43,6 +43,21 @@ public interface NumFactory extends Serializable {
     Num thousand();
 
     /**
+     * Returns a small positive epsilon suitable for numerical guardrails and
+     * open-interval clamping.
+     *
+     * <p>
+     * The default implementation resolves to {@code 1e-12} in the current factory
+     * precision.
+     *
+     * @return epsilon value in this factory
+     * @since 0.22.4
+     */
+    default Num epsilon() {
+        return one().dividedBy(thousand().pow(4));
+    }
+
+    /**
      * Transforms a {@link Number} into the {@link Num implementation} used by this
      * bar series
      *

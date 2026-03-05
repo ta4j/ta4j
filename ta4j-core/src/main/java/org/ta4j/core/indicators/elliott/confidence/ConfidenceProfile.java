@@ -9,7 +9,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.ta4j.core.analysis.WeightedValue;
 import org.ta4j.core.indicators.elliott.ElliottConfidence;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -57,11 +59,12 @@ public record ConfidenceProfile(List<WeightedFactor> factors) {
 
         // Accumulates weighted factor contributions to overall score
         for (final WeightedFactor factor : factors) {
-            ConfidenceFactorResult rawResult = factor.factor().score(context);
-            ConfidenceFactorResult weightedResult = rawResult.withWeight(factor.weight());
+            WeightedValue<ConfidenceFactor> weightedFactor = factor.asWeightedValue(numFactory);
+            ConfidenceFactorResult rawResult = weightedFactor.value().score(context);
+            Num weight = weightedFactor.weight();
+            ConfidenceFactorResult weightedResult = rawResult.withWeight(weight);
             results.add(weightedResult);
 
-            Num weight = numFactory.numOf(factor.weight());
             Num contribution = weightedResult.score().multipliedBy(weight);
             weightedSum = weightedSum.plus(contribution);
             weightSum = weightSum.plus(weight);
@@ -124,13 +127,29 @@ public record ConfidenceProfile(List<WeightedFactor> factors) {
      * @param weight weight applied to factor score
      * @since 0.22.2
      */
-    public record WeightedFactor(ConfidenceFactor factor, double weight) {
+    public record WeightedFactor(ConfidenceFactor factor, Num weight) {
 
         public WeightedFactor {
-            Objects.requireNonNull(factor, "factor");
-            if (weight < 0.0) {
-                throw new IllegalArgumentException("weight must be non-negative");
+            new WeightedValue<>(Objects.requireNonNull(factor, "factor"), Objects.requireNonNull(weight, "weight"));
+            if (weight.isNegative()) {
+                throw new IllegalArgumentException("weight must be >= 0");
             }
+        }
+
+        /**
+         * Creates a weighted factor from a primitive weight.
+         *
+         * @param factor confidence factor
+         * @param weight non-negative finite weight
+         * @since 0.22.4
+         */
+        public WeightedFactor(ConfidenceFactor factor, double weight) {
+            this(factor, DoubleNumFactory.getInstance().numOf(weight));
+        }
+
+        private WeightedValue<ConfidenceFactor> asWeightedValue(NumFactory numFactory) {
+            Num normalizedWeight = numFactory.produces(weight) ? weight : numFactory.numOf(weight.doubleValue());
+            return new WeightedValue<>(factor, normalizedWeight);
         }
     }
 }

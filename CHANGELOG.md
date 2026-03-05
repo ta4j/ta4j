@@ -3,11 +3,22 @@
 ### Added
 - **Window-aware criterion evaluation API**: `AnalysisCriterion` can now analyze exactly the slice you care about, including specific bar ranges, date/time ranges, lookback bars, and lookback durations, via `AnalysisWindow`/`AnalysisContext` and `AnalysisCriterion#calculate(series, tradingRecord, window[, context])`, with strict/clamp history policies and configurable open-position handling.
 - **Price-structure aggregators**: Added `RangeBarAggregator`, `VolumeBarAggregator`, and `RenkoBarAggregator` for range-, volume-, and Renko-brick derived bar series with externally configurable thresholds and comprehensive fixture-driven regression coverage.
+- **One-shot multi-timeframe Elliott Wave analysis**: You can now run `ElliottWaveAnalysisRunner` once and get an `ElliottWaveAnalysisResult` with base + neighboring degree outputs, ranked scenarios, and confidence context in one place.
+- **Reusable walk-forward framework with backtest integration**: Added `WalkForwardEngine`, `WalkForwardTuner`, `WalkForwardObjective`, and `StrategyWalkForwardExecutor`, plus `BacktestExecutor` entrypoints so you can run backtest-only, walk-forward-only, or both in one consistent flow.
+- **Weighted strategy ranking across execution results**: `TradingStatementExecutionResult` and `BacktestExecutionResult#getTopStrategiesWeighted(...)` now support normalized weighted ranking (for example net profit + drawdown + trade count) with pluggable normalization and deterministic ordering.
+- **Shared scoring/weighting primitives for library extensions**: Added `NamedScoreFunction<I, S>` and `WeightedValue<T>` so indicator, confidence, and walk-forward components can reuse the same scoring and weighted-aggregation contracts.
+- **Live Elliott preset demo support**: `ElliottWavePresetDemo` now accepts live tickers (for example `BTC-USD`, `ETH-USD`, `SPY`) so you can run the same EW workflow on non-ossified daily data.
+
+### Changed
+- **Elliott APIs and demos now follow runner-centric naming and defaults**: The project has moved from legacy analyzer naming to `ElliottWaveAnalysisRunner`, examples are organized under `analysis.elliottwave.{demo,backtest,support}`, and demo defaults now emphasize auto-degree selection with multi-degree context.
+- **HighRewardElliottWaveStrategy momentum confirmation now uses MACD-V**: The strategy now uses `VolatilityNormalizedMACDIndicator` and drops redundant exit-rule guarding to keep rule flow cleaner.
 
 ### Fixed
 - **Release workflow drift guardrails**: Release maintainers now get near-immediate drift detection because `release-health.yml` runs on every `master` push and after `Publish Release to Maven Central` completes, and `publish-release.yml` now hard-fails if the pushed release tag does not resolve to the expected `releaseCommit` or is not reachable from `origin/<default_branch>`.
 - **Rolling variance now matches sample-statistics expectations by default**: `VarianceIndicator` now computes sample variance out of the box (`n-1` divisor), so spreadsheet-style checks like issue `#1152` line up directly. You can now choose behavior explicitly with `SampleType`/factory helpers across `VarianceIndicator`, `StandardDeviationIndicator`, `StandardErrorIndicator`, `SigmaIndicator`, and `CorrelationCoefficientIndicator` (for example: `VarianceIndicator.ofSample(...)`, `VarianceIndicator.ofPopulation(...)`, `StandardDeviationIndicator.ofSample(...)`, or `CorrelationCoefficientIndicator.ofPopulation(...)`).
 - **Enter-and-hold wrappers now keep return format metadata intact**: `EnterAndHoldCriterion` now forwards `getReturnRepresentation()` from its wrapped criterion, so downstream consumers can reliably detect whether outputs are decimal, percentage, multiplicative, or log without special casing wrapper criteria.
+- **Elliott analysis hardening**: Enforced bounded `ElliottDegree.RecommendedHistory` ranges, hardened ossified resource loading for classpath edge cases, and simplified redundant trend-bias null guarding in EW analysis reporting.
+- **Walk-forward fold metadata stability**: Fixed fold-value reporting so criterion maps and fold views remain stable and deterministic when consumers rely on fold order for downstream comparisons.
 
 ## 0.22.3 (2026-03-01)
 
@@ -86,15 +97,6 @@
 - Added **PiercingIndicator** and **DarkCloudIndicator**
 - **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
-- **Elliott Wave analysis toolkit**: Added `ElliottWaveAnalyzer`, `ElliottAnalysisResult`, configurable `PatternSet`,
-  and the `org.ta4j.core.indicators.elliott.swing` detector/filter package for pluggable, chart-independent analysis.
-- **Elliott Wave confidence modeling**: Added profile-driven confidence scoring with factor breakdowns, time
-  alternation diagnostics, and granular Fibonacci relationship scoring.
-- **Elliott Wave trend bias**: Added `ElliottTrendBias` and `ElliottTrendBiasIndicator` for scenario-weighted
-  bullish/bearish context, plus `ElliottScenarioSet#trendBias()` and `ElliottWaveFacade#trendBias()` helpers.
-- **Elliott Wave strategy demos**: Added `ElliottWaveAdaptiveSwingAnalysis`, `ElliottWavePatternProfileDemo`,
-  `ElliottWaveTrendBacktest`, and `HighRewardElliottWaveBacktest` with `HighRewardElliottWaveStrategy` for
-  selective impulse entries using confidence, alternation, and risk/reward filters.
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
 - Added constructors accepting custom ATR indicator to **AverageTrueRangeStopGainRule** **AverageTrueRangeStopLossRule** and **AverageTrueRangeTrailingStopLossRule**
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
@@ -123,13 +125,10 @@
 - **Quiet full-build lifecycle**: `scripts/run-full-build-quiet.sh` now traps `SIGINT`/`SIGTERM`/`EXIT` and cleanly
   terminates background build/heartbeat processes.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
-- **Elliott Wave analysis example**: Scenario probability weighting now applies adaptive confidence contrast so closely scored scenarios separate more clearly.
 - **Position duration criterion**: implemented `PositionDurationCriterion` to measure positions duration.
 - **Statistics helper**: Consolidated statistics selection into the `Statistics` enum, with Num calculations.
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 - **Dependencies**: update to latest versions
-- **Elliott Wave scoring and diagnostics**: Extension ratio scoring now penalizes under/over-extended projections,
-  chart/JSON outputs include scenario-weighted trend bias, and logs include time alternation diagnostics.
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
 
 ### Fixed

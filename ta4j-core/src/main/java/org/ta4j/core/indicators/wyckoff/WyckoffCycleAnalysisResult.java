@@ -15,8 +15,8 @@ import org.ta4j.core.num.Num;
  * configurations.
  *
  * <p>
- * Produced by {@link WyckoffCycleAnalysis}. The result contains one analysis
- * snapshot per requested degree.
+ * Produced by {@link WyckoffCycleAnalysisRunner}. The result contains one
+ * analysis snapshot per requested degree.
  *
  * @param baseDegreeOffset degree offset that drives recommended access patterns
  *                         (typically {@code 0})

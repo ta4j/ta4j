@@ -72,11 +72,14 @@ public final class ConfidenceProfiles {
             final double completenessWeight) {
         ElliottConfidenceScorer scorer = new ElliottConfidenceScorer(numFactory);
         List<ConfidenceProfile.WeightedFactor> factors = List.of(
-                new ConfidenceProfile.WeightedFactor(new FibonacciRelationshipFactor(), fibWeight),
-                new ConfidenceProfile.WeightedFactor(new TimeProportionFactor(scorer), timeWeight),
-                new ConfidenceProfile.WeightedFactor(new TimeAlternationFactor(scorer), alternationWeight),
-                new ConfidenceProfile.WeightedFactor(new ChannelAdherenceFactor(scorer), channelWeight),
-                new ConfidenceProfile.WeightedFactor(new StructureCompletenessFactor(scorer), completenessWeight));
+                new ConfidenceProfile.WeightedFactor(new FibonacciRelationshipFactor(), numFactory.numOf(fibWeight)),
+                new ConfidenceProfile.WeightedFactor(new TimeProportionFactor(scorer), numFactory.numOf(timeWeight)),
+                new ConfidenceProfile.WeightedFactor(new TimeAlternationFactor(scorer),
+                        numFactory.numOf(alternationWeight)),
+                new ConfidenceProfile.WeightedFactor(new ChannelAdherenceFactor(scorer),
+                        numFactory.numOf(channelWeight)),
+                new ConfidenceProfile.WeightedFactor(new StructureCompletenessFactor(scorer),
+                        numFactory.numOf(completenessWeight)));
         return new ConfidenceProfile(factors);
     }
 }
