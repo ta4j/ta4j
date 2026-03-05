@@ -149,7 +149,7 @@ if not m:
     sys.exit(1)
 
 major, minor, patch = map(int, m.groups())
-print(f"{major}.{minor}.{patch + 1}-SNAPSHOT")
+print(f"{major}.{minor + 1}.{patch + 1}-SNAPSHOT")
 PY
 }
 
