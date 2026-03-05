@@ -296,8 +296,8 @@ public interface AnalysisCriterion {
         for (Position position : includedPositions) {
             Trade entry = position.getEntry();
             Trade exit = position.getExit();
-            projectedRecord.operate(entry.getIndex(), entry.getPricePerAsset(), entry.getAmount());
-            projectedRecord.operate(exit.getIndex(), exit.getPricePerAsset(), exit.getAmount());
+            projectedRecord.operate(entry);
+            projectedRecord.operate(exit);
         }
         return projectedRecord;
     }
