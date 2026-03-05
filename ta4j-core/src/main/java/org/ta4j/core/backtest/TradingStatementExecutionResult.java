@@ -121,33 +121,34 @@ public interface TradingStatementExecutionResult<R> {
 
         NumFactory numFactory = barSeries().numFactory();
         List<WeightedCriterion> weightedCriteria = profile.criteria();
-        Map<AnalysisCriterion, Num> normalizedWeights = normalizeWeights(weightedCriteria, numFactory);
-
-        Map<AnalysisCriterion, List<Num>> rawValuesByCriterion = new LinkedHashMap<>();
-        for (WeightedCriterion weightedCriterion : weightedCriteria) {
-            rawValuesByCriterion.put(weightedCriterion.criterion(), new ArrayList<>(statements.size()));
+        int criterionCount = weightedCriteria.size();
+        AnalysisCriterion[] criteria = new AnalysisCriterion[criterionCount];
+        for (int i = 0; i < criterionCount; i++) {
+            criteria[i] = weightedCriteria.get(i).criterion();
         }
+        Num[] normalizedWeights = normalizeWeights(weightedCriteria, numFactory);
 
-        for (TradingStatement statement : statements) {
-            TradingRecord tradingRecord = statement.getTradingRecord();
-            for (WeightedCriterion weightedCriterion : weightedCriteria) {
-                AnalysisCriterion criterion = weightedCriterion.criterion();
-                Num rawValue = tradingRecord == null ? NaN.NaN : criterion.calculate(barSeries(), tradingRecord);
-                rawValuesByCriterion.get(criterion).add(rawValue);
+        int statementCount = statements.size();
+        Num[][] rawValuesByCriterion = new Num[criterionCount][statementCount];
+        for (int statementIndex = 0; statementIndex < statementCount; statementIndex++) {
+            TradingRecord tradingRecord = statements.get(statementIndex).getTradingRecord();
+            for (int criterionIndex = 0; criterionIndex < criterionCount; criterionIndex++) {
+                AnalysisCriterion criterion = criteria[criterionIndex];
+                rawValuesByCriterion[criterionIndex][statementIndex] = tradingRecord == null ? NaN.NaN
+                        : criterion.calculate(barSeries(), tradingRecord);
             }
         }
 
-        Map<AnalysisCriterion, Num> bestValueByCriterion = new LinkedHashMap<>();
-        Map<AnalysisCriterion, Num> worstValueByCriterion = new LinkedHashMap<>();
-        for (WeightedCriterion weightedCriterion : weightedCriteria) {
-            AnalysisCriterion criterion = weightedCriterion.criterion();
-            Num[] pair = findBestWorst(rawValuesByCriterion.get(criterion), criterion);
-            bestValueByCriterion.put(criterion, pair[0]);
-            worstValueByCriterion.put(criterion, pair[1]);
+        Num[] bestValuesByCriterion = new Num[criterionCount];
+        Num[] worstValuesByCriterion = new Num[criterionCount];
+        for (int criterionIndex = 0; criterionIndex < criterionCount; criterionIndex++) {
+            Num[] pair = findBestWorst(rawValuesByCriterion[criterionIndex], criteria[criterionIndex]);
+            bestValuesByCriterion[criterionIndex] = pair[0];
+            worstValuesByCriterion[criterionIndex] = pair[1];
         }
 
-        List<RankedTradingStatement> rankedStatements = new ArrayList<>(statements.size());
-        for (int statementIndex = 0; statementIndex < statements.size(); statementIndex++) {
+        List<RankedTradingStatement> rankedStatements = new ArrayList<>(statementCount);
+        for (int statementIndex = 0; statementIndex < statementCount; statementIndex++) {
             TradingStatement statement = statements.get(statementIndex);
             Map<AnalysisCriterion, Num> rawScores = new LinkedHashMap<>();
             Map<AnalysisCriterion, Num> normalizedScores = new LinkedHashMap<>();
@@ -156,48 +157,28 @@ public interface TradingStatementExecutionResult<R> {
             Num activeWeight = numFactory.zero();
             boolean excluded = false;
 
-            for (WeightedCriterion weightedCriterion : weightedCriteria) {
-                AnalysisCriterion criterion = weightedCriterion.criterion();
-                Num weight = normalizedWeights.get(criterion);
-                Num rawValue = rawValuesByCriterion.get(criterion).get(statementIndex);
+            for (int criterionIndex = 0; criterionIndex < criterionCount; criterionIndex++) {
+                AnalysisCriterion criterion = criteria[criterionIndex];
+                Num weight = normalizedWeights[criterionIndex];
+                Num rawValue = rawValuesByCriterion[criterionIndex][statementIndex];
                 rawScores.put(criterion, rawValue);
 
-                if (Num.isNaNOrNull(rawValue)) {
-                    Num missingScore = handleMissing(profile.missingValuePolicy(), numFactory, normalizedScores,
-                            criterion);
-                    if (missingScore == null) {
-                        excluded = true;
-                        break;
-                    }
-                    if (profile.missingValuePolicy() != MissingValuePolicy.RENORMALIZE_WEIGHTS) {
-                        weightedScore = weightedScore.plus(weight.multipliedBy(missingScore));
-                        activeWeight = activeWeight.plus(weight);
-                    }
-                    continue;
-                }
-
-                Num bestValue = bestValueByCriterion.get(criterion);
-                Num worstValue = worstValueByCriterion.get(criterion);
-                Num normalizedValue = profile.normalizer()
-                        .normalize(criterion, rawValue, bestValue, worstValue, numFactory);
-
+                Num normalizedValue = resolveNormalizedScore(rawValue, criterion, bestValuesByCriterion[criterionIndex],
+                        worstValuesByCriterion[criterionIndex], profile.normalizer(), numFactory);
+                Num effectiveScore = normalizedValue;
                 if (Num.isNaNOrNull(normalizedValue)) {
-                    Num missingScore = handleMissing(profile.missingValuePolicy(), numFactory, normalizedScores,
-                            criterion);
-                    if (missingScore == null) {
+                    if (profile.missingValuePolicy() == MissingValuePolicy.EXCLUDE_STATEMENT) {
                         excluded = true;
                         break;
                     }
-                    if (profile.missingValuePolicy() != MissingValuePolicy.RENORMALIZE_WEIGHTS) {
-                        weightedScore = weightedScore.plus(weight.multipliedBy(missingScore));
-                        activeWeight = activeWeight.plus(weight);
+                    if (profile.missingValuePolicy() == MissingValuePolicy.RENORMALIZE_WEIGHTS) {
+                        normalizedScores.put(criterion, NaN.NaN);
+                        continue;
                     }
-                    continue;
+                    effectiveScore = numFactory.zero();
                 }
-
-                Num clampedScore = clamp01(normalizedValue, numFactory);
-                normalizedScores.put(criterion, clampedScore);
-                weightedScore = weightedScore.plus(weight.multipliedBy(clampedScore));
+                normalizedScores.put(criterion, effectiveScore);
+                weightedScore = weightedScore.plus(weight.multipliedBy(effectiveScore));
                 activeWeight = activeWeight.plus(weight);
             }
 
@@ -518,43 +499,42 @@ public interface TradingStatementExecutionResult<R> {
         return normalizedValue;
     }
 
-    private static Num handleMissing(MissingValuePolicy policy, NumFactory numFactory,
-            Map<AnalysisCriterion, Num> normalizedScores, AnalysisCriterion criterion) {
-        if (policy == MissingValuePolicy.EXCLUDE_STATEMENT) {
-            return null;
+    private static Num resolveNormalizedScore(Num rawValue, AnalysisCriterion criterion, Num bestValue, Num worstValue,
+            CriterionNormalizer normalizer, NumFactory numFactory) {
+        if (Num.isNaNOrNull(rawValue)) {
+            return NaN.NaN;
         }
-        if (policy == MissingValuePolicy.RENORMALIZE_WEIGHTS) {
-            normalizedScores.put(criterion, NaN.NaN);
-            return numFactory.zero();
+        Num normalized = normalizer.normalize(criterion, rawValue, bestValue, worstValue, numFactory);
+        if (Num.isNaNOrNull(normalized)) {
+            return NaN.NaN;
         }
-        Num worst = numFactory.zero();
-        normalizedScores.put(criterion, worst);
-        return worst;
+        return clamp01(normalized, numFactory);
     }
 
-    private static Map<AnalysisCriterion, Num> normalizeWeights(List<WeightedCriterion> weightedCriteria,
-            NumFactory numFactory) {
+    private static Num[] normalizeWeights(List<WeightedCriterion> weightedCriteria, NumFactory numFactory) {
         Num totalMultiplier = numFactory.zero();
-        for (WeightedCriterion weightedCriterion : weightedCriteria) {
+        Num[] normalizedMultipliers = new Num[weightedCriteria.size()];
+        for (int i = 0; i < weightedCriteria.size(); i++) {
+            WeightedCriterion weightedCriterion = weightedCriteria.get(i);
             Num multiplier = normalizeToFactory(weightedCriterion.multiplier(), numFactory);
             if (Num.isNaNOrNull(multiplier) || multiplier.isNegative()) {
                 throw new IllegalArgumentException("criterion multiplier must be finite and >= 0");
             }
+            normalizedMultipliers[i] = multiplier;
             totalMultiplier = totalMultiplier.plus(multiplier);
         }
         if (totalMultiplier.isZero()) {
             throw new IllegalArgumentException("sum of criterion multipliers must be > 0");
         }
 
-        Map<AnalysisCriterion, Num> normalizedWeights = new LinkedHashMap<>();
-        for (WeightedCriterion weightedCriterion : weightedCriteria) {
-            Num multiplier = normalizeToFactory(weightedCriterion.multiplier(), numFactory);
-            normalizedWeights.put(weightedCriterion.criterion(), multiplier.dividedBy(totalMultiplier));
+        Num[] normalizedWeights = new Num[weightedCriteria.size()];
+        for (int i = 0; i < weightedCriteria.size(); i++) {
+            normalizedWeights[i] = normalizedMultipliers[i].dividedBy(totalMultiplier);
         }
-        return Collections.unmodifiableMap(normalizedWeights);
+        return normalizedWeights;
     }
 
-    private static Num[] findBestWorst(List<Num> values, AnalysisCriterion criterion) {
+    private static Num[] findBestWorst(Num[] values, AnalysisCriterion criterion) {
         Num bestValue = null;
         Num worstValue = null;
         for (Num value : values) {

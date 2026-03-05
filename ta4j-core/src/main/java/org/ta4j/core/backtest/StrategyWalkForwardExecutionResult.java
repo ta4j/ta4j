@@ -90,7 +90,7 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
      * @since 0.22.4
      */
     public List<TradingRecord> tradingRecords() {
-        return folds.stream().map(FoldResult::tradingRecord).toList();
+        return TradingStatementExecutionResult.super.tradingRecords();
     }
 
     /**
@@ -101,7 +101,7 @@ public record StrategyWalkForwardExecutionResult(BarSeries barSeries, Strategy s
      * @since 0.22.4
      */
     public List<Num> criterionValues(AnalysisCriterion criterion) {
-        return criterionValuesFor(criterion, folds);
+        return TradingStatementExecutionResult.super.criterionValues(criterion);
     }
 
     /**

@@ -166,15 +166,7 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         }
 
         List<RankedTradingStatement> rankedStatements = rankTradingStatements(profile);
-        int effectiveLimit = Math.min(limit, rankedStatements.size());
-        List<TradingStatement> topStatements = new ArrayList<>(effectiveLimit);
-        Map<TradingStatement, Map<AnalysisCriterion, Num>> criterionScoresMap = new IdentityHashMap<>(effectiveLimit);
-        for (int i = 0; i < effectiveLimit; i++) {
-            RankedTradingStatement rankedStatement = rankedStatements.get(i);
-            topStatements.add(rankedStatement.statement());
-            criterionScoresMap.put(rankedStatement.statement(), rankedStatement.rawScores());
-        }
-        return attachCriterionScores(topStatements, criterionScoresMap);
+        return attachRankedCriterionScores(rankedStatements, limit);
     }
 
     /**
@@ -190,19 +182,29 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
         List<TradingStatement> result = new ArrayList<>(statements.size());
         for (TradingStatement statement : statements) {
             Map<AnalysisCriterion, Num> scores = criterionScoresMap.get(statement);
-            if (statement instanceof BaseTradingStatement && scores != null && !scores.isEmpty()) {
-                // Create a new BaseTradingStatement with the criterion scores attached
-                BaseTradingStatement baseStatement = (BaseTradingStatement) statement;
-                BaseTradingStatement statementWithScores = new BaseTradingStatement(baseStatement.strategy,
-                        baseStatement.tradingRecord, baseStatement.positionStatsReport, baseStatement.performanceReport,
-                        scores);
-                result.add(statementWithScores);
-            } else {
-                // If not a BaseTradingStatement or no scores, return as-is
-                result.add(statement);
-            }
+            result.add(attachCriterionScores(statement, scores));
         }
         return result;
+    }
+
+    private List<TradingStatement> attachRankedCriterionScores(List<RankedTradingStatement> rankedStatements,
+            int limit) {
+        int effectiveLimit = Math.min(limit, rankedStatements.size());
+        List<TradingStatement> statementsWithScores = new ArrayList<>(effectiveLimit);
+        for (int i = 0; i < effectiveLimit; i++) {
+            RankedTradingStatement rankedStatement = rankedStatements.get(i);
+            statementsWithScores.add(attachCriterionScores(rankedStatement.statement(), rankedStatement.rawScores()));
+        }
+        return statementsWithScores;
+    }
+
+    private TradingStatement attachCriterionScores(TradingStatement statement, Map<AnalysisCriterion, Num> scores) {
+        if (statement instanceof BaseTradingStatement && scores != null && !scores.isEmpty()) {
+            BaseTradingStatement baseStatement = (BaseTradingStatement) statement;
+            return new BaseTradingStatement(baseStatement.strategy, baseStatement.tradingRecord,
+                    baseStatement.positionStatsReport, baseStatement.performanceReport, scores);
+        }
+        return statement;
     }
 
     /**
