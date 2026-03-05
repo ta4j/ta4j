@@ -21,6 +21,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.ExpectancyCriterion;
 import org.ta4j.core.criteria.NumberOfLosingPositionsCriterion;
@@ -434,6 +435,25 @@ class BaseTradingRecordTest {
 
         assertTrue(currentPosition.isOpened());
         assertEquals(numFactory.numOf(0.3), currentPosition.getEntry().getCost());
+    }
+
+    @Test
+    void currentPositionViewPreservesModeledEntryFees() {
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        CostModel transactionCost = new FixedTransactionCostModel(1d);
+        Trade aggregatedEntry = Trade.fromFills(TradeType.BUY,
+                List.of(new TradeFill(0, numFactory.hundred(), numFactory.one()),
+                        new TradeFill(1, numFactory.numOf(110), numFactory.one())),
+                transactionCost);
+
+        record.operate(aggregatedEntry);
+
+        Position currentPosition = record.getCurrentPosition();
+        assertTrue(currentPosition.isOpened());
+        assertEquals(numFactory.one(), currentPosition.getEntry().getCost());
+        assertEquals(numFactory.numOf(105.5), currentPosition.getEntry().getNetPrice());
+        assertEquals(numFactory.one(), record.getTotalFees());
     }
 
     @Test

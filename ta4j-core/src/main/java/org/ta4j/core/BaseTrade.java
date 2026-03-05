@@ -7,6 +7,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.io.Serial;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import org.ta4j.core.analysis.cost.CostModel;
@@ -291,7 +292,7 @@ public class BaseTrade implements Trade {
 
     @Override
     public List<TradeFill> getFills() {
-        return fills;
+        return exportedFills();
     }
 
     /**
@@ -438,6 +439,61 @@ public class BaseTrade implements Trade {
         String firstCorrelationId = firstFill.correlationId();
         ExecutionSide resolvedSide = firstFill.side() == null ? executionSide(tradeType) : firstFill.side();
         return new FillMetadata(firstTime, resolvedSide, firstOrderId, firstCorrelationId);
+    }
+
+    /**
+     * Exports fills with trade-level modeled costs apportioned back onto the fills
+     * when no explicit per-fill fees were recorded.
+     */
+    private List<TradeFill> exportedFills() {
+        if (fills.isEmpty() || cost == null || cost.isNaN()) {
+            return fills;
+        }
+
+        CostModel effectiveCostModel = getCostModel();
+        if (effectiveCostModel instanceof RecordedTradeCostModel) {
+            return fills;
+        }
+
+        Num zero = fills.getFirst().price().getNumFactory().zero();
+        Num recordedFeeTotal = sumFillFees(zero, fills);
+        Num residualFee = cost.minus(recordedFeeTotal);
+        if (!residualFee.isPositive()) {
+            return fills;
+        }
+
+        Num totalWeight = totalFillWeight(zero);
+        if (totalWeight.isZero()) {
+            return fills;
+        }
+
+        Num remainingFee = residualFee;
+        List<TradeFill> adjustedFills = new ArrayList<>(fills.size());
+        for (int i = 0; i < fills.size(); i++) {
+            TradeFill fill = fills.get(i);
+            Num feeShare = i == fills.size() - 1 ? remainingFee
+                    : residualFee.multipliedBy(fillWeight(fill)).dividedBy(totalWeight);
+            remainingFee = remainingFee.minus(feeShare);
+            adjustedFills.add(copyWithFee(fill, fill.fee().plus(feeShare)));
+        }
+        return List.copyOf(adjustedFills);
+    }
+
+    private Num totalFillWeight(Num zero) {
+        Num totalWeight = zero;
+        for (TradeFill fill : fills) {
+            totalWeight = totalWeight.plus(fillWeight(fill));
+        }
+        return totalWeight;
+    }
+
+    private Num fillWeight(TradeFill fill) {
+        return fill.price().multipliedBy(fill.amount());
+    }
+
+    private TradeFill copyWithFee(TradeFill fill, Num fee) {
+        return new TradeFill(fill.index(), fill.time(), fill.price(), fill.amount(), fee, fill.side(), fill.orderId(),
+                fill.correlationId());
     }
 
     private static ExecutionSide executionSide(Trade.TradeType tradeType) {
