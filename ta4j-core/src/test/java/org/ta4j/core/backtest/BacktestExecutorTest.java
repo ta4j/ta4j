@@ -31,6 +31,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.num.NaN;
+import org.ta4j.core.walkforward.WalkForwardConfig;
 
 public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -352,6 +353,42 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertFalse(firstScore.isNaN());
         assertFalse(secondScore.isNaN());
         assertTrue(firstScore.isGreaterThanOrEqual(secondScore));
+    }
+
+    @Test
+    public void executeWalkForwardRunsStrategyAcrossFolds() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25)
+                .build();
+        Strategy strategy = new BaseStrategy(new FixedRule(4, 8, 12), new FixedRule(5, 9, 13));
+        WalkForwardConfig config = new WalkForwardConfig(4, 4, 4, 0, 0, 4, 2, List.of(1), 1, List.of(1), 3L);
+        BacktestExecutor executor = new BacktestExecutor(series, new ZeroCostModel(), new ZeroCostModel(),
+                new TradeOnCurrentCloseModel());
+
+        StrategyWalkForwardExecutionResult result = executor.executeWalkForward(strategy, numOf(1), Trade.TradeType.BUY,
+                config);
+
+        assertSame(series, result.barSeries());
+        assertFalse(result.folds().isEmpty());
+        assertEquals(result.folds().size(), result.runtimeReport().foldRuntimes().size());
+    }
+
+    @Test
+    public void executeWithWalkForwardReturnsCombinedBacktestAndWalkForwardOutputs() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25)
+                .build();
+        Strategy strategy = new BaseStrategy(new FixedRule(4, 8, 12), new FixedRule(5, 9, 13));
+        WalkForwardConfig config = new WalkForwardConfig(4, 4, 4, 0, 0, 4, 2, List.of(1), 1, List.of(1), 3L);
+        BacktestExecutor executor = new BacktestExecutor(series, new ZeroCostModel(), new ZeroCostModel(),
+                new TradeOnCurrentCloseModel());
+
+        BacktestExecutor.BacktestAndWalkForwardResult result = executor.executeWithWalkForward(strategy, numOf(1),
+                Trade.TradeType.BUY, config);
+
+        assertEquals(1, result.backtest().tradingStatements().size());
+        assertFalse(result.walkForward().folds().isEmpty());
+        assertSame(result.backtest().barSeries(), result.walkForward().barSeries());
     }
 
     private static final class NaNPenalizingCriterion implements AnalysisCriterion {
