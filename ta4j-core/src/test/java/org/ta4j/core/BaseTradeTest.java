@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -49,6 +50,26 @@ class BaseTradeTest {
     }
 
     @Test
+    void compatibilityAccessorsMirrorLegacyRecordContract() {
+        Instant time = Instant.parse("2025-01-01T00:00:00Z");
+        Num price = NUM_FACTORY.hundred();
+        Num amount = NUM_FACTORY.two();
+        Num fee = NUM_FACTORY.numOf(0.2);
+
+        BaseTrade trade = new BaseTrade(5, time, price, amount, fee, ExecutionSide.BUY, "order-5", "corr-5");
+
+        assertEquals(5, trade.getIndex());
+        assertEquals(time, trade.time());
+        assertNumEquals(price, trade.price());
+        assertNumEquals(amount, trade.amount());
+        assertNumEquals(fee, trade.fee());
+        assertEquals(ExecutionSide.BUY, trade.side());
+        assertEquals("order-5", trade.orderId());
+        assertEquals("corr-5", trade.correlationId());
+        assertTrue(trade.getCostModel().equals(RecordedTradeCostModel.INSTANCE));
+    }
+
+    @Test
     void liveConstructorDefaultsNullFeeToZero() {
         BaseTrade trade = new BaseTrade(1, Instant.EPOCH, NUM_FACTORY.hundred(), NUM_FACTORY.one(), null,
                 ExecutionSide.SELL, null, null);
@@ -56,6 +77,8 @@ class BaseTradeTest {
         assertNumEquals(NUM_FACTORY.zero(), trade.getCost());
         assertNumEquals(NUM_FACTORY.hundred(), trade.getNetPrice());
         assertNumEquals(NUM_FACTORY.zero(), trade.getFills().getFirst().fee());
+        assertNumEquals(NUM_FACTORY.zero(), trade.fee());
+        assertTrue(trade.fee().isZero());
     }
 
     @Test
@@ -72,6 +95,13 @@ class BaseTradeTest {
         assertEquals(1, reindexed.getFills().size());
         assertEquals(9, reindexed.getFills().getFirst().index());
         assertNumEquals(original.getCost(), reindexed.getCost());
+        assertEquals(original.time(), reindexed.time());
+        assertNumEquals(original.price(), reindexed.price());
+        assertNumEquals(original.amount(), reindexed.amount());
+        assertNumEquals(original.fee(), reindexed.fee());
+        assertEquals(original.side(), reindexed.side());
+        assertEquals(original.orderId(), reindexed.orderId());
+        assertEquals(original.correlationId(), reindexed.correlationId());
     }
 
     @Test
