@@ -421,6 +421,22 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    void currentPositionViewPreservesRecordedEntryFees() {
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+
+        record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+                numFactory.one(), numFactory.numOf(0.1), ExecutionSide.BUY, null, null));
+        record.recordFill(new BaseTrade(1, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
+                numFactory.one(), numFactory.numOf(0.2), ExecutionSide.BUY, null, null));
+
+        Position currentPosition = record.getCurrentPosition();
+
+        assertTrue(currentPosition.isOpened());
+        assertEquals(numFactory.numOf(0.3), currentPosition.getEntry().getCost());
+    }
+
+    @Test
     void aggregatesTotalFeesAcrossFills() {
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
