@@ -2,6 +2,10 @@
 
 ### Added
 - **Window-aware criterion evaluation API**: `AnalysisCriterion` can now analyze exactly the slice you care about, including specific bar ranges, date/time ranges, lookback bars, and lookback durations, via `AnalysisWindow`/`AnalysisContext` and `AnalysisCriterion#calculate(series, tradingRecord, window[, context])`, with strict/clamp history policies and configurable open-position handling.
+- **Price-structure aggregators**: Added `RangeBarAggregator`, `VolumeBarAggregator`, and `RenkoBarAggregator` for range-, volume-, and Renko-brick derived bar series with externally configurable thresholds and comprehensive fixture-driven regression coverage.
+
+### Fixed
+- **Release workflow drift guardrails**: Release maintainers now get near-immediate drift detection because `release-health.yml` runs on every `master` push and after `Publish Release to Maven Central` completes, and `publish-release.yml` now hard-fails if the pushed release tag does not resolve to the expected `releaseCommit` or is not reachable from `origin/<default_branch>`.
 
 ### Breaking
 - **Live fill API hard cut to one type**: `ExecutionFill` has been removed so you can use `TradeFill` everywhere, including `LiveTradingRecord.recordExecutionFill(TradeFill)`, instead of juggling two near-identical fill models.

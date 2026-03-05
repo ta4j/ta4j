@@ -687,6 +687,38 @@ jobs:
           # Push tag only after deploy succeeds to avoid publishing a tag that doesn't match deployed artifacts.
           git push origin "refs/tags/${RELEASE_VERSION}"
 
+      - name: Verify pushed tag reachability
+        if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+          RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${DEFAULT_BRANCH:-}" ]; then
+            echo "Default branch not provided by event." >&2
+            exit 1
+          fi
+
+          git fetch origin "${DEFAULT_BRANCH}" --tags --force
+
+          tag_commit=$(git rev-list -n 1 "refs/tags/${RELEASE_VERSION}" 2>/dev/null || true)
+          if [ -z "${tag_commit}" ]; then
+            echo "Tag ${RELEASE_VERSION} is not resolvable after push." >&2
+            exit 1
+          fi
+
+          if [ "${tag_commit}" != "${RELEASE_COMMIT}" ]; then
+            echo "Tag ${RELEASE_VERSION} points to ${tag_commit}, expected ${RELEASE_COMMIT}." >&2
+            exit 1
+          fi
+
+          if ! git merge-base --is-ancestor "${tag_commit}" "origin/${DEFAULT_BRANCH}"; then
+            echo "Tag ${RELEASE_VERSION} commit ${tag_commit} is not reachable from origin/${DEFAULT_BRANCH}." >&2
+            exit 1
+          fi
+
       # -----------------------
       # Summary
       # -----------------------
