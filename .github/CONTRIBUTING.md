@@ -18,8 +18,8 @@ Ideas: [Roadmap](https://github.com/ta4j/ta4j/wiki/Roadmap) · [Open issues](htt
 
 ## API lifecycle and @since policy
 
-- Tag every new class and new API surface with `@since <version>`.
-- This is required so we can track deprecations reliably with `DeprecationNotifier` and future automation work (see Linear `CF-16`).
-- New classes and APIs are considered volatile for the next 5 minor versions.
-- Example: something introduced in `0.22.4` is fair game for API-breaking changes, or even removal, through `0.27.4` (inclusive).
-- Treat these as experimental/beta during that window; avoid building production-critical processes on them unless you explicitly accept that risk.
+- Add `@since <version>` to every newly introduced class and API member.
+- This gives us a reliable introduction point for deprecation tracking and lifecycle automation.
+- New API is considered volatile for the next 5 minor releases after it is introduced.
+- Example: API added in `0.22.4` may still change incompatibly, or be removed, through `0.27.4` (inclusive).
+- Treat this window as experimental/beta and avoid production-critical dependency unless you explicitly accept migration risk.
