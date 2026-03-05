@@ -123,7 +123,7 @@ EOF
   expect_file_matches release/1.3.0.md "^## 1\\.3\\.0 \\([0-9]{4}-[0-9]{2}-[0-9]{2}\\)" "release notes should have correct header"
 
   expect_file_contains README.md "<version>1.3.0</version>" "README version should be updated"
-  expect_file_contains README.md "<version>1.4.1-SNAPSHOT</version>" "README snapshot version should increment minor and patch while preserving suffix"
+  expect_file_contains README.md "<version>1.3.1-SNAPSHOT</version>" "README snapshot version should be incremented and preserved"
 
   finish_test
   pass "test_basic_flow"
@@ -201,10 +201,10 @@ EOF
 }
 
 # -----------------------------------------------------------------------------
-# TEST 4: Snapshot Version Increment (minor + patch)
+# TEST 4: Snapshot Version Increment (major.minor.patch)
 # -----------------------------------------------------------------------------
-test_snapshot_minor_and_patch_increment() {
-  echo "Running test_snapshot_minor_and_patch_increment"
+test_snapshot_patch_increment() {
+  echo "Running test_snapshot_patch_increment"
 
   run_test
 
@@ -247,10 +247,10 @@ EOF
   scripts/prepare-release.sh 2.7.4 >/dev/null
 
   expect_file_contains README.md "<version>2.7.4</version>" "README stable version should be updated"
-  expect_file_contains README.md "<version>2.8.5-SNAPSHOT</version>" "README snapshot version should increment minor and patch while preserving suffix"
+  expect_file_contains README.md "<version>2.7.5-SNAPSHOT</version>" "README snapshot version should increment patch and preserve suffix"
 
   finish_test
-  pass "test_snapshot_minor_and_patch_increment"
+  pass "test_snapshot_patch_increment"
 }
 
 # -----------------------------------------------------------------------------
@@ -326,7 +326,7 @@ main() {
   test_basic_flow
   test_missing_unreleased
   test_empty_changelog
-  test_snapshot_minor_and_patch_increment
+  test_snapshot_patch_increment
   test_missing_readme_sentinel
   test_invalid_release_version
 

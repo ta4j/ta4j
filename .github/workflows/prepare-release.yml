@@ -11,7 +11,7 @@ on:
         description: "OPTIONAL: Release version (e.g. 0.20.0). Leave blank to auto-detect."
         required: false
       nextVersion:
-        description: "OPTIONAL: Next snapshot version (e.g. 0.21.1-SNAPSHOT). Leave blank to auto-generate."
+        description: "OPTIONAL: Next snapshot version (e.g. 0.20.1-SNAPSHOT). Leave blank to auto-generate."
         required: false
       dryRun:
         description: "Run prepare workflow in dry-run mode (no push or PR creation)."
@@ -310,7 +310,7 @@ jobs:
               MAJOR="${BASH_REMATCH[1]}"
               MINOR="${BASH_REMATCH[2]}"
               PATCH="${BASH_REMATCH[3]}"
-              NEXT="${MAJOR}.$((MINOR+1)).$((PATCH+1))-SNAPSHOT"
+              NEXT="${MAJOR}.${MINOR}.$((PATCH+1))-SNAPSHOT"
             else
               echo "Error: Unsupported release version format '${BASE}'. Expected major.minor.patch"
               exit 1
