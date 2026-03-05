@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.LinkedHashMap;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -202,6 +204,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
             int anchorIndex = nearestIndex(series, anchor.at());
             WindowBounds bounds = resolveWindowBounds(series, anchorIndex, anchor.toleranceBefore(),
                     anchor.toleranceAfter());
+            boolean holdoutAnchor = anchor.partition() == ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT;
             List<AnchorSnapshotMatch> anchorValidation = new ArrayList<>();
             List<AnchorSnapshotMatch> anchorHoldout = new ArrayList<>();
 
@@ -214,11 +217,14 @@ public final class ElliottWaveAnchorCalibrationHarness {
                 if (split == null) {
                     continue;
                 }
+                if (split.holdout() != holdoutAnchor) {
+                    continue;
+                }
 
-                int bestRank = bestMatchingRank(snapshot.topPredictions(), anchor.type());
+                int bestRank = bestMatchingRank(snapshot.topPredictions(), anchor);
                 AnchorSnapshotMatch match = new AnchorSnapshotMatch(anchor.id(), anchor.type(), split.foldId(),
                         split.holdout(), snapshot.decisionIndex(), bestRank);
-                if (split.holdout()) {
+                if (holdoutAnchor) {
                     anchorHoldout.add(match);
                     holdoutMatches.add(match);
                 } else {
@@ -316,7 +322,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
         }
     }
 
-    private static List<ChallengerAssessment> rankChallengers(CandidateEvaluation baseline,
+    static List<ChallengerAssessment> rankChallengers(CandidateEvaluation baseline,
             List<CandidateEvaluation> evaluations) {
         List<ChallengerAssessment> assessments = new ArrayList<>();
         for (CandidateEvaluation evaluation : evaluations) {
@@ -325,15 +331,22 @@ public final class ElliottWaveAnchorCalibrationHarness {
             }
             assessments.add(new ChallengerAssessment(evaluation, evaluatePromotionGates(baseline, evaluation)));
         }
-        assessments.sort(Comparator.comparing((ChallengerAssessment assessment) -> assessment.gates().passed())
-                .reversed()
-                .thenComparingDouble(assessment -> assessment.gates().holdoutTop3Improvement())
-                .reversed()
-                .thenComparingDouble(assessment -> assessment.gates().holdoutTop1Improvement())
-                .reversed()
-                .thenComparingInt(assessment -> assessment.gates().calibrationImprovedCount())
-                .reversed()
-                .thenComparingDouble(assessment -> -assessment.gates().maximumRelativeCalibrationDegradation()));
+        assessments.sort(Comparator
+                .comparing((ChallengerAssessment assessment) -> assessment.gates().passed(), Comparator.reverseOrder())
+                .thenComparing(Comparator
+                        .comparingDouble(
+                                (ChallengerAssessment assessment) -> assessment.gates().holdoutTop3Improvement())
+                        .reversed())
+                .thenComparing(Comparator
+                        .comparingDouble(
+                                (ChallengerAssessment assessment) -> assessment.gates().holdoutTop1Improvement())
+                        .reversed())
+                .thenComparing(Comparator
+                        .comparingInt(
+                                (ChallengerAssessment assessment) -> assessment.gates().calibrationImprovedCount())
+                        .reversed())
+                .thenComparingDouble(assessment -> assessment.gates().maximumRelativeCalibrationDegradation())
+                .thenComparing(assessment -> assessment.evaluation().profile().id()));
         return List.copyOf(assessments);
     }
 
@@ -406,12 +419,11 @@ public final class ElliottWaveAnchorCalibrationHarness {
     }
 
     private static int bestMatchingRank(
-            List<RankedPrediction<ElliottWaveAnalysisResult.BaseScenarioAssessment>> predictions,
-            AnchorType anchorType) {
+            List<RankedPrediction<ElliottWaveAnalysisResult.BaseScenarioAssessment>> predictions, Anchor anchor) {
         int bestRank = Integer.MAX_VALUE;
         for (RankedPrediction<ElliottWaveAnalysisResult.BaseScenarioAssessment> prediction : predictions) {
             ElliottWaveAnalysisResult.BaseScenarioAssessment assessment = prediction.payload();
-            if (assessment == null || !matchesAnchorType(assessment.scenario(), anchorType)) {
+            if (assessment == null || !matchesAnchor(assessment.scenario(), anchor)) {
                 continue;
             }
             bestRank = Math.min(bestRank, prediction.rank());
@@ -419,16 +431,18 @@ public final class ElliottWaveAnchorCalibrationHarness {
         return bestRank == Integer.MAX_VALUE ? 0 : bestRank;
     }
 
-    private static boolean matchesAnchorType(ElliottScenario scenario, AnchorType anchorType) {
+    private static boolean matchesAnchor(ElliottScenario scenario, Anchor anchor) {
         if (scenario == null || !scenario.hasKnownDirection()) {
             return false;
         }
         ElliottPhase phase = scenario.currentPhase();
-        return switch (anchorType) {
-        case TOP -> (scenario.isBullish() && phase == ElliottPhase.WAVE5)
-                || (scenario.isBearish() && phase == ElliottPhase.CORRECTIVE_A);
-        case BOTTOM -> (scenario.isBearish() && phase == ElliottPhase.CORRECTIVE_C)
-                || (scenario.isBullish() && (phase == ElliottPhase.WAVE1 || phase == ElliottPhase.WAVE2));
+        if (!anchor.expectedPhases().contains(phase)) {
+            return false;
+        }
+        return switch (phase) {
+        case WAVE1, WAVE2, WAVE3, WAVE4, WAVE5 -> scenario.isBullish();
+        case CORRECTIVE_A, CORRECTIVE_B, CORRECTIVE_C -> scenario.isBearish();
+        default -> false;
         };
     }
 
@@ -436,7 +450,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
         int nearest = series.getBeginIndex();
         long bestDistance = Long.MAX_VALUE;
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
-            long distance = Math.abs(series.getBar(i).getBeginTime().toEpochMilli() - target.toEpochMilli());
+            long distance = Math.abs(series.getBar(i).getEndTime().toEpochMilli() - target.toEpochMilli());
             if (distance < bestDistance) {
                 bestDistance = distance;
                 nearest = i;
@@ -447,18 +461,17 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
     private static WindowBounds resolveWindowBounds(BarSeries series, int anchorIndex, Duration before,
             Duration after) {
-        Instant anchorTime = series.getBar(anchorIndex).getBeginTime();
+        Instant anchorTime = series.getBar(anchorIndex).getEndTime();
         Instant startTime = anchorTime.minus(before);
         Instant endTime = anchorTime.plus(after);
 
         int startIndex = anchorIndex;
-        while (startIndex > series.getBeginIndex()
-                && !series.getBar(startIndex - 1).getBeginTime().isBefore(startTime)) {
+        while (startIndex > series.getBeginIndex() && !series.getBar(startIndex - 1).getEndTime().isBefore(startTime)) {
             startIndex--;
         }
 
         int endIndex = anchorIndex;
-        while (endIndex < series.getEndIndex() && !series.getBar(endIndex + 1).getBeginTime().isAfter(endTime)) {
+        while (endIndex < series.getEndIndex() && !series.getBar(endIndex + 1).getEndTime().isAfter(endTime)) {
             endIndex++;
         }
 
@@ -488,7 +501,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
         Duration toleranceAfter = Duration.between(resolvedAnchor.resolvedTime(), spec.windowEnd());
         String provenance = spec.source() + (spec.notes().isBlank() ? "" : " " + spec.notes());
         return new Anchor(spec.id(), mapAnchorType(spec.kind()), resolvedAnchor.resolvedTime(), toleranceBefore,
-                toleranceAfter, provenance);
+                toleranceAfter, spec.expectedPhases(), resolvedAnchor.partition(), provenance);
     }
 
     private static AnchorType mapAnchorType(ElliottWaveAnchorRegistry.AnchorKind kind) {
@@ -555,7 +568,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
      * One curated BTC anchor window with provenance and tolerance bounds.
      */
     record Anchor(String id, AnchorType type, Instant at, Duration toleranceBefore, Duration toleranceAfter,
-            String provenance) {
+            Set<ElliottPhase> expectedPhases, ElliottWaveAnchorRegistry.AnchorPartition partition, String provenance) {
 
         Anchor {
             Objects.requireNonNull(id, "id");
@@ -563,6 +576,12 @@ public final class ElliottWaveAnchorCalibrationHarness {
             Objects.requireNonNull(at, "at");
             Objects.requireNonNull(toleranceBefore, "toleranceBefore");
             Objects.requireNonNull(toleranceAfter, "toleranceAfter");
+            expectedPhases = expectedPhases == null || expectedPhases.isEmpty() ? EnumSet.noneOf(ElliottPhase.class)
+                    : EnumSet.copyOf(expectedPhases);
+            if (expectedPhases.isEmpty()) {
+                throw new IllegalArgumentException("expectedPhases must not be empty");
+            }
+            Objects.requireNonNull(partition, "partition");
             Objects.requireNonNull(provenance, "provenance");
         }
     }
