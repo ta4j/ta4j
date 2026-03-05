@@ -19,9 +19,9 @@ import org.ta4j.core.num.NumFactory;
  * This criterion is intentionally distinct from {@link CommissionsCriterion}.
  * The commissions criterion models costs using the configured transaction cost
  * model, while this criterion returns actual, recorded execution fees when a
- * {@link TradingRecord} exposes them. This keeps modeled cost analytics
- * stable while enabling fee-aware live tracking (partial fills, maker/taker
- * mixes, and exchange fee changes).
+ * {@link TradingRecord} exposes them. This keeps modeled cost analytics stable
+ * while enabling fee-aware live tracking (partial fills, maker/taker mixes, and
+ * exchange fee changes).
  * </p>
  *
  * <p>
