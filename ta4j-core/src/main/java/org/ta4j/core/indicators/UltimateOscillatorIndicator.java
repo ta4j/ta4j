@@ -34,7 +34,7 @@ import org.ta4j.core.num.Num;
  *
  * @see <a href="https://en.wikipedia.org/wiki/Ultimate_oscillator">Wikipedia:
  *      Ultimate Oscillator</a>
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
 
@@ -78,7 +78,7 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
      * Constructor using the canonical (7, 14, 28) periods.
      *
      * @param series the bar series
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public UltimateOscillatorIndicator(BarSeries series) {
         this(series, DEFAULT_SHORT_PERIOD, DEFAULT_MIDDLE_PERIOD, DEFAULT_LONG_PERIOD);
@@ -91,7 +91,7 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
      * @param shortPeriod  short look-back period
      * @param middlePeriod middle look-back period
      * @param longPeriod   long look-back period
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public UltimateOscillatorIndicator(BarSeries series, int shortPeriod, int middlePeriod, int longPeriod) {
         this(new HighPriceIndicator(series), new LowPriceIndicator(series), new ClosePriceIndicator(series),
@@ -104,7 +104,7 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
      * @param highPriceIndicator  high-price indicator
      * @param lowPriceIndicator   low-price indicator
      * @param closePriceIndicator close-price indicator
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public UltimateOscillatorIndicator(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
             Indicator<Num> closePriceIndicator) {
@@ -123,7 +123,7 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
      *                            shortPeriod)
      * @param longPeriod          long look-back period (must be greater than
      *                            middlePeriod)
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public UltimateOscillatorIndicator(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
             Indicator<Num> closePriceIndicator, int shortPeriod, int middlePeriod, int longPeriod) {
@@ -168,7 +168,8 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
         Num middleAverage = calculateAverage(index, middleBuyingPressureSumIndicator, middleTrueRangeSumIndicator);
         Num longAverage = calculateAverage(index, longBuyingPressureSumIndicator, longTrueRangeSumIndicator);
 
-        if (isInvalid(shortAverage) || isInvalid(middleAverage) || isInvalid(longAverage)) {
+        if (IndicatorUtils.isInvalid(shortAverage) || IndicatorUtils.isInvalid(middleAverage)
+                || IndicatorUtils.isInvalid(longAverage)) {
             return NaN;
         }
 
@@ -179,19 +180,23 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
         return weightedAverage.multipliedBy(hundred);
     }
 
+    /**
+     * Computes one buying-pressure/true-range average for a validated index.
+     *
+     * <p>
+     * Callers are expected to enforce unstable-bar boundaries before invoking this
+     * method.
+     * </p>
+     */
     private Num calculateAverage(int index, RunningTotalIndicator buyingPressureSumIndicator,
             RunningTotalIndicator trueRangeSumIndicator) {
-        if (index < getCountOfUnstableBars()) {
-            return NaN;
-        }
-
         Num totalTrueRange = trueRangeSumIndicator.getValue(index);
-        if (isInvalid(totalTrueRange) || totalTrueRange.isZero()) {
+        if (IndicatorUtils.isInvalid(totalTrueRange) || totalTrueRange.isZero()) {
             return NaN;
         }
 
         Num totalBuyingPressure = buyingPressureSumIndicator.getValue(index);
-        if (isInvalid(totalBuyingPressure)) {
+        if (IndicatorUtils.isInvalid(totalBuyingPressure)) {
             return NaN;
         }
 
@@ -227,10 +232,6 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
         }
     }
 
-    private static boolean isInvalid(Num value) {
-        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
-    }
-
     private static final class BuyingPressureIndicator extends CachedIndicator<Num> {
 
         private final Indicator<Num> lowPriceIndicator;
@@ -255,7 +256,8 @@ public class UltimateOscillatorIndicator extends CachedIndicator<Num> {
             Num close = closePriceIndicator.getValue(index);
             Num low = lowPriceIndicator.getValue(index);
             Num previousClose = closePriceIndicator.getValue(index - 1);
-            if (isInvalid(close) || isInvalid(low) || isInvalid(previousClose)) {
+            if (IndicatorUtils.isInvalid(close) || IndicatorUtils.isInvalid(low)
+                    || IndicatorUtils.isInvalid(previousClose)) {
                 return NaN;
             }
 

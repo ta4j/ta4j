@@ -5,7 +5,6 @@ package org.ta4j.core.rules;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
@@ -23,20 +22,10 @@ import static java.util.Objects.requireNonNull;
  *
  * <p>
  * This rule uses the {@code tradingRecord}.
+ *
+ * @since 0.22.3
  */
-public class AverageTrueRangeStopLossRule extends AbstractRule {
-
-    /**
-     * The ATR-based stop loss threshold.
-     */
-    private final transient Indicator<Num> stopLossThreshold;
-
-    /**
-     * The reference price indicator.
-     */
-    private final Indicator<Num> referencePrice;
-    private final ATRIndicator atrIndicator;
-    private final Number atrCoefficient;
+public class AverageTrueRangeStopLossRule extends BaseVolatilityStopLossRule {
 
     /**
      * Constructor with default close price as reference.
@@ -59,58 +48,23 @@ public class AverageTrueRangeStopLossRule extends AbstractRule {
      */
     public AverageTrueRangeStopLossRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient) {
-        this(referencePrice, new ATRIndicator(series, atrBarCount), atrCoefficient);
+        super(referencePrice, createStopLossThreshold(series, atrBarCount, atrCoefficient));
     }
 
     /**
-     * Constructor with custom reference price and ATR indicators.
+     * Constructor with custom reference price and ATR indicator.
      *
      * @param referencePrice the reference price indicator
      * @param atrIndicator   ATR indicator
      * @param atrCoefficient the coefficient to multiply ATR
+     * @since 0.22.3
      */
     public AverageTrueRangeStopLossRule(final Indicator<Num> referencePrice, final ATRIndicator atrIndicator,
             final Number atrCoefficient) {
-        this.referencePrice = requireNonNull(referencePrice);
-        this.atrIndicator = requireNonNull(atrIndicator);
-        this.atrCoefficient = requireNonNull(atrCoefficient);
-        this.stopLossThreshold = createStopLossThreshold();
+        super(referencePrice, BinaryOperationIndicator.product(requireNonNull(atrIndicator), atrCoefficient));
     }
 
-    /**
-     * Checks if the stop loss condition is satisfied.
-     *
-     * <p>
-     * For long positions: satisfied when the reference price is less than the
-     * current trade's entry price (net of fees) minus the ATR-based stop loss
-     * threshold. For short positions: satisfied when the reference price is greater
-     * than the current trade's entry price (net of fees) plus the ATR-based stop
-     * loss threshold.
-     *
-     * <p>
-     * This rule uses the {@code tradingRecord}.
-     *
-     * @param index         the current bar index
-     * @param tradingRecord the trading record
-     * @return true if the stop loss condition is satisfied, false otherwise
-     */
-    @Override
-    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        if (tradingRecord != null && !tradingRecord.isClosed()) {
-            Num entryPrice = tradingRecord.getCurrentPosition().getEntry().getNetPrice();
-            Num currentPrice = this.referencePrice.getValue(index);
-            Num threshold = this.stopLossThreshold.getValue(index);
-
-            if (tradingRecord.getCurrentPosition().getEntry().isBuy()) {
-                return currentPrice.isLessThan(entryPrice.minus(threshold));
-            } else {
-                return currentPrice.isGreaterThan(entryPrice.plus(threshold));
-            }
-        }
-        return false;
-    }
-
-    private Indicator<Num> createStopLossThreshold() {
-        return BinaryOperationIndicator.product(atrIndicator, atrCoefficient);
+    private static Indicator<Num> createStopLossThreshold(BarSeries series, int atrBarCount, Number atrCoefficient) {
+        return BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
     }
 }

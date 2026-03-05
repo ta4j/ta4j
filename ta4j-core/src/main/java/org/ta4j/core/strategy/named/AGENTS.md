@@ -1,22 +1,20 @@
-# AGENTS Instructions for `org.ta4j.core.strategy.named`
+# AGENTS instructions for `org.ta4j.core.strategy.named`
 
 ## Constructors
-- Provide a constructor accepting `(BarSeries series, String... params)` alongside any strongly-typed constructor.
-- Parse the parameters inside the varargs constructor and delegate to the main constructor to avoid duplicating rule-building logic.
-- Register every named strategy via `NamedStrategy.registerImplementation(YourClass.class)` (typically from a static initializer) so the serializer can resolve the simple class name that appears in JSON payloads.
-- Projects can opt-out of manual registration by calling `NamedStrategy.initializeRegistry()` (for Ta4j defaults) or `NamedStrategy.initializeRegistry("com.mycompany.strategies")` to scan additional packages once at startup.
 
-## Serialization format
-- Strategy names (and JSON labels) must serialize to `<SimpleName>_<param...>` (e.g., `MyStrategy_10_0.5`). The JSON `"type"` is always `NamedStrategy`.
-- Use `NamedStrategy.buildLabel(...)` when constructing the superclass to guarantee consistent token formatting.
-- The label must encode every piece of information required to reconstruct the instance (including unstable bar counts).
+- Provide a constructor accepting `(BarSeries series, String... params)` alongside strongly typed constructors.
+- Parse parameters in the varargs constructor, then delegate to the main constructor to avoid duplicated rule-building logic.
+- Validate inputs eagerly and throw informative `IllegalArgumentException`s for malformed parameters.
 
-## Permutation helpers
-- Prefer `NamedStrategy.buildAllStrategyPermutations(...)` when emitting preset combinations. Supply a `BiConsumer` failure handler if you need to log or skip invalid parameter sets.
+## Registry and serialization contract
 
-## Documentation and validation
-- Add `@since` tags to new public classes and constructors (use current version, omit -SNAPSHOT if applicable).
-- Validate inputs eagerly; surface informative `IllegalArgumentException`s for bad parameters before strategy execution begins.
+- Register each named strategy with `NamedStrategy.registerImplementation(YourClass.class)` so serializer lookups resolve simple names.
+- Projects may call `NamedStrategy.initializeRegistry()` (defaults) or `NamedStrategy.initializeRegistry("com.mycompany.strategies")` once at startup for package scanning.
+- Strategy labels/names must serialize as `<SimpleName>_<param...>`.
+- JSON `type` remains `NamedStrategy`; use `NamedStrategy.buildLabel(...)` to keep label formatting consistent.
+- Ensure the label encodes all reconstruction-critical data, including unstable-bar settings.
 
-## Cross-cutting repository guidance
-- Follow the root [`AGENTS.md`](../../../../../../../AGENTS.md) for changelog expectations and the Maven-driven formatting pipeline described there.
+## Permutations and docs
+
+- Prefer `NamedStrategy.buildAllStrategyPermutations(...)` when emitting parameter combinations.
+- Add `@since <current-version-without-SNAPSHOT>` to new public classes/constructors in this package.

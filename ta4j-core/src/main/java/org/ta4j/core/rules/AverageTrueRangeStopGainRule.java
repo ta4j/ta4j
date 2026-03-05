@@ -5,8 +5,6 @@ package org.ta4j.core.rules;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.Position;
-import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.ATRIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
@@ -23,19 +21,13 @@ import static java.util.Objects.requireNonNull;
  *
  * <p>
  * This rule uses the {@code tradingRecord}.
+ *
+ * @since 0.22.3
  */
-public class AverageTrueRangeStopGainRule extends AbstractRule {
+public class AverageTrueRangeStopGainRule extends BaseVolatilityStopGainRule {
 
     /**
-     * The ATR indicator pre-multiplied with the multiple to give the gain threshold
-     */
-    private final transient Indicator<Num> stopGainThreshold;
-    private final Indicator<Num> referencePrice;
-    private final ATRIndicator atrIndicator;
-    private final Number atrCoefficient;
-
-    /**
-     * Constructor defaulting the reference price to the close price
+     * Constructor defaulting the reference price to the close price.
      *
      * @param series         the bar series
      * @param atrBarCount    the number of bars used for ATR calculation
@@ -46,57 +38,31 @@ public class AverageTrueRangeStopGainRule extends AbstractRule {
     }
 
     /**
-     * Constructor with custom price indicator.
+     * Constructor.
      *
      * @param series         the bar series
-     * @param referencePrice the price indicator
      * @param atrBarCount    the number of bars used for ATR calculation
      * @param atrCoefficient the multiple of ATR to set the gain threshold
      */
     public AverageTrueRangeStopGainRule(final BarSeries series, final Indicator<Num> referencePrice,
             final int atrBarCount, final Number atrCoefficient) {
-        this(referencePrice, new ATRIndicator(series, atrBarCount), atrCoefficient);
+        super(referencePrice, createStopGainThreshold(series, atrBarCount, atrCoefficient));
     }
 
     /**
-     * Constructor with custom price and ATR indicators.
+     * Constructor with custom reference price and ATR indicator.
      *
-     * @param referencePrice the price indicator
+     * @param referencePrice the reference price indicator
      * @param atrIndicator   ATR indicator
      * @param atrCoefficient the multiple of ATR to set the gain threshold
+     * @since 0.22.3
      */
     public AverageTrueRangeStopGainRule(final Indicator<Num> referencePrice, final ATRIndicator atrIndicator,
             final Number atrCoefficient) {
-        this.referencePrice = requireNonNull(referencePrice);
-        this.atrIndicator = requireNonNull(atrIndicator);
-        this.atrCoefficient = requireNonNull(atrCoefficient);
-        this.stopGainThreshold = createStopGainThreshold();
+        super(referencePrice, BinaryOperationIndicator.product(requireNonNull(atrIndicator), atrCoefficient));
     }
 
-    /**
-     * This rule uses the {@code tradingRecord}.
-     */
-    @Override
-    public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        // No trading history
-        if (tradingRecord == null) {
-            return false;
-        }
-        // No position opened, no gain
-        Position currentPosition = tradingRecord.getCurrentPosition();
-        if (!currentPosition.isOpened()) {
-            return false;
-        }
-
-        Num entryPrice = currentPosition.getEntry().getNetPrice();
-        Num currentPrice = referencePrice.getValue(index);
-        Num gainThreshold = stopGainThreshold.getValue(index);
-
-        return currentPosition.getEntry().isBuy() ? currentPrice.isGreaterThanOrEqual(entryPrice.plus(gainThreshold))
-                : currentPrice.isLessThanOrEqual(entryPrice.minus(gainThreshold));
-    }
-
-    private Indicator<Num> createStopGainThreshold() {
-        return BinaryOperationIndicator.product(atrIndicator, atrCoefficient);
+    private static Indicator<Num> createStopGainThreshold(BarSeries series, int atrBarCount, Number atrCoefficient) {
+        return BinaryOperationIndicator.product(new ATRIndicator(series, atrBarCount), atrCoefficient);
     }
 }

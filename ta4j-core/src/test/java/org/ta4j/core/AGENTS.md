@@ -1,6 +1,9 @@
-# AGENTS instructions for org.ta4j.core tests
+# AGENTS instructions for `org.ta4j.core` tests
 
-- Prefer deterministic concurrency tests by coordinating threads with `CountDownLatch`/`AtomicBoolean` and bounded executor services. Always apply timeouts on `Future#get` to avoid hanging builds.
-- Use `MockBarBuilderFactory` when a test needs lightweight bar creation that bypasses time calculations.
-- Assert snapshot semantics on `getBarData()` by checking that returned lists are unmodifiable when testing concurrent series implementations.
-- Prefer `NumFactory` static methods over `numOf()` for common values: use `numFactory.zero()`, `numFactory.one()`, `numFactory.two()`, `numFactory.three()`, `numFactory.hundred()`, `numFactory.thousand()`, and `numFactory.minusOne()` instead of `numFactory.numOf(0)`, `numFactory.numOf(1)`, `numFactory.numOf(2)`, `numFactory.numOf(3)`, `numFactory.numOf(100)`, `numFactory.numOf(1000)`, and `numFactory.numOf(-1)` respectively.
+Follow `ta4j-core/src/test/java/AGENTS.md` for global test policy; this file adds package-specific guidance.
+
+- Prefer deterministic concurrency tests using `CountDownLatch` / `AtomicBoolean` and bounded executors.
+- Always apply timeouts on `Future#get` to prevent hanging builds.
+- Use `MockBarBuilderFactory` for lightweight bar creation when time semantics are not under test.
+- Assert snapshot semantics on `getBarData()` by verifying returned lists are unmodifiable.
+- Prefer `NumFactory` convenience methods (`zero()`, `one()`, `two()`, etc.) over `numOf(...)` for common constants.

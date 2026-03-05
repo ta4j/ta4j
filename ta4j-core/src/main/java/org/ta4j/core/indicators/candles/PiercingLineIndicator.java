@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.candles;
 
+import java.util.Objects;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.CachedIndicator;
@@ -19,6 +21,11 @@ import org.ta4j.core.num.Num;
  * </p>
  *
  * <p>
+ * Invalid ratio denominators (zero or NaN in first open, second open, or first
+ * close) are treated as non-pattern bars and return {@code false}.
+ * </p>
+ *
+ * <p>
  * Default thresholds:
  * </p>
  * <ul>
@@ -30,7 +37,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/p/piercingpattern.asp">Piercing
  *      Pattern</a>
- * @since 0.22.2
+ * @since 0.22.3
  */
 public class PiercingLineIndicator extends CachedIndicator<Boolean> {
 
@@ -62,12 +69,15 @@ public class PiercingLineIndicator extends CachedIndicator<Boolean> {
      */
     public PiercingLineIndicator(final BarSeries series, final Num bigBodyThresholdPercentage,
             final Num gapThresholdPercentage, final Num penetrationThresholdPercentage) {
-        super(series);
-        this.trendIndicator = new DownTrendIndicator(series);
-        this.realBodyIndicator = new RealBodyIndicator(series);
-        this.bigBodyThresholdPercentage = bigBodyThresholdPercentage;
-        this.gapThresholdPercentage = gapThresholdPercentage;
-        this.penetrationThresholdPercentage = penetrationThresholdPercentage;
+        super(Objects.requireNonNull(series, "series must not be null"));
+        this.trendIndicator = new DownTrendIndicator(getBarSeries());
+        this.realBodyIndicator = new RealBodyIndicator(getBarSeries());
+        this.bigBodyThresholdPercentage = Objects.requireNonNull(bigBodyThresholdPercentage,
+                "bigBodyThresholdPercentage must not be null");
+        this.gapThresholdPercentage = Objects.requireNonNull(gapThresholdPercentage,
+                "gapThresholdPercentage must not be null");
+        this.penetrationThresholdPercentage = Objects.requireNonNull(penetrationThresholdPercentage,
+                "penetrationThresholdPercentage must not be null");
     }
 
     @Override
@@ -78,22 +88,38 @@ public class PiercingLineIndicator extends CachedIndicator<Boolean> {
 
         final Bar firstBar = getBarSeries().getBar(index - 1);
         final Bar secondBar = getBarSeries().getBar(index);
-        final Num firstBodyRatio = realBodyIndicator.getValue(index - 1).abs().dividedBy(firstBar.getOpenPrice());
-        final Num secondBodyRatio = realBodyIndicator.getValue(index).abs().dividedBy(secondBar.getOpenPrice());
+        final Num firstOpenPrice = firstBar.getOpenPrice();
+        final Num secondOpenPrice = secondBar.getOpenPrice();
+        final Num firstClosePrice = firstBar.getClosePrice();
+        if (isInvalidDenominator(firstOpenPrice) || isInvalidDenominator(secondOpenPrice)
+                || isInvalidDenominator(firstClosePrice)) {
+            return false;
+        }
 
-        final Num firstBodySize = firstBar.getOpenPrice().minus(firstBar.getClosePrice());
-        final Num requiredClose = firstBar.getClosePrice()
-                .plus(firstBodySize.multipliedBy(penetrationThresholdPercentage));
-        final Num gapRatio = firstBar.getClosePrice()
-                .minus(secondBar.getOpenPrice())
-                .dividedBy(firstBar.getClosePrice());
+        final Num firstBodyRatio = realBodyIndicator.getValue(index - 1).abs().dividedBy(firstOpenPrice);
+        final Num secondBodyRatio = realBodyIndicator.getValue(index).abs().dividedBy(secondOpenPrice);
+
+        final Num firstBodySize = firstOpenPrice.minus(firstClosePrice);
+        final Num requiredClose = firstClosePrice.plus(firstBodySize.multipliedBy(penetrationThresholdPercentage));
+        final Num gapRatio = firstClosePrice.minus(secondOpenPrice).dividedBy(firstClosePrice);
+        if (isInvalidValue(firstBodyRatio) || isInvalidValue(secondBodyRatio) || isInvalidValue(requiredClose)
+                || isInvalidValue(gapRatio)) {
+            return false;
+        }
 
         return firstBar.isBearish() && firstBodyRatio.isGreaterThanOrEqual(bigBodyThresholdPercentage)
                 && secondBar.isBullish() && secondBodyRatio.isGreaterThanOrEqual(bigBodyThresholdPercentage)
-                && secondBar.getOpenPrice().isLessThan(firstBar.getClosePrice())
-                && gapRatio.isGreaterThanOrEqual(gapThresholdPercentage)
+                && secondOpenPrice.isLessThan(firstClosePrice) && gapRatio.isGreaterThanOrEqual(gapThresholdPercentage)
                 && secondBar.getClosePrice().isGreaterThan(requiredClose)
-                && secondBar.getClosePrice().isLessThan(firstBar.getOpenPrice()) && trendIndicator.getValue(index);
+                && secondBar.getClosePrice().isLessThan(firstOpenPrice) && trendIndicator.getValue(index);
+    }
+
+    private static boolean isInvalidDenominator(final Num value) {
+        return isInvalidValue(value) || value.isZero();
+    }
+
+    private static boolean isInvalidValue(final Num value) {
+        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
     }
 
     @Override

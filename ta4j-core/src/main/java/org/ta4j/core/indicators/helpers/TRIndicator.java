@@ -39,7 +39,7 @@ public class TRIndicator extends CachedIndicator<Num> {
      * @param highPriceIndicator  high-price indicator
      * @param lowPriceIndicator   low-price indicator
      * @param closePriceIndicator close-price indicator
-     * @since 0.22.2
+     * @since 0.22.3
      */
     public TRIndicator(Indicator<Num> highPriceIndicator, Indicator<Num> lowPriceIndicator,
             Indicator<Num> closePriceIndicator) {
@@ -51,6 +51,10 @@ public class TRIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
+        if (index < getCountOfUnstableBars()) {
+            return NaN;
+        }
+
         Num high = highPriceIndicator.getValue(index);
         Num low = lowPriceIndicator.getValue(index);
         if (Num.isNaNOrNull(high) || Num.isNaNOrNull(low)) {
@@ -71,9 +75,16 @@ public class TRIndicator extends CachedIndicator<Num> {
 
     }
 
+    /**
+     * Includes one additional bar only when the close input itself has a warm-up
+     * window, because true range reads {@code close(index - 1)}.
+     */
     @Override
     public int getCountOfUnstableBars() {
-        return Math.max(highPriceIndicator.getCountOfUnstableBars(),
-                Math.max(lowPriceIndicator.getCountOfUnstableBars(), closePriceIndicator.getCountOfUnstableBars()));
+        int highUnstable = highPriceIndicator.getCountOfUnstableBars();
+        int lowUnstable = lowPriceIndicator.getCountOfUnstableBars();
+        int closeUnstable = closePriceIndicator.getCountOfUnstableBars();
+        int previousCloseUnstable = closeUnstable == 0 ? 0 : closeUnstable + 1;
+        return Math.max(highUnstable, Math.max(lowUnstable, previousCloseUnstable));
     }
 }

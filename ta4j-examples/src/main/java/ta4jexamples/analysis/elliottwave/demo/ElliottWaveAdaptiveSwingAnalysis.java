@@ -1,0 +1,104 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package ta4jexamples.analysis.elliottwave.demo;
+
+import java.util.List;
+
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
+import org.ta4j.core.indicators.elliott.ElliottScenario;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
+import org.ta4j.core.indicators.elliott.confidence.ConfidenceFactorResult;
+import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
+import org.ta4j.core.indicators.elliott.swing.AdaptiveZigZagConfig;
+import org.ta4j.core.indicators.elliott.swing.CompositeSwingDetector;
+import org.ta4j.core.indicators.elliott.swing.MinMagnitudeSwingFilter;
+import org.ta4j.core.indicators.elliott.swing.SwingDetector;
+import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
+
+import ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo;
+import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
+
+/**
+ * Demonstrates adaptive ZigZag and composite swing detection for Elliott Wave
+ * analysis.
+ *
+ * @since 0.22.2
+ */
+public class ElliottWaveAdaptiveSwingAnalysis {
+
+    private static final Logger LOG = LogManager.getLogger(ElliottWaveAdaptiveSwingAnalysis.class);
+    private static final String DEFAULT_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
+
+    /**
+     * Runs the adaptive swing analysis demo.
+     *
+     * @param args command-line arguments (unused)
+     */
+    public static void main(String[] args) {
+        BarSeries series = loadSeries();
+        if (series == null || series.isEmpty()) {
+            LOG.error("No data available for adaptive swing analysis");
+            return;
+        }
+
+        ElliottDegree baseDegree = ElliottWaveIndicatorSuiteDemo.autoSelectDegree(series);
+
+        AdaptiveZigZagConfig config = new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 3);
+        SwingDetector detector = SwingDetectors.composite(CompositeSwingDetector.Policy.OR, SwingDetectors.fractal(5),
+                SwingDetectors.adaptiveZigZag(config));
+
+        ElliottWaveAnalysisRunner analyzer = ElliottWaveAnalysisRunner.builder()
+                .degree(baseDegree)
+                .higherDegrees(1)
+                .lowerDegrees(1)
+                .swingDetector(detector)
+                .swingFilter(new MinMagnitudeSwingFilter(0.2))
+                .build();
+
+        ElliottWaveAnalysisResult analysisResult = analyzer.analyze(series);
+        ElliottAnalysisResult result = analysisResult.analysisFor(baseDegree).orElseThrow().analysis();
+        LOG.info("Adaptive swing analysis complete. Trend bias: {}", result.trendBias().direction());
+        result.scenarios().base().ifPresent(base -> logScenario("BASE", base, result));
+        List<ElliottScenario> alternatives = result.scenarios().alternatives();
+        for (int i = 0; i < Math.min(2, alternatives.size()); i++) {
+            logScenario("ALT " + (i + 1), alternatives.get(i), result);
+        }
+    }
+
+    /**
+     * Logs scenario-level confidence breakdown details.
+     *
+     * @param label    scenario label
+     * @param scenario scenario to log
+     * @param result   analysis result containing factor breakdowns
+     */
+    private static void logScenario(String label, ElliottScenario scenario, ElliottAnalysisResult result) {
+        LOG.info("{} SCENARIO: {} ({}) - confidence={}%%", label, scenario.currentPhase(), scenario.type(),
+                String.format("%.1f", scenario.confidence().asPercentage()));
+        ElliottConfidenceBreakdown breakdown = result.breakdownFor(scenario).orElse(null);
+        if (breakdown == null) {
+            return;
+        }
+        for (ConfidenceFactorResult factor : breakdown.factors()) {
+            LOG.info("  Factor: {} score={} weight={} diagnostics={}", factor.name(),
+                    String.format("%.2f", factor.score().doubleValue()), String.format("%.2f", factor.weight()),
+                    factor.diagnostics());
+        }
+    }
+
+    /**
+     * Loads the ossified BTC-USD dataset from classpath resources.
+     *
+     * @return loaded bar series, or {@code null} if unavailable
+     */
+    private static BarSeries loadSeries() {
+        return OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveAdaptiveSwingAnalysis.class,
+                DEFAULT_OHLCV_RESOURCE, "BTC-USD_PT1D@Coinbase (ossified)", LOG);
+    }
+}

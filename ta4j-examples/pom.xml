@@ -3,7 +3,7 @@
     <parent>
         <groupId>org.ta4j</groupId>
         <artifactId>ta4j-parent</artifactId>
-        <version>0.22.2-SNAPSHOT</version>
+        <version>0.22.4-SNAPSHOT</version>
     </parent>
     <artifactId>ta4j-examples</artifactId>
 
@@ -108,10 +108,9 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <systemPropertyVariables>
-                        <!-- Keep chart tests non-interactive by default in local builds -->
+                        <!-- Keep chart tests non-interactive by default across all platforms -->
+                        <java.awt.headless>true</java.awt.headless>
                         <ta4j.chart.disableDisplay>true</ta4j.chart.disableDisplay>
-                        <!-- On macOS, avoid dock/focus activation for AWT test JVMs -->
-                        <apple.awt.UIElement>true</apple.awt.UIElement>
                     </systemPropertyVariables>
                 </configuration>
             </plugin>
@@ -119,9 +118,6 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.6.3</version>
-                <configuration>
-                    <mainClass>ta4jexamples.Quickstart</mainClass>
-                </configuration>
             </plugin>
         </plugins>
     </build>
