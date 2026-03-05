@@ -340,7 +340,7 @@ jobs:
             semver_rules=$(cat "$semver_rules_file")
             echo "audit:semver_rules_source=file"
           else
-            semver_rules="Decide release go/no-go from unreleased binary-impacting changes.\nIf go, choose bump: patch|minor. Major bumps are temporarily disabled.\nMINOR: backward-compatible, user-visible new features, and any breaking-change cases while major is disabled.\nPATCH: backward-compatible bug fixes or internal improvements.\nIf binary change count is 0 => should_release=false.\nIf binary change list empty or changelog-only => should_release=false.\nIf unsure between MINOR and PATCH, prefer PATCH.\nDo not output MAJOR.\nPre-1.0.0: breaking changes can be MINOR."
+            semver_rules="Decide release go/no-go from unreleased binary-impacting changes.\nIf go, choose bump: patch|minor.\nMINOR: backward-compatible, user-visible new features, and breaking-change cases.\nPATCH: backward-compatible bug fixes or internal improvements.\nIf binary change count is 0 => should_release=false.\nIf binary change list empty or changelog-only => should_release=false.\nIf unsure between MINOR and PATCH, prefer PATCH.\nPre-1.0.0: breaking changes can be MINOR."
             echo "audit:semver_rules_source=default"
           fi
 
@@ -362,7 +362,7 @@ jobs:
                 { role: "system", content: "You are a SemVer assistant. Reply with JSON only." },
                 { role: "user", content:
                   (
-                    "Decide release go/no-go. If go, choose bump: patch|minor. Major is temporarily disabled.\n" +
+                    "Decide release go/no-go. If go, choose bump: patch|minor.\n" +
                     "Current: " + $current_version + "\n" +
                     "Last tag: " + $last_tag + "\n" +
                     "Binary change count: " + $binary_count + "\n" +

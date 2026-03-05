@@ -1,12 +1,11 @@
 Decide release go/no-go from unreleased binary-impacting changes.
-If go, choose bump: patch|minor. Major bumps are temporarily disabled.
+If go, choose bump: patch|minor.
 
-MINOR: backward-compatible, user-visible new features, and any breaking-change cases while major is disabled.
+MINOR: backward-compatible, user-visible new features, and breaking-change cases.
 PATCH: backward-compatible bug fixes or internal improvements.
 
 If binary change count is 0 => should_release=false.
 If binary change list empty or changelog-only => should_release=false.
 If unsure between MINOR and PATCH, prefer PATCH.
-Do not output MAJOR.
 
 Pre-1.0.0: breaking changes can be MINOR.
