@@ -4,7 +4,7 @@
 package org.ta4j.core.criteria.commissions;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.LiveTradingRecord;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
@@ -20,7 +20,7 @@ import org.ta4j.core.num.NumFactory;
  * This criterion is intentionally distinct from {@link CommissionsCriterion}.
  * The commissions criterion models costs using the configured transaction cost
  * model, while this criterion returns actual, recorded execution fees when a
- * {@link LiveTradingRecord} is available. This keeps modeled cost analytics
+ * {@link BaseTradingRecord} is available. This keeps modeled cost analytics
  * stable while enabling fee-aware live tracking (partial fills, maker/taker
  * mixes, and exchange fee changes).
  * </p>
@@ -53,8 +53,8 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         NumFactory factory = series.numFactory();
-        if (tradingRecord instanceof LiveTradingRecord liveRecord) {
-            return toSeriesNum(factory, liveRecord.getTotalFees());
+        if (tradingRecord instanceof BaseTradingRecord baseRecord) {
+            return toSeriesNum(factory, baseRecord.getTotalFees());
         }
         CostModel model = tradingRecord.getTransactionCostModel();
         Num closedFees = tradingRecord.getPositions()

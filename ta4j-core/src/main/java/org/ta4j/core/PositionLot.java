@@ -27,21 +27,24 @@ public final class PositionLot implements Serializable {
     private final long entrySequence;
     private final Instant entryTime;
     private final Num entryPrice;
+    private final ExecutionSide side;
     private Num amount;
     private Num fee;
     private final String orderId;
     private final String correlationId;
 
-    PositionLot(int entryIndex, Instant entryTime, Num entryPrice, Num amount, Num fee, String orderId,
-            String correlationId, long entrySequence) {
+    PositionLot(int entryIndex, Instant entryTime, Num entryPrice, ExecutionSide side, Num amount, Num fee,
+            String orderId, String correlationId, long entrySequence) {
         Objects.requireNonNull(entryTime, "entryTime");
         Objects.requireNonNull(entryPrice, "entryPrice");
+        Objects.requireNonNull(side, "side");
         Objects.requireNonNull(amount, "amount");
         Objects.requireNonNull(fee, "fee");
         this.entryIndex = entryIndex;
         this.entrySequence = entrySequence;
         this.entryTime = entryTime;
         this.entryPrice = entryPrice;
+        this.side = side;
         this.amount = amount;
         this.fee = fee;
         this.orderId = orderId;
@@ -74,6 +77,14 @@ public final class PositionLot implements Serializable {
      */
     public Num entryPrice() {
         return entryPrice;
+    }
+
+    /**
+     * @return entry side
+     * @since 0.22.4
+     */
+    public ExecutionSide side() {
+        return side;
     }
 
     /**
@@ -115,6 +126,9 @@ public final class PositionLot implements Serializable {
     }
 
     PositionLot merge(PositionLot other) {
+        if (side != other.side) {
+            throw new IllegalArgumentException("cannot merge lots with different sides");
+        }
         Num totalAmount = amount.plus(other.amount);
         Num totalCost = entryPrice.multipliedBy(amount).plus(other.entryPrice.multipliedBy(other.amount));
         Num mergedPrice = totalCost.dividedBy(totalAmount);
@@ -122,12 +136,13 @@ public final class PositionLot implements Serializable {
         int mergedIndex = Math.min(entryIndex, other.entryIndex);
         Instant mergedTime = entryTime.isBefore(other.entryTime) ? entryTime : other.entryTime;
         long mergedSequence = Math.min(entrySequence, other.entrySequence);
-        return new PositionLot(mergedIndex, mergedTime, mergedPrice, totalAmount, mergedFee, null, null,
+        return new PositionLot(mergedIndex, mergedTime, mergedPrice, side, totalAmount, mergedFee, null, null,
                 mergedSequence);
     }
 
     PositionLot snapshot() {
-        return new PositionLot(entryIndex, entryTime, entryPrice, amount, fee, orderId, correlationId, entrySequence);
+        return new PositionLot(entryIndex, entryTime, entryPrice, side, amount, fee, orderId, correlationId,
+                entrySequence);
     }
 
     @Override
@@ -137,6 +152,7 @@ public final class PositionLot implements Serializable {
         json.addProperty("entrySequence", entrySequence);
         json.addProperty("entryTime", entryTime == null ? null : entryTime.toString());
         json.addProperty("entryPrice", entryPrice == null ? null : entryPrice.toString());
+        json.addProperty("side", side == null ? null : side.name());
         json.addProperty("amount", amount == null ? null : amount.toString());
         json.addProperty("fee", fee == null ? null : fee.toString());
         json.addProperty("orderId", orderId);

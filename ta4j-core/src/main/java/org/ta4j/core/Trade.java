@@ -12,7 +12,7 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**
- * Read-only trade contract shared by simulated trades and live executions.
+ * Read-only trade contract shared by simulated and live executions.
  *
  * <ul>
  * <li>the index (in the {@link BarSeries bar series}) on which the trade is
@@ -31,11 +31,6 @@ import org.ta4j.core.num.Num;
  * <p>
  * Use {@link BaseTrade} as the default implementation for both simulation and
  * live-recorded fills.
- * </p>
- *
- * <p>
- * {@link SimulatedTrade} and {@link LiveTrade} are retained as deprecated
- * compatibility wrappers over {@link BaseTrade}.
  * </p>
  *
  * @since 0.22.2

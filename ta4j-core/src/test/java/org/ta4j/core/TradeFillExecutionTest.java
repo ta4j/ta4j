@@ -21,7 +21,7 @@ class TradeFillExecutionTest {
         TradeFill fill = new TradeFill(5, Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, ExecutionSide.BUY,
                 "order-1", "corr-1");
 
-        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
         record.recordExecutionFill(fill);
 
@@ -35,7 +35,7 @@ class TradeFillExecutionTest {
         Num amount = DoubleNumFactory.getInstance().numOf(2);
         TradeFill fill = new TradeFill(7, Instant.parse("2025-01-01T00:00:00Z"), price, amount, ExecutionSide.BUY);
 
-        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
         record.recordExecutionFill(fill);
 
@@ -50,7 +50,7 @@ class TradeFillExecutionTest {
         Num amount = DoubleNumFactory.getInstance().numOf(1);
         TradeFill fillWithoutMetadata = new TradeFill(-1, null, price, amount, null, null, null, null);
 
-        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
         record.recordExecutionFill(fillWithoutMetadata);
         record.recordExecutionFill(fillWithoutMetadata);

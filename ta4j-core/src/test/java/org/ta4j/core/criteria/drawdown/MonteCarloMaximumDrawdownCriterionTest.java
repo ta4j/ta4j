@@ -13,7 +13,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.BaseTrade;
-import org.ta4j.core.LiveTradingRecord;
+import org.ta4j.core.BaseTradingRecord;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.EquityCurveMode;
@@ -253,8 +253,8 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         assertEquals(2, counter.get());
     }
 
-    private LiveTradingRecord buildLiveRecordWithOpenLot(org.ta4j.core.BarSeries series, boolean includeOpenLot) {
-        var record = new LiveTradingRecord(Trade.TradeType.BUY, ExecutionMatchPolicy.SPECIFIC_ID, new ZeroCostModel(),
+    private BaseTradingRecord buildLiveRecordWithOpenLot(org.ta4j.core.BarSeries series, boolean includeOpenLot) {
+        var record = new BaseTradingRecord(Trade.TradeType.BUY, ExecutionMatchPolicy.SPECIFIC_ID, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
         var numFactory = series.numFactory();
 

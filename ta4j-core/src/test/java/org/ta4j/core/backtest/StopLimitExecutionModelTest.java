@@ -15,7 +15,6 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
-import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradeFill;
@@ -66,19 +65,22 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         TradingRecord tradingRecord = new BarSeriesManager(series, model).run(strategy, strategy.getStartingType(),
                 numFactory.numOf(10));
 
-        assertEquals(1, tradingRecord.getTrades().size());
-        Trade entry = tradingRecord.getTrades().getFirst();
-        assertEquals(numFactory.numOf(10), entry.getAmount());
-        assertEquals(3, entry.getFills().size());
-        assertEquals(numFactory.numOf(3), entry.getFills().get(0).amount());
-        assertEquals(numFactory.numOf(4), entry.getFills().get(1).amount());
-        assertEquals(numFactory.numOf(3), entry.getFills().get(2).amount());
-        assertEquals(ExecutionSide.BUY, entry.getFills().get(0).side());
-        assertEquals(ExecutionSide.BUY, entry.getFills().get(1).side());
-        assertEquals(ExecutionSide.BUY, entry.getFills().get(2).side());
-        assertEquals(series.getBar(1).getEndTime(), entry.getFills().get(0).time());
-        assertEquals(series.getBar(2).getEndTime(), entry.getFills().get(1).time());
-        assertEquals(series.getBar(3).getEndTime(), entry.getFills().get(2).time());
+        assertEquals(3, tradingRecord.getTrades().size());
+        Trade firstEntryFillTrade = tradingRecord.getTrades().get(0);
+        Trade secondEntryFillTrade = tradingRecord.getTrades().get(1);
+        Trade thirdEntryFillTrade = tradingRecord.getTrades().get(2);
+        assertEquals(numFactory.numOf(3), firstEntryFillTrade.getAmount());
+        assertEquals(numFactory.numOf(4), secondEntryFillTrade.getAmount());
+        assertEquals(numFactory.numOf(3), thirdEntryFillTrade.getAmount());
+        assertEquals(1, firstEntryFillTrade.getFills().size());
+        assertEquals(1, secondEntryFillTrade.getFills().size());
+        assertEquals(1, thirdEntryFillTrade.getFills().size());
+        assertEquals(ExecutionSide.BUY, firstEntryFillTrade.getFills().getFirst().side());
+        assertEquals(ExecutionSide.BUY, secondEntryFillTrade.getFills().getFirst().side());
+        assertEquals(ExecutionSide.BUY, thirdEntryFillTrade.getFills().getFirst().side());
+        assertEquals(series.getBar(1).getEndTime(), firstEntryFillTrade.getFills().getFirst().time());
+        assertEquals(series.getBar(2).getEndTime(), secondEntryFillTrade.getFills().getFirst().time());
+        assertEquals(series.getBar(3).getEndTime(), thirdEntryFillTrade.getFills().getFirst().time());
         assertFalse(model.getPendingOrder(tradingRecord).isPresent());
         assertTrue(model.getRejectedOrders(tradingRecord).isEmpty());
     }
@@ -113,12 +115,15 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         TradingRecord tradingRecord = new BarSeriesManager(series, model).run(strategy, strategy.getStartingType(),
                 numFactory.numOf(5));
 
-        assertEquals(1, tradingRecord.getTrades().size());
-        Trade trade = tradingRecord.getTrades().getFirst();
-        assertEquals(numFactory.numOf(3), trade.getAmount());
-        assertEquals(2, trade.getFills().size());
-        TradeFill firstFill = trade.getFills().get(0);
-        TradeFill secondFill = trade.getFills().get(1);
+        assertEquals(2, tradingRecord.getTrades().size());
+        Trade firstEntryFillTrade = tradingRecord.getTrades().get(0);
+        Trade secondEntryFillTrade = tradingRecord.getTrades().get(1);
+        assertEquals(numFactory.numOf(2), firstEntryFillTrade.getAmount());
+        assertEquals(numFactory.one(), secondEntryFillTrade.getAmount());
+        assertEquals(1, firstEntryFillTrade.getFills().size());
+        assertEquals(1, secondEntryFillTrade.getFills().size());
+        TradeFill firstFill = firstEntryFillTrade.getFills().getFirst();
+        TradeFill secondFill = secondEntryFillTrade.getFills().getFirst();
         assertEquals(numFactory.numOf(2), firstFill.amount());
         assertEquals(numFactory.one(), secondFill.amount());
         assertEquals(ExecutionSide.BUY, firstFill.side());
@@ -233,7 +238,7 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
     }
 
     @Test
-    public void partialExitOrderExpiryDoesNotMutateTradingRecord() {
+    public void partialExitOrderExpiryCommitsFilledPortionWhenRecordIsExposedAsTradingRecord() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(20d).add();
         series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(2d).add();
@@ -246,20 +251,21 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         model.execute(1, tradingRecord, series, numFactory.one());
         model.onBar(1, tradingRecord, series);
 
-        assertEquals(1, tradingRecord.getTrades().size());
+        assertEquals(3, tradingRecord.getTrades().size());
         assertTrue(tradingRecord.getCurrentPosition().isOpened());
+        assertEquals(numFactory.numOf(4), tradingRecord.getCurrentPosition().getEntry().getAmount());
         assertEquals(1, model.getRejectedOrders(tradingRecord).size());
         StopLimitExecutionModel.RejectedOrder rejection = model.getRejectedOrders(tradingRecord).getFirst();
         assertEquals(numFactory.one(), rejection.filledAmount());
     }
 
     @Test
-    public void partialExitOrderExpiryCommitsFilledPortionForLiveTradingRecord() {
+    public void partialExitOrderExpiryCommitsFilledPortionForBaseTradingRecord() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(20d).add();
         series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(2d).add();
 
-        LiveTradingRecord tradingRecord = new LiveTradingRecord(Trade.TradeType.BUY, ExecutionMatchPolicy.FIFO,
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), null, null);
         tradingRecord.operate(0, numFactory.hundred(), numFactory.numOf(5));
         StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numOf(0.5), 1,

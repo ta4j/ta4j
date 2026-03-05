@@ -31,7 +31,7 @@ class SimulatedTradeTest {
         Num amount = NUM_FACTORY.two();
         Num fee = NUM_FACTORY.numOf(0.4);
 
-        SimulatedTrade trade = new SimulatedTrade(3, time, price, amount, fee, ExecutionSide.BUY, "order-1", "corr-1");
+        BaseTrade trade = new BaseTrade(3, time, price, amount, fee, ExecutionSide.BUY, "order-1", "corr-1");
 
         assertEquals(TradeType.BUY, trade.getType());
         assertEquals(3, trade.getIndex());
@@ -51,7 +51,7 @@ class SimulatedTradeTest {
 
     @Test
     void liveConstructorDefaultsNullFeeToZero() {
-        SimulatedTrade trade = new SimulatedTrade(1, Instant.EPOCH, NUM_FACTORY.hundred(), NUM_FACTORY.one(), null,
+        BaseTrade trade = new BaseTrade(1, Instant.EPOCH, NUM_FACTORY.hundred(), NUM_FACTORY.one(), null,
                 ExecutionSide.SELL, null, null);
 
         assertNumEquals(NUM_FACTORY.zero(), trade.getCost());
@@ -61,10 +61,10 @@ class SimulatedTradeTest {
 
     @Test
     void withIndexCopiesMetadataAndPreservesFee() {
-        SimulatedTrade original = new SimulatedTrade(2, Instant.parse("2025-01-01T00:00:00Z"), NUM_FACTORY.hundred(),
+        BaseTrade original = new BaseTrade(2, Instant.parse("2025-01-01T00:00:00Z"), NUM_FACTORY.hundred(),
                 NUM_FACTORY.two(), NUM_FACTORY.numOf(0.2), ExecutionSide.BUY, "order-2", "corr-2");
 
-        SimulatedTrade reindexed = original.withIndex(9);
+        BaseTrade reindexed = original.withIndex(9);
 
         assertEquals(9, reindexed.getIndex());
         assertEquals(original.getTime(), reindexed.getTime());
@@ -77,7 +77,7 @@ class SimulatedTradeTest {
 
     @Test
     void withIndexAfterSerializationPreservesRecordedFee() throws Exception {
-        SimulatedTrade original = new SimulatedTrade(4, Instant.parse("2025-01-01T00:00:00Z"), NUM_FACTORY.hundred(),
+        BaseTrade original = new BaseTrade(4, Instant.parse("2025-01-01T00:00:00Z"), NUM_FACTORY.hundred(),
                 NUM_FACTORY.one(), NUM_FACTORY.numOf(0.3), ExecutionSide.BUY, "order-4", "corr-4");
         byte[] serialized;
         try (ByteArrayOutputStream output = new ByteArrayOutputStream();
@@ -87,13 +87,13 @@ class SimulatedTradeTest {
             serialized = output.toByteArray();
         }
 
-        SimulatedTrade restored;
+        BaseTrade restored;
         try (ByteArrayInputStream input = new ByteArrayInputStream(serialized);
                 ObjectInputStream objectInput = new ObjectInputStream(input)) {
-            restored = (SimulatedTrade) objectInput.readObject();
+            restored = (BaseTrade) objectInput.readObject();
         }
 
-        SimulatedTrade reindexed = restored.withIndex(10);
+        BaseTrade reindexed = restored.withIndex(10);
 
         assertEquals(10, reindexed.getIndex());
         assertNumEquals(NUM_FACTORY.numOf(0.3), reindexed.getCost());
@@ -102,8 +102,8 @@ class SimulatedTradeTest {
 
     @Test
     void withIndexRejectsNegativeIndex() {
-        SimulatedTrade trade = new SimulatedTrade(0, Instant.EPOCH, NUM_FACTORY.hundred(), NUM_FACTORY.one(),
-                NUM_FACTORY.zero(), ExecutionSide.BUY, null, null);
+        BaseTrade trade = new BaseTrade(0, Instant.EPOCH, NUM_FACTORY.hundred(), NUM_FACTORY.one(), NUM_FACTORY.zero(),
+                ExecutionSide.BUY, null, null);
 
         assertThrows(IllegalArgumentException.class, () -> trade.withIndex(-1));
     }

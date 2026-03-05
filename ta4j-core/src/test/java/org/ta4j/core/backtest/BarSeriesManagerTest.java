@@ -14,10 +14,11 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTrade;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.ExecutionMatchPolicy;
-import org.ta4j.core.LiveTradingRecord;
+import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
@@ -96,11 +97,11 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         List<Position> positions = manager.run(strategy).getPositions();
         assertEquals(2, positions.size());
 
-        assertEquals(Trade.buyAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Trade.sellAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(buyAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(sellAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
 
-        assertEquals(Trade.buyAt(6, seriesForRun.getBar(6).getClosePrice(), numOf(1)), positions.get(1).getEntry());
-        assertEquals(Trade.sellAt(7, seriesForRun.getBar(7).getClosePrice(), numOf(1)), positions.get(1).getExit());
+        assertEquals(buyAt(6, seriesForRun.getBar(6).getClosePrice(), numOf(1)), positions.get(1).getEntry());
+        assertEquals(sellAt(7, seriesForRun.getBar(7).getClosePrice(), numOf(1)), positions.get(1).getExit());
     }
 
     @Test
@@ -109,8 +110,8 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         List<Position> positions = manager.run(aStrategy, 0, 3).getPositions();
         assertEquals(1, positions.size());
 
-        assertEquals(Trade.buyAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Trade.sellAt(3, seriesForRun.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(buyAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(sellAt(3, seriesForRun.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getExit());
     }
 
     @Test
@@ -119,8 +120,8 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         List<Position> positions = manager.run(aStrategy, TradeType.SELL, 0, 3).getPositions();
         assertEquals(1, positions.size());
 
-        assertEquals(Trade.sellAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Trade.buyAt(3, seriesForRun.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(sellAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(buyAt(3, seriesForRun.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getExit());
     }
 
     @Test
@@ -130,8 +131,8 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         List<Position> positions = manager.run(shortStrategy).getPositions();
         assertEquals(2, positions.size());
-        assertEquals(Trade.sellAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Trade.buyAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(sellAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(buyAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
     }
 
     @Test
@@ -140,8 +141,8 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         List<Position> positions = manager.run(shortStrategy, 0, 3).getPositions();
         assertEquals(1, positions.size());
 
-        assertEquals(Trade.sellAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Trade.buyAt(3, seriesForRun.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(sellAt(1, seriesForRun.getBar(1).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(buyAt(3, seriesForRun.getBar(3).getClosePrice(), numOf(1)), positions.get(0).getExit());
     }
 
     @Test
@@ -157,8 +158,8 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         tradingRecord = manager.run(strategy, 0, 4);
         positions = tradingRecord.getPositions();
         assertEquals(1, positions.size());
-        assertEquals(Trade.buyAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Trade.sellAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(buyAt(2, seriesForRun.getBar(2).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(sellAt(4, seriesForRun.getBar(4).getClosePrice(), numOf(1)), positions.get(0).getExit());
 
         // no trades happened within [4-4]
         tradingRecord = manager.run(strategy, 4, 4);
@@ -169,8 +170,8 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         tradingRecord = manager.run(strategy, 5, 8);
         positions = tradingRecord.getPositions();
         assertEquals(1, positions.size());
-        assertEquals(Trade.buyAt(6, seriesForRun.getBar(6).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Trade.sellAt(7, seriesForRun.getBar(7).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(buyAt(6, seriesForRun.getBar(6).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(sellAt(7, seriesForRun.getBar(7).getClosePrice(), numOf(1)), positions.get(0).getExit());
     }
 
     @Test
@@ -207,8 +208,8 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         // 1 entry and 1 exit happened within [4-6]
         positions = manager.run(aStrategy, 4, 6).getPositions();
         assertEquals(1, positions.size());
-        assertEquals(Trade.buyAt(5, series.getBar(5).getClosePrice(), numOf(1)), positions.get(0).getEntry());
-        assertEquals(Trade.sellAt(6, series.getBar(6).getClosePrice(), numOf(1)), positions.get(0).getExit());
+        assertEquals(buyAt(5, series.getBar(5).getClosePrice(), numOf(1)), positions.get(0).getEntry());
+        assertEquals(sellAt(6, series.getBar(6).getClosePrice(), numOf(1)), positions.get(0).getExit());
 
         // 1 entry happened within [7-7]
         tradingRecord = manager.run(aStrategy, 7, 7);
@@ -288,8 +289,8 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
-    public void runWithProvidedLiveTradingRecordSupportsLiveBacktestStack() {
-        LiveTradingRecord liveRecord = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+    public void runWithProvidedBaseTradingRecordSupportsLiveBacktestStack() {
+        BaseTradingRecord liveRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), 0, 8);
 
         TradingRecord returnedRecord = manager.run(strategy, liveRecord, numOf(1), 0, 8);
@@ -309,14 +310,14 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         BarSeriesManager.TradingRecordFactory recordFactory = (tradeType, startIndex, endIndex, txCost, holdCost) -> {
             capturedBounds[0] = startIndex;
             capturedBounds[1] = endIndex;
-            return new LiveTradingRecord(tradeType, ExecutionMatchPolicy.FIFO, txCost, holdCost, startIndex, endIndex);
+            return new BaseTradingRecord(tradeType, ExecutionMatchPolicy.FIFO, txCost, holdCost, startIndex, endIndex);
         };
         BarSeriesManager localManager = new BarSeriesManager(seriesForRun, new ZeroCostModel(), new ZeroCostModel(),
                 new TradeOnCurrentCloseModel(), recordFactory);
 
         TradingRecord record = localManager.run(strategy, TradeType.BUY, numOf(1), -10, 99);
 
-        assertTrue(record instanceof LiveTradingRecord);
+        assertTrue(record instanceof BaseTradingRecord);
         assertEquals(seriesForRun.getBeginIndex(), capturedBounds[0]);
         assertEquals(seriesForRun.getEndIndex(), capturedBounds[1]);
     }
@@ -352,5 +353,13 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         assertEquals(TradeType.SELL, entry.getType());
         assertEquals(HUNDRED, entry.getAmount());
+    }
+
+    private Trade buyAt(int index, Num price, Num amount) {
+        return new BaseTrade(index, Instant.EPOCH, price, amount, numFactory.zero(), ExecutionSide.BUY, null, null);
+    }
+
+    private Trade sellAt(int index, Num price, Num amount) {
+        return new BaseTrade(index, Instant.EPOCH, price, amount, numFactory.zero(), ExecutionSide.SELL, null, null);
     }
 }

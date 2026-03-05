@@ -4,7 +4,6 @@
 package org.ta4j.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -14,7 +13,6 @@ import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
-@SuppressWarnings("removal")
 class LiveTradeTest {
 
     private static final DoubleNumFactory NUM_FACTORY = DoubleNumFactory.getInstance();
@@ -26,9 +24,9 @@ class LiveTradeTest {
         Num amount = NUM_FACTORY.two();
         Num fee = NUM_FACTORY.numOf(0.2);
 
-        LiveTrade trade = new LiveTrade(5, time, price, amount, fee, ExecutionSide.BUY, "order-5", "corr-5");
+        BaseTrade trade = new BaseTrade(5, time, price, amount, fee, ExecutionSide.BUY, "order-5", "corr-5");
 
-        assertEquals(5, trade.index());
+        assertEquals(5, trade.getIndex());
         assertEquals(time, trade.time());
         assertNumEquals(price, trade.price());
         assertNumEquals(amount, trade.amount());
@@ -36,18 +34,18 @@ class LiveTradeTest {
         assertEquals(ExecutionSide.BUY, trade.side());
         assertEquals("order-5", trade.orderId());
         assertEquals("corr-5", trade.correlationId());
-        assertTrue(trade.hasFee());
+        assertTrue(!trade.fee().isZero());
         assertTrue(trade.getCostModel().equals(RecordedTradeCostModel.INSTANCE));
     }
 
     @Test
     void withIndexReturnsLiveTradeAndPreservesFields() {
-        LiveTrade original = new LiveTrade(1, Instant.parse("2025-01-01T00:00:00Z"), NUM_FACTORY.hundred(),
+        BaseTrade original = new BaseTrade(1, Instant.parse("2025-01-01T00:00:00Z"), NUM_FACTORY.hundred(),
                 NUM_FACTORY.one(), NUM_FACTORY.numOf(0.1), ExecutionSide.SELL, "order-1", "corr-1");
 
-        LiveTrade reindexed = original.withIndex(9);
+        BaseTrade reindexed = original.withIndex(9);
 
-        assertEquals(9, reindexed.index());
+        assertEquals(9, reindexed.getIndex());
         assertEquals(original.time(), reindexed.time());
         assertNumEquals(original.price(), reindexed.price());
         assertNumEquals(original.amount(), reindexed.amount());
@@ -59,10 +57,10 @@ class LiveTradeTest {
 
     @Test
     void nullFeeDefaultsToZero() {
-        LiveTrade trade = new LiveTrade(0, Instant.EPOCH, NUM_FACTORY.hundred(), NUM_FACTORY.one(), null,
+        BaseTrade trade = new BaseTrade(0, Instant.EPOCH, NUM_FACTORY.hundred(), NUM_FACTORY.one(), null,
                 ExecutionSide.BUY, null, null);
 
         assertNumEquals(NUM_FACTORY.zero(), trade.fee());
-        assertFalse(trade.hasFee());
+        assertTrue(trade.fee().isZero());
     }
 }

@@ -15,22 +15,20 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
-import static org.ta4j.core.num.NaN.NaN;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.num.DoubleNumFactory;
 
 public class TradingRecordTest {
 
+    private final DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
     private TradingRecord emptyRecord, openedRecord, closedRecord;
 
     @Before
     public void setUp() {
         emptyRecord = new BaseTradingRecord();
-        openedRecord = new BaseTradingRecord(Trade.buyAt(0, NaN, NaN), Trade.sellAt(3, NaN, NaN),
-                Trade.buyAt(7, NaN, NaN));
-        closedRecord = new BaseTradingRecord(Trade.buyAt(0, NaN, NaN), Trade.sellAt(3, NaN, NaN),
-                Trade.buyAt(7, NaN, NaN), Trade.sellAt(8, NaN, NaN));
+        openedRecord = new BaseTradingRecord(buyAt(0), sellAt(3), buyAt(7));
+        closedRecord = new BaseTradingRecord(buyAt(0), sellAt(3), buyAt(7), sellAt(8));
     }
 
     @Test
@@ -44,35 +42,35 @@ public class TradingRecordTest {
     public void operate() {
         TradingRecord record = new BaseTradingRecord();
 
-        record.operate(1);
+        record.operate(1, numFactory.hundred(), numFactory.one());
         assertTrue(record.getCurrentPosition().isOpened());
         assertEquals(0, record.getPositionCount());
         assertNull(record.getLastPosition());
-        assertEquals(Trade.buyAt(1, NaN, NaN), record.getLastTrade());
-        assertEquals(Trade.buyAt(1, NaN, NaN), record.getLastTrade(Trade.TradeType.BUY));
+        assertEquals(buyAt(1), record.getLastTrade());
+        assertEquals(buyAt(1), record.getLastTrade(Trade.TradeType.BUY));
         assertNull(record.getLastTrade(Trade.TradeType.SELL));
-        assertEquals(Trade.buyAt(1, NaN, NaN), record.getLastEntry());
+        assertEquals(buyAt(1), record.getLastEntry());
         assertNull(record.getLastExit());
 
-        record.operate(3);
+        record.operate(3, numFactory.numOf(110), numFactory.one());
         assertTrue(record.getCurrentPosition().isNew());
         assertEquals(1, record.getPositionCount());
-        assertEquals(new Position(Trade.buyAt(1, NaN, NaN), Trade.sellAt(3, NaN, NaN)), record.getLastPosition());
-        assertEquals(Trade.sellAt(3, NaN, NaN), record.getLastTrade());
-        assertEquals(Trade.buyAt(1, NaN, NaN), record.getLastTrade(Trade.TradeType.BUY));
-        assertEquals(Trade.sellAt(3, NaN, NaN), record.getLastTrade(Trade.TradeType.SELL));
-        assertEquals(Trade.buyAt(1, NaN, NaN), record.getLastEntry());
-        assertEquals(Trade.sellAt(3, NaN, NaN), record.getLastExit());
+        assertEquals(new Position(buyAt(1), sellAt(3)), record.getLastPosition());
+        assertEquals(sellAt(3), record.getLastTrade());
+        assertEquals(buyAt(1), record.getLastTrade(Trade.TradeType.BUY));
+        assertEquals(sellAt(3), record.getLastTrade(Trade.TradeType.SELL));
+        assertEquals(buyAt(1), record.getLastEntry());
+        assertEquals(sellAt(3), record.getLastExit());
 
-        record.operate(5);
+        record.operate(5, numFactory.hundred(), numFactory.one());
         assertTrue(record.getCurrentPosition().isOpened());
         assertEquals(1, record.getPositionCount());
-        assertEquals(new Position(Trade.buyAt(1, NaN, NaN), Trade.sellAt(3, NaN, NaN)), record.getLastPosition());
-        assertEquals(Trade.buyAt(5, NaN, NaN), record.getLastTrade());
-        assertEquals(Trade.buyAt(5, NaN, NaN), record.getLastTrade(Trade.TradeType.BUY));
-        assertEquals(Trade.sellAt(3, NaN, NaN), record.getLastTrade(Trade.TradeType.SELL));
-        assertEquals(Trade.buyAt(5, NaN, NaN), record.getLastEntry());
-        assertEquals(Trade.sellAt(3, NaN, NaN), record.getLastExit());
+        assertEquals(new Position(buyAt(1), sellAt(3)), record.getLastPosition());
+        assertEquals(buyAt(5), record.getLastTrade());
+        assertEquals(buyAt(5), record.getLastTrade(Trade.TradeType.BUY));
+        assertEquals(sellAt(3), record.getLastTrade(Trade.TradeType.SELL));
+        assertEquals(buyAt(5), record.getLastEntry());
+        assertEquals(sellAt(3), record.getLastExit());
     }
 
     @Test
@@ -92,41 +90,41 @@ public class TradingRecordTest {
     @Test
     public void getLastPosition() {
         assertNull(emptyRecord.getLastPosition());
-        assertEquals(new Position(Trade.buyAt(0, NaN, NaN), Trade.sellAt(3, NaN, NaN)), openedRecord.getLastPosition());
-        assertEquals(new Position(Trade.buyAt(7, NaN, NaN), Trade.sellAt(8, NaN, NaN)), closedRecord.getLastPosition());
+        assertEquals(new Position(buyAt(0), sellAt(3)), openedRecord.getLastPosition());
+        assertEquals(new Position(buyAt(7), sellAt(8)), closedRecord.getLastPosition());
     }
 
     @Test
     public void getLastTrade() {
         // Last trade
         assertNull(emptyRecord.getLastTrade());
-        assertEquals(Trade.buyAt(7, NaN, NaN), openedRecord.getLastTrade());
-        assertEquals(Trade.sellAt(8, NaN, NaN), closedRecord.getLastTrade());
+        assertEquals(buyAt(7), openedRecord.getLastTrade());
+        assertEquals(sellAt(8), closedRecord.getLastTrade());
         // Last BUY trade
         assertNull(emptyRecord.getLastTrade(Trade.TradeType.BUY));
-        assertEquals(Trade.buyAt(7, NaN, NaN), openedRecord.getLastTrade(Trade.TradeType.BUY));
-        assertEquals(Trade.buyAt(7, NaN, NaN), closedRecord.getLastTrade(Trade.TradeType.BUY));
+        assertEquals(buyAt(7), openedRecord.getLastTrade(Trade.TradeType.BUY));
+        assertEquals(buyAt(7), closedRecord.getLastTrade(Trade.TradeType.BUY));
         // Last SELL trade
         assertNull(emptyRecord.getLastTrade(Trade.TradeType.SELL));
-        assertEquals(Trade.sellAt(3, NaN, NaN), openedRecord.getLastTrade(Trade.TradeType.SELL));
-        assertEquals(Trade.sellAt(8, NaN, NaN), closedRecord.getLastTrade(Trade.TradeType.SELL));
+        assertEquals(sellAt(3), openedRecord.getLastTrade(Trade.TradeType.SELL));
+        assertEquals(sellAt(8), closedRecord.getLastTrade(Trade.TradeType.SELL));
     }
 
     @Test
     public void getLastEntryExit() {
         // Last entry
         assertNull(emptyRecord.getLastEntry());
-        assertEquals(Trade.buyAt(7, NaN, NaN), openedRecord.getLastEntry());
-        assertEquals(Trade.buyAt(7, NaN, NaN), closedRecord.getLastEntry());
+        assertEquals(buyAt(7), openedRecord.getLastEntry());
+        assertEquals(buyAt(7), closedRecord.getLastEntry());
         // Last exit
         assertNull(emptyRecord.getLastExit());
-        assertEquals(Trade.sellAt(3, NaN, NaN), openedRecord.getLastExit());
-        assertEquals(Trade.sellAt(8, NaN, NaN), closedRecord.getLastExit());
+        assertEquals(sellAt(3), openedRecord.getLastExit());
+        assertEquals(sellAt(8), closedRecord.getLastExit());
     }
 
     @Test
     public void createRecordFromSingleClosedPosition() {
-        var position = new Position(Trade.buyAt(1, NaN, NaN), Trade.sellAt(4, NaN, NaN));
+        var position = new Position(buyAt(1), sellAt(4));
 
         var record = new BaseTradingRecord(position);
 
@@ -134,26 +132,26 @@ public class TradingRecordTest {
         assertTrue(record.isClosed());
         assertEquals(1, record.getPositionCount());
         assertEquals(position, record.getLastPosition());
-        assertEquals(Trade.sellAt(4, NaN, NaN), record.getLastTrade());
+        assertEquals(sellAt(4), record.getLastTrade());
     }
 
     @Test
     public void createRecordFromSingleOpenPosition() {
         var position = new Position(Trade.TradeType.BUY);
-        position.operate(2, NaN, NaN);
+        position.operate(2, numFactory.hundred(), numFactory.one());
 
         var record = new BaseTradingRecord(position);
 
         assertTrue(record.getCurrentPosition().isOpened());
         assertEquals(0, record.getPositionCount());
         assertNull(record.getLastPosition());
-        assertEquals(Trade.buyAt(2, NaN, NaN), record.getLastEntry());
+        assertEquals(buyAt(2), record.getLastEntry());
     }
 
     @Test
     public void createRecordFromMultiplePositions() {
-        var first = new Position(Trade.buyAt(1, NaN, NaN), Trade.sellAt(3, NaN, NaN));
-        var second = new Position(Trade.sellAt(5, NaN, NaN), Trade.buyAt(7, NaN, NaN));
+        var first = new Position(buyAt(1), sellAt(3));
+        var second = new Position(sellAt(5), buyAt(7));
 
         var record = new BaseTradingRecord(List.of(first, second));
 
@@ -165,7 +163,7 @@ public class TradingRecordTest {
 
     @Test
     public void createRecordFromDeserializedPositionDefaultsCostModels() throws Exception {
-        var position = new Position(Trade.buyAt(1, NaN, NaN), Trade.sellAt(2, NaN, NaN));
+        var position = new Position(buyAt(1), sellAt(2));
 
         var deserialized = roundTrip(position);
 
@@ -180,12 +178,13 @@ public class TradingRecordTest {
     }
 
     @Test
-    public void baseTradingRecordRejectsLiveTrades() {
-        var numFactory = DoubleNumFactory.getInstance();
+    public void baseTradingRecordAcceptsTradeBasedFills() {
         var trade = new BaseTrade(0, Instant.EPOCH, numFactory.hundred(), numFactory.one(), null, ExecutionSide.BUY,
                 null, null);
 
-        assertThrows(IllegalArgumentException.class, () -> new BaseTradingRecord(trade));
+        var record = new BaseTradingRecord(trade);
+        assertEquals(1, record.getTrades().size());
+        assertEquals(trade.getType(), record.getLastTrade().getType());
     }
 
     @Test
@@ -205,13 +204,24 @@ public class TradingRecordTest {
 
         record.operate(aggregatedEntry);
         assertFalse(record.isClosed());
-        assertEquals(2, record.getLastTrade().getFills().size());
+        assertEquals(2, record.getTrades().size());
+        assertEquals(1, record.getLastTrade().getFills().size());
 
         record.operate(aggregatedExit);
         assertTrue(record.isClosed());
-        assertEquals(1, record.getPositionCount());
-        assertEquals(2, record.getLastPosition().getEntry().getFills().size());
-        assertEquals(1, record.getLastPosition().getExit().getFills().size());
+        assertEquals(2, record.getPositionCount());
+        int totalEntryFills = record.getPositions()
+                .stream()
+                .map(Position::getEntry)
+                .mapToInt(trade -> trade.getFills().size())
+                .sum();
+        int totalExitFills = record.getPositions()
+                .stream()
+                .map(Position::getExit)
+                .mapToInt(trade -> trade.getFills().size())
+                .sum();
+        assertEquals(2, totalEntryFills);
+        assertEquals(2, totalExitFills);
     }
 
     @Test
@@ -315,6 +325,16 @@ public class TradingRecordTest {
 
     private TradingRecord newTradingRecordUsingDefaultOperateImplementation() {
         return new DefaultOperateTradingRecordImpl();
+    }
+
+    private Trade buyAt(int index) {
+        return new BaseTrade(index, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.zero(),
+                ExecutionSide.BUY, null, null);
+    }
+
+    private Trade sellAt(int index) {
+        return new BaseTrade(index, Instant.EPOCH, numFactory.numOf(110), numFactory.one(), numFactory.zero(),
+                ExecutionSide.SELL, null, null);
     }
 
     private interface DefaultOperateTradingRecord extends TradingRecord {

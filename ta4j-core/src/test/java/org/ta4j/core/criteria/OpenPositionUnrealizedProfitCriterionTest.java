@@ -14,7 +14,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
-import org.ta4j.core.LiveTradingRecord;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -28,9 +28,9 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
     }
 
     @Test
-    public void calculateForLiveTradingRecordLong() {
+    public void calculateForBaseTradingRecordLong() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
-        var record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+        var record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
         record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
@@ -47,9 +47,9 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
     }
 
     @Test
-    public void calculateForLiveTradingRecordShort() {
+    public void calculateForBaseTradingRecordShort() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 90).build();
-        var record = new LiveTradingRecord(TradeType.SELL, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+        var record = new BaseTradingRecord(TradeType.SELL, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
         record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),

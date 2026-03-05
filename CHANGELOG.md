@@ -21,13 +21,13 @@
 - **Walk-forward fold metadata stability**: Fixed fold-value reporting so criterion maps and fold views remain stable and deterministic when consumers rely on fold order for downstream comparisons.
 
 ### Breaking
-- **Live fill API hard cut to one type**: `ExecutionFill` has been removed so you can use `TradeFill` everywhere, including `LiveTradingRecord.recordExecutionFill(TradeFill)`, instead of juggling two near-identical fill models.
+- **Live fill API hard cut to one type**: `ExecutionFill` has been removed so you can use `TradeFill` everywhere, including `BaseTradingRecord.recordExecutionFill(TradeFill)`, instead of juggling two near-identical fill models.
+- **Unified trade/record stack hard cut**: `LiveTrade`, `SimulatedTrade`, and `LiveTradingRecord` have been removed so live and backtest flows now run on the same core types: `BaseTrade` and `BaseTradingRecord`.
 
 ### Changed
-- **Trade-first fill flow across live and backtests**: You can now drive `LiveTradingRecord#recordFill(...)` and `PositionBook#recordEntry(...)`/`recordExit(...)` with the `Trade` interface directly, while internals still materialize `BaseTrade` as needed, so calling code stays implementation-agnostic and live/backtest behavior stays aligned.
-- **Compatibility wrappers are still available while you migrate**: `SimulatedTrade` and `LiveTrade` remain usable for now, but they are deprecated and marked for removal in favor of `BaseTrade`.
-- **Bring your own trading record in backtests**: `BarSeriesManager` can now run directly against a caller-provided `TradingRecord` (`run(strategy, tradingRecord[, amount, start, end])`) and can also be configured with a default `TradingRecordFactory`. In practice, that means you can keep classic `BaseTradingRecord` runs, switch to `LiveTradingRecord` for parity-heavy simulations, or wire custom record implementations without changing existing `run(...)` calls.
-- **Stop-limit/live parity hardening**: `StopLimitExecutionModel` now expires stale pending orders before accepting new signals (so old orders cannot block fresh ones), commits partial expiry fills on `LiveTradingRecord` exit flows for better real-world fill progression, and keeps rejection metadata for the unfilled remainder.
+- **Trade-first fill flow across live and backtests**: You can now drive `BaseTradingRecord#recordFill(...)` and `PositionBook#recordEntry(...)`/`recordExit(...)` with the `Trade` interface directly, while internals still materialize `BaseTrade` as needed, so calling code stays implementation-agnostic and live/backtest behavior stays aligned.
+- **Bring your own trading record in backtests**: `BarSeriesManager` can now run directly against a caller-provided `TradingRecord` (`run(strategy, tradingRecord[, amount, start, end])`) and can also be configured with a default `TradingRecordFactory`, so you can keep standard `BaseTradingRecord` runs or wire custom record implementations without changing existing `run(...)` calls.
+- **Stop-limit/live parity hardening**: `StopLimitExecutionModel` now expires stale pending orders before accepting new signals (so old orders cannot block fresh ones), commits partial expiry fills on unified `BaseTradingRecord` exit flows for better real-world fill progression, and keeps rejection metadata for the unfilled remainder.
 
 ## 0.22.3 (2026-03-01)
 

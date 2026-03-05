@@ -21,10 +21,11 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
 /**
- * Maintains open lots and closed positions for live trading.
+ * Maintains open lots and closed positions for trading records.
  *
  * @since 0.22.2
  */
@@ -99,8 +100,8 @@ public final class PositionBook implements Serializable, PositionLedger {
         if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
             normalizeAvgCostLots();
         }
-        PositionLot lot = new PositionLot(index, timeOf(trade), trade.getPricePerAsset(), trade.getAmount(),
-                feeOf(trade), trade.getOrderId(), trade.getCorrelationId(), sequence);
+        PositionLot lot = new PositionLot(index, timeOf(trade), trade.getPricePerAsset(), sideOf(trade.getType()),
+                trade.getAmount(), feeOf(trade), trade.getOrderId(), trade.getCorrelationId(), sequence);
         if (matchPolicy == ExecutionMatchPolicy.AVG_COST && !openLots.isEmpty()) {
             PositionLot merged = openLots.removeFirst().merge(lot);
             openLots.addFirst(merged);
@@ -200,9 +201,8 @@ public final class PositionBook implements Serializable, PositionLedger {
         List<OpenPosition> positions = new ArrayList<>();
         for (PositionLot lot : openLots) {
             Num totalCost = lot.entryPrice().multipliedBy(lot.amount());
-            positions.add(new OpenPosition(startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL,
-                    lot.amount(), lot.entryPrice(), totalCost, lot.fee(), lot.entryTime(), lot.entryTime(),
-                    List.of(lot.snapshot())));
+            positions.add(new OpenPosition(lot.side(), lot.amount(), lot.entryPrice(), totalCost, lot.fee(),
+                    lot.entryTime(), lot.entryTime(), List.of(lot.snapshot())));
         }
         return positions;
     }
@@ -220,6 +220,7 @@ public final class PositionBook implements Serializable, PositionLedger {
         Num totalFees = null;
         Instant earliest = null;
         Instant latest = null;
+        ExecutionSide side = null;
         for (PositionLot lot : openLots) {
             Num lotCost = lot.entryPrice().multipliedBy(lot.amount());
             totalAmount = totalAmount == null ? lot.amount() : totalAmount.plus(lot.amount());
@@ -227,11 +228,15 @@ public final class PositionBook implements Serializable, PositionLedger {
             totalFees = totalFees == null ? lot.fee() : totalFees.plus(lot.fee());
             earliest = earliest == null || lot.entryTime().isBefore(earliest) ? lot.entryTime() : earliest;
             latest = latest == null || lot.entryTime().isAfter(latest) ? lot.entryTime() : latest;
+            if (side == null) {
+                side = lot.side();
+            } else if (side != lot.side()) {
+                throw new IllegalStateException("Open lots contain mixed entry sides");
+            }
         }
         Num average = totalAmount == null || totalAmount.isZero() ? totalCost : totalCost.dividedBy(totalAmount);
-        return new OpenPosition(startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL, totalAmount,
-                average, totalCost, totalFees == null ? totalCost.getNumFactory().zero() : totalFees, earliest, latest,
-                snapshotLots());
+        return new OpenPosition(side, totalAmount, average, totalCost,
+                totalFees == null ? totalCost.getNumFactory().zero() : totalFees, earliest, latest, snapshotLots());
     }
 
     /**
@@ -292,21 +297,41 @@ public final class PositionBook implements Serializable, PositionLedger {
         } else {
             lot.reduce(closeAmount, entryFeePortion);
         }
-        ExecutionSide entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
-        Trade entry = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount, entryFeePortion,
-                entrySide, lot.orderId(), lot.correlationId());
-        Trade exit = new BaseTrade(index, timeOf(trade), trade.getPricePerAsset(), closeAmount, exitFeePortion,
+        TradeFill entryFill = new TradeFill(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount,
+                entryFeePortion, lot.side(), lot.orderId(), lot.correlationId());
+        TradeFill exitFill = new TradeFill(index, timeOf(trade), trade.getPricePerAsset(), closeAmount, exitFeePortion,
                 sideOf(trade.getType()), trade.getOrderId(), trade.getCorrelationId());
+        Trade entry;
+        if (entryFill.price().isNaN()) {
+            entry = new BaseTrade(lot.entryIndex(), lot.side().toTradeType(), entryFill.price(), closeAmount,
+                    transactionCostModel);
+        } else {
+            entry = Trade.fromFills(lot.side().toTradeType(), List.of(entryFill), transactionCostModel);
+        }
+        Trade exit;
+        if (exitFill.price().isNaN()) {
+            exit = new BaseTrade(index, trade.getType(), exitFill.price(), closeAmount, transactionCostModel);
+        } else {
+            exit = Trade.fromFills(trade.getType(), List.of(exitFill), transactionCostModel);
+        }
         return new ClosedPosition(new Position(entry, exit, transactionCostModel, holdingCostModel),
                 lot.entrySequence(), exitSequence);
     }
 
     private static Num feeOf(Trade trade) {
         Num cost = trade.getCost();
-        if (cost != null) {
+        if (cost != null && !cost.isNaN()) {
             return cost;
         }
-        return trade.getPricePerAsset().getNumFactory().zero();
+        Num price = trade.getPricePerAsset();
+        if (price != null && !price.isNaN()) {
+            return price.getNumFactory().zero();
+        }
+        Num amount = trade.getAmount();
+        if (amount != null && !amount.isNaN()) {
+            return amount.getNumFactory().zero();
+        }
+        return DoubleNumFactory.getInstance().zero();
     }
 
     private static Instant timeOf(Trade trade) {

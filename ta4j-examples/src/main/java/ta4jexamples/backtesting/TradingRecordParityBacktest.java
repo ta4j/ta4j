@@ -12,8 +12,8 @@ import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
-import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
@@ -41,21 +41,21 @@ public class TradingRecordParityBacktest {
         TradingRecord baseRecord = manager.run(strategy, TradeType.BUY, series.numFactory().one(), 0,
                 series.getEndIndex());
 
-        LiveTradingRecord providedLiveRecord = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+        BaseTradingRecord providedRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), 0, series.getEndIndex());
-        TradingRecord explicitLiveRun = manager.run(strategy, providedLiveRecord, series.numFactory().one(), 0,
+        TradingRecord explicitRun = manager.run(strategy, providedRecord, series.numFactory().one(), 0,
                 series.getEndIndex());
-        assertEquivalent(baseRecord, explicitLiveRun, "provided LiveTradingRecord");
+        assertEquivalent(baseRecord, explicitRun, "provided BaseTradingRecord");
 
-        BarSeriesManager liveDefaultManager = new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(),
+        BarSeriesManager configuredManager = new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(),
                 new TradeOnCurrentCloseModel(),
-                (tradeType, startIndex, endIndex, txCost, holdCost) -> new LiveTradingRecord(tradeType,
+                (tradeType, startIndex, endIndex, txCost, holdCost) -> new BaseTradingRecord(tradeType,
                         ExecutionMatchPolicy.FIFO, txCost, holdCost, startIndex, endIndex));
-        TradingRecord defaultLiveRun = liveDefaultManager.run(strategy, TradeType.BUY, series.numFactory().one(), 0,
+        TradingRecord defaultRun = configuredManager.run(strategy, TradeType.BUY, series.numFactory().one(), 0,
                 series.getEndIndex());
-        assertEquivalent(baseRecord, defaultLiveRun, "factory-configured LiveTradingRecord");
+        assertEquivalent(baseRecord, defaultRun, "factory-configured BaseTradingRecord");
 
-        LOG.info("Parity checks passed for both live-backed backtest flows.");
+        LOG.info("Parity checks passed for both unified-record backtest flows.");
     }
 
     private static BarSeries createSeries() {

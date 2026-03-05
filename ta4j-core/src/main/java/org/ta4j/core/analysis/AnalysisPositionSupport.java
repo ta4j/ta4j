@@ -6,9 +6,7 @@ package org.ta4j.core.analysis;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-
 import org.ta4j.core.*;
-import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 
@@ -58,8 +56,8 @@ final class AnalysisPositionSupport {
     }
 
     static List<Position> openPositions(TradingRecord record, int finalIndex) {
-        if (record instanceof LiveTradingRecord liveRecord) {
-            return openPositionsFromLiveRecord(liveRecord, finalIndex);
+        if (record instanceof PositionLedger ledger) {
+            return openPositionsFromLedger(record, ledger, finalIndex);
         }
         List<Position> positions = new ArrayList<>();
         Position current = record.getCurrentPosition();
@@ -70,19 +68,25 @@ final class AnalysisPositionSupport {
         return positions;
     }
 
-    private static List<Position> openPositionsFromLiveRecord(LiveTradingRecord record, int finalIndex) {
+    private static List<Position> openPositionsFromLedger(TradingRecord record, PositionLedger ledger, int finalIndex) {
         List<Position> positions = new ArrayList<>();
         CostModel transactionCostModel = defaultCostModel(record.getTransactionCostModel());
         CostModel holdingCostModel = defaultCostModel(record.getHoldingCostModel());
-        TradeType startingType = record.getStartingType();
-        ExecutionSide entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
-        for (OpenPosition openPosition : record.getOpenPositions()) {
+        for (OpenPosition openPosition : ledger.getOpenPositions()) {
             for (PositionLot lot : openPosition.lots()) {
                 if (lot.entryIndex() > finalIndex) {
                     continue;
                 }
-                BaseTrade entryTrade = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
-                        lot.fee(), entrySide, lot.orderId(), lot.correlationId());
+                TradeFill entryFill = new TradeFill(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
+                        lot.fee(), lot.side(), lot.orderId(), lot.correlationId());
+                Trade entryTrade;
+                if (entryFill.price().isNaN()) {
+                    entryTrade = lot.side() == ExecutionSide.BUY
+                            ? Trade.buyAt(lot.entryIndex(), entryFill.price(), lot.amount(), transactionCostModel)
+                            : Trade.sellAt(lot.entryIndex(), entryFill.price(), lot.amount(), transactionCostModel);
+                } else {
+                    entryTrade = Trade.fromFills(lot.side().toTradeType(), List.of(entryFill), transactionCostModel);
+                }
                 Position position = new Position(entryTrade, transactionCostModel, holdingCostModel);
                 positions.add(position);
             }

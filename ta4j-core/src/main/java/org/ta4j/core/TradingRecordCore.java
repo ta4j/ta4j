@@ -14,10 +14,8 @@ import org.ta4j.core.num.Num;
  * Internal core that produces unified state snapshots for trading records.
  *
  * <p>
- * This class is intentionally package-private and supplier-based so both
- * {@link BaseTradingRecord} and {@link LiveTradingRecord} can expose
- * diagnostics from one shared implementation while their write paths are being
- * consolidated.
+ * This class is intentionally package-private and supplier-based so trading
+ * record facades can expose diagnostics from one shared implementation.
  * </p>
  */
 final class TradingRecordCore {

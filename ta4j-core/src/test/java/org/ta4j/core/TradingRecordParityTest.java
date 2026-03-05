@@ -26,7 +26,7 @@ class TradingRecordParityTest {
     @Test
     void operateParityLongFlow() {
         BaseTradingRecord baseRecord = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
-        LiveTradingRecord liveRecord = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+        BaseTradingRecord liveRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), null, null);
 
         applySyntheticTrade(baseRecord, 1, numOf(100), numOf(2));
@@ -43,7 +43,7 @@ class TradingRecordParityTest {
     @Test
     void operateParityShortFlow() {
         BaseTradingRecord baseRecord = new BaseTradingRecord(TradeType.SELL, new ZeroCostModel(), new ZeroCostModel());
-        LiveTradingRecord liveRecord = new LiveTradingRecord(TradeType.SELL, ExecutionMatchPolicy.FIFO,
+        BaseTradingRecord liveRecord = new BaseTradingRecord(TradeType.SELL, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), null, null);
 
         applySyntheticTrade(baseRecord, 2, numOf(100), numOf(1));
@@ -68,7 +68,7 @@ class TradingRecordParityTest {
         BarSeriesManager manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
 
         TradingRecord baseRecord = manager.run(strategy, TradeType.BUY, numFactory.one(), 0, series.getEndIndex());
-        LiveTradingRecord liveRecord = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+        BaseTradingRecord liveRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), 0, series.getEndIndex());
         TradingRecord liveBacktestRecord = manager.run(strategy, liveRecord, numFactory.one(), 0, series.getEndIndex());
 
@@ -78,7 +78,7 @@ class TradingRecordParityTest {
     @Test
     void partialFillWeightedAverageParity() {
         BaseTradingRecord baseRecord = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
-        LiveTradingRecord liveRecord = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+        BaseTradingRecord liveRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), null, null);
         Trade aggregatedEntry = Trade.fromFills(TradeType.BUY,
                 List.of(new TradeFill(1, numOf(100), numOf(1)), new TradeFill(2, numOf(101), numOf(2))));
@@ -100,7 +100,7 @@ class TradingRecordParityTest {
     @Test
     void debugSnapshotParityForClosedFlow() {
         BaseTradingRecord baseRecord = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
-        LiveTradingRecord liveRecord = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+        BaseTradingRecord liveRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), null, null);
 
         applySyntheticTrade(baseRecord, 1, numOf(100), numOf(2));
@@ -119,7 +119,7 @@ class TradingRecordParityTest {
     @Test
     void debugSnapshotCapturesOpenExposureParity() {
         BaseTradingRecord baseRecord = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
-        LiveTradingRecord liveRecord = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+        BaseTradingRecord liveRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), null, null);
 
         applySyntheticTrade(baseRecord, 1, numOf(100), numOf(2));

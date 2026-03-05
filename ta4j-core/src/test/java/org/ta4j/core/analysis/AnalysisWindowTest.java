@@ -19,7 +19,7 @@ import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.BaseTrade;
-import org.ta4j.core.LiveTradingRecord;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
@@ -289,7 +289,7 @@ public class AnalysisWindowTest {
     @Test
     public void fullyContainedPolicyIncludesEligibleLiveOpenLotsWithMarkToMarket() {
         BarSeries series = buildSeries(10);
-        LiveTradingRecord record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
         record.recordFill(6, new BaseTrade(6, series.getBar(6).getEndTime(), series.getBar(6).getClosePrice(),
                 series.numFactory().one(), null, ExecutionSide.BUY, null, null));

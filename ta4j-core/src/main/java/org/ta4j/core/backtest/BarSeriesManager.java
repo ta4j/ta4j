@@ -253,8 +253,8 @@ public class BarSeriesManager {
      *
      * <p>
      * This allows callers to backtest with alternate {@link TradingRecord}
-     * implementations (for example {@code LiveTradingRecord}) while reusing
-     * {@link BarSeriesManager}'s execution loop.
+     * implementations (for example a lot-aware {@code BaseTradingRecord}) while
+     * reusing {@link BarSeriesManager}'s execution loop.
      * </p>
      *
      * @param strategy      the trading strategy
