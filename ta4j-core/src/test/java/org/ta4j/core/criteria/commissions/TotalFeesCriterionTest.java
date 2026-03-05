@@ -5,7 +5,6 @@ package org.ta4j.core.criteria.commissions;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Optional;
 
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -150,8 +149,8 @@ public class TotalFeesCriterionTest extends AbstractCriterionTest {
         }
 
         @Override
-        public Optional<Num> getRecordedTotalFees() {
-            return Optional.of(recordedFees);
+        public Num getRecordedTotalFees() {
+            return recordedFees;
         }
 
         @Override

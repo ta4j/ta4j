@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.criteria.commissions;
 
-import java.util.Optional;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
@@ -52,9 +51,9 @@ public class TotalFeesCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         NumFactory factory = series.numFactory();
-        Optional<Num> recordedFees = tradingRecord.getRecordedTotalFees();
-        if (recordedFees.isPresent()) {
-            return toSeriesNum(factory, recordedFees.get());
+        Num recordedFees = tradingRecord.getRecordedTotalFees();
+        if (recordedFees != null) {
+            return toSeriesNum(factory, recordedFees);
         }
         Num closedFees = tradingRecord.getPositions()
                 .stream()

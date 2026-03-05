@@ -8,7 +8,6 @@ import static org.ta4j.core.num.NaN.NaN;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
@@ -221,15 +220,15 @@ public interface TradingRecord extends Serializable {
      * ledger separate from modeled transaction costs.
      *
      * <p>
-     * Legacy trading-record implementations can rely on this default and return an
-     * empty optional when they only support model-derived transaction costs.
+     * Legacy trading-record implementations can rely on this default and return
+     * {@code null} when they only support model-derived transaction costs.
      * </p>
      *
-     * @return recorded execution fees, if available
+     * @return recorded execution fees, or {@code null} when unavailable
      * @since 0.22.4
      */
-    default Optional<Num> getRecordedTotalFees() {
-        return Optional.empty();
+    default Num getRecordedTotalFees() {
+        return null;
     }
 
     /**
