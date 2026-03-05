@@ -4,6 +4,7 @@
 package org.ta4j.core.backtest;
 
 import java.util.Objects;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
@@ -14,6 +15,9 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.reports.TradingStatementGenerator;
+import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
+import org.ta4j.core.walkforward.WalkForwardConfig;
 
 /**
  * A manager for {@link BarSeries} objects used for backtesting. Allows to run a
@@ -336,6 +340,71 @@ public class BarSeriesManager {
             throw new IllegalStateException("tradingRecordFactory returned null");
         }
         return tradingRecord;
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy using the strategy starting
+     * trade type and unit amount.
+     *
+     * @param strategy strategy to execute
+     * @param config   walk-forward configuration
+     * @return walk-forward execution result
+     * @since 0.22.4
+     */
+    public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, WalkForwardConfig config) {
+        Objects.requireNonNull(strategy, "strategy");
+        Num unitAmount = barSeries.numFactory().one();
+        return runWalkForward(strategy, strategy.getStartingType(), unitAmount, config, null);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy using the provided entry trade
+     * type and unit amount.
+     *
+     * @param strategy  strategy to execute
+     * @param tradeType trade type used to open positions
+     * @param config    walk-forward configuration
+     * @return walk-forward execution result
+     * @since 0.22.4
+     */
+    public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, TradeType tradeType,
+            WalkForwardConfig config) {
+        Num unitAmount = barSeries.numFactory().one();
+        return runWalkForward(strategy, tradeType, unitAmount, config, null);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy with explicit amount.
+     *
+     * @param strategy  strategy to execute
+     * @param tradeType trade type used to open positions
+     * @param amount    amount used to open/close trades
+     * @param config    walk-forward configuration
+     * @return walk-forward execution result
+     * @since 0.22.4
+     */
+    public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, TradeType tradeType, Num amount,
+            WalkForwardConfig config) {
+        return runWalkForward(strategy, tradeType, amount, config, null);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy with optional per-fold
+     * progress updates.
+     *
+     * @param strategy         strategy to execute
+     * @param tradeType        trade type used to open positions
+     * @param amount           amount used to open/close trades
+     * @param config           walk-forward configuration
+     * @param progressCallback optional callback receiving completed fold count
+     * @return walk-forward execution result
+     * @since 0.22.4
+     */
+    public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, TradeType tradeType, Num amount,
+            WalkForwardConfig config, Consumer<Integer> progressCallback) {
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(this, new TradingStatementGenerator(),
+                new AnchoredExpandingWalkForwardSplitter());
+        return executor.execute(strategy, tradeType, amount, config, progressCallback);
     }
 
 }
