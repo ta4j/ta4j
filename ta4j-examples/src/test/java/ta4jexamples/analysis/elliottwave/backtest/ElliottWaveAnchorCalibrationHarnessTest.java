@@ -1,0 +1,288 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package ta4jexamples.analysis.elliottwave.backtest;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.indicators.elliott.ElliottConfidence;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
+import org.ta4j.core.indicators.elliott.ElliottPhase;
+import org.ta4j.core.indicators.elliott.ElliottScenario;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
+import org.ta4j.core.indicators.elliott.ScenarioType;
+import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveOutcome;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.walkforward.WalkForwardExperimentManifest;
+import org.ta4j.core.walkforward.PredictionSnapshot;
+import org.ta4j.core.walkforward.RankedPrediction;
+import org.ta4j.core.walkforward.WalkForwardConfig;
+import org.ta4j.core.walkforward.WalkForwardRunResult;
+import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
+import org.ta4j.core.walkforward.WalkForwardSplit;
+
+import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
+
+class ElliottWaveAnchorCalibrationHarnessTest {
+
+    @Test
+    void defaultBitcoinAnchorsLoadsResolvedVersionedRegistry() {
+        BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveAnchorCalibrationHarnessTest.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveAnchorCalibrationHarnessTest.class));
+
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
+                .defaultBitcoinAnchors(series);
+
+        assertEquals("btc-cycle-anchors-v1", registry.version());
+        assertEquals(ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, registry.datasetResource());
+        assertTrue(registry.provenance().contains("widely cited BTC turning points"));
+        assertEquals(12, registry.anchors().size());
+        registry.anchors().forEach(anchor -> {
+            assertFalse(anchor.provenance().isBlank());
+            assertFalse(anchor.toleranceBefore().isNegative());
+            assertFalse(anchor.toleranceAfter().isNegative());
+        });
+    }
+
+    @Test
+    void evaluatePromotionGatesPassesWhenChallengerClearsEveryThreshold() {
+        ElliottWaveAnchorCalibrationHarness.CandidateEvaluation baseline = evaluation(
+                ElliottWaveAnchorCalibrationHarness.CandidateProfile.baselineProfile(), 0.20, 0.40, 0.26, 0.48, 0.20,
+                0.50, 0.30, 0.08);
+        ElliottWaveAnchorCalibrationHarness.CandidateEvaluation challenger = evaluation(
+                ElliottWaveAnchorCalibrationHarness.CandidateProfile.of("minute-f3",
+                        org.ta4j.core.indicators.elliott.ElliottDegree.MINUTE, 2, 2, 25, 0, 3, "tighter turns"),
+                0.36, 0.60, 0.34, 0.60, 0.18, 0.45, 0.26, 0.05);
+
+        ElliottWaveAnchorCalibrationHarness.GateEvaluation gates = ElliottWaveAnchorCalibrationHarness
+                .evaluatePromotionGates(baseline, challenger);
+        ElliottWaveAnchorCalibrationHarness.PromotionDecision decision = ElliottWaveAnchorCalibrationHarness.PromotionDecision
+                .from(baseline,
+                        List.of(new ElliottWaveAnchorCalibrationHarness.ChallengerAssessment(challenger, gates)));
+
+        assertTrue(gates.passed());
+        assertTrue(gates.notes().isEmpty());
+        assertTrue(decision.promoteChallenger());
+        assertEquals(challenger.profile().id(), decision.selectedProfileId());
+    }
+
+    @Test
+    void evaluatePromotionGatesRetainsBaselineWhenChallengerMissesHoldoutAndCalibrationRules() {
+        ElliottWaveAnchorCalibrationHarness.CandidateEvaluation baseline = evaluation(
+                ElliottWaveAnchorCalibrationHarness.CandidateProfile.baselineProfile(), 0.20, 0.40, 0.26, 0.48, 0.20,
+                0.50, 0.30, 0.08);
+        ElliottWaveAnchorCalibrationHarness.CandidateEvaluation challenger = evaluation(
+                ElliottWaveAnchorCalibrationHarness.CandidateProfile.of("minute-f2-tight",
+                        org.ta4j.core.indicators.elliott.ElliottDegree.MINUTE, 1, 1, 15, 1, 2, "narrower context"),
+                0.25, 0.44, 0.21, 0.30, 0.24, 0.56, 0.34, 0.14);
+
+        ElliottWaveAnchorCalibrationHarness.GateEvaluation gates = ElliottWaveAnchorCalibrationHarness
+                .evaluatePromotionGates(baseline, challenger);
+        ElliottWaveAnchorCalibrationHarness.PromotionDecision decision = ElliottWaveAnchorCalibrationHarness.PromotionDecision
+                .from(baseline,
+                        List.of(new ElliottWaveAnchorCalibrationHarness.ChallengerAssessment(challenger, gates)));
+
+        assertFalse(gates.passed());
+        assertFalse(gates.notes().isEmpty());
+        assertFalse(decision.promoteChallenger());
+        assertEquals(baseline.profile().id(), decision.selectedProfileId());
+        assertFalse(decision.followOnHypotheses().isEmpty());
+    }
+
+    @Test
+    void summarizeAnchorsUsesToleranceWindowsAndRankDistribution() {
+        BarSeries series = syntheticSeries();
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
+                "synthetic-v1", "synthetic-btc.json", "synthetic provenance",
+                List.of(new ElliottWaveAnchorCalibrationHarness.Anchor("validation-top",
+                        ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series.getBar(2).getBeginTime(),
+                        Duration.ofHours(4), Duration.ofHours(4), "validation top"),
+                        new ElliottWaveAnchorCalibrationHarness.Anchor("holdout-bottom",
+                                ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series.getBar(4).getBeginTime(),
+                                Duration.ofHours(4), Duration.ofHours(4), "holdout bottom")));
+
+        ElliottWaveAnchorCalibrationHarness.AnchorPartitions partitions = ElliottWaveAnchorCalibrationHarness
+                .summarizeAnchors(series, registry, syntheticRunResult(series));
+
+        assertEquals(1, partitions.validation().anchorCount());
+        assertEquals(1, partitions.validation().sampleCount());
+        assertEquals(1.0, partitions.validation().top1HitRate(), 1.0e-10);
+        assertEquals(1.0, partitions.validation().top3HitRate(), 1.0e-10);
+        assertEquals(1, partitions.validation().bestRankDistribution().get("rank1"));
+
+        assertEquals(1, partitions.holdout().anchorCount());
+        assertEquals(2, partitions.holdout().sampleCount());
+        assertEquals(0.0, partitions.holdout().top1HitRate(), 1.0e-10);
+        assertEquals(0.5, partitions.holdout().top3HitRate(), 1.0e-10);
+        assertEquals(1, partitions.holdout().bestRankDistribution().get("rank2"));
+        assertEquals(1, partitions.holdout().bestRankDistribution().get("unmatched"));
+        assertEquals(0.5, partitions.validationToHoldoutTop3Degradation(), 1.0e-10);
+
+        ElliottWaveAnchorCalibrationHarness.AnchorWindowSummary validationWindow = partitions.validation()
+                .anchorWindows()
+                .getFirst();
+        ElliottWaveAnchorCalibrationHarness.AnchorWindowSummary holdoutWindow = partitions.holdout()
+                .anchorWindows()
+                .getFirst();
+        assertEquals(1, validationWindow.windowStartIndex());
+        assertEquals(3, validationWindow.windowEndIndex());
+        assertEquals(3, holdoutWindow.windowStartIndex());
+        assertEquals(5, holdoutWindow.windowEndIndex());
+    }
+
+    @Test
+    void candidateAndReportHashesStayDeterministicForEquivalentInputs() {
+        ElliottWaveAnchorCalibrationHarness.CandidateProfile profile = ElliottWaveAnchorCalibrationHarness.CandidateProfile
+                .of("minute-f3", ElliottDegree.MINUTE, 2, 2, 25, 0, 3, "tighter turns");
+        int horizon = org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardProfiles.baselineConfig()
+                .primaryHorizonBars();
+        WalkForwardExperimentManifest manifest = new WalkForwardExperimentManifest("btc", profile.id(), "cfg-hash", 42L,
+                Map.of("profile", profile.id()));
+        ElliottWaveAnchorCalibrationHarness.MetricSnapshot metrics = new ElliottWaveAnchorCalibrationHarness.MetricSnapshot(
+                Map.of("rank1Brier", 0.18), Map.of("rank1Brier", 0.17),
+                Map.of("rank1Brier", 0.16, "rank1LogLoss", 0.45, "rank1Ece", 0.24));
+        ElliottWaveAnchorCalibrationHarness.AnchorPartitions anchors = new ElliottWaveAnchorCalibrationHarness.AnchorPartitions(
+                new ElliottWaveAnchorCalibrationHarness.AnchorAggregate(2, 2, 0.5, 1.0,
+                        Map.of("rank1", 1, "rank2", 1, "rank3", 0, "rank4plus", 0, "unmatched", 0), List.of()),
+                new ElliottWaveAnchorCalibrationHarness.AnchorAggregate(1, 1, 1.0, 1.0,
+                        Map.of("rank1", 1, "rank2", 0, "rank3", 0, "rank4plus", 0, "unmatched", 0), List.of()),
+                0.0);
+        Map<Integer, ElliottWaveAnchorCalibrationHarness.MetricSnapshot> metricsByHorizon = Map.of(horizon, metrics);
+
+        ElliottWaveAnchorCalibrationHarness.CandidateEvaluation first = ElliottWaveAnchorCalibrationHarness.CandidateEvaluation
+                .create(profile, manifest, metricsByHorizon, anchors, horizon);
+        ElliottWaveAnchorCalibrationHarness.CandidateEvaluation second = ElliottWaveAnchorCalibrationHarness.CandidateEvaluation
+                .create(profile, manifest, metricsByHorizon, anchors, horizon);
+
+        assertEquals(first.artifactId(), second.artifactId());
+        assertEquals(first.artifactHash(), second.artifactHash());
+
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
+                "btc-cycle-anchors-v1", ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, "deterministic provenance",
+                List.of(new ElliottWaveAnchorCalibrationHarness.Anchor("btc-anchor",
+                        ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, Instant.parse("2024-03-14T00:00:00Z"),
+                        Duration.ofHours(4), Duration.ofHours(4), "deterministic anchor")));
+        ElliottWaveAnchorCalibrationHarness.BaselinePolicy baselinePolicy = new ElliottWaveAnchorCalibrationHarness.BaselinePolicy(
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, horizon,
+                org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardProfiles.baselineConfig()
+                        .reportingHorizons(),
+                manifest.configHash(), profile.id());
+        ElliottWaveAnchorCalibrationHarness.PromotionDecision decision = ElliottWaveAnchorCalibrationHarness.PromotionDecision
+                .from(first, List.of());
+
+        ElliottWaveAnchorCalibrationHarness.ReportBundle reportA = ElliottWaveAnchorCalibrationHarness.ReportBundle
+                .create("btc-anchor-calibration-v1", Instant.parse("2025-10-28T00:00:00Z"), registry, baselinePolicy,
+                        first, List.of(), decision,
+                        List.of(ElliottWaveAnchorCalibrationHarness.PortabilitySummary.skipped("eth-usd",
+                                ElliottWaveAnchorCalibrationHarness.ETH_RESOURCE, "synthetic test")));
+        ElliottWaveAnchorCalibrationHarness.ReportBundle reportB = ElliottWaveAnchorCalibrationHarness.ReportBundle
+                .create("btc-anchor-calibration-v1", Instant.parse("2025-10-28T00:00:00Z"), registry, baselinePolicy,
+                        second, List.of(), decision,
+                        List.of(ElliottWaveAnchorCalibrationHarness.PortabilitySummary.skipped("eth-usd",
+                                ElliottWaveAnchorCalibrationHarness.ETH_RESOURCE, "synthetic test")));
+
+        assertEquals(manifest.configHash(), reportA.baselinePolicy().configHash());
+        assertEquals(reportA.reportHash(), reportB.reportHash());
+        assertEquals(reportA.toJson(), reportB.toJson());
+    }
+
+    private static ElliottWaveAnchorCalibrationHarness.CandidateEvaluation evaluation(
+            ElliottWaveAnchorCalibrationHarness.CandidateProfile profile, double validationTop1, double validationTop3,
+            double holdoutTop1, double holdoutTop3, double holdoutBrier, double holdoutLogLoss, double holdoutEce,
+            double top3Degradation) {
+        int horizon = org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardProfiles.baselineConfig()
+                .primaryHorizonBars();
+        var manifest = new WalkForwardExperimentManifest("btc", profile.id(), "cfg-hash", 42L,
+                Map.of("profile", profile.id()));
+        var metrics = Map.of(horizon,
+                new ElliottWaveAnchorCalibrationHarness.MetricSnapshot(Map.of(),
+                        Map.of("rank1Brier", holdoutBrier, "rank1LogLoss", holdoutLogLoss, "rank1Ece", holdoutEce),
+                        Map.of("rank1Brier", holdoutBrier, "rank1LogLoss", holdoutLogLoss, "rank1Ece", holdoutEce)));
+        var validation = new ElliottWaveAnchorCalibrationHarness.AnchorAggregate(4, 4, validationTop1, validationTop3,
+                Map.of("rank1", 2, "rank2", 1, "rank3", 0, "rank4plus", 0, "unmatched", 1), List.of());
+        var holdout = new ElliottWaveAnchorCalibrationHarness.AnchorAggregate(3, 3, holdoutTop1, holdoutTop3,
+                Map.of("rank1", 1, "rank2", 1, "rank3", 0, "rank4plus", 0, "unmatched", 1), List.of());
+        var anchors = new ElliottWaveAnchorCalibrationHarness.AnchorPartitions(validation, holdout, top3Degradation);
+        return new ElliottWaveAnchorCalibrationHarness.CandidateEvaluation(profile, manifest, horizon, metrics, anchors,
+                profile.id() + "|cfg=cfg-hash", "artifact-" + profile.id());
+    }
+
+    private static WalkForwardRunResult<ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> syntheticRunResult(
+            BarSeries series) {
+        WalkForwardConfig config = new WalkForwardConfig(2, 1, 1, 0, 0, 1, 1, List.of(2), 3, List.of(1), 42L);
+        WalkForwardExperimentManifest manifest = new WalkForwardExperimentManifest("synthetic-btc", "candidate",
+                config.configHash(), 42L, Map.of("profile", "synthetic"));
+        List<WalkForwardSplit> splits = List.of(new WalkForwardSplit("validation-fold", 0, 1, 2, 2, 0, 0, false),
+                new WalkForwardSplit("holdout", 0, 3, 4, 5, 0, 0, true));
+        List<PredictionSnapshot<ElliottWaveAnalysisResult.BaseScenarioAssessment>> snapshots = List.of(
+                snapshot("validation-fold", 2, rankedPrediction(series, "validation-top", 1, ElliottPhase.WAVE5, true),
+                        rankedPrediction(series, "validation-noise", 2, ElliottPhase.WAVE3, true)),
+                snapshot("holdout", 4, rankedPrediction(series, "holdout-noise", 1, ElliottPhase.WAVE3, true),
+                        rankedPrediction(series, "holdout-bottom", 2, ElliottPhase.CORRECTIVE_C, false)),
+                snapshot("holdout", 5, rankedPrediction(series, "holdout-miss", 1, ElliottPhase.WAVE3, true)));
+        return new WalkForwardRunResult<>(config, splits, snapshots, Map.of(), Map.of(), Map.of(), List.of(),
+                WalkForwardRuntimeReport.empty(), manifest);
+    }
+
+    private static PredictionSnapshot<ElliottWaveAnalysisResult.BaseScenarioAssessment> snapshot(String foldId,
+            int decisionIndex, RankedPrediction<ElliottWaveAnalysisResult.BaseScenarioAssessment>... predictions) {
+        return new PredictionSnapshot<>(foldId, decisionIndex, List.of(predictions), Map.of());
+    }
+
+    private static RankedPrediction<ElliottWaveAnalysisResult.BaseScenarioAssessment> rankedPrediction(BarSeries series,
+            String predictionId, int rank, ElliottPhase phase, boolean bullish) {
+        Num probability = series.numFactory().numOf(rank == 1 ? 0.70 : 0.45);
+        Num confidence = series.numFactory().numOf(rank == 1 ? 0.65 : 0.40);
+        ElliottWaveAnalysisResult.BaseScenarioAssessment assessment = new ElliottWaveAnalysisResult.BaseScenarioAssessment(
+                scenario(series, predictionId, phase, bullish), 0.6, 0.6, 0.6, List.of());
+        return new RankedPrediction<>(predictionId, rank, probability, confidence, assessment);
+    }
+
+    private static ElliottScenario scenario(BarSeries series, String id, ElliottPhase phase, boolean bullish) {
+        ScenarioType type = phase == ElliottPhase.CORRECTIVE_C ? ScenarioType.CORRECTIVE_ZIGZAG : ScenarioType.IMPULSE;
+        return ElliottScenario.builder()
+                .id(id)
+                .currentPhase(phase)
+                .confidence(ElliottConfidence.zero(series.numFactory()))
+                .degree(ElliottDegree.MINOR)
+                .primaryTarget(series.numFactory().numOf(120.0))
+                .invalidationPrice(series.numFactory().numOf(80.0))
+                .type(type)
+                .startIndex(series.getBeginIndex())
+                .bullishDirection(bullish)
+                .build();
+    }
+
+    private static BarSeries syntheticSeries() {
+        BarSeries series = new BaseBarSeriesBuilder().withName("synthetic-anchor-series").build();
+        Instant firstEndTime = Instant.parse("2024-01-01T04:00:00Z");
+        double[][] values = { { 100.0, 102.0, 99.0, 101.0 }, { 101.0, 105.0, 100.0, 104.0 },
+                { 104.0, 120.0, 103.0, 118.0 }, { 118.0, 119.0, 95.0, 98.0 }, { 98.0, 100.0, 80.0, 82.0 },
+                { 82.0, 88.0, 81.0, 86.0 } };
+        for (int index = 0; index < values.length; index++) {
+            series.addBar(series.barBuilder()
+                    .timePeriod(Duration.ofHours(4))
+                    .endTime(firstEndTime.plus(Duration.ofHours(index * 4L)))
+                    .openPrice(values[index][0])
+                    .highPrice(values[index][1])
+                    .lowPrice(values[index][2])
+                    .closePrice(values[index][3])
+                    .volume(1.0)
+                    .amount(values[index][3])
+                    .trades(1)
+                    .build());
+        }
+        return series;
+    }
+}
