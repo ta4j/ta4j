@@ -340,7 +340,7 @@ jobs:
             semver_rules=$(cat "$semver_rules_file")
             echo "audit:semver_rules_source=file"
           else
-            semver_rules="Determine if there is enough unreleased functionality here to warrant a release:\nMAJOR: Breaking API changes in public/core APIs.\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\nIf binary change count is 0 => should_release=false.\nIf binary change list empty or changelog-only => should_release=false.\nPre-1.0.0: breaking changes can be MINOR, not necessarily MAJOR."
+            semver_rules="Decide release go/no-go from unreleased binary-impacting changes.\nIf go, choose bump: patch|minor|major.\nMAJOR: explicit evidence of breaking changes in public/core APIs.\nMINOR: backward-compatible, user-visible new features.\nPATCH: backward-compatible bug fixes or internal improvements.\nIf binary change count is 0 => should_release=false.\nIf binary change list empty or changelog-only => should_release=false.\nIf unsure between MINOR and PATCH, prefer PATCH.\nNEVER major without explicit breaking-change evidence.\nPre-1.0.0: breaking changes can be MINOR, not necessarily MAJOR."
             echo "audit:semver_rules_source=default"
           fi
 
@@ -362,14 +362,14 @@ jobs:
                 { role: "system", content: "You are a SemVer assistant. Reply with JSON only." },
                 { role: "user", content:
                   (
-                    "Decide release? bump: patch|minor|major.\n" +
+                    "Decide release go/no-go. If go, choose bump: patch|minor|major.\n" +
                     "Current: " + $current_version + "\n" +
                     "Last tag: " + $last_tag + "\n" +
                     "Binary change count: " + $binary_count + "\n" +
                     "Rules:\n" + $semver_rules + "\n" +
                     "Binary-impacting changes summary:\n" + $binary_prompt + "\n" +
                     "Changelog highlights:\n" + $changelog + "\n" +
-                    "Return JSON: {\"should_release\":true|false,\"bump\":\"patch|minor|major\",\"reason\":\"1-2 sentences\"}"
+                    "Return JSON only: {\"should_release\":true|false,\"bump\":\"patch|minor|major\",\"reason\":\"1-2 sentences\"}. If should_release=false, set bump to \"patch\"."
                   )
                 }
               ]
