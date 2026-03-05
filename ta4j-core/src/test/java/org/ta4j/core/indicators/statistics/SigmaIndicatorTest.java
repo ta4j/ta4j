@@ -39,4 +39,15 @@ public class SigmaIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, Nu
         assertNumEquals(1.414213562373095, zScore.getValue(4));
         assertNumEquals(1.414213562373095, zScore.getValue(5));
     }
+
+    @Test
+    public void sampleSigmaCanBeRequestedExplicitly() {
+        var zScore = SigmaIndicator.ofSample(new ClosePriceIndicator(data), 5);
+
+        assertNumEquals(0.7071067811865476, zScore.getValue(1));
+        assertNumEquals(1.0, zScore.getValue(2));
+        assertNumEquals(1.161895003862225, zScore.getValue(3));
+        assertNumEquals(1.2649110640673518, zScore.getValue(4));
+        assertNumEquals(1.2649110640673518, zScore.getValue(5));
+    }
 }

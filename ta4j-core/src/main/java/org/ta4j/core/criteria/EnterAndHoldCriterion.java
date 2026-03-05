@@ -5,6 +5,7 @@ package org.ta4j.core.criteria;
 
 import java.math.BigDecimal;
 import java.util.Objects;
+import java.util.Optional;
 
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
@@ -119,6 +120,14 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterion.betterThan(criterionValue1, criterionValue2);
+    }
+
+    @Override
+    public Optional<ReturnRepresentation> getReturnRepresentation() {
+        if (criterion instanceof AbstractAnalysisCriterion) {
+            return ((AbstractAnalysisCriterion) criterion).getReturnRepresentation();
+        }
+        return Optional.empty();
     }
 
     private Position createEnterAndHoldTrade(BarSeries series, int beginIndex, int endIndex) {
