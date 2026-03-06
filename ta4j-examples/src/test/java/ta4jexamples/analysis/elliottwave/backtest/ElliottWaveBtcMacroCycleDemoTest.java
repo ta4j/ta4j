@@ -230,6 +230,13 @@ class ElliottWaveBtcMacroCycleDemoTest {
         assertEquals(2, bearishDataset.getSeriesCount());
     }
 
+    @Test
+    void interpolateOverlayPriceUsesLogSpaceOnPositivePrices() {
+        double midpoint = ElliottWaveBtcMacroCycleDemo.interpolateOverlayPrice(100.0, 1600.0, 0.5);
+
+        assertEquals(400.0, midpoint, 1.0e-10);
+    }
+
     private static ElliottWaveAnchorCalibrationHarness.Anchor anchor(String id,
             ElliottWaveAnchorCalibrationHarness.AnchorType type, BarSeries series, int index) {
         return new ElliottWaveAnchorCalibrationHarness.Anchor(id, type, series.getBar(index).getEndTime(),

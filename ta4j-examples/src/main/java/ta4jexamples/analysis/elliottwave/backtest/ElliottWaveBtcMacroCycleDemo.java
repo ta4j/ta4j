@@ -1282,7 +1282,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
             int length = Math.max(1, toIndex - fromIndex);
             for (int index = fromIndex; index <= toIndex; index++) {
                 double progress = (double) (index - fromIndex) / length;
-                double interpolated = fromPrice + ((toPrice - fromPrice) * progress);
+                double interpolated = interpolateOverlayPrice(fromPrice, toPrice, progress);
                 values[index] = series.numFactory().numOf(interpolated);
             }
         }
@@ -1309,7 +1309,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
             int length = Math.max(1, toIndex - fromIndex);
             for (int index = fromIndex; index <= toIndex; index++) {
                 double progress = (double) (index - fromIndex) / length;
-                double interpolated = fromPrice + ((toPrice - fromPrice) * progress);
+                double interpolated = interpolateOverlayPrice(fromPrice, toPrice, progress);
                 values[index] = series.numFactory().numOf(interpolated);
             }
         }
@@ -1330,6 +1330,16 @@ public final class ElliottWaveBtcMacroCycleDemo {
         for (int index = clipFromIndex; index < values.length; index++) {
             values[index] = NaN;
         }
+    }
+
+    static double interpolateOverlayPrice(double fromPrice, double toPrice, double progress) {
+        double clampedProgress = clamp(progress, 0.0, 1.0);
+        if (!Double.isFinite(fromPrice) || !Double.isFinite(toPrice) || fromPrice <= 0.0 || toPrice <= 0.0) {
+            return fromPrice + ((toPrice - fromPrice) * clampedProgress);
+        }
+        double logFrom = Math.log(fromPrice);
+        double logTo = Math.log(toPrice);
+        return Math.exp(logFrom + ((logTo - logFrom) * clampedProgress));
     }
 
     private static List<LegSegment> buildLegSegments(ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
