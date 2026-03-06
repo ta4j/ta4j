@@ -12,6 +12,8 @@
 ### Changed (Trading Record and Execution Flow)
 - **Elliott APIs and demos now follow runner-centric naming and defaults**: The project has moved from legacy analyzer naming to `ElliottWaveAnalysisRunner`, examples are organized under `analysis.elliottwave.{demo,backtest,support}`, and demo defaults now emphasize auto-degree selection with multi-degree context.
 - **HighRewardElliottWaveStrategy momentum confirmation now uses MACD-V**: The strategy now uses `VolatilityNormalizedMACDIndicator` and drops redundant exit-rule guarding to keep rule flow cleaner.
+- **Release automation now favors safer incremental bumps**: `release-scheduler.yml` and `semver-rules-override.txt` now drive explicit go/no-go decisions with `patch|minor` outputs only, normalize noisy AI bump values (for example ` MAJOR ` or ` minor `), and keep major bumps disabled so automated releases stay predictable for library consumers and maintainers (`#1477`).
+- **`@since` policy is now explicit for contributors**: `.github/CONTRIBUTING.md` now clearly requires introducing release versions without `-SNAPSHOT` (for example `@since 0.22.4`), plus a documented 5-minor volatility window so teams can adopt new APIs with clearer risk expectations (`#1477`).
 
 ### Fixed
 - **Release workflow drift guardrails**: Release maintainers now get near-immediate drift detection because `release-health.yml` runs on every `master` push and after `Publish Release to Maven Central` completes, and `publish-release.yml` now hard-fails if the pushed release tag does not resolve to the expected `releaseCommit` or is not reachable from `origin/<default_branch>`.
