@@ -797,7 +797,7 @@ public final class TradingChartFactory {
                 renderer.setSeriesStroke(i, createStroke(overlay.style()));
                 renderer.setSeriesShapesVisible(i, true);
                 renderer.setSeriesShapesFilled(i, true);
-                renderer.setSeriesLinesVisible(i, true);
+                renderer.setSeriesLinesVisible(i, false);
             }
 
             renderer.setDefaultToolTipGenerator(createOverlayToolTipGenerator(series, timeAxisMode));

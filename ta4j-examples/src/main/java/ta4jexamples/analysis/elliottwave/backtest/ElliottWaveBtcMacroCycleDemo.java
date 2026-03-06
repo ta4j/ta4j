@@ -31,6 +31,7 @@ import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
+import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
 import org.ta4j.core.indicators.elliott.PatternSet;
@@ -107,9 +108,11 @@ public final class ElliottWaveBtcMacroCycleDemo {
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = harnessReport.anchorRegistry();
         BarSeries series = requireSeries(registry.datasetResource(),
                 ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME);
+        ElliottWaveAnchorCalibrationHarness.CandidateProfile selectedProfile = selectedProfile(harnessReport);
 
         List<DirectionalCycleSummary> cycles = describeCycles(harnessReport);
-        Optional<Path> chartPath = saveMacroCycleChart(series, registry, chartDirectory);
+        Optional<Path> chartPath = saveMacroCycleChart(series, registry, selectedProfile.context().runner(),
+                chartDirectory);
 
         MacroCycleProbe baselineMinuteProbe = probeRecentMacroCycle(series, registry,
                 buildRunner(ElliottDegree.MINUTE, 2), "minute-f2-h2l2-max25-sw0");
@@ -156,24 +159,42 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     static Optional<Path> saveMacroCycleChart(BarSeries series,
             ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, Path chartDirectory) {
+        return saveMacroCycleChart(series, registry,
+                ElliottWaveAnchorCalibrationHarness.CandidateProfile.baselineProfile().context().runner(),
+                chartDirectory);
+    }
+
+    static Optional<Path> saveMacroCycleChart(BarSeries series,
+            ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, ElliottWaveAnalysisRunner runner,
+            Path chartDirectory) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(registry, "registry");
+        Objects.requireNonNull(runner, "runner");
         Objects.requireNonNull(chartDirectory, "chartDirectory");
 
         ChartWorkflow chartWorkflow = new ChartWorkflow(chartDirectory.toString());
-        JFreeChart chart = renderMacroCycleChart(series, registry);
+        JFreeChart chart = renderMacroCycleChart(series, registry, runner);
         return chartWorkflow.saveChartImage(chart, series, DEFAULT_CHART_FILE_NAME, DEFAULT_CHART_WIDTH,
                 DEFAULT_CHART_HEIGHT);
     }
 
     static JFreeChart renderMacroCycleChart(BarSeries series,
             ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
+        return renderMacroCycleChart(series, registry,
+                ElliottWaveAnchorCalibrationHarness.CandidateProfile.baselineProfile().context().runner());
+    }
+
+    static JFreeChart renderMacroCycleChart(BarSeries series,
+            ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, ElliottWaveAnalysisRunner runner) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(registry, "registry");
+        Objects.requireNonNull(runner, "runner");
 
         ChartWorkflow chartWorkflow = new ChartWorkflow();
         List<LegSegment> legSegments = buildLegSegments(registry);
         BarSeriesLabelIndicator anchorLabels = new BarSeriesLabelIndicator(series, buildAnchorLabels(series, registry));
+        BarSeriesLabelIndicator waveLabels = new BarSeriesLabelIndicator(series,
+                buildMatchedWaveLabels(series, registry, runner));
         FixedIndicator<Num> bullishLegs = buildCycleLegIndicator(series, legSegments, true, "Bullish 1-2-3-4-5");
         FixedIndicator<Num> bearishLegs = buildCycleLegIndicator(series, legSegments, false, "Bearish A-B-C");
         ChartPlan plan = chartWorkflow.builder()
@@ -194,6 +215,11 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 .withLineWidth(1.5f)
                 .withOpacity(0.55f)
                 .withLabel("BTC macro-cycle anchors")
+                .withIndicatorOverlay(waveLabels)
+                .withLineColor(Color.WHITE)
+                .withLineWidth(2.5f)
+                .withOpacity(0.95f)
+                .withLabel("Matched Elliott wave labels")
                 .toPlan();
         JFreeChart chart = chartWorkflow.render(plan);
         applyLogPriceAxis(chart, series);
@@ -339,6 +365,18 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 baseAnalysis.processedSwings().size(), baseAnalysis.scenarios().all().size(), scenarioTypeCounts);
     }
 
+    private static ElliottWaveAnchorCalibrationHarness.CandidateProfile selectedProfile(
+            ElliottWaveAnchorCalibrationHarness.ReportBundle harnessReport) {
+        Objects.requireNonNull(harnessReport, "harnessReport");
+
+        String selectedProfileId = harnessReport.decision().selectedProfileId();
+        return ElliottWaveAnchorCalibrationHarness.defaultProfiles()
+                .stream()
+                .filter(profile -> profile.id().equals(selectedProfileId))
+                .findFirst()
+                .orElse(ElliottWaveAnchorCalibrationHarness.CandidateProfile.baselineProfile());
+    }
+
     private static List<BarLabel> buildAnchorLabels(BarSeries series,
             ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
         List<BarLabel> labels = new ArrayList<>();
@@ -356,6 +394,59 @@ public final class ElliottWaveBtcMacroCycleDemo {
             labels.add(new BarLabel(barIndex, yValue, text, placement, labelColor));
         }
         return List.copyOf(labels);
+    }
+
+    static List<BarLabel> buildWaveLabelsFromScenario(BarSeries series, ElliottScenario scenario, Color labelColor) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(scenario, "scenario");
+        Objects.requireNonNull(labelColor, "labelColor");
+
+        List<ElliottSwing> swings = scenario.swings();
+        if (swings.isEmpty()) {
+            return List.of();
+        }
+
+        List<BarLabel> labels = new ArrayList<>();
+        for (int index = 0; index < swings.size(); index++) {
+            ElliottSwing swing = swings.get(index);
+            boolean highPivot = swing.isRising();
+            labels.add(new BarLabel(swing.toIndex(), offsetLabelValue(series, swing.toPrice(), highPivot),
+                    waveLabelForScenario(scenario.type(), index), placementForPivot(highPivot), labelColor));
+        }
+        return List.copyOf(labels);
+    }
+
+    private static List<BarLabel> buildMatchedWaveLabels(BarSeries series,
+            ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, ElliottWaveAnalysisRunner runner) {
+        List<BarLabel> labels = new ArrayList<>();
+        List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors = registry.anchors()
+                .stream()
+                .sorted(java.util.Comparator.comparing(ElliottWaveAnchorCalibrationHarness.Anchor::at))
+                .toList();
+        for (ElliottWaveAnchorCalibrationHarness.Anchor anchor : anchors) {
+            Optional<ElliottScenario> scenario = bestMatchingScenario(series, anchor, runner);
+            if (scenario.isEmpty()) {
+                continue;
+            }
+            Color labelColor = anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP ? BULLISH_LEG_COLOR
+                    : BEARISH_LEG_COLOR;
+            labels.addAll(buildWaveLabelsFromScenario(series, scenario.get(), labelColor));
+        }
+        return List.copyOf(labels);
+    }
+
+    private static Optional<ElliottScenario> bestMatchingScenario(BarSeries series,
+            ElliottWaveAnchorCalibrationHarness.Anchor anchor, ElliottWaveAnalysisRunner runner) {
+        int anchorIndex = nearestIndex(series, anchor.at());
+        BarSeries prefix = series.getSubSeries(series.getBeginIndex(), anchorIndex + 1);
+        ElliottWaveAnalysisResult result = runner.analyze(prefix);
+        for (ElliottWaveAnalysisResult.BaseScenarioAssessment assessment : result.rankedBaseScenarios()) {
+            ElliottScenario scenario = assessment.scenario();
+            if (matchesAnchor(scenario, anchor)) {
+                return Optional.of(scenario);
+            }
+        }
+        return Optional.empty();
     }
 
     private static FixedIndicator<Num> buildCycleLegIndicator(BarSeries series, List<LegSegment> legSegments,
@@ -484,6 +575,29 @@ public final class ElliottWaveBtcMacroCycleDemo {
     private static String expectedLabel(ElliottWaveAnchorCalibrationHarness.Anchor anchor) {
         return anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP ? "Bullish WAVE5 top"
                 : "Bearish CORRECTIVE_C low";
+    }
+
+    private static Num offsetLabelValue(BarSeries series, Num pivotPrice, boolean highPivot) {
+        Num multiplier = highPivot ? series.numFactory().numOf("1.02") : series.numFactory().numOf("0.98");
+        return pivotPrice.multipliedBy(multiplier);
+    }
+
+    private static String waveLabelForScenario(ScenarioType scenarioType, int waveIndex) {
+        if (scenarioType.isImpulse()) {
+            return String.valueOf(waveIndex + 1);
+        }
+        if (scenarioType.isCorrective()) {
+            return switch (waveIndex) {
+            case 0 -> "A";
+            case 1 -> "B";
+            default -> "C";
+            };
+        }
+        return String.valueOf(waveIndex + 1);
+    }
+
+    private static LabelPlacement placementForPivot(boolean highPivot) {
+        return highPivot ? LabelPlacement.ABOVE : LabelPlacement.BELOW;
     }
 
     private static Map<String, Integer> countScenarioTypes(List<ElliottScenario> scenarios) {

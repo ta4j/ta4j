@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -30,7 +31,14 @@ import org.jfree.data.xy.XYDataset;
 import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
+import org.ta4j.core.indicators.elliott.ElliottConfidence;
+import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
+import org.ta4j.core.indicators.elliott.ElliottScenario;
+import org.ta4j.core.indicators.elliott.ElliottSwing;
+import org.ta4j.core.indicators.elliott.ScenarioType;
+
+import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 
 class ElliottWaveBtcMacroCycleDemoTest {
 
@@ -203,6 +211,57 @@ class ElliottWaveBtcMacroCycleDemoTest {
         assertNotNull(bearishDataset, "Bearish dataset should be present");
         assertEquals(1, bullishDataset.getSeriesCount(), "One bottom-to-top span should render bullish");
         assertEquals(2, bearishDataset.getSeriesCount(), "Leading and trailing top-to-bottom spans should render");
+    }
+
+    @Test
+    void buildWaveLabelsFromScenarioUsesExpectedWaveLabelsAndColors() {
+        BarSeries series = extendedSyntheticSeries();
+        ElliottScenario impulse = ElliottScenario.builder()
+                .id("btc-impulse")
+                .currentPhase(ElliottPhase.WAVE5)
+                .swings(List.of(
+                        new ElliottSwing(0, 1, series.numFactory().numOf(128), series.numFactory().numOf(134),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(1, 2, series.numFactory().numOf(134), series.numFactory().numOf(111),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(2, 3, series.numFactory().numOf(111), series.numFactory().numOf(150),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(3, 4, series.numFactory().numOf(150), series.numFactory().numOf(140),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(4, 5, series.numFactory().numOf(140), series.numFactory().numOf(144),
+                                ElliottDegree.MINUTE)))
+                .confidence(ElliottConfidence.zero(series.numFactory()))
+                .degree(ElliottDegree.MINUTE)
+                .type(ScenarioType.IMPULSE)
+                .startIndex(0)
+                .build();
+        ElliottScenario corrective = ElliottScenario.builder()
+                .id("btc-corrective")
+                .currentPhase(ElliottPhase.CORRECTIVE_C)
+                .swings(List.of(
+                        new ElliottSwing(0, 1, series.numFactory().numOf(135), series.numFactory().numOf(110),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(1, 2, series.numFactory().numOf(110), series.numFactory().numOf(120),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(2, 3, series.numFactory().numOf(120), series.numFactory().numOf(117),
+                                ElliottDegree.MINUTE)))
+                .confidence(ElliottConfidence.zero(series.numFactory()))
+                .degree(ElliottDegree.MINUTE)
+                .type(ScenarioType.CORRECTIVE_ZIGZAG)
+                .startIndex(0)
+                .build();
+
+        List<BarLabel> impulseLabels = ElliottWaveBtcMacroCycleDemo.buildWaveLabelsFromScenario(series, impulse,
+                ElliottWaveBtcMacroCycleDemo.BULLISH_LEG_COLOR);
+        List<BarLabel> correctiveLabels = ElliottWaveBtcMacroCycleDemo.buildWaveLabelsFromScenario(series, corrective,
+                ElliottWaveBtcMacroCycleDemo.BEARISH_LEG_COLOR);
+
+        assertEquals(List.of("1", "2", "3", "4", "5"), impulseLabels.stream().map(BarLabel::text).toList());
+        assertEquals(List.of("A", "B", "C"), correctiveLabels.stream().map(BarLabel::text).toList());
+        assertTrue(impulseLabels.stream()
+                .allMatch(label -> ElliottWaveBtcMacroCycleDemo.BULLISH_LEG_COLOR.equals(label.color())));
+        assertTrue(correctiveLabels.stream()
+                .allMatch(label -> ElliottWaveBtcMacroCycleDemo.BEARISH_LEG_COLOR.equals(label.color())));
     }
 
     private static ElliottWaveBtcMacroCycleDemo.AnchorProbeObservation observation(String anchorId, int bestRank,

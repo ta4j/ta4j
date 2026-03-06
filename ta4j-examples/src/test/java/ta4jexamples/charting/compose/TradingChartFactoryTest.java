@@ -376,6 +376,9 @@ class TradingChartFactoryTest {
         assertTrue(labelDatasetIndex >= 0, "Label dataset should be present on the plot");
         assertInstanceOf(XYLineAndShapeRenderer.class, basePlot.getRenderer(labelDatasetIndex),
                 "Label dataset should render with the line/shape renderer");
+        XYLineAndShapeRenderer renderer = (XYLineAndShapeRenderer) basePlot.getRenderer(labelDatasetIndex);
+        assertFalse(renderer.getItemLineVisible(0, 0),
+                "Sparse label overlays should render markers and annotations without connecting lines");
     }
 
     @Test
