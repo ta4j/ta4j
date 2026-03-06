@@ -5,6 +5,7 @@ package ta4jexamples.analysis.elliottwave.backtest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
@@ -335,6 +336,17 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         assertEquals(reportA.toJson(), reportB.toJson());
     }
 
+    @Test
+    void orderedMapHelpersRejectOddEntryCounts() {
+        IllegalArgumentException doubleEntries = assertThrows(IllegalArgumentException.class,
+                () -> orderedDoubleMap("rank1Brier", 0.21, "rank1LogLoss"));
+        IllegalArgumentException intEntries = assertThrows(IllegalArgumentException.class,
+                () -> orderedIntMap("rank1", 1, "rank2"));
+
+        assertEquals("entries must contain complete key/value pairs", doubleEntries.getMessage());
+        assertEquals("entries must contain complete key/value pairs", intEntries.getMessage());
+    }
+
     private static ElliottWaveAnchorCalibrationHarness.CandidateEvaluation evaluation(
             ElliottWaveAnchorCalibrationHarness.CandidateProfile profile, double validationTop1, double validationTop3,
             double holdoutTop1, double holdoutTop3, double holdoutBrier, double holdoutLogLoss, double holdoutEce,
@@ -414,6 +426,7 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     }
 
     private static Map<String, Double> orderedDoubleMap(Object... entries) {
+        requireKeyValuePairs(entries);
         LinkedHashMap<String, Double> ordered = new LinkedHashMap<>();
         for (int index = 0; index < entries.length; index += 2) {
             ordered.put((String) entries[index], (Double) entries[index + 1]);
@@ -422,11 +435,18 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     }
 
     private static Map<String, Integer> orderedIntMap(Object... entries) {
+        requireKeyValuePairs(entries);
         LinkedHashMap<String, Integer> ordered = new LinkedHashMap<>();
         for (int index = 0; index < entries.length; index += 2) {
             ordered.put((String) entries[index], (Integer) entries[index + 1]);
         }
         return ordered;
+    }
+
+    private static void requireKeyValuePairs(Object[] entries) {
+        if (entries.length % 2 != 0) {
+            throw new IllegalArgumentException("entries must contain complete key/value pairs");
+        }
     }
 
     private static BarSeries syntheticSeries() {
