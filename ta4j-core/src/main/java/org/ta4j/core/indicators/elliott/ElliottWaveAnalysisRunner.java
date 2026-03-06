@@ -44,8 +44,9 @@ import org.ta4j.core.num.NumFactory;
  * <p>
  * If configured with supporting degrees ({@link Builder#higherDegrees(int)} and
  * {@link Builder#lowerDegrees(int)}), the analysis re-ranks the base-degree
- * {@link ElliottScenarioSet} by measuring compatibility against the best
- * matching scenarios in the supporting degrees.
+ * {@link ElliottScenarioSet} by blending base confidence, structural breadth,
+ * and compatibility against the best matching scenarios in the supporting
+ * degrees.
  *
  * <p>
  * For indicator-style access (rules/strategies and chart overlays), use
@@ -69,12 +70,21 @@ public final class ElliottWaveAnalysisRunner {
     private static final int DEFAULT_FAST_FRACTAL_WINDOW = 3;
     private static final int DEFAULT_SLOW_FRACTAL_WINDOW = 8;
 
-    private static final int DEFAULT_SCENARIO_SWING_WINDOW = 5;
+    /**
+     * Default scenario window.
+     *
+     * <p>
+     * {@code 0} means the runner forwards the full processed swing history into
+     * scenario generation so decomposition search can operate on broader structures
+     * by default.
+     */
+    private static final int DEFAULT_SCENARIO_SWING_WINDOW = 0;
 
     private static final double DEFAULT_BASE_CONFIDENCE_WEIGHT = 0.7;
     private static final double DEFAULT_NEUTRAL_CROSS_DEGREE_SCORE = 0.5;
     private static final int DEFAULT_HIGHER_DEGREES = 1;
     private static final int DEFAULT_LOWER_DEGREES = 1;
+    private static final double STRUCTURAL_SELECTION_WEIGHT = 0.20;
     private static final double DIRECTION_COMPATIBILITY_WEIGHT = 0.55;
     private static final double STRUCTURE_COMPATIBILITY_WEIGHT = 0.30;
     private static final double INVALIDATION_COMPATIBILITY_WEIGHT = 0.15;
@@ -313,9 +323,11 @@ public final class ElliottWaveAnalysisRunner {
                 continue;
             }
             double confidence = safeScore(baseScenario.confidenceScore());
+            double rankedConfidence = rankedConfidenceScore(baseScenario, baseResult.processedSwings(), confidence);
             List<ElliottWaveAnalysisResult.SupportingScenarioMatch> matches = new ArrayList<>();
             double crossDegreeScore = crossDegreeScore(baseScenario, analyses, matches);
-            double composite = (baseConfidenceWeight * confidence) + ((1.0 - baseConfidenceWeight) * crossDegreeScore);
+            double composite = (baseConfidenceWeight * rankedConfidence)
+                    + ((1.0 - baseConfidenceWeight) * crossDegreeScore);
 
             assessments.add(new ElliottWaveAnalysisResult.BaseScenarioAssessment(baseScenario, confidence,
                     crossDegreeScore, composite, matches));
@@ -329,6 +341,54 @@ public final class ElliottWaveAnalysisRunner {
                                 .reversed()));
 
         return List.copyOf(assessments);
+    }
+
+    private double rankedConfidenceScore(final ElliottScenario scenario, final List<ElliottSwing> processedSwings,
+            final double rawConfidence) {
+        double structuralPriority = scenarioStructuralPriority(scenario, processedSwings);
+        return blend(rawConfidence, structuralPriority, STRUCTURAL_SELECTION_WEIGHT);
+    }
+
+    private static double scenarioStructuralPriority(final ElliottScenario scenario,
+            final List<ElliottSwing> processedSwings) {
+        if (scenario == null || scenario.swings().isEmpty()) {
+            return 0.0;
+        }
+        if (processedSwings == null || processedSwings.isEmpty()) {
+            return phaseProgressScore(scenario.currentPhase());
+        }
+
+        final ElliottSwing firstProcessed = processedSwings.getFirst();
+        final ElliottSwing lastProcessed = processedSwings.getLast();
+        final ElliottSwing firstScenario = scenario.swings().getFirst();
+        final ElliottSwing lastScenario = scenario.swings().getLast();
+
+        final double totalSpan = Math.max(1.0, lastProcessed.toIndex() - firstProcessed.fromIndex());
+        final double scenarioSpan = Math.max(1.0, lastScenario.toIndex() - firstScenario.fromIndex());
+        final double coverageScore = clamp01(scenarioSpan / totalSpan);
+        final double earlyStartScore = clamp01(
+                1.0 - ((firstScenario.fromIndex() - firstProcessed.fromIndex()) / totalSpan));
+        final double completionScore = phaseProgressScore(scenario.currentPhase());
+        final double waveRichnessScore = scenario.currentPhase().isCorrective() ? clamp01(scenario.waveCount() / 3.0)
+                : clamp01(scenario.waveCount() / 5.0);
+        return clamp01((coverageScore + earlyStartScore + completionScore + waveRichnessScore) / 4.0);
+    }
+
+    private static double phaseProgressScore(final ElliottPhase phase) {
+        if (phase == null || phase == ElliottPhase.NONE) {
+            return 0.0;
+        }
+        if (phase.isImpulse()) {
+            return clamp01(0.20 + (phase.impulseIndex() * 0.16));
+        }
+        if (phase.isCorrective()) {
+            return clamp01(0.30 + (phase.correctiveIndex() * 0.25));
+        }
+        return 0.0;
+    }
+
+    private static double blend(final double primary, final double secondary, final double secondaryWeight) {
+        return clamp01((primary * (1.0 - secondaryWeight)) + (secondary * secondaryWeight));
     }
 
     /**

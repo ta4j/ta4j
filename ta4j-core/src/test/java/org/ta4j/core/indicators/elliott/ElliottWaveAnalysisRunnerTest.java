@@ -58,6 +58,40 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void usesAllProcessedSwingsByDefaultForScenarioGeneration() {
+        BarSeries series = buildSeries();
+        NumFactory factory = series.numFactory();
+        ElliottDegree degree = ElliottDegree.PRIMARY;
+        List<ElliottSwing> swings = List.of(new ElliottSwing(0, 2, factory.hundred(), factory.numOf(120), degree),
+                new ElliottSwing(2, 4, factory.numOf(120), factory.numOf(110), degree),
+                new ElliottSwing(4, 6, factory.numOf(110), factory.numOf(130), degree),
+                new ElliottSwing(6, 8, factory.numOf(130), factory.numOf(118), degree),
+                new ElliottSwing(8, 10, factory.numOf(118), factory.numOf(140), degree),
+                new ElliottSwing(10, 12, factory.numOf(140), factory.numOf(126), degree));
+
+        SwingDetector detector = (s, index, deg) -> SwingDetectorResult.fromSwings(swings);
+        ConfidenceModel model = (input, phase, channel,
+                type) -> new ElliottConfidenceBreakdown(new ElliottConfidence(series.numFactory().numOf(0.9),
+                        series.numFactory().numOf(0.9), series.numFactory().numOf(0.9), series.numFactory().numOf(0.9),
+                        series.numFactory().numOf(0.9), series.numFactory().numOf(0.9), "stub"), List.of());
+
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(degree)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .swingDetector(detector)
+                .minConfidence(0.0)
+                .confidenceModel(model)
+                .build();
+
+        ElliottWaveAnalysisResult result = analysis.analyze(series);
+        ElliottAnalysisResult base = result.analysisFor(degree).orElseThrow().analysis();
+
+        assertThat(base.rawSwings()).hasSize(6);
+        assertThat(base.processedSwings()).hasSize(6);
+    }
+
+    @Test
     void buildRequiresDegree() {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> ElliottWaveAnalysisRunner.builder().build());

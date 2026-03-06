@@ -111,7 +111,8 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
      * @param scenario          base-degree scenario
      * @param confidenceScore   base-degree scenario confidence score (0.0 - 1.0)
      * @param crossDegreeScore  aggregated cross-degree compatibility score
-     * @param compositeScore    blended score used for ranking
+     * @param compositeScore    blended ranking score combining raw confidence,
+     *                          structural priority, and cross-degree support
      * @param supportingMatches per-supporting-degree best-match snapshots
      * @since 0.22.4
      */
