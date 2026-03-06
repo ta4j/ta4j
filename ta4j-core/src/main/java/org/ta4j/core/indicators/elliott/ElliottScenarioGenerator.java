@@ -128,8 +128,9 @@ public final class ElliottScenarioGenerator {
         final List<ElliottScenario> candidates = new ArrayList<>();
         final Set<String> seenSignatures = new HashSet<>();
 
-        // Try different starting points
-        for (int startIndex = 0; startIndex < swings.size() && startIndex < 3; startIndex++) {
+        // Explore every feasible starting point so long multi-swing histories can
+        // still surface a valid structure that begins after early noise.
+        for (int startIndex = 0; startIndex < swings.size(); startIndex++) {
             final List<ElliottSwing> segment = swings.subList(startIndex, swings.size());
             if (segment.isEmpty()) {
                 continue;

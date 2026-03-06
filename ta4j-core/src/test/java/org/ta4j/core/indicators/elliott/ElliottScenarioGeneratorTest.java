@@ -172,6 +172,25 @@ class ElliottScenarioGeneratorTest {
         }
     }
 
+    @Test
+    void exploresImpulseStartsBeyondTheFirstThreeSwings() {
+        ElliottScenarioGenerator wideSearchGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 20);
+        List<ElliottSwing> swings = List.of(
+                new ElliottSwing(0, 5, numFactory.hundred(), numFactory.numOf(110), ElliottDegree.MINOR),
+                new ElliottSwing(5, 10, numFactory.numOf(110), numFactory.numOf(120), ElliottDegree.MINOR),
+                new ElliottSwing(10, 15, numFactory.numOf(120), numFactory.numOf(130), ElliottDegree.MINOR),
+                new ElliottSwing(15, 20, numFactory.numOf(130), numFactory.numOf(150), ElliottDegree.MINOR),
+                new ElliottSwing(20, 25, numFactory.numOf(150), numFactory.numOf(140), ElliottDegree.MINOR),
+                new ElliottSwing(25, 30, numFactory.numOf(140), numFactory.numOf(170), ElliottDegree.MINOR),
+                new ElliottSwing(30, 35, numFactory.numOf(170), numFactory.numOf(155), ElliottDegree.MINOR),
+                new ElliottSwing(35, 40, numFactory.numOf(155), numFactory.numOf(190), ElliottDegree.MINOR));
+
+        ElliottScenarioSet set = wideSearchGenerator.generate(swings, ElliottDegree.MINOR, null, 40);
+
+        assertThat(set.all()).anyMatch(scenario -> scenario.type() == ScenarioType.IMPULSE
+                && scenario.currentPhase() == ElliottPhase.WAVE5 && scenario.startIndex() == 3);
+    }
+
     private List<ElliottSwing> createAlternatingSwings() {
         // Create properly alternating swings for impulse detection
         return List.of(new ElliottSwing(0, 5, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),
