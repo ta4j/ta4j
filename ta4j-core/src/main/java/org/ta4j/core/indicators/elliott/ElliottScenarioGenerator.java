@@ -42,6 +42,7 @@ public final class ElliottScenarioGenerator {
     /** Maximum number of scenarios to retain after pruning. */
     public static final int DEFAULT_MAX_SCENARIOS = 5;
     private static final double IMPULSE_STRUCTURE_REJECTION_SCORE = 0.0;
+    private static final int MAX_DECOMPOSITION_PIVOTS = 16;
 
     private final NumFactory numFactory;
     private final ElliottFibonacciValidator fibValidator;
@@ -462,7 +463,7 @@ public final class ElliottScenarioGenerator {
         if (swings.size() <= waveCount) {
             return List.of();
         }
-        final List<SwingPivotPoint> pivots = extractPivots(swings);
+        final List<SwingPivotPoint> pivots = limitPivotsForDecomposition(extractPivots(swings));
         final BestDecomposition best = new BestDecomposition();
         searchDecompositionCuts(pivots.size(), waveCount - 1, 1, new ArrayList<>(), cutPoints -> {
             final List<ElliottSwing> candidate = buildDecomposition(swings.get(0).degree(), pivots, cutPoints);
@@ -486,7 +487,7 @@ public final class ElliottScenarioGenerator {
         if (swings.size() <= waveCount) {
             return List.of();
         }
-        final List<SwingPivotPoint> pivots = extractPivots(swings);
+        final List<SwingPivotPoint> pivots = limitPivotsForDecomposition(extractPivots(swings));
         final BestDecomposition best = new BestDecomposition();
         searchDecompositionCuts(pivots.size(), waveCount - 1, 1, new ArrayList<>(), cutPoints -> {
             final List<ElliottSwing> candidate = buildDecomposition(swings.get(0).degree(), pivots, cutPoints);
@@ -527,6 +528,52 @@ public final class ElliottScenarioGenerator {
             pivots.add(new SwingPivotPoint(swing.toIndex(), swing.toPrice()));
         }
         return List.copyOf(pivots);
+    }
+
+    private List<SwingPivotPoint> limitPivotsForDecomposition(final List<SwingPivotPoint> pivots) {
+        if (pivots.size() <= MAX_DECOMPOSITION_PIVOTS) {
+            return pivots;
+        }
+
+        final List<SwingPivotPoint> limited = new ArrayList<>(MAX_DECOMPOSITION_PIVOTS);
+        limited.add(pivots.getFirst());
+
+        final int internalTarget = MAX_DECOMPOSITION_PIVOTS - 2;
+        final int internalSourceCount = pivots.size() - 2;
+        final boolean[] selected = new boolean[pivots.size()];
+        selected[0] = true;
+        selected[pivots.size() - 1] = true;
+
+        for (int slot = 0; slot < internalTarget; slot++) {
+            final double fraction = (slot + 1.0) / (internalTarget + 1.0);
+            int sourceIndex = 1 + (int) Math.round(fraction * (internalSourceCount - 1));
+            sourceIndex = Math.max(1, Math.min(pivots.size() - 2, sourceIndex));
+            while (selected[sourceIndex] && sourceIndex < pivots.size() - 2) {
+                sourceIndex++;
+            }
+            while (selected[sourceIndex] && sourceIndex > 1) {
+                sourceIndex--;
+            }
+            if (selected[sourceIndex]) {
+                continue;
+            }
+            selected[sourceIndex] = true;
+        }
+
+        for (int index = 1; index < pivots.size() - 1 && limited.size() < MAX_DECOMPOSITION_PIVOTS - 1; index++) {
+            if (selected[index]) {
+                limited.add(pivots.get(index));
+            }
+        }
+        for (int index = 1; index < pivots.size() - 1 && limited.size() < MAX_DECOMPOSITION_PIVOTS - 1; index++) {
+            if (!selected[index]) {
+                limited.add(pivots.get(index));
+            }
+        }
+
+        limited.sort(java.util.Comparator.comparingInt(SwingPivotPoint::index));
+        limited.add(pivots.getLast());
+        return List.copyOf(limited);
     }
 
     private List<ElliottSwing> buildDecomposition(final ElliottDegree degree, final List<SwingPivotPoint> pivots,

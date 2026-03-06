@@ -64,8 +64,21 @@ final class SwingDetectorSupport {
             return List.of();
         }
 
-        final List<SwingPivot> normalized = new ArrayList<>(sorted.size());
-        for (final SwingPivot pivot : sorted) {
+        final List<SwingPivot> byIndex = new ArrayList<>(sorted.size());
+        int position = 0;
+        while (position < sorted.size()) {
+            final int currentIndex = sorted.get(position).index();
+            SwingPivot resolved = sorted.get(position);
+            position++;
+            while (position < sorted.size() && sorted.get(position).index() == currentIndex) {
+                resolved = chooseSharedIndexPivot(byIndex, resolved, sorted.get(position));
+                position++;
+            }
+            byIndex.add(resolved);
+        }
+
+        final List<SwingPivot> normalized = new ArrayList<>(byIndex.size());
+        for (final SwingPivot pivot : byIndex) {
             if (normalized.isEmpty()) {
                 normalized.add(pivot);
                 continue;
@@ -78,6 +91,31 @@ final class SwingDetectorSupport {
             }
         }
         return List.copyOf(normalized);
+    }
+
+    private static SwingPivot chooseSharedIndexPivot(final List<SwingPivot> normalized, final SwingPivot existing,
+            final SwingPivot candidate) {
+        if (existing == null) {
+            return candidate;
+        }
+        if (candidate == null) {
+            return existing;
+        }
+        if (existing.type() == candidate.type()) {
+            return chooseMoreExtreme(existing, candidate);
+        }
+        if (normalized.size() >= 2) {
+            final Num anchor = normalized.get(normalized.size() - 2).price();
+            if (!Num.isNaNOrNull(anchor)) {
+                final Num existingDistance = existing.price().minus(anchor).abs();
+                final Num candidateDistance = candidate.price().minus(anchor).abs();
+                return candidateDistance.isGreaterThan(existingDistance) ? candidate : existing;
+            }
+        }
+        if (existing.type() == SwingPivotType.HIGH || candidate.type() == SwingPivotType.LOW) {
+            return existing.price().isGreaterThan(candidate.price()) ? existing : candidate;
+        }
+        return existing.price().isLessThan(candidate.price()) ? existing : candidate;
     }
 
     private static SwingPivot chooseMoreExtreme(final SwingPivot first, final SwingPivot second) {

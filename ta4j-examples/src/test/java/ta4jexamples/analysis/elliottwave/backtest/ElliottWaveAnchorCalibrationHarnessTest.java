@@ -22,6 +22,7 @@ import org.ta4j.core.indicators.elliott.ElliottConfidence;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
+import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveOutcome;
@@ -72,6 +73,27 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                 .stream()
                 .filter(anchor -> anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP)
                 .allMatch(anchor -> anchor.expectedPhases().equals(Set.of(ElliottPhase.WAVE5))));
+    }
+
+    @Test
+    void buildMacroAnalysisRunnerUsesFractalWindowToChangeDetectedSwings() {
+        BarSeries series = oscillatingSeries(72);
+
+        ElliottWaveAnalysisResult narrow = ElliottWaveAnchorCalibrationHarness
+                .buildMacroAnalysisRunner(ElliottDegree.MINUTE, 1, 1, 25, 0, 2)
+                .analyze(series);
+        ElliottWaveAnalysisResult broad = ElliottWaveAnchorCalibrationHarness
+                .buildMacroAnalysisRunner(ElliottDegree.MINUTE, 1, 1, 25, 0, 6)
+                .analyze(series);
+
+        ElliottAnalysisResult narrowBase = narrow.analysisFor(ElliottDegree.MINUTE).orElseThrow().analysis();
+        ElliottAnalysisResult broadBase = broad.analysisFor(ElliottDegree.MINUTE).orElseThrow().analysis();
+
+        assertFalse(narrowBase.rawSwings().isEmpty());
+        assertFalse(broadBase.rawSwings().isEmpty());
+        assertFalse(narrowBase.processedSwings().isEmpty());
+        assertFalse(broadBase.processedSwings().isEmpty());
+        assertTrue(narrowBase.rawSwings().size() > broadBase.rawSwings().size());
     }
 
     @Test
@@ -654,6 +676,32 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                     .closePrice(base + 2.0)
                     .volume(1.0)
                     .amount(base + 2.0)
+                    .trades(1)
+                    .build());
+        }
+        return series;
+    }
+
+    private static BarSeries oscillatingSeries(int barCount) {
+        BarSeries series = new BaseBarSeriesBuilder().withName("oscillating-anchor-series").build();
+        Instant firstEndTime = Instant.parse("2021-01-01T00:00:00Z");
+        for (int index = 0; index < barCount; index++) {
+            double trend = 200.0 + (index * 1.8);
+            double wave = Math.sin(index / 2.2) * 18.0;
+            double noise = ((index % 3) - 1) * 3.5;
+            double close = trend + wave + noise;
+            double open = close - ((index % 2 == 0) ? 4.0 : -4.0);
+            double high = Math.max(open, close) + 6.0 + (Math.cos(index / 3.0) * 2.0);
+            double low = Math.min(open, close) - 6.0 - (Math.sin(index / 3.0) * 2.0);
+            series.addBar(series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(firstEndTime.plus(Duration.ofDays(index)))
+                    .openPrice(open)
+                    .highPrice(high)
+                    .lowPrice(low)
+                    .closePrice(close)
+                    .volume(1.0)
+                    .amount(close)
                     .trades(1)
                     .build());
         }

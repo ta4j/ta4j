@@ -30,6 +30,10 @@ import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
+import org.ta4j.core.indicators.elliott.swing.AdaptiveZigZagConfig;
+import org.ta4j.core.indicators.elliott.swing.CompositeSwingDetector;
+import org.ta4j.core.indicators.elliott.swing.SwingDetector;
+import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveOutcome;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveOutcomeLabeler;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWavePredictionProvider;
@@ -125,6 +129,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
     static ElliottWaveAnalysisRunner buildMacroAnalysisRunner(ElliottDegree degree, int higherDegrees, int lowerDegrees,
             int maxScenarios, int scenarioSwingWindow, int fractalWindow) {
+        SwingDetector swingDetector = macroSwingDetector(degree, fractalWindow);
         return ElliottWaveAnalysisRunner.builder()
                 .degree(degree)
                 .higherDegrees(higherDegrees)
@@ -132,9 +137,32 @@ public final class ElliottWaveAnchorCalibrationHarness {
                 .maxScenarios(maxScenarios)
                 .minConfidence(0.0)
                 .scenarioSwingWindow(scenarioSwingWindow)
-                .swingFilter(swings -> swings == null ? List.of() : List.copyOf(swings))
+                .swingDetector(swingDetector)
                 .seriesSelector((series, ignoredDegree) -> series)
                 .build();
+    }
+
+    private static SwingDetector macroSwingDetector(ElliottDegree baseDegree, int fractalWindow) {
+        int clampedBaseWindow = Math.max(2, fractalWindow);
+        return (series, index, analyzedDegree) -> {
+            int fastWindow = scaledWindow(baseDegree, analyzedDegree, clampedBaseWindow, 2, 34);
+            int slowBaseWindow = Math.max(fastWindow + 1, (clampedBaseWindow * 2) + 1);
+            int slowWindow = scaledWindow(baseDegree, analyzedDegree, slowBaseWindow, fastWindow + 1, 89);
+            AdaptiveZigZagConfig zigZagConfig = new AdaptiveZigZagConfig(Math.max(8, fastWindow * 4),
+                    1.0 + (clampedBaseWindow * 0.08), 0.0, 0.0, Math.max(2, clampedBaseWindow));
+            return SwingDetectors
+                    .composite(CompositeSwingDetector.Policy.OR, SwingDetectors.adaptiveZigZag(zigZagConfig),
+                            SwingDetectors.fractal(fastWindow), SwingDetectors.fractal(slowWindow))
+                    .detect(series, index, analyzedDegree);
+        };
+    }
+
+    private static int scaledWindow(ElliottDegree baseDegree, ElliottDegree analyzedDegree, int baseWindow,
+            int minWindow, int maxWindow) {
+        int delta = baseDegree.ordinal() - analyzedDegree.ordinal();
+        double scaled = baseWindow * Math.pow(1.45, delta);
+        int rounded = (int) Math.round(scaled);
+        return Math.max(minWindow, Math.min(maxWindow, rounded));
     }
 
     static ReportBundle generateDefaultReport() {
