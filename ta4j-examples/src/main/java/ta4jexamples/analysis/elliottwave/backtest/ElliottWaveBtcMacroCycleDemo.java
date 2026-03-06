@@ -3,11 +3,14 @@
  */
 package ta4jexamples.analysis.elliottwave.backtest;
 
+import static org.ta4j.core.num.NaN.NaN;
+
 import java.awt.Color;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,6 +26,7 @@ import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
@@ -43,7 +47,6 @@ import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.LabelPlacement;
 import ta4jexamples.charting.builder.ChartPlan;
-import ta4jexamples.charting.storage.FileSystemChartStorage;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 
 /**
@@ -72,10 +75,13 @@ public final class ElliottWaveBtcMacroCycleDemo {
     static final String RESULT_PREFIX = "EW_BTC_MACRO_DEMO: ";
     static final Path DEFAULT_CHART_DIRECTORY = Path.of("temp", "charts");
     static final String DEFAULT_CHART_FILE_NAME = "elliott-wave-btc-macro-cycles";
-    static final int DEFAULT_CHART_WIDTH = 2560;
-    static final int DEFAULT_CHART_HEIGHT = 1440;
+    static final int DEFAULT_CHART_WIDTH = 3840;
+    static final int DEFAULT_CHART_HEIGHT = 2160;
     static final String RECENT_TOP_ANCHOR_ID = "btc-2021-cycle-top";
     static final String RECENT_LOW_ANCHOR_ID = "btc-2022-cycle-bottom";
+    static final Color BULLISH_LEG_COLOR = new Color(0x66BB6A);
+    static final Color BEARISH_LEG_COLOR = new Color(0xEF5350);
+    private static final Color ANCHOR_OVERLAY_COLOR = new Color(0xCFD8DC);
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveBtcMacroCycleDemo.class);
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -154,9 +160,10 @@ public final class ElliottWaveBtcMacroCycleDemo {
         Objects.requireNonNull(registry, "registry");
         Objects.requireNonNull(chartDirectory, "chartDirectory");
 
+        ChartWorkflow chartWorkflow = new ChartWorkflow(chartDirectory.toString());
         JFreeChart chart = renderMacroCycleChart(series, registry);
-        FileSystemChartStorage storage = new FileSystemChartStorage(chartDirectory);
-        return storage.save(chart, series, DEFAULT_CHART_FILE_NAME, DEFAULT_CHART_WIDTH, DEFAULT_CHART_HEIGHT);
+        return chartWorkflow.saveChartImage(chart, series, DEFAULT_CHART_FILE_NAME, DEFAULT_CHART_WIDTH,
+                DEFAULT_CHART_HEIGHT);
     }
 
     static JFreeChart renderMacroCycleChart(BarSeries series,
@@ -165,14 +172,27 @@ public final class ElliottWaveBtcMacroCycleDemo {
         Objects.requireNonNull(registry, "registry");
 
         ChartWorkflow chartWorkflow = new ChartWorkflow();
+        List<CycleSegment> cycleSegments = buildCycleSegments(registry);
         BarSeriesLabelIndicator anchorLabels = new BarSeriesLabelIndicator(series, buildAnchorLabels(series, registry));
+        FixedIndicator<Num> bullishLegs = buildCycleLegIndicator(series, cycleSegments, true, "Bullish 1-2-3-4-5");
+        FixedIndicator<Num> bearishLegs = buildCycleLegIndicator(series, cycleSegments, false, "Bearish A-B-C");
         ChartPlan plan = chartWorkflow.builder()
                 .withTitle("BTC macro cycles: bullish 1-5 tops and bearish A-C lows")
                 .withSeries(series)
-                .withIndicatorOverlay(anchorLabels)
-                .withLineColor(new Color(0xFFB74D))
-                .withLineWidth(2.0f)
+                .withIndicatorOverlay(bullishLegs)
+                .withLineColor(BULLISH_LEG_COLOR)
+                .withLineWidth(3.0f)
                 .withOpacity(0.95f)
+                .withLabel("Bullish 1-2-3-4-5")
+                .withIndicatorOverlay(bearishLegs)
+                .withLineColor(BEARISH_LEG_COLOR)
+                .withLineWidth(3.0f)
+                .withOpacity(0.95f)
+                .withLabel("Bearish A-B-C")
+                .withIndicatorOverlay(anchorLabels)
+                .withLineColor(ANCHOR_OVERLAY_COLOR)
+                .withLineWidth(1.5f)
+                .withOpacity(0.55f)
                 .withLabel("BTC macro-cycle anchors")
                 .toPlan();
         JFreeChart chart = chartWorkflow.render(plan);
@@ -332,9 +352,73 @@ public final class ElliottWaveBtcMacroCycleDemo {
             String date = bar.getEndTime().atZone(ZoneOffset.UTC).toLocalDate().toString();
             String text = top ? "Bullish 1-5 top\n" + date : "Bearish A-C low\n" + date;
             LabelPlacement placement = top ? LabelPlacement.ABOVE : LabelPlacement.BELOW;
-            labels.add(new BarLabel(barIndex, yValue, text, placement));
+            Color labelColor = top ? BULLISH_LEG_COLOR : BEARISH_LEG_COLOR;
+            labels.add(new BarLabel(barIndex, yValue, text, placement, labelColor));
         }
         return List.copyOf(labels);
+    }
+
+    private static FixedIndicator<Num> buildCycleLegIndicator(BarSeries series, List<CycleSegment> cycleSegments,
+            boolean bullish, String label) {
+        Num[] values = new Num[series.getEndIndex() + 1];
+        Arrays.fill(values, NaN);
+        for (CycleSegment cycleSegment : cycleSegments) {
+            ElliottWaveAnchorCalibrationHarness.Anchor fromAnchor = bullish ? cycleSegment.startAnchor()
+                    : cycleSegment.peakAnchor();
+            ElliottWaveAnchorCalibrationHarness.Anchor toAnchor = bullish ? cycleSegment.peakAnchor()
+                    : cycleSegment.lowAnchor();
+            int fromIndex = nearestIndex(series, fromAnchor.at());
+            int toIndex = nearestIndex(series, toAnchor.at());
+            if (toIndex < fromIndex) {
+                continue;
+            }
+
+            double fromPrice = anchorPrice(series, fromIndex, fromAnchor.type());
+            double toPrice = anchorPrice(series, toIndex, toAnchor.type());
+            int length = Math.max(1, toIndex - fromIndex);
+            for (int index = fromIndex; index <= toIndex; index++) {
+                double progress = (double) (index - fromIndex) / length;
+                double interpolated = fromPrice + ((toPrice - fromPrice) * progress);
+                values[index] = series.numFactory().numOf(interpolated);
+            }
+        }
+        return new FixedIndicator<>(series, values) {
+            @Override
+            public String toString() {
+                return label;
+            }
+        };
+    }
+
+    private static List<CycleSegment> buildCycleSegments(ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
+        List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors = registry.anchors()
+                .stream()
+                .sorted(java.util.Comparator.comparing(ElliottWaveAnchorCalibrationHarness.Anchor::at))
+                .toList();
+        List<CycleSegment> cycleSegments = new ArrayList<>();
+        ElliottWaveAnchorCalibrationHarness.Anchor currentStart = null;
+        ElliottWaveAnchorCalibrationHarness.Anchor currentPeak = null;
+        for (ElliottWaveAnchorCalibrationHarness.Anchor anchor : anchors) {
+            if (anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM) {
+                if (currentStart != null && currentPeak != null) {
+                    cycleSegments.add(new CycleSegment(currentStart, currentPeak, anchor));
+                }
+                currentStart = anchor;
+                currentPeak = null;
+                continue;
+            }
+            if (currentStart != null) {
+                currentPeak = anchor;
+            }
+        }
+        return List.copyOf(cycleSegments);
+    }
+
+    private static double anchorPrice(BarSeries series, int barIndex,
+            ElliottWaveAnchorCalibrationHarness.AnchorType anchorType) {
+        Bar bar = series.getBar(barIndex);
+        return anchorType == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP ? bar.getHighPrice().doubleValue()
+                : bar.getLowPrice().doubleValue();
     }
 
     private static void applyLogPriceAxis(JFreeChart chart, BarSeries series) {
@@ -546,6 +630,17 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 return 1;
             }
             return 0;
+        }
+    }
+
+    record CycleSegment(ElliottWaveAnchorCalibrationHarness.Anchor startAnchor,
+            ElliottWaveAnchorCalibrationHarness.Anchor peakAnchor,
+            ElliottWaveAnchorCalibrationHarness.Anchor lowAnchor) {
+
+        CycleSegment {
+            Objects.requireNonNull(startAnchor, "startAnchor");
+            Objects.requireNonNull(peakAnchor, "peakAnchor");
+            Objects.requireNonNull(lowAnchor, "lowAnchor");
         }
     }
 

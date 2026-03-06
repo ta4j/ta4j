@@ -5,8 +5,11 @@ package ta4jexamples.analysis.elliottwave.backtest;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import javax.imageio.ImageIO;
@@ -23,6 +26,7 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.LogAxis;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
+import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
@@ -133,10 +137,19 @@ class ElliottWaveBtcMacroCycleDemoTest {
         BarSeries series = syntheticSeries();
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
                 "btc-demo-test", "synthetic.json", "synthetic provenance",
-                java.util.List.of(new ElliottWaveAnchorCalibrationHarness.Anchor("btc-top",
-                        ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series.getBar(1).getEndTime(),
-                        Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.WAVE5),
-                        ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic top")));
+                java.util.List.of(
+                        new ElliottWaveAnchorCalibrationHarness.Anchor("btc-bottom",
+                                ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series.getBar(0).getEndTime(),
+                                Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.CORRECTIVE_C),
+                                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic bottom"),
+                        new ElliottWaveAnchorCalibrationHarness.Anchor("btc-top",
+                                ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series.getBar(1).getEndTime(),
+                                Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.WAVE5),
+                                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic top"),
+                        new ElliottWaveAnchorCalibrationHarness.Anchor("btc-low",
+                                ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series.getBar(3).getEndTime(),
+                                Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.CORRECTIVE_C),
+                                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic low")));
 
         JFreeChart chart = ElliottWaveBtcMacroCycleDemo.renderMacroCycleChart(series, registry);
 
@@ -146,6 +159,14 @@ class ElliottWaveBtcMacroCycleDemoTest {
         XYPlot mainPlot = (XYPlot) combinedPlot.getSubplots().getFirst();
         assertTrue(mainPlot.getRangeAxis() instanceof LogAxis);
         assertEquals("Price (USD, log)", mainPlot.getRangeAxis().getLabel());
+
+        XYItemRenderer bullishRenderer = findRenderer(mainPlot, "Bullish 1-2-3-4-5");
+        XYItemRenderer bearishRenderer = findRenderer(mainPlot, "Bearish A-B-C");
+
+        assertNotNull(bullishRenderer, "Bullish cycle renderer should be present");
+        assertNotNull(bearishRenderer, "Bearish cycle renderer should be present");
+        assertPaintMatches(ElliottWaveBtcMacroCycleDemo.BULLISH_LEG_COLOR, bullishRenderer.getSeriesPaint(0));
+        assertPaintMatches(ElliottWaveBtcMacroCycleDemo.BEARISH_LEG_COLOR, bearishRenderer.getSeriesPaint(0));
     }
 
     private static ElliottWaveBtcMacroCycleDemo.AnchorProbeObservation observation(String anchorId, int bestRank,
@@ -182,6 +203,26 @@ class ElliottWaveBtcMacroCycleDemoTest {
             throw new IOException("Unable to decode image " + path);
         }
         return image;
+    }
+
+    private static XYItemRenderer findRenderer(XYPlot plot, String seriesKey) {
+        for (int datasetIndex = 0; datasetIndex < plot.getDatasetCount(); datasetIndex++) {
+            if (plot.getDataset(datasetIndex) == null || plot.getDataset(datasetIndex).getSeriesCount() == 0) {
+                continue;
+            }
+            if (seriesKey.equals(plot.getDataset(datasetIndex).getSeriesKey(0).toString())) {
+                return plot.getRenderer(datasetIndex);
+            }
+        }
+        return null;
+    }
+
+    private static void assertPaintMatches(Color expected, java.awt.Paint paint) {
+        Color actual = assertInstanceOf(Color.class, paint);
+        assertEquals(expected.getRed(), actual.getRed());
+        assertEquals(expected.getGreen(), actual.getGreen());
+        assertEquals(expected.getBlue(), actual.getBlue());
+        assertTrue(actual.getAlpha() > 0, "Rendered overlay should remain visible");
     }
 
     private static final class ScenarioTypeName {

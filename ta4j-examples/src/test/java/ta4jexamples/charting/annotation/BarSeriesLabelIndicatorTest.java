@@ -6,10 +6,12 @@ package ta4jexamples.charting.annotation;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -143,6 +145,14 @@ class BarSeriesLabelIndicatorTest {
         assertEquals(105.0, label.yValue().doubleValue(), 0.001);
         assertEquals("Test", label.text());
         assertEquals(LabelPlacement.ABOVE, label.placement());
+        assertNull(label.color());
+    }
+
+    @Test
+    void testBarLabelCreationRetainsExplicitColor() {
+        BarLabel label = new BarLabel(5, numFactory.numOf(105.0), "Test", LabelPlacement.ABOVE, Color.GREEN);
+
+        assertEquals(Color.GREEN, label.color());
     }
 
     @Test
