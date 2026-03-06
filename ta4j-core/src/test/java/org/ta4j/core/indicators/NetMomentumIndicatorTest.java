@@ -631,6 +631,50 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         }
     }
 
+    @Test
+    public void testLargeFirstAccessMatchesSequentialAccess() {
+        BarSeries longSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
+
+        NetMomentumIndicator sequential = new NetMomentumIndicator(new ClosePriceIndicator(longSeries), 30, 2500, 0.9);
+        NetMomentumIndicator farFirst = new NetMomentumIndicator(new ClosePriceIndicator(longSeries), 30, 2500, 0.9);
+
+        int targetIndex = 4000;
+        Num expected = null;
+        for (int i = 0; i <= targetIndex; i++) {
+            expected = sequential.getValue(i);
+        }
+
+        Num actual = farFirst.getValue(targetIndex);
+        Num tolerance = numOf(1e-9);
+        assertTrue("Large first access mismatch: expected=" + expected + " actual=" + actual,
+                expected.minus(actual).abs().isLessThan(tolerance));
+    }
+
+    @Test
+    public void testFarFirstAccessMatchesSequentialAccessOnPrunedSeries() {
+        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        movingSeries.setMaximumBarCount(5);
+
+        for (int i = 0; i < 20; i++) {
+            movingSeries.barBuilder().closePrice(55 + i).add();
+        }
+
+        NetMomentumIndicator sequential = new NetMomentumIndicator(new ClosePriceIndicator(movingSeries), 7, 50, 0.85);
+        NetMomentumIndicator farFirst = new NetMomentumIndicator(new ClosePriceIndicator(movingSeries), 7, 50, 0.85);
+
+        int beginIndex = movingSeries.getBeginIndex();
+        int endIndex = movingSeries.getEndIndex();
+        Num expected = null;
+        for (int i = beginIndex; i <= endIndex; i++) {
+            expected = sequential.getValue(i);
+        }
+
+        Num actual = farFirst.getValue(endIndex);
+        Num tolerance = numOf(1e-9);
+        assertTrue("Pruned-series large first access mismatch: expected=" + expected + " actual=" + actual,
+                expected.minus(actual).abs().isLessThan(tolerance));
+    }
+
     private CachedIndicator<Num> buildOscillator() {
         return new CachedIndicator<>(closePrice) {
             @Override
