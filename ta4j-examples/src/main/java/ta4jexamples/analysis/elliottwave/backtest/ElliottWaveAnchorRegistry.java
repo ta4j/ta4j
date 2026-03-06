@@ -34,7 +34,7 @@ import com.google.gson.Gson;
  */
 final class ElliottWaveAnchorRegistry {
 
-    static final String DEFAULT_RESOURCE = "/ta4jexamples/analysis/elliottwave/backtest/BTC-anchor-registry-v1.json";
+    static final String DEFAULT_RESOURCE = "/ta4jexamples/analysis/elliottwave/backtest/BTC-anchor-registry-v2.json";
 
     private static final Gson GSON = new Gson();
 

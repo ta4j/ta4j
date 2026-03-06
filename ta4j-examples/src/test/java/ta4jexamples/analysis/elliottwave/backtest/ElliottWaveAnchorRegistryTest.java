@@ -24,12 +24,16 @@ class ElliottWaveAnchorRegistryTest {
     void loadParsesDefaultRegistryResource() {
         ElliottWaveAnchorRegistry registry = ElliottWaveAnchorRegistry.load(ElliottWaveAnchorRegistry.DEFAULT_RESOURCE);
 
-        assertEquals("btc-cycle-anchors-v1", registry.registryId());
+        assertEquals("btc-macro-cycle-anchors-v2", registry.registryId());
         assertEquals(ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, registry.datasetResource());
         assertFalse(registry.provenance().isBlank());
-        assertEquals(12, registry.anchors().size());
-        assertEquals("btc-2017-cycle-top", registry.anchors().getFirst().id());
-        assertEquals("btc-2025-autumn-top", registry.anchors().getLast().id());
+        assertEquals(7, registry.anchors().size());
+        assertEquals("btc-2011-cycle-top", registry.anchors().getFirst().id());
+        assertEquals("btc-2022-cycle-bottom", registry.anchors().getLast().id());
+        assertTrue(registry.anchors()
+                .stream()
+                .filter(anchor -> anchor.kind() == ElliottWaveAnchorRegistry.AnchorKind.BOTTOM)
+                .allMatch(anchor -> anchor.expectedPhases().equals(Set.of(ElliottPhase.CORRECTIVE_C))));
     }
 
     @Test

@@ -52,6 +52,7 @@ import org.ta4j.core.walkforward.WalkForwardSplit;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializer;
 
@@ -80,16 +81,17 @@ import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader
 public final class ElliottWaveAnchorCalibrationHarness {
 
     static final String RESULT_PREFIX = "EW_ANCHOR_REPORT: ";
-    static final String BTC_RESOURCE = "Coinbase-BTC-USD-PT4H-20160518_20251028.json";
-    static final String ETH_RESOURCE = "Coinbase-ETH-USD-PT4H-20160518_20251028.json";
+    static final String BTC_RESOURCE = "TradingView-INDEX_BTCUSD-PT1D-20091005_20260306.json";
+    static final String ETH_RESOURCE = "Coinbase-ETH-USD-PT1D-20160517_20251028.json";
     static final String SP500_RESOURCE = "YahooFinance-SP500-PT1D-20230616_20231011.json";
-    static final String BTC_SERIES_NAME = "BTC-USD_PT4H@Coinbase (anchor calibration)";
-    static final String ETH_SERIES_NAME = "ETH-USD_PT4H@Coinbase (portability)";
+    static final String BTC_SERIES_NAME = "INDEX_BTCUSD_PT1D@TradingView (anchor calibration)";
+    static final String ETH_SERIES_NAME = "ETH-USD_PT1D@Coinbase (portability)";
     static final String SP500_SERIES_NAME = "SP500_PT1D@YahooFinance (portability)";
     static final String METRIC_EVENT_AGREEMENT = "rank1EventAgreement";
     static final String METRIC_BRIER = "rank1Brier";
     static final String METRIC_LOG_LOSS = "rank1LogLoss";
     static final String METRIC_ECE = "rank1Ece";
+    private static final int BTC_HOLDOUT_ANCHOR_COUNT = 2;
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveAnchorCalibrationHarness.class);
     private static final Gson GSON = new GsonBuilder()
@@ -97,6 +99,10 @@ public final class ElliottWaveAnchorCalibrationHarness {
                     (JsonSerializer<Instant>) (value, type, context) -> new JsonPrimitive(value.toString()))
             .registerTypeAdapter(Duration.class,
                     (JsonSerializer<Duration>) (value, type, context) -> new JsonPrimitive(value.toString()))
+            .registerTypeAdapter(Double.class, (JsonSerializer<Double>) (value, type,
+                    context) -> value == null || !Double.isFinite(value) ? JsonNull.INSTANCE : new JsonPrimitive(value))
+            .registerTypeAdapter(double.class, (JsonSerializer<Double>) (value, type,
+                    context) -> value == null || !Double.isFinite(value) ? JsonNull.INSTANCE : new JsonPrimitive(value))
             .setPrettyPrinting()
             .create();
     private static final NumFactory NUM_FACTORY = DoubleNumFactory.getInstance();
@@ -119,12 +125,14 @@ public final class ElliottWaveAnchorCalibrationHarness {
     }
 
     static ReportBundle generateDefaultReport() {
-        BarSeries btcSeries = requireSeries(BTC_RESOURCE, BTC_SERIES_NAME);
+        ElliottWaveAnchorRegistry registryDocument = ElliottWaveAnchorRegistry
+                .load(ElliottWaveAnchorRegistry.DEFAULT_RESOURCE);
+        BarSeries btcSeries = requireSeries(registryDocument.datasetResource(), BTC_SERIES_NAME);
         BarSeries ethSeries = loadSeries(ETH_RESOURCE, ETH_SERIES_NAME).orElse(null);
         BarSeries sp500Series = loadSeries(SP500_RESOURCE, SP500_SERIES_NAME).orElse(null);
 
         WalkForwardConfig config = ElliottWaveWalkForwardProfiles.baselineConfig();
-        AnchorRegistry registry = defaultBitcoinAnchors(btcSeries);
+        AnchorRegistry registry = defaultBitcoinAnchors(registryDocument, btcSeries);
 
         List<CandidateEvaluation> evaluations = defaultProfiles().parallelStream()
                 .map(profile -> evaluateCandidate(btcSeries, registry, profile, buildEngine(), config))
@@ -147,17 +155,22 @@ public final class ElliottWaveAnchorCalibrationHarness {
                 evaluatePortability("sp500", SP500_RESOURCE, sp500Series, baseline.profile(), selected.profile(),
                         portabilityEngine, config));
 
-        BaselinePolicy baselinePolicy = new BaselinePolicy(BTC_RESOURCE, config.primaryHorizonBars(),
+        BaselinePolicy baselinePolicy = new BaselinePolicy(registry.datasetResource(), config.primaryHorizonBars(),
                 List.copyOf(config.reportingHorizons()), config.configHash(),
                 ElliottWaveWalkForwardProfiles.baseline().metadata().getOrDefault("profile", "baseline"));
 
-        return ReportBundle.create("btc-anchor-calibration-v1", btcSeries.getBar(btcSeries.getEndIndex()).getEndTime(),
+        return ReportBundle.create("btc-anchor-calibration-v2", btcSeries.getBar(btcSeries.getEndIndex()).getEndTime(),
                 registry, baselinePolicy, baseline, challengerAssessments, decision, portability);
     }
 
     static AnchorRegistry defaultBitcoinAnchors(BarSeries series) {
         ElliottWaveAnchorRegistry registry = ElliottWaveAnchorRegistry.load(ElliottWaveAnchorRegistry.DEFAULT_RESOURCE);
-        List<ElliottWaveAnchorRegistry.ResolvedAnchor> resolvedAnchors = registry.resolve(series, 3);
+        return defaultBitcoinAnchors(registry, series);
+    }
+
+    private static AnchorRegistry defaultBitcoinAnchors(ElliottWaveAnchorRegistry registry, BarSeries series) {
+        List<ElliottWaveAnchorRegistry.ResolvedAnchor> resolvedAnchors = registry.resolve(series,
+                BTC_HOLDOUT_ANCHOR_COUNT);
         List<Anchor> anchors = resolvedAnchors.stream().map(ElliottWaveAnchorCalibrationHarness::toAnchor).toList();
         return new AnchorRegistry(registry.registryId(), registry.datasetResource(), registry.provenance(), anchors);
     }
@@ -186,7 +199,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
         }
 
         AnchorPartitions anchors = summarizeAnchors(series, registry, runResult);
-        return CandidateEvaluation.create(profile, runResult.manifest(), metricsByHorizon, anchors,
+        CyclePartitions cycles = summarizeCycles(series, registry, runResult);
+        return CandidateEvaluation.create(profile, runResult.manifest(), metricsByHorizon, anchors, cycles,
                 config.primaryHorizonBars());
     }
 
@@ -249,14 +263,77 @@ public final class ElliottWaveAnchorCalibrationHarness {
         return new AnchorPartitions(validation, holdout, stabilityDegradation);
     }
 
+    static CyclePartitions summarizeCycles(BarSeries series, AnchorRegistry registry,
+            WalkForwardRunResult<ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> runResult) {
+        Map<String, WalkForwardSplit> splitsById = new LinkedHashMap<>();
+        for (WalkForwardSplit split : runResult.splits()) {
+            splitsById.put(split.foldId(), split);
+        }
+
+        List<CycleSummary> validationCycles = new ArrayList<>();
+        List<CycleSummary> holdoutCycles = new ArrayList<>();
+        for (CycleTriplet cycle : completedCycles(registry)) {
+            int peakAnchorIndex = nearestIndex(series, cycle.peak().at());
+            int lowAnchorIndex = nearestIndex(series, cycle.low().at());
+            WindowBounds peakBounds = resolveWindowBounds(series, peakAnchorIndex, cycle.peak().toleranceBefore(),
+                    cycle.peak().toleranceAfter());
+            WindowBounds lowBounds = resolveWindowBounds(series, lowAnchorIndex, cycle.low().toleranceBefore(),
+                    cycle.low().toleranceAfter());
+            CycleWindowMatch peakMatch = bestCycleWindowMatch(runResult.snapshots(), splitsById, peakBounds,
+                    peakAnchorIndex, false, ElliottPhase.WAVE5, true);
+            CycleWindowMatch lowMatch = bestCycleWindowMatch(runResult.snapshots(), splitsById, lowBounds,
+                    lowAnchorIndex, cycle.partition() == ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT,
+                    ElliottPhase.CORRECTIVE_C, false);
+            CycleSummary summary = CycleSummary.from(cycle, peakAnchorIndex, peakBounds, peakMatch, lowAnchorIndex,
+                    lowBounds, lowMatch);
+            if (cycle.partition() == ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT) {
+                holdoutCycles.add(summary);
+            } else {
+                validationCycles.add(summary);
+            }
+        }
+
+        CycleAggregate validation = CycleAggregate.from(validationCycles);
+        CycleAggregate holdout = CycleAggregate.from(holdoutCycles);
+        return new CyclePartitions(validation, holdout,
+                degradation(validation.orderedTop3HitRate(), holdout.orderedTop3HitRate()));
+    }
+
+    private static List<CycleTriplet> completedCycles(AnchorRegistry registry) {
+        List<CycleTriplet> cycles = new ArrayList<>();
+        Anchor start = null;
+        Anchor peak = null;
+        for (Anchor anchor : registry.anchors()) {
+            if (anchor.type() == AnchorType.BOTTOM) {
+                if (peak == null) {
+                    start = anchor;
+                    continue;
+                }
+                Anchor low = anchor;
+                String cycleId = start.id() + "->" + peak.id() + "->" + low.id();
+                cycles.add(new CycleTriplet(cycleId, start, peak, low, low.partition()));
+                start = low;
+                peak = null;
+                continue;
+            }
+            if (start != null) {
+                peak = anchor;
+            }
+        }
+        return List.copyOf(cycles);
+    }
+
     static GateEvaluation evaluatePromotionGates(CandidateEvaluation baseline, CandidateEvaluation challenger) {
         double baselineHoldoutTop3 = baseline.anchors().holdout().top3HitRate();
         double challengerHoldoutTop3 = challenger.anchors().holdout().top3HitRate();
         double baselineHoldoutTop1 = baseline.anchors().holdout().top1HitRate();
         double challengerHoldoutTop1 = challenger.anchors().holdout().top1HitRate();
+        double baselineCycleTop3 = baseline.cycles().holdout().orderedTop3HitRate();
+        double challengerCycleTop3 = challenger.cycles().holdout().orderedTop3HitRate();
 
         double top3Improvement = challengerHoldoutTop3 - baselineHoldoutTop3;
         double top1Improvement = challengerHoldoutTop1 - baselineHoldoutTop1;
+        double cycleTop3Improvement = challengerCycleTop3 - baselineCycleTop3;
         double stabilityDegradation = challenger.anchors().validationToHoldoutTop3Degradation();
 
         Map<String, Double> baselineHoldoutMetrics = baseline.primaryMetrics().holdout();
@@ -283,12 +360,17 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
         boolean top3Gate = Double.isFinite(top3Improvement) && top3Improvement >= 0.10;
         boolean top1Gate = Double.isFinite(top1Improvement) && top1Improvement >= 0.05;
+        boolean cycleGate = !Double.isFinite(baselineCycleTop3) || !Double.isFinite(challengerCycleTop3)
+                || challengerCycleTop3 >= baselineCycleTop3;
         boolean calibrationImprovementGate = calibrationDataAvailable && calibrationImprovedCount >= 2;
         boolean calibrationDegradationGate = calibrationDataAvailable && maximumRelativeCalibrationDegradation <= 0.05;
         boolean stabilityGate = Double.isFinite(stabilityDegradation) && stabilityDegradation <= 0.10;
         boolean artifactGate = !challenger.manifest().configHash().isBlank() && !challenger.artifactHash().isBlank();
 
         List<String> notes = new ArrayList<>();
+        if (!cycleGate) {
+            notes.add("holdout ordered BTC cycle hit-rate regressed");
+        }
         if (!top3Gate) {
             notes.add("holdout top-3 anchor hit-rate did not improve by at least 10 percentage points");
         }
@@ -308,8 +390,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
             notes.add("candidate artifacts were not reproducible");
         }
 
-        return new GateEvaluation(top3Improvement, top1Improvement, calibrationImprovedCount,
-                maximumRelativeCalibrationDegradation, stabilityDegradation, top3Gate, top1Gate,
+        return new GateEvaluation(cycleTop3Improvement, top3Improvement, top1Improvement, calibrationImprovedCount,
+                maximumRelativeCalibrationDegradation, stabilityDegradation, cycleGate, top3Gate, top1Gate,
                 calibrationImprovementGate, calibrationDegradationGate, stabilityGate, artifactGate, notes.isEmpty(),
                 List.copyOf(notes));
     }
@@ -335,6 +417,9 @@ public final class ElliottWaveAnchorCalibrationHarness {
         }
         assessments.sort(Comparator
                 .comparing((ChallengerAssessment assessment) -> assessment.gates().passed(), Comparator.reverseOrder())
+                .thenComparing(Comparator
+                        .comparingDouble((ChallengerAssessment assessment) -> assessment.gates().cycleTop3Improvement())
+                        .reversed())
                 .thenComparing(Comparator
                         .comparingDouble(
                                 (ChallengerAssessment assessment) -> assessment.gates().holdoutTop3Improvement())
@@ -433,6 +518,48 @@ public final class ElliottWaveAnchorCalibrationHarness {
         return bestRank == Integer.MAX_VALUE ? 0 : bestRank;
     }
 
+    private static CycleWindowMatch bestCycleWindowMatch(
+            List<PredictionSnapshot<ElliottWaveAnalysisResult.BaseScenarioAssessment>> snapshots,
+            Map<String, WalkForwardSplit> splitsById, WindowBounds bounds, int anchorIndex, boolean holdoutPartition,
+            ElliottPhase phase, boolean bullish) {
+        CycleWindowMatch best = null;
+        for (PredictionSnapshot<ElliottWaveAnalysisResult.BaseScenarioAssessment> snapshot : snapshots) {
+            if (snapshot.decisionIndex() < bounds.startIndex() || snapshot.decisionIndex() > bounds.endIndex()) {
+                continue;
+            }
+            WalkForwardSplit split = splitsById.get(snapshot.foldId());
+            if (split == null || split.holdout() != holdoutPartition) {
+                continue;
+            }
+
+            int bestRank = bestMatchingRank(snapshot.topPredictions(), phase, bullish);
+            if (bestRank == 0) {
+                continue;
+            }
+
+            CycleWindowMatch candidate = new CycleWindowMatch(snapshot.decisionIndex(), bestRank,
+                    Math.abs(snapshot.decisionIndex() - anchorIndex));
+            if (best == null || candidate.compareTo(best) < 0) {
+                best = candidate;
+            }
+        }
+        return best;
+    }
+
+    private static int bestMatchingRank(
+            List<RankedPrediction<ElliottWaveAnalysisResult.BaseScenarioAssessment>> predictions, ElliottPhase phase,
+            boolean bullish) {
+        int bestRank = Integer.MAX_VALUE;
+        for (RankedPrediction<ElliottWaveAnalysisResult.BaseScenarioAssessment> prediction : predictions) {
+            ElliottWaveAnalysisResult.BaseScenarioAssessment assessment = prediction.payload();
+            if (assessment == null || !matchesPhaseAndDirection(assessment.scenario(), phase, bullish)) {
+                continue;
+            }
+            bestRank = Math.min(bestRank, prediction.rank());
+        }
+        return bestRank == Integer.MAX_VALUE ? 0 : bestRank;
+    }
+
     private static boolean matchesAnchor(ElliottScenario scenario, Anchor anchor) {
         if (scenario == null || !scenario.hasKnownDirection()) {
             return false;
@@ -446,6 +573,13 @@ public final class ElliottWaveAnchorCalibrationHarness {
         case CORRECTIVE_A, CORRECTIVE_B, CORRECTIVE_C -> scenario.isBearish();
         default -> false;
         };
+    }
+
+    private static boolean matchesPhaseAndDirection(ElliottScenario scenario, ElliottPhase phase, boolean bullish) {
+        if (scenario == null || !scenario.hasKnownDirection() || scenario.currentPhase() != phase) {
+            return false;
+        }
+        return bullish ? scenario.isBullish() : scenario.isBearish();
     }
 
     private static int nearestIndex(BarSeries series, Instant target) {
@@ -656,26 +790,28 @@ public final class ElliottWaveAnchorCalibrationHarness {
      * Summarized BTC evaluation for one candidate profile.
      */
     record CandidateEvaluation(CandidateProfile profile, WalkForwardExperimentManifest manifest, int primaryHorizonBars,
-            Map<Integer, MetricSnapshot> metricsByHorizon, AnchorPartitions anchors, String artifactId,
-            String artifactHash) {
+            Map<Integer, MetricSnapshot> metricsByHorizon, AnchorPartitions anchors, CyclePartitions cycles,
+            String artifactId, String artifactHash) {
 
         CandidateEvaluation {
             Objects.requireNonNull(profile, "profile");
             Objects.requireNonNull(manifest, "manifest");
             metricsByHorizon = immutableSortedMap(metricsByHorizon);
             Objects.requireNonNull(anchors, "anchors");
+            Objects.requireNonNull(cycles, "cycles");
             Objects.requireNonNull(artifactId, "artifactId");
             Objects.requireNonNull(artifactHash, "artifactHash");
         }
 
         static CandidateEvaluation create(CandidateProfile profile, WalkForwardExperimentManifest manifest,
-                Map<Integer, MetricSnapshot> metricsByHorizon, AnchorPartitions anchors, int primaryHorizonBars) {
+                Map<Integer, MetricSnapshot> metricsByHorizon, AnchorPartitions anchors, CyclePartitions cycles,
+                int primaryHorizonBars) {
             String artifactId = manifest.candidateId() + "|cfg=" + manifest.configHash();
             Map<Integer, MetricSnapshot> canonicalMetricsByHorizon = immutableSortedMap(metricsByHorizon);
             UnsignedCandidateEvaluation unsigned = new UnsignedCandidateEvaluation(profile, manifest,
-                    primaryHorizonBars, canonicalMetricsByHorizon, anchors, artifactId);
+                    primaryHorizonBars, canonicalMetricsByHorizon, anchors, cycles, artifactId);
             return new CandidateEvaluation(profile, manifest, primaryHorizonBars, canonicalMetricsByHorizon, anchors,
-                    artifactId, sha256(GSON.toJson(unsigned)));
+                    cycles, artifactId, sha256(GSON.toJson(unsigned)));
         }
 
         MetricSnapshot primaryMetrics() {
@@ -697,10 +833,11 @@ public final class ElliottWaveAnchorCalibrationHarness {
     /**
      * Acceptance-gate outcome for one challenger.
      */
-    record GateEvaluation(double holdoutTop3Improvement, double holdoutTop1Improvement, int calibrationImprovedCount,
-            double maximumRelativeCalibrationDegradation, double validationToHoldoutTop3Degradation, boolean top3Gate,
-            boolean top1Gate, boolean calibrationImprovementGate, boolean calibrationDegradationGate,
-            boolean stabilityGate, boolean artifactGate, boolean passed, List<String> notes) {
+    record GateEvaluation(double cycleTop3Improvement, double holdoutTop3Improvement, double holdoutTop1Improvement,
+            int calibrationImprovedCount, double maximumRelativeCalibrationDegradation,
+            double validationToHoldoutTop3Degradation, boolean cycleGate, boolean top3Gate, boolean top1Gate,
+            boolean calibrationImprovementGate, boolean calibrationDegradationGate, boolean stabilityGate,
+            boolean artifactGate, boolean passed, List<String> notes) {
 
         GateEvaluation {
             notes = notes == null ? List.of() : List.copyOf(notes);
@@ -739,6 +876,10 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
         private static List<String> followOnHypotheses(GateEvaluation gates) {
             List<String> hypotheses = new ArrayList<>();
+            if (!gates.cycleGate()) {
+                hypotheses.add(
+                        "Treat completed BTC cycles as first-class validation targets so bullish wave-5 peaks and bearish corrective-C lows cannot regress behind walk-forward calibration gains.");
+            }
             if (!gates.top3Gate() || !gates.top1Gate()) {
                 hypotheses.add(
                         "Reduce phase ambiguity near anchor windows by tightening scenario breadth or narrowing the supporting-degree span.");
@@ -769,6 +910,100 @@ public final class ElliottWaveAnchorCalibrationHarness {
         AnchorPartitions {
             Objects.requireNonNull(validation, "validation");
             Objects.requireNonNull(holdout, "holdout");
+        }
+    }
+
+    /**
+     * Aggregate completed BTC cycle fits split by cycle-completion partition.
+     */
+    record CyclePartitions(CycleAggregate validation, CycleAggregate holdout,
+            double validationToHoldoutTop3Degradation) {
+
+        CyclePartitions {
+            Objects.requireNonNull(validation, "validation");
+            Objects.requireNonNull(holdout, "holdout");
+        }
+    }
+
+    /**
+     * Aggregate ordered cycle hit-rates for one partition.
+     */
+    record CycleAggregate(int cycleCount, int topWindowMatchedCount, int lowWindowMatchedCount,
+            double orderedTop1HitRate, double orderedTop3HitRate, List<CycleSummary> cycles) {
+
+        CycleAggregate {
+            cycles = cycles == null ? List.of() : List.copyOf(cycles);
+        }
+
+        static CycleAggregate from(List<CycleSummary> cycles) {
+            int topMatchedCount = 0;
+            int lowMatchedCount = 0;
+            int orderedTop1Hits = 0;
+            int orderedTop3Hits = 0;
+            for (CycleSummary cycle : cycles) {
+                if (cycle.topBestRank() > 0) {
+                    topMatchedCount++;
+                }
+                if (cycle.lowBestRank() > 0) {
+                    lowMatchedCount++;
+                }
+                if (cycle.orderedTop1Hit()) {
+                    orderedTop1Hits++;
+                }
+                if (cycle.orderedTop3Hit()) {
+                    orderedTop3Hits++;
+                }
+            }
+            int cycleCount = cycles.size();
+            return new CycleAggregate(cycleCount, topMatchedCount, lowMatchedCount,
+                    safeRate(orderedTop1Hits, cycleCount), safeRate(orderedTop3Hits, cycleCount), cycles);
+        }
+
+        private static double safeRate(int hits, int count) {
+            return count == 0 ? Double.NaN : hits / (double) count;
+        }
+    }
+
+    /**
+     * Per-cycle summary for a completed bottom-top-bottom BTC sequence.
+     */
+    record CycleSummary(String cycleId, String startAnchorId, String peakAnchorId, String lowAnchorId,
+            String startTimeUtc, String peakTimeUtc, String lowTimeUtc, String provenance, int peakAnchorIndex,
+            int peakWindowStartIndex, int peakWindowEndIndex, int topBestRank, int topDecisionIndex,
+            int topDistanceBars, int lowAnchorIndex, int lowWindowStartIndex, int lowWindowEndIndex, int lowBestRank,
+            int lowDecisionIndex, int lowDistanceBars, boolean orderedTop1Hit, boolean orderedTop3Hit) {
+
+        CycleSummary {
+            Objects.requireNonNull(cycleId, "cycleId");
+            Objects.requireNonNull(startAnchorId, "startAnchorId");
+            Objects.requireNonNull(peakAnchorId, "peakAnchorId");
+            Objects.requireNonNull(lowAnchorId, "lowAnchorId");
+            Objects.requireNonNull(startTimeUtc, "startTimeUtc");
+            Objects.requireNonNull(peakTimeUtc, "peakTimeUtc");
+            Objects.requireNonNull(lowTimeUtc, "lowTimeUtc");
+            Objects.requireNonNull(provenance, "provenance");
+        }
+
+        static CycleSummary from(CycleTriplet cycle, int peakAnchorIndex, WindowBounds peakBounds,
+                CycleWindowMatch topMatch, int lowAnchorIndex, WindowBounds lowBounds, CycleWindowMatch lowMatch) {
+            int topBestRank = topMatch == null ? 0 : topMatch.bestRank();
+            int lowBestRank = lowMatch == null ? 0 : lowMatch.bestRank();
+            int topDecisionIndex = topMatch == null ? -1 : topMatch.decisionIndex();
+            int lowDecisionIndex = lowMatch == null ? -1 : lowMatch.decisionIndex();
+            int topDistanceBars = topMatch == null ? -1 : topMatch.distanceBars();
+            int lowDistanceBars = lowMatch == null ? -1 : lowMatch.distanceBars();
+            boolean ordered = topDecisionIndex >= 0 && lowDecisionIndex >= 0 && topDecisionIndex < lowDecisionIndex;
+            boolean orderedTop3Hit = ordered && topBestRank > 0 && topBestRank <= 3 && lowBestRank > 0
+                    && lowBestRank <= 3;
+            boolean orderedTop1Hit = ordered && topBestRank == 1 && lowBestRank == 1;
+            String provenance = cycle.start().provenance() + " | " + cycle.peak().provenance() + " | "
+                    + cycle.low().provenance();
+            return new CycleSummary(cycle.id(), cycle.start().id(), cycle.peak().id(), cycle.low().id(),
+                    UTC_TIME.format(cycle.start().at()), UTC_TIME.format(cycle.peak().at()),
+                    UTC_TIME.format(cycle.low().at()), provenance, peakAnchorIndex, peakBounds.startIndex(),
+                    peakBounds.endIndex(), topBestRank, topDecisionIndex, topDistanceBars, lowAnchorIndex,
+                    lowBounds.startIndex(), lowBounds.endIndex(), lowBestRank, lowDecisionIndex, lowDistanceBars,
+                    orderedTop1Hit, orderedTop3Hit);
         }
     }
 
@@ -957,9 +1192,30 @@ public final class ElliottWaveAnchorCalibrationHarness {
     private record WindowBounds(int startIndex, int endIndex) {
     }
 
+    private record CycleTriplet(String id, Anchor start, Anchor peak, Anchor low,
+            ElliottWaveAnchorRegistry.AnchorPartition partition) {
+    }
+
+    private record CycleWindowMatch(int decisionIndex, int bestRank,
+            int distanceBars) implements Comparable<CycleWindowMatch> {
+
+        @Override
+        public int compareTo(CycleWindowMatch other) {
+            int rankComparison = Integer.compare(bestRank, other.bestRank);
+            if (rankComparison != 0) {
+                return rankComparison;
+            }
+            int distanceComparison = Integer.compare(distanceBars, other.distanceBars);
+            if (distanceComparison != 0) {
+                return distanceComparison;
+            }
+            return Integer.compare(decisionIndex, other.decisionIndex);
+        }
+    }
+
     private record UnsignedCandidateEvaluation(CandidateProfile profile, WalkForwardExperimentManifest manifest,
             int primaryHorizonBars, Map<Integer, MetricSnapshot> metricsByHorizon, AnchorPartitions anchors,
-            String artifactId) {
+            CyclePartitions cycles, String artifactId) {
     }
 
     private record UnsignedReportBundle(String reportVersion, String generatedAtUtc, AnchorRegistry anchorRegistry,

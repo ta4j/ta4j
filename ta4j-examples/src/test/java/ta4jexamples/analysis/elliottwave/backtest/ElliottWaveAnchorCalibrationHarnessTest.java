@@ -48,11 +48,11 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
                 .defaultBitcoinAnchors(series);
 
-        assertEquals("btc-cycle-anchors-v1", registry.version());
+        assertEquals("btc-macro-cycle-anchors-v2", registry.version());
         assertEquals(ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, registry.datasetResource());
-        assertTrue(registry.provenance().contains("widely cited BTC turning points"));
-        assertEquals(12, registry.anchors().size());
-        assertEquals(3,
+        assertTrue(registry.provenance().contains("user-supplied TradingView"));
+        assertEquals(7, registry.anchors().size());
+        assertEquals(2,
                 registry.anchors()
                         .stream()
                         .filter(anchor -> anchor.partition() == ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT)
@@ -63,6 +63,14 @@ class ElliottWaveAnchorCalibrationHarnessTest {
             assertFalse(anchor.toleranceAfter().isNegative());
             assertFalse(anchor.expectedPhases().isEmpty());
         });
+        assertTrue(registry.anchors()
+                .stream()
+                .filter(anchor -> anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM)
+                .allMatch(anchor -> anchor.expectedPhases().equals(Set.of(ElliottPhase.CORRECTIVE_C))));
+        assertTrue(registry.anchors()
+                .stream()
+                .filter(anchor -> anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP)
+                .allMatch(anchor -> anchor.expectedPhases().equals(Set.of(ElliottPhase.WAVE5))));
     }
 
     @Test
@@ -208,6 +216,73 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     }
 
     @Test
+    void summarizeCyclesTracksOrderedWave5ThenCorrectiveCTriplets() {
+        BarSeries series = syntheticSeries();
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
+                "synthetic-v1", "synthetic-btc.json", "synthetic provenance",
+                List.of(anchor("cycle-start", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                        series.getBar(1).getEndTime(), Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.CORRECTIVE_C),
+                        ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "cycle start"),
+                        anchor("cycle-peak", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
+                                series.getBar(2).getEndTime(), Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.WAVE5),
+                                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "cycle peak"),
+                        anchor("cycle-low", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                                series.getBar(4).getEndTime(), Duration.ZERO, Duration.ZERO,
+                                Set.of(ElliottPhase.CORRECTIVE_C), ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT,
+                                "cycle low")));
+
+        ElliottWaveAnchorCalibrationHarness.CyclePartitions cycles = ElliottWaveAnchorCalibrationHarness
+                .summarizeCycles(series, registry, syntheticRunResult(series));
+
+        assertEquals(0, cycles.validation().cycleCount());
+        assertEquals(1, cycles.holdout().cycleCount());
+        assertEquals(1, cycles.holdout().topWindowMatchedCount());
+        assertEquals(1, cycles.holdout().lowWindowMatchedCount());
+        assertEquals(0.0, cycles.holdout().orderedTop1HitRate(), 1.0e-10);
+        assertEquals(1.0, cycles.holdout().orderedTop3HitRate(), 1.0e-10);
+
+        ElliottWaveAnchorCalibrationHarness.CycleSummary summary = cycles.holdout().cycles().getFirst();
+        assertEquals("cycle-start->cycle-peak->cycle-low", summary.cycleId());
+        assertEquals(1, summary.topBestRank());
+        assertEquals(2, summary.lowBestRank());
+        assertEquals(2, summary.topDecisionIndex());
+        assertEquals(4, summary.lowDecisionIndex());
+        assertTrue(summary.orderedTop3Hit());
+        assertFalse(summary.orderedTop1Hit());
+    }
+
+    @Test
+    void summarizeCyclesIgnoresOrphanTopAndUsesLatestBottomBeforePeak() {
+        BarSeries series = syntheticSeries();
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
+                "synthetic-v1", "synthetic-btc.json", "synthetic provenance",
+                List.of(anchor("orphan-top", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
+                        series.getBar(0).getEndTime(), Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.WAVE5),
+                        ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "orphan top"),
+                        anchor("stale-bottom", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                                series.getBar(0).getEndTime(), Duration.ZERO, Duration.ZERO,
+                                Set.of(ElliottPhase.CORRECTIVE_C), ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION,
+                                "stale bottom"),
+                        anchor("cycle-start", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                                series.getBar(1).getEndTime(), Duration.ZERO, Duration.ZERO,
+                                Set.of(ElliottPhase.CORRECTIVE_C), ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION,
+                                "cycle start"),
+                        anchor("cycle-peak", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
+                                series.getBar(2).getEndTime(), Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.WAVE5),
+                                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "cycle peak"),
+                        anchor("cycle-low", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                                series.getBar(4).getEndTime(), Duration.ZERO, Duration.ZERO,
+                                Set.of(ElliottPhase.CORRECTIVE_C), ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT,
+                                "cycle low")));
+
+        ElliottWaveAnchorCalibrationHarness.CyclePartitions cycles = ElliottWaveAnchorCalibrationHarness
+                .summarizeCycles(series, registry, syntheticRunResult(series));
+
+        assertEquals(1, cycles.holdout().cycleCount());
+        assertEquals("cycle-start->cycle-peak->cycle-low", cycles.holdout().cycles().getFirst().cycleId());
+    }
+
+    @Test
     void rankChallengersKeepsPassingCandidateAheadOfFailingButHigherGainCandidate() {
         ElliottWaveAnchorCalibrationHarness.CandidateEvaluation baseline = evaluation(
                 ElliottWaveAnchorCalibrationHarness.CandidateProfile.baselineProfile(), 0.20, 0.40, 0.26, 0.48, 0.20,
@@ -291,6 +366,9 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                 new ElliottWaveAnchorCalibrationHarness.AnchorAggregate(1, 1, 1.0, 1.0,
                         orderedIntMap("unmatched", 0, "rank2", 0, "rank1", 1, "rank4plus", 0, "rank3", 0), List.of()),
                 0.0);
+        ElliottWaveAnchorCalibrationHarness.CyclePartitions cycles = new ElliottWaveAnchorCalibrationHarness.CyclePartitions(
+                new ElliottWaveAnchorCalibrationHarness.CycleAggregate(1, 1, 1, 1.0, 1.0, List.of()),
+                new ElliottWaveAnchorCalibrationHarness.CycleAggregate(1, 1, 1, 0.0, 1.0, List.of()), 0.0);
         Map<Integer, ElliottWaveAnchorCalibrationHarness.MetricSnapshot> metricsByHorizonA = new LinkedHashMap<>();
         metricsByHorizonA.put(horizon + 30, secondaryMetricsA);
         metricsByHorizonA.put(horizon, primaryMetricsA);
@@ -299,15 +377,16 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         metricsByHorizonB.put(horizon + 30, secondaryMetricsB);
 
         ElliottWaveAnchorCalibrationHarness.CandidateEvaluation first = ElliottWaveAnchorCalibrationHarness.CandidateEvaluation
-                .create(profile, manifestA, metricsByHorizonA, anchors, horizon);
+                .create(profile, manifestA, metricsByHorizonA, anchors, cycles, horizon);
         ElliottWaveAnchorCalibrationHarness.CandidateEvaluation second = ElliottWaveAnchorCalibrationHarness.CandidateEvaluation
-                .create(profile, manifestB, metricsByHorizonB, anchors, horizon);
+                .create(profile, manifestB, metricsByHorizonB, anchors, cycles, horizon);
 
         assertEquals(first.artifactId(), second.artifactId());
         assertEquals(first.artifactHash(), second.artifactHash());
 
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
-                "btc-cycle-anchors-v1", ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, "deterministic provenance",
+                "btc-macro-cycle-anchors-v2", ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE,
+                "deterministic provenance",
                 List.of(anchor("btc-anchor", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
                         Instant.parse("2024-03-14T00:00:00Z"), Duration.ofHours(4), Duration.ofHours(4),
                         Set.of(ElliottPhase.WAVE5), ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION,
@@ -321,12 +400,12 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                 .from(first, List.of());
 
         ElliottWaveAnchorCalibrationHarness.ReportBundle reportA = ElliottWaveAnchorCalibrationHarness.ReportBundle
-                .create("btc-anchor-calibration-v1", Instant.parse("2025-10-28T00:00:00Z"), registry, baselinePolicy,
+                .create("btc-anchor-calibration-v2", Instant.parse("2025-10-28T00:00:00Z"), registry, baselinePolicy,
                         first, List.of(), decision,
                         List.of(ElliottWaveAnchorCalibrationHarness.PortabilitySummary.skipped("eth-usd",
                                 ElliottWaveAnchorCalibrationHarness.ETH_RESOURCE, "synthetic test")));
         ElliottWaveAnchorCalibrationHarness.ReportBundle reportB = ElliottWaveAnchorCalibrationHarness.ReportBundle
-                .create("btc-anchor-calibration-v1", Instant.parse("2025-10-28T00:00:00Z"), registry, baselinePolicy,
+                .create("btc-anchor-calibration-v2", Instant.parse("2025-10-28T00:00:00Z"), registry, baselinePolicy,
                         second, List.of(), decision,
                         List.of(ElliottWaveAnchorCalibrationHarness.PortabilitySummary.skipped("eth-usd",
                                 ElliottWaveAnchorCalibrationHarness.ETH_RESOURCE, "synthetic test")));
@@ -334,6 +413,39 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         assertEquals(manifestA.configHash(), reportA.baselinePolicy().configHash());
         assertEquals(reportA.reportHash(), reportB.reportHash());
         assertEquals(reportA.toJson(), reportB.toJson());
+    }
+
+    @Test
+    void reportJsonSerializesUnavailableDoublesAsNull() {
+        ElliottWaveAnchorCalibrationHarness.CandidateEvaluation evaluation = evaluation(
+                ElliottWaveAnchorCalibrationHarness.CandidateProfile.baselineProfile(), Double.NaN, Double.NaN, 0.26,
+                0.48, 0.20, Double.NaN, Double.NaN, 0.08);
+        int horizon = org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardProfiles.baselineConfig()
+                .primaryHorizonBars();
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
+                "btc-macro-cycle-anchors-v2", ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE,
+                "deterministic provenance",
+                List.of(anchor("btc-anchor", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
+                        Instant.parse("2024-03-14T00:00:00Z"), Duration.ofHours(4), Duration.ofHours(4),
+                        Set.of(ElliottPhase.WAVE5), ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION,
+                        "deterministic anchor")));
+        ElliottWaveAnchorCalibrationHarness.BaselinePolicy baselinePolicy = new ElliottWaveAnchorCalibrationHarness.BaselinePolicy(
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, horizon,
+                org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardProfiles.baselineConfig()
+                        .reportingHorizons(),
+                "cfg-hash", evaluation.profile().id());
+        ElliottWaveAnchorCalibrationHarness.PromotionDecision decision = ElliottWaveAnchorCalibrationHarness.PromotionDecision
+                .from(evaluation, List.of());
+
+        ElliottWaveAnchorCalibrationHarness.ReportBundle report = ElliottWaveAnchorCalibrationHarness.ReportBundle
+                .create("btc-anchor-calibration-v2", Instant.parse("2025-10-28T00:00:00Z"), registry, baselinePolicy,
+                        evaluation, List.of(), decision,
+                        List.of(ElliottWaveAnchorCalibrationHarness.PortabilitySummary.skipped("eth-usd",
+                                ElliottWaveAnchorCalibrationHarness.ETH_RESOURCE, "synthetic test")));
+
+        String json = report.toJson();
+        assertFalse(json.contains("NaN"));
+        assertFalse(json.contains("Infinity"));
     }
 
     @Test
@@ -367,8 +479,14 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                 Map.of("rank1", 1, "rank2", 1, "rank3", 0, "rank4plus", 0, "unmatched", 1), List.of());
         ElliottWaveAnchorCalibrationHarness.AnchorPartitions anchors = new ElliottWaveAnchorCalibrationHarness.AnchorPartitions(
                 validation, holdout, top3Degradation);
+        ElliottWaveAnchorCalibrationHarness.CycleAggregate validationCycles = new ElliottWaveAnchorCalibrationHarness.CycleAggregate(
+                2, 2, 2, validationTop1, validationTop3, List.of());
+        ElliottWaveAnchorCalibrationHarness.CycleAggregate holdoutCycles = new ElliottWaveAnchorCalibrationHarness.CycleAggregate(
+                1, 1, 1, holdoutTop1, holdoutTop3, List.of());
+        ElliottWaveAnchorCalibrationHarness.CyclePartitions cycles = new ElliottWaveAnchorCalibrationHarness.CyclePartitions(
+                validationCycles, holdoutCycles, top3Degradation);
         return new ElliottWaveAnchorCalibrationHarness.CandidateEvaluation(profile, manifest, horizon, metrics, anchors,
-                profile.id() + "|cfg=cfg-hash", "artifact-" + profile.id());
+                cycles, profile.id() + "|cfg=cfg-hash", "artifact-" + profile.id());
     }
 
     private static WalkForwardRunResult<ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> syntheticRunResult(
