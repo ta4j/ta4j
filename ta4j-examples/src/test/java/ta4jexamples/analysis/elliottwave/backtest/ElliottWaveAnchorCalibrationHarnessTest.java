@@ -428,7 +428,7 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     private static Map<String, Double> orderedDoubleMap(Object... entries) {
         requireKeyValuePairs(entries);
         LinkedHashMap<String, Double> ordered = new LinkedHashMap<>();
-        for (int index = 0; index < entries.length; index += 2) {
+        for (int index = 0; index + 1 < entries.length; index += 2) {
             ordered.put((String) entries[index], (Double) entries[index + 1]);
         }
         return ordered;
@@ -437,7 +437,7 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     private static Map<String, Integer> orderedIntMap(Object... entries) {
         requireKeyValuePairs(entries);
         LinkedHashMap<String, Integer> ordered = new LinkedHashMap<>();
-        for (int index = 0; index < entries.length; index += 2) {
+        for (int index = 0; index + 1 < entries.length; index += 2) {
             ordered.put((String) entries[index], (Integer) entries[index + 1]);
         }
         return ordered;
