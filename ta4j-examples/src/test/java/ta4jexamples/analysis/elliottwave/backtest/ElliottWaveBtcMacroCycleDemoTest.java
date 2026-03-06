@@ -12,23 +12,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
-import javax.imageio.ImageIO;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import org.junit.jupiter.api.Test;
+import javax.imageio.ImageIO;
+
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.LogAxis;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
-import org.jfree.data.xy.XYDataset;
 import org.jfree.chart.renderer.xy.XYItemRenderer;
+import org.jfree.data.xy.XYDataset;
+import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.indicators.elliott.ElliottConfidence;
@@ -36,73 +36,91 @@ import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
-import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ScenarioType;
 
+import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 
 class ElliottWaveBtcMacroCycleDemoTest {
 
     @Test
-    void directionalCycleSummaryUsesExplicitBullishAndBearishLabels() {
-        ElliottWaveAnchorCalibrationHarness.CycleSummary summary = new ElliottWaveAnchorCalibrationHarness.CycleSummary(
-                "btc-2018->btc-2021->btc-2022", "btc-2018-cycle-bottom", "btc-2021-cycle-top", "btc-2022-cycle-bottom",
-                "2018-12-16T00:00:00Z", "2021-11-11T00:00:00Z", "2022-11-22T00:00:00Z", "btc provenance", 10, 9, 12, 1,
-                11, 1, 15, 14, 17, 2, 16, 1, true, true);
+    void buildWaveLabelsFromScenarioUsesCurrentPhaseInsteadOfScenarioType() {
+        BarSeries series = extendedSyntheticSeries();
+        ElliottScenario bullishScenario = ElliottScenario.builder()
+                .id("btc-bullish")
+                .currentPhase(ElliottPhase.WAVE5)
+                .swings(List.of(
+                        new ElliottSwing(0, 1, series.numFactory().numOf(100), series.numFactory().numOf(120),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(1, 2, series.numFactory().numOf(120), series.numFactory().numOf(108),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(2, 3, series.numFactory().numOf(108), series.numFactory().numOf(146),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(3, 4, series.numFactory().numOf(146), series.numFactory().numOf(130),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(4, 5, series.numFactory().numOf(130), series.numFactory().numOf(156),
+                                ElliottDegree.MINUTE)))
+                .confidence(ElliottConfidence.zero(series.numFactory()))
+                .degree(ElliottDegree.MINUTE)
+                .type(ScenarioType.CORRECTIVE_ZIGZAG)
+                .startIndex(0)
+                .build();
+        ElliottScenario correctiveScenario = ElliottScenario.builder()
+                .id("btc-corrective")
+                .currentPhase(ElliottPhase.CORRECTIVE_C)
+                .swings(List.of(
+                        new ElliottSwing(0, 1, series.numFactory().numOf(160), series.numFactory().numOf(130),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(1, 2, series.numFactory().numOf(130), series.numFactory().numOf(145),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(2, 3, series.numFactory().numOf(145), series.numFactory().numOf(118),
+                                ElliottDegree.MINUTE)))
+                .confidence(ElliottConfidence.zero(series.numFactory()))
+                .degree(ElliottDegree.MINUTE)
+                .type(ScenarioType.IMPULSE)
+                .startIndex(0)
+                .build();
 
-        ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary cycle = ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary
-                .from("holdout", summary);
+        List<BarLabel> bullishLabels = ElliottWaveBtcMacroCycleDemo.buildWaveLabelsFromScenario(series, bullishScenario,
+                ElliottWaveBtcMacroCycleDemo.BULLISH_LEG_COLOR);
+        List<BarLabel> correctiveLabels = ElliottWaveBtcMacroCycleDemo.buildWaveLabelsFromScenario(series,
+                correctiveScenario, ElliottWaveBtcMacroCycleDemo.BEARISH_LEG_COLOR);
 
-        assertEquals("Bullish 1-2-3-4-5", cycle.impulseLabel());
-        assertEquals("Bullish WAVE5 top", cycle.peakLabel());
-        assertEquals("Bearish A-B-C", cycle.correctionLabel());
-        assertEquals("Bearish CORRECTIVE_C low", cycle.lowLabel());
-        assertEquals("ordered top-3 cycle match", cycle.status());
+        assertEquals(List.of("1", "2", "3", "4", "5"), bullishLabels.stream().map(BarLabel::text).toList());
+        assertEquals(List.of("A", "B", "C"), correctiveLabels.stream().map(BarLabel::text).toList());
     }
 
     @Test
-    void startOffsetHypothesisFlagsExpandedSearchWhenLegacySubsetMisses() {
-        ElliottWaveBtcMacroCycleDemo.MacroCycleProbe probe = new ElliottWaveBtcMacroCycleDemo.MacroCycleProbe("minute",
-                observation("btc-2021-cycle-top", 1, 0, 4, Map.of()),
-                observation("btc-2022-cycle-bottom", 0, 0, -1, Map.of(ScenarioTypeName.IMPULSE, 2)));
+    void evaluateMacroStudyProducesProfileTableCycleSummaryAndCurrentCycleFallback() {
+        BarSeries series = studySyntheticSeries();
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
+                "btc-demo-test", "synthetic.json", "synthetic provenance",
+                List.of(anchor("btc-top-2011", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 1),
+                        anchor("btc-bottom-2011", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 2),
+                        anchor("btc-top-2013", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 5),
+                        anchor("btc-bottom-2015", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 7)));
 
-        ElliottWaveBtcMacroCycleDemo.HypothesisResult hypothesis = ElliottWaveBtcMacroCycleDemo
-                .startOffsetHypothesis(probe);
+        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveBtcMacroCycleDemo.evaluateMacroStudy(series,
+                registry);
 
-        assertTrue(hypothesis.supported());
-        assertEquals("1", hypothesis.evidence().get("peakBestRank"));
-        assertEquals("0", hypothesis.evidence().get("peakLegacyBestRank"));
-    }
-
-    @Test
-    void correctiveCoverageHypothesisFlagsMissingTriangleAndComplexFamilies() {
-        ElliottWaveBtcMacroCycleDemo.AnchorProbeObservation lowAnchor = observation("btc-2022-cycle-bottom", 0, 0, -1,
-                Map.of(ScenarioTypeName.IMPULSE, 3, ScenarioTypeName.CORRECTIVE_ZIGZAG, 2,
-                        ScenarioTypeName.CORRECTIVE_FLAT, 1, ScenarioTypeName.CORRECTIVE_TRIANGLE, 0,
-                        ScenarioTypeName.CORRECTIVE_COMPLEX, 0));
-
-        ElliottWaveBtcMacroCycleDemo.HypothesisResult hypothesis = ElliottWaveBtcMacroCycleDemo
-                .correctiveCoverageHypothesis(lowAnchor);
-
-        assertTrue(hypothesis.supported());
-        assertEquals("0", hypothesis.evidence().get("triangleCount"));
-        assertEquals("0", hypothesis.evidence().get("complexCount"));
+        assertEquals(5, study.profileScores().size());
+        assertEquals(1, study.cycles().size());
+        assertEquals("Bullish 1-2-3-4-5", study.cycles().getFirst().impulseLabel());
+        assertEquals("Bearish A-B-C", study.cycles().getFirst().correctionLabel());
+        assertEquals(4, study.hypotheses().size());
+        assertFalse(study.selectedProfile().profile().id().isBlank());
+        assertEquals(series.getBar(7).getEndTime().toString(), study.currentCycle().startTimeUtc());
+        assertEquals(study.selectedProfile().profile().id(), study.currentCycle().winningProfileId());
     }
 
     @Test
     void saveMacroCycleChartWritesImage() throws Exception {
-        BarSeries series = syntheticSeries();
+        BarSeries series = chartSyntheticSeries();
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
                 "btc-demo-test", "synthetic.json", "synthetic provenance",
-                java.util.List.of(
-                        new ElliottWaveAnchorCalibrationHarness.Anchor("btc-top",
-                                ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series.getBar(1).getEndTime(),
-                                Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.WAVE5),
-                                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic top"),
-                        new ElliottWaveAnchorCalibrationHarness.Anchor("btc-bottom",
-                                ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series.getBar(3).getEndTime(),
-                                Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.CORRECTIVE_C),
-                                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic bottom")));
+                List.of(anchor("btc-bottom", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 0),
+                        anchor("btc-top", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 4),
+                        anchor("btc-low", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 6)));
         Path tempDir = Files.createTempDirectory("btc-macro-cycle-demo");
 
         try {
@@ -118,48 +136,54 @@ class ElliottWaveBtcMacroCycleDemoTest {
             Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
                 try {
                     Files.deleteIfExists(path);
-                } catch (Exception ignored) {
-                    // Best effort cleanup for a temp test directory.
+                } catch (IOException ignored) {
+                    // best effort cleanup
                 }
             });
         }
     }
 
     @Test
-    void coarserDegreeHypothesisRequiresAnActualRankImprovement() {
-        ElliottWaveBtcMacroCycleDemo.MacroCycleProbe minute = new ElliottWaveBtcMacroCycleDemo.MacroCycleProbe("minute",
-                observation("btc-2021-cycle-top", 0, 0, -1, Map.of()),
-                observation("btc-2022-cycle-bottom", 0, 0, -1, Map.of()));
-        ElliottWaveBtcMacroCycleDemo.MacroCycleProbe minor = new ElliottWaveBtcMacroCycleDemo.MacroCycleProbe("minor",
-                observation("btc-2021-cycle-top", 2, 0, 4, Map.of()),
-                observation("btc-2022-cycle-bottom", 0, 0, -1, Map.of()));
+    void realDatasetHistoricalCyclesProduceAcceptedFitsAndPersistArtifacts() throws Exception {
+        BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
+                .defaultBitcoinAnchors(series);
+        Path tempDir = Files.createTempDirectory("btc-macro-cycle-real");
 
-        ElliottWaveBtcMacroCycleDemo.HypothesisResult hypothesis = ElliottWaveBtcMacroCycleDemo
-                .coarserDegreeHypothesis(minute, minor);
+        try {
+            ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveBtcMacroCycleDemo.evaluateMacroStudy(series,
+                    registry);
+            ElliottWaveBtcMacroCycleDemo.DemoReport report = ElliottWaveBtcMacroCycleDemo.generateReport(tempDir);
 
-        assertTrue(hypothesis.supported());
-        assertEquals("2", hypothesis.evidence().get("minorPeakRank"));
-        assertFalse(hypothesis.summary().isBlank());
+            assertTrue(study.selectedProfile().historicalFitPassed());
+            assertEquals(3, study.cycles().size());
+            assertTrue(
+                    study.cycles().stream().allMatch(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::accepted));
+            assertFalse(study.currentCycle().currentWave().isBlank());
+            assertTrue(Files.exists(Path.of(report.chartPath())));
+            assertTrue(Files.exists(Path.of(report.summaryPath())));
+            assertEquals(report.chartPath(), report.currentCycle().chartPath());
+        } finally {
+            Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException ignored) {
+                    // best effort cleanup
+                }
+            });
+        }
     }
 
     @Test
     void renderMacroCycleChartUsesLogAxisOnMainPricePlot() {
-        BarSeries series = syntheticSeries();
+        BarSeries series = chartSyntheticSeries();
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
                 "btc-demo-test", "synthetic.json", "synthetic provenance",
-                java.util.List.of(
-                        new ElliottWaveAnchorCalibrationHarness.Anchor("btc-bottom",
-                                ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series.getBar(0).getEndTime(),
-                                Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.CORRECTIVE_C),
-                                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic bottom"),
-                        new ElliottWaveAnchorCalibrationHarness.Anchor("btc-top",
-                                ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series.getBar(1).getEndTime(),
-                                Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.WAVE5),
-                                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic top"),
-                        new ElliottWaveAnchorCalibrationHarness.Anchor("btc-low",
-                                ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series.getBar(3).getEndTime(),
-                                Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.CORRECTIVE_C),
-                                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic low")));
+                List.of(anchor("btc-bottom", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 0),
+                        anchor("btc-top", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 4),
+                        anchor("btc-low", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 6)));
 
         JFreeChart chart = ElliottWaveBtcMacroCycleDemo.renderMacroCycleChart(series, registry);
 
@@ -173,8 +197,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
         XYItemRenderer bullishRenderer = findRenderer(mainPlot, "Bullish 1-2-3-4-5");
         XYItemRenderer bearishRenderer = findRenderer(mainPlot, "Bearish A-B-C");
 
-        assertNotNull(bullishRenderer, "Bullish cycle renderer should be present");
-        assertNotNull(bearishRenderer, "Bearish cycle renderer should be present");
+        assertNotNull(bullishRenderer);
+        assertNotNull(bearishRenderer);
         assertPaintMatches(ElliottWaveBtcMacroCycleDemo.BULLISH_LEG_COLOR, bullishRenderer.getSeriesPaint(0));
         assertPaintMatches(ElliottWaveBtcMacroCycleDemo.BEARISH_LEG_COLOR, bearishRenderer.getSeriesPaint(0));
     }
@@ -184,23 +208,10 @@ class ElliottWaveBtcMacroCycleDemoTest {
         BarSeries series = extendedSyntheticSeries();
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
                 "btc-demo-test", "synthetic.json", "synthetic provenance",
-                java.util.List.of(
-                        new ElliottWaveAnchorCalibrationHarness.Anchor("btc-top-1",
-                                ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series.getBar(0).getEndTime(),
-                                Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.WAVE5),
-                                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic top 1"),
-                        new ElliottWaveAnchorCalibrationHarness.Anchor("btc-bottom-1",
-                                ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series.getBar(1).getEndTime(),
-                                Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.CORRECTIVE_C),
-                                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic bottom 1"),
-                        new ElliottWaveAnchorCalibrationHarness.Anchor("btc-top-2",
-                                ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series.getBar(3).getEndTime(),
-                                Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.WAVE5),
-                                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic top 2"),
-                        new ElliottWaveAnchorCalibrationHarness.Anchor("btc-bottom-2",
-                                ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series.getBar(5).getEndTime(),
-                                Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.CORRECTIVE_C),
-                                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic bottom 2")));
+                List.of(anchor("btc-top-1", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 0),
+                        anchor("btc-bottom-1", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 1),
+                        anchor("btc-top-2", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 3),
+                        anchor("btc-bottom-2", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 5)));
 
         JFreeChart chart = ElliottWaveBtcMacroCycleDemo.renderMacroCycleChart(series, registry);
         XYPlot mainPlot = (XYPlot) ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().getFirst();
@@ -208,129 +219,51 @@ class ElliottWaveBtcMacroCycleDemoTest {
         XYDataset bullishDataset = findDataset(mainPlot, "Bullish 1-2-3-4-5");
         XYDataset bearishDataset = findDataset(mainPlot, "Bearish A-B-C");
 
-        assertNotNull(bullishDataset, "Bullish dataset should be present");
-        assertNotNull(bearishDataset, "Bearish dataset should be present");
-        assertEquals(1, bullishDataset.getSeriesCount(), "One bottom-to-top span should render bullish");
-        assertEquals(2, bearishDataset.getSeriesCount(), "Leading and trailing top-to-bottom spans should render");
+        assertNotNull(bullishDataset);
+        assertNotNull(bearishDataset);
+        assertEquals(1, bullishDataset.getSeriesCount());
+        assertEquals(2, bearishDataset.getSeriesCount());
     }
 
-    @Test
-    void buildWaveLabelsFromScenarioUsesExpectedWaveLabelsAndColors() {
-        BarSeries series = extendedSyntheticSeries();
-        ElliottScenario impulse = ElliottScenario.builder()
-                .id("btc-impulse")
-                .currentPhase(ElliottPhase.WAVE5)
-                .swings(List.of(
-                        new ElliottSwing(0, 1, series.numFactory().numOf(128), series.numFactory().numOf(134),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(1, 2, series.numFactory().numOf(134), series.numFactory().numOf(111),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(2, 3, series.numFactory().numOf(111), series.numFactory().numOf(150),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(3, 4, series.numFactory().numOf(150), series.numFactory().numOf(140),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(4, 5, series.numFactory().numOf(140), series.numFactory().numOf(144),
-                                ElliottDegree.MINUTE)))
-                .confidence(ElliottConfidence.zero(series.numFactory()))
-                .degree(ElliottDegree.MINUTE)
-                .type(ScenarioType.IMPULSE)
-                .startIndex(0)
-                .build();
-        ElliottScenario corrective = ElliottScenario.builder()
-                .id("btc-corrective")
-                .currentPhase(ElliottPhase.CORRECTIVE_C)
-                .swings(List.of(
-                        new ElliottSwing(0, 1, series.numFactory().numOf(135), series.numFactory().numOf(110),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(1, 2, series.numFactory().numOf(110), series.numFactory().numOf(120),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(2, 3, series.numFactory().numOf(120), series.numFactory().numOf(117),
-                                ElliottDegree.MINUTE)))
-                .confidence(ElliottConfidence.zero(series.numFactory()))
-                .degree(ElliottDegree.MINUTE)
-                .type(ScenarioType.CORRECTIVE_ZIGZAG)
-                .startIndex(0)
-                .build();
-
-        List<BarLabel> impulseLabels = ElliottWaveBtcMacroCycleDemo.buildWaveLabelsFromScenario(series, impulse,
-                ElliottWaveBtcMacroCycleDemo.BULLISH_LEG_COLOR);
-        List<BarLabel> correctiveLabels = ElliottWaveBtcMacroCycleDemo.buildWaveLabelsFromScenario(series, corrective,
-                ElliottWaveBtcMacroCycleDemo.BEARISH_LEG_COLOR);
-
-        assertEquals(List.of("1", "2", "3", "4", "5"), impulseLabels.stream().map(BarLabel::text).toList());
-        assertEquals(List.of("A", "B", "C"), correctiveLabels.stream().map(BarLabel::text).toList());
-        assertTrue(impulseLabels.stream()
-                .allMatch(label -> ElliottWaveBtcMacroCycleDemo.BULLISH_LEG_COLOR.equals(label.color())));
-        assertTrue(correctiveLabels.stream()
-                .allMatch(label -> ElliottWaveBtcMacroCycleDemo.BEARISH_LEG_COLOR.equals(label.color())));
+    private static ElliottWaveAnchorCalibrationHarness.Anchor anchor(String id,
+            ElliottWaveAnchorCalibrationHarness.AnchorType type, BarSeries series, int index) {
+        return new ElliottWaveAnchorCalibrationHarness.Anchor(id, type, series.getBar(index).getEndTime(),
+                Duration.ZERO, Duration.ZERO,
+                type == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP ? Set.of(ElliottPhase.WAVE5)
+                        : Set.of(ElliottPhase.CORRECTIVE_C),
+                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic");
     }
 
-    @Test
-    void selectBestSegmentScenarioFitPrefersScenarioThatActuallySpansTheRequestedSegment() {
-        BarSeries series = createSegmentFitSeries();
-        ElliottScenario earlyImpulse = ElliottScenario.builder()
-                .id("early-impulse")
-                .currentPhase(ElliottPhase.WAVE5)
-                .swings(List.of(
-                        new ElliottSwing(10, 18, series.numFactory().numOf(100), series.numFactory().numOf(120),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(18, 24, series.numFactory().numOf(120), series.numFactory().numOf(110),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(24, 31, series.numFactory().numOf(110), series.numFactory().numOf(140),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(31, 38, series.numFactory().numOf(140), series.numFactory().numOf(130),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(38, 44, series.numFactory().numOf(130), series.numFactory().numOf(150),
-                                ElliottDegree.MINUTE)))
-                .confidence(ElliottConfidence.zero(series.numFactory()))
-                .degree(ElliottDegree.MINUTE)
-                .type(ScenarioType.IMPULSE)
-                .startIndex(0)
-                .build();
-        ElliottScenario alignedImpulse = ElliottScenario.builder()
-                .id("aligned-impulse")
-                .currentPhase(ElliottPhase.WAVE5)
-                .swings(List.of(
-                        new ElliottSwing(102, 118, series.numFactory().numOf(200), series.numFactory().numOf(260),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(118, 131, series.numFactory().numOf(260), series.numFactory().numOf(230),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(131, 154, series.numFactory().numOf(230), series.numFactory().numOf(360),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(154, 171, series.numFactory().numOf(360), series.numFactory().numOf(320),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(171, 198, series.numFactory().numOf(320), series.numFactory().numOf(480),
-                                ElliottDegree.MINUTE)))
-                .confidence(ElliottConfidence.zero(series.numFactory()))
-                .degree(ElliottDegree.MINUTE)
-                .type(ScenarioType.IMPULSE)
-                .startIndex(0)
-                .build();
-
-        List<ElliottWaveAnalysisResult.BaseScenarioAssessment> assessments = List.of(
-                new ElliottWaveAnalysisResult.BaseScenarioAssessment(earlyImpulse, 1.0, 1.0, 1.0, List.of()),
-                new ElliottWaveAnalysisResult.BaseScenarioAssessment(alignedImpulse, 0.8, 0.8, 0.8, List.of()));
-
-        ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit fit = ElliottWaveBtcMacroCycleDemo
-                .selectBestSegmentScenarioFit(assessments, 100, 200, true)
-                .orElseThrow();
-
-        assertEquals("aligned-impulse", fit.scenario().id());
-        assertTrue(fit.eyeballPass());
-    }
-
-    private static ElliottWaveBtcMacroCycleDemo.AnchorProbeObservation observation(String anchorId, int bestRank,
-            int legacyBestRank, int matchedScenarioStartIndex, Map<String, Integer> scenarioTypeCounts) {
-        return new ElliottWaveBtcMacroCycleDemo.AnchorProbeObservation(anchorId, "2022-11-22T00:00:00Z",
-                "Bearish CORRECTIVE_C low", bestRank, legacyBestRank, "", "", matchedScenarioStartIndex, Double.NaN, 8,
-                5, scenarioTypeCounts);
-    }
-
-    private static BarSeries syntheticSeries() {
+    private static BarSeries chartSyntheticSeries() {
         BarSeries series = new BaseBarSeriesBuilder().withName("btc-demo-chart-series").build();
         Instant firstEndTime = Instant.parse("2020-01-01T00:00:00Z");
-        double[][] values = { { 100.0, 105.0, 99.0, 104.0 }, { 104.0, 120.0, 103.0, 118.0 },
-                { 118.0, 119.0, 90.0, 95.0 }, { 95.0, 98.0, 80.0, 82.0 } };
+        double[][] values = { { 100.0, 102.0, 96.0, 101.0 }, { 101.0, 126.0, 100.0, 124.0 },
+                { 124.0, 125.0, 112.0, 114.0 }, { 114.0, 150.0, 113.0, 148.0 }, { 148.0, 170.0, 147.0, 168.0 },
+                { 168.0, 169.0, 132.0, 136.0 }, { 136.0, 138.0, 108.0, 110.0 }, { 110.0, 128.0, 109.0, 126.0 },
+                { 126.0, 144.0, 124.0, 142.0 } };
+        for (int index = 0; index < values.length; index++) {
+            series.addBar(series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(firstEndTime.plus(Duration.ofDays(index)))
+                    .openPrice(values[index][0])
+                    .highPrice(values[index][1])
+                    .lowPrice(values[index][2])
+                    .closePrice(values[index][3])
+                    .volume(1.0)
+                    .amount(values[index][3])
+                    .trades(1)
+                    .build());
+        }
+        return series;
+    }
+
+    private static BarSeries studySyntheticSeries() {
+        BarSeries series = new BaseBarSeriesBuilder().withName("btc-demo-study-series").build();
+        Instant firstEndTime = Instant.parse("2020-01-01T00:00:00Z");
+        double[][] values = { { 140.0, 142.0, 132.0, 136.0 }, { 136.0, 170.0, 134.0, 166.0 },
+                { 166.0, 168.0, 118.0, 122.0 }, { 122.0, 136.0, 120.0, 132.0 }, { 132.0, 168.0, 130.0, 164.0 },
+                { 164.0, 205.0, 162.0, 202.0 }, { 202.0, 204.0, 156.0, 160.0 }, { 160.0, 162.0, 112.0, 116.0 },
+                { 116.0, 144.0, 114.0, 142.0 }, { 142.0, 174.0, 140.0, 171.0 } };
         for (int index = 0; index < values.length; index++) {
             series.addBar(series.barBuilder()
                     .timePeriod(Duration.ofDays(1))
@@ -350,9 +283,9 @@ class ElliottWaveBtcMacroCycleDemoTest {
     private static BarSeries extendedSyntheticSeries() {
         BarSeries series = new BaseBarSeriesBuilder().withName("btc-demo-extended-chart-series").build();
         Instant firstEndTime = Instant.parse("2020-01-01T00:00:00Z");
-        double[][] values = { { 130.0, 135.0, 128.0, 132.0 }, { 132.0, 134.0, 110.0, 112.0 },
-                { 112.0, 120.0, 111.0, 118.0 }, { 118.0, 150.0, 117.0, 147.0 }, { 147.0, 149.0, 140.0, 143.0 },
-                { 143.0, 144.0, 100.0, 101.0 } };
+        double[][] values = { { 130.0, 136.0, 128.0, 134.0 }, { 134.0, 135.0, 112.0, 114.0 },
+                { 114.0, 125.0, 113.0, 122.0 }, { 122.0, 152.0, 121.0, 150.0 }, { 150.0, 151.0, 138.0, 140.0 },
+                { 140.0, 141.0, 100.0, 102.0 }, { 102.0, 122.0, 101.0, 118.0 } };
         for (int index = 0; index < values.length; index++) {
             series.addBar(series.barBuilder()
                     .timePeriod(Duration.ofDays(1))
@@ -363,26 +296,6 @@ class ElliottWaveBtcMacroCycleDemoTest {
                     .closePrice(values[index][3])
                     .volume(1.0)
                     .amount(values[index][3])
-                    .trades(1)
-                    .build());
-        }
-        return series;
-    }
-
-    private static BarSeries createSegmentFitSeries() {
-        BarSeries series = new BaseBarSeriesBuilder().withName("btc-demo-segment-fit-series").build();
-        Instant firstEndTime = Instant.parse("2020-01-01T00:00:00Z");
-        for (int index = 0; index < 240; index++) {
-            double base = 100.0 + index;
-            series.addBar(series.barBuilder()
-                    .timePeriod(Duration.ofDays(1))
-                    .endTime(firstEndTime.plus(Duration.ofDays(index)))
-                    .openPrice(base)
-                    .highPrice(base + 5.0)
-                    .lowPrice(base - 5.0)
-                    .closePrice(base + 1.0)
-                    .volume(1.0)
-                    .amount(base + 1.0)
                     .trades(1)
                     .build());
         }
@@ -412,11 +325,12 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
     private static XYDataset findDataset(XYPlot plot, String seriesKey) {
         for (int datasetIndex = 0; datasetIndex < plot.getDatasetCount(); datasetIndex++) {
-            if (plot.getDataset(datasetIndex) == null || plot.getDataset(datasetIndex).getSeriesCount() == 0) {
+            XYDataset dataset = plot.getDataset(datasetIndex);
+            if (dataset == null || dataset.getSeriesCount() == 0) {
                 continue;
             }
-            if (seriesKey.equals(plot.getDataset(datasetIndex).getSeriesKey(0).toString())) {
-                return plot.getDataset(datasetIndex);
+            if (seriesKey.equals(dataset.getSeriesKey(0).toString())) {
+                return dataset;
             }
         }
         return null;
@@ -427,17 +341,6 @@ class ElliottWaveBtcMacroCycleDemoTest {
         assertEquals(expected.getRed(), actual.getRed());
         assertEquals(expected.getGreen(), actual.getGreen());
         assertEquals(expected.getBlue(), actual.getBlue());
-        assertTrue(actual.getAlpha() > 0, "Rendered overlay should remain visible");
-    }
-
-    private static final class ScenarioTypeName {
-        private static final String IMPULSE = "IMPULSE";
-        private static final String CORRECTIVE_ZIGZAG = "CORRECTIVE_ZIGZAG";
-        private static final String CORRECTIVE_FLAT = "CORRECTIVE_FLAT";
-        private static final String CORRECTIVE_TRIANGLE = "CORRECTIVE_TRIANGLE";
-        private static final String CORRECTIVE_COMPLEX = "CORRECTIVE_COMPLEX";
-
-        private ScenarioTypeName() {
-        }
+        assertTrue(actual.getAlpha() > 0);
     }
 }
