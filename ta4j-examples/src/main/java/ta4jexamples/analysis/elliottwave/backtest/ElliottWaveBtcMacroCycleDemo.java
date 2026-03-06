@@ -34,6 +34,7 @@ import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
 import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardProfiles;
@@ -287,10 +288,11 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     private static MacroProfileEvaluation evaluateProfile(BarSeries series, MacroLogicProfile profile,
             List<LegSegment> chartLegs, List<MacroCycle> historicalCycles) {
+        ElliottWaveAnalysisRunner profileRunner = buildProfileRunner(profile);
         List<SegmentScenarioFit> chartSegments = new ArrayList<>();
         Map<String, SegmentScenarioFit> segmentById = new LinkedHashMap<>();
         for (LegSegment legSegment : chartLegs) {
-            fitSegment(series, legSegment, profile).ifPresent(fit -> {
+            fitSegment(series, legSegment, profile, profileRunner).ifPresent(fit -> {
                 chartSegments.add(fit);
                 segmentById.put(segmentKey(legSegment), fit);
             });
@@ -322,6 +324,12 @@ public final class ElliottWaveBtcMacroCycleDemo {
         boolean historicalFitPassed = !cycleFits.isEmpty() && acceptedCycles == cycleFits.size();
         return new MacroProfileEvaluation(profile, aggregateScore, acceptedCycles, acceptedSegments,
                 historicalFitPassed, List.copyOf(cycleFits), List.copyOf(chartSegments));
+    }
+
+    private static ElliottWaveAnalysisRunner buildProfileRunner(MacroLogicProfile profile) {
+        return ElliottWaveAnchorCalibrationHarness.buildMacroAnalysisRunner(profile.runnerDegree(),
+                profile.runnerHigherDegrees(), profile.runnerLowerDegrees(), profile.runnerMaxScenarios(),
+                profile.runnerScenarioSwingWindow(), profile.runnerFractalWindow());
     }
 
     private static Comparator<MacroProfileEvaluation> profileEvaluationComparator() {
@@ -524,50 +532,160 @@ public final class ElliottWaveBtcMacroCycleDemo {
     }
 
     private static Optional<SegmentScenarioFit> fitSegment(BarSeries series, LegSegment legSegment,
-            MacroLogicProfile profile) {
+            MacroLogicProfile profile, ElliottWaveAnalysisRunner profileRunner) {
         int startIndex = nearestIndex(series, legSegment.fromAnchor().at());
         int endIndex = nearestIndex(series, legSegment.toAnchor().at());
         if (endIndex <= startIndex) {
             return Optional.empty();
         }
         if (legSegment.bullish()) {
-            return fitBullishSegment(series, legSegment, profile, startIndex, endIndex);
+            return fitBullishSegment(series, legSegment, profile, profileRunner, startIndex, endIndex);
         }
-        return fitBearishSegment(series, legSegment, profile, startIndex, endIndex);
+        return fitBearishSegment(series, legSegment, profile, profileRunner, startIndex, endIndex);
     }
 
     private static Optional<SegmentScenarioFit> fitBullishSegment(BarSeries series, LegSegment legSegment,
-            MacroLogicProfile profile, int startIndex, int endIndex) {
+            MacroLogicProfile profile, ElliottWaveAnalysisRunner profileRunner, int startIndex, int endIndex) {
         if (endIndex - startIndex < 5) {
             return Optional.empty();
         }
+        Optional<SegmentScenarioFit> coreFit = fitBullishSegmentFromCoreRunner(series, legSegment, profile,
+                profileRunner, startIndex, endIndex);
         boolean[] internalHighPivots = { true, false, true, false };
         List<List<PivotCandidate>> candidatesBySlot = collectSlotCandidates(series, startIndex, endIndex,
                 profile.impulseFractions(), internalHighPivots, profile);
         SegmentScenarioFit bestFit = searchBullishSegment(series, legSegment, profile, startIndex, endIndex,
                 candidatesBySlot);
         if (bestFit != null) {
-            return Optional.of(bestFit);
+            return Optional.of(preferCoreFit(coreFit.orElse(null), bestFit));
+        }
+        if (coreFit.isPresent()) {
+            return coreFit;
         }
         return buildFallbackSegment(series, legSegment, profile, startIndex, endIndex, internalHighPivots,
                 profile.impulseFractions(), ElliottPhase.WAVE5, ScenarioType.IMPULSE, true);
     }
 
     private static Optional<SegmentScenarioFit> fitBearishSegment(BarSeries series, LegSegment legSegment,
-            MacroLogicProfile profile, int startIndex, int endIndex) {
+            MacroLogicProfile profile, ElliottWaveAnalysisRunner profileRunner, int startIndex, int endIndex) {
         if (endIndex - startIndex < 3) {
             return Optional.empty();
         }
+        Optional<SegmentScenarioFit> coreFit = fitBearishSegmentFromCoreRunner(series, legSegment, profile,
+                profileRunner, startIndex, endIndex);
         boolean[] internalHighPivots = { false, true };
         List<List<PivotCandidate>> candidatesBySlot = collectSlotCandidates(series, startIndex, endIndex,
                 profile.correctiveFractions(), internalHighPivots, profile);
         SegmentScenarioFit bestFit = searchBearishSegment(series, legSegment, profile, startIndex, endIndex,
                 candidatesBySlot);
         if (bestFit != null) {
-            return Optional.of(bestFit);
+            return Optional.of(preferCoreFit(coreFit.orElse(null), bestFit));
+        }
+        if (coreFit.isPresent()) {
+            return coreFit;
         }
         return buildFallbackSegment(series, legSegment, profile, startIndex, endIndex, internalHighPivots,
                 profile.correctiveFractions(), ElliottPhase.CORRECTIVE_C, ScenarioType.CORRECTIVE_COMPLEX, false);
+    }
+
+    private static SegmentScenarioFit preferCoreFit(SegmentScenarioFit coreFit, SegmentScenarioFit localFit) {
+        if (coreFit == null) {
+            return localFit;
+        }
+        if (localFit == null) {
+            return coreFit;
+        }
+        if (coreFit.accepted() && (!localFit.accepted() || coreFit.fitScore() + 0.05 >= localFit.fitScore())) {
+            return coreFit;
+        }
+        return coreFit.compareTo(localFit) < 0 ? coreFit : localFit;
+    }
+
+    private static Optional<SegmentScenarioFit> fitBullishSegmentFromCoreRunner(BarSeries series, LegSegment legSegment,
+            MacroLogicProfile profile, ElliottWaveAnalysisRunner profileRunner, int startIndex, int endIndex) {
+        return fitSegmentFromCoreRunner(series, legSegment, profile, profileRunner, startIndex, endIndex, true);
+    }
+
+    private static Optional<SegmentScenarioFit> fitBearishSegmentFromCoreRunner(BarSeries series, LegSegment legSegment,
+            MacroLogicProfile profile, ElliottWaveAnalysisRunner profileRunner, int startIndex, int endIndex) {
+        return fitSegmentFromCoreRunner(series, legSegment, profile, profileRunner, startIndex, endIndex, false);
+    }
+
+    private static Optional<SegmentScenarioFit> fitSegmentFromCoreRunner(BarSeries series, LegSegment legSegment,
+            MacroLogicProfile profile, ElliottWaveAnalysisRunner profileRunner, int startIndex, int endIndex,
+            boolean bullish) {
+        BarSeries segmentSeries = series.getSubSeries(startIndex, endIndex + 1);
+        ElliottWaveAnalysisResult analysis = profileRunner.analyze(segmentSeries);
+        int segmentEndIndex = segmentSeries.getEndIndex();
+        for (ElliottWaveAnalysisResult.BaseScenarioAssessment assessment : analysis.rankedBaseScenarios()) {
+            ElliottScenario candidate = assessment.scenario();
+            if (!matchesSegmentScenario(candidate, bullish, segmentEndIndex)) {
+                continue;
+            }
+            ElliottScenario rebased = rebaseScenario(candidate, startIndex);
+            SegmentScenarioFit fit = bullish
+                    ? scoreBullishSegment(series, legSegment, profile, startIndex, endIndex,
+                            pivotCandidatesFromScenario(rebased, 4, assessment.compositeScore()), rebased,
+                            "Core-ranked IMPULSE WAVE5 fit")
+                    : scoreBearishSegment(series, legSegment, profile, startIndex, endIndex,
+                            pivotCandidatesFromScenario(rebased, 2, assessment.compositeScore()), rebased,
+                            "Core-ranked corrective C fit");
+            if (fit != null) {
+                return Optional.of(fit);
+            }
+        }
+        return Optional.empty();
+    }
+
+    private static boolean matchesSegmentScenario(ElliottScenario scenario, boolean bullish, int segmentEndIndex) {
+        if (scenario == null || scenario.swings().isEmpty()) {
+            return false;
+        }
+        if (scenario.swings().getFirst().fromIndex() != 0 || scenario.swings().getLast().toIndex() != segmentEndIndex) {
+            return false;
+        }
+        if (!scenario.hasKnownDirection()) {
+            return false;
+        }
+        if (bullish) {
+            return scenario.type() == ScenarioType.IMPULSE && scenario.currentPhase() == ElliottPhase.WAVE5
+                    && scenario.waveCount() == 5 && scenario.isBullish();
+        }
+        return scenario.type().isCorrective() && scenario.currentPhase() == ElliottPhase.CORRECTIVE_C
+                && scenario.waveCount() == 3 && scenario.isBearish();
+    }
+
+    private static List<PivotCandidate> pivotCandidatesFromScenario(ElliottScenario scenario, int internalPivotCount,
+            double normalizedScore) {
+        List<PivotCandidate> candidates = new ArrayList<>(internalPivotCount);
+        for (int index = 0; index < internalPivotCount; index++) {
+            ElliottSwing swing = scenario.swings().get(index);
+            candidates.add(new PivotCandidate(swing.toIndex(), swing.toPrice(), normalizedScore, normalizedScore));
+        }
+        return List.copyOf(candidates);
+    }
+
+    private static ElliottScenario rebaseScenario(ElliottScenario scenario, int indexOffset) {
+        List<ElliottSwing> rebasedSwings = scenario.swings()
+                .stream()
+                .map(swing -> new ElliottSwing(swing.fromIndex() + indexOffset, swing.toIndex() + indexOffset,
+                        swing.fromPrice(), swing.toPrice(), swing.degree()))
+                .toList();
+        ElliottScenario.Builder builder = ElliottScenario.builder()
+                .id(scenario.id())
+                .currentPhase(scenario.currentPhase())
+                .swings(rebasedSwings)
+                .confidence(scenario.confidence())
+                .degree(scenario.degree())
+                .invalidationPrice(scenario.invalidationPrice())
+                .primaryTarget(scenario.primaryTarget())
+                .fibonacciTargets(scenario.fibonacciTargets())
+                .type(scenario.type())
+                .startIndex(scenario.startIndex() + indexOffset);
+        if (scenario.hasKnownDirection()) {
+            builder.bullishDirection(scenario.isBullish());
+        }
+        return builder.build();
     }
 
     private static SegmentScenarioFit searchBullishSegment(BarSeries series, LegSegment legSegment,
@@ -642,6 +760,13 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     private static SegmentScenarioFit scoreBullishSegment(BarSeries series, LegSegment legSegment,
             MacroLogicProfile profile, int startIndex, int endIndex, List<PivotCandidate> candidates) {
+        return scoreBullishSegment(series, legSegment, profile, startIndex, endIndex, candidates, null,
+                "Bullish 1-2-3-4-5 decomposition");
+    }
+
+    private static SegmentScenarioFit scoreBullishSegment(BarSeries series, LegSegment legSegment,
+            MacroLogicProfile profile, int startIndex, int endIndex, List<PivotCandidate> candidates,
+            ElliottScenario scenarioOverride, String rationale) {
         double p0 = pivotPrice(series, startIndex, false).doubleValue();
         double p1 = candidates.get(0).price().doubleValue();
         double p2 = candidates.get(1).price().doubleValue();
@@ -682,15 +807,24 @@ public final class ElliottWaveBtcMacroCycleDemo {
         double strengthScore = average(candidates.stream().mapToDouble(PivotCandidate::normalizedScore).toArray(),
                 0.20);
         double fitScore = weightedScore(structureScore, ruleScore, spacingScore, strengthScore, profile);
-        ElliottScenario scenario = buildImpulseScenario(series, startIndex, candidates, endIndex);
+        ElliottScenario scenario = scenarioOverride == null
+                ? buildImpulseScenario(series, startIndex, candidates, endIndex)
+                : scenarioOverride;
         boolean accepted = fitScore >= Math.max(DEFAULT_ACCEPTED_SEGMENT_SCORE, profile.acceptanceThreshold())
                 && ruleScore >= 0.45 && spacingScore >= 0.35;
         return new SegmentScenarioFit(legSegment, scenario, fitScore, structureScore, ruleScore, spacingScore,
-                strengthScore, true, accepted, "Bullish 1-2-3-4-5 decomposition");
+                strengthScore, true, accepted, rationale);
     }
 
     private static SegmentScenarioFit scoreBearishSegment(BarSeries series, LegSegment legSegment,
             MacroLogicProfile profile, int startIndex, int endIndex, List<PivotCandidate> candidates) {
+        return scoreBearishSegment(series, legSegment, profile, startIndex, endIndex, candidates, null,
+                "Bearish A-B-C decomposition");
+    }
+
+    private static SegmentScenarioFit scoreBearishSegment(BarSeries series, LegSegment legSegment,
+            MacroLogicProfile profile, int startIndex, int endIndex, List<PivotCandidate> candidates,
+            ElliottScenario scenarioOverride, String rationale) {
         double p0 = pivotPrice(series, startIndex, true).doubleValue();
         double p1 = candidates.get(0).price().doubleValue();
         double p2 = candidates.get(1).price().doubleValue();
@@ -720,11 +854,13 @@ public final class ElliottWaveBtcMacroCycleDemo {
         double strengthScore = average(candidates.stream().mapToDouble(PivotCandidate::normalizedScore).toArray(),
                 0.20);
         double fitScore = weightedScore(structureScore, ruleScore, spacingScore, strengthScore, profile);
-        ElliottScenario scenario = buildCorrectiveScenario(series, startIndex, candidates, endIndex, profile);
+        ElliottScenario scenario = scenarioOverride == null
+                ? buildCorrectiveScenario(series, startIndex, candidates, endIndex, profile)
+                : scenarioOverride;
         boolean accepted = fitScore >= Math.max(DEFAULT_ACCEPTED_SEGMENT_SCORE, profile.acceptanceThreshold())
                 && ruleScore >= 0.35 && spacingScore >= 0.35;
         return new SegmentScenarioFit(legSegment, scenario, fitScore, structureScore, ruleScore, spacingScore,
-                strengthScore, false, accepted, "Bearish A-B-C decomposition");
+                strengthScore, false, accepted, rationale);
     }
 
     private static Optional<SegmentScenarioFit> buildFallbackSegment(BarSeries series, LegSegment legSegment,
@@ -1413,22 +1549,25 @@ public final class ElliottWaveBtcMacroCycleDemo {
     }
 
     private static List<MacroLogicProfile> logicProfiles() {
-        return List.of(
-                new MacroLogicProfile("orthodox-classical", "H0", "Classical Elliott constraints", 0,
-                        new int[] { 21, 55, 89 }, new double[] { 0.18, 0.36, 0.64, 0.82 }, new double[] { 0.32, 0.60 },
-                        0.0, 0.0, 0.55, 0.38, 0.34, 0.18, 0.10, 0.74),
+        return List.of(new MacroLogicProfile("orthodox-classical", "H0", "Classical Elliott constraints", 0,
+                ElliottDegree.MINOR, 1, 1, 25, 0, 2, new int[] { 21, 55, 89 }, new double[] { 0.18, 0.36, 0.64, 0.82 },
+                new double[] { 0.32, 0.60 }, 0.0, 0.0, 0.55, 0.38, 0.34, 0.18, 0.10, 0.74),
                 new MacroLogicProfile("h1-hierarchical-swing", "H1", "Hierarchical swing extraction", 1,
-                        new int[] { 13, 34, 89, 144 }, new double[] { 0.18, 0.36, 0.64, 0.82 },
-                        new double[] { 0.32, 0.60 }, 0.0, 0.0, 0.70, 0.36, 0.32, 0.18, 0.14, 0.72),
+                        ElliottDegree.MINOR, 1, 1, 25, 0, 4, new int[] { 13, 34, 89, 144 },
+                        new double[] { 0.18, 0.36, 0.64, 0.82 }, new double[] { 0.32, 0.60 }, 0.0, 0.0, 0.70, 0.36,
+                        0.32, 0.18, 0.14, 0.72),
                 new MacroLogicProfile("h2-btc-relaxed-impulse", "H2", "Relaxed impulse rules for BTC", 2,
-                        new int[] { 13, 34, 89, 144 }, new double[] { 0.16, 0.35, 0.63, 0.83 },
-                        new double[] { 0.32, 0.60 }, 0.55, 0.0, 0.72, 0.36, 0.28, 0.20, 0.16, 0.70),
+                        ElliottDegree.MINOR, 1, 1, 35, 0, 4, new int[] { 13, 34, 89, 144 },
+                        new double[] { 0.16, 0.35, 0.63, 0.83 }, new double[] { 0.32, 0.60 }, 0.55, 0.0, 0.72, 0.36,
+                        0.28, 0.20, 0.16, 0.70),
                 new MacroLogicProfile("h3-btc-relaxed-corrective", "H3", "Relaxed corrective coverage for BTC", 3,
-                        new int[] { 13, 34, 89, 144 }, new double[] { 0.16, 0.35, 0.63, 0.83 },
-                        new double[] { 0.28, 0.58 }, 0.55, 0.65, 0.72, 0.34, 0.28, 0.20, 0.18, 0.68),
+                        ElliottDegree.MINOR, 1, 1, 35, 0, 5, new int[] { 13, 34, 89, 144 },
+                        new double[] { 0.16, 0.35, 0.63, 0.83 }, new double[] { 0.28, 0.58 }, 0.55, 0.65, 0.72, 0.34,
+                        0.28, 0.20, 0.18, 0.68),
                 new MacroLogicProfile("h4-anchor-first-hybrid", "H4", "Anchor-first hybrid profile", 4,
-                        new int[] { 8, 21, 55, 144, 233 }, new double[] { 0.15, 0.34, 0.63, 0.84 },
-                        new double[] { 0.27, 0.57 }, 0.75, 0.80, 0.90, 0.30, 0.24, 0.30, 0.16, 0.66));
+                        ElliottDegree.MINOR, 2, 2, 40, 0, 5, new int[] { 8, 21, 55, 144, 233 },
+                        new double[] { 0.15, 0.34, 0.63, 0.84 }, new double[] { 0.27, 0.57 }, 0.75, 0.80, 0.90, 0.30,
+                        0.24, 0.30, 0.16, 0.66));
     }
 
     private static String formatScore(double score) {
@@ -1570,15 +1709,18 @@ public final class ElliottWaveBtcMacroCycleDemo {
         }
     }
 
-    record MacroLogicProfile(String id, String hypothesisId, String title, int orthodoxyRank, int[] pivotRadii,
-            double[] impulseFractions, double[] correctiveFractions, double impulseRelaxation,
-            double correctiveRelaxation, double expectedFractionWeight, double structureWeight, double ruleWeight,
-            double spacingWeight, double strengthWeight, double acceptanceThreshold) {
+    record MacroLogicProfile(String id, String hypothesisId, String title, int orthodoxyRank,
+            ElliottDegree runnerDegree, int runnerHigherDegrees, int runnerLowerDegrees, int runnerMaxScenarios,
+            int runnerScenarioSwingWindow, int runnerFractalWindow, int[] pivotRadii, double[] impulseFractions,
+            double[] correctiveFractions, double impulseRelaxation, double correctiveRelaxation,
+            double expectedFractionWeight, double structureWeight, double ruleWeight, double spacingWeight,
+            double strengthWeight, double acceptanceThreshold) {
 
         MacroLogicProfile {
             Objects.requireNonNull(id, "id");
             Objects.requireNonNull(hypothesisId, "hypothesisId");
             Objects.requireNonNull(title, "title");
+            Objects.requireNonNull(runnerDegree, "runnerDegree");
             pivotRadii = pivotRadii == null ? new int[0] : pivotRadii.clone();
             impulseFractions = impulseFractions == null ? new double[0] : impulseFractions.clone();
             correctiveFractions = correctiveFractions == null ? new double[0] : correctiveFractions.clone();
