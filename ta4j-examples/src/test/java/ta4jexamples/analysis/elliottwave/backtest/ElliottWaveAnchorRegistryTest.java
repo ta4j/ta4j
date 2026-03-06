@@ -27,8 +27,9 @@ class ElliottWaveAnchorRegistryTest {
         assertEquals("btc-macro-cycle-anchors-v2", registry.registryId());
         assertEquals(ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, registry.datasetResource());
         assertFalse(registry.provenance().isBlank());
-        assertEquals(7, registry.anchors().size());
+        assertEquals(8, registry.anchors().size());
         assertEquals("btc-2011-cycle-top", registry.anchors().getFirst().id());
+        assertEquals("btc-2013-cycle-top", registry.anchors().get(2).id());
         assertEquals("btc-2022-cycle-bottom", registry.anchors().getLast().id());
         assertTrue(registry.anchors()
                 .stream()

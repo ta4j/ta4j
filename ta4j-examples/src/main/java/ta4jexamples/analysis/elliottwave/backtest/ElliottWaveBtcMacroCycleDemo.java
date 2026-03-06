@@ -172,10 +172,10 @@ public final class ElliottWaveBtcMacroCycleDemo {
         Objects.requireNonNull(registry, "registry");
 
         ChartWorkflow chartWorkflow = new ChartWorkflow();
-        List<CycleSegment> cycleSegments = buildCycleSegments(registry);
+        List<LegSegment> legSegments = buildLegSegments(registry);
         BarSeriesLabelIndicator anchorLabels = new BarSeriesLabelIndicator(series, buildAnchorLabels(series, registry));
-        FixedIndicator<Num> bullishLegs = buildCycleLegIndicator(series, cycleSegments, true, "Bullish 1-2-3-4-5");
-        FixedIndicator<Num> bearishLegs = buildCycleLegIndicator(series, cycleSegments, false, "Bearish A-B-C");
+        FixedIndicator<Num> bullishLegs = buildCycleLegIndicator(series, legSegments, true, "Bullish 1-2-3-4-5");
+        FixedIndicator<Num> bearishLegs = buildCycleLegIndicator(series, legSegments, false, "Bearish A-B-C");
         ChartPlan plan = chartWorkflow.builder()
                 .withTitle("BTC macro cycles: bullish 1-5 tops and bearish A-C lows")
                 .withSeries(series)
@@ -358,15 +358,16 @@ public final class ElliottWaveBtcMacroCycleDemo {
         return List.copyOf(labels);
     }
 
-    private static FixedIndicator<Num> buildCycleLegIndicator(BarSeries series, List<CycleSegment> cycleSegments,
+    private static FixedIndicator<Num> buildCycleLegIndicator(BarSeries series, List<LegSegment> legSegments,
             boolean bullish, String label) {
         Num[] values = new Num[series.getEndIndex() + 1];
         Arrays.fill(values, NaN);
-        for (CycleSegment cycleSegment : cycleSegments) {
-            ElliottWaveAnchorCalibrationHarness.Anchor fromAnchor = bullish ? cycleSegment.startAnchor()
-                    : cycleSegment.peakAnchor();
-            ElliottWaveAnchorCalibrationHarness.Anchor toAnchor = bullish ? cycleSegment.peakAnchor()
-                    : cycleSegment.lowAnchor();
+        for (LegSegment legSegment : legSegments) {
+            if (legSegment.bullish() != bullish) {
+                continue;
+            }
+            ElliottWaveAnchorCalibrationHarness.Anchor fromAnchor = legSegment.fromAnchor();
+            ElliottWaveAnchorCalibrationHarness.Anchor toAnchor = legSegment.toAnchor();
             int fromIndex = nearestIndex(series, fromAnchor.at());
             int toIndex = nearestIndex(series, toAnchor.at());
             if (toIndex < fromIndex) {
@@ -390,28 +391,23 @@ public final class ElliottWaveBtcMacroCycleDemo {
         };
     }
 
-    private static List<CycleSegment> buildCycleSegments(ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
+    private static List<LegSegment> buildLegSegments(ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
         List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors = registry.anchors()
                 .stream()
                 .sorted(java.util.Comparator.comparing(ElliottWaveAnchorCalibrationHarness.Anchor::at))
                 .toList();
-        List<CycleSegment> cycleSegments = new ArrayList<>();
-        ElliottWaveAnchorCalibrationHarness.Anchor currentStart = null;
-        ElliottWaveAnchorCalibrationHarness.Anchor currentPeak = null;
-        for (ElliottWaveAnchorCalibrationHarness.Anchor anchor : anchors) {
-            if (anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM) {
-                if (currentStart != null && currentPeak != null) {
-                    cycleSegments.add(new CycleSegment(currentStart, currentPeak, anchor));
-                }
-                currentStart = anchor;
-                currentPeak = null;
+        List<LegSegment> legSegments = new ArrayList<>();
+        for (int index = 1; index < anchors.size(); index++) {
+            ElliottWaveAnchorCalibrationHarness.Anchor fromAnchor = anchors.get(index - 1);
+            ElliottWaveAnchorCalibrationHarness.Anchor toAnchor = anchors.get(index);
+            if (fromAnchor.type() == toAnchor.type()) {
                 continue;
             }
-            if (currentStart != null) {
-                currentPeak = anchor;
-            }
+            boolean bullish = fromAnchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM
+                    && toAnchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP;
+            legSegments.add(new LegSegment(fromAnchor, toAnchor, bullish));
         }
-        return List.copyOf(cycleSegments);
+        return List.copyOf(legSegments);
     }
 
     private static double anchorPrice(BarSeries series, int barIndex,
@@ -633,14 +629,12 @@ public final class ElliottWaveBtcMacroCycleDemo {
         }
     }
 
-    record CycleSegment(ElliottWaveAnchorCalibrationHarness.Anchor startAnchor,
-            ElliottWaveAnchorCalibrationHarness.Anchor peakAnchor,
-            ElliottWaveAnchorCalibrationHarness.Anchor lowAnchor) {
+    record LegSegment(ElliottWaveAnchorCalibrationHarness.Anchor fromAnchor,
+            ElliottWaveAnchorCalibrationHarness.Anchor toAnchor, boolean bullish) {
 
-        CycleSegment {
-            Objects.requireNonNull(startAnchor, "startAnchor");
-            Objects.requireNonNull(peakAnchor, "peakAnchor");
-            Objects.requireNonNull(lowAnchor, "lowAnchor");
+        LegSegment {
+            Objects.requireNonNull(fromAnchor, "fromAnchor");
+            Objects.requireNonNull(toAnchor, "toAnchor");
         }
     }
 

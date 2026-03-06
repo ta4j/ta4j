@@ -51,12 +51,13 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         assertEquals("btc-macro-cycle-anchors-v2", registry.version());
         assertEquals(ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, registry.datasetResource());
         assertTrue(registry.provenance().contains("user-supplied TradingView"));
-        assertEquals(7, registry.anchors().size());
+        assertEquals(8, registry.anchors().size());
         assertEquals(2,
                 registry.anchors()
                         .stream()
                         .filter(anchor -> anchor.partition() == ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT)
                         .count());
+        assertEquals("btc-2013-cycle-top", registry.anchors().get(2).id());
         registry.anchors().forEach(anchor -> {
             assertFalse(anchor.provenance().isBlank());
             assertFalse(anchor.toleranceBefore().isNegative());

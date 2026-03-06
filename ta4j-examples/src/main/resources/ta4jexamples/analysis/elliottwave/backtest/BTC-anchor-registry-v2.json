@@ -24,6 +24,16 @@
       "notes": "Bottoms are now treated strictly as bearish corrective-C completions."
     },
     {
+      "id": "btc-2013-cycle-top",
+      "label": "2013 cycle top",
+      "kind": "TOP",
+      "windowStart": "2013-11-20T00:00:00Z",
+      "windowEnd": "2013-12-03T00:00:00Z",
+      "expectedPhases": ["WAVE5"],
+      "source": "TradingView INDEX_BTCUSD PT1D local extremum inside the late-November 2013 blow-off window.",
+      "notes": "Second early macro-cycle peak used to complete the 2011-2013-2015 bull cycle."
+    },
+    {
       "id": "btc-2015-cycle-bottom",
       "label": "2015 cycle bottom",
       "kind": "BOTTOM",
