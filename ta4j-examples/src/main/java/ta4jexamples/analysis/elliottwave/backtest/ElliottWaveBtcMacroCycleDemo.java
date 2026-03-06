@@ -17,6 +17,10 @@ import java.util.TreeMap;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.LogAxis;
+import org.jfree.chart.plot.CombinedDomainXYPlot;
+import org.jfree.chart.plot.XYPlot;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
@@ -39,6 +43,7 @@ import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.LabelPlacement;
 import ta4jexamples.charting.builder.ChartPlan;
+import ta4jexamples.charting.storage.FileSystemChartStorage;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 
 /**
@@ -67,6 +72,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
     static final String RESULT_PREFIX = "EW_BTC_MACRO_DEMO: ";
     static final Path DEFAULT_CHART_DIRECTORY = Path.of("temp", "charts");
     static final String DEFAULT_CHART_FILE_NAME = "elliott-wave-btc-macro-cycles";
+    static final int DEFAULT_CHART_WIDTH = 2560;
+    static final int DEFAULT_CHART_HEIGHT = 1440;
     static final String RECENT_TOP_ANCHOR_ID = "btc-2021-cycle-top";
     static final String RECENT_LOW_ANCHOR_ID = "btc-2022-cycle-bottom";
 
@@ -147,6 +154,16 @@ public final class ElliottWaveBtcMacroCycleDemo {
         Objects.requireNonNull(registry, "registry");
         Objects.requireNonNull(chartDirectory, "chartDirectory");
 
+        JFreeChart chart = renderMacroCycleChart(series, registry);
+        FileSystemChartStorage storage = new FileSystemChartStorage(chartDirectory);
+        return storage.save(chart, series, DEFAULT_CHART_FILE_NAME, DEFAULT_CHART_WIDTH, DEFAULT_CHART_HEIGHT);
+    }
+
+    static JFreeChart renderMacroCycleChart(BarSeries series,
+            ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(registry, "registry");
+
         ChartWorkflow chartWorkflow = new ChartWorkflow();
         BarSeriesLabelIndicator anchorLabels = new BarSeriesLabelIndicator(series, buildAnchorLabels(series, registry));
         ChartPlan plan = chartWorkflow.builder()
@@ -158,7 +175,9 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 .withOpacity(0.95f)
                 .withLabel("BTC macro-cycle anchors")
                 .toPlan();
-        return chartWorkflow.save(plan, chartDirectory, DEFAULT_CHART_FILE_NAME);
+        JFreeChart chart = chartWorkflow.render(plan);
+        applyLogPriceAxis(chart, series);
+        return chart;
     }
 
     static HypothesisResult holdoutGeometryHypothesis(int expectedHoldoutAnchorCount, int observedHoldoutAnchorCount,
@@ -316,6 +335,38 @@ public final class ElliottWaveBtcMacroCycleDemo {
             labels.add(new BarLabel(barIndex, yValue, text, placement));
         }
         return List.copyOf(labels);
+    }
+
+    private static void applyLogPriceAxis(JFreeChart chart, BarSeries series) {
+        if (!(chart.getPlot() instanceof CombinedDomainXYPlot combinedPlot)) {
+            return;
+        }
+        if (combinedPlot.getSubplots() == null || combinedPlot.getSubplots().isEmpty()) {
+            return;
+        }
+
+        Object subplot = combinedPlot.getSubplots().getFirst();
+        if (!(subplot instanceof XYPlot pricePlot)) {
+            return;
+        }
+
+        LogAxis logAxis = new LogAxis("Price (USD, log)");
+        logAxis.setAutoRange(true);
+        logAxis.setTickLabelPaint(Color.LIGHT_GRAY);
+        logAxis.setLabelPaint(Color.LIGHT_GRAY);
+        logAxis.setSmallestValue(smallestPositiveLow(series));
+        pricePlot.setRangeAxis(logAxis);
+    }
+
+    private static double smallestPositiveLow(BarSeries series) {
+        double smallest = Double.POSITIVE_INFINITY;
+        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+            double low = series.getBar(index).getLowPrice().doubleValue();
+            if (Double.isFinite(low) && low > 0.0 && low < smallest) {
+                smallest = low;
+            }
+        }
+        return Double.isFinite(smallest) ? smallest : 1.0;
     }
 
     private static ElliottWaveAnchorCalibrationHarness.Anchor findAnchor(

@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import javax.imageio.ImageIO;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -16,6 +19,10 @@ import java.util.Optional;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
+import org.jfree.chart.JFreeChart;
+import org.jfree.chart.axis.LogAxis;
+import org.jfree.chart.plot.CombinedDomainXYPlot;
+import org.jfree.chart.plot.XYPlot;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
@@ -90,6 +97,9 @@ class ElliottWaveBtcMacroCycleDemoTest {
             assertTrue(savedPath.isPresent());
             assertTrue(Files.exists(savedPath.get()));
             assertTrue(savedPath.get().getFileName().toString().endsWith(".jpg"));
+            BufferedImage image = readImage(savedPath.get());
+            assertEquals(ElliottWaveBtcMacroCycleDemo.DEFAULT_CHART_WIDTH, image.getWidth());
+            assertEquals(ElliottWaveBtcMacroCycleDemo.DEFAULT_CHART_HEIGHT, image.getHeight());
         } finally {
             Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
                 try {
@@ -118,6 +128,26 @@ class ElliottWaveBtcMacroCycleDemoTest {
         assertFalse(hypothesis.summary().isBlank());
     }
 
+    @Test
+    void renderMacroCycleChartUsesLogAxisOnMainPricePlot() {
+        BarSeries series = syntheticSeries();
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
+                "btc-demo-test", "synthetic.json", "synthetic provenance",
+                java.util.List.of(new ElliottWaveAnchorCalibrationHarness.Anchor("btc-top",
+                        ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series.getBar(1).getEndTime(),
+                        Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.WAVE5),
+                        ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic top")));
+
+        JFreeChart chart = ElliottWaveBtcMacroCycleDemo.renderMacroCycleChart(series, registry);
+
+        assertTrue(chart.getPlot() instanceof CombinedDomainXYPlot);
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        assertFalse(combinedPlot.getSubplots().isEmpty());
+        XYPlot mainPlot = (XYPlot) combinedPlot.getSubplots().getFirst();
+        assertTrue(mainPlot.getRangeAxis() instanceof LogAxis);
+        assertEquals("Price (USD, log)", mainPlot.getRangeAxis().getLabel());
+    }
+
     private static ElliottWaveBtcMacroCycleDemo.AnchorProbeObservation observation(String anchorId, int bestRank,
             int legacyBestRank, int matchedScenarioStartIndex, Map<String, Integer> scenarioTypeCounts) {
         return new ElliottWaveBtcMacroCycleDemo.AnchorProbeObservation(anchorId, "2022-11-22T00:00:00Z",
@@ -144,6 +174,14 @@ class ElliottWaveBtcMacroCycleDemoTest {
                     .build());
         }
         return series;
+    }
+
+    private static BufferedImage readImage(Path path) throws IOException {
+        BufferedImage image = ImageIO.read(path.toFile());
+        if (image == null) {
+            throw new IOException("Unable to decode image " + path);
+        }
+        return image;
     }
 
     private static final class ScenarioTypeName {
