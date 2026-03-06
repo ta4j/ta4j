@@ -32,11 +32,13 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottConfidence;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
+import org.ta4j.core.indicators.elliott.PatternSet;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
 import org.ta4j.core.indicators.elliott.ScenarioType;
+import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardProfiles;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.num.Num;
@@ -329,7 +331,10 @@ public final class ElliottWaveBtcMacroCycleDemo {
     private static ElliottWaveAnalysisRunner buildProfileRunner(MacroLogicProfile profile) {
         return ElliottWaveAnchorCalibrationHarness.buildMacroAnalysisRunner(profile.runnerDegree(),
                 profile.runnerHigherDegrees(), profile.runnerLowerDegrees(), profile.runnerMaxScenarios(),
-                profile.runnerScenarioSwingWindow(), profile.runnerFractalWindow());
+                profile.runnerScenarioSwingWindow(), profile.runnerFractalWindow(), profile.patternSet(),
+                profile.runnerBaseConfidenceWeight(),
+                profile.patternAwareConfidence() ? ConfidenceProfiles::patternAwareModel
+                        : ConfidenceProfiles::defaultModel);
     }
 
     private static Comparator<MacroProfileEvaluation> profileEvaluationComparator() {
@@ -1549,25 +1554,29 @@ public final class ElliottWaveBtcMacroCycleDemo {
     }
 
     private static List<MacroLogicProfile> logicProfiles() {
-        return List.of(new MacroLogicProfile("orthodox-classical", "H0", "Classical Elliott constraints", 0,
-                ElliottDegree.MINOR, 1, 1, 25, 0, 2, new int[] { 21, 55, 89 }, new double[] { 0.18, 0.36, 0.64, 0.82 },
-                new double[] { 0.32, 0.60 }, 0.0, 0.0, 0.55, 0.38, 0.34, 0.18, 0.10, 0.74),
+        return List.of(
+                new MacroLogicProfile("orthodox-classical", "H0", "Classical Elliott constraints", 0,
+                        ElliottDegree.MINOR, 1, 1, 25, 0, 2, PatternSet.all(), 0.70, false, new int[] { 21, 55, 89 },
+                        new double[] { 0.18, 0.36, 0.64, 0.82 }, new double[] { 0.32, 0.60 }, 0.0, 0.0, 0.55, 0.38,
+                        0.34, 0.18, 0.10, 0.74),
                 new MacroLogicProfile("h1-hierarchical-swing", "H1", "Hierarchical swing extraction", 1,
-                        ElliottDegree.MINOR, 1, 1, 25, 0, 4, new int[] { 13, 34, 89, 144 },
-                        new double[] { 0.18, 0.36, 0.64, 0.82 }, new double[] { 0.32, 0.60 }, 0.0, 0.0, 0.70, 0.36,
-                        0.32, 0.18, 0.14, 0.72),
+                        ElliottDegree.MINOR, 1, 1, 25, 0, 4, PatternSet.all(), 0.78, false,
+                        new int[] { 13, 34, 89, 144 }, new double[] { 0.18, 0.36, 0.64, 0.82 },
+                        new double[] { 0.32, 0.60 }, 0.0, 0.0, 0.70, 0.36, 0.32, 0.18, 0.14, 0.72),
                 new MacroLogicProfile("h2-btc-relaxed-impulse", "H2", "Relaxed impulse rules for BTC", 2,
-                        ElliottDegree.MINOR, 1, 1, 35, 0, 4, new int[] { 13, 34, 89, 144 },
-                        new double[] { 0.16, 0.35, 0.63, 0.83 }, new double[] { 0.32, 0.60 }, 0.55, 0.0, 0.72, 0.36,
-                        0.28, 0.20, 0.16, 0.70),
+                        ElliottDegree.MINOR, 1, 1, 35, 0, 4,
+                        PatternSet.of(ScenarioType.IMPULSE, ScenarioType.CORRECTIVE_ZIGZAG,
+                                ScenarioType.CORRECTIVE_FLAT),
+                        0.82, false, new int[] { 13, 34, 89, 144 }, new double[] { 0.16, 0.35, 0.63, 0.83 },
+                        new double[] { 0.32, 0.60 }, 0.55, 0.0, 0.72, 0.36, 0.28, 0.20, 0.16, 0.70),
                 new MacroLogicProfile("h3-btc-relaxed-corrective", "H3", "Relaxed corrective coverage for BTC", 3,
-                        ElliottDegree.MINOR, 1, 1, 35, 0, 5, new int[] { 13, 34, 89, 144 },
-                        new double[] { 0.16, 0.35, 0.63, 0.83 }, new double[] { 0.28, 0.58 }, 0.55, 0.65, 0.72, 0.34,
-                        0.28, 0.20, 0.18, 0.68),
+                        ElliottDegree.MINOR, 1, 1, 35, 0, 5, PatternSet.all(), 0.64, true,
+                        new int[] { 13, 34, 89, 144 }, new double[] { 0.16, 0.35, 0.63, 0.83 },
+                        new double[] { 0.28, 0.58 }, 0.55, 0.65, 0.72, 0.34, 0.28, 0.20, 0.18, 0.68),
                 new MacroLogicProfile("h4-anchor-first-hybrid", "H4", "Anchor-first hybrid profile", 4,
-                        ElliottDegree.MINOR, 2, 2, 40, 0, 5, new int[] { 8, 21, 55, 144, 233 },
-                        new double[] { 0.15, 0.34, 0.63, 0.84 }, new double[] { 0.27, 0.57 }, 0.75, 0.80, 0.90, 0.30,
-                        0.24, 0.30, 0.16, 0.66));
+                        ElliottDegree.MINOR, 2, 2, 40, 0, 5, PatternSet.all(), 0.58, true,
+                        new int[] { 8, 21, 55, 144, 233 }, new double[] { 0.15, 0.34, 0.63, 0.84 },
+                        new double[] { 0.27, 0.57 }, 0.75, 0.80, 0.90, 0.30, 0.24, 0.30, 0.16, 0.66));
     }
 
     private static String formatScore(double score) {
@@ -1711,16 +1720,18 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     record MacroLogicProfile(String id, String hypothesisId, String title, int orthodoxyRank,
             ElliottDegree runnerDegree, int runnerHigherDegrees, int runnerLowerDegrees, int runnerMaxScenarios,
-            int runnerScenarioSwingWindow, int runnerFractalWindow, int[] pivotRadii, double[] impulseFractions,
-            double[] correctiveFractions, double impulseRelaxation, double correctiveRelaxation,
-            double expectedFractionWeight, double structureWeight, double ruleWeight, double spacingWeight,
-            double strengthWeight, double acceptanceThreshold) {
+            int runnerScenarioSwingWindow, int runnerFractalWindow, PatternSet patternSet,
+            double runnerBaseConfidenceWeight, boolean patternAwareConfidence, int[] pivotRadii,
+            double[] impulseFractions, double[] correctiveFractions, double impulseRelaxation,
+            double correctiveRelaxation, double expectedFractionWeight, double structureWeight, double ruleWeight,
+            double spacingWeight, double strengthWeight, double acceptanceThreshold) {
 
         MacroLogicProfile {
             Objects.requireNonNull(id, "id");
             Objects.requireNonNull(hypothesisId, "hypothesisId");
             Objects.requireNonNull(title, "title");
             Objects.requireNonNull(runnerDegree, "runnerDegree");
+            Objects.requireNonNull(patternSet, "patternSet");
             pivotRadii = pivotRadii == null ? new int[0] : pivotRadii.clone();
             impulseFractions = impulseFractions == null ? new double[0] : impulseFractions.clone();
             correctiveFractions = correctiveFractions == null ? new double[0] : correctiveFractions.clone();

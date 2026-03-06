@@ -23,8 +23,10 @@ import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
+import org.ta4j.core.indicators.elliott.PatternSet;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ScenarioType;
+import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveOutcome;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
@@ -94,6 +96,21 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         assertFalse(narrowBase.processedSwings().isEmpty());
         assertFalse(broadBase.processedSwings().isEmpty());
         assertTrue(narrowBase.rawSwings().size() > broadBase.rawSwings().size());
+    }
+
+    @Test
+    void buildMacroAnalysisRunnerHonorsPatternSetOverrides() {
+        BarSeries series = oscillatingSeries(72);
+
+        ElliottWaveAnalysisResult impulseOnly = ElliottWaveAnchorCalibrationHarness
+                .buildMacroAnalysisRunner(ElliottDegree.MINUTE, 1, 1, 25, 0, 3, PatternSet.of(ScenarioType.IMPULSE),
+                        0.62, ConfidenceProfiles::patternAwareModel)
+                .analyze(series);
+
+        ElliottAnalysisResult base = impulseOnly.analysisFor(ElliottDegree.MINUTE).orElseThrow().analysis();
+
+        assertFalse(base.scenarios().all().isEmpty());
+        assertTrue(base.scenarios().all().stream().allMatch(scenario -> scenario.type().isImpulse()));
     }
 
     @Test

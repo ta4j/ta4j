@@ -21,15 +21,19 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.function.Function;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
+import org.ta4j.core.indicators.elliott.PatternSet;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
+import org.ta4j.core.indicators.elliott.confidence.ConfidenceModel;
+import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.indicators.elliott.swing.AdaptiveZigZagConfig;
 import org.ta4j.core.indicators.elliott.swing.CompositeSwingDetector;
 import org.ta4j.core.indicators.elliott.swing.SwingDetector;
@@ -129,13 +133,23 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
     static ElliottWaveAnalysisRunner buildMacroAnalysisRunner(ElliottDegree degree, int higherDegrees, int lowerDegrees,
             int maxScenarios, int scenarioSwingWindow, int fractalWindow) {
+        return buildMacroAnalysisRunner(degree, higherDegrees, lowerDegrees, maxScenarios, scenarioSwingWindow,
+                fractalWindow, PatternSet.all(), 0.70, ConfidenceProfiles::defaultModel);
+    }
+
+    static ElliottWaveAnalysisRunner buildMacroAnalysisRunner(ElliottDegree degree, int higherDegrees, int lowerDegrees,
+            int maxScenarios, int scenarioSwingWindow, int fractalWindow, PatternSet patternSet,
+            double baseConfidenceWeight, Function<NumFactory, ConfidenceModel> confidenceModelFactory) {
         SwingDetector swingDetector = macroSwingDetector(degree, fractalWindow);
         return ElliottWaveAnalysisRunner.builder()
                 .degree(degree)
                 .higherDegrees(higherDegrees)
                 .lowerDegrees(lowerDegrees)
+                .baseConfidenceWeight(baseConfidenceWeight)
                 .maxScenarios(maxScenarios)
                 .minConfidence(0.0)
+                .patternSet(patternSet)
+                .confidenceModelFactory(confidenceModelFactory)
                 .scenarioSwingWindow(scenarioSwingWindow)
                 .swingDetector(swingDetector)
                 .seriesSelector((series, ignoredDegree) -> series)

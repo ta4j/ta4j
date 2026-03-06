@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -92,6 +93,39 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void ranksMoreCompleteScenarioAheadWhenConfidenceIsTied() {
+        BarSeries series = buildSeries();
+        NumFactory factory = series.numFactory();
+        ElliottScenario partial = scenario(factory, "partial", ElliottPhase.WAVE3, 0.72,
+                List.of(new ElliottSwing(0, 2, factory.hundred(), factory.numOf(120), ElliottDegree.PRIMARY),
+                        new ElliottSwing(2, 4, factory.numOf(120), factory.numOf(108), ElliottDegree.PRIMARY),
+                        new ElliottSwing(4, 6, factory.numOf(108), factory.numOf(138), ElliottDegree.PRIMARY)),
+                factory.numOf(94), 0.40);
+        ElliottScenario complete = scenario(factory, "complete", ElliottPhase.WAVE5, 0.72,
+                List.of(new ElliottSwing(0, 2, factory.hundred(), factory.numOf(120), ElliottDegree.PRIMARY),
+                        new ElliottSwing(2, 4, factory.numOf(120), factory.numOf(108), ElliottDegree.PRIMARY),
+                        new ElliottSwing(4, 6, factory.numOf(108), factory.numOf(144), ElliottDegree.PRIMARY),
+                        new ElliottSwing(6, 8, factory.numOf(144), factory.numOf(126), ElliottDegree.PRIMARY),
+                        new ElliottSwing(8, 10, factory.numOf(126), factory.numOf(156), ElliottDegree.PRIMARY)),
+                factory.numOf(92), 0.95);
+        ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(partial, complete), series.getEndIndex());
+        ElliottAnalysisResult analysisResult = new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(),
+                complete.swings(), complete.swings(), scenarios, Map.of(), null, scenarios.trendBias());
+
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((ignoredSeries, ignoredDegree) -> analysisResult)
+                .build();
+
+        ElliottWaveAnalysisResult result = analysis.analyze(series);
+
+        assertThat(result.rankedBaseScenarios()).hasSize(2);
+        assertThat(result.rankedBaseScenarios().getFirst().scenario().id()).isEqualTo("complete");
+    }
+
+    @Test
     void buildRequiresDegree() {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> ElliottWaveAnalysisRunner.builder().build());
@@ -136,6 +170,24 @@ class ElliottWaveAnalysisRunnerTest {
                     .add();
         }
         return series;
+    }
+
+    private static ElliottScenario scenario(final NumFactory factory, final String id, final ElliottPhase phase,
+            final double overallScore, final List<ElliottSwing> swings, final org.ta4j.core.num.Num invalidationPrice,
+            final double completenessScore) {
+        ElliottConfidence confidence = new ElliottConfidence(factory.numOf(overallScore), factory.numOf(overallScore),
+                factory.numOf(overallScore), factory.numOf(overallScore), factory.numOf(overallScore),
+                factory.numOf(completenessScore), "test");
+
+        return ElliottScenario.builder()
+                .id(id)
+                .currentPhase(phase)
+                .swings(swings)
+                .confidence(confidence)
+                .degree(ElliottDegree.PRIMARY)
+                .invalidationPrice(invalidationPrice)
+                .type(ScenarioType.IMPULSE)
+                .build();
     }
 
 }

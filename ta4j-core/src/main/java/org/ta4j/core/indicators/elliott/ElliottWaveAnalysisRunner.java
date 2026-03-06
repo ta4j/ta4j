@@ -349,7 +349,7 @@ public final class ElliottWaveAnalysisRunner {
         return blend(rawConfidence, structuralPriority, STRUCTURAL_SELECTION_WEIGHT);
     }
 
-    private static double scenarioStructuralPriority(final ElliottScenario scenario,
+    private double scenarioStructuralPriority(final ElliottScenario scenario,
             final List<ElliottSwing> processedSwings) {
         if (scenario == null || scenario.swings().isEmpty()) {
             return 0.0;
@@ -371,7 +371,29 @@ public final class ElliottWaveAnalysisRunner {
         final double completionScore = phaseProgressScore(scenario.currentPhase());
         final double waveRichnessScore = scenario.currentPhase().isCorrective() ? clamp01(scenario.waveCount() / 3.0)
                 : clamp01(scenario.waveCount() / 5.0);
-        return clamp01((coverageScore + earlyStartScore + completionScore + waveRichnessScore) / 4.0);
+        final double confidenceCompletenessScore = safeScore(scenario.confidence().completenessScore());
+        final double patternAlignmentScore = scenarioPatternAlignmentScore(scenario);
+        return clamp01((coverageScore + earlyStartScore + completionScore + waveRichnessScore
+                + confidenceCompletenessScore + patternAlignmentScore) / 6.0);
+    }
+
+    private static double scenarioPatternAlignmentScore(final ElliottScenario scenario) {
+        if (scenario == null) {
+            return 0.0;
+        }
+        if (scenario.type() == ScenarioType.UNKNOWN) {
+            return 0.35;
+        }
+        if (scenario.currentPhase().isImpulse() && scenario.type().isImpulse()) {
+            return 1.0;
+        }
+        if (scenario.currentPhase().isCorrective() && scenario.type().isCorrective()) {
+            return 1.0;
+        }
+        if (scenario.currentPhase() == ElliottPhase.NONE) {
+            return 0.5;
+        }
+        return 0.55;
     }
 
     private static double phaseProgressScore(final ElliottPhase phase) {
