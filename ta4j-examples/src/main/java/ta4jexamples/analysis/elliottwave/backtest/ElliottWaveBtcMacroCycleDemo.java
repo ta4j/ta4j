@@ -92,8 +92,10 @@ public final class ElliottWaveBtcMacroCycleDemo {
     static final int LABEL_CLUSTER_BAR_GAP = 18;
     static final Color BULLISH_LEG_COLOR = new Color(0x66BB6A);
     static final Color BEARISH_LEG_COLOR = new Color(0xEF5350);
-    static final Color BULLISH_CANDIDATE_COLOR = new Color(0xA5D6A7);
-    static final Color BEARISH_CANDIDATE_COLOR = new Color(0xEF9A9A);
+    static final Color BULLISH_WAVE_COLOR = new Color(0x81C784);
+    static final Color BEARISH_WAVE_COLOR = new Color(0xE57373);
+    static final Color BULLISH_CANDIDATE_COLOR = new Color(0xC8E6C9);
+    static final Color BEARISH_CANDIDATE_COLOR = new Color(0xFFCDD2);
     static final Color ANCHOR_OVERLAY_COLOR = new Color(0xCFD8DC);
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveBtcMacroCycleDemo.class);
@@ -180,9 +182,10 @@ public final class ElliottWaveBtcMacroCycleDemo {
         ChartWorkflow chartWorkflow = new ChartWorkflow();
         List<LegSegment> legSegments = buildLegSegments(registry);
         List<SegmentScenarioFit> segmentFits = study.selectedProfile().chartSegments();
+        CurrentPhaseFit currentPrimaryFit = study.currentPrimaryFit();
         BarSeriesLabelIndicator anchorLabels = new BarSeriesLabelIndicator(series, buildAnchorLabels(series, registry));
         BarSeriesLabelIndicator waveLabels = new BarSeriesLabelIndicator(series,
-                buildSegmentWaveLabels(series, segmentFits));
+                buildSegmentWaveLabels(series, segmentFits, currentPrimaryFit));
         FixedIndicator<Num> bullishAcceptedFits = buildScenarioFitIndicator(series, segmentFits, true, true,
                 "Bullish accepted wave segments");
         FixedIndicator<Num> bearishAcceptedFits = buildScenarioFitIndicator(series, segmentFits, false, true,
@@ -191,6 +194,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 "Bullish fallback wave segments");
         FixedIndicator<Num> bearishFallbackFits = buildScenarioFitIndicator(series, segmentFits, false, false,
                 "Bearish fallback wave segments");
+        FixedIndicator<Num> currentCyclePrimaryFit = buildScenarioIndicator(series,
+                currentPrimaryFit == null ? null : currentPrimaryFit.scenario(), "Current-cycle primary count");
         FixedIndicator<Num> bullishLegs = buildCycleLegIndicator(series, legSegments, true, "Bullish 1-2-3-4-5");
         FixedIndicator<Num> bearishLegs = buildCycleLegIndicator(series, legSegments, false, "Bearish A-B-C");
         ChartPlan plan = chartWorkflow.builder()
@@ -198,34 +203,39 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 .withSeries(series)
                 .withIndicatorOverlay(bullishLegs)
                 .withLineColor(BULLISH_LEG_COLOR)
-                .withLineWidth(3.0f)
-                .withOpacity(0.95f)
+                .withLineWidth(4.2f)
+                .withOpacity(0.60f)
                 .withLabel("Bullish 1-2-3-4-5")
                 .withIndicatorOverlay(bearishLegs)
                 .withLineColor(BEARISH_LEG_COLOR)
-                .withLineWidth(3.0f)
-                .withOpacity(0.95f)
+                .withLineWidth(4.2f)
+                .withOpacity(0.60f)
                 .withLabel("Bearish A-B-C")
                 .withIndicatorOverlay(bullishAcceptedFits)
-                .withLineColor(BULLISH_LEG_COLOR)
+                .withLineColor(BULLISH_WAVE_COLOR)
                 .withLineWidth(2.4f)
-                .withOpacity(0.90f)
+                .withOpacity(0.72f)
                 .withLabel("Bullish accepted wave segments")
                 .withIndicatorOverlay(bearishAcceptedFits)
-                .withLineColor(BEARISH_LEG_COLOR)
+                .withLineColor(BEARISH_WAVE_COLOR)
                 .withLineWidth(2.4f)
-                .withOpacity(0.90f)
+                .withOpacity(0.72f)
                 .withLabel("Bearish accepted wave segments")
                 .withIndicatorOverlay(bullishFallbackFits)
                 .withLineColor(BULLISH_CANDIDATE_COLOR)
                 .withLineWidth(1.8f)
-                .withOpacity(0.80f)
+                .withOpacity(0.56f)
                 .withLabel("Bullish fallback wave segments")
                 .withIndicatorOverlay(bearishFallbackFits)
                 .withLineColor(BEARISH_CANDIDATE_COLOR)
                 .withLineWidth(1.8f)
-                .withOpacity(0.80f)
+                .withOpacity(0.56f)
                 .withLabel("Bearish fallback wave segments")
+                .withIndicatorOverlay(currentCyclePrimaryFit)
+                .withLineColor(BULLISH_WAVE_COLOR)
+                .withLineWidth(2.8f)
+                .withOpacity(0.76f)
+                .withLabel("Current-cycle primary count")
                 .withIndicatorOverlay(anchorLabels)
                 .withLineColor(ANCHOR_OVERLAY_COLOR)
                 .withLineWidth(1.5f)
@@ -263,9 +273,9 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 .map(DirectionalCycleSummary::from)
                 .toList();
         List<HypothesisResult> hypotheses = buildHypotheses(evaluations);
-        CurrentCycleSummary currentCycle = evaluateCurrentCycle(series, registry, selectedProfile);
+        CurrentCycleAnalysis currentCycle = evaluateCurrentCycle(series, registry, selectedProfile);
         return new MacroStudy(selectedProfile, List.copyOf(evaluations), profileScores, cycles, hypotheses,
-                currentCycle);
+                currentCycle.summary(), currentCycle.primaryFit(), currentCycle.alternateFit());
     }
 
     static List<BarLabel> buildWaveLabelsFromScenario(BarSeries series, ElliottScenario scenario, Color labelColor) {
@@ -390,7 +400,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 .orElseThrow(() -> new IllegalStateException("Missing profile " + profileId));
     }
 
-    private static CurrentCycleSummary evaluateCurrentCycle(BarSeries series,
+    private static CurrentCycleAnalysis evaluateCurrentCycle(BarSeries series,
             ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, MacroProfileEvaluation selectedProfile) {
         ElliottWaveAnchorCalibrationHarness.Anchor lowAnchor = findAnchorOrLatestBottom(registry, RECENT_LOW_ANCHOR_ID);
         int startIndex = nearestIndex(series, lowAnchor.at());
@@ -426,9 +436,10 @@ public final class ElliottWaveBtcMacroCycleDemo {
         String invalidation = primary == null ? "" : formatNum(primary.invalidationPrice());
         String startTimeUtc = lowAnchor.at().toString();
         String latestTimeUtc = series.getLastBar().getEndTime().toString();
-        return new CurrentCycleSummary(startTimeUtc, latestTimeUtc, winningProfile, historicalStatus, primaryCount,
-                alternateCount, currentWave, invalidation, primary == null ? 0.0 : primary.fitScore(),
-                alternate == null ? 0.0 : alternate.fitScore(), "");
+        CurrentCycleSummary summary = new CurrentCycleSummary(startTimeUtc, latestTimeUtc, winningProfile,
+                historicalStatus, primaryCount, alternateCount, currentWave, invalidation,
+                primary == null ? 0.0 : primary.fitScore(), alternate == null ? 0.0 : alternate.fitScore(), "");
+        return new CurrentCycleAnalysis(summary, primary, alternate);
     }
 
     private static Optional<CurrentPhaseFit> fitCurrentBullishPhase(BarSeries series, int startIndex, int endIndex,
@@ -1175,12 +1186,16 @@ public final class ElliottWaveBtcMacroCycleDemo {
         return List.copyOf(labels);
     }
 
-    private static List<BarLabel> buildSegmentWaveLabels(BarSeries series, List<SegmentScenarioFit> segmentFits) {
+    private static List<BarLabel> buildSegmentWaveLabels(BarSeries series, List<SegmentScenarioFit> segmentFits,
+            CurrentPhaseFit currentPrimaryFit) {
         List<BarLabel> rawLabels = new ArrayList<>();
         for (SegmentScenarioFit fit : segmentFits) {
-            Color labelColor = fit.accepted() ? (fit.bullish() ? BULLISH_LEG_COLOR : BEARISH_LEG_COLOR)
+            Color labelColor = fit.accepted() ? (fit.bullish() ? BULLISH_WAVE_COLOR : BEARISH_WAVE_COLOR)
                     : (fit.bullish() ? BULLISH_CANDIDATE_COLOR : BEARISH_CANDIDATE_COLOR);
             rawLabels.addAll(buildWaveLabelsFromScenario(series, fit.scenario(), labelColor));
+        }
+        if (currentPrimaryFit != null) {
+            rawLabels.addAll(buildWaveLabelsFromScenario(series, currentPrimaryFit.scenario(), BULLISH_WAVE_COLOR));
         }
         return deconflictLabels(series, rawLabels);
     }
@@ -1227,6 +1242,21 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 continue;
             }
             applyScenarioPath(values, series, fit.scenario());
+        }
+        return new FixedIndicator<>(series, values) {
+            @Override
+            public String toString() {
+                return label;
+            }
+        };
+    }
+
+    private static FixedIndicator<Num> buildScenarioIndicator(BarSeries series, ElliottScenario scenario,
+            String label) {
+        Num[] values = new Num[series.getEndIndex() + 1];
+        Arrays.fill(values, NaN);
+        if (scenario != null) {
+            applyScenarioPath(values, series, scenario);
         }
         return new FixedIndicator<>(series, values) {
             @Override
@@ -1693,9 +1723,17 @@ public final class ElliottWaveBtcMacroCycleDemo {
         }
     }
 
+    record CurrentCycleAnalysis(CurrentCycleSummary summary, CurrentPhaseFit primaryFit, CurrentPhaseFit alternateFit) {
+
+        CurrentCycleAnalysis {
+            Objects.requireNonNull(summary, "summary");
+        }
+    }
+
     record MacroStudy(MacroProfileEvaluation selectedProfile, List<MacroProfileEvaluation> evaluations,
             List<ProfileScoreSummary> profileScores, List<DirectionalCycleSummary> cycles,
-            List<HypothesisResult> hypotheses, CurrentCycleSummary currentCycle) {
+            List<HypothesisResult> hypotheses, CurrentCycleSummary currentCycle, CurrentPhaseFit currentPrimaryFit,
+            CurrentPhaseFit currentAlternateFit) {
 
         MacroStudy {
             Objects.requireNonNull(selectedProfile, "selectedProfile");

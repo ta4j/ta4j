@@ -111,6 +111,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
         assertFalse(study.selectedProfile().profile().id().isBlank());
         assertEquals(series.getBar(7).getEndTime().toString(), study.currentCycle().startTimeUtc());
         assertEquals(study.selectedProfile().profile().id(), study.currentCycle().winningProfileId());
+        assertNotNull(study.currentPrimaryFit());
+        assertFalse(study.currentPrimaryFit().scenario().swings().isEmpty());
     }
 
     @Test
@@ -196,11 +198,14 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
         XYItemRenderer bullishRenderer = findRenderer(mainPlot, "Bullish 1-2-3-4-5");
         XYItemRenderer bearishRenderer = findRenderer(mainPlot, "Bearish A-B-C");
+        XYItemRenderer currentRenderer = findRenderer(mainPlot, "Current-cycle primary count");
 
         assertNotNull(bullishRenderer);
         assertNotNull(bearishRenderer);
+        assertNotNull(currentRenderer);
         assertPaintMatches(ElliottWaveBtcMacroCycleDemo.BULLISH_LEG_COLOR, bullishRenderer.getSeriesPaint(0));
         assertPaintMatches(ElliottWaveBtcMacroCycleDemo.BEARISH_LEG_COLOR, bearishRenderer.getSeriesPaint(0));
+        assertPaintMatches(ElliottWaveBtcMacroCycleDemo.BULLISH_WAVE_COLOR, currentRenderer.getSeriesPaint(0));
     }
 
     @Test
