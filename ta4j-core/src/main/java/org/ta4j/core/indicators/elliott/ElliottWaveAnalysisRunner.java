@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.analysis.AnalysisRunner;
 import org.ta4j.core.analysis.SeriesSelector;
@@ -279,7 +280,8 @@ public final class ElliottWaveAnalysisRunner {
             processed = compressed == null ? List.of() : compressed;
         }
 
-        List<ElliottSwing> scenarioSwings = recentSwings(processed, scenarioSwingWindow);
+        List<ElliottSwing> scenarioInput = appendTerminalExtensionIfNeeded(processed, series, endIndex, degree);
+        List<ElliottSwing> scenarioSwings = recentSwings(scenarioInput, scenarioSwingWindow);
         ElliottChannel channel = computeChannel(series.numFactory(), scenarioSwings, endIndex);
 
         ConfidenceModel confidenceModel = Objects.requireNonNull(confidenceModelFactory.apply(series.numFactory()),
@@ -298,6 +300,61 @@ public final class ElliottWaveAnalysisRunner {
 
         return new ElliottAnalysisResult(degree, endIndex, rawSwings, scenarioSwings, scenarios, breakdowns, channel,
                 trendBias);
+    }
+
+    private List<ElliottSwing> appendTerminalExtensionIfNeeded(final List<ElliottSwing> swings, final BarSeries series,
+            final int endIndex, final ElliottDegree degree) {
+        if (swings == null || swings.isEmpty()) {
+            return List.of();
+        }
+        final ElliottSwing lastSwing = swings.getLast();
+        if (lastSwing.toIndex() >= endIndex) {
+            return List.copyOf(swings);
+        }
+
+        final ProvisionalTerminal terminal = findTerminalProjection(series, lastSwing, endIndex);
+        if (terminal == null || terminal.index() <= lastSwing.toIndex()) {
+            return List.copyOf(swings);
+        }
+        final boolean nextSwingRising = !lastSwing.isRising();
+        if (nextSwingRising && terminal.price().isLessThanOrEqual(lastSwing.toPrice())) {
+            return List.copyOf(swings);
+        }
+        if (!nextSwingRising && terminal.price().isGreaterThanOrEqual(lastSwing.toPrice())) {
+            return List.copyOf(swings);
+        }
+
+        final List<ElliottSwing> extended = new ArrayList<>(swings.size() + 1);
+        extended.addAll(swings);
+        extended.add(
+                new ElliottSwing(lastSwing.toIndex(), terminal.index(), lastSwing.toPrice(), terminal.price(), degree));
+        return List.copyOf(extended);
+    }
+
+    private ProvisionalTerminal findTerminalProjection(final BarSeries series, final ElliottSwing lastSwing,
+            final int endIndex) {
+        final int scanStart = Math.min(endIndex, lastSwing.toIndex() + 1);
+        if (scanStart > endIndex) {
+            return null;
+        }
+
+        int bestIndex = lastSwing.toIndex();
+        Num bestPrice = lastSwing.toPrice();
+        for (int index = scanStart; index <= endIndex; index++) {
+            final Bar bar = series.getBar(index);
+            final boolean nextSwingRising = !lastSwing.isRising();
+            final Num candidate = nextSwingRising ? bar.getHighPrice() : bar.getLowPrice();
+            if (nextSwingRising) {
+                if (candidate.isGreaterThan(bestPrice)) {
+                    bestIndex = index;
+                    bestPrice = candidate;
+                }
+            } else if (candidate.isLessThan(bestPrice)) {
+                bestIndex = index;
+                bestPrice = candidate;
+            }
+        }
+        return new ProvisionalTerminal(bestIndex, bestPrice);
     }
 
     /**
@@ -366,15 +423,71 @@ public final class ElliottWaveAnalysisRunner {
         final double totalSpan = Math.max(1.0, lastProcessed.toIndex() - firstProcessed.fromIndex());
         final double scenarioSpan = Math.max(1.0, lastScenario.toIndex() - firstScenario.fromIndex());
         final double coverageScore = clamp01(scenarioSpan / totalSpan);
-        final double earlyStartScore = clamp01(
-                1.0 - ((firstScenario.fromIndex() - firstProcessed.fromIndex()) / totalSpan));
+        final double startAlignmentScore = alignmentScore(firstScenario.fromIndex(), firstProcessed.fromIndex(),
+                totalSpan);
+        final double endAlignmentScore = alignmentScore(lastScenario.toIndex(), lastProcessed.toIndex(), totalSpan);
+        final double anchorSpanScore = clamp01((coverageScore + startAlignmentScore + endAlignmentScore) / 3.0);
         final double completionScore = phaseProgressScore(scenario.currentPhase());
+        final double terminalCompletionScore = terminalCompletionScore(scenario, lastScenario.toIndex(),
+                lastProcessed.toIndex());
         final double waveRichnessScore = scenario.currentPhase().isCorrective() ? clamp01(scenario.waveCount() / 3.0)
                 : clamp01(scenario.waveCount() / 5.0);
         final double confidenceCompletenessScore = safeScore(scenario.confidence().completenessScore());
         final double patternAlignmentScore = scenarioPatternAlignmentScore(scenario);
-        return clamp01((coverageScore + earlyStartScore + completionScore + waveRichnessScore
-                + confidenceCompletenessScore + patternAlignmentScore) / 6.0);
+        final double spacingScore = swingSpacingScore(scenario.swings());
+        return clamp01((anchorSpanScore + completionScore + terminalCompletionScore + waveRichnessScore
+                + confidenceCompletenessScore + patternAlignmentScore + spacingScore) / 7.0);
+    }
+
+    private static double alignmentScore(final int actualIndex, final int expectedIndex, final double totalSpan) {
+        return clamp01(1.0 - (Math.abs(actualIndex - expectedIndex) / Math.max(1.0, totalSpan)));
+    }
+
+    private static double terminalCompletionScore(final ElliottScenario scenario, final int scenarioEndIndex,
+            final int targetEndIndex) {
+        if (scenario == null || scenario.currentPhase() == null) {
+            return 0.0;
+        }
+        final double endAlignment = alignmentScore(scenarioEndIndex, targetEndIndex,
+                Math.max(1.0, Math.abs(targetEndIndex)));
+        if (scenario.expectsCompletion()) {
+            return endAlignment;
+        }
+        return clamp01((endAlignment * 0.55) + (phaseProgressScore(scenario.currentPhase()) * 0.45));
+    }
+
+    private static double swingSpacingScore(final List<ElliottSwing> swings) {
+        if (swings == null || swings.isEmpty()) {
+            return 0.0;
+        }
+        if (swings.size() == 1) {
+            return 1.0;
+        }
+        final List<Integer> indices = new ArrayList<>(swings.size() + 1);
+        indices.add(swings.getFirst().fromIndex());
+        for (final ElliottSwing swing : swings) {
+            indices.add(swing.toIndex());
+        }
+        return spacingBalanceScore(indices);
+    }
+
+    private static double spacingBalanceScore(final List<Integer> indices) {
+        if (indices == null || indices.size() < 2) {
+            return 0.0;
+        }
+        double minDuration = Double.POSITIVE_INFINITY;
+        double maxDuration = Double.NEGATIVE_INFINITY;
+        double totalDuration = 0.0;
+        for (int index = 1; index < indices.size(); index++) {
+            final double duration = Math.max(1.0, indices.get(index) - indices.get(index - 1));
+            minDuration = Math.min(minDuration, duration);
+            maxDuration = Math.max(maxDuration, duration);
+            totalDuration += duration;
+        }
+        final double averageDuration = totalDuration / (indices.size() - 1);
+        final double minBalance = clamp01(minDuration / Math.max(1.0, averageDuration));
+        final double maxBalance = clamp01(averageDuration / Math.max(1.0, maxDuration));
+        return clamp01((minBalance + maxBalance) / 2.0);
     }
 
     private static double scenarioPatternAlignmentScore(final ElliottScenario scenario) {
@@ -683,6 +796,9 @@ public final class ElliottWaveAnalysisRunner {
             return 1.0;
         }
         return value;
+    }
+
+    private record ProvisionalTerminal(int index, Num price) {
     }
 
     /**
