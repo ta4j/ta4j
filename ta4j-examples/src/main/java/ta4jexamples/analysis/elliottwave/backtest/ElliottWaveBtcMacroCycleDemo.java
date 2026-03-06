@@ -187,7 +187,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 : currentPrimaryFit.scenario().swings().getFirst().fromIndex();
         BarSeriesLabelIndicator anchorLabels = new BarSeriesLabelIndicator(series, buildAnchorLabels(series, registry));
         BarSeriesLabelIndicator waveLabels = new BarSeriesLabelIndicator(series,
-                buildSegmentWaveLabels(series, segmentFits, currentPrimaryFit));
+                buildSegmentWaveLabels(series, segmentFits));
         FixedIndicator<Num> bullishAcceptedFits = buildScenarioFitIndicator(series, segmentFits, true, true,
                 "Bullish accepted wave segments");
         FixedIndicator<Num> bearishAcceptedFits = buildScenarioFitIndicator(series, segmentFits, false, true,
@@ -196,8 +196,6 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 "Bullish fallback wave segments");
         FixedIndicator<Num> bearishFallbackFits = buildScenarioFitIndicator(series, segmentFits, false, false,
                 "Bearish fallback wave segments");
-        FixedIndicator<Num> currentCyclePrimaryFit = buildScenarioIndicator(series,
-                currentPrimaryFit == null ? null : currentPrimaryFit.scenario(), "Current-cycle wave-count segments");
         FixedIndicator<Num> bullishLegs = buildCycleLegIndicator(series, legSegments, true, "Bullish 1-2-3-4-5",
                 currentCycleStartIndex);
         FixedIndicator<Num> bearishLegs = buildCycleLegIndicator(series, legSegments, false, "Bearish A-B-C",
@@ -235,11 +233,6 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 .withLineWidth(1.8f)
                 .withOpacity(0.56f)
                 .withLabel("Bearish fallback wave segments")
-                .withIndicatorOverlay(currentCyclePrimaryFit)
-                .withLineColor(BULLISH_WAVE_COLOR)
-                .withLineWidth(2.8f)
-                .withOpacity(0.76f)
-                .withLabel("Current-cycle wave-count segments")
                 .withIndicatorOverlay(anchorLabels)
                 .withLineColor(ANCHOR_OVERLAY_COLOR)
                 .withLineWidth(1.5f)
@@ -1190,16 +1183,12 @@ public final class ElliottWaveBtcMacroCycleDemo {
         return List.copyOf(labels);
     }
 
-    private static List<BarLabel> buildSegmentWaveLabels(BarSeries series, List<SegmentScenarioFit> segmentFits,
-            CurrentPhaseFit currentPrimaryFit) {
+    private static List<BarLabel> buildSegmentWaveLabels(BarSeries series, List<SegmentScenarioFit> segmentFits) {
         List<BarLabel> rawLabels = new ArrayList<>();
         for (SegmentScenarioFit fit : segmentFits) {
             Color labelColor = fit.accepted() ? (fit.bullish() ? BULLISH_WAVE_COLOR : BEARISH_WAVE_COLOR)
                     : (fit.bullish() ? BULLISH_CANDIDATE_COLOR : BEARISH_CANDIDATE_COLOR);
             rawLabels.addAll(buildWaveLabelsFromScenario(series, fit.scenario(), labelColor));
-        }
-        if (currentPrimaryFit != null) {
-            rawLabels.addAll(buildWaveLabelsFromScenario(series, currentPrimaryFit.scenario(), BULLISH_WAVE_COLOR));
         }
         return deconflictLabels(series, rawLabels);
     }
@@ -1255,21 +1244,6 @@ public final class ElliottWaveBtcMacroCycleDemo {
         };
     }
 
-    private static FixedIndicator<Num> buildScenarioIndicator(BarSeries series, ElliottScenario scenario,
-            String label) {
-        Num[] values = new Num[series.getEndIndex() + 1];
-        Arrays.fill(values, NaN);
-        if (scenario != null) {
-            applyScenarioPath(values, series, scenario);
-        }
-        return new FixedIndicator<>(series, values) {
-            @Override
-            public String toString() {
-                return label;
-            }
-        };
-    }
-
     private static void applyScenarioPath(Num[] values, BarSeries series, ElliottScenario scenario) {
         for (ElliottSwing swing : scenario.swings()) {
             int fromIndex = Math.max(series.getBeginIndex(), Math.min(swing.fromIndex(), swing.toIndex()));
@@ -1309,7 +1283,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
             int length = Math.max(1, toIndex - fromIndex);
             for (int index = fromIndex; index <= toIndex; index++) {
                 double progress = (double) (index - fromIndex) / length;
-                double interpolated = interpolateOverlayPrice(fromPrice, toPrice, progress);
+                double interpolated = fromPrice + ((toPrice - fromPrice) * progress);
                 values[index] = series.numFactory().numOf(interpolated);
             }
         }
