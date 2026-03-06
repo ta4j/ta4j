@@ -1,10 +1,11 @@
-Determine if there is enough unreleased functionality here to warrant a release:
+Decide release go/no-go from unreleased binary-impacting changes.
+If go, choose bump: patch|minor.
 
-MAJOR: Breaking API changes in public/core APIs.
-MINOR: Backward-compatible new features.
-PATCH: Backward-compatible bug fixes.
+MINOR: backward-compatible, user-visible new features, and breaking-change cases.
+PATCH: backward-compatible bug fixes or internal improvements.
 
+If binary change count is 0 => should_release=false.
 If binary change list empty or changelog-only => should_release=false.
-NEVER major without explicit breaking change evidence.
+If unsure between MINOR and PATCH, prefer PATCH.
 
-Pre-1.0.0: breaking changes can be MINOR (not necessarily MAJOR).
+Pre-1.0.0: breaking changes can be MINOR.
