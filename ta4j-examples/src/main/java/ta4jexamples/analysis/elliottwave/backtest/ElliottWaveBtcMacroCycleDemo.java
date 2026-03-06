@@ -86,6 +86,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
     static final String DEFAULT_SUMMARY_FILE_NAME = "elliott-wave-btc-macro-cycles-summary.json";
     static final int DEFAULT_CHART_WIDTH = 3840;
     static final int DEFAULT_CHART_HEIGHT = 2160;
+    static final int MIN_CORE_SEGMENT_SCENARIOS = 200;
     static final String RECENT_LOW_ANCHOR_ID = "btc-2022-cycle-bottom";
     static final double DEFAULT_ACCEPTED_SEGMENT_SCORE = 0.64;
     static final int MAX_PIVOT_CANDIDATES = 12;
@@ -336,8 +337,9 @@ public final class ElliottWaveBtcMacroCycleDemo {
     }
 
     private static ElliottWaveAnalysisRunner buildProfileRunner(MacroLogicProfile profile) {
+        int runnerMaxScenarios = Math.max(profile.runnerMaxScenarios(), MIN_CORE_SEGMENT_SCENARIOS);
         return ElliottWaveAnchorCalibrationHarness.buildMacroAnalysisRunner(profile.runnerDegree(),
-                profile.runnerHigherDegrees(), profile.runnerLowerDegrees(), profile.runnerMaxScenarios(),
+                profile.runnerHigherDegrees(), profile.runnerLowerDegrees(), runnerMaxScenarios,
                 profile.runnerScenarioSwingWindow(), profile.runnerFractalWindow(), profile.patternSet(),
                 profile.runnerBaseConfidenceWeight(),
                 profile.patternAwareConfidence() ? ConfidenceProfiles::patternAwareModel
@@ -654,9 +656,6 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     private static boolean matchesSegmentScenario(ElliottScenario scenario, boolean bullish, int segmentEndIndex) {
         if (scenario == null || scenario.swings().isEmpty()) {
-            return false;
-        }
-        if (scenario.swings().getFirst().fromIndex() != 0 || scenario.swings().getLast().toIndex() != segmentEndIndex) {
             return false;
         }
         if (!scenario.hasKnownDirection()) {

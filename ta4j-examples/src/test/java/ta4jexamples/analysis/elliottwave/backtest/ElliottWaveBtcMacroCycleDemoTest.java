@@ -12,6 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -91,6 +92,35 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
+    void matchesSegmentScenarioAllowsPrefixHistoryScenarioThatStartsAfterBarZero() throws Exception {
+        BarSeries series = extendedSyntheticSeries();
+        ElliottScenario scenario = ElliottScenario.builder()
+                .id("prefix-history-bullish")
+                .currentPhase(ElliottPhase.WAVE5)
+                .swings(List.of(
+                        new ElliottSwing(2, 3, series.numFactory().numOf(108), series.numFactory().numOf(146),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(3, 4, series.numFactory().numOf(146), series.numFactory().numOf(130),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(4, 5, series.numFactory().numOf(130), series.numFactory().numOf(156),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(5, 6, series.numFactory().numOf(156), series.numFactory().numOf(144),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(6, 7, series.numFactory().numOf(144), series.numFactory().numOf(172),
+                                ElliottDegree.MINUTE)))
+                .confidence(ElliottConfidence.zero(series.numFactory()))
+                .degree(ElliottDegree.MINUTE)
+                .type(ScenarioType.IMPULSE)
+                .bullishDirection(true)
+                .startIndex(2)
+                .build();
+
+        assertTrue(invokeMatchesSegmentScenario(scenario, true, 7));
+        assertTrue(invokeMatchesSegmentScenario(scenario, true, 6));
+        assertFalse(invokeMatchesSegmentScenario(scenario, false, 7));
+    }
+
+    @Test
     void evaluateMacroStudyProducesProfileTableCycleSummaryAndCurrentCycleFallback() {
         BarSeries series = studySyntheticSeries();
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
@@ -163,6 +193,11 @@ class ElliottWaveBtcMacroCycleDemoTest {
             assertEquals(3, study.cycles().size());
             assertTrue(
                     study.cycles().stream().allMatch(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::accepted));
+            assertTrue(study.selectedProfile()
+                    .chartSegments()
+                    .stream()
+                    .filter(segment -> segment.rationale().startsWith("Core-ranked prefix-history"))
+                    .count() >= 3);
             assertFalse(study.currentCycle().currentWave().isBlank());
             assertTrue(Files.exists(Path.of(report.chartPath())));
             assertTrue(Files.exists(Path.of(report.summaryPath())));
@@ -240,6 +275,14 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 type == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP ? Set.of(ElliottPhase.WAVE5)
                         : Set.of(ElliottPhase.CORRECTIVE_C),
                 ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic");
+    }
+
+    private static boolean invokeMatchesSegmentScenario(ElliottScenario scenario, boolean bullish, int segmentEndIndex)
+            throws Exception {
+        Method method = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("matchesSegmentScenario",
+                ElliottScenario.class, boolean.class, int.class);
+        method.setAccessible(true);
+        return (boolean) method.invoke(null, scenario, bullish, segmentEndIndex);
     }
 
     private static BarSeries chartSyntheticSeries() {
