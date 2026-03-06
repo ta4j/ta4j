@@ -124,6 +124,21 @@ public final class ElliottWaveAnchorCalibrationHarness {
         LOG.info("{}{}", RESULT_PREFIX, report.toJson());
     }
 
+    static ElliottWaveAnalysisRunner buildMacroAnalysisRunner(ElliottDegree degree, int higherDegrees, int lowerDegrees,
+            int maxScenarios, int scenarioSwingWindow, int fractalWindow) {
+        return ElliottWaveAnalysisRunner.builder()
+                .degree(degree)
+                .higherDegrees(higherDegrees)
+                .lowerDegrees(lowerDegrees)
+                .maxScenarios(maxScenarios)
+                .minConfidence(0.0)
+                .scenarioSwingWindow(scenarioSwingWindow)
+                .swingDetector(SwingDetectors.fractal(fractalWindow))
+                .swingFilter(swings -> swings == null ? List.of() : List.copyOf(swings))
+                .seriesSelector((series, ignoredDegree) -> series)
+                .build();
+    }
+
     static ReportBundle generateDefaultReport() {
         ElliottWaveAnchorRegistry registryDocument = ElliottWaveAnchorRegistry
                 .load(ElliottWaveAnchorRegistry.DEFAULT_RESOURCE);
@@ -752,8 +767,12 @@ public final class ElliottWaveAnchorCalibrationHarness {
         static CandidateProfile baseline() {
             ElliottWaveWalkForwardContext context = ElliottWaveWalkForwardProfiles.baseline();
             String id = context.metadata().getOrDefault("profile", "baseline-minute-f2-h2l2-max25-sw0");
+            ElliottWaveAnalysisRunner macroRunner = buildMacroAnalysisRunner(
+                    ElliottWaveWalkForwardProfiles.BASELINE_DEGREE, 2, 2, 25, 0, 2);
+            ElliottWaveWalkForwardContext macroContext = new ElliottWaveWalkForwardContext(macroRunner,
+                    context.seriesSelector(), context.maxPredictions(), context.metadata());
             return new CandidateProfile(id, ElliottWaveWalkForwardProfiles.BASELINE_DEGREE, 2, 2, 25, 0, 2, true,
-                    "Locked baseline profile used for cross-run comparability", context);
+                    "Locked baseline profile used for cross-run comparability", macroContext);
         }
 
         static CandidateProfile baselineProfile() {
@@ -762,15 +781,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
         static CandidateProfile of(String id, ElliottDegree degree, int higherDegrees, int lowerDegrees,
                 int maxScenarios, int scenarioSwingWindow, int fractalWindow, String rationale) {
-            ElliottWaveAnalysisRunner runner = ElliottWaveAnalysisRunner.builder()
-                    .degree(degree)
-                    .higherDegrees(higherDegrees)
-                    .lowerDegrees(lowerDegrees)
-                    .maxScenarios(maxScenarios)
-                    .minConfidence(0.0)
-                    .scenarioSwingWindow(scenarioSwingWindow)
-                    .swingDetector(SwingDetectors.fractal(fractalWindow))
-                    .build();
+            ElliottWaveAnalysisRunner runner = buildMacroAnalysisRunner(degree, higherDegrees, lowerDegrees,
+                    maxScenarios, scenarioSwingWindow, fractalWindow);
             Map<String, String> metadata = Map.of("profile", id, "degree", degree.name(), "higherDegrees",
                     String.valueOf(higherDegrees), "lowerDegrees", String.valueOf(lowerDegrees), "maxScenarios",
                     String.valueOf(maxScenarios), "scenarioSwingWindow", String.valueOf(scenarioSwingWindow),

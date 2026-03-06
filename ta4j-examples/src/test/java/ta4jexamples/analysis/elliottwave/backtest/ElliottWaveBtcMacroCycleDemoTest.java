@@ -36,6 +36,7 @@ import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ScenarioType;
 
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
@@ -264,6 +265,60 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 .allMatch(label -> ElliottWaveBtcMacroCycleDemo.BEARISH_LEG_COLOR.equals(label.color())));
     }
 
+    @Test
+    void selectBestSegmentScenarioFitPrefersScenarioThatActuallySpansTheRequestedSegment() {
+        BarSeries series = createSegmentFitSeries();
+        ElliottScenario earlyImpulse = ElliottScenario.builder()
+                .id("early-impulse")
+                .currentPhase(ElliottPhase.WAVE5)
+                .swings(List.of(
+                        new ElliottSwing(10, 18, series.numFactory().numOf(100), series.numFactory().numOf(120),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(18, 24, series.numFactory().numOf(120), series.numFactory().numOf(110),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(24, 31, series.numFactory().numOf(110), series.numFactory().numOf(140),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(31, 38, series.numFactory().numOf(140), series.numFactory().numOf(130),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(38, 44, series.numFactory().numOf(130), series.numFactory().numOf(150),
+                                ElliottDegree.MINUTE)))
+                .confidence(ElliottConfidence.zero(series.numFactory()))
+                .degree(ElliottDegree.MINUTE)
+                .type(ScenarioType.IMPULSE)
+                .startIndex(0)
+                .build();
+        ElliottScenario alignedImpulse = ElliottScenario.builder()
+                .id("aligned-impulse")
+                .currentPhase(ElliottPhase.WAVE5)
+                .swings(List.of(
+                        new ElliottSwing(102, 118, series.numFactory().numOf(200), series.numFactory().numOf(260),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(118, 131, series.numFactory().numOf(260), series.numFactory().numOf(230),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(131, 154, series.numFactory().numOf(230), series.numFactory().numOf(360),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(154, 171, series.numFactory().numOf(360), series.numFactory().numOf(320),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(171, 198, series.numFactory().numOf(320), series.numFactory().numOf(480),
+                                ElliottDegree.MINUTE)))
+                .confidence(ElliottConfidence.zero(series.numFactory()))
+                .degree(ElliottDegree.MINUTE)
+                .type(ScenarioType.IMPULSE)
+                .startIndex(0)
+                .build();
+
+        List<ElliottWaveAnalysisResult.BaseScenarioAssessment> assessments = List.of(
+                new ElliottWaveAnalysisResult.BaseScenarioAssessment(earlyImpulse, 1.0, 1.0, 1.0, List.of()),
+                new ElliottWaveAnalysisResult.BaseScenarioAssessment(alignedImpulse, 0.8, 0.8, 0.8, List.of()));
+
+        ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit fit = ElliottWaveBtcMacroCycleDemo
+                .selectBestSegmentScenarioFit(assessments, 100, 200, true)
+                .orElseThrow();
+
+        assertEquals("aligned-impulse", fit.scenario().id());
+        assertTrue(fit.eyeballPass());
+    }
+
     private static ElliottWaveBtcMacroCycleDemo.AnchorProbeObservation observation(String anchorId, int bestRank,
             int legacyBestRank, int matchedScenarioStartIndex, Map<String, Integer> scenarioTypeCounts) {
         return new ElliottWaveBtcMacroCycleDemo.AnchorProbeObservation(anchorId, "2022-11-22T00:00:00Z",
@@ -308,6 +363,26 @@ class ElliottWaveBtcMacroCycleDemoTest {
                     .closePrice(values[index][3])
                     .volume(1.0)
                     .amount(values[index][3])
+                    .trades(1)
+                    .build());
+        }
+        return series;
+    }
+
+    private static BarSeries createSegmentFitSeries() {
+        BarSeries series = new BaseBarSeriesBuilder().withName("btc-demo-segment-fit-series").build();
+        Instant firstEndTime = Instant.parse("2020-01-01T00:00:00Z");
+        for (int index = 0; index < 240; index++) {
+            double base = 100.0 + index;
+            series.addBar(series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(firstEndTime.plus(Duration.ofDays(index)))
+                    .openPrice(base)
+                    .highPrice(base + 5.0)
+                    .lowPrice(base - 5.0)
+                    .closePrice(base + 1.0)
+                    .volume(1.0)
+                    .amount(base + 1.0)
                     .trades(1)
                     .build());
         }

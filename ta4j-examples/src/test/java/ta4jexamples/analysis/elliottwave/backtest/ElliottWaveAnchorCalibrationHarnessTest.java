@@ -455,6 +455,18 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     }
 
     @Test
+    void candidateProfilesUseFullSeriesForMacroAnalysis() {
+        BarSeries series = longSyntheticSeries(500);
+        ElliottWaveAnchorCalibrationHarness.CandidateProfile profile = ElliottWaveAnchorCalibrationHarness.CandidateProfile
+                .of("minute-f2", ElliottDegree.MINUTE, 1, 0, 25, 0, 2, "macro window");
+
+        ElliottWaveAnalysisResult analysis = profile.context().runner().analyze(series);
+
+        assertEquals(series.getBarCount(), analysis.analysisFor(ElliottDegree.MINUTE).orElseThrow().barCount());
+        assertEquals(series.getBarCount(), analysis.analysisFor(ElliottDegree.MINOR).orElseThrow().barCount());
+    }
+
+    @Test
     void reportJsonSerializesUnavailableDoublesAsNull() {
         ElliottWaveAnchorCalibrationHarness.CandidateEvaluation evaluation = evaluation(
                 ElliottWaveAnchorCalibrationHarness.CandidateProfile.baselineProfile(), Double.NaN, Double.NaN, 0.26,
@@ -622,6 +634,26 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                     .closePrice(values[index][3])
                     .volume(1.0)
                     .amount(values[index][3])
+                    .trades(1)
+                    .build());
+        }
+        return series;
+    }
+
+    private static BarSeries longSyntheticSeries(int barCount) {
+        BarSeries series = new BaseBarSeriesBuilder().withName("synthetic-long-anchor-series").build();
+        Instant firstEndTime = Instant.parse("2020-01-01T00:00:00Z");
+        for (int index = 0; index < barCount; index++) {
+            double base = 100.0 + (index * 2.0);
+            series.addBar(series.barBuilder()
+                    .timePeriod(Duration.ofDays(1))
+                    .endTime(firstEndTime.plus(Duration.ofDays(index)))
+                    .openPrice(base)
+                    .highPrice(base + 6.0)
+                    .lowPrice(base - 6.0)
+                    .closePrice(base + 2.0)
+                    .volume(1.0)
+                    .amount(base + 2.0)
                     .trades(1)
                     .build());
         }

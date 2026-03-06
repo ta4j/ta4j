@@ -34,9 +34,7 @@ import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
-import org.ta4j.core.indicators.elliott.PatternSet;
 import org.ta4j.core.indicators.elliott.ScenarioType;
-import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardProfiles;
 import org.ta4j.core.num.Num;
 
@@ -80,8 +78,12 @@ public final class ElliottWaveBtcMacroCycleDemo {
     static final int DEFAULT_CHART_HEIGHT = 2160;
     static final String RECENT_TOP_ANCHOR_ID = "btc-2021-cycle-top";
     static final String RECENT_LOW_ANCHOR_ID = "btc-2022-cycle-bottom";
+    static final int SEGMENT_PREROLL_BARS = 60;
+    static final double SEGMENT_FIT_PASS_THRESHOLD = 0.65;
     static final Color BULLISH_LEG_COLOR = new Color(0x66BB6A);
     static final Color BEARISH_LEG_COLOR = new Color(0xEF5350);
+    private static final Color BULLISH_CANDIDATE_COLOR = new Color(0xA5D6A7);
+    private static final Color BEARISH_CANDIDATE_COLOR = new Color(0xEF9A9A);
     private static final Color ANCHOR_OVERLAY_COLOR = new Color(0xCFD8DC);
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveBtcMacroCycleDemo.class);
@@ -192,9 +194,14 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
         ChartWorkflow chartWorkflow = new ChartWorkflow();
         List<LegSegment> legSegments = buildLegSegments(registry);
+        List<SegmentScenarioFit> segmentFits = buildSegmentScenarioFits(series, legSegments, runner);
         BarSeriesLabelIndicator anchorLabels = new BarSeriesLabelIndicator(series, buildAnchorLabels(series, registry));
         BarSeriesLabelIndicator waveLabels = new BarSeriesLabelIndicator(series,
-                buildMatchedWaveLabels(series, registry, runner));
+                buildSegmentWaveLabels(series, segmentFits));
+        FixedIndicator<Num> bullishScenarioFits = buildScenarioFitIndicator(series, segmentFits, true,
+                "Bullish fitted wave segments");
+        FixedIndicator<Num> bearishScenarioFits = buildScenarioFitIndicator(series, segmentFits, false,
+                "Bearish fitted wave segments");
         FixedIndicator<Num> bullishLegs = buildCycleLegIndicator(series, legSegments, true, "Bullish 1-2-3-4-5");
         FixedIndicator<Num> bearishLegs = buildCycleLegIndicator(series, legSegments, false, "Bearish A-B-C");
         ChartPlan plan = chartWorkflow.builder()
@@ -210,6 +217,16 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 .withLineWidth(3.0f)
                 .withOpacity(0.95f)
                 .withLabel("Bearish A-B-C")
+                .withIndicatorOverlay(bullishScenarioFits)
+                .withLineColor(BULLISH_LEG_COLOR)
+                .withLineWidth(2.4f)
+                .withOpacity(0.90f)
+                .withLabel("Bullish best-fit wave segments")
+                .withIndicatorOverlay(bearishScenarioFits)
+                .withLineColor(BEARISH_LEG_COLOR)
+                .withLineWidth(2.4f)
+                .withOpacity(0.90f)
+                .withLabel("Bearish best-fit wave segments")
                 .withIndicatorOverlay(anchorLabels)
                 .withLineColor(ANCHOR_OVERLAY_COLOR)
                 .withLineWidth(1.5f)
@@ -313,17 +330,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
     }
 
     private static ElliottWaveAnalysisRunner buildRunner(ElliottDegree degree, int fractalWindow) {
-        return ElliottWaveAnalysisRunner.builder()
-                .degree(degree)
-                .higherDegrees(2)
-                .lowerDegrees(2)
-                .patternSet(PatternSet.all())
-                .maxScenarios(25)
-                .minConfidence(0.0)
-                .scenarioSwingWindow(0)
-                .swingDetector(SwingDetectors.fractal(fractalWindow))
-                .swingFilter(swings -> swings == null ? List.of() : List.copyOf(swings))
-                .build();
+        return ElliottWaveAnchorCalibrationHarness.buildMacroAnalysisRunner(degree, 2, 2, 25, 0, fractalWindow);
     }
 
     private static AnchorProbeObservation probeAnchor(BarSeries series,
@@ -416,37 +423,136 @@ public final class ElliottWaveBtcMacroCycleDemo {
         return List.copyOf(labels);
     }
 
-    private static List<BarLabel> buildMatchedWaveLabels(BarSeries series,
-            ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, ElliottWaveAnalysisRunner runner) {
+    private static List<BarLabel> buildSegmentWaveLabels(BarSeries series, List<SegmentScenarioFit> segmentFits) {
         List<BarLabel> labels = new ArrayList<>();
-        List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors = registry.anchors()
-                .stream()
-                .sorted(java.util.Comparator.comparing(ElliottWaveAnchorCalibrationHarness.Anchor::at))
-                .toList();
-        for (ElliottWaveAnchorCalibrationHarness.Anchor anchor : anchors) {
-            Optional<ElliottScenario> scenario = bestMatchingScenario(series, anchor, runner);
-            if (scenario.isEmpty()) {
-                continue;
-            }
-            Color labelColor = anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP ? BULLISH_LEG_COLOR
-                    : BEARISH_LEG_COLOR;
-            labels.addAll(buildWaveLabelsFromScenario(series, scenario.get(), labelColor));
+        for (SegmentScenarioFit fit : segmentFits) {
+            Color labelColor = fit.eyeballPass() ? (fit.bullish() ? BULLISH_LEG_COLOR : BEARISH_LEG_COLOR)
+                    : (fit.bullish() ? BULLISH_CANDIDATE_COLOR : BEARISH_CANDIDATE_COLOR);
+            labels.addAll(buildWaveLabelsFromScenario(series, fit.scenario(), labelColor));
         }
         return List.copyOf(labels);
     }
 
-    private static Optional<ElliottScenario> bestMatchingScenario(BarSeries series,
-            ElliottWaveAnchorCalibrationHarness.Anchor anchor, ElliottWaveAnalysisRunner runner) {
-        int anchorIndex = nearestIndex(series, anchor.at());
-        BarSeries prefix = series.getSubSeries(series.getBeginIndex(), anchorIndex + 1);
-        ElliottWaveAnalysisResult result = runner.analyze(prefix);
-        for (ElliottWaveAnalysisResult.BaseScenarioAssessment assessment : result.rankedBaseScenarios()) {
-            ElliottScenario scenario = assessment.scenario();
-            if (matchesAnchor(scenario, anchor)) {
-                return Optional.of(scenario);
+    private static List<SegmentScenarioFit> buildSegmentScenarioFits(BarSeries series, List<LegSegment> legSegments,
+            ElliottWaveAnalysisRunner runner) {
+        List<SegmentScenarioFit> fits = new ArrayList<>();
+        for (LegSegment legSegment : legSegments) {
+            fitScenarioToSegment(series, legSegment, runner).ifPresent(fits::add);
+        }
+        return List.copyOf(fits);
+    }
+
+    private static Optional<SegmentScenarioFit> fitScenarioToSegment(BarSeries series, LegSegment legSegment,
+            ElliottWaveAnalysisRunner runner) {
+        int segmentStartIndex = nearestIndex(series, legSegment.fromAnchor().at());
+        int segmentEndIndex = nearestIndex(series, legSegment.toAnchor().at());
+        int windowStartIndex = Math.max(series.getBeginIndex(), segmentStartIndex - SEGMENT_PREROLL_BARS);
+        BarSeries window = series.getSubSeries(windowStartIndex, segmentEndIndex + 1);
+        ElliottWaveAnalysisResult result = runner.analyze(window);
+        List<ElliottWaveAnalysisResult.BaseScenarioAssessment> translatedAssessments = result.rankedBaseScenarios()
+                .stream()
+                .map(assessment -> translateAssessmentToGlobal(assessment, windowStartIndex))
+                .toList();
+        return selectBestSegmentScenarioFit(translatedAssessments, segmentStartIndex, segmentEndIndex,
+                legSegment.bullish());
+    }
+
+    private static ElliottWaveAnalysisResult.BaseScenarioAssessment translateAssessmentToGlobal(
+            ElliottWaveAnalysisResult.BaseScenarioAssessment assessment, int barIndexOffset) {
+        ElliottScenario translatedScenario = translateScenarioToGlobal(assessment.scenario(), barIndexOffset);
+        return new ElliottWaveAnalysisResult.BaseScenarioAssessment(translatedScenario, assessment.confidenceScore(),
+                assessment.crossDegreeScore(), assessment.compositeScore(), assessment.supportingMatches());
+    }
+
+    private static ElliottScenario translateScenarioToGlobal(ElliottScenario scenario, int barIndexOffset) {
+        List<ElliottSwing> translatedSwings = scenario.swings()
+                .stream()
+                .map(swing -> new ElliottSwing(swing.fromIndex() + barIndexOffset, swing.toIndex() + barIndexOffset,
+                        swing.fromPrice(), swing.toPrice(), swing.degree()))
+                .toList();
+        return ElliottScenario.builder()
+                .id(scenario.id())
+                .currentPhase(scenario.currentPhase())
+                .swings(translatedSwings)
+                .confidence(scenario.confidence())
+                .degree(scenario.degree())
+                .invalidationPrice(scenario.invalidationPrice())
+                .primaryTarget(scenario.primaryTarget())
+                .fibonacciTargets(scenario.fibonacciTargets())
+                .type(scenario.type())
+                .startIndex(scenario.startIndex() + barIndexOffset)
+                .bullishDirection(scenario.hasKnownDirection() ? scenario.isBullish() : null)
+                .build();
+    }
+
+    static Optional<SegmentScenarioFit> selectBestSegmentScenarioFit(
+            List<ElliottWaveAnalysisResult.BaseScenarioAssessment> assessments, int segmentStartIndex,
+            int segmentEndIndex, boolean bullish) {
+        Objects.requireNonNull(assessments, "assessments");
+        int expectedWaveCount = bullish ? 5 : 3;
+        ElliottPhase targetPhase = bullish ? ElliottPhase.WAVE5 : ElliottPhase.CORRECTIVE_C;
+
+        SegmentScenarioFit best = null;
+        int rank = 1;
+        for (ElliottWaveAnalysisResult.BaseScenarioAssessment assessment : assessments) {
+            ElliottScenario scenario = assessment == null ? null : assessment.scenario();
+            if (!matchesSegmentScenario(scenario, targetPhase, bullish, expectedWaveCount)) {
+                rank++;
+                continue;
+            }
+            SegmentScenarioFit candidate = SegmentScenarioFit.create(scenario, assessment.compositeScore(), rank,
+                    segmentStartIndex, segmentEndIndex, bullish);
+            if (best == null || candidate.compareTo(best) < 0) {
+                best = candidate;
+            }
+            rank++;
+        }
+        return Optional.ofNullable(best);
+    }
+
+    private static boolean matchesSegmentScenario(ElliottScenario scenario, ElliottPhase targetPhase, boolean bullish,
+            int expectedWaveCount) {
+        if (scenario == null || !scenario.hasKnownDirection() || scenario.currentPhase() != targetPhase
+                || scenario.waveCount() != expectedWaveCount) {
+            return false;
+        }
+        return bullish ? scenario.isBullish() : scenario.isBearish();
+    }
+
+    private static FixedIndicator<Num> buildScenarioFitIndicator(BarSeries series, List<SegmentScenarioFit> segmentFits,
+            boolean bullish, String label) {
+        Num[] values = new Num[series.getEndIndex() + 1];
+        Arrays.fill(values, NaN);
+        for (SegmentScenarioFit fit : segmentFits) {
+            if (fit.bullish() != bullish) {
+                continue;
+            }
+            applyScenarioPath(values, series, fit.scenario());
+        }
+        return new FixedIndicator<>(series, values) {
+            @Override
+            public String toString() {
+                return label;
+            }
+        };
+    }
+
+    private static void applyScenarioPath(Num[] values, BarSeries series, ElliottScenario scenario) {
+        for (ElliottSwing swing : scenario.swings()) {
+            int fromIndex = Math.max(series.getBeginIndex(), Math.min(swing.fromIndex(), swing.toIndex()));
+            int toIndex = Math.min(series.getEndIndex(), Math.max(swing.fromIndex(), swing.toIndex()));
+            if (toIndex < fromIndex) {
+                continue;
+            }
+            double fromPrice = swing.fromPrice().doubleValue();
+            double toPrice = swing.toPrice().doubleValue();
+            int length = Math.max(1, toIndex - fromIndex);
+            for (int index = fromIndex; index <= toIndex; index++) {
+                double progress = (double) (index - fromIndex) / length;
+                double interpolated = fromPrice + ((toPrice - fromPrice) * progress);
+                values[index] = series.numFactory().numOf(interpolated);
             }
         }
-        return Optional.empty();
     }
 
     private static FixedIndicator<Num> buildCycleLegIndicator(BarSeries series, List<LegSegment> legSegments,
@@ -749,6 +855,58 @@ public final class ElliottWaveBtcMacroCycleDemo {
         LegSegment {
             Objects.requireNonNull(fromAnchor, "fromAnchor");
             Objects.requireNonNull(toAnchor, "toAnchor");
+        }
+    }
+
+    record SegmentScenarioFit(ElliottScenario scenario, double compositeScore, int rank, int segmentStartIndex,
+            int segmentEndIndex, int scenarioStartIndex, int scenarioEndIndex, double startAlignmentScore,
+            double endAlignmentScore, double coverageScore, double fitScore,
+            boolean bullish) implements Comparable<SegmentScenarioFit> {
+
+        static SegmentScenarioFit create(ElliottScenario scenario, double compositeScore, int rank,
+                int segmentStartIndex, int segmentEndIndex, boolean bullish) {
+            List<ElliottSwing> swings = scenario.swings();
+            int scenarioStartIndex = swings.getFirst().fromIndex();
+            int scenarioEndIndex = swings.getLast().toIndex();
+            int segmentLength = Math.max(1, segmentEndIndex - segmentStartIndex);
+            double startAlignmentScore = alignmentScore(scenarioStartIndex, segmentStartIndex, segmentLength);
+            double endAlignmentScore = alignmentScore(scenarioEndIndex, segmentEndIndex, segmentLength);
+            double coverageScore = coverageScore(scenarioStartIndex, scenarioEndIndex, segmentStartIndex,
+                    segmentEndIndex);
+            double fitScore = (0.35 * startAlignmentScore) + (0.35 * endAlignmentScore) + (0.20 * coverageScore)
+                    + (0.10 * Math.max(0.0, Math.min(1.0, compositeScore)));
+            return new SegmentScenarioFit(scenario, compositeScore, rank, segmentStartIndex, segmentEndIndex,
+                    scenarioStartIndex, scenarioEndIndex, startAlignmentScore, endAlignmentScore, coverageScore,
+                    fitScore, bullish);
+        }
+
+        boolean eyeballPass() {
+            return fitScore >= SEGMENT_FIT_PASS_THRESHOLD && endAlignmentScore >= 0.70 && coverageScore >= 0.35;
+        }
+
+        @Override
+        public int compareTo(SegmentScenarioFit other) {
+            int fitComparison = Double.compare(other.fitScore, fitScore);
+            if (fitComparison != 0) {
+                return fitComparison;
+            }
+            int endAlignmentComparison = Double.compare(other.endAlignmentScore, endAlignmentScore);
+            if (endAlignmentComparison != 0) {
+                return endAlignmentComparison;
+            }
+            return Integer.compare(rank, other.rank);
+        }
+
+        private static double alignmentScore(int actualIndex, int targetIndex, int segmentLength) {
+            double normalizedDistance = Math.abs(actualIndex - targetIndex) / (double) segmentLength;
+            return Math.max(0.0, 1.0 - Math.min(1.0, normalizedDistance));
+        }
+
+        private static double coverageScore(int scenarioStartIndex, int scenarioEndIndex, int segmentStartIndex,
+                int segmentEndIndex) {
+            int segmentLength = Math.max(1, segmentEndIndex - segmentStartIndex);
+            int coveredBars = Math.max(0, scenarioEndIndex - scenarioStartIndex);
+            return Math.max(0.0, Math.min(1.0, coveredBars / (double) segmentLength));
         }
     }
 
