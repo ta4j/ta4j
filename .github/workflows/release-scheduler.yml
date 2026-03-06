@@ -527,6 +527,10 @@ jobs:
 
           should=$(jq -r 'if .should_release then "true" else "false" end' ai.json)
           bump=$(jq -r '.bump // "patch"' ai.json)
+          bump=$(printf '%s' "$bump" | tr '[:upper:]' '[:lower:]' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
+          if [ -z "$bump" ]; then
+            bump="patch"
+          fi
           warning=$(jq -r '.warning // ""' ai.json)
           reason=$(jq -r '.reason // ""' ai.json)
 

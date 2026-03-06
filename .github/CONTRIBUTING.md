@@ -18,7 +18,7 @@ Ideas: [Roadmap](https://github.com/ta4j/ta4j/wiki/Roadmap) · [Open issues](htt
 
 ## API lifecycle and @since policy
 
-- Add `@since <version>` to every newly introduced class and API member.
+- Add `@since <version>` to every newly introduced class and API member, using the introducing release version without `-SNAPSHOT` (for example `0.22.4`, not `0.22.4-SNAPSHOT`).
 - This gives us a reliable introduction point for deprecation tracking and lifecycle automation.
 - New API is considered volatile for the next 5 minor releases after it is introduced.
 - Example: API added in `0.22.4` may still change incompatibly, or be removed, through `0.27.4` (inclusive).
