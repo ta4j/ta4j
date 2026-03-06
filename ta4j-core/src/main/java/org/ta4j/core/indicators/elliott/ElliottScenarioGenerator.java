@@ -177,7 +177,7 @@ public final class ElliottScenarioGenerator {
                 continue;
             }
 
-            final String signature = createSignature(ScenarioType.IMPULSE, phase, startIndex);
+            final String signature = createSignature(ScenarioType.IMPULSE, phase, startIndex, impulseSwings);
             if (seenSignatures.contains(signature)) {
                 continue;
             }
@@ -211,6 +211,8 @@ public final class ElliottScenarioGenerator {
 
             candidates.add(scenario);
         }
+
+        generateImpulseDecompositionScenarios(swings, degree, channel, startIndex, candidates, seenSignatures);
     }
 
     private void generateCorrectiveScenarios(final List<ElliottSwing> swings, final ElliottDegree degree,
@@ -229,6 +231,20 @@ public final class ElliottScenarioGenerator {
         if (patternSet.allows(ScenarioType.CORRECTIVE_FLAT) && swings.size() >= 2) {
             generateFlatScenario(swings, degree, channel, startIndex, candidates, seenSignatures);
         }
+
+        if (patternSet.allows(ScenarioType.CORRECTIVE_TRIANGLE) && swings.size() >= 3) {
+            generateTriangleScenario(swings, degree, channel, startIndex, candidates, seenSignatures);
+        }
+
+        if (patternSet.allows(ScenarioType.CORRECTIVE_COMPLEX) && swings.size() >= 3) {
+            generateComplexScenario(swings, degree, channel, startIndex, candidates, seenSignatures);
+        }
+
+        if (patternSet.allows(ScenarioType.CORRECTIVE_ZIGZAG) || patternSet.allows(ScenarioType.CORRECTIVE_FLAT)
+                || patternSet.allows(ScenarioType.CORRECTIVE_TRIANGLE)
+                || patternSet.allows(ScenarioType.CORRECTIVE_COMPLEX)) {
+            generateCorrectiveDecompositionScenarios(swings, degree, channel, startIndex, candidates, seenSignatures);
+        }
     }
 
     private void generateZigzagScenario(final List<ElliottSwing> swings, final ElliottDegree degree,
@@ -243,7 +259,7 @@ public final class ElliottScenarioGenerator {
                 continue;
             }
 
-            final String signature = createSignature(ScenarioType.CORRECTIVE_ZIGZAG, phase, startIndex);
+            final String signature = createSignature(ScenarioType.CORRECTIVE_ZIGZAG, phase, startIndex, corrSwings);
             if (seenSignatures.contains(signature)) {
                 continue;
             }
@@ -304,7 +320,7 @@ public final class ElliottScenarioGenerator {
                 continue;
             }
 
-            final String signature = createSignature(ScenarioType.CORRECTIVE_FLAT, phase, startIndex);
+            final String signature = createSignature(ScenarioType.CORRECTIVE_FLAT, phase, startIndex, corrSwings);
             if (seenSignatures.contains(signature)) {
                 continue;
             }
@@ -332,6 +348,385 @@ public final class ElliottScenarioGenerator {
                     .primaryTarget(primaryTarget)
                     .fibonacciTargets(targets)
                     .type(ScenarioType.CORRECTIVE_FLAT)
+                    .startIndex(startIndex)
+                    .build();
+
+            candidates.add(scenario);
+        }
+    }
+
+    private void generateTriangleScenario(final List<ElliottSwing> swings, final ElliottDegree degree,
+            final ElliottChannel channel, final int startIndex, final List<ElliottScenario> candidates,
+            final Set<String> seenSignatures) {
+        for (int waveCount = 3; waveCount <= Math.min(5, swings.size()); waveCount++) {
+            final List<ElliottSwing> corrSwings = swings.subList(0, waveCount);
+            final ElliottPhase phase = determineCorrectivePhase(corrSwings);
+            if (phase == ElliottPhase.NONE) {
+                continue;
+            }
+
+            double structureScore = scoreTriangleStructure(corrSwings);
+            if (structureScore <= 0.0) {
+                continue;
+            }
+
+            final String signature = createSignature(ScenarioType.CORRECTIVE_TRIANGLE, phase, startIndex, corrSwings);
+            if (seenSignatures.contains(signature)) {
+                continue;
+            }
+            seenSignatures.add(signature);
+
+            final ElliottConfidenceBreakdown breakdown = confidenceModel.score(corrSwings, phase, channel,
+                    ScenarioType.CORRECTIVE_TRIANGLE);
+            final ElliottConfidence confidence = applyStructurePenalty(breakdown.confidence(), structureScore,
+                    "Triangle structure score " + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
+
+            if (confidence.overall().isLessThan(minConfidenceNum)) {
+                continue;
+            }
+
+            final Num invalidation = calculateCorrectiveInvalidation(corrSwings, phase);
+            final List<Num> targets = calculateCorrectiveTargets(corrSwings, phase);
+            final Num primaryTarget = targets.isEmpty() ? numFactory.zero() : targets.get(0);
+
+            final ElliottScenario scenario = ElliottScenario.builder()
+                    .id(generateId("triangle"))
+                    .currentPhase(phase)
+                    .swings(corrSwings)
+                    .confidence(confidence)
+                    .degree(degree)
+                    .invalidationPrice(invalidation)
+                    .primaryTarget(primaryTarget)
+                    .fibonacciTargets(targets)
+                    .type(ScenarioType.CORRECTIVE_TRIANGLE)
+                    .startIndex(startIndex)
+                    .build();
+
+            candidates.add(scenario);
+        }
+    }
+
+    private void generateComplexScenario(final List<ElliottSwing> swings, final ElliottDegree degree,
+            final ElliottChannel channel, final int startIndex, final List<ElliottScenario> candidates,
+            final Set<String> seenSignatures) {
+        for (int waveCount = 3; waveCount <= Math.min(5, swings.size()); waveCount++) {
+            final List<ElliottSwing> corrSwings = swings.subList(0, waveCount);
+            final ElliottPhase phase = determineCorrectivePhase(corrSwings);
+            if (phase == ElliottPhase.NONE) {
+                continue;
+            }
+
+            double structureScore = scoreComplexCorrectiveStructure(corrSwings);
+            if (structureScore <= 0.0) {
+                continue;
+            }
+
+            final String signature = createSignature(ScenarioType.CORRECTIVE_COMPLEX, phase, startIndex, corrSwings);
+            if (seenSignatures.contains(signature)) {
+                continue;
+            }
+            seenSignatures.add(signature);
+
+            final ElliottConfidenceBreakdown breakdown = confidenceModel.score(corrSwings, phase, channel,
+                    ScenarioType.CORRECTIVE_COMPLEX);
+            final ElliottConfidence confidence = applyStructurePenalty(breakdown.confidence(), structureScore,
+                    "Complex corrective score " + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
+
+            if (confidence.overall().isLessThan(minConfidenceNum)) {
+                continue;
+            }
+
+            final Num invalidation = calculateCorrectiveInvalidation(corrSwings, phase);
+            final List<Num> targets = calculateCorrectiveTargets(corrSwings, phase);
+            final Num primaryTarget = targets.isEmpty() ? numFactory.zero() : targets.get(0);
+
+            final ElliottScenario scenario = ElliottScenario.builder()
+                    .id(generateId("complex"))
+                    .currentPhase(phase)
+                    .swings(corrSwings)
+                    .confidence(confidence)
+                    .degree(degree)
+                    .invalidationPrice(invalidation)
+                    .primaryTarget(primaryTarget)
+                    .fibonacciTargets(targets)
+                    .type(ScenarioType.CORRECTIVE_COMPLEX)
+                    .startIndex(startIndex)
+                    .build();
+
+            candidates.add(scenario);
+        }
+    }
+
+    private List<ElliottSwing> findBestImpulseDecomposition(final List<ElliottSwing> swings, final int waveCount,
+            final ElliottChannel channel) {
+        if (swings.size() <= waveCount) {
+            return List.of();
+        }
+        final List<SwingPivotPoint> pivots = extractPivots(swings);
+        final BestDecomposition best = new BestDecomposition();
+        searchDecompositionCuts(pivots.size(), waveCount - 1, 1, new ArrayList<>(), cutPoints -> {
+            final List<ElliottSwing> candidate = buildDecomposition(swings.get(0).degree(), pivots, cutPoints);
+            final ElliottPhase phase = determineImpulsePhase(candidate);
+            final double structureScore = scoreImpulseStructure(candidate, phase);
+            if (structureScore <= IMPULSE_STRUCTURE_REJECTION_SCORE) {
+                return;
+            }
+            final ElliottConfidenceBreakdown breakdown = confidenceModel.score(candidate, phase, channel,
+                    ScenarioType.IMPULSE);
+            final ElliottConfidence confidence = applyStructurePenalty(breakdown.confidence(), structureScore,
+                    "Anchor-first impulse decomposition score "
+                            + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
+            best.consider(candidate, confidence.overall().doubleValue());
+        });
+        return best.swings();
+    }
+
+    private List<ElliottSwing> findBestCorrectiveDecomposition(final List<ElliottSwing> swings, final int waveCount,
+            final ElliottChannel channel) {
+        if (swings.size() <= waveCount) {
+            return List.of();
+        }
+        final List<SwingPivotPoint> pivots = extractPivots(swings);
+        final BestDecomposition best = new BestDecomposition();
+        searchDecompositionCuts(pivots.size(), waveCount - 1, 1, new ArrayList<>(), cutPoints -> {
+            final List<ElliottSwing> candidate = buildDecomposition(swings.get(0).degree(), pivots, cutPoints);
+            final ElliottPhase phase = determineCorrectivePhase(candidate);
+            final ScenarioType type = classifyDecomposedCorrectiveType(candidate);
+            final double structureScore = scoreSimpleCorrectiveStructure(candidate, type);
+            if (structureScore <= 0.0) {
+                return;
+            }
+            final ElliottConfidenceBreakdown breakdown = confidenceModel.score(candidate, phase, channel, type);
+            final ElliottConfidence confidence = applyStructurePenalty(breakdown.confidence(), structureScore,
+                    "Anchor-first corrective decomposition score "
+                            + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
+            best.consider(candidate, confidence.overall().doubleValue());
+        });
+        return best.swings();
+    }
+
+    private void searchDecompositionCuts(final int pivotCount, final int cutsNeeded, final int nextPivot,
+            final List<Integer> chosenCuts, final java.util.function.Consumer<List<Integer>> consumer) {
+        if (cutsNeeded == 0) {
+            consumer.accept(List.copyOf(chosenCuts));
+            return;
+        }
+        final int lastInternalPivot = (pivotCount - 2) - (cutsNeeded - 1);
+        for (int pivotIndex = nextPivot; pivotIndex <= lastInternalPivot; pivotIndex++) {
+            chosenCuts.add(pivotIndex);
+            searchDecompositionCuts(pivotCount, cutsNeeded - 1, pivotIndex + 1, chosenCuts, consumer);
+            chosenCuts.removeLast();
+        }
+    }
+
+    private List<SwingPivotPoint> extractPivots(final List<ElliottSwing> swings) {
+        final List<SwingPivotPoint> pivots = new ArrayList<>(swings.size() + 1);
+        final ElliottSwing first = swings.get(0);
+        pivots.add(new SwingPivotPoint(first.fromIndex(), first.fromPrice()));
+        for (ElliottSwing swing : swings) {
+            pivots.add(new SwingPivotPoint(swing.toIndex(), swing.toPrice()));
+        }
+        return List.copyOf(pivots);
+    }
+
+    private List<ElliottSwing> buildDecomposition(final ElliottDegree degree, final List<SwingPivotPoint> pivots,
+            final List<Integer> cutPoints) {
+        final List<ElliottSwing> decomposition = new ArrayList<>(cutPoints.size() + 1);
+        int previousPivot = 0;
+        for (Integer cutPoint : cutPoints) {
+            decomposition.add(new ElliottSwing(pivots.get(previousPivot).index(), pivots.get(cutPoint).index(),
+                    pivots.get(previousPivot).price(), pivots.get(cutPoint).price(), degree));
+            previousPivot = cutPoint;
+        }
+        final int endPivot = pivots.size() - 1;
+        decomposition.add(new ElliottSwing(pivots.get(previousPivot).index(), pivots.get(endPivot).index(),
+                pivots.get(previousPivot).price(), pivots.get(endPivot).price(), degree));
+        return List.copyOf(decomposition);
+    }
+
+    private boolean matchesRawPrefix(final List<ElliottSwing> rawSwings, final List<ElliottSwing> candidate) {
+        if (candidate.size() > rawSwings.size()) {
+            return false;
+        }
+        for (int index = 0; index < candidate.size(); index++) {
+            if (!candidate.get(index).equals(rawSwings.get(index))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private ScenarioType classifyDecomposedCorrectiveType(final List<ElliottSwing> swings) {
+        if (swings.size() < 2) {
+            return ScenarioType.CORRECTIVE_ZIGZAG;
+        }
+        final ElliottSwing waveA = swings.get(0);
+        final ElliottSwing waveB = swings.get(1);
+        if (swings.size() >= 5 && scoreTriangleStructure(swings) >= 0.55) {
+            return ScenarioType.CORRECTIVE_TRIANGLE;
+        }
+        if (fibValidator.isWaveBFlatRetracementValid(waveA, waveB)) {
+            return ScenarioType.CORRECTIVE_FLAT;
+        }
+        if (swings.size() >= 3) {
+            final ElliottSwing waveC = swings.get(2);
+            if (waveC.amplitude().isGreaterThanOrEqual(waveA.amplitude())) {
+                return ScenarioType.CORRECTIVE_ZIGZAG;
+            }
+            return ScenarioType.CORRECTIVE_COMPLEX;
+        }
+        return ScenarioType.CORRECTIVE_ZIGZAG;
+    }
+
+    private double scoreSimpleCorrectiveStructure(final List<ElliottSwing> swings, final ScenarioType type) {
+        if (swings.isEmpty()) {
+            return 0.0;
+        }
+        for (int index = 1; index < swings.size(); index++) {
+            if (swings.get(index).isRising() == swings.get(index - 1).isRising()) {
+                return 0.0;
+            }
+        }
+        if (swings.size() == 1) {
+            return 1.0;
+        }
+
+        final ElliottSwing waveA = swings.get(0);
+        final ElliottSwing waveB = swings.get(1);
+        final double waveAAmplitude = Math.max(1e-9, waveA.amplitude().doubleValue());
+        final double bRatio = waveB.amplitude().doubleValue() / waveAAmplitude;
+        final List<Double> scores = new ArrayList<>();
+
+        if (type == ScenarioType.CORRECTIVE_FLAT) {
+            scores.add(boundedScore(bRatio, 0.75, 1.25, 0.45));
+        } else if (type == ScenarioType.CORRECTIVE_ZIGZAG) {
+            scores.add(boundedScore(bRatio, 0.25, 0.85, 0.45));
+        } else if (type == ScenarioType.CORRECTIVE_TRIANGLE) {
+            return scoreTriangleStructure(swings);
+        } else {
+            scores.add(boundedScore(bRatio, 0.50, 1.80, 0.80));
+        }
+
+        if (swings.size() >= 3) {
+            final ElliottSwing waveC = swings.get(2);
+            final double cRatio = waveC.amplitude().doubleValue() / waveAAmplitude;
+            if (type == ScenarioType.CORRECTIVE_FLAT) {
+                scores.add(boundedScore(cRatio, 0.50, 1.80, 0.75));
+            } else if (type == ScenarioType.CORRECTIVE_ZIGZAG) {
+                scores.add(boundedScore(cRatio, 0.80, 2.40, 0.90));
+            } else {
+                scores.add(scoreComplexCorrectiveStructure(swings));
+            }
+        }
+
+        return average(scores);
+    }
+
+    private void generateImpulseDecompositionScenarios(final List<ElliottSwing> swings, final ElliottDegree degree,
+            final ElliottChannel channel, final int startIndex, final List<ElliottScenario> candidates,
+            final Set<String> seenSignatures) {
+        if (swings.size() < 3) {
+            return;
+        }
+
+        for (int waveCount = 2; waveCount <= Math.min(5, swings.size()); waveCount++) {
+            final List<ElliottSwing> decomposition = findBestImpulseDecomposition(swings, waveCount, channel);
+            if (decomposition.isEmpty() || matchesRawPrefix(swings, decomposition)) {
+                continue;
+            }
+
+            final ElliottPhase phase = determineImpulsePhase(decomposition);
+            final double structureScore = scoreImpulseStructure(decomposition, phase);
+            if (structureScore <= IMPULSE_STRUCTURE_REJECTION_SCORE) {
+                continue;
+            }
+
+            final String signature = createSignature(ScenarioType.IMPULSE, phase, startIndex, decomposition);
+            if (seenSignatures.contains(signature)) {
+                continue;
+            }
+            seenSignatures.add(signature);
+
+            final ElliottConfidenceBreakdown breakdown = confidenceModel.score(decomposition, phase, channel,
+                    ScenarioType.IMPULSE);
+            final ElliottConfidence confidence = applyStructurePenalty(breakdown.confidence(), structureScore,
+                    "Anchor-first impulse decomposition score "
+                            + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
+
+            if (confidence.overall().isLessThan(minConfidenceNum)) {
+                continue;
+            }
+
+            final Num invalidation = calculateImpulseInvalidation(decomposition, phase);
+            final List<Num> targets = calculateImpulseTargets(decomposition, phase);
+            final Num primaryTarget = targets.isEmpty() ? numFactory.zero() : targets.get(0);
+
+            final ElliottScenario scenario = ElliottScenario.builder()
+                    .id(generateId("impulse-decomp"))
+                    .currentPhase(phase)
+                    .swings(decomposition)
+                    .confidence(confidence)
+                    .degree(degree)
+                    .invalidationPrice(invalidation)
+                    .primaryTarget(primaryTarget)
+                    .fibonacciTargets(targets)
+                    .type(ScenarioType.IMPULSE)
+                    .startIndex(startIndex)
+                    .build();
+
+            candidates.add(scenario);
+        }
+    }
+
+    private void generateCorrectiveDecompositionScenarios(final List<ElliottSwing> swings, final ElliottDegree degree,
+            final ElliottChannel channel, final int startIndex, final List<ElliottScenario> candidates,
+            final Set<String> seenSignatures) {
+        if (swings.size() < 3) {
+            return;
+        }
+
+        for (int waveCount = 2; waveCount <= Math.min(3, swings.size()); waveCount++) {
+            final List<ElliottSwing> decomposition = findBestCorrectiveDecomposition(swings, waveCount, channel);
+            if (decomposition.isEmpty() || matchesRawPrefix(swings, decomposition)) {
+                continue;
+            }
+
+            final ElliottPhase phase = determineCorrectivePhase(decomposition);
+            final ScenarioType type = classifyDecomposedCorrectiveType(decomposition);
+            final double structureScore = scoreSimpleCorrectiveStructure(decomposition, type);
+            if (structureScore <= 0.0) {
+                continue;
+            }
+
+            final String signature = createSignature(type, phase, startIndex, decomposition);
+            if (seenSignatures.contains(signature)) {
+                continue;
+            }
+            seenSignatures.add(signature);
+
+            final ElliottConfidenceBreakdown breakdown = confidenceModel.score(decomposition, phase, channel, type);
+            final ElliottConfidence confidence = applyStructurePenalty(breakdown.confidence(), structureScore,
+                    "Anchor-first corrective decomposition score "
+                            + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
+
+            if (confidence.overall().isLessThan(minConfidenceNum)) {
+                continue;
+            }
+
+            final Num invalidation = calculateCorrectiveInvalidation(decomposition, phase);
+            final List<Num> targets = calculateCorrectiveTargets(decomposition, phase);
+            final Num primaryTarget = targets.isEmpty() ? numFactory.zero() : targets.get(0);
+
+            final ElliottScenario scenario = ElliottScenario.builder()
+                    .id(generateId("corrective-decomp"))
+                    .currentPhase(phase)
+                    .swings(decomposition)
+                    .confidence(confidence)
+                    .degree(degree)
+                    .invalidationPrice(invalidation)
+                    .primaryTarget(primaryTarget)
+                    .fibonacciTargets(targets)
+                    .type(type)
                     .startIndex(startIndex)
                     .build();
 
@@ -468,6 +863,110 @@ public final class ElliottScenarioGenerator {
         return clamp01(wave3Amplitude / Math.max(1e-9, minimumPeer));
     }
 
+    private double scoreTriangleStructure(final List<ElliottSwing> swings) {
+        if (swings.size() < 3) {
+            return 0.0;
+        }
+
+        final List<Double> scores = new ArrayList<>();
+        final ElliottSwing waveA = swings.get(0);
+        final ElliottSwing waveB = swings.get(1);
+        double waveAAmplitude = Math.max(1e-9, waveA.amplitude().doubleValue());
+        double waveBAmplitude = waveB.amplitude().doubleValue();
+        scores.add(boundedScore(waveBAmplitude / waveAAmplitude, 0.35, 1.30, 0.80));
+
+        if (swings.size() >= 3) {
+            final ElliottSwing waveC = swings.get(2);
+            double waveCAmplitude = waveC.amplitude().doubleValue();
+            scores.add(boundedScore(waveCAmplitude / waveAAmplitude, 0.20, 1.05, 0.60));
+            scores.add(insidePreviousRangeScore(waveA, waveC));
+        }
+
+        if (swings.size() >= 4) {
+            final ElliottSwing waveBLocal = swings.get(1);
+            final ElliottSwing waveD = swings.get(3);
+            double waveBLocalAmplitude = Math.max(1e-9, waveBLocal.amplitude().doubleValue());
+            scores.add(boundedScore(waveD.amplitude().doubleValue() / waveBLocalAmplitude, 0.20, 1.00, 0.60));
+            scores.add(insidePreviousRangeScore(waveBLocal, waveD));
+        }
+
+        if (swings.size() >= 5) {
+            final ElliottSwing waveC = swings.get(2);
+            final ElliottSwing waveE = swings.get(4);
+            double waveCAmplitude = Math.max(1e-9, waveC.amplitude().doubleValue());
+            scores.add(boundedScore(waveE.amplitude().doubleValue() / waveCAmplitude, 0.20, 1.00, 0.60));
+            scores.add(insidePreviousRangeScore(waveC, waveE));
+        }
+
+        return average(scores);
+    }
+
+    private double scoreComplexCorrectiveStructure(final List<ElliottSwing> swings) {
+        if (swings.size() < 3) {
+            return 0.0;
+        }
+        final ElliottSwing waveA = swings.get(0);
+        final ElliottSwing waveB = swings.get(1);
+        final ElliottSwing waveC = swings.get(2);
+        double waveAAmplitude = Math.max(1e-9, waveA.amplitude().doubleValue());
+        double bRatio = waveB.amplitude().doubleValue() / waveAAmplitude;
+        double cRatio = waveC.amplitude().doubleValue() / waveAAmplitude;
+
+        double expandedB = boundedScore(bRatio, 0.85, 2.40, 0.80);
+        double divergentC = Math.max(boundedScore(cRatio, 0.15, 0.75, 0.60), boundedScore(cRatio, 1.35, 3.00, 0.90));
+        double extensionScore = swings.size() >= 4 ? boundedScore(
+                swings.get(3).amplitude().doubleValue() / Math.max(1e-9, waveB.amplitude().doubleValue()), 0.20, 2.00,
+                0.90) : 0.55;
+        double terminationScore = swings.size() >= 5 ? boundedScore(
+                swings.get(4).amplitude().doubleValue() / Math.max(1e-9, waveC.amplitude().doubleValue()), 0.15, 2.20,
+                0.90) : 0.55;
+        return average(List.of(expandedB, divergentC, extensionScore, terminationScore));
+    }
+
+    private double insidePreviousRangeScore(final ElliottSwing previous, final ElliottSwing current) {
+        double previousFrom = previous.fromPrice().doubleValue();
+        double previousTo = previous.toPrice().doubleValue();
+        double lower = Math.min(previousFrom, previousTo);
+        double upper = Math.max(previousFrom, previousTo);
+        double currentEnd = current.toPrice().doubleValue();
+        if (currentEnd >= lower && currentEnd <= upper) {
+            return 1.0;
+        }
+        double distance = currentEnd < lower ? lower - currentEnd : currentEnd - upper;
+        double amplitude = Math.max(1e-9, previous.amplitude().doubleValue());
+        return clamp01(1.0 - (distance / amplitude));
+    }
+
+    private double boundedScore(final double value, final double targetMin, final double targetMax,
+            final double tolerance) {
+        if (!Double.isFinite(value)) {
+            return 0.0;
+        }
+        if (value >= targetMin && value <= targetMax) {
+            return 1.0;
+        }
+        if (value < targetMin) {
+            return clamp01(1.0 - ((targetMin - value) / Math.max(1e-9, tolerance)));
+        }
+        return clamp01(1.0 - ((value - targetMax) / Math.max(1e-9, tolerance)));
+    }
+
+    private double average(final List<Double> scores) {
+        if (scores == null || scores.isEmpty()) {
+            return 0.0;
+        }
+        double total = 0.0;
+        int count = 0;
+        for (Double score : scores) {
+            if (score == null) {
+                continue;
+            }
+            total += score;
+            count++;
+        }
+        return count == 0 ? 0.0 : clamp01(total / count);
+    }
+
     private Num calculateImpulseInvalidation(final List<ElliottSwing> swings, final ElliottPhase phase) {
         if (swings.isEmpty()) {
             return numFactory.zero();
@@ -581,8 +1080,40 @@ public final class ElliottScenarioGenerator {
         return prefix + "-" + scenarioCounter.incrementAndGet();
     }
 
-    private String createSignature(final ScenarioType type, final ElliottPhase phase, final int startIndex) {
-        return type.name() + ":" + phase.name() + ":" + startIndex;
+    private String createSignature(final ScenarioType type, final ElliottPhase phase, final int startIndex,
+            final List<ElliottSwing> swings) {
+        final StringBuilder signature = new StringBuilder(type.name()).append(':')
+                .append(phase.name())
+                .append(':')
+                .append(startIndex)
+                .append(':');
+        for (ElliottSwing swing : swings) {
+            signature.append(swing.fromIndex()).append("->").append(swing.toIndex()).append('|');
+        }
+        return signature.toString();
+    }
+
+    private static final class BestDecomposition {
+
+        private List<ElliottSwing> swings = List.of();
+        private double score = Double.NEGATIVE_INFINITY;
+
+        private void consider(final List<ElliottSwing> candidate, final double candidateScore) {
+            if (candidate == null || candidate.isEmpty()) {
+                return;
+            }
+            if (candidateScore > score) {
+                swings = List.copyOf(candidate);
+                score = candidateScore;
+            }
+        }
+
+        private List<ElliottSwing> swings() {
+            return swings;
+        }
+    }
+
+    private record SwingPivotPoint(int index, Num price) {
     }
 
     private static double clamp01(final double value) {

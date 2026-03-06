@@ -10,6 +10,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceModel;
+import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
@@ -60,6 +61,80 @@ class ElliottScenarioGeneratorTest {
         // Should find corrective scenarios
         boolean hasCorrective = set.all().stream().anyMatch(s -> s.type().isCorrective());
         assertThat(hasCorrective).isTrue();
+    }
+
+    @Test
+    void generatesTriangleCorrectiveScenarios() {
+        ElliottScenarioGenerator triangleGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 10,
+                ConfidenceProfiles.defaultModel(numFactory), PatternSet.of(ScenarioType.CORRECTIVE_TRIANGLE));
+        List<ElliottSwing> triangleLike = List.of(
+                new ElliottSwing(0, 5, numFactory.numOf(120), numFactory.numOf(100), ElliottDegree.MINOR),
+                new ElliottSwing(5, 10, numFactory.numOf(100), numFactory.numOf(114), ElliottDegree.MINOR),
+                new ElliottSwing(10, 15, numFactory.numOf(114), numFactory.numOf(104), ElliottDegree.MINOR),
+                new ElliottSwing(15, 20, numFactory.numOf(104), numFactory.numOf(111), ElliottDegree.MINOR),
+                new ElliottSwing(20, 25, numFactory.numOf(111), numFactory.numOf(106), ElliottDegree.MINOR));
+
+        ElliottScenarioSet set = triangleGenerator.generate(triangleLike, ElliottDegree.MINOR, null);
+
+        assertThat(set.all()).anyMatch(scenario -> scenario.type() == ScenarioType.CORRECTIVE_TRIANGLE);
+    }
+
+    @Test
+    void generatesComplexCorrectiveScenarios() {
+        ElliottScenarioGenerator complexGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 10,
+                ConfidenceProfiles.defaultModel(numFactory), PatternSet.of(ScenarioType.CORRECTIVE_COMPLEX));
+        List<ElliottSwing> complexLike = List.of(
+                new ElliottSwing(0, 5, numFactory.numOf(120), numFactory.numOf(100), ElliottDegree.MINOR),
+                new ElliottSwing(5, 10, numFactory.numOf(100), numFactory.numOf(124), ElliottDegree.MINOR),
+                new ElliottSwing(10, 15, numFactory.numOf(124), numFactory.numOf(108), ElliottDegree.MINOR),
+                new ElliottSwing(15, 20, numFactory.numOf(108), numFactory.numOf(130), ElliottDegree.MINOR));
+
+        ElliottScenarioSet set = complexGenerator.generate(complexLike, ElliottDegree.MINOR, null);
+
+        assertThat(set.all()).anyMatch(scenario -> scenario.type() == ScenarioType.CORRECTIVE_COMPLEX);
+    }
+
+    @Test
+    void aggregatesNoisyRawSwingsIntoImpulseDecomposition() {
+        ElliottScenarioGenerator decompositionGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 10,
+                ConfidenceProfiles.defaultModel(numFactory), PatternSet.of(ScenarioType.IMPULSE));
+        List<ElliottSwing> noisyImpulse = List.of(
+                new ElliottSwing(0, 5, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),
+                new ElliottSwing(5, 10, numFactory.numOf(120), numFactory.numOf(95), ElliottDegree.MINOR),
+                new ElliottSwing(10, 15, numFactory.numOf(95), numFactory.numOf(126), ElliottDegree.MINOR),
+                new ElliottSwing(15, 20, numFactory.numOf(126), numFactory.numOf(112), ElliottDegree.MINOR),
+                new ElliottSwing(20, 25, numFactory.numOf(112), numFactory.numOf(145), ElliottDegree.MINOR),
+                new ElliottSwing(25, 30, numFactory.numOf(145), numFactory.numOf(132), ElliottDegree.MINOR),
+                new ElliottSwing(30, 35, numFactory.numOf(132), numFactory.numOf(168), ElliottDegree.MINOR),
+                new ElliottSwing(35, 40, numFactory.numOf(168), numFactory.numOf(150), ElliottDegree.MINOR),
+                new ElliottSwing(40, 45, numFactory.numOf(150), numFactory.numOf(190), ElliottDegree.MINOR));
+
+        ElliottScenarioSet set = decompositionGenerator.generate(noisyImpulse, ElliottDegree.MINOR, null, 45);
+
+        assertThat(set.all()).anyMatch(scenario -> scenario.type() == ScenarioType.IMPULSE
+                && scenario.currentPhase() == ElliottPhase.WAVE5 && scenario.startIndex() == 0
+                && scenario.swings().get(0).toIndex() == 15 && scenario.swings().size() == 5);
+    }
+
+    @Test
+    void aggregatesNoisyRawSwingsIntoCorrectiveDecomposition() {
+        ElliottScenarioGenerator decompositionGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 10,
+                ConfidenceProfiles.defaultModel(numFactory), PatternSet.of(ScenarioType.CORRECTIVE_ZIGZAG,
+                        ScenarioType.CORRECTIVE_FLAT, ScenarioType.CORRECTIVE_COMPLEX));
+        List<ElliottSwing> noisyCorrection = List.of(
+                new ElliottSwing(0, 5, numFactory.numOf(200), numFactory.numOf(170), ElliottDegree.MINOR),
+                new ElliottSwing(5, 10, numFactory.numOf(170), numFactory.numOf(185), ElliottDegree.MINOR),
+                new ElliottSwing(10, 15, numFactory.numOf(185), numFactory.numOf(160), ElliottDegree.MINOR),
+                new ElliottSwing(15, 20, numFactory.numOf(160), numFactory.numOf(180), ElliottDegree.MINOR),
+                new ElliottSwing(20, 25, numFactory.numOf(180), numFactory.numOf(150), ElliottDegree.MINOR),
+                new ElliottSwing(25, 30, numFactory.numOf(150), numFactory.numOf(162), ElliottDegree.MINOR),
+                new ElliottSwing(30, 35, numFactory.numOf(162), numFactory.numOf(128), ElliottDegree.MINOR));
+
+        ElliottScenarioSet set = decompositionGenerator.generate(noisyCorrection, ElliottDegree.MINOR, null, 35);
+
+        assertThat(set.all()).anyMatch(scenario -> scenario.type().isCorrective()
+                && scenario.currentPhase() == ElliottPhase.CORRECTIVE_C && scenario.startIndex() == 0
+                && scenario.swings().get(0).toIndex() == 15 && scenario.swings().size() == 3);
     }
 
     @Test
