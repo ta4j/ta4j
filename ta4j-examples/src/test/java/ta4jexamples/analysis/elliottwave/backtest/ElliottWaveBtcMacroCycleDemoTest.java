@@ -198,7 +198,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
         XYItemRenderer bullishRenderer = findRenderer(mainPlot, "Bullish 1-2-3-4-5");
         XYItemRenderer bearishRenderer = findRenderer(mainPlot, "Bearish A-B-C");
-        XYItemRenderer currentRenderer = findRenderer(mainPlot, "Current-cycle primary count");
+        XYItemRenderer currentRenderer = findRenderer(mainPlot, "Current-cycle wave-count segments");
 
         assertNotNull(bullishRenderer);
         assertNotNull(bearishRenderer);

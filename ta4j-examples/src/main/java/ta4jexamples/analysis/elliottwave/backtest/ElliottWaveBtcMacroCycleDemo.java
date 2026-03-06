@@ -183,6 +183,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
         List<LegSegment> legSegments = buildLegSegments(registry);
         List<SegmentScenarioFit> segmentFits = study.selectedProfile().chartSegments();
         CurrentPhaseFit currentPrimaryFit = study.currentPrimaryFit();
+        int currentCycleStartIndex = currentPrimaryFit == null ? Integer.MAX_VALUE
+                : currentPrimaryFit.scenario().swings().getFirst().fromIndex();
         BarSeriesLabelIndicator anchorLabels = new BarSeriesLabelIndicator(series, buildAnchorLabels(series, registry));
         BarSeriesLabelIndicator waveLabels = new BarSeriesLabelIndicator(series,
                 buildSegmentWaveLabels(series, segmentFits, currentPrimaryFit));
@@ -195,9 +197,11 @@ public final class ElliottWaveBtcMacroCycleDemo {
         FixedIndicator<Num> bearishFallbackFits = buildScenarioFitIndicator(series, segmentFits, false, false,
                 "Bearish fallback wave segments");
         FixedIndicator<Num> currentCyclePrimaryFit = buildScenarioIndicator(series,
-                currentPrimaryFit == null ? null : currentPrimaryFit.scenario(), "Current-cycle primary count");
-        FixedIndicator<Num> bullishLegs = buildCycleLegIndicator(series, legSegments, true, "Bullish 1-2-3-4-5");
-        FixedIndicator<Num> bearishLegs = buildCycleLegIndicator(series, legSegments, false, "Bearish A-B-C");
+                currentPrimaryFit == null ? null : currentPrimaryFit.scenario(), "Current-cycle wave-count segments");
+        FixedIndicator<Num> bullishLegs = buildCycleLegIndicator(series, legSegments, true, "Bullish 1-2-3-4-5",
+                currentCycleStartIndex);
+        FixedIndicator<Num> bearishLegs = buildCycleLegIndicator(series, legSegments, false, "Bearish A-B-C",
+                currentCycleStartIndex);
         ChartPlan plan = chartWorkflow.builder()
                 .withTitle("BTC macro cycles: bullish 1-5 tops and bearish A-C lows")
                 .withSeries(series)
@@ -235,7 +239,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 .withLineColor(BULLISH_WAVE_COLOR)
                 .withLineWidth(2.8f)
                 .withOpacity(0.76f)
-                .withLabel("Current-cycle primary count")
+                .withLabel("Current-cycle wave-count segments")
                 .withIndicatorOverlay(anchorLabels)
                 .withLineColor(ANCHOR_OVERLAY_COLOR)
                 .withLineWidth(1.5f)
@@ -1285,7 +1289,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
     }
 
     private static FixedIndicator<Num> buildCycleLegIndicator(BarSeries series, List<LegSegment> legSegments,
-            boolean bullish, String label) {
+            boolean bullish, String label, int currentCycleStartIndex) {
         Num[] values = new Num[series.getEndIndex() + 1];
         Arrays.fill(values, NaN);
         for (LegSegment legSegment : legSegments) {
@@ -1309,12 +1313,23 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 values[index] = series.numFactory().numOf(interpolated);
             }
         }
+        clipCurrentCycleMacroGuide(values, currentCycleStartIndex);
         return new FixedIndicator<>(series, values) {
             @Override
             public String toString() {
                 return label;
             }
         };
+    }
+
+    private static void clipCurrentCycleMacroGuide(Num[] values, int currentCycleStartIndex) {
+        if (currentCycleStartIndex == Integer.MAX_VALUE) {
+            return;
+        }
+        int clipFromIndex = Math.max(0, currentCycleStartIndex + 1);
+        for (int index = clipFromIndex; index < values.length; index++) {
+            values[index] = NaN;
+        }
     }
 
     private static List<LegSegment> buildLegSegments(ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
