@@ -10,6 +10,7 @@ import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Comparator;
 import java.util.HexFormat;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -523,14 +525,15 @@ public final class ElliottWaveAnchorCalibrationHarness {
         for (Map.Entry<String, Num> entry : metricMap.entrySet()) {
             converted.put(entry.getKey(), entry.getValue() == null ? Double.NaN : entry.getValue().doubleValue());
         }
-        return Map.copyOf(converted);
+        return immutableSortedMap(converted);
     }
 
-    private static Map<String, Double> averageNonHoldoutMetrics(Map<String, Map<String, Num>> perFold) {
+    private static Map<String, Double> averageNonHoldoutMetrics(Map<String, Map<String, Num>> perFold,
+            String holdoutFoldId) {
         Map<String, Double> totals = new LinkedHashMap<>();
         Map<String, Integer> counts = new LinkedHashMap<>();
         for (Map.Entry<String, Map<String, Num>> foldEntry : perFold.entrySet()) {
-            if ("holdout".equals(foldEntry.getKey())) {
+            if (holdoutFoldId != null && holdoutFoldId.equals(foldEntry.getKey())) {
                 continue;
             }
             for (Map.Entry<String, Num> metricEntry : foldEntry.getValue().entrySet()) {
@@ -548,7 +551,14 @@ public final class ElliottWaveAnchorCalibrationHarness {
             int count = counts.getOrDefault(entry.getKey(), 0);
             averaged.put(entry.getKey(), count == 0 ? Double.NaN : entry.getValue() / count);
         }
-        return Map.copyOf(averaged);
+        return immutableSortedMap(averaged);
+    }
+
+    private static <K extends Comparable<? super K>, V> Map<K, V> immutableSortedMap(Map<K, V> source) {
+        if (source == null || source.isEmpty()) {
+            return Map.of();
+        }
+        return Collections.unmodifiableMap(new TreeMap<>(source));
     }
 
     /**
@@ -638,7 +648,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
         Map<String, String> manifestMetadata() {
             Map<String, String> manifest = new LinkedHashMap<>(context.metadata());
             manifest.put("rationale", rationale);
-            return Map.copyOf(manifest);
+            return immutableSortedMap(manifest);
         }
     }
 
@@ -652,7 +662,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
         CandidateEvaluation {
             Objects.requireNonNull(profile, "profile");
             Objects.requireNonNull(manifest, "manifest");
-            metricsByHorizon = metricsByHorizon == null ? Map.of() : Map.copyOf(metricsByHorizon);
+            metricsByHorizon = immutableSortedMap(metricsByHorizon);
             Objects.requireNonNull(anchors, "anchors");
             Objects.requireNonNull(artifactId, "artifactId");
             Objects.requireNonNull(artifactHash, "artifactHash");
@@ -661,10 +671,11 @@ public final class ElliottWaveAnchorCalibrationHarness {
         static CandidateEvaluation create(CandidateProfile profile, WalkForwardExperimentManifest manifest,
                 Map<Integer, MetricSnapshot> metricsByHorizon, AnchorPartitions anchors, int primaryHorizonBars) {
             String artifactId = manifest.candidateId() + "|cfg=" + manifest.configHash();
+            Map<Integer, MetricSnapshot> canonicalMetricsByHorizon = immutableSortedMap(metricsByHorizon);
             UnsignedCandidateEvaluation unsigned = new UnsignedCandidateEvaluation(profile, manifest,
-                    primaryHorizonBars, metricsByHorizon, anchors, artifactId);
-            return new CandidateEvaluation(profile, manifest, primaryHorizonBars, metricsByHorizon, anchors, artifactId,
-                    sha256(GSON.toJson(unsigned)));
+                    primaryHorizonBars, canonicalMetricsByHorizon, anchors, artifactId);
+            return new CandidateEvaluation(profile, manifest, primaryHorizonBars, canonicalMetricsByHorizon, anchors,
+                    artifactId, sha256(GSON.toJson(unsigned)));
         }
 
         MetricSnapshot primaryMetrics() {
@@ -768,7 +779,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
             Map<String, Integer> bestRankDistribution, List<AnchorWindowSummary> anchorWindows) {
 
         AnchorAggregate {
-            bestRankDistribution = bestRankDistribution == null ? Map.of() : Map.copyOf(bestRankDistribution);
+            bestRankDistribution = immutableSortedMap(bestRankDistribution);
             anchorWindows = anchorWindows == null ? List.of() : List.copyOf(anchorWindows);
         }
 
@@ -822,7 +833,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
             Objects.requireNonNull(type, "type");
             Objects.requireNonNull(anchorTimeUtc, "anchorTimeUtc");
             Objects.requireNonNull(provenance, "provenance");
-            bestRankDistribution = bestRankDistribution == null ? Map.of() : Map.copyOf(bestRankDistribution);
+            bestRankDistribution = immutableSortedMap(bestRankDistribution);
         }
 
         static AnchorWindowSummary from(Anchor anchor, int anchorIndex, WindowBounds bounds,
@@ -840,15 +851,17 @@ public final class ElliottWaveAnchorCalibrationHarness {
     record MetricSnapshot(Map<String, Double> global, Map<String, Double> validation, Map<String, Double> holdout) {
 
         MetricSnapshot {
-            global = global == null ? Map.of() : Map.copyOf(global);
-            validation = validation == null ? Map.of() : Map.copyOf(validation);
-            holdout = holdout == null ? Map.of() : Map.copyOf(holdout);
+            global = immutableSortedMap(global);
+            validation = immutableSortedMap(validation);
+            holdout = immutableSortedMap(holdout);
         }
 
         static MetricSnapshot from(WalkForwardRunResult<?, ?> runResult, int horizon) {
+            Map<String, Map<String, Num>> foldMetrics = runResult.foldMetricsForHorizon(horizon);
+            String holdoutFoldId = runResult.holdoutSplit().map(WalkForwardSplit::foldId).orElse(null);
             return new MetricSnapshot(toDoubleMap(runResult.globalMetricsForHorizon(horizon)),
-                    averageNonHoldoutMetrics(runResult.foldMetricsForHorizon(horizon)),
-                    toDoubleMap(runResult.foldMetricsForHorizon(horizon).getOrDefault("holdout", Map.of())));
+                    averageNonHoldoutMetrics(foldMetrics, holdoutFoldId),
+                    toDoubleMap(holdoutFoldId == null ? Map.of() : foldMetrics.getOrDefault(holdoutFoldId, Map.of())));
         }
 
         static MetricSnapshot empty() {

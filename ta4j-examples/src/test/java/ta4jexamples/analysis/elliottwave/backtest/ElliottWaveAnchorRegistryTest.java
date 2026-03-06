@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
+import java.util.List;
 import java.util.Set;
 
 import org.junit.jupiter.api.Test;
@@ -38,7 +39,7 @@ class ElliottWaveAnchorRegistryTest {
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
                 org.apache.logging.log4j.LogManager.getLogger(ElliottWaveAnchorRegistryTest.class));
 
-        var resolved = registry.resolve(series, 3);
+        List<ElliottWaveAnchorRegistry.ResolvedAnchor> resolved = registry.resolve(series, 3);
 
         assertEquals(registry.anchors().size(), resolved.size());
         assertEquals(3,
@@ -63,7 +64,7 @@ class ElliottWaveAnchorRegistryTest {
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
                 org.apache.logging.log4j.LogManager.getLogger(ElliottWaveAnchorRegistryTest.class));
 
-        var resolved = registry.resolve(series, 0);
+        List<ElliottWaveAnchorRegistry.ResolvedAnchor> resolved = registry.resolve(series, 0);
 
         assertEquals(0,
                 resolved.stream()

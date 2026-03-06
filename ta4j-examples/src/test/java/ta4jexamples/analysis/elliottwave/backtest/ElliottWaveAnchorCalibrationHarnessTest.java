@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -23,6 +24,7 @@ import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ScenarioType;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveOutcome;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.walkforward.WalkForwardExperimentManifest;
 import org.ta4j.core.walkforward.PredictionSnapshot;
@@ -228,28 +230,77 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     }
 
     @Test
+    void metricSnapshotUsesActualHoldoutFoldIdInsteadOfLiteralName() {
+        int horizon = 2;
+        Map<String, Num> globalMetrics = Map.of("rank1Brier", DoubleNumFactory.getInstance().numOf(0.22));
+        Map<String, Num> validationFoldMetrics = Map.of("rank1Brier", DoubleNumFactory.getInstance().numOf(0.18));
+        Map<String, Num> holdoutFoldMetrics = Map.of("rank1Brier", DoubleNumFactory.getInstance().numOf(0.31),
+                "rank1LogLoss", DoubleNumFactory.getInstance().numOf(0.48));
+        WalkForwardRunResult<String, Boolean> runResult = new WalkForwardRunResult<>(
+                new WalkForwardConfig(2, 1, 1, 0, 0, 1, 1, List.of(horizon), 3, List.of(1), 42L),
+                List.of(new WalkForwardSplit("validation-fold", 0, 1, 2, 2, 0, 0, false),
+                        new WalkForwardSplit("final-holdout", 0, 1, 2, 2, 0, 0, true)),
+                List.of(), Map.of(), Map.of(horizon, globalMetrics),
+                Map.of(horizon, Map.of("validation-fold", validationFoldMetrics, "final-holdout", holdoutFoldMetrics)),
+                List.of(), WalkForwardRuntimeReport.empty(), new WalkForwardExperimentManifest("synthetic-btc",
+                        "candidate", "cfg-hash", 42L, Map.of("profile", "synthetic")));
+
+        ElliottWaveAnchorCalibrationHarness.MetricSnapshot snapshot = ElliottWaveAnchorCalibrationHarness.MetricSnapshot
+                .from(runResult, horizon);
+
+        assertEquals(0.22, snapshot.global().get("rank1Brier"), 1.0e-10);
+        assertEquals(0.18, snapshot.validation().get("rank1Brier"), 1.0e-10);
+        assertEquals(0.31, snapshot.holdout().get("rank1Brier"), 1.0e-10);
+        assertEquals(0.48, snapshot.holdout().get("rank1LogLoss"), 1.0e-10);
+    }
+
+    @Test
     void candidateAndReportHashesStayDeterministicForEquivalentInputs() {
         ElliottWaveAnchorCalibrationHarness.CandidateProfile profile = ElliottWaveAnchorCalibrationHarness.CandidateProfile
                 .of("minute-f3", ElliottDegree.MINUTE, 2, 2, 25, 0, 3, "tighter turns");
         int horizon = org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardProfiles.baselineConfig()
                 .primaryHorizonBars();
-        WalkForwardExperimentManifest manifest = new WalkForwardExperimentManifest("btc", profile.id(), "cfg-hash", 42L,
-                Map.of("profile", profile.id()));
-        ElliottWaveAnchorCalibrationHarness.MetricSnapshot metrics = new ElliottWaveAnchorCalibrationHarness.MetricSnapshot(
-                Map.of("rank1Brier", 0.18), Map.of("rank1Brier", 0.17),
-                Map.of("rank1Brier", 0.16, "rank1LogLoss", 0.45, "rank1Ece", 0.24));
+        LinkedHashMap<String, String> manifestMetadataA = new LinkedHashMap<>();
+        manifestMetadataA.put("scenarioSwingWindow", "0");
+        manifestMetadataA.put("profile", profile.id());
+        LinkedHashMap<String, String> manifestMetadataB = new LinkedHashMap<>();
+        manifestMetadataB.put("profile", profile.id());
+        manifestMetadataB.put("scenarioSwingWindow", "0");
+        WalkForwardExperimentManifest manifestA = new WalkForwardExperimentManifest("btc", profile.id(), "cfg-hash",
+                42L, manifestMetadataA);
+        WalkForwardExperimentManifest manifestB = new WalkForwardExperimentManifest("btc", profile.id(), "cfg-hash",
+                42L, manifestMetadataB);
+        ElliottWaveAnchorCalibrationHarness.MetricSnapshot primaryMetricsA = new ElliottWaveAnchorCalibrationHarness.MetricSnapshot(
+                orderedDoubleMap("rank1LogLoss", 0.45, "rank1Brier", 0.18),
+                orderedDoubleMap("rank1Brier", 0.17, "rank1Ece", 0.23),
+                orderedDoubleMap("rank1Ece", 0.24, "rank1Brier", 0.16, "rank1LogLoss", 0.45));
+        ElliottWaveAnchorCalibrationHarness.MetricSnapshot primaryMetricsB = new ElliottWaveAnchorCalibrationHarness.MetricSnapshot(
+                orderedDoubleMap("rank1Brier", 0.18, "rank1LogLoss", 0.45),
+                orderedDoubleMap("rank1Ece", 0.23, "rank1Brier", 0.17),
+                orderedDoubleMap("rank1LogLoss", 0.45, "rank1Brier", 0.16, "rank1Ece", 0.24));
+        ElliottWaveAnchorCalibrationHarness.MetricSnapshot secondaryMetricsA = new ElliottWaveAnchorCalibrationHarness.MetricSnapshot(
+                orderedDoubleMap("rank1Brier", 0.21), orderedDoubleMap("rank1Brier", 0.20),
+                orderedDoubleMap("rank1Brier", 0.19));
+        ElliottWaveAnchorCalibrationHarness.MetricSnapshot secondaryMetricsB = new ElliottWaveAnchorCalibrationHarness.MetricSnapshot(
+                orderedDoubleMap("rank1Brier", 0.21), orderedDoubleMap("rank1Brier", 0.20),
+                orderedDoubleMap("rank1Brier", 0.19));
         ElliottWaveAnchorCalibrationHarness.AnchorPartitions anchors = new ElliottWaveAnchorCalibrationHarness.AnchorPartitions(
                 new ElliottWaveAnchorCalibrationHarness.AnchorAggregate(2, 2, 0.5, 1.0,
-                        Map.of("rank1", 1, "rank2", 1, "rank3", 0, "rank4plus", 0, "unmatched", 0), List.of()),
+                        orderedIntMap("rank3", 0, "rank1", 1, "unmatched", 0, "rank4plus", 0, "rank2", 1), List.of()),
                 new ElliottWaveAnchorCalibrationHarness.AnchorAggregate(1, 1, 1.0, 1.0,
-                        Map.of("rank1", 1, "rank2", 0, "rank3", 0, "rank4plus", 0, "unmatched", 0), List.of()),
+                        orderedIntMap("unmatched", 0, "rank2", 0, "rank1", 1, "rank4plus", 0, "rank3", 0), List.of()),
                 0.0);
-        Map<Integer, ElliottWaveAnchorCalibrationHarness.MetricSnapshot> metricsByHorizon = Map.of(horizon, metrics);
+        Map<Integer, ElliottWaveAnchorCalibrationHarness.MetricSnapshot> metricsByHorizonA = new LinkedHashMap<>();
+        metricsByHorizonA.put(horizon + 30, secondaryMetricsA);
+        metricsByHorizonA.put(horizon, primaryMetricsA);
+        Map<Integer, ElliottWaveAnchorCalibrationHarness.MetricSnapshot> metricsByHorizonB = new LinkedHashMap<>();
+        metricsByHorizonB.put(horizon, primaryMetricsB);
+        metricsByHorizonB.put(horizon + 30, secondaryMetricsB);
 
         ElliottWaveAnchorCalibrationHarness.CandidateEvaluation first = ElliottWaveAnchorCalibrationHarness.CandidateEvaluation
-                .create(profile, manifest, metricsByHorizon, anchors, horizon);
+                .create(profile, manifestA, metricsByHorizonA, anchors, horizon);
         ElliottWaveAnchorCalibrationHarness.CandidateEvaluation second = ElliottWaveAnchorCalibrationHarness.CandidateEvaluation
-                .create(profile, manifest, metricsByHorizon, anchors, horizon);
+                .create(profile, manifestB, metricsByHorizonB, anchors, horizon);
 
         assertEquals(first.artifactId(), second.artifactId());
         assertEquals(first.artifactHash(), second.artifactHash());
@@ -264,7 +315,7 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, horizon,
                 org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardProfiles.baselineConfig()
                         .reportingHorizons(),
-                manifest.configHash(), profile.id());
+                manifestA.configHash(), profile.id());
         ElliottWaveAnchorCalibrationHarness.PromotionDecision decision = ElliottWaveAnchorCalibrationHarness.PromotionDecision
                 .from(first, List.of());
 
@@ -279,7 +330,7 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                         List.of(ElliottWaveAnchorCalibrationHarness.PortabilitySummary.skipped("eth-usd",
                                 ElliottWaveAnchorCalibrationHarness.ETH_RESOURCE, "synthetic test")));
 
-        assertEquals(manifest.configHash(), reportA.baselinePolicy().configHash());
+        assertEquals(manifestA.configHash(), reportA.baselinePolicy().configHash());
         assertEquals(reportA.reportHash(), reportB.reportHash());
         assertEquals(reportA.toJson(), reportB.toJson());
     }
@@ -290,17 +341,20 @@ class ElliottWaveAnchorCalibrationHarnessTest {
             double top3Degradation) {
         int horizon = org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardProfiles.baselineConfig()
                 .primaryHorizonBars();
-        var manifest = new WalkForwardExperimentManifest("btc", profile.id(), "cfg-hash", 42L,
+        WalkForwardExperimentManifest manifest = new WalkForwardExperimentManifest("btc", profile.id(), "cfg-hash", 42L,
                 Map.of("profile", profile.id()));
-        var metrics = Map.of(horizon,
+        Map<Integer, ElliottWaveAnchorCalibrationHarness.MetricSnapshot> metrics = Map.of(horizon,
                 new ElliottWaveAnchorCalibrationHarness.MetricSnapshot(Map.of(),
                         Map.of("rank1Brier", holdoutBrier, "rank1LogLoss", holdoutLogLoss, "rank1Ece", holdoutEce),
                         Map.of("rank1Brier", holdoutBrier, "rank1LogLoss", holdoutLogLoss, "rank1Ece", holdoutEce)));
-        var validation = new ElliottWaveAnchorCalibrationHarness.AnchorAggregate(4, 4, validationTop1, validationTop3,
+        ElliottWaveAnchorCalibrationHarness.AnchorAggregate validation = new ElliottWaveAnchorCalibrationHarness.AnchorAggregate(
+                4, 4, validationTop1, validationTop3,
                 Map.of("rank1", 2, "rank2", 1, "rank3", 0, "rank4plus", 0, "unmatched", 1), List.of());
-        var holdout = new ElliottWaveAnchorCalibrationHarness.AnchorAggregate(3, 3, holdoutTop1, holdoutTop3,
+        ElliottWaveAnchorCalibrationHarness.AnchorAggregate holdout = new ElliottWaveAnchorCalibrationHarness.AnchorAggregate(
+                3, 3, holdoutTop1, holdoutTop3,
                 Map.of("rank1", 1, "rank2", 1, "rank3", 0, "rank4plus", 0, "unmatched", 1), List.of());
-        var anchors = new ElliottWaveAnchorCalibrationHarness.AnchorPartitions(validation, holdout, top3Degradation);
+        ElliottWaveAnchorCalibrationHarness.AnchorPartitions anchors = new ElliottWaveAnchorCalibrationHarness.AnchorPartitions(
+                validation, holdout, top3Degradation);
         return new ElliottWaveAnchorCalibrationHarness.CandidateEvaluation(profile, manifest, horizon, metrics, anchors,
                 profile.id() + "|cfg=cfg-hash", "artifact-" + profile.id());
     }
@@ -357,6 +411,22 @@ class ElliottWaveAnchorCalibrationHarnessTest {
             ElliottWaveAnchorRegistry.AnchorPartition partition, String provenance) {
         return new ElliottWaveAnchorCalibrationHarness.Anchor(id, type, at, toleranceBefore, toleranceAfter,
                 expectedPhases, partition, provenance);
+    }
+
+    private static Map<String, Double> orderedDoubleMap(Object... entries) {
+        LinkedHashMap<String, Double> ordered = new LinkedHashMap<>();
+        for (int index = 0; index < entries.length; index += 2) {
+            ordered.put((String) entries[index], (Double) entries[index + 1]);
+        }
+        return ordered;
+    }
+
+    private static Map<String, Integer> orderedIntMap(Object... entries) {
+        LinkedHashMap<String, Integer> ordered = new LinkedHashMap<>();
+        for (int index = 0; index < entries.length; index += 2) {
+            ordered.put((String) entries[index], (Integer) entries[index + 1]);
+        }
+        return ordered;
     }
 
     private static BarSeries syntheticSeries() {

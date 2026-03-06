@@ -67,15 +67,16 @@ final class ElliottWaveAnchorRegistry {
             if (stream == null) {
                 throw new IllegalStateException("Missing anchor registry resource: " + normalized);
             }
-            RegistryDocument document = GSON.fromJson(new InputStreamReader(stream, StandardCharsets.UTF_8),
-                    RegistryDocument.class);
-            Objects.requireNonNull(document, "document");
-            List<AnchorSpec> anchorSpecs = new ArrayList<>();
-            for (RegistryAnchor anchor : document.anchors()) {
-                anchorSpecs.add(anchor.toSpec());
+            try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+                RegistryDocument document = GSON.fromJson(reader, RegistryDocument.class);
+                Objects.requireNonNull(document, "document");
+                List<AnchorSpec> anchorSpecs = new ArrayList<>();
+                for (RegistryAnchor anchor : document.anchors()) {
+                    anchorSpecs.add(anchor.toSpec());
+                }
+                return new ElliottWaveAnchorRegistry(document.registryId(), document.datasetResource(),
+                        document.provenance(), anchorSpecs);
             }
-            return new ElliottWaveAnchorRegistry(document.registryId(), document.datasetResource(),
-                    document.provenance(), anchorSpecs);
         } catch (RuntimeException ex) {
             throw ex;
         } catch (Exception ex) {
