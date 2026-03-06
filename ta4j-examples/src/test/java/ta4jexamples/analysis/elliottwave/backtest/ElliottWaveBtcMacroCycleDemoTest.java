@@ -35,6 +35,7 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.indicators.elliott.ElliottConfidence;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
+import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ScenarioType;
@@ -121,6 +122,45 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
+    void fitFromCoreAssessmentUsesCoreCompositeAsPrimaryAcceptanceGate() throws Exception {
+        BarSeries series = studySyntheticSeries();
+        ElliottWaveBtcMacroCycleDemo.LegSegment segment = new ElliottWaveBtcMacroCycleDemo.LegSegment(
+                anchor("btc-bottom", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 2),
+                anchor("btc-top", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 7), true);
+        ElliottScenario scenario = ElliottScenario.builder()
+                .id("prefix-history-bullish")
+                .currentPhase(ElliottPhase.WAVE5)
+                .swings(List.of(
+                        new ElliottSwing(2, 3, series.numFactory().numOf(108), series.numFactory().numOf(146),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(3, 4, series.numFactory().numOf(146), series.numFactory().numOf(130),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(4, 5, series.numFactory().numOf(130), series.numFactory().numOf(156),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(5, 6, series.numFactory().numOf(156), series.numFactory().numOf(144),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(6, 7, series.numFactory().numOf(144), series.numFactory().numOf(172),
+                                ElliottDegree.MINUTE)))
+                .confidence(new ElliottConfidence(series.numFactory().numOf(0.84), series.numFactory().numOf(0.78),
+                        series.numFactory().numOf(0.76), series.numFactory().zero(), series.numFactory().zero(),
+                        series.numFactory().numOf(1.0), "Core-ranked terminal impulse"))
+                .degree(ElliottDegree.MINUTE)
+                .type(ScenarioType.IMPULSE)
+                .bullishDirection(true)
+                .startIndex(2)
+                .build();
+        ElliottWaveAnalysisResult.BaseScenarioAssessment assessment = new ElliottWaveAnalysisResult.BaseScenarioAssessment(
+                scenario, 0.84, 0.79, 0.82, List.of());
+
+        ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit fit = invokeFitFromCoreAssessment(segment, scenario, assessment,
+                true, 2, 7);
+
+        assertTrue(fit.accepted());
+        assertTrue(fit.ruleScore() < 0.35);
+        assertEquals("Core-ranked prefix-history impulse fit", fit.rationale());
+    }
+
+    @Test
     void evaluateMacroStudyProducesProfileTableCycleSummaryAndCurrentCycleFallback() {
         BarSeries series = studySyntheticSeries();
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
@@ -197,7 +237,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
                     .chartSegments()
                     .stream()
                     .filter(segment -> segment.rationale().startsWith("Core-ranked prefix-history"))
-                    .count() >= 3);
+                    .count() >= 7);
             assertFalse(study.currentCycle().currentWave().isBlank());
             assertTrue(Files.exists(Path.of(report.chartPath())));
             assertTrue(Files.exists(Path.of(report.summaryPath())));
@@ -283,6 +323,24 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 ElliottScenario.class, boolean.class, int.class);
         method.setAccessible(true);
         return (boolean) method.invoke(null, scenario, bullish, segmentEndIndex);
+    }
+
+    private static ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit invokeFitFromCoreAssessment(
+            ElliottWaveBtcMacroCycleDemo.LegSegment segment, ElliottScenario scenario,
+            ElliottWaveAnalysisResult.BaseScenarioAssessment assessment, boolean bullish, int startIndex, int endIndex)
+            throws Exception {
+        Method profilesMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("logicProfiles");
+        profilesMethod.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<ElliottWaveBtcMacroCycleDemo.MacroLogicProfile> profiles = (List<ElliottWaveBtcMacroCycleDemo.MacroLogicProfile>) profilesMethod
+                .invoke(null);
+        Method method = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("fitFromCoreAssessment",
+                ElliottWaveBtcMacroCycleDemo.LegSegment.class, ElliottWaveBtcMacroCycleDemo.MacroLogicProfile.class,
+                ElliottScenario.class, ElliottWaveAnalysisResult.BaseScenarioAssessment.class, boolean.class, int.class,
+                int.class);
+        method.setAccessible(true);
+        return (ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit) method.invoke(null, segment, profiles.getFirst(),
+                scenario, assessment, bullish, startIndex, endIndex);
     }
 
     private static BarSeries chartSyntheticSeries() {

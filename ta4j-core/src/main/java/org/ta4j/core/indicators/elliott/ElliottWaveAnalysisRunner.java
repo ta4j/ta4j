@@ -80,6 +80,7 @@ public final class ElliottWaveAnalysisRunner {
      * by default.
      */
     private static final int DEFAULT_SCENARIO_SWING_WINDOW = 0;
+    private static final int BROAD_HISTORY_FILTER_BAR_THRESHOLD = 250;
 
     private static final double DEFAULT_BASE_CONFIDENCE_WEIGHT = 0.7;
     private static final double DEFAULT_NEUTRAL_CROSS_DEGREE_SCORE = 0.5;
@@ -214,7 +215,7 @@ public final class ElliottWaveAnalysisRunner {
 
         SwingFilter filter = swingFilter;
         if (filter == null) {
-            filter = new MinMagnitudeSwingFilter(scale(baseDegree, degree, 0.20, 1.5, 0.05, 0.60));
+            filter = new MinMagnitudeSwingFilter(defaultMinRelativeMagnitude(series, degree));
         }
 
         ElliottSwingCompressor compressor = new ElliottSwingCompressor(new ClosePriceIndicator(series),
@@ -222,6 +223,15 @@ public final class ElliottWaveAnalysisRunner {
                 Math.max(1, 2 + (baseDegree.ordinal() - degree.ordinal())));
 
         return runSingleDegreePipeline(series, degree, swingDetector, filter, compressor);
+    }
+
+    private double defaultMinRelativeMagnitude(final BarSeries series, final ElliottDegree degree) {
+        final double standardThreshold = scale(baseDegree, degree, 0.20, 1.5, 0.05, 0.60);
+        if (scenarioSwingWindow != 0 || series.getBarCount() < BROAD_HISTORY_FILTER_BAR_THRESHOLD) {
+            return standardThreshold;
+        }
+        final double broadHistoryThreshold = scale(baseDegree, degree, 0.02, 1.35, 0.005, 0.20);
+        return Math.min(standardThreshold, broadHistoryThreshold);
     }
 
     /**

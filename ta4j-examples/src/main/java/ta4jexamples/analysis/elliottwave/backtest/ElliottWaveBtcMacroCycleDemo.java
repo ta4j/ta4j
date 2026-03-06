@@ -86,7 +86,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
     static final String DEFAULT_SUMMARY_FILE_NAME = "elliott-wave-btc-macro-cycles-summary.json";
     static final int DEFAULT_CHART_WIDTH = 3840;
     static final int DEFAULT_CHART_HEIGHT = 2160;
-    static final int MIN_CORE_SEGMENT_SCENARIOS = 200;
+    static final int MIN_CORE_SEGMENT_SCENARIOS = 1000;
     static final String RECENT_LOW_ANCHOR_ID = "btc-2022-cycle-bottom";
     static final double DEFAULT_ACCEPTED_SEGMENT_SCORE = 0.64;
     static final int MAX_PIVOT_CANDIDATES = 12;
@@ -685,12 +685,12 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 0.0);
         double spacingScore = average(new double[] { scenarioSpacingScore(scenario), startAlignment, endAlignment },
                 0.0);
+        double anchorFitScore = average(new double[] { startAlignment, endAlignment }, 0.0);
         double strengthScore = average(new double[] { assessment.confidenceScore(), assessment.crossDegreeScore(),
-                assessment.compositeScore() }, 0.0);
-        double fitScore = average(new double[] { assessment.compositeScore(), assessment.confidenceScore(),
-                startAlignment, endAlignment }, 0.0);
-        boolean accepted = fitScore >= Math.max(DEFAULT_ACCEPTED_SEGMENT_SCORE, profile.acceptanceThreshold())
-                && structureScore >= 0.45 && ruleScore >= 0.35 && spacingScore >= 0.30 && startAlignment >= 0.45
+                assessment.compositeScore(), safeConfidenceScore(confidence.completenessScore()) }, 0.0);
+        double fitScore = average(new double[] { assessment.compositeScore(), strengthScore, anchorFitScore }, 0.0);
+        boolean accepted = assessment.compositeScore() >= Math.max(DEFAULT_ACCEPTED_SEGMENT_SCORE,
+                profile.acceptanceThreshold()) && strengthScore >= 0.55 && startAlignment >= 0.35
                 && endAlignment >= 0.80;
         return new SegmentScenarioFit(legSegment, scenario, fitScore, structureScore, ruleScore, spacingScore,
                 strengthScore, bullish, accepted,

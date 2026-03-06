@@ -232,6 +232,43 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void fullHistoryModeUsesLighterDefaultSwingFilterOnLongSeries() {
+        BarSeries series = buildLongHistorySeries();
+        NumFactory factory = series.numFactory();
+        ElliottDegree degree = ElliottDegree.PRIMARY;
+        List<ElliottSwing> swings = List.of(new ElliottSwing(0, 50, factory.hundred(), factory.numOf(110), degree),
+                new ElliottSwing(50, 100, factory.numOf(110), factory.numOf(103), degree),
+                new ElliottSwing(100, 150, factory.numOf(103), factory.numOf(117), degree),
+                new ElliottSwing(150, 200, factory.numOf(117), factory.numOf(108), degree),
+                new ElliottSwing(200, 250, factory.numOf(108), factory.numOf(180), degree),
+                new ElliottSwing(250, 299, factory.numOf(180), factory.numOf(160), degree));
+
+        SwingDetector detector = (ignoredSeries, index, ignoredDegree) -> SwingDetectorResult.fromSwings(swings);
+        ConfidenceModel model = (input, phase, channel,
+                type) -> new ElliottConfidenceBreakdown(new ElliottConfidence(series.numFactory().numOf(0.8),
+                        series.numFactory().numOf(0.8), series.numFactory().numOf(0.8), series.numFactory().numOf(0.8),
+                        series.numFactory().numOf(0.8), series.numFactory().numOf(0.8), "stub"), List.of());
+
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(degree)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .swingDetector(detector)
+                .scenarioSwingWindow(0)
+                .patternSet(PatternSet.of(ScenarioType.IMPULSE))
+                .minConfidence(0.0)
+                .confidenceModel(model)
+                .build();
+
+        ElliottWaveAnalysisResult result = analysis.analyze(series);
+        ElliottAnalysisResult base = result.analysisFor(degree).orElseThrow().analysis();
+
+        assertThat(base.rawSwings()).hasSize(6);
+        assertThat(base.processedSwings()).hasSize(6);
+        assertThat(base.processedSwings().getFirst().fromIndex()).isEqualTo(0);
+    }
+
+    @Test
     void buildRequiresDegree() {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> ElliottWaveAnalysisRunner.builder().build());
@@ -293,6 +330,25 @@ class ElliottWaveAnalysisRunnerTest {
                     .highPrice(bars[index][1])
                     .lowPrice(bars[index][2])
                     .closePrice(bars[index][3])
+                    .volume(1_000)
+                    .add();
+        }
+        return series;
+    }
+
+    private BarSeries buildLongHistorySeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("LongHistory").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2023-01-01T00:00:00Z");
+        for (int index = 0; index < 300; index++) {
+            double close = 120 + (index * 0.25);
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(close - 1.0)
+                    .highPrice(close + 2.0)
+                    .lowPrice(close - 3.0)
+                    .closePrice(close)
                     .volume(1_000)
                     .add();
         }
