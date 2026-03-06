@@ -280,7 +280,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
             WindowBounds lowBounds = resolveWindowBounds(series, lowAnchorIndex, cycle.low().toleranceBefore(),
                     cycle.low().toleranceAfter());
             CycleWindowMatch peakMatch = bestCycleWindowMatch(runResult.snapshots(), splitsById, peakBounds,
-                    peakAnchorIndex, false, ElliottPhase.WAVE5, true);
+                    peakAnchorIndex, cycle.peak().partition() == ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT,
+                    ElliottPhase.WAVE5, true);
             CycleWindowMatch lowMatch = bestCycleWindowMatch(runResult.snapshots(), splitsById, lowBounds,
                     lowAnchorIndex, cycle.partition() == ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT,
                     ElliottPhase.CORRECTIVE_C, false);

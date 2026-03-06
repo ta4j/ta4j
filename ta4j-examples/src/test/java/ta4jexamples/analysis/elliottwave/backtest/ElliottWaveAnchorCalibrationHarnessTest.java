@@ -283,6 +283,44 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     }
 
     @Test
+    void summarizeCyclesUsesPeakPartitionWhenScoringHoldoutCycles() {
+        BarSeries series = syntheticSeries();
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
+                "synthetic-v1", "synthetic-btc.json", "synthetic provenance",
+                List.of(anchor("cycle-start", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                        series.getBar(1).getEndTime(), Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.CORRECTIVE_C),
+                        ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "cycle start"),
+                        anchor("cycle-peak", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
+                                series.getBar(4).getEndTime(), Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.WAVE5),
+                                ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT, "cycle peak"),
+                        anchor("cycle-low", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                                series.getBar(5).getEndTime(), Duration.ZERO, Duration.ZERO,
+                                Set.of(ElliottPhase.CORRECTIVE_C), ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT,
+                                "cycle low")));
+
+        WalkForwardConfig config = new WalkForwardConfig(2, 1, 1, 0, 0, 1, 1, List.of(2), 3, List.of(1), 42L);
+        WalkForwardExperimentManifest manifest = new WalkForwardExperimentManifest("synthetic-btc", "candidate",
+                config.configHash(), 42L, Map.of("profile", "synthetic"));
+        List<WalkForwardSplit> splits = List.of(new WalkForwardSplit("validation-fold", 0, 1, 2, 2, 0, 0, false),
+                new WalkForwardSplit("holdout", 0, 4, 5, 5, 0, 0, true));
+        List<PredictionSnapshot<ElliottWaveAnalysisResult.BaseScenarioAssessment>> snapshots = List.of(
+                snapshot("validation-fold", 2, rankedPrediction(series, "validation-top", 1, ElliottPhase.WAVE5, true)),
+                snapshot("holdout", 4, rankedPrediction(series, "holdout-top", 1, ElliottPhase.WAVE5, true)), snapshot(
+                        "holdout", 5, rankedPrediction(series, "holdout-bottom", 1, ElliottPhase.CORRECTIVE_C, false)));
+        WalkForwardRunResult<ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> runResult = new WalkForwardRunResult<>(
+                config, splits, snapshots, Map.of(), Map.of(), Map.of(), List.of(), WalkForwardRuntimeReport.empty(),
+                manifest);
+
+        ElliottWaveAnchorCalibrationHarness.CyclePartitions cycles = ElliottWaveAnchorCalibrationHarness
+                .summarizeCycles(series, registry, runResult);
+
+        ElliottWaveAnchorCalibrationHarness.CycleSummary summary = cycles.holdout().cycles().getFirst();
+        assertEquals(1, summary.topBestRank());
+        assertEquals(1, summary.lowBestRank());
+        assertTrue(summary.orderedTop1Hit());
+    }
+
+    @Test
     void rankChallengersKeepsPassingCandidateAheadOfFailingButHigherGainCandidate() {
         ElliottWaveAnchorCalibrationHarness.CandidateEvaluation baseline = evaluation(
                 ElliottWaveAnchorCalibrationHarness.CandidateProfile.baselineProfile(), 0.20, 0.40, 0.26, 0.48, 0.20,
