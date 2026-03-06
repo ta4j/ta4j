@@ -236,8 +236,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
             assertTrue(study.selectedProfile()
                     .chartSegments()
                     .stream()
-                    .filter(segment -> segment.rationale().startsWith("Core-ranked prefix-history"))
-                    .count() >= 7);
+                    .allMatch(segment -> isAnchoredToMacroEndpoints(series, segment)));
             assertFalse(study.currentCycle().currentWave().isBlank());
             assertTrue(Files.exists(Path.of(report.chartPath())));
             assertTrue(Files.exists(Path.of(report.summaryPath())));
@@ -341,6 +340,26 @@ class ElliottWaveBtcMacroCycleDemoTest {
         method.setAccessible(true);
         return (ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit) method.invoke(null, segment, profiles.getFirst(),
                 scenario, assessment, bullish, startIndex, endIndex);
+    }
+
+    private static boolean isAnchoredToMacroEndpoints(BarSeries series,
+            ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit segmentFit) {
+        ElliottScenario scenario = segmentFit.scenario();
+        int expectedStart = indexOf(series, segmentFit.segment().fromAnchor().at());
+        int expectedEnd = indexOf(series, segmentFit.segment().toAnchor().at());
+        int actualStart = scenario.swings().getFirst().fromIndex();
+        int actualEnd = scenario.swings().getLast().toIndex();
+        return Math.abs(actualStart - expectedStart) <= ElliottWaveBtcMacroCycleDemo.MAX_CORE_ANCHOR_DRIFT_BARS
+                && Math.abs(actualEnd - expectedEnd) <= ElliottWaveBtcMacroCycleDemo.MAX_CORE_ANCHOR_DRIFT_BARS;
+    }
+
+    private static int indexOf(BarSeries series, Instant instant) {
+        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
+            if (series.getBar(index).getEndTime().equals(instant)) {
+                return index;
+            }
+        }
+        throw new IllegalArgumentException("Missing bar for " + instant);
     }
 
     private static BarSeries chartSyntheticSeries() {

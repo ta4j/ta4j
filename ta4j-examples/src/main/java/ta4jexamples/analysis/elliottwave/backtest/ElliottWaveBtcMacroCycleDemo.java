@@ -87,6 +87,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
     static final int DEFAULT_CHART_WIDTH = 3840;
     static final int DEFAULT_CHART_HEIGHT = 2160;
     static final int MIN_CORE_SEGMENT_SCENARIOS = 1000;
+    static final int MAX_CORE_ANCHOR_DRIFT_BARS = 3;
     static final String RECENT_LOW_ANCHOR_ID = "btc-2022-cycle-bottom";
     static final double DEFAULT_ACCEPTED_SEGMENT_SCORE = 0.64;
     static final int MAX_PIVOT_CANDIDATES = 12;
@@ -673,6 +674,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
             ElliottScenario scenario, ElliottWaveAnalysisResult.BaseScenarioAssessment assessment, boolean bullish,
             int startIndex, int endIndex) {
         ElliottConfidence confidence = scenario.confidence();
+        int startGapBars = Math.abs(scenario.swings().getFirst().fromIndex() - startIndex);
+        int endGapBars = Math.abs(scenario.swings().getLast().toIndex() - endIndex);
         double span = Math.max(1.0, endIndex - startIndex);
         double startAlignment = alignmentScore(scenario.swings().getFirst().fromIndex(), startIndex, span);
         double endAlignment = alignmentScore(scenario.swings().getLast().toIndex(), endIndex, span);
@@ -691,7 +694,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
         double fitScore = average(new double[] { assessment.compositeScore(), strengthScore, anchorFitScore }, 0.0);
         boolean accepted = assessment.compositeScore() >= Math.max(DEFAULT_ACCEPTED_SEGMENT_SCORE,
                 profile.acceptanceThreshold()) && strengthScore >= 0.55 && startAlignment >= 0.35
-                && endAlignment >= 0.80;
+                && endAlignment >= 0.80 && startGapBars <= MAX_CORE_ANCHOR_DRIFT_BARS
+                && endGapBars <= MAX_CORE_ANCHOR_DRIFT_BARS;
         return new SegmentScenarioFit(legSegment, scenario, fitScore, structureScore, ruleScore, spacingScore,
                 strengthScore, bullish, accepted,
                 bullish ? "Core-ranked prefix-history impulse fit" : "Core-ranked prefix-history corrective fit");
