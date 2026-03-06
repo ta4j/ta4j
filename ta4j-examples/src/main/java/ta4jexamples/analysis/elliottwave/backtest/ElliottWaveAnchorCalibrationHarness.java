@@ -30,7 +30,6 @@ import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
-import org.ta4j.core.indicators.elliott.swing.SwingDetectors;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveOutcome;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveOutcomeLabeler;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWavePredictionProvider;
@@ -133,7 +132,6 @@ public final class ElliottWaveAnchorCalibrationHarness {
                 .maxScenarios(maxScenarios)
                 .minConfidence(0.0)
                 .scenarioSwingWindow(scenarioSwingWindow)
-                .swingDetector(SwingDetectors.fractal(fractalWindow))
                 .swingFilter(swings -> swings == null ? List.of() : List.copyOf(swings))
                 .seriesSelector((series, ignoredDegree) -> series)
                 .build();

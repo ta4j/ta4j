@@ -41,6 +41,7 @@ public final class ElliottScenarioGenerator {
 
     /** Maximum number of scenarios to retain after pruning. */
     public static final int DEFAULT_MAX_SCENARIOS = 5;
+    private static final double IMPULSE_STRUCTURE_REJECTION_SCORE = 0.0;
 
     private final NumFactory numFactory;
     private final ElliottFibonacciValidator fibValidator;
@@ -171,7 +172,8 @@ public final class ElliottScenarioGenerator {
                 continue;
             }
 
-            if (!validateImpulseStructure(impulseSwings, phase)) {
+            double structureScore = scoreImpulseStructure(impulseSwings, phase);
+            if (structureScore <= IMPULSE_STRUCTURE_REJECTION_SCORE) {
                 continue;
             }
 
@@ -183,7 +185,8 @@ public final class ElliottScenarioGenerator {
 
             final ElliottConfidenceBreakdown breakdown = confidenceModel.score(impulseSwings, phase, channel,
                     ScenarioType.IMPULSE);
-            final ElliottConfidence confidence = breakdown.confidence();
+            final ElliottConfidence confidence = applyStructurePenalty(breakdown.confidence(), structureScore,
+                    "Impulse structure score " + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
 
             if (confidence.overall().isLessThan(minConfidenceNum)) {
                 continue;
@@ -362,58 +365,107 @@ public final class ElliottScenarioGenerator {
         };
     }
 
-    private boolean validateImpulseStructure(final List<ElliottSwing> swings, final ElliottPhase phase) {
+    double scoreImpulseStructure(final List<ElliottSwing> swings, final ElliottPhase phase) {
         if (swings.isEmpty()) {
-            return false;
+            return 0.0;
         }
 
-        // Validate that phase is an impulse phase
         if (phase == null || !phase.isImpulse()) {
-            return false;
+            return 0.0;
         }
 
-        // Basic direction alternation check
         for (int i = 1; i < swings.size(); i++) {
             if (swings.get(i).isRising() == swings.get(i - 1).isRising()) {
-                return false; // Consecutive swings should alternate
+                return 0.0;
             }
         }
 
-        // Wave 2 should not retrace below wave 1 start (for bullish)
+        final List<Double> scores = new ArrayList<>();
         if (swings.size() >= 2) {
             final ElliottSwing wave1 = swings.get(0);
             final ElliottSwing wave2 = swings.get(1);
-            if (wave1.isRising()) {
-                // Bullish: wave 2 end should not go below wave 1 start
-                if (wave2.toPrice().isLessThan(wave1.fromPrice())) {
-                    return false;
-                }
-            } else {
-                // Bearish: wave 2 end should not go above wave 1 start
-                if (wave2.toPrice().isGreaterThan(wave1.fromPrice())) {
-                    return false;
-                }
-            }
+            scores.add(wave2InvalidationScore(wave1, wave2));
         }
 
-        // Wave 4 should not overlap wave 1 territory
         if (swings.size() >= 4) {
             final ElliottSwing wave1 = swings.get(0);
             final ElliottSwing wave4 = swings.get(3);
-            if (wave1.isRising()) {
-                // Bullish: wave 4 low should not go below wave 1 high
-                if (wave4.toPrice().isLessThan(wave1.toPrice())) {
-                    return false;
-                }
-            } else {
-                // Bearish: wave 4 high should not go above wave 1 low
-                if (wave4.toPrice().isGreaterThan(wave1.toPrice())) {
-                    return false;
-                }
-            }
+            scores.add(wave4OverlapScore(wave1, wave4));
         }
 
-        return true;
+        if (swings.size() >= 5) {
+            scores.add(wave3ShortestScore(swings.get(0), swings.get(2), swings.get(4)));
+        }
+
+        if (scores.isEmpty()) {
+            return 1.0;
+        }
+
+        double total = 0.0;
+        for (double score : scores) {
+            total += score;
+        }
+        return clamp01(total / scores.size());
+    }
+
+    private ElliottConfidence applyStructurePenalty(final ElliottConfidence confidence, final double structureScore,
+            final String reason) {
+        Objects.requireNonNull(confidence, "confidence");
+        double penalty = 0.35 + (0.65 * clamp01(structureScore));
+        Num penaltyNum = numFactory.numOf(penalty);
+        Num overall = confidence.overall().multipliedBy(penaltyNum);
+        Num completeness = confidence.completenessScore().multipliedBy(penaltyNum);
+        String primaryReason = confidence.primaryReason();
+        if (primaryReason == null || primaryReason.isBlank()) {
+            primaryReason = reason;
+        } else if (structureScore < 0.999) {
+            primaryReason = primaryReason + "; " + reason;
+        }
+        return new ElliottConfidence(overall, confidence.fibonacciScore(), confidence.timeProportionScore(),
+                confidence.alternationScore(), confidence.channelScore(), completeness, primaryReason);
+    }
+
+    private double wave2InvalidationScore(final ElliottSwing wave1, final ElliottSwing wave2) {
+        double denominator = Math.max(1e-9, wave1.amplitude().doubleValue());
+        if (wave1.isRising()) {
+            if (wave2.toPrice().isGreaterThanOrEqual(wave1.fromPrice())) {
+                return 1.0;
+            }
+            double breach = wave1.fromPrice().minus(wave2.toPrice()).doubleValue();
+            return clamp01(1.0 - (breach / denominator));
+        }
+        if (wave2.toPrice().isLessThanOrEqual(wave1.fromPrice())) {
+            return 1.0;
+        }
+        double breach = wave2.toPrice().minus(wave1.fromPrice()).doubleValue();
+        return clamp01(1.0 - (breach / denominator));
+    }
+
+    private double wave4OverlapScore(final ElliottSwing wave1, final ElliottSwing wave4) {
+        double denominator = Math.max(1e-9, wave1.amplitude().doubleValue());
+        if (wave1.isRising()) {
+            if (wave4.toPrice().isGreaterThanOrEqual(wave1.toPrice())) {
+                return 1.0;
+            }
+            double overlap = wave1.toPrice().minus(wave4.toPrice()).doubleValue();
+            return clamp01(1.0 - (overlap / (denominator * 1.5)));
+        }
+        if (wave4.toPrice().isLessThanOrEqual(wave1.toPrice())) {
+            return 1.0;
+        }
+        double overlap = wave4.toPrice().minus(wave1.toPrice()).doubleValue();
+        return clamp01(1.0 - (overlap / (denominator * 1.5)));
+    }
+
+    private double wave3ShortestScore(final ElliottSwing wave1, final ElliottSwing wave3, final ElliottSwing wave5) {
+        double wave1Amplitude = wave1.amplitude().doubleValue();
+        double wave3Amplitude = wave3.amplitude().doubleValue();
+        double wave5Amplitude = wave5.amplitude().doubleValue();
+        double minimumPeer = Math.min(wave1Amplitude, wave5Amplitude);
+        if (wave3Amplitude >= minimumPeer) {
+            return 1.0;
+        }
+        return clamp01(wave3Amplitude / Math.max(1e-9, minimumPeer));
     }
 
     private Num calculateImpulseInvalidation(final List<ElliottSwing> swings, final ElliottPhase phase) {
@@ -531,5 +583,18 @@ public final class ElliottScenarioGenerator {
 
     private String createSignature(final ScenarioType type, final ElliottPhase phase, final int startIndex) {
         return type.name() + ":" + phase.name() + ":" + startIndex;
+    }
+
+    private static double clamp01(final double value) {
+        if (Double.isNaN(value)) {
+            return 0.0;
+        }
+        if (value < 0.0) {
+            return 0.0;
+        }
+        if (value > 1.0) {
+            return 1.0;
+        }
+        return value;
     }
 }

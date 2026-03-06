@@ -22,6 +22,7 @@ import org.ta4j.core.indicators.elliott.confidence.ConfidenceModel;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
 import org.ta4j.core.indicators.elliott.swing.AdaptiveZigZagConfig;
+import org.ta4j.core.indicators.elliott.swing.CompositeSwingDetector;
 import org.ta4j.core.indicators.elliott.swing.MinMagnitudeSwingFilter;
 import org.ta4j.core.indicators.elliott.swing.SwingDetector;
 import org.ta4j.core.indicators.elliott.swing.SwingDetectorResult;
@@ -65,6 +66,8 @@ import org.ta4j.core.num.NumFactory;
 public final class ElliottWaveAnalysisRunner {
 
     private static final AdaptiveZigZagConfig DEFAULT_ZIGZAG_CONFIG = new AdaptiveZigZagConfig(14, 1.0, 0.0, 0.0, 3);
+    private static final int DEFAULT_FAST_FRACTAL_WINDOW = 3;
+    private static final int DEFAULT_SLOW_FRACTAL_WINDOW = 8;
 
     private static final int DEFAULT_SCENARIO_SWING_WINDOW = 5;
 
@@ -99,7 +102,7 @@ public final class ElliottWaveAnalysisRunner {
         this.lowerDegrees = builder.lowerDegrees;
         this.seriesSelector = builder.seriesSelector == null ? defaultSeriesSelector() : builder.seriesSelector;
 
-        this.swingDetector = builder.swingDetector == null ? SwingDetectors.adaptiveZigZag(DEFAULT_ZIGZAG_CONFIG)
+        this.swingDetector = builder.swingDetector == null ? defaultHierarchicalSwingDetector(baseDegree)
                 : builder.swingDetector;
         this.swingFilter = builder.swingFilter;
         this.confidenceModelFactory = builder.confidenceModelFactory == null ? ConfidenceProfiles::defaultModel
@@ -208,6 +211,30 @@ public final class ElliottWaveAnalysisRunner {
                 Math.max(1, 2 + (baseDegree.ordinal() - degree.ordinal())));
 
         return runSingleDegreePipeline(series, degree, swingDetector, filter, compressor);
+    }
+
+    /**
+     * Builds the default hierarchical swing detector used by the runner when no
+     * custom detector is supplied.
+     *
+     * <p>
+     * The detector blends volatility-sensitive ZigZag pivots with fast and slow
+     * fractal confirmations so macro structures are less likely to disappear into
+     * short-term noise.
+     *
+     * @param baseDegree configured runner base degree
+     * @return hierarchical detector composed from existing detector primitives
+     */
+    static SwingDetector defaultHierarchicalSwingDetector(final ElliottDegree baseDegree) {
+        Objects.requireNonNull(baseDegree, "baseDegree");
+        return (series, index, degree) -> {
+            int fastWindow = scaleWindow(baseDegree, degree, DEFAULT_FAST_FRACTAL_WINDOW, 2, 13);
+            int slowWindow = scaleWindow(baseDegree, degree, DEFAULT_SLOW_FRACTAL_WINDOW, fastWindow + 1, 34);
+            return SwingDetectors
+                    .composite(CompositeSwingDetector.Policy.OR, SwingDetectors.adaptiveZigZag(DEFAULT_ZIGZAG_CONFIG),
+                            SwingDetectors.fractal(fastWindow), SwingDetectors.fractal(slowWindow))
+                    .detect(series, index, degree);
+        };
     }
 
     /**
@@ -802,6 +829,12 @@ public final class ElliottWaveAnalysisRunner {
             return maxValue;
         }
         return value;
+    }
+
+    private static int scaleWindow(final ElliottDegree base, final ElliottDegree target, final int baseWindow,
+            final int minWindow, final int maxWindow) {
+        double scaled = scale(base, target, baseWindow, 1.45, minWindow, maxWindow);
+        return Math.max(minWindow, Math.min(maxWindow, (int) Math.round(scaled)));
     }
 
     private enum DegreeRelation {

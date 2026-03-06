@@ -143,6 +143,29 @@ class ElliottScenarioGeneratorTest {
     }
 
     @Test
+    void structureScoreSoftensImpulseRuleBreachesInsteadOfHardRejectingThem() {
+        ElliottScenarioGenerator permissiveGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 10);
+        List<ElliottSwing> mildlyInvalid = List.of(
+                new ElliottSwing(0, 5, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),
+                new ElliottSwing(5, 10, numFactory.numOf(120), numFactory.numOf(98), ElliottDegree.MINOR));
+        List<ElliottSwing> severelyInvalid = List.of(
+                new ElliottSwing(0, 5, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),
+                new ElliottSwing(5, 10, numFactory.numOf(120), numFactory.numOf(70), ElliottDegree.MINOR));
+
+        double mildScore = permissiveGenerator.scoreImpulseStructure(mildlyInvalid, ElliottPhase.WAVE2);
+        double severeScore = permissiveGenerator.scoreImpulseStructure(severelyInvalid, ElliottPhase.WAVE2);
+        ElliottScenarioSet set = permissiveGenerator.generate(mildlyInvalid, ElliottDegree.MINOR, null);
+
+        assertThat(mildScore).isGreaterThan(severeScore);
+        assertThat(severeScore).isZero();
+        assertThat(set.all())
+                .anyMatch(scenario -> scenario.type() == ScenarioType.IMPULSE && scenario.startIndex() == 0);
+        assertThat(set.all())
+                .filteredOn(scenario -> scenario.type() == ScenarioType.IMPULSE && scenario.startIndex() == 0)
+                .allMatch(scenario -> !scenario.isHighConfidence());
+    }
+
+    @Test
     void generatesProjectionTargets() {
         List<ElliottSwing> swings = createAlternatingSwings();
 
