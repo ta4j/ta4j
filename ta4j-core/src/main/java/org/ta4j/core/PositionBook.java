@@ -29,7 +29,7 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.22.2
  */
-public final class PositionBook implements Serializable {
+public final class PositionBook implements Serializable, PositionLedger {
 
     @Serial
     private static final long serialVersionUID = -6897162194206253952L;

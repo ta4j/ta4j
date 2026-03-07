@@ -270,9 +270,16 @@ public class BaseTradingRecord implements TradingRecord {
     @Override
     public void operate(Trade trade) {
         Objects.requireNonNull(trade, "trade");
-        List<TradeFill> fills = Trade.executionFillsOf(trade);
-        for (TradeFill fill : fills) {
-            recordTradeFill(trade.getType(), fill, trade.getOrderId(), trade.getCorrelationId(), trade.getTime());
+        Objects.requireNonNull(trade.getType(), "trade.type");
+        lock.writeLock().lock();
+        try {
+            List<TradeFill> fills = Trade.executionFillsOf(trade);
+            List<PlannedTradeFill> plannedTradeFills = planTradeFills(trade, fills);
+            for (PlannedTradeFill plannedTradeFill : plannedTradeFills) {
+                applyTradeInternal(plannedTradeFill.index(), plannedTradeFill.trade(), -1L);
+            }
+        } finally {
+            lock.writeLock().unlock();
         }
     }
 
@@ -399,16 +406,47 @@ public class BaseTradingRecord implements TradingRecord {
         }
     }
 
-    private void recordTradeFill(TradeType tradeType, TradeFill fill, String tradeOrderId, String tradeCorrelationId,
-            Instant tradeTime) {
-        ExecutionSide side = fill.side() == null ? sideOf(tradeType) : fill.side();
+    private List<PlannedTradeFill> planTradeFills(Trade trade, List<TradeFill> fills) {
+        if (fills.isEmpty()) {
+            throw new IllegalArgumentException("trade must expose at least one fill");
+        }
+        TradeType tradeType = trade.getType();
+        ExecutionSide tradeSide = sideOf(tradeType);
+        ExecutionSide openSide = currentOpenSide();
+        OpenPosition netOpenPosition = positionBook.netOpenPosition();
+        int plannedNextIndex = nextTradeIndex;
+        Num totalAmount = fills.getFirst().price().getNumFactory().zero();
+        List<PlannedTradeFill> plannedTradeFills = new ArrayList<>(fills.size());
+        for (TradeFill fill : fills) {
+            PlannedTradeFill plannedTradeFill = planTradeFill(tradeType, tradeSide, fill, trade.getOrderId(),
+                    trade.getCorrelationId(), trade.getTime(), plannedNextIndex);
+            plannedTradeFills.add(plannedTradeFill);
+            plannedNextIndex = Math.max(plannedNextIndex, plannedTradeFill.index() + 1);
+            totalAmount = totalAmount.plus(plannedTradeFill.trade().getAmount());
+        }
+        if (openSide != null && tradeSide != openSide && netOpenPosition != null
+                && totalAmount.isGreaterThan(netOpenPosition.amount())) {
+            throw new IllegalArgumentException(
+                    "Exit amount " + totalAmount + " exceeds open position amount " + netOpenPosition.amount());
+        }
+        return List.copyOf(plannedTradeFills);
+    }
+
+    private PlannedTradeFill planTradeFill(TradeType tradeType, ExecutionSide tradeSide, TradeFill fill,
+            String tradeOrderId, String tradeCorrelationId, Instant tradeTime, int plannedNextIndex) {
+        if (fill.side() != null && fill.side() != tradeSide) {
+            throw new IllegalArgumentException("Fill side " + fill.side() + " does not match trade type " + tradeType);
+        }
+        int resolvedIndex = fill.index() >= 0 ? fill.index() : plannedNextIndex;
         Instant executionTime = resolveExecutionTime(fill.time(), tradeTime);
         String orderId = chooseValue(fill.orderId(), tradeOrderId);
         String correlationId = chooseValue(fill.correlationId(), tradeCorrelationId);
         Num normalizedAmount = normalizeAmount(fill.amount(), fill.price());
         Num normalizedFee = normalizeFee(fill.fee(), fill.price());
-        applyTradeInternal(fill.index(), new BaseTrade(fill.index(), executionTime, fill.price(), normalizedAmount,
-                normalizedFee, side, orderId, correlationId), -1L);
+        BaseTrade baseTrade = new BaseTrade(resolvedIndex, executionTime, fill.price(), normalizedAmount, normalizedFee,
+                tradeSide, orderId, correlationId);
+        validateFill(baseTrade);
+        return new PlannedTradeFill(resolvedIndex, baseTrade);
     }
 
     private void applyTradeInternal(int index, Trade trade, long sequence) {
@@ -751,6 +789,9 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private record SequencedTrade(Trade trade, long sequence) {
+    }
+
+    private record PlannedTradeFill(int index, BaseTrade trade) {
     }
 
     static record DebugSnapshot(TradeType startingType, List<Trade> trades, List<Position> closedPositions,

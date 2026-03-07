@@ -161,8 +161,14 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         TradeType tradeType = ExecutionModelSupport.nextTradeType(tradingRecord);
         Num stopPrice = toStopPrice(referenceTarget.price(), tradeType);
         Num limitPrice = toLimitPrice(referenceTarget.price(), tradeType);
-        pendingOrders.put(tradingRecord, new PendingOrder(index, referenceTarget.index(), tradeType, requestedAmount,
-                stopPrice, limitPrice, referenceTarget.index() + maxBarsToFill - 1));
+        int activationIndex = resolveActivationIndex(referenceTarget.index(), barSeries);
+        if (activationIndex > barSeries.getEndIndex()) {
+            addRejectedOrder(tradingRecord, new RejectedOrder(index, index, tradeType, requestedAmount,
+                    requestedAmount.getNumFactory().zero(), "Unable to resolve activation bar for stop-limit order"));
+            return;
+        }
+        pendingOrders.put(tradingRecord, new PendingOrder(index, activationIndex, tradeType, requestedAmount, stopPrice,
+                limitPrice, activationIndex + maxBarsToFill - 1));
     }
 
     @Override
@@ -193,6 +199,15 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         if (index >= order.expiryIndex) {
             expireOrder(index, tradingRecord, order);
         }
+    }
+
+    @Override
+    public void onRunEnd(int lastProcessedIndex, TradingRecord tradingRecord, BarSeries barSeries) {
+        PendingOrder order = pendingOrders.get(tradingRecord);
+        if (order == null) {
+            return;
+        }
+        expireOrder(lastProcessedIndex, tradingRecord, order);
     }
 
     private void expireIfStale(int index, TradingRecord tradingRecord) {
@@ -226,6 +241,13 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         if (ratio.isNaN() || ratio.isNegative()) {
             throw new IllegalArgumentException(name + " must be positive or zero");
         }
+    }
+
+    private int resolveActivationIndex(int referenceIndex, BarSeries barSeries) {
+        if (priceSource == PriceSource.CURRENT_CLOSE) {
+            return referenceIndex + 1;
+        }
+        return referenceIndex;
     }
 
     private Num toStopPrice(Num reference, TradeType tradeType) {

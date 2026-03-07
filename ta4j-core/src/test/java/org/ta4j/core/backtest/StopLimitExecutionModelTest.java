@@ -219,9 +219,47 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         model.execute(0, tradingRecord, series, numFactory.one());
         StopLimitExecutionModel.PendingOrderSnapshot pendingOrder = model.getPendingOrder(tradingRecord).orElseThrow();
 
-        assertEquals(0, pendingOrder.activationIndex());
+        assertEquals(1, pendingOrder.activationIndex());
         assertEquals(series.getBar(0).getClosePrice(), pendingOrder.stopPrice());
         assertEquals(series.getBar(0).getClosePrice(), pendingOrder.limitPrice());
+    }
+
+    @Test
+    public void currentCloseOrdersDoNotFillOnSignalBar() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(105d).lowPrice(95d).closePrice(100d).volume(10d).add();
+        series.barBuilder().openPrice(120d).highPrice(120d).lowPrice(120d).closePrice(120d).volume(10d).add();
+
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                numFactory.one(), 1, TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule());
+
+        TradingRecord tradingRecord = new BarSeriesManager(series, model).run(strategy);
+
+        assertTrue(tradingRecord.getTrades().isEmpty());
+        assertTrue(model.getPendingOrder(tradingRecord).isEmpty());
+        assertEquals(1, model.getRejectedOrders(tradingRecord).size());
+    }
+
+    @Test
+    public void runEndExpiresPendingEntryOrderAndCommitsFilledPortion() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(100d).add();
+        series.barBuilder().openPrice(100d).highPrice(100d).lowPrice(100d).closePrice(100d).volume(2d).add();
+
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numOf(0.5),
+                3);
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule());
+
+        TradingRecord tradingRecord = new BarSeriesManager(series, model).run(strategy, strategy.getStartingType(),
+                numFactory.numOf(3));
+
+        assertEquals(1, tradingRecord.getTrades().size());
+        assertEquals(numFactory.one(), tradingRecord.getTrades().getFirst().getAmount());
+        assertTrue(model.getPendingOrder(tradingRecord).isEmpty());
+        assertEquals(1, model.getRejectedOrders(tradingRecord).size());
+        assertEquals(numFactory.one(), model.getRejectedOrders(tradingRecord).getFirst().filledAmount());
+        assertEquals(numFactory.numOf(3), model.getRejectedOrders(tradingRecord).getFirst().requestedAmount());
     }
 
     @Test
@@ -235,10 +273,11 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
 
         StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
                 numFactory.one(), 2, TradeExecutionModel.PriceSource.CURRENT_CLOSE);
-        model.execute(1, tradingRecord, series, numFactory.one());
+        model.execute(0, tradingRecord, series, numFactory.one());
 
         StopLimitExecutionModel.PendingOrderSnapshot pendingOrder = model.getPendingOrder(tradingRecord).orElseThrow();
         assertEquals(numFactory.numOf(5), pendingOrder.requestedAmount());
+        assertEquals(1, pendingOrder.activationIndex());
     }
 
     @Test
@@ -252,7 +291,7 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numOf(0.5), 1,
                 TradeExecutionModel.PriceSource.CURRENT_CLOSE);
 
-        model.execute(1, tradingRecord, series, numFactory.one());
+        model.execute(0, tradingRecord, series, numFactory.one());
         model.onBar(1, tradingRecord, series);
 
         assertEquals(3, tradingRecord.getTrades().size());
@@ -273,7 +312,7 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numOf(0.5), 1,
                 TradeExecutionModel.PriceSource.CURRENT_CLOSE);
 
-        model.execute(1, tradingRecord, series, numFactory.one());
+        model.execute(0, tradingRecord, series, numFactory.one());
         model.onBar(1, tradingRecord, series);
 
         assertEquals(0, tradingRecord.recordedOperations().size());
@@ -294,7 +333,7 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(), numOf(0.5), 1,
                 TradeExecutionModel.PriceSource.CURRENT_CLOSE);
 
-        model.execute(1, tradingRecord, series, numFactory.one());
+        model.execute(0, tradingRecord, series, numFactory.one());
         model.onBar(1, tradingRecord, series);
 
         assertEquals(3, tradingRecord.getTrades().size());

@@ -545,6 +545,43 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    void operateTradeRejectsExitAmountGreaterThanOpenPosition() {
+        BaseTradingRecord record = new BaseTradingRecord();
+        record.operate(0, numFactory.hundred(), numFactory.one());
+
+        Trade oversizedExit = Trade.fromFills(TradeType.SELL,
+                List.of(new TradeFill(1, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110), numFactory.one(),
+                        numFactory.zero(), ExecutionSide.SELL, null, null),
+                        new TradeFill(2, Instant.parse("2025-01-01T00:00:02Z"), numFactory.numOf(111), numFactory.one(),
+                                numFactory.zero(), ExecutionSide.SELL, null, null)));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> record.operate(oversizedExit));
+
+        assertTrue(exception.getMessage().contains("Exit amount"));
+        assertEquals(1, record.getTrades().size());
+        assertTrue(record.getCurrentPosition().isOpened());
+        assertEquals(numFactory.one(), record.getCurrentPosition().getEntry().getAmount());
+        assertTrue(record.getPositions().isEmpty());
+    }
+
+    @Test
+    void operateTradeAutoAssignsMissingFillIndices() {
+        BaseTradingRecord record = new BaseTradingRecord();
+        Trade fillBackedTrade = Trade.fromFills(TradeType.BUY,
+                List.of(new TradeFill(-1, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(), numFactory.one(),
+                        numFactory.zero(), ExecutionSide.BUY, "order-1", "corr-1")));
+
+        record.operate(fillBackedTrade);
+
+        Trade recordedTrade = record.getLastTrade();
+        assertEquals(0, recordedTrade.getIndex());
+        assertEquals(0, recordedTrade.getFills().getFirst().index());
+        assertEquals("order-1", recordedTrade.getOrderId());
+        assertEquals("corr-1", recordedTrade.getCorrelationId());
+    }
+
+    @Test
     void cachesTradesAndInvalidatesOnUpdate() {
         BaseTradingRecord record = new BaseTradingRecord();
         record.recordFill(fill(ExecutionSide.BUY, numFactory.hundred(), numFactory.one()));

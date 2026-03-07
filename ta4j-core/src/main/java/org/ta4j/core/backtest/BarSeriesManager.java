@@ -4,7 +4,6 @@
 package org.ta4j.core.backtest;
 
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -306,12 +305,13 @@ public class BarSeriesManager {
                     strategy, tradingRecord.getStartingType());
         }
 
+        int lastProcessedIndex = runEndIndex;
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
+            lastProcessedIndex = i;
             tradeExecutionModel.onBar(i, tradingRecord, barSeries);
             // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {
                 tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
-                processSignalBarOrders(i, tradingRecord);
             }
         }
 
@@ -321,28 +321,18 @@ public class BarSeriesManager {
             // to give an opportunity to close this position.
             int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
             for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
+                lastProcessedIndex = i;
                 tradeExecutionModel.onBar(i, tradingRecord, barSeries);
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
                 if (strategy.shouldOperate(i, tradingRecord)) {
                     tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
-                    processSignalBarOrders(i, tradingRecord);
                     break;
                 }
             }
         }
+        tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord, barSeries);
         return tradingRecord;
-    }
-
-    private void processSignalBarOrders(int index, TradingRecord tradingRecord) {
-        if (!(tradeExecutionModel instanceof StopLimitExecutionModel stopLimitExecutionModel)) {
-            return;
-        }
-        Optional<StopLimitExecutionModel.PendingOrderSnapshot> pendingOrder = stopLimitExecutionModel
-                .getPendingOrder(tradingRecord);
-        if (pendingOrder.isPresent() && pendingOrder.get().activationIndex() == index) {
-            tradeExecutionModel.onBar(index, tradingRecord, barSeries);
-        }
     }
 
     private TradingRecord createDefaultTradingRecord(TradeType tradeType, int startIndex, int finishIndex) {

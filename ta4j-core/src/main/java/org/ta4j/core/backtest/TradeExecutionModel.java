@@ -46,6 +46,23 @@ public interface TradeExecutionModel {
     }
 
     /**
+     * Finalizes model state when a {@link BarSeriesManager} run ends.
+     *
+     * <p>
+     * Implementations can use this hook to expire or flush pending orders that
+     * would otherwise be stranded when no more bars will be processed.
+     * </p>
+     *
+     * @param lastProcessedIndex last bar index examined during the run
+     * @param tradingRecord      trading record to mutate
+     * @param barSeries          bar series
+     * @since 0.22.4
+     */
+    default void onRunEnd(int lastProcessedIndex, TradingRecord tradingRecord, BarSeries barSeries) {
+        // Default no-op for immediate execution models.
+    }
+
+    /**
      * Executes a trade in the given {@code tradingRecord}.
      *
      * @param index         the trade index from {@code barSeries}
