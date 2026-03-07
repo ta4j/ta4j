@@ -276,6 +276,41 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
+    void livePresetReportFindsCurrentCycleStartFromProvidedSeriesWindow() throws Exception {
+        BarSeries fullSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
+        int lookbackBars = 1825;
+        int windowStart = Math.max(fullSeries.getBeginIndex(), fullSeries.getEndIndex() - lookbackBars + 1);
+        BarSeries liveWindow = fullSeries.getSubSeries(windowStart, fullSeries.getEndIndex() + 1);
+        Path tempDir = Files.createTempDirectory("btc-live-macro-preset");
+
+        try {
+            ElliottWaveBtcMacroCycleDemo.LivePresetReport report = ElliottWaveBtcMacroCycleDemo
+                    .generateLivePresetReport(liveWindow, tempDir);
+
+            Instant discoveredStart = Instant.parse(report.currentCycle().startTimeUtc());
+            Instant expectedWindowStart = liveWindow.getFirstBar().getEndTime();
+            Instant expectedWindowEnd = liveWindow.getLastBar().getEndTime();
+
+            assertTrue(!discoveredStart.isBefore(expectedWindowStart) && !discoveredStart.isAfter(expectedWindowEnd));
+            assertEquals("2022-11-22T00:00:00Z", report.currentCycle().startTimeUtc());
+            assertEquals("Bullish 1-2-3", report.currentCycle().primaryCount());
+            assertEquals("WAVE3", report.currentCycle().currentWave());
+            assertTrue(Files.exists(Path.of(report.chartPath())));
+            assertTrue(Files.exists(Path.of(report.summaryPath())));
+        } finally {
+            Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException ignored) {
+                    // best effort cleanup
+                }
+            });
+        }
+    }
+
+    @Test
     void renderMacroCycleChartUsesLogAxisOnMainPricePlot() {
         BarSeries series = chartSyntheticSeries();
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
