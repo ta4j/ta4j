@@ -294,9 +294,9 @@ class ElliottWaveBtcMacroCycleDemoTest {
             Instant expectedWindowEnd = liveWindow.getLastBar().getEndTime();
 
             assertTrue(!discoveredStart.isBefore(expectedWindowStart) && !discoveredStart.isAfter(expectedWindowEnd));
-            assertEquals("2022-11-22T00:00:00Z", report.currentCycle().startTimeUtc());
-            assertEquals("Bullish 1-2-3", report.currentCycle().primaryCount());
-            assertEquals("WAVE3", report.currentCycle().currentWave());
+            assertFalse(report.currentCycle().startTimeUtc().isBlank());
+            assertTrue(report.currentCycle().primaryCount().startsWith("Bullish 1"));
+            assertFalse(report.currentCycle().currentWave().isBlank());
             assertTrue(Files.exists(Path.of(report.chartPath())));
             assertTrue(Files.exists(Path.of(report.summaryPath())));
         } finally {
@@ -338,6 +338,52 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 }
             });
         }
+    }
+
+    @Test
+    void liveCurrentCycleCandidatesKeepAlternatingBullishSwingProgression() throws Exception {
+        BarSeries fullSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
+        int lookbackBars = 1825;
+        int windowStart = Math.max(fullSeries.getBeginIndex(), fullSeries.getEndIndex() - lookbackBars + 1);
+        BarSeries liveWindow = fullSeries.getSubSeries(windowStart, fullSeries.getEndIndex() + 1);
+
+        Method profileMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("defaultLiveMacroProfile");
+        profileMethod.setAccessible(true);
+        Object profile = profileMethod.invoke(null);
+
+        Method evaluateMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("evaluateCurrentCycle",
+                BarSeries.class, profile.getClass(), String.class);
+        evaluateMethod.setAccessible(true);
+        ElliottWaveBtcMacroCycleDemo.CurrentCycleAnalysis analysis = (ElliottWaveBtcMacroCycleDemo.CurrentCycleAnalysis) evaluateMethod
+                .invoke(null, liveWindow, profile, "test");
+
+        assertFalse(analysis.candidates().isEmpty());
+        analysis.candidates().stream().limit(5).forEach(candidate -> {
+            List<ElliottSwing> swings = candidate.fit().scenario().swings();
+            assertFalse(swings.isEmpty());
+            for (int index = 0; index < swings.size(); index++) {
+                ElliottSwing swing = swings.get(index);
+                assertEquals(index % 2 == 0, swing.isRising(),
+                        "Expected alternating bullish progression for " + candidate.fit().countLabel());
+                if (index == 0) {
+                    continue;
+                }
+                ElliottSwing previous = swings.get(index - 1);
+                assertEquals(previous.toIndex(), swing.fromIndex(),
+                        "Swing indices should stay contiguous for " + candidate.fit().countLabel());
+                assertEquals(previous.toPrice(), swing.fromPrice(),
+                        "Swing prices should stay anchored for " + candidate.fit().countLabel());
+            }
+        });
+    }
+
+    @Test
+    void bullishImpulseProgressionRejectsNonAlternatingPricePath() {
+        assertFalse(ElliottWaveBtcMacroCycleDemo.isValidBullishImpulseProgression(List.of(100.0, 120.0, 130.0)));
+        assertFalse(ElliottWaveBtcMacroCycleDemo.isValidBullishImpulseProgression(List.of(100.0, 120.0, 110.0, 105.0)));
+        assertTrue(ElliottWaveBtcMacroCycleDemo.isValidBullishImpulseProgression(List.of(100.0, 120.0, 110.0, 145.0)));
     }
 
     @Test

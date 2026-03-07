@@ -979,12 +979,16 @@ public final class ElliottWaveBtcMacroCycleDemo {
         case 5 -> new boolean[] { true, false, true, false };
         default -> throw new IllegalArgumentException("Unsupported phase " + phase);
         };
-        double[] fractions = Arrays.copyOf(logicProfiles().getFirst().impulseFractions(), internalHighPivots.length);
+        double[] fractions = Arrays.copyOf(profile.impulseFractions(), internalHighPivots.length);
         List<List<PivotCandidate>> candidatesBySlot = collectSlotCandidates(series, startIndex, endIndex, fractions,
                 internalHighPivots, profile);
         List<PivotCandidate> bestPath = searchBestPath(candidatesBySlot, startIndex, endIndex,
                 minimumSwingGap(startIndex, endIndex, phase));
         if (bestPath.isEmpty()) {
+            return Optional.empty();
+        }
+        List<Double> prices = buildBullishImpulsePricePath(series, startIndex, bestPath, endIndex, phase);
+        if (!isValidBullishImpulseProgression(prices)) {
             return Optional.empty();
         }
 
@@ -1010,12 +1014,10 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     private static double scorePartialImpulse(BarSeries series, int startIndex, List<PivotCandidate> path, int endIndex,
             MacroLogicProfile profile, int phase) {
-        List<Double> prices = new ArrayList<>();
-        prices.add(pivotPrice(series, startIndex, false).doubleValue());
-        for (PivotCandidate candidate : path) {
-            prices.add(candidate.price().doubleValue());
+        List<Double> prices = buildBullishImpulsePricePath(series, startIndex, path, endIndex, phase);
+        if (!isValidBullishImpulseProgression(prices)) {
+            return 0.0;
         }
-        prices.add(pivotPrice(series, endIndex, phase % 2 == 1).doubleValue());
         List<Integer> indices = new ArrayList<>();
         indices.add(startIndex);
         for (PivotCandidate candidate : path) {
@@ -1056,6 +1058,35 @@ public final class ElliottWaveBtcMacroCycleDemo {
                     0.0);
         }
         return weightedScore(structure, rules, spacing, strength, profile);
+    }
+
+    static List<Double> buildBullishImpulsePricePath(BarSeries series, int startIndex, List<PivotCandidate> path,
+            int endIndex, int phase) {
+        List<Double> prices = new ArrayList<>();
+        prices.add(pivotPrice(series, startIndex, false).doubleValue());
+        for (PivotCandidate candidate : path) {
+            prices.add(candidate.price().doubleValue());
+        }
+        prices.add(pivotPrice(series, endIndex, phase % 2 == 1).doubleValue());
+        return List.copyOf(prices);
+    }
+
+    static boolean isValidBullishImpulseProgression(List<Double> prices) {
+        if (prices == null || prices.size() < 2) {
+            return false;
+        }
+        for (int index = 1; index < prices.size(); index++) {
+            double previous = prices.get(index - 1);
+            double current = prices.get(index);
+            if (index % 2 == 1) {
+                if (!(current > previous)) {
+                    return false;
+                }
+            } else if (!(current < previous)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static Optional<SegmentScenarioFit> fitSegment(BarSeries series, LegSegment legSegment,
