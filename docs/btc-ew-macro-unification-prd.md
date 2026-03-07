@@ -1,5 +1,12 @@
 # BTC Elliott Macro Unification PRD
 
+## Execution Status
+
+- Last updated: 2026-03-07 15:42 EST
+- Active phase: Phase 5
+- Active task: Harden live current-cycle pivot dominance and right-edge anchoring in core
+- Overall: 12/46 checklist items complete
+
 ## Status
 
 - Active living PRD/checklist
@@ -137,7 +144,7 @@ Implementation steps:
 - [ ] Move bullish partial-impulse anchor-dominance validation from the BTC demo into core.
 - [ ] Add the equivalent bearish corrective-span dominance validation in core.
 - [ ] Make these validations part of core candidate acceptance and ranking, not just post-filtering.
-- [ ] Ensure current-cycle candidates cannot declare pivots that are invalidated by later stronger extremes inside the same wave span.
+- [x] Ensure current-cycle candidates cannot declare pivots that are invalidated by later stronger extremes inside the same wave span.
 
 Implementation steps:
 
@@ -179,13 +186,13 @@ Implementation steps:
 
 ### Phase 5: Unify Live BTC Preset on the Core Path
 
-- [ ] Keep the current preset UX:
+- [x] Keep the current preset UX:
   - console summary
   - base-case chart
   - four alternative charts
-- [ ] Ensure those charts are derived from core-selected scenarios only.
-- [ ] Remove any example-layer rescue logic that can change which scenarios are displayed after core analysis.
-- [ ] Preserve current behavior that the supplied `BarSeries` must be enough to find the current-cycle start.
+- [x] Ensure those charts are derived from core-selected scenarios only.
+- [x] Remove any example-layer rescue logic that can change which scenarios are displayed after core analysis.
+- [x] Preserve current behavior that the supplied `BarSeries` must be enough to find the current-cycle start.
 
 Implementation steps:
 
@@ -251,19 +258,19 @@ Implement in this exact order unless a blocker forces a change:
 
 ### Live Current-Cycle Tests
 
-- [ ] Live BTC preset must return five display scenarios with stable filenames.
-- [ ] Partial bullish paths must alternate correctly.
-- [ ] No displayed bullish wave-high may be later exceeded within the same declared wave span unless that pivot is no longer labeled as the terminal high for that wave.
-- [ ] Supplied live window alone must be enough to identify the current-cycle start.
+- [x] Live BTC preset must return five display scenarios with stable filenames.
+- [x] Partial bullish paths must alternate correctly.
+- [x] No displayed bullish wave-high may be later exceeded within the same declared wave span unless that pivot is no longer labeled as the terminal high for that wave.
+- [x] Supplied live window alone must be enough to identify the current-cycle start.
 
 ### Core Regression Tests
 
-- [ ] Anchor-window reranking tests
+- [x] Anchor-window reranking tests
 - [ ] Start-preservation tests for long macro histories
-- [ ] Partial impulse span-dominance tests
+- [x] Partial impulse span-dominance tests
 - [ ] Partial corrective span-dominance tests
 - [ ] Profile-driven ranking tests
-- [ ] Preset scenario selection tests that prove display candidates come from core ordering
+- [x] Preset scenario selection tests that prove display candidates come from core ordering
 
 ## Acceptance Criteria
 

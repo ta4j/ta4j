@@ -4,10 +4,14 @@
 package org.ta4j.core.indicators.elliott;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.num.Num;
 
 /**
  * Result of running Elliott Wave analysis across one or more degrees.
@@ -184,6 +188,81 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
                 bullishDirection, maxAnchorDriftBars).stream().findFirst();
     }
 
+    /**
+     * Returns the base scenarios re-ranked for a target anchor window using the
+     * supplied series to validate pivot dominance and swing progression.
+     *
+     * <p>
+     * This is the core entry point for anchored research and live current-cycle
+     * fitting. It prefers scenarios that:
+     * <ul>
+     * <li>start and end near the requested window boundaries</li>
+     * <li>alternate direction cleanly across their swing sequence</li>
+     * <li>use pivots that are dominant highs/lows for their local wave spans</li>
+     * </ul>
+     *
+     * @param series             root series that the scenarios are indexed against
+     * @param startIndex         expected scenario start pivot index
+     * @param endIndex           expected scenario terminal pivot index
+     * @param scenarioType       required scenario family, or {@code null} to keep
+     *                           any family that matches the remaining template
+     * @param terminalPhase      required terminal phase
+     * @param waveCount          required wave count
+     * @param bullishDirection   required direction; {@code null} skips direction
+     *                           filtering
+     * @param maxAnchorDriftBars soft anchor tolerance used during ranking
+     * @return immutable filtered base-scenario view sorted by anchored window fit
+     *         first and composite score second
+     * @since 0.22.4
+     */
+    public List<WindowScenarioAssessment> rankedBaseScenariosForWindow(final BarSeries series, final int startIndex,
+            final int endIndex, final ScenarioType scenarioType, final ElliottPhase terminalPhase, final int waveCount,
+            final Boolean bullishDirection, final int maxAnchorDriftBars) {
+        Objects.requireNonNull(series, "series");
+        if (series.isEmpty()) {
+            throw new IllegalArgumentException("series cannot be empty");
+        }
+        if (startIndex < series.getBeginIndex()) {
+            throw new IllegalArgumentException("startIndex must be >= series begin index");
+        }
+        if (endIndex > series.getEndIndex()) {
+            throw new IllegalArgumentException("endIndex must be <= series end index");
+        }
+        return rankedBaseScenariosForSpan(startIndex, endIndex, scenarioType, terminalPhase, waveCount,
+                bullishDirection, maxAnchorDriftBars).stream()
+                .map(assessment -> toWindowAssessment(series, assessment, startIndex, endIndex, maxAnchorDriftBars))
+                .filter(assessment -> assessment.windowFitScore() > 0.0)
+                .sorted(Comparator.comparingDouble(WindowScenarioAssessment::windowFitScore)
+                        .reversed()
+                        .thenComparing(Comparator.comparingDouble(WindowScenarioAssessment::compositeScore).reversed())
+                        .thenComparing(Comparator.comparingDouble(WindowScenarioAssessment::confidenceScore).reversed())
+                        .thenComparing(assessment -> assessment.scenario().id()))
+                .toList();
+    }
+
+    /**
+     * Returns the highest-ranked anchored window scenario for a target template, if
+     * present.
+     *
+     * @param series             root series that the scenarios are indexed against
+     * @param startIndex         expected scenario start pivot index
+     * @param endIndex           expected scenario terminal pivot index
+     * @param scenarioType       required scenario family
+     * @param terminalPhase      required terminal phase
+     * @param waveCount          required wave count
+     * @param bullishDirection   required direction; {@code null} skips direction
+     *                           filtering
+     * @param maxAnchorDriftBars soft anchor tolerance used during ranking
+     * @return top matching anchored window scenario assessment, if any
+     * @since 0.22.4
+     */
+    public Optional<WindowScenarioAssessment> recommendedBaseScenarioForWindow(final BarSeries series,
+            final int startIndex, final int endIndex, final ScenarioType scenarioType, final ElliottPhase terminalPhase,
+            final int waveCount, final Boolean bullishDirection, final int maxAnchorDriftBars) {
+        return rankedBaseScenariosForWindow(series, startIndex, endIndex, scenarioType, terminalPhase, waveCount,
+                bullishDirection, maxAnchorDriftBars).stream().findFirst();
+    }
+
     private static double anchorSpanScore(final ElliottScenario scenario, final int startIndex, final int endIndex) {
         if (scenario == null || scenario.swings().isEmpty()) {
             return 0.0;
@@ -229,6 +308,114 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
         final double endDriftScore = 1.0 - Math.min(1.0, endGap / driftScale);
         final double completionScore = scenario.expectsCompletion() ? 1.0 : 0.5;
         return (spanAlignment + startDriftScore + endDriftScore + completionScore) / 4.0;
+    }
+
+    private static WindowScenarioAssessment toWindowAssessment(final BarSeries series,
+            final BaseScenarioAssessment assessment, final int startIndex, final int endIndex,
+            final int maxAnchorDriftBars) {
+        final ElliottScenario scenario = assessment.scenario();
+        final double anchorFitScore = anchorTemplateScore(scenario, startIndex, endIndex, maxAnchorDriftBars);
+        final double progressionScore = alternatingProgressionScore(scenario);
+        final double pivotDominanceScore = pivotDominanceScore(series, scenario);
+        final double windowFitScore = clamp(
+                (0.45 * anchorFitScore) + (0.35 * pivotDominanceScore) + (0.20 * progressionScore), 0.0, 1.0);
+        return new WindowScenarioAssessment(assessment, windowFitScore, anchorFitScore, pivotDominanceScore,
+                progressionScore);
+    }
+
+    private static double alternatingProgressionScore(final ElliottScenario scenario) {
+        if (scenario == null || scenario.swings().isEmpty()) {
+            return 0.0;
+        }
+        final List<ElliottSwing> swings = scenario.swings();
+        for (int index = 1; index < swings.size(); index++) {
+            final ElliottSwing previous = swings.get(index - 1);
+            final ElliottSwing current = swings.get(index);
+            if (previous.toIndex() != current.fromIndex()) {
+                return 0.0;
+            }
+            if (previous.toPrice().compareTo(current.fromPrice()) != 0) {
+                return 0.0;
+            }
+            if (previous.isRising() == current.isRising()) {
+                return 0.0;
+            }
+        }
+        return 1.0;
+    }
+
+    private static double pivotDominanceScore(final BarSeries series, final ElliottScenario scenario) {
+        if (scenario == null || scenario.swings().isEmpty()) {
+            return 0.0;
+        }
+        final List<ElliottSwing> swings = scenario.swings();
+        final List<Integer> pivotIndices = new ArrayList<>(swings.size() + 1);
+        final List<Boolean> highPivots = new ArrayList<>(swings.size() + 1);
+        pivotIndices.add(swings.getFirst().fromIndex());
+        highPivots.add(Boolean.valueOf(!swings.getFirst().isRising()));
+
+        for (int index = 1; index < swings.size(); index++) {
+            final ElliottSwing previous = swings.get(index - 1);
+            final ElliottSwing current = swings.get(index);
+            if (previous.isRising() == current.isRising()) {
+                return 0.0;
+            }
+            if (previous.toIndex() != current.fromIndex()) {
+                return 0.0;
+            }
+            pivotIndices.add(previous.toIndex());
+            highPivots.add(Boolean.valueOf(previous.isRising()));
+        }
+
+        pivotIndices.add(swings.getLast().toIndex());
+        highPivots.add(Boolean.valueOf(swings.getLast().isRising()));
+
+        double total = 0.0;
+        for (int pointIndex = 0; pointIndex < pivotIndices.size(); pointIndex++) {
+            final int pivotIndex = pivotIndices.get(pointIndex);
+            if (pivotIndex < series.getBeginIndex() || pivotIndex > series.getEndIndex()) {
+                return 0.0;
+            }
+            final int spanStart = pointIndex == 0 ? pivotIndices.getFirst() : pivotIndices.get(pointIndex - 1);
+            final int spanEnd = pointIndex == pivotIndices.size() - 1 ? pivotIndices.getLast()
+                    : pivotIndices.get(pointIndex + 1);
+            final boolean highPivot = highPivots.get(pointIndex).booleanValue();
+            final double pivotPrice = highPivot ? series.getBar(pivotIndex).getHighPrice().doubleValue()
+                    : series.getBar(pivotIndex).getLowPrice().doubleValue();
+            final double spanExtreme = highPivot ? highestHigh(series, spanStart, spanEnd)
+                    : lowestLow(series, spanStart, spanEnd);
+            final double spanRange = Math.max(1e-9, segmentRange(series, spanStart, spanEnd));
+            total += clamp(1.0 - (Math.abs(spanExtreme - pivotPrice) / spanRange), 0.0, 1.0);
+        }
+        return total / pivotIndices.size();
+    }
+
+    private static double segmentRange(final BarSeries series, final int startIndex, final int endIndex) {
+        return Math.max(1e-9, highestHigh(series, startIndex, endIndex) - lowestLow(series, startIndex, endIndex));
+    }
+
+    private static double highestHigh(final BarSeries series, final int startIndex, final int endIndex) {
+        final int fromIndex = Math.max(series.getBeginIndex(), Math.min(startIndex, endIndex));
+        final int toIndex = Math.min(series.getEndIndex(), Math.max(startIndex, endIndex));
+        double highest = Double.NEGATIVE_INFINITY;
+        for (int index = fromIndex; index <= toIndex; index++) {
+            highest = Math.max(highest, series.getBar(index).getHighPrice().doubleValue());
+        }
+        return highest;
+    }
+
+    private static double lowestLow(final BarSeries series, final int startIndex, final int endIndex) {
+        final int fromIndex = Math.max(series.getBeginIndex(), Math.min(startIndex, endIndex));
+        final int toIndex = Math.min(series.getEndIndex(), Math.max(startIndex, endIndex));
+        double lowest = Double.POSITIVE_INFINITY;
+        for (int index = fromIndex; index <= toIndex; index++) {
+            lowest = Math.min(lowest, series.getBar(index).getLowPrice().doubleValue());
+        }
+        return lowest;
+    }
+
+    private static double clamp(final double value, final double min, final double max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     /**
@@ -288,6 +475,163 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
             validateUnitIntervalScore("crossDegreeScore", crossDegreeScore);
             validateUnitIntervalScore("compositeScore", compositeScore);
             supportingMatches = supportingMatches == null ? List.of() : List.copyOf(supportingMatches);
+        }
+    }
+
+    /**
+     * Anchored-window view of a base scenario assessment.
+     *
+     * <p>
+     * This augments the base cross-degree assessment with start/end span fit, pivot
+     * dominance, and swing-progression quality using the caller-supplied series
+     * window.
+     *
+     * @param baseAssessment      underlying base-scenario assessment
+     * @param windowFitScore      aggregate anchored window score (0.0 - 1.0)
+     * @param anchorFitScore      start/end anchor alignment score (0.0 - 1.0)
+     * @param pivotDominanceScore pivot dominance across the scenario's local wave
+     *                            spans (0.0 - 1.0)
+     * @param progressionScore    alternating/contiguous swing progression score
+     *                            (0.0 - 1.0)
+     * @since 0.22.4
+     */
+    public record WindowScenarioAssessment(BaseScenarioAssessment baseAssessment, double windowFitScore,
+            double anchorFitScore, double pivotDominanceScore, double progressionScore) {
+
+        public WindowScenarioAssessment {
+            Objects.requireNonNull(baseAssessment, "baseAssessment");
+            validateUnitIntervalScore("windowFitScore", windowFitScore);
+            validateUnitIntervalScore("anchorFitScore", anchorFitScore);
+            validateUnitIntervalScore("pivotDominanceScore", pivotDominanceScore);
+            validateUnitIntervalScore("progressionScore", progressionScore);
+        }
+
+        /**
+         * @return underlying Elliott scenario
+         * @since 0.22.4
+         */
+        public ElliottScenario scenario() {
+            return baseAssessment.scenario();
+        }
+
+        /**
+         * @return base confidence score
+         * @since 0.22.4
+         */
+        public double confidenceScore() {
+            return baseAssessment.confidenceScore();
+        }
+
+        /**
+         * @return cross-degree compatibility score
+         * @since 0.22.4
+         */
+        public double crossDegreeScore() {
+            return baseAssessment.crossDegreeScore();
+        }
+
+        /**
+         * @return blended base composite score
+         * @since 0.22.4
+         */
+        public double compositeScore() {
+            return baseAssessment.compositeScore();
+        }
+    }
+
+    /**
+     * Ranked current-phase fit for a live or open-ended window.
+     *
+     * <p>
+     * This is the core-side equivalent of the old demo-local current-wave fit. It
+     * keeps the chosen scenario, the interpreted terminal phase, the blended fit
+     * score, the anchored cycle start price, and the invalidation price together so
+     * callers can render charts or summaries without reconstructing those details.
+     *
+     * @param scenario          selected scenario
+     * @param currentPhase      interpreted current phase
+     * @param fitScore          blended anchored-window fit score (0.0 - 1.0)
+     * @param startPrice        anchored cycle start price
+     * @param countLabel        human-readable wave-count label
+     * @param invalidationPrice invalidation price for the fit
+     * @since 0.22.4
+     */
+    public record CurrentPhaseAssessment(ElliottScenario scenario, ElliottPhase currentPhase, double fitScore,
+            Num startPrice, String countLabel, Num invalidationPrice) implements Comparable<CurrentPhaseAssessment> {
+
+        public CurrentPhaseAssessment {
+            Objects.requireNonNull(scenario, "scenario");
+            Objects.requireNonNull(currentPhase, "currentPhase");
+            Objects.requireNonNull(startPrice, "startPrice");
+            Objects.requireNonNull(countLabel, "countLabel");
+            validateUnitIntervalScore("fitScore", fitScore);
+        }
+
+        @Override
+        public int compareTo(final CurrentPhaseAssessment other) {
+            return Double.compare(other.fitScore, fitScore);
+        }
+    }
+
+    /**
+     * Ranked current-cycle candidate anchored to a discovered start pivot.
+     *
+     * @param startIndex  anchored cycle start index
+     * @param startPrice  anchored cycle start price
+     * @param fit         selected phase fit for this start anchor
+     * @param anchorScore score of the discovered start anchor (0.0 - 1.0)
+     * @param totalScore  total candidate score after anchor, span, and phase-fit
+     *                    blending (0.0 - 1.0)
+     * @param rationale   human-readable candidate rationale
+     * @since 0.22.4
+     */
+    public record CurrentCycleCandidate(int startIndex, Num startPrice, CurrentPhaseAssessment fit, double anchorScore,
+            double totalScore, String rationale) implements Comparable<CurrentCycleCandidate> {
+
+        public CurrentCycleCandidate {
+            Objects.requireNonNull(startPrice, "startPrice");
+            Objects.requireNonNull(fit, "fit");
+            Objects.requireNonNull(rationale, "rationale");
+            validateUnitIntervalScore("anchorScore", anchorScore);
+            validateUnitIntervalScore("totalScore", totalScore);
+        }
+
+        @Override
+        public int compareTo(final CurrentCycleCandidate other) {
+            final int totalComparison = Double.compare(other.totalScore, totalScore);
+            if (totalComparison != 0) {
+                return totalComparison;
+            }
+            final int fitComparison = fit.compareTo(other.fit);
+            if (fitComparison != 0) {
+                return fitComparison;
+            }
+            return Integer.compare(startIndex, other.startIndex);
+        }
+    }
+
+    /**
+     * Ranked current-cycle analysis for an open-ended series window.
+     *
+     * <p>
+     * The runner discovers plausible start anchors directly from the supplied
+     * series, ranks candidate bullish counts against the live right edge, and then
+     * exposes the preferred and alternate interpretations alongside the full
+     * candidate set.
+     *
+     * @param startIndex cycle start index selected by the winning candidate, or the
+     *                   fallback series low when no candidate was accepted
+     * @param primary    preferred current-cycle fit, if present
+     * @param alternate  alternate current-cycle fit with a different phase, if
+     *                   present
+     * @param candidates ranked candidate list
+     * @since 0.22.4
+     */
+    public record CurrentCycleAssessment(int startIndex, CurrentPhaseAssessment primary,
+            CurrentPhaseAssessment alternate, List<CurrentCycleCandidate> candidates) {
+
+        public CurrentCycleAssessment {
+            candidates = candidates == null ? List.of() : List.copyOf(candidates);
         }
     }
 

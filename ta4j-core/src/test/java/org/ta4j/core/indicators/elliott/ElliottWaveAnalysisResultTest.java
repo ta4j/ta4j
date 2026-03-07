@@ -6,11 +6,13 @@ package org.ta4j.core.indicators.elliott;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.Instant;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
@@ -115,6 +117,25 @@ class ElliottWaveAnalysisResultTest {
                 ScenarioType.IMPULSE, ElliottPhase.WAVE5, 5, Boolean.TRUE, -1));
     }
 
+    @Test
+    void rankedBaseScenariosForWindow_shouldPreferDominantPivotScenario() {
+        BarSeries series = anchoredWindowSeries();
+        ElliottScenario nonDominantWaveOne = scenario("non-dominant-wave1", 0.90, ElliottPhase.WAVE2,
+                ScenarioType.IMPULSE, true, swing(series, 0, 1, 100, 120), swing(series, 1, 3, 120, 112));
+        ElliottScenario dominantWaveOne = scenario("dominant-wave1", 0.80, ElliottPhase.WAVE2, ScenarioType.IMPULSE,
+                true, swing(series, 0, 2, 100, 130), swing(series, 2, 3, 130, 112));
+        ElliottWaveAnalysisResult result = new ElliottWaveAnalysisResult(ElliottDegree.PRIMARY, List.of(), List.of(
+                new ElliottWaveAnalysisResult.BaseScenarioAssessment(nonDominantWaveOne, 0.90, 0.70, 0.88, List.of()),
+                new ElliottWaveAnalysisResult.BaseScenarioAssessment(dominantWaveOne, 0.80, 0.70, 0.82, List.of())),
+                List.of());
+
+        assertThat(result.rankedBaseScenariosForWindow(series, 0, 3, ScenarioType.IMPULSE, ElliottPhase.WAVE2, 2,
+                Boolean.TRUE, 1)).extracting(assessment -> assessment.scenario().id())
+                .containsExactly("dominant-wave1", "non-dominant-wave1");
+        assertThat(result.recommendedBaseScenarioForWindow(series, 0, 3, ScenarioType.IMPULSE, ElliottPhase.WAVE2, 2,
+                Boolean.TRUE, 1)).map(assessment -> assessment.scenario().id()).contains("dominant-wave1");
+    }
+
     private static ElliottAnalysisResult analysisResult() {
         ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(scenario()), 0);
         return new ElliottAnalysisResult(ElliottDegree.PRIMARY, 0, List.of(), List.of(), scenarios, Map.of(), null,
@@ -180,5 +201,53 @@ class ElliottWaveAnalysisResultTest {
             builder.bullishDirection(bullishDirection.booleanValue());
         }
         return builder.build();
+    }
+
+    private static ElliottScenario scenario(String id, double confidenceScore, ElliottPhase phase, ScenarioType type,
+            boolean bullishDirection, ElliottSwing... swings) {
+        BarSeries series = new MockBarSeriesBuilder().withName("analysis-result-window-test").build();
+        NumFactory numFactory = series.numFactory();
+        Num score = numFactory.numOf(confidenceScore);
+        ElliottConfidence confidence = new ElliottConfidence(score, score, score, score, score, score, "test");
+        return ElliottScenario.builder()
+                .id(id)
+                .currentPhase(phase)
+                .swings(List.of(swings))
+                .confidence(confidence)
+                .degree(ElliottDegree.PRIMARY)
+                .invalidationPrice(numFactory.numOf(95))
+                .type(type)
+                .startIndex(swings[0].fromIndex())
+                .bullishDirection(bullishDirection)
+                .build();
+    }
+
+    private static ElliottSwing swing(BarSeries series, int fromIndex, int toIndex, double fromPrice, double toPrice) {
+        return new ElliottSwing(fromIndex, toIndex, series.numFactory().numOf(fromPrice),
+                series.numFactory().numOf(toPrice), ElliottDegree.PRIMARY);
+    }
+
+    private static BarSeries anchoredWindowSeries() {
+        BarSeries series = new BaseBarSeriesBuilder().withName("anchored-window").build();
+        addBar(series, "2024-01-01T00:00:00Z", 100, 101, 99, 100);
+        addBar(series, "2024-01-02T00:00:00Z", 100, 120, 100, 118);
+        addBar(series, "2024-01-03T00:00:00Z", 118, 130, 117, 128);
+        addBar(series, "2024-01-04T00:00:00Z", 128, 129, 110, 112);
+        return series;
+    }
+
+    private static void addBar(BarSeries series, String endTimeUtc, double open, double high, double low,
+            double close) {
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse(endTimeUtc))
+                .openPrice(open)
+                .highPrice(high)
+                .lowPrice(low)
+                .closePrice(close)
+                .volume(1.0)
+                .amount(close)
+                .trades(1)
+                .build());
     }
 }

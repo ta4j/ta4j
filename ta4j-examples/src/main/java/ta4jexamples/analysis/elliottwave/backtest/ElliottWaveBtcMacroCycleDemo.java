@@ -96,7 +96,6 @@ public final class ElliottWaveBtcMacroCycleDemo {
     static final double DEFAULT_ACCEPTED_SEGMENT_SCORE = 0.64;
     static final int MAX_PIVOT_CANDIDATES = 12;
     static final int LABEL_CLUSTER_BAR_GAP = 18;
-    static final double[] CURRENT_CYCLE_START_FRACTIONS = { 0.18, 0.28, 0.38, 0.50, 0.62, 0.74, 0.86 };
     static final Color BULLISH_LEG_COLOR = new Color(0x66BB6A);
     static final Color BEARISH_LEG_COLOR = new Color(0xEF5350);
     static final Color BULLISH_WAVE_COLOR = new Color(0x81C784);
@@ -237,22 +236,23 @@ public final class ElliottWaveBtcMacroCycleDemo {
         Objects.requireNonNull(analysis, "analysis");
         Objects.requireNonNull(chartDirectory, "chartDirectory");
 
-        List<CurrentCycleCandidate> displayCandidates = selectDisplayCandidates(analysis.currentCycle().candidates(),
-                5);
+        List<ElliottWaveAnalysisResult.CurrentCycleCandidate> displayCandidates = selectDisplayCandidates(
+                analysis.currentCycle().candidates(), 5);
         List<LivePresetScenarioView> scenarioViews = buildLivePresetScenarioViews(displayCandidates);
         saveLegacyCompatibleScenarioCharts(series, scenarioViews, chartDirectory, ElliottDegree.CYCLE);
         return new LivePresetLegacyView(analysis.report(), scenarioViews);
     }
 
-    private static List<CurrentCycleCandidate> selectDisplayCandidates(List<CurrentCycleCandidate> candidates,
-            int max) {
+    private static List<ElliottWaveAnalysisResult.CurrentCycleCandidate> selectDisplayCandidates(
+            List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates, int max) {
         if (candidates == null || candidates.isEmpty() || max <= 0) {
             return List.of();
         }
 
-        List<CurrentCycleCandidate> selected = new ArrayList<>(Math.min(max, candidates.size()));
+        List<ElliottWaveAnalysisResult.CurrentCycleCandidate> selected = new ArrayList<>(
+                Math.min(max, candidates.size()));
         Set<String> seenScenarioIds = new HashSet<>();
-        for (CurrentCycleCandidate candidate : candidates) {
+        for (ElliottWaveAnalysisResult.CurrentCycleCandidate candidate : candidates) {
             String scenarioId = candidate.fit().scenario().id();
             if (!seenScenarioIds.add(scenarioId)) {
                 continue;
@@ -265,15 +265,18 @@ public final class ElliottWaveBtcMacroCycleDemo {
         return List.copyOf(selected);
     }
 
-    private static List<LivePresetScenarioView> buildLivePresetScenarioViews(List<CurrentCycleCandidate> candidates) {
+    private static List<LivePresetScenarioView> buildLivePresetScenarioViews(
+            List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates) {
         if (candidates.isEmpty()) {
             return List.of();
         }
 
-        double totalScore = candidates.stream().mapToDouble(CurrentCycleCandidate::totalScore).sum();
+        double totalScore = candidates.stream()
+                .mapToDouble(ElliottWaveAnalysisResult.CurrentCycleCandidate::totalScore)
+                .sum();
         List<LivePresetScenarioView> scenarioViews = new ArrayList<>(candidates.size());
         for (int index = 0; index < candidates.size(); index++) {
-            CurrentCycleCandidate candidate = candidates.get(index);
+            ElliottWaveAnalysisResult.CurrentCycleCandidate candidate = candidates.get(index);
             double probability = totalScore <= EPSILON ? 0.0 : candidate.totalScore() / totalScore;
             String label = index == 0 ? "BASE CASE" : "ALTERNATIVE " + index;
             String fileName = index == 0 ? livePresetChartBaseCaseFileName(candidate.fit().scenario())
@@ -323,7 +326,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     private static ChartPlan buildLegacyCompatibleLiveScenarioPlan(BarSeries series,
             LivePresetScenarioView scenarioView, String trendLabel, ElliottDegree degree) {
-        CurrentPhaseFit fit = scenarioView.candidate().fit();
+        ElliottWaveAnalysisResult.CurrentPhaseAssessment fit = scenarioView.candidate().fit();
         Color scenarioColor = fit.scenario().isBullish() ? BULLISH_WAVE_COLOR : BEARISH_WAVE_COLOR;
         BarSeriesLabelIndicator labels = new BarSeriesLabelIndicator(series,
                 buildWaveLabelsFromScenario(series, fit.scenario(), scenarioColor));
@@ -573,8 +576,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
         Objects.requireNonNull(currentCycle, "currentCycle");
 
         ChartWorkflow chartWorkflow = new ChartWorkflow();
-        CurrentPhaseFit primaryFit = currentCycle.primaryFit();
-        CurrentPhaseFit alternateFit = currentCycle.alternateFit();
+        ElliottWaveAnalysisResult.CurrentPhaseAssessment primaryFit = currentCycle.primaryFit();
+        ElliottWaveAnalysisResult.CurrentPhaseAssessment alternateFit = currentCycle.alternateFit();
         BarSeriesLabelIndicator primaryLabels = primaryFit == null ? new BarSeriesLabelIndicator(series, List.of())
                 : new BarSeriesLabelIndicator(series,
                         buildWaveLabelsFromScenario(series, primaryFit.scenario(), BULLISH_WAVE_COLOR));
@@ -789,354 +792,21 @@ public final class ElliottWaveBtcMacroCycleDemo {
         Objects.requireNonNull(profile, "profile");
         Objects.requireNonNull(historicalStatus, "historicalStatus");
 
-        List<CurrentCycleCandidate> candidates = discoverCurrentCycleCandidates(series, profile);
-        CurrentCycleCandidate primary = null;
-        CurrentCycleCandidate alternate = null;
-        for (CurrentCycleCandidate candidate : candidates) {
-            if (primary == null || candidate.compareTo(primary) < 0) {
-                if (primary != null && primary.fit().currentPhase() != candidate.fit().currentPhase()) {
-                    alternate = primary;
-                }
-                primary = candidate;
-                continue;
-            }
-            if ((alternate == null || candidate.compareTo(alternate) < 0)
-                    && (primary == null || candidate.fit().currentPhase() != primary.fit().currentPhase())) {
-                alternate = candidate;
-            }
-        }
-
-        int defaultStartIndex = seriesLowestLowIndex(series, series.getBeginIndex(), series.getEndIndex());
-        int startIndex = primary == null ? defaultStartIndex : primary.startIndex();
-        String primaryCount = primary == null ? "No current bullish count" : primary.fit().countLabel();
-        String alternateCount = alternate == null ? "" : alternate.fit().countLabel();
-        String currentWave = primary == null ? "" : primary.fit().currentPhase().name();
-        String invalidation = primary == null ? "" : formatNum(primary.fit().invalidationPrice());
+        ElliottWaveAnalysisRunner profileRunner = buildProfileRunner(profile);
+        ElliottWaveAnalysisResult.CurrentCycleAssessment assessment = profileRunner.analyzeCurrentCycle(series);
+        ElliottWaveAnalysisResult.CurrentPhaseAssessment primary = assessment.primary();
+        ElliottWaveAnalysisResult.CurrentPhaseAssessment alternate = assessment.alternate();
+        int startIndex = assessment.startIndex();
+        String primaryCount = primary == null ? "No current bullish count" : primary.countLabel();
+        String alternateCount = alternate == null ? "" : alternate.countLabel();
+        String currentWave = primary == null ? "" : primary.currentPhase().name();
+        String invalidation = primary == null ? "" : formatNum(primary.invalidationPrice());
         String startTimeUtc = series.getBar(startIndex).getEndTime().toString();
         String latestTimeUtc = series.getLastBar().getEndTime().toString();
         CurrentCycleSummary summary = new CurrentCycleSummary(startTimeUtc, latestTimeUtc, profile.id(),
                 historicalStatus, primaryCount, alternateCount, currentWave, invalidation,
-                primary == null ? 0.0 : primary.totalScore(), alternate == null ? 0.0 : alternate.totalScore(), "");
-        return new CurrentCycleAnalysis(summary, primary == null ? null : primary.fit(),
-                alternate == null ? null : alternate.fit(), candidates);
-    }
-
-    private static List<CurrentCycleCandidate> discoverCurrentCycleCandidates(BarSeries series,
-            MacroLogicProfile profile) {
-        int endIndex = series.getEndIndex();
-        double totalRange = segmentRange(series, series.getBeginIndex(), endIndex);
-        List<PivotCandidate> startCandidates = discoverCurrentCycleBottomCandidates(series, profile);
-        List<CurrentCycleCandidate> candidates = new ArrayList<>();
-        for (PivotCandidate startCandidate : startCandidates) {
-            int startIndex = startCandidate.barIndex();
-            if (endIndex - startIndex < Math.max(12, series.getBarCount() / 20)) {
-                continue;
-            }
-            double spanScore = clamp((endIndex - startIndex) / (double) Math.max(1, series.getBarCount() - 1), 0.0,
-                    1.0);
-            double advanceScore = clamp(
-                    (pivotPrice(series, endIndex, true).doubleValue() - startCandidate.price().doubleValue())
-                            / Math.max(EPSILON, totalRange),
-                    0.0, 1.0);
-            double startIntegrityScore = currentCycleStartIntegrityScore(series, startIndex, totalRange);
-            if (startIntegrityScore < 0.20) {
-                continue;
-            }
-            for (int phase = 1; phase <= 5; phase++) {
-                Optional<CurrentPhaseFit> fit = fitCurrentBullishPhase(series, startIndex, endIndex, profile, phase);
-                if (fit.isEmpty()) {
-                    continue;
-                }
-                CurrentPhaseFit phaseFit = fit.orElseThrow();
-                if (phaseFit.fitScore() < 0.25) {
-                    continue;
-                }
-                double phaseProgressScore = phase / 5.0;
-                double totalScore = clamp(
-                        (0.54 * phaseFit.fitScore()) + (0.14 * startCandidate.normalizedScore()) + (0.10 * spanScore)
-                                + (0.10 * advanceScore) + (0.04 * phaseProgressScore) + (0.08 * startIntegrityScore),
-                        0.0, 1.0);
-                String rationale = "Series-native current-cycle anchor at " + series.getBar(startIndex).getEndTime()
-                        + " using " + phaseFit.countLabel();
-                candidates.add(new CurrentCycleCandidate(startIndex, startCandidate.price(), phaseFit,
-                        startCandidate.normalizedScore(), totalScore, rationale));
-            }
-        }
-        if (candidates.isEmpty()) {
-            int fallbackStartIndex = seriesLowestLowIndex(series, series.getBeginIndex(), endIndex);
-            for (int phase = 1; phase <= 5; phase++) {
-                Optional<CurrentPhaseFit> fit = fitCurrentBullishPhase(series, fallbackStartIndex, endIndex, profile,
-                        phase);
-                fit.ifPresent(currentPhaseFit -> candidates.add(
-                        new CurrentCycleCandidate(fallbackStartIndex, pivotPrice(series, fallbackStartIndex, false),
-                                currentPhaseFit, 1.0, currentPhaseFit.fitScore(), "Fallback current-cycle anchor")));
-            }
-        }
-        candidates.sort(null);
-        return List.copyOf(candidates);
-    }
-
-    private static double currentCycleStartIntegrityScore(BarSeries series, int startIndex, double totalRange) {
-        double startPrice = pivotPrice(series, startIndex, false).doubleValue();
-        double lowestAfterStart = startPrice;
-        for (int index = startIndex; index <= series.getEndIndex(); index++) {
-            lowestAfterStart = Math.min(lowestAfterStart, series.getBar(index).getLowPrice().doubleValue());
-        }
-        if (lowestAfterStart >= startPrice) {
-            return 1.0;
-        }
-        double breach = (startPrice - lowestAfterStart) / Math.max(EPSILON, totalRange);
-        return clamp(1.0 - (breach / 0.08), 0.0, 1.0);
-    }
-
-    private static List<PivotCandidate> discoverCurrentCycleBottomCandidates(BarSeries series,
-            MacroLogicProfile profile) {
-        int startIndex = series.getBeginIndex();
-        int endIndex = series.getEndIndex();
-        Map<Integer, CandidateAccumulator> accumulators = new LinkedHashMap<>();
-        for (double expectedFraction : CURRENT_CYCLE_START_FRACTIONS) {
-            for (PivotCandidate candidate : collectPivotCandidates(series, startIndex, endIndex, false,
-                    expectedFraction, profile)) {
-                accumulators
-                        .computeIfAbsent(candidate.barIndex(),
-                                ignored -> new CandidateAccumulator(candidate.barIndex(), candidate.price()))
-                        .add(candidate.rawScore());
-            }
-        }
-
-        seedCurrentCycleBottomCandidate(series, accumulators, seriesLowestLowIndex(series, startIndex, endIndex), 12.0);
-        int trailingHalfStart = startIndex + ((endIndex - startIndex) / 2);
-        seedCurrentCycleBottomCandidate(series, accumulators, seriesLowestLowIndex(series, trailingHalfStart, endIndex),
-                14.0);
-        int trailingThirdStart = startIndex + (((endIndex - startIndex) * 2) / 3);
-        seedCurrentCycleBottomCandidate(series, accumulators,
-                seriesLowestLowIndex(series, trailingThirdStart, endIndex), 16.0);
-
-        List<PivotCandidate> candidates = accumulators.values()
-                .stream()
-                .map(accumulator -> accumulator.toCandidate(startIndex, endIndex))
-                .sorted(Comparator.comparingDouble(PivotCandidate::rawScore)
-                        .reversed()
-                        .thenComparingInt(PivotCandidate::barIndex))
-                .limit(Math.max(MAX_PIVOT_CANDIDATES, 16))
-                .sorted(Comparator.comparingInt(PivotCandidate::barIndex))
-                .toList();
-        if (!candidates.isEmpty()) {
-            return List.copyOf(candidates);
-        }
-        int lowestIndex = seriesLowestLowIndex(series, startIndex, endIndex);
-        return List.of(new PivotCandidate(lowestIndex, pivotPrice(series, lowestIndex, false), 1.0, 1.0));
-    }
-
-    private static void seedCurrentCycleBottomCandidate(BarSeries series,
-            Map<Integer, CandidateAccumulator> accumulators, int barIndex, double score) {
-        if (barIndex < series.getBeginIndex() || barIndex > series.getEndIndex()) {
-            return;
-        }
-        accumulators
-                .computeIfAbsent(barIndex,
-                        ignored -> new CandidateAccumulator(barIndex, pivotPrice(series, barIndex, false)))
-                .add(score);
-    }
-
-    private static int seriesLowestLowIndex(BarSeries series, int startIndex, int endIndex) {
-        int bestIndex = clampIndex(startIndex, series.getBeginIndex(), series.getEndIndex());
-        double bestPrice = Double.POSITIVE_INFINITY;
-        int normalizedEnd = clampIndex(endIndex, series.getBeginIndex(), series.getEndIndex());
-        for (int index = bestIndex; index <= normalizedEnd; index++) {
-            double candidate = series.getBar(index).getLowPrice().doubleValue();
-            if (candidate < bestPrice) {
-                bestPrice = candidate;
-                bestIndex = index;
-            }
-        }
-        return bestIndex;
-    }
-
-    private static Optional<CurrentPhaseFit> fitCurrentBullishPhase(BarSeries series, int startIndex, int endIndex,
-            MacroLogicProfile profile, int phase) {
-        if (phase < 1 || phase > 5 || endIndex <= startIndex) {
-            return Optional.empty();
-        }
-        if (phase == 1) {
-            Num startPrice = pivotPrice(series, startIndex, false);
-            Num endPrice = pivotPrice(series, endIndex, true);
-            if (endPrice.doubleValue() <= startPrice.doubleValue()) {
-                return Optional.empty();
-            }
-            ElliottScenario scenario = buildPartialImpulseScenario(series, startIndex, List.of(), endIndex,
-                    ElliottPhase.WAVE1);
-            double fitScore = clamp((endPrice.doubleValue() - startPrice.doubleValue())
-                    / Math.max(EPSILON, segmentRange(series, startIndex, endIndex)), 0.0, 1.0);
-            return Optional.of(
-                    new CurrentPhaseFit(scenario, ElliottPhase.WAVE1, fitScore, startPrice, "Bullish 1", startPrice));
-        }
-
-        boolean[] internalHighPivots = switch (phase) {
-        case 2 -> new boolean[] { true };
-        case 3 -> new boolean[] { true, false };
-        case 4 -> new boolean[] { true, false, true };
-        case 5 -> new boolean[] { true, false, true, false };
-        default -> throw new IllegalArgumentException("Unsupported phase " + phase);
-        };
-        double[] fractions = Arrays.copyOf(profile.impulseFractions(), internalHighPivots.length);
-        List<List<PivotCandidate>> candidatesBySlot = collectSlotCandidates(series, startIndex, endIndex, fractions,
-                internalHighPivots, profile);
-        List<PivotCandidate> bestPath = searchBestBullishImpulsePath(series, candidatesBySlot, startIndex, endIndex,
-                minimumSwingGap(startIndex, endIndex, phase), phase);
-        if (bestPath.isEmpty()) {
-            return Optional.empty();
-        }
-        List<Double> prices = buildBullishImpulsePricePath(series, startIndex, bestPath, endIndex, phase);
-        if (!isValidBullishImpulseProgression(prices)
-                || !hasValidBullishImpulseAnchors(series, startIndex, bestPath, endIndex, phase)) {
-            return Optional.empty();
-        }
-
-        ElliottPhase currentPhase = switch (phase) {
-        case 2 -> ElliottPhase.WAVE2;
-        case 3 -> ElliottPhase.WAVE3;
-        case 4 -> ElliottPhase.WAVE4;
-        case 5 -> ElliottPhase.WAVE5;
-        default -> ElliottPhase.WAVE1;
-        };
-        ElliottScenario scenario = buildPartialImpulseScenario(series, startIndex, bestPath, endIndex, currentPhase);
-        double fitScore = scorePartialImpulse(series, startIndex, bestPath, endIndex, profile, phase);
-        Num invalidationPrice = switch (phase) {
-        case 2 -> pivotPrice(series, startIndex, false);
-        case 3 -> bestPath.get(1).price();
-        case 4 -> bestPath.get(0).price();
-        case 5 -> bestPath.getLast().price();
-        default -> pivotPrice(series, startIndex, false);
-        };
-        return Optional.of(new CurrentPhaseFit(scenario, currentPhase, fitScore, pivotPrice(series, startIndex, false),
-                bullishCountLabel(phase), invalidationPrice));
-    }
-
-    private static double scorePartialImpulse(BarSeries series, int startIndex, List<PivotCandidate> path, int endIndex,
-            MacroLogicProfile profile, int phase) {
-        List<Double> prices = buildBullishImpulsePricePath(series, startIndex, path, endIndex, phase);
-        if (!isValidBullishImpulseProgression(prices)
-                || !hasValidBullishImpulseAnchors(series, startIndex, path, endIndex, phase)) {
-            return 0.0;
-        }
-        List<Integer> indices = new ArrayList<>();
-        indices.add(startIndex);
-        for (PivotCandidate candidate : path) {
-            indices.add(candidate.barIndex());
-        }
-        indices.add(endIndex);
-
-        double spacing = durationBalanceScore(indices);
-        double strength = average(path.stream().mapToDouble(PivotCandidate::normalizedScore).toArray(), 0.50);
-
-        double structure;
-        double rules;
-        if (phase == 2) {
-            double wave1 = prices.get(1) - prices.get(0);
-            double wave2Retrace = (prices.get(1) - prices.get(2)) / Math.max(EPSILON, wave1);
-            structure = boundedScore(wave2Retrace, 0.20, 0.95 + (profile.impulseRelaxation() * 0.35), 0.75);
-            rules = prices.get(2) > prices.get(0) ? 1.0 : 0.35 + (profile.impulseRelaxation() * 0.45);
-        } else if (phase == 3) {
-            double wave1 = prices.get(1) - prices.get(0);
-            double wave3 = prices.get(3) - prices.get(2);
-            structure = boundedScore(wave3 / Math.max(EPSILON, wave1), 0.80, 4.00, 2.25);
-            rules = prices.get(2) > prices.get(0) ? 1.0 : 0.35 + (profile.impulseRelaxation() * 0.45);
-        } else if (phase == 4) {
-            double wave3 = prices.get(3) - prices.get(2);
-            double wave4Retrace = (prices.get(3) - prices.get(4)) / Math.max(EPSILON, wave3);
-            structure = boundedScore(wave4Retrace, 0.10, 0.55 + (profile.impulseRelaxation() * 0.25), 0.70);
-            rules = prices.get(4) > prices.get(1) ? 1.0 : 0.30 + (profile.impulseRelaxation() * 0.60);
-        } else {
-            double wave1 = prices.get(1) - prices.get(0);
-            double wave3 = prices.get(3) - prices.get(2);
-            double wave5 = prices.get(5) - prices.get(4);
-            structure = average(new double[] { boundedScore(wave3 / Math.max(EPSILON, wave1), 0.90, 4.50, 2.25),
-                    boundedScore(wave5 / Math.max(EPSILON, wave1), 0.20, 3.50, 2.25) }, 0.0);
-            rules = average(
-                    new double[] { prices.get(2) > prices.get(0) ? 1.0 : 0.35 + (profile.impulseRelaxation() * 0.45),
-                            prices.get(4) > prices.get(1) ? 1.0 : 0.30 + (profile.impulseRelaxation() * 0.60),
-                            wave3 >= Math.min(wave1, wave5) ? 1.0 : 0.30 + (profile.impulseRelaxation() * 0.50) },
-                    0.0);
-        }
-        return weightedScore(structure, rules, spacing, strength, profile);
-    }
-
-    static List<Double> buildBullishImpulsePricePath(BarSeries series, int startIndex, List<PivotCandidate> path,
-            int endIndex, int phase) {
-        List<Double> prices = new ArrayList<>();
-        prices.add(pivotPrice(series, startIndex, false).doubleValue());
-        for (PivotCandidate candidate : path) {
-            prices.add(candidate.price().doubleValue());
-        }
-        prices.add(pivotPrice(series, endIndex, phase % 2 == 1).doubleValue());
-        return List.copyOf(prices);
-    }
-
-    static boolean isValidBullishImpulseProgression(List<Double> prices) {
-        if (prices == null || prices.size() < 2) {
-            return false;
-        }
-        for (int index = 1; index < prices.size(); index++) {
-            double previous = prices.get(index - 1);
-            double current = prices.get(index);
-            if (index % 2 == 1) {
-                if (!(current > previous)) {
-                    return false;
-                }
-            } else if (!(current < previous)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    static boolean hasValidBullishImpulseAnchors(BarSeries series, int startIndex, List<PivotCandidate> path,
-            int endIndex, int phase) {
-        return bullishImpulseAnchorDominanceScore(series, startIndex, path, endIndex, phase) >= 0.95;
-    }
-
-    static double bullishImpulseAnchorDominanceScore(BarSeries series, int startIndex, List<PivotCandidate> path,
-            int endIndex, int phase) {
-        List<Integer> indices = buildBullishImpulseIndices(startIndex, path, endIndex);
-        if (indices.size() < 2) {
-            return 0.0;
-        }
-        boolean[] highPivots = buildBullishImpulsePivotRoles(phase, path.size());
-        double total = 0.0;
-        for (int pointIndex = 0; pointIndex < indices.size(); pointIndex++) {
-            int pivotIndex = indices.get(pointIndex);
-            int spanStart = pointIndex == 0 ? indices.getFirst() : indices.get(pointIndex - 1);
-            int spanEnd = pointIndex == indices.size() - 1 ? indices.getLast() : indices.get(pointIndex + 1);
-            boolean highPivot = highPivots[pointIndex];
-            double pivotPrice = highPivot ? series.getBar(pivotIndex).getHighPrice().doubleValue()
-                    : series.getBar(pivotIndex).getLowPrice().doubleValue();
-            double spanExtreme = highPivot ? highestHigh(series, spanStart, spanEnd)
-                    : lowestLow(series, spanStart, spanEnd);
-            double spanRange = Math.max(EPSILON, segmentRange(series, spanStart, spanEnd));
-            total += clamp(1.0 - (Math.abs(spanExtreme - pivotPrice) / spanRange), 0.0, 1.0);
-        }
-        return total / indices.size();
-    }
-
-    private static List<Integer> buildBullishImpulseIndices(int startIndex, List<PivotCandidate> path, int endIndex) {
-        List<Integer> indices = new ArrayList<>(path.size() + 2);
-        indices.add(startIndex);
-        for (PivotCandidate candidate : path) {
-            indices.add(candidate.barIndex());
-        }
-        indices.add(endIndex);
-        return List.copyOf(indices);
-    }
-
-    private static boolean[] buildBullishImpulsePivotRoles(int phase, int pathSize) {
-        boolean[] roles = new boolean[pathSize + 2];
-        roles[0] = false;
-        for (int index = 1; index <= pathSize; index++) {
-            roles[index] = index % 2 == 1;
-        }
-        roles[roles.length - 1] = phase % 2 == 1;
-        return roles;
+                primary == null ? 0.0 : primary.fitScore(), alternate == null ? 0.0 : alternate.fitScore(), "");
+        return new CurrentCycleAnalysis(summary, primary, alternate, assessment.candidates());
     }
 
     private static Optional<SegmentScenarioFit> fitSegment(BarSeries series, LegSegment legSegment,
@@ -1234,11 +904,11 @@ public final class ElliottWaveBtcMacroCycleDemo {
         ElliottPhase expectedPhase = bullish ? ElliottPhase.WAVE5 : ElliottPhase.CORRECTIVE_C;
         int expectedWaveCount = bullish ? 5 : 3;
         Boolean expectedDirection = bullish ? Boolean.TRUE : Boolean.FALSE;
-        for (ElliottWaveAnalysisResult.BaseScenarioAssessment assessment : analysis.rankedBaseScenariosForSpan(
-                startIndex, endIndex, expectedType, expectedPhase, expectedWaveCount, expectedDirection,
+        for (ElliottWaveAnalysisResult.WindowScenarioAssessment assessment : analysis.rankedBaseScenariosForWindow(
+                series, startIndex, endIndex, expectedType, expectedPhase, expectedWaveCount, expectedDirection,
                 MAX_CORE_ANCHOR_DRIFT_BARS)) {
-            SegmentScenarioFit fit = fitFromCoreAssessment(legSegment, profile, assessment.scenario(), assessment,
-                    bullish, startIndex, endIndex);
+            SegmentScenarioFit fit = fitFromCoreAssessment(legSegment, profile, assessment, bullish, startIndex,
+                    endIndex);
             if (fit.accepted()) {
                 return Optional.of(fit);
             }
@@ -1250,8 +920,9 @@ public final class ElliottWaveBtcMacroCycleDemo {
     }
 
     private static SegmentScenarioFit fitFromCoreAssessment(LegSegment legSegment, MacroLogicProfile profile,
-            ElliottScenario scenario, ElliottWaveAnalysisResult.BaseScenarioAssessment assessment, boolean bullish,
-            int startIndex, int endIndex) {
+            ElliottWaveAnalysisResult.WindowScenarioAssessment assessment, boolean bullish, int startIndex,
+            int endIndex) {
+        ElliottScenario scenario = assessment.scenario();
         ElliottConfidence confidence = scenario.confidence();
         int startGapBars = Math.abs(scenario.swings().getFirst().fromIndex() - startIndex);
         int endGapBars = Math.abs(scenario.swings().getLast().toIndex() - endIndex);
@@ -1260,17 +931,16 @@ public final class ElliottWaveBtcMacroCycleDemo {
         double endAlignment = alignmentScore(scenario.swings().getLast().toIndex(), endIndex, span);
         double structureScore = average(new double[] { safeConfidenceScore(confidence.fibonacciScore()),
                 safeConfidenceScore(confidence.timeProportionScore()),
-                safeConfidenceScore(confidence.completenessScore()), startAlignment, endAlignment }, 0.0);
-        double ruleScore = average(
-                new double[] { safeConfidenceScore(confidence.alternationScore()),
-                        safeConfidenceScore(confidence.channelScore()), scenario.expectsCompletion() ? 1.0 : 0.55 },
-                0.0);
-        double spacingScore = average(new double[] { scenarioSpacingScore(scenario), startAlignment, endAlignment },
-                0.0);
-        double anchorFitScore = average(new double[] { startAlignment, endAlignment }, 0.0);
+                safeConfidenceScore(confidence.completenessScore()), assessment.anchorFitScore(),
+                assessment.pivotDominanceScore() }, 0.0);
+        double ruleScore = average(new double[] { safeConfidenceScore(confidence.alternationScore()),
+                safeConfidenceScore(confidence.channelScore()), assessment.progressionScore() }, 0.0);
+        double spacingScore = average(new double[] { scenarioSpacingScore(scenario), assessment.anchorFitScore(),
+                assessment.pivotDominanceScore() }, 0.0);
         double strengthScore = average(new double[] { assessment.confidenceScore(), assessment.crossDegreeScore(),
                 assessment.compositeScore(), safeConfidenceScore(confidence.completenessScore()) }, 0.0);
-        double fitScore = average(new double[] { assessment.compositeScore(), strengthScore, anchorFitScore }, 0.0);
+        double fitScore = average(
+                new double[] { assessment.compositeScore(), strengthScore, assessment.windowFitScore() }, 0.0);
         boolean accepted = fitScore >= Math.max(DEFAULT_ACCEPTED_SEGMENT_SCORE, profile.acceptanceThreshold())
                 && ruleScore >= 0.30 && startAlignment >= 0.35 && endAlignment >= 0.80
                 && startGapBars <= MAX_CORE_ANCHOR_DRIFT_BARS && endGapBars <= MAX_CORE_ANCHOR_DRIFT_BARS;
@@ -1364,31 +1034,6 @@ public final class ElliottWaveBtcMacroCycleDemo {
         BestPathHolder holder = new BestPathHolder();
         searchSegmentPaths(candidatesBySlot, 0, startIndex, endIndex, minimumGap, new ArrayList<>(), candidates -> {
             double score = candidates.stream().mapToDouble(PivotCandidate::normalizedScore).sum();
-            if (score > holder.score) {
-                holder.score = score;
-                holder.best = List.copyOf(candidates);
-            }
-        });
-        return holder.best;
-    }
-
-    private static List<PivotCandidate> searchBestBullishImpulsePath(BarSeries series,
-            List<List<PivotCandidate>> candidatesBySlot, int startIndex, int endIndex, int minimumGap, int phase) {
-        final class BestPathHolder {
-            private List<PivotCandidate> best = List.of();
-            private double score = Double.NEGATIVE_INFINITY;
-        }
-        BestPathHolder holder = new BestPathHolder();
-        searchSegmentPaths(candidatesBySlot, 0, startIndex, endIndex, minimumGap, new ArrayList<>(), candidates -> {
-            List<Double> prices = buildBullishImpulsePricePath(series, startIndex, candidates, endIndex, phase);
-            if (!isValidBullishImpulseProgression(prices)) {
-                return;
-            }
-            double dominanceScore = bullishImpulseAnchorDominanceScore(series, startIndex, candidates, endIndex, phase);
-            if (dominanceScore < 0.95) {
-                return;
-            }
-            double score = candidates.stream().mapToDouble(PivotCandidate::normalizedScore).sum() + dominanceScore;
             if (score > holder.score) {
                 holder.score = score;
                 holder.best = List.copyOf(candidates);
@@ -1727,33 +1372,6 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 .invalidationPrice(candidates.get(1).price())
                 .primaryTarget(endPrice)
                 .type(scenarioType)
-                .startIndex(startIndex)
-                .build();
-    }
-
-    private static ElliottScenario buildPartialImpulseScenario(BarSeries series, int startIndex,
-            List<PivotCandidate> path, int endIndex, ElliottPhase currentPhase) {
-        List<ElliottSwing> swings = new ArrayList<>();
-        int fromIndex = startIndex;
-        Num fromPrice = pivotPrice(series, startIndex, false);
-        for (PivotCandidate candidate : path) {
-            swings.add(new ElliottSwing(fromIndex, candidate.barIndex(), fromPrice, candidate.price(),
-                    ElliottDegree.PRIMARY));
-            fromIndex = candidate.barIndex();
-            fromPrice = candidate.price();
-        }
-        boolean endHighPivot = currentPhase.impulseIndex() % 2 == 1;
-        Num endPrice = pivotPrice(series, endIndex, endHighPivot);
-        swings.add(new ElliottSwing(fromIndex, endIndex, fromPrice, endPrice, ElliottDegree.PRIMARY));
-        return ElliottScenario.builder()
-                .id("btc-current-" + currentPhase.name().toLowerCase() + "-" + startIndex + "-" + endIndex)
-                .currentPhase(currentPhase)
-                .swings(List.copyOf(swings))
-                .confidence(confidenceFor(series, List.copyOf(swings), currentPhase))
-                .degree(ElliottDegree.PRIMARY)
-                .invalidationPrice(pivotPrice(series, startIndex, false))
-                .primaryTarget(endPrice)
-                .type(ScenarioType.IMPULSE)
                 .startIndex(startIndex)
                 .build();
     }
@@ -2370,7 +1988,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
     }
 
     private record LivePresetScenarioView(String label, String fileName, double probability,
-            CurrentCycleCandidate candidate) {
+            ElliottWaveAnalysisResult.CurrentCycleCandidate candidate) {
 
         LivePresetScenarioView {
             Objects.requireNonNull(label, "label");
@@ -2437,8 +2055,10 @@ public final class ElliottWaveBtcMacroCycleDemo {
         }
     }
 
-    record CurrentCycleAnalysis(CurrentCycleSummary summary, CurrentPhaseFit primaryFit, CurrentPhaseFit alternateFit,
-            List<CurrentCycleCandidate> candidates) {
+    record CurrentCycleAnalysis(CurrentCycleSummary summary,
+            ElliottWaveAnalysisResult.CurrentPhaseAssessment primaryFit,
+            ElliottWaveAnalysisResult.CurrentPhaseAssessment alternateFit,
+            List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates) {
 
         CurrentCycleAnalysis {
             Objects.requireNonNull(summary, "summary");
@@ -2452,8 +2072,9 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     record MacroStudy(MacroProfileEvaluation selectedProfile, List<MacroProfileEvaluation> evaluations,
             List<ProfileScoreSummary> profileScores, List<DirectionalCycleSummary> cycles,
-            List<HypothesisResult> hypotheses, CurrentCycleSummary currentCycle, CurrentPhaseFit currentPrimaryFit,
-            CurrentPhaseFit currentAlternateFit) {
+            List<HypothesisResult> hypotheses, CurrentCycleSummary currentCycle,
+            ElliottWaveAnalysisResult.CurrentPhaseAssessment currentPrimaryFit,
+            ElliottWaveAnalysisResult.CurrentPhaseAssessment currentAlternateFit) {
 
         MacroStudy {
             Objects.requireNonNull(selectedProfile, "selectedProfile");
@@ -2541,38 +2162,6 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
         boolean eyeballPass() {
             return accepted;
-        }
-    }
-
-    record CurrentPhaseFit(ElliottScenario scenario, ElliottPhase currentPhase, double fitScore, Num startPrice,
-            String countLabel, Num invalidationPrice) implements Comparable<CurrentPhaseFit> {
-
-        @Override
-        public int compareTo(CurrentPhaseFit other) {
-            return Double.compare(other.fitScore, fitScore);
-        }
-    }
-
-    record CurrentCycleCandidate(int startIndex, Num startPrice, CurrentPhaseFit fit, double anchorScore,
-            double totalScore, String rationale) implements Comparable<CurrentCycleCandidate> {
-
-        CurrentCycleCandidate {
-            Objects.requireNonNull(startPrice, "startPrice");
-            Objects.requireNonNull(fit, "fit");
-            Objects.requireNonNull(rationale, "rationale");
-        }
-
-        @Override
-        public int compareTo(CurrentCycleCandidate other) {
-            int totalComparison = Double.compare(other.totalScore, totalScore);
-            if (totalComparison != 0) {
-                return totalComparison;
-            }
-            int fitComparison = fit.compareTo(other.fit);
-            if (fitComparison != 0) {
-                return fitComparison;
-            }
-            return Integer.compare(startIndex, other.startIndex);
         }
     }
 

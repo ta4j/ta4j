@@ -423,6 +423,54 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void analyzeCurrentCycleReturnsAlternatingAnchoredBullishCandidate() {
+        BarSeries series = buildCurrentCycleSeries();
+        NumFactory factory = series.numFactory();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        ElliottWaveAnalysisResult.CurrentCycleAssessment result = analysis.analyzeCurrentCycle(series);
+
+        assertThat(result.primary()).isNotNull();
+        assertThat(result.primary().currentPhase()).isEqualTo(ElliottPhase.WAVE3);
+        assertThat(result.startIndex()).isEqualTo(series.getBeginIndex());
+        assertThat(result.candidates()).isNotEmpty();
+        ElliottScenario scenario = result.primary().scenario();
+        assertThat(scenario.swings()).hasSize(3);
+        assertThat(scenario.swings().getFirst().fromIndex()).isEqualTo(series.getBeginIndex());
+        assertThat(scenario.swings().getLast().toIndex()).isEqualTo(series.getEndIndex());
+        for (int index = 1; index < scenario.swings().size(); index++) {
+            ElliottSwing previous = scenario.swings().get(index - 1);
+            ElliottSwing current = scenario.swings().get(index);
+            assertThat(previous.isRising()).isNotEqualTo(current.isRising());
+            assertThat(previous.toIndex()).isEqualTo(current.fromIndex());
+            assertThat(previous.toPrice()).isEqualByComparingTo(current.fromPrice());
+        }
+    }
+
+    @Test
+    void analyzeCurrentCycleRejectsWaveFiveWhenTerminalHighIsNotDominant() {
+        BarSeries series = buildMalformedWaveFiveSeries();
+        NumFactory factory = series.numFactory();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> malformedWaveFiveSnapshot(window, factory))
+                .build();
+
+        ElliottWaveAnalysisResult.CurrentCycleAssessment result = analysis.analyzeCurrentCycle(series);
+
+        assertThat(result.primary()).isNotNull();
+        assertThat(result.primary().currentPhase()).isEqualTo(ElliottPhase.WAVE4);
+        assertThat(result.candidates()).noneMatch(candidate -> candidate.fit().currentPhase() == ElliottPhase.WAVE5);
+    }
+
+    @Test
     void logicProfileAppliesDefaultBaseConfidenceWeightWhenNotOverridden() throws Exception {
         ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
                 .degree(ElliottDegree.PRIMARY)
@@ -542,6 +590,96 @@ class ElliottWaveAnalysisRunnerTest {
                 .invalidationPrice(invalidationPrice)
                 .type(ScenarioType.IMPULSE)
                 .build();
+    }
+
+    private ElliottAnalysisResult currentCycleSnapshot(final BarSeries series, final NumFactory factory) {
+        if (series.getBarCount() < 10) {
+            ElliottScenarioSet empty = ElliottScenarioSet.empty(series.getEndIndex());
+            return new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), List.of(), List.of(), empty,
+                    Map.of(), null, empty.trendBias());
+        }
+
+        List<ElliottSwing> swings = List.of(
+                new ElliottSwing(0, 4, factory.numOf(100), factory.numOf(180), ElliottDegree.PRIMARY),
+                new ElliottSwing(4, 7, factory.numOf(180), factory.numOf(140), ElliottDegree.PRIMARY),
+                new ElliottSwing(7, 9, factory.numOf(140), factory.numOf(210), ElliottDegree.PRIMARY));
+        ElliottScenario wave3 = scenario(factory, "current-wave-3", ElliottPhase.WAVE3, 0.86, swings,
+                factory.numOf(100), 0.82);
+        ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(wave3), series.getEndIndex());
+        return new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), swings, swings, scenarios,
+                Map.of(), null, scenarios.trendBias());
+    }
+
+    private ElliottAnalysisResult malformedWaveFiveSnapshot(final BarSeries series, final NumFactory factory) {
+        if (series.getBarCount() < 10) {
+            ElliottScenarioSet empty = ElliottScenarioSet.empty(series.getEndIndex());
+            return new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), List.of(), List.of(), empty,
+                    Map.of(), null, empty.trendBias());
+        }
+
+        List<ElliottSwing> waveFourSwings = List.of(
+                new ElliottSwing(0, 2, factory.numOf(90), factory.numOf(180), ElliottDegree.PRIMARY),
+                new ElliottSwing(2, 4, factory.numOf(180), factory.numOf(120), ElliottDegree.PRIMARY),
+                new ElliottSwing(4, 7, factory.numOf(120), factory.numOf(250), ElliottDegree.PRIMARY),
+                new ElliottSwing(7, 9, factory.numOf(250), factory.numOf(130), ElliottDegree.PRIMARY));
+        ElliottScenario waveFour = scenario(factory, "current-wave-4", ElliottPhase.WAVE4, 0.86, waveFourSwings,
+                factory.numOf(90), 0.84);
+
+        List<ElliottSwing> malformedWaveFiveSwings = List.of(
+                new ElliottSwing(0, 2, factory.numOf(90), factory.numOf(180), ElliottDegree.PRIMARY),
+                new ElliottSwing(2, 4, factory.numOf(180), factory.numOf(120), ElliottDegree.PRIMARY),
+                new ElliottSwing(4, 7, factory.numOf(120), factory.numOf(250), ElliottDegree.PRIMARY),
+                new ElliottSwing(7, 8, factory.numOf(250), factory.numOf(160), ElliottDegree.PRIMARY),
+                new ElliottSwing(8, 9, factory.numOf(160), factory.numOf(170), ElliottDegree.PRIMARY));
+        ElliottScenario malformedWaveFive = scenario(factory, "malformed-wave-5", ElliottPhase.WAVE5, 0.95,
+                malformedWaveFiveSwings, factory.numOf(90), 0.95);
+
+        ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(malformedWaveFive, waveFour),
+                series.getEndIndex());
+        return new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), malformedWaveFiveSwings,
+                malformedWaveFiveSwings, scenarios, Map.of(), null, scenarios.trendBias());
+    }
+
+    private BarSeries buildCurrentCycleSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("CurrentCycle").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2024-06-01T00:00:00Z");
+        double[][] bars = { { 102, 110, 100, 108 }, { 108, 125, 104, 122 }, { 122, 142, 118, 138 },
+                { 138, 162, 132, 156 }, { 156, 180, 150, 175 }, { 175, 176, 160, 164 }, { 164, 168, 150, 152 },
+                { 152, 162, 140, 145 }, { 145, 188, 160, 182 }, { 182, 210, 190, 205 } };
+        for (int index = 0; index < bars.length; index++) {
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(bars[index][0])
+                    .highPrice(bars[index][1])
+                    .lowPrice(bars[index][2])
+                    .closePrice(bars[index][3])
+                    .volume(1_000)
+                    .add();
+        }
+        return series;
+    }
+
+    private BarSeries buildMalformedWaveFiveSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("MalformedWaveFive").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2024-07-01T00:00:00Z");
+        double[][] bars = { { 92, 100, 90, 96 }, { 96, 150, 100, 145 }, { 145, 180, 140, 172 }, { 172, 170, 130, 138 },
+                { 138, 150, 120, 128 }, { 128, 200, 150, 192 }, { 192, 230, 180, 225 }, { 225, 250, 210, 240 },
+                { 240, 200, 160, 168 }, { 168, 170, 130, 160 } };
+        for (int index = 0; index < bars.length; index++) {
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(bars[index][0])
+                    .highPrice(bars[index][1])
+                    .lowPrice(bars[index][2])
+                    .closePrice(bars[index][3])
+                    .volume(1_000)
+                    .add();
+        }
+        return series;
     }
 
 }

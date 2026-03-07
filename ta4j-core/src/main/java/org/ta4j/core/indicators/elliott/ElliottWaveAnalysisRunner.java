@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
 
 import org.ta4j.core.Bar;
@@ -89,6 +90,15 @@ public final class ElliottWaveAnalysisRunner {
     private static final int WINDOW_ANCHOR_SNAP_MIN_BARS = 8;
     private static final int WINDOW_ANCHOR_SNAP_MAX_BARS = 60;
     private static final double WINDOW_ANCHOR_SNAP_FRACTION = 0.15;
+    private static final int CURRENT_CYCLE_MIN_WINDOW_BARS = 12;
+    private static final double CURRENT_CYCLE_MIN_WINDOW_FRACTION = 0.05;
+    private static final int CURRENT_CYCLE_START_CANDIDATE_LIMIT = 16;
+    private static final int CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS = 3;
+    private static final double CURRENT_CYCLE_MIN_PIVOT_DOMINANCE = 0.55;
+    private static final double CURRENT_CYCLE_MIN_TERMINAL_DOMINANCE = 0.75;
+    private static final double CURRENT_CYCLE_FIT_SCORE_WEIGHT = 0.75;
+    private static final double CURRENT_CYCLE_DOMINANCE_WEIGHT = 0.15;
+    private static final double CURRENT_CYCLE_TERMINAL_WEIGHT = 0.10;
 
     private static final double DEFAULT_BASE_CONFIDENCE_WEIGHT = 0.7;
     private static final double DEFAULT_NEUTRAL_CROSS_DEGREE_SCORE = 0.5;
@@ -279,6 +289,108 @@ public final class ElliottWaveAnalysisRunner {
     }
 
     /**
+     * Discovers and ranks the current bullish cycle directly from the supplied
+     * series.
+     *
+     * <p>
+     * The runner uses its processed swing map to seed plausible cycle lows, then
+     * analyzes anchored windows ending at the live right edge to rank bullish
+     * {@code 1-5} progressions. This keeps live current-cycle fitting on the same
+     * core path as anchored historical window fitting instead of leaving that logic
+     * in example-layer code.
+     *
+     * @param series series to analyze
+     * @return ranked current-cycle assessment
+     * @since 0.22.4
+     */
+    public ElliottWaveAnalysisResult.CurrentCycleAssessment analyzeCurrentCycle(final BarSeries series) {
+        Objects.requireNonNull(series, "series");
+        if (series.isEmpty()) {
+            throw new IllegalArgumentException("series cannot be empty");
+        }
+
+        final int beginIndex = series.getBeginIndex();
+        final int endIndex = series.getEndIndex();
+        final double totalRange = windowRange(series, beginIndex, endIndex);
+        final ElliottWaveAnalysisResult fullAnalysis = analyze(series);
+        final List<CurrentCycleStartCandidate> startCandidates = discoverCurrentCycleStartCandidates(series,
+                fullAnalysis);
+        final List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates = new ArrayList<>();
+        final int minimumWindowBars = Math.max(CURRENT_CYCLE_MIN_WINDOW_BARS,
+                (int) Math.ceil(series.getBarCount() * CURRENT_CYCLE_MIN_WINDOW_FRACTION));
+
+        for (final CurrentCycleStartCandidate startCandidate : startCandidates) {
+            final int startIndex = startCandidate.barIndex();
+            if (endIndex - startIndex < minimumWindowBars) {
+                continue;
+            }
+
+            final double spanScore = clamp01((endIndex - startIndex) / (double) Math.max(1, series.getBarCount() - 1));
+            final double advanceScore = clamp01((highPrice(series, endIndex) - startCandidate.price().doubleValue())
+                    / Math.max(1.0e-9, totalRange));
+            final double startIntegrityScore = currentCycleStartIntegrityScore(series, startIndex, totalRange);
+            if (startIntegrityScore < 0.20) {
+                continue;
+            }
+
+            final ElliottWaveAnalysisResult windowAnalysis = analyzeWindow(series, startIndex, endIndex);
+            for (int phase = 1; phase <= 5; phase++) {
+                final Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fit = fitCurrentBullishPhase(series,
+                        windowAnalysis, startIndex, endIndex, phase);
+                if (fit.isEmpty()) {
+                    continue;
+                }
+                final ElliottWaveAnalysisResult.CurrentPhaseAssessment phaseFit = fit.orElseThrow();
+                if (phaseFit.fitScore() < 0.25) {
+                    continue;
+                }
+                final double phaseProgressScore = phase / 5.0;
+                final double totalScore = clamp01(
+                        (0.54 * phaseFit.fitScore()) + (0.14 * startCandidate.normalizedScore()) + (0.10 * spanScore)
+                                + (0.10 * advanceScore) + (0.04 * phaseProgressScore) + (0.08 * startIntegrityScore));
+                final String rationale = "Series-native current-cycle anchor at "
+                        + series.getBar(startIndex).getEndTime() + " using " + phaseFit.countLabel();
+                candidates.add(new ElliottWaveAnalysisResult.CurrentCycleCandidate(startIndex, startCandidate.price(),
+                        phaseFit, startCandidate.normalizedScore(), totalScore, rationale));
+            }
+        }
+
+        if (candidates.isEmpty()) {
+            final int fallbackStartIndex = lowestLowIndex(series, beginIndex, endIndex);
+            final ElliottWaveAnalysisResult fallbackAnalysis = analyzeWindow(series, fallbackStartIndex, endIndex);
+            for (int phase = 1; phase <= 5; phase++) {
+                final Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fit = fitCurrentBullishPhase(series,
+                        fallbackAnalysis, fallbackStartIndex, endIndex, phase);
+                fit.ifPresent(phaseFit -> candidates.add(new ElliottWaveAnalysisResult.CurrentCycleCandidate(
+                        fallbackStartIndex, lowPriceNum(series, fallbackStartIndex), phaseFit, 1.0, phaseFit.fitScore(),
+                        "Fallback current-cycle anchor")));
+            }
+        }
+
+        candidates.sort(null);
+        ElliottWaveAnalysisResult.CurrentCycleCandidate primary = null;
+        ElliottWaveAnalysisResult.CurrentCycleCandidate alternate = null;
+        for (final ElliottWaveAnalysisResult.CurrentCycleCandidate candidate : candidates) {
+            if (primary == null || candidate.compareTo(primary) < 0) {
+                if (primary != null && primary.fit().currentPhase() != candidate.fit().currentPhase()) {
+                    alternate = primary;
+                }
+                primary = candidate;
+                continue;
+            }
+            if ((alternate == null || candidate.compareTo(alternate) < 0)
+                    && (primary == null || candidate.fit().currentPhase() != primary.fit().currentPhase())) {
+                alternate = candidate;
+            }
+        }
+
+        final int defaultStartIndex = lowestLowIndex(series, beginIndex, endIndex);
+        return new ElliottWaveAnalysisResult.CurrentCycleAssessment(
+                primary == null ? defaultStartIndex : primary.startIndex(), primary == null ? null : primary.fit(),
+                alternate == null ? null : alternate.fit(), candidates);
+    }
+
+    /**
      * Runs the built-in single-degree pipeline with default noise filtering and
      * swing compression parameters scaled to the requested degree.
      *
@@ -427,6 +539,279 @@ public final class ElliottWaveAnalysisRunner {
         }
         return Math.max(maxScenarios, Math.min(BROAD_HISTORY_INTERNAL_SCENARIO_CAP,
                 maxScenarios * BROAD_HISTORY_INTERNAL_SCENARIO_MULTIPLIER));
+    }
+
+    private List<CurrentCycleStartCandidate> discoverCurrentCycleStartCandidates(final BarSeries series,
+            final ElliottWaveAnalysisResult analysis) {
+        final int beginIndex = series.getBeginIndex();
+        final int endIndex = series.getEndIndex();
+        final double totalRange = windowRange(series, beginIndex, endIndex);
+        final double absoluteLow = lowestLow(series, beginIndex, endIndex);
+        final Map<Integer, CurrentCycleStartAccumulator> accumulators = new LinkedHashMap<>();
+
+        analysis.analysisFor(baseDegree)
+                .map(ElliottWaveAnalysisResult.DegreeAnalysis::analysis)
+                .map(ElliottAnalysisResult::processedSwings)
+                .ifPresent(swings -> {
+                    for (final int pivotIndex : lowPivotIndices(swings)) {
+                        seedCurrentCycleStartCandidate(series, accumulators, pivotIndex,
+                                currentCycleProcessedPivotScore(series, pivotIndex, absoluteLow, totalRange));
+                    }
+                });
+
+        seedCurrentCycleStartCandidate(series, accumulators, lowestLowIndex(series, beginIndex, endIndex), 12.0);
+        final int trailingHalfStart = beginIndex + ((endIndex - beginIndex) / 2);
+        seedCurrentCycleStartCandidate(series, accumulators, lowestLowIndex(series, trailingHalfStart, endIndex), 14.0);
+        final int trailingThirdStart = beginIndex + (((endIndex - beginIndex) * 2) / 3);
+        seedCurrentCycleStartCandidate(series, accumulators, lowestLowIndex(series, trailingThirdStart, endIndex),
+                16.0);
+
+        final List<CurrentCycleStartCandidate> candidates = accumulators.values()
+                .stream()
+                .map(accumulator -> accumulator.toCandidate(beginIndex, endIndex))
+                .sorted(Comparator.comparingDouble(CurrentCycleStartCandidate::rawScore)
+                        .reversed()
+                        .thenComparingInt(CurrentCycleStartCandidate::barIndex))
+                .limit(CURRENT_CYCLE_START_CANDIDATE_LIMIT)
+                .sorted(Comparator.comparingInt(CurrentCycleStartCandidate::barIndex))
+                .toList();
+        if (!candidates.isEmpty()) {
+            return List.copyOf(candidates);
+        }
+        final int lowestIndex = lowestLowIndex(series, beginIndex, endIndex);
+        return List.of(new CurrentCycleStartCandidate(lowestIndex, lowPriceNum(series, lowestIndex), 1.0, 1.0));
+    }
+
+    private void seedCurrentCycleStartCandidate(final BarSeries series,
+            final Map<Integer, CurrentCycleStartAccumulator> accumulators, final int barIndex, final double score) {
+        if (barIndex < series.getBeginIndex() || barIndex > series.getEndIndex()) {
+            return;
+        }
+        accumulators
+                .computeIfAbsent(barIndex,
+                        ignored -> new CurrentCycleStartAccumulator(barIndex, lowPriceNum(series, barIndex)))
+                .add(score);
+    }
+
+    private static List<Integer> lowPivotIndices(final List<ElliottSwing> swings) {
+        if (swings == null || swings.isEmpty()) {
+            return List.of();
+        }
+        final List<Integer> pivotIndices = new ArrayList<>(swings.size() + 1);
+        for (final ElliottSwing swing : swings) {
+            pivotIndices.add(swing.isRising() ? swing.fromIndex() : swing.toIndex());
+        }
+        return pivotIndices.stream().distinct().toList();
+    }
+
+    private double currentCycleProcessedPivotScore(final BarSeries series, final int pivotIndex,
+            final double absoluteLow, final double totalRange) {
+        final int beginIndex = series.getBeginIndex();
+        final int endIndex = series.getEndIndex();
+        final double recencyScore = clamp01((pivotIndex - beginIndex) / (double) Math.max(1, endIndex - beginIndex));
+        final double extremityScore = clamp01(
+                1.0 - ((lowPrice(series, pivotIndex) - absoluteLow) / Math.max(1.0e-9, totalRange)));
+        final double advanceScore = clamp01((highestHigh(series, pivotIndex, endIndex) - lowPrice(series, pivotIndex))
+                / Math.max(1.0e-9, totalRange));
+        return 1.5 + (2.0 * recencyScore) + (3.0 * extremityScore) + (2.0 * advanceScore);
+    }
+
+    private double currentCycleStartIntegrityScore(final BarSeries series, final int startIndex,
+            final double totalRange) {
+        final double startPrice = lowPrice(series, startIndex);
+        double lowestAfterStart = startPrice;
+        for (int index = startIndex; index <= series.getEndIndex(); index++) {
+            lowestAfterStart = Math.min(lowestAfterStart, lowPrice(series, index));
+        }
+        if (lowestAfterStart >= startPrice) {
+            return 1.0;
+        }
+        final double breach = (startPrice - lowestAfterStart) / Math.max(1.0e-9, totalRange);
+        return clamp01(1.0 - (breach / 0.08));
+    }
+
+    private Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fitCurrentBullishPhase(final BarSeries series,
+            final ElliottWaveAnalysisResult analysis, final int startIndex, final int endIndex, final int phase) {
+        if (phase < 1 || phase > 5 || endIndex <= startIndex) {
+            return Optional.empty();
+        }
+        final ElliottPhase currentPhase = switch (phase) {
+        case 2 -> ElliottPhase.WAVE2;
+        case 3 -> ElliottPhase.WAVE3;
+        case 4 -> ElliottPhase.WAVE4;
+        case 5 -> ElliottPhase.WAVE5;
+        default -> ElliottPhase.WAVE1;
+        };
+        final Optional<ElliottWaveAnalysisResult.WindowScenarioAssessment> anchored = analysis
+                .recommendedBaseScenarioForWindow(series, startIndex, endIndex, ScenarioType.IMPULSE, currentPhase,
+                        phase, Boolean.TRUE, CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS);
+        if (anchored.isPresent()) {
+            final ElliottWaveAnalysisResult.WindowScenarioAssessment assessment = anchored.orElseThrow();
+            return toCurrentPhaseAssessment(series, startIndex, endIndex, currentPhase, assessment.scenario(),
+                    assessment.windowFitScore());
+        }
+        final Optional<ElliottWaveAnalysisResult.BaseScenarioAssessment> anchoredSpan = analysis
+                .recommendedBaseScenarioForSpan(startIndex, endIndex, ScenarioType.IMPULSE, currentPhase, phase,
+                        Boolean.TRUE, CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS);
+        if (anchoredSpan.isEmpty()) {
+            return Optional.empty();
+        }
+        final ElliottWaveAnalysisResult.BaseScenarioAssessment assessment = anchoredSpan.orElseThrow();
+        return toCurrentPhaseAssessment(series, startIndex, endIndex, currentPhase, assessment.scenario(),
+                assessment.compositeScore());
+    }
+
+    private Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> toCurrentPhaseAssessment(final BarSeries series,
+            final int startIndex, final int endIndex, final ElliottPhase currentPhase, final ElliottScenario scenario,
+            final double baseFitScore) {
+        final ElliottSwing firstSwing = scenario.swings().getFirst();
+        final ElliottSwing lastSwing = scenario.swings().getLast();
+        if (Math.abs(firstSwing.fromIndex() - startIndex) > CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS
+                || Math.abs(lastSwing.toIndex() - endIndex) > CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS) {
+            return Optional.empty();
+        }
+        final Optional<PivotDominanceSummary> dominanceSummary = pivotDominanceSummary(series, scenario);
+        if (dominanceSummary.isEmpty()) {
+            return Optional.empty();
+        }
+        final PivotDominanceSummary dominance = dominanceSummary.orElseThrow();
+        if (dominance.minimumPivotDominance() < CURRENT_CYCLE_MIN_PIVOT_DOMINANCE
+                || dominance.terminalPivotDominance() < CURRENT_CYCLE_MIN_TERMINAL_DOMINANCE) {
+            return Optional.empty();
+        }
+        final double fitScore = clamp01((CURRENT_CYCLE_FIT_SCORE_WEIGHT * baseFitScore)
+                + (CURRENT_CYCLE_DOMINANCE_WEIGHT * dominance.averagePivotDominance())
+                + (CURRENT_CYCLE_TERMINAL_WEIGHT * dominance.terminalPivotDominance()));
+        return Optional.of(new ElliottWaveAnalysisResult.CurrentPhaseAssessment(scenario, currentPhase, fitScore,
+                lowPriceNum(series, startIndex), bullishCountLabel(currentPhase.isImpulse() ? scenario.waveCount() : 0),
+                scenario.invalidationPrice()));
+    }
+
+    private Optional<PivotDominanceSummary> pivotDominanceSummary(final BarSeries series,
+            final ElliottScenario scenario) {
+        if (scenario == null || scenario.swings().isEmpty()) {
+            return Optional.empty();
+        }
+
+        final List<ElliottSwing> swings = scenario.swings();
+        final List<Integer> pivotIndices = new ArrayList<>(swings.size() + 1);
+        final List<Boolean> highPivots = new ArrayList<>(swings.size() + 1);
+        pivotIndices.add(swings.getFirst().fromIndex());
+        highPivots.add(Boolean.valueOf(!swings.getFirst().isRising()));
+
+        for (int index = 1; index < swings.size(); index++) {
+            final ElliottSwing previous = swings.get(index - 1);
+            final ElliottSwing current = swings.get(index);
+            if (previous.isRising() == current.isRising()) {
+                return Optional.empty();
+            }
+            if (previous.toIndex() != current.fromIndex()) {
+                return Optional.empty();
+            }
+            if (previous.toPrice().compareTo(current.fromPrice()) != 0) {
+                return Optional.empty();
+            }
+            pivotIndices.add(previous.toIndex());
+            highPivots.add(Boolean.valueOf(previous.isRising()));
+        }
+
+        pivotIndices.add(swings.getLast().toIndex());
+        highPivots.add(Boolean.valueOf(swings.getLast().isRising()));
+
+        if (pivotIndices.size() < 2) {
+            return Optional.empty();
+        }
+
+        double total = 0.0;
+        double minimum = 1.0;
+        for (int pointIndex = 1; pointIndex < pivotIndices.size(); pointIndex++) {
+            final int pivotIndex = pivotIndices.get(pointIndex);
+            if (pivotIndex < series.getBeginIndex() || pivotIndex > series.getEndIndex()) {
+                return Optional.empty();
+            }
+            final int spanStart = pivotIndices.get(pointIndex - 1);
+            final int spanEnd = pointIndex == pivotIndices.size() - 1 ? pivotIndices.getLast()
+                    : pivotIndices.get(pointIndex + 1);
+            final double dominance = pivotDominanceScore(series, pivotIndex, spanStart, spanEnd,
+                    highPivots.get(pointIndex).booleanValue());
+            total += dominance;
+            minimum = Math.min(minimum, dominance);
+        }
+        final double terminalDominance = pivotDominanceScore(series, pivotIndices.getLast(),
+                pivotIndices.get(pivotIndices.size() - 2), pivotIndices.getLast(), highPivots.getLast().booleanValue());
+        return Optional.of(
+                new PivotDominanceSummary(total / Math.max(1, pivotIndices.size() - 1), minimum, terminalDominance));
+    }
+
+    private double pivotDominanceScore(final BarSeries series, final int pivotIndex, final int spanStart,
+            final int spanEnd, final boolean highPivot) {
+        final double pivotPrice = highPivot ? highPrice(series, pivotIndex) : lowPrice(series, pivotIndex);
+        final double spanExtreme = highPivot ? highestHigh(series, spanStart, spanEnd)
+                : lowestLow(series, spanStart, spanEnd);
+        final double spanRange = Math.max(1.0e-9, windowRange(series, spanStart, spanEnd));
+        return clamp01(1.0 - (Math.abs(spanExtreme - pivotPrice) / spanRange));
+    }
+
+    private static String bullishCountLabel(final int phase) {
+        return switch (phase) {
+        case 1 -> "Bullish 1";
+        case 2 -> "Bullish 1-2";
+        case 3 -> "Bullish 1-2-3";
+        case 4 -> "Bullish 1-2-3-4";
+        case 5 -> "Bullish 1-2-3-4-5";
+        default -> "Bullish";
+        };
+    }
+
+    private static int lowestLowIndex(final BarSeries series, final int startIndex, final int endIndex) {
+        final int fromIndex = Math.max(series.getBeginIndex(), Math.min(startIndex, endIndex));
+        final int toIndex = Math.min(series.getEndIndex(), Math.max(startIndex, endIndex));
+        int bestIndex = fromIndex;
+        double bestPrice = Double.POSITIVE_INFINITY;
+        for (int index = fromIndex; index <= toIndex; index++) {
+            final double candidate = lowPrice(series, index);
+            if (candidate < bestPrice) {
+                bestPrice = candidate;
+                bestIndex = index;
+            }
+        }
+        return bestIndex;
+    }
+
+    private static double windowRange(final BarSeries series, final int startIndex, final int endIndex) {
+        return Math.max(1.0e-9, highestHigh(series, startIndex, endIndex) - lowestLow(series, startIndex, endIndex));
+    }
+
+    private static double highestHigh(final BarSeries series, final int startIndex, final int endIndex) {
+        final int fromIndex = Math.max(series.getBeginIndex(), Math.min(startIndex, endIndex));
+        final int toIndex = Math.min(series.getEndIndex(), Math.max(startIndex, endIndex));
+        double highest = Double.NEGATIVE_INFINITY;
+        for (int index = fromIndex; index <= toIndex; index++) {
+            highest = Math.max(highest, highPrice(series, index));
+        }
+        return highest;
+    }
+
+    private static double lowestLow(final BarSeries series, final int startIndex, final int endIndex) {
+        final int fromIndex = Math.max(series.getBeginIndex(), Math.min(startIndex, endIndex));
+        final int toIndex = Math.min(series.getEndIndex(), Math.max(startIndex, endIndex));
+        double lowest = Double.POSITIVE_INFINITY;
+        for (int index = fromIndex; index <= toIndex; index++) {
+            lowest = Math.min(lowest, lowPrice(series, index));
+        }
+        return lowest;
+    }
+
+    private static double highPrice(final BarSeries series, final int index) {
+        return series.getBar(index).getHighPrice().doubleValue();
+    }
+
+    private static double lowPrice(final BarSeries series, final int index) {
+        return series.getBar(index).getLowPrice().doubleValue();
+    }
+
+    private static Num lowPriceNum(final BarSeries series, final int index) {
+        return series.getBar(index).getLowPrice();
     }
 
     private ElliottAnalysisResult clipAnalysisResult(final ElliottAnalysisResult result,
@@ -1105,6 +1490,35 @@ public final class ElliottWaveAnalysisRunner {
     }
 
     private record ProvisionalTerminal(int index, Num price) {
+    }
+
+    private record CurrentCycleStartCandidate(int barIndex, Num price, double rawScore, double normalizedScore) {
+    }
+
+    private record PivotDominanceSummary(double averagePivotDominance, double minimumPivotDominance,
+            double terminalPivotDominance) {
+    }
+
+    private static final class CurrentCycleStartAccumulator {
+
+        private final int barIndex;
+        private final Num price;
+        private double rawScore;
+
+        private CurrentCycleStartAccumulator(final int barIndex, final Num price) {
+            this.barIndex = barIndex;
+            this.price = price;
+        }
+
+        private void add(final double score) {
+            rawScore += score;
+        }
+
+        private CurrentCycleStartCandidate toCandidate(final int startIndex, final int endIndex) {
+            final double segmentLength = Math.max(1.0, endIndex - startIndex);
+            final double normalized = clamp01(rawScore / Math.max(1.0, segmentLength / 25.0));
+            return new CurrentCycleStartCandidate(barIndex, price, rawScore, normalized);
+        }
     }
 
     /**
