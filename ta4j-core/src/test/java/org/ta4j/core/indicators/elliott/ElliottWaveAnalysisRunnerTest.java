@@ -309,6 +309,56 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void fullHistoryModeClipsPublicScenarioSetToRankedSelections() {
+        BarSeries series = buildLongHistorySeries();
+        NumFactory factory = series.numFactory();
+        ElliottDegree degree = ElliottDegree.PRIMARY;
+        List<ElliottSwing> swings = List.of(new ElliottSwing(0, 25, factory.numOf(100), factory.numOf(116), degree),
+                new ElliottSwing(25, 50, factory.numOf(116), factory.numOf(107), degree),
+                new ElliottSwing(50, 75, factory.numOf(107), factory.numOf(128), degree),
+                new ElliottSwing(75, 100, factory.numOf(128), factory.numOf(118), degree),
+                new ElliottSwing(100, 125, factory.numOf(118), factory.numOf(143), degree),
+                new ElliottSwing(125, 150, factory.numOf(143), factory.numOf(132), degree),
+                new ElliottSwing(150, 175, factory.numOf(132), factory.numOf(162), degree),
+                new ElliottSwing(175, 200, factory.numOf(162), factory.numOf(149), degree),
+                new ElliottSwing(200, 225, factory.numOf(149), factory.numOf(182), degree),
+                new ElliottSwing(225, 250, factory.numOf(182), factory.numOf(168), degree),
+                new ElliottSwing(250, 275, factory.numOf(168), factory.numOf(205), degree),
+                new ElliottSwing(275, 299, factory.numOf(205), factory.numOf(189), degree));
+
+        SwingDetector detector = (ignoredSeries, index, ignoredDegree) -> SwingDetectorResult.fromSwings(swings);
+        ConfidenceModel laterStartBiasedModel = (input, phase, channel, type) -> {
+            double rawScore = 0.2 + (input.getFirst().fromIndex() / 250.0);
+            double boundedScore = Math.min(0.95, rawScore);
+            ElliottConfidence confidence = new ElliottConfidence(factory.numOf(boundedScore),
+                    factory.numOf(boundedScore), factory.numOf(boundedScore), factory.numOf(boundedScore),
+                    factory.numOf(boundedScore), factory.numOf(boundedScore),
+                    "Later starts receive higher raw confidence");
+            return new ElliottConfidenceBreakdown(confidence, List.of());
+        };
+
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(degree)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .maxScenarios(2)
+                .swingDetector(detector)
+                .scenarioSwingWindow(0)
+                .patternSet(PatternSet.of(ScenarioType.IMPULSE))
+                .minConfidence(0.0)
+                .confidenceModel(laterStartBiasedModel)
+                .build();
+
+        ElliottWaveAnalysisResult result = analysis.analyze(series);
+        ElliottAnalysisResult base = result.analysisFor(degree).orElseThrow().analysis();
+
+        assertThat(base.scenarios().all()).hasSize(2);
+        assertThat(result.rankedBaseScenarios()).hasSizeGreaterThanOrEqualTo(2);
+        assertThat(base.scenarios().all().stream().map(ElliottScenario::id).toList()).containsExactlyElementsOf(
+                result.rankedBaseScenarios().stream().limit(2).map(assessment -> assessment.scenario().id()).toList());
+    }
+
+    @Test
     void buildRequiresDegree() {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> ElliottWaveAnalysisRunner.builder().build());

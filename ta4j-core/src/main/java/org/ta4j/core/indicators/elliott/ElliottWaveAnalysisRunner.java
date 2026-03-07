@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -83,6 +84,8 @@ public final class ElliottWaveAnalysisRunner {
     private static final int BROAD_HISTORY_FILTER_BAR_THRESHOLD = 250;
     private static final int DEFAULT_COMPRESSOR_MIN_BARS = 2;
     private static final int BROAD_HISTORY_COMPRESSOR_MIN_BARS = 1;
+    private static final int BROAD_HISTORY_INTERNAL_SCENARIO_MULTIPLIER = 40;
+    private static final int BROAD_HISTORY_INTERNAL_SCENARIO_CAP = 1000;
 
     private static final double DEFAULT_BASE_CONFIDENCE_WEIGHT = 0.7;
     private static final double DEFAULT_NEUTRAL_CROSS_DEGREE_SCORE = 0.5;
@@ -99,6 +102,7 @@ public final class ElliottWaveAnalysisRunner {
     private final SeriesSelector<ElliottDegree> seriesSelector;
     private final AnalysisRunner<ElliottDegree, ElliottAnalysisResult> analysisRunner;
     private final double baseConfidenceWeight;
+    private final boolean usesDefaultAnalysisRunner;
 
     // Built-in single-degree analysis pipeline configuration (used by default
     // runner only).
@@ -129,7 +133,8 @@ public final class ElliottWaveAnalysisRunner {
         int supportingDegrees = Math.max(0, higherDegrees) + Math.max(0, lowerDegrees);
         this.baseConfidenceWeight = supportingDegrees == 0 ? 1.0 : builder.baseConfidenceWeight;
 
-        this.analysisRunner = builder.analysisRunner == null ? this::runDefaultAnalysis : builder.analysisRunner;
+        this.usesDefaultAnalysisRunner = builder.analysisRunner == null;
+        this.analysisRunner = usesDefaultAnalysisRunner ? this::runDefaultAnalysis : builder.analysisRunner;
     }
 
     /**
@@ -166,6 +171,7 @@ public final class ElliottWaveAnalysisRunner {
         final List<ElliottWaveAnalysisResult.DegreeAnalysis> degreeAnalyses = new ArrayList<>(degrees.size());
 
         ElliottAnalysisResult baseResult = null;
+        int baseAnalysisIndex = -1;
 
         for (final ElliottDegree degree : degrees) {
             BarSeries selected = seriesSelector.select(series, degree);
@@ -190,6 +196,7 @@ public final class ElliottWaveAnalysisRunner {
 
             if (degree == baseDegree) {
                 baseResult = result;
+                baseAnalysisIndex = degreeAnalyses.size() - 1;
             }
         }
 
@@ -197,8 +204,18 @@ public final class ElliottWaveAnalysisRunner {
             throw new IllegalStateException("Base degree " + baseDegree + " analysis was not available");
         }
 
-        final List<ElliottWaveAnalysisResult.BaseScenarioAssessment> ranked = scoreBaseScenarios(baseResult,
-                degreeAnalyses);
+        List<ElliottWaveAnalysisResult.BaseScenarioAssessment> ranked = scoreBaseScenarios(baseResult, degreeAnalyses);
+        if (baseAnalysisIndex >= 0 && (baseResult.scenarios().size() > maxScenarios || ranked.size() > maxScenarios)) {
+            List<ElliottWaveAnalysisResult.BaseScenarioAssessment> clippedRanked = ranked.stream()
+                    .limit(maxScenarios)
+                    .toList();
+            ElliottAnalysisResult clippedBaseResult = clipAnalysisResult(baseResult, clippedRanked);
+            ElliottWaveAnalysisResult.DegreeAnalysis baseSnapshot = degreeAnalyses.get(baseAnalysisIndex);
+            degreeAnalyses.set(baseAnalysisIndex,
+                    new ElliottWaveAnalysisResult.DegreeAnalysis(baseSnapshot.degree(), baseSnapshot.index(),
+                            baseSnapshot.barCount(), baseSnapshot.barDuration(), baseSnapshot.historyFitScore(),
+                            clippedBaseResult));
+        }
 
         return new ElliottWaveAnalysisResult(baseDegree, degreeAnalyses, ranked, notes);
     }
@@ -212,6 +229,11 @@ public final class ElliottWaveAnalysisRunner {
      * @return one-degree Elliott analysis snapshot
      */
     private ElliottAnalysisResult runDefaultAnalysis(final BarSeries series, final ElliottDegree degree) {
+        return runDefaultAnalysis(series, degree, internalScenarioBudget(series));
+    }
+
+    private ElliottAnalysisResult runDefaultAnalysis(final BarSeries series, final ElliottDegree degree,
+            final int scenarioBudget) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(degree, "degree");
 
@@ -222,7 +244,7 @@ public final class ElliottWaveAnalysisRunner {
 
         ElliottSwingCompressor compressor = defaultSwingCompressor(series, degree);
 
-        return runSingleDegreePipeline(series, degree, swingDetector, filter, compressor);
+        return runSingleDegreePipeline(series, degree, swingDetector, filter, compressor, scenarioBudget);
     }
 
     private double defaultMinRelativeMagnitude(final BarSeries series, final ElliottDegree degree) {
@@ -281,7 +303,8 @@ public final class ElliottWaveAnalysisRunner {
      * @return one-degree Elliott analysis snapshot
      */
     private ElliottAnalysisResult runSingleDegreePipeline(final BarSeries series, final ElliottDegree degree,
-            final SwingDetector detector, final SwingFilter filter, final ElliottSwingCompressor compressor) {
+            final SwingDetector detector, final SwingFilter filter, final ElliottSwingCompressor compressor,
+            final int scenarioBudget) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(degree, "degree");
         Objects.requireNonNull(detector, "detector");
@@ -308,7 +331,7 @@ public final class ElliottWaveAnalysisRunner {
         ConfidenceModel confidenceModel = Objects.requireNonNull(confidenceModelFactory.apply(series.numFactory()),
                 "confidenceModelFactory");
         ElliottScenarioGenerator generator = new ElliottScenarioGenerator(series.numFactory(), minConfidence,
-                maxScenarios, confidenceModel, patternSet);
+                scenarioBudget, confidenceModel, patternSet);
         ElliottScenarioSet scenarios = generator.generate(scenarioSwings, degree, channel, endIndex);
         ElliottTrendBias trendBias = scenarios.trendBias();
 
@@ -321,6 +344,38 @@ public final class ElliottWaveAnalysisRunner {
 
         return new ElliottAnalysisResult(degree, endIndex, rawSwings, scenarioSwings, scenarios, breakdowns, channel,
                 trendBias);
+    }
+
+    private int internalScenarioBudget(final BarSeries series) {
+        if (!usesDefaultAnalysisRunner || scenarioSwingWindow != 0
+                || series.getBarCount() < BROAD_HISTORY_FILTER_BAR_THRESHOLD) {
+            return maxScenarios;
+        }
+        return Math.max(maxScenarios, Math.min(BROAD_HISTORY_INTERNAL_SCENARIO_CAP,
+                maxScenarios * BROAD_HISTORY_INTERNAL_SCENARIO_MULTIPLIER));
+    }
+
+    private ElliottAnalysisResult clipAnalysisResult(final ElliottAnalysisResult result,
+            final List<ElliottWaveAnalysisResult.BaseScenarioAssessment> ranked) {
+        if (result == null || result.scenarios().size() <= maxScenarios) {
+            return result;
+        }
+
+        final List<ElliottScenario> clippedScenarios = ranked.stream()
+                .map(ElliottWaveAnalysisResult.BaseScenarioAssessment::scenario)
+                .limit(maxScenarios)
+                .sorted(ElliottScenarioSet.byConfidenceDescending())
+                .toList();
+        final Map<String, ElliottConfidenceBreakdown> clippedBreakdowns = new LinkedHashMap<>();
+        for (final ElliottScenario scenario : clippedScenarios) {
+            final ElliottConfidenceBreakdown breakdown = result.confidenceBreakdowns().get(scenario.id());
+            if (breakdown != null) {
+                clippedBreakdowns.put(scenario.id(), breakdown);
+            }
+        }
+        final ElliottScenarioSet clippedScenarioSet = ElliottScenarioSet.of(clippedScenarios, result.index());
+        return new ElliottAnalysisResult(result.degree(), result.index(), result.rawSwings(), result.processedSwings(),
+                clippedScenarioSet, clippedBreakdowns, result.channel(), clippedScenarioSet.trendBias());
     }
 
     private List<ElliottSwing> appendTerminalExtensionIfNeeded(final List<ElliottSwing> swings, final BarSeries series,

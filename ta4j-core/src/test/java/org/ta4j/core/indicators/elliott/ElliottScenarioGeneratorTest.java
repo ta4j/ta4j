@@ -319,6 +319,43 @@ class ElliottScenarioGeneratorTest {
                 && scenario.currentPhase() == ElliottPhase.WAVE5 && scenario.startIndex() == 15);
     }
 
+    @Test
+    void pruningRetainsStartDiverseScenariosWhenLaterStartsHaveHigherConfidence() {
+        ConfidenceModel laterStartBiasedModel = (swings, phase, channel, scenarioType) -> {
+            double rawScore = 0.2 + (swings.getFirst().fromIndex() / 40.0);
+            double boundedScore = Math.min(0.95, rawScore);
+            Num score = numFactory.numOf(boundedScore);
+            ElliottConfidence confidence = new ElliottConfidence(score, score, score, score, score, score,
+                    "Later starts receive higher raw confidence");
+            return new ElliottConfidenceBreakdown(confidence, List.of());
+        };
+        ElliottScenarioGenerator wideGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 200,
+                laterStartBiasedModel, PatternSet.of(ScenarioType.IMPULSE));
+        ElliottScenarioGenerator limitedGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 4,
+                laterStartBiasedModel, PatternSet.of(ScenarioType.IMPULSE));
+        List<ElliottSwing> swings = List.of(
+                new ElliottSwing(0, 5, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),
+                new ElliottSwing(5, 10, numFactory.numOf(120), numFactory.numOf(110), ElliottDegree.MINOR),
+                new ElliottSwing(10, 15, numFactory.numOf(110), numFactory.numOf(130), ElliottDegree.MINOR),
+                new ElliottSwing(15, 20, numFactory.numOf(130), numFactory.numOf(118), ElliottDegree.MINOR),
+                new ElliottSwing(20, 25, numFactory.numOf(118), numFactory.numOf(142), ElliottDegree.MINOR),
+                new ElliottSwing(25, 30, numFactory.numOf(142), numFactory.numOf(129), ElliottDegree.MINOR),
+                new ElliottSwing(30, 35, numFactory.numOf(129), numFactory.numOf(158), ElliottDegree.MINOR),
+                new ElliottSwing(35, 40, numFactory.numOf(158), numFactory.numOf(146), ElliottDegree.MINOR),
+                new ElliottSwing(40, 45, numFactory.numOf(146), numFactory.numOf(175), ElliottDegree.MINOR));
+
+        ElliottScenarioSet allCandidates = wideGenerator.generate(swings, ElliottDegree.MINOR, null, 45);
+        ElliottScenarioSet limitedSet = limitedGenerator.generate(swings, ElliottDegree.MINOR, null, 45);
+
+        int earliestStart = allCandidates.all().stream().mapToInt(ElliottScenario::startIndex).min().orElseThrow();
+
+        assertThat(allCandidates.all()).hasSizeGreaterThan(4);
+        assertThat(allCandidates.all().stream().limit(4).map(ElliottScenario::startIndex).toList())
+                .doesNotContain(earliestStart);
+        assertThat(limitedSet.all().stream().map(ElliottScenario::startIndex).toList()).contains(earliestStart);
+        assertThat(limitedSet.all().stream().map(ElliottScenario::startIndex).distinct().count()).isGreaterThan(1);
+    }
+
     private List<ElliottSwing> createAlternatingSwings() {
         // Create properly alternating swings for impulse detection
         return List.of(new ElliottSwing(0, 5, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),

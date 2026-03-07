@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.elliott;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -1116,11 +1117,114 @@ public final class ElliottScenarioGenerator {
     }
 
     private List<ElliottScenario> prune(final List<ElliottScenario> candidates) {
-        return candidates.stream()
+        final List<ElliottScenario> sorted = candidates.stream()
                 .filter(s -> s.confidenceScore().isGreaterThanOrEqual(minConfidenceNum))
-                .sorted(ElliottScenarioSet.byConfidenceDescending())
-                .limit(maxScenarios)
+                .sorted(pruningPriorityComparator())
                 .toList();
+        if (sorted.size() <= maxScenarios) {
+            return sorted;
+        }
+
+        final List<ElliottScenario> selected = new ArrayList<>(maxScenarios);
+        final Set<String> selectedIds = new HashSet<>();
+
+        final int startDiversityQuota = Math.min(maxScenarios, Math.max(3, maxScenarios / 2));
+        selectStartDiverseScenarios(sorted, selected, selectedIds, startDiversityQuota);
+
+        for (final ElliottScenario scenario : sorted) {
+            if (selected.size() >= maxScenarios) {
+                break;
+            }
+            if (selectedIds.add(scenario.id())) {
+                selected.add(scenario);
+            }
+        }
+
+        selected.sort(ElliottScenarioSet.byConfidenceDescending());
+        return List.copyOf(selected);
+    }
+
+    private Comparator<ElliottScenario> pruningPriorityComparator() {
+        return Comparator.comparing(ElliottScenario::confidenceScore, Comparator.reverseOrder())
+                .thenComparing(Comparator.comparing(ElliottScenario::expectsCompletion).reversed())
+                .thenComparing(Comparator.comparingInt(ElliottScenario::waveCount).reversed())
+                .thenComparing(Comparator.comparingInt(this::scenarioSpan).reversed())
+                .thenComparing(ElliottScenario::id);
+    }
+
+    private void selectStartDiverseScenarios(final List<ElliottScenario> sorted, final List<ElliottScenario> selected,
+            final Set<String> selectedIds, final int quota) {
+        if (sorted.isEmpty() || quota <= 0) {
+            return;
+        }
+
+        final ElliottScenario highestConfidence = sorted.getFirst();
+        selected.add(highestConfidence);
+        selectedIds.add(highestConfidence.id());
+
+        final List<ElliottScenario> coveragePriority = sorted.stream().sorted(startDiversityComparator()).toList();
+        int minimumSpacing = minimumStartSpacing(sorted, quota);
+
+        while (selected.size() < quota && !coveragePriority.isEmpty()) {
+            boolean addedAny = false;
+            for (final ElliottScenario scenario : coveragePriority) {
+                if (selected.size() >= quota) {
+                    return;
+                }
+                if (selectedIds.contains(scenario.id())) {
+                    continue;
+                }
+                if (minimumSpacing > 0 && !isStartSeparated(scenario, selected, minimumSpacing)) {
+                    continue;
+                }
+                selected.add(scenario);
+                selectedIds.add(scenario.id());
+                addedAny = true;
+            }
+            if (minimumSpacing == 0) {
+                return;
+            }
+            if (!addedAny) {
+                minimumSpacing = Math.max(0, minimumSpacing / 2);
+            } else if (selected.size() < quota) {
+                minimumSpacing = Math.max(0, minimumSpacing / 2);
+            }
+        }
+    }
+
+    private Comparator<ElliottScenario> startDiversityComparator() {
+        return Comparator.comparing(ElliottScenario::expectsCompletion)
+                .reversed()
+                .thenComparing(Comparator.comparingInt(ElliottScenario::waveCount).reversed())
+                .thenComparing(Comparator.comparingInt(this::scenarioSpan).reversed())
+                .thenComparing(ElliottScenario::confidenceScore, Comparator.reverseOrder())
+                .thenComparing(ElliottScenario::id);
+    }
+
+    private int minimumStartSpacing(final List<ElliottScenario> scenarios, final int quota) {
+        final int minStart = scenarios.stream().mapToInt(ElliottScenario::startIndex).min().orElse(0);
+        final int maxStart = scenarios.stream().mapToInt(ElliottScenario::startIndex).max().orElse(minStart);
+        if (maxStart <= minStart || quota <= 1) {
+            return 0;
+        }
+        return Math.max(1, (maxStart - minStart) / Math.max(1, quota * 2));
+    }
+
+    private boolean isStartSeparated(final ElliottScenario candidate, final List<ElliottScenario> selected,
+            final int minimumSpacing) {
+        for (final ElliottScenario existing : selected) {
+            if (Math.abs(candidate.startIndex() - existing.startIndex()) < minimumSpacing) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private int scenarioSpan(final ElliottScenario scenario) {
+        if (scenario == null || scenario.swings().isEmpty()) {
+            return 0;
+        }
+        return scenario.swings().getLast().toIndex() - scenario.swings().getFirst().fromIndex();
     }
 
     private int scenarioStartIndex(final List<ElliottSwing> swings) {
