@@ -379,7 +379,7 @@ public final class ElliottWaveAnalysisRunner {
                 continue;
             }
             if ((alternate == null || candidate.compareTo(alternate) < 0)
-                    && (primary == null || candidate.fit().currentPhase() != primary.fit().currentPhase())) {
+                    && candidate.fit().currentPhase() != primary.fit().currentPhase()) {
                 alternate = candidate;
             }
         }
@@ -969,10 +969,6 @@ public final class ElliottWaveAnalysisRunner {
     private ProvisionalTerminal findTerminalProjection(final BarSeries series, final ElliottSwing lastSwing,
             final int endIndex) {
         final int scanStart = Math.min(endIndex, lastSwing.toIndex() + 1);
-        if (scanStart > endIndex) {
-            return null;
-        }
-
         int bestIndex = lastSwing.toIndex();
         Num bestPrice = lastSwing.toPrice();
         for (int index = scanStart; index <= endIndex; index++) {

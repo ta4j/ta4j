@@ -299,7 +299,6 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
         }
         final int actualStart = scenario.swings().getFirst().fromIndex();
         final int actualEnd = scenario.swings().getLast().toIndex();
-        final double span = Math.max(1.0, endIndex - startIndex);
         final double spanAlignment = anchorSpanScore(scenario, startIndex, endIndex);
         final double driftScale = Math.max(1.0, maxAnchorDriftBars);
         final double startGap = Math.abs(actualStart - startIndex);

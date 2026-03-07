@@ -193,8 +193,13 @@ public class ElliottWavePresetDemo {
         Objects.requireNonNull(barDuration, "barDuration");
         String normalized = barDuration.trim().toUpperCase(Locale.ROOT);
         if (normalized.startsWith("PT") && normalized.endsWith("D")) {
-            int days = Integer.parseInt(normalized.substring(2, normalized.length() - 1));
-            return Duration.ofHours(days * 24L);
+            final String dayString = normalized.substring(2, normalized.length() - 1);
+            try {
+                final int days = Integer.parseInt(dayString);
+                return Duration.ofHours(days * 24L);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid day count in barDuration: " + barDuration, e);
+            }
         }
         return Duration.parse(normalized);
     }
