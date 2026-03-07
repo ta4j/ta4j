@@ -161,6 +161,45 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
+    void fitFromCoreAssessmentDoesNotRequireDemoStrengthThresholdWhenCompositeIsHigh() throws Exception {
+        BarSeries series = studySyntheticSeries();
+        ElliottWaveBtcMacroCycleDemo.LegSegment segment = new ElliottWaveBtcMacroCycleDemo.LegSegment(
+                anchor("btc-bottom", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 2),
+                anchor("btc-top", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 7), true);
+        ElliottScenario scenario = ElliottScenario.builder()
+                .id("anchored-impulse")
+                .currentPhase(ElliottPhase.WAVE5)
+                .swings(List.of(
+                        new ElliottSwing(2, 3, series.numFactory().numOf(122), series.numFactory().numOf(132),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(3, 4, series.numFactory().numOf(132), series.numFactory().numOf(164),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(4, 5, series.numFactory().numOf(164), series.numFactory().numOf(202),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(5, 6, series.numFactory().numOf(202), series.numFactory().numOf(160),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(6, 7, series.numFactory().numOf(160), series.numFactory().numOf(116),
+                                ElliottDegree.MINUTE)))
+                .confidence(new ElliottConfidence(series.numFactory().numOf(0.66), series.numFactory().numOf(0.72),
+                        series.numFactory().numOf(0.70), series.numFactory().numOf(0.20),
+                        series.numFactory().numOf(0.18), series.numFactory().numOf(0.50), "Anchored impulse candidate"))
+                .degree(ElliottDegree.MINUTE)
+                .type(ScenarioType.IMPULSE)
+                .bullishDirection(true)
+                .startIndex(2)
+                .build();
+        ElliottWaveAnalysisResult.BaseScenarioAssessment assessment = new ElliottWaveAnalysisResult.BaseScenarioAssessment(
+                scenario, 0.28, 0.18, 0.82, List.of());
+
+        ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit fit = invokeFitFromCoreAssessment(segment, scenario, assessment,
+                true, 2, 7);
+
+        assertTrue(fit.accepted());
+        assertTrue(fit.strengthScore() < 0.55);
+        assertEquals("Core-ranked prefix-history impulse fit", fit.rationale());
+    }
+
+    @Test
     void evaluateMacroStudyProducesProfileTableCycleSummaryAndCurrentCycleFallback() {
         BarSeries series = studySyntheticSeries();
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(

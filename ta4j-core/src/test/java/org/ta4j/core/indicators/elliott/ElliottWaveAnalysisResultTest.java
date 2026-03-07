@@ -60,6 +60,27 @@ class ElliottWaveAnalysisResultTest {
         assertThat(result.analysisFor(ElliottDegree.INTERMEDIATE)).isEmpty();
     }
 
+    @Test
+    void rankedBaseScenariosForSpan_shouldPreferCloserAnchorSpan() {
+        ElliottScenario spanAligned = scenario("span-aligned", 10, 20, 0.72);
+        ElliottScenario lateStart = scenario("late-start", 15, 20, 0.78);
+        ElliottWaveAnalysisResult result = new ElliottWaveAnalysisResult(ElliottDegree.PRIMARY, List.of(),
+                List.of(new ElliottWaveAnalysisResult.BaseScenarioAssessment(lateStart, 0.78, 0.70, 0.76, List.of()),
+                        new ElliottWaveAnalysisResult.BaseScenarioAssessment(spanAligned, 0.72, 0.70, 0.74, List.of())),
+                List.of());
+
+        assertThat(result.rankedBaseScenariosForSpan(10, 20)).extracting(assessment -> assessment.scenario().id())
+                .containsExactly("span-aligned", "late-start");
+    }
+
+    @Test
+    void rankedBaseScenariosForSpan_shouldRejectDescendingWindow() {
+        ElliottWaveAnalysisResult result = new ElliottWaveAnalysisResult(ElliottDegree.PRIMARY, List.of(), List.of(),
+                List.of());
+
+        assertThrows(IllegalArgumentException.class, () -> result.rankedBaseScenariosForSpan(5, 4));
+    }
+
     private static ElliottAnalysisResult analysisResult() {
         ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(scenario()), 0);
         return new ElliottAnalysisResult(ElliottDegree.PRIMARY, 0, List.of(), List.of(), scenarios, Map.of(), null,
@@ -76,6 +97,25 @@ class ElliottWaveAnalysisResultTest {
         return ElliottScenario.builder()
                 .id("scenario-1")
                 .currentPhase(ElliottPhase.WAVE3)
+                .swings(List.of(swing))
+                .confidence(confidence)
+                .degree(ElliottDegree.PRIMARY)
+                .invalidationPrice(numFactory.numOf(95))
+                .type(ScenarioType.IMPULSE)
+                .build();
+    }
+
+    private static ElliottScenario scenario(String id, int startIndex, int endIndex, double confidenceScore) {
+        BarSeries series = new MockBarSeriesBuilder().withName("analysis-result-span-test").build();
+        NumFactory numFactory = series.numFactory();
+        Num score = numFactory.numOf(confidenceScore);
+        ElliottConfidence confidence = new ElliottConfidence(score, score, score, score, score, score, "test");
+        ElliottSwing swing = new ElliottSwing(startIndex, endIndex, numFactory.hundred(), numFactory.numOf(110),
+                ElliottDegree.PRIMARY);
+
+        return ElliottScenario.builder()
+                .id(id)
+                .currentPhase(ElliottPhase.WAVE5)
                 .swings(List.of(swing))
                 .confidence(confidence)
                 .degree(ElliottDegree.PRIMARY)

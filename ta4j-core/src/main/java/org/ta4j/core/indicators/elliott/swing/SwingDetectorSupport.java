@@ -49,6 +49,9 @@ final class SwingDetectorSupport {
         for (int i = 1; i < pivots.size(); i++) {
             final SwingPivot previous = pivots.get(i - 1);
             final SwingPivot current = pivots.get(i);
+            if (previous.index() == current.index()) {
+                continue;
+            }
             swings.add(new ElliottSwing(previous.index(), current.index(), previous.price(), current.price(), degree));
         }
         return List.copyOf(swings);

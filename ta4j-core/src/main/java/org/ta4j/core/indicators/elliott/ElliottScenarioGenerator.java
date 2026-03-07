@@ -207,7 +207,7 @@ public final class ElliottScenarioGenerator {
                     .primaryTarget(primaryTarget)
                     .fibonacciTargets(targets)
                     .type(ScenarioType.IMPULSE)
-                    .startIndex(startIndex)
+                    .startIndex(scenarioStartIndex(impulseSwings))
                     .build();
 
             candidates.add(scenario);
@@ -288,7 +288,7 @@ public final class ElliottScenarioGenerator {
                     .primaryTarget(primaryTarget)
                     .fibonacciTargets(targets)
                     .type(ScenarioType.CORRECTIVE_ZIGZAG)
-                    .startIndex(startIndex)
+                    .startIndex(scenarioStartIndex(corrSwings))
                     .build();
 
             candidates.add(scenario);
@@ -349,7 +349,7 @@ public final class ElliottScenarioGenerator {
                     .primaryTarget(primaryTarget)
                     .fibonacciTargets(targets)
                     .type(ScenarioType.CORRECTIVE_FLAT)
-                    .startIndex(startIndex)
+                    .startIndex(scenarioStartIndex(corrSwings))
                     .build();
 
             candidates.add(scenario);
@@ -400,7 +400,7 @@ public final class ElliottScenarioGenerator {
                     .primaryTarget(primaryTarget)
                     .fibonacciTargets(targets)
                     .type(ScenarioType.CORRECTIVE_TRIANGLE)
-                    .startIndex(startIndex)
+                    .startIndex(scenarioStartIndex(corrSwings))
                     .build();
 
             candidates.add(scenario);
@@ -451,7 +451,7 @@ public final class ElliottScenarioGenerator {
                     .primaryTarget(primaryTarget)
                     .fibonacciTargets(targets)
                     .type(ScenarioType.CORRECTIVE_COMPLEX)
-                    .startIndex(startIndex)
+                    .startIndex(scenarioStartIndex(corrSwings))
                     .build();
 
             candidates.add(scenario);
@@ -718,7 +718,7 @@ public final class ElliottScenarioGenerator {
                     .primaryTarget(primaryTarget)
                     .fibonacciTargets(targets)
                     .type(ScenarioType.IMPULSE)
-                    .startIndex(startIndex)
+                    .startIndex(scenarioStartIndex(decomposition))
                     .build();
 
             candidates.add(scenario);
@@ -774,7 +774,7 @@ public final class ElliottScenarioGenerator {
                     .primaryTarget(primaryTarget)
                     .fibonacciTargets(targets)
                     .type(type)
-                    .startIndex(startIndex)
+                    .startIndex(scenarioStartIndex(decomposition))
                     .build();
 
             candidates.add(scenario);
@@ -1121,6 +1121,13 @@ public final class ElliottScenarioGenerator {
                 .sorted(ElliottScenarioSet.byConfidenceDescending())
                 .limit(maxScenarios)
                 .toList();
+    }
+
+    private int scenarioStartIndex(final List<ElliottSwing> swings) {
+        if (swings == null || swings.isEmpty()) {
+            return 0;
+        }
+        return swings.getFirst().fromIndex();
     }
 
     private String generateId(final String prefix) {

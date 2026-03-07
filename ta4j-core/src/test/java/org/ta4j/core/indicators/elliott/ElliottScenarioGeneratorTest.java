@@ -316,7 +316,7 @@ class ElliottScenarioGeneratorTest {
         ElliottScenarioSet set = wideSearchGenerator.generate(swings, ElliottDegree.MINOR, null, 40);
 
         assertThat(set.all()).anyMatch(scenario -> scenario.type() == ScenarioType.IMPULSE
-                && scenario.currentPhase() == ElliottPhase.WAVE5 && scenario.startIndex() == 3);
+                && scenario.currentPhase() == ElliottPhase.WAVE5 && scenario.startIndex() == 15);
     }
 
     private List<ElliottSwing> createAlternatingSwings() {

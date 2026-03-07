@@ -81,6 +81,8 @@ public final class ElliottWaveAnalysisRunner {
      */
     private static final int DEFAULT_SCENARIO_SWING_WINDOW = 0;
     private static final int BROAD_HISTORY_FILTER_BAR_THRESHOLD = 250;
+    private static final int DEFAULT_COMPRESSOR_MIN_BARS = 2;
+    private static final int BROAD_HISTORY_COMPRESSOR_MIN_BARS = 1;
 
     private static final double DEFAULT_BASE_CONFIDENCE_WEIGHT = 0.7;
     private static final double DEFAULT_NEUTRAL_CROSS_DEGREE_SCORE = 0.5;
@@ -218,9 +220,7 @@ public final class ElliottWaveAnalysisRunner {
             filter = new MinMagnitudeSwingFilter(defaultMinRelativeMagnitude(series, degree));
         }
 
-        ElliottSwingCompressor compressor = new ElliottSwingCompressor(new ClosePriceIndicator(series),
-                scale(baseDegree, degree, 0.01, 1.5, 0.0025, 0.05),
-                Math.max(1, 2 + (baseDegree.ordinal() - degree.ordinal())));
+        ElliottSwingCompressor compressor = defaultSwingCompressor(series, degree);
 
         return runSingleDegreePipeline(series, degree, swingDetector, filter, compressor);
     }
@@ -232,6 +232,17 @@ public final class ElliottWaveAnalysisRunner {
         }
         final double broadHistoryThreshold = scale(baseDegree, degree, 0.02, 1.35, 0.005, 0.20);
         return Math.min(standardThreshold, broadHistoryThreshold);
+    }
+
+    private ElliottSwingCompressor defaultSwingCompressor(final BarSeries series, final ElliottDegree degree) {
+        if (scenarioSwingWindow != 0 || series.getBarCount() < BROAD_HISTORY_FILTER_BAR_THRESHOLD) {
+            return new ElliottSwingCompressor(new ClosePriceIndicator(series),
+                    scale(baseDegree, degree, 0.01, 1.5, 0.0025, 0.05),
+                    Math.max(1, DEFAULT_COMPRESSOR_MIN_BARS + (baseDegree.ordinal() - degree.ordinal())));
+        }
+        final double broadHistoryPercentage = scale(baseDegree, degree, 0.002, 1.15, 0.0005, 0.01);
+        return new ElliottSwingCompressor(new ClosePriceIndicator(series), broadHistoryPercentage,
+                BROAD_HISTORY_COMPRESSOR_MIN_BARS);
     }
 
     /**

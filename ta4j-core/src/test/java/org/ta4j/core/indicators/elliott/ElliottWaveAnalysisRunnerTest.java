@@ -269,6 +269,45 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void fullHistoryModeUsesLighterDefaultSwingCompressorOnLongSeries() {
+        BarSeries series = buildLongHistorySeries();
+        NumFactory factory = series.numFactory();
+        ElliottDegree degree = ElliottDegree.PRIMARY;
+        List<ElliottSwing> swings = List.of(new ElliottSwing(0, 50, factory.hundred(), factory.numOf(101.0), degree),
+                new ElliottSwing(50, 100, factory.numOf(101.0), factory.numOf(100.2), degree),
+                new ElliottSwing(100, 150, factory.numOf(100.2), factory.numOf(101.4), degree),
+                new ElliottSwing(150, 200, factory.numOf(101.4), factory.numOf(100.6), degree),
+                new ElliottSwing(200, 250, factory.numOf(100.6), factory.numOf(140.0), degree),
+                new ElliottSwing(250, 299, factory.numOf(140.0), factory.numOf(130.0), degree));
+
+        SwingDetector detector = (ignoredSeries, index, ignoredDegree) -> SwingDetectorResult.fromSwings(swings);
+        SwingFilter passThroughFilter = detected -> List.copyOf(detected);
+        ConfidenceModel model = (input, phase, channel,
+                type) -> new ElliottConfidenceBreakdown(new ElliottConfidence(series.numFactory().numOf(0.8),
+                        series.numFactory().numOf(0.8), series.numFactory().numOf(0.8), series.numFactory().numOf(0.8),
+                        series.numFactory().numOf(0.8), series.numFactory().numOf(0.8), "stub"), List.of());
+
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(degree)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .swingDetector(detector)
+                .swingFilter(passThroughFilter)
+                .scenarioSwingWindow(0)
+                .patternSet(PatternSet.of(ScenarioType.IMPULSE))
+                .minConfidence(0.0)
+                .confidenceModel(model)
+                .build();
+
+        ElliottWaveAnalysisResult result = analysis.analyze(series);
+        ElliottAnalysisResult base = result.analysisFor(degree).orElseThrow().analysis();
+
+        assertThat(base.rawSwings()).hasSize(6);
+        assertThat(base.processedSwings()).hasSize(6);
+        assertThat(base.processedSwings().getFirst().fromIndex()).isEqualTo(0);
+    }
+
+    @Test
     void buildRequiresDegree() {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> ElliottWaveAnalysisRunner.builder().build());

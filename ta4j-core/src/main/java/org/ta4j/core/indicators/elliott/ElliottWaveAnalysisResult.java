@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.elliott;
 
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -66,6 +67,54 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
             }
         }
         return Optional.empty();
+    }
+
+    /**
+     * Returns the base scenarios re-ranked for how closely they span a target
+     * anchor window.
+     *
+     * <p>
+     * This is useful for research and reporting flows that need the best scenario
+     * for a known start/end segment rather than the globally best scenario for the
+     * full analyzed prefix. Scenarios that start near {@code startIndex} and
+     * terminate near {@code endIndex} are preferred ahead of broader ranking ties.
+     *
+     * @param startIndex expected scenario start pivot index
+     * @param endIndex   expected scenario terminal pivot index
+     * @return immutable base-scenario view sorted by anchor-span fit first and
+     *         composite score second
+     * @since 0.22.4
+     */
+    public List<BaseScenarioAssessment> rankedBaseScenariosForSpan(final int startIndex, final int endIndex) {
+        if (startIndex < 0) {
+            throw new IllegalArgumentException("startIndex must be >= 0");
+        }
+        if (endIndex < startIndex) {
+            throw new IllegalArgumentException("endIndex must be >= startIndex");
+        }
+        if (rankedBaseScenarios.isEmpty()) {
+            return List.of();
+        }
+        return rankedBaseScenarios.stream()
+                .sorted(Comparator
+                        .comparingDouble((BaseScenarioAssessment assessment) -> anchorSpanScore(assessment.scenario(),
+                                startIndex, endIndex))
+                        .reversed()
+                        .thenComparing(Comparator.comparingDouble(BaseScenarioAssessment::compositeScore).reversed())
+                        .thenComparing(assessment -> assessment.scenario().id()))
+                .toList();
+    }
+
+    private static double anchorSpanScore(final ElliottScenario scenario, final int startIndex, final int endIndex) {
+        if (scenario == null || scenario.swings().isEmpty()) {
+            return 0.0;
+        }
+        final int actualStart = scenario.swings().getFirst().fromIndex();
+        final int actualEnd = scenario.swings().getLast().toIndex();
+        final double span = Math.max(1.0, endIndex - startIndex);
+        final double startAlignment = 1.0 - Math.min(1.0, Math.abs(actualStart - startIndex) / span);
+        final double endAlignment = 1.0 - Math.min(1.0, Math.abs(actualEnd - endIndex) / span);
+        return (startAlignment + endAlignment) / 2.0;
     }
 
     /**
