@@ -665,8 +665,8 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
         int beginIndex = movingSeries.getBeginIndex();
         int endIndex = movingSeries.getEndIndex();
         assertTrue("Expected retained bars after populating the moving series", beginIndex <= endIndex);
-        Num expected = null;
-        for (int i = beginIndex; i <= endIndex; i++) {
+        Num expected = sequential.getValue(beginIndex);
+        for (int i = beginIndex + 1; i <= endIndex; i++) {
             expected = sequential.getValue(i);
         }
 
