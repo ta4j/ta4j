@@ -230,7 +230,7 @@ public final class ElliottWaveAnalysisRunner {
         if (scenarioSwingWindow != 0 || series.getBarCount() < BROAD_HISTORY_FILTER_BAR_THRESHOLD) {
             return standardThreshold;
         }
-        final double broadHistoryThreshold = scale(baseDegree, degree, 0.02, 1.35, 0.005, 0.20);
+        final double broadHistoryThreshold = scale(baseDegree, degree, 0.005, 1.35, 0.001, 0.10);
         return Math.min(standardThreshold, broadHistoryThreshold);
     }
 

@@ -240,8 +240,8 @@ class ElliottWaveAnalysisRunnerTest {
                 new ElliottSwing(50, 100, factory.numOf(110), factory.numOf(103), degree),
                 new ElliottSwing(100, 150, factory.numOf(103), factory.numOf(117), degree),
                 new ElliottSwing(150, 200, factory.numOf(117), factory.numOf(108), degree),
-                new ElliottSwing(200, 250, factory.numOf(108), factory.numOf(180), degree),
-                new ElliottSwing(250, 299, factory.numOf(180), factory.numOf(160), degree));
+                new ElliottSwing(200, 250, factory.numOf(108), factory.numOf(1000), degree),
+                new ElliottSwing(250, 299, factory.numOf(1000), factory.numOf(950), degree));
 
         SwingDetector detector = (ignoredSeries, index, ignoredDegree) -> SwingDetectorResult.fromSwings(swings);
         ConfidenceModel model = (input, phase, channel,
@@ -265,6 +265,7 @@ class ElliottWaveAnalysisRunnerTest {
 
         assertThat(base.rawSwings()).hasSize(6);
         assertThat(base.processedSwings()).hasSize(6);
+        assertThat(base.processedSwings().get(1).amplitude()).isEqualByComparingTo(factory.numOf(7));
         assertThat(base.processedSwings().getFirst().fromIndex()).isEqualTo(0);
     }
 
