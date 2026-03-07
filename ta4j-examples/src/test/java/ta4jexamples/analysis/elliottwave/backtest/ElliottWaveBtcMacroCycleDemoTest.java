@@ -363,6 +363,9 @@ class ElliottWaveBtcMacroCycleDemoTest {
         analysis.candidates().stream().limit(5).forEach(candidate -> {
             List<ElliottSwing> swings = candidate.fit().scenario().swings();
             assertFalse(swings.isEmpty());
+            assertTrue(ElliottWaveBtcMacroCycleDemo.hasValidBullishImpulseAnchors(liveWindow, candidate.startIndex(),
+                    swingsToPivotCandidates(swings), liveWindow.getEndIndex(),
+                    candidate.fit().currentPhase().impulseIndex()));
             for (int index = 0; index < swings.size(); index++) {
                 ElliottSwing swing = swings.get(index);
                 assertEquals(index % 2 == 0, swing.isRising(),
@@ -384,6 +387,20 @@ class ElliottWaveBtcMacroCycleDemoTest {
         assertFalse(ElliottWaveBtcMacroCycleDemo.isValidBullishImpulseProgression(List.of(100.0, 120.0, 130.0)));
         assertFalse(ElliottWaveBtcMacroCycleDemo.isValidBullishImpulseProgression(List.of(100.0, 120.0, 110.0, 105.0)));
         assertTrue(ElliottWaveBtcMacroCycleDemo.isValidBullishImpulseProgression(List.of(100.0, 120.0, 110.0, 145.0)));
+    }
+
+    @Test
+    void bullishImpulseAnchorDominanceRejectsOvertakenWaveOneHigh() {
+        BarSeries series = new BaseBarSeriesBuilder().withName("dominance").build();
+        addBar(series, "2024-01-01T00:00:00Z", 100, 101, 99, 100);
+        addBar(series, "2024-01-02T00:00:00Z", 100, 120, 100, 118);
+        addBar(series, "2024-01-03T00:00:00Z", 118, 130, 117, 128);
+        addBar(series, "2024-01-04T00:00:00Z", 128, 129, 110, 112);
+
+        List<ElliottWaveBtcMacroCycleDemo.PivotCandidate> path = List
+                .of(new ElliottWaveBtcMacroCycleDemo.PivotCandidate(1, series.getBar(1).getHighPrice(), 1.0, 1.0));
+
+        assertFalse(ElliottWaveBtcMacroCycleDemo.hasValidBullishImpulseAnchors(series, 0, path, 3, 2));
     }
 
     @Test
@@ -588,6 +605,34 @@ class ElliottWaveBtcMacroCycleDemoTest {
             }
         }
         return null;
+    }
+
+    private static List<ElliottWaveBtcMacroCycleDemo.PivotCandidate> swingsToPivotCandidates(
+            List<ElliottSwing> swings) {
+        if (swings.size() <= 1) {
+            return List.of();
+        }
+        java.util.ArrayList<ElliottWaveBtcMacroCycleDemo.PivotCandidate> candidates = new java.util.ArrayList<>();
+        for (int index = 0; index < swings.size() - 1; index++) {
+            ElliottSwing swing = swings.get(index);
+            candidates.add(new ElliottWaveBtcMacroCycleDemo.PivotCandidate(swing.toIndex(), swing.toPrice(), 1.0, 1.0));
+        }
+        return List.copyOf(candidates);
+    }
+
+    private static void addBar(BarSeries series, String endTimeUtc, double open, double high, double low,
+            double close) {
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(Instant.parse(endTimeUtc))
+                .openPrice(open)
+                .highPrice(high)
+                .lowPrice(low)
+                .closePrice(close)
+                .volume(1.0)
+                .amount(close)
+                .trades(1)
+                .build());
     }
 
     private static void assertPaintMatches(Color expected, java.awt.Paint paint) {

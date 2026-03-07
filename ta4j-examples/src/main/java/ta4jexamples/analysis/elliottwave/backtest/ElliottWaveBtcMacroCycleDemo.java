@@ -982,13 +982,14 @@ public final class ElliottWaveBtcMacroCycleDemo {
         double[] fractions = Arrays.copyOf(profile.impulseFractions(), internalHighPivots.length);
         List<List<PivotCandidate>> candidatesBySlot = collectSlotCandidates(series, startIndex, endIndex, fractions,
                 internalHighPivots, profile);
-        List<PivotCandidate> bestPath = searchBestPath(candidatesBySlot, startIndex, endIndex,
-                minimumSwingGap(startIndex, endIndex, phase));
+        List<PivotCandidate> bestPath = searchBestBullishImpulsePath(series, candidatesBySlot, startIndex, endIndex,
+                minimumSwingGap(startIndex, endIndex, phase), phase);
         if (bestPath.isEmpty()) {
             return Optional.empty();
         }
         List<Double> prices = buildBullishImpulsePricePath(series, startIndex, bestPath, endIndex, phase);
-        if (!isValidBullishImpulseProgression(prices)) {
+        if (!isValidBullishImpulseProgression(prices)
+                || !hasValidBullishImpulseAnchors(series, startIndex, bestPath, endIndex, phase)) {
             return Optional.empty();
         }
 
@@ -1015,7 +1016,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
     private static double scorePartialImpulse(BarSeries series, int startIndex, List<PivotCandidate> path, int endIndex,
             MacroLogicProfile profile, int phase) {
         List<Double> prices = buildBullishImpulsePricePath(series, startIndex, path, endIndex, phase);
-        if (!isValidBullishImpulseProgression(prices)) {
+        if (!isValidBullishImpulseProgression(prices)
+                || !hasValidBullishImpulseAnchors(series, startIndex, path, endIndex, phase)) {
             return 0.0;
         }
         List<Integer> indices = new ArrayList<>();
@@ -1087,6 +1089,54 @@ public final class ElliottWaveBtcMacroCycleDemo {
             }
         }
         return true;
+    }
+
+    static boolean hasValidBullishImpulseAnchors(BarSeries series, int startIndex, List<PivotCandidate> path,
+            int endIndex, int phase) {
+        return bullishImpulseAnchorDominanceScore(series, startIndex, path, endIndex, phase) >= 0.95;
+    }
+
+    static double bullishImpulseAnchorDominanceScore(BarSeries series, int startIndex, List<PivotCandidate> path,
+            int endIndex, int phase) {
+        List<Integer> indices = buildBullishImpulseIndices(startIndex, path, endIndex);
+        if (indices.size() < 2) {
+            return 0.0;
+        }
+        boolean[] highPivots = buildBullishImpulsePivotRoles(phase, path.size());
+        double total = 0.0;
+        for (int pointIndex = 0; pointIndex < indices.size(); pointIndex++) {
+            int pivotIndex = indices.get(pointIndex);
+            int spanStart = pointIndex == 0 ? indices.getFirst() : indices.get(pointIndex - 1);
+            int spanEnd = pointIndex == indices.size() - 1 ? indices.getLast() : indices.get(pointIndex + 1);
+            boolean highPivot = highPivots[pointIndex];
+            double pivotPrice = highPivot ? series.getBar(pivotIndex).getHighPrice().doubleValue()
+                    : series.getBar(pivotIndex).getLowPrice().doubleValue();
+            double spanExtreme = highPivot ? highestHigh(series, spanStart, spanEnd)
+                    : lowestLow(series, spanStart, spanEnd);
+            double spanRange = Math.max(EPSILON, segmentRange(series, spanStart, spanEnd));
+            total += clamp(1.0 - (Math.abs(spanExtreme - pivotPrice) / spanRange), 0.0, 1.0);
+        }
+        return total / indices.size();
+    }
+
+    private static List<Integer> buildBullishImpulseIndices(int startIndex, List<PivotCandidate> path, int endIndex) {
+        List<Integer> indices = new ArrayList<>(path.size() + 2);
+        indices.add(startIndex);
+        for (PivotCandidate candidate : path) {
+            indices.add(candidate.barIndex());
+        }
+        indices.add(endIndex);
+        return List.copyOf(indices);
+    }
+
+    private static boolean[] buildBullishImpulsePivotRoles(int phase, int pathSize) {
+        boolean[] roles = new boolean[pathSize + 2];
+        roles[0] = false;
+        for (int index = 1; index <= pathSize; index++) {
+            roles[index] = index % 2 == 1;
+        }
+        roles[roles.length - 1] = phase % 2 == 1;
+        return roles;
     }
 
     private static Optional<SegmentScenarioFit> fitSegment(BarSeries series, LegSegment legSegment,
@@ -1314,6 +1364,31 @@ public final class ElliottWaveBtcMacroCycleDemo {
         BestPathHolder holder = new BestPathHolder();
         searchSegmentPaths(candidatesBySlot, 0, startIndex, endIndex, minimumGap, new ArrayList<>(), candidates -> {
             double score = candidates.stream().mapToDouble(PivotCandidate::normalizedScore).sum();
+            if (score > holder.score) {
+                holder.score = score;
+                holder.best = List.copyOf(candidates);
+            }
+        });
+        return holder.best;
+    }
+
+    private static List<PivotCandidate> searchBestBullishImpulsePath(BarSeries series,
+            List<List<PivotCandidate>> candidatesBySlot, int startIndex, int endIndex, int minimumGap, int phase) {
+        final class BestPathHolder {
+            private List<PivotCandidate> best = List.of();
+            private double score = Double.NEGATIVE_INFINITY;
+        }
+        BestPathHolder holder = new BestPathHolder();
+        searchSegmentPaths(candidatesBySlot, 0, startIndex, endIndex, minimumGap, new ArrayList<>(), candidates -> {
+            List<Double> prices = buildBullishImpulsePricePath(series, startIndex, candidates, endIndex, phase);
+            if (!isValidBullishImpulseProgression(prices)) {
+                return;
+            }
+            double dominanceScore = bullishImpulseAnchorDominanceScore(series, startIndex, candidates, endIndex, phase);
+            if (dominanceScore < 0.95) {
+                return;
+            }
+            double score = candidates.stream().mapToDouble(PivotCandidate::normalizedScore).sum() + dominanceScore;
             if (score > holder.score) {
                 holder.score = score;
                 holder.best = List.copyOf(candidates);
@@ -1988,6 +2063,26 @@ public final class ElliottWaveBtcMacroCycleDemo {
             highest = Math.max(highest, series.getBar(index).getHighPrice().doubleValue());
         }
         return Math.max(EPSILON, highest - lowest);
+    }
+
+    private static double highestHigh(BarSeries series, int startIndex, int endIndex) {
+        int fromIndex = clampIndex(Math.min(startIndex, endIndex), series.getBeginIndex(), series.getEndIndex());
+        int toIndex = clampIndex(Math.max(startIndex, endIndex), series.getBeginIndex(), series.getEndIndex());
+        double highest = Double.NEGATIVE_INFINITY;
+        for (int index = fromIndex; index <= toIndex; index++) {
+            highest = Math.max(highest, series.getBar(index).getHighPrice().doubleValue());
+        }
+        return highest;
+    }
+
+    private static double lowestLow(BarSeries series, int startIndex, int endIndex) {
+        int fromIndex = clampIndex(Math.min(startIndex, endIndex), series.getBeginIndex(), series.getEndIndex());
+        int toIndex = clampIndex(Math.max(startIndex, endIndex), series.getBeginIndex(), series.getEndIndex());
+        double lowest = Double.POSITIVE_INFINITY;
+        for (int index = fromIndex; index <= toIndex; index++) {
+            lowest = Math.min(lowest, series.getBar(index).getLowPrice().doubleValue());
+        }
+        return lowest;
     }
 
     private static double weightedScore(double structureScore, double ruleScore, double spacingScore,
