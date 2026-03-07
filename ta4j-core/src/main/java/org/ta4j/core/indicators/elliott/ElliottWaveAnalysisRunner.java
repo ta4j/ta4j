@@ -664,13 +664,14 @@ public final class ElliottWaveAnalysisRunner {
     private Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> toCurrentPhaseAssessment(final BarSeries series,
             final int startIndex, final int endIndex, final ElliottPhase currentPhase, final ElliottScenario scenario,
             final double baseFitScore) {
-        final ElliottSwing firstSwing = scenario.swings().getFirst();
-        final ElliottSwing lastSwing = scenario.swings().getLast();
+        final ElliottScenario normalizedScenario = normalizeCurrentCycleScenario(series, scenario);
+        final ElliottSwing firstSwing = normalizedScenario.swings().getFirst();
+        final ElliottSwing lastSwing = normalizedScenario.swings().getLast();
         if (Math.abs(firstSwing.fromIndex() - startIndex) > CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS
                 || Math.abs(lastSwing.toIndex() - endIndex) > CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS) {
             return Optional.empty();
         }
-        final Optional<PivotDominanceSummary> dominanceSummary = pivotDominanceSummary(series, scenario);
+        final Optional<PivotDominanceSummary> dominanceSummary = pivotDominanceSummary(series, normalizedScenario);
         if (dominanceSummary.isEmpty()) {
             return Optional.empty();
         }
@@ -682,9 +683,89 @@ public final class ElliottWaveAnalysisRunner {
         final double fitScore = clamp01((CURRENT_CYCLE_FIT_SCORE_WEIGHT * baseFitScore)
                 + (CURRENT_CYCLE_DOMINANCE_WEIGHT * dominance.averagePivotDominance())
                 + (CURRENT_CYCLE_TERMINAL_WEIGHT * dominance.terminalPivotDominance()));
-        return Optional.of(new ElliottWaveAnalysisResult.CurrentPhaseAssessment(scenario, currentPhase, fitScore,
-                lowPriceNum(series, startIndex), bullishCountLabel(currentPhase.isImpulse() ? scenario.waveCount() : 0),
-                scenario.invalidationPrice()));
+        return Optional.of(new ElliottWaveAnalysisResult.CurrentPhaseAssessment(normalizedScenario, currentPhase,
+                fitScore, lowPriceNum(series, startIndex),
+                bullishCountLabel(currentPhase.isImpulse() ? scenario.waveCount() : 0), scenario.invalidationPrice()));
+    }
+
+    private ElliottScenario normalizeCurrentCycleScenario(final BarSeries series, final ElliottScenario scenario) {
+        if (scenario == null || scenario.swings().isEmpty() || !scenario.currentPhase().isImpulse()
+                || scenario.type() != ScenarioType.IMPULSE || !scenario.hasKnownDirection() || !scenario.isBullish()) {
+            return scenario;
+        }
+
+        final List<ElliottSwing> normalizedSwings = normalizeBullishImpulseSwings(series, scenario.swings());
+        if (normalizedSwings.equals(scenario.swings())) {
+            return scenario;
+        }
+
+        final ElliottScenario.Builder builder = ElliottScenario.builder()
+                .id(scenario.id())
+                .currentPhase(scenario.currentPhase())
+                .swings(normalizedSwings)
+                .confidence(scenario.confidence())
+                .degree(scenario.degree())
+                .invalidationPrice(scenario.invalidationPrice())
+                .primaryTarget(scenario.primaryTarget())
+                .fibonacciTargets(scenario.fibonacciTargets())
+                .type(scenario.type())
+                .startIndex(normalizedSwings.getFirst().fromIndex())
+                .bullishDirection(true);
+        return builder.build();
+    }
+
+    private List<ElliottSwing> normalizeBullishImpulseSwings(final BarSeries series, final List<ElliottSwing> swings) {
+        if (swings == null || swings.size() < 2) {
+            return swings == null ? List.of() : swings;
+        }
+
+        final int pivotCount = swings.size() + 1;
+        final int[] pivotIndices = new int[pivotCount];
+        final Num[] pivotPrices = new Num[pivotCount];
+        final boolean[] highPivots = new boolean[pivotCount];
+
+        final ElliottSwing firstSwing = swings.getFirst();
+        pivotIndices[0] = firstSwing.fromIndex();
+        pivotPrices[0] = firstSwing.fromPrice();
+        highPivots[0] = false;
+
+        for (int index = 0; index < swings.size(); index++) {
+            final ElliottSwing swing = swings.get(index);
+            pivotIndices[index + 1] = swing.toIndex();
+            pivotPrices[index + 1] = swing.toPrice();
+            highPivots[index + 1] = swing.isRising();
+        }
+
+        boolean changed = false;
+        for (int pointIndex = 1; pointIndex < pivotCount - 1; pointIndex++) {
+            final int interiorStart = pivotIndices[pointIndex - 1] + 1;
+            final int interiorEnd = pivotIndices[pointIndex + 1] - 1;
+            if (interiorStart > interiorEnd) {
+                continue;
+            }
+
+            final boolean highPivot = highPivots[pointIndex];
+            final int snappedIndex = highPivot ? highestHighIndex(series, interiorStart, interiorEnd)
+                    : lowestLowIndex(series, interiorStart, interiorEnd);
+            final Num snappedPrice = highPivot ? highPriceNum(series, snappedIndex) : lowPriceNum(series, snappedIndex);
+            if (snappedIndex != pivotIndices[pointIndex] || snappedPrice.compareTo(pivotPrices[pointIndex]) != 0) {
+                pivotIndices[pointIndex] = snappedIndex;
+                pivotPrices[pointIndex] = snappedPrice;
+                changed = true;
+            }
+        }
+
+        if (!changed) {
+            return swings;
+        }
+
+        final List<ElliottSwing> normalizedSwings = new ArrayList<>(swings.size());
+        for (int index = 0; index < swings.size(); index++) {
+            final ElliottSwing swing = swings.get(index);
+            normalizedSwings.add(new ElliottSwing(pivotIndices[index], pivotIndices[index + 1], pivotPrices[index],
+                    pivotPrices[index + 1], swing.degree()));
+        }
+        return List.copyOf(normalizedSwings);
     }
 
     private Optional<PivotDominanceSummary> pivotDominanceSummary(final BarSeries series,
@@ -810,8 +891,27 @@ public final class ElliottWaveAnalysisRunner {
         return series.getBar(index).getLowPrice().doubleValue();
     }
 
+    private static Num highPriceNum(final BarSeries series, final int index) {
+        return series.getBar(index).getHighPrice();
+    }
+
     private static Num lowPriceNum(final BarSeries series, final int index) {
         return series.getBar(index).getLowPrice();
+    }
+
+    private static int highestHighIndex(final BarSeries series, final int startIndex, final int endIndex) {
+        final int fromIndex = Math.max(series.getBeginIndex(), Math.min(startIndex, endIndex));
+        final int toIndex = Math.min(series.getEndIndex(), Math.max(startIndex, endIndex));
+        int bestIndex = fromIndex;
+        double bestPrice = Double.NEGATIVE_INFINITY;
+        for (int index = fromIndex; index <= toIndex; index++) {
+            final double candidate = highPrice(series, index);
+            if (candidate > bestPrice) {
+                bestPrice = candidate;
+                bestIndex = index;
+            }
+        }
+        return bestIndex;
     }
 
     private ElliottAnalysisResult clipAnalysisResult(final ElliottAnalysisResult result,

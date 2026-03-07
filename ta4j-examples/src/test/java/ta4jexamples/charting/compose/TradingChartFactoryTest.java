@@ -423,6 +423,34 @@ class TradingChartFactoryTest {
     }
 
     @Test
+    void testBarSeriesLabelOverlayAppliesPerLabelFontScale() {
+        BarSeries series = ChartingTestFixtures.standardDailySeries();
+        List<BarLabel> labels = List.of(
+                new BarLabel(5, series.getBar(5).getClosePrice(), "Wave 1", LabelPlacement.ABOVE, Color.GREEN, 3.0));
+        BarSeriesLabelIndicator labelIndicator = new BarSeriesLabelIndicator(series, labels);
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(labelIndicator)
+                .withLabel("Labels")
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+
+        XYTextAnnotation annotation = basePlot.getAnnotations()
+                .stream()
+                .filter(XYTextAnnotation.class::isInstance)
+                .map(XYTextAnnotation.class::cast)
+                .filter(candidate -> "Wave 1".equals(candidate.getText()))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals(36.0, annotation.getFont().getSize2D(), 0.001);
+    }
+
+    @Test
     void testSwingPointOverlayChartMatchesSwingPointAnalysisFlow() {
         BarSeries swingSeries = swingPointSeries();
         LowPriceIndicator lowPrice = new LowPriceIndicator(swingSeries);

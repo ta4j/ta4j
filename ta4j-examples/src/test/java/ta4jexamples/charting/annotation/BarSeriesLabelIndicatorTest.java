@@ -153,6 +153,15 @@ class BarSeriesLabelIndicatorTest {
         BarLabel label = new BarLabel(5, numFactory.numOf(105.0), "Test", LabelPlacement.ABOVE, Color.GREEN);
 
         assertEquals(Color.GREEN, label.color());
+        assertEquals(1.0, label.fontScale());
+    }
+
+    @Test
+    void testBarLabelCreationRetainsExplicitFontScale() {
+        BarLabel label = new BarLabel(5, numFactory.numOf(105.0), "Test", LabelPlacement.ABOVE, Color.GREEN, 3.0);
+
+        assertEquals(Color.GREEN, label.color());
+        assertEquals(3.0, label.fontScale());
     }
 
     @Test
@@ -180,6 +189,13 @@ class BarSeriesLabelIndicatorTest {
     void testBarLabelThrowsWhenPlacementIsNull() {
         assertThrows(NullPointerException.class, () -> {
             new BarLabel(0, numFactory.numOf(100.0), "Test", null);
+        });
+    }
+
+    @Test
+    void testBarLabelThrowsWhenFontScaleIsNotPositive() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            new BarLabel(0, numFactory.numOf(100.0), "Test", LabelPlacement.CENTER, null, 0.0);
         });
     }
 

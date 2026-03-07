@@ -31,10 +31,15 @@ public class BarSeriesLabelIndicator extends CachedIndicator<Num> {
         ABOVE, BELOW, CENTER
     }
 
-    public record BarLabel(int barIndex, Num yValue, String text, LabelPlacement placement, Color color) {
+    public record BarLabel(int barIndex, Num yValue, String text, LabelPlacement placement, Color color,
+            double fontScale) {
 
         public BarLabel(int barIndex, Num yValue, String text, LabelPlacement placement) {
-            this(barIndex, yValue, text, placement, null);
+            this(barIndex, yValue, text, placement, null, 1.0);
+        }
+
+        public BarLabel(int barIndex, Num yValue, String text, LabelPlacement placement, Color color) {
+            this(barIndex, yValue, text, placement, color, 1.0);
         }
 
         public BarLabel {
@@ -44,6 +49,9 @@ public class BarSeriesLabelIndicator extends CachedIndicator<Num> {
             Objects.requireNonNull(yValue, "yValue");
             Objects.requireNonNull(text, "text");
             Objects.requireNonNull(placement, "placement");
+            if (!Double.isFinite(fontScale) || fontScale <= 0.0) {
+                throw new IllegalArgumentException("fontScale must be positive and finite");
+            }
         }
     }
 

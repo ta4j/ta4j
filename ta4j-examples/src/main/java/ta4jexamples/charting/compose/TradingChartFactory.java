@@ -1482,7 +1482,8 @@ public final class TradingChartFactory {
             double y = yValue.doubleValue();
 
             XYTextAnnotation annotation = new XYTextAnnotation(label.text(), x, y);
-            annotation.setFont(OVERLAY_LABEL_FONT);
+            annotation.setFont(
+                    OVERLAY_LABEL_FONT.deriveFont((float) (OVERLAY_LABEL_FONT.getSize2D() * label.fontScale())));
             Color annotationColor = label.color() != null ? label.color() : overlayColor;
             annotation.setPaint(applyOpacity(annotationColor, opacity));
             annotation.setBackgroundPaint(TRADE_LABEL_BACKGROUND);

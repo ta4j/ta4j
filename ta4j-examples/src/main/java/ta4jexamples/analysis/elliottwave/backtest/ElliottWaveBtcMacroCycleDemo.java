@@ -103,6 +103,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
     static final Color BULLISH_CANDIDATE_COLOR = new Color(0xC8E6C9);
     static final Color BEARISH_CANDIDATE_COLOR = new Color(0xFFCDD2);
     static final Color ANCHOR_OVERLAY_COLOR = new Color(0xCFD8DC);
+    static final double WAVE_LABEL_FONT_SCALE = 3.0;
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveBtcMacroCycleDemo.class);
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -673,7 +674,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
             ElliottSwing swing = swings.get(index);
             boolean highPivot = swing.isRising();
             labels.add(new BarLabel(swing.toIndex(), offsetLabelValue(series, swing.toPrice(), highPivot),
-                    waveLabelForPhase(scenario.currentPhase(), index), placementForPivot(highPivot), labelColor));
+                    waveLabelForPhase(scenario.currentPhase(), index), placementForPivot(highPivot), labelColor,
+                    WAVE_LABEL_FONT_SCALE));
         }
         return List.copyOf(labels);
     }
@@ -1452,7 +1454,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 }
             }
             Num adjustedY = applyLabelClusterOffset(series, label, clusterDepth);
-            adjusted.add(new BarLabel(label.barIndex(), adjustedY, label.text(), label.placement(), label.color()));
+            adjusted.add(new BarLabel(label.barIndex(), adjustedY, label.text(), label.placement(), label.color(),
+                    label.fontScale()));
         }
         return List.copyOf(adjusted);
     }

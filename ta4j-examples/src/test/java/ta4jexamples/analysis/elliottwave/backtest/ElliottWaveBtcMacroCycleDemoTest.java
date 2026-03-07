@@ -383,6 +383,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 assertEquals(previous.toPrice(), swing.fromPrice(),
                         "Swing prices should stay anchored for " + candidate.fit().countLabel());
             }
+            assertScenarioInternalPivotsUseLocalExtremes(liveWindow, candidate.fit().scenario(),
+                    candidate.fit().countLabel());
         });
     }
 
@@ -478,6 +480,37 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 && Math.abs(actualEnd - expectedEnd) <= ElliottWaveBtcMacroCycleDemo.MAX_CORE_ANCHOR_DRIFT_BARS;
     }
 
+    private static void assertScenarioInternalPivotsUseLocalExtremes(BarSeries series, ElliottScenario scenario,
+            String label) {
+        List<ElliottSwing> swings = scenario.swings();
+        if (swings.size() < 2) {
+            return;
+        }
+
+        int pivotCount = swings.size() + 1;
+        int[] pivotIndices = new int[pivotCount];
+        boolean[] highPivots = new boolean[pivotCount];
+        pivotIndices[0] = swings.getFirst().fromIndex();
+        highPivots[0] = false;
+        for (int index = 0; index < swings.size(); index++) {
+            ElliottSwing swing = swings.get(index);
+            pivotIndices[index + 1] = swing.toIndex();
+            highPivots[index + 1] = swing.isRising();
+        }
+
+        for (int pointIndex = 1; pointIndex < pivotCount - 1; pointIndex++) {
+            int interiorStart = pivotIndices[pointIndex - 1] + 1;
+            int interiorEnd = pivotIndices[pointIndex + 1] - 1;
+            if (interiorStart > interiorEnd) {
+                continue;
+            }
+            int expectedIndex = highPivots[pointIndex] ? highestHighIndex(series, interiorStart, interiorEnd)
+                    : lowestLowIndex(series, interiorStart, interiorEnd);
+            assertEquals(expectedIndex, pivotIndices[pointIndex],
+                    "Expected dominant local pivot for " + label + " at point " + pointIndex);
+        }
+    }
+
     private static int indexOf(BarSeries series, Instant instant) {
         for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
             if (series.getBar(index).getEndTime().equals(instant)) {
@@ -485,6 +518,32 @@ class ElliottWaveBtcMacroCycleDemoTest {
             }
         }
         throw new IllegalArgumentException("Missing bar for " + instant);
+    }
+
+    private static int highestHighIndex(BarSeries series, int startIndex, int endIndex) {
+        int bestIndex = startIndex;
+        double bestValue = Double.NEGATIVE_INFINITY;
+        for (int index = startIndex; index <= endIndex; index++) {
+            double candidate = series.getBar(index).getHighPrice().doubleValue();
+            if (candidate > bestValue) {
+                bestValue = candidate;
+                bestIndex = index;
+            }
+        }
+        return bestIndex;
+    }
+
+    private static int lowestLowIndex(BarSeries series, int startIndex, int endIndex) {
+        int bestIndex = startIndex;
+        double bestValue = Double.POSITIVE_INFINITY;
+        for (int index = startIndex; index <= endIndex; index++) {
+            double candidate = series.getBar(index).getLowPrice().doubleValue();
+            if (candidate < bestValue) {
+                bestValue = candidate;
+                bestIndex = index;
+            }
+        }
+        return bestIndex;
     }
 
     private static BarSeries chartSyntheticSeries() {
