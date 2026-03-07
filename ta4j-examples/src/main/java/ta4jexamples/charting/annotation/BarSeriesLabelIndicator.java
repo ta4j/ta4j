@@ -5,6 +5,7 @@ package ta4jexamples.charting.annotation;
 
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.awt.Color;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +31,11 @@ public class BarSeriesLabelIndicator extends CachedIndicator<Num> {
         ABOVE, BELOW, CENTER
     }
 
-    public record BarLabel(int barIndex, Num yValue, String text, LabelPlacement placement) {
+    public record BarLabel(int barIndex, Num yValue, String text, LabelPlacement placement, Color color) {
+
+        public BarLabel(int barIndex, Num yValue, String text, LabelPlacement placement) {
+            this(barIndex, yValue, text, placement, null);
+        }
 
         public BarLabel {
             if (barIndex < 0) {

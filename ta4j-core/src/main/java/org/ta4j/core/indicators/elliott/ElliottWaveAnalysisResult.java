@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.elliott;
 
 import java.time.Duration;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -69,6 +70,168 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
     }
 
     /**
+     * Returns the base scenarios re-ranked for how closely they span a target
+     * anchor window.
+     *
+     * <p>
+     * This is useful for research and reporting flows that need the best scenario
+     * for a known start/end segment rather than the globally best scenario for the
+     * full analyzed prefix. Scenarios that start near {@code startIndex} and
+     * terminate near {@code endIndex} are preferred ahead of broader ranking ties.
+     *
+     * @param startIndex expected scenario start pivot index
+     * @param endIndex   expected scenario terminal pivot index
+     * @return immutable base-scenario view sorted by anchor-span fit first and
+     *         composite score second
+     * @since 0.22.4
+     */
+    public List<BaseScenarioAssessment> rankedBaseScenariosForSpan(final int startIndex, final int endIndex) {
+        if (startIndex < 0) {
+            throw new IllegalArgumentException("startIndex must be >= 0");
+        }
+        if (endIndex < startIndex) {
+            throw new IllegalArgumentException("endIndex must be >= startIndex");
+        }
+        if (rankedBaseScenarios.isEmpty()) {
+            return List.of();
+        }
+        return rankedBaseScenarios.stream()
+                .sorted(Comparator
+                        .comparingDouble((BaseScenarioAssessment assessment) -> anchorSpanScore(assessment.scenario(),
+                                startIndex, endIndex))
+                        .reversed()
+                        .thenComparing(Comparator.comparingDouble(BaseScenarioAssessment::compositeScore).reversed())
+                        .thenComparing(assessment -> assessment.scenario().id()))
+                .toList();
+    }
+
+    /**
+     * Returns the base scenarios re-ranked for a target anchor window and scenario
+     * template.
+     *
+     * <p>
+     * This is the span-aware selection entry point for research flows that need a
+     * specific kind of count, such as a bullish five-wave impulse or a bearish
+     * corrective {@code A-B-C}, attached to a known anchor span. The returned list
+     * is filtered to scenarios that match the requested template, then sorted by
+     * anchor fit before composite score.
+     *
+     * @param startIndex         expected scenario start pivot index
+     * @param endIndex           expected scenario terminal pivot index
+     * @param scenarioType       required scenario family, or {@code null} to keep
+     *                           any family that matches the remaining template
+     * @param terminalPhase      required terminal phase
+     * @param waveCount          required wave count
+     * @param bullishDirection   required direction; {@code null} skips direction
+     *                           filtering
+     * @param maxAnchorDriftBars soft anchor tolerance used during ranking; smaller
+     *                           values penalize drift more aggressively
+     * @return immutable filtered base-scenario view sorted by anchor-conditioned
+     *         template fit first and composite score second
+     * @since 0.22.4
+     */
+    public List<BaseScenarioAssessment> rankedBaseScenariosForSpan(final int startIndex, final int endIndex,
+            final ScenarioType scenarioType, final ElliottPhase terminalPhase, final int waveCount,
+            final Boolean bullishDirection, final int maxAnchorDriftBars) {
+        if (startIndex < 0) {
+            throw new IllegalArgumentException("startIndex must be >= 0");
+        }
+        if (endIndex < startIndex) {
+            throw new IllegalArgumentException("endIndex must be >= startIndex");
+        }
+        Objects.requireNonNull(terminalPhase, "terminalPhase");
+        if (waveCount <= 0) {
+            throw new IllegalArgumentException("waveCount must be > 0");
+        }
+        if (maxAnchorDriftBars < 0) {
+            throw new IllegalArgumentException("maxAnchorDriftBars must be >= 0");
+        }
+        if (rankedBaseScenarios.isEmpty()) {
+            return List.of();
+        }
+        return rankedBaseScenarios.stream()
+                .filter(assessment -> matchesScenarioTemplate(assessment.scenario(), scenarioType, terminalPhase,
+                        waveCount, bullishDirection))
+                .sorted(Comparator
+                        .comparingDouble((BaseScenarioAssessment assessment) -> anchorTemplateScore(
+                                assessment.scenario(), startIndex, endIndex, maxAnchorDriftBars))
+                        .reversed()
+                        .thenComparing(Comparator.comparingDouble(BaseScenarioAssessment::compositeScore).reversed())
+                        .thenComparing(Comparator.comparingDouble(BaseScenarioAssessment::confidenceScore).reversed())
+                        .thenComparing(assessment -> assessment.scenario().id()))
+                .toList();
+    }
+
+    /**
+     * Returns the highest-ranked base scenario for a target span and scenario
+     * template, if present.
+     *
+     * @param startIndex         expected scenario start pivot index
+     * @param endIndex           expected scenario terminal pivot index
+     * @param scenarioType       required scenario family
+     * @param terminalPhase      required terminal phase
+     * @param waveCount          required wave count
+     * @param bullishDirection   required direction; {@code null} skips direction
+     *                           filtering
+     * @param maxAnchorDriftBars soft anchor tolerance used during ranking
+     * @return top matching scenario assessment, if any
+     * @since 0.22.4
+     */
+    public Optional<BaseScenarioAssessment> recommendedBaseScenarioForSpan(final int startIndex, final int endIndex,
+            final ScenarioType scenarioType, final ElliottPhase terminalPhase, final int waveCount,
+            final Boolean bullishDirection, final int maxAnchorDriftBars) {
+        return rankedBaseScenariosForSpan(startIndex, endIndex, scenarioType, terminalPhase, waveCount,
+                bullishDirection, maxAnchorDriftBars).stream().findFirst();
+    }
+
+    private static double anchorSpanScore(final ElliottScenario scenario, final int startIndex, final int endIndex) {
+        if (scenario == null || scenario.swings().isEmpty()) {
+            return 0.0;
+        }
+        final int actualStart = scenario.swings().getFirst().fromIndex();
+        final int actualEnd = scenario.swings().getLast().toIndex();
+        final double span = Math.max(1.0, endIndex - startIndex);
+        final double startAlignment = 1.0 - Math.min(1.0, Math.abs(actualStart - startIndex) / span);
+        final double endAlignment = 1.0 - Math.min(1.0, Math.abs(actualEnd - endIndex) / span);
+        return (startAlignment + endAlignment) / 2.0;
+    }
+
+    private static boolean matchesScenarioTemplate(final ElliottScenario scenario, final ScenarioType scenarioType,
+            final ElliottPhase terminalPhase, final int waveCount, final Boolean bullishDirection) {
+        if (scenario == null) {
+            return false;
+        }
+        if (scenarioType != null && scenario.type() != scenarioType) {
+            return false;
+        }
+        if (scenario.currentPhase() != terminalPhase || scenario.waveCount() != waveCount) {
+            return false;
+        }
+        if (bullishDirection == null) {
+            return true;
+        }
+        return scenario.hasKnownDirection() && scenario.isBullish() == bullishDirection.booleanValue();
+    }
+
+    private static double anchorTemplateScore(final ElliottScenario scenario, final int startIndex, final int endIndex,
+            final int maxAnchorDriftBars) {
+        if (scenario == null || scenario.swings().isEmpty()) {
+            return 0.0;
+        }
+        final int actualStart = scenario.swings().getFirst().fromIndex();
+        final int actualEnd = scenario.swings().getLast().toIndex();
+        final double span = Math.max(1.0, endIndex - startIndex);
+        final double spanAlignment = anchorSpanScore(scenario, startIndex, endIndex);
+        final double driftScale = Math.max(1.0, maxAnchorDriftBars);
+        final double startGap = Math.abs(actualStart - startIndex);
+        final double endGap = Math.abs(actualEnd - endIndex);
+        final double startDriftScore = 1.0 - Math.min(1.0, startGap / driftScale);
+        final double endDriftScore = 1.0 - Math.min(1.0, endGap / driftScale);
+        final double completionScore = scenario.expectsCompletion() ? 1.0 : 0.5;
+        return (spanAlignment + startDriftScore + endDriftScore + completionScore) / 4.0;
+    }
+
+    /**
      * Validates that a score is finite and inside the unit interval.
      *
      * @param fieldName field name for error messaging
@@ -111,7 +274,8 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
      * @param scenario          base-degree scenario
      * @param confidenceScore   base-degree scenario confidence score (0.0 - 1.0)
      * @param crossDegreeScore  aggregated cross-degree compatibility score
-     * @param compositeScore    blended score used for ranking
+     * @param compositeScore    blended ranking score combining raw confidence,
+     *                          structural priority, and cross-degree support
      * @param supportingMatches per-supporting-degree best-match snapshots
      * @since 0.22.4
      */

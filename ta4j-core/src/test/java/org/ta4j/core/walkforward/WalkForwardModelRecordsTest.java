@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -88,6 +89,19 @@ class WalkForwardModelRecordsTest {
         assertThrows(IllegalArgumentException.class, () -> new WalkForwardCandidate<>(" ", 0.2));
         assertThrows(IllegalArgumentException.class,
                 () -> new WalkForwardExperimentManifest(" ", "candidate", "hash", 1L, Map.of()));
+    }
+
+    @Test
+    void manifestMetadataKeepsDeterministicKeyOrder() {
+        LinkedHashMap<String, String> metadata = new LinkedHashMap<>();
+        metadata.put("scenarioSwingWindow", "0");
+        metadata.put("profile", "baseline");
+        metadata.put("degree", "MINUTE");
+
+        WalkForwardExperimentManifest manifest = new WalkForwardExperimentManifest("dataset", "candidate", "abc123",
+                42L, metadata);
+
+        assertThat(manifest.metadata().keySet()).containsExactly("degree", "profile", "scenarioSwingWindow");
     }
 
     @Test

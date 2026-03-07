@@ -5,6 +5,8 @@ package ta4jexamples.charting.display;
 
 import org.jfree.chart.JFreeChart;
 
+import java.awt.Dimension;
+
 /**
  * Display strategy for {@link JFreeChart} instances.
  *
@@ -34,4 +36,27 @@ public interface ChartDisplayer {
      * @since 0.19
      */
     void display(JFreeChart chart, String windowTitle);
+
+    /**
+     * Presents the provided chart to the user with a custom window title and an
+     * explicit preferred display size.
+     *
+     * <p>
+     * Implementations may ignore the preferred size when they cannot honor it. The
+     * default behavior delegates to the existing title-aware overload so current
+     * implementations remain source-compatible.
+     * </p>
+     *
+     * @param chart         the chart to display
+     * @param windowTitle   the title for the window/frame
+     * @param preferredSize the preferred display size
+     * @since 0.22.4
+     */
+    default void display(JFreeChart chart, String windowTitle, Dimension preferredSize) {
+        if (windowTitle != null && !windowTitle.trim().isEmpty()) {
+            display(chart, windowTitle);
+        } else {
+            display(chart);
+        }
+    }
 }

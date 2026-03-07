@@ -797,7 +797,7 @@ public final class TradingChartFactory {
                 renderer.setSeriesStroke(i, createStroke(overlay.style()));
                 renderer.setSeriesShapesVisible(i, true);
                 renderer.setSeriesShapesFilled(i, true);
-                renderer.setSeriesLinesVisible(i, true);
+                renderer.setSeriesLinesVisible(i, false);
             }
 
             renderer.setDefaultToolTipGenerator(createOverlayToolTipGenerator(series, timeAxisMode));
@@ -1463,10 +1463,8 @@ public final class TradingChartFactory {
             return;
         }
 
-        Color baseColor = overlay.style().color();
+        Color overlayColor = overlay.style().color();
         float opacity = overlay.style().opacity();
-        Color colorWithOpacity = new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(),
-                Math.round(opacity * 255));
 
         for (BarLabel label : labelIndicator.labels()) {
             if (label == null || label.text().isBlank()) {
@@ -1485,13 +1483,19 @@ public final class TradingChartFactory {
 
             XYTextAnnotation annotation = new XYTextAnnotation(label.text(), x, y);
             annotation.setFont(OVERLAY_LABEL_FONT);
-            annotation.setPaint(colorWithOpacity);
+            Color annotationColor = label.color() != null ? label.color() : overlayColor;
+            annotation.setPaint(applyOpacity(annotationColor, opacity));
             annotation.setBackgroundPaint(TRADE_LABEL_BACKGROUND);
             annotation.setTextAnchor(resolveBarLabelAnchor(label, series));
             // Annotations are automatically rendered on top of data series in JFreeChart
             // Adding them after the data series ensures they appear in front
             plot.addAnnotation(annotation);
         }
+    }
+
+    private Color applyOpacity(Color baseColor, float opacity) {
+        int alpha = Math.round(Math.max(0.0f, Math.min(1.0f, opacity)) * baseColor.getAlpha());
+        return new Color(baseColor.getRed(), baseColor.getGreen(), baseColor.getBlue(), alpha);
     }
 
     private TextAnchor resolveBarLabelAnchor(BarLabel label, BarSeries series) {
