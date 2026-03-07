@@ -4,7 +4,6 @@
 package org.ta4j.core.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.OpenPosition;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
@@ -17,8 +16,8 @@ import org.ta4j.core.num.NumFactory;
  * Analysis criterion that returns the cost basis of the open position.
  *
  * <p>
- * For {@link LiveTradingRecord} this returns the net open position's entry
- * value plus any remaining entry fees. For other trading records, it uses the
+ * For lot-aware trading records this returns the net open position's entry
+ * value plus any remaining entry fees. For legacy trading records, it uses the
  * current position's entry value plus entry transaction cost. Returns zero when
  * no open position exists.
  * </p>
@@ -42,9 +41,9 @@ public class OpenPositionCostBasisCriterion extends AbstractAnalysisCriterion {
     @Override
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         NumFactory factory = series.numFactory();
-        if (tradingRecord instanceof LiveTradingRecord liveRecord) {
-            OpenPosition open = liveRecord.getNetOpenPosition();
-            if (open == null || open.amount() == null || open.amount().isZero()) {
+        OpenPosition open = tradingRecord.getNetOpenPosition();
+        if (open != null) {
+            if (open.amount() == null || open.amount().isZero()) {
                 return factory.zero();
             }
             Num entryCost = toSeriesNum(factory, open.totalEntryCost());

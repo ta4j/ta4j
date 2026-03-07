@@ -365,6 +365,28 @@ System.out.printf("Max drawdown: %.2f%%%n",
 // See the wiki for the full list of available criteria
 ```
 
+You can also swap in execution models that simulate slippage and order-book-style
+fills:
+
+```java
+import org.ta4j.core.backtest.SlippageExecutionModel;
+import org.ta4j.core.backtest.StopLimitExecutionModel;
+
+// Example 1: next-open execution with 5 bps slippage
+TradingRecord slippageRecord = new BarSeriesManager(series,
+        new SlippageExecutionModel(series.numFactory().numOf(0.0005)))
+        .run(strategy);
+
+// Example 2: stop-limit orders with partial fills (max 25% bar-volume participation)
+TradingRecord stopLimitRecord = new BarSeriesManager(series,
+        new StopLimitExecutionModel(
+                series.numFactory().numOf(0.003),  // stop trigger ratio
+                series.numFactory().numOf(0.004),  // limit offset ratio
+                series.numFactory().numOf(0.25),   // max bar participation
+                4))                                // order TTL in bars
+        .run(strategy, strategy.getStartingType(), series.numFactory().numOf(10));
+```
+
 ### Backtest hundreds or even thousands of strategies
 
 Want to find the top performers? Generate strategies with varying parameters and compare them:
@@ -639,26 +661,40 @@ while (true) {
 - **Deterministic**: Same inputs always produce same outputs - critical for testing and debugging
 - **Type-safe**: Compile-time checks catch errors before they cost money
 
+### Migration note: Trade and TradingRecord surfaces
+
+Treat `Trade` and `TradingRecord` as the primary APIs. `BaseTrade` and `BaseTradingRecord` provide the unified
+implementation for both backtests and live execution recording.
+
+```java
+TradingRecord defaultBacktest = new BarSeriesManager(series).run(strategy);
+
+TradingRecord parityBacktest = new BarSeriesManager(series).run(
+        strategy,
+        new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+                new ZeroCostModel(), new ZeroCostModel(), null, null));
+```
+
 ## Recording live executions
 
-When you route orders to an exchange, record the fills in a `LiveTradingRecord`. It tracks partial fills, multiple open
+When you route orders to an exchange, record the fills in a `BaseTradingRecord`. It tracks partial fills, multiple open
 lots, and recorded fees so analytics can include open exposure.
 
 ```java
 import java.time.Instant;
 
-import org.ta4j.core.ExecutionFill;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
-import org.ta4j.core.LiveTrade;
-import org.ta4j.core.LiveTradingRecord;
+import org.ta4j.core.BaseTrade;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.TradeFill;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 
-LiveTradingRecord record = new LiveTradingRecord(
+BaseTradingRecord record = new BaseTradingRecord(
         TradeType.BUY,
         ExecutionMatchPolicy.FIFO,
         new ZeroCostModel(),
@@ -666,7 +702,7 @@ LiveTradingRecord record = new LiveTradingRecord(
         null,
         null);
 
-record.recordFill(new LiveTrade(
+record.recordFill(new BaseTrade(
         barIndex,
         Instant.now(),
         price,
@@ -676,8 +712,8 @@ record.recordFill(new LiveTrade(
         orderId,
         correlationId));
 
-// If you already have exchange DTOs mapped to ExecutionFill, use the generic API.
-ExecutionFill exchangeFill = mapExchangeFill();
+// Or map exchange DTOs directly into TradeFill and record them.
+TradeFill exchangeFill = mapExchangeFill();
 record.recordExecutionFill(exchangeFill);
 
 CashFlow equity = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET,
@@ -687,7 +723,7 @@ var latest = equity.getValue(series.getEndIndex());
 
 Notes:
 - `ExecutionMatchPolicy.SPECIFIC_ID` matches exits to the lot with a matching `correlationId` or `orderId`.
-- After deserializing a `LiveTradingRecord`, call `rehydrate(holdingCostModel)` to restore transient cost models.
+- After deserializing a `BaseTradingRecord`, call `rehydrate(holdingCostModel)` to restore transient cost models.
 
 ## Streaming trade ingestion (gap handling)
 
@@ -769,6 +805,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[HighRewardElliottWaveBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/HighRewardElliottWaveBacktest.java)** - Backtests the high-reward Elliott Wave strategy presets.
 - **[WyckoffCycleIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleIndicatorSuiteDemo.java)** - Demonstrates the Wyckoff cycle entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`) and prints phase transitions on an ossified bar series dataset
 - **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
+- **[TradingRecordParityBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java)** - Runs the same strategy through default and provided `BaseTradingRecord` backtest paths to verify parity and show record-factory wiring.
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
 
 ### Charting Examples

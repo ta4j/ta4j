@@ -21,14 +21,15 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
 /**
- * Maintains open lots and closed positions for live trading.
+ * Maintains open lots and closed positions for trading records.
  *
  * @since 0.22.2
  */
-public final class PositionBook implements Serializable, PositionLedger {
+public final class PositionBook implements Serializable {
 
     @Serial
     private static final long serialVersionUID = -6897162194206253952L;
@@ -83,18 +84,24 @@ public final class PositionBook implements Serializable, PositionLedger {
      * @param sequence insertion sequence for ordering
      * @since 0.22.2
      */
-    public void recordEntry(int index, LiveTrade trade, long sequence) {
+    public void recordEntry(int index, Trade trade, long sequence) {
         if (trade == null) {
             throw new IllegalArgumentException("trade must not be null");
         }
-        if (trade.amount() == null || !trade.amount().isPositive()) {
+        if (trade.getAmount() == null || !trade.getAmount().isPositive()) {
             throw new IllegalArgumentException("trade amount must be positive");
+        }
+        if (trade.getPricePerAsset() == null) {
+            throw new IllegalArgumentException("trade price must be set");
+        }
+        if (trade.getType() == null) {
+            throw new IllegalArgumentException("trade type must be set");
         }
         if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
             normalizeAvgCostLots();
         }
-        PositionLot lot = new PositionLot(index, trade.time(), trade.price(), trade.amount(), trade.fee(),
-                trade.orderId(), trade.correlationId(), sequence);
+        PositionLot lot = new PositionLot(index, timeOf(trade), trade.getPricePerAsset(), sideOf(trade.getType()),
+                trade.getAmount(), feeOf(trade), trade.getOrderId(), trade.getCorrelationId(), sequence);
         if (matchPolicy == ExecutionMatchPolicy.AVG_COST && !openLots.isEmpty()) {
             PositionLot merged = openLots.removeFirst().merge(lot);
             openLots.addFirst(merged);
@@ -112,18 +119,24 @@ public final class PositionBook implements Serializable, PositionLedger {
      * @return closed positions
      * @since 0.22.2
      */
-    public List<Position> recordExit(int index, LiveTrade trade, long sequence) {
+    public List<Position> recordExit(int index, Trade trade, long sequence) {
         if (trade == null) {
             throw new IllegalArgumentException("trade must not be null");
         }
-        if (trade.amount() == null || !trade.amount().isPositive()) {
+        if (trade.getAmount() == null || !trade.getAmount().isPositive()) {
             throw new IllegalArgumentException("trade amount must be positive");
+        }
+        if (trade.getPricePerAsset() == null) {
+            throw new IllegalArgumentException("trade price must be set");
+        }
+        if (trade.getType() == null) {
+            throw new IllegalArgumentException("trade type must be set");
         }
         if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
             normalizeAvgCostLots();
         }
-        Num remaining = trade.amount();
-        Num remainingFee = trade.fee();
+        Num remaining = trade.getAmount();
+        Num remainingFee = feeOf(trade);
         List<Position> closed = new ArrayList<>();
         while (remaining.isPositive()) {
             PositionLot lot = nextLot(trade);
@@ -158,7 +171,6 @@ public final class PositionBook implements Serializable, PositionLedger {
      * @return closed positions
      * @since 0.22.2
      */
-    @Override
     public List<Position> getPositions() {
         return closedPositions();
     }
@@ -175,7 +187,6 @@ public final class PositionBook implements Serializable, PositionLedger {
      * @return open positions (per-lot)
      * @since 0.22.2
      */
-    @Override
     public List<OpenPosition> getOpenPositions() {
         return openPositions();
     }
@@ -188,9 +199,8 @@ public final class PositionBook implements Serializable, PositionLedger {
         List<OpenPosition> positions = new ArrayList<>();
         for (PositionLot lot : openLots) {
             Num totalCost = lot.entryPrice().multipliedBy(lot.amount());
-            positions.add(new OpenPosition(startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL,
-                    lot.amount(), lot.entryPrice(), totalCost, lot.fee(), lot.entryTime(), lot.entryTime(),
-                    List.of(lot.snapshot())));
+            positions.add(new OpenPosition(lot.side(), lot.amount(), lot.entryPrice(), totalCost, lot.fee(),
+                    lot.entryTime(), lot.entryTime(), List.of(lot.snapshot())));
         }
         return positions;
     }
@@ -208,6 +218,7 @@ public final class PositionBook implements Serializable, PositionLedger {
         Num totalFees = null;
         Instant earliest = null;
         Instant latest = null;
+        ExecutionSide side = null;
         for (PositionLot lot : openLots) {
             Num lotCost = lot.entryPrice().multipliedBy(lot.amount());
             totalAmount = totalAmount == null ? lot.amount() : totalAmount.plus(lot.amount());
@@ -215,23 +226,26 @@ public final class PositionBook implements Serializable, PositionLedger {
             totalFees = totalFees == null ? lot.fee() : totalFees.plus(lot.fee());
             earliest = earliest == null || lot.entryTime().isBefore(earliest) ? lot.entryTime() : earliest;
             latest = latest == null || lot.entryTime().isAfter(latest) ? lot.entryTime() : latest;
+            if (side == null) {
+                side = lot.side();
+            } else if (side != lot.side()) {
+                throw new IllegalStateException("Open lots contain mixed entry sides");
+            }
         }
         Num average = totalAmount == null || totalAmount.isZero() ? totalCost : totalCost.dividedBy(totalAmount);
-        return new OpenPosition(startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL, totalAmount,
-                average, totalCost, totalFees == null ? totalCost.getNumFactory().zero() : totalFees, earliest, latest,
-                snapshotLots());
+        return new OpenPosition(side, totalAmount, average, totalCost,
+                totalFees == null ? totalCost.getNumFactory().zero() : totalFees, earliest, latest, snapshotLots());
     }
 
     /**
      * @return aggregated net open position
      * @since 0.22.2
      */
-    @Override
     public OpenPosition getNetOpenPosition() {
         return netOpenPosition();
     }
 
-    private PositionLot nextLot(LiveTrade trade) {
+    private PositionLot nextLot(Trade trade) {
         if (openLots.isEmpty()) {
             return null;
         }
@@ -244,8 +258,9 @@ public final class PositionBook implements Serializable, PositionLedger {
         return openLots.peekFirst();
     }
 
-    private PositionLot matchSpecificLot(LiveTrade trade) {
-        String key = trade.correlationId() == null ? trade.orderId() : trade.correlationId();
+    private PositionLot matchSpecificLot(Trade trade) {
+        String correlationId = trade.getCorrelationId();
+        String key = correlationId != null && !correlationId.isBlank() ? correlationId : trade.getOrderId();
         if (key == null || key.isBlank()) {
             throw new IllegalStateException("Specific-id matching requires correlationId or orderId");
         }
@@ -271,7 +286,7 @@ public final class PositionBook implements Serializable, PositionLedger {
         }
     }
 
-    private ClosedPosition closeLot(PositionLot lot, LiveTrade trade, int index, Num closeAmount, Num exitFeePortion,
+    private ClosedPosition closeLot(PositionLot lot, Trade trade, int index, Num closeAmount, Num exitFeePortion,
             long exitSequence) {
         Num lotAmount = lot.amount();
         Num entryFeePortion = lot.fee().isZero() ? lot.fee() : lot.fee().multipliedBy(closeAmount).dividedBy(lotAmount);
@@ -280,13 +295,47 @@ public final class PositionBook implements Serializable, PositionLedger {
         } else {
             lot.reduce(closeAmount, entryFeePortion);
         }
-        ExecutionSide entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
-        Trade entry = new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount, entryFeePortion,
-                entrySide, lot.orderId(), lot.correlationId());
-        Trade exit = new LiveTrade(index, trade.time(), trade.price(), closeAmount, exitFeePortion, trade.side(),
-                trade.orderId(), trade.correlationId());
-        return new ClosedPosition(new Position(entry, exit, transactionCostModel, holdingCostModel),
+        Trade entry = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount, entryFeePortion,
+                lot.side(), lot.orderId(), lot.correlationId());
+        Trade exit = new BaseTrade(index, timeOf(trade), trade.getPricePerAsset(), closeAmount, exitFeePortion,
+                sideOf(trade.getType()), trade.getOrderId(), trade.getCorrelationId());
+        return new ClosedPosition(new Position(entry, exit, RecordedTradeCostModel.INSTANCE, holdingCostModel),
                 lot.entrySequence(), exitSequence);
+    }
+
+    private static Num feeOf(Trade trade) {
+        Num cost = trade.getCost();
+        if (cost != null && !cost.isNaN()) {
+            return cost;
+        }
+        Num price = trade.getPricePerAsset();
+        if (price != null && !price.isNaN()) {
+            return price.getNumFactory().zero();
+        }
+        Num amount = trade.getAmount();
+        if (amount != null && !amount.isNaN()) {
+            return amount.getNumFactory().zero();
+        }
+        return DoubleNumFactory.getInstance().zero();
+    }
+
+    private static Instant timeOf(Trade trade) {
+        Instant time = trade.getTime();
+        if (time != null) {
+            return time;
+        }
+        return Instant.EPOCH;
+    }
+
+    private static ExecutionSide sideOf(TradeType tradeType) {
+        Objects.requireNonNull(tradeType, "tradeType");
+        if (tradeType == TradeType.BUY) {
+            return ExecutionSide.BUY;
+        }
+        if (tradeType == TradeType.SELL) {
+            return ExecutionSide.SELL;
+        }
+        throw new IllegalArgumentException("Unsupported trade type: " + tradeType);
     }
 
     List<ClosedPosition> closedPositionsWithSequence() {

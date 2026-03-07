@@ -16,6 +16,7 @@ import java.time.Instant;
 import java.util.List;
 
 import org.junit.Test;
+import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -146,11 +147,33 @@ public class PositionBookTest {
         var book = new PositionBook(Trade.TradeType.BUY, ExecutionMatchPolicy.FIFO, transactionCostModel,
                 holdingCostModel);
 
-        assertThrows(IllegalArgumentException.class, () -> book.recordEntry(0, null, 0L));
+        assertThrows(IllegalArgumentException.class, () -> book.recordEntry(0, (Trade) null, 0L));
         assertThrows(IllegalArgumentException.class,
                 () -> book.recordEntry(0, buyTrade(0, numFactory.hundred(), numFactory.zero(), null, null), 0L));
         assertThrows(IllegalArgumentException.class,
                 () -> book.recordExit(0, sellTrade(0, numFactory.hundred(), numFactory.zero(), null, null), 0L));
+    }
+
+    @Test
+    public void acceptsTradeInterfaceEntriesAndExitsWithNullFeeAndTime() {
+        PositionBook book = new PositionBook(Trade.TradeType.BUY, ExecutionMatchPolicy.FIFO, transactionCostModel,
+                holdingCostModel);
+        Trade entry = tradeView(7, Trade.TradeType.BUY, numFactory.hundred(), numFactory.one(), null, null, "order-1",
+                "corr-1");
+        Trade exit = tradeView(8, Trade.TradeType.SELL, numFactory.numOf(120), numFactory.one(), null, null, "order-1",
+                "corr-1");
+
+        book.recordEntry(0, entry, 0L);
+        List<Position> closed = book.recordExit(1, exit, 1L);
+
+        assertEquals(1, closed.size());
+        Position position = closed.getFirst();
+        assertEquals(0, position.getEntry().getIndex());
+        assertEquals(1, position.getExit().getIndex());
+        assertEquals(Instant.EPOCH, position.getEntry().getTime());
+        assertEquals(Instant.EPOCH, position.getExit().getTime());
+        assertNumEquals(numFactory.zero(), position.getEntry().getCost());
+        assertNumEquals(numFactory.zero(), position.getExit().getCost());
     }
 
     @Test
@@ -197,20 +220,75 @@ public class PositionBookTest {
         }
     }
 
-    private LiveTrade buyTrade(int index, Num price, Num amount, String orderId, String correlationId) {
+    private BaseTrade buyTrade(int index, Num price, Num amount, String orderId, String correlationId) {
         return buyTrade(index, price, amount, orderId, correlationId, null);
     }
 
-    private LiveTrade buyTrade(int index, Num price, Num amount, String orderId, String correlationId, Num fee) {
-        return new LiveTrade(index, Instant.EPOCH, price, amount, fee, ExecutionSide.BUY, orderId, correlationId);
+    private BaseTrade buyTrade(int index, Num price, Num amount, String orderId, String correlationId, Num fee) {
+        return new BaseTrade(index, Instant.EPOCH, price, amount, fee, ExecutionSide.BUY, orderId, correlationId);
     }
 
-    private LiveTrade sellTrade(int index, Num price, Num amount, String orderId, String correlationId) {
+    private BaseTrade sellTrade(int index, Num price, Num amount, String orderId, String correlationId) {
         return sellTrade(index, price, amount, orderId, correlationId, null);
     }
 
-    private LiveTrade sellTrade(int index, Num price, Num amount, String orderId, String correlationId, Num fee) {
-        return new LiveTrade(index, Instant.EPOCH, price, amount, fee, ExecutionSide.SELL, orderId, correlationId);
+    private BaseTrade sellTrade(int index, Num price, Num amount, String orderId, String correlationId, Num fee) {
+        return new BaseTrade(index, Instant.EPOCH, price, amount, fee, ExecutionSide.SELL, orderId, correlationId);
+    }
+
+    private Trade tradeView(int index, Trade.TradeType type, Num price, Num amount, Num cost, Instant time,
+            String orderId, String correlationId) {
+        return new Trade() {
+            @Override
+            public TradeType getType() {
+                return type;
+            }
+
+            @Override
+            public int getIndex() {
+                return index;
+            }
+
+            @Override
+            public Num getPricePerAsset() {
+                return price;
+            }
+
+            @Override
+            public Num getNetPrice() {
+                return price;
+            }
+
+            @Override
+            public Num getAmount() {
+                return amount;
+            }
+
+            @Override
+            public Num getCost() {
+                return cost;
+            }
+
+            @Override
+            public CostModel getCostModel() {
+                return transactionCostModel;
+            }
+
+            @Override
+            public Instant getTime() {
+                return time;
+            }
+
+            @Override
+            public String getOrderId() {
+                return orderId;
+            }
+
+            @Override
+            public String getCorrelationId() {
+                return correlationId;
+            }
+        };
     }
 
     private PositionBook roundTrip(PositionBook book) throws Exception {

@@ -8,6 +8,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
@@ -16,6 +17,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Trade.TradeType;
@@ -61,7 +63,7 @@ public class TradeTest {
     @Test
     public void initializeWithCostsTest() {
         var transactionCostModel = new LinearTransactionCostModel(0.05);
-        var trade = new SimulatedTrade(0, TradeType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(20),
+        var trade = new BaseTrade(0, TradeType.BUY, DoubleNum.valueOf(100), DoubleNum.valueOf(20),
                 transactionCostModel);
         Num expectedCost = DoubleNum.valueOf(100);
         Num expectedValue = DoubleNum.valueOf(2000);
@@ -102,7 +104,7 @@ public class TradeTest {
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 95, 100, 80, 85, 130)
                 .build();
-        Trade trade = new SimulatedTrade(1, TradeType.BUY, NaN);
+        Trade trade = new BaseTrade(1, TradeType.BUY, NaN);
         assertNumEquals(DoubleNum.valueOf(95), trade.getPricePerAsset(series));
     }
 
@@ -116,6 +118,8 @@ public class TradeTest {
         assertNumEquals(numFactory.numOf(110), trade.getPricePerAsset());
         assertNumEquals(numFactory.one(), trade.getAmount());
         assertNumEquals(numFactory.numOf(110), trade.getNetPrice());
+        assertEquals(series.getBar(1).getEndTime(), trade.getFills().getFirst().time());
+        assertEquals(ExecutionSide.BUY, trade.getFills().getFirst().side());
 
         Trade tradeWithAmount = Trade.buyAt(1, series, numFactory.two());
         assertEquals(TradeType.BUY, tradeWithAmount.getType());
@@ -143,6 +147,8 @@ public class TradeTest {
         assertNumEquals(numFactory.numOf(110), trade.getPricePerAsset());
         assertNumEquals(numFactory.one(), trade.getAmount());
         assertNumEquals(numFactory.numOf(110), trade.getNetPrice());
+        assertEquals(series.getBar(1).getEndTime(), trade.getFills().getFirst().time());
+        assertEquals(ExecutionSide.SELL, trade.getFills().getFirst().side());
 
         Trade tradeWithAmount = Trade.sellAt(1, series, numFactory.two());
         assertEquals(TradeType.SELL, tradeWithAmount.getType());
@@ -235,7 +241,74 @@ public class TradeTest {
     }
 
     @Test
-    public void simulatedTradeToStringSupportsDecimalNum() {
+    public void defaultTradeFillsExposeSingleExecution() {
+        var numFactory = DoubleNumFactory.getInstance();
+        Trade trade = Trade.buyAt(3, numFactory.hundred(), numFactory.two());
+
+        List<TradeFill> fills = trade.getFills();
+        assertEquals(1, fills.size());
+        assertEquals(3, fills.getFirst().index());
+        assertNumEquals(numFactory.hundred(), fills.getFirst().price());
+        assertNumEquals(numFactory.two(), fills.getFirst().amount());
+        assertEquals(ExecutionSide.BUY, fills.getFirst().side());
+        assertNull(fills.getFirst().time());
+    }
+
+    @Test
+    public void executionFillsOfFallsBackToScalarTradeFields() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        Trade trade = new BaseTrade(3, TradeType.BUY, numFactory.hundred(), numFactory.two()) {
+            @Override
+            public List<TradeFill> getFills() {
+                return List.of();
+            }
+        };
+
+        List<TradeFill> fills = Trade.executionFillsOf(trade);
+
+        assertEquals(1, fills.size());
+        assertEquals(3, fills.getFirst().index());
+        assertNumEquals(numFactory.hundred(), fills.getFirst().price());
+        assertNumEquals(numFactory.two(), fills.getFirst().amount());
+        assertEquals(ExecutionSide.BUY, fills.getFirst().side());
+    }
+
+    @Test
+    public void fromFillsCreatesBaseTradeForSingleFill() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(2, numFactory.hundred(), numFactory.one())),
+                new FixedTransactionCostModel(1.0));
+
+        assertTrue(trade instanceof BaseTrade);
+        assertEquals(1, trade.getFills().size());
+        assertEquals(2, trade.getIndex());
+        assertNumEquals(numFactory.hundred(), trade.getPricePerAsset());
+        assertNumEquals(numFactory.one(), trade.getAmount());
+    }
+
+    @Test
+    public void fromFillsCreatesFillBackedBaseTradeForMultipleFills() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(1, numFactory.hundred(), numFactory.one()),
+                new TradeFill(2, numFactory.numOf(101), numFactory.one())));
+
+        assertTrue(trade instanceof BaseTrade);
+        assertEquals(2, trade.getFills().size());
+    }
+
+    @Test
+    public void fromFillsRejectsInvalidSingleFill() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        assertThrows(IllegalArgumentException.class,
+                () -> Trade.fromFills(TradeType.BUY, List.of(new TradeFill(1, NaN, numFactory.one()))));
+        assertThrows(IllegalArgumentException.class, () -> Trade.fromFills(TradeType.BUY,
+                List.of(new TradeFill(1, numFactory.hundred(), numFactory.zero()))));
+        assertThrows(IllegalArgumentException.class, () -> Trade.fromFills(TradeType.BUY,
+                List.of(new TradeFill(1, numFactory.hundred(), numFactory.minusOne()))));
+    }
+
+    @Test
+    public void baseTradeToStringSupportsDecimalNum() {
         var decimalFactory = DecimalNumFactory.getInstance();
         Trade trade = Trade.buyAt(0, decimalFactory.hundred(), decimalFactory.one());
 

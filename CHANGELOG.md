@@ -9,7 +9,7 @@
 - **Shared scoring/weighting primitives for library extensions**: Added `NamedScoreFunction<I, S>` and `WeightedValue<T>` so indicator, confidence, and walk-forward components can reuse the same scoring and weighted-aggregation contracts.
 - **Live Elliott preset demo support**: `ElliottWavePresetDemo` now accepts live tickers (for example `BTC-USD`, `ETH-USD`, `SPY`) so you can run the same EW workflow on non-ossified daily data.
 
-### Changed
+### Changed (Trading Record and Execution Flow)
 - **Elliott APIs and demos now follow runner-centric naming and defaults**: The project has moved from legacy analyzer naming to `ElliottWaveAnalysisRunner`, examples are organized under `analysis.elliottwave.{demo,backtest,support}`, and demo defaults now emphasize auto-degree selection with multi-degree context.
 - **HighRewardElliottWaveStrategy momentum confirmation now uses MACD-V**: The strategy now uses `VolatilityNormalizedMACDIndicator` and drops redundant exit-rule guarding to keep rule flow cleaner.
 - **Release automation now favors safer incremental bumps**: `release-scheduler.yml` and `semver-rules-override.txt` now drive explicit go/no-go decisions with `patch|minor` outputs only, normalize noisy AI bump values (for example ` MAJOR ` or ` minor `), and keep major bumps disabled so automated releases stay predictable for library consumers and maintainers (`#1477`).
@@ -22,6 +22,16 @@
 - **Enter-and-hold wrappers now keep return format metadata intact**: `EnterAndHoldCriterion` now forwards `getReturnRepresentation()` from its wrapped criterion, so downstream consumers can reliably detect whether outputs are decimal, percentage, multiplicative, or log without special casing wrapper criteria.
 - **Elliott analysis hardening**: Enforced bounded `ElliottDegree.RecommendedHistory` ranges, hardened ossified resource loading for classpath edge cases, and simplified redundant trend-bias null guarding in EW analysis reporting.
 - **Walk-forward fold metadata stability**: Fixed fold-value reporting so criterion maps and fold views remain stable and deterministic when consumers rely on fold order for downstream comparisons.
+
+### Breaking
+- **Live fill API hard cut to one type**: `ExecutionFill` has been removed so you can use `TradeFill` everywhere, including `BaseTradingRecord.recordExecutionFill(TradeFill)`, instead of juggling two near-identical fill models.
+- **Unified trade/record stack hard cut**: `LiveTrade`, `SimulatedTrade`, and `LiveTradingRecord` have been removed so live and backtest flows now run on the same core types: `BaseTrade` and `BaseTradingRecord`.
+- **Open-position analytics now live directly on `TradingRecord`**: `PositionLedger` has been removed, so you can query `getOpenPositions()` and `getNetOpenPosition()` from one unified record contract in both analysis and execution flows.
+
+### Changed
+- **Trade-first fill flow across live and backtests**: You can now drive `BaseTradingRecord#recordFill(...)` and `PositionBook#recordEntry(...)`/`recordExit(...)` with the `Trade` interface directly, while internals still materialize `BaseTrade` as needed, so calling code stays implementation-agnostic and live/backtest behavior stays aligned.
+- **Bring your own trading record in backtests**: `BarSeriesManager` can now run directly against a caller-provided `TradingRecord` (`run(strategy, tradingRecord[, amount, start, end])`) and can also be configured with a default `TradingRecordFactory`, so you can keep standard `BaseTradingRecord` runs or wire custom record implementations without changing existing `run(...)` calls.
+- **Stop-limit/live parity hardening**: `StopLimitExecutionModel` now expires stale pending orders before accepting new signals (so old orders cannot block fresh ones), commits partial expiry fills on unified `BaseTradingRecord` exit flows for better real-world fill progression, and keeps rejection metadata for the unfilled remainder.
 
 ## 0.22.3 (2026-03-01)
 
@@ -89,6 +99,8 @@
   partial-fill tracking, multi-lot bookkeeping, and configurable matching (`FIFO`, `LIFO`, `AVG_COST`, `SPECIFIC_ID`).
 - **Strategy trade direction**: Added `Strategy#getStartingType()` (default `BUY`) so strategies can declare long-first
   or short-first behavior explicitly.
+- **Backtest execution model controls**: Added `SlippageExecutionModel` and `StopLimitExecutionModel` with configurable
+  stop/limit thresholds, per-bar fill participation, order expiry, and rejection tracking.
 - **Open position analytics**: Added `PositionLedger`, `OpenPositionCostBasisCriterion`,
   `OpenPositionUnrealizedProfitCriterion`, and `TotalFeesCriterion` for live exposure and fee analysis.
 - **Sharpe Ratio**: Added `SharpeRatioCriterion` and its related calculation classes
@@ -121,6 +133,9 @@
   indices, support explicit equity/open-position handling, and correctly account for multiple live lots.
 - **Live vs simulated record boundaries**: `BaseTradingRecord` now rejects `LiveTrade`, while charting/analysis paths can
   build partial `LiveTradingRecord` instances so recorded live fees are preserved.
+- **Trade fill exposure in backtests**: `Trade` now exposes execution fills via `getFills()`, `TradingRecord` supports
+  placing pre-built trades, and backtest stop-limit execution records aggregated partial fills without breaking existing
+  `operate(index, price, amount)` flows.
 - **Live persistence simplification**: Removed `LiveTradingRecordSnapshot`; persistence now uses `LiveTradingRecord`
   serialization plus explicit cost-model rehydration.
 - **Recorded fee semantics**: Live-trading positions and criteria now use recorded `LiveTrade` fees via
