@@ -1128,6 +1128,12 @@ public final class ElliottScenarioGenerator {
         final List<ElliottScenario> selected = new ArrayList<>(maxScenarios);
         final Set<String> selectedIds = new HashSet<>();
 
+        selected.add(sorted.getFirst());
+        selectedIds.add(sorted.getFirst().id());
+
+        final int earliestStartQuota = Math.min(maxScenarios, Math.max(2, Math.min(20, maxScenarios / 5)));
+        selectEarliestStartScenarios(sorted, selected, selectedIds, earliestStartQuota);
+
         final int startDiversityQuota = Math.min(maxScenarios, Math.max(3, maxScenarios / 2));
         selectStartDiverseScenarios(sorted, selected, selectedIds, startDiversityQuota);
 
@@ -1144,6 +1150,32 @@ public final class ElliottScenarioGenerator {
         return List.copyOf(selected);
     }
 
+    private void selectEarliestStartScenarios(final List<ElliottScenario> sorted, final List<ElliottScenario> selected,
+            final Set<String> selectedIds, final int quota) {
+        if (sorted.isEmpty() || quota <= 0) {
+            return;
+        }
+
+        final List<Integer> earliestStarts = sorted.stream()
+                .map(ElliottScenario::startIndex)
+                .distinct()
+                .sorted()
+                .limit(quota)
+                .toList();
+        for (final int startIndex : earliestStarts) {
+            if (selected.size() >= quota || selected.size() >= maxScenarios) {
+                return;
+            }
+            final ElliottScenario candidate = sorted.stream()
+                    .filter(scenario -> scenario.startIndex() == startIndex)
+                    .min(startAnchoredComparator())
+                    .orElse(null);
+            if (candidate != null && selectedIds.add(candidate.id())) {
+                selected.add(candidate);
+            }
+        }
+    }
+
     private Comparator<ElliottScenario> pruningPriorityComparator() {
         return Comparator.comparing(ElliottScenario::confidenceScore, Comparator.reverseOrder())
                 .thenComparing(Comparator.comparing(ElliottScenario::expectsCompletion).reversed())
@@ -1157,10 +1189,6 @@ public final class ElliottScenarioGenerator {
         if (sorted.isEmpty() || quota <= 0) {
             return;
         }
-
-        final ElliottScenario highestConfidence = sorted.getFirst();
-        selected.add(highestConfidence);
-        selectedIds.add(highestConfidence.id());
 
         final List<ElliottScenario> coveragePriority = sorted.stream().sorted(startDiversityComparator()).toList();
         int minimumSpacing = minimumStartSpacing(sorted, quota);
@@ -1193,6 +1221,15 @@ public final class ElliottScenarioGenerator {
     }
 
     private Comparator<ElliottScenario> startDiversityComparator() {
+        return Comparator.comparing(ElliottScenario::expectsCompletion)
+                .reversed()
+                .thenComparing(Comparator.comparingInt(ElliottScenario::waveCount).reversed())
+                .thenComparing(Comparator.comparingInt(this::scenarioSpan).reversed())
+                .thenComparing(ElliottScenario::confidenceScore, Comparator.reverseOrder())
+                .thenComparing(ElliottScenario::id);
+    }
+
+    private Comparator<ElliottScenario> startAnchoredComparator() {
         return Comparator.comparing(ElliottScenario::expectsCompletion)
                 .reversed()
                 .thenComparing(Comparator.comparingInt(ElliottScenario::waveCount).reversed())

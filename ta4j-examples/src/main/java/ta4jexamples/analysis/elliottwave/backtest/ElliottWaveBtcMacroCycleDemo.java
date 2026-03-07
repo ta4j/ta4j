@@ -31,14 +31,13 @@ import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottConfidence;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
+import org.ta4j.core.indicators.elliott.ElliottLogicProfile;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
-import org.ta4j.core.indicators.elliott.PatternSet;
 import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner;
 import org.ta4j.core.indicators.elliott.ScenarioType;
-import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardProfiles;
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.num.Num;
@@ -339,12 +338,17 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     private static ElliottWaveAnalysisRunner buildProfileRunner(MacroLogicProfile profile) {
         int runnerMaxScenarios = Math.max(profile.runnerMaxScenarios(), MIN_CORE_SEGMENT_SCENARIOS);
-        return ElliottWaveAnchorCalibrationHarness.buildMacroAnalysisRunner(profile.runnerDegree(),
-                profile.runnerHigherDegrees(), profile.runnerLowerDegrees(), runnerMaxScenarios,
-                profile.runnerScenarioSwingWindow(), profile.runnerFractalWindow(), profile.patternSet(),
-                profile.runnerBaseConfidenceWeight(),
-                profile.patternAwareConfidence() ? ConfidenceProfiles::patternAwareModel
-                        : ConfidenceProfiles::defaultModel);
+        return ElliottWaveAnalysisRunner.builder()
+                .degree(profile.runnerDegree())
+                .logicProfile(profile.coreLogicProfile())
+                .higherDegrees(profile.runnerHigherDegrees())
+                .lowerDegrees(profile.runnerLowerDegrees())
+                .baseConfidenceWeight(profile.coreLogicProfile().baseConfidenceWeight())
+                .maxScenarios(runnerMaxScenarios)
+                .scenarioSwingWindow(profile.runnerScenarioSwingWindow())
+                .minConfidence(0.0)
+                .seriesSelector((inputSeries, ignoredDegree) -> inputSeries)
+                .build();
     }
 
     private static Comparator<MacroProfileEvaluation> profileEvaluationComparator() {
@@ -617,7 +621,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
         if (localFit == null) {
             return coreFit;
         }
-        if (coreFit.accepted() && (!localFit.accepted() || coreFit.fitScore() + 0.05 >= localFit.fitScore())) {
+        if (coreFit.accepted()) {
             return coreFit;
         }
         return coreFit.compareTo(localFit) < 0 ? coreFit : localFit;
@@ -636,19 +640,17 @@ public final class ElliottWaveBtcMacroCycleDemo {
     private static Optional<SegmentScenarioFit> fitSegmentFromCoreRunner(BarSeries series, LegSegment legSegment,
             MacroLogicProfile profile, ElliottWaveAnalysisRunner profileRunner, int startIndex, int endIndex,
             boolean bullish) {
-        BarSeries prefixSeries = series.getSubSeries(series.getBeginIndex(), endIndex + 1);
-        ElliottWaveAnalysisResult analysis = profileRunner.analyze(prefixSeries);
+        ElliottWaveAnalysisResult analysis = profileRunner.analyzeWindow(series, startIndex, endIndex);
         SegmentScenarioFit bestFallbackFit = null;
-        int segmentEndIndex = prefixSeries.getEndIndex();
-        for (ElliottWaveAnalysisResult.BaseScenarioAssessment assessment : analysis
-                .rankedBaseScenariosForSpan(startIndex, endIndex)) {
-            ElliottScenario candidate = assessment.scenario();
-            if (!matchesSegmentScenario(candidate, bullish, segmentEndIndex)) {
-                continue;
-            }
-            ElliottScenario rebased = rebaseScenario(candidate, prefixSeries.getBeginIndex());
-            SegmentScenarioFit fit = fitFromCoreAssessment(legSegment, profile, rebased, assessment, bullish,
-                    startIndex, endIndex);
+        ScenarioType expectedType = bullish ? ScenarioType.IMPULSE : null;
+        ElliottPhase expectedPhase = bullish ? ElliottPhase.WAVE5 : ElliottPhase.CORRECTIVE_C;
+        int expectedWaveCount = bullish ? 5 : 3;
+        Boolean expectedDirection = bullish ? Boolean.TRUE : Boolean.FALSE;
+        for (ElliottWaveAnalysisResult.BaseScenarioAssessment assessment : analysis.rankedBaseScenariosForSpan(
+                startIndex, endIndex, expectedType, expectedPhase, expectedWaveCount, expectedDirection,
+                MAX_CORE_ANCHOR_DRIFT_BARS)) {
+            SegmentScenarioFit fit = fitFromCoreAssessment(legSegment, profile, assessment.scenario(), assessment,
+                    bullish, startIndex, endIndex);
             if (fit.accepted()) {
                 return Optional.of(fit);
             }
@@ -657,21 +659,6 @@ public final class ElliottWaveBtcMacroCycleDemo {
             }
         }
         return Optional.ofNullable(bestFallbackFit);
-    }
-
-    private static boolean matchesSegmentScenario(ElliottScenario scenario, boolean bullish, int segmentEndIndex) {
-        if (scenario == null || scenario.swings().isEmpty()) {
-            return false;
-        }
-        if (!scenario.hasKnownDirection()) {
-            return false;
-        }
-        if (bullish) {
-            return scenario.type() == ScenarioType.IMPULSE && scenario.currentPhase() == ElliottPhase.WAVE5
-                    && scenario.waveCount() == 5 && scenario.isBullish();
-        }
-        return scenario.type().isCorrective() && scenario.currentPhase() == ElliottPhase.CORRECTIVE_C
-                && scenario.waveCount() == 3 && scenario.isBearish();
     }
 
     private static SegmentScenarioFit fitFromCoreAssessment(LegSegment legSegment, MacroLogicProfile profile,
@@ -696,35 +683,12 @@ public final class ElliottWaveBtcMacroCycleDemo {
         double strengthScore = average(new double[] { assessment.confidenceScore(), assessment.crossDegreeScore(),
                 assessment.compositeScore(), safeConfidenceScore(confidence.completenessScore()) }, 0.0);
         double fitScore = average(new double[] { assessment.compositeScore(), strengthScore, anchorFitScore }, 0.0);
-        boolean accepted = assessment.compositeScore() >= Math.max(DEFAULT_ACCEPTED_SEGMENT_SCORE,
-                profile.acceptanceThreshold()) && startAlignment >= 0.35 && endAlignment >= 0.80
+        boolean accepted = fitScore >= Math.max(DEFAULT_ACCEPTED_SEGMENT_SCORE, profile.acceptanceThreshold())
+                && ruleScore >= 0.30 && startAlignment >= 0.35 && endAlignment >= 0.80
                 && startGapBars <= MAX_CORE_ANCHOR_DRIFT_BARS && endGapBars <= MAX_CORE_ANCHOR_DRIFT_BARS;
         return new SegmentScenarioFit(legSegment, scenario, fitScore, structureScore, ruleScore, spacingScore,
                 strengthScore, bullish, accepted,
-                bullish ? "Core-ranked prefix-history impulse fit" : "Core-ranked prefix-history corrective fit");
-    }
-
-    private static ElliottScenario rebaseScenario(ElliottScenario scenario, int indexOffset) {
-        List<ElliottSwing> rebasedSwings = scenario.swings()
-                .stream()
-                .map(swing -> new ElliottSwing(swing.fromIndex() + indexOffset, swing.toIndex() + indexOffset,
-                        swing.fromPrice(), swing.toPrice(), swing.degree()))
-                .toList();
-        ElliottScenario.Builder builder = ElliottScenario.builder()
-                .id(scenario.id())
-                .currentPhase(scenario.currentPhase())
-                .swings(rebasedSwings)
-                .confidence(scenario.confidence())
-                .degree(scenario.degree())
-                .invalidationPrice(scenario.invalidationPrice())
-                .primaryTarget(scenario.primaryTarget())
-                .fibonacciTargets(scenario.fibonacciTargets())
-                .type(scenario.type())
-                .startIndex(scenario.startIndex() + indexOffset);
-        if (scenario.hasKnownDirection()) {
-            builder.bullishDirection(scenario.isBullish());
-        }
-        return builder.build();
+                bullish ? "Core-ranked anchored-window impulse fit" : "Core-ranked anchored-window corrective fit");
     }
 
     private static double scenarioSpacingScore(ElliottScenario scenario) {
@@ -1634,25 +1598,23 @@ public final class ElliottWaveBtcMacroCycleDemo {
     private static List<MacroLogicProfile> logicProfiles() {
         return List.of(
                 new MacroLogicProfile("orthodox-classical", "H0", "Classical Elliott constraints", 0,
-                        ElliottDegree.MINOR, 1, 1, 25, 0, 2, PatternSet.all(), 0.70, false, new int[] { 21, 55, 89 },
-                        new double[] { 0.18, 0.36, 0.64, 0.82 }, new double[] { 0.32, 0.60 }, 0.0, 0.0, 0.55, 0.38,
-                        0.34, 0.18, 0.10, 0.74),
+                        ElliottLogicProfile.ORTHODOX_CLASSICAL, ElliottDegree.MINOR, 1, 1, 25, 0,
+                        new int[] { 21, 55, 89 }, new double[] { 0.18, 0.36, 0.64, 0.82 }, new double[] { 0.32, 0.60 },
+                        0.0, 0.0, 0.55, 0.38, 0.34, 0.18, 0.10, 0.74),
                 new MacroLogicProfile("h1-hierarchical-swing", "H1", "Hierarchical swing extraction", 1,
-                        ElliottDegree.MINOR, 1, 1, 25, 0, 4, PatternSet.all(), 0.78, false,
+                        ElliottLogicProfile.HIERARCHICAL_SWING, ElliottDegree.MINOR, 1, 1, 25, 0,
                         new int[] { 13, 34, 89, 144 }, new double[] { 0.18, 0.36, 0.64, 0.82 },
                         new double[] { 0.32, 0.60 }, 0.0, 0.0, 0.70, 0.36, 0.32, 0.18, 0.14, 0.72),
                 new MacroLogicProfile("h2-btc-relaxed-impulse", "H2", "Relaxed impulse rules for BTC", 2,
-                        ElliottDegree.MINOR, 1, 1, 35, 0, 4,
-                        PatternSet.of(ScenarioType.IMPULSE, ScenarioType.CORRECTIVE_ZIGZAG,
-                                ScenarioType.CORRECTIVE_FLAT),
-                        0.82, false, new int[] { 13, 34, 89, 144 }, new double[] { 0.16, 0.35, 0.63, 0.83 },
+                        ElliottLogicProfile.BTC_RELAXED_IMPULSE, ElliottDegree.MINOR, 1, 1, 35, 0,
+                        new int[] { 13, 34, 89, 144 }, new double[] { 0.16, 0.35, 0.63, 0.83 },
                         new double[] { 0.32, 0.60 }, 0.55, 0.0, 0.72, 0.36, 0.28, 0.20, 0.16, 0.70),
                 new MacroLogicProfile("h3-btc-relaxed-corrective", "H3", "Relaxed corrective coverage for BTC", 3,
-                        ElliottDegree.MINOR, 1, 1, 35, 0, 5, PatternSet.all(), 0.64, true,
+                        ElliottLogicProfile.BTC_RELAXED_CORRECTIVE, ElliottDegree.MINOR, 1, 1, 35, 0,
                         new int[] { 13, 34, 89, 144 }, new double[] { 0.16, 0.35, 0.63, 0.83 },
                         new double[] { 0.28, 0.58 }, 0.55, 0.65, 0.72, 0.34, 0.28, 0.20, 0.18, 0.68),
                 new MacroLogicProfile("h4-anchor-first-hybrid", "H4", "Anchor-first hybrid profile", 4,
-                        ElliottDegree.MINOR, 2, 2, 40, 0, 5, PatternSet.all(), 0.58, true,
+                        ElliottLogicProfile.ANCHOR_FIRST_HYBRID, ElliottDegree.MINOR, 2, 2, 40, 0,
                         new int[] { 8, 21, 55, 144, 233 }, new double[] { 0.15, 0.34, 0.63, 0.84 },
                         new double[] { 0.27, 0.57 }, 0.75, 0.80, 0.90, 0.30, 0.24, 0.30, 0.16, 0.66));
     }
@@ -1805,9 +1767,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
     }
 
     record MacroLogicProfile(String id, String hypothesisId, String title, int orthodoxyRank,
-            ElliottDegree runnerDegree, int runnerHigherDegrees, int runnerLowerDegrees, int runnerMaxScenarios,
-            int runnerScenarioSwingWindow, int runnerFractalWindow, PatternSet patternSet,
-            double runnerBaseConfidenceWeight, boolean patternAwareConfidence, int[] pivotRadii,
+            ElliottLogicProfile coreLogicProfile, ElliottDegree runnerDegree, int runnerHigherDegrees,
+            int runnerLowerDegrees, int runnerMaxScenarios, int runnerScenarioSwingWindow, int[] pivotRadii,
             double[] impulseFractions, double[] correctiveFractions, double impulseRelaxation,
             double correctiveRelaxation, double expectedFractionWeight, double structureWeight, double ruleWeight,
             double spacingWeight, double strengthWeight, double acceptanceThreshold) {
@@ -1816,8 +1777,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
             Objects.requireNonNull(id, "id");
             Objects.requireNonNull(hypothesisId, "hypothesisId");
             Objects.requireNonNull(title, "title");
+            Objects.requireNonNull(coreLogicProfile, "coreLogicProfile");
             Objects.requireNonNull(runnerDegree, "runnerDegree");
-            Objects.requireNonNull(patternSet, "patternSet");
             pivotRadii = pivotRadii == null ? new int[0] : pivotRadii.clone();
             impulseFractions = impulseFractions == null ? new double[0] : impulseFractions.clone();
             correctiveFractions = correctiveFractions == null ? new double[0] : correctiveFractions.clone();

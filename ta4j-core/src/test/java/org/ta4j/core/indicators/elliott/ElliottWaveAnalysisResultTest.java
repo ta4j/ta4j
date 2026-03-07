@@ -81,6 +81,40 @@ class ElliottWaveAnalysisResultTest {
         assertThrows(IllegalArgumentException.class, () -> result.rankedBaseScenariosForSpan(5, 4));
     }
 
+    @Test
+    void rankedBaseScenariosForSpan_shouldFilterByScenarioTemplate() {
+        ElliottScenario bullishImpulse = scenario("bullish-impulse", 10, 20, 0.72, ElliottPhase.WAVE5,
+                ScenarioType.IMPULSE, 5, true);
+        ElliottScenario bearishCorrective = scenario("bearish-corrective", 10, 20, 0.80, ElliottPhase.CORRECTIVE_C,
+                ScenarioType.CORRECTIVE_ZIGZAG, 3, false);
+        ElliottScenario wrongDirection = scenario("wrong-direction", 10, 20, 0.85, ElliottPhase.WAVE5,
+                ScenarioType.IMPULSE, 5, false);
+        ElliottWaveAnalysisResult result = new ElliottWaveAnalysisResult(ElliottDegree.PRIMARY, List.of(), List.of(
+                new ElliottWaveAnalysisResult.BaseScenarioAssessment(wrongDirection, 0.85, 0.70, 0.82, List.of()),
+                new ElliottWaveAnalysisResult.BaseScenarioAssessment(bearishCorrective, 0.80, 0.70, 0.78, List.of()),
+                new ElliottWaveAnalysisResult.BaseScenarioAssessment(bullishImpulse, 0.72, 0.70, 0.74, List.of())),
+                List.of());
+
+        assertThat(
+                result.rankedBaseScenariosForSpan(10, 20, ScenarioType.IMPULSE, ElliottPhase.WAVE5, 5, Boolean.TRUE, 3))
+                .extracting(assessment -> assessment.scenario().id())
+                .containsExactly("bullish-impulse");
+        assertThat(result.recommendedBaseScenarioForSpan(10, 20, null, ElliottPhase.CORRECTIVE_C, 3, Boolean.FALSE, 3))
+                .map(assessment -> assessment.scenario().id())
+                .contains("bearish-corrective");
+    }
+
+    @Test
+    void rankedBaseScenariosForSpan_shouldRejectInvalidTemplateArguments() {
+        ElliottWaveAnalysisResult result = new ElliottWaveAnalysisResult(ElliottDegree.PRIMARY, List.of(), List.of(),
+                List.of());
+
+        assertThrows(IllegalArgumentException.class, () -> result.rankedBaseScenariosForSpan(5, 10,
+                ScenarioType.IMPULSE, ElliottPhase.WAVE5, 0, Boolean.TRUE, 3));
+        assertThrows(IllegalArgumentException.class, () -> result.rankedBaseScenariosForSpan(5, 10,
+                ScenarioType.IMPULSE, ElliottPhase.WAVE5, 5, Boolean.TRUE, -1));
+    }
+
     private static ElliottAnalysisResult analysisResult() {
         ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(scenario()), 0);
         return new ElliottAnalysisResult(ElliottDegree.PRIMARY, 0, List.of(), List.of(), scenarios, Map.of(), null,
@@ -106,6 +140,11 @@ class ElliottWaveAnalysisResultTest {
     }
 
     private static ElliottScenario scenario(String id, int startIndex, int endIndex, double confidenceScore) {
+        return scenario(id, startIndex, endIndex, confidenceScore, ElliottPhase.WAVE5, ScenarioType.IMPULSE, 1, null);
+    }
+
+    private static ElliottScenario scenario(String id, int startIndex, int endIndex, double confidenceScore,
+            ElliottPhase phase, ScenarioType type, int waveCount, Boolean bullishDirection) {
         BarSeries series = new MockBarSeriesBuilder().withName("analysis-result-span-test").build();
         NumFactory numFactory = series.numFactory();
         Num score = numFactory.numOf(confidenceScore);
@@ -113,14 +152,33 @@ class ElliottWaveAnalysisResultTest {
         ElliottSwing swing = new ElliottSwing(startIndex, endIndex, numFactory.hundred(), numFactory.numOf(110),
                 ElliottDegree.PRIMARY);
 
-        return ElliottScenario.builder()
+        ElliottScenario.Builder builder = ElliottScenario.builder()
                 .id(id)
-                .currentPhase(ElliottPhase.WAVE5)
+                .currentPhase(phase)
                 .swings(List.of(swing))
                 .confidence(confidence)
                 .degree(ElliottDegree.PRIMARY)
                 .invalidationPrice(numFactory.numOf(95))
-                .type(ScenarioType.IMPULSE)
-                .build();
+                .type(type)
+                .startIndex(startIndex);
+        if (waveCount > 1) {
+            List<ElliottSwing> swings = new java.util.ArrayList<>();
+            int step = Math.max(1, (endIndex - startIndex) / waveCount);
+            int from = startIndex;
+            boolean rising = bullishDirection == null ? true : bullishDirection.booleanValue();
+            for (int index = 0; index < waveCount; index++) {
+                int to = index == waveCount - 1 ? endIndex : Math.min(endIndex, from + step);
+                Num fromPrice = rising ? numFactory.numOf(100 + (index * 10)) : numFactory.numOf(110 - (index * 5));
+                Num toPrice = rising ? numFactory.numOf(110 + (index * 10)) : numFactory.numOf(100 - (index * 5));
+                swings.add(new ElliottSwing(from, to, fromPrice, toPrice, ElliottDegree.PRIMARY));
+                from = to;
+                rising = !rising;
+            }
+            builder.swings(swings);
+        }
+        if (bullishDirection != null) {
+            builder.bullishDirection(bullishDirection.booleanValue());
+        }
+        return builder.build();
     }
 }

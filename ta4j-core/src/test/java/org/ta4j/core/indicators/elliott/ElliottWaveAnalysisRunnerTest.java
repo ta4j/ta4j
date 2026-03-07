@@ -6,6 +6,7 @@ package org.ta4j.core.indicators.elliott;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.lang.reflect.Field;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -356,6 +357,86 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(result.rankedBaseScenarios()).hasSizeGreaterThanOrEqualTo(2);
         assertThat(base.scenarios().all().stream().map(ElliottScenario::id).toList()).containsExactlyElementsOf(
                 result.rankedBaseScenarios().stream().limit(2).map(assessment -> assessment.scenario().id()).toList());
+    }
+
+    @Test
+    void analyzeWindowRebasesScenarioIndicesToRootSeries() {
+        BarSeries series = buildLongHistorySeries();
+        NumFactory factory = series.numFactory();
+        ElliottScenario localScenario = scenario(factory, "windowed", ElliottPhase.WAVE5, 0.82,
+                List.of(new ElliottSwing(0, 2, factory.hundred(), factory.numOf(120), ElliottDegree.PRIMARY),
+                        new ElliottSwing(2, 4, factory.numOf(120), factory.numOf(108), ElliottDegree.PRIMARY),
+                        new ElliottSwing(4, 5, factory.numOf(108), factory.numOf(138), ElliottDegree.PRIMARY)),
+                factory.numOf(92), 0.95);
+        ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(localScenario), 5);
+        ElliottAnalysisResult analysisSnapshot = new ElliottAnalysisResult(ElliottDegree.PRIMARY, 5,
+                localScenario.swings(), localScenario.swings(), scenarios, Map.of(), null, scenarios.trendBias());
+
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((ignoredSeries, ignoredDegree) -> analysisSnapshot)
+                .build();
+
+        ElliottWaveAnalysisResult result = analysis.analyzeWindow(series, 40, 45);
+        ElliottAnalysisResult base = result.analysisFor(ElliottDegree.PRIMARY).orElseThrow().analysis();
+
+        assertThat(base.index()).isEqualTo(45);
+        assertThat(base.processedSwings().getFirst().fromIndex()).isEqualTo(40);
+        assertThat(base.processedSwings().getLast().toIndex()).isEqualTo(45);
+        assertThat(result.rankedBaseScenarios().getFirst().scenario().startIndex()).isEqualTo(40);
+        assertThat(result.rankedBaseScenarios().getFirst().scenario().swings().getLast().toIndex()).isEqualTo(45);
+    }
+
+    @Test
+    void analyzeWindowAnchorsNearBoundaryScenariosToRequestedSpan() {
+        BarSeries series = buildLongHistorySeries();
+        NumFactory factory = series.numFactory();
+        ElliottScenario localScenario = scenario(factory, "near-boundary", ElliottPhase.WAVE5, 0.82,
+                List.of(new ElliottSwing(2, 4, factory.numOf(105), factory.numOf(124), ElliottDegree.PRIMARY),
+                        new ElliottSwing(4, 6, factory.numOf(124), factory.numOf(112), ElliottDegree.PRIMARY),
+                        new ElliottSwing(6, 8, factory.numOf(112), factory.numOf(144), ElliottDegree.PRIMARY),
+                        new ElliottSwing(8, 10, factory.numOf(144), factory.numOf(130), ElliottDegree.PRIMARY),
+                        new ElliottSwing(10, 12, factory.numOf(130), factory.numOf(160), ElliottDegree.PRIMARY)),
+                factory.numOf(92), 0.95);
+        ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(localScenario), 12);
+        ElliottAnalysisResult analysisSnapshot = new ElliottAnalysisResult(ElliottDegree.PRIMARY, 12,
+                localScenario.swings(), localScenario.swings(), scenarios, Map.of(), null, scenarios.trendBias());
+
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((ignoredSeries, ignoredDegree) -> analysisSnapshot)
+                .build();
+
+        ElliottWaveAnalysisResult result = analysis.analyzeWindow(series, 40, 52);
+        ElliottScenario anchoredScenario = result
+                .rankedBaseScenariosForSpan(40, 52, ScenarioType.IMPULSE, ElliottPhase.WAVE5, 5, null, 3)
+                .getFirst()
+                .scenario();
+
+        assertThat(anchoredScenario.startIndex()).isEqualTo(40);
+        assertThat(anchoredScenario.swings().getFirst().fromIndex()).isEqualTo(40);
+        assertThat(anchoredScenario.swings().getLast().toIndex()).isEqualTo(52);
+    }
+
+    @Test
+    void logicProfileAppliesDefaultBaseConfidenceWeightWhenNotOverridden() throws Exception {
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .logicProfile(ElliottLogicProfile.ANCHOR_FIRST_HYBRID)
+                .build();
+
+        Field logicProfileField = ElliottWaveAnalysisRunner.class.getDeclaredField("logicProfile");
+        logicProfileField.setAccessible(true);
+        Field baseConfidenceWeightField = ElliottWaveAnalysisRunner.class.getDeclaredField("baseConfidenceWeight");
+        baseConfidenceWeightField.setAccessible(true);
+
+        assertThat(logicProfileField.get(analysis)).isEqualTo(ElliottLogicProfile.ANCHOR_FIRST_HYBRID);
+        assertThat(baseConfidenceWeightField.getDouble(analysis))
+                .isEqualTo(ElliottLogicProfile.ANCHOR_FIRST_HYBRID.baseConfidenceWeight());
     }
 
     @Test

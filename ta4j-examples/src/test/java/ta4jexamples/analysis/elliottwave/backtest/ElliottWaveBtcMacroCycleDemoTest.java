@@ -93,35 +93,6 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
-    void matchesSegmentScenarioAllowsPrefixHistoryScenarioThatStartsAfterBarZero() throws Exception {
-        BarSeries series = extendedSyntheticSeries();
-        ElliottScenario scenario = ElliottScenario.builder()
-                .id("prefix-history-bullish")
-                .currentPhase(ElliottPhase.WAVE5)
-                .swings(List.of(
-                        new ElliottSwing(2, 3, series.numFactory().numOf(108), series.numFactory().numOf(146),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(3, 4, series.numFactory().numOf(146), series.numFactory().numOf(130),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(4, 5, series.numFactory().numOf(130), series.numFactory().numOf(156),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(5, 6, series.numFactory().numOf(156), series.numFactory().numOf(144),
-                                ElliottDegree.MINUTE),
-                        new ElliottSwing(6, 7, series.numFactory().numOf(144), series.numFactory().numOf(172),
-                                ElliottDegree.MINUTE)))
-                .confidence(ElliottConfidence.zero(series.numFactory()))
-                .degree(ElliottDegree.MINUTE)
-                .type(ScenarioType.IMPULSE)
-                .bullishDirection(true)
-                .startIndex(2)
-                .build();
-
-        assertTrue(invokeMatchesSegmentScenario(scenario, true, 7));
-        assertTrue(invokeMatchesSegmentScenario(scenario, true, 6));
-        assertFalse(invokeMatchesSegmentScenario(scenario, false, 7));
-    }
-
-    @Test
     void fitFromCoreAssessmentUsesCoreCompositeAsPrimaryAcceptanceGate() throws Exception {
         BarSeries series = studySyntheticSeries();
         ElliottWaveBtcMacroCycleDemo.LegSegment segment = new ElliottWaveBtcMacroCycleDemo.LegSegment(
@@ -157,7 +128,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
         assertTrue(fit.accepted());
         assertTrue(fit.ruleScore() < 0.35);
-        assertEquals("Core-ranked prefix-history impulse fit", fit.rationale());
+        assertEquals("Core-ranked anchored-window impulse fit", fit.rationale());
     }
 
     @Test
@@ -196,7 +167,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
         assertTrue(fit.accepted());
         assertTrue(fit.strengthScore() < 0.55);
-        assertEquals("Core-ranked prefix-history impulse fit", fit.rationale());
+        assertEquals("Core-ranked anchored-window impulse fit", fit.rationale());
     }
 
     @Test
@@ -276,6 +247,19 @@ class ElliottWaveBtcMacroCycleDemoTest {
                     .chartSegments()
                     .stream()
                     .allMatch(segment -> isAnchoredToMacroEndpoints(series, segment)));
+            assertTrue(study.selectedProfile()
+                    .chartSegments()
+                    .stream()
+                    .allMatch(segment -> segment.rationale().startsWith("Core-ranked anchored-window")));
+            Optional<ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit> coreBullSegment = study.selectedProfile()
+                    .chartSegments()
+                    .stream()
+                    .filter(segment -> segment.segment().bullish())
+                    .filter(segment -> segment.segment().fromAnchor().id().equals("btc-2015-cycle-bottom"))
+                    .filter(segment -> segment.segment().toAnchor().id().equals("btc-2017-cycle-top"))
+                    .findFirst();
+            assertTrue(coreBullSegment.isPresent());
+            assertEquals("Core-ranked anchored-window impulse fit", coreBullSegment.orElseThrow().rationale());
             assertFalse(study.currentCycle().currentWave().isBlank());
             assertTrue(Files.exists(Path.of(report.chartPath())));
             assertTrue(Files.exists(Path.of(report.summaryPath())));
@@ -353,14 +337,6 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 type == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP ? Set.of(ElliottPhase.WAVE5)
                         : Set.of(ElliottPhase.CORRECTIVE_C),
                 ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic");
-    }
-
-    private static boolean invokeMatchesSegmentScenario(ElliottScenario scenario, boolean bullish, int segmentEndIndex)
-            throws Exception {
-        Method method = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("matchesSegmentScenario",
-                ElliottScenario.class, boolean.class, int.class);
-        method.setAccessible(true);
-        return (boolean) method.invoke(null, scenario, bullish, segmentEndIndex);
     }
 
     private static ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit invokeFitFromCoreAssessment(

@@ -86,6 +86,9 @@ public final class ElliottWaveAnalysisRunner {
     private static final int BROAD_HISTORY_COMPRESSOR_MIN_BARS = 1;
     private static final int BROAD_HISTORY_INTERNAL_SCENARIO_MULTIPLIER = 40;
     private static final int BROAD_HISTORY_INTERNAL_SCENARIO_CAP = 1000;
+    private static final int WINDOW_ANCHOR_SNAP_MIN_BARS = 8;
+    private static final int WINDOW_ANCHOR_SNAP_MAX_BARS = 60;
+    private static final double WINDOW_ANCHOR_SNAP_FRACTION = 0.15;
 
     private static final double DEFAULT_BASE_CONFIDENCE_WEIGHT = 0.7;
     private static final double DEFAULT_NEUTRAL_CROSS_DEGREE_SCORE = 0.5;
@@ -103,6 +106,7 @@ public final class ElliottWaveAnalysisRunner {
     private final AnalysisRunner<ElliottDegree, ElliottAnalysisResult> analysisRunner;
     private final double baseConfidenceWeight;
     private final boolean usesDefaultAnalysisRunner;
+    private final ElliottLogicProfile logicProfile;
 
     // Built-in single-degree analysis pipeline configuration (used by default
     // runner only).
@@ -116,22 +120,30 @@ public final class ElliottWaveAnalysisRunner {
 
     private ElliottWaveAnalysisRunner(final Builder builder) {
         this.baseDegree = Objects.requireNonNull(builder.baseDegree, "baseDegree");
+        this.logicProfile = builder.logicProfile;
         this.higherDegrees = builder.higherDegrees;
         this.lowerDegrees = builder.lowerDegrees;
         this.seriesSelector = builder.seriesSelector == null ? defaultSeriesSelector() : builder.seriesSelector;
 
-        this.swingDetector = builder.swingDetector == null ? defaultHierarchicalSwingDetector(baseDegree)
+        this.swingDetector = builder.swingDetector == null
+                ? defaultHierarchicalSwingDetector(baseDegree,
+                        logicProfile == null ? DEFAULT_FAST_FRACTAL_WINDOW : logicProfile.baseFractalWindow())
                 : builder.swingDetector;
         this.swingFilter = builder.swingFilter;
-        this.confidenceModelFactory = builder.confidenceModelFactory == null ? ConfidenceProfiles::defaultModel
+        this.confidenceModelFactory = builder.confidenceModelFactory == null
+                ? defaultConfidenceModelFactory(logicProfile)
                 : builder.confidenceModelFactory;
-        this.patternSet = builder.patternSet == null ? PatternSet.all() : builder.patternSet;
+        this.patternSet = builder.patternSet == null
+                ? (logicProfile == null ? PatternSet.all() : logicProfile.patternSet())
+                : builder.patternSet;
         this.minConfidence = builder.minConfidence;
         this.maxScenarios = builder.maxScenarios;
         this.scenarioSwingWindow = builder.scenarioSwingWindow;
 
         int supportingDegrees = Math.max(0, higherDegrees) + Math.max(0, lowerDegrees);
-        this.baseConfidenceWeight = supportingDegrees == 0 ? 1.0 : builder.baseConfidenceWeight;
+        this.baseConfidenceWeight = supportingDegrees == 0 ? 1.0
+                : (builder.baseConfidenceWeightExplicit ? builder.baseConfidenceWeight
+                        : logicProfile == null ? builder.baseConfidenceWeight : logicProfile.baseConfidenceWeight());
 
         this.usesDefaultAnalysisRunner = builder.analysisRunner == null;
         this.analysisRunner = usesDefaultAnalysisRunner ? this::runDefaultAnalysis : builder.analysisRunner;
@@ -221,6 +233,52 @@ public final class ElliottWaveAnalysisRunner {
     }
 
     /**
+     * Runs analysis on an anchor-bounded window and rebases the result back to the
+     * original series indices.
+     *
+     * <p>
+     * This is useful for truth-set validation and segment-level studies where the
+     * caller knows the intended start/end anchors and wants the core runner to work
+     * on that bounded history directly rather than on a longer prefix.
+     *
+     * <p>
+     * When the built-in default runner finds a plausible scenario that starts or
+     * ends just inside the requested span, the returned base-degree scenarios are
+     * snapped to the requested window boundaries. This reduces left-edge and
+     * right-edge instability in anchored research workflows without affecting the
+     * full-series {@link #analyze(BarSeries)} path.
+     *
+     * @param series     root series
+     * @param startIndex inclusive window start index in the root series
+     * @param endIndex   inclusive window end index in the root series
+     * @return analysis result with all swings and scenarios rebased to the original
+     *         series indices
+     * @since 0.22.4
+     */
+    public ElliottWaveAnalysisResult analyzeWindow(final BarSeries series, final int startIndex, final int endIndex) {
+        Objects.requireNonNull(series, "series");
+        if (series.isEmpty()) {
+            throw new IllegalArgumentException("series cannot be empty");
+        }
+        if (startIndex < series.getBeginIndex()) {
+            throw new IllegalArgumentException("startIndex must be >= series begin index");
+        }
+        if (endIndex > series.getEndIndex()) {
+            throw new IllegalArgumentException("endIndex must be <= series end index");
+        }
+        if (endIndex < startIndex) {
+            throw new IllegalArgumentException("endIndex must be >= startIndex");
+        }
+        if (startIndex == series.getBeginIndex() && endIndex == series.getEndIndex()) {
+            return analyze(series);
+        }
+
+        final BarSeries window = series.getSubSeries(startIndex, endIndex + 1);
+        final ElliottWaveAnalysisResult windowed = analyze(window);
+        return anchorWindowResult(series, rebaseAnalysisResult(windowed, startIndex), startIndex, endIndex);
+    }
+
+    /**
      * Runs the built-in single-degree pipeline with default noise filtering and
      * swing compression parameters scaled to the requested degree.
      *
@@ -280,15 +338,31 @@ public final class ElliottWaveAnalysisRunner {
      * @return hierarchical detector composed from existing detector primitives
      */
     static SwingDetector defaultHierarchicalSwingDetector(final ElliottDegree baseDegree) {
+        return defaultHierarchicalSwingDetector(baseDegree, DEFAULT_FAST_FRACTAL_WINDOW);
+    }
+
+    static SwingDetector defaultHierarchicalSwingDetector(final ElliottDegree baseDegree, final int baseFractalWindow) {
         Objects.requireNonNull(baseDegree, "baseDegree");
+        final int clampedBaseWindow = Math.max(2, baseFractalWindow);
         return (series, index, degree) -> {
-            int fastWindow = scaleWindow(baseDegree, degree, DEFAULT_FAST_FRACTAL_WINDOW, 2, 13);
-            int slowWindow = scaleWindow(baseDegree, degree, DEFAULT_SLOW_FRACTAL_WINDOW, fastWindow + 1, 34);
+            int fastWindow = scaleWindow(baseDegree, degree, clampedBaseWindow, 2, 21);
+            int slowBaseWindow = Math.max(fastWindow + 1, (clampedBaseWindow * 2) + 1);
+            int slowWindow = scaleWindow(baseDegree, degree, slowBaseWindow, fastWindow + 1, 55);
+            AdaptiveZigZagConfig zigZagConfig = new AdaptiveZigZagConfig(Math.max(8, fastWindow * 4),
+                    1.0 + (clampedBaseWindow * 0.08), 0.0, 0.0, Math.max(2, clampedBaseWindow));
             return SwingDetectors
-                    .composite(CompositeSwingDetector.Policy.OR, SwingDetectors.adaptiveZigZag(DEFAULT_ZIGZAG_CONFIG),
+                    .composite(CompositeSwingDetector.Policy.OR, SwingDetectors.adaptiveZigZag(zigZagConfig),
                             SwingDetectors.fractal(fastWindow), SwingDetectors.fractal(slowWindow))
                     .detect(series, index, degree);
         };
+    }
+
+    private static Function<NumFactory, ConfidenceModel> defaultConfidenceModelFactory(
+            final ElliottLogicProfile logicProfile) {
+        if (logicProfile != null && logicProfile.patternAwareConfidence()) {
+            return ConfidenceProfiles::patternAwareModel;
+        }
+        return ConfidenceProfiles::defaultModel;
     }
 
     /**
@@ -874,6 +948,162 @@ public final class ElliottWaveAnalysisRunner {
         return value;
     }
 
+    private ElliottWaveAnalysisResult rebaseAnalysisResult(final ElliottWaveAnalysisResult result,
+            final int indexOffset) {
+        final List<ElliottWaveAnalysisResult.DegreeAnalysis> rebasedAnalyses = result.analyses()
+                .stream()
+                .map(analysis -> new ElliottWaveAnalysisResult.DegreeAnalysis(analysis.degree(),
+                        analysis.index() + indexOffset, analysis.barCount(), analysis.barDuration(),
+                        analysis.historyFitScore(), rebaseAnalysisSnapshot(analysis.analysis(), indexOffset)))
+                .toList();
+        final List<ElliottWaveAnalysisResult.BaseScenarioAssessment> rebasedRanked = result.rankedBaseScenarios()
+                .stream()
+                .map(assessment -> new ElliottWaveAnalysisResult.BaseScenarioAssessment(
+                        rebaseScenario(assessment.scenario(), indexOffset), assessment.confidenceScore(),
+                        assessment.crossDegreeScore(), assessment.compositeScore(), assessment.supportingMatches()))
+                .toList();
+        return new ElliottWaveAnalysisResult(result.baseDegree(), rebasedAnalyses, rebasedRanked, result.notes());
+    }
+
+    private ElliottWaveAnalysisResult anchorWindowResult(final BarSeries rootSeries,
+            final ElliottWaveAnalysisResult result, final int startIndex, final int endIndex) {
+        final ElliottWaveAnalysisResult.DegreeAnalysis baseSnapshot = result.analysisFor(baseDegree).orElse(null);
+        if (baseSnapshot == null) {
+            return result;
+        }
+
+        final ElliottAnalysisResult anchoredBase = anchorWindowAnalysisSnapshot(rootSeries, baseSnapshot.analysis(),
+                startIndex, endIndex);
+        final List<ElliottWaveAnalysisResult.DegreeAnalysis> anchoredAnalyses = result.analyses()
+                .stream()
+                .map(analysis -> analysis.degree() == baseDegree
+                        ? new ElliottWaveAnalysisResult.DegreeAnalysis(analysis.degree(), analysis.index(),
+                                analysis.barCount(), analysis.barDuration(), analysis.historyFitScore(), anchoredBase)
+                        : analysis)
+                .toList();
+        final List<ElliottWaveAnalysisResult.BaseScenarioAssessment> anchoredRanked = result.rankedBaseScenarios()
+                .stream()
+                .map(assessment -> new ElliottWaveAnalysisResult.BaseScenarioAssessment(
+                        anchorWindowScenario(rootSeries, assessment.scenario(), startIndex, endIndex),
+                        assessment.confidenceScore(), assessment.crossDegreeScore(), assessment.compositeScore(),
+                        assessment.supportingMatches()))
+                .toList();
+        return new ElliottWaveAnalysisResult(result.baseDegree(), anchoredAnalyses, anchoredRanked, result.notes());
+    }
+
+    private ElliottAnalysisResult anchorWindowAnalysisSnapshot(final BarSeries rootSeries,
+            final ElliottAnalysisResult analysis, final int startIndex, final int endIndex) {
+        final List<ElliottScenario> anchoredScenarios = analysis.scenarios()
+                .all()
+                .stream()
+                .map(scenario -> anchorWindowScenario(rootSeries, scenario, startIndex, endIndex))
+                .toList();
+        final ElliottScenarioSet anchoredScenarioSet = ElliottScenarioSet.of(anchoredScenarios, analysis.index());
+        return new ElliottAnalysisResult(analysis.degree(), analysis.index(), analysis.rawSwings(),
+                analysis.processedSwings(), anchoredScenarioSet, analysis.confidenceBreakdowns(), analysis.channel(),
+                anchoredScenarioSet.trendBias());
+    }
+
+    private ElliottScenario anchorWindowScenario(final BarSeries rootSeries, final ElliottScenario scenario,
+            final int startIndex, final int endIndex) {
+        if (scenario == null || scenario.swings().isEmpty()) {
+            return scenario;
+        }
+
+        final ElliottSwing firstSwing = scenario.swings().getFirst();
+        final ElliottSwing lastSwing = scenario.swings().getLast();
+        final int snapBars = anchorWindowSnapBars(startIndex, endIndex);
+        final boolean snapStart = Math.abs(firstSwing.fromIndex() - startIndex) <= snapBars;
+        final boolean snapEnd = Math.abs(lastSwing.toIndex() - endIndex) <= snapBars;
+        if (!snapStart && !snapEnd) {
+            return scenario;
+        }
+
+        final List<ElliottSwing> anchoredSwings = new ArrayList<>(scenario.swings().size());
+        for (int index = 0; index < scenario.swings().size(); index++) {
+            final ElliottSwing swing = scenario.swings().get(index);
+            final boolean first = index == 0;
+            final boolean last = index == scenario.swings().size() - 1;
+            final int fromIndex = first && snapStart ? startIndex : swing.fromIndex();
+            final int toIndex = last && snapEnd ? endIndex : swing.toIndex();
+            final Num fromPrice = first && snapStart ? boundaryPrice(rootSeries, startIndex, !swing.isRising())
+                    : swing.fromPrice();
+            final Num toPrice = last && snapEnd ? boundaryPrice(rootSeries, endIndex, swing.isRising())
+                    : swing.toPrice();
+            anchoredSwings.add(new ElliottSwing(fromIndex, toIndex, fromPrice, toPrice, swing.degree()));
+        }
+
+        final ElliottScenario.Builder builder = ElliottScenario.builder()
+                .id(scenario.id())
+                .currentPhase(scenario.currentPhase())
+                .swings(anchoredSwings)
+                .confidence(scenario.confidence())
+                .degree(scenario.degree())
+                .invalidationPrice(scenario.invalidationPrice())
+                .primaryTarget(scenario.primaryTarget())
+                .fibonacciTargets(scenario.fibonacciTargets())
+                .type(scenario.type())
+                .startIndex(anchoredSwings.getFirst().fromIndex());
+        if (scenario.hasKnownDirection()) {
+            builder.bullishDirection(scenario.isBullish());
+        }
+        return builder.build();
+    }
+
+    private static int anchorWindowSnapBars(final int startIndex, final int endIndex) {
+        final int span = Math.max(1, endIndex - startIndex);
+        return Math.max(WINDOW_ANCHOR_SNAP_MIN_BARS,
+                Math.min(WINDOW_ANCHOR_SNAP_MAX_BARS, (int) Math.round(span * WINDOW_ANCHOR_SNAP_FRACTION)));
+    }
+
+    private static Num boundaryPrice(final BarSeries rootSeries, final int index, final boolean highPivot) {
+        final Bar bar = rootSeries.getBar(index);
+        return highPivot ? bar.getHighPrice() : bar.getLowPrice();
+    }
+
+    private ElliottAnalysisResult rebaseAnalysisSnapshot(final ElliottAnalysisResult analysis, final int indexOffset) {
+        final List<ElliottSwing> rebasedRaw = rebaseSwings(analysis.rawSwings(), indexOffset);
+        final List<ElliottSwing> rebasedProcessed = rebaseSwings(analysis.processedSwings(), indexOffset);
+        final List<ElliottScenario> rebasedScenarios = analysis.scenarios()
+                .all()
+                .stream()
+                .map(scenario -> rebaseScenario(scenario, indexOffset))
+                .toList();
+        final ElliottScenarioSet rebasedScenarioSet = ElliottScenarioSet.of(rebasedScenarios,
+                analysis.index() + indexOffset);
+        return new ElliottAnalysisResult(analysis.degree(), analysis.index() + indexOffset, rebasedRaw,
+                rebasedProcessed, rebasedScenarioSet, analysis.confidenceBreakdowns(), analysis.channel(),
+                rebasedScenarioSet.trendBias());
+    }
+
+    private List<ElliottSwing> rebaseSwings(final List<ElliottSwing> swings, final int indexOffset) {
+        if (swings == null || swings.isEmpty()) {
+            return List.of();
+        }
+        return swings.stream()
+                .map(swing -> new ElliottSwing(swing.fromIndex() + indexOffset, swing.toIndex() + indexOffset,
+                        swing.fromPrice(), swing.toPrice(), swing.degree()))
+                .toList();
+    }
+
+    private ElliottScenario rebaseScenario(final ElliottScenario scenario, final int indexOffset) {
+        final ElliottScenario.Builder builder = ElliottScenario.builder()
+                .id(scenario.id())
+                .currentPhase(scenario.currentPhase())
+                .swings(rebaseSwings(scenario.swings(), indexOffset))
+                .confidence(scenario.confidence())
+                .degree(scenario.degree())
+                .invalidationPrice(scenario.invalidationPrice())
+                .primaryTarget(scenario.primaryTarget())
+                .fibonacciTargets(scenario.fibonacciTargets())
+                .type(scenario.type())
+                .startIndex(scenario.startIndex() + indexOffset);
+        if (scenario.hasKnownDirection()) {
+            builder.bullishDirection(scenario.isBullish());
+        }
+        return builder.build();
+    }
+
     private record ProvisionalTerminal(int index, Num price) {
     }
 
@@ -1132,6 +1362,8 @@ public final class ElliottWaveAnalysisRunner {
         private SeriesSelector<ElliottDegree> seriesSelector;
         private AnalysisRunner<ElliottDegree, ElliottAnalysisResult> analysisRunner;
         private double baseConfidenceWeight = DEFAULT_BASE_CONFIDENCE_WEIGHT;
+        private boolean baseConfidenceWeightExplicit;
+        private ElliottLogicProfile logicProfile;
 
         private SwingDetector swingDetector;
         private SwingFilter swingFilter;
@@ -1224,6 +1456,24 @@ public final class ElliottWaveAnalysisRunner {
                 throw new IllegalArgumentException("baseConfidenceWeight must be in [0.0, 1.0]");
             }
             this.baseConfidenceWeight = weight;
+            this.baseConfidenceWeightExplicit = true;
+            return this;
+        }
+
+        /**
+         * Applies a reusable Elliott logic profile to the built-in runner pipeline.
+         *
+         * <p>
+         * Profiles tune the default swing-detector sensitivity, enabled pattern
+         * families, confidence-model style, and cross-degree confidence weight. Any
+         * explicit builder calls made afterwards still take precedence.
+         *
+         * @param logicProfile logic profile to apply
+         * @return builder
+         * @since 0.22.4
+         */
+        public Builder logicProfile(final ElliottLogicProfile logicProfile) {
+            this.logicProfile = Objects.requireNonNull(logicProfile, "logicProfile");
             return this;
         }
 
