@@ -49,7 +49,7 @@ public class ElliottWavePresetDemo {
     private static final Logger LOG = LogManager.getLogger(ElliottWavePresetDemo.class);
     private static final String DEFAULT_BAR_DURATION = "PT1D";
     private static final long DEFAULT_LOOKBACK_DAYS = 1825L;
-    private static final Path DEFAULT_BTC_MACRO_CHART_DIRECTORY = Path.of("temp", "charts", "live-btc-macro-preset");
+    private static final Path DEFAULT_BTC_MACRO_CHART_DIRECTORY = Path.of("temp", "charts");
 
     /**
      * Runs a preset Elliott Wave demo.

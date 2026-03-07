@@ -311,6 +311,36 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
+    void runLivePresetRestoresLegacyBaseCaseAndAlternativeCharts() throws Exception {
+        BarSeries fullSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
+        int lookbackBars = 1825;
+        int windowStart = Math.max(fullSeries.getBeginIndex(), fullSeries.getEndIndex() - lookbackBars + 1);
+        BarSeries liveWindow = fullSeries.getSubSeries(windowStart, fullSeries.getEndIndex() + 1);
+        Path tempDir = Files.createTempDirectory("btc-live-preset-legacy");
+
+        try {
+            ElliottWaveBtcMacroCycleDemo.runLivePreset(liveWindow, tempDir);
+
+            assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-btc-usd-cycle-base-case.jpg")));
+            assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-btc-usd-cycle-alternative-1.jpg")));
+            assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-btc-usd-cycle-alternative-2.jpg")));
+            assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-btc-usd-cycle-alternative-3.jpg")));
+            assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-btc-usd-cycle-alternative-4.jpg")));
+            assertTrue(Files.exists(tempDir.resolve(ElliottWaveBtcMacroCycleDemo.DEFAULT_LIVE_SUMMARY_FILE_NAME)));
+        } finally {
+            Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException ignored) {
+                    // best effort cleanup
+                }
+            });
+        }
+    }
+
+    @Test
     void renderMacroCycleChartUsesLogAxisOnMainPricePlot() {
         BarSeries series = chartSyntheticSeries();
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
