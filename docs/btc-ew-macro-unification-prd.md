@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-08 18:24 EDT
-- Active phase: Phase 3
-- Active task: Remove the remaining example-layer fallback from accepted BTC leg fitting
-- Overall: 30/47 checklist items complete
+- Last updated: 2026-03-08 18:31 EDT
+- Active phase: Phase 4
+- Active task: Keep profile selection surfaces package-private while the core selection contract stabilizes
+- Overall: 36/47 checklist items complete
 
 ## Status
 
@@ -162,9 +162,9 @@ Implementation steps:
 
 ### Phase 3: Promote Macro Swing Detection to the Default Core Path
 
-- [ ] Finish moving broad-history swing preservation into the default core runner path.
+- [x] Finish moving broad-history swing preservation into the default core runner path.
 - [x] Ensure early macro pivots survive filtering when they are necessary to explain long-cycle structure.
-- [ ] Stop requiring example-layer fallback for accepted BTC historical legs.
+- [x] Stop requiring example-layer fallback for accepted BTC historical legs.
 - [x] Add tests proving early-cycle pivots survive even when later moves are much larger.
 
 Implementation steps:
@@ -255,10 +255,10 @@ Implement in this exact order unless a blocker forces a change:
 
 ### Historical Truth-Set Tests
 
-- [ ] All three accepted BTC cycles must be reproduced by core-ranked fits.
-- [ ] Each bullish leg must yield a complete `1-2-3-4-5` decomposition.
-- [ ] Each bearish leg must yield a complete `A-B-C` decomposition.
-- [ ] Terminal `WAVE5` and `CORRECTIVE_C` endpoints must remain inside anchor tolerance windows.
+- [x] All three accepted BTC cycles must be reproduced by core-ranked fits.
+- [x] Each bullish leg must yield a complete `1-2-3-4-5` decomposition.
+- [x] Each bearish leg must yield a complete `A-B-C` decomposition.
+- [x] Terminal `WAVE5` and `CORRECTIVE_C` endpoints must remain inside anchor tolerance windows.
 - [ ] After all implementation work is complete, run a final EW sanity check over the unified logic and document any remaining interpretation surprises before ship/no-ship.
 
 ### Live Current-Cycle Tests

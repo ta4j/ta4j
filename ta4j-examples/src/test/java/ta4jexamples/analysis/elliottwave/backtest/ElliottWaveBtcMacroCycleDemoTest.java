@@ -249,6 +249,14 @@ class ElliottWaveBtcMacroCycleDemoTest {
             assertEquals(3, study.cycles().size());
             assertTrue(
                     study.cycles().stream().allMatch(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::accepted));
+            assertTrue(study.cycles().stream().allMatch(cycle -> "accepted historical fit".equals(cycle.status())));
+            assertEquals(3, study.selectedProfile().cycleFits().size());
+            study.selectedProfile().cycleFits().forEach(cycleFit -> assertAcceptedCoreRankedCycleFit(series, cycleFit));
+            assertTrue(study.selectedProfile().chartSegments().size() >= 6);
+            assertTrue(study.selectedProfile()
+                    .chartSegments()
+                    .stream()
+                    .allMatch(ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit::accepted));
             assertTrue(study.selectedProfile()
                     .chartSegments()
                     .stream()
@@ -481,6 +489,35 @@ class ElliottWaveBtcMacroCycleDemoTest {
         int actualEnd = scenario.swings().getLast().toIndex();
         return Math.abs(actualStart - expectedStart) <= ElliottWaveBtcMacroCycleDemo.MAX_CORE_ANCHOR_DRIFT_BARS
                 && Math.abs(actualEnd - expectedEnd) <= ElliottWaveBtcMacroCycleDemo.MAX_CORE_ANCHOR_DRIFT_BARS;
+    }
+
+    private static void assertAcceptedCoreRankedCycleFit(BarSeries series,
+            ElliottWaveBtcMacroCycleDemo.CycleFit cycleFit) {
+        assertTrue(cycleFit.accepted());
+        assertNotNull(cycleFit.bullishFit());
+        assertNotNull(cycleFit.bearishFit());
+        assertTrue(cycleFit.bullishFit().accepted());
+        assertTrue(cycleFit.bearishFit().accepted());
+        assertEquals("Core-ranked anchored-window impulse fit", cycleFit.bullishFit().rationale());
+        assertEquals("Core-ranked anchored-window corrective fit", cycleFit.bearishFit().rationale());
+        assertEquals(ElliottPhase.WAVE5, cycleFit.bullishFit().scenario().currentPhase());
+        assertEquals(ElliottPhase.CORRECTIVE_C, cycleFit.bearishFit().scenario().currentPhase());
+        assertEquals(5, cycleFit.bullishFit().scenario().swings().size());
+        assertEquals(3, cycleFit.bearishFit().scenario().swings().size());
+        assertTrue(isAnchoredToMacroEndpoints(series, cycleFit.bullishFit()));
+        assertTrue(isAnchoredToMacroEndpoints(series, cycleFit.bearishFit()));
+        assertTerminalPivotWithinTolerance(series, cycleFit.bullishFit());
+        assertTerminalPivotWithinTolerance(series, cycleFit.bearishFit());
+    }
+
+    private static void assertTerminalPivotWithinTolerance(BarSeries series,
+            ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit segmentFit) {
+        int expectedTerminalIndex = indexOf(series, segmentFit.segment().toAnchor().at());
+        int actualTerminalIndex = segmentFit.scenario().swings().getLast().toIndex();
+        assertTrue(
+                Math.abs(actualTerminalIndex
+                        - expectedTerminalIndex) <= ElliottWaveBtcMacroCycleDemo.MAX_CORE_ANCHOR_DRIFT_BARS,
+                "Terminal pivot should stay within anchor tolerance for " + segmentFit.segment().toAnchor().id());
     }
 
     private static void assertScenarioInternalPivotsUseLocalExtremes(BarSeries series, ElliottScenario scenario,
