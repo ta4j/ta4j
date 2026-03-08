@@ -591,6 +591,30 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void fitCurrentPhaseForWindowSupportsBearishCorrectiveProgressions() {
+        BarSeries series = buildBearishWindowSeries();
+        NumFactory factory = series.numFactory();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> bearishCorrectiveSnapshot(window, factory))
+                .build();
+
+        ElliottWaveAnalysisResult windowAnalysis = analysis.analyzeWindow(series, series.getBeginIndex(),
+                series.getEndIndex());
+        Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fit = analysis.fitCurrentPhaseForWindow(series,
+                windowAnalysis, series.getBeginIndex(), series.getEndIndex(), false, 3);
+
+        assertThat(fit).isPresent();
+        assertThat(fit.orElseThrow().currentPhase()).isEqualTo(ElliottPhase.CORRECTIVE_C);
+        assertThat(fit.orElseThrow().countLabel()).isEqualTo("Bearish A-B-C");
+        assertThat(fit.orElseThrow().startPrice()).isEqualByComparingTo(series.getBar(0).getHighPrice());
+        assertThat(fit.orElseThrow().phaseInvalidationPrice())
+                .isEqualByComparingTo(fit.orElseThrow().invalidationPrice());
+    }
+
+    @Test
     void currentCycleAssessmentDistinctCandidatesKeepsFirstUniqueScenarioIds() {
         NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
         ElliottWaveAnalysisResult.CurrentCycleCandidate duplicateLeader = new ElliottWaveAnalysisResult.CurrentCycleCandidate(
@@ -971,6 +995,27 @@ class ElliottWaveAnalysisRunnerTest {
         return series;
     }
 
+    private BarSeries buildBearishWindowSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("BearishWindow").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2024-04-01T00:00:00Z");
+        double[][] bars = { { 200, 205, 198, 202 }, { 202, 203, 180, 184 }, { 184, 186, 150, 154 },
+                { 154, 178, 152, 174 }, { 174, 176, 170, 172 }, { 172, 173, 132, 138 }, { 138, 140, 120, 124 } };
+        for (int index = 0; index < bars.length; index++) {
+            double[] bar = bars[index];
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(bar[0])
+                    .highPrice(bar[1])
+                    .lowPrice(bar[2])
+                    .closePrice(bar[3])
+                    .volume(1000)
+                    .add();
+        }
+        return series;
+    }
+
     private ElliottAnalysisResult currentCycleSnapshot(final BarSeries series, final NumFactory factory) {
         if (series.getBarCount() < 10) {
             ElliottScenarioSet empty = ElliottScenarioSet.empty(series.getEndIndex());
@@ -1017,6 +1062,36 @@ class ElliottWaveAnalysisRunnerTest {
                 series.getEndIndex());
         return new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), malformedWaveFiveSwings,
                 malformedWaveFiveSwings, scenarios, Map.of(), null, scenarios.trendBias());
+    }
+
+    private ElliottAnalysisResult bearishCorrectiveSnapshot(final BarSeries series, final NumFactory factory) {
+        if (series.getBarCount() < 7) {
+            ElliottScenarioSet empty = ElliottScenarioSet.empty(series.getEndIndex());
+            return new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), List.of(), List.of(), empty,
+                    Map.of(), null, empty.trendBias());
+        }
+
+        List<ElliottSwing> swings = List.of(
+                new ElliottSwing(0, 2, factory.numOf(205), factory.numOf(150), ElliottDegree.PRIMARY),
+                new ElliottSwing(2, 4, factory.numOf(150), factory.numOf(176), ElliottDegree.PRIMARY),
+                new ElliottSwing(4, 6, factory.numOf(176), factory.numOf(120), ElliottDegree.PRIMARY));
+        ElliottConfidence confidence = new ElliottConfidence(factory.numOf(0.82), factory.numOf(0.82),
+                factory.numOf(0.82), factory.numOf(0.82), factory.numOf(0.82), factory.numOf(0.82), "test");
+        ElliottScenario corrective = ElliottScenario.builder()
+                .id("bearish-corrective-c")
+                .currentPhase(ElliottPhase.CORRECTIVE_C)
+                .swings(swings)
+                .confidence(confidence)
+                .degree(ElliottDegree.PRIMARY)
+                .invalidationPrice(factory.numOf(205))
+                .type(ScenarioType.CORRECTIVE_ZIGZAG)
+                .startIndex(0)
+                .bullishDirection(false)
+                .build();
+
+        ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(corrective), series.getEndIndex());
+        return new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), swings, swings, scenarios,
+                Map.of(), null, scenarios.trendBias());
     }
 
     private ElliottAnalysisResult waveFourNormalizationSnapshot(final BarSeries series, final NumFactory factory) {

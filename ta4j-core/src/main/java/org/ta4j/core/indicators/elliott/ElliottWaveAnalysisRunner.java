@@ -339,8 +339,8 @@ public final class ElliottWaveAnalysisRunner {
 
             final ElliottWaveAnalysisResult windowAnalysis = analyzeWindow(series, startIndex, endIndex);
             for (int phase = 1; phase <= 5; phase++) {
-                final Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fit = fitCurrentBullishPhase(series,
-                        windowAnalysis, startIndex, endIndex, phase);
+                final Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fit = fitCurrentPhaseForWindow(series,
+                        windowAnalysis, startIndex, endIndex, true, phase);
                 if (fit.isEmpty()) {
                     continue;
                 }
@@ -363,8 +363,8 @@ public final class ElliottWaveAnalysisRunner {
             final int fallbackStartIndex = lowestLowIndex(series, beginIndex, endIndex);
             final ElliottWaveAnalysisResult fallbackAnalysis = analyzeWindow(series, fallbackStartIndex, endIndex);
             for (int phase = 1; phase <= 5; phase++) {
-                final Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fit = fitCurrentBullishPhase(series,
-                        fallbackAnalysis, fallbackStartIndex, endIndex, phase);
+                final Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fit = fitCurrentPhaseForWindow(series,
+                        fallbackAnalysis, fallbackStartIndex, endIndex, true, phase);
                 fit.ifPresent(phaseFit -> candidates.add(new ElliottWaveAnalysisResult.CurrentCycleCandidate(
                         fallbackStartIndex, lowPriceNum(series, fallbackStartIndex), phaseFit, 1.0, phaseFit.fitScore(),
                         "Fallback current-cycle anchor")));
@@ -634,40 +634,40 @@ public final class ElliottWaveAnalysisRunner {
         return clamp01(1.0 - (breach / 0.08));
     }
 
-    private Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fitCurrentBullishPhase(final BarSeries series,
-            final ElliottWaveAnalysisResult analysis, final int startIndex, final int endIndex, final int phase) {
-        if (phase < 1 || phase > 5 || endIndex <= startIndex) {
+    Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fitCurrentPhaseForWindow(final BarSeries series,
+            final ElliottWaveAnalysisResult analysis, final int startIndex, final int endIndex, final boolean bullish,
+            final int phase) {
+        if (endIndex <= startIndex) {
             return Optional.empty();
         }
-        final ElliottPhase currentPhase = switch (phase) {
-        case 2 -> ElliottPhase.WAVE2;
-        case 3 -> ElliottPhase.WAVE3;
-        case 4 -> ElliottPhase.WAVE4;
-        case 5 -> ElliottPhase.WAVE5;
-        default -> ElliottPhase.WAVE1;
-        };
+        final ElliottPhase currentPhase = currentPhase(bullish, phase);
+        if (currentPhase == null) {
+            return Optional.empty();
+        }
+        final ScenarioType scenarioType = bullish ? ScenarioType.IMPULSE : null;
+        final Boolean expectedDirection = Boolean.valueOf(bullish);
         final Optional<ElliottWaveAnalysisResult.WindowScenarioAssessment> anchored = analysis
-                .recommendedBaseScenarioForWindow(series, startIndex, endIndex, ScenarioType.IMPULSE, currentPhase,
-                        phase, Boolean.TRUE, CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS);
+                .recommendedBaseScenarioForWindow(series, startIndex, endIndex, scenarioType, currentPhase, phase,
+                        expectedDirection, CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS);
         if (anchored.isPresent()) {
             final ElliottWaveAnalysisResult.WindowScenarioAssessment assessment = anchored.orElseThrow();
             return toCurrentPhaseAssessment(series, startIndex, endIndex, currentPhase, assessment.scenario(),
-                    assessment.windowFitScore());
+                    assessment.windowFitScore(), bullish);
         }
         final Optional<ElliottWaveAnalysisResult.BaseScenarioAssessment> anchoredSpan = analysis
-                .recommendedBaseScenarioForSpan(startIndex, endIndex, ScenarioType.IMPULSE, currentPhase, phase,
-                        Boolean.TRUE, CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS);
+                .recommendedBaseScenarioForSpan(startIndex, endIndex, scenarioType, currentPhase, phase,
+                        expectedDirection, CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS);
         if (anchoredSpan.isEmpty()) {
             return Optional.empty();
         }
         final ElliottWaveAnalysisResult.BaseScenarioAssessment assessment = anchoredSpan.orElseThrow();
         return toCurrentPhaseAssessment(series, startIndex, endIndex, currentPhase, assessment.scenario(),
-                assessment.compositeScore());
+                assessment.compositeScore(), bullish);
     }
 
     private Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> toCurrentPhaseAssessment(final BarSeries series,
             final int startIndex, final int endIndex, final ElliottPhase currentPhase, final ElliottScenario scenario,
-            final double baseFitScore) {
+            final double baseFitScore, final boolean bullish) {
         final ElliottScenario normalizedScenario = normalizeCurrentCycleScenario(series, scenario);
         final ElliottSwing firstSwing = normalizedScenario.swings().getFirst();
         final ElliottSwing lastSwing = normalizedScenario.swings().getLast();
@@ -690,9 +690,27 @@ public final class ElliottWaveAnalysisRunner {
         final Num structuralInvalidation = normalizedScenario.invalidationPrice();
         final Num phaseInvalidation = currentPhaseInvalidation(normalizedScenario, currentPhase);
         return Optional.of(new ElliottWaveAnalysisResult.CurrentPhaseAssessment(normalizedScenario, currentPhase,
-                fitScore, lowPriceNum(series, startIndex),
-                bullishCountLabel(currentPhase.isImpulse() ? scenario.waveCount() : 0), structuralInvalidation,
-                phaseInvalidation));
+                fitScore, bullish ? lowPriceNum(series, startIndex) : highPriceNum(series, startIndex),
+                currentCountLabel(bullish, scenario.waveCount()), structuralInvalidation, phaseInvalidation));
+    }
+
+    private static ElliottPhase currentPhase(final boolean bullish, final int phase) {
+        if (bullish) {
+            return switch (phase) {
+            case 1 -> ElliottPhase.WAVE1;
+            case 2 -> ElliottPhase.WAVE2;
+            case 3 -> ElliottPhase.WAVE3;
+            case 4 -> ElliottPhase.WAVE4;
+            case 5 -> ElliottPhase.WAVE5;
+            default -> null;
+            };
+        }
+        return switch (phase) {
+        case 1 -> ElliottPhase.CORRECTIVE_A;
+        case 2 -> ElliottPhase.CORRECTIVE_B;
+        case 3 -> ElliottPhase.CORRECTIVE_C;
+        default -> null;
+        };
     }
 
     private Num currentPhaseInvalidation(final ElliottScenario scenario, final ElliottPhase currentPhase) {
@@ -866,6 +884,19 @@ public final class ElliottWaveAnalysisRunner {
         case 5 -> "Bullish 1-2-3-4-5";
         default -> "Bullish";
         };
+    }
+
+    private static String bearishCountLabel(final int phase) {
+        return switch (phase) {
+        case 1 -> "Bearish A";
+        case 2 -> "Bearish A-B";
+        case 3 -> "Bearish A-B-C";
+        default -> "Bearish";
+        };
+    }
+
+    private static String currentCountLabel(final boolean bullish, final int phase) {
+        return bullish ? bullishCountLabel(phase) : bearishCountLabel(phase);
     }
 
     private static int lowestLowIndex(final BarSeries series, final int startIndex, final int endIndex) {

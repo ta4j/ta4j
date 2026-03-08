@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-08 17:11 EDT
+- Last updated: 2026-03-08 17:51 EDT
 - Active phase: Phase 1
 - Active task: Migrate the remaining demo-local anchored fit scoring and acceptance seams into core
-- Overall: 24/47 checklist items complete
+- Overall: 25/47 checklist items complete
 
 ## Status
 
@@ -122,7 +122,7 @@ Implementation notes:
 
 - [x] Identify every place where `ElliottWaveBtcMacroCycleDemo` still re-scores, filters, or snaps scenarios after core returns them.
 - [ ] Move that logic into `ElliottWaveAnalysisRunner` and closely related package-private helpers.
-- [ ] Add internal span-aware selection primitives so the core runner can answer:
+- [x] Add internal span-aware selection primitives so the core runner can answer:
   - best scenario for `startIndex -> endIndex`
   - best scenario for `startIndex -> liveEnd`
   - best partial bullish/bearish progression for a window
