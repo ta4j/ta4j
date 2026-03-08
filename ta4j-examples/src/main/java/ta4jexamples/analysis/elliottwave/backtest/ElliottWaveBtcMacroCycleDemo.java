@@ -359,7 +359,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
             LOG.info("  Weakest factor: {}", confidence.weakestFactor());
             LOG.info("  Direction: {} | Phase invalidation: {} | Structural invalidation: {} | Target: {}",
                     scenario.hasKnownDirection() ? (scenario.isBullish() ? "BULLISH" : "BEARISH") : "UNKNOWN",
-                    fit.phaseInvalidationPrice(), fit.invalidationPrice(), scenario.primaryTarget());
+                    formatInvalidationCondition(scenario, fit.phaseInvalidationPrice()),
+                    formatInvalidationCondition(scenario, fit.invalidationPrice()), scenario.primaryTarget());
         }
 
         if (scenarioViews.size() > 1) {
@@ -375,7 +376,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
             }
         }
         LOG.info(
-                "Current macro read: primary={} | alternate={} | currentWave={} | phaseInvalidation={} | structuralInvalidation={}",
+                "Current macro read: primary={} | alternate={} | currentWave={} | phase invalidation {} | structural invalidation {}",
                 summary.primaryCount(), summary.alternateCount(), summary.currentWave(), summary.invalidationPrice(),
                 summary.structuralInvalidationPrice());
         LOG.info("Macro summary JSON: {}", report.summaryPath());
@@ -766,8 +767,10 @@ public final class ElliottWaveBtcMacroCycleDemo {
         String primaryCount = primary == null ? "No current bullish count" : primary.countLabel();
         String alternateCount = alternate == null ? "" : alternate.countLabel();
         String currentWave = primary == null ? "" : primary.currentPhase().name();
-        String invalidation = primary == null ? "" : formatNum(primary.phaseInvalidationPrice());
-        String structuralInvalidation = primary == null ? "" : formatNum(primary.invalidationPrice());
+        String invalidation = primary == null ? ""
+                : formatInvalidationCondition(primary.scenario(), primary.phaseInvalidationPrice());
+        String structuralInvalidation = primary == null ? ""
+                : formatInvalidationCondition(primary.scenario(), primary.invalidationPrice());
         String startTimeUtc = series.getBar(startIndex).getEndTime().toString();
         String latestTimeUtc = series.getLastBar().getEndTime().toString();
         CurrentCycleSummary summary = new CurrentCycleSummary(startTimeUtc, latestTimeUtc, profile.id(),
@@ -1210,6 +1213,16 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     private static String formatNum(Num value) {
         return value == null ? "" : value.toString();
+    }
+
+    private static String formatInvalidationCondition(ElliottScenario scenario, Num value) {
+        if (scenario == null || value == null) {
+            return "";
+        }
+        if (scenario.hasKnownDirection()) {
+            return (scenario.isBullish() ? "<= " : ">= ") + formatNum(value);
+        }
+        return "= " + formatNum(value);
     }
 
     private static String bullishCountLabel(int phase) {
