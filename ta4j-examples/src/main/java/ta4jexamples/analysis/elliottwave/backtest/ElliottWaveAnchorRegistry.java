@@ -30,6 +30,14 @@ import com.google.gson.Gson;
  * low inside the local ossified BTC dataset, then the resolved anchors are
  * partitioned chronologically into validation and holdout segments.
  *
+ * <p>
+ * These committed windows are the canonical BTC daily validation set for the
+ * CF-17 macro study. {@link ElliottWaveAnchorCalibrationHarness#defaultBitcoinAnchors(BarSeries)}
+ * preserves that contract by translating the distance from the resolved
+ * extremum to each window edge into {@code toleranceBefore} and
+ * {@code toleranceAfter}, so acceptable match windows stay pinned to the
+ * registry instead of drifting via runtime heuristics.
+ *
  * @since 0.22.4
  */
 final class ElliottWaveAnchorRegistry {
@@ -87,6 +95,11 @@ final class ElliottWaveAnchorRegistry {
     /**
      * Resolves every stored anchor window against the supplied series and assigns
      * the trailing anchors to holdout.
+     *
+     * <p>
+     * Resolution never expands or contracts the committed calendar windows. The
+     * JSON window bounds remain authoritative; the selected bar is simply the
+     * local extremum inside each stored range.
      *
      * @param series       BTC series used for resolution
      * @param holdoutCount trailing resolved anchors reserved for holdout

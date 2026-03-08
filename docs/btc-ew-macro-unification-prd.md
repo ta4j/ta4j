@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-08 16:58 EDT
+- Last updated: 2026-03-08 17:11 EDT
 - Active phase: Phase 1
 - Active task: Migrate the remaining demo-local anchored fit scoring and acceptance seams into core
-- Overall: 20/47 checklist items complete
+- Overall: 24/47 checklist items complete
 
 ## Status
 
@@ -105,13 +105,13 @@ The unified core stack must support:
 
 ### Phase 0: Freeze the Truth Set
 
-- [ ] Keep the ossified BTC daily dataset and anchor registry as the canonical validation set.
-- [ ] Lock the accepted historical cycle windows:
+- [x] Keep the ossified BTC daily dataset and anchor registry as the canonical validation set.
+- [x] Lock the accepted historical cycle windows:
   - `2011-11-18 -> 2013-11-29/30 -> 2015-08-19`
   - `2015-08-19 -> 2017-12-17/18 -> 2018-12-15/16`
   - `2018-12-15/16 -> 2021-11-10/11 -> 2022-11-21/22`
-- [ ] Keep the `2011-06 -> 2011-11` top-to-bottom segment as a reference segment only.
-- [ ] Document acceptable anchor tolerance windows in code comments and tests.
+- [x] Keep the `2011-06 -> 2011-11` top-to-bottom segment as a reference segment only.
+- [x] Document acceptable anchor tolerance windows in code comments and tests.
 
 Implementation notes:
 
