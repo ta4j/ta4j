@@ -37,8 +37,8 @@ public enum ElliottLogicProfile {
     /**
      * Broader macro pivot preservation with a wider hierarchical detector.
      */
-    HIERARCHICAL_SWING("h1-hierarchical-swing", "Hierarchical swing extraction", 4, 1, 1, PatternSet.all(), false,
-            0.78, 25, 0, 0.72),
+    HIERARCHICAL_SWING("h1-hierarchical-swing", "Hierarchical swing extraction", 4, 1, 1, PatternSet.all(), false, 0.78,
+            25, 0, 0.72),
 
     /**
      * Impulse-oriented BTC profile that narrows corrective coverage and uses the
@@ -58,8 +58,8 @@ public enum ElliottLogicProfile {
      * Anchor-first hybrid profile used by the BTC macro study when start/end span
      * fit matters as much as raw confidence.
      */
-    ANCHOR_FIRST_HYBRID("h4-anchor-first-hybrid", "Anchor-first hybrid profile", 5, 2, 2, PatternSet.all(), true,
-            0.58, 40, 0, 0.66);
+    ANCHOR_FIRST_HYBRID("h4-anchor-first-hybrid", "Anchor-first hybrid profile", 5, 2, 2, PatternSet.all(), true, 0.58,
+            40, 0, 0.66);
 
     private final String id;
     private final String title;

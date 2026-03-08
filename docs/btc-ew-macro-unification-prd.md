@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-08 16:25 EDT
-- Active phase: Phase 4
-- Active task: Make `orthodox-classical` the default core profile and keep thinning selection seams
-- Overall: 19/46 checklist items complete
+- Last updated: 2026-03-08 16:30 EDT
+- Active phase: Phase 1
+- Active task: Migrate the remaining demo-local anchored fit scoring and acceptance seams into core
+- Overall: 20/46 checklist items complete
 
 ## Status
 
@@ -120,7 +120,7 @@ Implementation notes:
 
 ### Phase 1: Move Anchor-Targeted Selection into Core
 
-- [ ] Identify every place where `ElliottWaveBtcMacroCycleDemo` still re-scores, filters, or snaps scenarios after core returns them.
+- [x] Identify every place where `ElliottWaveBtcMacroCycleDemo` still re-scores, filters, or snaps scenarios after core returns them.
 - [ ] Move that logic into `ElliottWaveAnalysisRunner` and closely related package-private helpers.
 - [ ] Add internal span-aware selection primitives so the core runner can answer:
   - best scenario for `startIndex -> endIndex`
@@ -135,6 +135,11 @@ Implementation steps:
    - anchor-distance logic
    - pivot-dominance logic
    - current-cycle partial-fit logic
+   Audit status:
+   - `fitSegmentFromCoreRunner(...)` still iterates the core window-ranked scenarios and keeps the first demo-local accepted fit, otherwise preserving a fallback fit for reporting.
+   - `fitFromCoreAssessment(...)` still recomputes blended anchored fit, rule quality, spacing, strength, and final acceptance thresholds after core has already produced `WindowScenarioAssessment`.
+   - `scenarioSpacingScore(...)` still contributes demo-local post-ranking structure scoring on top of the returned core scenario.
+   - `selectDistinctCurrentCycleCandidates(...)` still de-duplicates and caps core current-cycle candidates for the legacy chart/report surface.
 2. Move ranking and anchor-distance logic first into core.
 3. Replace demo calls with core calls one seam at a time.
 4. Add regression tests for each migrated seam before deleting example-layer logic.

@@ -664,9 +664,7 @@ class ElliottWaveAnalysisRunnerTest {
 
     @Test
     void buildDefaultsToOrthodoxClassicalLogicProfile() throws Exception {
-        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
-                .degree(ElliottDegree.PRIMARY)
-                .build();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder().degree(ElliottDegree.PRIMARY).build();
 
         Field logicProfileField = ElliottWaveAnalysisRunner.class.getDeclaredField("logicProfile");
         logicProfileField.setAccessible(true);
@@ -682,13 +680,41 @@ class ElliottWaveAnalysisRunnerTest {
         baseConfidenceWeightField.setAccessible(true);
 
         assertThat(logicProfileField.get(analysis)).isEqualTo(ElliottLogicProfile.ORTHODOX_CLASSICAL);
-        assertThat(higherDegreesField.getInt(analysis)).isEqualTo(ElliottLogicProfile.ORTHODOX_CLASSICAL.higherDegrees());
+        assertThat(higherDegreesField.getInt(analysis))
+                .isEqualTo(ElliottLogicProfile.ORTHODOX_CLASSICAL.higherDegrees());
         assertThat(lowerDegreesField.getInt(analysis)).isEqualTo(ElliottLogicProfile.ORTHODOX_CLASSICAL.lowerDegrees());
         assertThat(maxScenariosField.getInt(analysis)).isEqualTo(ElliottLogicProfile.ORTHODOX_CLASSICAL.maxScenarios());
         assertThat(scenarioSwingWindowField.getInt(analysis))
                 .isEqualTo(ElliottLogicProfile.ORTHODOX_CLASSICAL.scenarioSwingWindow());
         assertThat(baseConfidenceWeightField.getDouble(analysis))
                 .isEqualTo(ElliottLogicProfile.ORTHODOX_CLASSICAL.baseConfidenceWeight());
+    }
+
+    @Test
+    void windowScenarioAssessmentExposesDemoCompatibleAnchoredFitMetrics() {
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottScenario scenario = scenario(factory, "window-fit", ElliottPhase.WAVE5, 0.8,
+                List.of(new ElliottSwing(0, 2, factory.hundred(), factory.numOf(120), ElliottDegree.PRIMARY),
+                        new ElliottSwing(2, 4, factory.numOf(120), factory.numOf(108), ElliottDegree.PRIMARY),
+                        new ElliottSwing(4, 6, factory.numOf(108), factory.numOf(142), ElliottDegree.PRIMARY),
+                        new ElliottSwing(6, 8, factory.numOf(142), factory.numOf(126), ElliottDegree.PRIMARY),
+                        new ElliottSwing(8, 10, factory.numOf(126), factory.numOf(156), ElliottDegree.PRIMARY)),
+                factory.numOf(92), 0.9);
+        ElliottWaveAnalysisResult.BaseScenarioAssessment baseAssessment = new ElliottWaveAnalysisResult.BaseScenarioAssessment(
+                scenario, 0.82, 0.78, 0.80, List.of());
+        ElliottWaveAnalysisResult.WindowScenarioAssessment assessment = new ElliottWaveAnalysisResult.WindowScenarioAssessment(
+                baseAssessment, 0.76, 0.88, 0.74, 0.66);
+
+        assertThat(assessment.structureScore()).isCloseTo(0.824, org.assertj.core.data.Offset.offset(1.0e-12));
+        assertThat(assessment.ruleScore()).isCloseTo(0.7533333333333333, org.assertj.core.data.Offset.offset(1.0e-12));
+        assertThat(assessment.spacingScore()).isCloseTo(0.8733333333333334,
+                org.assertj.core.data.Offset.offset(1.0e-12));
+        assertThat(assessment.strengthScore()).isCloseTo(0.825, org.assertj.core.data.Offset.offset(1.0e-12));
+        assertThat(assessment.fitScore()).isCloseTo(0.795, org.assertj.core.data.Offset.offset(1.0e-12));
+        assertThat(assessment.startAlignmentScore(0, 10)).isEqualTo(1.0);
+        assertThat(assessment.endAlignmentScore(0, 10)).isEqualTo(1.0);
+        assertThat(assessment.passesAnchoredWindowAcceptance(0, 10, 0.79, 0.30, 0.35, 0.80, 3)).isTrue();
+        assertThat(assessment.passesAnchoredWindowAcceptance(0, 10, 0.80, 0.30, 0.35, 0.80, 3)).isFalse();
     }
 
     @Test

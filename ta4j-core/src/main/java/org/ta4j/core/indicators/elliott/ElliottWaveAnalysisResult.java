@@ -417,6 +417,55 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
         return Math.max(min, Math.min(max, value));
     }
 
+    private static double average(final double... values) {
+        if (values == null || values.length == 0) {
+            return 0.0;
+        }
+        double total = 0.0;
+        for (final double value : values) {
+            total += value;
+        }
+        return total / values.length;
+    }
+
+    private static double safeConfidenceScore(final double score) {
+        return Double.isFinite(score) ? clamp(score, 0.0, 1.0) : 0.0;
+    }
+
+    private static double safeConfidenceScore(final Num score) {
+        if (score == null || score.isNaN()) {
+            return 0.0;
+        }
+        return safeConfidenceScore(score.doubleValue());
+    }
+
+    private static double alignmentScore(final int actualIndex, final int expectedIndex, final double totalSpan) {
+        return 1.0 - Math.min(1.0, Math.abs(actualIndex - expectedIndex) / Math.max(1.0, totalSpan));
+    }
+
+    private static double scenarioSpacingScore(final ElliottScenario scenario) {
+        if (scenario == null || scenario.swings().isEmpty()) {
+            return 0.0;
+        }
+        final List<Integer> pivotIndices = new ArrayList<>(scenario.swings().size() + 1);
+        pivotIndices.add(scenario.swings().getFirst().fromIndex());
+        for (final ElliottSwing swing : scenario.swings()) {
+            pivotIndices.add(swing.toIndex());
+        }
+        double shortestSpacing = Double.POSITIVE_INFINITY;
+        double totalSpacing = 0.0;
+        for (int index = 1; index < pivotIndices.size(); index++) {
+            final int spacing = pivotIndices.get(index) - pivotIndices.get(index - 1);
+            if (spacing <= 0) {
+                return 0.0;
+            }
+            shortestSpacing = Math.min(shortestSpacing, spacing);
+            totalSpacing += spacing;
+        }
+        final double averageSpacing = totalSpacing / Math.max(1, pivotIndices.size() - 1);
+        return clamp(shortestSpacing / Math.max(1.0, averageSpacing), 0.0, 1.0);
+    }
+
     /**
      * Validates that a score is finite and inside the unit interval.
      *
@@ -535,6 +584,116 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
          */
         public double compositeScore() {
             return baseAssessment.compositeScore();
+        }
+
+        /**
+         * @return blended structure score combining confidence structure factors and
+         *         anchored-window fit quality
+         * @since 0.22.4
+         */
+        public double structureScore() {
+            final ElliottConfidence confidence = scenario().confidence();
+            return average(safeConfidenceScore(confidence.fibonacciScore()),
+                    safeConfidenceScore(confidence.timeProportionScore()),
+                    safeConfidenceScore(confidence.completenessScore()), anchorFitScore, pivotDominanceScore);
+        }
+
+        /**
+         * @return blended rule-quality score for the anchored window
+         * @since 0.22.4
+         */
+        public double ruleScore() {
+            final ElliottConfidence confidence = scenario().confidence();
+            return average(safeConfidenceScore(confidence.alternationScore()),
+                    safeConfidenceScore(confidence.channelScore()), progressionScore);
+        }
+
+        /**
+         * @return spacing score that rewards evenly distributed pivot spacing within
+         *         the anchored window
+         * @since 0.22.4
+         */
+        public double spacingScore() {
+            return average(scenarioSpacingScore(scenario()), anchorFitScore, pivotDominanceScore);
+        }
+
+        /**
+         * @return blended strength score across base confidence, cross-degree support,
+         *         composite ranking, and completion quality
+         * @since 0.22.4
+         */
+        public double strengthScore() {
+            return average(confidenceScore(), crossDegreeScore(), compositeScore(),
+                    safeConfidenceScore(scenario().confidence().completenessScore()));
+        }
+
+        /**
+         * @return demo-compatible anchored fit score derived from the base composite,
+         *         strength, and anchored-window fit metrics
+         * @since 0.22.4
+         */
+        public double fitScore() {
+            return average(compositeScore(), strengthScore(), windowFitScore);
+        }
+
+        /**
+         * @param startIndex expected anchored start index
+         * @param endIndex   expected anchored end index
+         * @return start-anchor alignment score for this scenario
+         * @since 0.22.4
+         */
+        public double startAlignmentScore(final int startIndex, final int endIndex) {
+            if (scenario().swings().isEmpty()) {
+                return 0.0;
+            }
+            final double span = Math.max(1.0, endIndex - startIndex);
+            return alignmentScore(scenario().swings().getFirst().fromIndex(), startIndex, span);
+        }
+
+        /**
+         * @param startIndex expected anchored start index
+         * @param endIndex   expected anchored end index
+         * @return end-anchor alignment score for this scenario
+         * @since 0.22.4
+         */
+        public double endAlignmentScore(final int startIndex, final int endIndex) {
+            if (scenario().swings().isEmpty()) {
+                return 0.0;
+            }
+            final double span = Math.max(1.0, endIndex - startIndex);
+            return alignmentScore(scenario().swings().getLast().toIndex(), endIndex, span);
+        }
+
+        /**
+         * Applies generic anchored-window acceptance checks using caller-supplied
+         * thresholds.
+         *
+         * @param startIndex            expected anchored start index
+         * @param endIndex              expected anchored end index
+         * @param minimumFitScore       minimum blended fit score
+         * @param minimumRuleScore      minimum rule-quality score
+         * @param minimumStartAlignment minimum allowed start alignment
+         * @param minimumEndAlignment   minimum allowed end alignment
+         * @param maxAnchorDriftBars    maximum allowed bar drift at either edge
+         * @return {@code true} when the scenario satisfies all supplied thresholds
+         * @since 0.22.4
+         */
+        public boolean passesAnchoredWindowAcceptance(final int startIndex, final int endIndex,
+                final double minimumFitScore, final double minimumRuleScore, final double minimumStartAlignment,
+                final double minimumEndAlignment, final int maxAnchorDriftBars) {
+            validateUnitIntervalScore("minimumFitScore", minimumFitScore);
+            validateUnitIntervalScore("minimumRuleScore", minimumRuleScore);
+            validateUnitIntervalScore("minimumStartAlignment", minimumStartAlignment);
+            validateUnitIntervalScore("minimumEndAlignment", minimumEndAlignment);
+            if (maxAnchorDriftBars < 0 || scenario().swings().isEmpty()) {
+                return false;
+            }
+            final int startGapBars = Math.abs(scenario().swings().getFirst().fromIndex() - startIndex);
+            final int endGapBars = Math.abs(scenario().swings().getLast().toIndex() - endIndex);
+            return fitScore() >= minimumFitScore && ruleScore() >= minimumRuleScore
+                    && startAlignmentScore(startIndex, endIndex) >= minimumStartAlignment
+                    && endAlignmentScore(startIndex, endIndex) >= minimumEndAlignment
+                    && startGapBars <= maxAnchorDriftBars && endGapBars <= maxAnchorDriftBars;
         }
     }
 

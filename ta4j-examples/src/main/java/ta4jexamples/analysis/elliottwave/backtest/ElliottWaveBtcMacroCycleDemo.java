@@ -835,57 +835,17 @@ public final class ElliottWaveBtcMacroCycleDemo {
             ElliottWaveAnalysisResult.WindowScenarioAssessment assessment, boolean bullish, int startIndex,
             int endIndex) {
         ElliottScenario scenario = assessment.scenario();
-        ElliottConfidence confidence = scenario.confidence();
-        int startGapBars = Math.abs(scenario.swings().getFirst().fromIndex() - startIndex);
-        int endGapBars = Math.abs(scenario.swings().getLast().toIndex() - endIndex);
-        double span = Math.max(1.0, endIndex - startIndex);
-        double startAlignment = alignmentScore(scenario.swings().getFirst().fromIndex(), startIndex, span);
-        double endAlignment = alignmentScore(scenario.swings().getLast().toIndex(), endIndex, span);
-        double structureScore = average(new double[] { safeConfidenceScore(confidence.fibonacciScore()),
-                safeConfidenceScore(confidence.timeProportionScore()),
-                safeConfidenceScore(confidence.completenessScore()), assessment.anchorFitScore(),
-                assessment.pivotDominanceScore() }, 0.0);
-        double ruleScore = average(new double[] { safeConfidenceScore(confidence.alternationScore()),
-                safeConfidenceScore(confidence.channelScore()), assessment.progressionScore() }, 0.0);
-        double spacingScore = average(new double[] { scenarioSpacingScore(scenario), assessment.anchorFitScore(),
-                assessment.pivotDominanceScore() }, 0.0);
-        double strengthScore = average(new double[] { assessment.confidenceScore(), assessment.crossDegreeScore(),
-                assessment.compositeScore(), safeConfidenceScore(confidence.completenessScore()) }, 0.0);
-        double fitScore = average(
-                new double[] { assessment.compositeScore(), strengthScore, assessment.windowFitScore() }, 0.0);
-        boolean accepted = fitScore >= Math.max(DEFAULT_ACCEPTED_SEGMENT_SCORE, profile.acceptanceThreshold())
-                && ruleScore >= 0.30 && startAlignment >= 0.35 && endAlignment >= 0.80
-                && startGapBars <= MAX_CORE_ANCHOR_DRIFT_BARS && endGapBars <= MAX_CORE_ANCHOR_DRIFT_BARS;
+        double structureScore = assessment.structureScore();
+        double ruleScore = assessment.ruleScore();
+        double spacingScore = assessment.spacingScore();
+        double strengthScore = assessment.strengthScore();
+        double fitScore = assessment.fitScore();
+        boolean accepted = assessment.passesAnchoredWindowAcceptance(startIndex, endIndex,
+                Math.max(DEFAULT_ACCEPTED_SEGMENT_SCORE, profile.acceptanceThreshold()), 0.30, 0.35, 0.80,
+                MAX_CORE_ANCHOR_DRIFT_BARS);
         return new SegmentScenarioFit(legSegment, scenario, fitScore, structureScore, ruleScore, spacingScore,
                 strengthScore, bullish, accepted,
                 bullish ? "Core-ranked anchored-window impulse fit" : "Core-ranked anchored-window corrective fit");
-    }
-
-    private static double scenarioSpacingScore(ElliottScenario scenario) {
-        if (scenario == null || scenario.swings().isEmpty()) {
-            return 0.0;
-        }
-        List<Integer> pivotIndices = new ArrayList<>(scenario.swings().size() + 1);
-        pivotIndices.add(scenario.swings().getFirst().fromIndex());
-        for (ElliottSwing swing : scenario.swings()) {
-            pivotIndices.add(swing.toIndex());
-        }
-        double shortestSpacing = Double.POSITIVE_INFINITY;
-        double totalSpacing = 0.0;
-        for (int index = 1; index < pivotIndices.size(); index++) {
-            int spacing = pivotIndices.get(index) - pivotIndices.get(index - 1);
-            if (spacing <= 0) {
-                return 0.0;
-            }
-            shortestSpacing = Math.min(shortestSpacing, spacing);
-            totalSpacing += spacing;
-        }
-        double averageSpacing = totalSpacing / Math.max(1, pivotIndices.size() - 1);
-        return clamp(shortestSpacing / Math.max(1.0, averageSpacing), 0.0, 1.0);
-    }
-
-    private static double alignmentScore(int actualIndex, int expectedIndex, double totalSpan) {
-        return 1.0 - Math.min(1.0, Math.abs(actualIndex - expectedIndex) / Math.max(1.0, totalSpan));
     }
 
     private static double safeConfidenceScore(double score) {
