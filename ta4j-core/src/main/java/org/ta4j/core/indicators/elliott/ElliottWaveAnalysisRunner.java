@@ -731,12 +731,18 @@ public final class ElliottWaveAnalysisRunner {
     }
 
     private ElliottScenario normalizeCurrentCycleScenario(final BarSeries series, final ElliottScenario scenario) {
-        if (scenario == null || scenario.swings().isEmpty() || !scenario.currentPhase().isImpulse()
-                || scenario.type() != ScenarioType.IMPULSE || !scenario.hasKnownDirection() || !scenario.isBullish()) {
+        if (scenario == null || scenario.swings().isEmpty() || !scenario.hasKnownDirection()) {
+            return scenario;
+        }
+        final boolean normalizeBullishImpulse = scenario.isBullish() && scenario.currentPhase().isImpulse()
+                && scenario.type() == ScenarioType.IMPULSE;
+        final boolean normalizeBearishCorrective = !scenario.isBullish() && scenario.type().isCorrective()
+                && scenario.currentPhase().isCorrective();
+        if (!normalizeBullishImpulse && !normalizeBearishCorrective) {
             return scenario;
         }
 
-        final List<ElliottSwing> normalizedSwings = normalizeBullishImpulseSwings(series, scenario.swings());
+        final List<ElliottSwing> normalizedSwings = normalizeAlternatingWindowSwings(series, scenario.swings());
         if (normalizedSwings.equals(scenario.swings())) {
             return scenario;
         }
@@ -752,11 +758,12 @@ public final class ElliottWaveAnalysisRunner {
                 .fibonacciTargets(scenario.fibonacciTargets())
                 .type(scenario.type())
                 .startIndex(normalizedSwings.getFirst().fromIndex())
-                .bullishDirection(true);
+                .bullishDirection(scenario.isBullish());
         return builder.build();
     }
 
-    private List<ElliottSwing> normalizeBullishImpulseSwings(final BarSeries series, final List<ElliottSwing> swings) {
+    private List<ElliottSwing> normalizeAlternatingWindowSwings(final BarSeries series,
+            final List<ElliottSwing> swings) {
         if (swings == null || swings.size() < 2) {
             return swings == null ? List.of() : swings;
         }
@@ -769,7 +776,7 @@ public final class ElliottWaveAnalysisRunner {
         final ElliottSwing firstSwing = swings.getFirst();
         pivotIndices[0] = firstSwing.fromIndex();
         pivotPrices[0] = firstSwing.fromPrice();
-        highPivots[0] = false;
+        highPivots[0] = !firstSwing.isRising();
 
         for (int index = 0; index < swings.size(); index++) {
             final ElliottSwing swing = swings.get(index);

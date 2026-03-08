@@ -3,9 +3,9 @@
 ## Execution Status
 
 - Last updated: 2026-03-08 17:51 EDT
-- Active phase: Phase 1
-- Active task: Migrate the remaining demo-local anchored fit scoring and acceptance seams into core
-- Overall: 25/47 checklist items complete
+- Active phase: Phase 3
+- Active task: Promote macro swing preservation deeper into the default core path
+- Overall: 28/47 checklist items complete
 
 ## Status
 
@@ -145,9 +145,9 @@ Implementation steps:
 
 ### Phase 2: Unify Pivot and Wave-Span Validation in Core
 
-- [ ] Move bullish partial-impulse anchor-dominance validation from the BTC demo into core.
-- [ ] Add the equivalent bearish corrective-span dominance validation in core.
-- [ ] Make these validations part of core candidate acceptance and ranking, not just post-filtering.
+- [x] Move bullish partial-impulse anchor-dominance validation from the BTC demo into core.
+- [x] Add the equivalent bearish corrective-span dominance validation in core.
+- [x] Make these validations part of core candidate acceptance and ranking, not just post-filtering.
 - [x] Ensure current-cycle candidates cannot declare pivots that are invalidated by later stronger extremes inside the same wave span.
 
 Implementation steps:

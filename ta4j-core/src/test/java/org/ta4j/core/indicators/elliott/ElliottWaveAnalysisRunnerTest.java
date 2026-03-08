@@ -612,6 +612,10 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(fit.orElseThrow().startPrice()).isEqualByComparingTo(series.getBar(0).getHighPrice());
         assertThat(fit.orElseThrow().phaseInvalidationPrice())
                 .isEqualByComparingTo(fit.orElseThrow().invalidationPrice());
+        ElliottScenario scenario = fit.orElseThrow().scenario();
+        assertThat(scenario.swings()).hasSize(3);
+        assertThat(scenario.swings().get(1).toIndex()).isEqualTo(4);
+        assertThat(scenario.swings().get(1).toPrice()).isEqualByComparingTo(series.getBar(4).getHighPrice());
     }
 
     @Test
@@ -1000,7 +1004,7 @@ class ElliottWaveAnalysisRunnerTest {
         Duration period = Duration.ofDays(1);
         Instant time = Instant.parse("2024-04-01T00:00:00Z");
         double[][] bars = { { 200, 205, 198, 202 }, { 202, 203, 180, 184 }, { 184, 186, 150, 154 },
-                { 154, 178, 152, 174 }, { 174, 176, 170, 172 }, { 172, 173, 132, 138 }, { 138, 140, 120, 124 } };
+                { 154, 168, 152, 166 }, { 166, 176, 164, 172 }, { 172, 173, 132, 138 }, { 138, 140, 120, 124 } };
         for (int index = 0; index < bars.length; index++) {
             double[] bar = bars[index];
             series.barBuilder()
@@ -1073,8 +1077,8 @@ class ElliottWaveAnalysisRunnerTest {
 
         List<ElliottSwing> swings = List.of(
                 new ElliottSwing(0, 2, factory.numOf(205), factory.numOf(150), ElliottDegree.PRIMARY),
-                new ElliottSwing(2, 4, factory.numOf(150), factory.numOf(176), ElliottDegree.PRIMARY),
-                new ElliottSwing(4, 6, factory.numOf(176), factory.numOf(120), ElliottDegree.PRIMARY));
+                new ElliottSwing(2, 3, factory.numOf(150), factory.numOf(174), ElliottDegree.PRIMARY),
+                new ElliottSwing(3, 5, factory.numOf(174), factory.numOf(124), ElliottDegree.PRIMARY));
         ElliottConfidence confidence = new ElliottConfidence(factory.numOf(0.82), factory.numOf(0.82),
                 factory.numOf(0.82), factory.numOf(0.82), factory.numOf(0.82), factory.numOf(0.82), "test");
         ElliottScenario corrective = ElliottScenario.builder()
