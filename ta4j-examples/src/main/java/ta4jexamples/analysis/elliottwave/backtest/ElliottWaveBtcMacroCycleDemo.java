@@ -58,13 +58,12 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
  * BTC-first Elliott Wave macro-cycle study and demo.
  *
  * <p>
- * This demo treats BTC macro anchors as the truth set and searches explicit
- * anchor-to-anchor decompositions instead of relying on whichever terminal
- * phase happened to rank highest in the generic runner. Each bullish
- * {@code BOTTOM -> TOP} leg is fitted as a five-wave structure and each bearish
- * {@code TOP -> BOTTOM} leg is fitted as an {@code A-B-C} correction. Multiple
- * logic profiles are then scored side-by-side so the demo can answer two
- * questions reproducibly:
+ * This demo is the BTC-specific reporting wrapper around the unified core
+ * Elliott runner. It treats the locked BTC anchor registry as a historical
+ * truth set, replays each macro leg through the same core-ranked window
+ * selection used by the library, and then renders the resulting study as JSON
+ * plus charts. Multiple logic profiles are scored side-by-side so the demo can
+ * answer two reproducible questions:
  * <ul>
  * <li>Which constraint profile fits the historical BTC cycles best?</li>
  * <li>Given that winning profile, what phase does the current cycle most
@@ -72,10 +71,12 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
  * </ul>
  *
  * <p>
- * The demo emits a machine-readable JSON summary and a saved 4K chart. Labels
- * are attached to the selected decomposition pivots, not inferred from
- * scenario-family names, which keeps the rendered wave counts aligned with the
- * chosen BTC fit.
+ * The historical report and the live preset intentionally use different inputs:
+ * the historical report consumes the ossified BTC dataset plus the locked macro
+ * anchors, while the live preset must infer the current-cycle start from the
+ * supplied series alone. Both paths now rely on the same core Elliott logic;
+ * the wrapper remains responsible for BTC resource loading, profile defaults,
+ * and chart/report rendering.
  *
  * @since 0.22.4
  */
@@ -125,10 +126,11 @@ public final class ElliottWaveBtcMacroCycleDemo {
      * the resulting JSON summary.
      *
      * <p>
-     * Unlike the historical anchor-validation report, this entry point discovers
-     * the current-cycle start from the supplied series itself. That keeps the live
+     * Unlike the historical truth-set report, this entry point discovers the
+     * current-cycle start from the supplied series itself. That keeps the live
      * preset causal with respect to the provided bars instead of assuming access to
-     * a longer external anchor history.
+     * a longer external anchor history, while still using the same core-ranked
+     * Elliott logic as the historical BTC study.
      *
      * @param series         live or loaded BTC series to analyze
      * @param chartDirectory directory for the saved current-cycle chart and JSON

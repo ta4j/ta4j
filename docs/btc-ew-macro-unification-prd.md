@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-08 18:43 EDT
-- Active phase: Phase 4
-- Active task: Continue thinning the BTC demo wrapper and remove stale legacy-path messaging
-- Overall: 37/47 checklist items complete
+- Last updated: 2026-03-08 18:56 EDT
+- Active phase: Phase 6
+- Active task: Strip `ElliottWaveBtcMacroCycleDemo` down to a thin I/O and reporting wrapper
+- Overall: 41/47 checklist items complete
 
 ## Status
 
@@ -229,12 +229,12 @@ Implementation steps:
 
 ### Phase 7: Documentation and Guides
 
-- [ ] Update user-facing demo docs to explain that BTC daily preset analysis now uses the unified macro-validated core path.
-- [ ] Add a short maintainer note describing the BTC truth-set validation role.
-- [ ] Document the difference between:
+- [x] Update user-facing demo docs to explain that BTC daily preset analysis now uses the unified macro-validated core path.
+- [x] Add a short maintainer note describing the BTC truth-set validation role.
+- [x] Document the difference between:
   - truth-set validation data
   - live runtime analysis input
-- [ ] Remove stale references implying the legacy local-structure path is still the preferred BTC answer.
+- [x] Remove stale references implying the legacy local-structure path is still the preferred BTC answer.
 
 ## Step-by-Step Execution Sequence
 
