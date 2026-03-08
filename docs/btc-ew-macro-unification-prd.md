@@ -136,9 +136,8 @@ Implementation steps:
    - pivot-dominance logic
    - current-cycle partial-fit logic
    Audit status:
-   - `fitSegmentFromCoreRunner(...)` still iterates the core window-ranked scenarios and keeps the first demo-local accepted fit, otherwise preserving a fallback fit for reporting.
-   - `fitFromCoreAssessment(...)` still recomputes blended anchored fit, rule quality, spacing, strength, and final acceptance thresholds after core has already produced `WindowScenarioAssessment`.
-   - `scenarioSpacingScore(...)` still contributes demo-local post-ranking structure scoring on top of the returned core scenario.
+   - `fitSegmentFromCoreRunner(...)` now delegates accepted-vs-fallback anchored-window selection to core and only maps the returned assessment into demo reporting DTOs.
+   - `fitFromCoreAssessment(...)` now only maps core-produced fit metrics into the demo DTO and reapplies the reporting-time accepted/fallback flag.
    - `selectDistinctCurrentCycleCandidates(...)` still de-duplicates and caps core current-cycle candidates for the legacy chart/report surface.
 2. Move ranking and anchor-distance logic first into core.
 3. Replace demo calls with core calls one seam at a time.

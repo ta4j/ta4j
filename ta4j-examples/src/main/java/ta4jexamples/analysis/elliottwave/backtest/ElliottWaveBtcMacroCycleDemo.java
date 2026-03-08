@@ -815,24 +815,16 @@ public final class ElliottWaveBtcMacroCycleDemo {
             MacroLogicProfile profile, ElliottWaveAnalysisRunner profileRunner, int startIndex, int endIndex,
             boolean bullish) {
         ElliottWaveAnalysisResult analysis = profileRunner.analyzeWindow(series, startIndex, endIndex);
-        SegmentScenarioFit bestFallbackFit = null;
         ScenarioType expectedType = bullish ? ScenarioType.IMPULSE : null;
         ElliottPhase expectedPhase = bullish ? ElliottPhase.WAVE5 : ElliottPhase.CORRECTIVE_C;
         int expectedWaveCount = bullish ? 5 : 3;
         Boolean expectedDirection = bullish ? Boolean.TRUE : Boolean.FALSE;
-        for (ElliottWaveAnalysisResult.WindowScenarioAssessment assessment : analysis.rankedBaseScenariosForWindow(
-                series, startIndex, endIndex, expectedType, expectedPhase, expectedWaveCount, expectedDirection,
-                MAX_CORE_ANCHOR_DRIFT_BARS)) {
-            SegmentScenarioFit fit = fitFromCoreAssessment(legSegment, profile, assessment, bullish, startIndex,
-                    endIndex);
-            if (fit.accepted()) {
-                return Optional.of(fit);
-            }
-            if (bestFallbackFit == null || fit.compareTo(bestFallbackFit) < 0) {
-                bestFallbackFit = fit;
-            }
-        }
-        return Optional.ofNullable(bestFallbackFit);
+        return analysis
+                .recommendedAcceptedOrFallbackBaseScenarioForWindow(series, startIndex, endIndex, expectedType,
+                        expectedPhase, expectedWaveCount, expectedDirection, MAX_CORE_ANCHOR_DRIFT_BARS,
+                        Math.max(DEFAULT_ACCEPTED_SEGMENT_SCORE, profile.acceptanceThreshold()), 0.30, 0.35, 0.80)
+                .map(assessment -> fitFromCoreAssessment(legSegment, profile, assessment, bullish, startIndex,
+                        endIndex));
     }
 
     private static SegmentScenarioFit fitFromCoreAssessment(LegSegment legSegment, MacroLogicProfile profile,

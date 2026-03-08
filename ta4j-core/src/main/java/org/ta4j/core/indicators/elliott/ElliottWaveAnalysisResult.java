@@ -263,6 +263,55 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
                 bullishDirection, maxAnchorDriftBars).stream().findFirst();
     }
 
+    /**
+     * Returns the first anchored-window assessment that satisfies the supplied
+     * acceptance thresholds. When none pass, the strongest fallback by anchored-fit
+     * score is returned instead.
+     *
+     * <p>
+     * This preserves the legacy BTC macro selection contract in core: accepted fits
+     * follow the anchored window ranking order, while fallback reporting still
+     * surfaces the best demo-compatible fit score when every candidate misses
+     * acceptance.
+     *
+     * @param series                root series that the scenarios are indexed
+     *                              against
+     * @param startIndex            expected scenario start pivot index
+     * @param endIndex              expected scenario terminal pivot index
+     * @param scenarioType          required scenario family
+     * @param terminalPhase         required terminal phase
+     * @param waveCount             required wave count
+     * @param bullishDirection      required direction; {@code null} skips direction
+     *                              filtering
+     * @param maxAnchorDriftBars    soft anchor tolerance used during ranking and
+     *                              acceptance
+     * @param minimumFitScore       minimum blended fit score
+     * @param minimumRuleScore      minimum rule-quality score
+     * @param minimumStartAlignment minimum allowed start alignment
+     * @param minimumEndAlignment   minimum allowed end alignment
+     * @return first accepted anchored-window assessment, otherwise the strongest
+     *         fallback fit
+     * @since 0.22.4
+     */
+    public Optional<WindowScenarioAssessment> recommendedAcceptedOrFallbackBaseScenarioForWindow(final BarSeries series,
+            final int startIndex, final int endIndex, final ScenarioType scenarioType, final ElliottPhase terminalPhase,
+            final int waveCount, final Boolean bullishDirection, final int maxAnchorDriftBars,
+            final double minimumFitScore, final double minimumRuleScore, final double minimumStartAlignment,
+            final double minimumEndAlignment) {
+        WindowScenarioAssessment bestFallback = null;
+        for (final WindowScenarioAssessment assessment : rankedBaseScenariosForWindow(series, startIndex, endIndex,
+                scenarioType, terminalPhase, waveCount, bullishDirection, maxAnchorDriftBars)) {
+            if (assessment.passesAnchoredWindowAcceptance(startIndex, endIndex, minimumFitScore, minimumRuleScore,
+                    minimumStartAlignment, minimumEndAlignment, maxAnchorDriftBars)) {
+                return Optional.of(assessment);
+            }
+            if (bestFallback == null || prefersFallbackAssessment(assessment, bestFallback)) {
+                bestFallback = assessment;
+            }
+        }
+        return Optional.ofNullable(bestFallback);
+    }
+
     private static double anchorSpanScore(final ElliottScenario scenario, final int startIndex, final int endIndex) {
         if (scenario == null || scenario.swings().isEmpty()) {
             return 0.0;
@@ -426,6 +475,15 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
             total += value;
         }
         return total / values.length;
+    }
+
+    private static boolean prefersFallbackAssessment(final WindowScenarioAssessment candidate,
+            final WindowScenarioAssessment currentBest) {
+        final int fitComparison = Double.compare(candidate.fitScore(), currentBest.fitScore());
+        if (fitComparison != 0) {
+            return fitComparison > 0;
+        }
+        return candidate.scenario().id().compareTo(currentBest.scenario().id()) < 0;
     }
 
     private static double safeConfidenceScore(final double score) {
@@ -707,18 +765,18 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
      * phase-specific invalidation prices together so callers can render charts or
      * summaries without reconstructing those details.
      *
-     * @param scenario          selected scenario
-     * @param currentPhase      interpreted current phase
-     * @param fitScore          blended anchored-window fit score (0.0 - 1.0)
-     * @param startPrice        anchored cycle start price
-     * @param countLabel        human-readable wave-count label
+     * @param scenario               selected scenario
+     * @param currentPhase           interpreted current phase
+     * @param fitScore               blended anchored-window fit score (0.0 - 1.0)
+     * @param startPrice             anchored cycle start price
+     * @param countLabel             human-readable wave-count label
      * @param invalidationPrice      structural invalidation price for the fit
      * @param phaseInvalidationPrice phase-specific invalidation price for the fit
      * @since 0.22.4
      */
     public record CurrentPhaseAssessment(ElliottScenario scenario, ElliottPhase currentPhase, double fitScore,
-            Num startPrice, String countLabel, Num invalidationPrice, Num phaseInvalidationPrice)
-            implements Comparable<CurrentPhaseAssessment> {
+            Num startPrice, String countLabel, Num invalidationPrice,
+            Num phaseInvalidationPrice) implements Comparable<CurrentPhaseAssessment> {
 
         public CurrentPhaseAssessment {
             Objects.requireNonNull(scenario, "scenario");

@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -558,8 +559,7 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(result.candidates()).isNotEmpty();
         ElliottScenario scenario = result.primary().scenario();
         assertThat(result.primary().invalidationPrice()).isEqualByComparingTo(scenario.swings().getFirst().fromPrice());
-        assertThat(result.primary().phaseInvalidationPrice())
-                .isEqualByComparingTo(scenario.swings().get(1).toPrice());
+        assertThat(result.primary().phaseInvalidationPrice()).isEqualByComparingTo(scenario.swings().get(1).toPrice());
         assertThat(scenario.swings()).hasSize(3);
         assertThat(scenario.swings().getFirst().fromIndex()).isEqualTo(series.getBeginIndex());
         assertThat(scenario.swings().getLast().toIndex()).isEqualTo(series.getEndIndex());
@@ -727,6 +727,60 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void recommendedAcceptedOrFallbackBaseScenarioForWindowSkipsRejectedLeader() {
+        BarSeries series = buildAnchoredWindowSelectionSeries();
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottScenario rejectedLeader = scenario(factory, "rejected-leader", ElliottPhase.WAVE5, 0.05,
+                anchoredWindowSwings(factory), factory.numOf(92), 0.05);
+        ElliottScenario acceptedFollower = scenario(factory, "accepted-follower", ElliottPhase.WAVE5, 0.80,
+                anchoredWindowSwings(factory), factory.numOf(92), 0.90);
+        ElliottWaveAnalysisResult result = new ElliottWaveAnalysisResult(ElliottDegree.PRIMARY, List.of(), List.of(
+                new ElliottWaveAnalysisResult.BaseScenarioAssessment(rejectedLeader, 0.10, 0.00, 0.80, List.of()),
+                new ElliottWaveAnalysisResult.BaseScenarioAssessment(acceptedFollower, 0.85, 0.90, 0.79, List.of())),
+                List.of());
+        List<ElliottWaveAnalysisResult.WindowScenarioAssessment> ranked = result.rankedBaseScenariosForWindow(series, 0,
+                10, ScenarioType.IMPULSE, ElliottPhase.WAVE5, 5, Boolean.TRUE, 3);
+        assertThat(ranked).hasSize(2);
+        assertThat(ranked.getFirst().scenario().id()).isEqualTo("rejected-leader");
+        assertThat(ranked.get(1).fitScore()).isGreaterThan(ranked.getFirst().fitScore());
+        double acceptanceThreshold = (ranked.getFirst().fitScore() + ranked.get(1).fitScore()) / 2.0;
+
+        Optional<ElliottWaveAnalysisResult.WindowScenarioAssessment> selected = result
+                .recommendedAcceptedOrFallbackBaseScenarioForWindow(series, 0, 10, ScenarioType.IMPULSE,
+                        ElliottPhase.WAVE5, 5, Boolean.TRUE, 3, acceptanceThreshold, 0.30, 0.35, 0.80);
+
+        assertThat(selected).isPresent();
+        assertThat(selected.orElseThrow().scenario().id()).isEqualTo("accepted-follower");
+    }
+
+    @Test
+    void recommendedAcceptedOrFallbackBaseScenarioForWindowReturnsHighestFitFallback() {
+        BarSeries series = buildAnchoredWindowSelectionSeries();
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottScenario rankedLeader = scenario(factory, "ranked-leader", ElliottPhase.WAVE5, 0.10,
+                anchoredWindowSwings(factory), factory.numOf(92), 0.05);
+        ElliottScenario strongerFallback = scenario(factory, "stronger-fallback", ElliottPhase.WAVE5, 0.90,
+                anchoredWindowSwings(factory), factory.numOf(92), 0.95);
+        ElliottWaveAnalysisResult result = new ElliottWaveAnalysisResult(ElliottDegree.PRIMARY, List.of(), List.of(
+                new ElliottWaveAnalysisResult.BaseScenarioAssessment(rankedLeader, 0.15, 0.00, 0.80, List.of()),
+                new ElliottWaveAnalysisResult.BaseScenarioAssessment(strongerFallback, 0.95, 1.00, 0.79, List.of())),
+                List.of());
+
+        List<ElliottWaveAnalysisResult.WindowScenarioAssessment> ranked = result.rankedBaseScenariosForWindow(series, 0,
+                10, ScenarioType.IMPULSE, ElliottPhase.WAVE5, 5, Boolean.TRUE, 3);
+        assertThat(ranked).hasSize(2);
+        assertThat(ranked.getFirst().scenario().id()).isEqualTo("ranked-leader");
+        assertThat(ranked.get(1).fitScore()).isGreaterThan(ranked.getFirst().fitScore());
+
+        Optional<ElliottWaveAnalysisResult.WindowScenarioAssessment> selected = result
+                .recommendedAcceptedOrFallbackBaseScenarioForWindow(series, 0, 10, ScenarioType.IMPULSE,
+                        ElliottPhase.WAVE5, 5, Boolean.TRUE, 3, 0.95, 0.95, 0.95, 0.95);
+
+        assertThat(selected).isPresent();
+        assertThat(selected.orElseThrow().scenario().id()).isEqualTo("stronger-fallback");
+    }
+
+    @Test
     void buildRequiresDegree() {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> ElliottWaveAnalysisRunner.builder().build());
@@ -843,6 +897,36 @@ class ElliottWaveAnalysisRunnerTest {
                 .invalidationPrice(invalidationPrice)
                 .type(type)
                 .build();
+    }
+
+    private List<ElliottSwing> anchoredWindowSwings(final NumFactory factory) {
+        return List.of(new ElliottSwing(0, 2, factory.hundred(), factory.numOf(120), ElliottDegree.PRIMARY),
+                new ElliottSwing(2, 4, factory.numOf(120), factory.numOf(108), ElliottDegree.PRIMARY),
+                new ElliottSwing(4, 6, factory.numOf(108), factory.numOf(142), ElliottDegree.PRIMARY),
+                new ElliottSwing(6, 8, factory.numOf(142), factory.numOf(126), ElliottDegree.PRIMARY),
+                new ElliottSwing(8, 10, factory.numOf(126), factory.numOf(156), ElliottDegree.PRIMARY));
+    }
+
+    private BarSeries buildAnchoredWindowSelectionSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("AnchoredWindowSelection").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2024-03-01T00:00:00Z");
+        double[][] bars = { { 100, 103, 100, 102 }, { 102, 112, 101, 110 }, { 110, 120, 108, 118 },
+                { 118, 119, 111, 114 }, { 114, 116, 108, 109 }, { 109, 130, 109, 128 }, { 128, 142, 126, 140 },
+                { 140, 141, 128, 130 }, { 130, 132, 126, 128 }, { 128, 145, 127, 142 }, { 142, 156, 132, 154 } };
+        for (int index = 0; index < bars.length; index++) {
+            double[] bar = bars[index];
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(bar[0])
+                    .highPrice(bar[1])
+                    .lowPrice(bar[2])
+                    .closePrice(bar[3])
+                    .volume(1000)
+                    .add();
+        }
+        return series;
     }
 
     private ElliottAnalysisResult currentCycleSnapshot(final BarSeries series, final NumFactory factory) {
