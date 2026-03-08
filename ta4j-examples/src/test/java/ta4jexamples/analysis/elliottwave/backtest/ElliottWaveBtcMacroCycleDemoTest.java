@@ -29,6 +29,7 @@ import org.jfree.chart.plot.CombinedDomainXYPlot;
 import org.jfree.chart.plot.XYPlot;
 import org.jfree.chart.renderer.xy.XYItemRenderer;
 import org.jfree.data.xy.XYDataset;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -43,6 +44,8 @@ import org.ta4j.core.indicators.elliott.ScenarioType;
 import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 
+@Tag("integration")
+@Tag("slow")
 class ElliottWaveBtcMacroCycleDemoTest {
 
     @Test
