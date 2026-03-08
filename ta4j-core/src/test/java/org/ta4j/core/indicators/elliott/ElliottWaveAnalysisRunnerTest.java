@@ -591,6 +591,37 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void currentCycleAssessmentDistinctCandidatesKeepsFirstUniqueScenarioIds() {
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisResult.CurrentCycleCandidate duplicateLeader = new ElliottWaveAnalysisResult.CurrentCycleCandidate(
+                0, factory.hundred(),
+                currentPhaseAssessment(factory, "duplicate", ElliottPhase.WAVE3, 0.82, "Bullish 1-2-3"), 0.80, 0.92,
+                "duplicate leader");
+        ElliottWaveAnalysisResult.CurrentCycleCandidate duplicateAlternate = new ElliottWaveAnalysisResult.CurrentCycleCandidate(
+                1, factory.hundred(),
+                currentPhaseAssessment(factory, "duplicate", ElliottPhase.WAVE3, 0.78, "Bullish 1-2-3"), 0.78, 0.88,
+                "duplicate alternate");
+        ElliottWaveAnalysisResult.CurrentCycleCandidate uniqueSecond = new ElliottWaveAnalysisResult.CurrentCycleCandidate(
+                2, factory.hundred(),
+                currentPhaseAssessment(factory, "unique-second", ElliottPhase.WAVE4, 0.74, "Bullish 1-2-3-4"), 0.76,
+                0.84, "unique second");
+        ElliottWaveAnalysisResult.CurrentCycleCandidate uniqueThird = new ElliottWaveAnalysisResult.CurrentCycleCandidate(
+                3, factory.hundred(),
+                currentPhaseAssessment(factory, "unique-third", ElliottPhase.WAVE5, 0.70, "Bullish 1-2-3-4-5"), 0.74,
+                0.80, "unique third");
+        ElliottWaveAnalysisResult.CurrentCycleAssessment assessment = new ElliottWaveAnalysisResult.CurrentCycleAssessment(
+                0, duplicateLeader.fit(), uniqueSecond.fit(),
+                List.of(duplicateLeader, duplicateAlternate, uniqueSecond, uniqueThird));
+
+        List<ElliottWaveAnalysisResult.CurrentCycleCandidate> distinct = assessment.distinctCandidates(3);
+
+        assertThat(distinct).extracting(candidate -> candidate.fit().scenario().id())
+                .containsExactly("duplicate", "unique-second", "unique-third");
+        assertThat(distinct).extracting(ElliottWaveAnalysisResult.CurrentCycleCandidate::startIndex)
+                .containsExactly(0, 2, 3);
+    }
+
+    @Test
     void analyzeCurrentCycleSnapsWaveThreePeakToDominantSpanHigh() {
         BarSeries series = buildWaveFourNormalizationSeries();
         NumFactory factory = series.numFactory();
@@ -897,6 +928,17 @@ class ElliottWaveAnalysisRunnerTest {
                 .invalidationPrice(invalidationPrice)
                 .type(type)
                 .build();
+    }
+
+    private ElliottWaveAnalysisResult.CurrentPhaseAssessment currentPhaseAssessment(final NumFactory factory,
+            final String scenarioId, final ElliottPhase phase, final double fitScore, final String countLabel) {
+        ElliottScenario scenario = scenario(factory, scenarioId, phase, fitScore,
+                List.of(new ElliottSwing(0, 2, factory.hundred(), factory.numOf(120), ElliottDegree.PRIMARY),
+                        new ElliottSwing(2, 4, factory.numOf(120), factory.numOf(108), ElliottDegree.PRIMARY),
+                        new ElliottSwing(4, 6, factory.numOf(108), factory.numOf(132), ElliottDegree.PRIMARY)),
+                factory.numOf(100), fitScore);
+        return new ElliottWaveAnalysisResult.CurrentPhaseAssessment(scenario, phase, fitScore, factory.hundred(),
+                countLabel, factory.numOf(100), factory.numOf(108));
     }
 
     private List<ElliottSwing> anchoredWindowSwings(final NumFactory factory) {

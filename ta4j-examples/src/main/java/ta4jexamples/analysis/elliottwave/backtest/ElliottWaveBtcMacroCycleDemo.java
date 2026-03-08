@@ -15,7 +15,6 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -230,33 +229,11 @@ public final class ElliottWaveBtcMacroCycleDemo {
         Objects.requireNonNull(analysis, "analysis");
         Objects.requireNonNull(chartDirectory, "chartDirectory");
 
-        List<ElliottWaveAnalysisResult.CurrentCycleCandidate> displayCandidates = selectDisplayCandidates(
-                analysis.currentCycle().candidates(), 5);
+        List<ElliottWaveAnalysisResult.CurrentCycleCandidate> displayCandidates = analysis.currentCycle()
+                .displayCandidates();
         List<LivePresetScenarioView> scenarioViews = buildLivePresetScenarioViews(displayCandidates);
         saveLegacyCompatibleScenarioCharts(series, scenarioViews, chartDirectory, ElliottDegree.CYCLE);
         return new LivePresetLegacyView(analysis.report(), scenarioViews);
-    }
-
-    private static List<ElliottWaveAnalysisResult.CurrentCycleCandidate> selectDisplayCandidates(
-            List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates, int max) {
-        if (candidates == null || candidates.isEmpty() || max <= 0) {
-            return List.of();
-        }
-
-        List<ElliottWaveAnalysisResult.CurrentCycleCandidate> selected = new ArrayList<>(
-                Math.min(max, candidates.size()));
-        Set<String> seenScenarioIds = new HashSet<>();
-        for (ElliottWaveAnalysisResult.CurrentCycleCandidate candidate : candidates) {
-            String scenarioId = candidate.fit().scenario().id();
-            if (!seenScenarioIds.add(scenarioId)) {
-                continue;
-            }
-            selected.add(candidate);
-            if (selected.size() == max) {
-                break;
-            }
-        }
-        return List.copyOf(selected);
     }
 
     private static List<LivePresetScenarioView> buildLivePresetScenarioViews(
@@ -796,7 +773,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
         CurrentCycleSummary summary = new CurrentCycleSummary(startTimeUtc, latestTimeUtc, profile.id(),
                 historicalStatus, primaryCount, alternateCount, currentWave, invalidation, structuralInvalidation,
                 primary == null ? 0.0 : primary.fitScore(), alternate == null ? 0.0 : alternate.fitScore(), "");
-        return new CurrentCycleAnalysis(summary, primary, alternate, assessment.candidates());
+        return new CurrentCycleAnalysis(summary, primary, alternate, assessment.candidates(),
+                assessment.distinctCandidates(5));
     }
 
     private static Optional<SegmentScenarioFit> fitSegment(BarSeries series, LegSegment legSegment,
@@ -1391,15 +1369,17 @@ public final class ElliottWaveBtcMacroCycleDemo {
     record CurrentCycleAnalysis(CurrentCycleSummary summary,
             ElliottWaveAnalysisResult.CurrentPhaseAssessment primaryFit,
             ElliottWaveAnalysisResult.CurrentPhaseAssessment alternateFit,
-            List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates) {
+            List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates,
+            List<ElliottWaveAnalysisResult.CurrentCycleCandidate> displayCandidates) {
 
         CurrentCycleAnalysis {
             Objects.requireNonNull(summary, "summary");
             candidates = candidates == null ? List.of() : List.copyOf(candidates);
+            displayCandidates = displayCandidates == null ? List.of() : List.copyOf(displayCandidates);
         }
 
         CurrentCycleAnalysis withSummary(CurrentCycleSummary updatedSummary) {
-            return new CurrentCycleAnalysis(updatedSummary, primaryFit, alternateFit, candidates);
+            return new CurrentCycleAnalysis(updatedSummary, primaryFit, alternateFit, candidates, displayCandidates);
         }
     }
 

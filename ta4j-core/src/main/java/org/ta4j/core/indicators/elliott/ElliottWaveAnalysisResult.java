@@ -6,9 +6,11 @@ package org.ta4j.core.indicators.elliott;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.num.Num;
@@ -852,6 +854,38 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
 
         public CurrentCycleAssessment {
             candidates = candidates == null ? List.of() : List.copyOf(candidates);
+        }
+
+        /**
+         * Returns the ranked current-cycle candidates collapsed to distinct
+         * scenarios, preserving the first occurrence of each scenario id.
+         *
+         * <p>
+         * This keeps the legacy preset display behavior in core so wrappers can ask
+         * for "base case plus distinct alternatives" without re-implementing
+         * candidate de-duplication.
+         *
+         * @param maxCandidates maximum number of distinct candidates to return
+         * @return immutable distinct candidate list in ranked order
+         * @since 0.22.4
+         */
+        public List<CurrentCycleCandidate> distinctCandidates(final int maxCandidates) {
+            if (candidates.isEmpty() || maxCandidates <= 0) {
+                return List.of();
+            }
+            final List<CurrentCycleCandidate> selected = new ArrayList<>(Math.min(maxCandidates, candidates.size()));
+            final Set<String> seenScenarioIds = new HashSet<>();
+            for (final CurrentCycleCandidate candidate : candidates) {
+                final String scenarioId = candidate.fit().scenario().id();
+                if (!seenScenarioIds.add(scenarioId)) {
+                    continue;
+                }
+                selected.add(candidate);
+                if (selected.size() == maxCandidates) {
+                    break;
+                }
+            }
+            return List.copyOf(selected);
         }
     }
 
