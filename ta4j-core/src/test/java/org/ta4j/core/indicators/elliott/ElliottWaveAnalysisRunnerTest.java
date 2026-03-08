@@ -557,6 +557,9 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(result.startIndex()).isEqualTo(series.getBeginIndex());
         assertThat(result.candidates()).isNotEmpty();
         ElliottScenario scenario = result.primary().scenario();
+        assertThat(result.primary().invalidationPrice()).isEqualByComparingTo(scenario.swings().getFirst().fromPrice());
+        assertThat(result.primary().phaseInvalidationPrice())
+                .isEqualByComparingTo(scenario.swings().get(1).toPrice());
         assertThat(scenario.swings()).hasSize(3);
         assertThat(scenario.swings().getFirst().fromIndex()).isEqualTo(series.getBeginIndex());
         assertThat(scenario.swings().getLast().toIndex()).isEqualTo(series.getEndIndex());
@@ -603,6 +606,9 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(result.primary()).isNotNull();
         assertThat(result.primary().currentPhase()).isEqualTo(ElliottPhase.WAVE4);
         ElliottScenario scenario = result.primary().scenario();
+        assertThat(result.primary().invalidationPrice()).isEqualByComparingTo(scenario.swings().getFirst().fromPrice());
+        assertThat(result.primary().phaseInvalidationPrice())
+                .isEqualByComparingTo(scenario.swings().getFirst().toPrice());
         assertThat(scenario.swings()).hasSize(4);
         assertThat(scenario.swings().get(2).toIndex()).isEqualTo(8);
         assertThat(scenario.swings().get(2).toPrice()).isEqualByComparingTo(series.getBar(8).getHighPrice());
@@ -624,6 +630,9 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(result.primary()).isNotNull();
         assertThat(result.primary().currentPhase()).isEqualTo(ElliottPhase.WAVE2);
         ElliottScenario scenario = result.primary().scenario();
+        assertThat(result.primary().invalidationPrice()).isEqualByComparingTo(scenario.swings().getFirst().fromPrice());
+        assertThat(result.primary().phaseInvalidationPrice())
+                .isEqualByComparingTo(scenario.swings().getFirst().fromPrice());
         assertThat(scenario.swings()).hasSize(2);
         assertThat(scenario.swings().getFirst().toIndex()).isEqualTo(3);
         assertThat(scenario.swings().getFirst().toPrice()).isEqualByComparingTo(series.getBar(3).getHighPrice());

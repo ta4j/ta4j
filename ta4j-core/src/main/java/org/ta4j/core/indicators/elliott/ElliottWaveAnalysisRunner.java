@@ -687,9 +687,29 @@ public final class ElliottWaveAnalysisRunner {
         final double fitScore = clamp01((CURRENT_CYCLE_FIT_SCORE_WEIGHT * baseFitScore)
                 + (CURRENT_CYCLE_DOMINANCE_WEIGHT * dominance.averagePivotDominance())
                 + (CURRENT_CYCLE_TERMINAL_WEIGHT * dominance.terminalPivotDominance()));
+        final Num structuralInvalidation = normalizedScenario.invalidationPrice();
+        final Num phaseInvalidation = currentPhaseInvalidation(normalizedScenario, currentPhase);
         return Optional.of(new ElliottWaveAnalysisResult.CurrentPhaseAssessment(normalizedScenario, currentPhase,
                 fitScore, lowPriceNum(series, startIndex),
-                bullishCountLabel(currentPhase.isImpulse() ? scenario.waveCount() : 0), scenario.invalidationPrice()));
+                bullishCountLabel(currentPhase.isImpulse() ? scenario.waveCount() : 0), structuralInvalidation,
+                phaseInvalidation));
+    }
+
+    private Num currentPhaseInvalidation(final ElliottScenario scenario, final ElliottPhase currentPhase) {
+        if (scenario == null || currentPhase == null) {
+            return null;
+        }
+        final Num structuralInvalidation = scenario.invalidationPrice();
+        if (!currentPhase.isImpulse() || scenario.swings().isEmpty()) {
+            return structuralInvalidation;
+        }
+        final List<ElliottSwing> swings = scenario.swings();
+        return switch (currentPhase) {
+        case WAVE3 -> swings.size() >= 2 ? swings.get(1).toPrice() : structuralInvalidation;
+        case WAVE4 -> swings.size() >= 1 ? swings.get(0).toPrice() : structuralInvalidation;
+        case WAVE5 -> swings.size() >= 4 ? swings.get(3).toPrice() : structuralInvalidation;
+        default -> structuralInvalidation;
+        };
     }
 
     private ElliottScenario normalizeCurrentCycleScenario(final BarSeries series, final ElliottScenario scenario) {

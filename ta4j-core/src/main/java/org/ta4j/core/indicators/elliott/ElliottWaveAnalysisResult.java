@@ -703,25 +703,29 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
      * <p>
      * This is the core-side equivalent of the old demo-local current-wave fit. It
      * keeps the chosen scenario, the interpreted terminal phase, the blended fit
-     * score, the anchored cycle start price, and the invalidation price together so
-     * callers can render charts or summaries without reconstructing those details.
+     * score, the anchored cycle start price, and both the structural and
+     * phase-specific invalidation prices together so callers can render charts or
+     * summaries without reconstructing those details.
      *
      * @param scenario          selected scenario
      * @param currentPhase      interpreted current phase
      * @param fitScore          blended anchored-window fit score (0.0 - 1.0)
      * @param startPrice        anchored cycle start price
      * @param countLabel        human-readable wave-count label
-     * @param invalidationPrice invalidation price for the fit
+     * @param invalidationPrice      structural invalidation price for the fit
+     * @param phaseInvalidationPrice phase-specific invalidation price for the fit
      * @since 0.22.4
      */
     public record CurrentPhaseAssessment(ElliottScenario scenario, ElliottPhase currentPhase, double fitScore,
-            Num startPrice, String countLabel, Num invalidationPrice) implements Comparable<CurrentPhaseAssessment> {
+            Num startPrice, String countLabel, Num invalidationPrice, Num phaseInvalidationPrice)
+            implements Comparable<CurrentPhaseAssessment> {
 
         public CurrentPhaseAssessment {
             Objects.requireNonNull(scenario, "scenario");
             Objects.requireNonNull(currentPhase, "currentPhase");
             Objects.requireNonNull(startPrice, "startPrice");
             Objects.requireNonNull(countLabel, "countLabel");
+            Objects.requireNonNull(phaseInvalidationPrice, "phaseInvalidationPrice");
             validateUnitIntervalScore("fitScore", fitScore);
         }
 

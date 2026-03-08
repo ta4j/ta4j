@@ -357,6 +357,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
         LOG.info("Historical status: {}", summary.historicalStatus());
         if (!scenarioViews.isEmpty()) {
             LivePresetScenarioView baseCase = scenarioViews.getFirst();
+            ElliottWaveAnalysisResult.CurrentPhaseAssessment fit = baseCase.candidate().fit();
             ElliottScenario scenario = baseCase.candidate().fit().scenario();
             ElliottConfidence confidence = scenario.confidence();
             LOG.info("BASE CASE SCENARIO: {} ({})", scenario.currentPhase(), scenario.type());
@@ -379,9 +380,9 @@ public final class ElliottWaveBtcMacroCycleDemo {
                             safeConfidenceScore(confidence.completenessScore()) * 100.0));
             LOG.info("  Primary reason: {}", confidence.primaryReason());
             LOG.info("  Weakest factor: {}", confidence.weakestFactor());
-            LOG.info("  Direction: {} | Invalidation: {} | Target: {}",
+            LOG.info("  Direction: {} | Phase invalidation: {} | Structural invalidation: {} | Target: {}",
                     scenario.hasKnownDirection() ? (scenario.isBullish() ? "BULLISH" : "BEARISH") : "UNKNOWN",
-                    scenario.invalidationPrice(), scenario.primaryTarget());
+                    fit.phaseInvalidationPrice(), fit.invalidationPrice(), scenario.primaryTarget());
         }
 
         if (scenarioViews.size() > 1) {
@@ -396,8 +397,10 @@ public final class ElliottWaveBtcMacroCycleDemo {
                         String.format(java.util.Locale.ROOT, "%.1f", alternative.probability() * 100.0));
             }
         }
-        LOG.info("Current macro read: primary={} | alternate={} | currentWave={} | invalidation={}",
-                summary.primaryCount(), summary.alternateCount(), summary.currentWave(), summary.invalidationPrice());
+        LOG.info(
+                "Current macro read: primary={} | alternate={} | currentWave={} | phaseInvalidation={} | structuralInvalidation={}",
+                summary.primaryCount(), summary.alternateCount(), summary.currentWave(), summary.invalidationPrice(),
+                summary.structuralInvalidationPrice());
         LOG.info("Macro summary JSON: {}", report.summaryPath());
         LOG.info("Macro current-cycle chart: {}", report.chartPath());
         LOG.info("======================================");
@@ -786,11 +789,12 @@ public final class ElliottWaveBtcMacroCycleDemo {
         String primaryCount = primary == null ? "No current bullish count" : primary.countLabel();
         String alternateCount = alternate == null ? "" : alternate.countLabel();
         String currentWave = primary == null ? "" : primary.currentPhase().name();
-        String invalidation = primary == null ? "" : formatNum(primary.invalidationPrice());
+        String invalidation = primary == null ? "" : formatNum(primary.phaseInvalidationPrice());
+        String structuralInvalidation = primary == null ? "" : formatNum(primary.invalidationPrice());
         String startTimeUtc = series.getBar(startIndex).getEndTime().toString();
         String latestTimeUtc = series.getLastBar().getEndTime().toString();
         CurrentCycleSummary summary = new CurrentCycleSummary(startTimeUtc, latestTimeUtc, profile.id(),
-                historicalStatus, primaryCount, alternateCount, currentWave, invalidation,
+                historicalStatus, primaryCount, alternateCount, currentWave, invalidation, structuralInvalidation,
                 primary == null ? 0.0 : primary.fitScore(), alternate == null ? 0.0 : alternate.fitScore(), "");
         return new CurrentCycleAnalysis(summary, primary, alternate, assessment.candidates());
     }
@@ -1382,12 +1386,13 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     record CurrentCycleSummary(String startTimeUtc, String latestTimeUtc, String winningProfileId,
             String historicalStatus, String primaryCount, String alternateCount, String currentWave,
-            String invalidationPrice, double primaryScore, double alternateScore, String chartPath) {
+            String invalidationPrice, String structuralInvalidationPrice, double primaryScore, double alternateScore,
+            String chartPath) {
 
         CurrentCycleSummary withChartPath(String newChartPath) {
             return new CurrentCycleSummary(startTimeUtc, latestTimeUtc, winningProfileId, historicalStatus,
-                    primaryCount, alternateCount, currentWave, invalidationPrice, primaryScore, alternateScore,
-                    newChartPath);
+                    primaryCount, alternateCount, currentWave, invalidationPrice, structuralInvalidationPrice,
+                    primaryScore, alternateScore, newChartPath);
         }
     }
 
