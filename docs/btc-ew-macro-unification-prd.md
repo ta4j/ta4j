@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-08 16:30 EDT
+- Last updated: 2026-03-08 16:58 EDT
 - Active phase: Phase 1
 - Active task: Migrate the remaining demo-local anchored fit scoring and acceptance seams into core
-- Overall: 20/46 checklist items complete
+- Overall: 20/47 checklist items complete
 
 ## Status
 
@@ -260,6 +260,7 @@ Implement in this exact order unless a blocker forces a change:
 - [ ] Each bullish leg must yield a complete `1-2-3-4-5` decomposition.
 - [ ] Each bearish leg must yield a complete `A-B-C` decomposition.
 - [ ] Terminal `WAVE5` and `CORRECTIVE_C` endpoints must remain inside anchor tolerance windows.
+- [ ] After all implementation work is complete, run a final EW sanity check over the unified logic and document any remaining interpretation surprises before ship/no-ship.
 
 ### Live Current-Cycle Tests
 
