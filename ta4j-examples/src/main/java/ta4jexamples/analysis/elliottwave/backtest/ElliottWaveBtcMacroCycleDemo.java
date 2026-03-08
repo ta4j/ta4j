@@ -714,7 +714,6 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 .degree(profile.runnerDegree())
                 .logicProfile(profile.coreLogicProfile())
                 .maxScenarios(runnerMaxScenarios)
-                .scenarioSwingWindow(profile.runnerScenarioSwingWindow())
                 .minConfidence(0.0)
                 .seriesSelector((inputSeries, ignoredDegree) -> inputSeries)
                 .build();
@@ -1253,15 +1252,15 @@ public final class ElliottWaveBtcMacroCycleDemo {
     private static List<MacroLogicProfile> logicProfiles() {
         return List.of(
                 new MacroLogicProfile("orthodox-classical", "H0", "Classical Elliott constraints", 0,
-                        ElliottLogicProfile.ORTHODOX_CLASSICAL, ElliottDegree.MINOR, 25, 0, 0.74),
+                        ElliottLogicProfile.ORTHODOX_CLASSICAL, ElliottDegree.MINOR),
                 new MacroLogicProfile("h1-hierarchical-swing", "H1", "Hierarchical swing extraction", 1,
-                        ElliottLogicProfile.HIERARCHICAL_SWING, ElliottDegree.MINOR, 25, 0, 0.72),
+                        ElliottLogicProfile.HIERARCHICAL_SWING, ElliottDegree.MINOR),
                 new MacroLogicProfile("h2-btc-relaxed-impulse", "H2", "Relaxed impulse rules for BTC", 2,
-                        ElliottLogicProfile.BTC_RELAXED_IMPULSE, ElliottDegree.MINOR, 35, 0, 0.70),
+                        ElliottLogicProfile.BTC_RELAXED_IMPULSE, ElliottDegree.MINOR),
                 new MacroLogicProfile("h3-btc-relaxed-corrective", "H3", "Relaxed corrective coverage for BTC", 3,
-                        ElliottLogicProfile.BTC_RELAXED_CORRECTIVE, ElliottDegree.MINOR, 35, 0, 0.68),
+                        ElliottLogicProfile.BTC_RELAXED_CORRECTIVE, ElliottDegree.MINOR),
                 new MacroLogicProfile("h4-anchor-first-hybrid", "H4", "Anchor-first hybrid profile", 4,
-                        ElliottLogicProfile.ANCHOR_FIRST_HYBRID, ElliottDegree.MINOR, 40, 0, 0.66));
+                        ElliottLogicProfile.ANCHOR_FIRST_HYBRID, ElliottDegree.MINOR));
     }
 
     private static MacroLogicProfile defaultLiveMacroProfile() {
@@ -1475,8 +1474,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
     }
 
     record MacroLogicProfile(String id, String hypothesisId, String title, int orthodoxyRank,
-            ElliottLogicProfile coreLogicProfile, ElliottDegree runnerDegree, int runnerMaxScenarios,
-            int runnerScenarioSwingWindow, double acceptanceThreshold) {
+            ElliottLogicProfile coreLogicProfile, ElliottDegree runnerDegree) {
 
         MacroLogicProfile {
             Objects.requireNonNull(id, "id");
@@ -1484,6 +1482,18 @@ public final class ElliottWaveBtcMacroCycleDemo {
             Objects.requireNonNull(title, "title");
             Objects.requireNonNull(coreLogicProfile, "coreLogicProfile");
             Objects.requireNonNull(runnerDegree, "runnerDegree");
+        }
+
+        int runnerMaxScenarios() {
+            return coreLogicProfile.maxScenarios();
+        }
+
+        int runnerScenarioSwingWindow() {
+            return coreLogicProfile.scenarioSwingWindow();
+        }
+
+        double acceptanceThreshold() {
+            return coreLogicProfile.acceptanceThreshold();
         }
     }
 

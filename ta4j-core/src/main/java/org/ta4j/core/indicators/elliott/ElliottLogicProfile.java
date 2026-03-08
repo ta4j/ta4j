@@ -31,13 +31,14 @@ public enum ElliottLogicProfile {
     /**
      * Classical Elliott constraints with a light hierarchical swing detector.
      */
-    ORTHODOX_CLASSICAL("orthodox-classical", "Classical Elliott constraints", 2, 1, 1, PatternSet.all(), false, 0.70),
+    ORTHODOX_CLASSICAL("orthodox-classical", "Classical Elliott constraints", 2, 1, 1, PatternSet.all(), false, 0.70,
+            25, 0, 0.74),
 
     /**
      * Broader macro pivot preservation with a wider hierarchical detector.
      */
     HIERARCHICAL_SWING("h1-hierarchical-swing", "Hierarchical swing extraction", 4, 1, 1, PatternSet.all(), false,
-            0.78),
+            0.78, 25, 0, 0.72),
 
     /**
      * Impulse-oriented BTC profile that narrows corrective coverage and uses the
@@ -45,19 +46,20 @@ public enum ElliottLogicProfile {
      */
     BTC_RELAXED_IMPULSE("h2-btc-relaxed-impulse", "Relaxed impulse rules for BTC", 4, 1, 1,
             PatternSet.of(ScenarioType.IMPULSE, ScenarioType.CORRECTIVE_ZIGZAG, ScenarioType.CORRECTIVE_FLAT), true,
-            0.82),
+            0.82, 35, 0, 0.70),
 
     /**
      * Corrective-oriented BTC profile with broader pattern coverage.
      */
     BTC_RELAXED_CORRECTIVE("h3-btc-relaxed-corrective", "Relaxed corrective coverage for BTC", 5, 1, 1,
-            PatternSet.all(), true, 0.64),
+            PatternSet.all(), true, 0.64, 35, 0, 0.68),
 
     /**
      * Anchor-first hybrid profile used by the BTC macro study when start/end span
      * fit matters as much as raw confidence.
      */
-    ANCHOR_FIRST_HYBRID("h4-anchor-first-hybrid", "Anchor-first hybrid profile", 5, 2, 2, PatternSet.all(), true, 0.58);
+    ANCHOR_FIRST_HYBRID("h4-anchor-first-hybrid", "Anchor-first hybrid profile", 5, 2, 2, PatternSet.all(), true,
+            0.58, 40, 0, 0.66);
 
     private final String id;
     private final String title;
@@ -67,10 +69,14 @@ public enum ElliottLogicProfile {
     private final PatternSet patternSet;
     private final boolean patternAwareConfidence;
     private final double baseConfidenceWeight;
+    private final int maxScenarios;
+    private final int scenarioSwingWindow;
+    private final double acceptanceThreshold;
 
     ElliottLogicProfile(final String id, final String title, final int baseFractalWindow, final int higherDegrees,
             final int lowerDegrees, final PatternSet patternSet, final boolean patternAwareConfidence,
-            final double baseConfidenceWeight) {
+            final double baseConfidenceWeight, final int maxScenarios, final int scenarioSwingWindow,
+            final double acceptanceThreshold) {
         this.id = Objects.requireNonNull(id, "id");
         this.title = Objects.requireNonNull(title, "title");
         this.baseFractalWindow = baseFractalWindow;
@@ -79,6 +85,9 @@ public enum ElliottLogicProfile {
         this.patternSet = Objects.requireNonNull(patternSet, "patternSet");
         this.patternAwareConfidence = patternAwareConfidence;
         this.baseConfidenceWeight = baseConfidenceWeight;
+        this.maxScenarios = maxScenarios;
+        this.scenarioSwingWindow = scenarioSwingWindow;
+        this.acceptanceThreshold = acceptanceThreshold;
     }
 
     /**
@@ -143,5 +152,29 @@ public enum ElliottLogicProfile {
      */
     public double baseConfidenceWeight() {
         return baseConfidenceWeight;
+    }
+
+    /**
+     * @return default maximum number of ranked scenarios retained by the runner
+     * @since 0.22.4
+     */
+    public int maxScenarios() {
+        return maxScenarios;
+    }
+
+    /**
+     * @return default swing window forwarded to scenario generation
+     * @since 0.22.4
+     */
+    public int scenarioSwingWindow() {
+        return scenarioSwingWindow;
+    }
+
+    /**
+     * @return default anchored-fit acceptance threshold for macro profile studies
+     * @since 0.22.4
+     */
+    public double acceptanceThreshold() {
+        return acceptanceThreshold;
     }
 }

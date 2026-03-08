@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-08 15:44 EDT
-- Active phase: Phase 6
-- Active task: Move the remaining BTC macro profile defaults into core and finish thinning the demo wrapper
-- Overall: 16/46 checklist items complete
+- Last updated: 2026-03-08 16:17 EDT
+- Active phase: Phase 4
+- Active task: Collapse the remaining BTC macro profile semantics onto core profiles
+- Overall: 17/46 checklist items complete
 
 ## Status
 
@@ -172,7 +172,7 @@ Implementation steps:
 
 ### Phase 4: Collapse Scenario Generation onto Core Profiles
 
-- [ ] Move any remaining H0-H4 profile semantics that still live in examples into core profile handling.
+- [x] Move any remaining H0-H4 profile semantics that still live in examples into core profile handling.
 - [ ] Keep profiles package-private until the selection surface stabilizes.
 - [ ] Make `orthodox-classical` the default profile unless a caller explicitly requests a different tuned profile.
 - [ ] If a public selector is still justified after convergence, expose a minimal `logicProfile(...)` builder option.

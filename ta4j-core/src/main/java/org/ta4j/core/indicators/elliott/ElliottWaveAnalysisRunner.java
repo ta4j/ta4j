@@ -135,6 +135,10 @@ public final class ElliottWaveAnalysisRunner {
                 : logicProfile == null ? builder.higherDegrees : logicProfile.higherDegrees();
         this.lowerDegrees = builder.lowerDegreesExplicit ? builder.lowerDegrees
                 : logicProfile == null ? builder.lowerDegrees : logicProfile.lowerDegrees();
+        this.maxScenarios = builder.maxScenariosExplicit ? builder.maxScenarios
+                : logicProfile == null ? builder.maxScenarios : logicProfile.maxScenarios();
+        this.scenarioSwingWindow = builder.scenarioSwingWindowExplicit ? builder.scenarioSwingWindow
+                : logicProfile == null ? builder.scenarioSwingWindow : logicProfile.scenarioSwingWindow();
         this.seriesSelector = builder.seriesSelector == null ? defaultSeriesSelector() : builder.seriesSelector;
 
         this.swingDetector = builder.swingDetector == null
@@ -149,8 +153,6 @@ public final class ElliottWaveAnalysisRunner {
                 ? (logicProfile == null ? PatternSet.all() : logicProfile.patternSet())
                 : builder.patternSet;
         this.minConfidence = builder.minConfidence;
-        this.maxScenarios = builder.maxScenarios;
-        this.scenarioSwingWindow = builder.scenarioSwingWindow;
 
         int supportingDegrees = Math.max(0, higherDegrees) + Math.max(0, lowerDegrees);
         this.baseConfidenceWeight = supportingDegrees == 0 ? 1.0
@@ -1873,6 +1875,8 @@ public final class ElliottWaveAnalysisRunner {
         private int lowerDegrees = DEFAULT_LOWER_DEGREES;
         private boolean higherDegreesExplicit;
         private boolean lowerDegreesExplicit;
+        private boolean maxScenariosExplicit;
+        private boolean scenarioSwingWindowExplicit;
         private SeriesSelector<ElliottDegree> seriesSelector;
         private AnalysisRunner<ElliottDegree, ElliottAnalysisResult> analysisRunner;
         private double baseConfidenceWeight = DEFAULT_BASE_CONFIDENCE_WEIGHT;
@@ -2072,6 +2076,7 @@ public final class ElliottWaveAnalysisRunner {
                 throw new IllegalArgumentException("maxScenarios must be positive");
             }
             this.maxScenarios = maxScenarios;
+            this.maxScenariosExplicit = true;
             return this;
         }
 
@@ -2087,6 +2092,7 @@ public final class ElliottWaveAnalysisRunner {
                 throw new IllegalArgumentException("scenarioSwingWindow must be >= 0");
             }
             this.scenarioSwingWindow = scenarioSwingWindow;
+            this.scenarioSwingWindowExplicit = true;
             return this;
         }
 

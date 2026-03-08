@@ -642,6 +642,10 @@ class ElliottWaveAnalysisRunnerTest {
         higherDegreesField.setAccessible(true);
         Field lowerDegreesField = ElliottWaveAnalysisRunner.class.getDeclaredField("lowerDegrees");
         lowerDegreesField.setAccessible(true);
+        Field maxScenariosField = ElliottWaveAnalysisRunner.class.getDeclaredField("maxScenarios");
+        maxScenariosField.setAccessible(true);
+        Field scenarioSwingWindowField = ElliottWaveAnalysisRunner.class.getDeclaredField("scenarioSwingWindow");
+        scenarioSwingWindowField.setAccessible(true);
         Field baseConfidenceWeightField = ElliottWaveAnalysisRunner.class.getDeclaredField("baseConfidenceWeight");
         baseConfidenceWeightField.setAccessible(true);
 
@@ -650,6 +654,10 @@ class ElliottWaveAnalysisRunnerTest {
                 .isEqualTo(ElliottLogicProfile.ANCHOR_FIRST_HYBRID.higherDegrees());
         assertThat(lowerDegreesField.getInt(analysis))
                 .isEqualTo(ElliottLogicProfile.ANCHOR_FIRST_HYBRID.lowerDegrees());
+        assertThat(maxScenariosField.getInt(analysis))
+                .isEqualTo(ElliottLogicProfile.ANCHOR_FIRST_HYBRID.maxScenarios());
+        assertThat(scenarioSwingWindowField.getInt(analysis))
+                .isEqualTo(ElliottLogicProfile.ANCHOR_FIRST_HYBRID.scenarioSwingWindow());
         assertThat(baseConfidenceWeightField.getDouble(analysis))
                 .isEqualTo(ElliottLogicProfile.ANCHOR_FIRST_HYBRID.baseConfidenceWeight());
     }
