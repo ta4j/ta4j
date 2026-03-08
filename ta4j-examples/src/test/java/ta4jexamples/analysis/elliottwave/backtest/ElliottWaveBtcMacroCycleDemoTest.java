@@ -13,6 +13,7 @@ import java.awt.Color;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -352,6 +353,16 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 }
             });
         }
+    }
+
+    @Test
+    void macroLogicProfilesStayNonPublicWhileSelectionSurfaceIsUnsettled() throws Exception {
+        Method profilesMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("logicProfiles");
+        Method defaultProfileMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("defaultLiveMacroProfile");
+
+        assertFalse(Modifier.isPublic(ElliottWaveBtcMacroCycleDemo.MacroLogicProfile.class.getModifiers()));
+        assertTrue(Modifier.isPrivate(profilesMethod.getModifiers()));
+        assertTrue(Modifier.isPrivate(defaultProfileMethod.getModifiers()));
     }
 
     @Test

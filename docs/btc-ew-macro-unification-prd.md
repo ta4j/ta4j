@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-08 18:31 EDT
+- Last updated: 2026-03-08 18:43 EDT
 - Active phase: Phase 4
-- Active task: Keep profile selection surfaces package-private while the core selection contract stabilizes
-- Overall: 36/47 checklist items complete
+- Active task: Continue thinning the BTC demo wrapper and remove stale legacy-path messaging
+- Overall: 37/47 checklist items complete
 
 ## Status
 
@@ -177,7 +177,7 @@ Implementation steps:
 ### Phase 4: Collapse Scenario Generation onto Core Profiles
 
 - [x] Move any remaining H0-H4 profile semantics that still live in examples into core profile handling.
-- [ ] Keep profiles package-private until the selection surface stabilizes.
+- [x] Keep profiles package-private until the selection surface stabilizes.
 - [x] Make `orthodox-classical` the default profile unless a caller explicitly requests a different tuned profile.
 - [x] If a public selector is still justified after convergence, expose a minimal `logicProfile(...)` builder option.
 
