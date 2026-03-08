@@ -423,6 +423,123 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void analyzeWindowPreservesRequestedStartAcrossLongMacroHistory() {
+        BarSeries series = buildLongHistorySeries();
+        NumFactory factory = series.numFactory();
+        ElliottScenario localScenario = scenario(factory, "long-history-preserved-start", ElliottPhase.WAVE5, 0.84,
+                List.of(new ElliottSwing(2, 9, factory.numOf(170), factory.numOf(132), ElliottDegree.PRIMARY),
+                        new ElliottSwing(9, 20, factory.numOf(132), factory.numOf(92), ElliottDegree.PRIMARY),
+                        new ElliottSwing(20, 50, factory.numOf(92), factory.numOf(128), ElliottDegree.PRIMARY)),
+                factory.numOf(112), 0.95, ScenarioType.IMPULSE);
+        ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(localScenario), 50);
+        ElliottAnalysisResult analysisSnapshot = new ElliottAnalysisResult(ElliottDegree.PRIMARY, 50,
+                localScenario.swings(), localScenario.swings(), scenarios, Map.of(), null, scenarios.trendBias());
+
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((ignoredSeries, ignoredDegree) -> analysisSnapshot)
+                .build();
+
+        ElliottWaveAnalysisResult result = analysis.analyzeWindow(series, 200, 250);
+
+        ElliottAnalysisResult base = result.analysisFor(ElliottDegree.PRIMARY).orElseThrow().analysis();
+        ElliottScenario anchoredScenario = result.rankedBaseScenarios().getFirst().scenario();
+
+        assertThat(base.index()).isEqualTo(250);
+        assertThat(anchoredScenario.startIndex()).isEqualTo(200);
+        assertThat(anchoredScenario.swings().getFirst().fromIndex()).isEqualTo(200);
+        assertThat(anchoredScenario.swings().getLast().toIndex()).isEqualTo(250);
+    }
+
+    @Test
+    void analyzeUsesLogicProfileToDriveRankingBlendPreference() {
+        BarSeries series = buildSeries();
+        NumFactory factory = series.numFactory();
+        ElliottScenario confidencePreferred = scenario(factory, "confidence-preferred", ElliottPhase.CORRECTIVE_C, 0.95,
+                List.of(new ElliottSwing(0, 2, factory.numOf(130), factory.numOf(110), ElliottDegree.PRIMARY),
+                        new ElliottSwing(2, 4, factory.numOf(110), factory.numOf(150), ElliottDegree.PRIMARY),
+                        new ElliottSwing(4, 6, factory.numOf(150), factory.numOf(105), ElliottDegree.PRIMARY)),
+                factory.numOf(95), 0.95, ScenarioType.CORRECTIVE_ZIGZAG);
+        ElliottScenario crossPreferred = scenario(factory, "cross-preferred", ElliottPhase.CORRECTIVE_C, 0.50,
+                List.of(new ElliottSwing(0, 2, factory.numOf(110), factory.numOf(140), ElliottDegree.PRIMARY),
+                        new ElliottSwing(2, 4, factory.numOf(140), factory.numOf(95), ElliottDegree.PRIMARY),
+                        new ElliottSwing(4, 6, factory.numOf(95), factory.numOf(145), ElliottDegree.PRIMARY)),
+                factory.numOf(95), 0.95, ScenarioType.CORRECTIVE_ZIGZAG);
+        ElliottScenarioSet baseScenarios = ElliottScenarioSet.of(List.of(confidencePreferred, crossPreferred), 6);
+
+        ElliottScenario supportingScenario = scenario(factory, "profile-supporting-corrective",
+                ElliottPhase.CORRECTIVE_C, 0.98,
+                List.of(new ElliottSwing(0, 2, factory.numOf(110), factory.numOf(140), ElliottDegree.INTERMEDIATE),
+                        new ElliottSwing(2, 4, factory.numOf(140), factory.numOf(95), ElliottDegree.INTERMEDIATE),
+                        new ElliottSwing(4, 6, factory.numOf(95), factory.numOf(145), ElliottDegree.INTERMEDIATE)),
+                factory.numOf(80), 0.98, ElliottDegree.INTERMEDIATE, ScenarioType.CORRECTIVE_ZIGZAG);
+        ElliottScenarioSet supportingScenarios = ElliottScenarioSet.of(List.of(supportingScenario), 6);
+
+        ElliottAnalysisResult primarySnapshot = new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(),
+                baseScenarios.all().getFirst().swings(), baseScenarios.all().getFirst().swings(), baseScenarios,
+                Map.of(), null, baseScenarios.trendBias());
+        ElliottAnalysisResult supportSnapshot = new ElliottAnalysisResult(ElliottDegree.INTERMEDIATE,
+                series.getEndIndex(), supportingScenario.swings(), supportingScenario.swings(), supportingScenarios,
+                Map.of(), null, supportingScenarios.trendBias());
+
+        ElliottWaveAnalysisRunner confidenceWeightedRunner = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(1)
+                .lowerDegrees(0)
+                .analysisRunner((ignoredSeries, degree) -> ElliottDegree.PRIMARY.equals(degree) ? primarySnapshot
+                        : supportSnapshot)
+                .logicProfile(ElliottLogicProfile.BTC_RELAXED_IMPULSE)
+                .minConfidence(0.0)
+                .build();
+        ElliottWaveAnalysisResult confidenceWeightedResult = confidenceWeightedRunner.analyze(series);
+
+        ElliottWaveAnalysisRunner crossWeightedRunner = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(1)
+                .lowerDegrees(0)
+                .analysisRunner((ignoredSeries, degree) -> ElliottDegree.PRIMARY.equals(degree) ? primarySnapshot
+                        : supportSnapshot)
+                .logicProfile(ElliottLogicProfile.ANCHOR_FIRST_HYBRID)
+                .minConfidence(0.0)
+                .build();
+        ElliottWaveAnalysisResult crossWeightedResult = crossWeightedRunner.analyze(series);
+
+        ElliottWaveAnalysisResult.BaseScenarioAssessment confidencePreferredConfidenceWeighted = confidenceWeightedResult
+                .rankedBaseScenarios()
+                .stream()
+                .filter(assessment -> "confidence-preferred".equals(assessment.scenario().id()))
+                .findFirst()
+                .orElseThrow();
+        ElliottWaveAnalysisResult.BaseScenarioAssessment crossPreferredConfidenceWeighted = confidenceWeightedResult
+                .rankedBaseScenarios()
+                .stream()
+                .filter(assessment -> "cross-preferred".equals(assessment.scenario().id()))
+                .findFirst()
+                .orElseThrow();
+        ElliottWaveAnalysisResult.BaseScenarioAssessment confidencePreferredCrossWeighted = crossWeightedResult
+                .rankedBaseScenarios()
+                .stream()
+                .filter(assessment -> "confidence-preferred".equals(assessment.scenario().id()))
+                .findFirst()
+                .orElseThrow();
+        ElliottWaveAnalysisResult.BaseScenarioAssessment crossPreferredCrossWeighted = crossWeightedResult
+                .rankedBaseScenarios()
+                .stream()
+                .filter(assessment -> "cross-preferred".equals(assessment.scenario().id()))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(confidenceWeightedResult.rankedBaseScenarios().getFirst().scenario().id())
+                .isEqualTo("confidence-preferred");
+        assertThat(crossPreferredCrossWeighted.compositeScore())
+                .isGreaterThan(crossPreferredConfidenceWeighted.compositeScore());
+        assertThat(confidencePreferredCrossWeighted.compositeScore())
+                .isLessThan(confidencePreferredConfidenceWeighted.compositeScore());
+    }
+
+    @Test
     void analyzeCurrentCycleReturnsAlternatingAnchoredBullishCandidate() {
         BarSeries series = buildCurrentCycleSeries();
         NumFactory factory = series.numFactory();
@@ -521,10 +638,18 @@ class ElliottWaveAnalysisRunnerTest {
 
         Field logicProfileField = ElliottWaveAnalysisRunner.class.getDeclaredField("logicProfile");
         logicProfileField.setAccessible(true);
+        Field higherDegreesField = ElliottWaveAnalysisRunner.class.getDeclaredField("higherDegrees");
+        higherDegreesField.setAccessible(true);
+        Field lowerDegreesField = ElliottWaveAnalysisRunner.class.getDeclaredField("lowerDegrees");
+        lowerDegreesField.setAccessible(true);
         Field baseConfidenceWeightField = ElliottWaveAnalysisRunner.class.getDeclaredField("baseConfidenceWeight");
         baseConfidenceWeightField.setAccessible(true);
 
         assertThat(logicProfileField.get(analysis)).isEqualTo(ElliottLogicProfile.ANCHOR_FIRST_HYBRID);
+        assertThat(higherDegreesField.getInt(analysis))
+                .isEqualTo(ElliottLogicProfile.ANCHOR_FIRST_HYBRID.higherDegrees());
+        assertThat(lowerDegreesField.getInt(analysis))
+                .isEqualTo(ElliottLogicProfile.ANCHOR_FIRST_HYBRID.lowerDegrees());
         assertThat(baseConfidenceWeightField.getDouble(analysis))
                 .isEqualTo(ElliottLogicProfile.ANCHOR_FIRST_HYBRID.baseConfidenceWeight());
     }
@@ -619,6 +744,20 @@ class ElliottWaveAnalysisRunnerTest {
     private static ElliottScenario scenario(final NumFactory factory, final String id, final ElliottPhase phase,
             final double overallScore, final List<ElliottSwing> swings, final org.ta4j.core.num.Num invalidationPrice,
             final double completenessScore) {
+        return scenario(factory, id, phase, overallScore, swings, invalidationPrice, completenessScore,
+                ScenarioType.IMPULSE);
+    }
+
+    private static ElliottScenario scenario(final NumFactory factory, final String id, final ElliottPhase phase,
+            final double overallScore, final List<ElliottSwing> swings, final org.ta4j.core.num.Num invalidationPrice,
+            final double completenessScore, final ScenarioType type) {
+        return scenario(factory, id, phase, overallScore, swings, invalidationPrice, completenessScore,
+                ElliottDegree.PRIMARY, type);
+    }
+
+    private static ElliottScenario scenario(final NumFactory factory, final String id, final ElliottPhase phase,
+            final double overallScore, final List<ElliottSwing> swings, final org.ta4j.core.num.Num invalidationPrice,
+            final double completenessScore, final ElliottDegree degree, final ScenarioType type) {
         ElliottConfidence confidence = new ElliottConfidence(factory.numOf(overallScore), factory.numOf(overallScore),
                 factory.numOf(overallScore), factory.numOf(overallScore), factory.numOf(overallScore),
                 factory.numOf(completenessScore), "test");
@@ -628,9 +767,9 @@ class ElliottWaveAnalysisRunnerTest {
                 .currentPhase(phase)
                 .swings(swings)
                 .confidence(confidence)
-                .degree(ElliottDegree.PRIMARY)
+                .degree(degree)
                 .invalidationPrice(invalidationPrice)
-                .type(ScenarioType.IMPULSE)
+                .type(type)
                 .build();
     }
 

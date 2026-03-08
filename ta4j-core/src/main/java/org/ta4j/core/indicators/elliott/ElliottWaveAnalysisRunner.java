@@ -131,8 +131,10 @@ public final class ElliottWaveAnalysisRunner {
     private ElliottWaveAnalysisRunner(final Builder builder) {
         this.baseDegree = Objects.requireNonNull(builder.baseDegree, "baseDegree");
         this.logicProfile = builder.logicProfile;
-        this.higherDegrees = builder.higherDegrees;
-        this.lowerDegrees = builder.lowerDegrees;
+        this.higherDegrees = builder.higherDegreesExplicit ? builder.higherDegrees
+                : logicProfile == null ? builder.higherDegrees : logicProfile.higherDegrees();
+        this.lowerDegrees = builder.lowerDegreesExplicit ? builder.lowerDegrees
+                : logicProfile == null ? builder.lowerDegrees : logicProfile.lowerDegrees();
         this.seriesSelector = builder.seriesSelector == null ? defaultSeriesSelector() : builder.seriesSelector;
 
         this.swingDetector = builder.swingDetector == null
@@ -1869,6 +1871,8 @@ public final class ElliottWaveAnalysisRunner {
         private ElliottDegree baseDegree;
         private int higherDegrees = DEFAULT_HIGHER_DEGREES;
         private int lowerDegrees = DEFAULT_LOWER_DEGREES;
+        private boolean higherDegreesExplicit;
+        private boolean lowerDegreesExplicit;
         private SeriesSelector<ElliottDegree> seriesSelector;
         private AnalysisRunner<ElliottDegree, ElliottAnalysisResult> analysisRunner;
         private double baseConfidenceWeight = DEFAULT_BASE_CONFIDENCE_WEIGHT;
@@ -1906,6 +1910,7 @@ public final class ElliottWaveAnalysisRunner {
                 throw new IllegalArgumentException("higherDegrees must be >= 0");
             }
             this.higherDegrees = higherDegrees;
+            this.higherDegreesExplicit = true;
             return this;
         }
 
@@ -1919,6 +1924,7 @@ public final class ElliottWaveAnalysisRunner {
                 throw new IllegalArgumentException("lowerDegrees must be >= 0");
             }
             this.lowerDegrees = lowerDegrees;
+            this.lowerDegreesExplicit = true;
             return this;
         }
 
@@ -1974,9 +1980,10 @@ public final class ElliottWaveAnalysisRunner {
          * Applies a reusable Elliott logic profile to the built-in runner pipeline.
          *
          * <p>
-         * Profiles tune the default swing-detector sensitivity, enabled pattern
-         * families, confidence-model style, and cross-degree confidence weight. Any
-         * explicit builder calls made afterwards still take precedence.
+         * Profiles tune the default swing-detector sensitivity, supporting-degree
+         * confirmation depth, enabled pattern families, confidence-model style, and
+         * cross-degree confidence weight. Any explicit builder calls made afterwards
+         * still take precedence.
          *
          * @param logicProfile logic profile to apply
          * @return builder

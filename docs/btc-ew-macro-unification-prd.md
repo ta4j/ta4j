@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-07 15:42 EST
-- Active phase: Phase 5
-- Active task: Harden live current-cycle pivot dominance and right-edge anchoring in core
-- Overall: 12/46 checklist items complete
+- Last updated: 2026-03-08 15:44 EDT
+- Active phase: Phase 6
+- Active task: Move the remaining BTC macro profile defaults into core and finish thinning the demo wrapper
+- Overall: 16/46 checklist items complete
 
 ## Status
 
@@ -207,7 +207,7 @@ Implementation steps:
 ### Phase 6: Reduce or Remove `ElliottWaveBtcMacroCycleDemo`
 
 - [ ] Strip `ElliottWaveBtcMacroCycleDemo` down to a thin wrapper.
-- [ ] Remove all duplicated scenario search, ranking, path search, pivot-dominance, and current-cycle fitting logic from it.
+- [x] Remove all duplicated scenario search, ranking, path search, pivot-dominance, and current-cycle fitting logic from it.
 - [ ] If the class remains, it should only:
   - load BTC resources
   - select BTC validation windows/profile defaults
@@ -266,10 +266,10 @@ Implement in this exact order unless a blocker forces a change:
 ### Core Regression Tests
 
 - [x] Anchor-window reranking tests
-- [ ] Start-preservation tests for long macro histories
+- [x] Start-preservation tests for long macro histories
 - [x] Partial impulse span-dominance tests
-- [ ] Partial corrective span-dominance tests
-- [ ] Profile-driven ranking tests
+- [x] Partial corrective span-dominance tests
+- [x] Profile-driven ranking tests
 - [x] Preset scenario selection tests that prove display candidates come from core ordering
 
 ## Acceptance Criteria
