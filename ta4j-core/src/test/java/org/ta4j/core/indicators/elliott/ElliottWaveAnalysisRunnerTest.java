@@ -7,8 +7,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -591,6 +593,40 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void discoverCurrentCycleStartCandidatesPreservesEarliestMacroPivotAcrossScorePressure() throws Exception {
+        BarSeries series = buildCurrentCycleStartPressureSeries();
+        NumFactory factory = series.numFactory();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner(
+                        (window, ignoredDegree) -> window == series ? currentCycleStartPressureSnapshot(window, factory)
+                                : currentCycleSnapshot(window, factory))
+                .build();
+
+        ElliottWaveAnalysisResult fullAnalysis = analysis.analyze(series);
+        Method discoverMethod = ElliottWaveAnalysisRunner.class.getDeclaredMethod("discoverCurrentCycleStartCandidates",
+                BarSeries.class, ElliottWaveAnalysisResult.class);
+        discoverMethod.setAccessible(true);
+        Method barIndexMethod = Class
+                .forName("org.ta4j.core.indicators.elliott.ElliottWaveAnalysisRunner$CurrentCycleStartCandidate")
+                .getDeclaredMethod("barIndex");
+        barIndexMethod.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        List<Object> candidates = (List<Object>) discoverMethod.invoke(analysis, series, fullAnalysis);
+        List<Integer> candidateIndices = new ArrayList<>(candidates.size());
+        for (Object candidate : candidates) {
+            candidateIndices.add((Integer) barIndexMethod.invoke(candidate));
+        }
+
+        assertThat(candidateIndices).hasSize(16);
+        assertThat(candidateIndices).contains(40);
+        assertThat(candidateIndices).contains(285);
+    }
+
+    @Test
     void fitCurrentPhaseForWindowSupportsBearishCorrectiveProgressions() {
         BarSeries series = buildBearishWindowSeries();
         NumFactory factory = series.numFactory();
@@ -926,6 +962,32 @@ class ElliottWaveAnalysisRunnerTest {
         return series;
     }
 
+    private BarSeries buildCurrentCycleStartPressureSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("CurrentCycleStartPressure").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2023-01-01T00:00:00Z");
+        for (int index = 0; index < 300; index++) {
+            double base = 220 + (index * 2.0);
+            double low = base - 18.0;
+            if (index == 40) {
+                low = 100.0;
+            } else if (index >= 90 && (index - 90) % 13 == 0 && index <= 285) {
+                low = 101.0 + ((index - 90) / 13.0);
+            }
+            double high = index == 299 ? 1000.0 : base + 24.0;
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(base - 4.0)
+                    .highPrice(high)
+                    .lowPrice(low)
+                    .closePrice(base + 3.0)
+                    .volume(1_000)
+                    .add();
+        }
+        return series;
+    }
+
     private static ElliottScenario scenario(final NumFactory factory, final String id, final ElliottPhase phase,
             final double overallScore, final List<ElliottSwing> swings, final org.ta4j.core.num.Num invalidationPrice,
             final double completenessScore) {
@@ -1036,6 +1098,29 @@ class ElliottWaveAnalysisRunnerTest {
         ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(wave3), series.getEndIndex());
         return new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), swings, swings, scenarios,
                 Map.of(), null, scenarios.trendBias());
+    }
+
+    private ElliottAnalysisResult currentCycleStartPressureSnapshot(final BarSeries series, final NumFactory factory) {
+        List<Integer> lowPivots = List.of(40, 90, 103, 116, 129, 142, 155, 168, 181, 194, 207, 220, 233, 246, 259, 272,
+                285);
+        List<ElliottSwing> swings = new ArrayList<>();
+        for (int index = 0; index < lowPivots.size(); index++) {
+            int lowIndex = lowPivots.get(index);
+            int highIndex = Math.min(series.getEndIndex(), lowIndex + 6);
+            double lowPrice = 100.0 + index;
+            double highPrice = 180.0 + (index * 20.0);
+            swings.add(new ElliottSwing(lowIndex, highIndex, factory.numOf(lowPrice), factory.numOf(highPrice),
+                    ElliottDegree.PRIMARY));
+            if (index + 1 < lowPivots.size()) {
+                int nextLowIndex = lowPivots.get(index + 1);
+                double nextLowPrice = 101.0 + index;
+                swings.add(new ElliottSwing(highIndex, nextLowIndex, factory.numOf(highPrice),
+                        factory.numOf(nextLowPrice), ElliottDegree.PRIMARY));
+            }
+        }
+        ElliottScenarioSet empty = ElliottScenarioSet.empty(series.getEndIndex());
+        return new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), swings, swings, empty, Map.of(),
+                null, empty.trendBias());
     }
 
     private ElliottAnalysisResult malformedWaveFiveSnapshot(final BarSeries series, final NumFactory factory) {

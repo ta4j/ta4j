@@ -552,16 +552,16 @@ public final class ElliottWaveAnalysisRunner {
         final double totalRange = windowRange(series, beginIndex, endIndex);
         final double absoluteLow = lowestLow(series, beginIndex, endIndex);
         final Map<Integer, CurrentCycleStartAccumulator> accumulators = new LinkedHashMap<>();
-
-        analysis.analysisFor(baseDegree)
+        final List<Integer> processedLowPivots = analysis.analysisFor(baseDegree)
                 .map(ElliottWaveAnalysisResult.DegreeAnalysis::analysis)
                 .map(ElliottAnalysisResult::processedSwings)
-                .ifPresent(swings -> {
-                    for (final int pivotIndex : lowPivotIndices(swings)) {
-                        seedCurrentCycleStartCandidate(series, accumulators, pivotIndex,
-                                currentCycleProcessedPivotScore(series, pivotIndex, absoluteLow, totalRange));
-                    }
-                });
+                .map(ElliottWaveAnalysisRunner::lowPivotIndices)
+                .orElse(List.of());
+
+        for (final int pivotIndex : processedLowPivots) {
+            seedCurrentCycleStartCandidate(series, accumulators, pivotIndex,
+                    currentCycleProcessedPivotScore(series, pivotIndex, absoluteLow, totalRange));
+        }
 
         seedCurrentCycleStartCandidate(series, accumulators, lowestLowIndex(series, beginIndex, endIndex), 12.0);
         final int trailingHalfStart = beginIndex + ((endIndex - beginIndex) / 2);
@@ -570,20 +570,48 @@ public final class ElliottWaveAnalysisRunner {
         seedCurrentCycleStartCandidate(series, accumulators, lowestLowIndex(series, trailingThirdStart, endIndex),
                 16.0);
 
-        final List<CurrentCycleStartCandidate> candidates = accumulators.values()
+        final List<CurrentCycleStartCandidate> rankedCandidates = accumulators.values()
                 .stream()
                 .map(accumulator -> accumulator.toCandidate(beginIndex, endIndex))
                 .sorted(Comparator.comparingDouble(CurrentCycleStartCandidate::rawScore)
                         .reversed()
                         .thenComparingInt(CurrentCycleStartCandidate::barIndex))
-                .limit(CURRENT_CYCLE_START_CANDIDATE_LIMIT)
-                .sorted(Comparator.comparingInt(CurrentCycleStartCandidate::barIndex))
                 .toList();
+        final CurrentCycleStartCandidate preservedStartCandidate = processedLowPivots.stream()
+                .filter(accumulators::containsKey)
+                .min(Integer::compareTo)
+                .map(accumulators::get)
+                .map(accumulator -> accumulator.toCandidate(beginIndex, endIndex))
+                .orElse(null);
+        final List<CurrentCycleStartCandidate> candidates = selectCurrentCycleStartCandidates(rankedCandidates,
+                preservedStartCandidate);
         if (!candidates.isEmpty()) {
             return List.copyOf(candidates);
         }
         final int lowestIndex = lowestLowIndex(series, beginIndex, endIndex);
         return List.of(new CurrentCycleStartCandidate(lowestIndex, lowPriceNum(series, lowestIndex), 1.0, 1.0));
+    }
+
+    private static List<CurrentCycleStartCandidate> selectCurrentCycleStartCandidates(
+            final List<CurrentCycleStartCandidate> rankedCandidates,
+            final CurrentCycleStartCandidate preservedCandidate) {
+        if (rankedCandidates.isEmpty()) {
+            return List.of();
+        }
+        final List<CurrentCycleStartCandidate> selected = new ArrayList<>(CURRENT_CYCLE_START_CANDIDATE_LIMIT);
+        if (preservedCandidate != null) {
+            selected.add(preservedCandidate);
+        }
+        for (final CurrentCycleStartCandidate candidate : rankedCandidates) {
+            if (selected.size() >= CURRENT_CYCLE_START_CANDIDATE_LIMIT) {
+                break;
+            }
+            if (preservedCandidate != null && candidate.barIndex() == preservedCandidate.barIndex()) {
+                continue;
+            }
+            selected.add(candidate);
+        }
+        return selected.stream().sorted(Comparator.comparingInt(CurrentCycleStartCandidate::barIndex)).toList();
     }
 
     private void seedCurrentCycleStartCandidate(final BarSeries series,

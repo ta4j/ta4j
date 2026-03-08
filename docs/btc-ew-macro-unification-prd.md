@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-08 17:51 EDT
+- Last updated: 2026-03-08 18:24 EDT
 - Active phase: Phase 3
-- Active task: Promote macro swing preservation deeper into the default core path
-- Overall: 28/47 checklist items complete
+- Active task: Remove the remaining example-layer fallback from accepted BTC leg fitting
+- Overall: 30/47 checklist items complete
 
 ## Status
 
@@ -163,9 +163,9 @@ Implementation steps:
 ### Phase 3: Promote Macro Swing Detection to the Default Core Path
 
 - [ ] Finish moving broad-history swing preservation into the default core runner path.
-- [ ] Ensure early macro pivots survive filtering when they are necessary to explain long-cycle structure.
+- [x] Ensure early macro pivots survive filtering when they are necessary to explain long-cycle structure.
 - [ ] Stop requiring example-layer fallback for accepted BTC historical legs.
-- [ ] Add tests proving early-cycle pivots survive even when later moves are much larger.
+- [x] Add tests proving early-cycle pivots survive even when later moves are much larger.
 
 Implementation steps:
 
