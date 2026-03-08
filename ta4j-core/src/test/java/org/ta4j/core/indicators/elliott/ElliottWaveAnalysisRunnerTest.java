@@ -663,6 +663,35 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void buildDefaultsToOrthodoxClassicalLogicProfile() throws Exception {
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .build();
+
+        Field logicProfileField = ElliottWaveAnalysisRunner.class.getDeclaredField("logicProfile");
+        logicProfileField.setAccessible(true);
+        Field higherDegreesField = ElliottWaveAnalysisRunner.class.getDeclaredField("higherDegrees");
+        higherDegreesField.setAccessible(true);
+        Field lowerDegreesField = ElliottWaveAnalysisRunner.class.getDeclaredField("lowerDegrees");
+        lowerDegreesField.setAccessible(true);
+        Field maxScenariosField = ElliottWaveAnalysisRunner.class.getDeclaredField("maxScenarios");
+        maxScenariosField.setAccessible(true);
+        Field scenarioSwingWindowField = ElliottWaveAnalysisRunner.class.getDeclaredField("scenarioSwingWindow");
+        scenarioSwingWindowField.setAccessible(true);
+        Field baseConfidenceWeightField = ElliottWaveAnalysisRunner.class.getDeclaredField("baseConfidenceWeight");
+        baseConfidenceWeightField.setAccessible(true);
+
+        assertThat(logicProfileField.get(analysis)).isEqualTo(ElliottLogicProfile.ORTHODOX_CLASSICAL);
+        assertThat(higherDegreesField.getInt(analysis)).isEqualTo(ElliottLogicProfile.ORTHODOX_CLASSICAL.higherDegrees());
+        assertThat(lowerDegreesField.getInt(analysis)).isEqualTo(ElliottLogicProfile.ORTHODOX_CLASSICAL.lowerDegrees());
+        assertThat(maxScenariosField.getInt(analysis)).isEqualTo(ElliottLogicProfile.ORTHODOX_CLASSICAL.maxScenarios());
+        assertThat(scenarioSwingWindowField.getInt(analysis))
+                .isEqualTo(ElliottLogicProfile.ORTHODOX_CLASSICAL.scenarioSwingWindow());
+        assertThat(baseConfidenceWeightField.getDouble(analysis))
+                .isEqualTo(ElliottLogicProfile.ORTHODOX_CLASSICAL.baseConfidenceWeight());
+    }
+
+    @Test
     void buildRequiresDegree() {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> ElliottWaveAnalysisRunner.builder().build());

@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-08 16:17 EDT
+- Last updated: 2026-03-08 16:25 EDT
 - Active phase: Phase 4
-- Active task: Collapse the remaining BTC macro profile semantics onto core profiles
-- Overall: 17/46 checklist items complete
+- Active task: Make `orthodox-classical` the default core profile and keep thinning selection seams
+- Overall: 19/46 checklist items complete
 
 ## Status
 
@@ -174,8 +174,8 @@ Implementation steps:
 
 - [x] Move any remaining H0-H4 profile semantics that still live in examples into core profile handling.
 - [ ] Keep profiles package-private until the selection surface stabilizes.
-- [ ] Make `orthodox-classical` the default profile unless a caller explicitly requests a different tuned profile.
-- [ ] If a public selector is still justified after convergence, expose a minimal `logicProfile(...)` builder option.
+- [x] Make `orthodox-classical` the default profile unless a caller explicitly requests a different tuned profile.
+- [x] If a public selector is still justified after convergence, expose a minimal `logicProfile(...)` builder option.
 
 Implementation steps:
 

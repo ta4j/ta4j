@@ -1881,7 +1881,7 @@ public final class ElliottWaveAnalysisRunner {
         private AnalysisRunner<ElliottDegree, ElliottAnalysisResult> analysisRunner;
         private double baseConfidenceWeight = DEFAULT_BASE_CONFIDENCE_WEIGHT;
         private boolean baseConfidenceWeightExplicit;
-        private ElliottLogicProfile logicProfile;
+        private ElliottLogicProfile logicProfile = ElliottLogicProfile.ORTHODOX_CLASSICAL;
 
         private SwingDetector swingDetector;
         private SwingFilter swingFilter;
