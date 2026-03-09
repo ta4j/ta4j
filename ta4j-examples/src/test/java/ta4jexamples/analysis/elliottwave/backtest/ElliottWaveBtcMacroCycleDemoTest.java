@@ -345,6 +345,64 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
+    void genericMacroCycleDemoMatchesBtcWrapperOnLiveWindow() throws Exception {
+        BarSeries fullSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
+        int lookbackBars = 1825;
+        int windowStart = Math.max(fullSeries.getBeginIndex(), fullSeries.getEndIndex() - lookbackBars + 1);
+        BarSeries liveWindow = fullSeries.getSubSeries(windowStart, fullSeries.getEndIndex() + 1);
+        Path wrapperDir = Files.createTempDirectory("btc-live-wrapper");
+        Path genericDir = Files.createTempDirectory("btc-live-generic");
+
+        try {
+            ElliottWaveBtcMacroCycleDemo.LivePresetReport wrapperReport = ElliottWaveBtcMacroCycleDemo
+                    .generateLivePresetReport(liveWindow, wrapperDir);
+            ElliottWaveBtcMacroCycleDemo.LivePresetReport genericReport = ElliottWaveMacroCycleDemo
+                    .generateLivePresetReport(liveWindow, genericDir);
+
+            assertEquals(wrapperReport.selectedProfileId(), genericReport.selectedProfileId());
+            assertEquals(wrapperReport.selectedHypothesisId(), genericReport.selectedHypothesisId());
+            assertEquals(wrapperReport.currentCycle().startTimeUtc(), genericReport.currentCycle().startTimeUtc());
+            assertEquals(wrapperReport.currentCycle().latestTimeUtc(), genericReport.currentCycle().latestTimeUtc());
+            assertEquals(wrapperReport.currentCycle().winningProfileId(),
+                    genericReport.currentCycle().winningProfileId());
+            assertEquals(wrapperReport.currentCycle().historicalStatus(),
+                    "BTC macro profile prevalidated from historical cycle truth set");
+            assertEquals(genericReport.currentCycle().historicalStatus(),
+                    "Series-native current-cycle inference using the default orthodox macro profile");
+            assertEquals(wrapperReport.currentCycle().primaryCount(), genericReport.currentCycle().primaryCount());
+            assertEquals(wrapperReport.currentCycle().alternateCount(), genericReport.currentCycle().alternateCount());
+            assertEquals(wrapperReport.currentCycle().currentWave(), genericReport.currentCycle().currentWave());
+            assertEquals(wrapperReport.currentCycle().invalidationPrice(),
+                    genericReport.currentCycle().invalidationPrice());
+            assertEquals(wrapperReport.currentCycle().structuralInvalidationPrice(),
+                    genericReport.currentCycle().structuralInvalidationPrice());
+            assertEquals(wrapperReport.currentCycle().orthodoxWaveFiveTargetRange(),
+                    genericReport.currentCycle().orthodoxWaveFiveTargetRange());
+            assertTrue(Files.exists(Path.of(wrapperReport.chartPath())));
+            assertTrue(Files.exists(Path.of(wrapperReport.summaryPath())));
+            assertTrue(Files.exists(Path.of(genericReport.chartPath())));
+            assertTrue(Files.exists(Path.of(genericReport.summaryPath())));
+        } finally {
+            Files.walk(wrapperDir).sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException ignored) {
+                    // best effort cleanup
+                }
+            });
+            Files.walk(genericDir).sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException ignored) {
+                    // best effort cleanup
+                }
+            });
+        }
+    }
+
+    @Test
     void fullBitcoinHistoryKeepsStableMacroOutlook() throws Exception {
         Path tempDir = Files.createTempDirectory("btc-macro-outlook-stability");
 

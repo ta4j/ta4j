@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-08 22:27 EDT
-- Active phase: Phase 6
-- Active task: Decide whether the BTC wrapper still adds enough value to keep after the generic macro demo owns the historical path
-- Overall: 42/47 checklist items complete
+- Last updated: 2026-03-09 11:55 EDT
+- Active phase: Final convergence
+- Active task: Lock the remaining package-private core selection surfaces and run the final EW sanity pass
+- Overall: 44/47 checklist items complete
 
 ## Status
 
@@ -212,12 +212,12 @@ Implementation steps:
 
 - [x] Strip `ElliottWaveBtcMacroCycleDemo` down to a thin wrapper.
 - [x] Remove all duplicated scenario search, ranking, path search, pivot-dominance, and current-cycle fitting logic from it.
-- [ ] If the class remains, it should only:
+- [x] If the class remains, it should only:
   - load BTC resources
   - select BTC validation windows/profile defaults
   - invoke the core runner
   - render the regression chart/report
-- [ ] If the wrapper still adds no unique value after migration, delete it and fold the reporting path into a generic analysis demo.
+- [x] Evaluate whether the wrapper still adds enough unique value to keep; retain it only for fixed BTC resource loading and canonical BTC report/chart naming while the generic demo owns both historical and live analysis flows.
 
 Implementation steps:
 
@@ -231,8 +231,8 @@ Implementation notes:
 
 - `ElliottWaveMacroCycleDemo` now supports both registry-backed historical validation and anchor-free macro-turn inference from the supplied `BarSeries`.
 - On full-history BTC daily, the anchor-free generic path now recovers the committed 2011/2013/2017/2021 tops and 2011/2015/2018/2022 lows exactly, and preserves the same selected profile, hypothesis, and current-cycle outlook as the registry-backed report.
-- `ElliottWaveMacroCycleDemo` now owns the historical macro study, shared profile selection, shared current-cycle evaluation, and the macro regression chart renderer; `ElliottWaveBtcMacroCycleDemo` delegates those paths and keeps only BTC-specific loading plus console/chart/report wiring.
-- The remaining Phase 6 decision is whether the BTC wrapper should survive as a fixed-resource UX wrapper for live BTC charts, or whether that entry point should collapse further into the generic demo.
+- `ElliottWaveMacroCycleDemo` now owns the historical macro study, shared profile selection, shared current-cycle evaluation, the live current-cycle report/chart flow, and the macro regression chart renderer.
+- `ElliottWaveBtcMacroCycleDemo` now survives only as the fixed BTC dataset wrapper that preserves canonical BTC chart/report filenames and resource-loading UX.
 
 ### Phase 7: Documentation and Guides
 

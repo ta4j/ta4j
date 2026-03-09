@@ -6,6 +6,7 @@ package ta4jexamples.analysis.elliottwave.backtest;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.awt.Color;
+import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,6 +21,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jfree.chart.JFreeChart;
 import org.jfree.chart.axis.LogAxis;
 import org.jfree.chart.plot.CombinedDomainXYPlot;
@@ -71,6 +74,8 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
  * @since 0.22.4
  */
 public final class ElliottWaveMacroCycleDemo {
+
+    private static final Logger LOG = LogManager.getLogger(ElliottWaveMacroCycleDemo.class);
 
     private ElliottWaveMacroCycleDemo() {
     }
@@ -124,6 +129,53 @@ public final class ElliottWaveMacroCycleDemo {
                 summaryPath.toString(), study.profileScores(), study.cycles(), study.hypotheses(), currentCycle);
         saveSummary(report.toJson(), summaryPath, "macro-cycle summary");
         return report;
+    }
+
+    /**
+     * Runs a live current-cycle macro report directly on the supplied series using
+     * generic instrument-aware output names.
+     *
+     * @param series         series window to analyze
+     * @param chartDirectory directory for the rendered charts and JSON summary
+     * @since 0.22.4
+     */
+    public static void runLivePreset(final BarSeries series, final Path chartDirectory) {
+        final String seriesToken = scenarioSeriesName(series);
+        runLivePreset(series, chartDirectory, liveCurrentCycleChartFileName(seriesToken),
+                liveSummaryFileName(seriesToken), seriesToken,
+                "Series-native current-cycle inference using the default orthodox macro profile");
+    }
+
+    /**
+     * Generates the live current-cycle report directly on the supplied series using
+     * generic instrument-aware output names.
+     *
+     * @param series         series window to analyze
+     * @param chartDirectory directory for the rendered chart and JSON summary
+     * @return generated live current-cycle report
+     * @since 0.22.4
+     */
+    public static ElliottWaveBtcMacroCycleDemo.LivePresetReport generateLivePresetReport(final BarSeries series,
+            final Path chartDirectory) {
+        final String seriesToken = scenarioSeriesName(series);
+        return generateLivePresetReport(series, chartDirectory, liveCurrentCycleChartFileName(seriesToken),
+                liveSummaryFileName(seriesToken), seriesToken,
+                "Series-native current-cycle inference using the default orthodox macro profile");
+    }
+
+    static void runLivePreset(final BarSeries series, final Path chartDirectory, final String chartFileName,
+            final String summaryFileName, final String scenarioSeriesToken, final String historicalStatus) {
+        final LivePresetExecution execution = analyzeLivePreset(series, chartDirectory, chartFileName, summaryFileName,
+                historicalStatus);
+        final LivePresetLegacyView legacyView = generateLivePresetLegacyView(series, scenarioSeriesToken,
+                execution.currentCycle(), execution.report(), chartDirectory);
+        logLegacyCompatibleLivePreset(legacyView);
+    }
+
+    static ElliottWaveBtcMacroCycleDemo.LivePresetReport generateLivePresetReport(final BarSeries series,
+            final Path chartDirectory, final String chartFileName, final String summaryFileName,
+            final String scenarioSeriesToken, final String historicalStatus) {
+        return analyzeLivePreset(series, chartDirectory, chartFileName, summaryFileName, historicalStatus).report();
     }
 
     /**
@@ -246,6 +298,28 @@ public final class ElliottWaveMacroCycleDemo {
                 assessment.distinctCandidates(5));
     }
 
+    private static LivePresetExecution analyzeLivePreset(final BarSeries series, final Path chartDirectory,
+            final String chartFileName, final String summaryFileName, final String historicalStatus) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(chartDirectory, "chartDirectory");
+        Objects.requireNonNull(chartFileName, "chartFileName");
+        Objects.requireNonNull(summaryFileName, "summaryFileName");
+        Objects.requireNonNull(historicalStatus, "historicalStatus");
+
+        final MacroLogicProfile profile = defaultLiveMacroProfile();
+        final CurrentCycleAnalysis currentCycle = evaluateCurrentCycle(series, profile, historicalStatus);
+        final Optional<Path> chartPath = saveLiveCurrentCycleChart(series, currentCycle, chartDirectory, chartFileName);
+        final String chartPathText = chartPath.map(path -> path.toAbsolutePath().normalize().toString()).orElse("");
+        final Path summaryPath = chartDirectory.resolve(summaryFileName).toAbsolutePath().normalize();
+        final CurrentCycleSummary summary = currentCycle.summary().withChartPath(chartPathText);
+        final ElliottWaveBtcMacroCycleDemo.LivePresetReport report = new ElliottWaveBtcMacroCycleDemo.LivePresetReport(
+                series.getName(), series.getFirstBar().getEndTime().toString(),
+                series.getLastBar().getEndTime().toString(), profile.id(), profile.hypothesisId(), chartPathText,
+                summaryPath.toString(), summary);
+        saveSummary(report.toJson(), summaryPath, "live macro summary");
+        return new LivePresetExecution(currentCycle.withSummary(summary), report);
+    }
+
     static List<MacroLogicProfile> logicProfiles() {
         return List.of(
                 new MacroLogicProfile("orthodox-classical", "H0", "Classical Elliott constraints", 0,
@@ -360,6 +434,378 @@ public final class ElliottWaveMacroCycleDemo {
         final double lowerBound = Math.min(orthodoxLow, Math.min(orthodoxEqualWaveOne, orthodoxExtended));
         final double upperBound = Math.max(orthodoxLow, Math.max(orthodoxEqualWaveOne, orthodoxExtended));
         return formatPrice(lowerBound) + " to " + formatPrice(upperBound);
+    }
+
+    private static Optional<Path> saveLiveCurrentCycleChart(final BarSeries series,
+            final CurrentCycleAnalysis currentCycle, final Path chartDirectory, final String chartFileName) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(currentCycle, "currentCycle");
+        Objects.requireNonNull(chartDirectory, "chartDirectory");
+        Objects.requireNonNull(chartFileName, "chartFileName");
+        if (currentCycle.primaryFit() == null) {
+            return Optional.empty();
+        }
+
+        final ChartWorkflow chartWorkflow = new ChartWorkflow(chartDirectory.toString());
+        final JFreeChart chart = renderLiveCurrentCycleChart(series, currentCycle);
+        return chartWorkflow.saveChartImage(chart, series, chartFileName,
+                ElliottWaveBtcMacroCycleDemo.DEFAULT_CHART_WIDTH, ElliottWaveBtcMacroCycleDemo.DEFAULT_CHART_HEIGHT);
+    }
+
+    private static LivePresetLegacyView generateLivePresetLegacyView(final BarSeries series,
+            final String scenarioSeriesToken, final CurrentCycleAnalysis currentCycle,
+            final ElliottWaveBtcMacroCycleDemo.LivePresetReport report, final Path chartDirectory) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(scenarioSeriesToken, "scenarioSeriesToken");
+        Objects.requireNonNull(currentCycle, "currentCycle");
+        Objects.requireNonNull(report, "report");
+        Objects.requireNonNull(chartDirectory, "chartDirectory");
+
+        final List<ElliottWaveAnalysisResult.CurrentCycleCandidate> displayCandidates = currentCycle
+                .displayCandidates();
+        final List<LivePresetScenarioView> scenarioViews = buildLivePresetScenarioViews(scenarioSeriesToken,
+                displayCandidates);
+        saveLegacyCompatibleScenarioCharts(series, scenarioViews, chartDirectory, ElliottDegree.CYCLE);
+        return new LivePresetLegacyView(report, scenarioViews);
+    }
+
+    private static List<LivePresetScenarioView> buildLivePresetScenarioViews(final String seriesToken,
+            final List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates) {
+        if (candidates.isEmpty()) {
+            return List.of();
+        }
+
+        final double totalScore = candidates.stream()
+                .mapToDouble(ElliottWaveAnalysisResult.CurrentCycleCandidate::totalScore)
+                .sum();
+        final List<LivePresetScenarioView> scenarioViews = new ArrayList<>(candidates.size());
+        for (int index = 0; index < candidates.size(); index++) {
+            final ElliottWaveAnalysisResult.CurrentCycleCandidate candidate = candidates.get(index);
+            final double probability = totalScore <= ElliottWaveBtcMacroCycleDemo.EPSILON ? 0.0
+                    : candidate.totalScore() / totalScore;
+            final String label = index == 0 ? "BASE CASE" : "ALTERNATIVE " + index;
+            final String fileName = index == 0 ? livePresetChartBaseCaseFileName(seriesToken)
+                    : livePresetChartAlternativeFileName(seriesToken, index);
+            scenarioViews.add(new LivePresetScenarioView(label, fileName, probability, candidate));
+        }
+        return List.copyOf(scenarioViews);
+    }
+
+    private static void saveLegacyCompatibleScenarioCharts(final BarSeries series,
+            final List<LivePresetScenarioView> scenarioViews, final Path chartDirectory, final ElliottDegree degree) {
+        if (scenarioViews.isEmpty()) {
+            return;
+        }
+
+        final ChartWorkflow chartWorkflow = new ChartWorkflow(chartDirectory.toString());
+        final boolean isHeadless = GraphicsEnvironment.isHeadless();
+        final String trendLabel = formatLegacyTrendLabel(scenarioViews);
+        for (final LivePresetScenarioView scenarioView : scenarioViews) {
+            final ChartPlan plan = buildLegacyCompatibleLiveScenarioPlan(series, scenarioView, trendLabel, degree);
+            if (!isHeadless) {
+                chartWorkflow.display(plan, buildLegacyScenarioWindowTitle(degree, trendLabel, scenarioView.label(),
+                        scenarioView.candidate().fit().scenario(), series.getName()));
+            }
+            chartWorkflow.save(plan, scenarioView.fileName(), ElliottWaveBtcMacroCycleDemo.DEFAULT_CHART_WIDTH,
+                    ElliottWaveBtcMacroCycleDemo.DEFAULT_CHART_HEIGHT);
+        }
+    }
+
+    private static String formatLegacyTrendLabel(final List<LivePresetScenarioView> scenarioViews) {
+        if (scenarioViews.isEmpty()) {
+            return "TREND: UNKNOWN";
+        }
+
+        final long bullishCount = scenarioViews.stream()
+                .filter(view -> view.candidate().fit().scenario().hasKnownDirection())
+                .filter(view -> view.candidate().fit().scenario().isBullish())
+                .count();
+        final long bearishCount = scenarioViews.stream()
+                .filter(view -> view.candidate().fit().scenario().hasKnownDirection())
+                .filter(view -> !view.candidate().fit().scenario().isBullish())
+                .count();
+        if (bullishCount == bearishCount) {
+            return "TREND: NEUTRAL";
+        }
+        return bullishCount > bearishCount ? "TREND: BULLISH" : "TREND: BEARISH";
+    }
+
+    private static ChartPlan buildLegacyCompatibleLiveScenarioPlan(final BarSeries series,
+            final LivePresetScenarioView scenarioView, final String trendLabel, final ElliottDegree degree) {
+        final ElliottWaveAnalysisResult.CurrentPhaseAssessment fit = scenarioView.candidate().fit();
+        final Color scenarioColor = fit.scenario().isBullish() ? ElliottWaveBtcMacroCycleDemo.BULLISH_WAVE_COLOR
+                : ElliottWaveBtcMacroCycleDemo.BEARISH_WAVE_COLOR;
+        final BarSeriesLabelIndicator labels = new BarSeriesLabelIndicator(series,
+                buildWaveLabelsFromScenario(series, fit.scenario(), scenarioColor));
+        final FixedIndicator<Num> scenarioPath = buildScenarioIndicator(series, fit.scenario(), fit.countLabel());
+        final ChartWorkflow chartWorkflow = new ChartWorkflow();
+        return chartWorkflow.builder()
+                .withTitle(buildLegacyScenarioTitle(degree, series, trendLabel, scenarioView.label(), fit.scenario()))
+                .withSeries(series)
+                .withIndicatorOverlay(scenarioPath)
+                .withLineColor(scenarioColor)
+                .withLineWidth(2.4f)
+                .withOpacity(0.90f)
+                .withLabel(fit.countLabel())
+                .withIndicatorOverlay(labels)
+                .withLineColor(Color.WHITE)
+                .withLineWidth(2.2f)
+                .withOpacity(0.95f)
+                .withLabel("Wave pivots")
+                .toPlan();
+    }
+
+    private static void logLegacyCompatibleLivePreset(final LivePresetLegacyView legacyView) {
+        Objects.requireNonNull(legacyView, "legacyView");
+
+        final ElliottWaveBtcMacroCycleDemo.LivePresetReport report = legacyView.report();
+        final CurrentCycleSummary summary = report.currentCycle();
+        final List<LivePresetScenarioView> scenarioViews = legacyView.scenarioViews();
+
+        LOG.info("=== Elliott Wave Scenario Analysis ===");
+        LOG.info("Scenario summary: {}", summarizeLegacyScenarioViews(scenarioViews));
+        LOG.info("Strong consensus: {} | Consensus phase: {}", hasStrongConsensus(scenarioViews),
+                consensusPhase(scenarioViews).map(Enum::name).orElse("NONE"));
+        LOG.info("Trend bias: {}", formatLegacyTrendLabel(scenarioViews));
+        LOG.info("Historical status: {}", summary.historicalStatus());
+        if (!scenarioViews.isEmpty()) {
+            final LivePresetScenarioView baseCase = scenarioViews.getFirst();
+            final ElliottWaveAnalysisResult.CurrentPhaseAssessment fit = baseCase.candidate().fit();
+            final ElliottScenario scenario = fit.scenario();
+            final ElliottConfidence confidence = scenario.confidence();
+            LOG.info("BASE CASE SCENARIO: {} ({})", scenario.currentPhase(), scenario.type());
+            LOG.info("  Overall confidence: {}% ({})",
+                    String.format(java.util.Locale.ROOT, "%.1f", confidence.asPercentage()),
+                    confidence.isHighConfidence() ? "HIGH" : confidence.isLowConfidence() ? "LOW" : "MEDIUM");
+            LOG.info("  Scenario probability: raw={}%, calibrated={}%",
+                    String.format(java.util.Locale.ROOT, "%.1f", baseCase.probability() * 100.0),
+                    String.format(java.util.Locale.ROOT, "%.1f", baseCase.probability() * 100.0));
+            LOG.info("  Factor scores: Fibonacci={}% | Time={}% | Alternation={}% | Channel={}% | Completeness={}%",
+                    String.format(java.util.Locale.ROOT, "%.1f",
+                            safeConfidenceScore(confidence.fibonacciScore()) * 100.0),
+                    String.format(java.util.Locale.ROOT, "%.1f",
+                            safeConfidenceScore(confidence.timeProportionScore()) * 100.0),
+                    String.format(java.util.Locale.ROOT, "%.1f",
+                            safeConfidenceScore(confidence.alternationScore()) * 100.0),
+                    String.format(java.util.Locale.ROOT, "%.1f",
+                            safeConfidenceScore(confidence.channelScore()) * 100.0),
+                    String.format(java.util.Locale.ROOT, "%.1f",
+                            safeConfidenceScore(confidence.completenessScore()) * 100.0));
+            LOG.info("  Primary reason: {}", confidence.primaryReason());
+            LOG.info("  Weakest factor: {}", confidence.weakestFactor());
+            LOG.info("  Direction: {} | Phase invalidation: {} | Structural invalidation: {} | Target: {}",
+                    scenario.hasKnownDirection() ? (scenario.isBullish() ? "BULLISH" : "BEARISH") : "UNKNOWN",
+                    formatInvalidationCondition(scenario, fit.phaseInvalidationPrice()),
+                    formatInvalidationCondition(scenario, fit.invalidationPrice()), scenario.primaryTarget());
+        }
+
+        if (scenarioViews.size() > 1) {
+            LOG.info("ALTERNATIVE SCENARIOS ({}):", scenarioViews.size() - 1);
+            for (int index = 1; index < scenarioViews.size(); index++) {
+                final LivePresetScenarioView alternative = scenarioViews.get(index);
+                final ElliottScenario scenario = alternative.candidate().fit().scenario();
+                LOG.info("  {}. {} ({}) - {}% confidence | raw={}%, calibrated={}%", index, scenario.currentPhase(),
+                        scenario.type(),
+                        String.format(java.util.Locale.ROOT, "%.1f", scenario.confidence().asPercentage()),
+                        String.format(java.util.Locale.ROOT, "%.1f", alternative.probability() * 100.0),
+                        String.format(java.util.Locale.ROOT, "%.1f", alternative.probability() * 100.0));
+            }
+        }
+        LOG.info(
+                "Current macro read: primary={} | alternate={} | currentWave={} | phase invalidation {} | structural invalidation {} | orthodox wave5 target {}",
+                summary.primaryCount(), summary.alternateCount(), summary.currentWave(), summary.invalidationPrice(),
+                summary.structuralInvalidationPrice(), summary.orthodoxWaveFiveTargetRange());
+        LOG.info("Macro summary JSON: {}", report.summaryPath());
+        LOG.info("Macro current-cycle chart: {}", report.chartPath());
+        LOG.info("======================================");
+    }
+
+    private static String summarizeLegacyScenarioViews(final List<LivePresetScenarioView> scenarioViews) {
+        if (scenarioViews.isEmpty()) {
+            return "No scenarios";
+        }
+        final LivePresetScenarioView baseCase = scenarioViews.getFirst();
+        final StringBuilder summary = new StringBuilder();
+        summary.append(scenarioViews.size())
+                .append(" scenario(s): Base case=")
+                .append(baseCase.candidate().fit().scenario().currentPhase())
+                .append(" (")
+                .append(String.format(java.util.Locale.ROOT, "%.1f%%",
+                        baseCase.candidate().fit().scenario().confidence().asPercentage()))
+                .append(")");
+        if (scenarioViews.size() > 1) {
+            summary.append(", ").append(scenarioViews.size() - 1).append(" alternative(s)");
+        }
+        consensusPhase(scenarioViews).ifPresent(phase -> summary.append(", consensus=").append(phase));
+        return summary.toString();
+    }
+
+    private static boolean hasStrongConsensus(final List<LivePresetScenarioView> scenarioViews) {
+        if (scenarioViews.isEmpty()) {
+            return false;
+        }
+        if (scenarioViews.size() == 1) {
+            return true;
+        }
+        final double spread = scenarioViews.getFirst().probability() - scenarioViews.get(1).probability();
+        return spread >= 0.08;
+    }
+
+    private static Optional<ElliottPhase> consensusPhase(final List<LivePresetScenarioView> scenarioViews) {
+        if (scenarioViews.isEmpty()) {
+            return Optional.empty();
+        }
+
+        final Map<ElliottPhase, Double> phaseWeights = new LinkedHashMap<>();
+        for (final LivePresetScenarioView scenarioView : scenarioViews) {
+            final ElliottScenario scenario = scenarioView.candidate().fit().scenario();
+            phaseWeights.merge(scenario.currentPhase(), scenarioView.probability(), Double::sum);
+        }
+        final Map.Entry<ElliottPhase, Double> bestPhase = phaseWeights.entrySet()
+                .stream()
+                .max(Map.Entry.comparingByValue())
+                .orElse(null);
+        if (bestPhase == null || bestPhase.getValue() < 0.60) {
+            return Optional.empty();
+        }
+        return Optional.of(bestPhase.getKey());
+    }
+
+    private static String buildLegacyScenarioTitle(final ElliottDegree degree, final BarSeries series,
+            final String trendLabel, final String scenarioLabel, final ElliottScenario scenario) {
+        return String.format(java.util.Locale.ROOT, "Elliott Wave (%s) - %s - %s - %s: %s (%s) - %.1f%% confidence",
+                degree, series.getName(), trendLabel, scenarioLabel, scenario.currentPhase(), scenario.type(),
+                scenario.confidence().asPercentage());
+    }
+
+    private static String buildLegacyScenarioWindowTitle(final ElliottDegree degree, final String trendLabel,
+            final String scenarioLabel, final ElliottScenario scenario, final String seriesName) {
+        return String.format(java.util.Locale.ROOT, "%s - %s - %s: %s (%s) - %.1f%% - %s", degree, trendLabel,
+                scenarioLabel, scenario.currentPhase(), scenario.type(), scenario.confidence().asPercentage(),
+                seriesName);
+    }
+
+    private static String livePresetChartBaseCaseFileName(final String seriesToken) {
+        return "elliott-wave-analysis-" + seriesToken + "-cycle-base-case";
+    }
+
+    private static String livePresetChartAlternativeFileName(final String seriesToken, final int alternativeIndex) {
+        return "elliott-wave-analysis-" + seriesToken + "-cycle-alternative-" + alternativeIndex;
+    }
+
+    private static String liveCurrentCycleChartFileName(final String seriesToken) {
+        return "elliott-wave-" + seriesToken + "-live-macro-current-cycle";
+    }
+
+    private static String liveSummaryFileName(final String seriesToken) {
+        return "elliott-wave-" + seriesToken + "-live-macro-current-cycle-summary.json";
+    }
+
+    private static String scenarioSeriesName(final BarSeries series) {
+        final String rawName = series == null || series.getName() == null ? "series" : series.getName().trim();
+        final String normalized = rawName.isEmpty() ? "series"
+                : rawName.toLowerCase(java.util.Locale.ROOT)
+                        .replaceAll("[^a-z0-9]+", "-")
+                        .replaceAll("^-+", "")
+                        .replaceAll("-+$", "");
+        return normalized.isBlank() ? "series" : normalized;
+    }
+
+    private static JFreeChart renderLiveCurrentCycleChart(final BarSeries series,
+            final CurrentCycleAnalysis currentCycle) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(currentCycle, "currentCycle");
+
+        final ChartWorkflow chartWorkflow = new ChartWorkflow();
+        final ElliottWaveAnalysisResult.CurrentPhaseAssessment primaryFit = currentCycle.primaryFit();
+        final ElliottWaveAnalysisResult.CurrentPhaseAssessment alternateFit = currentCycle.alternateFit();
+        final BarSeriesLabelIndicator primaryLabels = primaryFit == null
+                ? new BarSeriesLabelIndicator(series, List.of())
+                : new BarSeriesLabelIndicator(series, buildWaveLabelsFromScenario(series, primaryFit.scenario(),
+                        ElliottWaveBtcMacroCycleDemo.BULLISH_WAVE_COLOR));
+        final FixedIndicator<Num> primaryPath = primaryFit == null
+                ? emptyScenarioIndicator(series, currentCycle.summary().primaryCount())
+                : buildScenarioIndicator(series, primaryFit.scenario(), currentCycle.summary().primaryCount());
+        final FixedIndicator<Num> alternatePath = alternateFit == null
+                ? emptyScenarioIndicator(series, currentCycle.summary().alternateCount())
+                : buildScenarioIndicator(series, alternateFit.scenario(), currentCycle.summary().alternateCount());
+
+        final String chartTitle = series.getName() + " live macro current cycle";
+        final ChartPlan plan;
+        if (alternateFit != null && !currentCycle.summary().alternateCount().isBlank()) {
+            plan = chartWorkflow.builder()
+                    .withTitle(chartTitle)
+                    .withSeries(series)
+                    .withIndicatorOverlay(primaryPath)
+                    .withLineColor(ElliottWaveBtcMacroCycleDemo.BULLISH_WAVE_COLOR)
+                    .withLineWidth(3.0f)
+                    .withOpacity(0.82f)
+                    .withLabel(currentCycle.summary().primaryCount())
+                    .withIndicatorOverlay(alternatePath)
+                    .withLineColor(ElliottWaveBtcMacroCycleDemo.BULLISH_CANDIDATE_COLOR)
+                    .withLineWidth(2.0f)
+                    .withOpacity(0.55f)
+                    .withLabel(currentCycle.summary().alternateCount())
+                    .withIndicatorOverlay(primaryLabels)
+                    .withLineColor(ElliottWaveBtcMacroCycleDemo.BULLISH_WAVE_COLOR)
+                    .withLineWidth(2.2f)
+                    .withOpacity(0.95f)
+                    .withLabel("Current wave labels")
+                    .toPlan();
+        } else {
+            plan = chartWorkflow.builder()
+                    .withTitle(chartTitle)
+                    .withSeries(series)
+                    .withIndicatorOverlay(primaryPath)
+                    .withLineColor(ElliottWaveBtcMacroCycleDemo.BULLISH_WAVE_COLOR)
+                    .withLineWidth(3.0f)
+                    .withOpacity(0.82f)
+                    .withLabel(currentCycle.summary().primaryCount())
+                    .withIndicatorOverlay(primaryLabels)
+                    .withLineColor(ElliottWaveBtcMacroCycleDemo.BULLISH_WAVE_COLOR)
+                    .withLineWidth(2.2f)
+                    .withOpacity(0.95f)
+                    .withLabel("Current wave labels")
+                    .toPlan();
+        }
+        final JFreeChart chart = chartWorkflow.render(plan);
+        applyLogPriceAxis(chart, series);
+        return chart;
+    }
+
+    private static double safeConfidenceScore(final double score) {
+        return Double.isFinite(score) ? clamp(score, 0.0, 1.0) : 0.0;
+    }
+
+    private static double safeConfidenceScore(final Num score) {
+        if (score == null || score.isNaN()) {
+            return 0.0;
+        }
+        return safeConfidenceScore(score.doubleValue());
+    }
+
+    private static FixedIndicator<Num> buildScenarioIndicator(final BarSeries series, final ElliottScenario scenario,
+            final String label) {
+        final Num[] values = new Num[series.getEndIndex() + 1];
+        Arrays.fill(values, NaN);
+        applyScenarioPath(values, series, scenario);
+        return new FixedIndicator<>(series, values) {
+            @Override
+            public String toString() {
+                return label;
+            }
+        };
+    }
+
+    private static FixedIndicator<Num> emptyScenarioIndicator(final BarSeries series, final String label) {
+        final Num[] values = new Num[series.getEndIndex() + 1];
+        Arrays.fill(values, NaN);
+        return new FixedIndicator<>(series, values) {
+            @Override
+            public String toString() {
+                return label;
+            }
+        };
     }
 
     static void applyLogPriceAxis(final JFreeChart chart, final BarSeries series) {
@@ -905,6 +1351,34 @@ public final class ElliottWaveMacroCycleDemo {
             Files.writeString(summaryPath, json);
         } catch (final IOException exception) {
             throw new IllegalStateException("Unable to write " + description + " " + summaryPath, exception);
+        }
+    }
+
+    private record LivePresetExecution(CurrentCycleAnalysis currentCycle,
+            ElliottWaveBtcMacroCycleDemo.LivePresetReport report) {
+
+        LivePresetExecution {
+            Objects.requireNonNull(currentCycle, "currentCycle");
+            Objects.requireNonNull(report, "report");
+        }
+    }
+
+    private record LivePresetLegacyView(ElliottWaveBtcMacroCycleDemo.LivePresetReport report,
+            List<LivePresetScenarioView> scenarioViews) {
+
+        LivePresetLegacyView {
+            Objects.requireNonNull(report, "report");
+            scenarioViews = scenarioViews == null ? List.of() : List.copyOf(scenarioViews);
+        }
+    }
+
+    private record LivePresetScenarioView(String label, String fileName, double probability,
+            ElliottWaveAnalysisResult.CurrentCycleCandidate candidate) {
+
+        LivePresetScenarioView {
+            Objects.requireNonNull(label, "label");
+            Objects.requireNonNull(fileName, "fileName");
+            Objects.requireNonNull(candidate, "candidate");
         }
     }
 }
