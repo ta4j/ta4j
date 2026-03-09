@@ -136,6 +136,28 @@ class ElliottWaveAnalysisResultTest {
                 Boolean.TRUE, 1)).map(assessment -> assessment.scenario().id()).contains("dominant-wave1");
     }
 
+    @Test
+    void rankedBaseScenariosForWindow_shouldPreferDominantCorrectivePivotScenario() {
+        BarSeries series = anchoredCorrectiveWindowSeries();
+        ElliottScenario nonDominant = scenario("non-dominant-waveC", 0.88, ElliottPhase.CORRECTIVE_C,
+                ScenarioType.CORRECTIVE_ZIGZAG, false, swing(series, 0, 2, 112, 68), swing(series, 2, 5, 68, 110),
+                swing(series, 5, 6, 110, 72));
+        ElliottScenario dominant = scenario("dominant-waveC", 0.90, ElliottPhase.CORRECTIVE_C,
+                ScenarioType.CORRECTIVE_ZIGZAG, false, swing(series, 0, 2, 112, 68), swing(series, 2, 4, 68, 114),
+                swing(series, 4, 6, 114, 72));
+        ElliottWaveAnalysisResult result = new ElliottWaveAnalysisResult(ElliottDegree.PRIMARY, List.of(),
+                List.of(new ElliottWaveAnalysisResult.BaseScenarioAssessment(nonDominant, 0.88, 0.70, 0.86, List.of()),
+                        new ElliottWaveAnalysisResult.BaseScenarioAssessment(dominant, 0.90, 0.70, 0.84, List.of())),
+                List.of());
+
+        assertThat(result.rankedBaseScenariosForWindow(series, 0, 6, ScenarioType.CORRECTIVE_ZIGZAG,
+                ElliottPhase.CORRECTIVE_C, 3, Boolean.FALSE, 2)).extracting(assessment -> assessment.scenario().id())
+                .containsExactly("dominant-waveC", "non-dominant-waveC");
+        assertThat(result.recommendedBaseScenarioForWindow(series, 0, 6, ScenarioType.CORRECTIVE_ZIGZAG,
+                ElliottPhase.CORRECTIVE_C, 3, Boolean.FALSE, 2)).map(assessment -> assessment.scenario().id())
+                .contains("dominant-waveC");
+    }
+
     private static ElliottAnalysisResult analysisResult() {
         ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(scenario()), 0);
         return new ElliottAnalysisResult(ElliottDegree.PRIMARY, 0, List.of(), List.of(), scenarios, Map.of(), null,
@@ -233,6 +255,18 @@ class ElliottWaveAnalysisResultTest {
         addBar(series, "2024-01-02T00:00:00Z", 100, 120, 100, 118);
         addBar(series, "2024-01-03T00:00:00Z", 118, 130, 117, 128);
         addBar(series, "2024-01-04T00:00:00Z", 128, 129, 110, 112);
+        return series;
+    }
+
+    private static BarSeries anchoredCorrectiveWindowSeries() {
+        BarSeries series = new BaseBarSeriesBuilder().withName("anchored-corrective-window").build();
+        addBar(series, "2024-01-01T00:00:00Z", 102, 112, 100, 106);
+        addBar(series, "2024-01-02T00:00:00Z", 106, 106, 94, 96);
+        addBar(series, "2024-01-03T00:00:00Z", 96, 95, 65, 70);
+        addBar(series, "2024-01-04T00:00:00Z", 70, 101, 66, 100);
+        addBar(series, "2024-01-05T00:00:00Z", 100, 112, 72, 80);
+        addBar(series, "2024-01-06T00:00:00Z", 80, 110, 74, 78);
+        addBar(series, "2024-01-07T00:00:00Z", 78, 90, 60, 70);
         return series;
     }
 
