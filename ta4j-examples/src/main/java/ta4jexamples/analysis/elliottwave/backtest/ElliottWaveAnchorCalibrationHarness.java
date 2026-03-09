@@ -128,6 +128,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
         LOG.info("Promotion decision: selectedProfile={} promoteChallenger={} rationale={}",
                 report.decision().selectedProfileId(), report.decision().promoteChallenger(),
                 report.decision().rationale());
+        LOG.info("Historical calibration report\n{}", report.historicalCalibrationText());
         LOG.info("{}{}", RESULT_PREFIX, report.toJson());
     }
 
@@ -340,8 +341,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
             CycleWindowMatch lowMatch = bestCycleWindowMatch(runResult.snapshots(), splitsById, lowBounds,
                     lowAnchorIndex, cycle.partition() == ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT,
                     ElliottPhase.CORRECTIVE_C, false);
-            CycleSummary summary = CycleSummary.from(cycle, peakAnchorIndex, peakBounds, peakMatch, lowAnchorIndex,
-                    lowBounds, lowMatch);
+            CycleSummary summary = CycleSummary.from(series, cycle, peakAnchorIndex, peakBounds, peakMatch,
+                    lowAnchorIndex, lowBounds, lowMatch);
             if (cycle.partition() == ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT) {
                 holdoutCycles.add(summary);
             } else {
@@ -1020,13 +1021,15 @@ public final class ElliottWaveAnchorCalibrationHarness {
     /**
      * Per-cycle summary for a completed bottom-top-bottom BTC sequence.
      */
-    record CycleSummary(String cycleId, String startAnchorId, String peakAnchorId, String lowAnchorId,
+    record CycleSummary(String partition, String cycleId, String startAnchorId, String peakAnchorId, String lowAnchorId,
             String startTimeUtc, String peakTimeUtc, String lowTimeUtc, String provenance, int peakAnchorIndex,
             int peakWindowStartIndex, int peakWindowEndIndex, int topBestRank, int topDecisionIndex,
-            int topDistanceBars, int lowAnchorIndex, int lowWindowStartIndex, int lowWindowEndIndex, int lowBestRank,
-            int lowDecisionIndex, int lowDistanceBars, boolean orderedTop1Hit, boolean orderedTop3Hit) {
+            String topDecisionTimeUtc, int topDistanceBars, int lowAnchorIndex, int lowWindowStartIndex,
+            int lowWindowEndIndex, int lowBestRank, int lowDecisionIndex, String lowDecisionTimeUtc,
+            int lowDistanceBars, boolean orderedTop1Hit, boolean orderedTop3Hit) {
 
         CycleSummary {
+            Objects.requireNonNull(partition, "partition");
             Objects.requireNonNull(cycleId, "cycleId");
             Objects.requireNonNull(startAnchorId, "startAnchorId");
             Objects.requireNonNull(peakAnchorId, "peakAnchorId");
@@ -1037,12 +1040,14 @@ public final class ElliottWaveAnchorCalibrationHarness {
             Objects.requireNonNull(provenance, "provenance");
         }
 
-        static CycleSummary from(CycleTriplet cycle, int peakAnchorIndex, WindowBounds peakBounds,
+        static CycleSummary from(BarSeries series, CycleTriplet cycle, int peakAnchorIndex, WindowBounds peakBounds,
                 CycleWindowMatch topMatch, int lowAnchorIndex, WindowBounds lowBounds, CycleWindowMatch lowMatch) {
             int topBestRank = topMatch == null ? 0 : topMatch.bestRank();
             int lowBestRank = lowMatch == null ? 0 : lowMatch.bestRank();
             int topDecisionIndex = topMatch == null ? -1 : topMatch.decisionIndex();
             int lowDecisionIndex = lowMatch == null ? -1 : lowMatch.decisionIndex();
+            String topDecisionTimeUtc = decisionTimeUtc(series, topDecisionIndex);
+            String lowDecisionTimeUtc = decisionTimeUtc(series, lowDecisionIndex);
             int topDistanceBars = topMatch == null ? -1 : topMatch.distanceBars();
             int lowDistanceBars = lowMatch == null ? -1 : lowMatch.distanceBars();
             boolean ordered = topDecisionIndex >= 0 && lowDecisionIndex >= 0 && topDecisionIndex < lowDecisionIndex;
@@ -1051,12 +1056,134 @@ public final class ElliottWaveAnchorCalibrationHarness {
             boolean orderedTop1Hit = ordered && topBestRank == 1 && lowBestRank == 1;
             String provenance = cycle.start().provenance() + " | " + cycle.peak().provenance() + " | "
                     + cycle.low().provenance();
-            return new CycleSummary(cycle.id(), cycle.start().id(), cycle.peak().id(), cycle.low().id(),
-                    UTC_TIME.format(cycle.start().at()), UTC_TIME.format(cycle.peak().at()),
-                    UTC_TIME.format(cycle.low().at()), provenance, peakAnchorIndex, peakBounds.startIndex(),
-                    peakBounds.endIndex(), topBestRank, topDecisionIndex, topDistanceBars, lowAnchorIndex,
-                    lowBounds.startIndex(), lowBounds.endIndex(), lowBestRank, lowDecisionIndex, lowDistanceBars,
-                    orderedTop1Hit, orderedTop3Hit);
+            return new CycleSummary(cycle.partition().name().toLowerCase(), cycle.id(), cycle.start().id(),
+                    cycle.peak().id(), cycle.low().id(), UTC_TIME.format(cycle.start().at()),
+                    UTC_TIME.format(cycle.peak().at()), UTC_TIME.format(cycle.low().at()), provenance, peakAnchorIndex,
+                    peakBounds.startIndex(), peakBounds.endIndex(), topBestRank, topDecisionIndex, topDecisionTimeUtc,
+                    topDistanceBars, lowAnchorIndex, lowBounds.startIndex(), lowBounds.endIndex(), lowBestRank,
+                    lowDecisionIndex, lowDecisionTimeUtc, lowDistanceBars, orderedTop1Hit, orderedTop3Hit);
+        }
+
+        private static String decisionTimeUtc(BarSeries series, int decisionIndex) {
+            if (decisionIndex < series.getBeginIndex() || decisionIndex > series.getEndIndex()) {
+                return "";
+            }
+            return UTC_TIME.format(series.getBar(decisionIndex).getEndTime());
+        }
+    }
+
+    /**
+     * Human-oriented historical calibration view over the selected candidate's
+     * completed BTC cycles.
+     */
+    record HistoricalCalibrationReport(String profileId, int cycleCount, int matchedPeakCount, int matchedLowCount,
+            int orderedTop1HitCount, int orderedTop3HitCount, List<HistoricalCycleCalibration> cycles) {
+
+        HistoricalCalibrationReport {
+            Objects.requireNonNull(profileId, "profileId");
+            cycles = cycles == null ? List.of() : List.copyOf(cycles);
+        }
+
+        static HistoricalCalibrationReport from(CandidateEvaluation evaluation) {
+            List<HistoricalCycleCalibration> cycles = new ArrayList<>();
+            cycles.addAll(
+                    evaluation.cycles().validation().cycles().stream().map(HistoricalCycleCalibration::from).toList());
+            cycles.addAll(
+                    evaluation.cycles().holdout().cycles().stream().map(HistoricalCycleCalibration::from).toList());
+
+            int matchedPeakCount = 0;
+            int matchedLowCount = 0;
+            int orderedTop1HitCount = 0;
+            int orderedTop3HitCount = 0;
+            for (HistoricalCycleCalibration cycle : cycles) {
+                if (cycle.peakMatched()) {
+                    matchedPeakCount++;
+                }
+                if (cycle.lowMatched()) {
+                    matchedLowCount++;
+                }
+                if (cycle.orderedTop1Hit()) {
+                    orderedTop1HitCount++;
+                }
+                if (cycle.orderedTop3Hit()) {
+                    orderedTop3HitCount++;
+                }
+            }
+            return new HistoricalCalibrationReport(evaluation.profile().id(), cycles.size(), matchedPeakCount,
+                    matchedLowCount, orderedTop1HitCount, orderedTop3HitCount, cycles);
+        }
+
+        String toText() {
+            StringBuilder builder = new StringBuilder();
+            builder.append("profile=").append(profileId).append(System.lineSeparator());
+            builder.append("cycles=")
+                    .append(cycleCount)
+                    .append(", matchedPeaks=")
+                    .append(matchedPeakCount)
+                    .append(", matchedLows=")
+                    .append(matchedLowCount)
+                    .append(", orderedTop1=")
+                    .append(orderedTop1HitCount)
+                    .append(", orderedTop3=")
+                    .append(orderedTop3HitCount)
+                    .append(System.lineSeparator());
+            for (HistoricalCycleCalibration cycle : cycles) {
+                builder.append(cycle.partition())
+                        .append(" ")
+                        .append(cycle.cycleId())
+                        .append(": peak ")
+                        .append(cycle.peakAnchorId())
+                        .append(" expected ")
+                        .append(cycle.expectedPeakTimeUtc())
+                        .append(" matched ")
+                        .append(cycle.peakMatchedTimeUtc().isBlank() ? "none" : cycle.peakMatchedTimeUtc())
+                        .append(" rank=")
+                        .append(cycle.peakBestRank())
+                        .append(" deltaBars=")
+                        .append(cycle.peakDistanceBars())
+                        .append(" | low ")
+                        .append(cycle.lowAnchorId())
+                        .append(" expected ")
+                        .append(cycle.expectedLowTimeUtc())
+                        .append(" matched ")
+                        .append(cycle.lowMatchedTimeUtc().isBlank() ? "none" : cycle.lowMatchedTimeUtc())
+                        .append(" rank=")
+                        .append(cycle.lowBestRank())
+                        .append(" deltaBars=")
+                        .append(cycle.lowDistanceBars())
+                        .append(System.lineSeparator());
+            }
+            return builder.toString().trim();
+        }
+    }
+
+    /**
+     * One completed historical BTC cycle expressed as expected versus matched
+     * walk-forward decisions.
+     */
+    record HistoricalCycleCalibration(String partition, String cycleId, String startAnchorId, String peakAnchorId,
+            String lowAnchorId, String expectedPeakTimeUtc, String peakMatchedTimeUtc, int peakBestRank,
+            int peakDistanceBars, boolean peakMatched, String expectedLowTimeUtc, String lowMatchedTimeUtc,
+            int lowBestRank, int lowDistanceBars, boolean lowMatched, boolean orderedTop1Hit, boolean orderedTop3Hit) {
+
+        HistoricalCycleCalibration {
+            Objects.requireNonNull(partition, "partition");
+            Objects.requireNonNull(cycleId, "cycleId");
+            Objects.requireNonNull(startAnchorId, "startAnchorId");
+            Objects.requireNonNull(peakAnchorId, "peakAnchorId");
+            Objects.requireNonNull(lowAnchorId, "lowAnchorId");
+            Objects.requireNonNull(expectedPeakTimeUtc, "expectedPeakTimeUtc");
+            Objects.requireNonNull(peakMatchedTimeUtc, "peakMatchedTimeUtc");
+            Objects.requireNonNull(expectedLowTimeUtc, "expectedLowTimeUtc");
+            Objects.requireNonNull(lowMatchedTimeUtc, "lowMatchedTimeUtc");
+        }
+
+        static HistoricalCycleCalibration from(CycleSummary cycle) {
+            return new HistoricalCycleCalibration(cycle.partition(), cycle.cycleId(), cycle.startAnchorId(),
+                    cycle.peakAnchorId(), cycle.lowAnchorId(), cycle.peakTimeUtc(), cycle.topDecisionTimeUtc(),
+                    cycle.topBestRank(), cycle.topDistanceBars(), cycle.topBestRank() > 0, cycle.lowTimeUtc(),
+                    cycle.lowDecisionTimeUtc(), cycle.lowBestRank(), cycle.lowDistanceBars(), cycle.lowBestRank() > 0,
+                    cycle.orderedTop1Hit(), cycle.orderedTop3Hit());
         }
     }
 
@@ -1235,6 +1362,25 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
         String toJson() {
             return GSON.toJson(this);
+        }
+
+        HistoricalCalibrationReport selectedHistoricalCalibration() {
+            return HistoricalCalibrationReport.from(selectedEvaluation());
+        }
+
+        String historicalCalibrationText() {
+            return selectedHistoricalCalibration().toText();
+        }
+
+        private CandidateEvaluation selectedEvaluation() {
+            if (decision.promoteChallenger()) {
+                for (ChallengerAssessment assessment : challengerAssessments) {
+                    if (assessment.evaluation().profile().id().equals(decision.selectedProfileId())) {
+                        return assessment.evaluation();
+                    }
+                }
+            }
+            return baselineEvaluation;
         }
     }
 

@@ -323,11 +323,14 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         assertEquals(1.0, cycles.holdout().orderedTop3HitRate(), 1.0e-10);
 
         ElliottWaveAnchorCalibrationHarness.CycleSummary summary = cycles.holdout().cycles().getFirst();
+        assertEquals("holdout", summary.partition());
         assertEquals("cycle-start->cycle-peak->cycle-low", summary.cycleId());
         assertEquals(1, summary.topBestRank());
         assertEquals(2, summary.lowBestRank());
         assertEquals(2, summary.topDecisionIndex());
         assertEquals(4, summary.lowDecisionIndex());
+        assertEquals(series.getBar(2).getEndTime().toString(), summary.topDecisionTimeUtc());
+        assertEquals(series.getBar(4).getEndTime().toString(), summary.lowDecisionTimeUtc());
         assertTrue(summary.orderedTop3Hit());
         assertFalse(summary.orderedTop1Hit());
     }
@@ -577,6 +580,62 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         String json = report.toJson();
         assertFalse(json.contains("NaN"));
         assertFalse(json.contains("Infinity"));
+    }
+
+    @Test
+    void reportBundleExposesHistoricalCalibrationWithMatchedTimesAndBarDeltas() {
+        BarSeries series = syntheticSeries();
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
+                "synthetic-v1", "synthetic-btc.json", "synthetic provenance",
+                List.of(anchor("cycle-start", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                        series.getBar(1).getEndTime(), Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.CORRECTIVE_C),
+                        ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "cycle start"),
+                        anchor("cycle-peak", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
+                                series.getBar(2).getEndTime(), Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.WAVE5),
+                                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "cycle peak"),
+                        anchor("cycle-low", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                                series.getBar(4).getEndTime(), Duration.ZERO, Duration.ZERO,
+                                Set.of(ElliottPhase.CORRECTIVE_C), ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT,
+                                "cycle low")));
+        ElliottWaveAnchorCalibrationHarness.CyclePartitions cycles = ElliottWaveAnchorCalibrationHarness
+                .summarizeCycles(series, registry, syntheticRunResult(series));
+        ElliottWaveAnchorCalibrationHarness.CandidateProfile profile = ElliottWaveAnchorCalibrationHarness.CandidateProfile
+                .baselineProfile();
+        int horizon = org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardProfiles.baselineConfig()
+                .primaryHorizonBars();
+        WalkForwardExperimentManifest manifest = new WalkForwardExperimentManifest("synthetic-btc", profile.id(),
+                "cfg-hash", 42L, Map.of("profile", profile.id()));
+        ElliottWaveAnchorCalibrationHarness.CandidateEvaluation evaluation = new ElliottWaveAnchorCalibrationHarness.CandidateEvaluation(
+                profile, manifest, horizon, Map.of(horizon, ElliottWaveAnchorCalibrationHarness.MetricSnapshot.empty()),
+                new ElliottWaveAnchorCalibrationHarness.AnchorPartitions(
+                        new ElliottWaveAnchorCalibrationHarness.AnchorAggregate(0, 0, Double.NaN, Double.NaN, Map.of(),
+                                List.of()),
+                        new ElliottWaveAnchorCalibrationHarness.AnchorAggregate(0, 0, Double.NaN, Double.NaN, Map.of(),
+                                List.of()),
+                        Double.NaN),
+                cycles, profile.id() + "|cfg=cfg-hash", "artifact-" + profile.id());
+        ElliottWaveAnchorCalibrationHarness.BaselinePolicy baselinePolicy = new ElliottWaveAnchorCalibrationHarness.BaselinePolicy(
+                "synthetic-btc.json", horizon, List.of(1), "cfg-hash", profile.id());
+        ElliottWaveAnchorCalibrationHarness.ReportBundle report = ElliottWaveAnchorCalibrationHarness.ReportBundle
+                .create("synthetic-report", Instant.parse("2025-10-28T00:00:00Z"), registry, baselinePolicy, evaluation,
+                        List.of(), ElliottWaveAnchorCalibrationHarness.PromotionDecision.from(evaluation, List.of()),
+                        List.of());
+
+        ElliottWaveAnchorCalibrationHarness.HistoricalCalibrationReport calibration = report
+                .selectedHistoricalCalibration();
+
+        assertEquals(profile.id(), calibration.profileId());
+        assertEquals(1, calibration.cycleCount());
+        assertEquals(1, calibration.matchedPeakCount());
+        assertEquals(1, calibration.matchedLowCount());
+        assertEquals(0, calibration.orderedTop1HitCount());
+        assertEquals(1, calibration.orderedTop3HitCount());
+        assertEquals("cycle-start->cycle-peak->cycle-low", calibration.cycles().getFirst().cycleId());
+        assertEquals(series.getBar(2).getEndTime().toString(), calibration.cycles().getFirst().peakMatchedTimeUtc());
+        assertEquals(series.getBar(4).getEndTime().toString(), calibration.cycles().getFirst().lowMatchedTimeUtc());
+        assertEquals(0, calibration.cycles().getFirst().peakDistanceBars());
+        assertEquals(0, calibration.cycles().getFirst().lowDistanceBars());
+        assertTrue(report.historicalCalibrationText().contains("deltaBars=0"));
     }
 
     @Test
