@@ -32,7 +32,8 @@ import com.google.gson.Gson;
  *
  * <p>
  * These committed windows are the canonical BTC daily validation set for the
- * CF-17 macro study. {@link ElliottWaveAnchorCalibrationHarness#defaultBitcoinAnchors(BarSeries)}
+ * CF-17 macro study.
+ * {@link ElliottWaveAnchorCalibrationHarness#defaultBitcoinAnchors(BarSeries)}
  * preserves that contract by translating the distance from the resolved
  * extremum to each window edge into {@code toleranceBefore} and
  * {@code toleranceAfter}, so acceptable match windows stay pinned to the
@@ -98,8 +99,8 @@ final class ElliottWaveAnchorRegistry {
      *
      * <p>
      * Resolution never expands or contracts the committed calendar windows. The
-     * JSON window bounds remain authoritative; the selected bar is simply the
-     * local extremum inside each stored range.
+     * JSON window bounds remain authoritative; the selected bar is simply the local
+     * extremum inside each stored range.
      *
      * @param series       BTC series used for resolution
      * @param holdoutCount trailing resolved anchors reserved for holdout
