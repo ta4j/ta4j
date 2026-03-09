@@ -295,7 +295,7 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
      *         fallback fit
      * @since 0.22.4
      */
-    public Optional<WindowScenarioAssessment> recommendedAcceptedOrFallbackBaseScenarioForWindow(final BarSeries series,
+    Optional<WindowScenarioAssessment> recommendedAcceptedOrFallbackBaseScenarioForWindow(final BarSeries series,
             final int startIndex, final int endIndex, final ScenarioType scenarioType, final ElliottPhase terminalPhase,
             final int waveCount, final Boolean bullishDirection, final int maxAnchorDriftBars,
             final double minimumFitScore, final double minimumRuleScore, final double minimumStartAlignment,
@@ -738,9 +738,9 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
          * @return {@code true} when the scenario satisfies all supplied thresholds
          * @since 0.22.4
          */
-        public boolean passesAnchoredWindowAcceptance(final int startIndex, final int endIndex,
-                final double minimumFitScore, final double minimumRuleScore, final double minimumStartAlignment,
-                final double minimumEndAlignment, final int maxAnchorDriftBars) {
+        boolean passesAnchoredWindowAcceptance(final int startIndex, final int endIndex, final double minimumFitScore,
+                final double minimumRuleScore, final double minimumStartAlignment, final double minimumEndAlignment,
+                final int maxAnchorDriftBars) {
             validateUnitIntervalScore("minimumFitScore", minimumFitScore);
             validateUnitIntervalScore("minimumRuleScore", minimumRuleScore);
             validateUnitIntervalScore("minimumStartAlignment", minimumStartAlignment);
@@ -857,13 +857,13 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
         }
 
         /**
-         * Returns the ranked current-cycle candidates collapsed to distinct
-         * scenarios, preserving the first occurrence of each scenario id.
+         * Returns the ranked current-cycle candidates collapsed to distinct scenarios,
+         * preserving the first occurrence of each scenario id.
          *
          * <p>
-         * This keeps the legacy preset display behavior in core so wrappers can ask
-         * for "base case plus distinct alternatives" without re-implementing
-         * candidate de-duplication.
+         * This keeps the legacy preset display behavior in core so wrappers can ask for
+         * "base case plus distinct alternatives" without re-implementing candidate
+         * de-duplication.
          *
          * @param maxCandidates maximum number of distinct candidates to return
          * @return immutable distinct candidate list in ranked order

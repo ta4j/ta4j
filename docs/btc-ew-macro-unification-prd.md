@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-09 11:55 EDT
-- Active phase: Final convergence
-- Active task: Lock the remaining package-private core selection surfaces and run the final EW sanity pass
-- Overall: 44/47 checklist items complete
+- Last updated: 2026-03-09 12:17 EDT
+- Active phase: Complete
+- Active task: PRD complete
+- Overall: 47/47 checklist items complete
 
 ## Status
 
@@ -121,12 +121,12 @@ Implementation notes:
 ### Phase 1: Move Anchor-Targeted Selection into Core
 
 - [x] Identify every place where `ElliottWaveBtcMacroCycleDemo` still re-scores, filters, or snaps scenarios after core returns them.
-- [ ] Move that logic into `ElliottWaveAnalysisRunner` and closely related package-private helpers.
+- [x] Move that logic into `ElliottWaveAnalysisRunner` and closely related package-private helpers.
 - [x] Add internal span-aware selection primitives so the core runner can answer:
   - best scenario for `startIndex -> endIndex`
   - best scenario for `startIndex -> liveEnd`
   - best partial bullish/bearish progression for a window
-- [ ] Keep these APIs package-private until convergence is proven.
+- [x] Keep these APIs package-private until convergence is proven.
 
 Implementation steps:
 
@@ -139,6 +139,7 @@ Implementation steps:
    - `fitSegmentFromCoreRunner(...)` now delegates accepted-vs-fallback anchored-window selection to core and only maps the returned assessment into demo reporting DTOs.
    - `fitFromCoreAssessment(...)` now only maps core-produced fit metrics into the demo DTO and reapplies the reporting-time accepted/fallback flag.
    - Legacy live preset candidate de-dup/cap now comes from `CurrentCycleAssessment.distinctCandidates(...)` in core; the demo only maps those candidates into chart/report view models.
+   - Final convergence move: examples now call `ElliottWaveAnalysisRunner.selectAcceptedOrFallbackBaseScenarioForWindow(...)`; the accepted/fallback window-selection helper and acceptance gate remain package-private inside `ElliottWaveAnalysisResult`.
 2. Move ranking and anchor-distance logic first into core.
 3. Replace demo calls with core calls one seam at a time.
 4. Add regression tests for each migrated seam before deleting example-layer logic.
@@ -266,7 +267,15 @@ Implement in this exact order unless a blocker forces a change:
 - [x] Each bullish leg must yield a complete `1-2-3-4-5` decomposition.
 - [x] Each bearish leg must yield a complete `A-B-C` decomposition.
 - [x] Terminal `WAVE5` and `CORRECTIVE_C` endpoints must remain inside anchor tolerance windows.
-- [ ] After all implementation work is complete, run a final EW sanity check over the unified logic and document any remaining interpretation surprises before ship/no-ship.
+- [x] After all implementation work is complete, run a final EW sanity check over the unified logic and document any remaining interpretation surprises before ship/no-ship.
+
+Final sanity-check notes:
+
+- Final BTC full-history regression still selects `orthodox-classical` / `H0` with current count `Bullish 1-2-3-4`, `currentWave=WAVE4`, `phase invalidation <= 68997.75`, `structural invalidation <= 3709.55`, and orthodox wave-5 target `108875.62 to 144238.37`.
+- The engine still prefers a `2018-12-16` current-cycle start on full-history BTC instead of the `2022-11-22` low. This remains intentional because it is the natural winner under the unified core scoring rules; no BTC-specific bias was reintroduced to force a later start.
+- Structural invalidation is much looser than phase invalidation for this count because the structural rule remains the impulse-origin break, while the phase invalidation now reflects the practical `WAVE4` overlap break. Both are reported explicitly so the output is not semantically ambiguous.
+- The orthodox wave-5 zone is a classical baseline, not a BTC blow-off ceiling. Historical BTC wave-5 peaks massively overshot orthodox targets in `2013` and `2017`, and only slightly overshot them in `2021`.
+- The anchor-free generic detector still recovers the committed BTC macro turns on full-history daily data, so the anchor registry remains a validation harness rather than a runtime crutch.
 
 ### Live Current-Cycle Tests
 

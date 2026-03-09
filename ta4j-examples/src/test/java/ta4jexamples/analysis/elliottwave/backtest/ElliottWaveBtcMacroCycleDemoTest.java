@@ -128,8 +128,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 new ElliottWaveAnalysisResult.BaseScenarioAssessment(scenario, 0.84, 0.79, 0.82, List.of()), 0.90, 0.96,
                 0.94, 1.0);
 
-        ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit fit = invokeFitFromCoreAssessment(segment, assessment, true, 2,
-                7);
+        ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit fit = invokeFitFromCoreAssessment(segment, assessment, true,
+                true);
 
         assertTrue(fit.accepted());
         assertTrue(fit.ruleScore() < 0.35);
@@ -168,8 +168,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 new ElliottWaveAnalysisResult.BaseScenarioAssessment(scenario, 0.28, 0.18, 0.95, List.of()), 0.96, 0.92,
                 0.90, 1.0);
 
-        ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit fit = invokeFitFromCoreAssessment(segment, assessment, true, 2,
-                7);
+        ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit fit = invokeFitFromCoreAssessment(segment, assessment, true,
+                true);
 
         assertTrue(fit.accepted());
         assertTrue(fit.strengthScore() < 0.55);
@@ -615,8 +615,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
     private static ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit invokeFitFromCoreAssessment(
             ElliottWaveBtcMacroCycleDemo.LegSegment segment,
-            ElliottWaveAnalysisResult.WindowScenarioAssessment assessment, boolean bullish, int startIndex,
-            int endIndex) throws Exception {
+            ElliottWaveAnalysisResult.WindowScenarioAssessment assessment, boolean bullish, boolean accepted)
+            throws Exception {
         Method profilesMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("logicProfiles");
         profilesMethod.setAccessible(true);
         @SuppressWarnings("unchecked")
@@ -624,10 +624,10 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 .invoke(null);
         Method method = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("fitFromCoreAssessment",
                 ElliottWaveBtcMacroCycleDemo.LegSegment.class, ElliottWaveBtcMacroCycleDemo.MacroLogicProfile.class,
-                ElliottWaveAnalysisResult.WindowScenarioAssessment.class, boolean.class, int.class, int.class);
+                ElliottWaveAnalysisResult.WindowScenarioAssessment.class, boolean.class, boolean.class);
         method.setAccessible(true);
         return (ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit) method.invoke(null, segment, profiles.getFirst(),
-                assessment, bullish, startIndex, endIndex);
+                assessment, bullish, accepted);
     }
 
     private static boolean isAnchoredToMacroEndpoints(BarSeries series,

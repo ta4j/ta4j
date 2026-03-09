@@ -293,6 +293,48 @@ public final class ElliottWaveAnalysisRunner {
     }
 
     /**
+     * Selects the preferred anchored-window scenario for a target template and also
+     * reports whether that selection satisfied the configured acceptance gate.
+     *
+     * <p>
+     * This keeps anchored-window acceptance and fallback selection inside the core
+     * runner so callers do not need to reimplement window ranking or acceptance
+     * threshold logic on top of {@link ElliottWaveAnalysisResult}.
+     *
+     * @param series                root series
+     * @param startIndex            inclusive window start index in the root series
+     * @param endIndex              inclusive window end index in the root series
+     * @param scenarioType          required scenario family
+     * @param terminalPhase         required terminal phase
+     * @param waveCount             required wave count
+     * @param bullishDirection      required direction; {@code null} skips direction
+     *                              filtering
+     * @param maxAnchorDriftBars    soft anchor tolerance used during ranking and
+     *                              acceptance
+     * @param minimumFitScore       minimum blended fit score
+     * @param minimumRuleScore      minimum rule-quality score
+     * @param minimumStartAlignment minimum allowed start alignment
+     * @param minimumEndAlignment   minimum allowed end alignment
+     * @return selected anchored-window scenario plus its accepted/fallback status,
+     *         if any scenario matched
+     * @since 0.22.4
+     */
+    public Optional<AnchoredWindowSelection> selectAcceptedOrFallbackBaseScenarioForWindow(final BarSeries series,
+            final int startIndex, final int endIndex, final ScenarioType scenarioType, final ElliottPhase terminalPhase,
+            final int waveCount, final Boolean bullishDirection, final int maxAnchorDriftBars,
+            final double minimumFitScore, final double minimumRuleScore, final double minimumStartAlignment,
+            final double minimumEndAlignment) {
+        final ElliottWaveAnalysisResult analysis = analyzeWindow(series, startIndex, endIndex);
+        return analysis
+                .recommendedAcceptedOrFallbackBaseScenarioForWindow(series, startIndex, endIndex, scenarioType,
+                        terminalPhase, waveCount, bullishDirection, maxAnchorDriftBars, minimumFitScore,
+                        minimumRuleScore, minimumStartAlignment, minimumEndAlignment)
+                .map(assessment -> new AnchoredWindowSelection(assessment,
+                        assessment.passesAnchoredWindowAcceptance(startIndex, endIndex, minimumFitScore,
+                                minimumRuleScore, minimumStartAlignment, minimumEndAlignment, maxAnchorDriftBars)));
+    }
+
+    /**
      * Discovers and ranks the current bullish cycle directly from the supplied
      * series.
      *
@@ -1676,6 +1718,23 @@ public final class ElliottWaveAnalysisRunner {
     }
 
     private record ProvisionalTerminal(int index, Num price) {
+    }
+
+    /**
+     * Core-selected anchored-window scenario plus whether it satisfied the
+     * configured acceptance gate.
+     *
+     * @param assessment selected anchored-window assessment
+     * @param accepted   {@code true} when the selection passed the acceptance gate;
+     *                   {@code false} when it is the strongest fallback
+     * @since 0.22.4
+     */
+    public record AnchoredWindowSelection(ElliottWaveAnalysisResult.WindowScenarioAssessment assessment,
+            boolean accepted) {
+
+        public AnchoredWindowSelection {
+            Objects.requireNonNull(assessment, "assessment");
+        }
     }
 
     private record CurrentCycleStartCandidate(int barIndex, Num price, double rawScore, double normalizedScore) {

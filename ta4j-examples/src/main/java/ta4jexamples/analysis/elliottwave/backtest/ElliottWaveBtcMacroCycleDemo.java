@@ -147,9 +147,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     private static SegmentScenarioFit fitFromCoreAssessment(final LegSegment legSegment,
             final MacroLogicProfile profile, final ElliottWaveAnalysisResult.WindowScenarioAssessment assessment,
-            final boolean bullish, final int startIndex, final int endIndex) {
-        return ElliottWaveMacroCycleDemo.fitFromCoreAssessment(legSegment, profile, assessment, bullish, startIndex,
-                endIndex);
+            final boolean bullish, final boolean accepted) {
+        return ElliottWaveMacroCycleDemo.fitFromCoreAssessment(legSegment, profile, assessment, bullish, accepted);
     }
 
     private static List<MacroLogicProfile> logicProfiles() {

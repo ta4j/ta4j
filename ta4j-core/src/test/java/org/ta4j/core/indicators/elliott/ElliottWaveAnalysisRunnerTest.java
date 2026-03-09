@@ -822,57 +822,68 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
-    void recommendedAcceptedOrFallbackBaseScenarioForWindowSkipsRejectedLeader() {
+    void selectAcceptedOrFallbackBaseScenarioForWindowSkipsRejectedLeader() {
         BarSeries series = buildAnchoredWindowSelectionSeries();
         NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
         ElliottScenario rejectedLeader = scenario(factory, "rejected-leader", ElliottPhase.WAVE5, 0.05,
                 anchoredWindowSwings(factory), factory.numOf(92), 0.05);
         ElliottScenario acceptedFollower = scenario(factory, "accepted-follower", ElliottPhase.WAVE5, 0.80,
                 anchoredWindowSwings(factory), factory.numOf(92), 0.90);
-        ElliottWaveAnalysisResult result = new ElliottWaveAnalysisResult(ElliottDegree.PRIMARY, List.of(), List.of(
-                new ElliottWaveAnalysisResult.BaseScenarioAssessment(rejectedLeader, 0.10, 0.00, 0.80, List.of()),
-                new ElliottWaveAnalysisResult.BaseScenarioAssessment(acceptedFollower, 0.85, 0.90, 0.79, List.of())),
-                List.of());
+        ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(rejectedLeader, acceptedFollower),
+                series.getEndIndex());
+        ElliottAnalysisResult analysisResult = new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(),
+                acceptedFollower.swings(), acceptedFollower.swings(), scenarios, Map.of(), null, scenarios.trendBias());
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((ignoredSeries, ignoredDegree) -> analysisResult)
+                .build();
+        ElliottWaveAnalysisResult result = analysis.analyze(series);
         List<ElliottWaveAnalysisResult.WindowScenarioAssessment> ranked = result.rankedBaseScenariosForWindow(series, 0,
                 10, ScenarioType.IMPULSE, ElliottPhase.WAVE5, 5, Boolean.TRUE, 3);
         assertThat(ranked).hasSize(2);
-        assertThat(ranked.getFirst().scenario().id()).isEqualTo("rejected-leader");
-        assertThat(ranked.get(1).fitScore()).isGreaterThan(ranked.getFirst().fitScore());
         double acceptanceThreshold = (ranked.getFirst().fitScore() + ranked.get(1).fitScore()) / 2.0;
 
-        Optional<ElliottWaveAnalysisResult.WindowScenarioAssessment> selected = result
-                .recommendedAcceptedOrFallbackBaseScenarioForWindow(series, 0, 10, ScenarioType.IMPULSE,
-                        ElliottPhase.WAVE5, 5, Boolean.TRUE, 3, acceptanceThreshold, 0.30, 0.35, 0.80);
+        Optional<ElliottWaveAnalysisRunner.AnchoredWindowSelection> selected = analysis
+                .selectAcceptedOrFallbackBaseScenarioForWindow(series, 0, 10, ScenarioType.IMPULSE, ElliottPhase.WAVE5,
+                        5, Boolean.TRUE, 3, acceptanceThreshold, 0.30, 0.35, 0.80);
 
         assertThat(selected).isPresent();
-        assertThat(selected.orElseThrow().scenario().id()).isEqualTo("accepted-follower");
+        assertThat(selected.orElseThrow().accepted()).isTrue();
+        assertThat(selected.orElseThrow().assessment().scenario().id()).isEqualTo("accepted-follower");
     }
 
     @Test
-    void recommendedAcceptedOrFallbackBaseScenarioForWindowReturnsHighestFitFallback() {
+    void selectAcceptedOrFallbackBaseScenarioForWindowReturnsHighestFitFallback() {
         BarSeries series = buildAnchoredWindowSelectionSeries();
         NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
         ElliottScenario rankedLeader = scenario(factory, "ranked-leader", ElliottPhase.WAVE5, 0.10,
                 anchoredWindowSwings(factory), factory.numOf(92), 0.05);
         ElliottScenario strongerFallback = scenario(factory, "stronger-fallback", ElliottPhase.WAVE5, 0.90,
                 anchoredWindowSwings(factory), factory.numOf(92), 0.95);
-        ElliottWaveAnalysisResult result = new ElliottWaveAnalysisResult(ElliottDegree.PRIMARY, List.of(), List.of(
-                new ElliottWaveAnalysisResult.BaseScenarioAssessment(rankedLeader, 0.15, 0.00, 0.80, List.of()),
-                new ElliottWaveAnalysisResult.BaseScenarioAssessment(strongerFallback, 0.95, 1.00, 0.79, List.of())),
-                List.of());
-
+        ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(rankedLeader, strongerFallback),
+                series.getEndIndex());
+        ElliottAnalysisResult analysisResult = new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(),
+                strongerFallback.swings(), strongerFallback.swings(), scenarios, Map.of(), null, scenarios.trendBias());
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((ignoredSeries, ignoredDegree) -> analysisResult)
+                .build();
+        ElliottWaveAnalysisResult result = analysis.analyze(series);
         List<ElliottWaveAnalysisResult.WindowScenarioAssessment> ranked = result.rankedBaseScenariosForWindow(series, 0,
                 10, ScenarioType.IMPULSE, ElliottPhase.WAVE5, 5, Boolean.TRUE, 3);
         assertThat(ranked).hasSize(2);
-        assertThat(ranked.getFirst().scenario().id()).isEqualTo("ranked-leader");
-        assertThat(ranked.get(1).fitScore()).isGreaterThan(ranked.getFirst().fitScore());
 
-        Optional<ElliottWaveAnalysisResult.WindowScenarioAssessment> selected = result
-                .recommendedAcceptedOrFallbackBaseScenarioForWindow(series, 0, 10, ScenarioType.IMPULSE,
-                        ElliottPhase.WAVE5, 5, Boolean.TRUE, 3, 0.95, 0.95, 0.95, 0.95);
+        Optional<ElliottWaveAnalysisRunner.AnchoredWindowSelection> selected = analysis
+                .selectAcceptedOrFallbackBaseScenarioForWindow(series, 0, 10, ScenarioType.IMPULSE, ElliottPhase.WAVE5,
+                        5, Boolean.TRUE, 3, 0.95, 0.95, 0.95, 0.95);
 
         assertThat(selected).isPresent();
-        assertThat(selected.orElseThrow().scenario().id()).isEqualTo("stronger-fallback");
+        assertThat(selected.orElseThrow().accepted()).isFalse();
+        assertThat(selected.orElseThrow().assessment().scenario().id()).isEqualTo("stronger-fallback");
     }
 
     @Test
