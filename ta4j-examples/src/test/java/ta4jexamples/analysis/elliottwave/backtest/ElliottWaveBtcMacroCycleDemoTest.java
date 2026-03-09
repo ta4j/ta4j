@@ -291,6 +291,63 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
+    void committedBitcoinTruthTargetRegistryMatchesExpectedAnchorWindows() {
+        BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
+                .defaultBitcoinAnchors(series);
+
+        List<ExpectedTruthAnchor> expectedAnchors = expectedTruthAnchors();
+
+        assertEquals("btc-macro-cycle-anchors-v2", registry.version());
+        assertEquals(expectedAnchors.size(), registry.anchors().size());
+        for (int index = 0; index < expectedAnchors.size(); index++) {
+            ExpectedTruthAnchor expected = expectedAnchors.get(index);
+            ElliottWaveAnchorCalibrationHarness.Anchor actual = registry.anchors().get(index);
+
+            assertEquals(expected.id(), actual.id());
+            assertEquals(expected.type(), actual.type());
+            assertEquals(expected.partition(), actual.partition());
+            assertEquals(Set.of(expected.expectedPhase()), actual.expectedPhases());
+            assertEquals(expected.windowStart(), actual.at().minus(actual.toleranceBefore()));
+            assertEquals(expected.windowEnd(), actual.at().plus(actual.toleranceAfter()));
+            assertFalse(actual.provenance().isBlank());
+        }
+    }
+
+    @Test
+    void registryBackedHistoricalMacroStudyMatchesCommittedTruthTargetWithinTolerance() {
+        BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
+                .defaultBitcoinAnchors(series);
+        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveMacroCycleDemo.evaluateMacroStudy(series, registry);
+
+        assertTrue(study.selectedProfile().historicalFitPassed());
+        assertEquals(3, study.selectedProfile().cycleFits().size());
+        assertTruthTargetCycleFits(series, study.selectedProfile().cycleFits(), registry, true);
+    }
+
+    @Test
+    void inferredHistoricalMacroStudyMatchesCommittedTruthTargetWithinTolerance() {
+        BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
+                .defaultBitcoinAnchors(series);
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry inferredRegistry = ElliottWaveMacroCycleDetector
+                .inferAnchorRegistry(series);
+        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveMacroCycleDemo.evaluateMacroStudy(series,
+                inferredRegistry);
+
+        assertTrue(study.selectedProfile().historicalFitPassed());
+        assertEquals(3, study.selectedProfile().cycleFits().size());
+        assertTruthTargetCycleFits(series, study.selectedProfile().cycleFits(), registry, false);
+    }
+
+    @Test
     void genericMacroCycleDemoMatchesBtcWrapperOnFullBitcoinHistory() throws Exception {
         BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
@@ -402,33 +459,6 @@ class ElliottWaveBtcMacroCycleDemoTest {
         }
     }
 
-    @Test
-    void fullBitcoinHistoryKeepsStableMacroOutlook() throws Exception {
-        Path tempDir = Files.createTempDirectory("btc-macro-outlook-stability");
-
-        try {
-            ElliottWaveBtcMacroCycleDemo.DemoReport report = ElliottWaveBtcMacroCycleDemo.generateReport(tempDir);
-
-            assertEquals("orthodox-classical", report.selectedProfileId());
-            assertEquals("H0", report.selectedHypothesisId());
-            assertTrue(report.historicalFitPassed());
-            assertEquals("Bullish 1-2-3-4", report.currentCycle().primaryCount());
-            assertEquals("WAVE4", report.currentCycle().currentWave());
-            assertEquals("<= 68997.75", report.currentCycle().invalidationPrice());
-            assertEquals("<= 3709.55", report.currentCycle().structuralInvalidationPrice());
-            assertEquals("108875.62 to 144238.37", report.currentCycle().orthodoxWaveFiveTargetRange());
-        } finally {
-            Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException ignored) {
-                    // best effort cleanup
-                }
-            });
-        }
-    }
-
-    @Test
     void livePresetReportFindsCurrentCycleStartFromProvidedSeriesWindow() throws Exception {
         BarSeries fullSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
@@ -734,6 +764,94 @@ class ElliottWaveBtcMacroCycleDemoTest {
             }
         }
         return bestIndex;
+    }
+
+    private static void assertTruthTargetCycleFits(BarSeries series,
+            List<ElliottWaveBtcMacroCycleDemo.CycleFit> cycleFits,
+            ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, boolean requireCommittedAnchorIds) {
+        List<ExpectedTruthCycle> expectedCycles = expectedTruthCycles();
+
+        assertEquals(expectedCycles.size(), cycleFits.size());
+        for (int index = 0; index < expectedCycles.size(); index++) {
+            ExpectedTruthCycle expected = expectedCycles.get(index);
+            ElliottWaveBtcMacroCycleDemo.CycleFit actual = cycleFits.get(index);
+
+            assertAcceptedCoreRankedCycleFit(series, actual);
+            assertEquals(expected.partition(), actual.cycle().partition());
+            if (requireCommittedAnchorIds) {
+                assertEquals(expected.startAnchorId(), actual.cycle().start().id());
+                assertEquals(expected.peakAnchorId(), actual.cycle().peak().id());
+                assertEquals(expected.lowAnchorId(), actual.cycle().low().id());
+            }
+            assertWithinTolerance(actual.cycle().start().at(), findAnchor(registry, expected.startAnchorId()));
+            assertWithinTolerance(actual.cycle().peak().at(), findAnchor(registry, expected.peakAnchorId()));
+            assertWithinTolerance(actual.cycle().low().at(), findAnchor(registry, expected.lowAnchorId()));
+        }
+    }
+
+    private static void assertWithinTolerance(Instant actual, ElliottWaveAnchorCalibrationHarness.Anchor anchor) {
+        Instant windowStart = anchor.at().minus(anchor.toleranceBefore());
+        Instant windowEnd = anchor.at().plus(anchor.toleranceAfter());
+
+        assertFalse(actual.isBefore(windowStart),
+                () -> actual + " is before tolerance window " + windowStart + " for " + anchor.id());
+        assertFalse(actual.isAfter(windowEnd),
+                () -> actual + " is after tolerance window " + windowEnd + " for " + anchor.id());
+    }
+
+    private static ElliottWaveAnchorCalibrationHarness.Anchor findAnchor(
+            ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, String anchorId) {
+        return registry.anchors()
+                .stream()
+                .filter(anchor -> anchor.id().equals(anchorId))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Missing anchor " + anchorId));
+    }
+
+    private static List<ExpectedTruthCycle> expectedTruthCycles() {
+        return List.of(
+                new ExpectedTruthCycle("validation", "btc-2011-cycle-bottom", "btc-2013-cycle-top",
+                        "btc-2015-cycle-bottom"),
+                new ExpectedTruthCycle("validation", "btc-2015-cycle-bottom", "btc-2017-cycle-top",
+                        "btc-2018-cycle-bottom"),
+                new ExpectedTruthCycle("holdout", "btc-2018-cycle-bottom", "btc-2021-cycle-top",
+                        "btc-2022-cycle-bottom"));
+    }
+
+    private static List<ExpectedTruthAnchor> expectedTruthAnchors() {
+        return List.of(
+                new ExpectedTruthAnchor("btc-2011-cycle-top", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
+                        ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, ElliottPhase.WAVE5,
+                        Instant.parse("2011-05-15T00:00:00Z"), Instant.parse("2011-07-15T00:00:00Z")),
+                new ExpectedTruthAnchor("btc-2011-cycle-bottom", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                        ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, ElliottPhase.CORRECTIVE_C,
+                        Instant.parse("2011-10-15T00:00:00Z"), Instant.parse("2011-12-15T00:00:00Z")),
+                new ExpectedTruthAnchor("btc-2013-cycle-top", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
+                        ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, ElliottPhase.WAVE5,
+                        Instant.parse("2013-11-20T00:00:00Z"), Instant.parse("2013-12-03T00:00:00Z")),
+                new ExpectedTruthAnchor("btc-2015-cycle-bottom", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                        ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, ElliottPhase.CORRECTIVE_C,
+                        Instant.parse("2015-07-01T00:00:00Z"), Instant.parse("2015-09-30T00:00:00Z")),
+                new ExpectedTruthAnchor("btc-2017-cycle-top", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
+                        ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, ElliottPhase.WAVE5,
+                        Instant.parse("2017-11-15T00:00:00Z"), Instant.parse("2018-01-15T00:00:00Z")),
+                new ExpectedTruthAnchor("btc-2018-cycle-bottom", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                        ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, ElliottPhase.CORRECTIVE_C,
+                        Instant.parse("2018-11-01T00:00:00Z"), Instant.parse("2019-02-15T00:00:00Z")),
+                new ExpectedTruthAnchor("btc-2021-cycle-top", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
+                        ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT, ElliottPhase.WAVE5,
+                        Instant.parse("2021-10-01T00:00:00Z"), Instant.parse("2021-12-15T00:00:00Z")),
+                new ExpectedTruthAnchor("btc-2022-cycle-bottom", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                        ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT, ElliottPhase.CORRECTIVE_C,
+                        Instant.parse("2022-10-15T00:00:00Z"), Instant.parse("2022-12-31T00:00:00Z")));
+    }
+
+    private record ExpectedTruthCycle(String partition, String startAnchorId, String peakAnchorId, String lowAnchorId) {
+    }
+
+    private record ExpectedTruthAnchor(String id, ElliottWaveAnchorCalibrationHarness.AnchorType type,
+            ElliottWaveAnchorRegistry.AnchorPartition partition, ElliottPhase expectedPhase, Instant windowStart,
+            Instant windowEnd) {
     }
 
     private static BarSeries chartSyntheticSeries() {

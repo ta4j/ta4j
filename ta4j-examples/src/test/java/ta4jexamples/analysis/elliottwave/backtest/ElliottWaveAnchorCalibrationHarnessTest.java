@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
@@ -43,6 +44,8 @@ import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader
 
 class ElliottWaveAnchorCalibrationHarnessTest {
 
+    @Tag("integration")
+    @Tag("slow")
     @Test
     void defaultBitcoinAnchorsLoadsResolvedVersionedRegistry() {
         BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveAnchorCalibrationHarnessTest.class,
@@ -56,17 +59,20 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         assertEquals(ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, registry.datasetResource());
         assertTrue(registry.provenance().contains("user-supplied TradingView"));
         assertEquals(8, registry.anchors().size());
-        assertIterableEquals(List.of("btc-2011-cycle-top", "btc-2011-cycle-bottom", "btc-2013-cycle-top",
-                "btc-2015-cycle-bottom", "btc-2017-cycle-top", "btc-2018-cycle-bottom", "btc-2021-cycle-top",
-                "btc-2022-cycle-bottom"),
+        assertIterableEquals(
+                List.of("btc-2011-cycle-top", "btc-2011-cycle-bottom", "btc-2013-cycle-top", "btc-2015-cycle-bottom",
+                        "btc-2017-cycle-top", "btc-2018-cycle-bottom", "btc-2021-cycle-top", "btc-2022-cycle-bottom"),
                 registry.anchors().stream().map(ElliottWaveAnchorCalibrationHarness.Anchor::id).toList());
         assertIterableEquals(List.of("btc-2011-cycle-top", "btc-2011-cycle-bottom"),
-                registry.anchors().subList(0, 2).stream().map(ElliottWaveAnchorCalibrationHarness.Anchor::id)
+                registry.anchors().subList(0, 2).stream().map(ElliottWaveAnchorCalibrationHarness.Anchor::id).toList());
+        assertIterableEquals(
+                List.of("btc-2013-cycle-top", "btc-2015-cycle-bottom", "btc-2017-cycle-top", "btc-2018-cycle-bottom",
+                        "btc-2021-cycle-top", "btc-2022-cycle-bottom"),
+                registry.anchors()
+                        .subList(2, registry.anchors().size())
+                        .stream()
+                        .map(ElliottWaveAnchorCalibrationHarness.Anchor::id)
                         .toList());
-        assertIterableEquals(List.of("btc-2013-cycle-top", "btc-2015-cycle-bottom", "btc-2017-cycle-top",
-                "btc-2018-cycle-bottom", "btc-2021-cycle-top", "btc-2022-cycle-bottom"),
-                registry.anchors().subList(2, registry.anchors().size()).stream()
-                        .map(ElliottWaveAnchorCalibrationHarness.Anchor::id).toList());
         assertEquals(2,
                 registry.anchors()
                         .stream()
@@ -92,23 +98,23 @@ class ElliottWaveAnchorCalibrationHarnessTest {
 
     private static Duration expectedToleranceSpan(String anchorId) {
         return switch (anchorId) {
-            case "btc-2011-cycle-top" -> Duration.between(Instant.parse("2011-05-15T00:00:00Z"),
-                    Instant.parse("2011-07-15T00:00:00Z"));
-            case "btc-2011-cycle-bottom" -> Duration.between(Instant.parse("2011-10-15T00:00:00Z"),
-                    Instant.parse("2011-12-15T00:00:00Z"));
-            case "btc-2013-cycle-top" -> Duration.between(Instant.parse("2013-11-20T00:00:00Z"),
-                    Instant.parse("2013-12-03T00:00:00Z"));
-            case "btc-2015-cycle-bottom" -> Duration.between(Instant.parse("2015-07-01T00:00:00Z"),
-                    Instant.parse("2015-09-30T00:00:00Z"));
-            case "btc-2017-cycle-top" -> Duration.between(Instant.parse("2017-11-15T00:00:00Z"),
-                    Instant.parse("2018-01-15T00:00:00Z"));
-            case "btc-2018-cycle-bottom" -> Duration.between(Instant.parse("2018-11-01T00:00:00Z"),
-                    Instant.parse("2019-02-15T00:00:00Z"));
-            case "btc-2021-cycle-top" -> Duration.between(Instant.parse("2021-10-01T00:00:00Z"),
-                    Instant.parse("2021-12-15T00:00:00Z"));
-            case "btc-2022-cycle-bottom" -> Duration.between(Instant.parse("2022-10-15T00:00:00Z"),
-                    Instant.parse("2022-12-31T00:00:00Z"));
-            default -> throw new IllegalArgumentException("Unexpected anchor id: " + anchorId);
+        case "btc-2011-cycle-top" ->
+            Duration.between(Instant.parse("2011-05-15T00:00:00Z"), Instant.parse("2011-07-15T00:00:00Z"));
+        case "btc-2011-cycle-bottom" ->
+            Duration.between(Instant.parse("2011-10-15T00:00:00Z"), Instant.parse("2011-12-15T00:00:00Z"));
+        case "btc-2013-cycle-top" ->
+            Duration.between(Instant.parse("2013-11-20T00:00:00Z"), Instant.parse("2013-12-03T00:00:00Z"));
+        case "btc-2015-cycle-bottom" ->
+            Duration.between(Instant.parse("2015-07-01T00:00:00Z"), Instant.parse("2015-09-30T00:00:00Z"));
+        case "btc-2017-cycle-top" ->
+            Duration.between(Instant.parse("2017-11-15T00:00:00Z"), Instant.parse("2018-01-15T00:00:00Z"));
+        case "btc-2018-cycle-bottom" ->
+            Duration.between(Instant.parse("2018-11-01T00:00:00Z"), Instant.parse("2019-02-15T00:00:00Z"));
+        case "btc-2021-cycle-top" ->
+            Duration.between(Instant.parse("2021-10-01T00:00:00Z"), Instant.parse("2021-12-15T00:00:00Z"));
+        case "btc-2022-cycle-bottom" ->
+            Duration.between(Instant.parse("2022-10-15T00:00:00Z"), Instant.parse("2022-12-31T00:00:00Z"));
+        default -> throw new IllegalArgumentException("Unexpected anchor id: " + anchorId);
         };
     }
 
