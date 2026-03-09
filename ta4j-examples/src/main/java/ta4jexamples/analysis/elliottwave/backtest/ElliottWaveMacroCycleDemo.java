@@ -240,7 +240,8 @@ public final class ElliottWaveMacroCycleDemo {
         final String latestTimeUtc = series.getLastBar().getEndTime().toString();
         final CurrentCycleSummary summary = new CurrentCycleSummary(startTimeUtc, latestTimeUtc, profile.id(),
                 historicalStatus, primaryCount, alternateCount, currentWave, invalidation, structuralInvalidation,
-                primary == null ? 0.0 : primary.fitScore(), alternate == null ? 0.0 : alternate.fitScore(), "");
+                orthodoxWaveFiveTargetRange(primary), primary == null ? 0.0 : primary.fitScore(),
+                alternate == null ? 0.0 : alternate.fitScore(), "");
         return new CurrentCycleAnalysis(summary, primary, alternate, assessment.candidates(),
                 assessment.distinctCandidates(5));
     }
@@ -323,6 +324,42 @@ public final class ElliottWaveMacroCycleDemo {
             return (scenario.isBullish() ? "<= " : ">= ") + formatNum(value);
         }
         return "= " + formatNum(value);
+    }
+
+    private static String orthodoxWaveFiveTargetRange(final ElliottWaveAnalysisResult.CurrentPhaseAssessment primary) {
+        if (primary == null || primary.currentPhase() != ElliottPhase.WAVE4) {
+            return "";
+        }
+        final ElliottScenario scenario = primary.scenario();
+        if (scenario == null || !scenario.hasKnownDirection() || !scenario.isBullish()) {
+            return "";
+        }
+        final List<ElliottSwing> swings = scenario.swings();
+        if (swings.size() < 4) {
+            return "";
+        }
+        final ElliottSwing wave1 = swings.get(0);
+        final ElliottSwing wave3 = swings.get(2);
+        final ElliottSwing wave4 = swings.get(3);
+        final double waveZeroLow = wave1.fromPrice().doubleValue();
+        final double waveOneHigh = wave1.toPrice().doubleValue();
+        final double waveThreeHigh = wave3.toPrice().doubleValue();
+        final double waveFourLow = wave4.toPrice().doubleValue();
+        if (!Double.isFinite(waveZeroLow) || !Double.isFinite(waveOneHigh) || !Double.isFinite(waveThreeHigh)
+                || !Double.isFinite(waveFourLow)) {
+            return "";
+        }
+        final double waveOneLength = waveOneHigh - waveZeroLow;
+        final double oneToThreeLength = waveThreeHigh - waveZeroLow;
+        if (waveOneLength <= 0.0 || oneToThreeLength <= 0.0) {
+            return "";
+        }
+        final double orthodoxLow = waveFourLow + (waveOneLength * 0.618);
+        final double orthodoxEqualWaveOne = waveFourLow + waveOneLength;
+        final double orthodoxExtended = waveFourLow + (oneToThreeLength * 0.618);
+        final double lowerBound = Math.min(orthodoxLow, Math.min(orthodoxEqualWaveOne, orthodoxExtended));
+        final double upperBound = Math.max(orthodoxLow, Math.max(orthodoxEqualWaveOne, orthodoxExtended));
+        return formatPrice(lowerBound) + " to " + formatPrice(upperBound);
     }
 
     static void applyLogPriceAxis(final JFreeChart chart, final BarSeries series) {
@@ -841,6 +878,10 @@ public final class ElliottWaveMacroCycleDemo {
 
     private static String formatNum(final Num value) {
         return value == null ? "" : value.toString();
+    }
+
+    private static String formatPrice(final double value) {
+        return String.format(java.util.Locale.ROOT, "%.2f", value);
     }
 
     private static Map<String, String> orderedEvidence(final String... entries) {

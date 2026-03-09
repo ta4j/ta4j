@@ -322,6 +322,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
                     genericReport.currentCycle().invalidationPrice());
             assertEquals(wrapperReport.currentCycle().structuralInvalidationPrice(),
                     genericReport.currentCycle().structuralInvalidationPrice());
+            assertEquals(wrapperReport.currentCycle().orthodoxWaveFiveTargetRange(),
+                    genericReport.currentCycle().orthodoxWaveFiveTargetRange());
             assertTrue(Files.exists(Path.of(genericReport.chartPath())));
             assertTrue(Files.exists(Path.of(genericReport.summaryPath())));
         } finally {
@@ -356,6 +358,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
             assertEquals("WAVE4", report.currentCycle().currentWave());
             assertEquals("<= 68997.75", report.currentCycle().invalidationPrice());
             assertEquals("<= 3709.55", report.currentCycle().structuralInvalidationPrice());
+            assertEquals("108875.62 to 144238.37", report.currentCycle().orthodoxWaveFiveTargetRange());
         } finally {
             Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
                 try {
@@ -389,6 +392,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
             assertFalse(report.currentCycle().startTimeUtc().isBlank());
             assertTrue(report.currentCycle().primaryCount().startsWith("Bullish 1"));
             assertFalse(report.currentCycle().currentWave().isBlank());
+            assertFalse(report.currentCycle().orthodoxWaveFiveTargetRange().isBlank());
             assertTrue(Files.exists(Path.of(report.chartPath())));
             assertTrue(Files.exists(Path.of(report.summaryPath())));
         } finally {

@@ -354,9 +354,9 @@ public final class ElliottWaveBtcMacroCycleDemo {
             }
         }
         LOG.info(
-                "Current macro read: primary={} | alternate={} | currentWave={} | phase invalidation {} | structural invalidation {}",
+                "Current macro read: primary={} | alternate={} | currentWave={} | phase invalidation {} | structural invalidation {} | orthodox wave5 target {}",
                 summary.primaryCount(), summary.alternateCount(), summary.currentWave(), summary.invalidationPrice(),
-                summary.structuralInvalidationPrice());
+                summary.structuralInvalidationPrice(), summary.orthodoxWaveFiveTargetRange());
         LOG.info("Macro summary JSON: {}", report.summaryPath());
         LOG.info("Macro current-cycle chart: {}", report.chartPath());
         LOG.info("======================================");
@@ -755,13 +755,13 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     record CurrentCycleSummary(String startTimeUtc, String latestTimeUtc, String winningProfileId,
             String historicalStatus, String primaryCount, String alternateCount, String currentWave,
-            String invalidationPrice, String structuralInvalidationPrice, double primaryScore, double alternateScore,
-            String chartPath) {
+            String invalidationPrice, String structuralInvalidationPrice, String orthodoxWaveFiveTargetRange,
+            double primaryScore, double alternateScore, String chartPath) {
 
         CurrentCycleSummary withChartPath(String newChartPath) {
             return new CurrentCycleSummary(startTimeUtc, latestTimeUtc, winningProfileId, historicalStatus,
                     primaryCount, alternateCount, currentWave, invalidationPrice, structuralInvalidationPrice,
-                    primaryScore, alternateScore, newChartPath);
+                    orthodoxWaveFiveTargetRange, primaryScore, alternateScore, newChartPath);
         }
     }
 
