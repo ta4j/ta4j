@@ -144,12 +144,19 @@ public final class ElliottWaveBtcMacroCycleDemo {
     }
 
     static DemoReport generateReport(Path chartDirectory) {
-        Objects.requireNonNull(chartDirectory, "chartDirectory");
-
         BarSeries series = requireSeries(ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE,
                 ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME);
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
                 .defaultBitcoinAnchors(series);
+        return generateReport(series, registry, chartDirectory);
+    }
+
+    static DemoReport generateReport(BarSeries series, ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry,
+            Path chartDirectory) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(registry, "registry");
+        Objects.requireNonNull(chartDirectory, "chartDirectory");
+
         MacroStudy study = evaluateMacroStudy(series, registry);
         Optional<Path> chartPath = saveMacroCycleChart(series, registry, study, chartDirectory);
         String chartPathText = chartPath.map(path -> path.toAbsolutePath().normalize().toString()).orElse("");

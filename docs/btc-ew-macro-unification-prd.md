@@ -2,7 +2,7 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-08 18:56 EDT
+- Last updated: 2026-03-08 21:30 EDT
 - Active phase: Phase 6
 - Active task: Strip `ElliottWaveBtcMacroCycleDemo` down to a thin I/O and reporting wrapper
 - Overall: 41/47 checklist items complete
@@ -226,6 +226,12 @@ Implementation steps:
 3. Measure final residual logic in the demo:
    - if it is only I/O and chart/reporting, keep it
    - if it still owns interpretation logic, continue migration
+
+Implementation notes:
+
+- `ElliottWaveMacroCycleDemo` now supports both registry-backed historical validation and anchor-free macro-turn inference from the supplied `BarSeries`.
+- On full-history BTC daily, the anchor-free generic path now recovers the committed 2011/2013/2017/2021 tops and 2011/2015/2018/2022 lows exactly, and preserves the same selected profile, hypothesis, and current-cycle outlook as the registry-backed report.
+- `ElliottWaveBtcMacroCycleDemo` is still not thin enough to check the wrapper-reduction items off; keep migrating interpretation logic out of it before claiming Phase 6 complete.
 
 ### Phase 7: Documentation and Guides
 

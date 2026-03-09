@@ -291,6 +291,58 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
+    void genericMacroCycleDemoMatchesBtcWrapperOnFullBitcoinHistory() throws Exception {
+        BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
+                .defaultBitcoinAnchors(series);
+        Path wrapperDir = Files.createTempDirectory("btc-macro-wrapper");
+        Path genericDir = Files.createTempDirectory("btc-macro-generic");
+
+        try {
+            ElliottWaveBtcMacroCycleDemo.DemoReport wrapperReport = ElliottWaveBtcMacroCycleDemo
+                    .generateReport(wrapperDir);
+            ElliottWaveBtcMacroCycleDemo.DemoReport genericReport = ElliottWaveMacroCycleDemo
+                    .generateHistoricalReport(series, registry, genericDir);
+
+            assertEquals(wrapperReport.selectedProfileId(), genericReport.selectedProfileId());
+            assertEquals(wrapperReport.selectedHypothesisId(), genericReport.selectedHypothesisId());
+            assertEquals(wrapperReport.historicalFitPassed(), genericReport.historicalFitPassed());
+            assertEquals(wrapperReport.profileScores(), genericReport.profileScores());
+            assertEquals(wrapperReport.cycles(), genericReport.cycles());
+            assertEquals(wrapperReport.hypotheses(), genericReport.hypotheses());
+            assertEquals(wrapperReport.currentCycle().startTimeUtc(), genericReport.currentCycle().startTimeUtc());
+            assertEquals(wrapperReport.currentCycle().winningProfileId(),
+                    genericReport.currentCycle().winningProfileId());
+            assertEquals(wrapperReport.currentCycle().primaryCount(), genericReport.currentCycle().primaryCount());
+            assertEquals(wrapperReport.currentCycle().alternateCount(), genericReport.currentCycle().alternateCount());
+            assertEquals(wrapperReport.currentCycle().currentWave(), genericReport.currentCycle().currentWave());
+            assertEquals(wrapperReport.currentCycle().invalidationPrice(),
+                    genericReport.currentCycle().invalidationPrice());
+            assertEquals(wrapperReport.currentCycle().structuralInvalidationPrice(),
+                    genericReport.currentCycle().structuralInvalidationPrice());
+            assertTrue(Files.exists(Path.of(genericReport.chartPath())));
+            assertTrue(Files.exists(Path.of(genericReport.summaryPath())));
+        } finally {
+            Files.walk(wrapperDir).sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException ignored) {
+                    // best effort cleanup
+                }
+            });
+            Files.walk(genericDir).sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException ignored) {
+                    // best effort cleanup
+                }
+            });
+        }
+    }
+
+    @Test
     void livePresetReportFindsCurrentCycleStartFromProvidedSeriesWindow() throws Exception {
         BarSeries fullSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
