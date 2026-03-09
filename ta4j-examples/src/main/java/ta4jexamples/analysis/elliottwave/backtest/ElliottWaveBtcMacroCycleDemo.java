@@ -153,25 +153,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     static DemoReport generateReport(BarSeries series, ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry,
             Path chartDirectory) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(registry, "registry");
-        Objects.requireNonNull(chartDirectory, "chartDirectory");
-
-        MacroStudy study = evaluateMacroStudy(series, registry);
-        Optional<Path> chartPath = saveMacroCycleChart(series, registry, study, chartDirectory);
-        String chartPathText = chartPath.map(path -> path.toAbsolutePath().normalize().toString()).orElse("");
-        Path summaryPath = chartDirectory.resolve(DEFAULT_SUMMARY_FILE_NAME).toAbsolutePath().normalize();
-        String baselineProfileId = ElliottWaveWalkForwardProfiles.baseline()
-                .metadata()
-                .getOrDefault("profile", "baseline-minute-f2-h2l2-max25-sw0");
-        CurrentCycleSummary currentCycle = study.currentCycle().withChartPath(chartPathText);
-        DemoReport report = new DemoReport(registry.version(), registry.datasetResource(), baselineProfileId,
-                study.selectedProfile().profile().id(), study.selectedProfile().profile().hypothesisId(),
-                study.selectedProfile().historicalFitPassed(),
-                "BTC macro-cycle decomposition selected from explicit anchor-to-anchor wave fits", chartPathText,
-                summaryPath.toString(), study.profileScores(), study.cycles(), study.hypotheses(), currentCycle);
-        saveSummary(report, summaryPath);
-        return report;
+        return ElliottWaveMacroCycleDemo.generateHistoricalReport(series, registry, chartDirectory);
     }
 
     static LivePresetReport generateLivePresetReport(BarSeries series, Path chartDirectory) {
@@ -201,20 +183,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     static Optional<Path> saveMacroCycleChart(BarSeries series,
             ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, Path chartDirectory) {
-        return saveMacroCycleChart(series, registry, evaluateMacroStudy(series, registry), chartDirectory);
-    }
-
-    private static Optional<Path> saveMacroCycleChart(BarSeries series,
-            ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, MacroStudy study, Path chartDirectory) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(registry, "registry");
-        Objects.requireNonNull(study, "study");
-        Objects.requireNonNull(chartDirectory, "chartDirectory");
-
-        ChartWorkflow chartWorkflow = new ChartWorkflow(chartDirectory.toString());
-        JFreeChart chart = renderMacroCycleChart(series, registry, study);
-        return chartWorkflow.saveChartImage(chart, series, DEFAULT_CHART_FILE_NAME, DEFAULT_CHART_WIDTH,
-                DEFAULT_CHART_HEIGHT);
+        return ElliottWaveMacroCycleDemo.saveHistoricalChart(series, registry, chartDirectory);
     }
 
     private static Optional<Path> saveLiveCurrentCycleChart(BarSeries series, CurrentCycleAnalysis currentCycle,
@@ -473,81 +442,12 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     static JFreeChart renderMacroCycleChart(BarSeries series,
             ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        return renderMacroCycleChart(series, registry, evaluateMacroStudy(series, registry));
+        return ElliottWaveMacroCycleDemo.renderHistoricalChart(series, registry);
     }
 
-    private static JFreeChart renderMacroCycleChart(BarSeries series,
+    static JFreeChart renderMacroCycleChart(BarSeries series,
             ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, MacroStudy study) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(registry, "registry");
-        Objects.requireNonNull(study, "study");
-
-        ChartWorkflow chartWorkflow = new ChartWorkflow();
-        List<LegSegment> legSegments = buildLegSegments(registry);
-        List<SegmentScenarioFit> segmentFits = study.selectedProfile().chartSegments();
-        int currentCycleStartIndex = latestBottomAnchorIndex(series, registry);
-        BarSeriesLabelIndicator anchorLabels = new BarSeriesLabelIndicator(series, buildAnchorLabels(series, registry));
-        BarSeriesLabelIndicator waveLabels = new BarSeriesLabelIndicator(series,
-                buildSegmentWaveLabels(series, segmentFits));
-        FixedIndicator<Num> bullishAcceptedFits = buildScenarioFitIndicator(series, segmentFits, true, true,
-                "Bullish accepted wave segments");
-        FixedIndicator<Num> bearishAcceptedFits = buildScenarioFitIndicator(series, segmentFits, false, true,
-                "Bearish accepted wave segments");
-        FixedIndicator<Num> bullishFallbackFits = buildScenarioFitIndicator(series, segmentFits, true, false,
-                "Bullish fallback wave segments");
-        FixedIndicator<Num> bearishFallbackFits = buildScenarioFitIndicator(series, segmentFits, false, false,
-                "Bearish fallback wave segments");
-        FixedIndicator<Num> bullishLegs = buildCycleLegIndicator(series, legSegments, true, "Bullish 1-2-3-4-5",
-                currentCycleStartIndex);
-        FixedIndicator<Num> bearishLegs = buildCycleLegIndicator(series, legSegments, false, "Bearish A-B-C",
-                currentCycleStartIndex);
-        ChartPlan plan = chartWorkflow.builder()
-                .withTitle("BTC macro cycles: bullish 1-5 tops and bearish A-C lows")
-                .withSeries(series)
-                .withIndicatorOverlay(bullishLegs)
-                .withLineColor(BULLISH_LEG_COLOR)
-                .withLineWidth(4.2f)
-                .withOpacity(0.60f)
-                .withLabel("Bullish 1-2-3-4-5")
-                .withIndicatorOverlay(bearishLegs)
-                .withLineColor(BEARISH_LEG_COLOR)
-                .withLineWidth(4.2f)
-                .withOpacity(0.60f)
-                .withLabel("Bearish A-B-C")
-                .withIndicatorOverlay(bullishAcceptedFits)
-                .withLineColor(BULLISH_WAVE_COLOR)
-                .withLineWidth(2.4f)
-                .withOpacity(0.72f)
-                .withLabel("Bullish accepted wave segments")
-                .withIndicatorOverlay(bearishAcceptedFits)
-                .withLineColor(BEARISH_WAVE_COLOR)
-                .withLineWidth(2.4f)
-                .withOpacity(0.72f)
-                .withLabel("Bearish accepted wave segments")
-                .withIndicatorOverlay(bullishFallbackFits)
-                .withLineColor(BULLISH_CANDIDATE_COLOR)
-                .withLineWidth(1.8f)
-                .withOpacity(0.56f)
-                .withLabel("Bullish fallback wave segments")
-                .withIndicatorOverlay(bearishFallbackFits)
-                .withLineColor(BEARISH_CANDIDATE_COLOR)
-                .withLineWidth(1.8f)
-                .withOpacity(0.56f)
-                .withLabel("Bearish fallback wave segments")
-                .withIndicatorOverlay(anchorLabels)
-                .withLineColor(ANCHOR_OVERLAY_COLOR)
-                .withLineWidth(1.5f)
-                .withOpacity(0.55f)
-                .withLabel("BTC macro-cycle anchors")
-                .withIndicatorOverlay(waveLabels)
-                .withLineColor(Color.WHITE)
-                .withLineWidth(2.5f)
-                .withOpacity(0.95f)
-                .withLabel("Matched Elliott wave labels")
-                .toPlan();
-        JFreeChart chart = chartWorkflow.render(plan);
-        applyLogPriceAxis(chart, series);
-        return chart;
+        return ElliottWaveMacroCycleDemo.renderHistoricalChart(series, registry);
     }
 
     private static JFreeChart renderLiveCurrentCycleChart(BarSeries series, CurrentCycleAnalysis currentCycle) {
@@ -611,227 +511,23 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     static MacroStudy evaluateMacroStudy(BarSeries series,
             ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(registry, "registry");
-
-        List<MacroLogicProfile> profiles = logicProfiles();
-        List<LegSegment> chartLegs = buildLegSegments(registry);
-        List<MacroCycle> historicalCycles = buildHistoricalCycles(registry);
-
-        List<MacroProfileEvaluation> evaluations = new ArrayList<>();
-        for (MacroLogicProfile profile : profiles) {
-            evaluations.add(evaluateProfile(series, profile, chartLegs, historicalCycles));
-        }
-        evaluations.sort(profileEvaluationComparator());
-        MacroProfileEvaluation selectedProfile = evaluations.getFirst();
-        List<ProfileScoreSummary> profileScores = evaluations.stream().map(ProfileScoreSummary::from).toList();
-        List<DirectionalCycleSummary> cycles = selectedProfile.cycleFits()
-                .stream()
-                .map(DirectionalCycleSummary::from)
-                .toList();
-        List<HypothesisResult> hypotheses = buildHypotheses(evaluations);
-        CurrentCycleAnalysis currentCycle = evaluateCurrentCycle(series, selectedProfile.profile(),
-                selectedProfile.historicalFitPassed() ? "historical BTC fit passed"
-                        : "historical BTC fit still partial");
-        return new MacroStudy(selectedProfile, List.copyOf(evaluations), profileScores, cycles, hypotheses,
-                currentCycle.summary(), currentCycle.primaryFit(), currentCycle.alternateFit());
+        return ElliottWaveMacroCycleDemo.evaluateMacroStudy(series, registry);
     }
 
     static List<BarLabel> buildWaveLabelsFromScenario(BarSeries series, ElliottScenario scenario, Color labelColor) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(scenario, "scenario");
-        Objects.requireNonNull(labelColor, "labelColor");
-
-        List<ElliottSwing> swings = scenario.swings();
-        if (swings.isEmpty()) {
-            return List.of();
-        }
-
-        List<BarLabel> labels = new ArrayList<>();
-        for (int index = 0; index < swings.size(); index++) {
-            ElliottSwing swing = swings.get(index);
-            boolean highPivot = swing.isRising();
-            labels.add(new BarLabel(swing.toIndex(), offsetLabelValue(series, swing.toPrice(), highPivot),
-                    waveLabelForPhase(scenario.currentPhase(), index), placementForPivot(highPivot), labelColor,
-                    WAVE_LABEL_FONT_SCALE));
-        }
-        return List.copyOf(labels);
-    }
-
-    private static MacroProfileEvaluation evaluateProfile(BarSeries series, MacroLogicProfile profile,
-            List<LegSegment> chartLegs, List<MacroCycle> historicalCycles) {
-        ElliottWaveAnalysisRunner profileRunner = buildProfileRunner(profile);
-        List<SegmentScenarioFit> chartSegments = new ArrayList<>();
-        Map<String, SegmentScenarioFit> segmentById = new LinkedHashMap<>();
-        for (LegSegment legSegment : chartLegs) {
-            fitSegment(series, legSegment, profile, profileRunner).ifPresent(fit -> {
-                chartSegments.add(fit);
-                segmentById.put(segmentKey(legSegment), fit);
-            });
-        }
-
-        List<CycleFit> cycleFits = new ArrayList<>();
-        for (MacroCycle cycle : historicalCycles) {
-            SegmentScenarioFit bullishFit = segmentById.get(segmentKey(cycle.bullishLeg()));
-            SegmentScenarioFit bearishFit = segmentById.get(segmentKey(cycle.bearishLeg()));
-            cycleFits.add(CycleFit.create(cycle, bullishFit, bearishFit));
-        }
-
-        int acceptedCycles = 0;
-        int acceptedSegments = 0;
-        double scoreTotal = 0.0;
-        for (CycleFit cycleFit : cycleFits) {
-            if (cycleFit.accepted()) {
-                acceptedCycles++;
-            }
-            if (cycleFit.bullishFit() != null && cycleFit.bullishFit().accepted()) {
-                acceptedSegments++;
-            }
-            if (cycleFit.bearishFit() != null && cycleFit.bearishFit().accepted()) {
-                acceptedSegments++;
-            }
-            scoreTotal += cycleFit.aggregateScore();
-        }
-        double aggregateScore = cycleFits.isEmpty() ? 0.0 : scoreTotal / cycleFits.size();
-        boolean historicalFitPassed = !cycleFits.isEmpty() && acceptedCycles == cycleFits.size();
-        return new MacroProfileEvaluation(profile, aggregateScore, acceptedCycles, acceptedSegments,
-                historicalFitPassed, List.copyOf(cycleFits), List.copyOf(chartSegments));
-    }
-
-    private static ElliottWaveAnalysisRunner buildProfileRunner(MacroLogicProfile profile) {
-        int runnerMaxScenarios = Math.max(profile.runnerMaxScenarios(), MIN_CORE_SEGMENT_SCENARIOS);
-        return ElliottWaveAnalysisRunner.builder()
-                .degree(profile.runnerDegree())
-                .logicProfile(profile.coreLogicProfile())
-                .maxScenarios(runnerMaxScenarios)
-                .minConfidence(0.0)
-                .seriesSelector((inputSeries, ignoredDegree) -> inputSeries)
-                .build();
-    }
-
-    private static Comparator<MacroProfileEvaluation> profileEvaluationComparator() {
-        return Comparator.comparingDouble(MacroProfileEvaluation::aggregateScore)
-                .reversed()
-                .thenComparingInt(MacroProfileEvaluation::acceptedCycles)
-                .reversed()
-                .thenComparingInt(MacroProfileEvaluation::acceptedSegments)
-                .reversed()
-                .thenComparingInt(evaluation -> evaluation.profile().orthodoxyRank());
-    }
-
-    private static List<HypothesisResult> buildHypotheses(List<MacroProfileEvaluation> evaluations) {
-        MacroProfileEvaluation classical = findEvaluation(evaluations, "orthodox-classical");
-        MacroProfileEvaluation hierarchical = findEvaluation(evaluations, "h1-hierarchical-swing");
-        MacroProfileEvaluation relaxedImpulse = findEvaluation(evaluations, "h2-btc-relaxed-impulse");
-        MacroProfileEvaluation relaxedCorrective = findEvaluation(evaluations, "h3-btc-relaxed-corrective");
-        MacroProfileEvaluation anchorFirst = findEvaluation(evaluations, "h4-anchor-first-hybrid");
-
-        return List.of(
-                hypothesisFromProfile("H1", "Swing extraction is the main macro bottleneck", hierarchical, classical,
-                        "Hierarchical pivots outperform the strict classical candidate extractor on the BTC truth set.",
-                        "Hierarchical pivots do not improve the BTC historical fit enough on their own."),
-                hypothesisFromProfile("H2", "Rigid impulse rules are too strict for BTC", relaxedImpulse, hierarchical,
-                        "Relaxing impulse-only rules improves the historical BTC cycle fit beyond the hierarchical baseline.",
-                        "Relaxing impulse-only rules does not materially improve the BTC historical fit."),
-                hypothesisFromProfile("H3", "Corrective handling is the missing coverage", relaxedCorrective,
-                        relaxedImpulse,
-                        "Relaxing corrective handling improves the BTC historical fit beyond impulse-only relaxations.",
-                        "Relaxing corrective handling does not materially improve the BTC historical fit."),
-                hypothesisFromProfile("H4", "Anchor-first scoring beats phase-first selection", anchorFirst,
-                        relaxedCorrective,
-                        "The anchor-first hybrid profile is the strongest overall BTC fit and wins the macro study.",
-                        "The anchor-first hybrid profile does not beat the best simpler profile on the BTC truth set."));
-    }
-
-    private static HypothesisResult hypothesisFromProfile(String id, String title, MacroProfileEvaluation candidate,
-            MacroProfileEvaluation baseline, String supportedSummary, String rejectedSummary) {
-        boolean supported = candidate.aggregateScore() > baseline.aggregateScore() + 0.01
-                || candidate.acceptedCycles() > baseline.acceptedCycles();
-        Map<String, String> evidence = orderedEvidence("candidateProfile", candidate.profile().id(), "candidateScore",
-                formatScore(candidate.aggregateScore()), "candidateAcceptedCycles",
-                Integer.toString(candidate.acceptedCycles()), "baselineProfile", baseline.profile().id(),
-                "baselineScore", formatScore(baseline.aggregateScore()), "baselineAcceptedCycles",
-                Integer.toString(baseline.acceptedCycles()));
-        return new HypothesisResult(id, title, supported, supported ? supportedSummary : rejectedSummary, evidence);
-    }
-
-    private static MacroProfileEvaluation findEvaluation(List<MacroProfileEvaluation> evaluations, String profileId) {
-        return evaluations.stream()
-                .filter(evaluation -> evaluation.profile().id().equals(profileId))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Missing profile " + profileId));
+        return ElliottWaveMacroCycleDemo.buildWaveLabelsFromScenario(series, scenario, labelColor);
     }
 
     private static CurrentCycleAnalysis evaluateCurrentCycle(BarSeries series, MacroLogicProfile profile,
             String historicalStatus) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(profile, "profile");
-        Objects.requireNonNull(historicalStatus, "historicalStatus");
-
-        ElliottWaveAnalysisRunner profileRunner = buildProfileRunner(profile);
-        ElliottWaveAnalysisResult.CurrentCycleAssessment assessment = profileRunner.analyzeCurrentCycle(series);
-        ElliottWaveAnalysisResult.CurrentPhaseAssessment primary = assessment.primary();
-        ElliottWaveAnalysisResult.CurrentPhaseAssessment alternate = assessment.alternate();
-        int startIndex = assessment.startIndex();
-        String primaryCount = primary == null ? "No current bullish count" : primary.countLabel();
-        String alternateCount = alternate == null ? "" : alternate.countLabel();
-        String currentWave = primary == null ? "" : primary.currentPhase().name();
-        String invalidation = primary == null ? ""
-                : formatInvalidationCondition(primary.scenario(), primary.phaseInvalidationPrice());
-        String structuralInvalidation = primary == null ? ""
-                : formatInvalidationCondition(primary.scenario(), primary.invalidationPrice());
-        String startTimeUtc = series.getBar(startIndex).getEndTime().toString();
-        String latestTimeUtc = series.getLastBar().getEndTime().toString();
-        CurrentCycleSummary summary = new CurrentCycleSummary(startTimeUtc, latestTimeUtc, profile.id(),
-                historicalStatus, primaryCount, alternateCount, currentWave, invalidation, structuralInvalidation,
-                primary == null ? 0.0 : primary.fitScore(), alternate == null ? 0.0 : alternate.fitScore(), "");
-        return new CurrentCycleAnalysis(summary, primary, alternate, assessment.candidates(),
-                assessment.distinctCandidates(5));
-    }
-
-    private static Optional<SegmentScenarioFit> fitSegment(BarSeries series, LegSegment legSegment,
-            MacroLogicProfile profile, ElliottWaveAnalysisRunner profileRunner) {
-        int startIndex = nearestIndex(series, legSegment.fromAnchor().at());
-        int endIndex = nearestIndex(series, legSegment.toAnchor().at());
-        if (endIndex <= startIndex) {
-            return Optional.empty();
-        }
-        return legSegment.bullish()
-                ? fitSegmentFromCoreRunner(series, legSegment, profile, profileRunner, startIndex, endIndex, true)
-                : fitSegmentFromCoreRunner(series, legSegment, profile, profileRunner, startIndex, endIndex, false);
-    }
-
-    private static Optional<SegmentScenarioFit> fitSegmentFromCoreRunner(BarSeries series, LegSegment legSegment,
-            MacroLogicProfile profile, ElliottWaveAnalysisRunner profileRunner, int startIndex, int endIndex,
-            boolean bullish) {
-        ElliottWaveAnalysisResult analysis = profileRunner.analyzeWindow(series, startIndex, endIndex);
-        ScenarioType expectedType = bullish ? ScenarioType.IMPULSE : null;
-        ElliottPhase expectedPhase = bullish ? ElliottPhase.WAVE5 : ElliottPhase.CORRECTIVE_C;
-        int expectedWaveCount = bullish ? 5 : 3;
-        Boolean expectedDirection = bullish ? Boolean.TRUE : Boolean.FALSE;
-        return analysis
-                .recommendedAcceptedOrFallbackBaseScenarioForWindow(series, startIndex, endIndex, expectedType,
-                        expectedPhase, expectedWaveCount, expectedDirection, MAX_CORE_ANCHOR_DRIFT_BARS,
-                        Math.max(DEFAULT_ACCEPTED_SEGMENT_SCORE, profile.acceptanceThreshold()), 0.30, 0.35, 0.80)
-                .map(assessment -> fitFromCoreAssessment(legSegment, profile, assessment, bullish, startIndex,
-                        endIndex));
+        return ElliottWaveMacroCycleDemo.evaluateCurrentCycle(series, profile, historicalStatus);
     }
 
     private static SegmentScenarioFit fitFromCoreAssessment(LegSegment legSegment, MacroLogicProfile profile,
             ElliottWaveAnalysisResult.WindowScenarioAssessment assessment, boolean bullish, int startIndex,
             int endIndex) {
-        ElliottScenario scenario = assessment.scenario();
-        double structureScore = assessment.structureScore();
-        double ruleScore = assessment.ruleScore();
-        double spacingScore = assessment.spacingScore();
-        double strengthScore = assessment.strengthScore();
-        double fitScore = assessment.fitScore();
-        boolean accepted = assessment.passesAnchoredWindowAcceptance(startIndex, endIndex,
-                Math.max(DEFAULT_ACCEPTED_SEGMENT_SCORE, profile.acceptanceThreshold()), 0.30, 0.35, 0.80,
-                MAX_CORE_ANCHOR_DRIFT_BARS);
-        return new SegmentScenarioFit(legSegment, scenario, fitScore, structureScore, ruleScore, spacingScore,
-                strengthScore, bullish, accepted,
-                bullish ? "Core-ranked anchored-window impulse fit" : "Core-ranked anchored-window corrective fit");
+        return ElliottWaveMacroCycleDemo.fitFromCoreAssessment(legSegment, profile, assessment, bullish, startIndex,
+                endIndex);
     }
 
     private static double safeConfidenceScore(double score) {
@@ -843,87 +539,6 @@ public final class ElliottWaveBtcMacroCycleDemo {
             return 0.0;
         }
         return safeConfidenceScore(score.doubleValue());
-    }
-
-    private static List<BarLabel> buildAnchorLabels(BarSeries series,
-            ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        List<BarLabel> labels = new ArrayList<>();
-        Num topPad = series.numFactory().numOf("1.02");
-        Num lowPad = series.numFactory().numOf("0.98");
-        for (ElliottWaveAnchorCalibrationHarness.Anchor anchor : registry.anchors()) {
-            int barIndex = nearestIndex(series, anchor.at());
-            Bar bar = series.getBar(barIndex);
-            boolean top = anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP;
-            Num yValue = top ? bar.getHighPrice().multipliedBy(topPad) : bar.getLowPrice().multipliedBy(lowPad);
-            String date = bar.getEndTime().atZone(ZoneOffset.UTC).toLocalDate().toString();
-            String text = top ? "Bullish 1-5 top\n" + date : "Bearish A-C low\n" + date;
-            LabelPlacement placement = top ? LabelPlacement.ABOVE : LabelPlacement.BELOW;
-            Color labelColor = top ? BULLISH_LEG_COLOR : BEARISH_LEG_COLOR;
-            labels.add(new BarLabel(barIndex, yValue, text, placement, labelColor));
-        }
-        return List.copyOf(labels);
-    }
-
-    private static List<BarLabel> buildSegmentWaveLabels(BarSeries series, List<SegmentScenarioFit> segmentFits) {
-        List<BarLabel> rawLabels = new ArrayList<>();
-        for (SegmentScenarioFit fit : segmentFits) {
-            Color labelColor = fit.accepted() ? (fit.bullish() ? BULLISH_WAVE_COLOR : BEARISH_WAVE_COLOR)
-                    : (fit.bullish() ? BULLISH_CANDIDATE_COLOR : BEARISH_CANDIDATE_COLOR);
-            rawLabels.addAll(buildWaveLabelsFromScenario(series, fit.scenario(), labelColor));
-        }
-        return deconflictLabels(series, rawLabels);
-    }
-
-    private static List<BarLabel> deconflictLabels(BarSeries series, List<BarLabel> labels) {
-        List<BarLabel> ordered = labels.stream().sorted(Comparator.comparingInt(BarLabel::barIndex)).toList();
-        List<BarLabel> adjusted = new ArrayList<>();
-        for (BarLabel label : ordered) {
-            int clusterDepth = 0;
-            for (int index = adjusted.size() - 1; index >= 0; index--) {
-                BarLabel prior = adjusted.get(index);
-                if (label.barIndex() - prior.barIndex() > LABEL_CLUSTER_BAR_GAP) {
-                    break;
-                }
-                if (prior.placement() == label.placement()) {
-                    clusterDepth++;
-                }
-            }
-            Num adjustedY = applyLabelClusterOffset(series, label, clusterDepth);
-            adjusted.add(new BarLabel(label.barIndex(), adjustedY, label.text(), label.placement(), label.color(),
-                    label.fontScale()));
-        }
-        return List.copyOf(adjusted);
-    }
-
-    private static Num applyLabelClusterOffset(BarSeries series, BarLabel label, int clusterDepth) {
-        if (clusterDepth == 0) {
-            return label.yValue();
-        }
-        double step = 0.04 * clusterDepth;
-        double multiplier = switch (label.placement()) {
-        case ABOVE -> 1.0 + step;
-        case BELOW -> 1.0 - step;
-        case CENTER -> 1.0;
-        };
-        return label.yValue().multipliedBy(series.numFactory().numOf(multiplier));
-    }
-
-    private static FixedIndicator<Num> buildScenarioFitIndicator(BarSeries series, List<SegmentScenarioFit> segmentFits,
-            boolean bullish, boolean accepted, String label) {
-        Num[] values = new Num[series.getEndIndex() + 1];
-        Arrays.fill(values, NaN);
-        for (SegmentScenarioFit fit : segmentFits) {
-            if (fit.bullish() != bullish || fit.accepted() != accepted) {
-                continue;
-            }
-            applyScenarioPath(values, series, fit.scenario());
-        }
-        return new FixedIndicator<>(series, values) {
-            @Override
-            public String toString() {
-                return label;
-            }
-        };
     }
 
     private static FixedIndicator<Num> buildScenarioIndicator(BarSeries series, ElliottScenario scenario,
@@ -968,205 +583,16 @@ public final class ElliottWaveBtcMacroCycleDemo {
         }
     }
 
-    private static FixedIndicator<Num> buildCycleLegIndicator(BarSeries series, List<LegSegment> legSegments,
-            boolean bullish, String label, int currentCycleStartIndex) {
-        Num[] values = new Num[series.getEndIndex() + 1];
-        Arrays.fill(values, NaN);
-        for (LegSegment legSegment : legSegments) {
-            if (legSegment.bullish() != bullish) {
-                continue;
-            }
-            ElliottWaveAnchorCalibrationHarness.Anchor fromAnchor = legSegment.fromAnchor();
-            ElliottWaveAnchorCalibrationHarness.Anchor toAnchor = legSegment.toAnchor();
-            int fromIndex = nearestIndex(series, fromAnchor.at());
-            int toIndex = nearestIndex(series, toAnchor.at());
-            if (toIndex < fromIndex) {
-                continue;
-            }
-
-            double fromPrice = anchorPrice(series, fromIndex, fromAnchor.type());
-            double toPrice = anchorPrice(series, toIndex, toAnchor.type());
-            int length = Math.max(1, toIndex - fromIndex);
-            for (int index = fromIndex; index <= toIndex; index++) {
-                double progress = (double) (index - fromIndex) / length;
-                double interpolated = fromPrice + ((toPrice - fromPrice) * progress);
-                values[index] = series.numFactory().numOf(interpolated);
-            }
-        }
-        clipCurrentCycleMacroGuide(values, currentCycleStartIndex);
-        return new FixedIndicator<>(series, values) {
-            @Override
-            public String toString() {
-                return label;
-            }
-        };
-    }
-
-    private static void clipCurrentCycleMacroGuide(Num[] values, int currentCycleStartIndex) {
-        if (currentCycleStartIndex == Integer.MAX_VALUE) {
-            return;
-        }
-        int clipFromIndex = Math.max(0, currentCycleStartIndex + 1);
-        for (int index = clipFromIndex; index < values.length; index++) {
-            values[index] = NaN;
-        }
-    }
-
     static double interpolateOverlayPrice(double fromPrice, double toPrice, double progress) {
-        double clampedProgress = clamp(progress, 0.0, 1.0);
-        if (!Double.isFinite(fromPrice) || !Double.isFinite(toPrice) || fromPrice <= 0.0 || toPrice <= 0.0) {
-            return fromPrice + ((toPrice - fromPrice) * clampedProgress);
-        }
-        double logFrom = Math.log(fromPrice);
-        double logTo = Math.log(toPrice);
-        return Math.exp(logFrom + ((logTo - logFrom) * clampedProgress));
-    }
-
-    private static List<LegSegment> buildLegSegments(ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors = registry.anchors()
-                .stream()
-                .sorted(Comparator.comparing(ElliottWaveAnchorCalibrationHarness.Anchor::at))
-                .toList();
-        List<LegSegment> legSegments = new ArrayList<>();
-        for (int index = 1; index < anchors.size(); index++) {
-            ElliottWaveAnchorCalibrationHarness.Anchor fromAnchor = anchors.get(index - 1);
-            ElliottWaveAnchorCalibrationHarness.Anchor toAnchor = anchors.get(index);
-            if (fromAnchor.type() == toAnchor.type()) {
-                continue;
-            }
-            boolean bullish = fromAnchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM
-                    && toAnchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP;
-            legSegments.add(new LegSegment(fromAnchor, toAnchor, bullish));
-        }
-        return List.copyOf(legSegments);
-    }
-
-    private static List<MacroCycle> buildHistoricalCycles(ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors = registry.anchors()
-                .stream()
-                .sorted(Comparator.comparing(ElliottWaveAnchorCalibrationHarness.Anchor::at))
-                .toList();
-        List<MacroCycle> cycles = new ArrayList<>();
-        for (int index = 0; index <= anchors.size() - 3; index++) {
-            ElliottWaveAnchorCalibrationHarness.Anchor start = anchors.get(index);
-            ElliottWaveAnchorCalibrationHarness.Anchor peak = anchors.get(index + 1);
-            ElliottWaveAnchorCalibrationHarness.Anchor low = anchors.get(index + 2);
-            if (start.type() != ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM
-                    || peak.type() != ElliottWaveAnchorCalibrationHarness.AnchorType.TOP
-                    || low.type() != ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM) {
-                continue;
-            }
-            String partition = low.partition().name().toLowerCase();
-            LegSegment bullishLeg = new LegSegment(start, peak, true);
-            LegSegment bearishLeg = new LegSegment(peak, low, false);
-            cycles.add(new MacroCycle(start.id() + "->" + peak.id() + "->" + low.id(), partition, start, peak, low,
-                    bullishLeg, bearishLeg));
-        }
-        return List.copyOf(cycles);
+        return ElliottWaveMacroCycleDemo.interpolateOverlayPrice(fromPrice, toPrice, progress);
     }
 
     private static void applyLogPriceAxis(JFreeChart chart, BarSeries series) {
-        if (!(chart.getPlot() instanceof CombinedDomainXYPlot combinedPlot)) {
-            return;
-        }
-        if (combinedPlot.getSubplots() == null || combinedPlot.getSubplots().isEmpty()) {
-            return;
-        }
-
-        Object subplot = combinedPlot.getSubplots().getFirst();
-        if (!(subplot instanceof XYPlot pricePlot)) {
-            return;
-        }
-
-        LogAxis logAxis = new LogAxis("Price (USD, log)");
-        logAxis.setAutoRange(true);
-        logAxis.setTickLabelPaint(Color.LIGHT_GRAY);
-        logAxis.setLabelPaint(Color.LIGHT_GRAY);
-        logAxis.setSmallestValue(smallestPositiveLow(series));
-        pricePlot.setRangeAxis(logAxis);
-    }
-
-    private static double smallestPositiveLow(BarSeries series) {
-        double smallest = Double.POSITIVE_INFINITY;
-        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
-            double low = series.getBar(index).getLowPrice().doubleValue();
-            if (Double.isFinite(low) && low > 0.0 && low < smallest) {
-                smallest = low;
-            }
-        }
-        return Double.isFinite(smallest) ? smallest : 1.0;
-    }
-
-    private static String segmentKey(LegSegment legSegment) {
-        return legSegment.fromAnchor().id() + "->" + legSegment.toAnchor().id();
-    }
-
-    private static int latestBottomAnchorIndex(BarSeries series,
-            ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        return registry.anchors()
-                .stream()
-                .filter(anchor -> anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM)
-                .max(Comparator.comparing(ElliottWaveAnchorCalibrationHarness.Anchor::at))
-                .map(anchor -> nearestIndex(series, anchor.at()))
-                .orElse(Integer.MAX_VALUE);
-    }
-
-    private static double average(double[] values, double fallback) {
-        if (values.length == 0) {
-            return fallback;
-        }
-        double total = 0.0;
-        for (double value : values) {
-            total += value;
-        }
-        return total / values.length;
+        ElliottWaveMacroCycleDemo.applyLogPriceAxis(chart, series);
     }
 
     private static double clamp(double value, double min, double max) {
         return Math.max(min, Math.min(max, value));
-    }
-
-    private static double anchorPrice(BarSeries series, int barIndex,
-            ElliottWaveAnchorCalibrationHarness.AnchorType anchorType) {
-        Bar bar = series.getBar(barIndex);
-        return anchorType == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP ? bar.getHighPrice().doubleValue()
-                : bar.getLowPrice().doubleValue();
-    }
-
-    private static String waveLabelForPhase(ElliottPhase phase, int waveIndex) {
-        if (phase.isImpulse()) {
-            return String.valueOf(waveIndex + 1);
-        }
-        if (phase.isCorrective()) {
-            return switch (waveIndex) {
-            case 0 -> "A";
-            case 1 -> "B";
-            default -> "C";
-            };
-        }
-        return String.valueOf(waveIndex + 1);
-    }
-
-    private static LabelPlacement placementForPivot(boolean highPivot) {
-        return highPivot ? LabelPlacement.ABOVE : LabelPlacement.BELOW;
-    }
-
-    private static Num offsetLabelValue(BarSeries series, Num pivotPrice, boolean highPivot) {
-        Num multiplier = highPivot ? series.numFactory().numOf("1.02") : series.numFactory().numOf("0.98");
-        return pivotPrice.multipliedBy(multiplier);
-    }
-
-    private static int nearestIndex(BarSeries series, Instant target) {
-        int nearest = series.getBeginIndex();
-        long bestDistance = Long.MAX_VALUE;
-        for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
-            long distance = Math.abs(series.getBar(index).getEndTime().toEpochMilli() - target.toEpochMilli());
-            if (distance < bestDistance) {
-                bestDistance = distance;
-                nearest = index;
-            }
-        }
-        return nearest;
     }
 
     private static BarSeries requireSeries(String resource, String seriesName) {
@@ -1196,64 +622,15 @@ public final class ElliottWaveBtcMacroCycleDemo {
     }
 
     private static List<MacroLogicProfile> logicProfiles() {
-        return List.of(
-                new MacroLogicProfile("orthodox-classical", "H0", "Classical Elliott constraints", 0,
-                        ElliottLogicProfile.ORTHODOX_CLASSICAL, ElliottDegree.MINOR),
-                new MacroLogicProfile("h1-hierarchical-swing", "H1", "Hierarchical swing extraction", 1,
-                        ElliottLogicProfile.HIERARCHICAL_SWING, ElliottDegree.MINOR),
-                new MacroLogicProfile("h2-btc-relaxed-impulse", "H2", "Relaxed impulse rules for BTC", 2,
-                        ElliottLogicProfile.BTC_RELAXED_IMPULSE, ElliottDegree.MINOR),
-                new MacroLogicProfile("h3-btc-relaxed-corrective", "H3", "Relaxed corrective coverage for BTC", 3,
-                        ElliottLogicProfile.BTC_RELAXED_CORRECTIVE, ElliottDegree.MINOR),
-                new MacroLogicProfile("h4-anchor-first-hybrid", "H4", "Anchor-first hybrid profile", 4,
-                        ElliottLogicProfile.ANCHOR_FIRST_HYBRID, ElliottDegree.MINOR));
+        return ElliottWaveMacroCycleDemo.logicProfiles();
     }
 
     private static MacroLogicProfile defaultLiveMacroProfile() {
-        return logicProfiles().stream()
-                .filter(profile -> profile.id().equals("orthodox-classical"))
-                .findFirst()
-                .orElseGet(() -> logicProfiles().getFirst());
-    }
-
-    private static String formatScore(double score) {
-        return String.format(java.util.Locale.ROOT, "%.3f", score);
-    }
-
-    private static String formatNum(Num value) {
-        return value == null ? "" : value.toString();
+        return ElliottWaveMacroCycleDemo.defaultLiveMacroProfile();
     }
 
     private static String formatInvalidationCondition(ElliottScenario scenario, Num value) {
-        if (scenario == null || value == null) {
-            return "";
-        }
-        if (scenario.hasKnownDirection()) {
-            return (scenario.isBullish() ? "<= " : ">= ") + formatNum(value);
-        }
-        return "= " + formatNum(value);
-    }
-
-    private static String bullishCountLabel(int phase) {
-        return switch (phase) {
-        case 1 -> "Bullish 1";
-        case 2 -> "Bullish 1-2";
-        case 3 -> "Bullish 1-2-3";
-        case 4 -> "Bullish 1-2-3-4";
-        case 5 -> "Bullish 1-2-3-4-5";
-        default -> "Bullish";
-        };
-    }
-
-    private static Map<String, String> orderedEvidence(String... entries) {
-        if (entries.length % 2 != 0) {
-            throw new IllegalArgumentException("entries must contain complete key/value pairs");
-        }
-        Map<String, String> ordered = new LinkedHashMap<>();
-        for (int index = 0; index < entries.length; index += 2) {
-            ordered.put(entries[index], entries[index + 1]);
-        }
-        return Map.copyOf(ordered);
+        return ElliottWaveMacroCycleDemo.formatInvalidationCondition(scenario, value);
     }
 
     record DemoReport(String registryVersion, String datasetResource, String baselineProfileId,

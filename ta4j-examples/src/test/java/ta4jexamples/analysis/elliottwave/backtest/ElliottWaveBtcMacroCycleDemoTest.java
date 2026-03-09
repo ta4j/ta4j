@@ -343,6 +343,31 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
+    void fullBitcoinHistoryKeepsStableMacroOutlook() throws Exception {
+        Path tempDir = Files.createTempDirectory("btc-macro-outlook-stability");
+
+        try {
+            ElliottWaveBtcMacroCycleDemo.DemoReport report = ElliottWaveBtcMacroCycleDemo.generateReport(tempDir);
+
+            assertEquals("orthodox-classical", report.selectedProfileId());
+            assertEquals("H0", report.selectedHypothesisId());
+            assertTrue(report.historicalFitPassed());
+            assertEquals("Bullish 1-2-3-4", report.currentCycle().primaryCount());
+            assertEquals("WAVE4", report.currentCycle().currentWave());
+            assertEquals("<= 68997.75", report.currentCycle().invalidationPrice());
+            assertEquals("<= 3709.55", report.currentCycle().structuralInvalidationPrice());
+        } finally {
+            Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException ignored) {
+                    // best effort cleanup
+                }
+            });
+        }
+    }
+
+    @Test
     void livePresetReportFindsCurrentCycleStartFromProvidedSeriesWindow() throws Exception {
         BarSeries fullSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,

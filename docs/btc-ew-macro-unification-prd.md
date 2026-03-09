@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-08 21:30 EDT
+- Last updated: 2026-03-08 22:27 EDT
 - Active phase: Phase 6
-- Active task: Strip `ElliottWaveBtcMacroCycleDemo` down to a thin I/O and reporting wrapper
-- Overall: 41/47 checklist items complete
+- Active task: Decide whether the BTC wrapper still adds enough value to keep after the generic macro demo owns the historical path
+- Overall: 42/47 checklist items complete
 
 ## Status
 
@@ -210,7 +210,7 @@ Implementation steps:
 
 ### Phase 6: Reduce or Remove `ElliottWaveBtcMacroCycleDemo`
 
-- [ ] Strip `ElliottWaveBtcMacroCycleDemo` down to a thin wrapper.
+- [x] Strip `ElliottWaveBtcMacroCycleDemo` down to a thin wrapper.
 - [x] Remove all duplicated scenario search, ranking, path search, pivot-dominance, and current-cycle fitting logic from it.
 - [ ] If the class remains, it should only:
   - load BTC resources
@@ -231,7 +231,8 @@ Implementation notes:
 
 - `ElliottWaveMacroCycleDemo` now supports both registry-backed historical validation and anchor-free macro-turn inference from the supplied `BarSeries`.
 - On full-history BTC daily, the anchor-free generic path now recovers the committed 2011/2013/2017/2021 tops and 2011/2015/2018/2022 lows exactly, and preserves the same selected profile, hypothesis, and current-cycle outlook as the registry-backed report.
-- `ElliottWaveBtcMacroCycleDemo` is still not thin enough to check the wrapper-reduction items off; keep migrating interpretation logic out of it before claiming Phase 6 complete.
+- `ElliottWaveMacroCycleDemo` now owns the historical macro study, shared profile selection, shared current-cycle evaluation, and the macro regression chart renderer; `ElliottWaveBtcMacroCycleDemo` delegates those paths and keeps only BTC-specific loading plus console/chart/report wiring.
+- The remaining Phase 6 decision is whether the BTC wrapper should survive as a fixed-resource UX wrapper for live BTC charts, or whether that entry point should collapse further into the generic demo.
 
 ### Phase 7: Documentation and Guides
 
