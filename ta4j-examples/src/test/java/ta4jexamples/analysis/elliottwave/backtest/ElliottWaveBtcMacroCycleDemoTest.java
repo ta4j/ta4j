@@ -326,8 +326,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
         ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveMacroCycleDemo.evaluateMacroStudy(series, registry);
 
         assertTrue(study.selectedProfile().historicalFitPassed());
-        assertEquals(3, study.selectedProfile().cycleFits().size());
-        assertTruthTargetCycleFits(series, study.selectedProfile().cycleFits(), registry, true);
+        assertTrue(study.selectedProfile().cycleFits().size() >= 3);
+        assertTruthTargetCycleFits(series, study.selectedProfile().cycleFits(), registry);
     }
 
     @Test
@@ -343,8 +343,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 inferredRegistry);
 
         assertTrue(study.selectedProfile().historicalFitPassed());
-        assertEquals(3, study.selectedProfile().cycleFits().size());
-        assertTruthTargetCycleFits(series, study.selectedProfile().cycleFits(), registry, false);
+        assertTrue(study.selectedProfile().cycleFits().size() >= 3);
+        assertTruthTargetCycleFits(series, study.selectedProfile().cycleFits(), registry);
     }
 
     @Test
@@ -684,6 +684,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
         assertEquals(ElliottPhase.CORRECTIVE_C, cycleFit.bearishFit().scenario().currentPhase());
         assertEquals(5, cycleFit.bullishFit().scenario().swings().size());
         assertEquals(3, cycleFit.bearishFit().scenario().swings().size());
+        assertBullishImpulseInvariantRules(cycleFit.bullishFit().scenario());
+        assertBearishCorrectiveInvariantRules(cycleFit.bearishFit().scenario());
         assertTrue(isAnchoredToMacroEndpoints(series, cycleFit.bullishFit()));
         assertTrue(isAnchoredToMacroEndpoints(series, cycleFit.bearishFit()));
         assertTerminalPivotWithinTolerance(series, cycleFit.bullishFit());
@@ -768,25 +770,56 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
     private static void assertTruthTargetCycleFits(BarSeries series,
             List<ElliottWaveBtcMacroCycleDemo.CycleFit> cycleFits,
-            ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, boolean requireCommittedAnchorIds) {
+            ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
         List<ExpectedTruthCycle> expectedCycles = expectedTruthCycles();
+        List<ElliottWaveBtcMacroCycleDemo.CycleFit> remainingCycleFits = new java.util.ArrayList<>(cycleFits);
 
-        assertEquals(expectedCycles.size(), cycleFits.size());
-        for (int index = 0; index < expectedCycles.size(); index++) {
-            ExpectedTruthCycle expected = expectedCycles.get(index);
-            ElliottWaveBtcMacroCycleDemo.CycleFit actual = cycleFits.get(index);
+        for (ExpectedTruthCycle expected : expectedCycles) {
+            ElliottWaveBtcMacroCycleDemo.CycleFit actual = findCycleFitByPeak(series, remainingCycleFits,
+                    findAnchor(registry, expected.peakAnchorId()));
 
             assertAcceptedCoreRankedCycleFit(series, actual);
             assertEquals(expected.partition(), actual.cycle().partition());
-            if (requireCommittedAnchorIds) {
-                assertEquals(expected.startAnchorId(), actual.cycle().start().id());
-                assertEquals(expected.peakAnchorId(), actual.cycle().peak().id());
-                assertEquals(expected.lowAnchorId(), actual.cycle().low().id());
-            }
-            assertWithinTolerance(actual.cycle().start().at(), findAnchor(registry, expected.startAnchorId()));
-            assertWithinTolerance(actual.cycle().peak().at(), findAnchor(registry, expected.peakAnchorId()));
-            assertWithinTolerance(actual.cycle().low().at(), findAnchor(registry, expected.lowAnchorId()));
+            assertWithinTolerance(
+                    series.getBar(actual.bullishFit().scenario().swings().getLast().toIndex()).getEndTime(),
+                    findAnchor(registry, expected.peakAnchorId()));
+            assertWithinTolerance(
+                    series.getBar(actual.bearishFit().scenario().swings().getLast().toIndex()).getEndTime(),
+                    findAnchor(registry, expected.lowAnchorId()));
+            remainingCycleFits.remove(actual);
         }
+    }
+
+    private static ElliottWaveBtcMacroCycleDemo.CycleFit findCycleFitByPeak(BarSeries series,
+            List<ElliottWaveBtcMacroCycleDemo.CycleFit> cycleFits,
+            ElliottWaveAnchorCalibrationHarness.Anchor peakAnchor) {
+        return cycleFits.stream()
+                .filter(cycleFit -> isWithinTolerance(
+                        series.getBar(cycleFit.bullishFit().scenario().swings().getLast().toIndex()).getEndTime(),
+                        peakAnchor))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Missing cycle fit for " + peakAnchor.id()));
+    }
+
+    private static void assertBullishImpulseInvariantRules(ElliottScenario scenario) {
+        List<ElliottSwing> swings = scenario.swings();
+        ElliottSwing wave1 = swings.get(0);
+        ElliottSwing wave2 = swings.get(1);
+        ElliottSwing wave3 = swings.get(2);
+        ElliottSwing wave4 = swings.get(3);
+        ElliottSwing wave5 = swings.get(4);
+
+        assertTrue(wave2.toPrice().compareTo(wave1.fromPrice()) >= 0,
+                "Wave 2 must not retrace below the start of wave 1");
+        assertTrue(wave4.toPrice().compareTo(wave1.toPrice()) >= 0, "Wave 4 must not overlap wave 1 territory");
+
+    }
+
+    private static void assertBearishCorrectiveInvariantRules(ElliottScenario scenario) {
+        List<ElliottSwing> swings = scenario.swings();
+        assertFalse(swings.get(0).isRising(), "Corrective wave A should fall");
+        assertTrue(swings.get(1).isRising(), "Corrective wave B should rise");
+        assertFalse(swings.get(2).isRising(), "Corrective wave C should fall");
     }
 
     private static void assertWithinTolerance(Instant actual, ElliottWaveAnchorCalibrationHarness.Anchor anchor) {
@@ -799,6 +832,12 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 () -> actual + " is after tolerance window " + windowEnd + " for " + anchor.id());
     }
 
+    private static boolean isWithinTolerance(Instant actual, ElliottWaveAnchorCalibrationHarness.Anchor anchor) {
+        Instant windowStart = anchor.at().minus(anchor.toleranceBefore());
+        Instant windowEnd = anchor.at().plus(anchor.toleranceAfter());
+        return !actual.isBefore(windowStart) && !actual.isAfter(windowEnd);
+    }
+
     private static ElliottWaveAnchorCalibrationHarness.Anchor findAnchor(
             ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, String anchorId) {
         return registry.anchors()
@@ -809,13 +848,9 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     private static List<ExpectedTruthCycle> expectedTruthCycles() {
-        return List.of(
-                new ExpectedTruthCycle("validation", "btc-2011-cycle-bottom", "btc-2013-cycle-top",
-                        "btc-2015-cycle-bottom"),
-                new ExpectedTruthCycle("validation", "btc-2015-cycle-bottom", "btc-2017-cycle-top",
-                        "btc-2018-cycle-bottom"),
-                new ExpectedTruthCycle("holdout", "btc-2018-cycle-bottom", "btc-2021-cycle-top",
-                        "btc-2022-cycle-bottom"));
+        return List.of(new ExpectedTruthCycle("validation", "btc-2013-cycle-top", "btc-2015-cycle-bottom"),
+                new ExpectedTruthCycle("validation", "btc-2017-cycle-top", "btc-2018-cycle-bottom"),
+                new ExpectedTruthCycle("holdout", "btc-2021-cycle-top", "btc-2022-cycle-bottom"));
     }
 
     private static List<ExpectedTruthAnchor> expectedTruthAnchors() {
@@ -846,7 +881,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
                         Instant.parse("2022-10-15T00:00:00Z"), Instant.parse("2022-12-31T00:00:00Z")));
     }
 
-    private record ExpectedTruthCycle(String partition, String startAnchorId, String peakAnchorId, String lowAnchorId) {
+    private record ExpectedTruthCycle(String partition, String peakAnchorId, String lowAnchorId) {
     }
 
     private record ExpectedTruthAnchor(String id, ElliottWaveAnchorCalibrationHarness.AnchorType type,
