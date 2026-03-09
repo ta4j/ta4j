@@ -148,7 +148,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME);
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
                 .defaultBitcoinAnchors(series);
-        return generateReport(series, registry, chartDirectory);
+        return ElliottWaveMacroCycleDemo.generateHistoricalReport(series, registry, chartDirectory);
     }
 
     static DemoReport generateReport(BarSeries series, ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry,
