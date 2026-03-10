@@ -604,8 +604,8 @@ public class BaseTradingRecord implements TradingRecord {
                 candidate = newerTrade(candidate, closed.position().getEntry(), closed.entrySequence());
             }
             for (PositionLot lot : positionBook.openLots()) {
-                Trade entry = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(), lot.fee(),
-                        lot.side(), lot.orderId(), lot.correlationId());
+                Trade entry = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
+                        lot.fee(), lot.side(), lot.orderId(), lot.correlationId());
                 candidate = newerTrade(candidate, entry, lot.entrySequence());
             }
             return candidate == null ? null : candidate.trade();

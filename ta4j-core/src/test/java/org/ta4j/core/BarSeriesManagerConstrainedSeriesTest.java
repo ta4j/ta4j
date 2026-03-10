@@ -20,8 +20,8 @@ public class BarSeriesManagerConstrainedSeriesTest {
     public void currentCloseModelClosesOpenPositionUsingRawBarsBeyondConstrainedEndIndex() {
         DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
         BarSeries sourceSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
-        BaseBarSeries constrainedSeries = new BaseBarSeries("constrained-series", List.copyOf(sourceSeries.getBarData()),
-                0, 1, true, numFactory, new TimeBarBuilderFactory());
+        BaseBarSeries constrainedSeries = new BaseBarSeries("constrained-series",
+                List.copyOf(sourceSeries.getBarData()), 0, 1, true, numFactory, new TimeBarBuilderFactory());
         Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(2));
 
         TradingRecord tradingRecord = new BarSeriesManager(constrainedSeries, new TradeOnCurrentCloseModel())
