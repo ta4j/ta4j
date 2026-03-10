@@ -453,6 +453,21 @@ Avoid exposing calibration internals publicly.
   - replay stability
 - [ ] Make the harness emit a scored comparison report for candidate profile vectors.
 - [ ] Add a stable baseline report artifact for the current best vector.
+- [ ] Persist BTC calibration artifacts incrementally instead of only at the end:
+  - write each candidate-profile result as it completes
+  - write the selected BTC historical calibration report before portability checks begin
+  - append portability and final aggregate output afterward
+- [ ] Parallelize calibration at the fold level with a bounded executor and deterministic reduction.
+- [ ] Avoid nested parallelism across profiles, folds, and scenario search; one layer must own concurrency.
+- [ ] Add deep runtime instrumentation to the harness and core search:
+  - per-profile elapsed time
+  - per-fold elapsed time
+  - per-snapshot elapsed time
+  - scenario counts and decomposition branch counts
+  - portability timing kept separate from BTC calibration timing
+- [ ] Split calibration outputs into:
+  - routine sanity artifacts
+  - exhaustive calibration artifacts
 
 ### Phase 9: Search the Rule Vector
 
@@ -465,6 +480,13 @@ Avoid exposing calibration internals publicly.
   - score weights
 - [ ] Keep the search deterministic and reproducible.
 - [ ] Persist the selected vector as the canonical BTC-calibrated profile.
+- [ ] Explore pruning opportunities before adding more brute-force search:
+  - partial-cut invalidation pruning
+  - minimum segment span pruning
+  - impossible direction/overlap pruning
+  - retracement and amplitude bound pruning
+- [ ] Record pruning hit rates and runtime deltas so performance work stays evidence-driven.
+- [ ] Decide whether the default search lane should use a reduced geometry while an exhaustive lane remains opt-in.
 
 ### Phase 10: Collapse Historical and Live Rendering onto One Result
 
@@ -556,4 +578,3 @@ This PRD is complete only when:
 - the anchor registry is no longer a runtime decomposition input
 - BTC truth-target alignment is achieved through offline calibration and regression only
 - the calibrated engine reproduces the accepted BTC macro structure well enough to replace the old anchor-driven historical story
-
