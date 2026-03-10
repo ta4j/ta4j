@@ -24,17 +24,28 @@ final class ExecutionModelSupport {
 
     static ExecutionTarget resolveExecutionTarget(int signalIndex, BarSeries barSeries,
             TradeExecutionModel.PriceSource priceSource) {
-        if (signalIndex < barSeries.getBeginIndex() || signalIndex > barSeries.getEndIndex()) {
+        if (signalIndex < barSeries.getBeginIndex()) {
             return null;
         }
         if (priceSource == TradeExecutionModel.PriceSource.CURRENT_CLOSE) {
+            if (!hasAccessibleBar(signalIndex, barSeries)) {
+                return null;
+            }
             return new ExecutionTarget(signalIndex, barSeries.getBar(signalIndex).getClosePrice());
+        }
+        if (signalIndex > barSeries.getEndIndex()) {
+            return null;
         }
         int executionIndex = signalIndex + 1;
         if (executionIndex > barSeries.getEndIndex()) {
             return null;
         }
         return new ExecutionTarget(executionIndex, barSeries.getBar(executionIndex).getOpenPrice());
+    }
+
+    private static boolean hasAccessibleBar(int signalIndex, BarSeries barSeries) {
+        int rawIndex = signalIndex - barSeries.getRemovedBarsCount();
+        return rawIndex >= 0 && rawIndex < barSeries.getBarData().size();
     }
 
     static TradeType nextTradeType(TradingRecord tradingRecord) {
