@@ -348,6 +348,16 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     @Override
+    public Trade getLastEntry() {
+        return lastRecordedEntrySnapshot();
+    }
+
+    @Override
+    public Trade getLastExit() {
+        return lastRecordedExitSnapshot();
+    }
+
+    @Override
     public Integer getStartIndex() {
         return startIndex;
     }
@@ -584,6 +594,47 @@ public class BaseTradingRecord implements TradingRecord {
         trades.sort(Comparator.comparingInt((SequencedTrade trade) -> trade.trade().getIndex())
                 .thenComparingLong(SequencedTrade::sequence));
         return trades.stream().map(SequencedTrade::trade).toList();
+    }
+
+    private Trade lastRecordedEntrySnapshot() {
+        lock.readLock().lock();
+        try {
+            SequencedTrade candidate = null;
+            for (PositionBook.ClosedPosition closed : positionBook.closedPositionsWithSequence()) {
+                candidate = newerTrade(candidate, closed.position().getEntry(), closed.entrySequence());
+            }
+            for (PositionLot lot : positionBook.openLots()) {
+                Trade entry = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(), lot.fee(),
+                        lot.side(), lot.orderId(), lot.correlationId());
+                candidate = newerTrade(candidate, entry, lot.entrySequence());
+            }
+            return candidate == null ? null : candidate.trade();
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    private Trade lastRecordedExitSnapshot() {
+        lock.readLock().lock();
+        try {
+            SequencedTrade candidate = null;
+            for (PositionBook.ClosedPosition closed : positionBook.closedPositionsWithSequence()) {
+                candidate = newerTrade(candidate, closed.position().getExit(), closed.exitSequence());
+            }
+            return candidate == null ? null : candidate.trade();
+        } finally {
+            lock.readLock().unlock();
+        }
+    }
+
+    private static SequencedTrade newerTrade(SequencedTrade current, Trade trade, long sequence) {
+        if (trade == null) {
+            return current;
+        }
+        if (current == null || sequence > current.sequence()) {
+            return new SequencedTrade(trade, sequence);
+        }
+        return current;
     }
 
     private Num totalFeesSnapshot() {

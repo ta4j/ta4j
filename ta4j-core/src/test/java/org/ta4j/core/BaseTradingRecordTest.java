@@ -511,8 +511,20 @@ class BaseTradingRecordTest {
         Trade shortEntry = Trade.sellAt(2, numFactory.numOf(105), numFactory.one());
         BaseTradingRecord record = new BaseTradingRecord(longEntry, longExit, shortEntry);
 
-        assertEquals(shortEntry, record.getLastEntry());
-        assertEquals(longExit, record.getLastExit());
+        Trade lastEntry = record.getLastEntry();
+        Trade lastExit = record.getLastExit();
+
+        assertNotNull(lastEntry);
+        assertEquals(shortEntry.getType(), lastEntry.getType());
+        assertEquals(shortEntry.getIndex(), lastEntry.getIndex());
+        assertEquals(shortEntry.getPricePerAsset(), lastEntry.getPricePerAsset());
+        assertEquals(shortEntry.getAmount(), lastEntry.getAmount());
+
+        assertNotNull(lastExit);
+        assertEquals(longExit.getType(), lastExit.getType());
+        assertEquals(longExit.getIndex(), lastExit.getIndex());
+        assertEquals(longExit.getPricePerAsset(), lastExit.getPricePerAsset());
+        assertEquals(longExit.getAmount(), lastExit.getAmount());
     }
 
     @Test
