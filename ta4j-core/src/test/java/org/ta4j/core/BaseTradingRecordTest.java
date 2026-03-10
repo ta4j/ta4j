@@ -505,6 +505,17 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    void lastEntryAndExitTrackReversalTradesInsteadOfStartingTypeBuckets() {
+        Trade longEntry = Trade.buyAt(0, numFactory.hundred(), numFactory.one());
+        Trade longExit = Trade.sellAt(1, numFactory.numOf(110), numFactory.one());
+        Trade shortEntry = Trade.sellAt(2, numFactory.numOf(105), numFactory.one());
+        BaseTradingRecord record = new BaseTradingRecord(longEntry, longExit, shortEntry);
+
+        assertEquals(shortEntry, record.getLastEntry());
+        assertEquals(longExit, record.getLastExit());
+    }
+
+    @Test
     void keepsNaNPriceWhenRecordingLegacyFill() {
         BaseTradingRecord record = new BaseTradingRecord();
 
