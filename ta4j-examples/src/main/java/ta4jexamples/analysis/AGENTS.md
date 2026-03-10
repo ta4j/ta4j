@@ -1,10 +1,9 @@
 # ta4jexamples.analysis instructions
 
 - Analysis demo classes in this package should load *ossified* OHLCV datasets committed under `ta4j-examples/src/main/resources` (avoid live HTTP calls in the demo itself).
-- Long-running analysis, calibration, or reporting flows in this package must emit progress and persist their primary artifacts incrementally instead of waiting for one final aggregate object at the end.
-  - Persist the main result for the primary dataset or instrument as soon as that phase completes, before starting optional portability or secondary-market checks.
-  - Write phase-complete artifacts and human-readable summaries inline with processing so partial results survive long runtimes, interruptions, or follow-on failures.
-  - Final aggregate JSON or bundle output is still useful, but it must append to already-persisted phase outputs rather than being the only durable report.
+- Long-running analysis/calibration flows must log progress and persist primary artifacts incrementally.
+- Write the primary dataset/instrument result before any portability or secondary checks.
+- Final aggregate JSON/bundles may append later, but must not be the only durable output.
 - When adding a new analysis demo, first stage the dataset locally:
   1. Fetch the desired OHLCV data using an HTTP datasource (prefer `ta4jexamples.datasources.CoinbaseHttpBarSeriesDataSource` for crypto examples) with response caching enabled.
   2. Let the datasource paginate as needed (Coinbase is capped at 350 candles/request) and write cached JSON responses under `ta4j-examples/temp/responses`.
