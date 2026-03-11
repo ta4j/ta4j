@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 11:31 EDT
-- Active phase: Phase 8
-- Active task: Enumerate the hard-rule subset and soft-rule weighting knobs that are allowed to vary
-- Overall: 14/56 checklist items complete
+- Last updated: 2026-03-11 11:35 EDT
+- Active phase: Phase 9
+- Active task: Create a controlled profile search process over orthodox constraints, relaxed constraints, fractal windows, and score weights
+- Overall: 16/56 checklist items complete
 
 ## Status
 
@@ -472,8 +472,23 @@ Avoid exposing calibration internals publicly.
 
 ### Phase 9: Search the Rule Vector
 
-- [ ] Enumerate the hard-rule subset and soft-rule weighting knobs that are allowed to vary.
-- [ ] Include fractal configuration as part of the vector.
+- [x] Enumerate the hard-rule subset and soft-rule weighting knobs that are allowed to vary.
+  - Hard rules stay fixed in the canonical search:
+    - directional alternation and phase-family validity for completed impulse and corrective legs
+    - wave 2 must not break below the wave 1 origin on standard bullish impulse paths
+    - wave 4 must not overlap wave 1 territory on standard non-diagonal impulse paths
+    - completed bearish macro legs must resolve as corrective-C terminations in the currently supported family
+    - fold-bounded labeling and leakage controls stay mandatory and never enter the search vector
+  - Soft or tunable knobs may vary across candidate vectors:
+    - base degree selection
+    - higher-degree and lower-degree confirmation drag
+    - retained scenario cap
+    - scenario swing window
+    - confidence weighting and confidence-model family
+    - pattern-set scope once the canonical search consumes it directly
+    - swing-confirmation geometry and related fractal controls
+  - Explicitly keep `wave 3 cannot be the shortest` out of the hard-rule set; treat it as a heuristic signal only.
+- [x] Include fractal configuration as part of the vector.
 - [ ] Create a controlled profile search process over:
   - orthodox constraints
   - relaxed constraints with asterisks
