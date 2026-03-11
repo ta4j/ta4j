@@ -103,6 +103,7 @@ public final class ElliottWaveAnalysisRunner {
     private static final int MACRO_PIVOT_GRAPH_MAX_PIVOTS = 24;
     private static final double MACRO_PIVOT_GRAPH_MIN_DOMINANCE = 0.55;
     private static final int CANONICAL_SEARCH_BEAM_WIDTH = 12;
+    private static final int CANONICAL_SEARCH_MAX_CANDIDATES = 128;
     private static final double CANONICAL_SEARCH_CONTIGUITY_BONUS = 0.15;
     private static final double CANONICAL_SEARCH_ALTERNATION_BONUS = 0.10;
     private static final double CANONICAL_SEARCH_GAP_PENALTY_PER_PIVOT = 0.05;
@@ -538,12 +539,7 @@ public final class ElliottWaveAnalysisRunner {
             return Optional.empty();
         }
 
-        final List<CanonicalLegCandidate> ordered = candidates.stream()
-                .filter(Objects::nonNull)
-                .sorted(Comparator.comparingInt(CanonicalLegCandidate::startPivotIndex)
-                        .thenComparingInt(CanonicalLegCandidate::endPivotIndex)
-                        .thenComparing(Comparator.comparingDouble(CanonicalLegCandidate::fitScore).reversed()))
-                .toList();
+        final List<CanonicalLegCandidate> ordered = boundCanonicalCandidates(candidates);
         List<CanonicalStructurePath> beam = List.of(CanonicalStructurePath.empty());
         for (final CanonicalLegCandidate candidate : ordered) {
             final List<CanonicalStructurePath> frontier = new ArrayList<>(beam);
@@ -558,6 +554,20 @@ public final class ElliottWaveAnalysisRunner {
                     .toList();
         }
         return beam.stream().filter(path -> !path.legs().isEmpty()).sorted(CanonicalStructurePath.ORDERING).findFirst();
+    }
+
+    List<CanonicalLegCandidate> boundCanonicalCandidates(final List<CanonicalLegCandidate> candidates) {
+        return candidates.stream()
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparingDouble(CanonicalLegCandidate::fitScore)
+                        .reversed()
+                        .thenComparingInt(CanonicalLegCandidate::startPivotIndex)
+                        .thenComparingInt(CanonicalLegCandidate::endPivotIndex))
+                .limit(CANONICAL_SEARCH_MAX_CANDIDATES)
+                .sorted(Comparator.comparingInt(CanonicalLegCandidate::startPivotIndex)
+                        .thenComparingInt(CanonicalLegCandidate::endPivotIndex)
+                        .thenComparing(Comparator.comparingDouble(CanonicalLegCandidate::fitScore).reversed()))
+                .toList();
     }
 
     /**

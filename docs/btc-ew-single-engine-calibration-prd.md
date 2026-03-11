@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 17:34 EDT
-- Active phase: Phase 4
-- Active task: Add performance safeguards before wiring global search into full BTC-scale runtime flows
-- Overall: 38/56 checklist items complete
+- Last updated: 2026-03-11 17:36 EDT
+- Active phase: Phase 5
+- Active task: Move current-cycle inference onto the bounded canonical search instead of the separate live-only ranking path
+- Overall: 39/56 checklist items complete
 
 ## Status
 
@@ -415,7 +415,7 @@ Avoid exposing calibration internals publicly.
 - [x] Start with beam search or dynamic programming and a bounded state space.
 - [x] Score global structure continuity and macro coherence, not just local fit quality.
 - [x] Add tests on small synthetic series where the globally correct path is known.
-- [ ] Add performance safeguards so full BTC daily is practical.
+- [x] Add performance safeguards so full BTC daily is practical.
 
 ### Phase 5: Move Current-Cycle Inference onto the Canonical Search
 

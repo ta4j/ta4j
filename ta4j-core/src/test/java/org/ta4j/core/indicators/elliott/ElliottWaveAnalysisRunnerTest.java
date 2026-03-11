@@ -677,6 +677,30 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void boundCanonicalCandidatesCapsSearchFrontier() {
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, window.numFactory()))
+                .build();
+
+        List<ElliottWaveAnalysisRunner.CanonicalLegCandidate> candidates = new ArrayList<>();
+        for (int index = 0; index < 140; index++) {
+            double fit = 1.0 - (index / 200.0);
+            candidates.add(new ElliottWaveAnalysisRunner.CanonicalLegCandidate("candidate-" + index, index, index + 2,
+                    index % 2 == 0, fit));
+        }
+
+        List<ElliottWaveAnalysisRunner.CanonicalLegCandidate> bounded = analysis.boundCanonicalCandidates(candidates);
+
+        assertThat(bounded).hasSize(128);
+        assertThat(bounded.stream().map(ElliottWaveAnalysisRunner.CanonicalLegCandidate::id))
+                .contains("candidate-0", "candidate-1", "candidate-2")
+                .doesNotContain("candidate-139");
+    }
+
+    @Test
     void analyzeCurrentCycleRejectsWaveFiveWhenTerminalHighIsNotDominant() {
         BarSeries series = buildMalformedWaveFiveSeries();
         NumFactory factory = series.numFactory();
