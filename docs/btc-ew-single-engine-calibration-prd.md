@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 10:49 EDT
+- Last updated: 2026-03-11 11:04 EDT
 - Active phase: Phase 8
-- Active task: Persist BTC-first calibration artifacts before portability
-- Overall: 1/56 checklist items complete
+- Active task: Parallelize calibration at the fold level with a bounded executor and deterministic reduction
+- Overall: 4/56 checklist items complete
 
 ## Status
 
@@ -496,12 +496,12 @@ Avoid exposing calibration internals publicly.
    - landed: per-snapshot elapsed time
    - landed: scenario counts
    - landed: decomposition branch counts
-2. [ ] Persist BTC-first calibration artifacts before portability:
-   - write each BTC candidate-profile result as it completes
-   - write the selected BTC historical calibration report before portability checks begin
-   - append portability and final aggregate output afterward
-3. [ ] Fix the holdout anchor aggregation inconsistency so anchor-level holdout summaries align with the cycle-level holdout evidence already present in the report.
-4. [ ] Widen the rule search around the failed 2021/2022 holdout cycle after the instrumentation and reporting fixes are in place.
+2. [x] Persist BTC-first calibration artifacts before portability:
+   - landed: write each BTC candidate-profile result as it completes
+   - landed: write the selected BTC historical calibration report before portability checks begin
+   - landed: append portability and final aggregate output afterward
+3. [x] Fix the holdout anchor aggregation inconsistency so anchor-level holdout summaries align with the cycle-level holdout evidence already present in the report.
+4. [x] Widen the rule search around the failed 2021/2022 holdout cycle after the instrumentation and reporting fixes are in place.
 
 ### Phase 10: Collapse Historical and Live Rendering onto One Result
 

@@ -3,7 +3,11 @@
  */
 package ta4jexamples.analysis.elliottwave.backtest;
 
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.time.Duration;
 import java.time.Instant;
@@ -129,7 +133,9 @@ public final class ElliottWaveAnchorCalibrationHarness {
     public static void main(String[] args) {
         Instant startedAt = Instant.now();
         LOG.info("Starting BTC anchor calibration harness");
-        ReportBundle report = generateDefaultReport();
+        ArtifactSink artifactSink = FileArtifactSink.create(defaultArtifactDirectory(startedAt));
+        LOG.info("Writing incremental calibration artifacts to {}", artifactSink.outputDirectory());
+        ReportBundle report = generateDefaultReport(artifactSink);
         LOG.info("Finished BTC anchor calibration harness in {}", formatElapsed(startedAt));
         LOG.info("Promotion decision: selectedProfile={} promoteChallenger={} rationale={}",
                 report.decision().selectedProfileId(), report.decision().promoteChallenger(),
@@ -188,6 +194,10 @@ public final class ElliottWaveAnchorCalibrationHarness {
     }
 
     static ReportBundle generateDefaultReport() {
+        return generateDefaultReport(ArtifactSink.noOp());
+    }
+
+    static ReportBundle generateDefaultReport(ArtifactSink artifactSink) {
         Instant startedAt = Instant.now();
         LOG.info("Loading BTC anchor registry document");
         ElliottWaveAnchorRegistry registryDocument = ElliottWaveAnchorRegistry
@@ -205,7 +215,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
         LOG.info("Resolved {} BTC anchors across {} profiles; BTC bars={}", registry.anchors().size(), profiles.size(),
                 btcSeries.getBarCount());
 
-        List<CandidateEvaluation> evaluations = evaluateCandidatesSequentially(btcSeries, registry, profiles, config);
+        List<CandidateEvaluation> evaluations = evaluateCandidatesSequentially(btcSeries, registry, profiles, config,
+                artifactSink);
 
         WalkForwardEngine<ElliottWaveWalkForwardContext, ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> portabilityEngine = buildEngine();
 
@@ -219,24 +230,29 @@ public final class ElliottWaveAnchorCalibrationHarness {
         CandidateEvaluation selected = selectedEvaluation(baseline, challengerAssessments, decision);
         LOG.info("Selected profile {} after challenger ranking in {}", selected.profile().id(),
                 formatElapsed(startedAt));
+        artifactSink.recordSelectedHistoricalCalibration(selected, HistoricalCalibrationReport.from(selected),
+                decision);
 
         List<PortabilitySummary> portability = List.of(
                 evaluatePortabilityWithProgress("eth-usd", ETH_RESOURCE, ethSeries, baseline.profile(),
-                        selected.profile(), portabilityEngine, config),
+                        selected.profile(), portabilityEngine, config, artifactSink),
                 evaluatePortabilityWithProgress("sp500", SP500_RESOURCE, sp500Series, baseline.profile(),
-                        selected.profile(), portabilityEngine, config));
+                        selected.profile(), portabilityEngine, config, artifactSink));
 
         BaselinePolicy baselinePolicy = new BaselinePolicy(registry.datasetResource(), config.primaryHorizonBars(),
                 List.copyOf(config.reportingHorizons()), config.configHash(),
                 ElliottWaveWalkForwardProfiles.baseline().metadata().getOrDefault("profile", "baseline"));
 
         LOG.info("Built BTC anchor calibration report in {}", formatElapsed(startedAt));
-        return ReportBundle.create("btc-anchor-calibration-v2", btcSeries.getBar(btcSeries.getEndIndex()).getEndTime(),
-                registry, baselinePolicy, baseline, challengerAssessments, decision, portability);
+        ReportBundle report = ReportBundle.create("btc-anchor-calibration-v2",
+                btcSeries.getBar(btcSeries.getEndIndex()).getEndTime(), registry, baselinePolicy, baseline,
+                challengerAssessments, decision, portability);
+        artifactSink.recordFinalReport(report);
+        return report;
     }
 
     private static List<CandidateEvaluation> evaluateCandidatesSequentially(BarSeries series, AnchorRegistry registry,
-            List<CandidateProfile> profiles, WalkForwardConfig config) {
+            List<CandidateProfile> profiles, WalkForwardConfig config, ArtifactSink artifactSink) {
         List<CandidateEvaluation> evaluations = new ArrayList<>(profiles.size());
         for (int i = 0; i < profiles.size(); i++) {
             CandidateProfile profile = profiles.get(i);
@@ -245,6 +261,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
                     profile.rationale());
             CandidateEvaluation evaluation = evaluateCandidate(series, registry, profile, buildEngine(), config);
             evaluations.add(evaluation);
+            artifactSink.recordCandidateEvaluation(evaluation);
             LOG.info("Finished calibration profile {} in {}", profile.id(), formatElapsed(startedAt));
         }
         return List.copyOf(evaluations);
@@ -253,13 +270,19 @@ public final class ElliottWaveAnchorCalibrationHarness {
     private static PortabilitySummary evaluatePortabilityWithProgress(String datasetId, String resource,
             BarSeries series, CandidateProfile baselineProfile, CandidateProfile selectedProfile,
             WalkForwardEngine<ElliottWaveWalkForwardContext, ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> portabilityEngine,
-            WalkForwardConfig config) {
+            WalkForwardConfig config, ArtifactSink artifactSink) {
         Instant startedAt = Instant.now();
         LOG.info("Starting portability check dataset={} resource={}", datasetId, resource);
         PortabilitySummary summary = evaluatePortability(datasetId, resource, series, baselineProfile, selectedProfile,
                 portabilityEngine, config);
+        artifactSink.recordPortabilitySummary(summary);
         LOG.info("Finished portability check dataset={} in {}", datasetId, formatElapsed(startedAt));
         return summary;
+    }
+
+    private static Path defaultArtifactDirectory(Instant startedAt) {
+        String timestamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneOffset.UTC).format(startedAt);
+        return Path.of(".agents", "logs", "ew-anchor-calibration-" + timestamp);
     }
 
     private static String formatElapsed(Instant startedAt) {
@@ -292,6 +315,12 @@ public final class ElliottWaveAnchorCalibrationHarness {
                         "Tighter swing confirmation near transition windows"),
                 CandidateProfile.of("minute-f2-h1l1-max25-sw0", ElliottDegree.MINUTE, 1, 1, 25, 0, 2,
                         "Less cross-degree drag when the base count is already clear"),
+                CandidateProfile.of("minute-f2-h1l2-max25-sw0", ElliottDegree.MINUTE, 1, 2, 25, 0, 2,
+                        "Relax higher-degree drag while keeping lower-degree confirmation for holdout reversals"),
+                CandidateProfile.of("minute-f2-h2l1-max25-sw0", ElliottDegree.MINUTE, 2, 1, 25, 0, 2,
+                        "Keep higher-degree context but lighten lower-degree confirmation near macro turns"),
+                CandidateProfile.of("minute-f2-h1l1-max25-sw1", ElliottDegree.MINUTE, 1, 1, 25, 1, 2,
+                        "Keep the best challenger profile but focus retained scenarios nearer the transition window"),
                 CandidateProfile.of("minute-f2-h2l2-max15-sw1", ElliottDegree.MINUTE, 2, 2, 15, 1, 2,
                         "Fewer retained scenarios and a short scenario window to reduce probability crowding"),
                 CandidateProfile.of("minor-f2-h2l2-max25-sw0", ElliottDegree.MINOR, 2, 2, 25, 0, 2,
@@ -361,11 +390,10 @@ public final class ElliottWaveAnchorCalibrationHarness {
                 }
             }
 
-            if (!anchorValidation.isEmpty()) {
-                validationSummaries.add(AnchorWindowSummary.from(anchor, anchorIndex, bounds, anchorValidation));
-            }
-            if (!anchorHoldout.isEmpty()) {
+            if (holdoutAnchor) {
                 holdoutSummaries.add(AnchorWindowSummary.from(anchor, anchorIndex, bounds, anchorHoldout));
+            } else {
+                validationSummaries.add(AnchorWindowSummary.from(anchor, anchorIndex, bounds, anchorValidation));
             }
         }
 
@@ -845,6 +873,94 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
     enum AnchorType {
         TOP, BOTTOM
+    }
+
+    /**
+     * Incremental artifact sink for long-running calibration runs.
+     */
+    interface ArtifactSink {
+
+        static ArtifactSink noOp() {
+            return new ArtifactSink() {
+            };
+        }
+
+        default Path outputDirectory() {
+            return null;
+        }
+
+        default void recordCandidateEvaluation(CandidateEvaluation evaluation) {
+        }
+
+        default void recordSelectedHistoricalCalibration(CandidateEvaluation evaluation,
+                HistoricalCalibrationReport calibration, PromotionDecision decision) {
+        }
+
+        default void recordPortabilitySummary(PortabilitySummary summary) {
+        }
+
+        default void recordFinalReport(ReportBundle report) {
+        }
+    }
+
+    /**
+     * Filesystem-backed artifact sink for incremental calibration persistence.
+     */
+    record FileArtifactSink(Path outputDirectory) implements ArtifactSink {
+
+        FileArtifactSink {
+            Objects.requireNonNull(outputDirectory, "outputDirectory");
+        }
+
+        static FileArtifactSink create(Path outputDirectory) {
+            try {
+                Files.createDirectories(outputDirectory);
+            } catch (java.io.IOException e) {
+                throw new UncheckedIOException("Failed to create artifact directory " + outputDirectory, e);
+            }
+            return new FileArtifactSink(outputDirectory.toAbsolutePath());
+        }
+
+        @Override
+        public void recordCandidateEvaluation(CandidateEvaluation evaluation) {
+            writeJson("btc-candidate-" + safeFileId(evaluation.profile().id()) + ".json", evaluation);
+        }
+
+        @Override
+        public void recordSelectedHistoricalCalibration(CandidateEvaluation evaluation,
+                HistoricalCalibrationReport calibration, PromotionDecision decision) {
+            writeJson("btc-selected-candidate.json", evaluation);
+            writeJson("btc-promotion-decision.json", decision);
+            writeJson("btc-selected-historical-calibration.json", calibration);
+            writeText("btc-selected-historical-calibration.txt", calibration.toText());
+        }
+
+        @Override
+        public void recordPortabilitySummary(PortabilitySummary summary) {
+            writeJson("portability-" + safeFileId(summary.datasetId()) + ".json", summary);
+        }
+
+        @Override
+        public void recordFinalReport(ReportBundle report) {
+            writeJson("ew-anchor-report.json", report);
+        }
+
+        private void writeJson(String fileName, Object value) {
+            writeText(fileName, GSON.toJson(value));
+        }
+
+        private void writeText(String fileName, String content) {
+            try {
+                Files.writeString(outputDirectory.resolve(fileName), content, StandardCharsets.UTF_8,
+                        StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
+            } catch (java.io.IOException e) {
+                throw new UncheckedIOException("Failed to write artifact " + outputDirectory.resolve(fileName), e);
+            }
+        }
+
+        private static String safeFileId(String value) {
+            return value == null ? "unknown" : value.replaceAll("[^a-zA-Z0-9._-]+", "-");
+        }
     }
 
     /**

@@ -11,6 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +20,7 @@ import java.util.Set;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.indicators.elliott.ElliottConfidence;
@@ -94,6 +97,18 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                 .stream()
                 .filter(anchor -> anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP)
                 .allMatch(anchor -> anchor.expectedPhases().equals(Set.of(ElliottPhase.WAVE5))));
+    }
+
+    @Test
+    void defaultProfilesWidensHoldoutSearchAroundTheBaselineAndBestChallenger() {
+        assertIterableEquals(
+                List.of("baseline-minute-f2-h2l2-max25-sw0", "minute-f3-h2l2-max25-sw0", "minute-f2-h1l1-max25-sw0",
+                        "minute-f2-h1l2-max25-sw0", "minute-f2-h2l1-max25-sw0", "minute-f2-h1l1-max25-sw1",
+                        "minute-f2-h2l2-max15-sw1", "minor-f2-h2l2-max25-sw0"),
+                ElliottWaveAnchorCalibrationHarness.defaultProfiles()
+                        .stream()
+                        .map(ElliottWaveAnchorCalibrationHarness.CandidateProfile::id)
+                        .toList());
     }
 
     private static Duration expectedToleranceSpan(String anchorId) {
@@ -294,6 +309,33 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         assertEquals(1, partitions.holdout().anchorCount());
         assertEquals(1, partitions.holdout().sampleCount());
         assertEquals(1.0, partitions.holdout().top1HitRate(), 1.0e-10);
+    }
+
+    @Test
+    void summarizeAnchorsRetainsHoldoutWindowEvenWhenNoSnapshotMatches() {
+        BarSeries series = syntheticSeries();
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
+                "synthetic-v1", "synthetic-btc.json", "synthetic provenance",
+                List.of(anchor("holdout-top", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
+                        series.getBar(2).getEndTime(), Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.WAVE5),
+                        ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT, "holdout top")));
+        WalkForwardExperimentManifest manifest = new WalkForwardExperimentManifest("synthetic-btc", "candidate",
+                "cfg-hash", 42L, Map.of("profile", "synthetic"));
+        WalkForwardRunResult<ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> runResult = new WalkForwardRunResult<>(
+                new WalkForwardConfig(2, 1, 1, 0, 0, 1, 1, List.of(2), 3, List.of(1), 42L),
+                List.of(new WalkForwardSplit("validation-fold", 0, 1, 2, 2, 0, 0, false),
+                        new WalkForwardSplit("holdout", 0, 3, 4, 4, 0, 0, true)),
+                List.of(snapshot("validation-fold", 2,
+                        rankedPrediction(series, "validation-top", 1, ElliottPhase.WAVE5, true))),
+                Map.of(), Map.of(), Map.of(), List.of(), WalkForwardRuntimeReport.empty(), manifest);
+
+        ElliottWaveAnchorCalibrationHarness.AnchorPartitions partitions = ElliottWaveAnchorCalibrationHarness
+                .summarizeAnchors(series, registry, runResult);
+
+        assertEquals(1, partitions.holdout().anchorCount());
+        assertEquals(0, partitions.holdout().sampleCount());
+        assertEquals(1, partitions.holdout().anchorWindows().size());
+        assertEquals(0, partitions.holdout().anchorWindows().getFirst().sampleCount());
     }
 
     @Test
@@ -682,6 +724,51 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         assertTrue(summary.toText().contains("fold fold-1"));
         assertTrue(summary.toText().contains("impulseBranches="));
         assertTrue(summary.toText().contains("slowestSnapshots="));
+    }
+
+    @Test
+    void fileArtifactSinkPersistsPrimaryBtcArtifactsBeforeFinalReport(@TempDir Path tempDir) throws Exception {
+        ElliottWaveAnchorCalibrationHarness.CandidateEvaluation evaluation = evaluation(
+                ElliottWaveAnchorCalibrationHarness.CandidateProfile.baselineProfile(), 0.20, 0.40, 0.26, 0.48, 0.20,
+                0.50, 0.30, 0.08);
+        ElliottWaveAnchorCalibrationHarness.HistoricalCalibrationReport calibration = new ElliottWaveAnchorCalibrationHarness.HistoricalCalibrationReport(
+                evaluation.profile().id(), 1, 1, 1, 0, 1,
+                List.of(new ElliottWaveAnchorCalibrationHarness.HistoricalCycleCalibration("validation", "cycle-1",
+                        "start", "peak", "low", "2021-11-11T00:00:00Z", "2021-11-11T00:00:00Z", 1, 0, true,
+                        "2022-11-22T00:00:00Z", "2022-11-22T00:00:00Z", 1, 0, true, false, true)));
+        ElliottWaveAnchorCalibrationHarness.PromotionDecision decision = ElliottWaveAnchorCalibrationHarness.PromotionDecision
+                .from(evaluation, List.of());
+        ElliottWaveAnchorCalibrationHarness.PortabilitySummary portability = ElliottWaveAnchorCalibrationHarness.PortabilitySummary
+                .skipped("eth-usd", ElliottWaveAnchorCalibrationHarness.ETH_RESOURCE, "synthetic");
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
+                "synthetic-v1", "synthetic-btc.json", "synthetic provenance", List.of());
+        ElliottWaveAnchorCalibrationHarness.BaselinePolicy baselinePolicy = new ElliottWaveAnchorCalibrationHarness.BaselinePolicy(
+                "synthetic-btc.json", evaluation.primaryHorizonBars(), List.of(1), "cfg-hash",
+                evaluation.profile().id());
+        ElliottWaveAnchorCalibrationHarness.ReportBundle report = ElliottWaveAnchorCalibrationHarness.ReportBundle
+                .create("synthetic-report", Instant.parse("2025-10-28T00:00:00Z"), registry, baselinePolicy, evaluation,
+                        List.of(), decision, List.of(portability));
+        ElliottWaveAnchorCalibrationHarness.FileArtifactSink sink = ElliottWaveAnchorCalibrationHarness.FileArtifactSink
+                .create(tempDir.resolve("artifacts"));
+
+        sink.recordCandidateEvaluation(evaluation);
+        sink.recordSelectedHistoricalCalibration(evaluation, calibration, decision);
+        sink.recordPortabilitySummary(portability);
+        sink.recordFinalReport(report);
+
+        Path candidateFile = sink.outputDirectory().resolve("btc-candidate-" + evaluation.profile().id() + ".json");
+        Path selectedTextFile = sink.outputDirectory().resolve("btc-selected-historical-calibration.txt");
+        Path portabilityFile = sink.outputDirectory().resolve("portability-eth-usd.json");
+        Path finalReportFile = sink.outputDirectory().resolve("ew-anchor-report.json");
+
+        assertTrue(Files.exists(candidateFile));
+        assertTrue(Files.exists(selectedTextFile));
+        assertTrue(Files.exists(portabilityFile));
+        assertTrue(Files.exists(finalReportFile));
+        assertTrue(Files.readString(candidateFile).contains(evaluation.profile().id()));
+        assertTrue(Files.readString(selectedTextFile).contains("profile=" + evaluation.profile().id()));
+        assertTrue(Files.readString(portabilityFile).contains("\"datasetId\": \"eth-usd\""));
+        assertTrue(Files.readString(finalReportFile).contains("\"reportVersion\": \"synthetic-report\""));
     }
 
     @Test
