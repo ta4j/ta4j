@@ -100,6 +100,8 @@ public final class ElliottWaveAnalysisRunner {
     private static final double CURRENT_CYCLE_FIT_SCORE_WEIGHT = 0.75;
     private static final double CURRENT_CYCLE_DOMINANCE_WEIGHT = 0.15;
     private static final double CURRENT_CYCLE_TERMINAL_WEIGHT = 0.10;
+    private static final int MACRO_PIVOT_GRAPH_MAX_PIVOTS = 24;
+    private static final double MACRO_PIVOT_GRAPH_MIN_DOMINANCE = 0.55;
 
     private static final double DEFAULT_BASE_CONFIDENCE_WEIGHT = 0.7;
     private static final double DEFAULT_NEUTRAL_CROSS_DEGREE_SCORE = 0.5;
@@ -509,7 +511,7 @@ public final class ElliottWaveAnalysisRunner {
                     barIndex, series.getBar(barIndex).getEndTime(), pivot.price(),
                     pivotDegreeProvenance(swings, barIndex)));
         }
-        return new MacroPivotGraph(pivots, higherDegrees, lowerDegrees);
+        return new MacroPivotGraph(pruneMacroPivots(series, pivots), higherDegrees, lowerDegrees);
     }
 
     /**
@@ -885,6 +887,99 @@ public final class ElliottWaveAnalysisRunner {
             }
         }
         return baseDegree;
+    }
+
+    private List<MacroPivot> pruneMacroPivots(final BarSeries series, final List<MacroPivot> pivots) {
+        if (pivots.size() <= MACRO_PIVOT_GRAPH_MAX_PIVOTS) {
+            return List.copyOf(pivots);
+        }
+
+        final boolean[] keep = new boolean[pivots.size()];
+        final boolean[] required = new boolean[pivots.size()];
+        keep[0] = true;
+        keep[pivots.size() - 1] = true;
+        required[0] = true;
+        required[pivots.size() - 1] = true;
+
+        int strongestHigh = -1;
+        int strongestLow = -1;
+        for (int index = 0; index < pivots.size(); index++) {
+            final MacroPivot pivot = pivots.get(index);
+            if (pivot.highPivot()) {
+                if (strongestHigh < 0 || pivot.price().isGreaterThan(pivots.get(strongestHigh).price())) {
+                    strongestHigh = index;
+                }
+            } else if (strongestLow < 0 || pivot.price().isLessThan(pivots.get(strongestLow).price())) {
+                strongestLow = index;
+            }
+        }
+        if (strongestHigh >= 0) {
+            keep[strongestHigh] = true;
+            required[strongestHigh] = true;
+        }
+        if (strongestLow >= 0) {
+            keep[strongestLow] = true;
+            required[strongestLow] = true;
+        }
+
+        final List<MacroPivotRank> ranked = new ArrayList<>(Math.max(0, pivots.size() - 2));
+        for (int index = 1; index < pivots.size() - 1; index++) {
+            final MacroPivot pivot = pivots.get(index);
+            final double dominance = pivotDominanceScore(series, pivot.barIndex(), pivots.get(index - 1).barIndex(),
+                    pivots.get(index + 1).barIndex(), pivot.highPivot());
+            ranked.add(new MacroPivotRank(index, dominance));
+        }
+
+        ranked.stream()
+                .filter(rank -> rank.dominance() >= MACRO_PIVOT_GRAPH_MIN_DOMINANCE)
+                .sorted(Comparator.comparingDouble(MacroPivotRank::dominance)
+                        .reversed()
+                        .thenComparingInt(MacroPivotRank::index))
+                .forEach(rank -> keep[rank.index()] = true);
+
+        int retained = 0;
+        for (final boolean retainedPivot : keep) {
+            if (retainedPivot) {
+                retained++;
+            }
+        }
+        if (retained < MACRO_PIVOT_GRAPH_MAX_PIVOTS) {
+            for (final MacroPivotRank rank : ranked.stream()
+                    .sorted(Comparator.comparingDouble(MacroPivotRank::dominance)
+                            .reversed()
+                            .thenComparingInt(MacroPivotRank::index))
+                    .toList()) {
+                if (retained >= MACRO_PIVOT_GRAPH_MAX_PIVOTS) {
+                    break;
+                }
+                if (!keep[rank.index()]) {
+                    keep[rank.index()] = true;
+                    retained++;
+                }
+            }
+        }
+        if (retained > MACRO_PIVOT_GRAPH_MAX_PIVOTS) {
+            for (final MacroPivotRank rank : ranked.stream()
+                    .sorted(Comparator.comparingDouble(MacroPivotRank::dominance)
+                            .thenComparingInt(MacroPivotRank::index))
+                    .toList()) {
+                if (retained <= MACRO_PIVOT_GRAPH_MAX_PIVOTS) {
+                    break;
+                }
+                if (keep[rank.index()] && !required[rank.index()]) {
+                    keep[rank.index()] = false;
+                    retained--;
+                }
+            }
+        }
+
+        final List<MacroPivot> pruned = new ArrayList<>(Math.min(MACRO_PIVOT_GRAPH_MAX_PIVOTS, pivots.size()));
+        for (int index = 0; index < pivots.size(); index++) {
+            if (keep[index]) {
+                pruned.add(pivots.get(index));
+            }
+        }
+        return List.copyOf(pruned);
     }
 
     private Num currentPhaseInvalidation(final ElliottScenario scenario, final ElliottPhase currentPhase) {
@@ -1880,6 +1975,9 @@ public final class ElliottWaveAnalysisRunner {
             Objects.requireNonNull(price, "price");
             Objects.requireNonNull(degree, "degree");
         }
+    }
+
+    private record MacroPivotRank(int index, double dominance) {
     }
 
     private record CurrentCycleStartCandidate(int barIndex, Num price, double rawScore, double normalizedScore) {

@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 17:24 EDT
-- Active phase: Phase 3
-- Active task: Add graph-level pruning on the new reusable macro pivot surface
-- Overall: 33/56 checklist items complete
+- Last updated: 2026-03-11 17:29 EDT
+- Active phase: Phase 4
+- Active task: Start bounded global canonical structure search over alternating bullish and bearish legs
+- Overall: 34/56 checklist items complete
 
 ## Status
 
@@ -406,7 +406,7 @@ Avoid exposing calibration internals publicly.
   - price
   - degree provenance
   - fractal confirmation metadata
-- [ ] Add pruning rules so the graph stays tractable on full BTC history.
+- [x] Add pruning rules so the graph stays tractable on full BTC history.
 - [x] Add tests proving key macro pivots survive graph construction.
 
 ### Phase 4: Add Global Canonical Structure Search

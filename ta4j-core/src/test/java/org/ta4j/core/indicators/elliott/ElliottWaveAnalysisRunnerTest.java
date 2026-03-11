@@ -609,6 +609,29 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void buildMacroPivotGraphPrunesWeakInteriorPivotsOnDenseHistory() {
+        BarSeries series = buildDenseMacroPivotSeries();
+        NumFactory factory = series.numFactory();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(1)
+                .lowerDegrees(1)
+                .analysisRunner((window, ignoredDegree) -> denseMacroPivotSnapshot(window, factory))
+                .build();
+
+        ElliottAnalysisResult snapshot = analysis.analyze(series)
+                .analysisFor(ElliottDegree.PRIMARY)
+                .orElseThrow()
+                .analysis();
+        ElliottWaveAnalysisRunner.MacroPivotGraph graph = analysis.buildMacroPivotGraph(series, snapshot);
+
+        assertThat(graph.pivots()).hasSizeLessThan(29);
+        assertThat(graph.pivots()).hasSizeLessThanOrEqualTo(24);
+        assertThat(graph.pivots().stream().map(ElliottWaveAnalysisRunner.MacroPivot::barIndex)).contains(0, 8, 16, 24,
+                28);
+    }
+
+    @Test
     void analyzeCurrentCycleRejectsWaveFiveWhenTerminalHighIsNotDominant() {
         BarSeries series = buildMalformedWaveFiveSeries();
         NumFactory factory = series.numFactory();
@@ -1208,6 +1231,29 @@ class ElliottWaveAnalysisRunnerTest {
         return series;
     }
 
+    private BarSeries buildDenseMacroPivotSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("DenseMacroPivot").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2024-05-01T00:00:00Z");
+        double[] pivots = denseMacroPivotPrices();
+        for (int index = 0; index < pivots.length; index++) {
+            double pivotPrice = pivots[index];
+            boolean highPivot = index % 2 == 1;
+            double high = highPivot ? pivotPrice : pivotPrice + 2.0;
+            double low = highPivot ? pivotPrice - 2.0 : pivotPrice;
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(pivotPrice)
+                    .highPrice(high)
+                    .lowPrice(low)
+                    .closePrice(pivotPrice)
+                    .volume(1000)
+                    .add();
+        }
+        return series;
+    }
+
     private ElliottAnalysisResult currentCycleSnapshot(final BarSeries series, final NumFactory factory) {
         if (series.getBarCount() < 10) {
             ElliottScenarioSet empty = ElliottScenarioSet.empty(series.getEndIndex());
@@ -1307,6 +1353,24 @@ class ElliottWaveAnalysisRunnerTest {
         ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(corrective), series.getEndIndex());
         return new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), swings, swings, scenarios,
                 Map.of(), null, scenarios.trendBias());
+    }
+
+    private ElliottAnalysisResult denseMacroPivotSnapshot(final BarSeries series, final NumFactory factory) {
+        double[] pivots = denseMacroPivotPrices();
+        List<ElliottSwing> swings = new ArrayList<>(pivots.length - 1);
+        for (int index = 0; index < pivots.length - 1; index++) {
+            swings.add(new ElliottSwing(index, index + 1, factory.numOf(pivots[index]),
+                    factory.numOf(pivots[index + 1]), ElliottDegree.PRIMARY));
+        }
+        ElliottScenarioSet empty = ElliottScenarioSet.empty(series.getEndIndex());
+        return new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), swings, swings, empty, Map.of(),
+                null, empty.trendBias());
+    }
+
+    private double[] denseMacroPivotPrices() {
+        return new double[] { 100.0, 101.0, 100.4, 101.2, 100.7, 101.4, 100.9, 102.0, 130.0, 118.0, 119.5, 117.8, 120.2,
+                118.4, 119.8, 117.2, 80.0, 92.0, 91.0, 93.0, 92.2, 94.0, 93.1, 96.0, 150.0, 135.0, 136.0, 133.0,
+                110.0 };
     }
 
     private ElliottAnalysisResult waveFourNormalizationSnapshot(final BarSeries series, final NumFactory factory) {
