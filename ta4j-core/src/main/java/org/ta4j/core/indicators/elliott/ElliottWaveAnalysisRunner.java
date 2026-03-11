@@ -405,6 +405,7 @@ public final class ElliottWaveAnalysisRunner {
         final int endIndex = series.getEndIndex();
         final double totalRange = windowRange(series, beginIndex, endIndex);
         final ElliottWaveAnalysisResult fullAnalysis = analyze(series);
+        final ElliottAnalysisResult baseAnalysis = fullAnalysis.analysisFor(baseDegree).orElseThrow().analysis();
         final List<CurrentCycleStartCandidate> startCandidates = discoverCurrentCycleStartCandidates(series,
                 fullAnalysis);
         final List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates = new ArrayList<>();
@@ -459,10 +460,11 @@ public final class ElliottWaveAnalysisRunner {
             }
         }
 
-        candidates.sort(null);
+        final List<ElliottWaveAnalysisResult.CurrentCycleCandidate> rankedCandidates = rankCurrentCycleCandidatesWithCanonicalSearch(
+                candidates, baseAnalysis.processedSwings(), endIndex);
         ElliottWaveAnalysisResult.CurrentCycleCandidate primary = null;
         ElliottWaveAnalysisResult.CurrentCycleCandidate alternate = null;
-        for (final ElliottWaveAnalysisResult.CurrentCycleCandidate candidate : candidates) {
+        for (final ElliottWaveAnalysisResult.CurrentCycleCandidate candidate : rankedCandidates) {
             if (primary == null || candidate.compareTo(primary) < 0) {
                 if (primary != null && primary.fit().currentPhase() != candidate.fit().currentPhase()) {
                     alternate = primary;
@@ -479,7 +481,7 @@ public final class ElliottWaveAnalysisRunner {
         final int defaultStartIndex = lowestLowIndex(series, beginIndex, endIndex);
         return new ElliottWaveAnalysisResult.CurrentCycleAssessment(
                 primary == null ? defaultStartIndex : primary.startIndex(), primary == null ? null : primary.fit(),
-                alternate == null ? null : alternate.fit(), candidates);
+                alternate == null ? null : alternate.fit(), rankedCandidates);
     }
 
     /**
@@ -534,9 +536,27 @@ public final class ElliottWaveAnalysisRunner {
      * @since 0.22.4
      */
     Optional<CanonicalStructurePath> searchCanonicalStructure(final List<CanonicalLegCandidate> candidates) {
+        return searchCanonicalStructurePaths(candidates).stream().findFirst();
+    }
+
+    List<CanonicalLegCandidate> boundCanonicalCandidates(final List<CanonicalLegCandidate> candidates) {
+        return candidates.stream()
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparingDouble(CanonicalLegCandidate::fitScore)
+                        .reversed()
+                        .thenComparingInt(CanonicalLegCandidate::startPivotIndex)
+                        .thenComparingInt(CanonicalLegCandidate::endPivotIndex))
+                .limit(CANONICAL_SEARCH_MAX_CANDIDATES)
+                .sorted(Comparator.comparingInt(CanonicalLegCandidate::startPivotIndex)
+                        .thenComparingInt(CanonicalLegCandidate::endPivotIndex)
+                        .thenComparing(Comparator.comparingDouble(CanonicalLegCandidate::fitScore).reversed()))
+                .toList();
+    }
+
+    List<CanonicalStructurePath> searchCanonicalStructurePaths(final List<CanonicalLegCandidate> candidates) {
         Objects.requireNonNull(candidates, "candidates");
         if (candidates.isEmpty()) {
-            return Optional.empty();
+            return List.of();
         }
 
         final List<CanonicalLegCandidate> ordered = boundCanonicalCandidates(candidates);
@@ -553,21 +573,62 @@ public final class ElliottWaveAnalysisRunner {
                     .limit(CANONICAL_SEARCH_BEAM_WIDTH)
                     .toList();
         }
-        return beam.stream().filter(path -> !path.legs().isEmpty()).sorted(CanonicalStructurePath.ORDERING).findFirst();
+        return beam.stream().filter(path -> !path.legs().isEmpty()).sorted(CanonicalStructurePath.ORDERING).toList();
     }
 
-    List<CanonicalLegCandidate> boundCanonicalCandidates(final List<CanonicalLegCandidate> candidates) {
-        return candidates.stream()
-                .filter(Objects::nonNull)
-                .sorted(Comparator.comparingDouble(CanonicalLegCandidate::fitScore)
-                        .reversed()
-                        .thenComparingInt(CanonicalLegCandidate::startPivotIndex)
-                        .thenComparingInt(CanonicalLegCandidate::endPivotIndex))
-                .limit(CANONICAL_SEARCH_MAX_CANDIDATES)
-                .sorted(Comparator.comparingInt(CanonicalLegCandidate::startPivotIndex)
-                        .thenComparingInt(CanonicalLegCandidate::endPivotIndex)
-                        .thenComparing(Comparator.comparingDouble(CanonicalLegCandidate::fitScore).reversed()))
-                .toList();
+    List<ElliottWaveAnalysisResult.CurrentCycleCandidate> rankCurrentCycleCandidatesWithCanonicalSearch(
+            final List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates,
+            final List<ElliottSwing> processedSwings, final int endIndex) {
+        Objects.requireNonNull(candidates, "candidates");
+        Objects.requireNonNull(processedSwings, "processedSwings");
+        if (candidates.isEmpty()) {
+            return List.of();
+        }
+
+        final Map<String, ElliottWaveAnalysisResult.CurrentCycleCandidate> byId = new LinkedHashMap<>();
+        final List<CanonicalLegCandidate> canonicalCandidates = new ArrayList<>(candidates.size() * 2);
+        for (int index = 0; index < candidates.size(); index++) {
+            final ElliottWaveAnalysisResult.CurrentCycleCandidate candidate = candidates.get(index);
+            final String id = currentCycleCanonicalCandidateId(candidate, index);
+            byId.put(id, candidate);
+            canonicalCandidates
+                    .add(new CanonicalLegCandidate(id, candidate.startIndex(), endIndex, true, candidate.totalScore()));
+            final int precursorStartIndex = predecessorHighPivotIndex(processedSwings, candidate.startIndex());
+            if (precursorStartIndex >= 0 && precursorStartIndex < candidate.startIndex()) {
+                canonicalCandidates
+                        .add(new CanonicalLegCandidate("precursor-" + id, precursorStartIndex, candidate.startIndex(),
+                                false, canonicalPrecursorScore(candidate, precursorStartIndex, endIndex)));
+            }
+        }
+
+        final LinkedHashMap<String, ElliottWaveAnalysisResult.CurrentCycleCandidate> ranked = new LinkedHashMap<>();
+        for (final CanonicalStructurePath path : searchCanonicalStructurePaths(canonicalCandidates)) {
+            final CanonicalLegCandidate terminalLeg = path.legs().getLast();
+            if (!terminalLeg.bullish()) {
+                continue;
+            }
+            final ElliottWaveAnalysisResult.CurrentCycleCandidate candidate = byId.get(terminalLeg.id());
+            if (candidate == null) {
+                continue;
+            }
+            final String key = candidate.fit().scenario().id() + "|" + candidate.fit().currentPhase() + "|"
+                    + candidate.startIndex();
+            ranked.putIfAbsent(key,
+                    new ElliottWaveAnalysisResult.CurrentCycleCandidate(candidate.startIndex(), candidate.startPrice(),
+                            candidate.fit(), candidate.anchorScore(), canonicalCurrentCycleScore(path),
+                            candidate.rationale() + " via canonical path"));
+        }
+
+        final List<ElliottWaveAnalysisResult.CurrentCycleCandidate> ordered = new ArrayList<>(ranked.values());
+        candidates.stream().sorted().forEach(candidate -> {
+            final String key = candidate.fit().scenario().id() + "|" + candidate.fit().currentPhase() + "|"
+                    + candidate.startIndex();
+            if (!ranked.containsKey(key)) {
+                ordered.add(candidate);
+            }
+        });
+        ordered.sort(null);
+        return List.copyOf(ordered);
     }
 
     /**
@@ -943,6 +1004,44 @@ public final class ElliottWaveAnalysisRunner {
             }
         }
         return baseDegree;
+    }
+
+    private String currentCycleCanonicalCandidateId(final ElliottWaveAnalysisResult.CurrentCycleCandidate candidate,
+            final int ordinal) {
+        return "current-" + ordinal + "-" + candidate.startIndex() + "-" + candidate.fit().currentPhase() + "-"
+                + candidate.fit().scenario().id();
+    }
+
+    private int predecessorHighPivotIndex(final List<ElliottSwing> swings, final int startIndex) {
+        int fallback = -1;
+        for (final ElliottSwing swing : swings) {
+            if (!swing.isRising() && swing.toIndex() == startIndex) {
+                return swing.fromIndex();
+            }
+            if (swing.isRising() && swing.toIndex() < startIndex) {
+                fallback = swing.toIndex();
+            } else if (!swing.isRising() && swing.fromIndex() < startIndex) {
+                fallback = swing.fromIndex();
+            }
+        }
+        return fallback;
+    }
+
+    private double canonicalPrecursorScore(final ElliottWaveAnalysisResult.CurrentCycleCandidate candidate,
+            final int precursorStartIndex, final int endIndex) {
+        final double spanScore = clamp01(
+                (candidate.startIndex() - precursorStartIndex) / (double) Math.max(1, endIndex - precursorStartIndex));
+        return clamp01((0.65 * candidate.anchorScore()) + (0.35 * spanScore));
+    }
+
+    private double canonicalCurrentCycleScore(final CanonicalStructurePath path) {
+        final CanonicalLegCandidate terminalLeg = path.legs().getLast();
+        if (path.legs().size() == 1) {
+            return clamp01(terminalLeg.fitScore());
+        }
+        final double supportingContext = Math.max(0.0, path.score() - terminalLeg.fitScore())
+                / Math.max(1, path.legs().size() - 1);
+        return clamp01(terminalLeg.fitScore() + (0.25 * supportingContext));
     }
 
     private List<MacroPivot> pruneMacroPivots(final BarSeries series, final List<MacroPivot> pivots) {

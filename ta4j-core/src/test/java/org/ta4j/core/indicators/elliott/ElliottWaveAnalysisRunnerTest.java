@@ -701,6 +701,37 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void rankCurrentCycleCandidatesWithCanonicalSearchPrefersCoherentPrecursorPath() {
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        List<ElliottSwing> processedSwings = List.of(
+                new ElliottSwing(0, 2, factory.numOf(100), factory.numOf(130), ElliottDegree.PRIMARY),
+                new ElliottSwing(2, 4, factory.numOf(130), factory.numOf(110), ElliottDegree.PRIMARY),
+                new ElliottSwing(4, 8, factory.numOf(110), factory.numOf(170), ElliottDegree.PRIMARY));
+        ElliottWaveAnalysisResult.CurrentCycleCandidate standalone = new ElliottWaveAnalysisResult.CurrentCycleCandidate(
+                0, factory.numOf(100),
+                currentPhaseAssessment(factory, "standalone", ElliottPhase.WAVE4, 0.82, "Bullish 1-2-3-4"), 0.82, 0.82,
+                "standalone");
+        ElliottWaveAnalysisResult.CurrentCycleCandidate coherent = new ElliottWaveAnalysisResult.CurrentCycleCandidate(
+                4, factory.numOf(110),
+                currentPhaseAssessment(factory, "coherent", ElliottPhase.WAVE4, 0.70, "Bullish 1-2-3-4"), 0.70, 0.70,
+                "coherent");
+
+        List<ElliottWaveAnalysisResult.CurrentCycleCandidate> ranked = analysis
+                .rankCurrentCycleCandidatesWithCanonicalSearch(List.of(standalone, coherent), processedSwings, 8);
+
+        assertThat(ranked.getFirst().startIndex()).isEqualTo(4);
+        assertThat(ranked.getFirst().rationale()).contains("canonical path");
+        assertThat(ranked.getFirst().totalScore()).isGreaterThan(standalone.totalScore());
+    }
+
+    @Test
     void analyzeCurrentCycleRejectsWaveFiveWhenTerminalHighIsNotDominant() {
         BarSeries series = buildMalformedWaveFiveSeries();
         NumFactory factory = series.numFactory();

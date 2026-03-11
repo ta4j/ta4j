@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 17:36 EDT
+- Last updated: 2026-03-11 17:54 EDT
 - Active phase: Phase 5
-- Active task: Move current-cycle inference onto the bounded canonical search instead of the separate live-only ranking path
-- Overall: 39/56 checklist items complete
+- Active task: Make current-cycle output the open suffix of the canonical full-history structure
+- Overall: 41/56 checklist items complete
 
 ## Status
 
@@ -419,14 +419,14 @@ Avoid exposing calibration internals publicly.
 
 ### Phase 5: Move Current-Cycle Inference onto the Canonical Search
 
-- [ ] Replace the separate current-cycle-only ranking path in [`ElliottWaveAnalysisRunner.java:352`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-core/src/main/java/org/ta4j/core/indicators/elliott/ElliottWaveAnalysisRunner.java:352).
+- [x] Replace the separate current-cycle-only ranking path in [`ElliottWaveAnalysisRunner.java:352`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-core/src/main/java/org/ta4j/core/indicators/elliott/ElliottWaveAnalysisRunner.java:352).
 - [ ] Make current-cycle output the open suffix of the canonical full-history structure.
 - [ ] Preserve:
   - current wave
   - phase invalidation
   - structural invalidation
   - orthodox wave-5 target
-- [ ] Add regression tests that current output on full-history BTC still remains `Bullish 1-2-3-4`, `WAVE4`.
+- [x] Add regression tests that current output on full-history BTC still remains `Bullish 1-2-3-4`, `WAVE4`.
 
 ### Phase 6: Demote Anchor-Registry Historical Decomposition
 
