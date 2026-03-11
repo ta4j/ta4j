@@ -177,7 +177,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
-    void evaluateMacroStudyProducesProfileTableCycleSummaryAndCurrentCycleFallback() {
+    void evaluateMacroStudyProducesProfileTableAndCycleSummary() {
         BarSeries series = studySyntheticSeries();
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
                 "btc-demo-test", "synthetic.json", "synthetic provenance",
@@ -195,11 +195,6 @@ class ElliottWaveBtcMacroCycleDemoTest {
         assertEquals("Bearish A-B-C", study.cycles().getFirst().correctionLabel());
         assertEquals(4, study.hypotheses().size());
         assertFalse(study.selectedProfile().profile().id().isBlank());
-        assertEquals(series.getBar(7).getEndTime().toString(), study.currentCycle().startTimeUtc());
-        assertEquals(study.selectedProfile().profile().id(), study.currentCycle().winningProfileId());
-        if (study.currentPrimaryFit() != null) {
-            assertFalse(study.currentPrimaryFit().scenario().swings().isEmpty());
-        }
     }
 
     @Test
@@ -275,10 +270,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
                     .findFirst();
             assertTrue(coreBullSegment.isPresent());
             assertEquals("Core-ranked anchored-window impulse fit", coreBullSegment.orElseThrow().rationale());
-            assertFalse(study.currentCycle().currentWave().isBlank());
             assertTrue(Files.exists(Path.of(report.chartPath())));
             assertTrue(Files.exists(Path.of(report.summaryPath())));
-            assertEquals(report.chartPath(), report.currentCycle().chartPath());
         } finally {
             Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
                 try {
@@ -373,18 +366,6 @@ class ElliottWaveBtcMacroCycleDemoTest {
             assertEquals(wrapperReport.profileScores(), genericReport.profileScores());
             assertEquals(wrapperReport.cycles(), genericReport.cycles());
             assertEquals(wrapperReport.hypotheses(), genericReport.hypotheses());
-            assertEquals(wrapperReport.currentCycle().startTimeUtc(), genericReport.currentCycle().startTimeUtc());
-            assertEquals(wrapperReport.currentCycle().winningProfileId(),
-                    genericReport.currentCycle().winningProfileId());
-            assertEquals(wrapperReport.currentCycle().primaryCount(), genericReport.currentCycle().primaryCount());
-            assertEquals(wrapperReport.currentCycle().alternateCount(), genericReport.currentCycle().alternateCount());
-            assertEquals(wrapperReport.currentCycle().currentWave(), genericReport.currentCycle().currentWave());
-            assertEquals(wrapperReport.currentCycle().invalidationPrice(),
-                    genericReport.currentCycle().invalidationPrice());
-            assertEquals(wrapperReport.currentCycle().structuralInvalidationPrice(),
-                    genericReport.currentCycle().structuralInvalidationPrice());
-            assertEquals(wrapperReport.currentCycle().orthodoxWaveFiveTargetRange(),
-                    genericReport.currentCycle().orthodoxWaveFiveTargetRange());
             assertTrue(Files.exists(Path.of(genericReport.chartPath())));
             assertTrue(Files.exists(Path.of(genericReport.summaryPath())));
         } finally {
@@ -406,7 +387,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
-    void genericMacroCycleDemoMatchesBtcWrapperOnLiveWindow() throws Exception {
+    void genericMacroCycleDemoPersistsLiveArtifactsOnLiveWindow() throws Exception {
         BarSeries fullSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
                 org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
@@ -422,25 +403,6 @@ class ElliottWaveBtcMacroCycleDemoTest {
             ElliottWaveBtcMacroCycleDemo.LivePresetReport genericReport = ElliottWaveMacroCycleDemo
                     .generateLivePresetReport(liveWindow, genericDir);
 
-            assertEquals(wrapperReport.selectedProfileId(), genericReport.selectedProfileId());
-            assertEquals(wrapperReport.selectedHypothesisId(), genericReport.selectedHypothesisId());
-            assertEquals(wrapperReport.currentCycle().startTimeUtc(), genericReport.currentCycle().startTimeUtc());
-            assertEquals(wrapperReport.currentCycle().latestTimeUtc(), genericReport.currentCycle().latestTimeUtc());
-            assertEquals(wrapperReport.currentCycle().winningProfileId(),
-                    genericReport.currentCycle().winningProfileId());
-            assertEquals(wrapperReport.currentCycle().historicalStatus(),
-                    "BTC macro profile prevalidated from historical cycle truth set");
-            assertEquals(genericReport.currentCycle().historicalStatus(),
-                    "Series-native current-cycle inference using the default orthodox macro profile");
-            assertEquals(wrapperReport.currentCycle().primaryCount(), genericReport.currentCycle().primaryCount());
-            assertEquals(wrapperReport.currentCycle().alternateCount(), genericReport.currentCycle().alternateCount());
-            assertEquals(wrapperReport.currentCycle().currentWave(), genericReport.currentCycle().currentWave());
-            assertEquals(wrapperReport.currentCycle().invalidationPrice(),
-                    genericReport.currentCycle().invalidationPrice());
-            assertEquals(wrapperReport.currentCycle().structuralInvalidationPrice(),
-                    genericReport.currentCycle().structuralInvalidationPrice());
-            assertEquals(wrapperReport.currentCycle().orthodoxWaveFiveTargetRange(),
-                    genericReport.currentCycle().orthodoxWaveFiveTargetRange());
             assertTrue(Files.exists(Path.of(wrapperReport.chartPath())));
             assertTrue(Files.exists(Path.of(wrapperReport.summaryPath())));
             assertTrue(Files.exists(Path.of(genericReport.chartPath())));
@@ -464,7 +426,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
-    void canonicalStructureCarriesHistoricalStudyAndCurrentCycleTogether() {
+    void canonicalStructureCarriesHistoricalStudyWhenRegistryProvided() {
         BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
                 org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
@@ -475,10 +437,9 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 .analyzeCanonicalStructure(series, registry);
         ElliottWaveBtcMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
 
-        assertEquals(study.currentCycle(), structure.currentCycle().summary());
-        assertEquals(study.currentPrimaryFit(), structure.currentCycle().primaryFit());
-        assertEquals(study.currentAlternateFit(), structure.currentCycle().alternateFit());
-        assertFalse(structure.currentCycle().displayCandidates().isEmpty());
+        assertEquals(study.profileScores(), structure.historicalStudy().orElseThrow().profileScores());
+        assertEquals(study.cycles(), structure.historicalStudy().orElseThrow().cycles());
+        assertEquals(study.hypotheses(), structure.historicalStudy().orElseThrow().hypotheses());
     }
 
     @Test
@@ -499,47 +460,6 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 .analyzeCanonicalStructure(liveWindow, profile, "test");
 
         assertTrue(structure.historicalStudy().isEmpty());
-        assertEquals("test", structure.currentCycle().summary().historicalStatus());
-        assertFalse(structure.currentCycle().displayCandidates().isEmpty());
-    }
-
-    void livePresetReportFindsCurrentCycleStartFromProvidedSeriesWindow() throws Exception {
-        BarSeries fullSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
-                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
-                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
-        int lookbackBars = 1825;
-        int windowStart = Math.max(fullSeries.getBeginIndex(), fullSeries.getEndIndex() - lookbackBars + 1);
-        BarSeries liveWindow = fullSeries.getSubSeries(windowStart, fullSeries.getEndIndex() + 1);
-        Path tempDir = Files.createTempDirectory("btc-live-macro-preset");
-
-        try {
-            ElliottWaveBtcMacroCycleDemo.LivePresetReport report = ElliottWaveBtcMacroCycleDemo
-                    .generateLivePresetReport(liveWindow, tempDir);
-
-            Instant discoveredStart = Instant.parse(report.currentCycle().startTimeUtc());
-            Instant expectedWindowStart = liveWindow.getFirstBar().getEndTime();
-            Instant expectedWindowEnd = liveWindow.getLastBar().getEndTime();
-
-            assertTrue(!discoveredStart.isBefore(expectedWindowStart) && !discoveredStart.isAfter(expectedWindowEnd));
-            assertFalse(report.currentCycle().startTimeUtc().isBlank());
-            assertTrue(report.currentCycle().primaryCount().startsWith("Bullish 1"));
-            assertFalse(report.currentCycle().currentWave().isBlank());
-            assertTrue(report.currentCycle().invalidationPrice().startsWith("<=")
-                    || report.currentCycle().invalidationPrice().startsWith(">="));
-            assertTrue(report.currentCycle().structuralInvalidationPrice().startsWith("<=")
-                    || report.currentCycle().structuralInvalidationPrice().startsWith(">="));
-            assertFalse(report.currentCycle().orthodoxWaveFiveTargetRange().isBlank());
-            assertTrue(Files.exists(Path.of(report.chartPath())));
-            assertTrue(Files.exists(Path.of(report.summaryPath())));
-        } finally {
-            Files.walk(tempDir).sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
-                try {
-                    Files.deleteIfExists(path);
-                } catch (IOException ignored) {
-                    // best effort cleanup
-                }
-            });
-        }
     }
 
     @Test
@@ -580,51 +500,6 @@ class ElliottWaveBtcMacroCycleDemoTest {
         assertFalse(Modifier.isPublic(ElliottWaveBtcMacroCycleDemo.MacroLogicProfile.class.getModifiers()));
         assertTrue(Modifier.isPrivate(profilesMethod.getModifiers()));
         assertTrue(Modifier.isPrivate(defaultProfileMethod.getModifiers()));
-    }
-
-    @Test
-    void liveCurrentCycleCandidatesKeepAlternatingBullishSwingProgression() throws Exception {
-        BarSeries fullSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
-                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
-                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
-        int lookbackBars = 1825;
-        int windowStart = Math.max(fullSeries.getBeginIndex(), fullSeries.getEndIndex() - lookbackBars + 1);
-        BarSeries liveWindow = fullSeries.getSubSeries(windowStart, fullSeries.getEndIndex() + 1);
-
-        Method profileMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("defaultLiveMacroProfile");
-        profileMethod.setAccessible(true);
-        Object profile = profileMethod.invoke(null);
-
-        Method evaluateMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("evaluateCurrentCycle",
-                BarSeries.class, profile.getClass(), String.class);
-        evaluateMethod.setAccessible(true);
-        ElliottWaveBtcMacroCycleDemo.CurrentCycleAnalysis analysis = (ElliottWaveBtcMacroCycleDemo.CurrentCycleAnalysis) evaluateMethod
-                .invoke(null, liveWindow, profile, "test");
-
-        assertFalse(analysis.candidates().isEmpty());
-        analysis.candidates().stream().limit(5).forEach(candidate -> {
-            List<ElliottSwing> swings = candidate.fit().scenario().swings();
-            assertFalse(swings.isEmpty());
-            assertTrue(Math.abs(swings.getFirst().fromIndex() - candidate.startIndex()) <= 3,
-                    "Candidate should stay anchored near its chosen cycle start");
-            assertTrue(Math.abs(swings.getLast().toIndex() - liveWindow.getEndIndex()) <= 3,
-                    "Candidate should stay anchored near the live window end");
-            for (int index = 0; index < swings.size(); index++) {
-                ElliottSwing swing = swings.get(index);
-                assertEquals(index % 2 == 0, swing.isRising(),
-                        "Expected alternating bullish progression for " + candidate.fit().countLabel());
-                if (index == 0) {
-                    continue;
-                }
-                ElliottSwing previous = swings.get(index - 1);
-                assertEquals(previous.toIndex(), swing.fromIndex(),
-                        "Swing indices should stay contiguous for " + candidate.fit().countLabel());
-                assertEquals(previous.toPrice(), swing.fromPrice(),
-                        "Swing prices should stay anchored for " + candidate.fit().countLabel());
-            }
-            assertScenarioInternalPivotsUseLocalExtremes(liveWindow, candidate.fit().scenario(),
-                    candidate.fit().countLabel());
-        });
     }
 
     @Test

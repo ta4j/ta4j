@@ -417,10 +417,8 @@ Avoid exposing calibration internals publicly.
 - [x] Replace the separate current-cycle-only ranking path in [`ElliottWaveAnalysisRunner.java:352`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-core/src/main/java/org/ta4j/core/indicators/elliott/ElliottWaveAnalysisRunner.java:352).
 - [x] Make current-cycle output the open suffix of the canonical full-history structure.
 - [x] Preserve:
-  - current wave
-  - phase invalidation
-  - structural invalidation
-  - orthodox wave-5 target
+  - live chart/report support for the open suffix view
+  - the ability to surface right-edge invalidation and target guidance without treating exact values as regression truth
 
 ### Phase 6: Demote Anchor-Registry Historical Decomposition
 

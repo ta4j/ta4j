@@ -122,8 +122,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
     }
 
     static JFreeChart renderMacroCycleChart(final BarSeries series,
-            final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, final MacroStudy ignoredStudy) {
-        return ElliottWaveMacroCycleDemo.renderHistoricalChart(series, registry);
+            final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, final MacroStudy study) {
+        return ElliottWaveMacroCycleDemo.renderHistoricalChart(series, registry, study);
     }
 
     static MacroStudy evaluateMacroStudy(final BarSeries series,

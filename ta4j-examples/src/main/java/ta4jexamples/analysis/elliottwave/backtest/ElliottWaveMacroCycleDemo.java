@@ -850,18 +850,21 @@ public final class ElliottWaveMacroCycleDemo {
                 ElliottWaveBtcMacroCycleDemo.DEFAULT_CHART_WIDTH, ElliottWaveBtcMacroCycleDemo.DEFAULT_CHART_HEIGHT);
     }
 
-    private static JFreeChart renderHistoricalChart(final BarSeries series,
+    static JFreeChart renderHistoricalChart(final BarSeries series,
             final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, final MacroStudy study) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(registry, "registry");
         Objects.requireNonNull(study, "study");
 
         final ChartWorkflow chartWorkflow = new ChartWorkflow();
-        final List<LegSegment> legSegments = buildLegSegments(registry);
         final List<SegmentScenarioFit> segmentFits = study.selectedProfile().chartSegments();
-        final int currentCycleStartIndex = latestBottomAnchorIndex(series, registry);
+        final boolean useStudySegments = !segmentFits.isEmpty();
+        final List<LegSegment> legSegments = useStudySegments ? buildChartLegSegments(segmentFits)
+                : buildLegSegments(registry);
+        final int currentCycleStartIndex = useStudySegments ? latestBottomAnchorIndex(series, segmentFits)
+                : latestBottomAnchorIndex(series, registry);
         final BarSeriesLabelIndicator anchorLabels = new BarSeriesLabelIndicator(series,
-                buildAnchorLabels(series, registry));
+                useStudySegments ? buildChartEndpointLabels(series, segmentFits) : buildAnchorLabels(series, registry));
         final BarSeriesLabelIndicator waveLabels = new BarSeriesLabelIndicator(series,
                 buildSegmentWaveLabels(series, segmentFits));
         final FixedIndicator<Num> bullishAcceptedFits = buildScenarioFitIndicator(series, segmentFits, true, true,
@@ -923,6 +926,42 @@ public final class ElliottWaveMacroCycleDemo {
         final JFreeChart chart = chartWorkflow.render(plan);
         applyLogPriceAxis(chart, series);
         return chart;
+    }
+
+    private static List<LegSegment> buildChartLegSegments(final List<SegmentScenarioFit> segmentFits) {
+        final LinkedHashMap<String, LegSegment> segments = new LinkedHashMap<>();
+        for (final SegmentScenarioFit fit : segmentFits) {
+            segments.putIfAbsent(segmentKey(fit.segment()), fit.segment());
+        }
+        return List.copyOf(segments.values());
+    }
+
+    private static List<BarLabel> buildChartEndpointLabels(final BarSeries series,
+            final List<SegmentScenarioFit> segmentFits) {
+        final LinkedHashMap<String, ElliottWaveAnchorCalibrationHarness.Anchor> anchors = new LinkedHashMap<>();
+        final Num topPad = series.numFactory().numOf("1.02");
+        final Num lowPad = series.numFactory().numOf("0.98");
+        for (final SegmentScenarioFit fit : segmentFits) {
+            anchors.putIfAbsent(fit.segment().fromAnchor().id(), fit.segment().fromAnchor());
+            anchors.putIfAbsent(fit.segment().toAnchor().id(), fit.segment().toAnchor());
+        }
+        return anchors.values()
+                .stream()
+                .sorted(Comparator.comparing(ElliottWaveAnchorCalibrationHarness.Anchor::at))
+                .map(anchor -> {
+                    final int index = nearestIndex(series, anchor.at());
+                    final Bar bar = series.getBar(index);
+                    final boolean top = anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP;
+                    final Num yValue = top ? bar.getHighPrice().multipliedBy(topPad)
+                            : bar.getLowPrice().multipliedBy(lowPad);
+                    final String date = bar.getEndTime().atZone(ZoneOffset.UTC).toLocalDate().toString();
+                    final String text = top ? "Bullish 1-5 top\n" + date : "Bearish A-C low\n" + date;
+                    final LabelPlacement placement = top ? LabelPlacement.ABOVE : LabelPlacement.BELOW;
+                    final Color labelColor = top ? ElliottWaveBtcMacroCycleDemo.BULLISH_LEG_COLOR
+                            : ElliottWaveBtcMacroCycleDemo.BEARISH_LEG_COLOR;
+                    return new BarLabel(index, yValue, text, placement, labelColor);
+                })
+                .toList();
     }
 
     private static MacroProfileEvaluation evaluateProfile(final BarSeries series, final MacroLogicProfile profile,
@@ -1260,6 +1299,15 @@ public final class ElliottWaveMacroCycleDemo {
             final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
         return registry.anchors()
                 .stream()
+                .filter(anchor -> anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM)
+                .max(Comparator.comparing(ElliottWaveAnchorCalibrationHarness.Anchor::at))
+                .map(anchor -> nearestIndex(series, anchor.at()))
+                .orElse(Integer.MAX_VALUE);
+    }
+
+    private static int latestBottomAnchorIndex(final BarSeries series, final List<SegmentScenarioFit> segmentFits) {
+        return segmentFits.stream()
+                .flatMap(fit -> java.util.stream.Stream.of(fit.segment().fromAnchor(), fit.segment().toAnchor()))
                 .filter(anchor -> anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM)
                 .max(Comparator.comparing(ElliottWaveAnchorCalibrationHarness.Anchor::at))
                 .map(anchor -> nearestIndex(series, anchor.at()))
