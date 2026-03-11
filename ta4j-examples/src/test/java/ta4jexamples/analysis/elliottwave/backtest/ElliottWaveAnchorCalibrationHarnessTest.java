@@ -100,6 +100,20 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     }
 
     @Test
+    void portabilitySeriesResourcesLoadFromExpandedEthDailyAndSp500WeeklyDatasets() {
+        BarSeries ethSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveAnchorCalibrationHarnessTest.class,
+                ElliottWaveAnchorCalibrationHarness.ETH_RESOURCE, ElliottWaveAnchorCalibrationHarness.ETH_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveAnchorCalibrationHarnessTest.class));
+        BarSeries sp500Series = OssifiedElliottWaveSeriesLoader.loadSeries(
+                ElliottWaveAnchorCalibrationHarnessTest.class, ElliottWaveAnchorCalibrationHarness.SP500_RESOURCE,
+                ElliottWaveAnchorCalibrationHarness.SP500_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveAnchorCalibrationHarnessTest.class));
+
+        assertTrue(ethSeries.getBarCount() > 3000);
+        assertTrue(sp500Series.getBarCount() > 3000);
+    }
+
+    @Test
     void defaultProfilesWidensHoldoutSearchAroundTheBaselineAndBestChallenger() {
         assertIterableEquals(
                 List.of("baseline-minute-f2-h2l2-max25-sw0", "minute-f3-h2l2-max25-sw0", "minute-f2-h1l1-max25-sw0",

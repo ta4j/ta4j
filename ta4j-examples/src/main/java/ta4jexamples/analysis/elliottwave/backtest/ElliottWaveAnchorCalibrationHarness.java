@@ -96,11 +96,11 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
     static final String RESULT_PREFIX = "EW_ANCHOR_REPORT: ";
     static final String BTC_RESOURCE = "TradingView-INDEX_BTCUSD-PT1D-20091005_20260306.json";
-    static final String ETH_RESOURCE = "Coinbase-ETH-USD-PT1D-20160517_20251028.json";
-    static final String SP500_RESOURCE = "YahooFinance-SP500-PT1D-20230616_20231011.json";
+    static final String ETH_RESOURCE = "Coinbase-ETH-USD-PT1D-20160517_20260310.json";
+    static final String SP500_RESOURCE = "YahooFinance-SP500-PT7D-19500103_20260310.json";
     static final String BTC_SERIES_NAME = "INDEX_BTCUSD_PT1D@TradingView (anchor calibration)";
     static final String ETH_SERIES_NAME = "ETH-USD_PT1D@Coinbase (portability)";
-    static final String SP500_SERIES_NAME = "SP500_PT1D@YahooFinance (portability)";
+    static final String SP500_SERIES_NAME = "SP500_PT7D@YahooFinance (portability)";
     static final String METRIC_EVENT_AGREEMENT = "rank1EventAgreement";
     static final String METRIC_BRIER = "rank1Brier";
     static final String METRIC_LOG_LOSS = "rank1LogLoss";

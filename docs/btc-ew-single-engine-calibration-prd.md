@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 11:12 EDT
+- Last updated: 2026-03-11 11:25 EDT
 - Active phase: Phase 8
-- Active task: Expand the portability datasets so ETH/USD and SP500 cover materially longer histories before using portability results as a meaningful calibration gate
-- Overall: 12/56 checklist items complete
+- Active task: Split calibration outputs into routine sanity artifacts and exhaustive calibration artifacts
+- Overall: 13/56 checklist items complete
 
 ## Status
 
@@ -457,7 +457,7 @@ Avoid exposing calibration internals publicly.
   - write each candidate-profile result as it completes
   - write the selected BTC historical calibration report before portability checks begin
   - append portability and final aggregate output afterward
-- [ ] Expand the portability datasets so ETH/USD and SP500 cover materially longer histories before using portability results as a meaningful calibration gate.
+- [x] Expand the portability datasets so ETH/USD and SP500 cover materially longer histories before using portability results as a meaningful calibration gate.
 - [x] Parallelize calibration at the fold level with a bounded executor and deterministic reduction.
 - [x] Avoid nested parallelism across profiles, folds, and scenario search; one layer must own concurrency.
 - [x] Add deep runtime instrumentation to the harness and core search:
