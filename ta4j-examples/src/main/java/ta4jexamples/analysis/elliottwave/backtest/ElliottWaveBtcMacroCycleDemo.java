@@ -291,9 +291,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     record MacroStudy(MacroProfileEvaluation selectedProfile, List<MacroProfileEvaluation> evaluations,
             List<ProfileScoreSummary> profileScores, List<DirectionalCycleSummary> cycles,
-            List<HypothesisResult> hypotheses, CurrentCycleSummary currentCycle,
-            ElliottWaveAnalysisResult.CurrentPhaseAssessment currentPrimaryFit,
-            ElliottWaveAnalysisResult.CurrentPhaseAssessment currentAlternateFit) {
+            List<HypothesisResult> hypotheses, CurrentCycleAnalysis currentCycleAnalysis) {
 
         MacroStudy {
             Objects.requireNonNull(selectedProfile, "selectedProfile");
@@ -301,7 +299,19 @@ public final class ElliottWaveBtcMacroCycleDemo {
             profileScores = profileScores == null ? List.of() : List.copyOf(profileScores);
             cycles = cycles == null ? List.of() : List.copyOf(cycles);
             hypotheses = hypotheses == null ? List.of() : List.copyOf(hypotheses);
-            Objects.requireNonNull(currentCycle, "currentCycle");
+            Objects.requireNonNull(currentCycleAnalysis, "currentCycleAnalysis");
+        }
+
+        CurrentCycleSummary currentCycle() {
+            return currentCycleAnalysis.summary();
+        }
+
+        ElliottWaveAnalysisResult.CurrentPhaseAssessment currentPrimaryFit() {
+            return currentCycleAnalysis.primaryFit();
+        }
+
+        ElliottWaveAnalysisResult.CurrentPhaseAssessment currentAlternateFit() {
+            return currentCycleAnalysis.alternateFit();
         }
     }
 

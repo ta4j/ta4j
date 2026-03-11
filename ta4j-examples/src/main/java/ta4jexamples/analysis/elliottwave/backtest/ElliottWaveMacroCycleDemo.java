@@ -112,14 +112,15 @@ public final class ElliottWaveMacroCycleDemo {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(registry, "registry");
         Objects.requireNonNull(chartDirectory, "chartDirectory");
-        final MacroStudy study = evaluateMacroStudy(series, registry);
+        final CanonicalStructure structure = analyzeCanonicalStructure(series, registry);
+        final MacroStudy study = structure.historicalStudy().orElseThrow();
         final Optional<Path> chartPath = saveHistoricalChart(series, registry, study, chartDirectory);
         final String chartPathText = chartPath.map(path -> path.toAbsolutePath().normalize().toString()).orElse("");
         final Path summaryPath = chartDirectory.resolve(ElliottWaveBtcMacroCycleDemo.DEFAULT_SUMMARY_FILE_NAME)
                 .toAbsolutePath()
                 .normalize();
         final String baselineProfileId = ElliottWaveAnchorCalibrationHarness.canonicalBtcCalibratedProfile().id();
-        final CurrentCycleSummary currentCycle = study.currentCycle().withChartPath(chartPathText);
+        final CurrentCycleSummary currentCycle = structure.currentCycle().summary().withChartPath(chartPathText);
         final DemoReport report = new DemoReport(registry.version(), registry.datasetResource(), baselineProfileId,
                 study.selectedProfile().profile().id(), study.selectedProfile().profile().hypothesisId(),
                 study.selectedProfile().historicalFitPassed(),
@@ -265,7 +266,13 @@ public final class ElliottWaveMacroCycleDemo {
                 selectedProfile.historicalFitPassed() ? "historical BTC fit passed"
                         : "historical BTC fit still partial");
         return new MacroStudy(selectedProfile, List.copyOf(evaluations), profileScores, cycles, hypotheses,
-                currentCycle.summary(), currentCycle.primaryFit(), currentCycle.alternateFit());
+                currentCycle);
+    }
+
+    static CanonicalStructure analyzeCanonicalStructure(final BarSeries series,
+            final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
+        final MacroStudy study = evaluateMacroStudy(series, registry);
+        return new CanonicalStructure(Optional.of(study), study.currentCycleAnalysis());
     }
 
     static CurrentCycleAnalysis evaluateCurrentCycle(final BarSeries series, final MacroLogicProfile profile,
@@ -305,7 +312,8 @@ public final class ElliottWaveMacroCycleDemo {
         Objects.requireNonNull(historicalStatus, "historicalStatus");
 
         final MacroLogicProfile profile = defaultLiveMacroProfile();
-        final CurrentCycleAnalysis currentCycle = evaluateCurrentCycle(series, profile, historicalStatus);
+        final CanonicalStructure structure = analyzeCanonicalStructure(series, profile, historicalStatus);
+        final CurrentCycleAnalysis currentCycle = structure.currentCycle();
         final Optional<Path> chartPath = saveLiveCurrentCycleChart(series, currentCycle, chartDirectory, chartFileName);
         final String chartPathText = chartPath.map(path -> path.toAbsolutePath().normalize().toString()).orElse("");
         final Path summaryPath = chartDirectory.resolve(summaryFileName).toAbsolutePath().normalize();
@@ -316,6 +324,11 @@ public final class ElliottWaveMacroCycleDemo {
                 summaryPath.toString(), summary);
         saveSummary(report.toJson(), summaryPath, "live macro summary");
         return new LivePresetExecution(currentCycle.withSummary(summary), report);
+    }
+
+    static CanonicalStructure analyzeCanonicalStructure(final BarSeries series, final MacroLogicProfile profile,
+            final String historicalStatus) {
+        return new CanonicalStructure(Optional.empty(), evaluateCurrentCycle(series, profile, historicalStatus));
     }
 
     static List<MacroLogicProfile> logicProfiles() {
@@ -1345,6 +1358,14 @@ public final class ElliottWaveMacroCycleDemo {
             Files.writeString(summaryPath, json);
         } catch (final IOException exception) {
             throw new IllegalStateException("Unable to write " + description + " " + summaryPath, exception);
+        }
+    }
+
+    record CanonicalStructure(Optional<MacroStudy> historicalStudy, CurrentCycleAnalysis currentCycle) {
+
+        CanonicalStructure {
+            historicalStudy = historicalStudy == null ? Optional.empty() : historicalStudy;
+            Objects.requireNonNull(currentCycle, "currentCycle");
         }
     }
 

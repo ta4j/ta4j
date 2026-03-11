@@ -463,6 +463,46 @@ class ElliottWaveBtcMacroCycleDemoTest {
         }
     }
 
+    @Test
+    void canonicalStructureCarriesHistoricalStudyAndCurrentCycleTogether() {
+        BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
+                .defaultBitcoinAnchors(series);
+
+        ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
+                .analyzeCanonicalStructure(series, registry);
+        ElliottWaveBtcMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
+
+        assertEquals(study.currentCycle(), structure.currentCycle().summary());
+        assertEquals(study.currentPrimaryFit(), structure.currentCycle().primaryFit());
+        assertEquals(study.currentAlternateFit(), structure.currentCycle().alternateFit());
+        assertFalse(structure.currentCycle().displayCandidates().isEmpty());
+    }
+
+    @Test
+    void canonicalStructureSupportsLiveOnlyAnalysisWithoutHistoricalStudy() throws Exception {
+        BarSeries fullSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
+        int lookbackBars = 1825;
+        int windowStart = Math.max(fullSeries.getBeginIndex(), fullSeries.getEndIndex() - lookbackBars + 1);
+        BarSeries liveWindow = fullSeries.getSubSeries(windowStart, fullSeries.getEndIndex() + 1);
+
+        Method profileMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("defaultLiveMacroProfile");
+        profileMethod.setAccessible(true);
+        ElliottWaveBtcMacroCycleDemo.MacroLogicProfile profile = (ElliottWaveBtcMacroCycleDemo.MacroLogicProfile) profileMethod
+                .invoke(null);
+
+        ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
+                .analyzeCanonicalStructure(liveWindow, profile, "test");
+
+        assertTrue(structure.historicalStudy().isEmpty());
+        assertEquals("test", structure.currentCycle().summary().historicalStatus());
+        assertFalse(structure.currentCycle().displayCandidates().isEmpty());
+    }
+
     void livePresetReportFindsCurrentCycleStartFromProvidedSeriesWindow() throws Exception {
         BarSeries fullSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,

@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 15:07 EDT
+- Last updated: 2026-03-11 15:18 EDT
 - Active phase: Phase 9
 - Active task: Expand pruning coverage and runtime evidence before adding more brute-force search
-- Overall: 25/56 checklist items complete
+- Overall: 29/56 checklist items complete
 
 ## Status
 
@@ -372,16 +372,16 @@ Avoid exposing calibration internals publicly.
 
 ### Phase 1: Define the Canonical Structure Result Model
 
-- [ ] Design the single structure result object that can back both historical and live charts.
-- [ ] Include:
+- [x] Design the single structure result object that can back both historical and live charts.
+- [x] Include:
   - completed bullish legs
   - completed bearish legs
   - completed cycles
   - current open structure
   - alternates
   - evidence
-- [ ] Keep the new types package-private initially.
-- [ ] Add unit tests for object invariants and serialization/report mapping.
+- [x] Keep the new types package-private initially.
+- [x] Add unit tests for object invariants and serialization/report mapping.
 
 ### Phase 2: Generalize Local Leg Fitting in Core
 
