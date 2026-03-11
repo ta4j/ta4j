@@ -488,6 +488,20 @@ Avoid exposing calibration internals publicly.
 - [ ] Record pruning hit rates and runtime deltas so performance work stays evidence-driven.
 - [ ] Decide whether the default search lane should use a reduced geometry while an exhaustive lane remains opt-in.
 
+### Immediate Follow-up Order from the First Full Calibration Run
+
+1. [ ] Add fold-level instrumentation first:
+   - per-fold elapsed time
+   - per-snapshot elapsed time
+   - scenario counts
+   - decomposition branch counts
+2. [ ] Persist BTC-first calibration artifacts before portability:
+   - write each BTC candidate-profile result as it completes
+   - write the selected BTC historical calibration report before portability checks begin
+   - append portability and final aggregate output afterward
+3. [ ] Fix the holdout anchor aggregation inconsistency so anchor-level holdout summaries align with the cycle-level holdout evidence already present in the report.
+4. [ ] Widen the rule search around the failed 2021/2022 holdout cycle after the instrumentation and reporting fixes are in place.
+
 ### Phase 10: Collapse Historical and Live Rendering onto One Result
 
 - [ ] Refactor historical chart rendering to consume canonical structure output only.
