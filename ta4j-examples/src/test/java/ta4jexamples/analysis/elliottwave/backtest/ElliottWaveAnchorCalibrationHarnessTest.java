@@ -752,12 +752,15 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         assertEquals(5, summary.folds().getFirst().averageRetainedScenarioCount());
         assertEquals(42, summary.folds().getFirst().totalImpulseDecompositionBranchCount());
         assertEquals(16, summary.folds().getFirst().totalCorrectiveDecompositionBranchCount());
+        assertEquals(0, summary.folds().getFirst().totalImpulseDecompositionPrunedBranchCount());
+        assertEquals(0, summary.folds().getFirst().totalCorrectiveDecompositionPrunedBranchCount());
         assertEquals("fold-2", summary.slowestSnapshots().getFirst().foldId());
         assertEquals(220, summary.slowestSnapshots().getFirst().decisionIndex());
         assertEquals(3, summary.slowestSnapshots().getFirst().predictionCount());
         assertEquals(14, summary.slowestSnapshots().getFirst().candidateScenarioCountBeforePrune());
         assertTrue(summary.toText().contains("fold fold-1"));
         assertTrue(summary.toText().contains("impulseBranches="));
+        assertTrue(summary.toText().contains("impulsePruned="));
         assertTrue(summary.toText().contains("slowestSnapshots="));
     }
 
@@ -883,7 +886,7 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         Num confidence = series.numFactory().numOf(rank == 1 ? 0.65 : 0.40);
         ElliottWaveAnalysisResult.BaseScenarioAssessment assessment = new ElliottWaveAnalysisResult.BaseScenarioAssessment(
                 scenario(series, predictionId, phase, bullish), 0.6, 0.6, 0.6, List.of(),
-                new ElliottAnalysisResult.AnalysisDiagnostics(14, 5, 21, 8));
+                new ElliottAnalysisResult.AnalysisDiagnostics(14, 5, 21, 8, 0, 0));
         return new RankedPrediction<>(predictionId, rank, probability, confidence, assessment);
     }
 

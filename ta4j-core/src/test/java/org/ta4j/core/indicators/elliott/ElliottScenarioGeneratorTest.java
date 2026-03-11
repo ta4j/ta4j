@@ -198,6 +198,10 @@ class ElliottScenarioGeneratorTest {
                         && scenario.currentPhase() == ElliottPhase.WAVE5 && scenario.swings().size() == 5);
         assertThat(diagnostics.impulseDecompositionBranchCount())
                 .isLessThan(naiveImpulseDecompositionBranchCount(longNoisyImpulse.size()));
+        assertThat(diagnostics.impulseDecompositionPrunedBranchCount()).isPositive();
+        assertThat(diagnostics.totalImpulseDecompositionBranchCount()).isEqualTo(
+                diagnostics.impulseDecompositionBranchCount() + diagnostics.impulseDecompositionPrunedBranchCount());
+        assertThat(diagnostics.impulsePruningHitRate()).isGreaterThan(0.0);
     }
 
     @Test

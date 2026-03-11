@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 12:11 EDT
+- Last updated: 2026-03-11 12:29 EDT
 - Active phase: Phase 9
 - Active task: Explore pruning opportunities before adding more brute-force search
-- Overall: 19/56 checklist items complete
+- Overall: 20/56 checklist items complete
 
 ## Status
 
@@ -501,7 +501,7 @@ Avoid exposing calibration internals publicly.
   - minimum segment span pruning
   - impossible direction/overlap pruning
   - retracement and amplitude bound pruning
-- [ ] Record pruning hit rates and runtime deltas so performance work stays evidence-driven.
+- [x] Record pruning hit rates and runtime deltas so performance work stays evidence-driven.
 - [ ] Decide whether the default search lane should use a reduced geometry while an exhaustive lane remains opt-in.
 
 ### Immediate Follow-up Order from the First Full Calibration Run

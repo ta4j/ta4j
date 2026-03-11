@@ -82,16 +82,25 @@ public record ElliottAnalysisResult(ElliottDegree degree, int index, List<Elliot
     /**
      * Scenario-generation diagnostics captured during one analysis pass.
      *
-     * @param candidateScenarioCountBeforePrune  scenarios produced before pruning
-     * @param retainedScenarioCount              scenarios retained after pruning
-     * @param impulseDecompositionBranchCount    impulse decomposition leaf branches
-     *                                           explored
-     * @param correctiveDecompositionBranchCount corrective decomposition leaf
-     *                                           branches explored
+     * @param candidateScenarioCountBeforePrune        scenarios produced before
+     *                                                 pruning
+     * @param retainedScenarioCount                    scenarios retained after
+     *                                                 pruning
+     * @param impulseDecompositionBranchCount          impulse decomposition leaf
+     *                                                 branches explored
+     * @param correctiveDecompositionBranchCount       corrective decomposition leaf
+     *                                                 branches explored
+     * @param impulseDecompositionPrunedBranchCount    impulse decomposition leaf
+     *                                                 branches pruned before full
+     *                                                 scoring
+     * @param correctiveDecompositionPrunedBranchCount corrective decomposition leaf
+     *                                                 branches pruned before full
+     *                                                 scoring
      * @since 0.22.4
      */
     public record AnalysisDiagnostics(int candidateScenarioCountBeforePrune, int retainedScenarioCount,
-            int impulseDecompositionBranchCount, int correctiveDecompositionBranchCount) {
+            int impulseDecompositionBranchCount, int correctiveDecompositionBranchCount,
+            int impulseDecompositionPrunedBranchCount, int correctiveDecompositionPrunedBranchCount) {
 
         /**
          * Creates validated analysis diagnostics.
@@ -109,6 +118,46 @@ public record ElliottAnalysisResult(ElliottDegree degree, int index, List<Elliot
             if (correctiveDecompositionBranchCount < 0) {
                 throw new IllegalArgumentException("correctiveDecompositionBranchCount must be >= 0");
             }
+            if (impulseDecompositionPrunedBranchCount < 0) {
+                throw new IllegalArgumentException("impulseDecompositionPrunedBranchCount must be >= 0");
+            }
+            if (correctiveDecompositionPrunedBranchCount < 0) {
+                throw new IllegalArgumentException("correctiveDecompositionPrunedBranchCount must be >= 0");
+            }
+        }
+
+        /**
+         * @return impulse decomposition leaf branches considered before pruning
+         * @since 0.22.4
+         */
+        public int totalImpulseDecompositionBranchCount() {
+            return impulseDecompositionBranchCount + impulseDecompositionPrunedBranchCount;
+        }
+
+        /**
+         * @return corrective decomposition leaf branches considered before pruning
+         * @since 0.22.4
+         */
+        public int totalCorrectiveDecompositionBranchCount() {
+            return correctiveDecompositionBranchCount + correctiveDecompositionPrunedBranchCount;
+        }
+
+        /**
+         * @return impulse decomposition prune hit rate in `[0,1]`
+         * @since 0.22.4
+         */
+        public double impulsePruningHitRate() {
+            int total = totalImpulseDecompositionBranchCount();
+            return total == 0 ? 0.0 : impulseDecompositionPrunedBranchCount / (double) total;
+        }
+
+        /**
+         * @return corrective decomposition prune hit rate in `[0,1]`
+         * @since 0.22.4
+         */
+        public double correctivePruningHitRate() {
+            int total = totalCorrectiveDecompositionBranchCount();
+            return total == 0 ? 0.0 : correctiveDecompositionPrunedBranchCount / (double) total;
         }
 
         /**
@@ -116,7 +165,7 @@ public record ElliottAnalysisResult(ElliottDegree degree, int index, List<Elliot
          * @since 0.22.4
          */
         public static AnalysisDiagnostics empty() {
-            return new AnalysisDiagnostics(0, 0, 0, 0);
+            return new AnalysisDiagnostics(0, 0, 0, 0, 0, 0);
         }
     }
 }

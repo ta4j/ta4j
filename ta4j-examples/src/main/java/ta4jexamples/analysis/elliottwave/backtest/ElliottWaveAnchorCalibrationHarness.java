@@ -1259,8 +1259,16 @@ public final class ElliottWaveAnchorCalibrationHarness {
                         .append(fold.averageRetainedScenarioCount())
                         .append(", impulseBranches=")
                         .append(fold.totalImpulseDecompositionBranchCount())
+                        .append(", impulsePruned=")
+                        .append(fold.totalImpulseDecompositionPrunedBranchCount())
+                        .append(", impulsePruneRate=")
+                        .append(String.format(java.util.Locale.ROOT, "%.2f", fold.impulsePruningHitRate()))
                         .append(", correctiveBranches=")
                         .append(fold.totalCorrectiveDecompositionBranchCount())
+                        .append(", correctivePruned=")
+                        .append(fold.totalCorrectiveDecompositionPrunedBranchCount())
+                        .append(", correctivePruneRate=")
+                        .append(String.format(java.util.Locale.ROOT, "%.2f", fold.correctivePruningHitRate()))
                         .append(System.lineSeparator());
             }
             if (!slowestSnapshots.isEmpty()) {
@@ -1280,8 +1288,16 @@ public final class ElliottWaveAnchorCalibrationHarness {
                             .append(snapshot.retainedScenarioCount())
                             .append(", impulseBranches=")
                             .append(snapshot.impulseDecompositionBranchCount())
+                            .append(", impulsePruned=")
+                            .append(snapshot.impulseDecompositionPrunedBranchCount())
+                            .append(", impulsePruneRate=")
+                            .append(String.format(java.util.Locale.ROOT, "%.2f", snapshot.impulsePruningHitRate()))
                             .append(", correctiveBranches=")
                             .append(snapshot.correctiveDecompositionBranchCount())
+                            .append(", correctivePruned=")
+                            .append(snapshot.correctiveDecompositionPrunedBranchCount())
+                            .append(", correctivePruneRate=")
+                            .append(String.format(java.util.Locale.ROOT, "%.2f", snapshot.correctivePruningHitRate()))
                             .append(System.lineSeparator());
                 }
             }
@@ -1313,7 +1329,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
     record RuntimeFoldSummary(String foldId, Duration runtime, int snapshotCount, Duration minSnapshotRuntime,
             Duration maxSnapshotRuntime, Duration averageSnapshotRuntime, Duration medianSnapshotRuntime,
             int averageCandidateScenarioCountBeforePrune, int averageRetainedScenarioCount,
-            int totalImpulseDecompositionBranchCount, int totalCorrectiveDecompositionBranchCount) {
+            int totalImpulseDecompositionBranchCount, int totalCorrectiveDecompositionBranchCount,
+            int totalImpulseDecompositionPrunedBranchCount, int totalCorrectiveDecompositionPrunedBranchCount) {
 
         RuntimeFoldSummary {
             Objects.requireNonNull(foldId, "foldId");
@@ -1330,6 +1347,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
             int totalRetained = 0;
             int totalImpulseBranches = 0;
             int totalCorrectiveBranches = 0;
+            int totalImpulsePrunedBranches = 0;
+            int totalCorrectivePrunedBranches = 0;
             for (WalkForwardRuntimeReport.SnapshotRuntime snapshotRuntime : foldRuntime.snapshotRuntimes()) {
                 SnapshotAnalysisSummary analysis = analysisBySnapshotKey.getOrDefault(RuntimeInstrumentationSummary
                         .snapshotKey(foldRuntime.foldId(), snapshotRuntime.decisionIndex()),
@@ -1338,13 +1357,25 @@ public final class ElliottWaveAnchorCalibrationHarness {
                 totalRetained += analysis.retainedScenarioCount();
                 totalImpulseBranches += analysis.impulseDecompositionBranchCount();
                 totalCorrectiveBranches += analysis.correctiveDecompositionBranchCount();
+                totalImpulsePrunedBranches += analysis.impulseDecompositionPrunedBranchCount();
+                totalCorrectivePrunedBranches += analysis.correctiveDecompositionPrunedBranchCount();
             }
             int snapshotCount = Math.max(1, foldRuntime.snapshotCount());
             return new RuntimeFoldSummary(foldRuntime.foldId(), foldRuntime.runtime(), foldRuntime.snapshotCount(),
                     foldRuntime.minSnapshotRuntime(), foldRuntime.maxSnapshotRuntime(),
                     foldRuntime.averageSnapshotRuntime(), foldRuntime.medianSnapshotRuntime(),
                     totalBeforePrune / snapshotCount, totalRetained / snapshotCount, totalImpulseBranches,
-                    totalCorrectiveBranches);
+                    totalCorrectiveBranches, totalImpulsePrunedBranches, totalCorrectivePrunedBranches);
+        }
+
+        double impulsePruningHitRate() {
+            int total = totalImpulseDecompositionBranchCount + totalImpulseDecompositionPrunedBranchCount;
+            return total == 0 ? 0.0 : totalImpulseDecompositionPrunedBranchCount / (double) total;
+        }
+
+        double correctivePruningHitRate() {
+            int total = totalCorrectiveDecompositionBranchCount + totalCorrectiveDecompositionPrunedBranchCount;
+            return total == 0 ? 0.0 : totalCorrectiveDecompositionPrunedBranchCount / (double) total;
         }
     }
 
@@ -1353,7 +1384,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
      */
     record RuntimeSnapshotSummary(String foldId, int decisionIndex, Duration runtime, int predictionCount,
             int candidateScenarioCountBeforePrune, int retainedScenarioCount, int impulseDecompositionBranchCount,
-            int correctiveDecompositionBranchCount) {
+            int correctiveDecompositionBranchCount, int impulseDecompositionPrunedBranchCount,
+            int correctiveDecompositionPrunedBranchCount) {
 
         RuntimeSnapshotSummary {
             Objects.requireNonNull(foldId, "foldId");
@@ -1366,7 +1398,18 @@ public final class ElliottWaveAnchorCalibrationHarness {
             return new RuntimeSnapshotSummary(foldId, snapshotRuntime.decisionIndex(), snapshotRuntime.runtime(),
                     snapshotRuntime.predictionCount(), resolved.candidateScenarioCountBeforePrune(),
                     resolved.retainedScenarioCount(), resolved.impulseDecompositionBranchCount(),
-                    resolved.correctiveDecompositionBranchCount());
+                    resolved.correctiveDecompositionBranchCount(), resolved.impulseDecompositionPrunedBranchCount(),
+                    resolved.correctiveDecompositionPrunedBranchCount());
+        }
+
+        double impulsePruningHitRate() {
+            int total = impulseDecompositionBranchCount + impulseDecompositionPrunedBranchCount;
+            return total == 0 ? 0.0 : impulseDecompositionPrunedBranchCount / (double) total;
+        }
+
+        double correctivePruningHitRate() {
+            int total = correctiveDecompositionBranchCount + correctiveDecompositionPrunedBranchCount;
+            return total == 0 ? 0.0 : correctiveDecompositionPrunedBranchCount / (double) total;
         }
     }
 
@@ -1374,7 +1417,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
      * Scenario-search counters observed for one snapshot analysis.
      */
     record SnapshotAnalysisSummary(int candidateScenarioCountBeforePrune, int retainedScenarioCount,
-            int impulseDecompositionBranchCount, int correctiveDecompositionBranchCount) {
+            int impulseDecompositionBranchCount, int correctiveDecompositionBranchCount,
+            int impulseDecompositionPrunedBranchCount, int correctiveDecompositionPrunedBranchCount) {
 
         SnapshotAnalysisSummary {
             if (candidateScenarioCountBeforePrune < 0) {
@@ -1389,10 +1433,16 @@ public final class ElliottWaveAnchorCalibrationHarness {
             if (correctiveDecompositionBranchCount < 0) {
                 throw new IllegalArgumentException("correctiveDecompositionBranchCount must be >= 0");
             }
+            if (impulseDecompositionPrunedBranchCount < 0) {
+                throw new IllegalArgumentException("impulseDecompositionPrunedBranchCount must be >= 0");
+            }
+            if (correctiveDecompositionPrunedBranchCount < 0) {
+                throw new IllegalArgumentException("correctiveDecompositionPrunedBranchCount must be >= 0");
+            }
         }
 
         static SnapshotAnalysisSummary empty() {
-            return new SnapshotAnalysisSummary(0, 0, 0, 0);
+            return new SnapshotAnalysisSummary(0, 0, 0, 0, 0, 0);
         }
 
         static SnapshotAnalysisSummary from(ElliottAnalysisResult.AnalysisDiagnostics diagnostics) {
@@ -1401,7 +1451,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
                     : diagnostics;
             return new SnapshotAnalysisSummary(resolved.candidateScenarioCountBeforePrune(),
                     resolved.retainedScenarioCount(), resolved.impulseDecompositionBranchCount(),
-                    resolved.correctiveDecompositionBranchCount());
+                    resolved.correctiveDecompositionBranchCount(), resolved.impulseDecompositionPrunedBranchCount(),
+                    resolved.correctiveDecompositionPrunedBranchCount());
         }
     }
 

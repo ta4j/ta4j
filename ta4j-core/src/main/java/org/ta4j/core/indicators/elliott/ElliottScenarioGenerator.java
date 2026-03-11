@@ -57,6 +57,8 @@ public final class ElliottScenarioGenerator {
             .empty();
     private int lastImpulseBranchCount;
     private int lastCorrectiveBranchCount;
+    private int lastImpulsePrunedBranchCount;
+    private int lastCorrectivePrunedBranchCount;
 
     /**
      * Creates a generator with default settings.
@@ -137,6 +139,8 @@ public final class ElliottScenarioGenerator {
         final Set<String> seenSignatures = new HashSet<>();
         int impulseBranchCount = 0;
         int correctiveBranchCount = 0;
+        int impulsePrunedBranchCount = 0;
+        int correctivePrunedBranchCount = 0;
 
         // Explore every feasible starting point so long multi-swing histories can
         // still surface a valid structure that begins after early noise.
@@ -150,6 +154,7 @@ public final class ElliottScenarioGenerator {
             if (patternSet.allows(ScenarioType.IMPULSE)) {
                 generateImpulseScenarios(segment, degree, channel, startIndex, candidates, seenSignatures);
                 impulseBranchCount += lastImpulseBranchCount;
+                impulsePrunedBranchCount += lastImpulsePrunedBranchCount;
             }
 
             // Try corrective interpretation
@@ -158,13 +163,14 @@ public final class ElliottScenarioGenerator {
                     || patternSet.allows(ScenarioType.CORRECTIVE_COMPLEX)) {
                 generateCorrectiveScenarios(segment, degree, channel, startIndex, candidates, seenSignatures);
                 correctiveBranchCount += lastCorrectiveBranchCount;
+                correctivePrunedBranchCount += lastCorrectivePrunedBranchCount;
             }
         }
 
         // Prune and rank scenarios
         final List<ElliottScenario> pruned = prune(candidates);
         lastDiagnostics = new ElliottAnalysisResult.AnalysisDiagnostics(candidates.size(), pruned.size(),
-                impulseBranchCount, correctiveBranchCount);
+                impulseBranchCount, correctiveBranchCount, impulsePrunedBranchCount, correctivePrunedBranchCount);
 
         return ElliottScenarioSet.of(pruned, barIndex);
     }
@@ -183,6 +189,7 @@ public final class ElliottScenarioGenerator {
             final ElliottChannel channel, final int startIndex, final List<ElliottScenario> candidates,
             final Set<String> seenSignatures) {
         lastImpulseBranchCount = 0;
+        lastImpulsePrunedBranchCount = 0;
         if (swings.isEmpty()) {
             return;
         }
@@ -243,6 +250,7 @@ public final class ElliottScenarioGenerator {
             final ElliottChannel channel, final int startIndex, final List<ElliottScenario> candidates,
             final Set<String> seenSignatures) {
         lastCorrectiveBranchCount = 0;
+        lastCorrectivePrunedBranchCount = 0;
         if (swings.isEmpty()) {
             return;
         }
@@ -490,6 +498,7 @@ public final class ElliottScenarioGenerator {
         final List<SwingPivotPoint> pivots = limitPivotsForDecomposition(extractPivots(swings));
         final BestDecomposition best = new BestDecomposition();
         final AtomicInteger branches = new AtomicInteger();
+        final AtomicInteger prunedBranches = new AtomicInteger();
         searchDecompositionCuts(pivots, waveCount - 1, 1, new ArrayList<>(), cutPoints -> {
             branches.incrementAndGet();
             final List<ElliottSwing> candidate = buildDecomposition(swings.get(0).degree(), pivots, cutPoints);
@@ -504,8 +513,9 @@ public final class ElliottScenarioGenerator {
                     "Anchor-first impulse decomposition score "
                             + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
             best.consider(candidate, confidence.overall().doubleValue());
-        });
+        }, prunedBranches);
         lastImpulseBranchCount += branches.get();
+        lastImpulsePrunedBranchCount += prunedBranches.get();
         return best.swings();
     }
 
@@ -517,6 +527,7 @@ public final class ElliottScenarioGenerator {
         final List<SwingPivotPoint> pivots = limitPivotsForDecomposition(extractPivots(swings));
         final BestDecomposition best = new BestDecomposition();
         final AtomicInteger branches = new AtomicInteger();
+        final AtomicInteger prunedBranches = new AtomicInteger();
         searchDecompositionCuts(pivots, waveCount - 1, 1, new ArrayList<>(), cutPoints -> {
             branches.incrementAndGet();
             final List<ElliottSwing> candidate = buildDecomposition(swings.get(0).degree(), pivots, cutPoints);
@@ -531,17 +542,21 @@ public final class ElliottScenarioGenerator {
                     "Anchor-first corrective decomposition score "
                             + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
             best.consider(candidate, confidence.overall().doubleValue());
-        });
+        }, prunedBranches);
         lastCorrectiveBranchCount += branches.get();
+        lastCorrectivePrunedBranchCount += prunedBranches.get();
         return best.swings();
     }
 
     private void searchDecompositionCuts(final List<SwingPivotPoint> pivots, final int cutsNeeded, final int nextPivot,
-            final List<Integer> chosenCuts, final java.util.function.Consumer<List<Integer>> consumer) {
+            final List<Integer> chosenCuts, final java.util.function.Consumer<List<Integer>> consumer,
+            final AtomicInteger prunedBranches) {
         final int pivotCount = pivots.size();
         if (cutsNeeded == 0) {
             if (decompositionAlternatesDirection(pivots, chosenCuts, true)) {
                 consumer.accept(List.copyOf(chosenCuts));
+            } else {
+                prunedBranches.incrementAndGet();
             }
             return;
         }
@@ -549,10 +564,37 @@ public final class ElliottScenarioGenerator {
         for (int pivotIndex = nextPivot; pivotIndex <= lastInternalPivot; pivotIndex++) {
             chosenCuts.add(pivotIndex);
             if (decompositionAlternatesDirection(pivots, chosenCuts, false)) {
-                searchDecompositionCuts(pivots, cutsNeeded - 1, pivotIndex + 1, chosenCuts, consumer);
+                searchDecompositionCuts(pivots, cutsNeeded - 1, pivotIndex + 1, chosenCuts, consumer, prunedBranches);
+            } else {
+                prunedBranches.addAndGet(countRemainingCutCombinations(pivotCount, cutsNeeded - 1, pivotIndex + 1));
             }
             chosenCuts.removeLast();
         }
+    }
+
+    private int countRemainingCutCombinations(final int pivotCount, final int cutsNeeded, final int nextPivot) {
+        if (cutsNeeded == 0) {
+            return 1;
+        }
+        final int availableInternalPivots = pivotCount - 1 - nextPivot;
+        return combinationCount(availableInternalPivots, cutsNeeded);
+    }
+
+    private int combinationCount(final int n, final int k) {
+        if (k < 0 || k > n) {
+            return 0;
+        }
+        if (k == 0 || k == n) {
+            return 1;
+        }
+        long numerator = 1L;
+        long denominator = 1L;
+        int effectiveK = Math.min(k, n - k);
+        for (int i = 1; i <= effectiveK; i++) {
+            numerator *= (n - effectiveK + i);
+            denominator *= i;
+        }
+        return Math.toIntExact(numerator / denominator);
     }
 
     private boolean decompositionAlternatesDirection(final List<SwingPivotPoint> pivots, final List<Integer> cutPoints,
