@@ -110,11 +110,20 @@ class WalkForwardModelRecordsTest {
         assertThat(empty.overallRuntime()).isEqualTo(Duration.ZERO);
         assertThat(empty.foldRuntimes()).isEmpty();
 
+        WalkForwardRuntimeReport.SnapshotRuntime snapshotRuntime = new WalkForwardRuntimeReport.SnapshotRuntime(12,
+                Duration.ofMillis(4), 2);
         WalkForwardRuntimeReport.FoldRuntime foldRuntime = new WalkForwardRuntimeReport.FoldRuntime("fold-1",
-                Duration.ofMillis(12), 3);
-        assertThat(foldRuntime.snapshotCount()).isEqualTo(3);
+                Duration.ofMillis(12), 1, Duration.ofMillis(4), Duration.ofMillis(4), Duration.ofMillis(4),
+                Duration.ofMillis(4), List.of(snapshotRuntime));
+        assertThat(foldRuntime.snapshotCount()).isEqualTo(1);
+        assertThat(foldRuntime.snapshotRuntimes()).containsExactly(snapshotRuntime);
+        assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.SnapshotRuntime(12, Duration.ofMillis(1), -1));
         assertThrows(IllegalArgumentException.class,
                 () -> new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofMillis(1), -1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofMillis(1), 2, Duration.ZERO,
+                        Duration.ZERO, Duration.ZERO, Duration.ZERO, List.of(snapshotRuntime)));
     }
 
     @Test

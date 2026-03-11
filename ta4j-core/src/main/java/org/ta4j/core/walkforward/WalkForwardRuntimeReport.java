@@ -43,14 +43,52 @@ public record WalkForwardRuntimeReport(Duration overallRuntime, Duration minFold
     }
 
     /**
-     * Per-fold runtime detail.
+     * Per-snapshot runtime detail.
      *
-     * @param foldId        fold id
-     * @param runtime       fold runtime
-     * @param snapshotCount number of decision snapshots processed in the fold
+     * @param decisionIndex   decision index processed for the snapshot
+     * @param runtime         snapshot runtime
+     * @param predictionCount number of ranked predictions retained
      * @since 0.22.4
      */
-    public record FoldRuntime(String foldId, Duration runtime, int snapshotCount) {
+    public record SnapshotRuntime(int decisionIndex, Duration runtime, int predictionCount) {
+
+        /**
+         * Creates a validated snapshot runtime.
+         */
+        public SnapshotRuntime {
+            Objects.requireNonNull(runtime, "runtime");
+            if (predictionCount < 0) {
+                throw new IllegalArgumentException("predictionCount must be >= 0");
+            }
+        }
+    }
+
+    /**
+     * Per-fold runtime detail.
+     *
+     * @param foldId                 fold id
+     * @param runtime                fold runtime
+     * @param snapshotCount          number of decision snapshots processed in the
+     *                               fold
+     * @param minSnapshotRuntime     minimum snapshot runtime in the fold
+     * @param maxSnapshotRuntime     maximum snapshot runtime in the fold
+     * @param averageSnapshotRuntime average snapshot runtime in the fold
+     * @param medianSnapshotRuntime  median snapshot runtime in the fold
+     * @param snapshotRuntimes       per-snapshot runtime details in decision order
+     * @since 0.22.4
+     */
+    public record FoldRuntime(String foldId, Duration runtime, int snapshotCount, Duration minSnapshotRuntime,
+            Duration maxSnapshotRuntime, Duration averageSnapshotRuntime, Duration medianSnapshotRuntime,
+            List<SnapshotRuntime> snapshotRuntimes) {
+
+        /**
+         * Creates a fold runtime with empty snapshot timing detail.
+         *
+         * @since 0.22.4
+         */
+        public FoldRuntime(String foldId, Duration runtime, int snapshotCount) {
+            this(foldId, runtime, snapshotCount, Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO, List.of());
+        }
 
         /**
          * Creates a validated fold runtime.
@@ -58,8 +96,16 @@ public record WalkForwardRuntimeReport(Duration overallRuntime, Duration minFold
         public FoldRuntime {
             Objects.requireNonNull(foldId, "foldId");
             Objects.requireNonNull(runtime, "runtime");
+            Objects.requireNonNull(minSnapshotRuntime, "minSnapshotRuntime");
+            Objects.requireNonNull(maxSnapshotRuntime, "maxSnapshotRuntime");
+            Objects.requireNonNull(averageSnapshotRuntime, "averageSnapshotRuntime");
+            Objects.requireNonNull(medianSnapshotRuntime, "medianSnapshotRuntime");
             if (snapshotCount < 0) {
                 throw new IllegalArgumentException("snapshotCount must be >= 0");
+            }
+            snapshotRuntimes = snapshotRuntimes == null ? List.of() : List.copyOf(snapshotRuntimes);
+            if (!snapshotRuntimes.isEmpty() && snapshotRuntimes.size() != snapshotCount) {
+                throw new IllegalArgumentException("snapshotRuntimes size must match snapshotCount");
             }
         }
     }

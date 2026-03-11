@@ -499,9 +499,11 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         metricsByHorizonB.put(horizon + 30, secondaryMetricsB);
 
         ElliottWaveAnchorCalibrationHarness.CandidateEvaluation first = ElliottWaveAnchorCalibrationHarness.CandidateEvaluation
-                .create(profile, manifestA, metricsByHorizonA, anchors, cycles, horizon);
+                .create(profile, manifestA, metricsByHorizonA, anchors, cycles,
+                        ElliottWaveAnchorCalibrationHarness.RuntimeInstrumentationSummary.empty(), horizon);
         ElliottWaveAnchorCalibrationHarness.CandidateEvaluation second = ElliottWaveAnchorCalibrationHarness.CandidateEvaluation
-                .create(profile, manifestB, metricsByHorizonB, anchors, cycles, horizon);
+                .create(profile, manifestB, metricsByHorizonB, anchors, cycles,
+                        ElliottWaveAnchorCalibrationHarness.RuntimeInstrumentationSummary.empty(), horizon);
 
         assertEquals(first.artifactId(), second.artifactId());
         assertEquals(first.artifactHash(), second.artifactHash());
@@ -613,7 +615,8 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                         new ElliottWaveAnchorCalibrationHarness.AnchorAggregate(0, 0, Double.NaN, Double.NaN, Map.of(),
                                 List.of()),
                         Double.NaN),
-                cycles, profile.id() + "|cfg=cfg-hash", "artifact-" + profile.id());
+                cycles, ElliottWaveAnchorCalibrationHarness.RuntimeInstrumentationSummary.empty(),
+                profile.id() + "|cfg=cfg-hash", "artifact-" + profile.id());
         ElliottWaveAnchorCalibrationHarness.BaselinePolicy baselinePolicy = new ElliottWaveAnchorCalibrationHarness.BaselinePolicy(
                 "synthetic-btc.json", horizon, List.of(1), "cfg-hash", profile.id());
         ElliottWaveAnchorCalibrationHarness.ReportBundle report = ElliottWaveAnchorCalibrationHarness.ReportBundle
@@ -636,6 +639,32 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         assertEquals(0, calibration.cycles().getFirst().peakDistanceBars());
         assertEquals(0, calibration.cycles().getFirst().lowDistanceBars());
         assertTrue(report.historicalCalibrationText().contains("deltaBars=0"));
+    }
+
+    @Test
+    void runtimeInstrumentationSummaryCapturesFoldAndSlowSnapshotDetails() {
+        WalkForwardRuntimeReport runtimeReport = new WalkForwardRuntimeReport(Duration.ofSeconds(30),
+                Duration.ofSeconds(10), Duration.ofSeconds(20), Duration.ofSeconds(15), Duration.ofSeconds(15), List.of(
+                        new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofSeconds(10), 2,
+                                Duration.ofSeconds(3), Duration.ofSeconds(7), Duration.ofSeconds(5),
+                                Duration.ofSeconds(5),
+                                List.of(new WalkForwardRuntimeReport.SnapshotRuntime(120, Duration.ofSeconds(3), 2),
+                                        new WalkForwardRuntimeReport.SnapshotRuntime(121, Duration.ofSeconds(7), 1))),
+                        new WalkForwardRuntimeReport.FoldRuntime("fold-2", Duration.ofSeconds(20), 1,
+                                Duration.ofSeconds(20), Duration.ofSeconds(20), Duration.ofSeconds(20),
+                                Duration.ofSeconds(20), List.of(new WalkForwardRuntimeReport.SnapshotRuntime(220,
+                                        Duration.ofSeconds(20), 3)))));
+
+        ElliottWaveAnchorCalibrationHarness.RuntimeInstrumentationSummary summary = ElliottWaveAnchorCalibrationHarness.RuntimeInstrumentationSummary
+                .from(runtimeReport);
+
+        assertEquals(Duration.ofSeconds(30), summary.overallRuntime());
+        assertEquals(2, summary.folds().size());
+        assertEquals("fold-2", summary.slowestSnapshots().getFirst().foldId());
+        assertEquals(220, summary.slowestSnapshots().getFirst().decisionIndex());
+        assertEquals(3, summary.slowestSnapshots().getFirst().predictionCount());
+        assertTrue(summary.toText().contains("fold fold-1"));
+        assertTrue(summary.toText().contains("slowestSnapshots="));
     }
 
     @Test
@@ -676,7 +705,8 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         ElliottWaveAnchorCalibrationHarness.CyclePartitions cycles = new ElliottWaveAnchorCalibrationHarness.CyclePartitions(
                 validationCycles, holdoutCycles, top3Degradation);
         return new ElliottWaveAnchorCalibrationHarness.CandidateEvaluation(profile, manifest, horizon, metrics, anchors,
-                cycles, profile.id() + "|cfg=cfg-hash", "artifact-" + profile.id());
+                cycles, ElliottWaveAnchorCalibrationHarness.RuntimeInstrumentationSummary.empty(),
+                profile.id() + "|cfg=cfg-hash", "artifact-" + profile.id());
     }
 
     private static WalkForwardRunResult<ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> syntheticRunResult(

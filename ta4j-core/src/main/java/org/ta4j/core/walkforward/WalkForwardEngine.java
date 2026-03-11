@@ -135,9 +135,10 @@ public final class WalkForwardEngine<C, P, O> {
 
         for (WalkForwardSplit split : splits) {
             long foldStart = System.nanoTime();
-            int foldSnapshots = 0;
+            List<WalkForwardRuntimeReport.SnapshotRuntime> snapshotRuntimes = new ArrayList<>();
 
             for (int decisionIndex = split.testStart(); decisionIndex <= split.testEnd(); decisionIndex++) {
+                long snapshotStart = System.nanoTime();
                 List<RankedPrediction<P>> rawPredictions = predictionProvider.predict(series, decisionIndex, context);
                 List<RankedPrediction<P>> predictions = normalizePredictions(rawPredictions, maxPredictions);
 
@@ -146,7 +147,6 @@ public final class WalkForwardEngine<C, P, O> {
                 PredictionSnapshot<P> snapshot = new PredictionSnapshot<>(split.foldId(), decisionIndex, predictions,
                         metadata);
                 snapshots.add(snapshot);
-                foldSnapshots++;
 
                 for (int horizon : config.allHorizons()) {
                     int labelStart = decisionIndex + 1;
@@ -180,10 +180,12 @@ public final class WalkForwardEngine<C, P, O> {
 
                 progressCount++;
                 progressCallback.accept(progressCount);
+                snapshotRuntimes.add(new WalkForwardRuntimeReport.SnapshotRuntime(decisionIndex,
+                        Duration.ofNanos(System.nanoTime() - snapshotStart), predictions.size()));
             }
 
             Duration foldRuntime = Duration.ofNanos(System.nanoTime() - foldStart);
-            foldRuntimes.add(new WalkForwardRuntimeReport.FoldRuntime(split.foldId(), foldRuntime, foldSnapshots));
+            foldRuntimes.add(buildFoldRuntime(split.foldId(), foldRuntime, snapshotRuntimes));
         }
 
         Map<Integer, Map<String, Num>> globalMetricsByHorizon = computeGlobalMetrics(observationsByHorizon);
@@ -255,10 +257,26 @@ public final class WalkForwardEngine<C, P, O> {
         for (WalkForwardRuntimeReport.FoldRuntime foldRuntime : foldRuntimes) {
             durations.add(foldRuntime.runtime());
         }
+        DurationSummary summary = summarizeDurations(durations);
+        return new WalkForwardRuntimeReport(overallRuntime, summary.min(), summary.max(), summary.average(),
+                summary.median(), foldRuntimes);
+    }
 
+    private WalkForwardRuntimeReport.FoldRuntime buildFoldRuntime(String foldId, Duration foldRuntime,
+            List<WalkForwardRuntimeReport.SnapshotRuntime> snapshotRuntimes) {
+        List<WalkForwardRuntimeReport.SnapshotRuntime> immutableSnapshots = List.copyOf(snapshotRuntimes);
+        DurationSummary summary = summarizeDurations(
+                immutableSnapshots.stream().map(WalkForwardRuntimeReport.SnapshotRuntime::runtime).toList());
+        return new WalkForwardRuntimeReport.FoldRuntime(foldId, foldRuntime, immutableSnapshots.size(), summary.min(),
+                summary.max(), summary.average(), summary.median(), immutableSnapshots);
+    }
+
+    private DurationSummary summarizeDurations(List<Duration> durations) {
+        if (durations == null || durations.isEmpty()) {
+            return new DurationSummary(Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO);
+        }
         Duration min = Collections.min(durations);
         Duration max = Collections.max(durations);
-
         long totalNanos = 0L;
         for (Duration duration : durations) {
             totalNanos += duration.toNanos();
@@ -275,8 +293,10 @@ public final class WalkForwardEngine<C, P, O> {
         } else {
             median = sorted.get(middle);
         }
+        return new DurationSummary(min, max, average, median);
+    }
 
-        return new WalkForwardRuntimeReport(overallRuntime, min, max, average, median, foldRuntimes);
+    private record DurationSummary(Duration min, Duration max, Duration average, Duration median) {
     }
 
     private static <P, O> Map<Integer, List<WalkForwardObservation<P, O>>> immutableObservationMap(

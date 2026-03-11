@@ -52,6 +52,17 @@ class WalkForwardEngineTest {
         assertThat(first.globalMetricsForHorizon(5)).containsKeys("eventAgreement", "top2Hit", "brier");
         assertThat(first.foldMetricsForHorizon(5)).isNotEmpty();
         assertThat(first.runtimeReport().overallRuntime()).isNotNull();
+        assertThat(first.runtimeReport().foldRuntimes()).isNotEmpty();
+        assertThat(first.runtimeReport().foldRuntimes()).allSatisfy(fold -> {
+            assertThat(fold.snapshotCount()).isEqualTo(fold.snapshotRuntimes().size());
+            assertThat(fold.snapshotRuntimes()).isNotEmpty();
+            assertThat(fold.maxSnapshotRuntime()).isGreaterThanOrEqualTo(fold.minSnapshotRuntime());
+        });
+        assertThat(first.runtimeReport()
+                .foldRuntimes()
+                .stream()
+                .flatMap(fold -> fold.snapshotRuntimes().stream())
+                .map(WalkForwardRuntimeReport.SnapshotRuntime::predictionCount)).allMatch(count -> count == 2);
         assertThat(first.manifest().configHash()).isEqualTo(config.configHash());
 
         assertThat(auditRecords).isNotEmpty();

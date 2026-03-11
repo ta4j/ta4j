@@ -55,6 +55,7 @@ import org.ta4j.core.walkforward.WalkForwardEngine;
 import org.ta4j.core.walkforward.WalkForwardExperimentManifest;
 import org.ta4j.core.walkforward.WalkForwardMetric;
 import org.ta4j.core.walkforward.WalkForwardRunResult;
+import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
 import org.ta4j.core.walkforward.WalkForwardSplit;
 
 import com.google.gson.Gson;
@@ -124,11 +125,15 @@ public final class ElliottWaveAnchorCalibrationHarness {
      * @param args unused
      */
     public static void main(String[] args) {
+        Instant startedAt = Instant.now();
+        LOG.info("Starting BTC anchor calibration harness");
         ReportBundle report = generateDefaultReport();
+        LOG.info("Finished BTC anchor calibration harness in {}", formatElapsed(startedAt));
         LOG.info("Promotion decision: selectedProfile={} promoteChallenger={} rationale={}",
                 report.decision().selectedProfileId(), report.decision().promoteChallenger(),
                 report.decision().rationale());
         LOG.info("Historical calibration report\n{}", report.historicalCalibrationText());
+        LOG.info("Runtime instrumentation report\n{}", report.runtimeInstrumentationText());
         LOG.info("{}{}", RESULT_PREFIX, report.toJson());
     }
 
@@ -181,18 +186,24 @@ public final class ElliottWaveAnchorCalibrationHarness {
     }
 
     static ReportBundle generateDefaultReport() {
+        Instant startedAt = Instant.now();
+        LOG.info("Loading BTC anchor registry document");
         ElliottWaveAnchorRegistry registryDocument = ElliottWaveAnchorRegistry
                 .load(ElliottWaveAnchorRegistry.DEFAULT_RESOURCE);
+        LOG.info("Loading BTC calibration series {}", registryDocument.datasetResource());
         BarSeries btcSeries = requireSeries(registryDocument.datasetResource(), BTC_SERIES_NAME);
+        LOG.info("Loading portability series {}", ETH_RESOURCE);
         BarSeries ethSeries = loadSeries(ETH_RESOURCE, ETH_SERIES_NAME).orElse(null);
+        LOG.info("Loading portability series {}", SP500_RESOURCE);
         BarSeries sp500Series = loadSeries(SP500_RESOURCE, SP500_SERIES_NAME).orElse(null);
 
         WalkForwardConfig config = ElliottWaveWalkForwardProfiles.baselineConfig();
         AnchorRegistry registry = defaultBitcoinAnchors(registryDocument, btcSeries);
+        List<CandidateProfile> profiles = defaultProfiles();
+        LOG.info("Resolved {} BTC anchors across {} profiles; BTC bars={}", registry.anchors().size(), profiles.size(),
+                btcSeries.getBarCount());
 
-        List<CandidateEvaluation> evaluations = defaultProfiles().parallelStream()
-                .map(profile -> evaluateCandidate(btcSeries, registry, profile, buildEngine(), config))
-                .toList();
+        List<CandidateEvaluation> evaluations = evaluateCandidatesSequentially(btcSeries, registry, profiles, config);
 
         WalkForwardEngine<ElliottWaveWalkForwardContext, ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> portabilityEngine = buildEngine();
 
@@ -204,19 +215,61 @@ public final class ElliottWaveAnchorCalibrationHarness {
         List<ChallengerAssessment> challengerAssessments = rankChallengers(baseline, evaluations);
         PromotionDecision decision = PromotionDecision.from(baseline, challengerAssessments);
         CandidateEvaluation selected = selectedEvaluation(baseline, challengerAssessments, decision);
+        LOG.info("Selected profile {} after challenger ranking in {}", selected.profile().id(),
+                formatElapsed(startedAt));
 
         List<PortabilitySummary> portability = List.of(
-                evaluatePortability("eth-usd", ETH_RESOURCE, ethSeries, baseline.profile(), selected.profile(),
-                        portabilityEngine, config),
-                evaluatePortability("sp500", SP500_RESOURCE, sp500Series, baseline.profile(), selected.profile(),
-                        portabilityEngine, config));
+                evaluatePortabilityWithProgress("eth-usd", ETH_RESOURCE, ethSeries, baseline.profile(),
+                        selected.profile(), portabilityEngine, config),
+                evaluatePortabilityWithProgress("sp500", SP500_RESOURCE, sp500Series, baseline.profile(),
+                        selected.profile(), portabilityEngine, config));
 
         BaselinePolicy baselinePolicy = new BaselinePolicy(registry.datasetResource(), config.primaryHorizonBars(),
                 List.copyOf(config.reportingHorizons()), config.configHash(),
                 ElliottWaveWalkForwardProfiles.baseline().metadata().getOrDefault("profile", "baseline"));
 
+        LOG.info("Built BTC anchor calibration report in {}", formatElapsed(startedAt));
         return ReportBundle.create("btc-anchor-calibration-v2", btcSeries.getBar(btcSeries.getEndIndex()).getEndTime(),
                 registry, baselinePolicy, baseline, challengerAssessments, decision, portability);
+    }
+
+    private static List<CandidateEvaluation> evaluateCandidatesSequentially(BarSeries series, AnchorRegistry registry,
+            List<CandidateProfile> profiles, WalkForwardConfig config) {
+        List<CandidateEvaluation> evaluations = new ArrayList<>(profiles.size());
+        for (int i = 0; i < profiles.size(); i++) {
+            CandidateProfile profile = profiles.get(i);
+            Instant startedAt = Instant.now();
+            LOG.info("Evaluating calibration profile {}/{}: {} ({})", i + 1, profiles.size(), profile.id(),
+                    profile.rationale());
+            CandidateEvaluation evaluation = evaluateCandidate(series, registry, profile, buildEngine(), config);
+            evaluations.add(evaluation);
+            LOG.info("Finished calibration profile {} in {}", profile.id(), formatElapsed(startedAt));
+        }
+        return List.copyOf(evaluations);
+    }
+
+    private static PortabilitySummary evaluatePortabilityWithProgress(String datasetId, String resource,
+            BarSeries series, CandidateProfile baselineProfile, CandidateProfile selectedProfile,
+            WalkForwardEngine<ElliottWaveWalkForwardContext, ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> portabilityEngine,
+            WalkForwardConfig config) {
+        Instant startedAt = Instant.now();
+        LOG.info("Starting portability check dataset={} resource={}", datasetId, resource);
+        PortabilitySummary summary = evaluatePortability(datasetId, resource, series, baselineProfile, selectedProfile,
+                portabilityEngine, config);
+        LOG.info("Finished portability check dataset={} in {}", datasetId, formatElapsed(startedAt));
+        return summary;
+    }
+
+    private static String formatElapsed(Instant startedAt) {
+        return formatElapsed(Duration.between(startedAt, Instant.now()));
+    }
+
+    private static String formatElapsed(Duration elapsed) {
+        long seconds = Math.max(0L, elapsed.getSeconds());
+        long hours = seconds / 3600;
+        long minutes = (seconds % 3600) / 60;
+        long remainingSeconds = seconds % 60;
+        return String.format("%02d:%02d:%02d", hours, minutes, remainingSeconds);
     }
 
     static AnchorRegistry defaultBitcoinAnchors(BarSeries series) {
@@ -256,8 +309,10 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
         AnchorPartitions anchors = summarizeAnchors(series, registry, runResult);
         CyclePartitions cycles = summarizeCycles(series, registry, runResult);
+        RuntimeInstrumentationSummary runtimeInstrumentation = RuntimeInstrumentationSummary
+                .from(runResult.runtimeReport());
         return CandidateEvaluation.create(profile, runResult.manifest(), metricsByHorizon, anchors, cycles,
-                config.primaryHorizonBars());
+                runtimeInstrumentation, config.primaryHorizonBars());
     }
 
     static AnchorPartitions summarizeAnchors(BarSeries series, AnchorRegistry registry,
@@ -845,7 +900,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
      */
     record CandidateEvaluation(CandidateProfile profile, WalkForwardExperimentManifest manifest, int primaryHorizonBars,
             Map<Integer, MetricSnapshot> metricsByHorizon, AnchorPartitions anchors, CyclePartitions cycles,
-            String artifactId, String artifactHash) {
+            RuntimeInstrumentationSummary runtimeInstrumentation, String artifactId, String artifactHash) {
 
         CandidateEvaluation {
             Objects.requireNonNull(profile, "profile");
@@ -853,23 +908,157 @@ public final class ElliottWaveAnchorCalibrationHarness {
             metricsByHorizon = immutableSortedMap(metricsByHorizon);
             Objects.requireNonNull(anchors, "anchors");
             Objects.requireNonNull(cycles, "cycles");
+            Objects.requireNonNull(runtimeInstrumentation, "runtimeInstrumentation");
             Objects.requireNonNull(artifactId, "artifactId");
             Objects.requireNonNull(artifactHash, "artifactHash");
         }
 
         static CandidateEvaluation create(CandidateProfile profile, WalkForwardExperimentManifest manifest,
                 Map<Integer, MetricSnapshot> metricsByHorizon, AnchorPartitions anchors, CyclePartitions cycles,
-                int primaryHorizonBars) {
+                RuntimeInstrumentationSummary runtimeInstrumentation, int primaryHorizonBars) {
             String artifactId = manifest.candidateId() + "|cfg=" + manifest.configHash();
             Map<Integer, MetricSnapshot> canonicalMetricsByHorizon = immutableSortedMap(metricsByHorizon);
             UnsignedCandidateEvaluation unsigned = new UnsignedCandidateEvaluation(profile, manifest,
-                    primaryHorizonBars, canonicalMetricsByHorizon, anchors, cycles, artifactId);
+                    primaryHorizonBars, canonicalMetricsByHorizon, anchors, cycles, runtimeInstrumentation, artifactId);
             return new CandidateEvaluation(profile, manifest, primaryHorizonBars, canonicalMetricsByHorizon, anchors,
-                    cycles, artifactId, sha256(GSON.toJson(unsigned)));
+                    cycles, runtimeInstrumentation, artifactId, sha256(GSON.toJson(unsigned)));
         }
 
         MetricSnapshot primaryMetrics() {
             return metricsByHorizon.getOrDefault(primaryHorizonBars, MetricSnapshot.empty());
+        }
+    }
+
+    /**
+     * Runtime instrumentation summary for one calibration candidate.
+     */
+    record RuntimeInstrumentationSummary(Duration overallRuntime, Duration minFoldRuntime, Duration maxFoldRuntime,
+            Duration averageFoldRuntime, Duration medianFoldRuntime, List<RuntimeFoldSummary> folds,
+            List<RuntimeSnapshotSummary> slowestSnapshots) {
+
+        private static final int SLOWEST_SNAPSHOT_LIMIT = 5;
+
+        RuntimeInstrumentationSummary {
+            Objects.requireNonNull(overallRuntime, "overallRuntime");
+            Objects.requireNonNull(minFoldRuntime, "minFoldRuntime");
+            Objects.requireNonNull(maxFoldRuntime, "maxFoldRuntime");
+            Objects.requireNonNull(averageFoldRuntime, "averageFoldRuntime");
+            Objects.requireNonNull(medianFoldRuntime, "medianFoldRuntime");
+            folds = folds == null ? List.of() : List.copyOf(folds);
+            slowestSnapshots = slowestSnapshots == null ? List.of() : List.copyOf(slowestSnapshots);
+        }
+
+        static RuntimeInstrumentationSummary empty() {
+            return new RuntimeInstrumentationSummary(Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO,
+                    Duration.ZERO, List.of(), List.of());
+        }
+
+        static RuntimeInstrumentationSummary from(WalkForwardRuntimeReport report) {
+            if (report == null) {
+                return empty();
+            }
+            List<RuntimeFoldSummary> folds = report.foldRuntimes().stream().map(RuntimeFoldSummary::from).toList();
+            List<RuntimeSnapshotSummary> slowestSnapshots = report.foldRuntimes()
+                    .stream()
+                    .flatMap(fold -> fold.snapshotRuntimes()
+                            .stream()
+                            .map(snapshot -> RuntimeSnapshotSummary.from(fold.foldId(), snapshot)))
+                    .sorted(Comparator.comparing(RuntimeSnapshotSummary::runtime)
+                            .reversed()
+                            .thenComparing(RuntimeSnapshotSummary::foldId)
+                            .thenComparingInt(RuntimeSnapshotSummary::decisionIndex))
+                    .limit(SLOWEST_SNAPSHOT_LIMIT)
+                    .toList();
+            return new RuntimeInstrumentationSummary(report.overallRuntime(), report.minFoldRuntime(),
+                    report.maxFoldRuntime(), report.averageFoldRuntime(), report.medianFoldRuntime(), folds,
+                    slowestSnapshots);
+        }
+
+        String toText() {
+            StringBuilder builder = new StringBuilder();
+            builder.append("overall=")
+                    .append(overallRuntime)
+                    .append(", folds=")
+                    .append(folds.size())
+                    .append(", foldMin=")
+                    .append(minFoldRuntime)
+                    .append(", foldMax=")
+                    .append(maxFoldRuntime)
+                    .append(", foldAvg=")
+                    .append(averageFoldRuntime)
+                    .append(", foldMedian=")
+                    .append(medianFoldRuntime)
+                    .append(System.lineSeparator());
+            for (RuntimeFoldSummary fold : folds) {
+                builder.append("fold ")
+                        .append(fold.foldId())
+                        .append(": runtime=")
+                        .append(fold.runtime())
+                        .append(", snapshots=")
+                        .append(fold.snapshotCount())
+                        .append(", snapshotMin=")
+                        .append(fold.minSnapshotRuntime())
+                        .append(", snapshotMax=")
+                        .append(fold.maxSnapshotRuntime())
+                        .append(", snapshotAvg=")
+                        .append(fold.averageSnapshotRuntime())
+                        .append(", snapshotMedian=")
+                        .append(fold.medianSnapshotRuntime())
+                        .append(System.lineSeparator());
+            }
+            if (!slowestSnapshots.isEmpty()) {
+                builder.append("slowestSnapshots=").append(System.lineSeparator());
+                for (RuntimeSnapshotSummary snapshot : slowestSnapshots) {
+                    builder.append("  ")
+                            .append(snapshot.foldId())
+                            .append("@")
+                            .append(snapshot.decisionIndex())
+                            .append(" runtime=")
+                            .append(snapshot.runtime())
+                            .append(", predictions=")
+                            .append(snapshot.predictionCount())
+                            .append(System.lineSeparator());
+                }
+            }
+            return builder.toString().trim();
+        }
+    }
+
+    /**
+     * Fold-level runtime instrumentation summary.
+     */
+    record RuntimeFoldSummary(String foldId, Duration runtime, int snapshotCount, Duration minSnapshotRuntime,
+            Duration maxSnapshotRuntime, Duration averageSnapshotRuntime, Duration medianSnapshotRuntime) {
+
+        RuntimeFoldSummary {
+            Objects.requireNonNull(foldId, "foldId");
+            Objects.requireNonNull(runtime, "runtime");
+            Objects.requireNonNull(minSnapshotRuntime, "minSnapshotRuntime");
+            Objects.requireNonNull(maxSnapshotRuntime, "maxSnapshotRuntime");
+            Objects.requireNonNull(averageSnapshotRuntime, "averageSnapshotRuntime");
+            Objects.requireNonNull(medianSnapshotRuntime, "medianSnapshotRuntime");
+        }
+
+        static RuntimeFoldSummary from(WalkForwardRuntimeReport.FoldRuntime foldRuntime) {
+            return new RuntimeFoldSummary(foldRuntime.foldId(), foldRuntime.runtime(), foldRuntime.snapshotCount(),
+                    foldRuntime.minSnapshotRuntime(), foldRuntime.maxSnapshotRuntime(),
+                    foldRuntime.averageSnapshotRuntime(), foldRuntime.medianSnapshotRuntime());
+        }
+    }
+
+    /**
+     * Slow-snapshot runtime detail surfaced in the candidate report.
+     */
+    record RuntimeSnapshotSummary(String foldId, int decisionIndex, Duration runtime, int predictionCount) {
+
+        RuntimeSnapshotSummary {
+            Objects.requireNonNull(foldId, "foldId");
+            Objects.requireNonNull(runtime, "runtime");
+        }
+
+        static RuntimeSnapshotSummary from(String foldId, WalkForwardRuntimeReport.SnapshotRuntime snapshotRuntime) {
+            return new RuntimeSnapshotSummary(foldId, snapshotRuntime.decisionIndex(), snapshotRuntime.runtime(),
+                    snapshotRuntime.predictionCount());
         }
     }
 
@@ -1372,6 +1561,10 @@ public final class ElliottWaveAnchorCalibrationHarness {
             return selectedHistoricalCalibration().toText();
         }
 
+        String runtimeInstrumentationText() {
+            return selectedEvaluation().runtimeInstrumentation().toText();
+        }
+
         private CandidateEvaluation selectedEvaluation() {
             if (decision.promoteChallenger()) {
                 for (ChallengerAssessment assessment : challengerAssessments) {
@@ -1414,7 +1607,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
     private record UnsignedCandidateEvaluation(CandidateProfile profile, WalkForwardExperimentManifest manifest,
             int primaryHorizonBars, Map<Integer, MetricSnapshot> metricsByHorizon, AnchorPartitions anchors,
-            CyclePartitions cycles, String artifactId) {
+            CyclePartitions cycles, RuntimeInstrumentationSummary runtimeInstrumentation, String artifactId) {
     }
 
     private record UnsignedReportBundle(String reportVersion, String generatedAtUtc, AnchorRegistry anchorRegistry,
