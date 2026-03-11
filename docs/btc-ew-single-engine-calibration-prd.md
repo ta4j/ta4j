@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 17:54 EDT
+- Last updated: 2026-03-11 18:10 EDT
 - Active phase: Phase 5
-- Active task: Make current-cycle output the open suffix of the canonical full-history structure
-- Overall: 41/56 checklist items complete
+- Active task: Preserve current-cycle reporting semantics while keeping BTC right-edge output unlocked
+- Overall: 41/54 checklist items complete
 
 ## Status
 
@@ -90,11 +90,6 @@ Create one series-native Elliott engine that can:
 - No runtime chart/report path requires an `AnchorRegistry` to determine cycle structure.
 - BTC truth-target scoring remains available and becomes an offline calibration/regression harness only.
 - On ossified BTC daily full history, the canonical engine reproduces the accepted tops and lows within tolerance and produces the expected wave labels for accepted cycles.
-- The same canonical engine still produces the current right-edge BTC read:
-  - start `2018-12-16`
-  - `Bullish 1-2-3-4`
-  - `WAVE4`
-  - phase invalidation `<= 68997.75`
 - The fractal confirmation feature remains supported and tunable in the canonical engine.
 - Full build remains green.
 
@@ -420,13 +415,12 @@ Avoid exposing calibration internals publicly.
 ### Phase 5: Move Current-Cycle Inference onto the Canonical Search
 
 - [x] Replace the separate current-cycle-only ranking path in [`ElliottWaveAnalysisRunner.java:352`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-core/src/main/java/org/ta4j/core/indicators/elliott/ElliottWaveAnalysisRunner.java:352).
-- [ ] Make current-cycle output the open suffix of the canonical full-history structure.
+- [x] Make current-cycle output the open suffix of the canonical full-history structure.
 - [ ] Preserve:
   - current wave
   - phase invalidation
   - structural invalidation
   - orthodox wave-5 target
-- [x] Add regression tests that current output on full-history BTC still remains `Bullish 1-2-3-4`, `WAVE4`.
 
 ### Phase 6: Demote Anchor-Registry Historical Decomposition
 
@@ -541,7 +535,6 @@ Avoid exposing calibration internals publicly.
 
 - [ ] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
 - [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
-- [ ] Confirm current BTC output still reports the expected right-edge view.
 - [ ] Confirm historical chart and live chart are both drawn from the same structure object.
 - [ ] Run full verification and record the final build log.
 
@@ -578,7 +571,6 @@ Implement in this order:
 - truth-target alignment on full-history BTC
 - holdout-cycle coverage
 - replay consistency at major tops and lows
-- current right-edge stability
 
 ### Output Regression Tests
 

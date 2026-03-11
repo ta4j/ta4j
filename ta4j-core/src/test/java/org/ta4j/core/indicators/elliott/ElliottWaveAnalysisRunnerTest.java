@@ -701,7 +701,7 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
-    void rankCurrentCycleCandidatesWithCanonicalSearchPrefersCoherentPrecursorPath() {
+    void rankCurrentCycleCandidatesWithCanonicalSearchPrefersCanonicalHistoricalPrefix() {
         NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
         ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
                 .degree(ElliottDegree.PRIMARY)
@@ -723,8 +723,13 @@ class ElliottWaveAnalysisRunnerTest {
                 currentPhaseAssessment(factory, "coherent", ElliottPhase.WAVE4, 0.70, "Bullish 1-2-3-4"), 0.70, 0.70,
                 "coherent");
 
+        List<ElliottWaveAnalysisRunner.CanonicalLegCandidate> historicalCandidates = List.of(
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("historical-bull", 0, 2, true, 0.68),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("historical-bear", 2, 4, false, 0.72));
+
         List<ElliottWaveAnalysisResult.CurrentCycleCandidate> ranked = analysis
-                .rankCurrentCycleCandidatesWithCanonicalSearch(List.of(standalone, coherent), processedSwings, 8);
+                .rankCurrentCycleCandidatesWithCanonicalSearch(List.of(standalone, coherent), processedSwings,
+                        historicalCandidates, 8);
 
         assertThat(ranked.getFirst().startIndex()).isEqualTo(4);
         assertThat(ranked.getFirst().rationale()).contains("canonical path");

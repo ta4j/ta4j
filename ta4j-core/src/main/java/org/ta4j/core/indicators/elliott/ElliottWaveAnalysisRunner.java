@@ -460,8 +460,11 @@ public final class ElliottWaveAnalysisRunner {
             }
         }
 
+        final MacroPivotGraph macroPivotGraph = buildMacroPivotGraph(series, baseAnalysis);
+        final List<CanonicalLegCandidate> historicalCanonicalCandidates = buildHistoricalCanonicalLegCandidates(series,
+                macroPivotGraph);
         final List<ElliottWaveAnalysisResult.CurrentCycleCandidate> rankedCandidates = rankCurrentCycleCandidatesWithCanonicalSearch(
-                candidates, baseAnalysis.processedSwings(), endIndex);
+                candidates, baseAnalysis.processedSwings(), historicalCanonicalCandidates, endIndex);
         ElliottWaveAnalysisResult.CurrentCycleCandidate primary = null;
         ElliottWaveAnalysisResult.CurrentCycleCandidate alternate = null;
         for (final ElliottWaveAnalysisResult.CurrentCycleCandidate candidate : rankedCandidates) {
@@ -579,14 +582,24 @@ public final class ElliottWaveAnalysisRunner {
     List<ElliottWaveAnalysisResult.CurrentCycleCandidate> rankCurrentCycleCandidatesWithCanonicalSearch(
             final List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates,
             final List<ElliottSwing> processedSwings, final int endIndex) {
+        return rankCurrentCycleCandidatesWithCanonicalSearch(candidates, processedSwings, List.of(), endIndex);
+    }
+
+    List<ElliottWaveAnalysisResult.CurrentCycleCandidate> rankCurrentCycleCandidatesWithCanonicalSearch(
+            final List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates,
+            final List<ElliottSwing> processedSwings, final List<CanonicalLegCandidate> historicalCandidates,
+            final int endIndex) {
         Objects.requireNonNull(candidates, "candidates");
         Objects.requireNonNull(processedSwings, "processedSwings");
+        Objects.requireNonNull(historicalCandidates, "historicalCandidates");
         if (candidates.isEmpty()) {
             return List.of();
         }
 
         final Map<String, ElliottWaveAnalysisResult.CurrentCycleCandidate> byId = new LinkedHashMap<>();
-        final List<CanonicalLegCandidate> canonicalCandidates = new ArrayList<>(candidates.size() * 2);
+        final List<CanonicalLegCandidate> canonicalCandidates = new ArrayList<>(
+                historicalCandidates.size() + (candidates.size() * 2));
+        canonicalCandidates.addAll(historicalCandidates);
         for (int index = 0; index < candidates.size(); index++) {
             final ElliottWaveAnalysisResult.CurrentCycleCandidate candidate = candidates.get(index);
             final String id = currentCycleCanonicalCandidateId(candidate, index);
@@ -629,6 +642,38 @@ public final class ElliottWaveAnalysisRunner {
         });
         ordered.sort(null);
         return List.copyOf(ordered);
+    }
+
+    private List<CanonicalLegCandidate> buildHistoricalCanonicalLegCandidates(final BarSeries series,
+            final MacroPivotGraph pivotGraph) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(pivotGraph, "pivotGraph");
+        if (pivotGraph.pivots().size() < 2) {
+            return List.of();
+        }
+
+        final List<CanonicalLegCandidate> candidates = new ArrayList<>(pivotGraph.pivots().size() - 1);
+        for (int index = 0; index < pivotGraph.pivots().size() - 1; index++) {
+            final MacroPivot start = pivotGraph.pivots().get(index);
+            final MacroPivot end = pivotGraph.pivots().get(index + 1);
+            if (start.highPivot() == end.highPivot() || end.barIndex() <= start.barIndex()) {
+                continue;
+            }
+            final boolean bullish = !start.highPivot() && end.highPivot();
+            final Optional<AnchoredWindowSelection> selection = selectAcceptedOrFallbackTerminalLegForWindow(series,
+                    start.barIndex(), end.barIndex(), bullish, CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS, 0.0, 0.0, 0.0, 0.0);
+            if (selection.isEmpty()) {
+                continue;
+            }
+            final double fitScore = canonicalHistoricalLegScore(selection.orElseThrow());
+            if (fitScore <= 0.0) {
+                continue;
+            }
+            final String id = "history-" + index + "-" + start.barIndex() + "-" + end.barIndex() + "-"
+                    + (bullish ? "bull" : "bear");
+            candidates.add(new CanonicalLegCandidate(id, start.barIndex(), end.barIndex(), bullish, fitScore));
+        }
+        return List.copyOf(candidates);
     }
 
     /**
@@ -1032,6 +1077,12 @@ public final class ElliottWaveAnalysisRunner {
         final double spanScore = clamp01(
                 (candidate.startIndex() - precursorStartIndex) / (double) Math.max(1, endIndex - precursorStartIndex));
         return clamp01((0.65 * candidate.anchorScore()) + (0.35 * spanScore));
+    }
+
+    private double canonicalHistoricalLegScore(final AnchoredWindowSelection selection) {
+        final ElliottWaveAnalysisResult.WindowScenarioAssessment assessment = selection.assessment();
+        final double acceptedBonus = selection.accepted() ? 0.05 : 0.0;
+        return clamp01((0.70 * assessment.windowFitScore()) + (0.30 * assessment.compositeScore()) + acceptedBonus);
     }
 
     private double canonicalCurrentCycleScore(final CanonicalStructurePath path) {
