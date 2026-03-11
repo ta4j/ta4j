@@ -501,6 +501,7 @@ Avoid exposing calibration internals publicly.
   - minimum segment span pruning
   - impossible direction/overlap pruning
   - retracement and amplitude bound pruning
+  Landed so far: alternation pruning plus impulse-side wave-2 invalidation and wave-4 overlap pruning before full decomposition scoring.
 - [x] Record pruning hit rates and runtime deltas so performance work stays evidence-driven.
 - [x] Decide whether the default search lane should use a reduced geometry while an exhaustive lane remains opt-in.
   Implemented: default harness runs `routine` depth with the locked canonical BTC profile and non-overlapping fold steps; `--exhaustive` enables the full controlled search plan plus portability.

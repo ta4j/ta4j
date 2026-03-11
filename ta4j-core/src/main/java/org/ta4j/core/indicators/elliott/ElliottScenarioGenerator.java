@@ -513,7 +513,7 @@ public final class ElliottScenarioGenerator {
                     "Anchor-first impulse decomposition score "
                             + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
             best.consider(candidate, confidence.overall().doubleValue());
-        }, prunedBranches);
+        }, cutPoints -> partialImpulseDecompositionRemainsViable(pivots, cutPoints), prunedBranches);
         lastImpulseBranchCount += branches.get();
         lastImpulsePrunedBranchCount += prunedBranches.get();
         return best.swings();
@@ -542,7 +542,7 @@ public final class ElliottScenarioGenerator {
                     "Anchor-first corrective decomposition score "
                             + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
             best.consider(candidate, confidence.overall().doubleValue());
-        }, prunedBranches);
+        }, cutPoints -> true, prunedBranches);
         lastCorrectiveBranchCount += branches.get();
         lastCorrectivePrunedBranchCount += prunedBranches.get();
         return best.swings();
@@ -550,6 +550,7 @@ public final class ElliottScenarioGenerator {
 
     private void searchDecompositionCuts(final List<SwingPivotPoint> pivots, final int cutsNeeded, final int nextPivot,
             final List<Integer> chosenCuts, final java.util.function.Consumer<List<Integer>> consumer,
+            final java.util.function.Predicate<List<Integer>> partialBranchValidator,
             final AtomicInteger prunedBranches) {
         final int pivotCount = pivots.size();
         if (cutsNeeded == 0) {
@@ -563,8 +564,10 @@ public final class ElliottScenarioGenerator {
         final int lastInternalPivot = (pivotCount - 2) - (cutsNeeded - 1);
         for (int pivotIndex = nextPivot; pivotIndex <= lastInternalPivot; pivotIndex++) {
             chosenCuts.add(pivotIndex);
-            if (decompositionAlternatesDirection(pivots, chosenCuts, false)) {
-                searchDecompositionCuts(pivots, cutsNeeded - 1, pivotIndex + 1, chosenCuts, consumer, prunedBranches);
+            if (decompositionAlternatesDirection(pivots, chosenCuts, false)
+                    && partialBranchValidator.test(chosenCuts)) {
+                searchDecompositionCuts(pivots, cutsNeeded - 1, pivotIndex + 1, chosenCuts, consumer,
+                        partialBranchValidator, prunedBranches);
             } else {
                 prunedBranches.addAndGet(countRemainingCutCombinations(pivotCount, cutsNeeded - 1, pivotIndex + 1));
             }
@@ -625,6 +628,34 @@ public final class ElliottScenarioGenerator {
     private int segmentDirection(final List<SwingPivotPoint> pivots, final int startPivot, final int endPivot) {
         final double delta = pivots.get(endPivot).price().minus(pivots.get(startPivot).price()).doubleValue();
         return Double.compare(delta, 0.0);
+    }
+
+    private boolean partialImpulseDecompositionRemainsViable(final List<SwingPivotPoint> pivots,
+            final List<Integer> cutPoints) {
+        if (cutPoints.size() < 2) {
+            return true;
+        }
+
+        final double wave1Start = pivots.getFirst().price().doubleValue();
+        final double wave1End = pivots.get(cutPoints.getFirst()).price().doubleValue();
+        final double wave2End = pivots.get(cutPoints.get(1)).price().doubleValue();
+        final int wave1Direction = Double.compare(wave1End, wave1Start);
+        if (wave1Direction == 0) {
+            return false;
+        }
+        if (wave1Direction > 0 && wave2End < wave1Start) {
+            return false;
+        }
+        if (wave1Direction < 0 && wave2End > wave1Start) {
+            return false;
+        }
+
+        if (cutPoints.size() < 4) {
+            return true;
+        }
+
+        final double wave4End = pivots.get(cutPoints.get(3)).price().doubleValue();
+        return wave1Direction > 0 ? wave4End >= wave1End : wave4End <= wave1End;
     }
 
     private List<SwingPivotPoint> extractPivots(final List<ElliottSwing> swings) {

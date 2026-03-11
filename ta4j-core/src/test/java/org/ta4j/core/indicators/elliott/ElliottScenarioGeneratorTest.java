@@ -205,6 +205,57 @@ class ElliottScenarioGeneratorTest {
     }
 
     @Test
+    void decompositionSearchPrunesWaveTwoInvalidationBeforeFullScoring() {
+        ElliottScenarioGenerator decompositionGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 10,
+                ConfidenceProfiles.defaultModel(numFactory), PatternSet.of(ScenarioType.IMPULSE));
+        List<ElliottSwing> invalidWaveTwoImpulse = List.of(
+                new ElliottSwing(0, 2, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),
+                new ElliottSwing(2, 4, numFactory.numOf(120), numFactory.numOf(95), ElliottDegree.MINOR),
+                new ElliottSwing(4, 6, numFactory.numOf(95), numFactory.numOf(130), ElliottDegree.MINOR),
+                new ElliottSwing(6, 8, numFactory.numOf(130), numFactory.numOf(97), ElliottDegree.MINOR),
+                new ElliottSwing(8, 10, numFactory.numOf(97), numFactory.numOf(145), ElliottDegree.MINOR),
+                new ElliottSwing(10, 12, numFactory.numOf(145), numFactory.numOf(96), ElliottDegree.MINOR),
+                new ElliottSwing(12, 14, numFactory.numOf(96), numFactory.numOf(160), ElliottDegree.MINOR),
+                new ElliottSwing(14, 16, numFactory.numOf(160), numFactory.numOf(98), ElliottDegree.MINOR),
+                new ElliottSwing(16, 18, numFactory.numOf(98), numFactory.numOf(175), ElliottDegree.MINOR));
+
+        ElliottScenarioSet set = decompositionGenerator.generate(invalidWaveTwoImpulse, ElliottDegree.MINOR, null, 18);
+        ElliottAnalysisResult.AnalysisDiagnostics diagnostics = decompositionGenerator.lastDiagnostics();
+
+        assertThat(set.all())
+                .noneMatch(scenario -> scenario.id().startsWith("impulse-decomp") && scenario.startIndex() == 0);
+        assertThat(diagnostics.impulseDecompositionPrunedBranchCount()).isPositive();
+        assertThat(diagnostics.totalImpulseDecompositionBranchCount())
+                .isLessThan(naiveImpulseDecompositionBranchCount(invalidWaveTwoImpulse.size()));
+    }
+
+    @Test
+    void decompositionSearchPrunesWaveFourOverlapBeforeFullScoring() {
+        ElliottScenarioGenerator decompositionGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 10,
+                ConfidenceProfiles.defaultModel(numFactory), PatternSet.of(ScenarioType.IMPULSE));
+        List<ElliottSwing> overlappingWaveFourImpulse = List.of(
+                new ElliottSwing(0, 2, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),
+                new ElliottSwing(2, 4, numFactory.numOf(120), numFactory.numOf(108), ElliottDegree.MINOR),
+                new ElliottSwing(4, 6, numFactory.numOf(108), numFactory.numOf(135), ElliottDegree.MINOR),
+                new ElliottSwing(6, 8, numFactory.numOf(135), numFactory.numOf(112), ElliottDegree.MINOR),
+                new ElliottSwing(8, 10, numFactory.numOf(112), numFactory.numOf(150), ElliottDegree.MINOR),
+                new ElliottSwing(10, 12, numFactory.numOf(150), numFactory.numOf(115), ElliottDegree.MINOR),
+                new ElliottSwing(12, 14, numFactory.numOf(115), numFactory.numOf(168), ElliottDegree.MINOR),
+                new ElliottSwing(14, 16, numFactory.numOf(168), numFactory.numOf(118), ElliottDegree.MINOR),
+                new ElliottSwing(16, 18, numFactory.numOf(118), numFactory.numOf(182), ElliottDegree.MINOR));
+
+        ElliottScenarioSet set = decompositionGenerator.generate(overlappingWaveFourImpulse, ElliottDegree.MINOR, null,
+                18);
+        ElliottAnalysisResult.AnalysisDiagnostics diagnostics = decompositionGenerator.lastDiagnostics();
+
+        assertThat(set.all()).noneMatch(scenario -> scenario.id().startsWith("impulse-decomp")
+                && scenario.startIndex() == 0 && scenario.currentPhase() == ElliottPhase.WAVE5);
+        assertThat(diagnostics.impulseDecompositionPrunedBranchCount()).isPositive();
+        assertThat(diagnostics.totalImpulseDecompositionBranchCount())
+                .isLessThan(naiveImpulseDecompositionBranchCount(overlappingWaveFourImpulse.size()));
+    }
+
+    @Test
     void scenariosSortedByConfidence() {
         List<ElliottSwing> swings = createAlternatingSwings();
 
