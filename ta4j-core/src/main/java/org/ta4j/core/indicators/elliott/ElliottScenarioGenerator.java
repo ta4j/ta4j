@@ -53,6 +53,10 @@ public final class ElliottScenarioGenerator {
     private final Num minConfidenceNum;
     private final int maxScenarios;
     private final AtomicInteger scenarioCounter = new AtomicInteger(0);
+    private ElliottAnalysisResult.AnalysisDiagnostics lastDiagnostics = ElliottAnalysisResult.AnalysisDiagnostics
+            .empty();
+    private int lastImpulseBranchCount;
+    private int lastCorrectiveBranchCount;
 
     /**
      * Creates a generator with default settings.
@@ -125,11 +129,14 @@ public final class ElliottScenarioGenerator {
     public ElliottScenarioSet generate(final List<ElliottSwing> swings, final ElliottDegree degree,
             final ElliottChannel channel, final int barIndex) {
         if (swings == null || swings.isEmpty()) {
+            lastDiagnostics = ElliottAnalysisResult.AnalysisDiagnostics.empty();
             return ElliottScenarioSet.empty(barIndex);
         }
 
         final List<ElliottScenario> candidates = new ArrayList<>();
         final Set<String> seenSignatures = new HashSet<>();
+        int impulseBranchCount = 0;
+        int correctiveBranchCount = 0;
 
         // Explore every feasible starting point so long multi-swing histories can
         // still surface a valid structure that begins after early noise.
@@ -142,6 +149,7 @@ public final class ElliottScenarioGenerator {
             // Try impulse interpretation
             if (patternSet.allows(ScenarioType.IMPULSE)) {
                 generateImpulseScenarios(segment, degree, channel, startIndex, candidates, seenSignatures);
+                impulseBranchCount += lastImpulseBranchCount;
             }
 
             // Try corrective interpretation
@@ -149,18 +157,32 @@ public final class ElliottScenarioGenerator {
                     || patternSet.allows(ScenarioType.CORRECTIVE_TRIANGLE)
                     || patternSet.allows(ScenarioType.CORRECTIVE_COMPLEX)) {
                 generateCorrectiveScenarios(segment, degree, channel, startIndex, candidates, seenSignatures);
+                correctiveBranchCount += lastCorrectiveBranchCount;
             }
         }
 
         // Prune and rank scenarios
         final List<ElliottScenario> pruned = prune(candidates);
+        lastDiagnostics = new ElliottAnalysisResult.AnalysisDiagnostics(candidates.size(), pruned.size(),
+                impulseBranchCount, correctiveBranchCount);
 
         return ElliottScenarioSet.of(pruned, barIndex);
+    }
+
+    /**
+     * Returns the diagnostics captured by the most recent generation pass.
+     *
+     * @return last generation diagnostics
+     * @since 0.22.4
+     */
+    public ElliottAnalysisResult.AnalysisDiagnostics lastDiagnostics() {
+        return lastDiagnostics;
     }
 
     private void generateImpulseScenarios(final List<ElliottSwing> swings, final ElliottDegree degree,
             final ElliottChannel channel, final int startIndex, final List<ElliottScenario> candidates,
             final Set<String> seenSignatures) {
+        lastImpulseBranchCount = 0;
         if (swings.isEmpty()) {
             return;
         }
@@ -220,6 +242,7 @@ public final class ElliottScenarioGenerator {
     private void generateCorrectiveScenarios(final List<ElliottSwing> swings, final ElliottDegree degree,
             final ElliottChannel channel, final int startIndex, final List<ElliottScenario> candidates,
             final Set<String> seenSignatures) {
+        lastCorrectiveBranchCount = 0;
         if (swings.isEmpty()) {
             return;
         }
@@ -466,7 +489,9 @@ public final class ElliottScenarioGenerator {
         }
         final List<SwingPivotPoint> pivots = limitPivotsForDecomposition(extractPivots(swings));
         final BestDecomposition best = new BestDecomposition();
+        final AtomicInteger branches = new AtomicInteger();
         searchDecompositionCuts(pivots.size(), waveCount - 1, 1, new ArrayList<>(), cutPoints -> {
+            branches.incrementAndGet();
             final List<ElliottSwing> candidate = buildDecomposition(swings.get(0).degree(), pivots, cutPoints);
             final ElliottPhase phase = determineImpulsePhase(candidate);
             final double structureScore = scoreImpulseStructure(candidate, phase);
@@ -480,6 +505,7 @@ public final class ElliottScenarioGenerator {
                             + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
             best.consider(candidate, confidence.overall().doubleValue());
         });
+        lastImpulseBranchCount += branches.get();
         return best.swings();
     }
 
@@ -490,7 +516,9 @@ public final class ElliottScenarioGenerator {
         }
         final List<SwingPivotPoint> pivots = limitPivotsForDecomposition(extractPivots(swings));
         final BestDecomposition best = new BestDecomposition();
+        final AtomicInteger branches = new AtomicInteger();
         searchDecompositionCuts(pivots.size(), waveCount - 1, 1, new ArrayList<>(), cutPoints -> {
+            branches.incrementAndGet();
             final List<ElliottSwing> candidate = buildDecomposition(swings.get(0).degree(), pivots, cutPoints);
             final ElliottPhase phase = determineCorrectivePhase(candidate);
             final ScenarioType type = classifyDecomposedCorrectiveType(candidate);
@@ -504,6 +532,7 @@ public final class ElliottScenarioGenerator {
                             + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
             best.consider(candidate, confidence.overall().doubleValue());
         });
+        lastCorrectiveBranchCount += branches.get();
         return best.swings();
     }
 

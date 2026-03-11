@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 10:29 EDT
+- Last updated: 2026-03-11 10:49 EDT
 - Active phase: Phase 8
-- Active task: Finish immediate runtime instrumentation by adding scenario-count and decomposition-branch counters after landing fold/snapshot timing
-- Overall: 0/56 checklist items complete
+- Active task: Persist BTC-first calibration artifacts before portability
+- Overall: 1/56 checklist items complete
 
 ## Status
 
@@ -491,11 +491,11 @@ Avoid exposing calibration internals publicly.
 
 ### Immediate Follow-up Order from the First Full Calibration Run
 
-1. [ ] Add fold-level instrumentation first:
+1. [x] Add fold-level instrumentation first:
    - landed: per-fold elapsed time
    - landed: per-snapshot elapsed time
-   - scenario counts
-   - decomposition branch counts
+   - landed: scenario counts
+   - landed: decomposition branch counts
 2. [ ] Persist BTC-first calibration artifacts before portability:
    - write each BTC candidate-profile result as it completes
    - write the selected BTC historical calibration report before portability checks begin

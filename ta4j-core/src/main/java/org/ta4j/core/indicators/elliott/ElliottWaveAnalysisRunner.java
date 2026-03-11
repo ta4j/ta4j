@@ -575,7 +575,7 @@ public final class ElliottWaveAnalysisRunner {
         }
 
         return new ElliottAnalysisResult(degree, endIndex, rawSwings, scenarioSwings, scenarios, breakdowns, channel,
-                trendBias);
+                trendBias, generator.lastDiagnostics());
     }
 
     private int internalScenarioBudget(final BarSeries series) {
@@ -1066,7 +1066,8 @@ public final class ElliottWaveAnalysisRunner {
         }
         final ElliottScenarioSet clippedScenarioSet = ElliottScenarioSet.of(clippedScenarios, result.index());
         return new ElliottAnalysisResult(result.degree(), result.index(), result.rawSwings(), result.processedSwings(),
-                clippedScenarioSet, clippedBreakdowns, result.channel(), clippedScenarioSet.trendBias());
+                clippedScenarioSet, clippedBreakdowns, result.channel(), clippedScenarioSet.trendBias(),
+                result.diagnostics());
     }
 
     private List<ElliottSwing> appendTerminalExtensionIfNeeded(final List<ElliottSwing> swings, final BarSeries series,
@@ -1150,7 +1151,7 @@ public final class ElliottWaveAnalysisRunner {
                     + ((1.0 - baseConfidenceWeight) * crossDegreeScore);
 
             assessments.add(new ElliottWaveAnalysisResult.BaseScenarioAssessment(baseScenario, confidence,
-                    crossDegreeScore, composite, matches));
+                    crossDegreeScore, composite, matches, baseResult.diagnostics()));
         }
 
         assessments
@@ -1573,7 +1574,8 @@ public final class ElliottWaveAnalysisRunner {
                 .stream()
                 .map(assessment -> new ElliottWaveAnalysisResult.BaseScenarioAssessment(
                         rebaseScenario(assessment.scenario(), indexOffset), assessment.confidenceScore(),
-                        assessment.crossDegreeScore(), assessment.compositeScore(), assessment.supportingMatches()))
+                        assessment.crossDegreeScore(), assessment.compositeScore(), assessment.supportingMatches(),
+                        assessment.diagnostics()))
                 .toList();
         return new ElliottWaveAnalysisResult(result.baseDegree(), rebasedAnalyses, rebasedRanked, result.notes());
     }
@@ -1599,7 +1601,7 @@ public final class ElliottWaveAnalysisRunner {
                 .map(assessment -> new ElliottWaveAnalysisResult.BaseScenarioAssessment(
                         anchorWindowScenario(rootSeries, assessment.scenario(), startIndex, endIndex),
                         assessment.confidenceScore(), assessment.crossDegreeScore(), assessment.compositeScore(),
-                        assessment.supportingMatches()))
+                        assessment.supportingMatches(), assessment.diagnostics()))
                 .toList();
         return new ElliottWaveAnalysisResult(result.baseDegree(), anchoredAnalyses, anchoredRanked, result.notes());
     }
@@ -1614,7 +1616,7 @@ public final class ElliottWaveAnalysisRunner {
         final ElliottScenarioSet anchoredScenarioSet = ElliottScenarioSet.of(anchoredScenarios, analysis.index());
         return new ElliottAnalysisResult(analysis.degree(), analysis.index(), analysis.rawSwings(),
                 analysis.processedSwings(), anchoredScenarioSet, analysis.confidenceBreakdowns(), analysis.channel(),
-                anchoredScenarioSet.trendBias());
+                anchoredScenarioSet.trendBias(), analysis.diagnostics());
     }
 
     private ElliottScenario anchorWindowScenario(final BarSeries rootSeries, final ElliottScenario scenario,
@@ -1686,7 +1688,7 @@ public final class ElliottWaveAnalysisRunner {
                 analysis.index() + indexOffset);
         return new ElliottAnalysisResult(analysis.degree(), analysis.index() + indexOffset, rebasedRaw,
                 rebasedProcessed, rebasedScenarioSet, analysis.confidenceBreakdowns(), analysis.channel(),
-                rebasedScenarioSet.trendBias());
+                rebasedScenarioSet.trendBias(), analysis.diagnostics());
     }
 
     private List<ElliottSwing> rebaseSwings(final List<ElliottSwing> swings, final int indexOffset) {

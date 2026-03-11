@@ -643,6 +643,7 @@ class ElliottWaveAnchorCalibrationHarnessTest {
 
     @Test
     void runtimeInstrumentationSummaryCapturesFoldAndSlowSnapshotDetails() {
+        BarSeries series = syntheticSeries();
         WalkForwardRuntimeReport runtimeReport = new WalkForwardRuntimeReport(Duration.ofSeconds(30),
                 Duration.ofSeconds(10), Duration.ofSeconds(20), Duration.ofSeconds(15), Duration.ofSeconds(15), List.of(
                         new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofSeconds(10), 2,
@@ -654,16 +655,32 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                                 Duration.ofSeconds(20), Duration.ofSeconds(20), Duration.ofSeconds(20),
                                 Duration.ofSeconds(20), List.of(new WalkForwardRuntimeReport.SnapshotRuntime(220,
                                         Duration.ofSeconds(20), 3)))));
-
+        WalkForwardConfig config = new WalkForwardConfig(2, 1, 1, 0, 0, 1, 1, List.of(2), 3, List.of(1), 42L);
+        WalkForwardRunResult<ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> runResult = new WalkForwardRunResult<>(
+                config,
+                List.of(new WalkForwardSplit("fold-1", 0, 1, 2, 3, 0, 0, false),
+                        new WalkForwardSplit("fold-2", 0, 3, 4, 4, 0, 0, true)),
+                List.of(snapshot("fold-1", 120, rankedPrediction(series, "fold-1-a", 1, ElliottPhase.WAVE5, true)),
+                        snapshot("fold-1", 121, rankedPrediction(series, "fold-1-b", 1, ElliottPhase.WAVE5, true)),
+                        snapshot("fold-2", 220,
+                                rankedPrediction(series, "fold-2-a", 1, ElliottPhase.CORRECTIVE_C, false))),
+                Map.of(), Map.of(), Map.of(), List.of(), runtimeReport, new WalkForwardExperimentManifest(
+                        "synthetic-btc", "candidate", "cfg-hash", 42L, Map.of("profile", "synthetic")));
         ElliottWaveAnchorCalibrationHarness.RuntimeInstrumentationSummary summary = ElliottWaveAnchorCalibrationHarness.RuntimeInstrumentationSummary
-                .from(runtimeReport);
+                .from(runResult);
 
         assertEquals(Duration.ofSeconds(30), summary.overallRuntime());
         assertEquals(2, summary.folds().size());
+        assertEquals(14, summary.folds().getFirst().averageCandidateScenarioCountBeforePrune());
+        assertEquals(5, summary.folds().getFirst().averageRetainedScenarioCount());
+        assertEquals(42, summary.folds().getFirst().totalImpulseDecompositionBranchCount());
+        assertEquals(16, summary.folds().getFirst().totalCorrectiveDecompositionBranchCount());
         assertEquals("fold-2", summary.slowestSnapshots().getFirst().foldId());
         assertEquals(220, summary.slowestSnapshots().getFirst().decisionIndex());
         assertEquals(3, summary.slowestSnapshots().getFirst().predictionCount());
+        assertEquals(14, summary.slowestSnapshots().getFirst().candidateScenarioCountBeforePrune());
         assertTrue(summary.toText().contains("fold fold-1"));
+        assertTrue(summary.toText().contains("impulseBranches="));
         assertTrue(summary.toText().contains("slowestSnapshots="));
     }
 
@@ -736,7 +753,8 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         Num probability = series.numFactory().numOf(rank == 1 ? 0.70 : 0.45);
         Num confidence = series.numFactory().numOf(rank == 1 ? 0.65 : 0.40);
         ElliottWaveAnalysisResult.BaseScenarioAssessment assessment = new ElliottWaveAnalysisResult.BaseScenarioAssessment(
-                scenario(series, predictionId, phase, bullish), 0.6, 0.6, 0.6, List.of());
+                scenario(series, predictionId, phase, bullish), 0.6, 0.6, 0.6, List.of(),
+                new ElliottAnalysisResult.AnalysisDiagnostics(14, 5, 21, 8));
         return new RankedPrediction<>(predictionId, rank, probability, confidence, assessment);
     }
 

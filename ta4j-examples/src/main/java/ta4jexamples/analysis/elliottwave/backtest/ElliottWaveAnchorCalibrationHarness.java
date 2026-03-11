@@ -22,10 +22,12 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.elliott.ElliottAnalysisResult;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
 import org.ta4j.core.indicators.elliott.ElliottPhase;
 import org.ta4j.core.indicators.elliott.PatternSet;
@@ -309,8 +311,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
         AnchorPartitions anchors = summarizeAnchors(series, registry, runResult);
         CyclePartitions cycles = summarizeCycles(series, registry, runResult);
-        RuntimeInstrumentationSummary runtimeInstrumentation = RuntimeInstrumentationSummary
-                .from(runResult.runtimeReport());
+        RuntimeInstrumentationSummary runtimeInstrumentation = RuntimeInstrumentationSummary.from(runResult);
         return CandidateEvaluation.create(profile, runResult.manifest(), metricsByHorizon, anchors, cycles,
                 runtimeInstrumentation, config.primaryHorizonBars());
     }
@@ -953,16 +954,30 @@ public final class ElliottWaveAnchorCalibrationHarness {
                     Duration.ZERO, List.of(), List.of());
         }
 
-        static RuntimeInstrumentationSummary from(WalkForwardRuntimeReport report) {
+        static RuntimeInstrumentationSummary from(
+                WalkForwardRunResult<ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> runResult) {
+            if (runResult == null) {
+                return empty();
+            }
+            WalkForwardRuntimeReport report = runResult.runtimeReport();
             if (report == null) {
                 return empty();
             }
-            List<RuntimeFoldSummary> folds = report.foldRuntimes().stream().map(RuntimeFoldSummary::from).toList();
+            Map<String, SnapshotAnalysisSummary> analysisBySnapshotKey = runResult.snapshots()
+                    .stream()
+                    .collect(Collectors.toMap(PredictionSnapshot::snapshotKey,
+                            RuntimeInstrumentationSummary::summarizeSnapshotAnalysis, (left, right) -> left,
+                            LinkedHashMap::new));
+            List<RuntimeFoldSummary> folds = report.foldRuntimes()
+                    .stream()
+                    .map(fold -> RuntimeFoldSummary.from(fold, analysisBySnapshotKey))
+                    .toList();
             List<RuntimeSnapshotSummary> slowestSnapshots = report.foldRuntimes()
                     .stream()
                     .flatMap(fold -> fold.snapshotRuntimes()
                             .stream()
-                            .map(snapshot -> RuntimeSnapshotSummary.from(fold.foldId(), snapshot)))
+                            .map(snapshot -> RuntimeSnapshotSummary.from(fold.foldId(), snapshot,
+                                    analysisBySnapshotKey.get(snapshotKey(fold.foldId(), snapshot.decisionIndex())))))
                     .sorted(Comparator.comparing(RuntimeSnapshotSummary::runtime)
                             .reversed()
                             .thenComparing(RuntimeSnapshotSummary::foldId)
@@ -1004,6 +1019,14 @@ public final class ElliottWaveAnchorCalibrationHarness {
                         .append(fold.averageSnapshotRuntime())
                         .append(", snapshotMedian=")
                         .append(fold.medianSnapshotRuntime())
+                        .append(", scenariosBeforePruneAvg=")
+                        .append(fold.averageCandidateScenarioCountBeforePrune())
+                        .append(", scenariosRetainedAvg=")
+                        .append(fold.averageRetainedScenarioCount())
+                        .append(", impulseBranches=")
+                        .append(fold.totalImpulseDecompositionBranchCount())
+                        .append(", correctiveBranches=")
+                        .append(fold.totalCorrectiveDecompositionBranchCount())
                         .append(System.lineSeparator());
             }
             if (!slowestSnapshots.isEmpty()) {
@@ -1017,10 +1040,36 @@ public final class ElliottWaveAnchorCalibrationHarness {
                             .append(snapshot.runtime())
                             .append(", predictions=")
                             .append(snapshot.predictionCount())
+                            .append(", scenariosBeforePrune=")
+                            .append(snapshot.candidateScenarioCountBeforePrune())
+                            .append(", scenariosRetained=")
+                            .append(snapshot.retainedScenarioCount())
+                            .append(", impulseBranches=")
+                            .append(snapshot.impulseDecompositionBranchCount())
+                            .append(", correctiveBranches=")
+                            .append(snapshot.correctiveDecompositionBranchCount())
                             .append(System.lineSeparator());
                 }
             }
             return builder.toString().trim();
+        }
+
+        private static SnapshotAnalysisSummary summarizeSnapshotAnalysis(
+                PredictionSnapshot<ElliottWaveAnalysisResult.BaseScenarioAssessment> snapshot) {
+            if (snapshot == null || snapshot.topPredictions().isEmpty()) {
+                return SnapshotAnalysisSummary.empty();
+            }
+            ElliottWaveAnalysisResult.BaseScenarioAssessment assessment = snapshot.topPredictions()
+                    .getFirst()
+                    .payload();
+            if (assessment == null) {
+                return SnapshotAnalysisSummary.empty();
+            }
+            return SnapshotAnalysisSummary.from(assessment.diagnostics());
+        }
+
+        private static String snapshotKey(String foldId, int decisionIndex) {
+            return foldId + "@" + decisionIndex;
         }
     }
 
@@ -1028,7 +1077,9 @@ public final class ElliottWaveAnchorCalibrationHarness {
      * Fold-level runtime instrumentation summary.
      */
     record RuntimeFoldSummary(String foldId, Duration runtime, int snapshotCount, Duration minSnapshotRuntime,
-            Duration maxSnapshotRuntime, Duration averageSnapshotRuntime, Duration medianSnapshotRuntime) {
+            Duration maxSnapshotRuntime, Duration averageSnapshotRuntime, Duration medianSnapshotRuntime,
+            int averageCandidateScenarioCountBeforePrune, int averageRetainedScenarioCount,
+            int totalImpulseDecompositionBranchCount, int totalCorrectiveDecompositionBranchCount) {
 
         RuntimeFoldSummary {
             Objects.requireNonNull(foldId, "foldId");
@@ -1039,26 +1090,84 @@ public final class ElliottWaveAnchorCalibrationHarness {
             Objects.requireNonNull(medianSnapshotRuntime, "medianSnapshotRuntime");
         }
 
-        static RuntimeFoldSummary from(WalkForwardRuntimeReport.FoldRuntime foldRuntime) {
+        static RuntimeFoldSummary from(WalkForwardRuntimeReport.FoldRuntime foldRuntime,
+                Map<String, SnapshotAnalysisSummary> analysisBySnapshotKey) {
+            int totalBeforePrune = 0;
+            int totalRetained = 0;
+            int totalImpulseBranches = 0;
+            int totalCorrectiveBranches = 0;
+            for (WalkForwardRuntimeReport.SnapshotRuntime snapshotRuntime : foldRuntime.snapshotRuntimes()) {
+                SnapshotAnalysisSummary analysis = analysisBySnapshotKey.getOrDefault(RuntimeInstrumentationSummary
+                        .snapshotKey(foldRuntime.foldId(), snapshotRuntime.decisionIndex()),
+                        SnapshotAnalysisSummary.empty());
+                totalBeforePrune += analysis.candidateScenarioCountBeforePrune();
+                totalRetained += analysis.retainedScenarioCount();
+                totalImpulseBranches += analysis.impulseDecompositionBranchCount();
+                totalCorrectiveBranches += analysis.correctiveDecompositionBranchCount();
+            }
+            int snapshotCount = Math.max(1, foldRuntime.snapshotCount());
             return new RuntimeFoldSummary(foldRuntime.foldId(), foldRuntime.runtime(), foldRuntime.snapshotCount(),
                     foldRuntime.minSnapshotRuntime(), foldRuntime.maxSnapshotRuntime(),
-                    foldRuntime.averageSnapshotRuntime(), foldRuntime.medianSnapshotRuntime());
+                    foldRuntime.averageSnapshotRuntime(), foldRuntime.medianSnapshotRuntime(),
+                    totalBeforePrune / snapshotCount, totalRetained / snapshotCount, totalImpulseBranches,
+                    totalCorrectiveBranches);
         }
     }
 
     /**
      * Slow-snapshot runtime detail surfaced in the candidate report.
      */
-    record RuntimeSnapshotSummary(String foldId, int decisionIndex, Duration runtime, int predictionCount) {
+    record RuntimeSnapshotSummary(String foldId, int decisionIndex, Duration runtime, int predictionCount,
+            int candidateScenarioCountBeforePrune, int retainedScenarioCount, int impulseDecompositionBranchCount,
+            int correctiveDecompositionBranchCount) {
 
         RuntimeSnapshotSummary {
             Objects.requireNonNull(foldId, "foldId");
             Objects.requireNonNull(runtime, "runtime");
         }
 
-        static RuntimeSnapshotSummary from(String foldId, WalkForwardRuntimeReport.SnapshotRuntime snapshotRuntime) {
+        static RuntimeSnapshotSummary from(String foldId, WalkForwardRuntimeReport.SnapshotRuntime snapshotRuntime,
+                SnapshotAnalysisSummary analysis) {
+            SnapshotAnalysisSummary resolved = analysis == null ? SnapshotAnalysisSummary.empty() : analysis;
             return new RuntimeSnapshotSummary(foldId, snapshotRuntime.decisionIndex(), snapshotRuntime.runtime(),
-                    snapshotRuntime.predictionCount());
+                    snapshotRuntime.predictionCount(), resolved.candidateScenarioCountBeforePrune(),
+                    resolved.retainedScenarioCount(), resolved.impulseDecompositionBranchCount(),
+                    resolved.correctiveDecompositionBranchCount());
+        }
+    }
+
+    /**
+     * Scenario-search counters observed for one snapshot analysis.
+     */
+    record SnapshotAnalysisSummary(int candidateScenarioCountBeforePrune, int retainedScenarioCount,
+            int impulseDecompositionBranchCount, int correctiveDecompositionBranchCount) {
+
+        SnapshotAnalysisSummary {
+            if (candidateScenarioCountBeforePrune < 0) {
+                throw new IllegalArgumentException("candidateScenarioCountBeforePrune must be >= 0");
+            }
+            if (retainedScenarioCount < 0) {
+                throw new IllegalArgumentException("retainedScenarioCount must be >= 0");
+            }
+            if (impulseDecompositionBranchCount < 0) {
+                throw new IllegalArgumentException("impulseDecompositionBranchCount must be >= 0");
+            }
+            if (correctiveDecompositionBranchCount < 0) {
+                throw new IllegalArgumentException("correctiveDecompositionBranchCount must be >= 0");
+            }
+        }
+
+        static SnapshotAnalysisSummary empty() {
+            return new SnapshotAnalysisSummary(0, 0, 0, 0);
+        }
+
+        static SnapshotAnalysisSummary from(ElliottAnalysisResult.AnalysisDiagnostics diagnostics) {
+            ElliottAnalysisResult.AnalysisDiagnostics resolved = diagnostics == null
+                    ? ElliottAnalysisResult.AnalysisDiagnostics.empty()
+                    : diagnostics;
+            return new SnapshotAnalysisSummary(resolved.candidateScenarioCountBeforePrune(),
+                    resolved.retainedScenarioCount(), resolved.impulseDecompositionBranchCount(),
+                    resolved.correctiveDecompositionBranchCount());
         }
     }
 

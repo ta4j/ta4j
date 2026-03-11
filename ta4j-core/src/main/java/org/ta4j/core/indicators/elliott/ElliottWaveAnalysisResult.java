@@ -572,10 +572,18 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
      * @param compositeScore    blended ranking score combining raw confidence,
      *                          structural priority, and cross-degree support
      * @param supportingMatches per-supporting-degree best-match snapshots
+     * @param diagnostics       scenario-generation diagnostics for the analysis
      * @since 0.22.4
      */
     public record BaseScenarioAssessment(ElliottScenario scenario, double confidenceScore, double crossDegreeScore,
-            double compositeScore, List<SupportingScenarioMatch> supportingMatches) {
+            double compositeScore, List<SupportingScenarioMatch> supportingMatches,
+            ElliottAnalysisResult.AnalysisDiagnostics diagnostics) {
+
+        public BaseScenarioAssessment(ElliottScenario scenario, double confidenceScore, double crossDegreeScore,
+                double compositeScore, List<SupportingScenarioMatch> supportingMatches) {
+            this(scenario, confidenceScore, crossDegreeScore, compositeScore, supportingMatches,
+                    ElliottAnalysisResult.AnalysisDiagnostics.empty());
+        }
 
         public BaseScenarioAssessment {
             Objects.requireNonNull(scenario, "scenario");
@@ -583,6 +591,7 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
             validateUnitIntervalScore("crossDegreeScore", crossDegreeScore);
             validateUnitIntervalScore("compositeScore", compositeScore);
             supportingMatches = supportingMatches == null ? List.of() : List.copyOf(supportingMatches);
+            diagnostics = diagnostics == null ? ElliottAnalysisResult.AnalysisDiagnostics.empty() : diagnostics;
         }
     }
 
