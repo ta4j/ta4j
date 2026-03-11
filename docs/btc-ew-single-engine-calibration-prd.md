@@ -386,6 +386,7 @@ Avoid exposing calibration internals publicly.
 ### Phase 2: Generalize Local Leg Fitting in Core
 
 - [ ] Refactor anchored window selection into a generalized local leg fitter for completed and partial paths.
+  - Landed so far: terminal bullish `1-2-3-4-5` and bearish `A-B-C` window template selection now lives in the core runner via `selectAcceptedOrFallbackTerminalLegForWindow(...)`.
 - [ ] Ensure the same fitter can score:
   - completed bullish impulse legs
   - completed bearish corrective legs

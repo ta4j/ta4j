@@ -887,6 +887,59 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void selectAcceptedOrFallbackTerminalLegForWindowMatchesBullishTerminalSelection() {
+        BarSeries series = buildAnchoredWindowSelectionSeries();
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottScenario rejectedLeader = scenario(factory, "rejected-leader", ElliottPhase.WAVE5, 0.05,
+                anchoredWindowSwings(factory), factory.numOf(92), 0.05);
+        ElliottScenario acceptedFollower = scenario(factory, "accepted-follower", ElliottPhase.WAVE5, 0.80,
+                anchoredWindowSwings(factory), factory.numOf(92), 0.90);
+        ElliottScenarioSet scenarios = ElliottScenarioSet.of(List.of(rejectedLeader, acceptedFollower),
+                series.getEndIndex());
+        ElliottAnalysisResult analysisResult = new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(),
+                acceptedFollower.swings(), acceptedFollower.swings(), scenarios, Map.of(), null, scenarios.trendBias());
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((ignoredSeries, ignoredDegree) -> analysisResult)
+                .build();
+        ElliottWaveAnalysisResult result = analysis.analyze(series);
+        List<ElliottWaveAnalysisResult.WindowScenarioAssessment> ranked = result.rankedBaseScenariosForWindow(series, 0,
+                10, ScenarioType.IMPULSE, ElliottPhase.WAVE5, 5, Boolean.TRUE, 3);
+        double acceptanceThreshold = (ranked.getFirst().fitScore() + ranked.get(1).fitScore()) / 2.0;
+
+        Optional<ElliottWaveAnalysisRunner.AnchoredWindowSelection> selected = analysis
+                .selectAcceptedOrFallbackTerminalLegForWindow(series, 0, 10, true, 3, acceptanceThreshold, 0.30, 0.35,
+                        0.80);
+
+        assertThat(selected).isPresent();
+        assertThat(selected.orElseThrow().accepted()).isTrue();
+        assertThat(selected.orElseThrow().assessment().scenario().id()).isEqualTo("accepted-follower");
+    }
+
+    @Test
+    void selectAcceptedOrFallbackTerminalLegForWindowMatchesBearishTerminalSelection() {
+        BarSeries series = buildBearishWindowSeries();
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottAnalysisResult analysisResult = bearishCorrectiveSnapshot(series, factory);
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((ignoredSeries, ignoredDegree) -> analysisResult)
+                .build();
+
+        Optional<ElliottWaveAnalysisRunner.AnchoredWindowSelection> selected = analysis
+                .selectAcceptedOrFallbackTerminalLegForWindow(series, 0, 5, false, 3, 0.30, 0.30, 0.30, 0.30);
+
+        assertThat(selected).isPresent();
+        assertThat(selected.orElseThrow().accepted()).isTrue();
+        assertThat(selected.orElseThrow().assessment().scenario().id()).isEqualTo("bearish-corrective-c");
+        assertThat(selected.orElseThrow().assessment().scenario().currentPhase()).isEqualTo(ElliottPhase.CORRECTIVE_C);
+    }
+
+    @Test
     void buildRequiresDegree() {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> ElliottWaveAnalysisRunner.builder().build());

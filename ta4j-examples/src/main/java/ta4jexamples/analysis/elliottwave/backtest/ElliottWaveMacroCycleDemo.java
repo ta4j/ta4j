@@ -1047,13 +1047,8 @@ public final class ElliottWaveMacroCycleDemo {
     private static Optional<SegmentScenarioFit> fitSegmentFromCoreRunner(final BarSeries series,
             final LegSegment legSegment, final MacroLogicProfile profile, final ElliottWaveAnalysisRunner profileRunner,
             final int startIndex, final int endIndex, final boolean bullish) {
-        final ScenarioType expectedType = bullish ? ScenarioType.IMPULSE : null;
-        final ElliottPhase expectedPhase = bullish ? ElliottPhase.WAVE5 : ElliottPhase.CORRECTIVE_C;
-        final int expectedWaveCount = bullish ? 5 : 3;
-        final Boolean expectedDirection = bullish ? Boolean.TRUE : Boolean.FALSE;
         return profileRunner
-                .selectAcceptedOrFallbackBaseScenarioForWindow(series, startIndex, endIndex, expectedType,
-                        expectedPhase, expectedWaveCount, expectedDirection,
+                .selectAcceptedOrFallbackTerminalLegForWindow(series, startIndex, endIndex, bullish,
                         ElliottWaveBtcMacroCycleDemo.MAX_CORE_ANCHOR_DRIFT_BARS,
                         Math.max(ElliottWaveBtcMacroCycleDemo.DEFAULT_ACCEPTED_SEGMENT_SCORE,
                                 profile.acceptanceThreshold()),

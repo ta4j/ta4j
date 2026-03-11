@@ -335,6 +335,44 @@ public final class ElliottWaveAnalysisRunner {
     }
 
     /**
+     * Selects the best accepted terminal leg for an anchored window, falling back
+     * to the strongest matching scenario when the acceptance gate is missed.
+     *
+     * <p>
+     * This is the semantic convenience entry point for completed macro-leg fitting.
+     * Bullish windows map to a five-wave impulse ending in
+     * {@link ElliottPhase#WAVE5}. Bearish windows map to a three-wave corrective
+     * path ending in {@link ElliottPhase#CORRECTIVE_C}.
+     *
+     * @param series                root series
+     * @param startIndex            inclusive window start index in the root series
+     * @param endIndex              inclusive window end index in the root series
+     * @param bullish               {@code true} for bullish impulse legs,
+     *                              {@code false} for bearish corrective legs
+     * @param maxAnchorDriftBars    soft anchor tolerance used during ranking and
+     *                              acceptance
+     * @param minimumFitScore       minimum blended fit score
+     * @param minimumRuleScore      minimum rule-quality score
+     * @param minimumStartAlignment minimum allowed start alignment
+     * @param minimumEndAlignment   minimum allowed end alignment
+     * @return selected anchored terminal-leg scenario plus its accepted/fallback
+     *         status, if any scenario matched
+     * @since 0.22.4
+     */
+    public Optional<AnchoredWindowSelection> selectAcceptedOrFallbackTerminalLegForWindow(final BarSeries series,
+            final int startIndex, final int endIndex, final boolean bullish, final int maxAnchorDriftBars,
+            final double minimumFitScore, final double minimumRuleScore, final double minimumStartAlignment,
+            final double minimumEndAlignment) {
+        final ScenarioType expectedType = bullish ? ScenarioType.IMPULSE : null;
+        final ElliottPhase expectedPhase = bullish ? ElliottPhase.WAVE5 : ElliottPhase.CORRECTIVE_C;
+        final int expectedWaveCount = bullish ? 5 : 3;
+        final Boolean expectedDirection = bullish ? Boolean.TRUE : Boolean.FALSE;
+        return selectAcceptedOrFallbackBaseScenarioForWindow(series, startIndex, endIndex, expectedType, expectedPhase,
+                expectedWaveCount, expectedDirection, maxAnchorDriftBars, minimumFitScore, minimumRuleScore,
+                minimumStartAlignment, minimumEndAlignment);
+    }
+
+    /**
      * Discovers and ranks the current bullish cycle directly from the supplied
      * series.
      *
