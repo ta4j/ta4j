@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 12:02 EDT
+- Last updated: 2026-03-11 12:11 EDT
 - Active phase: Phase 9
-- Active task: Persist the selected vector as the canonical BTC-calibrated profile
-- Overall: 18/56 checklist items complete
+- Active task: Explore pruning opportunities before adding more brute-force search
+- Overall: 19/56 checklist items complete
 
 ## Status
 
@@ -495,7 +495,7 @@ Avoid exposing calibration internals publicly.
   - fractal confirmation windows
   - score weights
 - [x] Keep the search deterministic and reproducible.
-- [ ] Persist the selected vector as the canonical BTC-calibrated profile.
+- [x] Persist the selected vector as the canonical BTC-calibrated profile.
 - [ ] Explore pruning opportunities before adding more brute-force search:
   - partial-cut invalidation pruning
   - minimum segment span pruning

@@ -117,6 +117,8 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     void defaultProfilesFollowTheDeterministicControlledSearchPlan() {
         ElliottWaveAnchorCalibrationHarness.CandidateSearchPlan plan = ElliottWaveAnchorCalibrationHarness
                 .controlledProfileSearch();
+        ElliottWaveAnchorCalibrationHarness.CandidateProfile canonical = ElliottWaveAnchorCalibrationHarness
+                .canonicalBtcCalibratedProfile();
 
         assertEquals("btc-phase9-controlled-search-v1", plan.id());
         assertIterableEquals(List.of("orthodox-core", "relaxed-confirmation", "search-breadth"),
@@ -133,6 +135,10 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                         .stream()
                         .map(ElliottWaveAnchorCalibrationHarness.CandidateProfile::id)
                         .toList());
+        assertEquals(canonical.id(), plan.profiles().getFirst().id());
+        assertTrue(canonical.baselineCandidate());
+        assertEquals("btc-phase9-controlled-search-v1", canonical.context().metadata().get("searchPlanId"));
+        assertEquals("orthodox-core", canonical.context().metadata().get("laneId"));
         assertEquals("orthodox-core", plan.profiles().getFirst().context().metadata().get("laneId"));
         assertEquals("0.70", plan.profiles().getFirst().context().metadata().get("baseConfidenceWeight"));
         assertEquals("lighter-confidence", plan.profiles().get(2).context().metadata().get("scoreFamily"));

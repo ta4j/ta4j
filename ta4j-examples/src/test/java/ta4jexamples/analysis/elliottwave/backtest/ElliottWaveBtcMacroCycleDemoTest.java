@@ -363,6 +363,10 @@ class ElliottWaveBtcMacroCycleDemoTest {
             ElliottWaveBtcMacroCycleDemo.DemoReport genericReport = ElliottWaveMacroCycleDemo
                     .generateHistoricalReport(series, registry, genericDir);
 
+            assertEquals(ElliottWaveAnchorCalibrationHarness.canonicalBtcCalibratedProfile().id(),
+                    wrapperReport.baselineProfileId());
+            assertEquals(ElliottWaveAnchorCalibrationHarness.canonicalBtcCalibratedProfile().id(),
+                    genericReport.baselineProfileId());
             assertEquals(wrapperReport.selectedProfileId(), genericReport.selectedProfileId());
             assertEquals(wrapperReport.selectedHypothesisId(), genericReport.selectedHypothesisId());
             assertEquals(wrapperReport.historicalFitPassed(), genericReport.historicalFitPassed());

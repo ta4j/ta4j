@@ -118,9 +118,7 @@ public final class ElliottWaveMacroCycleDemo {
         final Path summaryPath = chartDirectory.resolve(ElliottWaveBtcMacroCycleDemo.DEFAULT_SUMMARY_FILE_NAME)
                 .toAbsolutePath()
                 .normalize();
-        final String baselineProfileId = ElliottWaveWalkForwardProfiles.baseline()
-                .metadata()
-                .getOrDefault("profile", "baseline-minute-f2-h2l2-max25-sw0");
+        final String baselineProfileId = ElliottWaveAnchorCalibrationHarness.canonicalBtcCalibratedProfile().id();
         final CurrentCycleSummary currentCycle = study.currentCycle().withChartPath(chartPathText);
         final DemoReport report = new DemoReport(registry.version(), registry.datasetResource(), baselineProfileId,
                 study.selectedProfile().profile().id(), study.selectedProfile().profile().hypothesisId(),

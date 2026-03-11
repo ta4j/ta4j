@@ -101,6 +101,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
     static final String BTC_SERIES_NAME = "INDEX_BTCUSD_PT1D@TradingView (anchor calibration)";
     static final String ETH_SERIES_NAME = "ETH-USD_PT1D@Coinbase (portability)";
     static final String SP500_SERIES_NAME = "SP500_PT7D@YahooFinance (portability)";
+    private static final String BTC_CANONICAL_SEARCH_PLAN_ID = "btc-phase9-controlled-search-v1";
+    private static final String BTC_CANONICAL_SEARCH_LANE_ID = "orthodox-core";
     static final String METRIC_EVENT_AGREEMENT = "rank1EventAgreement";
     static final String METRIC_BRIER = "rank1Brier";
     static final String METRIC_LOG_LOSS = "rank1LogLoss";
@@ -240,8 +242,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
                         selected.profile(), portabilityEngine, config, artifactSink));
 
         BaselinePolicy baselinePolicy = new BaselinePolicy(registry.datasetResource(), config.primaryHorizonBars(),
-                List.copyOf(config.reportingHorizons()), config.configHash(),
-                ElliottWaveWalkForwardProfiles.baseline().metadata().getOrDefault("profile", "baseline"));
+                List.copyOf(config.reportingHorizons()), config.configHash(), canonicalBtcCalibratedProfile().id());
 
         LOG.info("Built BTC anchor calibration report in {}", formatElapsed(startedAt));
         ReportBundle report = ReportBundle.create("btc-anchor-calibration-v2",
@@ -313,11 +314,15 @@ public final class ElliottWaveAnchorCalibrationHarness {
         return controlledProfileSearch().profiles();
     }
 
+    static CandidateProfile canonicalBtcCalibratedProfile() {
+        return CandidateProfile.baseline(BTC_CANONICAL_SEARCH_PLAN_ID, BTC_CANONICAL_SEARCH_LANE_ID);
+    }
+
     static CandidateSearchPlan controlledProfileSearch() {
-        String planId = "btc-phase9-controlled-search-v1";
+        String planId = BTC_CANONICAL_SEARCH_PLAN_ID;
         return CandidateSearchPlan.of(planId, List.of(new CandidateSearchLane("orthodox-core",
                 "Locked baseline plus orthodox fractal and score-weight variants",
-                List.of(CandidateProfile.baseline(planId, "orthodox-core"),
+                List.of(canonicalBtcCalibratedProfile(),
                         CandidateProfile.vector("minute-f3-h2l2-max25-sw0-w70", planId, "orthodox-core", "balanced",
                                 ElliottDegree.MINUTE, 2, 2, 25, 0, 3, 0.70, "default", ConfidenceProfiles::defaultModel,
                                 "Tighter swing confirmation near transition windows"),
@@ -1085,7 +1090,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
         }
 
         static CandidateProfile baselineProfile() {
-            return baseline();
+            return canonicalBtcCalibratedProfile();
         }
 
         static CandidateProfile of(String id, ElliottDegree degree, int higherDegrees, int lowerDegrees,
