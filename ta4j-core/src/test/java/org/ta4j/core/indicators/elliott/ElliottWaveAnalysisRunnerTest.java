@@ -627,7 +627,35 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
-    void fitCurrentPhaseForWindowSupportsBearishCorrectiveProgressions() {
+    void fitPartialLegForWindowSupportsBullishImpulseProgressions() {
+        BarSeries series = buildCurrentCycleSeries();
+        NumFactory factory = series.numFactory();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        ElliottWaveAnalysisResult windowAnalysis = analysis.analyzeWindow(series, series.getBeginIndex(),
+                series.getEndIndex());
+        Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fit = analysis.fitPartialLegForWindow(series,
+                windowAnalysis, series.getBeginIndex(), series.getEndIndex(), true, 3);
+
+        assertThat(fit).isPresent();
+        assertThat(fit.orElseThrow().currentPhase()).isEqualTo(ElliottPhase.WAVE3);
+        assertThat(fit.orElseThrow().countLabel()).isEqualTo("Bullish 1-2-3");
+        assertThat(fit.orElseThrow().startPrice()).isEqualByComparingTo(series.getBar(0).getLowPrice());
+        assertThat(fit.orElseThrow().phaseInvalidationPrice())
+                .isEqualByComparingTo(fit.orElseThrow().scenario().swings().get(1).toPrice());
+        ElliottScenario scenario = fit.orElseThrow().scenario();
+        assertThat(scenario.swings()).hasSize(3);
+        assertThat(scenario.swings().getFirst().fromIndex()).isEqualTo(series.getBeginIndex());
+        assertThat(scenario.swings().getLast().toIndex()).isEqualTo(series.getEndIndex());
+    }
+
+    @Test
+    void fitPartialLegForWindowSupportsBearishCorrectiveProgressions() {
         BarSeries series = buildBearishWindowSeries();
         NumFactory factory = series.numFactory();
         ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
@@ -639,7 +667,7 @@ class ElliottWaveAnalysisRunnerTest {
 
         ElliottWaveAnalysisResult windowAnalysis = analysis.analyzeWindow(series, series.getBeginIndex(),
                 series.getEndIndex());
-        Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fit = analysis.fitCurrentPhaseForWindow(series,
+        Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fit = analysis.fitPartialLegForWindow(series,
                 windowAnalysis, series.getBeginIndex(), series.getEndIndex(), false, 3);
 
         assertThat(fit).isPresent();

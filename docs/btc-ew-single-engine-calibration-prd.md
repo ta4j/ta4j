@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 15:18 EDT
-- Active phase: Phase 9
-- Active task: Expand pruning coverage and runtime evidence before adding more brute-force search
-- Overall: 29/56 checklist items complete
+- Last updated: 2026-03-11 17:14 EDT
+- Active phase: Phase 2
+- Active task: Finish consolidating completed and partial local-leg fitting in the core runner
+- Overall: 30/56 checklist items complete
 
 ## Status
 
@@ -387,13 +387,14 @@ Avoid exposing calibration internals publicly.
 
 - [ ] Refactor anchored window selection into a generalized local leg fitter for completed and partial paths.
   - Landed so far: terminal bullish `1-2-3-4-5` and bearish `A-B-C` window template selection now lives in the core runner via `selectAcceptedOrFallbackTerminalLegForWindow(...)`.
+  - Landed so far: partial bullish and bearish window fitting now lives behind the same core runner surface via `fitPartialLegForWindow(...)`.
 - [ ] Ensure the same fitter can score:
   - completed bullish impulse legs
   - completed bearish corrective legs
   - partial bullish structures
   - partial bearish structures
 - [ ] Preserve fractal confirmation degrees-up/degrees-down support in this fitter.
-- [ ] Add focused runner tests for each leg family.
+- [x] Add focused runner tests for each leg family.
 
 ### Phase 3: Build the Series-Native Pivot Graph
 

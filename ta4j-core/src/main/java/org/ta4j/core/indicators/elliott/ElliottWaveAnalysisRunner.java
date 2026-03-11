@@ -419,7 +419,7 @@ public final class ElliottWaveAnalysisRunner {
 
             final ElliottWaveAnalysisResult windowAnalysis = analyzeWindow(series, startIndex, endIndex);
             for (int phase = 1; phase <= 5; phase++) {
-                final Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fit = fitCurrentPhaseForWindow(series,
+                final Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fit = fitPartialLegForWindow(series,
                         windowAnalysis, startIndex, endIndex, true, phase);
                 if (fit.isEmpty()) {
                     continue;
@@ -443,7 +443,7 @@ public final class ElliottWaveAnalysisRunner {
             final int fallbackStartIndex = lowestLowIndex(series, beginIndex, endIndex);
             final ElliottWaveAnalysisResult fallbackAnalysis = analyzeWindow(series, fallbackStartIndex, endIndex);
             for (int phase = 1; phase <= 5; phase++) {
-                final Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fit = fitCurrentPhaseForWindow(series,
+                final Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fit = fitPartialLegForWindow(series,
                         fallbackAnalysis, fallbackStartIndex, endIndex, true, phase);
                 fit.ifPresent(phaseFit -> candidates.add(new ElliottWaveAnalysisResult.CurrentCycleCandidate(
                         fallbackStartIndex, lowPriceNum(series, fallbackStartIndex), phaseFit, 1.0, phaseFit.fitScore(),
@@ -742,7 +742,26 @@ public final class ElliottWaveAnalysisRunner {
         return clamp01(1.0 - (breach / 0.08));
     }
 
-    Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fitCurrentPhaseForWindow(final BarSeries series,
+    /**
+     * Fits a partial local leg inside an anchored window.
+     *
+     * <p>
+     * Bullish phases map to impulse progressions {@code 1..5}. Bearish phases map
+     * to corrective progressions {@code A..C}. This keeps partial-window scoring on
+     * the same core fitter path used by live current-cycle inference.
+     *
+     * @param series     root series
+     * @param analysis   precomputed anchored-window analysis
+     * @param startIndex inclusive window start index in the root series
+     * @param endIndex   inclusive window end index in the root series
+     * @param bullish    {@code true} for bullish impulse progressions,
+     *                   {@code false} for bearish corrective progressions
+     * @param phase      bullish phase {@code 1..5} or bearish corrective phase
+     *                   {@code 1..3}
+     * @return normalized partial-leg assessment, if the requested family fits the
+     *         window
+     */
+    Optional<ElliottWaveAnalysisResult.CurrentPhaseAssessment> fitPartialLegForWindow(final BarSeries series,
             final ElliottWaveAnalysisResult analysis, final int startIndex, final int endIndex, final boolean bullish,
             final int phase) {
         if (endIndex <= startIndex) {
