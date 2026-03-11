@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 11:35 EDT
+- Last updated: 2026-03-11 12:02 EDT
 - Active phase: Phase 9
-- Active task: Create a controlled profile search process over orthodox constraints, relaxed constraints, fractal windows, and score weights
-- Overall: 16/56 checklist items complete
+- Active task: Persist the selected vector as the canonical BTC-calibrated profile
+- Overall: 18/56 checklist items complete
 
 ## Status
 
@@ -489,12 +489,12 @@ Avoid exposing calibration internals publicly.
     - swing-confirmation geometry and related fractal controls
   - Explicitly keep `wave 3 cannot be the shortest` out of the hard-rule set; treat it as a heuristic signal only.
 - [x] Include fractal configuration as part of the vector.
-- [ ] Create a controlled profile search process over:
+- [x] Create a controlled profile search process over:
   - orthodox constraints
   - relaxed constraints with asterisks
   - fractal confirmation windows
   - score weights
-- [ ] Keep the search deterministic and reproducible.
+- [x] Keep the search deterministic and reproducible.
 - [ ] Persist the selected vector as the canonical BTC-calibrated profile.
 - [ ] Explore pruning opportunities before adding more brute-force search:
   - partial-cut invalidation pruning

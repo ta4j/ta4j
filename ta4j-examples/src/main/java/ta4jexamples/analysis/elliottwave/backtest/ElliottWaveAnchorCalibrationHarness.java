@@ -310,21 +310,53 @@ public final class ElliottWaveAnchorCalibrationHarness {
     }
 
     static List<CandidateProfile> defaultProfiles() {
-        return List.of(CandidateProfile.baseline(),
-                CandidateProfile.of("minute-f3-h2l2-max25-sw0", ElliottDegree.MINUTE, 2, 2, 25, 0, 3,
-                        "Tighter swing confirmation near transition windows"),
-                CandidateProfile.of("minute-f2-h1l1-max25-sw0", ElliottDegree.MINUTE, 1, 1, 25, 0, 2,
-                        "Less cross-degree drag when the base count is already clear"),
-                CandidateProfile.of("minute-f2-h1l2-max25-sw0", ElliottDegree.MINUTE, 1, 2, 25, 0, 2,
-                        "Relax higher-degree drag while keeping lower-degree confirmation for holdout reversals"),
-                CandidateProfile.of("minute-f2-h2l1-max25-sw0", ElliottDegree.MINUTE, 2, 1, 25, 0, 2,
-                        "Keep higher-degree context but lighten lower-degree confirmation near macro turns"),
-                CandidateProfile.of("minute-f2-h1l1-max25-sw1", ElliottDegree.MINUTE, 1, 1, 25, 1, 2,
-                        "Keep the best challenger profile but focus retained scenarios nearer the transition window"),
-                CandidateProfile.of("minute-f2-h2l2-max15-sw1", ElliottDegree.MINUTE, 2, 2, 15, 1, 2,
-                        "Fewer retained scenarios and a short scenario window to reduce probability crowding"),
-                CandidateProfile.of("minor-f2-h2l2-max25-sw0", ElliottDegree.MINOR, 2, 2, 25, 0, 2,
-                        "Coarser base degree for longer-cycle structure continuity"));
+        return controlledProfileSearch().profiles();
+    }
+
+    static CandidateSearchPlan controlledProfileSearch() {
+        String planId = "btc-phase9-controlled-search-v1";
+        return CandidateSearchPlan.of(planId, List.of(new CandidateSearchLane("orthodox-core",
+                "Locked baseline plus orthodox fractal and score-weight variants",
+                List.of(CandidateProfile.baseline(planId, "orthodox-core"),
+                        CandidateProfile.vector("minute-f3-h2l2-max25-sw0-w70", planId, "orthodox-core", "balanced",
+                                ElliottDegree.MINUTE, 2, 2, 25, 0, 3, 0.70, "default", ConfidenceProfiles::defaultModel,
+                                "Tighter swing confirmation near transition windows"),
+                        CandidateProfile.vector("minute-f2-h2l2-max25-sw0-w62", planId, "orthodox-core",
+                                "lighter-confidence", ElliottDegree.MINUTE, 2, 2, 25, 0, 2, 0.62, "default",
+                                ConfidenceProfiles::defaultModel,
+                                "Orthodox structure with lighter base-confidence weighting"),
+                        CandidateProfile.vector("minute-f2-h2l2-max25-sw0-w78", planId, "orthodox-core",
+                                "heavier-confidence", ElliottDegree.MINUTE, 2, 2, 25, 0, 2, 0.78, "default",
+                                ConfidenceProfiles::defaultModel,
+                                "Orthodox structure with heavier base-confidence weighting"))),
+                new CandidateSearchLane("relaxed-confirmation",
+                        "Cross-degree confirmation relaxed where the classical count already looks coherent",
+                        List.of(CandidateProfile.vector("minute-f2-h1l1-max25-sw0-w70", planId, "relaxed-confirmation",
+                                "balanced", ElliottDegree.MINUTE, 1, 1, 25, 0, 2, 0.70, "default",
+                                ConfidenceProfiles::defaultModel,
+                                "Less cross-degree drag when the base count is already clear"),
+                                CandidateProfile.vector("minute-f2-h1l2-max25-sw0-w70", planId, "relaxed-confirmation",
+                                        "balanced", ElliottDegree.MINUTE, 1, 2, 25, 0, 2, 0.70, "default",
+                                        ConfidenceProfiles::defaultModel,
+                                        "Relax higher-degree drag while keeping lower-degree confirmation"),
+                                CandidateProfile.vector("minute-f2-h2l1-max25-sw0-w70", planId, "relaxed-confirmation",
+                                        "balanced", ElliottDegree.MINUTE, 2, 1, 25, 0, 2, 0.70, "default",
+                                        ConfidenceProfiles::defaultModel,
+                                        "Keep higher-degree context but lighten lower-degree confirmation"),
+                                CandidateProfile.vector("minute-f2-h1l1-max25-sw1-w70", planId, "relaxed-confirmation",
+                                        "balanced", ElliottDegree.MINUTE, 1, 1, 25, 1, 2, 0.70, "default",
+                                        ConfidenceProfiles::defaultModel,
+                                        "Focus retained scenarios nearer the transition window"))),
+                new CandidateSearchLane("search-breadth",
+                        "Reduced-breadth sanity lanes that test whether cheaper geometry preserves the signal",
+                        List.of(CandidateProfile.vector("minute-f2-h2l2-max15-sw1-w70", planId, "search-breadth",
+                                "balanced", ElliottDegree.MINUTE, 2, 2, 15, 1, 2, 0.70, "default",
+                                ConfidenceProfiles::defaultModel,
+                                "Fewer retained scenarios and a short scenario window to reduce crowding"),
+                                CandidateProfile.vector("minor-f2-h2l2-max25-sw0-w70", planId, "search-breadth",
+                                        "balanced", ElliottDegree.MINOR, 2, 2, 25, 0, 2, 0.70, "default",
+                                        ConfidenceProfiles::defaultModel,
+                                        "Coarser base degree for longer-cycle structure continuity")))));
     }
 
     static CandidateEvaluation evaluateCandidate(BarSeries series, AnchorRegistry registry, CandidateProfile profile,
@@ -987,6 +1019,37 @@ public final class ElliottWaveAnchorCalibrationHarness {
     }
 
     /**
+     * Ordered candidate-search lane within the controlled BTC calibration plan.
+     */
+    record CandidateSearchLane(String id, String rationale, List<CandidateProfile> profiles) {
+
+        CandidateSearchLane {
+            Objects.requireNonNull(id, "id");
+            Objects.requireNonNull(rationale, "rationale");
+            profiles = profiles == null ? List.of() : List.copyOf(profiles);
+        }
+    }
+
+    /**
+     * Deterministic candidate-search plan for BTC calibration.
+     */
+    record CandidateSearchPlan(String id, List<CandidateSearchLane> lanes) {
+
+        CandidateSearchPlan {
+            Objects.requireNonNull(id, "id");
+            lanes = lanes == null ? List.of() : List.copyOf(lanes);
+        }
+
+        static CandidateSearchPlan of(String id, List<CandidateSearchLane> lanes) {
+            return new CandidateSearchPlan(id, lanes);
+        }
+
+        List<CandidateProfile> profiles() {
+            return lanes.stream().flatMap(lane -> lane.profiles().stream()).toList();
+        }
+    }
+
+    /**
      * Coarse Elliott runner profile used as a tuning candidate.
      */
     record CandidateProfile(String id, ElliottDegree degree, int higherDegrees, int lowerDegrees, int maxScenarios,
@@ -1001,12 +1064,22 @@ public final class ElliottWaveAnchorCalibrationHarness {
         }
 
         static CandidateProfile baseline() {
+            return baseline("legacy-flat-search", "orthodox-core");
+        }
+
+        static CandidateProfile baseline(String searchPlanId, String laneId) {
             ElliottWaveWalkForwardContext context = ElliottWaveWalkForwardProfiles.baseline();
             String id = context.metadata().getOrDefault("profile", "baseline-minute-f2-h2l2-max25-sw0");
             ElliottWaveAnalysisRunner macroRunner = buildMacroAnalysisRunner(
                     ElliottWaveWalkForwardProfiles.BASELINE_DEGREE, 2, 2, 25, 0, 2);
+            Map<String, String> metadata = new LinkedHashMap<>(context.metadata());
+            metadata.put("searchPlanId", searchPlanId);
+            metadata.put("laneId", laneId);
+            metadata.put("scoreFamily", "balanced");
+            metadata.put("baseConfidenceWeight", "0.70");
+            metadata.put("confidenceModel", "default");
             ElliottWaveWalkForwardContext macroContext = new ElliottWaveWalkForwardContext(macroRunner,
-                    context.seriesSelector(), context.maxPredictions(), context.metadata());
+                    context.seriesSelector(), context.maxPredictions(), immutableSortedMap(metadata));
             return new CandidateProfile(id, ElliottWaveWalkForwardProfiles.BASELINE_DEGREE, 2, 2, 25, 0, 2, true,
                     "Locked baseline profile used for cross-run comparability", macroContext);
         }
@@ -1017,12 +1090,29 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
         static CandidateProfile of(String id, ElliottDegree degree, int higherDegrees, int lowerDegrees,
                 int maxScenarios, int scenarioSwingWindow, int fractalWindow, String rationale) {
+            return vector(id, "legacy-flat-search", "adhoc", "balanced", degree, higherDegrees, lowerDegrees,
+                    maxScenarios, scenarioSwingWindow, fractalWindow, 0.70, "default", ConfidenceProfiles::defaultModel,
+                    rationale);
+        }
+
+        static CandidateProfile vector(String id, String searchPlanId, String laneId, String scoreFamily,
+                ElliottDegree degree, int higherDegrees, int lowerDegrees, int maxScenarios, int scenarioSwingWindow,
+                int fractalWindow, double baseConfidenceWeight, String confidenceModelId,
+                Function<NumFactory, ConfidenceModel> confidenceModelFactory, String rationale) {
             ElliottWaveAnalysisRunner runner = buildMacroAnalysisRunner(degree, higherDegrees, lowerDegrees,
-                    maxScenarios, scenarioSwingWindow, fractalWindow);
-            Map<String, String> metadata = Map.of("profile", id, "degree", degree.name(), "higherDegrees",
-                    String.valueOf(higherDegrees), "lowerDegrees", String.valueOf(lowerDegrees), "maxScenarios",
-                    String.valueOf(maxScenarios), "scenarioSwingWindow", String.valueOf(scenarioSwingWindow),
-                    "fractalWindow", String.valueOf(fractalWindow));
+                    maxScenarios, scenarioSwingWindow, fractalWindow, PatternSet.all(), baseConfidenceWeight,
+                    confidenceModelFactory);
+            Map<String, String> metadata = Map.ofEntries(Map.entry("profile", id),
+                    Map.entry("searchPlanId", searchPlanId), Map.entry("laneId", laneId),
+                    Map.entry("scoreFamily", scoreFamily),
+                    Map.entry("baseConfidenceWeight",
+                            String.format(java.util.Locale.ROOT, "%.2f", baseConfidenceWeight)),
+                    Map.entry("confidenceModel", confidenceModelId), Map.entry("degree", degree.name()),
+                    Map.entry("higherDegrees", String.valueOf(higherDegrees)),
+                    Map.entry("lowerDegrees", String.valueOf(lowerDegrees)),
+                    Map.entry("maxScenarios", String.valueOf(maxScenarios)),
+                    Map.entry("scenarioSwingWindow", String.valueOf(scenarioSwingWindow)),
+                    Map.entry("fractalWindow", String.valueOf(fractalWindow)));
             ElliottWaveWalkForwardContext context = new ElliottWaveWalkForwardContext(runner, null, 5, metadata);
             return new CandidateProfile(id, degree, higherDegrees, lowerDegrees, maxScenarios, scenarioSwingWindow,
                     fractalWindow, false, rationale, context);

@@ -114,15 +114,30 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     }
 
     @Test
-    void defaultProfilesWidensHoldoutSearchAroundTheBaselineAndBestChallenger() {
+    void defaultProfilesFollowTheDeterministicControlledSearchPlan() {
+        ElliottWaveAnchorCalibrationHarness.CandidateSearchPlan plan = ElliottWaveAnchorCalibrationHarness
+                .controlledProfileSearch();
+
+        assertEquals("btc-phase9-controlled-search-v1", plan.id());
+        assertIterableEquals(List.of("orthodox-core", "relaxed-confirmation", "search-breadth"),
+                plan.lanes().stream().map(ElliottWaveAnchorCalibrationHarness.CandidateSearchLane::id).toList());
         assertIterableEquals(
-                List.of("baseline-minute-f2-h2l2-max25-sw0", "minute-f3-h2l2-max25-sw0", "minute-f2-h1l1-max25-sw0",
-                        "minute-f2-h1l2-max25-sw0", "minute-f2-h2l1-max25-sw0", "minute-f2-h1l1-max25-sw1",
-                        "minute-f2-h2l2-max15-sw1", "minor-f2-h2l2-max25-sw0"),
+                List.of("baseline-minute-f2-h2l2-max25-sw0", "minute-f3-h2l2-max25-sw0-w70",
+                        "minute-f2-h2l2-max25-sw0-w62", "minute-f2-h2l2-max25-sw0-w78", "minute-f2-h1l1-max25-sw0-w70",
+                        "minute-f2-h1l2-max25-sw0-w70", "minute-f2-h2l1-max25-sw0-w70", "minute-f2-h1l1-max25-sw1-w70",
+                        "minute-f2-h2l2-max15-sw1-w70", "minor-f2-h2l2-max25-sw0-w70"),
+                plan.profiles().stream().map(ElliottWaveAnchorCalibrationHarness.CandidateProfile::id).toList());
+        assertIterableEquals(
+                plan.profiles().stream().map(ElliottWaveAnchorCalibrationHarness.CandidateProfile::id).toList(),
                 ElliottWaveAnchorCalibrationHarness.defaultProfiles()
                         .stream()
                         .map(ElliottWaveAnchorCalibrationHarness.CandidateProfile::id)
                         .toList());
+        assertEquals("orthodox-core", plan.profiles().getFirst().context().metadata().get("laneId"));
+        assertEquals("0.70", plan.profiles().getFirst().context().metadata().get("baseConfidenceWeight"));
+        assertEquals("lighter-confidence", plan.profiles().get(2).context().metadata().get("scoreFamily"));
+        assertEquals("0.62", plan.profiles().get(2).context().metadata().get("baseConfidenceWeight"));
+        assertEquals("search-breadth", plan.profiles().getLast().context().metadata().get("laneId"));
     }
 
     private static Duration expectedToleranceSpan(String anchorId) {
