@@ -632,6 +632,51 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void searchCanonicalStructurePrefersAlternatingCoherentPath() {
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, window.numFactory()))
+                .build();
+
+        List<ElliottWaveAnalysisRunner.CanonicalLegCandidate> candidates = List.of(
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("leg-1", 0, 4, true, 0.80),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("leg-2", 4, 7, false, 0.74),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("leg-3", 7, 10, true, 0.72),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("shortcut", 0, 6, true, 0.90),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("weak-tail", 6, 10, false, 0.35));
+
+        ElliottWaveAnalysisRunner.CanonicalStructurePath path = analysis.searchCanonicalStructure(candidates)
+                .orElseThrow();
+
+        assertThat(path.legs().stream().map(ElliottWaveAnalysisRunner.CanonicalLegCandidate::id))
+                .containsExactly("leg-1", "leg-2", "leg-3");
+        assertThat(path.score()).isGreaterThan(2.5);
+    }
+
+    @Test
+    void searchCanonicalStructurePenalizesGappedLegsAgainstContiguousOnes() {
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, window.numFactory()))
+                .build();
+
+        List<ElliottWaveAnalysisRunner.CanonicalLegCandidate> candidates = List.of(
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("contiguous-bull", 0, 4, true, 0.78),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("contiguous-bear", 4, 7, false, 0.76),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("gapped-bear", 6, 9, false, 0.80));
+
+        ElliottWaveAnalysisRunner.CanonicalStructurePath path = analysis.searchCanonicalStructure(candidates)
+                .orElseThrow();
+
+        assertThat(path.legs().stream().map(ElliottWaveAnalysisRunner.CanonicalLegCandidate::id))
+                .containsExactly("contiguous-bull", "contiguous-bear");
+    }
+
+    @Test
     void analyzeCurrentCycleRejectsWaveFiveWhenTerminalHighIsNotDominant() {
         BarSeries series = buildMalformedWaveFiveSeries();
         NumFactory factory = series.numFactory();

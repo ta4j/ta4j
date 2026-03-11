@@ -102,6 +102,10 @@ public final class ElliottWaveAnalysisRunner {
     private static final double CURRENT_CYCLE_TERMINAL_WEIGHT = 0.10;
     private static final int MACRO_PIVOT_GRAPH_MAX_PIVOTS = 24;
     private static final double MACRO_PIVOT_GRAPH_MIN_DOMINANCE = 0.55;
+    private static final int CANONICAL_SEARCH_BEAM_WIDTH = 12;
+    private static final double CANONICAL_SEARCH_CONTIGUITY_BONUS = 0.15;
+    private static final double CANONICAL_SEARCH_ALTERNATION_BONUS = 0.10;
+    private static final double CANONICAL_SEARCH_GAP_PENALTY_PER_PIVOT = 0.05;
 
     private static final double DEFAULT_BASE_CONFIDENCE_WEIGHT = 0.7;
     private static final double DEFAULT_NEUTRAL_CROSS_DEGREE_SCORE = 0.5;
@@ -512,6 +516,48 @@ public final class ElliottWaveAnalysisRunner {
                     pivotDegreeProvenance(swings, barIndex)));
         }
         return new MacroPivotGraph(pruneMacroPivots(series, pivots), higherDegrees, lowerDegrees);
+    }
+
+    /**
+     * Searches for the strongest alternating macro path through a bounded
+     * candidate-leg set.
+     *
+     * <p>
+     * This is the first global search primitive for the canonical single-engine
+     * effort. It uses beam search over alternating bullish and bearish legs,
+     * combines local fit with continuity/coherence bonuses, and keeps only a small
+     * bounded frontier at each expansion step.
+     *
+     * @param candidates candidate legs sorted or unsorted
+     * @return best alternating canonical path, if any candidate survives
+     * @since 0.22.4
+     */
+    Optional<CanonicalStructurePath> searchCanonicalStructure(final List<CanonicalLegCandidate> candidates) {
+        Objects.requireNonNull(candidates, "candidates");
+        if (candidates.isEmpty()) {
+            return Optional.empty();
+        }
+
+        final List<CanonicalLegCandidate> ordered = candidates.stream()
+                .filter(Objects::nonNull)
+                .sorted(Comparator.comparingInt(CanonicalLegCandidate::startPivotIndex)
+                        .thenComparingInt(CanonicalLegCandidate::endPivotIndex)
+                        .thenComparing(Comparator.comparingDouble(CanonicalLegCandidate::fitScore).reversed()))
+                .toList();
+        List<CanonicalStructurePath> beam = List.of(CanonicalStructurePath.empty());
+        for (final CanonicalLegCandidate candidate : ordered) {
+            final List<CanonicalStructurePath> frontier = new ArrayList<>(beam);
+            for (final CanonicalStructurePath path : beam) {
+                if (path.canAppend(candidate)) {
+                    frontier.add(path.append(candidate));
+                }
+            }
+            beam = frontier.stream()
+                    .sorted(CanonicalStructurePath.ORDERING)
+                    .limit(CANONICAL_SEARCH_BEAM_WIDTH)
+                    .toList();
+        }
+        return beam.stream().filter(path -> !path.legs().isEmpty()).sorted(CanonicalStructurePath.ORDERING).findFirst();
     }
 
     /**
@@ -1978,6 +2024,80 @@ public final class ElliottWaveAnalysisRunner {
     }
 
     private record MacroPivotRank(int index, double dominance) {
+    }
+
+    /**
+     * One candidate macro leg for bounded global search.
+     *
+     * @param id              stable candidate id for diagnostics/tests
+     * @param startPivotIndex inclusive pivot index where the leg begins
+     * @param endPivotIndex   inclusive pivot index where the leg ends
+     * @param bullish         leg direction
+     * @param fitScore        local leg fit score in {@code [0,1]}
+     * @since 0.22.4
+     */
+    record CanonicalLegCandidate(String id, int startPivotIndex, int endPivotIndex, boolean bullish, double fitScore) {
+
+        CanonicalLegCandidate {
+            Objects.requireNonNull(id, "id");
+            if (endPivotIndex <= startPivotIndex) {
+                throw new IllegalArgumentException("endPivotIndex must be > startPivotIndex");
+            }
+        }
+    }
+
+    /**
+     * One bounded global-search path through alternating candidate legs.
+     *
+     * @param legs  ordered alternating legs
+     * @param score aggregate coherence score
+     * @since 0.22.4
+     */
+    record CanonicalStructurePath(List<CanonicalLegCandidate> legs, double score) {
+
+        private static final Comparator<CanonicalStructurePath> ORDERING = Comparator
+                .comparingDouble(CanonicalStructurePath::score)
+                .reversed()
+                .thenComparing(Comparator.comparingInt((CanonicalStructurePath path) -> path.legs().size()).reversed())
+                .thenComparingInt(CanonicalStructurePath::terminalPivotIndex);
+
+        CanonicalStructurePath {
+            legs = legs == null ? List.of() : List.copyOf(legs);
+        }
+
+        static CanonicalStructurePath empty() {
+            return new CanonicalStructurePath(List.of(), 0.0);
+        }
+
+        boolean canAppend(final CanonicalLegCandidate candidate) {
+            if (legs.isEmpty()) {
+                return true;
+            }
+            final CanonicalLegCandidate last = legs.getLast();
+            return last.bullish() != candidate.bullish() && candidate.startPivotIndex() >= last.endPivotIndex();
+        }
+
+        CanonicalStructurePath append(final CanonicalLegCandidate candidate) {
+            final List<CanonicalLegCandidate> nextLegs = new ArrayList<>(legs.size() + 1);
+            nextLegs.addAll(legs);
+            nextLegs.add(candidate);
+            return new CanonicalStructurePath(nextLegs, score + incrementalScore(candidate));
+        }
+
+        private double incrementalScore(final CanonicalLegCandidate candidate) {
+            if (legs.isEmpty()) {
+                return candidate.fitScore();
+            }
+            final CanonicalLegCandidate last = legs.getLast();
+            final int gap = Math.max(0, candidate.startPivotIndex() - last.endPivotIndex());
+            final double continuity = gap == 0 ? CANONICAL_SEARCH_CONTIGUITY_BONUS
+                    : Math.max(0.0, CANONICAL_SEARCH_CONTIGUITY_BONUS - (gap * CANONICAL_SEARCH_GAP_PENALTY_PER_PIVOT));
+            return candidate.fitScore() + CANONICAL_SEARCH_ALTERNATION_BONUS + continuity;
+        }
+
+        private int terminalPivotIndex() {
+            return legs.isEmpty() ? Integer.MAX_VALUE : legs.getLast().endPivotIndex();
+        }
     }
 
     private record CurrentCycleStartCandidate(int barIndex, Num price, double rawScore, double normalizedScore) {

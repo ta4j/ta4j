@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 17:29 EDT
+- Last updated: 2026-03-11 17:34 EDT
 - Active phase: Phase 4
-- Active task: Start bounded global canonical structure search over alternating bullish and bearish legs
-- Overall: 34/56 checklist items complete
+- Active task: Add performance safeguards before wiring global search into full BTC-scale runtime flows
+- Overall: 38/56 checklist items complete
 
 ## Status
 
@@ -411,10 +411,10 @@ Avoid exposing calibration internals publicly.
 
 ### Phase 4: Add Global Canonical Structure Search
 
-- [ ] Implement global structure search over alternating bullish and bearish candidate legs.
-- [ ] Start with beam search or dynamic programming and a bounded state space.
-- [ ] Score global structure continuity and macro coherence, not just local fit quality.
-- [ ] Add tests on small synthetic series where the globally correct path is known.
+- [x] Implement global structure search over alternating bullish and bearish candidate legs.
+- [x] Start with beam search or dynamic programming and a bounded state space.
+- [x] Score global structure continuity and macro coherence, not just local fit quality.
+- [x] Add tests on small synthetic series where the globally correct path is known.
 - [ ] Add performance safeguards so full BTC daily is practical.
 
 ### Phase 5: Move Current-Cycle Inference onto the Canonical Search
