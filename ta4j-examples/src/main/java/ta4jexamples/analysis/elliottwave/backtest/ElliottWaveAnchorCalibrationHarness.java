@@ -616,7 +616,19 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
     private static WalkForwardEngine<ElliottWaveWalkForwardContext, ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> buildEngine() {
         return new WalkForwardEngine<>(new AnchoredExpandingWalkForwardSplitter(), new ElliottWavePredictionProvider(),
-                new ElliottWaveOutcomeLabeler(), metrics());
+                new ElliottWaveOutcomeLabeler(), metrics(), calibrationFoldParallelism());
+    }
+
+    private static int calibrationFoldParallelism() {
+        String configured = System.getProperty("ta4j.ew.calibration.foldParallelism", "").trim();
+        if (configured.isEmpty()) {
+            return Math.max(1, Math.min(4, Runtime.getRuntime().availableProcessors()));
+        }
+        int parsed = Integer.parseInt(configured);
+        if (parsed <= 0) {
+            throw new IllegalArgumentException("ta4j.ew.calibration.foldParallelism must be > 0");
+        }
+        return parsed;
     }
 
     private static List<WalkForwardMetric<ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome>> metrics() {

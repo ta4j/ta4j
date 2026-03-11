@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 11:04 EDT
+- Last updated: 2026-03-11 11:12 EDT
 - Active phase: Phase 8
-- Active task: Parallelize calibration at the fold level with a bounded executor and deterministic reduction
-- Overall: 4/56 checklist items complete
+- Active task: Expand the portability datasets so ETH/USD and SP500 cover materially longer histories before using portability results as a meaningful calibration gate
+- Overall: 12/56 checklist items complete
 
 ## Status
 
@@ -444,23 +444,23 @@ Avoid exposing calibration internals publicly.
 
 ### Phase 8: Build the BTC Calibration Harness
 
-- [ ] Create an offline calibration harness that runs the canonical engine over full-history BTC.
-- [ ] Score result quality against the truth target:
+- [x] Create an offline calibration harness that runs the canonical engine over full-history BTC.
+- [x] Score result quality against the truth target:
   - top/bottom timing error
   - cycle completion alignment
   - wave-label alignment
   - holdout coverage
   - replay stability
-- [ ] Make the harness emit a scored comparison report for candidate profile vectors.
-- [ ] Add a stable baseline report artifact for the current best vector.
-- [ ] Persist BTC calibration artifacts incrementally instead of only at the end:
+- [x] Make the harness emit a scored comparison report for candidate profile vectors.
+- [x] Add a stable baseline report artifact for the current best vector.
+- [x] Persist BTC calibration artifacts incrementally instead of only at the end:
   - write each candidate-profile result as it completes
   - write the selected BTC historical calibration report before portability checks begin
   - append portability and final aggregate output afterward
 - [ ] Expand the portability datasets so ETH/USD and SP500 cover materially longer histories before using portability results as a meaningful calibration gate.
-- [ ] Parallelize calibration at the fold level with a bounded executor and deterministic reduction.
-- [ ] Avoid nested parallelism across profiles, folds, and scenario search; one layer must own concurrency.
-- [ ] Add deep runtime instrumentation to the harness and core search:
+- [x] Parallelize calibration at the fold level with a bounded executor and deterministic reduction.
+- [x] Avoid nested parallelism across profiles, folds, and scenario search; one layer must own concurrency.
+- [x] Add deep runtime instrumentation to the harness and core search:
   - per-profile elapsed time
   - per-fold elapsed time
   - per-snapshot elapsed time

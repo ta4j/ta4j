@@ -96,6 +96,62 @@ class WalkForwardEngineTest {
         assertThat(result.observationsByHorizon().get(15)).isNotEmpty();
     }
 
+    @Test
+    void engineProducesTheSameSnapshotsMetricsAndAuditsWhenFoldsRunInParallel() {
+        BarSeries series = new MockBarSeriesBuilder().withData(prices(220)).build();
+        NumFactory numFactory = series.numFactory();
+        WalkForwardConfig config = new WalkForwardConfig(80, 30, 30, 2, 2, 0, 5, List.of(3), 2, List.of(1), 7L);
+
+        PredictionProvider<String, String> provider = (fullSeries, decisionIndex, context) -> List.of(
+                new RankedPrediction<>(context + "-bull", 1, numFactory.numOf(0.7), numFactory.numOf(0.8), "bull"),
+                new RankedPrediction<>(context + "-bear", 2, numFactory.numOf(0.3), numFactory.numOf(0.4), "bear"));
+
+        OutcomeLabeler<String, Boolean> labeler = (fullSeries, decisionIndex, horizonBars, prediction) -> {
+            double start = fullSeries.getBar(decisionIndex).getClosePrice().doubleValue();
+            double end = fullSeries.getBar(decisionIndex + horizonBars).getClosePrice().doubleValue();
+            boolean movedUp = end > start;
+            return "bull".equals(prediction.payload()) ? movedUp : !movedUp;
+        };
+
+        List<WalkForwardMetric<String, Boolean>> metrics = List.of(
+                WalkForwardMetric.agreement("eventAgreement", 1, (prediction, outcome) -> outcome),
+                WalkForwardMetric.topKHitRate("top2Hit", 2, (prediction, outcome) -> outcome),
+                WalkForwardMetric.brierScore("brier", 1, outcome -> outcome ? numFactory.one() : numFactory.zero()));
+
+        List<WalkForwardRunResult.LeakageAudit> serialAudit = new ArrayList<>();
+        WalkForwardEngine<String, String, Boolean> serialEngine = new WalkForwardEngine<>(
+                new AnchoredExpandingWalkForwardSplitter(), provider, labeler, metrics, ignored -> {
+                    // no-op
+                }, serialAudit::add);
+
+        List<WalkForwardRunResult.LeakageAudit> parallelAudit = new ArrayList<>();
+        WalkForwardEngine<String, String, Boolean> parallelEngine = new WalkForwardEngine<>(
+                new AnchoredExpandingWalkForwardSplitter(), provider, labeler, metrics, ignored -> {
+                    // no-op
+                }, parallelAudit::add, 3);
+
+        WalkForwardRunResult<String, Boolean> serial = serialEngine.run(series, "ctx", config);
+        WalkForwardRunResult<String, Boolean> parallel = parallelEngine.run(series, "ctx", config);
+
+        assertThat(parallel.splits()).isEqualTo(serial.splits());
+        assertThat(parallel.snapshots()).isEqualTo(serial.snapshots());
+        assertThat(parallel.observationsByHorizon()).isEqualTo(serial.observationsByHorizon());
+        assertThat(parallel.globalMetricsByHorizon()).isEqualTo(serial.globalMetricsByHorizon());
+        assertThat(parallel.foldMetricsByHorizon()).isEqualTo(serial.foldMetricsByHorizon());
+        assertThat(parallel.leakageAudit()).isEqualTo(serial.leakageAudit());
+        assertThat(parallel.manifest()).isEqualTo(serial.manifest());
+        assertThat(parallelAudit).isEqualTo(serialAudit);
+        assertThat(parallel.runtimeReport()
+                .foldRuntimes()
+                .stream()
+                .map(fold -> fold.foldId() + ":" + fold.snapshotCount()))
+                .isEqualTo(serial.runtimeReport()
+                        .foldRuntimes()
+                        .stream()
+                        .map(fold -> fold.foldId() + ":" + fold.snapshotCount())
+                        .toList());
+    }
+
     private static double[] prices(int size) {
         double[] prices = new double[size];
         for (int i = 0; i < size; i++) {
