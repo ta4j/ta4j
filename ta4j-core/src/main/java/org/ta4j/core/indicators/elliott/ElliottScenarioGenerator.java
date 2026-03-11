@@ -542,7 +542,8 @@ public final class ElliottScenarioGenerator {
                     "Anchor-first corrective decomposition score "
                             + String.format(java.util.Locale.ROOT, "%.2f", structureScore));
             best.consider(candidate, confidence.overall().doubleValue());
-        }, cutPoints -> true, prunedBranches);
+        }, cutPoints -> partialCorrectiveDecompositionRemainsViable(swings.get(0).degree(), pivots, cutPoints),
+                prunedBranches);
         lastCorrectiveBranchCount += branches.get();
         lastCorrectivePrunedBranchCount += prunedBranches.get();
         return best.swings();
@@ -658,6 +659,17 @@ public final class ElliottScenarioGenerator {
         return wave1Direction > 0 ? wave4End >= wave1End : wave4End <= wave1End;
     }
 
+    private boolean partialCorrectiveDecompositionRemainsViable(final ElliottDegree degree,
+            final List<SwingPivotPoint> pivots, final List<Integer> cutPoints) {
+        if (cutPoints.size() < 2) {
+            return true;
+        }
+
+        final ElliottSwing waveA = swingBetween(degree, pivots, 0, cutPoints.get(0));
+        final ElliottSwing waveB = swingBetween(degree, pivots, cutPoints.get(0), cutPoints.get(1));
+        return fibValidator.isWaveBRetracementValid(waveA, waveB);
+    }
+
     private List<SwingPivotPoint> extractPivots(final List<ElliottSwing> swings) {
         final List<SwingPivotPoint> pivots = new ArrayList<>(swings.size() + 1);
         final ElliottSwing first = swings.get(0);
@@ -714,18 +726,22 @@ public final class ElliottScenarioGenerator {
         return List.copyOf(limited);
     }
 
+    private ElliottSwing swingBetween(final ElliottDegree degree, final List<SwingPivotPoint> pivots,
+            final int startPivot, final int endPivot) {
+        return new ElliottSwing(pivots.get(startPivot).index(), pivots.get(endPivot).index(),
+                pivots.get(startPivot).price(), pivots.get(endPivot).price(), degree);
+    }
+
     private List<ElliottSwing> buildDecomposition(final ElliottDegree degree, final List<SwingPivotPoint> pivots,
             final List<Integer> cutPoints) {
         final List<ElliottSwing> decomposition = new ArrayList<>(cutPoints.size() + 1);
         int previousPivot = 0;
         for (Integer cutPoint : cutPoints) {
-            decomposition.add(new ElliottSwing(pivots.get(previousPivot).index(), pivots.get(cutPoint).index(),
-                    pivots.get(previousPivot).price(), pivots.get(cutPoint).price(), degree));
+            decomposition.add(swingBetween(degree, pivots, previousPivot, cutPoint));
             previousPivot = cutPoint;
         }
         final int endPivot = pivots.size() - 1;
-        decomposition.add(new ElliottSwing(pivots.get(previousPivot).index(), pivots.get(endPivot).index(),
-                pivots.get(previousPivot).price(), pivots.get(endPivot).price(), degree));
+        decomposition.add(swingBetween(degree, pivots, previousPivot, endPivot));
         return List.copyOf(decomposition);
     }
 

@@ -256,6 +256,35 @@ class ElliottScenarioGeneratorTest {
     }
 
     @Test
+    void decompositionSearchPrunesWaveBRetracementBeforeFullScoring() {
+        ElliottScenarioGenerator decompositionGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 10,
+                ConfidenceProfiles.defaultModel(numFactory), PatternSet.of(ScenarioType.CORRECTIVE_ZIGZAG,
+                        ScenarioType.CORRECTIVE_FLAT, ScenarioType.CORRECTIVE_COMPLEX));
+        ElliottFibonacciValidator fibValidator = new ElliottFibonacciValidator(numFactory);
+        List<ElliottSwing> invalidWaveBCorrection = List.of(
+                new ElliottSwing(0, 2, numFactory.numOf(200), numFactory.numOf(150), ElliottDegree.MINOR),
+                new ElliottSwing(2, 4, numFactory.numOf(150), numFactory.numOf(198), ElliottDegree.MINOR),
+                new ElliottSwing(4, 6, numFactory.numOf(198), numFactory.numOf(142), ElliottDegree.MINOR),
+                new ElliottSwing(6, 8, numFactory.numOf(142), numFactory.numOf(190), ElliottDegree.MINOR),
+                new ElliottSwing(8, 10, numFactory.numOf(190), numFactory.numOf(138), ElliottDegree.MINOR),
+                new ElliottSwing(10, 12, numFactory.numOf(138), numFactory.numOf(184), ElliottDegree.MINOR),
+                new ElliottSwing(12, 14, numFactory.numOf(184), numFactory.numOf(126), ElliottDegree.MINOR));
+
+        ElliottScenarioSet set = decompositionGenerator.generate(invalidWaveBCorrection, ElliottDegree.MINOR, null, 14);
+        ElliottAnalysisResult.AnalysisDiagnostics diagnostics = decompositionGenerator.lastDiagnostics();
+
+        assertThat(set.all())
+                .filteredOn(scenario -> scenario.id().startsWith("corrective-decomp")
+                        && scenario.currentPhase() == ElliottPhase.CORRECTIVE_C)
+                .allMatch(scenario -> fibValidator.isWaveBRetracementValid(scenario.swings().get(0),
+                        scenario.swings().get(1)));
+        assertThat(diagnostics.correctiveDecompositionPrunedBranchCount()).isPositive();
+        assertThat(diagnostics.totalCorrectiveDecompositionBranchCount())
+                .isLessThan(naiveCorrectiveDecompositionBranchCount(invalidWaveBCorrection.size()));
+        assertThat(diagnostics.correctivePruningHitRate()).isGreaterThan(0.0);
+    }
+
+    @Test
     void scenariosSortedByConfidence() {
         List<ElliottSwing> swings = createAlternatingSwings();
 
@@ -459,6 +488,18 @@ class ElliottScenarioGeneratorTest {
             int segmentSize = swingCount - startIndex;
             int internalPivots = segmentSize - 1;
             for (int waveCount = 2; waveCount <= Math.min(5, segmentSize); waveCount++) {
+                total += combinations(internalPivots, waveCount - 1);
+            }
+        }
+        return total;
+    }
+
+    private int naiveCorrectiveDecompositionBranchCount(int swingCount) {
+        int total = 0;
+        for (int startIndex = 0; startIndex < swingCount; startIndex++) {
+            int segmentSize = swingCount - startIndex;
+            int internalPivots = segmentSize - 1;
+            for (int waveCount = 2; waveCount <= Math.min(3, segmentSize); waveCount++) {
                 total += combinations(internalPivots, waveCount - 1);
             }
         }
