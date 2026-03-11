@@ -168,6 +168,39 @@ class ElliottScenarioGeneratorTest {
     }
 
     @Test
+    void decompositionSearchPrunesNonAlternatingCutPathsBeforeFullScoring() {
+        ElliottScenarioGenerator decompositionGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 10,
+                ConfidenceProfiles.defaultModel(numFactory), PatternSet.of(ScenarioType.IMPULSE));
+        List<ElliottSwing> longNoisyImpulse = List.of(
+                new ElliottSwing(0, 2, numFactory.numOf(100), numFactory.numOf(108), ElliottDegree.MINOR),
+                new ElliottSwing(2, 4, numFactory.numOf(108), numFactory.numOf(104), ElliottDegree.MINOR),
+                new ElliottSwing(4, 6, numFactory.numOf(104), numFactory.numOf(120), ElliottDegree.MINOR),
+                new ElliottSwing(6, 8, numFactory.numOf(120), numFactory.numOf(112), ElliottDegree.MINOR),
+                new ElliottSwing(8, 10, numFactory.numOf(112), numFactory.numOf(126), ElliottDegree.MINOR),
+                new ElliottSwing(10, 12, numFactory.numOf(126), numFactory.numOf(119), ElliottDegree.MINOR),
+                new ElliottSwing(12, 14, numFactory.numOf(119), numFactory.numOf(142), ElliottDegree.MINOR),
+                new ElliottSwing(14, 16, numFactory.numOf(142), numFactory.numOf(135), ElliottDegree.MINOR),
+                new ElliottSwing(16, 18, numFactory.numOf(135), numFactory.numOf(150), ElliottDegree.MINOR),
+                new ElliottSwing(18, 20, numFactory.numOf(150), numFactory.numOf(144), ElliottDegree.MINOR),
+                new ElliottSwing(20, 22, numFactory.numOf(144), numFactory.numOf(162), ElliottDegree.MINOR),
+                new ElliottSwing(22, 24, numFactory.numOf(162), numFactory.numOf(154), ElliottDegree.MINOR),
+                new ElliottSwing(24, 26, numFactory.numOf(154), numFactory.numOf(178), ElliottDegree.MINOR),
+                new ElliottSwing(26, 28, numFactory.numOf(178), numFactory.numOf(168), ElliottDegree.MINOR),
+                new ElliottSwing(28, 30, numFactory.numOf(168), numFactory.numOf(190), ElliottDegree.MINOR),
+                new ElliottSwing(30, 32, numFactory.numOf(190), numFactory.numOf(182), ElliottDegree.MINOR),
+                new ElliottSwing(32, 34, numFactory.numOf(182), numFactory.numOf(205), ElliottDegree.MINOR));
+
+        ElliottScenarioSet set = decompositionGenerator.generate(longNoisyImpulse, ElliottDegree.MINOR, null, 34);
+        ElliottAnalysisResult.AnalysisDiagnostics diagnostics = decompositionGenerator.lastDiagnostics();
+
+        assertThat(set.all()).anyMatch(
+                scenario -> scenario.type() == ScenarioType.IMPULSE && scenario.id().startsWith("impulse-decomp")
+                        && scenario.currentPhase() == ElliottPhase.WAVE5 && scenario.swings().size() == 5);
+        assertThat(diagnostics.impulseDecompositionBranchCount())
+                .isLessThan(naiveImpulseDecompositionBranchCount(longNoisyImpulse.size()));
+    }
+
+    @Test
     void scenariosSortedByConfidence() {
         List<ElliottSwing> swings = createAlternatingSwings();
 
@@ -363,5 +396,34 @@ class ElliottScenarioGeneratorTest {
                 new ElliottSwing(10, 15, numFactory.numOf(110), numFactory.numOf(140), ElliottDegree.MINOR),
                 new ElliottSwing(15, 20, numFactory.numOf(140), numFactory.numOf(125), ElliottDegree.MINOR),
                 new ElliottSwing(20, 25, numFactory.numOf(125), numFactory.numOf(160), ElliottDegree.MINOR));
+    }
+
+    private int naiveImpulseDecompositionBranchCount(int swingCount) {
+        int total = 0;
+        for (int startIndex = 0; startIndex < swingCount; startIndex++) {
+            int segmentSize = swingCount - startIndex;
+            int internalPivots = segmentSize - 1;
+            for (int waveCount = 2; waveCount <= Math.min(5, segmentSize); waveCount++) {
+                total += combinations(internalPivots, waveCount - 1);
+            }
+        }
+        return total;
+    }
+
+    private int combinations(int n, int k) {
+        if (k < 0 || k > n) {
+            return 0;
+        }
+        if (k == 0 || k == n) {
+            return 1;
+        }
+        long numerator = 1;
+        long denominator = 1;
+        int effectiveK = Math.min(k, n - k);
+        for (int i = 1; i <= effectiveK; i++) {
+            numerator *= (n - effectiveK + i);
+            denominator *= i;
+        }
+        return Math.toIntExact(numerator / denominator);
     }
 }

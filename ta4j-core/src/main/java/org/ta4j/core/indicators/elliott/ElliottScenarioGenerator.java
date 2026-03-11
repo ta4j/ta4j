@@ -490,7 +490,7 @@ public final class ElliottScenarioGenerator {
         final List<SwingPivotPoint> pivots = limitPivotsForDecomposition(extractPivots(swings));
         final BestDecomposition best = new BestDecomposition();
         final AtomicInteger branches = new AtomicInteger();
-        searchDecompositionCuts(pivots.size(), waveCount - 1, 1, new ArrayList<>(), cutPoints -> {
+        searchDecompositionCuts(pivots, waveCount - 1, 1, new ArrayList<>(), cutPoints -> {
             branches.incrementAndGet();
             final List<ElliottSwing> candidate = buildDecomposition(swings.get(0).degree(), pivots, cutPoints);
             final ElliottPhase phase = determineImpulsePhase(candidate);
@@ -517,7 +517,7 @@ public final class ElliottScenarioGenerator {
         final List<SwingPivotPoint> pivots = limitPivotsForDecomposition(extractPivots(swings));
         final BestDecomposition best = new BestDecomposition();
         final AtomicInteger branches = new AtomicInteger();
-        searchDecompositionCuts(pivots.size(), waveCount - 1, 1, new ArrayList<>(), cutPoints -> {
+        searchDecompositionCuts(pivots, waveCount - 1, 1, new ArrayList<>(), cutPoints -> {
             branches.incrementAndGet();
             final List<ElliottSwing> candidate = buildDecomposition(swings.get(0).degree(), pivots, cutPoints);
             final ElliottPhase phase = determineCorrectivePhase(candidate);
@@ -536,18 +536,53 @@ public final class ElliottScenarioGenerator {
         return best.swings();
     }
 
-    private void searchDecompositionCuts(final int pivotCount, final int cutsNeeded, final int nextPivot,
+    private void searchDecompositionCuts(final List<SwingPivotPoint> pivots, final int cutsNeeded, final int nextPivot,
             final List<Integer> chosenCuts, final java.util.function.Consumer<List<Integer>> consumer) {
+        final int pivotCount = pivots.size();
         if (cutsNeeded == 0) {
-            consumer.accept(List.copyOf(chosenCuts));
+            if (decompositionAlternatesDirection(pivots, chosenCuts, true)) {
+                consumer.accept(List.copyOf(chosenCuts));
+            }
             return;
         }
         final int lastInternalPivot = (pivotCount - 2) - (cutsNeeded - 1);
         for (int pivotIndex = nextPivot; pivotIndex <= lastInternalPivot; pivotIndex++) {
             chosenCuts.add(pivotIndex);
-            searchDecompositionCuts(pivotCount, cutsNeeded - 1, pivotIndex + 1, chosenCuts, consumer);
+            if (decompositionAlternatesDirection(pivots, chosenCuts, false)) {
+                searchDecompositionCuts(pivots, cutsNeeded - 1, pivotIndex + 1, chosenCuts, consumer);
+            }
             chosenCuts.removeLast();
         }
+    }
+
+    private boolean decompositionAlternatesDirection(final List<SwingPivotPoint> pivots, final List<Integer> cutPoints,
+            final boolean includeTerminalSegment) {
+        if (cutPoints.isEmpty()) {
+            return true;
+        }
+
+        int previousDirection = 0;
+        int previousPivot = 0;
+        for (Integer cutPoint : cutPoints) {
+            final int currentDirection = segmentDirection(pivots, previousPivot, cutPoint);
+            if (currentDirection == 0 || currentDirection == previousDirection) {
+                return false;
+            }
+            previousDirection = currentDirection;
+            previousPivot = cutPoint;
+        }
+
+        if (!includeTerminalSegment) {
+            return true;
+        }
+
+        final int terminalDirection = segmentDirection(pivots, previousPivot, pivots.size() - 1);
+        return terminalDirection != 0 && terminalDirection != previousDirection;
+    }
+
+    private int segmentDirection(final List<SwingPivotPoint> pivots, final int startPivot, final int endPivot) {
+        final double delta = pivots.get(endPivot).price().minus(pivots.get(startPivot).price()).doubleValue();
+        return Double.compare(delta, 0.0);
     }
 
     private List<SwingPivotPoint> extractPivots(final List<ElliottSwing> swings) {
