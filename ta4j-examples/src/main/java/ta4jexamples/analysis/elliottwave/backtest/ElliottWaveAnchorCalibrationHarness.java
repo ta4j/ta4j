@@ -101,6 +101,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
     static final String BTC_SERIES_NAME = "INDEX_BTCUSD_PT1D@TradingView (anchor calibration)";
     static final String ETH_SERIES_NAME = "ETH-USD_PT1D@Coinbase (portability)";
     static final String SP500_SERIES_NAME = "SP500_PT7D@YahooFinance (portability)";
+    private static final Instant TARGETED_BTC_START = Instant.parse("2016-01-01T00:00:00Z");
+    private static final Instant TARGETED_BTC_END = Instant.parse("2024-12-31T23:59:59Z");
     private static final String BTC_CANONICAL_SEARCH_PLAN_ID = "btc-phase9-controlled-search-v1";
     private static final String BTC_CANONICAL_SEARCH_LANE_ID = "orthodox-core";
     static final String METRIC_EVENT_AGREEMENT = "rank1EventAgreement";
@@ -224,14 +226,17 @@ public final class ElliottWaveAnchorCalibrationHarness {
         LOG.info("Loading portability series {}", SP500_RESOURCE);
         BarSeries sp500Series = loadSeries(SP500_RESOURCE, SP500_SERIES_NAME).orElse(null);
 
-        WalkForwardConfig config = depth.config();
-        AnchorRegistry registry = defaultBitcoinAnchors(registryDocument, btcSeries);
+        BarSeries calibrationSeries = depth == CalibrationDepth.TARGETED ? targetedBitcoinSeries(btcSeries) : btcSeries;
+        WalkForwardConfig config = depth.config(calibrationSeries);
+        AnchorRegistry registry = depth == CalibrationDepth.TARGETED
+                ? targetedBitcoinAnchors(registryDocument, btcSeries, calibrationSeries)
+                : defaultBitcoinAnchors(registryDocument, calibrationSeries);
         List<CandidateProfile> profiles = depth.profiles();
         LOG.info("Resolved {} BTC anchors across {} profiles; BTC bars={}", registry.anchors().size(), profiles.size(),
-                btcSeries.getBarCount());
+                calibrationSeries.getBarCount());
 
-        List<CandidateEvaluation> evaluations = evaluateCandidatesSequentially(btcSeries, registry, profiles, config,
-                depth, artifactSink);
+        List<CandidateEvaluation> evaluations = evaluateCandidatesSequentially(calibrationSeries, registry, profiles,
+                config, depth, artifactSink);
 
         WalkForwardEngine<ElliottWaveWalkForwardContext, ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> portabilityEngine = buildEngine();
 
@@ -262,8 +267,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
         LOG.info("Built BTC anchor calibration report in {}", formatElapsed(startedAt));
         ReportBundle report = ReportBundle.create("btc-anchor-calibration-v2-" + depth.id(),
-                btcSeries.getBar(btcSeries.getEndIndex()).getEndTime(), registry, baselinePolicy, baseline,
-                challengerAssessments, decision, portability);
+                calibrationSeries.getBar(calibrationSeries.getEndIndex()).getEndTime(), registry, baselinePolicy,
+                baseline, challengerAssessments, decision, portability);
         artifactSink.recordFinalReport(report, depth);
         return report;
     }
@@ -327,6 +332,54 @@ public final class ElliottWaveAnchorCalibrationHarness {
         return new AnchorRegistry(registry.registryId(), registry.datasetResource(), registry.provenance(), anchors);
     }
 
+    static BarSeries targetedBitcoinSeries(BarSeries fullSeries) {
+        int startIndex = findFirstBarAtOrAfter(fullSeries, TARGETED_BTC_START);
+        int endExclusive = findLastBarAtOrBefore(fullSeries, TARGETED_BTC_END) + 1;
+        if (startIndex >= endExclusive) {
+            throw new IllegalStateException("Targeted BTC validation window is empty");
+        }
+        return fullSeries.getSubSeries(startIndex, endExclusive);
+    }
+
+    static AnchorRegistry targetedBitcoinAnchors(BarSeries fullSeries) {
+        ElliottWaveAnchorRegistry registry = ElliottWaveAnchorRegistry.load(ElliottWaveAnchorRegistry.DEFAULT_RESOURCE);
+        return targetedBitcoinAnchors(registry, fullSeries, targetedBitcoinSeries(fullSeries));
+    }
+
+    private static AnchorRegistry targetedBitcoinAnchors(ElliottWaveAnchorRegistry registry, BarSeries fullSeries,
+            BarSeries targetedSeries) {
+        AnchorRegistry resolved = defaultBitcoinAnchors(registry, fullSeries);
+        Instant start = targetedSeries.getBar(targetedSeries.getBeginIndex()).getEndTime();
+        Instant end = targetedSeries.getBar(targetedSeries.getEndIndex()).getEndTime();
+        List<Anchor> anchors = resolved.anchors()
+                .stream()
+                .filter(anchor -> !anchor.at().isBefore(start) && !anchor.at().isAfter(end))
+                .toList();
+        if (anchors.isEmpty()) {
+            throw new IllegalStateException("Targeted BTC validation window resolved no anchors");
+        }
+        return new AnchorRegistry(resolved.version(), resolved.datasetResource() + "#targeted-2016-2024",
+                resolved.provenance() + "; targeted-window=2016-01-01..2024-12-31", anchors);
+    }
+
+    private static int findFirstBarAtOrAfter(BarSeries series, Instant threshold) {
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            if (!series.getBar(i).getEndTime().isBefore(threshold)) {
+                return i;
+            }
+        }
+        throw new IllegalStateException("No bars found at or after " + threshold);
+    }
+
+    private static int findLastBarAtOrBefore(BarSeries series, Instant threshold) {
+        for (int i = series.getEndIndex(); i >= series.getBeginIndex(); i--) {
+            if (!series.getBar(i).getEndTime().isAfter(threshold)) {
+                return i;
+            }
+        }
+        throw new IllegalStateException("No bars found at or before " + threshold);
+    }
+
     static List<CandidateProfile> defaultProfiles() {
         return routineProfiles();
     }
@@ -348,7 +401,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
     }
 
     enum CalibrationDepth {
-        ROUTINE("routine", false, false), EXHAUSTIVE("exhaustive", true, true);
+        ROUTINE("routine", false, false), TARGETED("targeted", false, false), EXHAUSTIVE("exhaustive", true, true);
 
         private final String id;
         private final boolean includeChallengerSearch;
@@ -370,7 +423,11 @@ public final class ElliottWaveAnchorCalibrationHarness {
             if (args.length == 1 && "--routine".equals(args[0])) {
                 return ROUTINE;
             }
-            throw new IllegalArgumentException("Unsupported arguments. Use no args, --routine, or --exhaustive.");
+            if (args.length == 1 && "--targeted".equals(args[0])) {
+                return TARGETED;
+            }
+            throw new IllegalArgumentException(
+                    "Unsupported arguments. Use no args, --routine, --targeted, or --exhaustive.");
         }
 
         String id() {
@@ -385,12 +442,22 @@ public final class ElliottWaveAnchorCalibrationHarness {
             return includePortability;
         }
 
-        WalkForwardConfig config() {
-            return this == ROUTINE ? routineConfig() : ElliottWaveWalkForwardProfiles.baselineConfig();
+        WalkForwardConfig config(BarSeries series) {
+            if (this == ROUTINE) {
+                return routineConfig();
+            }
+            if (this == TARGETED) {
+                WalkForwardConfig targeted = WalkForwardConfig.defaultConfig(series);
+                return new WalkForwardConfig(targeted.minTrainBars(), targeted.testBars(), targeted.testBars(),
+                        targeted.purgeBars(), targeted.embargoBars(), targeted.holdoutBars(),
+                        targeted.primaryHorizonBars(), targeted.reportingHorizons(), targeted.optimizationTopK(),
+                        targeted.reportingTopKs(), targeted.seed());
+            }
+            return ElliottWaveWalkForwardProfiles.baselineConfig();
         }
 
         List<CandidateProfile> profiles() {
-            return this == ROUTINE ? routineProfiles() : exhaustiveProfiles();
+            return this == EXHAUSTIVE ? exhaustiveProfiles() : routineProfiles();
         }
     }
 

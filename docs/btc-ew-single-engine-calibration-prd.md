@@ -2,7 +2,7 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 14:40 EDT
+- Last updated: 2026-03-11 14:49 EDT
 - Active phase: Phase 9
 - Active task: Expand pruning coverage and runtime evidence before adding more brute-force search
 - Overall: 21/56 checklist items complete
@@ -504,6 +504,7 @@ Avoid exposing calibration internals publicly.
 - [x] Record pruning hit rates and runtime deltas so performance work stays evidence-driven.
 - [x] Decide whether the default search lane should use a reduced geometry while an exhaustive lane remains opt-in.
   Implemented: default harness runs `routine` depth with the locked canonical BTC profile and non-overlapping fold steps; `--exhaustive` enables the full controlled search plan plus portability.
+  Fast-path validation: `--targeted` now runs the locked canonical BTC profile on a reduced `2016-01-01 .. 2024-12-31` BTC window with filtered truth anchors so changes can be checked without another full-history exhaustive pass.
 
 ### Immediate Follow-up Order from the First Full Calibration Run
 

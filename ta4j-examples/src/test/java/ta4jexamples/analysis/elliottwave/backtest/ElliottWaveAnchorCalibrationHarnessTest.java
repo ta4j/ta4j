@@ -114,6 +114,38 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     }
 
     @Test
+    void targetedBtcValidationWindowUsesReducedSeriesAndFilteredTruthAnchors() {
+        BarSeries fullSeries = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveAnchorCalibrationHarnessTest.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveAnchorCalibrationHarnessTest.class));
+
+        BarSeries targetedSeries = ElliottWaveAnchorCalibrationHarness.targetedBitcoinSeries(fullSeries);
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry targetedAnchors = ElliottWaveAnchorCalibrationHarness
+                .targetedBitcoinAnchors(fullSeries);
+
+        assertTrue(targetedSeries.getBarCount() < fullSeries.getBarCount());
+        assertTrue(targetedSeries.getBar(targetedSeries.getBeginIndex())
+                .getEndTime()
+                .compareTo(Instant.parse("2016-01-01T00:00:00Z")) >= 0);
+        assertTrue(targetedSeries.getBar(targetedSeries.getEndIndex())
+                .getEndTime()
+                .compareTo(Instant.parse("2024-12-31T23:59:59Z")) <= 0);
+        assertIterableEquals(
+                ElliottWaveAnchorCalibrationHarness.routineProfiles()
+                        .stream()
+                        .map(ElliottWaveAnchorCalibrationHarness.CandidateProfile::id)
+                        .toList(),
+                ElliottWaveAnchorCalibrationHarness.CalibrationDepth.TARGETED.profiles()
+                        .stream()
+                        .map(ElliottWaveAnchorCalibrationHarness.CandidateProfile::id)
+                        .toList());
+        assertIterableEquals(
+                List.of("btc-2017-cycle-top", "btc-2018-cycle-bottom", "btc-2021-cycle-top", "btc-2022-cycle-bottom"),
+                targetedAnchors.anchors().stream().map(ElliottWaveAnchorCalibrationHarness.Anchor::id).toList());
+        assertTrue(targetedAnchors.datasetResource().contains("#targeted-2016-2024"));
+    }
+
+    @Test
     void routineAndExhaustiveProfilesFollowTheDeterministicControlledSearchPlan() {
         ElliottWaveAnchorCalibrationHarness.CandidateSearchPlan plan = ElliottWaveAnchorCalibrationHarness
                 .controlledProfileSearch();
