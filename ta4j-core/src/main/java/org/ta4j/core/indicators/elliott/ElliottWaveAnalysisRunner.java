@@ -6,6 +6,7 @@ package org.ta4j.core.indicators.elliott;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -475,6 +476,43 @@ public final class ElliottWaveAnalysisRunner {
     }
 
     /**
+     * Promotes the processed swing sequence for one analysis snapshot into a
+     * reusable pivot graph.
+     *
+     * <p>
+     * The graph keeps pivot direction, bar index, timestamp, price, degree
+     * provenance, and the runner's configured fractal confirmation span so later
+     * macro-structure search can consume pivot-level data without reconstructing it
+     * ad hoc from swings.
+     *
+     * @param series   root series that supplied the timestamps
+     * @param analysis analysis snapshot whose processed swings seed the graph
+     * @return reusable macro pivot graph for the processed swing path
+     * @since 0.22.4
+     */
+    MacroPivotGraph buildMacroPivotGraph(final BarSeries series, final ElliottAnalysisResult analysis) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(analysis, "analysis");
+        if (analysis.processedSwings().isEmpty()) {
+            return MacroPivotGraph.empty(higherDegrees, lowerDegrees);
+        }
+
+        final List<ElliottSwing> swings = analysis.processedSwings();
+        final List<MacroPivot> pivots = new ArrayList<>(swings.size() + 1);
+        for (final org.ta4j.core.indicators.elliott.swing.SwingPivot pivot : SwingDetectorResult.fromSwings(swings)
+                .pivots()) {
+            final int barIndex = pivot.index();
+            if (barIndex < series.getBeginIndex() || barIndex > series.getEndIndex()) {
+                continue;
+            }
+            pivots.add(new MacroPivot(pivot.type() == org.ta4j.core.indicators.elliott.swing.SwingPivotType.HIGH,
+                    barIndex, series.getBar(barIndex).getEndTime(), pivot.price(),
+                    pivotDegreeProvenance(swings, barIndex)));
+        }
+        return new MacroPivotGraph(pivots, higherDegrees, lowerDegrees);
+    }
+
+    /**
      * Runs the built-in single-degree pipeline with default noise filtering and
      * swing compression parameters scaled to the requested degree.
      *
@@ -838,6 +876,15 @@ public final class ElliottWaveAnalysisRunner {
         case 3 -> ElliottPhase.CORRECTIVE_C;
         default -> null;
         };
+    }
+
+    private ElliottDegree pivotDegreeProvenance(final List<ElliottSwing> swings, final int pivotIndex) {
+        for (final ElliottSwing swing : swings) {
+            if (swing.fromIndex() == pivotIndex || swing.toIndex() == pivotIndex) {
+                return swing.degree();
+            }
+        }
+        return baseDegree;
     }
 
     private Num currentPhaseInvalidation(final ElliottScenario scenario, final ElliottPhase currentPhase) {
@@ -1793,6 +1840,45 @@ public final class ElliottWaveAnalysisRunner {
 
         public AnchoredWindowSelection {
             Objects.requireNonNull(assessment, "assessment");
+        }
+    }
+
+    /**
+     * Reusable pivot graph derived from one processed swing path.
+     *
+     * @param pivots        ordered pivot sequence
+     * @param higherDegrees configured fractal confirmation degrees above the base
+     * @param lowerDegrees  configured fractal confirmation degrees below the base
+     * @since 0.22.4
+     */
+    record MacroPivotGraph(List<MacroPivot> pivots, int higherDegrees, int lowerDegrees) {
+
+        MacroPivotGraph {
+            pivots = pivots == null ? List.of() : List.copyOf(pivots);
+        }
+
+        static MacroPivotGraph empty(final int higherDegrees, final int lowerDegrees) {
+            return new MacroPivotGraph(List.of(), higherDegrees, lowerDegrees);
+        }
+    }
+
+    /**
+     * One pivot in the reusable macro graph.
+     *
+     * @param highPivot {@code true} when the pivot is a high, {@code false} when it
+     *                  is a low
+     * @param barIndex  bar index of the pivot in the root series
+     * @param time      bar timestamp in UTC
+     * @param price     pivot price
+     * @param degree    swing-degree provenance associated with this pivot
+     * @since 0.22.4
+     */
+    record MacroPivot(boolean highPivot, int barIndex, Instant time, Num price, ElliottDegree degree) {
+
+        MacroPivot {
+            Objects.requireNonNull(time, "time");
+            Objects.requireNonNull(price, "price");
+            Objects.requireNonNull(degree, "degree");
         }
     }
 

@@ -575,6 +575,40 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void buildMacroPivotGraphCarriesProcessedPivotMetadata() {
+        BarSeries series = buildCurrentCycleSeries();
+        NumFactory factory = series.numFactory();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(2)
+                .lowerDegrees(1)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        ElliottAnalysisResult snapshot = analysis.analyze(series)
+                .analysisFor(ElliottDegree.PRIMARY)
+                .orElseThrow()
+                .analysis();
+        ElliottWaveAnalysisRunner.MacroPivotGraph graph = analysis.buildMacroPivotGraph(series, snapshot);
+
+        assertThat(graph.higherDegrees()).isEqualTo(2);
+        assertThat(graph.lowerDegrees()).isEqualTo(1);
+        assertThat(graph.pivots()).hasSize(4);
+        assertThat(graph.pivots().stream().map(ElliottWaveAnalysisRunner.MacroPivot::barIndex)).containsExactly(0, 4, 7,
+                9);
+        assertThat(graph.pivots().stream().map(ElliottWaveAnalysisRunner.MacroPivot::highPivot)).containsExactly(false,
+                true, false, true);
+        assertThat(graph.pivots().stream().map(ElliottWaveAnalysisRunner.MacroPivot::degree))
+                .containsOnly(ElliottDegree.PRIMARY);
+        assertThat(graph.pivots().getFirst().time()).isEqualTo(series.getBar(0).getEndTime());
+        assertThat(graph.pivots().getLast().time()).isEqualTo(series.getLastBar().getEndTime());
+        assertThat(graph.pivots().getFirst().price()).isEqualByComparingTo(factory.numOf(100));
+        assertThat(graph.pivots().get(1).price()).isEqualByComparingTo(factory.numOf(180));
+        assertThat(graph.pivots().get(2).price()).isEqualByComparingTo(factory.numOf(140));
+        assertThat(graph.pivots().getLast().price()).isEqualByComparingTo(factory.numOf(210));
+    }
+
+    @Test
     void analyzeCurrentCycleRejectsWaveFiveWhenTerminalHighIsNotDominant() {
         BarSeries series = buildMalformedWaveFiveSeries();
         NumFactory factory = series.numFactory();

@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 17:14 EDT
-- Active phase: Phase 2
-- Active task: Finish consolidating completed and partial local-leg fitting in the core runner
-- Overall: 30/56 checklist items complete
+- Last updated: 2026-03-11 17:24 EDT
+- Active phase: Phase 3
+- Active task: Add graph-level pruning on the new reusable macro pivot surface
+- Overall: 33/56 checklist items complete
 
 ## Status
 
@@ -398,8 +398,8 @@ Avoid exposing calibration internals publicly.
 
 ### Phase 3: Build the Series-Native Pivot Graph
 
-- [ ] Promote processed swing pivots into a reusable macro pivot graph model.
-- [ ] Carry forward:
+- [x] Promote processed swing pivots into a reusable macro pivot graph model.
+- [x] Carry forward:
   - pivot direction
   - bar index
   - timestamp
@@ -407,7 +407,7 @@ Avoid exposing calibration internals publicly.
   - degree provenance
   - fractal confirmation metadata
 - [ ] Add pruning rules so the graph stays tractable on full BTC history.
-- [ ] Add tests proving key macro pivots survive graph construction.
+- [x] Add tests proving key macro pivots survive graph construction.
 
 ### Phase 4: Add Global Canonical Structure Search
 
