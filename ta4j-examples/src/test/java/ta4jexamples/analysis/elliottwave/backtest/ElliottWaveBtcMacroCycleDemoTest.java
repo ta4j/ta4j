@@ -524,6 +524,10 @@ class ElliottWaveBtcMacroCycleDemoTest {
             assertFalse(report.currentCycle().startTimeUtc().isBlank());
             assertTrue(report.currentCycle().primaryCount().startsWith("Bullish 1"));
             assertFalse(report.currentCycle().currentWave().isBlank());
+            assertTrue(report.currentCycle().invalidationPrice().startsWith("<=")
+                    || report.currentCycle().invalidationPrice().startsWith(">="));
+            assertTrue(report.currentCycle().structuralInvalidationPrice().startsWith("<=")
+                    || report.currentCycle().structuralInvalidationPrice().startsWith(">="));
             assertFalse(report.currentCycle().orthodoxWaveFiveTargetRange().isBlank());
             assertTrue(Files.exists(Path.of(report.chartPath())));
             assertTrue(Files.exists(Path.of(report.summaryPath())));

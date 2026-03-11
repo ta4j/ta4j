@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 18:10 EDT
-- Active phase: Phase 5
-- Active task: Preserve current-cycle reporting semantics while keeping BTC right-edge output unlocked
-- Overall: 41/54 checklist items complete
+- Last updated: 2026-03-11 18:12 EDT
+- Active phase: Phase 6
+- Active task: Demote anchor-registry historical decomposition out of the runtime path
+- Overall: 42/54 checklist items complete
 
 ## Status
 
@@ -416,7 +416,7 @@ Avoid exposing calibration internals publicly.
 
 - [x] Replace the separate current-cycle-only ranking path in [`ElliottWaveAnalysisRunner.java:352`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-core/src/main/java/org/ta4j/core/indicators/elliott/ElliottWaveAnalysisRunner.java:352).
 - [x] Make current-cycle output the open suffix of the canonical full-history structure.
-- [ ] Preserve:
+- [x] Preserve:
   - current wave
   - phase invalidation
   - structural invalidation
