@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 12:29 EDT
+- Last updated: 2026-03-11 14:40 EDT
 - Active phase: Phase 9
-- Active task: Explore pruning opportunities before adding more brute-force search
-- Overall: 20/56 checklist items complete
+- Active task: Expand pruning coverage and runtime evidence before adding more brute-force search
+- Overall: 21/56 checklist items complete
 
 ## Status
 
@@ -502,7 +502,8 @@ Avoid exposing calibration internals publicly.
   - impossible direction/overlap pruning
   - retracement and amplitude bound pruning
 - [x] Record pruning hit rates and runtime deltas so performance work stays evidence-driven.
-- [ ] Decide whether the default search lane should use a reduced geometry while an exhaustive lane remains opt-in.
+- [x] Decide whether the default search lane should use a reduced geometry while an exhaustive lane remains opt-in.
+  Implemented: default harness runs `routine` depth with the locked canonical BTC profile and non-overlapping fold steps; `--exhaustive` enables the full controlled search plan plus portability.
 
 ### Immediate Follow-up Order from the First Full Calibration Run
 

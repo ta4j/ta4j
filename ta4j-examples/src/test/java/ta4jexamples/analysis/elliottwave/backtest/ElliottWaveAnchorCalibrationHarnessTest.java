@@ -114,7 +114,7 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     }
 
     @Test
-    void defaultProfilesFollowTheDeterministicControlledSearchPlan() {
+    void routineAndExhaustiveProfilesFollowTheDeterministicControlledSearchPlan() {
         ElliottWaveAnchorCalibrationHarness.CandidateSearchPlan plan = ElliottWaveAnchorCalibrationHarness
                 .controlledProfileSearch();
         ElliottWaveAnchorCalibrationHarness.CandidateProfile canonical = ElliottWaveAnchorCalibrationHarness
@@ -131,6 +131,20 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                 plan.profiles().stream().map(ElliottWaveAnchorCalibrationHarness.CandidateProfile::id).toList());
         assertIterableEquals(
                 plan.profiles().stream().map(ElliottWaveAnchorCalibrationHarness.CandidateProfile::id).toList(),
+                ElliottWaveAnchorCalibrationHarness.exhaustiveProfiles()
+                        .stream()
+                        .map(ElliottWaveAnchorCalibrationHarness.CandidateProfile::id)
+                        .toList());
+        assertIterableEquals(List.of(canonical.id()),
+                ElliottWaveAnchorCalibrationHarness.routineProfiles()
+                        .stream()
+                        .map(ElliottWaveAnchorCalibrationHarness.CandidateProfile::id)
+                        .toList());
+        assertIterableEquals(
+                ElliottWaveAnchorCalibrationHarness.routineProfiles()
+                        .stream()
+                        .map(ElliottWaveAnchorCalibrationHarness.CandidateProfile::id)
+                        .toList(),
                 ElliottWaveAnchorCalibrationHarness.defaultProfiles()
                         .stream()
                         .map(ElliottWaveAnchorCalibrationHarness.CandidateProfile::id)
@@ -765,7 +779,8 @@ class ElliottWaveAnchorCalibrationHarnessTest {
     }
 
     @Test
-    void fileArtifactSinkPersistsPrimaryBtcArtifactsBeforeFinalReport(@TempDir Path tempDir) throws Exception {
+    void fileArtifactSinkPersistsRoutineAndExhaustiveArtifactsInTheirOwnDirectories(@TempDir Path tempDir)
+            throws Exception {
         ElliottWaveAnchorCalibrationHarness.CandidateEvaluation evaluation = evaluation(
                 ElliottWaveAnchorCalibrationHarness.CandidateProfile.baselineProfile(), 0.20, 0.40, 0.26, 0.48, 0.20,
                 0.50, 0.30, 0.08);
@@ -789,10 +804,12 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         ElliottWaveAnchorCalibrationHarness.FileArtifactSink sink = ElliottWaveAnchorCalibrationHarness.FileArtifactSink
                 .create(tempDir.resolve("artifacts"));
 
-        sink.recordCandidateEvaluation(evaluation);
-        sink.recordSelectedHistoricalCalibration(evaluation, calibration, decision);
-        sink.recordPortabilitySummary(portability);
-        sink.recordFinalReport(report);
+        sink.recordCandidateEvaluation(evaluation, ElliottWaveAnchorCalibrationHarness.CalibrationDepth.EXHAUSTIVE);
+        sink.recordSelectedHistoricalCalibration(evaluation, calibration, decision,
+                ElliottWaveAnchorCalibrationHarness.CalibrationDepth.ROUTINE);
+        sink.recordPortabilitySummary(portability, ElliottWaveAnchorCalibrationHarness.CalibrationDepth.EXHAUSTIVE);
+        sink.recordFinalReport(report, ElliottWaveAnchorCalibrationHarness.CalibrationDepth.ROUTINE);
+        sink.recordFinalReport(report, ElliottWaveAnchorCalibrationHarness.CalibrationDepth.EXHAUSTIVE);
 
         Path routineDirectory = sink.outputDirectory().resolve("routine");
         Path exhaustiveDirectory = sink.outputDirectory().resolve("exhaustive");
@@ -800,7 +817,8 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         Path selectedTextFile = routineDirectory.resolve("btc-selected-historical-calibration.txt");
         Path selectedCandidateFile = routineDirectory.resolve("btc-selected-candidate.json");
         Path portabilityFile = exhaustiveDirectory.resolve("portability-eth-usd.json");
-        Path finalReportFile = exhaustiveDirectory.resolve("ew-anchor-report.json");
+        Path routineFinalReportFile = routineDirectory.resolve("ew-anchor-report.json");
+        Path exhaustiveFinalReportFile = exhaustiveDirectory.resolve("ew-anchor-report.json");
 
         assertTrue(Files.exists(routineDirectory));
         assertTrue(Files.exists(exhaustiveDirectory));
@@ -808,12 +826,14 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         assertTrue(Files.exists(selectedTextFile));
         assertTrue(Files.exists(selectedCandidateFile));
         assertTrue(Files.exists(portabilityFile));
-        assertTrue(Files.exists(finalReportFile));
+        assertTrue(Files.exists(routineFinalReportFile));
+        assertTrue(Files.exists(exhaustiveFinalReportFile));
         assertTrue(Files.readString(candidateFile).contains(evaluation.profile().id()));
         assertTrue(Files.readString(selectedCandidateFile).contains(evaluation.profile().id()));
         assertTrue(Files.readString(selectedTextFile).contains("profile=" + evaluation.profile().id()));
         assertTrue(Files.readString(portabilityFile).contains("\"datasetId\": \"eth-usd\""));
-        assertTrue(Files.readString(finalReportFile).contains("\"reportVersion\": \"synthetic-report\""));
+        assertTrue(Files.readString(routineFinalReportFile).contains("\"reportVersion\": \"synthetic-report\""));
+        assertTrue(Files.readString(exhaustiveFinalReportFile).contains("\"reportVersion\": \"synthetic-report\""));
     }
 
     @Test

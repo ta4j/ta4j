@@ -134,11 +134,12 @@ public final class ElliottWaveAnchorCalibrationHarness {
      */
     public static void main(String[] args) {
         Instant startedAt = Instant.now();
-        LOG.info("Starting BTC anchor calibration harness");
-        ArtifactSink artifactSink = FileArtifactSink.create(defaultArtifactDirectory(startedAt));
+        CalibrationDepth depth = CalibrationDepth.parse(args);
+        LOG.info("Starting BTC anchor calibration harness depth={}", depth.id());
+        ArtifactSink artifactSink = FileArtifactSink.create(defaultArtifactDirectory(startedAt, depth));
         LOG.info("Writing incremental calibration artifacts to {}", artifactSink.outputDirectory());
-        ReportBundle report = generateDefaultReport(artifactSink);
-        LOG.info("Finished BTC anchor calibration harness in {}", formatElapsed(startedAt));
+        ReportBundle report = generateReport(depth, artifactSink);
+        LOG.info("Finished BTC anchor calibration harness depth={} in {}", depth.id(), formatElapsed(startedAt));
         LOG.info("Promotion decision: selectedProfile={} promoteChallenger={} rationale={}",
                 report.decision().selectedProfileId(), report.decision().promoteChallenger(),
                 report.decision().rationale());
@@ -200,6 +201,18 @@ public final class ElliottWaveAnchorCalibrationHarness {
     }
 
     static ReportBundle generateDefaultReport(ArtifactSink artifactSink) {
+        return generateReport(CalibrationDepth.ROUTINE, artifactSink);
+    }
+
+    static ReportBundle generateExhaustiveReport() {
+        return generateExhaustiveReport(ArtifactSink.noOp());
+    }
+
+    static ReportBundle generateExhaustiveReport(ArtifactSink artifactSink) {
+        return generateReport(CalibrationDepth.EXHAUSTIVE, artifactSink);
+    }
+
+    private static ReportBundle generateReport(CalibrationDepth depth, ArtifactSink artifactSink) {
         Instant startedAt = Instant.now();
         LOG.info("Loading BTC anchor registry document");
         ElliottWaveAnchorRegistry registryDocument = ElliottWaveAnchorRegistry
@@ -211,14 +224,14 @@ public final class ElliottWaveAnchorCalibrationHarness {
         LOG.info("Loading portability series {}", SP500_RESOURCE);
         BarSeries sp500Series = loadSeries(SP500_RESOURCE, SP500_SERIES_NAME).orElse(null);
 
-        WalkForwardConfig config = ElliottWaveWalkForwardProfiles.baselineConfig();
+        WalkForwardConfig config = depth.config();
         AnchorRegistry registry = defaultBitcoinAnchors(registryDocument, btcSeries);
-        List<CandidateProfile> profiles = defaultProfiles();
+        List<CandidateProfile> profiles = depth.profiles();
         LOG.info("Resolved {} BTC anchors across {} profiles; BTC bars={}", registry.anchors().size(), profiles.size(),
                 btcSeries.getBarCount());
 
         List<CandidateEvaluation> evaluations = evaluateCandidatesSequentially(btcSeries, registry, profiles, config,
-                artifactSink);
+                depth, artifactSink);
 
         WalkForwardEngine<ElliottWaveWalkForwardContext, ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> portabilityEngine = buildEngine();
 
@@ -227,33 +240,37 @@ public final class ElliottWaveAnchorCalibrationHarness {
                 .findFirst()
                 .orElseThrow(() -> new IllegalStateException("baseline profile evaluation missing"));
 
-        List<ChallengerAssessment> challengerAssessments = rankChallengers(baseline, evaluations);
+        List<ChallengerAssessment> challengerAssessments = depth.includeChallengerSearch()
+                ? rankChallengers(baseline, evaluations)
+                : List.of();
         PromotionDecision decision = PromotionDecision.from(baseline, challengerAssessments);
         CandidateEvaluation selected = selectedEvaluation(baseline, challengerAssessments, decision);
         LOG.info("Selected profile {} after challenger ranking in {}", selected.profile().id(),
                 formatElapsed(startedAt));
-        artifactSink.recordSelectedHistoricalCalibration(selected, HistoricalCalibrationReport.from(selected),
-                decision);
+        artifactSink.recordSelectedHistoricalCalibration(selected, HistoricalCalibrationReport.from(selected), decision,
+                depth);
 
-        List<PortabilitySummary> portability = List.of(
+        List<PortabilitySummary> portability = depth.includePortability() ? List.of(
                 evaluatePortabilityWithProgress("eth-usd", ETH_RESOURCE, ethSeries, baseline.profile(),
-                        selected.profile(), portabilityEngine, config, artifactSink),
+                        selected.profile(), portabilityEngine, config, artifactSink, depth),
                 evaluatePortabilityWithProgress("sp500", SP500_RESOURCE, sp500Series, baseline.profile(),
-                        selected.profile(), portabilityEngine, config, artifactSink));
+                        selected.profile(), portabilityEngine, config, artifactSink, depth))
+                : List.of();
 
         BaselinePolicy baselinePolicy = new BaselinePolicy(registry.datasetResource(), config.primaryHorizonBars(),
                 List.copyOf(config.reportingHorizons()), config.configHash(), canonicalBtcCalibratedProfile().id());
 
         LOG.info("Built BTC anchor calibration report in {}", formatElapsed(startedAt));
-        ReportBundle report = ReportBundle.create("btc-anchor-calibration-v2",
+        ReportBundle report = ReportBundle.create("btc-anchor-calibration-v2-" + depth.id(),
                 btcSeries.getBar(btcSeries.getEndIndex()).getEndTime(), registry, baselinePolicy, baseline,
                 challengerAssessments, decision, portability);
-        artifactSink.recordFinalReport(report);
+        artifactSink.recordFinalReport(report, depth);
         return report;
     }
 
     private static List<CandidateEvaluation> evaluateCandidatesSequentially(BarSeries series, AnchorRegistry registry,
-            List<CandidateProfile> profiles, WalkForwardConfig config, ArtifactSink artifactSink) {
+            List<CandidateProfile> profiles, WalkForwardConfig config, CalibrationDepth depth,
+            ArtifactSink artifactSink) {
         List<CandidateEvaluation> evaluations = new ArrayList<>(profiles.size());
         for (int i = 0; i < profiles.size(); i++) {
             CandidateProfile profile = profiles.get(i);
@@ -262,7 +279,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
                     profile.rationale());
             CandidateEvaluation evaluation = evaluateCandidate(series, registry, profile, buildEngine(), config);
             evaluations.add(evaluation);
-            artifactSink.recordCandidateEvaluation(evaluation);
+            artifactSink.recordCandidateEvaluation(evaluation, depth);
             LOG.info("Finished calibration profile {} in {}", profile.id(), formatElapsed(startedAt));
         }
         return List.copyOf(evaluations);
@@ -271,19 +288,19 @@ public final class ElliottWaveAnchorCalibrationHarness {
     private static PortabilitySummary evaluatePortabilityWithProgress(String datasetId, String resource,
             BarSeries series, CandidateProfile baselineProfile, CandidateProfile selectedProfile,
             WalkForwardEngine<ElliottWaveWalkForwardContext, ElliottWaveAnalysisResult.BaseScenarioAssessment, ElliottWaveOutcome> portabilityEngine,
-            WalkForwardConfig config, ArtifactSink artifactSink) {
+            WalkForwardConfig config, ArtifactSink artifactSink, CalibrationDepth depth) {
         Instant startedAt = Instant.now();
         LOG.info("Starting portability check dataset={} resource={}", datasetId, resource);
         PortabilitySummary summary = evaluatePortability(datasetId, resource, series, baselineProfile, selectedProfile,
                 portabilityEngine, config);
-        artifactSink.recordPortabilitySummary(summary);
+        artifactSink.recordPortabilitySummary(summary, depth);
         LOG.info("Finished portability check dataset={} in {}", datasetId, formatElapsed(startedAt));
         return summary;
     }
 
-    private static Path defaultArtifactDirectory(Instant startedAt) {
+    private static Path defaultArtifactDirectory(Instant startedAt, CalibrationDepth depth) {
         String timestamp = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss").withZone(ZoneOffset.UTC).format(startedAt);
-        return Path.of(".agents", "logs", "ew-anchor-calibration-" + timestamp);
+        return Path.of(".agents", "logs", "ew-anchor-calibration-" + depth.id() + "-" + timestamp);
     }
 
     private static String formatElapsed(Instant startedAt) {
@@ -311,7 +328,70 @@ public final class ElliottWaveAnchorCalibrationHarness {
     }
 
     static List<CandidateProfile> defaultProfiles() {
+        return routineProfiles();
+    }
+
+    static List<CandidateProfile> routineProfiles() {
+        return List.of(canonicalBtcCalibratedProfile());
+    }
+
+    static List<CandidateProfile> exhaustiveProfiles() {
         return controlledProfileSearch().profiles();
+    }
+
+    private static WalkForwardConfig routineConfig() {
+        WalkForwardConfig exhaustive = ElliottWaveWalkForwardProfiles.baselineConfig();
+        return new WalkForwardConfig(exhaustive.minTrainBars(), exhaustive.testBars(), exhaustive.testBars(),
+                exhaustive.purgeBars(), exhaustive.embargoBars(), exhaustive.holdoutBars(),
+                exhaustive.primaryHorizonBars(), exhaustive.reportingHorizons(), exhaustive.optimizationTopK(),
+                exhaustive.reportingTopKs(), exhaustive.seed());
+    }
+
+    enum CalibrationDepth {
+        ROUTINE("routine", false, false), EXHAUSTIVE("exhaustive", true, true);
+
+        private final String id;
+        private final boolean includeChallengerSearch;
+        private final boolean includePortability;
+
+        CalibrationDepth(String id, boolean includeChallengerSearch, boolean includePortability) {
+            this.id = id;
+            this.includeChallengerSearch = includeChallengerSearch;
+            this.includePortability = includePortability;
+        }
+
+        static CalibrationDepth parse(String[] args) {
+            if (args == null || args.length == 0) {
+                return ROUTINE;
+            }
+            if (args.length == 1 && "--exhaustive".equals(args[0])) {
+                return EXHAUSTIVE;
+            }
+            if (args.length == 1 && "--routine".equals(args[0])) {
+                return ROUTINE;
+            }
+            throw new IllegalArgumentException("Unsupported arguments. Use no args, --routine, or --exhaustive.");
+        }
+
+        String id() {
+            return id;
+        }
+
+        boolean includeChallengerSearch() {
+            return includeChallengerSearch;
+        }
+
+        boolean includePortability() {
+            return includePortability;
+        }
+
+        WalkForwardConfig config() {
+            return this == ROUTINE ? routineConfig() : ElliottWaveWalkForwardProfiles.baselineConfig();
+        }
+
+        List<CandidateProfile> profiles() {
+            return this == ROUTINE ? routineProfiles() : exhaustiveProfiles();
+        }
     }
 
     static CandidateProfile canonicalBtcCalibratedProfile() {
@@ -938,17 +1018,17 @@ public final class ElliottWaveAnchorCalibrationHarness {
             return null;
         }
 
-        default void recordCandidateEvaluation(CandidateEvaluation evaluation) {
+        default void recordCandidateEvaluation(CandidateEvaluation evaluation, CalibrationDepth depth) {
         }
 
         default void recordSelectedHistoricalCalibration(CandidateEvaluation evaluation,
-                HistoricalCalibrationReport calibration, PromotionDecision decision) {
+                HistoricalCalibrationReport calibration, PromotionDecision decision, CalibrationDepth depth) {
         }
 
-        default void recordPortabilitySummary(PortabilitySummary summary) {
+        default void recordPortabilitySummary(PortabilitySummary summary, CalibrationDepth depth) {
         }
 
-        default void recordFinalReport(ReportBundle report) {
+        default void recordFinalReport(ReportBundle report, CalibrationDepth depth) {
         }
     }
 
@@ -973,14 +1053,17 @@ public final class ElliottWaveAnchorCalibrationHarness {
         }
 
         @Override
-        public void recordCandidateEvaluation(CandidateEvaluation evaluation) {
+        public void recordCandidateEvaluation(CandidateEvaluation evaluation, CalibrationDepth depth) {
+            if (depth != CalibrationDepth.EXHAUSTIVE) {
+                return;
+            }
             writeJson(exhaustiveDirectory(), "btc-candidate-" + safeFileId(evaluation.profile().id()) + ".json",
                     evaluation);
         }
 
         @Override
         public void recordSelectedHistoricalCalibration(CandidateEvaluation evaluation,
-                HistoricalCalibrationReport calibration, PromotionDecision decision) {
+                HistoricalCalibrationReport calibration, PromotionDecision decision, CalibrationDepth depth) {
             writeJson(routineDirectory(), "btc-selected-candidate.json", evaluation);
             writeJson(routineDirectory(), "btc-promotion-decision.json", decision);
             writeJson(routineDirectory(), "btc-selected-historical-calibration.json", calibration);
@@ -988,13 +1071,17 @@ public final class ElliottWaveAnchorCalibrationHarness {
         }
 
         @Override
-        public void recordPortabilitySummary(PortabilitySummary summary) {
+        public void recordPortabilitySummary(PortabilitySummary summary, CalibrationDepth depth) {
+            if (depth != CalibrationDepth.EXHAUSTIVE) {
+                return;
+            }
             writeJson(exhaustiveDirectory(), "portability-" + safeFileId(summary.datasetId()) + ".json", summary);
         }
 
         @Override
-        public void recordFinalReport(ReportBundle report) {
-            writeJson(exhaustiveDirectory(), "ew-anchor-report.json", report);
+        public void recordFinalReport(ReportBundle report, CalibrationDepth depth) {
+            writeJson(depth == CalibrationDepth.ROUTINE ? routineDirectory() : exhaustiveDirectory(),
+                    "ew-anchor-report.json", report);
         }
 
         private Path routineDirectory() {
