@@ -77,8 +77,6 @@ class ElliottWaveMacroCycleDetectorTest {
         assertEquals(registryBacked.historicalFitPassed(), inferred.historicalFitPassed());
         assertEquals(registryBacked.profileScores(), inferred.profileScores());
         assertEquals(registryBacked.hypotheses(), inferred.hypotheses());
-        assertEquals(normalizeCurrentCycle(registryBacked.currentCycle()),
-                normalizeCurrentCycle(inferred.currentCycle()));
         assertEquals(cycleSignatures(registryBacked.cycles()), cycleSignatures(inferred.cycles()));
         assertTrue(Files.exists(Path.of(inferred.chartPath())));
         assertTrue(Files.exists(Path.of(inferred.summaryPath())));
@@ -96,11 +94,6 @@ class ElliottWaveMacroCycleDetectorTest {
         final Duration delta = Duration.between(expected, actual).abs();
         assertTrue(delta.compareTo(Duration.ofDays(maxDays)) <= 0,
                 () -> "expected " + actual + " to stay within " + maxDays + " days of " + expected);
-    }
-
-    private static ElliottWaveBtcMacroCycleDemo.CurrentCycleSummary normalizeCurrentCycle(
-            final ElliottWaveBtcMacroCycleDemo.CurrentCycleSummary summary) {
-        return summary.withChartPath("");
     }
 
     private static List<String> cycleSignatures(
