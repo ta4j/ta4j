@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 14:49 EDT
+- Last updated: 2026-03-11 15:07 EDT
 - Active phase: Phase 9
 - Active task: Expand pruning coverage and runtime evidence before adding more brute-force search
-- Overall: 21/56 checklist items complete
+- Overall: 25/56 checklist items complete
 
 ## Status
 
@@ -360,15 +360,15 @@ Avoid exposing calibration internals publicly.
 
 ### Phase 0: Freeze Truth-Target Semantics
 
-- [ ] Reclassify the BTC anchor registry and harness as offline truth-target assets only.
-- [ ] Document the truth target explicitly:
+- [x] Reclassify the BTC anchor registry and harness as offline truth-target assets only.
+- [x] Document the truth target explicitly:
   - accepted tops
   - accepted lows
   - tolerances
   - expected wave labels
   - holdout semantics
-- [ ] Add docs stating that runtime historical decomposition must not depend on registry input.
-- [ ] Preserve the reference early `2011` segment as calibration-only evidence, not runtime structure.
+- [x] Add docs stating that runtime historical decomposition must not depend on registry input.
+- [x] Preserve the reference early `2011` segment as calibration-only evidence, not runtime structure.
 
 ### Phase 1: Define the Canonical Structure Result Model
 
