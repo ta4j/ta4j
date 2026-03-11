@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 11:25 EDT
+- Last updated: 2026-03-11 11:31 EDT
 - Active phase: Phase 8
-- Active task: Split calibration outputs into routine sanity artifacts and exhaustive calibration artifacts
-- Overall: 13/56 checklist items complete
+- Active task: Enumerate the hard-rule subset and soft-rule weighting knobs that are allowed to vary
+- Overall: 14/56 checklist items complete
 
 ## Status
 
@@ -466,7 +466,7 @@ Avoid exposing calibration internals publicly.
   - per-snapshot elapsed time
   - scenario counts and decomposition branch counts
   - portability timing kept separate from BTC calibration timing
-- [ ] Split calibration outputs into:
+- [x] Split calibration outputs into:
   - routine sanity artifacts
   - exhaustive calibration artifacts
 

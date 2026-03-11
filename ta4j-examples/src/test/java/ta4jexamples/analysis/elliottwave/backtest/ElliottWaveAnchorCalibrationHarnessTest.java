@@ -770,16 +770,23 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         sink.recordPortabilitySummary(portability);
         sink.recordFinalReport(report);
 
-        Path candidateFile = sink.outputDirectory().resolve("btc-candidate-" + evaluation.profile().id() + ".json");
-        Path selectedTextFile = sink.outputDirectory().resolve("btc-selected-historical-calibration.txt");
-        Path portabilityFile = sink.outputDirectory().resolve("portability-eth-usd.json");
-        Path finalReportFile = sink.outputDirectory().resolve("ew-anchor-report.json");
+        Path routineDirectory = sink.outputDirectory().resolve("routine");
+        Path exhaustiveDirectory = sink.outputDirectory().resolve("exhaustive");
+        Path candidateFile = exhaustiveDirectory.resolve("btc-candidate-" + evaluation.profile().id() + ".json");
+        Path selectedTextFile = routineDirectory.resolve("btc-selected-historical-calibration.txt");
+        Path selectedCandidateFile = routineDirectory.resolve("btc-selected-candidate.json");
+        Path portabilityFile = exhaustiveDirectory.resolve("portability-eth-usd.json");
+        Path finalReportFile = exhaustiveDirectory.resolve("ew-anchor-report.json");
 
+        assertTrue(Files.exists(routineDirectory));
+        assertTrue(Files.exists(exhaustiveDirectory));
         assertTrue(Files.exists(candidateFile));
         assertTrue(Files.exists(selectedTextFile));
+        assertTrue(Files.exists(selectedCandidateFile));
         assertTrue(Files.exists(portabilityFile));
         assertTrue(Files.exists(finalReportFile));
         assertTrue(Files.readString(candidateFile).contains(evaluation.profile().id()));
+        assertTrue(Files.readString(selectedCandidateFile).contains(evaluation.profile().id()));
         assertTrue(Files.readString(selectedTextFile).contains("profile=" + evaluation.profile().id()));
         assertTrue(Files.readString(portabilityFile).contains("\"datasetId\": \"eth-usd\""));
         assertTrue(Files.readString(finalReportFile).contains("\"reportVersion\": \"synthetic-report\""));

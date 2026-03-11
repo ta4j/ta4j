@@ -927,6 +927,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
         static FileArtifactSink create(Path outputDirectory) {
             try {
                 Files.createDirectories(outputDirectory);
+                Files.createDirectories(outputDirectory.resolve("routine"));
+                Files.createDirectories(outputDirectory.resolve("exhaustive"));
             } catch (java.io.IOException e) {
                 throw new UncheckedIOException("Failed to create artifact directory " + outputDirectory, e);
             }
@@ -935,38 +937,47 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
         @Override
         public void recordCandidateEvaluation(CandidateEvaluation evaluation) {
-            writeJson("btc-candidate-" + safeFileId(evaluation.profile().id()) + ".json", evaluation);
+            writeJson(exhaustiveDirectory(), "btc-candidate-" + safeFileId(evaluation.profile().id()) + ".json",
+                    evaluation);
         }
 
         @Override
         public void recordSelectedHistoricalCalibration(CandidateEvaluation evaluation,
                 HistoricalCalibrationReport calibration, PromotionDecision decision) {
-            writeJson("btc-selected-candidate.json", evaluation);
-            writeJson("btc-promotion-decision.json", decision);
-            writeJson("btc-selected-historical-calibration.json", calibration);
-            writeText("btc-selected-historical-calibration.txt", calibration.toText());
+            writeJson(routineDirectory(), "btc-selected-candidate.json", evaluation);
+            writeJson(routineDirectory(), "btc-promotion-decision.json", decision);
+            writeJson(routineDirectory(), "btc-selected-historical-calibration.json", calibration);
+            writeText(routineDirectory(), "btc-selected-historical-calibration.txt", calibration.toText());
         }
 
         @Override
         public void recordPortabilitySummary(PortabilitySummary summary) {
-            writeJson("portability-" + safeFileId(summary.datasetId()) + ".json", summary);
+            writeJson(exhaustiveDirectory(), "portability-" + safeFileId(summary.datasetId()) + ".json", summary);
         }
 
         @Override
         public void recordFinalReport(ReportBundle report) {
-            writeJson("ew-anchor-report.json", report);
+            writeJson(exhaustiveDirectory(), "ew-anchor-report.json", report);
         }
 
-        private void writeJson(String fileName, Object value) {
-            writeText(fileName, GSON.toJson(value));
+        private Path routineDirectory() {
+            return outputDirectory.resolve("routine");
         }
 
-        private void writeText(String fileName, String content) {
+        private Path exhaustiveDirectory() {
+            return outputDirectory.resolve("exhaustive");
+        }
+
+        private void writeJson(Path directory, String fileName, Object value) {
+            writeText(directory, fileName, GSON.toJson(value));
+        }
+
+        private void writeText(Path directory, String fileName, String content) {
             try {
-                Files.writeString(outputDirectory.resolve(fileName), content, StandardCharsets.UTF_8,
+                Files.writeString(directory.resolve(fileName), content, StandardCharsets.UTF_8,
                         StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING, StandardOpenOption.WRITE);
             } catch (java.io.IOException e) {
-                throw new UncheckedIOException("Failed to write artifact " + outputDirectory.resolve(fileName), e);
+                throw new UncheckedIOException("Failed to write artifact " + directory.resolve(fileName), e);
             }
         }
 
