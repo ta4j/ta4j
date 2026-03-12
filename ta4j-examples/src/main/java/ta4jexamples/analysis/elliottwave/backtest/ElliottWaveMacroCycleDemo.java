@@ -321,7 +321,7 @@ public final class ElliottWaveMacroCycleDemo {
         final MacroLogicProfile profile = defaultLiveMacroProfile();
         final CanonicalStructure structure = analyzeCanonicalStructure(series, profile, historicalStatus);
         final CurrentCycleAnalysis currentCycle = structure.currentCycle();
-        final Optional<Path> chartPath = saveLiveCurrentCycleChart(series, currentCycle, chartDirectory, chartFileName);
+        final Optional<Path> chartPath = saveLiveCurrentCycleChart(series, structure, chartDirectory, chartFileName);
         final String chartPathText = chartPath.map(path -> path.toAbsolutePath().normalize().toString()).orElse("");
         final Path summaryPath = chartDirectory.resolve(summaryFileName).toAbsolutePath().normalize();
         final CurrentCycleSummary summary = currentCycle.summary().withChartPath(chartPathText);
@@ -451,18 +451,19 @@ public final class ElliottWaveMacroCycleDemo {
         return formatPrice(lowerBound) + " to " + formatPrice(upperBound);
     }
 
-    private static Optional<Path> saveLiveCurrentCycleChart(final BarSeries series,
-            final CurrentCycleAnalysis currentCycle, final Path chartDirectory, final String chartFileName) {
+    private static Optional<Path> saveLiveCurrentCycleChart(final BarSeries series, final CanonicalStructure structure,
+            final Path chartDirectory, final String chartFileName) {
         Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(currentCycle, "currentCycle");
+        Objects.requireNonNull(structure, "structure");
         Objects.requireNonNull(chartDirectory, "chartDirectory");
         Objects.requireNonNull(chartFileName, "chartFileName");
+        final CurrentCycleAnalysis currentCycle = structure.currentCycle();
         if (currentCycle.primaryFit() == null) {
             return Optional.empty();
         }
 
         final ChartWorkflow chartWorkflow = new ChartWorkflow(chartDirectory.toString());
-        final JFreeChart chart = renderLiveCurrentCycleChart(series, currentCycle);
+        final JFreeChart chart = renderLiveCurrentCycleChart(series, structure);
         return chartWorkflow.saveChartImage(chart, series, chartFileName,
                 ElliottWaveBtcMacroCycleDemo.DEFAULT_CHART_WIDTH, ElliottWaveBtcMacroCycleDemo.DEFAULT_CHART_HEIGHT);
     }
@@ -726,10 +727,10 @@ public final class ElliottWaveMacroCycleDemo {
         return normalized.isBlank() ? "series" : normalized;
     }
 
-    private static JFreeChart renderLiveCurrentCycleChart(final BarSeries series,
-            final CurrentCycleAnalysis currentCycle) {
+    private static JFreeChart renderLiveCurrentCycleChart(final BarSeries series, final CanonicalStructure structure) {
         Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(currentCycle, "currentCycle");
+        Objects.requireNonNull(structure, "structure");
+        final CurrentCycleAnalysis currentCycle = structure.currentCycle();
 
         final ChartWorkflow chartWorkflow = new ChartWorkflow();
         final ElliottWaveAnalysisResult.CurrentPhaseAssessment primaryFit = currentCycle.primaryFit();
