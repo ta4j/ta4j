@@ -4,8 +4,8 @@
 
 - Last updated: 2026-03-12 22:15 EDT
 - Active phase: Phase 6
-- Active task: Stop using `buildHistoricalCycles(...)` as a runtime historical truth source
-- Overall: 52/61 checklist items complete
+- Active task: Retain registry-backed comparison only inside the calibration harness
+- Overall: 53/61 checklist items complete
 
 ## Status
 
@@ -426,7 +426,7 @@ Avoid exposing calibration internals publicly.
 - [x] Stop using `buildLegSegments(...)` as a runtime truth source.
 - [x] Emit a harness-side legacy-vs-canonical completed-cycle diff artifact so canonical misses are visible on underlying cycle data before any runtime switchover.
 - [x] Keep raw accepted historical legs available as evidence, but promote only top-level completed macro cycles for completed-cycle truth comparison.
-- [ ] Stop using `buildHistoricalCycles(...)` as a runtime truth source.
+- [x] Stop using `buildHistoricalCycles(...)` as a runtime truth source.
 - [ ] Retain registry-backed comparison only inside the calibration harness.
 - [ ] Keep a temporary compatibility path only while the canonical engine is being proven.
 

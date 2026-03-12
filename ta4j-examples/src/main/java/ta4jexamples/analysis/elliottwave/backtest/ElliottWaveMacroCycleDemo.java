@@ -252,7 +252,7 @@ public final class ElliottWaveMacroCycleDemo {
 
     static MacroStudy evaluateMacroStudy(final BarSeries series,
             final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        return evaluateLegacyAnchoredMacroStudy(series, registry);
+        return evaluateCanonicalMacroStudy(series, registry);
     }
 
     static MacroStudy evaluateCanonicalMacroStudy(final BarSeries series,
@@ -1072,7 +1072,7 @@ public final class ElliottWaveMacroCycleDemo {
         final Instant peakTime = series.getBar(cycle.bullishLeg().endIndex()).getEndTime();
         final Instant lowTime = series.getBar(cycle.bearishLeg().endIndex()).getEndTime();
         final Optional<ElliottWaveAnchorCalibrationHarness.Anchor> start = matchAnchor(registry, startTime,
-                ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, ElliottPhase.WAVE1);
+                ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, ElliottPhase.WAVE1, ElliottPhase.CORRECTIVE_C);
         final Optional<ElliottWaveAnchorCalibrationHarness.Anchor> peak = matchAnchor(registry, peakTime,
                 ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, ElliottPhase.WAVE5);
         final Optional<ElliottWaveAnchorCalibrationHarness.Anchor> low = matchAnchor(registry, lowTime,
@@ -1095,11 +1095,11 @@ public final class ElliottWaveMacroCycleDemo {
 
     private static Optional<ElliottWaveAnchorCalibrationHarness.Anchor> matchAnchor(
             final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, final Instant time,
-            final ElliottWaveAnchorCalibrationHarness.AnchorType type, final ElliottPhase phase) {
+            final ElliottWaveAnchorCalibrationHarness.AnchorType type, final ElliottPhase... phases) {
         return registry.anchors()
                 .stream()
                 .filter(anchor -> anchor.type() == type)
-                .filter(anchor -> anchor.expectedPhases().contains(phase))
+                .filter(anchor -> java.util.Arrays.stream(phases).anyMatch(anchor.expectedPhases()::contains))
                 .filter(anchor -> withinTolerance(time, anchor))
                 .min(Comparator.comparingLong(anchor -> Math.abs(Duration.between(anchor.at(), time).toMillis())));
     }
@@ -1124,12 +1124,11 @@ public final class ElliottWaveMacroCycleDemo {
     }
 
     private static Comparator<MacroProfileEvaluation> profileEvaluationComparator() {
-        return Comparator.comparingDouble(MacroProfileEvaluation::aggregateScore)
+        return Comparator.comparingInt((MacroProfileEvaluation evaluation) -> evaluation.cycleFits().size())
                 .reversed()
-                .thenComparingInt(MacroProfileEvaluation::acceptedCycles)
-                .reversed()
-                .thenComparingInt(MacroProfileEvaluation::acceptedSegments)
-                .reversed()
+                .thenComparing(Comparator.comparingInt(MacroProfileEvaluation::acceptedCycles).reversed())
+                .thenComparing(Comparator.comparingDouble(MacroProfileEvaluation::aggregateScore).reversed())
+                .thenComparing(Comparator.comparingInt(MacroProfileEvaluation::acceptedSegments).reversed())
                 .thenComparingInt(evaluation -> evaluation.profile().orthodoxyRank());
     }
 
