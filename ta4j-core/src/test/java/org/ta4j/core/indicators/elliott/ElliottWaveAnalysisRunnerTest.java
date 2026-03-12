@@ -685,6 +685,106 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void buildMacroPivotGraphPreservesRawSwingEndpointsCollapsedByPivotNormalization() {
+        BarSeries series = buildCollapsedNormalizationMacroPivotSeries();
+        NumFactory factory = series.numFactory();
+        List<ElliottSwing> swings = List.of(
+                new ElliottSwing(0, 8, factory.numOf(100), factory.numOf(180), ElliottDegree.PRIMARY),
+                new ElliottSwing(8, 14, factory.numOf(180), factory.numOf(70), ElliottDegree.PRIMARY),
+                new ElliottSwing(14, 16, factory.numOf(70), factory.numOf(150), ElliottDegree.PRIMARY),
+                new ElliottSwing(16, 18, factory.numOf(150), factory.numOf(60), ElliottDegree.PRIMARY),
+                new ElliottSwing(18, 24, factory.numOf(60), factory.numOf(190), ElliottDegree.PRIMARY));
+        ElliottScenarioSet empty = ElliottScenarioSet.empty(series.getEndIndex());
+        ElliottAnalysisResult snapshot = new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), swings,
+                swings, empty, Map.of(), null, empty.trendBias());
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(1)
+                .lowerDegrees(1)
+                .analysisRunner((window, ignoredDegree) -> snapshot)
+                .build();
+
+        ElliottWaveAnalysisRunner.MacroPivotGraph graph = analysis.buildMacroPivotGraph(series, snapshot);
+
+        assertThat(graph.pivots().stream().map(ElliottWaveAnalysisRunner.MacroPivot::barIndex)).contains(14, 16, 18);
+    }
+
+    @Test
+    void buildMacroPivotGraphRetainsDominantBucketLowAlongsideDeeperBucketLow() {
+        BarSeries series = buildBucketedDominanceMacroPivotSeries();
+        NumFactory factory = series.numFactory();
+        List<ElliottSwing> swings = List.of(
+                new ElliottSwing(0, 8, factory.numOf(100), factory.numOf(180), ElliottDegree.PRIMARY),
+                new ElliottSwing(8, 14, factory.numOf(180), factory.numOf(62), ElliottDegree.PRIMARY),
+                new ElliottSwing(14, 16, factory.numOf(62), factory.numOf(176), ElliottDegree.PRIMARY),
+                new ElliottSwing(16, 18, factory.numOf(176), factory.numOf(60), ElliottDegree.PRIMARY),
+                new ElliottSwing(18, 24, factory.numOf(60), factory.numOf(100), ElliottDegree.PRIMARY),
+                new ElliottSwing(24, 28, factory.numOf(100), factory.numOf(72), ElliottDegree.PRIMARY),
+                new ElliottSwing(28, 32, factory.numOf(72), factory.numOf(120), ElliottDegree.PRIMARY),
+                new ElliottSwing(32, 36, factory.numOf(120), factory.numOf(78), ElliottDegree.PRIMARY),
+                new ElliottSwing(36, 40, factory.numOf(78), factory.numOf(130), ElliottDegree.PRIMARY),
+                new ElliottSwing(40, 44, factory.numOf(130), factory.numOf(84), ElliottDegree.PRIMARY),
+                new ElliottSwing(44, 48, factory.numOf(84), factory.numOf(140), ElliottDegree.PRIMARY),
+                new ElliottSwing(48, 52, factory.numOf(140), factory.numOf(90), ElliottDegree.PRIMARY),
+                new ElliottSwing(52, 56, factory.numOf(90), factory.numOf(150), ElliottDegree.PRIMARY),
+                new ElliottSwing(56, 60, factory.numOf(150), factory.numOf(96), ElliottDegree.PRIMARY),
+                new ElliottSwing(60, 64, factory.numOf(96), factory.numOf(160), ElliottDegree.PRIMARY),
+                new ElliottSwing(64, 68, factory.numOf(160), factory.numOf(102), ElliottDegree.PRIMARY),
+                new ElliottSwing(68, 72, factory.numOf(102), factory.numOf(170), ElliottDegree.PRIMARY),
+                new ElliottSwing(72, 76, factory.numOf(170), factory.numOf(108), ElliottDegree.PRIMARY));
+        ElliottScenarioSet empty = ElliottScenarioSet.empty(series.getEndIndex());
+        ElliottAnalysisResult snapshot = new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), swings,
+                swings, empty, Map.of(), null, empty.trendBias());
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(1)
+                .lowerDegrees(1)
+                .analysisRunner((window, ignoredDegree) -> snapshot)
+                .build();
+
+        ElliottWaveAnalysisRunner.MacroPivotGraph graph = analysis.buildMacroPivotGraph(series, snapshot);
+
+        assertThat(graph.pivots().stream().map(ElliottWaveAnalysisRunner.MacroPivot::barIndex)).contains(14, 18);
+    }
+
+    @Test
+    void buildMacroPivotGraphRetainsPostHighBucketLowWhenEarlierAbsoluteLowExists() {
+        BarSeries series = buildPostHighBucketMacroPivotSeries();
+        NumFactory factory = series.numFactory();
+        List<ElliottSwing> swings = List.of(
+                new ElliottSwing(0, 4, factory.numOf(100), factory.numOf(160), ElliottDegree.PRIMARY),
+                new ElliottSwing(4, 6, factory.numOf(160), factory.numOf(50), ElliottDegree.PRIMARY),
+                new ElliottSwing(6, 8, factory.numOf(50), factory.numOf(180), ElliottDegree.PRIMARY),
+                new ElliottSwing(8, 14, factory.numOf(180), factory.numOf(70), ElliottDegree.PRIMARY),
+                new ElliottSwing(14, 18, factory.numOf(70), factory.numOf(120), ElliottDegree.PRIMARY),
+                new ElliottSwing(18, 26, factory.numOf(120), factory.numOf(80), ElliottDegree.PRIMARY),
+                new ElliottSwing(26, 34, factory.numOf(80), factory.numOf(130), ElliottDegree.PRIMARY),
+                new ElliottSwing(34, 42, factory.numOf(130), factory.numOf(90), ElliottDegree.PRIMARY),
+                new ElliottSwing(42, 50, factory.numOf(90), factory.numOf(140), ElliottDegree.PRIMARY),
+                new ElliottSwing(50, 58, factory.numOf(140), factory.numOf(100), ElliottDegree.PRIMARY),
+                new ElliottSwing(58, 66, factory.numOf(100), factory.numOf(150), ElliottDegree.PRIMARY),
+                new ElliottSwing(66, 74, factory.numOf(150), factory.numOf(110), ElliottDegree.PRIMARY),
+                new ElliottSwing(74, 82, factory.numOf(110), factory.numOf(160), ElliottDegree.PRIMARY),
+                new ElliottSwing(82, 90, factory.numOf(160), factory.numOf(120), ElliottDegree.PRIMARY),
+                new ElliottSwing(90, 98, factory.numOf(120), factory.numOf(170), ElliottDegree.PRIMARY),
+                new ElliottSwing(98, 106, factory.numOf(170), factory.numOf(130), ElliottDegree.PRIMARY),
+                new ElliottSwing(106, 114, factory.numOf(130), factory.numOf(180), ElliottDegree.PRIMARY));
+        ElliottScenarioSet empty = ElliottScenarioSet.empty(series.getEndIndex());
+        ElliottAnalysisResult snapshot = new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), swings,
+                swings, empty, Map.of(), null, empty.trendBias());
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(1)
+                .lowerDegrees(1)
+                .analysisRunner((window, ignoredDegree) -> snapshot)
+                .build();
+
+        ElliottWaveAnalysisRunner.MacroPivotGraph graph = analysis.buildMacroPivotGraph(series, snapshot);
+
+        assertThat(graph.pivots().stream().map(ElliottWaveAnalysisRunner.MacroPivot::barIndex)).contains(6, 14);
+    }
+
+    @Test
     void analyzeHistoricalStructureUsesNonAdjacentPivotPairsForCompletedCycles() {
         BarSeries series = buildNonAdjacentHistoricalCycleSeries();
         NumFactory factory = series.numFactory();
@@ -1772,6 +1872,104 @@ class ElliottWaveAnalysisRunnerTest {
         Instant time = Instant.parse("2024-08-01T00:00:00Z");
         double[] closes = { 100, 112, 125, 138, 150, 132, 114, 96, 80, 94, 108, 120, 130, 120, 110, 101, 95, 112, 130,
                 145, 160, 148, 136, 122, 110, 126, 144, 162, 180 };
+        for (int index = 0; index < closes.length; index++) {
+            double close = closes[index];
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(close)
+                    .highPrice(close + 2.0)
+                    .lowPrice(close - 2.0)
+                    .closePrice(close)
+                    .volume(1000)
+                    .add();
+        }
+        return series;
+    }
+
+    private BarSeries buildCollapsedNormalizationMacroPivotSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("CollapsedNormalizationMacroPivot").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2021-01-01T00:00:00Z");
+        double[] closes = new double[25];
+        int[] pivotIndexes = { 0, 8, 14, 16, 18, 24 };
+        double[] pivotCloses = { 100, 180, 70, 150, 60, 190 };
+        for (int segment = 0; segment < pivotIndexes.length - 1; segment++) {
+            int start = pivotIndexes[segment];
+            int end = pivotIndexes[segment + 1];
+            double startClose = pivotCloses[segment];
+            double endClose = pivotCloses[segment + 1];
+            for (int index = start; index <= end; index++) {
+                double progress = (index - start) / (double) Math.max(1, end - start);
+                closes[index] = startClose + ((endClose - startClose) * progress);
+            }
+        }
+        for (int index = 0; index < closes.length; index++) {
+            double close = closes[index];
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(close)
+                    .highPrice(close + 2.0)
+                    .lowPrice(close - 2.0)
+                    .closePrice(close)
+                    .volume(1000)
+                    .add();
+        }
+        return series;
+    }
+
+    private BarSeries buildBucketedDominanceMacroPivotSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("BucketedDominanceMacroPivot").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2020-01-01T00:00:00Z");
+        double[] closes = new double[80];
+        int[] pivotIndexes = { 0, 8, 14, 16, 18, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 79 };
+        double[] pivotCloses = { 100, 180, 62, 176, 60, 100, 72, 120, 78, 130, 84, 140, 90, 150, 96, 160, 102, 170, 108,
+                118 };
+        for (int segment = 0; segment < pivotIndexes.length - 1; segment++) {
+            int start = pivotIndexes[segment];
+            int end = pivotIndexes[segment + 1];
+            double startClose = pivotCloses[segment];
+            double endClose = pivotCloses[segment + 1];
+            for (int index = start; index <= end; index++) {
+                double progress = (index - start) / (double) Math.max(1, end - start);
+                closes[index] = startClose + ((endClose - startClose) * progress);
+            }
+        }
+        for (int index = 0; index < closes.length; index++) {
+            double close = closes[index];
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(close)
+                    .highPrice(close + 2.0)
+                    .lowPrice(close - 2.0)
+                    .closePrice(close)
+                    .volume(1000)
+                    .add();
+        }
+        return series;
+    }
+
+    private BarSeries buildPostHighBucketMacroPivotSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("PostHighBucketMacroPivot").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2022-01-01T00:00:00Z");
+        double[] closes = new double[120];
+        int[] pivotIndexes = { 0, 4, 6, 8, 14, 18, 26, 34, 42, 50, 58, 66, 74, 82, 90, 98, 106, 114, 119 };
+        double[] pivotCloses = { 100, 160, 50, 180, 70, 120, 80, 130, 90, 140, 100, 150, 110, 160, 120, 170, 130, 180,
+                140 };
+        for (int segment = 0; segment < pivotIndexes.length - 1; segment++) {
+            int start = pivotIndexes[segment];
+            int end = pivotIndexes[segment + 1];
+            double startClose = pivotCloses[segment];
+            double endClose = pivotCloses[segment + 1];
+            for (int index = start; index <= end; index++) {
+                double progress = (index - start) / (double) Math.max(1, end - start);
+                closes[index] = startClose + ((endClose - startClose) * progress);
+            }
+        }
         for (int index = 0; index < closes.length; index++) {
             double close = closes[index];
             series.barBuilder()

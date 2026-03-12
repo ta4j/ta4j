@@ -552,17 +552,41 @@ public final class ElliottWaveAnalysisRunner {
         if (swings == null || swings.isEmpty()) {
             return;
         }
-        for (final org.ta4j.core.indicators.elliott.swing.SwingPivot pivot : SwingDetectorResult.fromSwings(swings)
-                .pivots()) {
-            final int barIndex = pivot.index();
-            if (barIndex < series.getBeginIndex() || barIndex > series.getEndIndex()) {
+        for (final ElliottSwing swing : swings) {
+            if (swing == null) {
                 continue;
             }
-            pivotsByBarIndex.put(barIndex,
-                    new MacroPivot(pivot.type() == org.ta4j.core.indicators.elliott.swing.SwingPivotType.HIGH, barIndex,
-                            series.getBar(barIndex).getEndTime(), pivot.price(),
-                            pivotDegreeProvenance(swings, barIndex)));
+            mergeMacroPivotEndpoint(series, swings, pivotsByBarIndex, swing.fromIndex(), swing.fromPrice(),
+                    !swing.isRising());
+            mergeMacroPivotEndpoint(series, swings, pivotsByBarIndex, swing.toIndex(), swing.toPrice(),
+                    swing.isRising());
         }
+    }
+
+    private void mergeMacroPivotEndpoint(final BarSeries series, final List<ElliottSwing> swings,
+            final Map<Integer, MacroPivot> pivotsByBarIndex, final int barIndex, final Num price,
+            final boolean highPivot) {
+        if (barIndex < series.getBeginIndex() || barIndex > series.getEndIndex()) {
+            return;
+        }
+        final MacroPivot candidate = new MacroPivot(highPivot, barIndex, series.getBar(barIndex).getEndTime(), price,
+                pivotDegreeProvenance(swings, barIndex));
+        final MacroPivot existing = pivotsByBarIndex.get(barIndex);
+        if (existing == null) {
+            pivotsByBarIndex.put(barIndex, candidate);
+            return;
+        }
+        pivotsByBarIndex.put(barIndex, chooseMacroPivot(existing, candidate));
+    }
+
+    private MacroPivot chooseMacroPivot(final MacroPivot existing, final MacroPivot candidate) {
+        if (existing.highPivot() == candidate.highPivot()) {
+            if (existing.highPivot()) {
+                return candidate.price().isGreaterThan(existing.price()) ? candidate : existing;
+            }
+            return candidate.price().isLessThan(existing.price()) ? candidate : existing;
+        }
+        return candidate.degree().ordinal() > existing.degree().ordinal() ? candidate : existing;
     }
 
     /**
@@ -1362,10 +1386,13 @@ public final class ElliottWaveAnalysisRunner {
                         bestHighDominance = dominance;
                         bestHighIndex = index;
                     }
-                } else if (bestLowIndex < 0 || pivot.price().isLessThan(pivots.get(bestLowIndex).price())
-                        || (pivot.price().isEqual(pivots.get(bestLowIndex).price()) && dominance > bestLowDominance)) {
-                    bestLowDominance = dominance;
-                    bestLowIndex = index;
+                } else {
+                    if (bestLowIndex < 0 || pivot.price().isLessThan(pivots.get(bestLowIndex).price())
+                            || (pivot.price().isEqual(pivots.get(bestLowIndex).price())
+                                    && dominance > bestLowDominance)) {
+                        bestLowDominance = dominance;
+                        bestLowIndex = index;
+                    }
                 }
             }
 
@@ -1377,6 +1404,49 @@ public final class ElliottWaveAnalysisRunner {
                 keep[bestLowIndex] = true;
                 required[bestLowIndex] = true;
             }
+            preservePostExtremeBucketPivot(pivots, dominanceScores, keep, required, bestHighIndex, bucketEnd, false);
+            preservePostExtremeBucketPivot(pivots, dominanceScores, keep, required, bestLowIndex, bucketEnd, true);
+        }
+    }
+
+    private void preservePostExtremeBucketPivot(final List<MacroPivot> pivots, final double[] dominanceScores,
+            final boolean[] keep, final boolean[] required, final int anchorIndex, final int bucketEndBarIndex,
+            final boolean targetHighPivot) {
+        if (anchorIndex < 0) {
+            return;
+        }
+        int selectedIndex = -1;
+        double selectedDominance = Double.NEGATIVE_INFINITY;
+        for (int index = anchorIndex + 1; index < pivots.size() - 1; index++) {
+            final MacroPivot pivot = pivots.get(index);
+            if (pivot.barIndex() > bucketEndBarIndex) {
+                break;
+            }
+            if (pivot.highPivot() != targetHighPivot) {
+                continue;
+            }
+            final double dominance = dominanceScores[index];
+            if (selectedIndex < 0) {
+                selectedIndex = index;
+                selectedDominance = dominance;
+                continue;
+            }
+            final MacroPivot selected = pivots.get(selectedIndex);
+            if (targetHighPivot) {
+                if (pivot.price().isGreaterThan(selected.price())
+                        || (pivot.price().isEqual(selected.price()) && dominance > selectedDominance)) {
+                    selectedIndex = index;
+                    selectedDominance = dominance;
+                }
+            } else if (pivot.price().isLessThan(selected.price())
+                    || (pivot.price().isEqual(selected.price()) && dominance > selectedDominance)) {
+                selectedIndex = index;
+                selectedDominance = dominance;
+            }
+        }
+        if (selectedIndex >= 0) {
+            keep[selectedIndex] = true;
+            required[selectedIndex] = true;
         }
     }
 
