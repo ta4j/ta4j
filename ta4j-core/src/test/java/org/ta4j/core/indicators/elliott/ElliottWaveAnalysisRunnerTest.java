@@ -632,6 +632,58 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void buildMacroPivotGraphRetainsBroadHistoryCoverageAcrossBuckets() {
+        BarSeries series = buildBucketCoverageMacroPivotSeries();
+        NumFactory factory = series.numFactory();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(1)
+                .lowerDegrees(1)
+                .analysisRunner((window, ignoredDegree) -> bucketCoverageMacroPivotSnapshot(window, factory))
+                .build();
+
+        ElliottAnalysisResult snapshot = analysis.analyze(series)
+                .analysisFor(ElliottDegree.PRIMARY)
+                .orElseThrow()
+                .analysis();
+        ElliottWaveAnalysisRunner.MacroPivotGraph graph = analysis.buildMacroPivotGraph(series, snapshot);
+        List<Integer> retained = graph.pivots().stream().map(ElliottWaveAnalysisRunner.MacroPivot::barIndex).toList();
+
+        assertThat(graph.pivots()).hasSizeLessThanOrEqualTo(24);
+        assertThat(retained).contains(0, 32);
+        assertThat(retained.stream().filter(index -> index > 0 && index < 10).count()).isGreaterThanOrEqualTo(2);
+        assertThat(retained.stream().filter(index -> index >= 10 && index < 20).count()).isGreaterThanOrEqualTo(2);
+        assertThat(retained.stream().filter(index -> index >= 20 && index < 30).count()).isGreaterThanOrEqualTo(4);
+    }
+
+    @Test
+    void analyzeHistoricalStructureUsesNonAdjacentPivotPairsForCompletedCycles() {
+        BarSeries series = buildNonAdjacentHistoricalCycleSeries();
+        NumFactory factory = series.numFactory();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> nonAdjacentHistoricalCycleSnapshot(window, factory))
+                .build();
+
+        ElliottWaveAnalysisResult.HistoricalStructureAssessment history = analysis.analyzeHistoricalStructure(series);
+
+        assertThat(history.legs()).hasSize(2);
+        assertThat(history.legs().get(0).bullish()).isTrue();
+        assertThat(history.legs().get(0).startIndex()).isZero();
+        assertThat(history.legs().get(0).endIndex()).isEqualTo(5);
+        assertThat(history.legs().get(1).bullish()).isFalse();
+        assertThat(history.legs().get(1).startIndex()).isEqualTo(5);
+        assertThat(history.legs().get(1).endIndex()).isEqualTo(8);
+        assertThat(history.cycles()).hasSize(1);
+        assertThat(history.cycles().getFirst().bullishLeg().startIndex()).isZero();
+        assertThat(history.cycles().getFirst().bullishLeg().endIndex()).isEqualTo(5);
+        assertThat(history.cycles().getFirst().bearishLeg().startIndex()).isEqualTo(5);
+        assertThat(history.cycles().getFirst().bearishLeg().endIndex()).isEqualTo(8);
+    }
+
+    @Test
     void searchCanonicalStructurePrefersAlternatingCoherentPath() {
         ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
                 .degree(ElliottDegree.PRIMARY)
@@ -1525,6 +1577,108 @@ class ElliottWaveAnalysisRunnerTest {
         return new double[] { 100.0, 101.0, 100.4, 101.2, 100.7, 101.4, 100.9, 102.0, 130.0, 118.0, 119.5, 117.8, 120.2,
                 118.4, 119.8, 117.2, 80.0, 92.0, 91.0, 93.0, 92.2, 94.0, 93.1, 96.0, 150.0, 135.0, 136.0, 133.0,
                 110.0 };
+    }
+
+    private BarSeries buildBucketCoverageMacroPivotSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("BucketCoverageMacroPivot").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2024-07-01T00:00:00Z");
+        double[] pivots = bucketCoverageMacroPivotPrices();
+        for (int index = 0; index < pivots.length; index++) {
+            double pivotPrice = pivots[index];
+            boolean highPivot = index % 2 == 1;
+            double high = highPivot ? pivotPrice : pivotPrice + 2.0;
+            double low = highPivot ? pivotPrice - 2.0 : pivotPrice;
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(pivotPrice)
+                    .highPrice(high)
+                    .lowPrice(low)
+                    .closePrice(pivotPrice)
+                    .volume(1000)
+                    .add();
+        }
+        return series;
+    }
+
+    private ElliottAnalysisResult bucketCoverageMacroPivotSnapshot(final BarSeries series, final NumFactory factory) {
+        double[] pivots = bucketCoverageMacroPivotPrices();
+        List<ElliottSwing> swings = new ArrayList<>(pivots.length - 1);
+        for (int index = 0; index < pivots.length - 1; index++) {
+            swings.add(new ElliottSwing(index, index + 1, factory.numOf(pivots[index]),
+                    factory.numOf(pivots[index + 1]), ElliottDegree.PRIMARY));
+        }
+        ElliottScenarioSet empty = ElliottScenarioSet.empty(series.getEndIndex());
+        return new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), swings, swings, empty, Map.of(),
+                null, empty.trendBias());
+    }
+
+    private double[] bucketCoverageMacroPivotPrices() {
+        return new double[] { 100.0, 105.0, 101.0, 106.0, 102.0, 107.0, 103.0, 108.0, 104.0, 109.0, 105.0, 110.0, 106.0,
+                111.0, 107.0, 112.0, 108.0, 180.0, 120.0, 220.0, 125.0, 260.0, 130.0, 300.0, 135.0, 340.0, 140.0, 380.0,
+                145.0, 420.0, 150.0, 460.0, 155.0 };
+    }
+
+    private BarSeries buildNonAdjacentHistoricalCycleSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("NonAdjacentHistoricalCycle").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2024-09-01T00:00:00Z");
+        double[] pivots = nonAdjacentHistoricalCyclePrices();
+        for (int index = 0; index < pivots.length; index++) {
+            double pivotPrice = pivots[index];
+            boolean highPivot = index % 2 == 1;
+            double high = highPivot ? pivotPrice : pivotPrice + 2.0;
+            double low = highPivot ? pivotPrice - 2.0 : pivotPrice;
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(pivotPrice)
+                    .highPrice(high)
+                    .lowPrice(low)
+                    .closePrice(pivotPrice)
+                    .volume(1000)
+                    .add();
+        }
+        return series;
+    }
+
+    private ElliottAnalysisResult nonAdjacentHistoricalCycleSnapshot(final BarSeries series, final NumFactory factory) {
+        double[] pivots = nonAdjacentHistoricalCyclePrices();
+        List<ElliottSwing> processedSwings = new ArrayList<>(pivots.length - 1);
+        for (int index = 0; index < pivots.length - 1; index++) {
+            processedSwings.add(new ElliottSwing(index, index + 1, factory.numOf(pivots[index]),
+                    factory.numOf(pivots[index + 1]), ElliottDegree.PRIMARY));
+        }
+
+        ElliottScenarioSet scenarios = ElliottScenarioSet.empty(series.getEndIndex());
+        if (series.getBarCount() >= 6
+                && series.getLastBar().getClosePrice().isGreaterThan(series.getBar(0).getClosePrice())) {
+            List<ElliottSwing> swings = List.of(
+                    new ElliottSwing(0, 1, factory.numOf(100), factory.numOf(120), ElliottDegree.PRIMARY),
+                    new ElliottSwing(1, 2, factory.numOf(120), factory.numOf(108), ElliottDegree.PRIMARY),
+                    new ElliottSwing(2, 3, factory.numOf(108), factory.numOf(150), ElliottDegree.PRIMARY),
+                    new ElliottSwing(3, 4, factory.numOf(150), factory.numOf(128), ElliottDegree.PRIMARY),
+                    new ElliottSwing(4, 5, factory.numOf(128), factory.numOf(180), ElliottDegree.PRIMARY));
+            ElliottScenario waveFive = scenario(factory, "history-wave-5", ElliottPhase.WAVE5, 0.88, swings,
+                    factory.numOf(100), 0.88);
+            scenarios = ElliottScenarioSet.of(List.of(waveFive), series.getEndIndex());
+        } else if (series.getBarCount() >= 4
+                && series.getLastBar().getClosePrice().isLessThan(series.getBar(0).getClosePrice())) {
+            List<ElliottSwing> swings = List.of(
+                    new ElliottSwing(0, 1, factory.numOf(180), factory.numOf(150), ElliottDegree.PRIMARY),
+                    new ElliottSwing(1, 2, factory.numOf(150), factory.numOf(165), ElliottDegree.PRIMARY),
+                    new ElliottSwing(2, 3, factory.numOf(165), factory.numOf(130), ElliottDegree.PRIMARY));
+            ElliottScenario corrective = scenario(factory, "history-corrective-c", ElliottPhase.CORRECTIVE_C, 0.84,
+                    swings, factory.numOf(180), 0.84);
+            scenarios = ElliottScenarioSet.of(List.of(corrective), series.getEndIndex());
+        }
+        return new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(), processedSwings, processedSwings,
+                scenarios, Map.of(), null, scenarios.trendBias());
+    }
+
+    private double[] nonAdjacentHistoricalCyclePrices() {
+        return new double[] { 100.0, 120.0, 108.0, 150.0, 128.0, 180.0, 150.0, 165.0, 130.0 };
     }
 
     private ElliottAnalysisResult waveFourNormalizationSnapshot(final BarSeries series, final NumFactory factory) {

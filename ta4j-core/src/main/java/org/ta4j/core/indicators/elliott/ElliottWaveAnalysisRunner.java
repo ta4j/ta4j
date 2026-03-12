@@ -681,27 +681,44 @@ public final class ElliottWaveAnalysisRunner {
             return List.of();
         }
 
-        final List<CanonicalLegCandidate> candidates = new ArrayList<>(pivotGraph.pivots().size() - 1);
-        for (int index = 0; index < pivotGraph.pivots().size() - 1; index++) {
-            final MacroPivot start = pivotGraph.pivots().get(index);
-            final MacroPivot end = pivotGraph.pivots().get(index + 1);
-            if (start.highPivot() == end.highPivot() || end.barIndex() <= start.barIndex()) {
-                continue;
+        final int lookaheadLimit = Math.min(8, Math.max(2, MACRO_PIVOT_GRAPH_MAX_PIVOTS / 3));
+        final int maxCandidatesPerStart = 3;
+        final List<CanonicalLegCandidate> candidates = new ArrayList<>(pivotGraph.pivots().size() * 2);
+        for (int startIndex = 0; startIndex < pivotGraph.pivots().size() - 1; startIndex++) {
+            final MacroPivot start = pivotGraph.pivots().get(startIndex);
+            final List<CanonicalLegCandidate> perStartCandidates = new ArrayList<>(lookaheadLimit);
+            final int lastEndIndex = Math.min(pivotGraph.pivots().size() - 1, startIndex + lookaheadLimit);
+            for (int endIndex = startIndex + 1; endIndex <= lastEndIndex; endIndex++) {
+                final MacroPivot end = pivotGraph.pivots().get(endIndex);
+                if (start.highPivot() == end.highPivot() || end.barIndex() <= start.barIndex()) {
+                    continue;
+                }
+                final boolean bullish = !start.highPivot() && end.highPivot();
+                final Optional<AnchoredWindowSelection> selection = selectAcceptedOrFallbackTerminalLegForWindow(series,
+                        start.barIndex(), end.barIndex(), bullish, CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS, 0.0, 0.0, 0.0,
+                        0.0);
+                if (selection.isEmpty()) {
+                    continue;
+                }
+                final AnchoredWindowSelection anchoredSelection = selection.orElseThrow();
+                final double fitScore = canonicalHistoricalLegScore(anchoredSelection);
+                if (fitScore <= 0.0) {
+                    continue;
+                }
+                final String id = "history-" + startIndex + "-" + endIndex + "-" + start.barIndex() + "-"
+                        + end.barIndex() + "-" + (bullish ? "bull" : "bear");
+                perStartCandidates.add(new CanonicalLegCandidate(id, start.barIndex(), end.barIndex(), bullish,
+                        fitScore, anchoredSelection));
             }
-            final boolean bullish = !start.highPivot() && end.highPivot();
-            final Optional<AnchoredWindowSelection> selection = selectAcceptedOrFallbackTerminalLegForWindow(series,
-                    start.barIndex(), end.barIndex(), bullish, CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS, 0.0, 0.0, 0.0, 0.0);
-            if (selection.isEmpty()) {
-                continue;
+            perStartCandidates.sort(Comparator.<CanonicalLegCandidate>comparingDouble(CanonicalLegCandidate::fitScore)
+                    .reversed()
+                    .thenComparing(
+                            Comparator.comparingInt((CanonicalLegCandidate candidate) -> candidate.endPivotIndex()
+                                    - candidate.startPivotIndex()).reversed())
+                    .thenComparing(CanonicalLegCandidate::id));
+            for (int index = 0; index < Math.min(maxCandidatesPerStart, perStartCandidates.size()); index++) {
+                candidates.add(perStartCandidates.get(index));
             }
-            final double fitScore = canonicalHistoricalLegScore(selection.orElseThrow());
-            if (fitScore <= 0.0) {
-                continue;
-            }
-            final String id = "history-" + index + "-" + start.barIndex() + "-" + end.barIndex() + "-"
-                    + (bullish ? "bull" : "bear");
-            candidates.add(new CanonicalLegCandidate(id, start.barIndex(), end.barIndex(), bullish, fitScore,
-                    selection.orElseThrow()));
         }
         return List.copyOf(candidates);
     }
@@ -1187,12 +1204,15 @@ public final class ElliottWaveAnalysisRunner {
         }
 
         final List<MacroPivotRank> ranked = new ArrayList<>(Math.max(0, pivots.size() - 2));
+        final double[] dominanceScores = new double[pivots.size()];
         for (int index = 1; index < pivots.size() - 1; index++) {
             final MacroPivot pivot = pivots.get(index);
             final double dominance = pivotDominanceScore(series, pivot.barIndex(), pivots.get(index - 1).barIndex(),
                     pivots.get(index + 1).barIndex(), pivot.highPivot());
+            dominanceScores[index] = dominance;
             ranked.add(new MacroPivotRank(index, dominance));
         }
+        preserveBucketedMacroPivots(pivots, dominanceScores, keep, required);
 
         ranked.stream()
                 .filter(rank -> rank.dominance() >= MACRO_PIVOT_GRAPH_MIN_DOMINANCE)
@@ -1244,6 +1264,54 @@ public final class ElliottWaveAnalysisRunner {
             }
         }
         return List.copyOf(pruned);
+    }
+
+    private void preserveBucketedMacroPivots(final List<MacroPivot> pivots, final double[] dominanceScores,
+            final boolean[] keep, final boolean[] required) {
+        final int firstBarIndex = pivots.getFirst().barIndex();
+        final int lastBarIndex = pivots.getLast().barIndex();
+        final int bucketCount = Math.min(8, Math.max(1, MACRO_PIVOT_GRAPH_MAX_PIVOTS / 2));
+        final int barSpan = Math.max(1, lastBarIndex - firstBarIndex + 1);
+        final int bucketWidth = Math.max(1, (int) Math.ceil(barSpan / (double) bucketCount));
+
+        for (int bucket = 0; bucket < bucketCount; bucket++) {
+            final int bucketStart = firstBarIndex + (bucket * bucketWidth);
+            final int bucketEnd = bucket == bucketCount - 1 ? lastBarIndex
+                    : Math.min(lastBarIndex, bucketStart + bucketWidth - 1);
+            int bestHighIndex = -1;
+            int bestLowIndex = -1;
+            double bestHighDominance = Double.NEGATIVE_INFINITY;
+            double bestLowDominance = Double.NEGATIVE_INFINITY;
+
+            for (int index = 1; index < pivots.size() - 1; index++) {
+                final MacroPivot pivot = pivots.get(index);
+                if (pivot.barIndex() < bucketStart || pivot.barIndex() > bucketEnd) {
+                    continue;
+                }
+                final double dominance = dominanceScores[index];
+                if (pivot.highPivot()) {
+                    if (bestHighIndex < 0 || pivot.price().isGreaterThan(pivots.get(bestHighIndex).price())
+                            || (pivot.price().isEqual(pivots.get(bestHighIndex).price())
+                                    && dominance > bestHighDominance)) {
+                        bestHighDominance = dominance;
+                        bestHighIndex = index;
+                    }
+                } else if (bestLowIndex < 0 || pivot.price().isLessThan(pivots.get(bestLowIndex).price())
+                        || (pivot.price().isEqual(pivots.get(bestLowIndex).price()) && dominance > bestLowDominance)) {
+                    bestLowDominance = dominance;
+                    bestLowIndex = index;
+                }
+            }
+
+            if (bestHighIndex >= 0) {
+                keep[bestHighIndex] = true;
+                required[bestHighIndex] = true;
+            }
+            if (bestLowIndex >= 0) {
+                keep[bestLowIndex] = true;
+                required[bestLowIndex] = true;
+            }
+        }
     }
 
     private Num currentPhaseInvalidation(final ElliottScenario scenario, final ElliottPhase currentPhase) {
