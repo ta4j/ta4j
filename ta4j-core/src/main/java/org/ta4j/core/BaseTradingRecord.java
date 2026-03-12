@@ -256,7 +256,7 @@ public class BaseTradingRecord implements TradingRecord {
         int index = fill.index();
         ExecutionSide side = resolveExecutionSide(fill.side());
         Instant time = resolveExecutionTime(fill.time(), null);
-        Num normalizedAmount = normalizeAmount(fill.amount(), fill.price());
+        Num normalizedAmount = normalizeRecordedAmount(fill.amount(), fill.price());
         Num normalizedFee = normalizeFee(fill.fee(), fill.price());
         BaseTrade trade = new BaseTrade(index >= 0 ? index : 0, time, fill.price(), normalizedAmount, normalizedFee,
                 side, fill.orderId(), fill.correlationId());
@@ -451,7 +451,7 @@ public class BaseTradingRecord implements TradingRecord {
         Instant executionTime = resolveExecutionTime(fill.time(), tradeTime);
         String orderId = chooseValue(fill.orderId(), tradeOrderId);
         String correlationId = chooseValue(fill.correlationId(), tradeCorrelationId);
-        Num normalizedAmount = normalizeAmount(fill.amount(), fill.price());
+        Num normalizedAmount = normalizeRecordedAmount(fill.amount(), fill.price());
         Num normalizedFee = normalizeFee(fill.fee(), fill.price());
         BaseTrade baseTrade = new BaseTrade(resolvedIndex, executionTime, fill.price(), normalizedAmount, normalizedFee,
                 tradeSide, orderId, correlationId);
@@ -503,7 +503,7 @@ public class BaseTradingRecord implements TradingRecord {
         Objects.requireNonNull(price, "price");
         Objects.requireNonNull(amount, "amount");
         Objects.requireNonNull(transactionCostModel, "transactionCostModel");
-        Num normalizedAmount = normalizeAmount(amount, price);
+        Num normalizedAmount = normalizeSyntheticAmount(amount, price);
         applyTradeInternal(index, new BaseTrade(index, type, price, normalizedAmount, transactionCostModel), -1L);
     }
 
@@ -760,12 +760,21 @@ public class BaseTradingRecord implements TradingRecord {
         }
     }
 
-    private Num normalizeAmount(Num amount, Num reference) {
+    private Num normalizeRecordedAmount(Num amount, Num reference) {
         if (amount != null && !amount.isNaN()) {
             if (amount.isNegative()) {
-                return amount.abs();
+                throw new IllegalArgumentException("amount must be positive");
             }
             return amount;
+        }
+        return resolveNumFactory(reference).one();
+    }
+
+    private Num normalizeSyntheticAmount(Num amount, Num reference) {
+        if (amount != null && !amount.isNaN()) {
+            // Synthetic enter/exit APIs carry direction in the trade type, so signed
+            // quantities are normalized to their absolute magnitudes.
+            return amount.isNegative() ? amount.abs() : amount;
         }
         return resolveNumFactory(reference).one();
     }

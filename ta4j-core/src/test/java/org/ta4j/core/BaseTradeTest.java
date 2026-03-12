@@ -105,6 +105,22 @@ class BaseTradeTest {
     }
 
     @Test
+    void withIndexPreservesFillOffsetsForMultiFillTrades() {
+        TradeFill firstFill = new TradeFill(2, Instant.EPOCH, NUM_FACTORY.hundred(), NUM_FACTORY.one(),
+                NUM_FACTORY.numOf(0.1), ExecutionSide.BUY, "order-1", "corr-1");
+        TradeFill secondFill = new TradeFill(4, Instant.EPOCH.plusSeconds(60), NUM_FACTORY.numOf(102),
+                NUM_FACTORY.one(), NUM_FACTORY.numOf(0.2), ExecutionSide.BUY, "order-1", "corr-1");
+        BaseTrade original = new BaseTrade(TradeType.BUY, List.of(firstFill, secondFill),
+                RecordedTradeCostModel.INSTANCE);
+
+        BaseTrade reindexed = original.withIndex(10);
+
+        assertEquals(10, reindexed.getIndex());
+        assertEquals(List.of(10, 12), reindexed.getFills().stream().map(TradeFill::index).toList());
+        assertNumEquals(original.getCost(), reindexed.getCost());
+    }
+
+    @Test
     void withIndexAfterSerializationPreservesRecordedFee() throws Exception {
         BaseTrade original = new BaseTrade(4, Instant.parse("2025-01-01T00:00:00Z"), NUM_FACTORY.hundred(),
                 NUM_FACTORY.one(), NUM_FACTORY.numOf(0.3), ExecutionSide.BUY, "order-4", "corr-4");

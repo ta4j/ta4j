@@ -165,12 +165,14 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         TradingRecord tradingRecord = new BaseTradingRecord();
 
         model.execute(0, tradingRecord, series, numFactory.two());
-        model.execute(0, tradingRecord, series, numFactory.two());
+        model.execute(0, tradingRecord, series, numFactory.numOf(3));
 
         assertTrue(model.getPendingOrder(tradingRecord).isPresent());
         assertEquals(1, model.getRejectedOrders(tradingRecord).size());
         StopLimitExecutionModel.RejectedOrder rejection = model.getRejectedOrders(tradingRecord).getFirst();
         assertTrue(rejection.reason().contains("another stop-limit order is pending"));
+        assertEquals(numFactory.numOf(3), rejection.requestedAmount());
+        assertEquals(numFactory.zero(), rejection.filledAmount());
     }
 
     @Test
@@ -278,6 +280,26 @@ public class StopLimitExecutionModelTest extends AbstractIndicatorTest<BarSeries
         StopLimitExecutionModel.PendingOrderSnapshot pendingOrder = model.getPendingOrder(tradingRecord).orElseThrow();
         assertEquals(numFactory.numOf(5), pendingOrder.requestedAmount());
         assertEquals(1, pendingOrder.activationIndex());
+    }
+
+    @Test
+    public void exitOrderUsesRemainingOpenExposureAfterPartialExit() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(10d).add();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(10d).add();
+        series.barBuilder().openPrice(100d).highPrice(101d).lowPrice(99d).closePrice(100d).volume(10d).add();
+
+        TradingRecord tradingRecord = new BaseTradingRecord();
+        tradingRecord.operate(0, numFactory.hundred(), numFactory.numOf(5));
+        tradingRecord.operate(1, numFactory.numOf(101), numFactory.one());
+
+        StopLimitExecutionModel model = new StopLimitExecutionModel(numFactory.zero(), numFactory.zero(),
+                numFactory.one(), 2, TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+        model.execute(1, tradingRecord, series, numFactory.one());
+
+        StopLimitExecutionModel.PendingOrderSnapshot pendingOrder = model.getPendingOrder(tradingRecord).orElseThrow();
+        assertEquals(numFactory.numOf(4), pendingOrder.requestedAmount());
+        assertEquals(2, pendingOrder.activationIndex());
     }
 
     @Test

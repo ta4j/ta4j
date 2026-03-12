@@ -12,6 +12,7 @@ import java.util.Optional;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExecutionSide;
+import org.ta4j.core.OpenPosition;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradeFill;
@@ -145,8 +146,9 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         PendingOrder pendingOrder = pendingOrders.get(tradingRecord);
         if (pendingOrder != null) {
             addRejectedOrder(tradingRecord,
-                    new RejectedOrder(index, index, pendingOrder.tradeType, pendingOrder.requestedAmount,
-                            pendingOrder.filledAmount, "Signal ignored while another stop-limit order is pending"));
+                    new RejectedOrder(index, index, pendingOrder.tradeType, requestedAmount,
+                            requestedAmount.getNumFactory().zero(),
+                            "Signal ignored while another stop-limit order is pending"));
             return;
         }
         ExecutionTarget referenceTarget = ExecutionModelSupport.resolveExecutionTarget(index, barSeries, priceSource);
@@ -307,6 +309,10 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     private static Num resolveRequestedAmount(TradingRecord tradingRecord, Num defaultAmount) {
         if (tradingRecord.isClosed()) {
             return defaultAmount;
+        }
+        OpenPosition netOpenPosition = tradingRecord.getNetOpenPosition();
+        if (netOpenPosition != null && netOpenPosition.amount() != null && !netOpenPosition.amount().isNaN()) {
+            return netOpenPosition.amount();
         }
         return tradingRecord.getCurrentPosition().getEntry().getAmount();
     }

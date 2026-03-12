@@ -83,9 +83,8 @@ final class AnalysisPositionSupport {
                         lot.fee(), lot.side(), lot.orderId(), lot.correlationId());
                 Trade entryTrade;
                 if (entryFill.price().isNaN()) {
-                    entryTrade = lot.side() == ExecutionSide.BUY
-                            ? Trade.buyAt(lot.entryIndex(), entryFill.price(), lot.amount(), transactionCostModel)
-                            : Trade.sellAt(lot.entryIndex(), entryFill.price(), lot.amount(), transactionCostModel);
+                    entryTrade = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
+                            lot.fee(), lot.side(), lot.orderId(), lot.correlationId());
                 } else {
                     entryTrade = Trade.fromFills(lot.side().toTradeType(), List.of(entryFill), transactionCostModel);
                 }

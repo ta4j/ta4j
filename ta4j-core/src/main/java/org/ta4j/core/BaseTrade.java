@@ -560,9 +560,10 @@ public class BaseTrade implements Trade {
         if (index < 0) {
             throw new IllegalArgumentException("index must be >= 0");
         }
+        int delta = index - this.index;
         List<TradeFill> indexedFills = fills.stream()
-                .map(fill -> new TradeFill(index, fill.time(), fill.price(), fill.amount(), fill.fee(), fill.side(),
-                        fill.orderId(), fill.correlationId()))
+                .map(fill -> new TradeFill(fill.index() + delta, fill.time(), fill.price(), fill.amount(), fill.fee(),
+                        fill.side(), fill.orderId(), fill.correlationId()))
                 .toList();
         return new BaseTrade(type, indexedFills, resolveCopyCostModel(indexedFills));
     }

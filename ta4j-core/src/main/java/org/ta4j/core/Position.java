@@ -182,14 +182,16 @@ public class Position implements Serializable {
      *                               entry.index
      */
     public Trade operate(int index, Num price, Num amount) {
+        CostModel effectiveTransactionCostModel = getTransactionCostModel();
         Trade trade = null;
         if (isNew()) {
-            trade = operate(new BaseTrade(index, startingType, price, amount, transactionCostModel));
+            trade = operate(new BaseTrade(index, startingType, price, amount, effectiveTransactionCostModel));
         } else if (isOpened()) {
             if (index < entry.getIndex()) {
                 throw new IllegalStateException("The index i is less than the entryTrade index");
             }
-            trade = operate(new BaseTrade(index, startingType.complementType(), price, amount, transactionCostModel));
+            trade = operate(
+                    new BaseTrade(index, startingType.complementType(), price, amount, effectiveTransactionCostModel));
         }
         return trade;
     }

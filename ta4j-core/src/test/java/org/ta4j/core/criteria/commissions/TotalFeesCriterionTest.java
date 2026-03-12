@@ -36,8 +36,8 @@ public class TotalFeesCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateUsesBaseTradingRecordFees() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
-        var record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
         record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
@@ -45,7 +45,7 @@ public class TotalFeesCriterionTest extends AbstractCriterionTest {
         record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
                 numFactory.one(), numFactory.numOf(0.2), ExecutionSide.SELL, null, null));
 
-        var result = getCriterion().calculate(series, record);
+        Num result = getCriterion().calculate(series, record);
 
         assertNumEquals(numFactory.numOf(0.3), result);
     }

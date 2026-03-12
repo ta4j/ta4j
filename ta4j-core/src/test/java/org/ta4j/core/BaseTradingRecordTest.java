@@ -480,6 +480,22 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    void rejectsNegativeExecutionFillAmounts() {
+        BaseTradingRecord record = new BaseTradingRecord();
+        assertThrows(IllegalArgumentException.class,
+                () -> record.recordExecutionFill(new TradeFill(0, numFactory.hundred(), numFactory.minusOne())));
+    }
+
+    @Test
+    void normalizesNegativeSyntheticAmountsToMagnitudes() {
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.SELL, new ZeroCostModel(), new ZeroCostModel());
+
+        record.enter(0, numFactory.hundred(), numFactory.minusOne());
+
+        assertEquals(numFactory.one(), record.getCurrentPosition().getEntry().getAmount());
+    }
+
+    @Test
     void defaultEnterAndOperateUseUnitAmountWhenAmountIsNaN() {
         BaseTradingRecord record = new BaseTradingRecord();
 
