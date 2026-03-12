@@ -529,7 +529,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
-    void renderMacroCycleChartDrawsLeadingBearishPreludeAndIntermediateBullCycle() {
+    void renderMacroCycleChartDrawsCompletedCycleOverlaysFromStudyCycles() {
         BarSeries series = extendedSyntheticSeries();
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
                 "btc-demo-test", "synthetic.json", "synthetic provenance",
@@ -547,7 +547,45 @@ class ElliottWaveBtcMacroCycleDemoTest {
         assertNotNull(bullishDataset);
         assertNotNull(bearishDataset);
         assertEquals(1, bullishDataset.getSeriesCount());
-        assertEquals(2, bearishDataset.getSeriesCount());
+        assertEquals(1, bearishDataset.getSeriesCount());
+    }
+
+    @Test
+    void renderMacroCycleChartUsesStudyCyclesInsteadOfRegistryLegsWhenStudyProvided() {
+        BarSeries series = studySyntheticSeries();
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
+                "btc-demo-test", "synthetic.json", "synthetic provenance",
+                List.of(anchor("btc-top-2011", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 1),
+                        anchor("btc-bottom-2011", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 2),
+                        anchor("btc-top-2013", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 5),
+                        anchor("btc-bottom-2015", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 7)));
+        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveBtcMacroCycleDemo.evaluateMacroStudy(series,
+                registry);
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry expandedRegistry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
+                "btc-demo-test-expanded", "synthetic.json", "synthetic provenance",
+                List.of(anchor("btc-top-2011", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 1),
+                        anchor("btc-bottom-2011", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 2),
+                        anchor("btc-top-extra", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 3),
+                        anchor("btc-bottom-extra", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 4),
+                        anchor("btc-top-2013", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 5),
+                        anchor("btc-bottom-2015", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 7)));
+
+        JFreeChart baselineChart = ElliottWaveBtcMacroCycleDemo.renderMacroCycleChart(series, registry, study);
+        JFreeChart expandedChart = ElliottWaveBtcMacroCycleDemo.renderMacroCycleChart(series, expandedRegistry, study);
+        XYPlot baselinePlot = (XYPlot) ((CombinedDomainXYPlot) baselineChart.getPlot()).getSubplots().getFirst();
+        XYPlot expandedPlot = (XYPlot) ((CombinedDomainXYPlot) expandedChart.getPlot()).getSubplots().getFirst();
+
+        XYDataset baselineBullishDataset = findDataset(baselinePlot, "Bullish 1-2-3-4-5");
+        XYDataset baselineBearishDataset = findDataset(baselinePlot, "Bearish A-B-C");
+        XYDataset expandedBullishDataset = findDataset(expandedPlot, "Bullish 1-2-3-4-5");
+        XYDataset expandedBearishDataset = findDataset(expandedPlot, "Bearish A-B-C");
+
+        assertNotNull(baselineBullishDataset);
+        assertNotNull(baselineBearishDataset);
+        assertNotNull(expandedBullishDataset);
+        assertNotNull(expandedBearishDataset);
+        assertEquals(baselineBullishDataset.getSeriesCount(), expandedBullishDataset.getSeriesCount());
+        assertEquals(baselineBearishDataset.getSeriesCount(), expandedBearishDataset.getSeriesCount());
     }
 
     @Test

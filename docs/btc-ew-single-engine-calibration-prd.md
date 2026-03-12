@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 18:12 EDT
+- Last updated: 2026-03-11 20:03 EDT
 - Active phase: Phase 6
-- Active task: Demote anchor-registry historical decomposition out of the runtime path
-- Overall: 42/54 checklist items complete
+- Active task: Stop using registry-derived leg/cycle builders as runtime historical truth sources
+- Overall: 43/54 checklist items complete
 
 ## Status
 
@@ -422,7 +422,7 @@ Avoid exposing calibration internals publicly.
 
 ### Phase 6: Demote Anchor-Registry Historical Decomposition
 
-- [ ] Remove the anchor-registry-driven runtime decomposition path as a primary renderer input.
+- [x] Remove the anchor-registry-driven runtime decomposition path as a primary renderer input.
 - [ ] Stop using:
   - `buildLegSegments(...)`
   - `buildHistoricalCycles(...)`

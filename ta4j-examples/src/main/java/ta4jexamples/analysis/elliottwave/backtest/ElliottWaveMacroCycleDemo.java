@@ -10,6 +10,7 @@ import java.awt.GraphicsEnvironment;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -17,9 +18,11 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -857,14 +860,18 @@ public final class ElliottWaveMacroCycleDemo {
         Objects.requireNonNull(study, "study");
 
         final ChartWorkflow chartWorkflow = new ChartWorkflow();
+        final List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> cycleSummaries = study.cycles();
         final List<SegmentScenarioFit> segmentFits = study.selectedProfile().chartSegments();
-        final boolean useStudySegments = !segmentFits.isEmpty();
-        final List<LegSegment> legSegments = useStudySegments ? buildChartLegSegments(segmentFits)
+        final boolean useStudyCycles = !cycleSummaries.isEmpty();
+        final List<ElliottWaveAnchorCalibrationHarness.Anchor> cycleAnchors = useStudyCycles
+                ? buildCycleAnchors(cycleSummaries)
+                : List.of();
+        final List<LegSegment> legSegments = useStudyCycles ? buildLegSegmentsFromCycleSummaries(cycleSummaries)
                 : buildLegSegments(registry);
-        final int currentCycleStartIndex = useStudySegments ? latestBottomAnchorIndex(series, segmentFits)
+        final int currentCycleStartIndex = useStudyCycles ? latestBottomAnchorIndex(series, cycleAnchors)
                 : latestBottomAnchorIndex(series, registry);
         final BarSeriesLabelIndicator anchorLabels = new BarSeriesLabelIndicator(series,
-                useStudySegments ? buildChartEndpointLabels(series, segmentFits) : buildAnchorLabels(series, registry));
+                useStudyCycles ? buildAnchorLabels(series, cycleAnchors) : buildAnchorLabels(series, registry));
         final BarSeriesLabelIndicator waveLabels = new BarSeriesLabelIndicator(series,
                 buildSegmentWaveLabels(series, segmentFits));
         final FixedIndicator<Num> bullishAcceptedFits = buildScenarioFitIndicator(series, segmentFits, true, true,
@@ -928,39 +935,30 @@ public final class ElliottWaveMacroCycleDemo {
         return chart;
     }
 
-    private static List<LegSegment> buildChartLegSegments(final List<SegmentScenarioFit> segmentFits) {
-        final LinkedHashMap<String, LegSegment> segments = new LinkedHashMap<>();
-        for (final SegmentScenarioFit fit : segmentFits) {
-            segments.putIfAbsent(segmentKey(fit.segment()), fit.segment());
-        }
-        return List.copyOf(segments.values());
-    }
-
-    private static List<BarLabel> buildChartEndpointLabels(final BarSeries series,
-            final List<SegmentScenarioFit> segmentFits) {
+    private static List<ElliottWaveAnchorCalibrationHarness.Anchor> buildCycleAnchors(
+            final List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> cycleSummaries) {
         final LinkedHashMap<String, ElliottWaveAnchorCalibrationHarness.Anchor> anchors = new LinkedHashMap<>();
-        final Num topPad = series.numFactory().numOf("1.02");
-        final Num lowPad = series.numFactory().numOf("0.98");
-        for (final SegmentScenarioFit fit : segmentFits) {
-            anchors.putIfAbsent(fit.segment().fromAnchor().id(), fit.segment().fromAnchor());
-            anchors.putIfAbsent(fit.segment().toAnchor().id(), fit.segment().toAnchor());
+        for (final ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary cycle : cycleSummaries) {
+            final ElliottWaveAnchorRegistry.AnchorPartition partition = ElliottWaveAnchorRegistry.AnchorPartition
+                    .valueOf(cycle.partition().toUpperCase(Locale.ROOT));
+            anchors.putIfAbsent(cycle.cycleId() + "-start",
+                    new ElliottWaveAnchorCalibrationHarness.Anchor(cycle.cycleId() + "-start",
+                            ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, Instant.parse(cycle.startTimeUtc()),
+                            Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.WAVE1), partition,
+                            "cycle-summary-start"));
+            anchors.putIfAbsent(cycle.cycleId() + "-peak",
+                    new ElliottWaveAnchorCalibrationHarness.Anchor(cycle.cycleId() + "-peak",
+                            ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, Instant.parse(cycle.peakTimeUtc()),
+                            Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.WAVE5), partition, "cycle-summary-peak"));
+            anchors.putIfAbsent(cycle.cycleId() + "-low",
+                    new ElliottWaveAnchorCalibrationHarness.Anchor(cycle.cycleId() + "-low",
+                            ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, Instant.parse(cycle.lowTimeUtc()),
+                            Duration.ZERO, Duration.ZERO, Set.of(ElliottPhase.CORRECTIVE_C), partition,
+                            "cycle-summary-low"));
         }
         return anchors.values()
                 .stream()
                 .sorted(Comparator.comparing(ElliottWaveAnchorCalibrationHarness.Anchor::at))
-                .map(anchor -> {
-                    final int index = nearestIndex(series, anchor.at());
-                    final Bar bar = series.getBar(index);
-                    final boolean top = anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP;
-                    final Num yValue = top ? bar.getHighPrice().multipliedBy(topPad)
-                            : bar.getLowPrice().multipliedBy(lowPad);
-                    final String date = bar.getEndTime().atZone(ZoneOffset.UTC).toLocalDate().toString();
-                    final String text = top ? "Bullish 1-5 top\n" + date : "Bearish A-C low\n" + date;
-                    final LabelPlacement placement = top ? LabelPlacement.ABOVE : LabelPlacement.BELOW;
-                    final Color labelColor = top ? ElliottWaveBtcMacroCycleDemo.BULLISH_LEG_COLOR
-                            : ElliottWaveBtcMacroCycleDemo.BEARISH_LEG_COLOR;
-                    return new BarLabel(index, yValue, text, placement, labelColor);
-                })
                 .toList();
     }
 
@@ -1098,10 +1096,15 @@ public final class ElliottWaveMacroCycleDemo {
 
     private static List<BarLabel> buildAnchorLabels(final BarSeries series,
             final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
+        return buildAnchorLabels(series, registry.anchors());
+    }
+
+    private static List<BarLabel> buildAnchorLabels(final BarSeries series,
+            final List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors) {
         final List<BarLabel> labels = new ArrayList<>();
         final Num topPad = series.numFactory().numOf("1.02");
         final Num lowPad = series.numFactory().numOf("0.98");
-        for (final ElliottWaveAnchorCalibrationHarness.Anchor anchor : registry.anchors()) {
+        for (final ElliottWaveAnchorCalibrationHarness.Anchor anchor : anchors) {
             final int barIndex = nearestIndex(series, anchor.at());
             final Bar bar = series.getBar(barIndex);
             final boolean top = anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP;
@@ -1252,6 +1255,16 @@ public final class ElliottWaveMacroCycleDemo {
                 .stream()
                 .sorted(Comparator.comparing(ElliottWaveAnchorCalibrationHarness.Anchor::at))
                 .toList();
+        return buildLegSegmentsFromAnchors(anchors);
+    }
+
+    private static List<LegSegment> buildLegSegmentsFromCycleSummaries(
+            final List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> cycleSummaries) {
+        return buildLegSegmentsFromAnchors(buildCycleAnchors(cycleSummaries));
+    }
+
+    private static List<LegSegment> buildLegSegmentsFromAnchors(
+            final List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors) {
         final List<LegSegment> legSegments = new ArrayList<>();
         for (int index = 1; index < anchors.size(); index++) {
             final ElliottWaveAnchorCalibrationHarness.Anchor fromAnchor = anchors.get(index - 1);
@@ -1297,17 +1310,12 @@ public final class ElliottWaveMacroCycleDemo {
 
     private static int latestBottomAnchorIndex(final BarSeries series,
             final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        return registry.anchors()
-                .stream()
-                .filter(anchor -> anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM)
-                .max(Comparator.comparing(ElliottWaveAnchorCalibrationHarness.Anchor::at))
-                .map(anchor -> nearestIndex(series, anchor.at()))
-                .orElse(Integer.MAX_VALUE);
+        return latestBottomAnchorIndex(series, registry.anchors());
     }
 
-    private static int latestBottomAnchorIndex(final BarSeries series, final List<SegmentScenarioFit> segmentFits) {
-        return segmentFits.stream()
-                .flatMap(fit -> java.util.stream.Stream.of(fit.segment().fromAnchor(), fit.segment().toAnchor()))
+    private static int latestBottomAnchorIndex(final BarSeries series,
+            final List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors) {
+        return anchors.stream()
                 .filter(anchor -> anchor.type() == ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM)
                 .max(Comparator.comparing(ElliottWaveAnchorCalibrationHarness.Anchor::at))
                 .map(anchor -> nearestIndex(series, anchor.at()))
