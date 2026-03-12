@@ -55,10 +55,9 @@ public interface TradeExecutionModel {
      *
      * @param lastProcessedIndex last bar index examined during the run
      * @param tradingRecord      trading record to mutate
-     * @param barSeries          bar series
      * @since 0.22.4
      */
-    default void onRunEnd(int lastProcessedIndex, TradingRecord tradingRecord, BarSeries barSeries) {
+    default void onRunEnd(int lastProcessedIndex, TradingRecord tradingRecord) {
         // Default no-op for immediate execution models.
     }
 

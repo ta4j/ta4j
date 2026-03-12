@@ -161,7 +161,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         TradeType tradeType = ExecutionModelSupport.nextTradeType(tradingRecord);
         Num stopPrice = toStopPrice(referenceTarget.price(), tradeType);
         Num limitPrice = toLimitPrice(referenceTarget.price(), tradeType);
-        int activationIndex = resolveActivationIndex(referenceTarget.index(), barSeries);
+        int activationIndex = resolveActivationIndex(referenceTarget.index());
         if (activationIndex > barSeries.getEndIndex()) {
             addRejectedOrder(tradingRecord, new RejectedOrder(index, index, tradeType, requestedAmount,
                     requestedAmount.getNumFactory().zero(), "Unable to resolve activation bar for stop-limit order"));
@@ -202,7 +202,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     }
 
     @Override
-    public void onRunEnd(int lastProcessedIndex, TradingRecord tradingRecord, BarSeries barSeries) {
+    public void onRunEnd(int lastProcessedIndex, TradingRecord tradingRecord) {
         PendingOrder order = pendingOrders.get(tradingRecord);
         if (order == null) {
             return;
@@ -243,7 +243,7 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         }
     }
 
-    private int resolveActivationIndex(int referenceIndex, BarSeries barSeries) {
+    private int resolveActivationIndex(int referenceIndex) {
         if (priceSource == PriceSource.CURRENT_CLOSE) {
             return referenceIndex + 1;
         }

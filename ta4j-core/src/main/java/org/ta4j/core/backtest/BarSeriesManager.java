@@ -331,7 +331,7 @@ public class BarSeriesManager {
                 }
             }
         }
-        tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord, barSeries);
+        tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord);
         return tradingRecord;
     }
 
