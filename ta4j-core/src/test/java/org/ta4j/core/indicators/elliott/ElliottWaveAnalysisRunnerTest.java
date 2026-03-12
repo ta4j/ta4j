@@ -657,6 +657,34 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void buildMacroPivotGraphMergesRawSwingsToRetainEarlierMacroTurns() {
+        BarSeries series = buildMergedRawMacroPivotSeries();
+        NumFactory factory = series.numFactory();
+        List<ElliottSwing> rawSwings = List.of(
+                new ElliottSwing(0, 4, factory.numOf(100), factory.numOf(150), ElliottDegree.PRIMARY),
+                new ElliottSwing(4, 8, factory.numOf(150), factory.numOf(80), ElliottDegree.PRIMARY),
+                new ElliottSwing(8, 12, factory.numOf(80), factory.numOf(130), ElliottDegree.PRIMARY),
+                new ElliottSwing(12, 16, factory.numOf(130), factory.numOf(95), ElliottDegree.PRIMARY),
+                new ElliottSwing(16, 20, factory.numOf(95), factory.numOf(160), ElliottDegree.PRIMARY),
+                new ElliottSwing(20, 24, factory.numOf(160), factory.numOf(110), ElliottDegree.PRIMARY),
+                new ElliottSwing(24, 28, factory.numOf(110), factory.numOf(180), ElliottDegree.PRIMARY));
+        List<ElliottSwing> processedSwings = rawSwings.subList(4, rawSwings.size());
+        ElliottScenarioSet empty = ElliottScenarioSet.empty(series.getEndIndex());
+        ElliottAnalysisResult snapshot = new ElliottAnalysisResult(ElliottDegree.PRIMARY, series.getEndIndex(),
+                rawSwings, processedSwings, empty, Map.of(), null, empty.trendBias());
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(1)
+                .lowerDegrees(1)
+                .analysisRunner((window, ignoredDegree) -> snapshot)
+                .build();
+
+        ElliottWaveAnalysisRunner.MacroPivotGraph graph = analysis.buildMacroPivotGraph(series, snapshot);
+
+        assertThat(graph.pivots().stream().map(ElliottWaveAnalysisRunner.MacroPivot::barIndex)).contains(8, 20, 24, 28);
+    }
+
+    @Test
     void analyzeHistoricalStructureUsesNonAdjacentPivotPairsForCompletedCycles() {
         BarSeries series = buildNonAdjacentHistoricalCycleSeries();
         NumFactory factory = series.numFactory();
@@ -758,6 +786,45 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(structure.cycles().getFirst().bullishLeg().accepted()).isTrue();
         assertThat(structure.cycles().getFirst().bearishLeg().accepted()).isTrue();
         assertThat(structure.legs().getLast().accepted()).isFalse();
+    }
+
+    @Test
+    void historicalStructureAssessmentPromotesHighFitFallbackBullLegWhenBearLegIsAccepted() {
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        ElliottWaveAnalysisRunner.CanonicalStructurePath promotablePath = new ElliottWaveAnalysisRunner.CanonicalStructurePath(
+                List.of(new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-fallback", 0, 5, true, 0.82,
+                        historicalAnchoredSelection(factory, "bull-fallback", ElliottPhase.WAVE5, true, false, 0.82)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-accepted", 5, 8, false, 0.86,
+                                historicalAnchoredSelection(factory, "bear-accepted", ElliottPhase.CORRECTIVE_C, false,
+                                        true, 0.86))),
+                1.68);
+
+        ElliottWaveAnalysisResult.HistoricalStructureAssessment promotableStructure = analysis
+                .historicalStructureAssessment(promotablePath);
+
+        assertThat(promotableStructure.cycles()).hasSize(1);
+        assertThat(promotableStructure.cycles().getFirst().bullishLeg().accepted()).isFalse();
+        assertThat(promotableStructure.cycles().getFirst().bearishLeg().accepted()).isTrue();
+
+        ElliottWaveAnalysisRunner.CanonicalStructurePath fallbackOnlyPath = new ElliottWaveAnalysisRunner.CanonicalStructurePath(
+                List.of(new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-fallback", 0, 5, true, 0.82,
+                        historicalAnchoredSelection(factory, "bull-fallback", ElliottPhase.WAVE5, true, false, 0.82)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-fallback", 5, 8, false, 0.81,
+                                historicalAnchoredSelection(factory, "bear-fallback", ElliottPhase.CORRECTIVE_C, false,
+                                        false, 0.81))),
+                1.63);
+
+        ElliottWaveAnalysisResult.HistoricalStructureAssessment fallbackOnlyStructure = analysis
+                .historicalStructureAssessment(fallbackOnlyPath);
+
+        assertThat(fallbackOnlyStructure.cycles()).isEmpty();
     }
 
     @Test
@@ -1697,6 +1764,27 @@ class ElliottWaveAnalysisRunnerTest {
         return new double[] { 100.0, 105.0, 101.0, 106.0, 102.0, 107.0, 103.0, 108.0, 104.0, 109.0, 105.0, 110.0, 106.0,
                 111.0, 107.0, 112.0, 108.0, 180.0, 120.0, 220.0, 125.0, 260.0, 130.0, 300.0, 135.0, 340.0, 140.0, 380.0,
                 145.0, 420.0, 150.0, 460.0, 155.0 };
+    }
+
+    private BarSeries buildMergedRawMacroPivotSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("MergedRawMacroPivot").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2024-08-01T00:00:00Z");
+        double[] closes = { 100, 112, 125, 138, 150, 132, 114, 96, 80, 94, 108, 120, 130, 120, 110, 101, 95, 112, 130,
+                145, 160, 148, 136, 122, 110, 126, 144, 162, 180 };
+        for (int index = 0; index < closes.length; index++) {
+            double close = closes[index];
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(close)
+                    .highPrice(close + 2.0)
+                    .lowPrice(close - 2.0)
+                    .closePrice(close)
+                    .volume(1000)
+                    .add();
+        }
+        return series;
     }
 
     private BarSeries buildNonAdjacentHistoricalCycleSeries() {

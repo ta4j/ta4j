@@ -108,6 +108,7 @@ public final class ElliottWaveAnalysisRunner {
     private static final double CANONICAL_SEARCH_ALTERNATION_BONUS = 0.10;
     private static final double CANONICAL_SEARCH_GAP_PENALTY_PER_PIVOT = 0.05;
     private static final double HISTORICAL_CYCLE_PROMOTION_MIN_GAP_RATIO = 0.20;
+    private static final double HISTORICAL_CYCLE_FALLBACK_FIT_FLOOR = 0.80;
 
     private static final double DEFAULT_BASE_CONFIDENCE_WEIGHT = 0.7;
     private static final double DEFAULT_NEUTRAL_CROSS_DEGREE_SCORE = 0.5;
@@ -535,23 +536,33 @@ public final class ElliottWaveAnalysisRunner {
     MacroPivotGraph buildMacroPivotGraph(final BarSeries series, final ElliottAnalysisResult analysis) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(analysis, "analysis");
-        if (analysis.processedSwings().isEmpty()) {
+        if (analysis.rawSwings().isEmpty() && analysis.processedSwings().isEmpty()) {
             return MacroPivotGraph.empty(higherDegrees, lowerDegrees);
         }
 
-        final List<ElliottSwing> swings = analysis.processedSwings();
-        final List<MacroPivot> pivots = new ArrayList<>(swings.size() + 1);
+        final Map<Integer, MacroPivot> pivotsByBarIndex = new LinkedHashMap<>();
+        mergeMacroPivots(series, analysis.rawSwings(), pivotsByBarIndex);
+        mergeMacroPivots(series, analysis.processedSwings(), pivotsByBarIndex);
+        return new MacroPivotGraph(pruneMacroPivots(series, List.copyOf(pivotsByBarIndex.values())), higherDegrees,
+                lowerDegrees);
+    }
+
+    private void mergeMacroPivots(final BarSeries series, final List<ElliottSwing> swings,
+            final Map<Integer, MacroPivot> pivotsByBarIndex) {
+        if (swings == null || swings.isEmpty()) {
+            return;
+        }
         for (final org.ta4j.core.indicators.elliott.swing.SwingPivot pivot : SwingDetectorResult.fromSwings(swings)
                 .pivots()) {
             final int barIndex = pivot.index();
             if (barIndex < series.getBeginIndex() || barIndex > series.getEndIndex()) {
                 continue;
             }
-            pivots.add(new MacroPivot(pivot.type() == org.ta4j.core.indicators.elliott.swing.SwingPivotType.HIGH,
-                    barIndex, series.getBar(barIndex).getEndTime(), pivot.price(),
-                    pivotDegreeProvenance(swings, barIndex)));
+            pivotsByBarIndex.put(barIndex,
+                    new MacroPivot(pivot.type() == org.ta4j.core.indicators.elliott.swing.SwingPivotType.HIGH, barIndex,
+                            series.getBar(barIndex).getEndTime(), pivot.price(),
+                            pivotDegreeProvenance(swings, barIndex)));
         }
-        return new MacroPivotGraph(pruneMacroPivots(series, pivots), higherDegrees, lowerDegrees);
     }
 
     /**
@@ -734,13 +745,24 @@ public final class ElliottWaveAnalysisRunner {
         for (int index = 0; index < legs.size() - 1; index++) {
             final ElliottWaveAnalysisResult.HistoricalLegAssessment bullishLeg = legs.get(index);
             final ElliottWaveAnalysisResult.HistoricalLegAssessment bearishLeg = legs.get(index + 1);
-            if (!bullishLeg.bullish() || bearishLeg.bullish() || !bullishLeg.accepted() || !bearishLeg.accepted()) {
+            if (!bullishLeg.bullish() || bearishLeg.bullish()
+                    || !eligibleForHistoricalCyclePromotion(bullishLeg, bearishLeg)) {
                 continue;
             }
             rawCycles.add(new ElliottWaveAnalysisResult.HistoricalCycleAssessment(bullishLeg, bearishLeg));
         }
         return new ElliottWaveAnalysisResult.HistoricalStructureAssessment(legs,
                 promoteHistoricalMacroCycles(rawCycles));
+    }
+
+    private boolean eligibleForHistoricalCyclePromotion(
+            final ElliottWaveAnalysisResult.HistoricalLegAssessment bullishLeg,
+            final ElliottWaveAnalysisResult.HistoricalLegAssessment bearishLeg) {
+        final boolean bullishEligible = bullishLeg.accepted()
+                || bullishLeg.fitScore() >= HISTORICAL_CYCLE_FALLBACK_FIT_FLOOR;
+        final boolean bearishEligible = bearishLeg.accepted()
+                || bearishLeg.fitScore() >= HISTORICAL_CYCLE_FALLBACK_FIT_FLOOR;
+        return bullishEligible && bearishEligible && (bullishLeg.accepted() || bearishLeg.accepted());
     }
 
     private ElliottWaveAnalysisResult.HistoricalLegAssessment historicalLegAssessment(
