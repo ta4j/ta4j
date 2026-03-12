@@ -5,7 +5,7 @@
 - Last updated: 2026-03-12 12:40 EDT
 - Active phase: Phase 6
 - Active task: Stop using `buildHistoricalCycles(...)` as a runtime historical truth source
-- Overall: 47/59 checklist items complete
+- Overall: 48/60 checklist items complete
 
 ## Status
 
@@ -424,6 +424,7 @@ Avoid exposing calibration internals publicly.
 
 - [x] Remove the anchor-registry-driven runtime decomposition path as a primary renderer input.
 - [x] Stop using `buildLegSegments(...)` as a runtime truth source.
+- [x] Emit a harness-side legacy-vs-canonical completed-cycle diff artifact so canonical misses are visible on underlying cycle data before any runtime switchover.
 - [ ] Stop using `buildHistoricalCycles(...)` as a runtime truth source.
 - [ ] Retain registry-backed comparison only inside the calibration harness.
 - [ ] Keep a temporary compatibility path only while the canonical engine is being proven.

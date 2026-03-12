@@ -264,6 +264,11 @@ public final class ElliottWaveAnchorCalibrationHarness {
                 formatElapsed(startedAt));
         artifactSink.recordSelectedHistoricalCalibration(selected, HistoricalCalibrationReport.from(selected), decision,
                 depth);
+        HistoricalStudyDiffReport historicalStudyDiff = HistoricalStudyDiffReport.from(registry,
+                evaluateLegacyAnchoredHistoricalStudy(calibrationSeries, registry),
+                evaluateCanonicalHistoricalStudy(calibrationSeries, registry));
+        artifactSink.recordHistoricalStudyDiff(historicalStudyDiff, depth);
+        LOG.info("Historical legacy-vs-canonical diff\n{}", historicalStudyDiff.toText());
 
         List<PortabilitySummary> portability = depth.includePortability() ? List.of(
                 evaluatePortabilityWithProgress("eth-usd", ETH_RESOURCE, ethSeries, baseline.profile(),
@@ -278,7 +283,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
         LOG.info("Built BTC anchor calibration report in {}", formatElapsed(startedAt));
         ReportBundle report = ReportBundle.create("btc-anchor-calibration-v2-" + depth.id(),
                 calibrationSeries.getBar(calibrationSeries.getEndIndex()).getEndTime(), registry, baselinePolicy,
-                baseline, challengerAssessments, decision, portability);
+                baseline, challengerAssessments, decision, historicalStudyDiff, portability);
         artifactSink.recordFinalReport(report, depth);
         return report;
     }
@@ -1102,6 +1107,9 @@ public final class ElliottWaveAnchorCalibrationHarness {
                 HistoricalCalibrationReport calibration, PromotionDecision decision, CalibrationDepth depth) {
         }
 
+        default void recordHistoricalStudyDiff(HistoricalStudyDiffReport diff, CalibrationDepth depth) {
+        }
+
         default void recordPortabilitySummary(PortabilitySummary summary, CalibrationDepth depth) {
         }
 
@@ -1145,6 +1153,12 @@ public final class ElliottWaveAnchorCalibrationHarness {
             writeJson(routineDirectory(), "btc-promotion-decision.json", decision);
             writeJson(routineDirectory(), "btc-selected-historical-calibration.json", calibration);
             writeText(routineDirectory(), "btc-selected-historical-calibration.txt", calibration.toText());
+        }
+
+        @Override
+        public void recordHistoricalStudyDiff(HistoricalStudyDiffReport diff, CalibrationDepth depth) {
+            writeJson(routineDirectory(), "btc-historical-study-diff.json", diff);
+            writeText(routineDirectory(), "btc-historical-study-diff.txt", diff.toText());
         }
 
         @Override
@@ -1935,6 +1949,176 @@ public final class ElliottWaveAnchorCalibrationHarness {
     }
 
     /**
+     * Completed-cycle comparison between the legacy anchored study and the
+     * canonical historical study.
+     */
+    record HistoricalStudyDiffReport(String truthRegistryVersion, int truthCycleCount, String legacyProfileId,
+            boolean legacyHistoricalFitPassed, int legacyAcceptedCycleCount, List<String> legacyAcceptedCycleIds,
+            String canonicalProfileId, boolean canonicalHistoricalFitPassed, int canonicalAcceptedCycleCount,
+            List<String> canonicalAcceptedCycleIds, List<String> canonicalMissingAcceptedCycleIds,
+            List<String> canonicalExtraAcceptedCycleIds, List<HistoricalStudyCycleDiff> cycles) {
+
+        HistoricalStudyDiffReport {
+            Objects.requireNonNull(truthRegistryVersion, "truthRegistryVersion");
+            Objects.requireNonNull(legacyProfileId, "legacyProfileId");
+            legacyAcceptedCycleIds = legacyAcceptedCycleIds == null ? List.of() : List.copyOf(legacyAcceptedCycleIds);
+            Objects.requireNonNull(canonicalProfileId, "canonicalProfileId");
+            canonicalAcceptedCycleIds = canonicalAcceptedCycleIds == null ? List.of()
+                    : List.copyOf(canonicalAcceptedCycleIds);
+            canonicalMissingAcceptedCycleIds = canonicalMissingAcceptedCycleIds == null ? List.of()
+                    : List.copyOf(canonicalMissingAcceptedCycleIds);
+            canonicalExtraAcceptedCycleIds = canonicalExtraAcceptedCycleIds == null ? List.of()
+                    : List.copyOf(canonicalExtraAcceptedCycleIds);
+            cycles = cycles == null ? List.of() : List.copyOf(cycles);
+        }
+
+        static HistoricalStudyDiffReport from(AnchorRegistry registry, ElliottWaveBtcMacroCycleDemo.MacroStudy legacy,
+                ElliottWaveBtcMacroCycleDemo.MacroStudy canonical) {
+            return from(registry, legacy.selectedProfile().profile().id(),
+                    legacy.selectedProfile().historicalFitPassed(), legacy.cycles(),
+                    canonical.selectedProfile().profile().id(), canonical.selectedProfile().historicalFitPassed(),
+                    canonical.cycles());
+        }
+
+        static HistoricalStudyDiffReport from(AnchorRegistry registry, String legacyProfileId,
+                boolean legacyHistoricalFitPassed,
+                List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> legacyCycles, String canonicalProfileId,
+                boolean canonicalHistoricalFitPassed,
+                List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> canonicalCycles) {
+            List<CycleTriplet> truthCycles = completedCycles(registry);
+            Map<String, ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> legacyById = (legacyCycles == null
+                    ? List.<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary>of()
+                    : legacyCycles).stream()
+                    .collect(Collectors.toMap(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::cycleId,
+                            Function.identity(), (left, right) -> left, LinkedHashMap::new));
+            Map<String, ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> canonicalById = (canonicalCycles == null
+                    ? List.<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary>of()
+                    : canonicalCycles).stream()
+                    .collect(Collectors.toMap(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::cycleId,
+                            Function.identity(), (left, right) -> left, LinkedHashMap::new));
+            List<HistoricalStudyCycleDiff> diffs = truthCycles.stream()
+                    .map(cycle -> HistoricalStudyCycleDiff.from(cycle, legacyById.get(cycle.id()),
+                            canonicalById.get(cycle.id())))
+                    .toList();
+            List<String> truthCycleIds = truthCycles.stream().map(CycleTriplet::id).toList();
+            List<String> legacyAcceptedCycleIds = acceptedCycleIdsInTruthOrder(legacyCycles, truthCycleIds);
+            List<String> canonicalAcceptedCycleIds = acceptedCycleIdsInTruthOrder(canonicalCycles, truthCycleIds);
+            List<String> canonicalMissingAcceptedCycleIds = diffs.stream()
+                    .filter(diff -> diff.legacyAccepted() && !diff.canonicalAccepted())
+                    .map(HistoricalStudyCycleDiff::cycleId)
+                    .toList();
+            List<String> canonicalExtraAcceptedCycleIds = (canonicalCycles == null
+                    ? List.<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary>of()
+                    : canonicalCycles).stream()
+                    .filter(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::accepted)
+                    .map(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::cycleId)
+                    .filter(cycleId -> !truthCycleIds.contains(cycleId))
+                    .toList();
+            return new HistoricalStudyDiffReport(registry.version(), truthCycles.size(), legacyProfileId,
+                    legacyHistoricalFitPassed, legacyAcceptedCycleIds.size(), legacyAcceptedCycleIds,
+                    canonicalProfileId, canonicalHistoricalFitPassed, canonicalAcceptedCycleIds.size(),
+                    canonicalAcceptedCycleIds, canonicalMissingAcceptedCycleIds, canonicalExtraAcceptedCycleIds, diffs);
+        }
+
+        private static List<String> acceptedCycleIdsInTruthOrder(
+                List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> cycles, List<String> truthCycleIds) {
+            Set<String> accepted = (cycles == null ? List.<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary>of()
+                    : cycles).stream()
+                    .filter(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::accepted)
+                    .map(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::cycleId)
+                    .collect(Collectors.toSet());
+            return truthCycleIds.stream().filter(accepted::contains).toList();
+        }
+
+        String toText() {
+            StringBuilder builder = new StringBuilder();
+            builder.append("truthRegistry=")
+                    .append(truthRegistryVersion)
+                    .append(", truthCycles=")
+                    .append(truthCycleCount)
+                    .append(System.lineSeparator());
+            builder.append("legacy profile=")
+                    .append(legacyProfileId)
+                    .append(", historicalFitPassed=")
+                    .append(legacyHistoricalFitPassed)
+                    .append(", acceptedCycles=")
+                    .append(legacyAcceptedCycleCount)
+                    .append(System.lineSeparator());
+            builder.append("canonical profile=")
+                    .append(canonicalProfileId)
+                    .append(", historicalFitPassed=")
+                    .append(canonicalHistoricalFitPassed)
+                    .append(", acceptedCycles=")
+                    .append(canonicalAcceptedCycleCount)
+                    .append(System.lineSeparator());
+            builder.append("canonicalMissingAcceptedCycles=")
+                    .append(canonicalMissingAcceptedCycleIds)
+                    .append(System.lineSeparator());
+            if (!canonicalExtraAcceptedCycleIds.isEmpty()) {
+                builder.append("canonicalExtraAcceptedCycles=")
+                        .append(canonicalExtraAcceptedCycleIds)
+                        .append(System.lineSeparator());
+            }
+            for (HistoricalStudyCycleDiff cycle : cycles) {
+                builder.append(cycle.partition())
+                        .append(" ")
+                        .append(cycle.cycleId())
+                        .append(": legacy accepted=")
+                        .append(cycle.legacyAccepted())
+                        .append(" status=")
+                        .append(cycle.legacyStatus())
+                        .append(" scores=")
+                        .append(String.format(java.util.Locale.ROOT, "%.4f/%.4f", cycle.legacyBullishScore(),
+                                cycle.legacyBearishScore()))
+                        .append(" | canonical accepted=")
+                        .append(cycle.canonicalAccepted())
+                        .append(" status=")
+                        .append(cycle.canonicalStatus())
+                        .append(" scores=")
+                        .append(String.format(java.util.Locale.ROOT, "%.4f/%.4f", cycle.canonicalBullishScore(),
+                                cycle.canonicalBearishScore()))
+                        .append(System.lineSeparator());
+            }
+            return builder.toString().trim();
+        }
+    }
+
+    /**
+     * Per-cycle completed-history diff between legacy and canonical studies.
+     */
+    record HistoricalStudyCycleDiff(String partition, String cycleId, String startAnchorId, String peakAnchorId,
+            String lowAnchorId, String expectedPeakTimeUtc, String expectedLowTimeUtc, boolean legacyPresent,
+            boolean legacyAccepted, String legacyStatus, double legacyBullishScore, double legacyBearishScore,
+            boolean canonicalPresent, boolean canonicalAccepted, String canonicalStatus, double canonicalBullishScore,
+            double canonicalBearishScore) {
+
+        HistoricalStudyCycleDiff {
+            Objects.requireNonNull(partition, "partition");
+            Objects.requireNonNull(cycleId, "cycleId");
+            Objects.requireNonNull(startAnchorId, "startAnchorId");
+            Objects.requireNonNull(peakAnchorId, "peakAnchorId");
+            Objects.requireNonNull(lowAnchorId, "lowAnchorId");
+            Objects.requireNonNull(expectedPeakTimeUtc, "expectedPeakTimeUtc");
+            Objects.requireNonNull(expectedLowTimeUtc, "expectedLowTimeUtc");
+            Objects.requireNonNull(legacyStatus, "legacyStatus");
+            Objects.requireNonNull(canonicalStatus, "canonicalStatus");
+        }
+
+        static HistoricalStudyCycleDiff from(CycleTriplet cycle,
+                ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary legacy,
+                ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary canonical) {
+            return new HistoricalStudyCycleDiff(cycle.partition().name().toLowerCase(), cycle.id(), cycle.start().id(),
+                    cycle.peak().id(), cycle.low().id(), UTC_TIME.format(cycle.peak().at()),
+                    UTC_TIME.format(cycle.low().at()), legacy != null, legacy != null && legacy.accepted(),
+                    legacy == null ? "missing" : legacy.status(), legacy == null ? 0.0 : legacy.bullishScore(),
+                    legacy == null ? 0.0 : legacy.bearishScore(), canonical != null,
+                    canonical != null && canonical.accepted(), canonical == null ? "missing" : canonical.status(),
+                    canonical == null ? 0.0 : canonical.bullishScore(),
+                    canonical == null ? 0.0 : canonical.bearishScore());
+        }
+    }
+
+    /**
      * Aggregate snapshot hit rates and rank distribution for one partition.
      */
     record AnchorAggregate(int anchorCount, int sampleCount, double top1HitRate, double top3HitRate,
@@ -2082,7 +2266,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
     record ReportBundle(String reportVersion, String generatedAtUtc, String reportHash, AnchorRegistry anchorRegistry,
             BaselinePolicy baselinePolicy, CandidateEvaluation baselineEvaluation,
             List<ChallengerAssessment> challengerAssessments, PromotionDecision decision,
-            List<PortabilitySummary> portability) {
+            HistoricalStudyDiffReport historicalStudyDiff, List<PortabilitySummary> portability) {
 
         ReportBundle {
             Objects.requireNonNull(reportVersion, "reportVersion");
@@ -2093,18 +2277,21 @@ public final class ElliottWaveAnchorCalibrationHarness {
             Objects.requireNonNull(baselineEvaluation, "baselineEvaluation");
             challengerAssessments = challengerAssessments == null ? List.of() : List.copyOf(challengerAssessments);
             Objects.requireNonNull(decision, "decision");
+            Objects.requireNonNull(historicalStudyDiff, "historicalStudyDiff");
             portability = portability == null ? List.of() : List.copyOf(portability);
         }
 
         static ReportBundle create(String reportVersion, Instant generatedAt, AnchorRegistry anchorRegistry,
                 BaselinePolicy baselinePolicy, CandidateEvaluation baselineEvaluation,
                 List<ChallengerAssessment> challengerAssessments, PromotionDecision decision,
-                List<PortabilitySummary> portability) {
+                HistoricalStudyDiffReport historicalStudyDiff, List<PortabilitySummary> portability) {
             String generatedAtUtc = UTC_TIME.format(generatedAt);
             UnsignedReportBundle unsigned = new UnsignedReportBundle(reportVersion, generatedAtUtc, anchorRegistry,
-                    baselinePolicy, baselineEvaluation, challengerAssessments, decision, portability);
+                    baselinePolicy, baselineEvaluation, challengerAssessments, decision, historicalStudyDiff,
+                    portability);
             return new ReportBundle(reportVersion, generatedAtUtc, sha256(GSON.toJson(unsigned)), anchorRegistry,
-                    baselinePolicy, baselineEvaluation, challengerAssessments, decision, portability);
+                    baselinePolicy, baselineEvaluation, challengerAssessments, decision, historicalStudyDiff,
+                    portability);
         }
 
         String toJson() {
@@ -2121,6 +2308,10 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
         String runtimeInstrumentationText() {
             return selectedEvaluation().runtimeInstrumentation().toText();
+        }
+
+        String historicalStudyDiffText() {
+            return historicalStudyDiff.toText();
         }
 
         private CandidateEvaluation selectedEvaluation() {
@@ -2171,6 +2362,6 @@ public final class ElliottWaveAnchorCalibrationHarness {
     private record UnsignedReportBundle(String reportVersion, String generatedAtUtc, AnchorRegistry anchorRegistry,
             BaselinePolicy baselinePolicy, CandidateEvaluation baselineEvaluation,
             List<ChallengerAssessment> challengerAssessments, PromotionDecision decision,
-            List<PortabilitySummary> portability) {
+            HistoricalStudyDiffReport historicalStudyDiff, List<PortabilitySummary> portability) {
     }
 }
