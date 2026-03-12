@@ -363,6 +363,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
             assertEquals(wrapperReport.selectedProfileId(), genericReport.selectedProfileId());
             assertEquals(wrapperReport.selectedHypothesisId(), genericReport.selectedHypothesisId());
             assertEquals(wrapperReport.historicalFitPassed(), genericReport.historicalFitPassed());
+            assertEquals("canonical-structure", wrapperReport.structureSource());
+            assertEquals(wrapperReport.structureSource(), genericReport.structureSource());
             assertEquals(wrapperReport.profileScores(), genericReport.profileScores());
             assertEquals(wrapperReport.cycles(), genericReport.cycles());
             assertEquals(wrapperReport.hypotheses(), genericReport.hypotheses());
@@ -403,6 +405,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
             ElliottWaveBtcMacroCycleDemo.LivePresetReport genericReport = ElliottWaveMacroCycleDemo
                     .generateLivePresetReport(liveWindow, genericDir);
 
+            assertEquals("canonical-structure", wrapperReport.structureSource());
+            assertEquals(wrapperReport.structureSource(), genericReport.structureSource());
             assertTrue(Files.exists(Path.of(wrapperReport.chartPath())));
             assertTrue(Files.exists(Path.of(wrapperReport.summaryPath())));
             assertTrue(Files.exists(Path.of(genericReport.chartPath())));
@@ -570,8 +574,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
                         anchor("btc-top-2013", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 5),
                         anchor("btc-bottom-2015", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 7)));
 
-        JFreeChart baselineChart = ElliottWaveBtcMacroCycleDemo.renderMacroCycleChart(series, registry, study);
-        JFreeChart expandedChart = ElliottWaveBtcMacroCycleDemo.renderMacroCycleChart(series, expandedRegistry, study);
+        JFreeChart baselineChart = ElliottWaveBtcMacroCycleDemo.renderMacroCycleChart(series, study);
+        JFreeChart expandedChart = ElliottWaveBtcMacroCycleDemo.renderMacroCycleChart(series, study);
         XYPlot baselinePlot = (XYPlot) ((CombinedDomainXYPlot) baselineChart.getPlot()).getSubplots().getFirst();
         XYPlot expandedPlot = (XYPlot) ((CombinedDomainXYPlot) expandedChart.getPlot()).getSubplots().getFirst();
 
@@ -608,17 +612,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
             ElliottWaveBtcMacroCycleDemo.LegSegment segment,
             ElliottWaveAnalysisResult.WindowScenarioAssessment assessment, boolean bullish, boolean accepted)
             throws Exception {
-        Method profilesMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("logicProfiles");
-        profilesMethod.setAccessible(true);
-        @SuppressWarnings("unchecked")
-        List<ElliottWaveBtcMacroCycleDemo.MacroLogicProfile> profiles = (List<ElliottWaveBtcMacroCycleDemo.MacroLogicProfile>) profilesMethod
-                .invoke(null);
-        Method method = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("fitFromCoreAssessment",
-                ElliottWaveBtcMacroCycleDemo.LegSegment.class, ElliottWaveBtcMacroCycleDemo.MacroLogicProfile.class,
-                ElliottWaveAnalysisResult.WindowScenarioAssessment.class, boolean.class, boolean.class);
-        method.setAccessible(true);
-        return (ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit) method.invoke(null, segment, profiles.getFirst(),
-                assessment, bullish, accepted);
+        return ElliottWaveMacroCycleDemo.fitFromCoreAssessment(segment, assessment, bullish, accepted);
     }
 
     private static boolean isAnchoredToMacroEndpoints(BarSeries series,
@@ -766,9 +760,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
         List<ElliottSwing> swings = scenario.swings();
         ElliottSwing wave1 = swings.get(0);
         ElliottSwing wave2 = swings.get(1);
-        ElliottSwing wave3 = swings.get(2);
         ElliottSwing wave4 = swings.get(3);
-        ElliottSwing wave5 = swings.get(4);
 
         assertTrue(wave2.toPrice().compareTo(wave1.fromPrice()) >= 0,
                 "Wave 2 must not retrace below the start of wave 1");

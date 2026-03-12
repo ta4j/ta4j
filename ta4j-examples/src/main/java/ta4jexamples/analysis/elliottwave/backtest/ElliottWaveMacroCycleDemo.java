@@ -79,6 +79,7 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
 public final class ElliottWaveMacroCycleDemo {
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveMacroCycleDemo.class);
+    private static final String CANONICAL_STRUCTURE_SOURCE = "canonical-structure";
 
     private ElliottWaveMacroCycleDemo() {
     }
@@ -128,7 +129,8 @@ public final class ElliottWaveMacroCycleDemo {
                 study.selectedProfile().profile().id(), study.selectedProfile().profile().hypothesisId(),
                 study.selectedProfile().historicalFitPassed(),
                 "Macro-cycle decomposition selected from core-ranked anchor-to-anchor wave fits", chartPathText,
-                summaryPath.toString(), study.profileScores(), study.cycles(), study.hypotheses(), currentCycle);
+                summaryPath.toString(), CANONICAL_STRUCTURE_SOURCE, study.profileScores(), study.cycles(),
+                study.hypotheses(), currentCycle);
         saveSummary(report.toJson(), summaryPath, "macro-cycle summary");
         return report;
     }
@@ -161,7 +163,7 @@ public final class ElliottWaveMacroCycleDemo {
             final Path chartDirectory) {
         final String seriesToken = scenarioSeriesName(series);
         return generateLivePresetReport(series, chartDirectory, liveCurrentCycleChartFileName(seriesToken),
-                liveSummaryFileName(seriesToken), seriesToken,
+                liveSummaryFileName(seriesToken),
                 "Series-native current-cycle inference using the default orthodox macro profile");
     }
 
@@ -176,7 +178,7 @@ public final class ElliottWaveMacroCycleDemo {
 
     static ElliottWaveBtcMacroCycleDemo.LivePresetReport generateLivePresetReport(final BarSeries series,
             final Path chartDirectory, final String chartFileName, final String summaryFileName,
-            final String scenarioSeriesToken, final String historicalStatus) {
+            final String historicalStatus) {
         return analyzeLivePreset(series, chartDirectory, chartFileName, summaryFileName, historicalStatus).report();
     }
 
@@ -328,7 +330,7 @@ public final class ElliottWaveMacroCycleDemo {
         final ElliottWaveBtcMacroCycleDemo.LivePresetReport report = new ElliottWaveBtcMacroCycleDemo.LivePresetReport(
                 series.getName(), series.getFirstBar().getEndTime().toString(),
                 series.getLastBar().getEndTime().toString(), profile.id(), profile.hypothesisId(), chartPathText,
-                summaryPath.toString(), summary);
+                summaryPath.toString(), CANONICAL_STRUCTURE_SOURCE, summary);
         saveSummary(report.toJson(), summaryPath, "live macro summary");
         return new LivePresetExecution(currentCycle.withSummary(summary), report);
     }
@@ -359,7 +361,7 @@ public final class ElliottWaveMacroCycleDemo {
                 .orElseGet(() -> logicProfiles().getFirst());
     }
 
-    static SegmentScenarioFit fitFromCoreAssessment(final LegSegment legSegment, final MacroLogicProfile profile,
+    static SegmentScenarioFit fitFromCoreAssessment(final LegSegment legSegment,
             final ElliottWaveAnalysisResult.WindowScenarioAssessment assessment, final boolean bullish,
             final boolean accepted) {
         final ElliottScenario scenario = assessment.scenario();
@@ -1091,7 +1093,7 @@ public final class ElliottWaveMacroCycleDemo {
                         Math.max(ElliottWaveBtcMacroCycleDemo.DEFAULT_ACCEPTED_SEGMENT_SCORE,
                                 profile.acceptanceThreshold()),
                         0.30, 0.35, 0.80)
-                .map(selection -> fitFromCoreAssessment(legSegment, profile, selection.assessment(), bullish,
+                .map(selection -> fitFromCoreAssessment(legSegment, selection.assessment(), bullish,
                         selection.accepted()));
     }
 

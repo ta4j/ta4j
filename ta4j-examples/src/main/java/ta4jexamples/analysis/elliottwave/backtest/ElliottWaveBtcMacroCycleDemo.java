@@ -108,7 +108,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     static LivePresetReport generateLivePresetReport(final BarSeries series, final Path chartDirectory) {
         return ElliottWaveMacroCycleDemo.generateLivePresetReport(series, chartDirectory, DEFAULT_LIVE_CHART_FILE_NAME,
-                DEFAULT_LIVE_SUMMARY_FILE_NAME, "btc-usd", BTC_LIVE_HISTORICAL_STATUS);
+                DEFAULT_LIVE_SUMMARY_FILE_NAME, BTC_LIVE_HISTORICAL_STATUS);
     }
 
     static Optional<Path> saveMacroCycleChart(final BarSeries series,
@@ -121,8 +121,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
         return ElliottWaveMacroCycleDemo.renderHistoricalChart(series, registry);
     }
 
-    static JFreeChart renderMacroCycleChart(final BarSeries series,
-            final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, final MacroStudy study) {
+    static JFreeChart renderMacroCycleChart(final BarSeries series, final MacroStudy study) {
         return ElliottWaveMacroCycleDemo.renderHistoricalChart(series, study);
     }
 
@@ -145,12 +144,6 @@ public final class ElliottWaveBtcMacroCycleDemo {
         return ElliottWaveMacroCycleDemo.evaluateCurrentCycle(series, profile, historicalStatus);
     }
 
-    private static SegmentScenarioFit fitFromCoreAssessment(final LegSegment legSegment,
-            final MacroLogicProfile profile, final ElliottWaveAnalysisResult.WindowScenarioAssessment assessment,
-            final boolean bullish, final boolean accepted) {
-        return ElliottWaveMacroCycleDemo.fitFromCoreAssessment(legSegment, profile, assessment, bullish, accepted);
-    }
-
     private static List<MacroLogicProfile> logicProfiles() {
         return ElliottWaveMacroCycleDemo.logicProfiles();
     }
@@ -170,7 +163,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
     record DemoReport(String registryVersion, String datasetResource, String baselineProfileId,
             String selectedProfileId, String selectedHypothesisId, boolean historicalFitPassed,
-            String harnessDecisionRationale, String chartPath, String summaryPath,
+            String harnessDecisionRationale, String chartPath, String summaryPath, String structureSource,
             List<ProfileScoreSummary> profileScores, List<DirectionalCycleSummary> cycles,
             List<HypothesisResult> hypotheses, CurrentCycleSummary currentCycle) {
 
@@ -183,6 +176,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
             Objects.requireNonNull(harnessDecisionRationale, "harnessDecisionRationale");
             Objects.requireNonNull(chartPath, "chartPath");
             Objects.requireNonNull(summaryPath, "summaryPath");
+            Objects.requireNonNull(structureSource, "structureSource");
             profileScores = profileScores == null ? List.of() : List.copyOf(profileScores);
             cycles = cycles == null ? List.of() : List.copyOf(cycles);
             hypotheses = hypotheses == null ? List.of() : List.copyOf(hypotheses);
@@ -195,7 +189,8 @@ public final class ElliottWaveBtcMacroCycleDemo {
     }
 
     record LivePresetReport(String seriesName, String startTimeUtc, String latestTimeUtc, String selectedProfileId,
-            String selectedHypothesisId, String chartPath, String summaryPath, CurrentCycleSummary currentCycle) {
+            String selectedHypothesisId, String chartPath, String summaryPath, String structureSource,
+            CurrentCycleSummary currentCycle) {
 
         LivePresetReport {
             Objects.requireNonNull(seriesName, "seriesName");
@@ -205,6 +200,7 @@ public final class ElliottWaveBtcMacroCycleDemo {
             Objects.requireNonNull(selectedHypothesisId, "selectedHypothesisId");
             Objects.requireNonNull(chartPath, "chartPath");
             Objects.requireNonNull(summaryPath, "summaryPath");
+            Objects.requireNonNull(structureSource, "structureSource");
             Objects.requireNonNull(currentCycle, "currentCycle");
         }
 
