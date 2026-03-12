@@ -6,6 +6,7 @@ package ta4jexamples.backtesting;
 import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
+import java.util.Objects;
 import java.util.function.Supplier;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -114,7 +115,7 @@ public class TradingRecordParityBacktest {
 
     private static void assertNum(Num expected, Num actual, String message) {
         if (expected == null || actual == null) {
-            require(expected == actual, () -> message);
+            require(Objects.equals(expected, actual), () -> message);
             return;
         }
         require(expected.isEqual(actual), () -> message + " expected=" + expected + ", actual=" + actual);

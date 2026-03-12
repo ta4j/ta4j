@@ -6,6 +6,7 @@ package org.ta4j.core;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Instant;
@@ -107,7 +108,7 @@ class DeprecatedTradeCompatibilityTest {
         PositionLedger ledger = new LiveTradingRecord();
         assertTrue(ledger.getPositions().isEmpty());
         assertTrue(ledger.getOpenPositions().isEmpty());
-        assertEquals(null, ledger.getNetOpenPosition());
+        assertNull(ledger.getNetOpenPosition());
     }
 
     @Test

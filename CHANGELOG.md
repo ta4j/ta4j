@@ -28,7 +28,7 @@
 - **Unified trade/record stack hard cut**: `LiveTrade`, `SimulatedTrade`, and `LiveTradingRecord` have been removed so live and backtest flows now run on the same core types: `BaseTrade` and `BaseTradingRecord`.
 - **Open-position analytics now live directly on `TradingRecord`**: `PositionLedger` has been removed, so you can query `getOpenPositions()` and `getNetOpenPosition()` from one unified record contract in both analysis and execution flows.
 
-### Changed
+### Changed (Backtest Execution Models and Custom Records)
 - **Trade-first fill flow across live and backtests**: You can now drive `BaseTradingRecord#recordFill(...)` and `PositionBook#recordEntry(...)`/`recordExit(...)` with the `Trade` interface directly, while internals still materialize `BaseTrade` as needed, so calling code stays implementation-agnostic and live/backtest behavior stays aligned.
 - **Bring your own trading record in backtests**: `BarSeriesManager` can now run directly against a caller-provided `TradingRecord` (`run(strategy, tradingRecord[, amount, start, end])`) and can also be configured with a default `TradingRecordFactory`, so you can keep standard `BaseTradingRecord` runs or wire custom record implementations without changing existing `run(...)` calls.
 - **Stop-limit/live parity hardening**: `StopLimitExecutionModel` now expires stale pending orders before accepting new signals (so old orders cannot block fresh ones), commits partial expiry fills on unified `BaseTradingRecord` exit flows for better real-world fill progression, and keeps rejection metadata for the unfilled remainder.

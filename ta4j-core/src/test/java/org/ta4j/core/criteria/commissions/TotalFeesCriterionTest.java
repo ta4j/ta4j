@@ -11,6 +11,7 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
@@ -51,16 +52,17 @@ public class TotalFeesCriterionTest extends AbstractCriterionTest {
 
     @Test
     public void calculateUsesRecordedFeesFromTradingRecordInterface() {
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
-        var delegate = new BaseTradingRecord(TradeType.BUY, new FixedTransactionCostModel(5.0), new ZeroCostModel());
-        var amount = numFactory.one();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+        BaseTradingRecord delegate = new BaseTradingRecord(TradeType.BUY, new FixedTransactionCostModel(5.0),
+                new ZeroCostModel());
+        Num amount = numFactory.one();
 
         delegate.enter(0, series.getBar(0).getClosePrice(), amount);
         delegate.exit(1, series.getBar(1).getClosePrice(), amount);
 
         TradingRecord record = new TradingRecordFeeStub(delegate, numFactory.numOf(0.3));
 
-        var result = getCriterion().calculate(series, record);
+        Num result = getCriterion().calculate(series, record);
 
         assertNumEquals(numFactory.numOf(0.3), result);
     }

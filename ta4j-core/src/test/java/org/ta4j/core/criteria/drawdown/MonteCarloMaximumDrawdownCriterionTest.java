@@ -121,8 +121,8 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 90, 110, 80, 120, 70, 130)
                 .build();
-        var record = buildLiveRecordWithOpenLot(series, true);
-        var closedOnly = buildLiveRecordWithOpenLot(series, false);
+        var record = buildRecordWithOpenLot(series, true);
+        var closedOnly = buildRecordWithOpenLot(series, false);
 
         class FixedRandom implements RandomGenerator {
             @Override
@@ -190,7 +190,7 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 90, 110, 80, 120, 70, 130)
                 .build();
-        var record = buildLiveRecordWithOpenLot(series, true);
+        var record = buildRecordWithOpenLot(series, true);
 
         var seedMarkToMarket = new MonteCarloMaximumDrawdownCriterion(1, 1, 7L, Statistics.MAX,
                 EquityCurveMode.MARK_TO_MARKET);
@@ -252,7 +252,7 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         assertEquals(2, counter.get());
     }
 
-    private BaseTradingRecord buildLiveRecordWithOpenLot(org.ta4j.core.BarSeries series, boolean includeOpenLot) {
+    private BaseTradingRecord buildRecordWithOpenLot(org.ta4j.core.BarSeries series, boolean includeOpenLot) {
         var record = new BaseTradingRecord(Trade.TradeType.BUY, ExecutionMatchPolicy.SPECIFIC_ID, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
         var numFactory = series.numFactory();

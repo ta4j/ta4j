@@ -284,6 +284,14 @@ public class BarSeriesManager {
      * Runs the provided strategy over the managed series using the supplied trading
      * record (from startIndex to finishIndex).
      *
+     * <p>
+     * <strong>Thread safety:</strong> This {@code BarSeriesManager.run(...)}
+     * overload mutates the supplied {@link TradingRecord}. Callers must ensure
+     * exclusive access to that record, or synchronize externally, while the run is
+     * executing. Concurrent reads or writes against the same {@link TradingRecord}
+     * during execution lead to undefined behavior.
+     * </p>
+     *
      * @param strategy      the trading strategy
      * @param tradingRecord the trading record instance to mutate
      * @param amount        the amount used to open/close the trades
