@@ -214,6 +214,16 @@ public final class ElliottWaveAnchorCalibrationHarness {
         return generateReport(CalibrationDepth.EXHAUSTIVE, artifactSink);
     }
 
+    static ElliottWaveBtcMacroCycleDemo.MacroStudy evaluateCanonicalHistoricalStudy(final BarSeries series,
+            final AnchorRegistry registry) {
+        return ElliottWaveMacroCycleDemo.evaluateCanonicalMacroStudy(series, registry);
+    }
+
+    static ElliottWaveBtcMacroCycleDemo.MacroStudy evaluateLegacyAnchoredHistoricalStudy(final BarSeries series,
+            final AnchorRegistry registry) {
+        return ElliottWaveMacroCycleDemo.evaluateLegacyAnchoredMacroStudy(series, registry);
+    }
+
     private static ReportBundle generateReport(CalibrationDepth depth, ArtifactSink artifactSink) {
         Instant startedAt = Instant.now();
         LOG.info("Loading BTC anchor registry document");

@@ -2,7 +2,7 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-12 12:29 EDT
+- Last updated: 2026-03-12 12:40 EDT
 - Active phase: Phase 6
 - Active task: Stop using `buildHistoricalCycles(...)` as a runtime historical truth source
 - Overall: 47/59 checklist items complete
@@ -430,6 +430,7 @@ Avoid exposing calibration internals publicly.
 
 Rationale note:
 - A minimal public core bridge for completed historical structure is acceptable here because `ta4j-examples` cannot consume package-private canonical search results across module boundaries. Keep that bridge narrow and evidence-carrying; do not expose calibration internals.
+- The legacy anchored historical study remains the runtime default for now because the first canonical switchover attempt did not yet reproduce the completed BTC truth surface. Keep the legacy flow available as a comparison mode through the calibration harness until the canonical path closes that gap.
 
 ### Phase 7: Replace the Macro Cycle Detector Heuristic
 

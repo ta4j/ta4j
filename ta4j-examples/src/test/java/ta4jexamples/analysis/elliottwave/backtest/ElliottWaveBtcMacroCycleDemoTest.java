@@ -336,6 +336,21 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
+    void legacyAnchoredHistoricalMacroStudyRemainsAvailableForComparison() {
+        BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
+                .defaultBitcoinAnchors(series);
+        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveMacroCycleDemo
+                .evaluateLegacyAnchoredMacroStudy(series, registry);
+
+        assertTrue(study.selectedProfile().historicalFitPassed());
+        assertTrue(study.selectedProfile().cycleFits().size() >= 3);
+        assertTruthTargetCycleFits(series, study.selectedProfile().cycleFits(), registry);
+    }
+
+    @Test
     void inferredHistoricalMacroStudyMatchesCommittedTruthTargetWithinTolerance() {
         BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
