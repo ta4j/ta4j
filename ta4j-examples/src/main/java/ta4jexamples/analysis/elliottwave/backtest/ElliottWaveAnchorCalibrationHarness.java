@@ -221,7 +221,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
 
     static ElliottWaveBtcMacroCycleDemo.MacroStudy evaluateLegacyAnchoredHistoricalStudy(final BarSeries series,
             final AnchorRegistry registry) {
-        return ElliottWaveMacroCycleDemo.evaluateLegacyAnchoredMacroStudy(series, registry);
+        return ElliottWaveMacroCycleDemo.evaluateLegacyAnchoredStudyForHarnessComparison(series, registry);
     }
 
     private static ReportBundle generateReport(CalibrationDepth depth, ArtifactSink artifactSink) {

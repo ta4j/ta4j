@@ -280,7 +280,7 @@ public final class ElliottWaveMacroCycleDemo {
                 currentCycle);
     }
 
-    static MacroStudy evaluateLegacyAnchoredMacroStudy(final BarSeries series,
+    static MacroStudy evaluateLegacyAnchoredStudyForHarnessComparison(final BarSeries series,
             final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(registry, "registry");

@@ -186,8 +186,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
                         anchor("btc-top-2013", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 5),
                         anchor("btc-bottom-2015", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 7)));
 
-        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveMacroCycleDemo
-                .evaluateLegacyAnchoredMacroStudy(series, registry);
+        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
+                .evaluateLegacyAnchoredHistoricalStudy(series, registry);
 
         assertEquals(5, study.profileScores().size());
         assertEquals(1, study.cycles().size());
@@ -329,8 +329,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
                 .defaultBitcoinAnchors(series);
-        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveMacroCycleDemo
-                .evaluateLegacyAnchoredMacroStudy(series, registry);
+        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
+                .evaluateLegacyAnchoredHistoricalStudy(series, registry);
 
         assertTrue(study.selectedProfile().historicalFitPassed());
         assertTrue(study.selectedProfile().cycleFits().size() >= 3);
@@ -346,8 +346,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 .defaultBitcoinAnchors(series);
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry inferredRegistry = ElliottWaveMacroCycleDetector
                 .inferAnchorRegistry(series);
-        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveMacroCycleDemo
-                .evaluateLegacyAnchoredMacroStudy(series, inferredRegistry);
+        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
+                .evaluateLegacyAnchoredHistoricalStudy(series, inferredRegistry);
 
         assertTrue(study.selectedProfile().historicalFitPassed());
         assertTrue(study.selectedProfile().cycleFits().size() >= 3);
@@ -529,8 +529,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
                         anchor("btc-top", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 4),
                         anchor("btc-low", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 6)));
 
-        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveMacroCycleDemo
-                .evaluateLegacyAnchoredMacroStudy(series, registry);
+        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
+                .evaluateLegacyAnchoredHistoricalStudy(series, registry);
         JFreeChart chart = ElliottWaveBtcMacroCycleDemo.renderMacroCycleChart(series, study);
 
         assertTrue(chart.getPlot() instanceof CombinedDomainXYPlot);
@@ -558,8 +558,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
                         anchor("btc-top-2", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 3),
                         anchor("btc-bottom-2", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 5)));
 
-        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveMacroCycleDemo
-                .evaluateLegacyAnchoredMacroStudy(series, registry);
+        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
+                .evaluateLegacyAnchoredHistoricalStudy(series, registry);
         JFreeChart chart = ElliottWaveBtcMacroCycleDemo.renderMacroCycleChart(series, study);
         XYPlot mainPlot = (XYPlot) ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().getFirst();
 
@@ -581,8 +581,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
                         anchor("btc-bottom-2011", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 2),
                         anchor("btc-top-2013", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 5),
                         anchor("btc-bottom-2015", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 7)));
-        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveMacroCycleDemo
-                .evaluateLegacyAnchoredMacroStudy(series, registry);
+        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
+                .evaluateLegacyAnchoredHistoricalStudy(series, registry);
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry expandedRegistry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
                 "btc-demo-test-expanded", "synthetic.json", "synthetic provenance",
                 List.of(anchor("btc-top-2011", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 1),
