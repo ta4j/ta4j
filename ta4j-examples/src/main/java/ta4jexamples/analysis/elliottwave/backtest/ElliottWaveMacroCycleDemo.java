@@ -96,8 +96,23 @@ public final class ElliottWaveMacroCycleDemo {
     public static DemoReport generateHistoricalReport(final BarSeries series, final Path chartDirectory) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(chartDirectory, "chartDirectory");
-        return generateHistoricalReport(series, ElliottWaveMacroCycleDetector.inferAnchorRegistry(series),
-                chartDirectory);
+        final CanonicalStructure structure = analyzeCanonicalStructure(series);
+        final MacroStudy study = structure.historicalStudy().orElseThrow();
+        final Optional<Path> chartPath = saveHistoricalChart(series, study, chartDirectory);
+        final String chartPathText = chartPath.map(path -> path.toAbsolutePath().normalize().toString()).orElse("");
+        final Path summaryPath = chartDirectory.resolve(ElliottWaveBtcMacroCycleDemo.DEFAULT_SUMMARY_FILE_NAME)
+                .toAbsolutePath()
+                .normalize();
+        final String baselineProfileId = ElliottWaveAnchorCalibrationHarness.canonicalBtcCalibratedProfile().id();
+        final CurrentCycleSummary currentCycle = structure.currentCycle().summary().withChartPath(chartPathText);
+        final DemoReport report = new DemoReport("series-native-canonical-history", series.getName(), baselineProfileId,
+                study.selectedProfile().profile().id(), study.selectedProfile().profile().hypothesisId(),
+                study.selectedProfile().historicalFitPassed(),
+                "Series-native canonical historical structure selected directly from core-ranked completed cycles",
+                chartPathText, summaryPath.toString(), CANONICAL_STRUCTURE_SOURCE, study.profileScores(),
+                study.cycles(), study.hypotheses(), currentCycle);
+        saveSummary(report.toJson(), summaryPath, "macro-cycle summary");
+        return report;
     }
 
     /**
@@ -194,8 +209,7 @@ public final class ElliottWaveMacroCycleDemo {
     public static Optional<Path> saveHistoricalChart(final BarSeries series, final Path chartDirectory) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(chartDirectory, "chartDirectory");
-        final CanonicalStructure structure = analyzeCanonicalStructure(series,
-                ElliottWaveMacroCycleDetector.inferAnchorRegistry(series));
+        final CanonicalStructure structure = analyzeCanonicalStructure(series);
         return saveHistoricalChart(series, structure.historicalStudy().orElseThrow(), chartDirectory);
     }
 
@@ -228,8 +242,7 @@ public final class ElliottWaveMacroCycleDemo {
      */
     public static JFreeChart renderHistoricalChart(final BarSeries series) {
         Objects.requireNonNull(series, "series");
-        final CanonicalStructure structure = analyzeCanonicalStructure(series,
-                ElliottWaveMacroCycleDetector.inferAnchorRegistry(series));
+        final CanonicalStructure structure = analyzeCanonicalStructure(series);
         return renderHistoricalChart(series, structure.historicalStudy().orElseThrow());
     }
 
@@ -248,6 +261,34 @@ public final class ElliottWaveMacroCycleDemo {
         Objects.requireNonNull(registry, "registry");
         final CanonicalStructure structure = analyzeCanonicalStructure(series, registry);
         return renderHistoricalChart(series, structure.historicalStudy().orElseThrow());
+    }
+
+    static CanonicalStructure analyzeCanonicalStructure(final BarSeries series) {
+        final MacroStudy study = evaluateCanonicalMacroStudy(series);
+        return new CanonicalStructure(Optional.of(study), study.currentCycleAnalysis());
+    }
+
+    static MacroStudy evaluateCanonicalMacroStudy(final BarSeries series) {
+        Objects.requireNonNull(series, "series");
+
+        final List<MacroLogicProfile> profiles = logicProfiles();
+        final List<MacroProfileEvaluation> evaluations = new ArrayList<>();
+        for (final MacroLogicProfile profile : profiles) {
+            evaluations.add(evaluateCanonicalProfile(series, profile));
+        }
+        evaluations.sort(profileEvaluationComparator());
+        final MacroProfileEvaluation selectedProfile = evaluations.getFirst();
+        final List<ProfileScoreSummary> profileScores = evaluations.stream().map(ProfileScoreSummary::from).toList();
+        final List<DirectionalCycleSummary> cycles = selectedProfile.cycleFits()
+                .stream()
+                .map(DirectionalCycleSummary::from)
+                .toList();
+        final List<HypothesisResult> hypotheses = buildHypotheses(evaluations);
+        final CurrentCycleAnalysis currentCycle = evaluateCurrentCycle(series, selectedProfile.profile(),
+                selectedProfile.historicalFitPassed() ? "historical structure fit passed"
+                        : "historical structure still partial");
+        return new MacroStudy(selectedProfile, List.copyOf(evaluations), profileScores, cycles, hypotheses,
+                currentCycle);
     }
 
     static MacroStudy evaluateMacroStudy(final BarSeries series,
@@ -1041,6 +1082,27 @@ public final class ElliottWaveMacroCycleDemo {
                 List.copyOf(chartSegmentsById.values()));
     }
 
+    private static MacroProfileEvaluation evaluateCanonicalProfile(final BarSeries series,
+            final MacroLogicProfile profile) {
+        final ElliottWaveAnalysisRunner profileRunner = buildProfileRunner(profile);
+        final ElliottWaveAnalysisResult.HistoricalStructureAssessment structure = profileRunner
+                .analyzeHistoricalStructure(series);
+        final Map<String, CycleFit> cycleFitsById = new LinkedHashMap<>();
+        final Map<String, SegmentScenarioFit> chartSegmentsById = new LinkedHashMap<>();
+        for (final ElliottWaveAnalysisResult.HistoricalCycleAssessment cycle : structure.cycles()) {
+            final MacroCycle macroCycle = runtimeMacroCycle(series, cycle);
+            final SegmentScenarioFit bullishFit = fitFromCoreAssessment(macroCycle.bullishLeg(),
+                    cycle.bullishLeg().assessment(), true, cycle.bullishLeg().accepted());
+            final SegmentScenarioFit bearishFit = fitFromCoreAssessment(macroCycle.bearishLeg(),
+                    cycle.bearishLeg().assessment(), false, cycle.bearishLeg().accepted());
+            cycleFitsById.putIfAbsent(macroCycle.id(), CycleFit.create(macroCycle, bullishFit, bearishFit));
+            chartSegmentsById.putIfAbsent(segmentKey(macroCycle.bullishLeg()), bullishFit);
+            chartSegmentsById.putIfAbsent(segmentKey(macroCycle.bearishLeg()), bearishFit);
+        }
+        return buildMacroProfileEvaluation(profile, List.copyOf(cycleFitsById.values()),
+                List.copyOf(chartSegmentsById.values()));
+    }
+
     private static MacroProfileEvaluation buildMacroProfileEvaluation(final MacroLogicProfile profile,
             final List<CycleFit> cycleFits, final List<SegmentScenarioFit> chartSegments) {
 
@@ -1102,6 +1164,33 @@ public final class ElliottWaveMacroCycleDemo {
                 .filter(anchor -> java.util.Arrays.stream(phases).anyMatch(anchor.expectedPhases()::contains))
                 .filter(anchor -> withinTolerance(time, anchor))
                 .min(Comparator.comparingLong(anchor -> Math.abs(Duration.between(anchor.at(), time).toMillis())));
+    }
+
+    private static MacroCycle runtimeMacroCycle(final BarSeries series,
+            final ElliottWaveAnalysisResult.HistoricalCycleAssessment cycle) {
+        final ElliottWaveAnchorCalibrationHarness.Anchor start = runtimeAnchor(series, cycle.bullishLeg().startIndex(),
+                ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, Set.of(ElliottPhase.CORRECTIVE_C), "start");
+        final ElliottWaveAnchorCalibrationHarness.Anchor peak = runtimeAnchor(series, cycle.bullishLeg().endIndex(),
+                ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, Set.of(ElliottPhase.WAVE5), "peak");
+        final ElliottWaveAnchorCalibrationHarness.Anchor low = runtimeAnchor(series, cycle.bearishLeg().endIndex(),
+                ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, Set.of(ElliottPhase.CORRECTIVE_C), "low");
+        final LegSegment bullishLeg = new LegSegment(start, peak, true);
+        final LegSegment bearishLeg = new LegSegment(peak, low, false);
+        final String cycleId = "runtime-cycle-" + cycle.bullishLeg().startIndex() + "-" + cycle.bullishLeg().endIndex()
+                + "-" + cycle.bearishLeg().endIndex();
+        return new MacroCycle(cycleId,
+                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION.name().toLowerCase(Locale.ROOT), start, peak, low,
+                bullishLeg, bearishLeg);
+    }
+
+    private static ElliottWaveAnchorCalibrationHarness.Anchor runtimeAnchor(final BarSeries series, final int index,
+            final ElliottWaveAnchorCalibrationHarness.AnchorType type, final Set<ElliottPhase> expectedPhases,
+            final String label) {
+        final Instant time = series.getBar(index).getEndTime();
+        return new ElliottWaveAnchorCalibrationHarness.Anchor(
+                "runtime-" + label + "-" + index + "-" + time.toString().replace(':', '-'), type, time, Duration.ZERO,
+                Duration.ZERO, expectedPhases, ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION,
+                "Series-native canonical historical structure");
     }
 
     private static boolean withinTolerance(final Instant actual,

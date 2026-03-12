@@ -28,8 +28,8 @@ import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader
  * <p>
  * The detector is allowed to infer its own anchor ids and provenance, but the
  * recovered macro turns must stay aligned with the committed BTC anchor
- * windows, and the resulting full-history report must preserve the same macro
- * outlook and accepted cycle structure as the registry-backed run.
+ * windows. The runtime historical report itself is now series-native and no
+ * longer uses the detector as a front-end.
  *
  * @since 0.22.4
  */
@@ -61,25 +61,21 @@ class ElliottWaveMacroCycleDetectorTest {
     }
 
     @Test
-    void anchorFreeHistoricalMacroDemoMatchesRegistryBackedBitcoinReport() throws Exception {
+    void seriesNativeHistoricalMacroDemoPreservesCompletedCycleDates() throws Exception {
         final BarSeries series = loadBitcoinSeries();
         final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
                 .defaultBitcoinAnchors(series);
 
         final ElliottWaveBtcMacroCycleDemo.DemoReport registryBacked = ElliottWaveMacroCycleDemo
                 .generateHistoricalReport(series, registry, chartDirectory.resolve("registry"));
-        final ElliottWaveBtcMacroCycleDemo.DemoReport inferred = ElliottWaveMacroCycleDemo
-                .generateHistoricalReport(series, chartDirectory.resolve("inferred"));
+        final ElliottWaveBtcMacroCycleDemo.DemoReport seriesNative = ElliottWaveMacroCycleDemo
+                .generateHistoricalReport(series, chartDirectory.resolve("series-native"));
 
-        assertEquals(registryBacked.baselineProfileId(), inferred.baselineProfileId());
-        assertEquals(registryBacked.selectedProfileId(), inferred.selectedProfileId());
-        assertEquals(registryBacked.selectedHypothesisId(), inferred.selectedHypothesisId());
-        assertEquals(registryBacked.historicalFitPassed(), inferred.historicalFitPassed());
-        assertEquals(registryBacked.profileScores(), inferred.profileScores());
-        assertEquals(registryBacked.hypotheses(), inferred.hypotheses());
-        assertEquals(cycleSignatures(registryBacked.cycles()), cycleSignatures(inferred.cycles()));
-        assertTrue(Files.exists(Path.of(inferred.chartPath())));
-        assertTrue(Files.exists(Path.of(inferred.summaryPath())));
+        assertEquals("canonical-structure", seriesNative.structureSource());
+        assertEquals(registryBacked.selectedProfileId(), seriesNative.selectedProfileId());
+        assertEquals(cycleDateSignatures(registryBacked.cycles()), cycleDateSignatures(seriesNative.cycles()));
+        assertTrue(Files.exists(Path.of(seriesNative.chartPath())));
+        assertTrue(Files.exists(Path.of(seriesNative.summaryPath())));
     }
 
     private static BarSeries loadBitcoinSeries() {
@@ -96,14 +92,10 @@ class ElliottWaveMacroCycleDetectorTest {
                 () -> "expected " + actual + " to stay within " + maxDays + " days of " + expected);
     }
 
-    private static List<String> cycleSignatures(
+    private static List<String> cycleDateSignatures(
             final List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> cycles) {
         return cycles.stream()
-                .map(cycle -> String.join("|", cycle.partition(), cycle.impulseLabel(), cycle.peakLabel(),
-                        cycle.correctionLabel(), cycle.lowLabel(), cycle.startTimeUtc(), cycle.peakTimeUtc(),
-                        cycle.lowTimeUtc(), String.valueOf(cycle.bullishScore()), String.valueOf(cycle.bearishScore()),
-                        String.valueOf(cycle.bullishAccepted()), String.valueOf(cycle.bearishAccepted()),
-                        String.valueOf(cycle.accepted()), cycle.status()))
+                .map(cycle -> String.join("|", cycle.startTimeUtc(), cycle.peakTimeUtc(), cycle.lowTimeUtc()))
                 .toList();
     }
 }

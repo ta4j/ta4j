@@ -4,8 +4,8 @@
 
 - Last updated: 2026-03-12 22:15 EDT
 - Active phase: Phase 6
-- Active task: Keep a temporary compatibility path only while the canonical engine is being proven
-- Overall: 54/61 checklist items complete
+- Active task: Ensure the historical chart and live chart cannot tell contradictory stories on the same series
+- Overall: 56/61 checklist items complete
 
 ## Status
 
@@ -437,8 +437,8 @@ Rationale note:
 
 ### Phase 7: Replace the Macro Cycle Detector Heuristic
 
-- [ ] Stop using [`ElliottWaveMacroCycleDetector.java:72`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDetector.java:72) as a runtime front-end.
-- [ ] If any inferred-anchor artifacts remain useful, keep them only as debugging/calibration output.
+- [x] Stop using [`ElliottWaveMacroCycleDetector.java:72`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDetector.java:72) as a runtime front-end.
+- [x] If any inferred-anchor artifacts remain useful, keep them only as debugging/calibration output.
 - [ ] Ensure historical chart generation consumes canonical structure output directly.
 
 ### Phase 8: Build the BTC Calibration Harness
