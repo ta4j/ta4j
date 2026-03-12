@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 20:03 EDT
+- Last updated: 2026-03-11 20:10 EDT
 - Active phase: Phase 6
 - Active task: Stop using registry-derived leg/cycle builders as runtime historical truth sources
-- Overall: 43/54 checklist items complete
+- Overall: 44/54 checklist items complete
 
 ## Status
 
@@ -517,7 +517,7 @@ Avoid exposing calibration internals publicly.
 
 ### Phase 10: Collapse Historical and Live Rendering onto One Result
 
-- [ ] Refactor historical chart rendering to consume canonical structure output only.
+- [x] Refactor historical chart rendering to consume canonical structure output only.
 - [ ] Refactor live chart rendering to consume canonical structure output only.
 - [ ] Ensure the historical chart and live chart cannot tell contradictory stories on the same series.
 - [ ] Add chart/report regression tests proving both views are backed by the same structure ids or provenance markers.

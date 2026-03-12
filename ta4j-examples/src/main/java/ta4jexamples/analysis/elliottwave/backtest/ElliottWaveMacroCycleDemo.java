@@ -117,7 +117,7 @@ public final class ElliottWaveMacroCycleDemo {
         Objects.requireNonNull(chartDirectory, "chartDirectory");
         final CanonicalStructure structure = analyzeCanonicalStructure(series, registry);
         final MacroStudy study = structure.historicalStudy().orElseThrow();
-        final Optional<Path> chartPath = saveHistoricalChart(series, registry, study, chartDirectory);
+        final Optional<Path> chartPath = saveHistoricalChart(series, study, chartDirectory);
         final String chartPathText = chartPath.map(path -> path.toAbsolutePath().normalize().toString()).orElse("");
         final Path summaryPath = chartDirectory.resolve(ElliottWaveBtcMacroCycleDemo.DEFAULT_SUMMARY_FILE_NAME)
                 .toAbsolutePath()
@@ -192,7 +192,9 @@ public final class ElliottWaveMacroCycleDemo {
     public static Optional<Path> saveHistoricalChart(final BarSeries series, final Path chartDirectory) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(chartDirectory, "chartDirectory");
-        return saveHistoricalChart(series, ElliottWaveMacroCycleDetector.inferAnchorRegistry(series), chartDirectory);
+        final CanonicalStructure structure = analyzeCanonicalStructure(series,
+                ElliottWaveMacroCycleDetector.inferAnchorRegistry(series));
+        return saveHistoricalChart(series, structure.historicalStudy().orElseThrow(), chartDirectory);
     }
 
     /**
@@ -210,8 +212,8 @@ public final class ElliottWaveMacroCycleDemo {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(registry, "registry");
         Objects.requireNonNull(chartDirectory, "chartDirectory");
-        final MacroStudy study = evaluateMacroStudy(series, registry);
-        return saveHistoricalChart(series, registry, study, chartDirectory);
+        final CanonicalStructure structure = analyzeCanonicalStructure(series, registry);
+        return saveHistoricalChart(series, structure.historicalStudy().orElseThrow(), chartDirectory);
     }
 
     /**
@@ -224,7 +226,9 @@ public final class ElliottWaveMacroCycleDemo {
      */
     public static JFreeChart renderHistoricalChart(final BarSeries series) {
         Objects.requireNonNull(series, "series");
-        return renderHistoricalChart(series, ElliottWaveMacroCycleDetector.inferAnchorRegistry(series));
+        final CanonicalStructure structure = analyzeCanonicalStructure(series,
+                ElliottWaveMacroCycleDetector.inferAnchorRegistry(series));
+        return renderHistoricalChart(series, structure.historicalStudy().orElseThrow());
     }
 
     /**
@@ -240,8 +244,8 @@ public final class ElliottWaveMacroCycleDemo {
             final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(registry, "registry");
-        final MacroStudy study = evaluateMacroStudy(series, registry);
-        return renderHistoricalChart(series, registry, study);
+        final CanonicalStructure structure = analyzeCanonicalStructure(series, registry);
+        return renderHistoricalChart(series, structure.historicalStudy().orElseThrow());
     }
 
     static MacroStudy evaluateMacroStudy(final BarSeries series,
@@ -840,23 +844,19 @@ public final class ElliottWaveMacroCycleDemo {
         pricePlot.setRangeAxis(logAxis);
     }
 
-    private static Optional<Path> saveHistoricalChart(final BarSeries series,
-            final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, final MacroStudy study,
+    private static Optional<Path> saveHistoricalChart(final BarSeries series, final MacroStudy study,
             final Path chartDirectory) {
         Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(registry, "registry");
         Objects.requireNonNull(study, "study");
         Objects.requireNonNull(chartDirectory, "chartDirectory");
         final ChartWorkflow chartWorkflow = new ChartWorkflow(chartDirectory.toString());
-        final JFreeChart chart = renderHistoricalChart(series, registry, study);
+        final JFreeChart chart = renderHistoricalChart(series, study);
         return chartWorkflow.saveChartImage(chart, series, ElliottWaveBtcMacroCycleDemo.DEFAULT_CHART_FILE_NAME,
                 ElliottWaveBtcMacroCycleDemo.DEFAULT_CHART_WIDTH, ElliottWaveBtcMacroCycleDemo.DEFAULT_CHART_HEIGHT);
     }
 
-    static JFreeChart renderHistoricalChart(final BarSeries series,
-            final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, final MacroStudy study) {
+    static JFreeChart renderHistoricalChart(final BarSeries series, final MacroStudy study) {
         Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(registry, "registry");
         Objects.requireNonNull(study, "study");
 
         final ChartWorkflow chartWorkflow = new ChartWorkflow();
@@ -867,11 +867,11 @@ public final class ElliottWaveMacroCycleDemo {
                 ? buildCycleAnchors(cycleSummaries)
                 : List.of();
         final List<LegSegment> legSegments = useStudyCycles ? buildLegSegmentsFromCycleSummaries(cycleSummaries)
-                : buildLegSegments(registry);
+                : List.of();
         final int currentCycleStartIndex = useStudyCycles ? latestBottomAnchorIndex(series, cycleAnchors)
-                : latestBottomAnchorIndex(series, registry);
+                : Integer.MAX_VALUE;
         final BarSeriesLabelIndicator anchorLabels = new BarSeriesLabelIndicator(series,
-                useStudyCycles ? buildAnchorLabels(series, cycleAnchors) : buildAnchorLabels(series, registry));
+                useStudyCycles ? buildAnchorLabels(series, cycleAnchors) : List.of());
         final BarSeriesLabelIndicator waveLabels = new BarSeriesLabelIndicator(series,
                 buildSegmentWaveLabels(series, segmentFits));
         final FixedIndicator<Num> bullishAcceptedFits = buildScenarioFitIndicator(series, segmentFits, true, true,
