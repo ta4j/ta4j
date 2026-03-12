@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-12 12:40 EDT
+- Last updated: 2026-03-12 17:05 EDT
 - Active phase: Phase 6
 - Active task: Stop using `buildHistoricalCycles(...)` as a runtime historical truth source
-- Overall: 48/60 checklist items complete
+- Overall: 49/61 checklist items complete
 
 ## Status
 
@@ -425,6 +425,7 @@ Avoid exposing calibration internals publicly.
 - [x] Remove the anchor-registry-driven runtime decomposition path as a primary renderer input.
 - [x] Stop using `buildLegSegments(...)` as a runtime truth source.
 - [x] Emit a harness-side legacy-vs-canonical completed-cycle diff artifact so canonical misses are visible on underlying cycle data before any runtime switchover.
+- [x] Keep raw accepted historical legs available as evidence, but promote only top-level completed macro cycles for completed-cycle truth comparison.
 - [ ] Stop using `buildHistoricalCycles(...)` as a runtime truth source.
 - [ ] Retain registry-backed comparison only inside the calibration harness.
 - [ ] Keep a temporary compatibility path only while the canonical engine is being proven.
@@ -432,6 +433,7 @@ Avoid exposing calibration internals publicly.
 Rationale note:
 - A minimal public core bridge for completed historical structure is acceptable here because `ta4j-examples` cannot consume package-private canonical search results across module boundaries. Keep that bridge narrow and evidence-carrying; do not expose calibration internals.
 - The legacy anchored historical study remains the runtime default for now because the first canonical switchover attempt did not yet reproduce the completed BTC truth surface. Keep the legacy flow available as a comparison mode through the calibration harness until the canonical path closes that gap.
+- The direct canonical BTC probe already showed that post-2022 pivots and alternating legs can be plausible while still being over-promoted into peer macro cycles. The next canonical improvement axis is degree-aware macro-cycle promotion, not pivot suppression.
 
 ### Phase 7: Replace the Macro Cycle Detector Heuristic
 

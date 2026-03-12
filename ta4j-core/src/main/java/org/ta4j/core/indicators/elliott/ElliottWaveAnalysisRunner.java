@@ -107,6 +107,7 @@ public final class ElliottWaveAnalysisRunner {
     private static final double CANONICAL_SEARCH_CONTIGUITY_BONUS = 0.15;
     private static final double CANONICAL_SEARCH_ALTERNATION_BONUS = 0.10;
     private static final double CANONICAL_SEARCH_GAP_PENALTY_PER_PIVOT = 0.05;
+    private static final double HISTORICAL_CYCLE_PROMOTION_MIN_GAP_RATIO = 0.20;
 
     private static final double DEFAULT_BASE_CONFIDENCE_WEIGHT = 0.7;
     private static final double DEFAULT_NEUTRAL_CROSS_DEGREE_SCORE = 0.5;
@@ -729,16 +730,17 @@ public final class ElliottWaveAnalysisRunner {
                 .stream()
                 .map(this::historicalLegAssessment)
                 .toList();
-        final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> cycles = new ArrayList<>();
+        final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> rawCycles = new ArrayList<>();
         for (int index = 0; index < legs.size() - 1; index++) {
             final ElliottWaveAnalysisResult.HistoricalLegAssessment bullishLeg = legs.get(index);
             final ElliottWaveAnalysisResult.HistoricalLegAssessment bearishLeg = legs.get(index + 1);
-            if (!bullishLeg.bullish() || bearishLeg.bullish()) {
+            if (!bullishLeg.bullish() || bearishLeg.bullish() || !bullishLeg.accepted() || !bearishLeg.accepted()) {
                 continue;
             }
-            cycles.add(new ElliottWaveAnalysisResult.HistoricalCycleAssessment(bullishLeg, bearishLeg));
+            rawCycles.add(new ElliottWaveAnalysisResult.HistoricalCycleAssessment(bullishLeg, bearishLeg));
         }
-        return new ElliottWaveAnalysisResult.HistoricalStructureAssessment(legs, cycles);
+        return new ElliottWaveAnalysisResult.HistoricalStructureAssessment(legs,
+                promoteHistoricalMacroCycles(rawCycles));
     }
 
     private ElliottWaveAnalysisResult.HistoricalLegAssessment historicalLegAssessment(
@@ -749,6 +751,48 @@ public final class ElliottWaveAnalysisRunner {
         return new ElliottWaveAnalysisResult.HistoricalLegAssessment(candidate.startPivotIndex(),
                 candidate.endPivotIndex(), candidate.bullish(), candidate.selection().assessment(),
                 candidate.selection().accepted());
+    }
+
+    private List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> promoteHistoricalMacroCycles(
+            final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> rawCycles) {
+        if (rawCycles.isEmpty()) {
+            return List.of();
+        }
+        if (rawCycles.size() == 1) {
+            return List.copyOf(rawCycles);
+        }
+
+        final List<Integer> orderedSpans = rawCycles.stream().map(this::historicalCycleSpan).sorted().toList();
+        final int promotionThreshold = historicalCyclePromotionThreshold(orderedSpans);
+        return rawCycles.stream().filter(cycle -> historicalCycleSpan(cycle) >= promotionThreshold).toList();
+    }
+
+    private int historicalCyclePromotionThreshold(final List<Integer> orderedSpans) {
+        if (orderedSpans.size() <= 1) {
+            return orderedSpans.getFirst().intValue();
+        }
+
+        final int maxSpan = orderedSpans.getLast().intValue();
+        int largestGap = 0;
+        int threshold = orderedSpans.getFirst().intValue();
+        for (int index = 1; index < orderedSpans.size(); index++) {
+            final int previous = orderedSpans.get(index - 1).intValue();
+            final int current = orderedSpans.get(index).intValue();
+            final int gap = current - previous;
+            if (gap > largestGap) {
+                largestGap = gap;
+                threshold = current;
+            }
+        }
+        if (largestGap <= 0) {
+            return orderedSpans.getFirst().intValue();
+        }
+        final double gapRatio = largestGap / (double) Math.max(1, maxSpan);
+        return gapRatio >= HISTORICAL_CYCLE_PROMOTION_MIN_GAP_RATIO ? threshold : orderedSpans.getFirst().intValue();
+    }
+
+    private int historicalCycleSpan(final ElliottWaveAnalysisResult.HistoricalCycleAssessment cycle) {
+        return cycle.bearishLeg().endIndex() - cycle.bullishLeg().startIndex();
     }
 
     /**

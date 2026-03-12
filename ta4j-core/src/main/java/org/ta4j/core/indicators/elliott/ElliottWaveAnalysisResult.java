@@ -835,8 +835,9 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
      * Completed historical structure discovered by the canonical series-native
      * search.
      *
-     * @param legs   ordered completed macro legs
-     * @param cycles ordered completed bullish/bearish macro cycles
+     * @param legs   ordered accepted completed legs discovered by the canonical
+     *               search, including lower-degree subordinate legs
+     * @param cycles ordered promoted top-level bullish/bearish macro cycles
      * @since 0.22.4
      */
     public record HistoricalStructureAssessment(List<HistoricalLegAssessment> legs,

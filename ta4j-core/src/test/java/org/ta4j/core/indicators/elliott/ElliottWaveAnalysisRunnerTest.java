@@ -761,6 +761,85 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void historicalStructureAssessmentKeepsSubordinateLegsButPromotesOnlyBroadCycles() {
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        ElliottWaveAnalysisRunner.CanonicalStructurePath path = new ElliottWaveAnalysisRunner.CanonicalStructurePath(
+                List.of(new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-1", 0, 4, true, 0.84,
+                        historicalAnchoredSelection(factory, "bull-1", ElliottPhase.WAVE5, true, true, 0.84)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-1", 4, 8, false, 0.83,
+                                historicalAnchoredSelection(factory, "bear-1", ElliottPhase.CORRECTIVE_C, false, true,
+                                        0.83)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-2", 8, 12, true, 0.82,
+                                historicalAnchoredSelection(factory, "bull-2", ElliottPhase.WAVE5, true, true, 0.82)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-2", 12, 16, false, 0.81,
+                                historicalAnchoredSelection(factory, "bear-2", ElliottPhase.CORRECTIVE_C, false, true,
+                                        0.81)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-3", 16, 20, true, 0.80,
+                                historicalAnchoredSelection(factory, "bull-3", ElliottPhase.WAVE5, true, true, 0.80)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-3", 20, 24, false, 0.79,
+                                historicalAnchoredSelection(factory, "bear-3", ElliottPhase.CORRECTIVE_C, false, true,
+                                        0.79)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-4", 24, 26, true, 0.78,
+                                historicalAnchoredSelection(factory, "bull-4", ElliottPhase.WAVE5, true, true, 0.78)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-4", 26, 28, false, 0.77,
+                                historicalAnchoredSelection(factory, "bear-4", ElliottPhase.CORRECTIVE_C, false, true,
+                                        0.77)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-5", 28, 30, true, 0.76,
+                                historicalAnchoredSelection(factory, "bull-5", ElliottPhase.WAVE5, true, true, 0.76)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-5", 30, 32, false, 0.75,
+                                historicalAnchoredSelection(factory, "bear-5", ElliottPhase.CORRECTIVE_C, false, true,
+                                        0.75))),
+                7.95);
+
+        ElliottWaveAnalysisResult.HistoricalStructureAssessment structure = analysis
+                .historicalStructureAssessment(path);
+
+        assertThat(structure.legs()).hasSize(10);
+        assertThat(structure.cycles()).hasSize(3);
+        assertThat(structure.cycles()
+                .stream()
+                .map(cycle -> cycle.bullishLeg().scenario().id() + "->" + cycle.bearishLeg().scenario().id()))
+                .containsExactly("bull-1->bear-1", "bull-2->bear-2", "bull-3->bear-3");
+    }
+
+    @Test
+    void historicalStructureAssessmentKeepsAllCyclesWhenNoClearSpanBreakExists() {
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        ElliottWaveAnalysisRunner.CanonicalStructurePath path = new ElliottWaveAnalysisRunner.CanonicalStructurePath(
+                List.of(new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-1", 0, 5, true, 0.84,
+                        historicalAnchoredSelection(factory, "bull-1", ElliottPhase.WAVE5, true, true, 0.84)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-1", 5, 9, false, 0.83,
+                                historicalAnchoredSelection(factory, "bear-1", ElliottPhase.CORRECTIVE_C, false, true,
+                                        0.83)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-2", 9, 14, true, 0.82,
+                                historicalAnchoredSelection(factory, "bull-2", ElliottPhase.WAVE5, true, true, 0.82)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-2", 14, 19, false, 0.81,
+                                historicalAnchoredSelection(factory, "bear-2", ElliottPhase.CORRECTIVE_C, false, true,
+                                        0.81))),
+                3.30);
+
+        ElliottWaveAnalysisResult.HistoricalStructureAssessment structure = analysis
+                .historicalStructureAssessment(path);
+
+        assertThat(structure.legs()).hasSize(4);
+        assertThat(structure.cycles()).hasSize(2);
+    }
+
+    @Test
     void boundCanonicalCandidatesCapsSearchFrontier() {
         ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
                 .degree(ElliottDegree.PRIMARY)
