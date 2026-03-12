@@ -488,6 +488,35 @@ public final class ElliottWaveAnalysisRunner {
     }
 
     /**
+     * Discovers the strongest completed historical macro structure directly from
+     * the supplied series.
+     *
+     * <p>
+     * This is the historical counterpart to
+     * {@link #analyzeCurrentCycle(BarSeries)}. It reuses the runner's macro pivot
+     * graph, completed-leg fitting, and bounded canonical search to emit ordered
+     * completed bullish and bearish macro legs plus paired completed cycles.
+     *
+     * @param series series to analyze
+     * @return completed historical structure selected by the canonical search
+     * @since 0.22.4
+     */
+    public ElliottWaveAnalysisResult.HistoricalStructureAssessment analyzeHistoricalStructure(final BarSeries series) {
+        Objects.requireNonNull(series, "series");
+        if (series.isEmpty()) {
+            throw new IllegalArgumentException("series cannot be empty");
+        }
+
+        final ElliottWaveAnalysisResult fullAnalysis = analyze(series);
+        final ElliottAnalysisResult baseAnalysis = fullAnalysis.analysisFor(baseDegree).orElseThrow().analysis();
+        final MacroPivotGraph macroPivotGraph = buildMacroPivotGraph(series, baseAnalysis);
+        final List<CanonicalLegCandidate> historicalCandidates = buildHistoricalCanonicalLegCandidates(series,
+                macroPivotGraph);
+        return searchCanonicalStructure(historicalCandidates).map(this::historicalStructureAssessment)
+                .orElseGet(() -> new ElliottWaveAnalysisResult.HistoricalStructureAssessment(List.of(), List.of()));
+    }
+
+    /**
      * Promotes the processed swing sequence for one analysis snapshot into a
      * reusable pivot graph.
      *
@@ -671,9 +700,38 @@ public final class ElliottWaveAnalysisRunner {
             }
             final String id = "history-" + index + "-" + start.barIndex() + "-" + end.barIndex() + "-"
                     + (bullish ? "bull" : "bear");
-            candidates.add(new CanonicalLegCandidate(id, start.barIndex(), end.barIndex(), bullish, fitScore));
+            candidates.add(new CanonicalLegCandidate(id, start.barIndex(), end.barIndex(), bullish, fitScore,
+                    selection.orElseThrow()));
         }
         return List.copyOf(candidates);
+    }
+
+    ElliottWaveAnalysisResult.HistoricalStructureAssessment historicalStructureAssessment(
+            final CanonicalStructurePath path) {
+        final List<ElliottWaveAnalysisResult.HistoricalLegAssessment> legs = path.legs()
+                .stream()
+                .map(this::historicalLegAssessment)
+                .toList();
+        final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> cycles = new ArrayList<>();
+        for (int index = 0; index < legs.size() - 1; index++) {
+            final ElliottWaveAnalysisResult.HistoricalLegAssessment bullishLeg = legs.get(index);
+            final ElliottWaveAnalysisResult.HistoricalLegAssessment bearishLeg = legs.get(index + 1);
+            if (!bullishLeg.bullish() || bearishLeg.bullish()) {
+                continue;
+            }
+            cycles.add(new ElliottWaveAnalysisResult.HistoricalCycleAssessment(bullishLeg, bearishLeg));
+        }
+        return new ElliottWaveAnalysisResult.HistoricalStructureAssessment(legs, cycles);
+    }
+
+    private ElliottWaveAnalysisResult.HistoricalLegAssessment historicalLegAssessment(
+            final CanonicalLegCandidate candidate) {
+        if (candidate.selection() == null) {
+            throw new IllegalArgumentException("Historical canonical leg candidate is missing a selection");
+        }
+        return new ElliottWaveAnalysisResult.HistoricalLegAssessment(candidate.startPivotIndex(),
+                candidate.endPivotIndex(), candidate.bullish(), candidate.selection().assessment(),
+                candidate.selection().accepted());
     }
 
     /**
@@ -2196,13 +2254,19 @@ public final class ElliottWaveAnalysisRunner {
      * @param fitScore        local leg fit score in {@code [0,1]}
      * @since 0.22.4
      */
-    record CanonicalLegCandidate(String id, int startPivotIndex, int endPivotIndex, boolean bullish, double fitScore) {
+    record CanonicalLegCandidate(String id, int startPivotIndex, int endPivotIndex, boolean bullish, double fitScore,
+            AnchoredWindowSelection selection) {
 
         CanonicalLegCandidate {
             Objects.requireNonNull(id, "id");
             if (endPivotIndex <= startPivotIndex) {
                 throw new IllegalArgumentException("endPivotIndex must be > startPivotIndex");
             }
+        }
+
+        CanonicalLegCandidate(final String id, final int startPivotIndex, final int endPivotIndex,
+                final boolean bullish, final double fitScore) {
+            this(id, startPivotIndex, endPivotIndex, bullish, fitScore, null);
         }
     }
 

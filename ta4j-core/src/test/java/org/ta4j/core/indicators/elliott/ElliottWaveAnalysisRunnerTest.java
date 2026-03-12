@@ -677,6 +677,38 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void historicalStructureAssessmentPairsCompletedBullBearLegsIntoCycles() {
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        ElliottWaveAnalysisRunner.CanonicalStructurePath path = new ElliottWaveAnalysisRunner.CanonicalStructurePath(
+                List.of(new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-1", 0, 4, true, 0.82,
+                        historicalAnchoredSelection(factory, "bull-1", ElliottPhase.WAVE5, true, true, 0.82)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-1", 4, 7, false, 0.79,
+                                historicalAnchoredSelection(factory, "bear-1", ElliottPhase.CORRECTIVE_C, false, true,
+                                        0.79)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-2", 7, 10, true, 0.76,
+                                historicalAnchoredSelection(factory, "bull-2", ElliottPhase.WAVE5, true, false, 0.76))),
+                2.37);
+
+        ElliottWaveAnalysisResult.HistoricalStructureAssessment structure = analysis
+                .historicalStructureAssessment(path);
+
+        assertThat(structure.legs()).hasSize(3);
+        assertThat(structure.cycles()).hasSize(1);
+        assertThat(structure.cycles().getFirst().bullishLeg().scenario().id()).isEqualTo("bull-1");
+        assertThat(structure.cycles().getFirst().bearishLeg().scenario().id()).isEqualTo("bear-1");
+        assertThat(structure.cycles().getFirst().bullishLeg().accepted()).isTrue();
+        assertThat(structure.cycles().getFirst().bearishLeg().accepted()).isTrue();
+        assertThat(structure.legs().getLast().accepted()).isFalse();
+    }
+
+    @Test
     void boundCanonicalCandidatesCapsSearchFrontier() {
         ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
                 .degree(ElliottDegree.PRIMARY)
@@ -1283,6 +1315,23 @@ class ElliottWaveAnalysisRunnerTest {
                 factory.numOf(100), fitScore);
         return new ElliottWaveAnalysisResult.CurrentPhaseAssessment(scenario, phase, fitScore, factory.hundred(),
                 countLabel, factory.numOf(100), factory.numOf(108));
+    }
+
+    private ElliottWaveAnalysisRunner.AnchoredWindowSelection historicalAnchoredSelection(final NumFactory factory,
+            final String scenarioId, final ElliottPhase phase, final boolean bullish, final boolean accepted,
+            final double fitScore) {
+        ElliottScenario scenario = bullish
+                ? scenario(factory, scenarioId, phase, fitScore, anchoredWindowSwings(factory), factory.numOf(92), 0.9)
+                : scenario(factory, scenarioId, phase, fitScore,
+                        List.of(new ElliottSwing(0, 2, factory.numOf(160), factory.numOf(130), ElliottDegree.PRIMARY),
+                                new ElliottSwing(2, 4, factory.numOf(130), factory.numOf(145), ElliottDegree.PRIMARY),
+                                new ElliottSwing(4, 6, factory.numOf(145), factory.numOf(120), ElliottDegree.PRIMARY)),
+                        factory.numOf(160), 0.9);
+        ElliottWaveAnalysisResult.BaseScenarioAssessment baseAssessment = new ElliottWaveAnalysisResult.BaseScenarioAssessment(
+                scenario, fitScore, fitScore, fitScore, List.of());
+        ElliottWaveAnalysisResult.WindowScenarioAssessment assessment = new ElliottWaveAnalysisResult.WindowScenarioAssessment(
+                baseAssessment, fitScore, fitScore, fitScore, fitScore);
+        return new ElliottWaveAnalysisRunner.AnchoredWindowSelection(assessment, accepted);
     }
 
     private List<ElliottSwing> anchoredWindowSwings(final NumFactory factory) {

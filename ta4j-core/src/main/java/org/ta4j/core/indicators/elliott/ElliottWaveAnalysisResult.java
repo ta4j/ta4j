@@ -767,6 +767,88 @@ public record ElliottWaveAnalysisResult(ElliottDegree baseDegree, List<DegreeAna
     }
 
     /**
+     * One completed historical leg selected by the canonical structure search.
+     *
+     * <p>
+     * This exposes the ordered bullish and bearish macro legs discovered from the
+     * series-native canonical search so higher layers can render completed history
+     * without rebuilding leg windows from an external anchor registry.
+     *
+     * @param startIndex inclusive leg start index
+     * @param endIndex   inclusive leg end index
+     * @param bullish    {@code true} for bullish impulse legs, {@code false} for
+     *                   bearish corrective legs
+     * @param assessment selected anchored-window assessment for this leg
+     * @param accepted   whether the leg passed the anchored-window acceptance gate
+     * @since 0.22.4
+     */
+    public record HistoricalLegAssessment(int startIndex, int endIndex, boolean bullish,
+            WindowScenarioAssessment assessment, boolean accepted) {
+
+        public HistoricalLegAssessment {
+            Objects.requireNonNull(assessment, "assessment");
+            if (endIndex <= startIndex) {
+                throw new IllegalArgumentException("endIndex must be > startIndex");
+            }
+        }
+
+        /**
+         * @return selected scenario for this leg
+         * @since 0.22.4
+         */
+        public ElliottScenario scenario() {
+            return assessment.scenario();
+        }
+
+        /**
+         * @return blended leg fit score
+         * @since 0.22.4
+         */
+        public double fitScore() {
+            return assessment.fitScore();
+        }
+    }
+
+    /**
+     * One completed bullish-plus-bearish macro cycle selected by the canonical
+     * structure search.
+     *
+     * @param bullishLeg completed bullish impulse leg
+     * @param bearishLeg completed bearish corrective leg
+     * @since 0.22.4
+     */
+    public record HistoricalCycleAssessment(HistoricalLegAssessment bullishLeg, HistoricalLegAssessment bearishLeg) {
+
+        public HistoricalCycleAssessment {
+            Objects.requireNonNull(bullishLeg, "bullishLeg");
+            Objects.requireNonNull(bearishLeg, "bearishLeg");
+            if (!bullishLeg.bullish()) {
+                throw new IllegalArgumentException("bullishLeg must be bullish");
+            }
+            if (bearishLeg.bullish()) {
+                throw new IllegalArgumentException("bearishLeg must be bearish");
+            }
+        }
+    }
+
+    /**
+     * Completed historical structure discovered by the canonical series-native
+     * search.
+     *
+     * @param legs   ordered completed macro legs
+     * @param cycles ordered completed bullish/bearish macro cycles
+     * @since 0.22.4
+     */
+    public record HistoricalStructureAssessment(List<HistoricalLegAssessment> legs,
+            List<HistoricalCycleAssessment> cycles) {
+
+        public HistoricalStructureAssessment {
+            legs = legs == null ? List.of() : List.copyOf(legs);
+            cycles = cycles == null ? List.of() : List.copyOf(cycles);
+        }
+    }
+
+    /**
      * Ranked current-phase fit for a live or open-ended window.
      *
      * <p>

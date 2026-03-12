@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-12 11:18 EDT
+- Last updated: 2026-03-12 12:29 EDT
 - Active phase: Phase 6
 - Active task: Stop using `buildHistoricalCycles(...)` as a runtime historical truth source
-- Overall: 47/55 checklist items complete
+- Overall: 47/59 checklist items complete
 
 ## Status
 
@@ -428,6 +428,9 @@ Avoid exposing calibration internals publicly.
 - [ ] Retain registry-backed comparison only inside the calibration harness.
 - [ ] Keep a temporary compatibility path only while the canonical engine is being proven.
 
+Rationale note:
+- A minimal public core bridge for completed historical structure is acceptable here because `ta4j-examples` cannot consume package-private canonical search results across module boundaries. Keep that bridge narrow and evidence-carrying; do not expose calibration internals.
+
 ### Phase 7: Replace the Macro Cycle Detector Heuristic
 
 - [ ] Stop using [`ElliottWaveMacroCycleDetector.java:72`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDetector.java:72) as a runtime front-end.
@@ -533,6 +536,13 @@ Avoid exposing calibration internals publicly.
 - [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
 - [ ] Confirm historical chart and live chart are both drawn from the same structure object.
 - [ ] Run full verification and record the final build log.
+
+### Phase 13: Design Elliott Oscillator Representation
+
+- [ ] Define the macro-cycle oscillator mapping so bullish `1-2-3-4-5` occupies the positive lobe, bearish `A-B-C` occupies the negative lobe, the wave-5 top maps to the oscillator crest, and the corrective-C low maps to the oscillator trough.
+- [ ] Define the higher-frequency wave-count oscillator mapping so `1`, `3`, `5`, and `B` occupy positive-amplitude sections while `2`, `4`, `A`, and `C` occupy negative-amplitude sections.
+- [ ] Specify the amplitude, phase, normalization, and time-warp rules needed to transform irregular Elliott legs into a stable oscillator form across instruments and windows.
+- [ ] Add BTC reference examples showing canonical historical cycles, current open structure, and their oscillator representations side by side.
 
 ## Step-by-Step Execution Sequence
 
