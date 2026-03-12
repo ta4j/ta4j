@@ -797,18 +797,17 @@ class ElliottWaveAnalysisRunnerTest {
 
         ElliottWaveAnalysisResult.HistoricalStructureAssessment history = analysis.analyzeHistoricalStructure(series);
 
-        assertThat(history.legs()).hasSize(2);
-        assertThat(history.legs().get(0).bullish()).isTrue();
+        assertThat(history.legs()).hasSize(3);
+        assertThat(history.legs().get(0).bullish()).isFalse();
         assertThat(history.legs().get(0).startIndex()).isZero();
-        assertThat(history.legs().get(0).endIndex()).isEqualTo(5);
-        assertThat(history.legs().get(1).bullish()).isFalse();
-        assertThat(history.legs().get(1).startIndex()).isEqualTo(5);
+        assertThat(history.legs().get(0).endIndex()).isEqualTo(3);
+        assertThat(history.legs().get(1).bullish()).isTrue();
+        assertThat(history.legs().get(1).startIndex()).isEqualTo(3);
         assertThat(history.legs().get(1).endIndex()).isEqualTo(8);
-        assertThat(history.cycles()).hasSize(1);
-        assertThat(history.cycles().getFirst().bullishLeg().startIndex()).isZero();
-        assertThat(history.cycles().getFirst().bullishLeg().endIndex()).isEqualTo(5);
-        assertThat(history.cycles().getFirst().bearishLeg().startIndex()).isEqualTo(5);
-        assertThat(history.cycles().getFirst().bearishLeg().endIndex()).isEqualTo(8);
+        assertThat(history.legs().get(2).bullish()).isFalse();
+        assertThat(history.legs().get(2).startIndex()).isEqualTo(8);
+        assertThat(history.legs().get(2).endIndex()).isEqualTo(11);
+        assertThat(history.cycles()).isEmpty();
     }
 
     @Test
@@ -886,6 +885,38 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(structure.cycles().getFirst().bullishLeg().accepted()).isTrue();
         assertThat(structure.cycles().getFirst().bearishLeg().accepted()).isTrue();
         assertThat(structure.legs().getLast().accepted()).isFalse();
+    }
+
+    @Test
+    void promoteHistoricalMacroCyclesUsesSupportedNonAdjacentPivotPairs() {
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        List<ElliottWaveAnalysisRunner.CanonicalLegCandidate> candidates = List.of(
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("support-bear", 0, 3, false, 0.84,
+                        historicalAnchoredSelection(factory, "support-bear", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.84)),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("macro-bull", 3, 8, true, 0.88,
+                        historicalAnchoredSelection(factory, "macro-bull", ElliottPhase.WAVE5, true, true, 0.88)),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("macro-bear", 8, 11, false, 0.84,
+                        historicalAnchoredSelection(factory, "macro-bear", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.84)),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("recovery-bull", 11, 16, true, 0.86,
+                        historicalAnchoredSelection(factory, "recovery-bull", ElliottPhase.WAVE5, true, true, 0.86)));
+
+        List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> cycles = analysis
+                .promoteHistoricalMacroCycles(candidates);
+
+        assertThat(cycles).hasSize(1);
+        assertThat(cycles.getFirst().bullishLeg().startIndex()).isEqualTo(3);
+        assertThat(cycles.getFirst().bullishLeg().endIndex()).isEqualTo(8);
+        assertThat(cycles.getFirst().bearishLeg().startIndex()).isEqualTo(8);
+        assertThat(cycles.getFirst().bearishLeg().endIndex()).isEqualTo(11);
     }
 
     @Test
@@ -2043,7 +2074,8 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     private double[] nonAdjacentHistoricalCyclePrices() {
-        return new double[] { 100.0, 120.0, 108.0, 150.0, 128.0, 180.0, 150.0, 165.0, 130.0 };
+        return new double[] { 160.0, 130.0, 145.0, 100.0, 120.0, 108.0, 150.0, 128.0, 180.0, 150.0, 165.0, 130.0, 150.0,
+                138.0, 170.0, 152.0, 190.0 };
     }
 
     private ElliottAnalysisResult waveFourNormalizationSnapshot(final BarSeries series, final NumFactory factory) {

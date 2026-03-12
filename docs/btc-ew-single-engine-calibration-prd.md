@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-12 18:55 EDT
+- Last updated: 2026-03-12 22:15 EDT
 - Active phase: Phase 6
 - Active task: Stop using `buildHistoricalCycles(...)` as a runtime historical truth source
-- Overall: 51/61 checklist items complete
+- Overall: 52/61 checklist items complete
 
 ## Status
 
@@ -536,7 +536,7 @@ Rationale note:
 
 ### Phase 12: Final Sanity and Acceptance Gate
 
-- [ ] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
+- [x] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
 - [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
 - [ ] Confirm historical chart and live chart are both drawn from the same structure object.
 - [ ] Run full verification and record the final build log.
