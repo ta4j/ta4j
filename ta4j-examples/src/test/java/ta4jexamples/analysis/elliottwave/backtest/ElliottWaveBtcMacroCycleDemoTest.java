@@ -248,7 +248,19 @@ class ElliottWaveBtcMacroCycleDemoTest {
             assertTrue(study.cycles().stream().allMatch(cycle -> "accepted historical fit".equals(cycle.status())));
             assertEquals(3, study.selectedProfile().cycleFits().size());
             study.selectedProfile().cycleFits().forEach(cycleFit -> assertAcceptedCoreRankedCycleFit(series, cycleFit));
-            assertTrue(study.selectedProfile().chartSegments().size() >= 6);
+            List<String> cycleSegmentKeys = study.selectedProfile()
+                    .cycleFits()
+                    .stream()
+                    .flatMap(cycleFit -> java.util.stream.Stream.of(cycleFit.cycle().bullishLeg(),
+                            cycleFit.cycle().bearishLeg()))
+                    .map(segment -> segment.fromAnchor().id() + "->" + segment.toAnchor().id())
+                    .toList();
+            List<String> chartSegmentKeys = study.selectedProfile()
+                    .chartSegments()
+                    .stream()
+                    .map(segment -> segment.segment().fromAnchor().id() + "->" + segment.segment().toAnchor().id())
+                    .toList();
+            assertEquals(cycleSegmentKeys, chartSegmentKeys);
             assertTrue(study.selectedProfile()
                     .chartSegments()
                     .stream()

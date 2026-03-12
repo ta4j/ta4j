@@ -256,12 +256,11 @@ public final class ElliottWaveMacroCycleDemo {
         Objects.requireNonNull(registry, "registry");
 
         final List<MacroLogicProfile> profiles = logicProfiles();
-        final List<LegSegment> chartLegs = buildLegSegments(registry);
         final List<MacroCycle> historicalCycles = buildHistoricalCycles(registry);
 
         final List<MacroProfileEvaluation> evaluations = new ArrayList<>();
         for (final MacroLogicProfile profile : profiles) {
-            evaluations.add(evaluateProfile(series, profile, chartLegs, historicalCycles));
+            evaluations.add(evaluateProfile(series, profile, historicalCycles));
         }
         evaluations.sort(profileEvaluationComparator());
         final MacroProfileEvaluation selectedProfile = evaluations.getFirst();
@@ -966,23 +965,24 @@ public final class ElliottWaveMacroCycleDemo {
     }
 
     private static MacroProfileEvaluation evaluateProfile(final BarSeries series, final MacroLogicProfile profile,
-            final List<LegSegment> chartLegs, final List<MacroCycle> historicalCycles) {
+            final List<MacroCycle> historicalCycles) {
         final ElliottWaveAnalysisRunner profileRunner = buildProfileRunner(profile);
-        final List<SegmentScenarioFit> chartSegments = new ArrayList<>();
         final Map<String, SegmentScenarioFit> segmentById = new LinkedHashMap<>();
-        for (final LegSegment legSegment : chartLegs) {
-            fitSegment(series, legSegment, profile, profileRunner).ifPresent(fit -> {
-                chartSegments.add(fit);
-                segmentById.put(segmentKey(legSegment), fit);
-            });
-        }
-
         final List<CycleFit> cycleFits = new ArrayList<>();
         for (final MacroCycle cycle : historicalCycles) {
-            final SegmentScenarioFit bullishFit = segmentById.get(segmentKey(cycle.bullishLeg()));
-            final SegmentScenarioFit bearishFit = segmentById.get(segmentKey(cycle.bearishLeg()));
+            final SegmentScenarioFit bullishFit = fitSegment(series, cycle.bullishLeg(), profile, profileRunner)
+                    .orElse(null);
+            final SegmentScenarioFit bearishFit = fitSegment(series, cycle.bearishLeg(), profile, profileRunner)
+                    .orElse(null);
+            if (bullishFit != null) {
+                segmentById.putIfAbsent(segmentKey(cycle.bullishLeg()), bullishFit);
+            }
+            if (bearishFit != null) {
+                segmentById.putIfAbsent(segmentKey(cycle.bearishLeg()), bearishFit);
+            }
             cycleFits.add(CycleFit.create(cycle, bullishFit, bearishFit));
         }
+        final List<SegmentScenarioFit> chartSegments = List.copyOf(segmentById.values());
 
         int acceptedCycles = 0;
         int acceptedSegments = 0;
@@ -1250,15 +1250,6 @@ public final class ElliottWaveMacroCycleDemo {
         for (int index = clipFromIndex; index < values.length; index++) {
             values[index] = NaN;
         }
-    }
-
-    private static List<LegSegment> buildLegSegments(
-            final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        final List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors = registry.anchors()
-                .stream()
-                .sorted(Comparator.comparing(ElliottWaveAnchorCalibrationHarness.Anchor::at))
-                .toList();
-        return buildLegSegmentsFromAnchors(anchors);
     }
 
     private static List<LegSegment> buildLegSegmentsFromCycleSummaries(

@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-11 20:35 EDT
+- Last updated: 2026-03-12 11:18 EDT
 - Active phase: Phase 6
-- Active task: Stop using registry-derived leg/cycle builders as runtime historical truth sources
-- Overall: 46/54 checklist items complete
+- Active task: Stop using `buildHistoricalCycles(...)` as a runtime historical truth source
+- Overall: 47/55 checklist items complete
 
 ## Status
 
@@ -423,10 +423,8 @@ Avoid exposing calibration internals publicly.
 ### Phase 6: Demote Anchor-Registry Historical Decomposition
 
 - [x] Remove the anchor-registry-driven runtime decomposition path as a primary renderer input.
-- [ ] Stop using:
-  - `buildLegSegments(...)`
-  - `buildHistoricalCycles(...)`
-  as runtime truth sources.
+- [x] Stop using `buildLegSegments(...)` as a runtime truth source.
+- [ ] Stop using `buildHistoricalCycles(...)` as a runtime truth source.
 - [ ] Retain registry-backed comparison only inside the calibration harness.
 - [ ] Keep a temporary compatibility path only while the canonical engine is being proven.
 
