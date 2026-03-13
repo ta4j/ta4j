@@ -806,11 +806,11 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(history.legs().get(1).endIndex()).isEqualTo(8);
         assertThat(history.legs().get(2).bullish()).isFalse();
         assertThat(history.legs().get(2).startIndex()).isEqualTo(8);
-        assertThat(history.legs().get(2).endIndex()).isEqualTo(11);
+        assertThat(history.legs().get(2).endIndex()).isEqualTo(15);
         assertThat(history.cycles()).hasSize(1);
         assertThat(history.cycles().getFirst().bullishLeg().startIndex()).isEqualTo(3);
         assertThat(history.cycles().getFirst().bullishLeg().endIndex()).isEqualTo(8);
-        assertThat(history.cycles().getFirst().bearishLeg().endIndex()).isEqualTo(11);
+        assertThat(history.cycles().getFirst().bearishLeg().endIndex()).isEqualTo(15);
     }
 
     @Test
@@ -1168,6 +1168,52 @@ class ElliottWaveAnalysisRunnerTest {
                 .stream()
                 .map(cycle -> cycle.bullishLeg().scenario().id() + "->" + cycle.bearishLeg().scenario().id()))
                 .containsExactly("bull-1->bear-1", "bull-2->bear-2");
+    }
+
+    @Test
+    void selectHistoricalStructureAssessmentPrefersLaterCompletedMacroBackboneOverHigherScoringSubcyclePath() {
+        BarSeries series = buildHistoricalPromotionSeries();
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        ElliottWaveAnalysisRunner.CanonicalStructurePath earlierSubcyclePath = new ElliottWaveAnalysisRunner.CanonicalStructurePath(
+                List.of(new ElliottWaveAnalysisRunner.CanonicalLegCandidate("support-bear", 0, 4, false, 0.84,
+                        historicalAnchoredSelection(factory, "support-bear", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.84)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-early", 4, 10, true, 0.95,
+                                historicalAnchoredSelection(factory, "bull-early", ElliottPhase.WAVE5, true, true,
+                                        0.95)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-early", 10, 15, false, 0.94,
+                                historicalAnchoredSelection(factory, "bear-early", ElliottPhase.CORRECTIVE_C, false,
+                                        true, 0.94)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("support-bull-early", 15, 18, true, 0.92,
+                                historicalAnchoredSelection(factory, "support-bull-early", ElliottPhase.WAVE5, true,
+                                        true, 0.92))),
+                3.65);
+        ElliottWaveAnalysisRunner.CanonicalStructurePath laterMacroPath = new ElliottWaveAnalysisRunner.CanonicalStructurePath(
+                List.of(new ElliottWaveAnalysisRunner.CanonicalLegCandidate("support-bear", 0, 4, false, 0.84,
+                        historicalAnchoredSelection(factory, "support-bear", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.84)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-late", 4, 12, true, 0.88,
+                                historicalAnchoredSelection(factory, "bull-late", ElliottPhase.WAVE5, true, true,
+                                        0.88)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-late", 12, 20, false, 0.87,
+                                historicalAnchoredSelection(factory, "bear-late", ElliottPhase.CORRECTIVE_C, false,
+                                        true, 0.87))),
+                3.10);
+
+        Optional<ElliottWaveAnalysisResult.HistoricalStructureAssessment> selected = analysis
+                .selectHistoricalStructureAssessment(series, List.of(earlierSubcyclePath, laterMacroPath));
+
+        assertThat(selected).isPresent();
+        assertThat(selected.orElseThrow().cycles()).hasSize(1);
+        assertThat(selected.orElseThrow().cycles().getFirst().bullishLeg().scenario().id()).isEqualTo("bull-late");
+        assertThat(selected.orElseThrow().cycles().getFirst().bearishLeg().scenario().id()).isEqualTo("bear-late");
     }
 
     @Test

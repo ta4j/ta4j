@@ -518,8 +518,19 @@ public final class ElliottWaveAnalysisRunner {
         final MacroPivotGraph macroPivotGraph = buildMacroPivotGraph(series, baseAnalysis);
         final List<CanonicalLegCandidate> historicalCandidates = buildHistoricalCanonicalLegCandidates(series,
                 macroPivotGraph);
-        return searchCanonicalStructure(historicalCandidates).map(path -> historicalStructureAssessment(series, path))
+        return selectHistoricalStructureAssessment(series, searchCanonicalStructurePaths(historicalCandidates))
                 .orElseGet(() -> new ElliottWaveAnalysisResult.HistoricalStructureAssessment(List.of(), List.of()));
+    }
+
+    Optional<ElliottWaveAnalysisResult.HistoricalStructureAssessment> selectHistoricalStructureAssessment(
+            final BarSeries series, final List<CanonicalStructurePath> paths) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(paths, "paths");
+        return paths.stream()
+                .map(path -> new HistoricalStructureCandidate(path, historicalStructureAssessment(series, path)))
+                .filter(candidate -> !candidate.assessment().legs().isEmpty())
+                .max(HistoricalStructureCandidate.ORDERING)
+                .map(HistoricalStructureCandidate::assessment);
     }
 
     /**
@@ -2952,6 +2963,44 @@ public final class ElliottWaveAnalysisRunner {
                 final Function<CanonicalLegCandidate, ElliottWaveAnalysisResult.HistoricalLegAssessment> mapper) {
             return new ElliottWaveAnalysisResult.HistoricalCycleAssessment(mapper.apply(bullishLeg),
                     mapper.apply(bearishLeg));
+        }
+    }
+
+    private record HistoricalStructureCandidate(CanonicalStructurePath path,
+            ElliottWaveAnalysisResult.HistoricalStructureAssessment assessment) {
+
+        private static final Comparator<HistoricalStructureCandidate> ORDERING = Comparator
+                .comparingInt(HistoricalStructureCandidate::cycleCount)
+                .thenComparingInt(HistoricalStructureCandidate::terminalCycleEndIndex)
+                .thenComparingInt(HistoricalStructureCandidate::totalCycleSpan)
+                .thenComparingDouble(HistoricalStructureCandidate::totalCycleFitScore)
+                .thenComparingDouble(candidate -> candidate.path().score())
+                .thenComparingInt(HistoricalStructureCandidate::terminalLegEndIndex);
+
+        private int cycleCount() {
+            return assessment.cycles().size();
+        }
+
+        private int terminalCycleEndIndex() {
+            return assessment.cycles().isEmpty() ? -1 : assessment.cycles().getLast().bearishLeg().endIndex();
+        }
+
+        private int totalCycleSpan() {
+            return assessment.cycles()
+                    .stream()
+                    .mapToInt(cycle -> cycle.bearishLeg().endIndex() - cycle.bullishLeg().startIndex())
+                    .sum();
+        }
+
+        private double totalCycleFitScore() {
+            return assessment.cycles()
+                    .stream()
+                    .mapToDouble(cycle -> cycle.bullishLeg().fitScore() + cycle.bearishLeg().fitScore())
+                    .sum();
+        }
+
+        private int terminalLegEndIndex() {
+            return assessment.legs().isEmpty() ? -1 : assessment.legs().getLast().endIndex();
         }
     }
 
