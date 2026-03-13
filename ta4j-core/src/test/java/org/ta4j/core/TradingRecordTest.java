@@ -342,13 +342,11 @@ public class TradingRecordTest {
     }
 
     private Trade buyAt(int index) {
-        return new BaseTrade(index, Instant.EPOCH, numFactory.hundred(), numFactory.one(), numFactory.zero(),
-                ExecutionSide.BUY, null, null);
+        return Trade.buyAt(index, numFactory.hundred(), numFactory.one());
     }
 
     private Trade sellAt(int index) {
-        return new BaseTrade(index, Instant.EPOCH, numFactory.numOf(110), numFactory.one(), numFactory.zero(),
-                ExecutionSide.SELL, null, null);
+        return Trade.sellAt(index, numFactory.numOf(110), numFactory.one());
     }
 
     private interface DefaultOperateTradingRecord extends TradingRecord {

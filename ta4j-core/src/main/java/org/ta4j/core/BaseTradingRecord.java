@@ -450,16 +450,19 @@ public class BaseTradingRecord implements TradingRecord {
         if (fill.side() != null && fill.side() != tradeSide) {
             throw new IllegalArgumentException("Fill side " + fill.side() + " does not match trade type " + tradeType);
         }
+        if (fill.price() == null || fill.price().isNaN()) {
+            throw new IllegalArgumentException("Fill price must be set");
+        }
         int resolvedIndex = fill.index() >= 0 ? fill.index() : plannedNextIndex;
         Instant executionTime = resolveExecutionTime(fill.time(), tradeTime);
         String orderId = chooseValue(fill.orderId(), tradeOrderId);
         String correlationId = chooseValue(fill.correlationId(), tradeCorrelationId);
         Num normalizedAmount = normalizeRecordedAmount(fill.amount(), fill.price());
         Num normalizedFee = normalizeFee(fill.fee(), fill.price());
-        BaseTrade baseTrade = new BaseTrade(resolvedIndex, executionTime, fill.price(), normalizedAmount, normalizedFee,
+        Trade plannedTrade = recordedTrade(resolvedIndex, executionTime, fill.price(), normalizedAmount, normalizedFee,
                 tradeSide, orderId, correlationId);
-        validateFill(baseTrade);
-        return new PlannedTradeFill(resolvedIndex, baseTrade);
+        validateFill(plannedTrade);
+        return new PlannedTradeFill(resolvedIndex, plannedTrade);
     }
 
     private Trade tradeWithAssignedIndex(Trade trade, int index) {
@@ -479,7 +482,10 @@ public class BaseTradingRecord implements TradingRecord {
         }
         if (indexedFills.size() == 1) {
             TradeFill fill = indexedFills.getFirst();
-            return new BaseTrade(fill.index(), resolveExecutionTime(fill.time(), trade.getTime()), fill.price(),
+            if (fill.price() == null || fill.price().isNaN()) {
+                throw new IllegalArgumentException("Fill price must be set");
+            }
+            return recordedTrade(fill.index(), resolveExecutionTime(fill.time(), trade.getTime()), fill.price(),
                     fill.amount(), normalizeFee(fill.fee(), fill.price()),
                     fill.side() == null ? sideOf(trade.getType()) : fill.side(), fill.orderId(), fill.correlationId());
         }
@@ -742,10 +748,21 @@ public class BaseTradingRecord implements TradingRecord {
         if (fillTime != null) {
             return fillTime;
         }
-        if (fallbackTime != null) {
-            return fallbackTime;
+        return fallbackTime;
+    }
+
+    private static Trade recordedTrade(int index, Instant time, Num pricePerAsset, Num amount, Num fee,
+            ExecutionSide side, String orderId, String correlationId) {
+        Num normalizedFee = fee == null ? pricePerAsset.getNumFactory().zero() : fee;
+        if (time != null) {
+            return new BaseTrade(index, time, pricePerAsset, amount, normalizedFee, side, orderId, correlationId);
         }
-        return Instant.EPOCH;
+        if (pricePerAsset.isNaN()) {
+            return new BaseTrade(index, side.toTradeType(), pricePerAsset, amount, RecordedTradeCostModel.INSTANCE);
+        }
+        return Trade.fromFills(side.toTradeType(),
+                List.of(new TradeFill(index, null, pricePerAsset, amount, normalizedFee, side, orderId, correlationId)),
+                RecordedTradeCostModel.INSTANCE);
     }
 
     private static String chooseValue(String preferred, String fallback) {
@@ -959,7 +976,7 @@ public class BaseTradingRecord implements TradingRecord {
         private List<SequencedTrade> openEntryTradesWithSequence() {
             List<SequencedTrade> trades = new ArrayList<>(openLots.size());
             for (PositionLot lot : openLots) {
-                Trade entry = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
+                Trade entry = recordedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
                         lot.fee(), lot.side(), lot.orderId(), lot.correlationId());
                 trades.add(new SequencedTrade(entry, lot.entrySequence()));
             }
@@ -973,7 +990,7 @@ public class BaseTradingRecord implements TradingRecord {
         private List<Position> openPositions() {
             List<Position> positions = new ArrayList<>();
             for (PositionLot lot : openLots) {
-                Trade entry = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
+                Trade entry = recordedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
                         lot.fee(), lot.side(), lot.orderId(), lot.correlationId());
                 positions.add(new Position(entry, RecordedTradeCostModel.INSTANCE, holdingCostModel));
             }
@@ -988,6 +1005,7 @@ public class BaseTradingRecord implements TradingRecord {
             Num totalCost = null;
             Num totalFees = null;
             Instant earliest = null;
+            boolean hasUnknownEntryTime = false;
             ExecutionSide side = null;
             int entryIndex = Integer.MAX_VALUE;
             for (PositionLot lot : openLots) {
@@ -995,7 +1013,11 @@ public class BaseTradingRecord implements TradingRecord {
                 totalAmount = totalAmount == null ? lot.amount() : totalAmount.plus(lot.amount());
                 totalCost = totalCost == null ? lotCost : totalCost.plus(lotCost);
                 totalFees = totalFees == null ? lot.fee() : totalFees.plus(lot.fee());
-                earliest = earliest == null || lot.entryTime().isBefore(earliest) ? lot.entryTime() : earliest;
+                if (lot.entryTime() == null) {
+                    hasUnknownEntryTime = true;
+                } else if (!hasUnknownEntryTime && (earliest == null || lot.entryTime().isBefore(earliest))) {
+                    earliest = lot.entryTime();
+                }
                 entryIndex = Math.min(entryIndex, lot.entryIndex());
                 if (side == null) {
                     side = lot.side();
@@ -1005,8 +1027,8 @@ public class BaseTradingRecord implements TradingRecord {
             }
             Num average = totalAmount == null || totalAmount.isZero() ? totalCost : totalCost.dividedBy(totalAmount);
             Num fee = totalFees == null ? totalCost.getNumFactory().zero() : totalFees;
-            Trade entry = new BaseTrade(entryIndex == Integer.MAX_VALUE ? 0 : entryIndex,
-                    earliest == null ? Instant.EPOCH : earliest, average, totalAmount, fee, side, null, null);
+            Trade entry = recordedTrade(entryIndex == Integer.MAX_VALUE ? 0 : entryIndex,
+                    hasUnknownEntryTime ? null : earliest, average, totalAmount, fee, side, null, null);
             return new Position(entry, RecordedTradeCostModel.INSTANCE, holdingCostModel);
         }
 
@@ -1061,9 +1083,9 @@ public class BaseTradingRecord implements TradingRecord {
             } else {
                 lot.reduce(closeAmount, entryFeePortion);
             }
-            Trade entry = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount,
+            Trade entry = recordedTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount,
                     entryFeePortion, lot.side(), lot.orderId(), lot.correlationId());
-            Trade exit = new BaseTrade(index, timeOf(trade), trade.getPricePerAsset(), closeAmount, exitFeePortion,
+            Trade exit = recordedTrade(index, timeOf(trade), trade.getPricePerAsset(), closeAmount, exitFeePortion,
                     sideOf(trade.getType()), trade.getOrderId(), trade.getCorrelationId());
             return new ClosedPosition(new Position(entry, exit, RecordedTradeCostModel.INSTANCE, holdingCostModel),
                     lot.entrySequence(), exitSequence);
@@ -1086,11 +1108,7 @@ public class BaseTradingRecord implements TradingRecord {
         }
 
         private static Instant timeOf(Trade trade) {
-            Instant time = trade.getTime();
-            if (time != null) {
-                return time;
-            }
-            return Instant.EPOCH;
+            return trade.getTime();
         }
 
         private static ExecutionSide sideOf(TradeType tradeType) {
@@ -1141,7 +1159,6 @@ public class BaseTradingRecord implements TradingRecord {
 
             private PositionLot(int entryIndex, Instant entryTime, Num entryPrice, ExecutionSide side, Num amount,
                     Num fee, String orderId, String correlationId, long entrySequence) {
-                Objects.requireNonNull(entryTime, "entryTime");
                 Objects.requireNonNull(entryPrice, "entryPrice");
                 Objects.requireNonNull(side, "side");
                 Objects.requireNonNull(amount, "amount");
@@ -1208,7 +1225,12 @@ public class BaseTradingRecord implements TradingRecord {
                 Num mergedPrice = totalCost.dividedBy(totalAmount);
                 Num mergedFee = fee.plus(other.fee);
                 int mergedIndex = Math.min(entryIndex, other.entryIndex);
-                Instant mergedTime = entryTime.isBefore(other.entryTime) ? entryTime : other.entryTime;
+                Instant mergedTime;
+                if (entryTime == null || other.entryTime == null) {
+                    mergedTime = null;
+                } else {
+                    mergedTime = entryTime.isBefore(other.entryTime) ? entryTime : other.entryTime;
+                }
                 long mergedSequence = Math.min(entrySequence, other.entrySequence);
                 return new PositionLot(mergedIndex, mergedTime, mergedPrice, side, totalAmount, mergedFee, null, null,
                         mergedSequence);
@@ -1218,9 +1240,6 @@ public class BaseTradingRecord implements TradingRecord {
             private Object readResolve() throws InvalidObjectException {
                 if (side == null) {
                     throw new InvalidObjectException("PositionLot.side is required");
-                }
-                if (entryTime == null) {
-                    throw new InvalidObjectException("PositionLot.entryTime is required");
                 }
                 if (entryPrice == null) {
                     throw new InvalidObjectException("PositionLot.entryPrice is required");
@@ -1239,7 +1258,7 @@ public class BaseTradingRecord implements TradingRecord {
                 JsonObject json = new JsonObject();
                 json.addProperty("entryIndex", entryIndex);
                 json.addProperty("entrySequence", entrySequence);
-                json.addProperty("entryTime", entryTime.toString());
+                json.addProperty("entryTime", entryTime == null ? null : entryTime.toString());
                 json.addProperty("entryPrice", entryPrice.toString());
                 json.addProperty("side", side.name());
                 json.addProperty("amount", amount.toString());
@@ -1292,7 +1311,7 @@ public class BaseTradingRecord implements TradingRecord {
     private record SequencedTrade(Trade trade, long sequence) {
     }
 
-    private record PlannedTradeFill(int index, BaseTrade trade) {
+    private record PlannedTradeFill(int index, Trade trade) {
     }
 
     static record DebugSnapshot(TradeType startingType, List<Trade> trades, List<Position> closedPositions,

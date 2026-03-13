@@ -356,10 +356,10 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     private Trade buyAt(int index, Num price, Num amount) {
-        return new BaseTrade(index, Instant.EPOCH, price, amount, numFactory.zero(), ExecutionSide.BUY, null, null);
+        return Trade.buyAt(index, price, amount);
     }
 
     private Trade sellAt(int index, Num price, Num amount) {
-        return new BaseTrade(index, Instant.EPOCH, price, amount, numFactory.zero(), ExecutionSide.SELL, null, null);
+        return Trade.sellAt(index, price, amount);
     }
 }

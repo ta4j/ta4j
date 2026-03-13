@@ -186,7 +186,7 @@ class BaseTradingRecordTest {
     }
 
     @Test
-    void operateDefaultsMissingMetadataToEpochAndNullIds() {
+    void operatePreservesMissingTimeAsNullAndNullIds() {
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
         List<TradeFill> fills = List.of(new TradeFill(4, numFactory.hundred(), numFactory.one()),
@@ -197,8 +197,8 @@ class BaseTradingRecordTest {
 
         List<Trade> trades = record.getTrades();
         assertEquals(2, trades.size());
-        assertEquals(Instant.EPOCH, trades.get(0).getTime());
-        assertEquals(Instant.EPOCH, trades.get(1).getTime());
+        assertNull(trades.get(0).getTime());
+        assertNull(trades.get(1).getTime());
         assertNull(trades.get(0).getOrderId());
         assertNull(trades.get(1).getOrderId());
         assertNull(trades.get(0).getCorrelationId());
@@ -540,13 +540,13 @@ class BaseTradingRecordTest {
     }
 
     @Test
-    void keepsNaNPriceWhenRecordingLegacyFill() {
+    void recordFillRejectsNanPrice() {
         BaseTradingRecord record = new BaseTradingRecord();
 
-        record.recordFill(fill(ExecutionSide.BUY, NaN.NaN, numFactory.one()));
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> record.recordFill(fill(ExecutionSide.BUY, NaN.NaN, numFactory.one())));
 
-        assertEquals(1, record.getTrades().size());
-        assertTrue(record.getLastTrade().getPricePerAsset().isNaN());
+        assertEquals("Fill price must be set", exception.getMessage());
     }
 
     @Test
@@ -595,10 +595,39 @@ class BaseTradingRecordTest {
         Position position = record.getPositions().getFirst();
         assertEquals(0, position.getEntry().getIndex());
         assertEquals(1, position.getExit().getIndex());
-        assertEquals(Instant.EPOCH, position.getEntry().getTime());
-        assertEquals(Instant.EPOCH, position.getExit().getTime());
+        assertNull(position.getEntry().getTime());
+        assertNull(position.getExit().getTime());
         assertEquals(numFactory.zero(), position.getEntry().getCost());
         assertEquals(numFactory.zero(), position.getExit().getCost());
+    }
+
+    @Test
+    void avgCostLotsKeepUnknownEntryTimeUnknown() {
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.AVG_COST,
+                new ZeroCostModel(), new ZeroCostModel(), null, null);
+        Trade firstEntry = tradeView(4, TradeType.BUY, null, numFactory.hundred(), numFactory.one(), numFactory.zero(),
+                null, null);
+        Trade secondEntry = tradeView(5, TradeType.BUY, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(101),
+                numFactory.one(), numFactory.zero(), null, null);
+
+        record.recordFill(firstEntry);
+        record.recordFill(secondEntry);
+
+        assertNull(record.getCurrentPosition().getEntry().getTime());
+        assertNull(record.getNetOpenPosition().getEntry().getTime());
+        assertNull(record.getOpenPositions().getFirst().getEntry().getTime());
+    }
+
+    @Test
+    void operateRejectsNanFillPrice() {
+        BaseTradingRecord record = new BaseTradingRecord();
+        Trade invalidTrade = tradeView(3, TradeType.BUY, null, NaN.NaN, numFactory.one(), numFactory.zero(), null,
+                null);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> record.operate(invalidTrade));
+
+        assertEquals("Fill price must be set", exception.getMessage());
     }
 
     @Test

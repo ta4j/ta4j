@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Instant;
@@ -55,7 +56,7 @@ class TradeFillExecutionTest {
     }
 
     @Test
-    void operateFromTradeFillDefaultsMissingTimeToEpoch() {
+    void operateFromTradeFillPreservesMissingTimeAsNull() {
         Num price = DoubleNumFactory.getInstance().numOf(100);
         Num amount = DoubleNumFactory.getInstance().numOf(1);
         TradeFill fillWithoutTime = new TradeFill(-1, null, price, amount, null, ExecutionSide.BUY, null, null);
@@ -65,6 +66,6 @@ class TradeFillExecutionTest {
         record.operate(Trade.fromFill(fillWithoutTime));
 
         assertEquals(1, record.getTrades().size());
-        assertEquals(Instant.EPOCH, record.getTrades().getFirst().getTime());
+        assertNull(record.getTrades().getFirst().getTime());
     }
 }

@@ -4,11 +4,11 @@
 package org.ta4j.core.backtest;
 
 import java.util.ArrayList;
-import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.WeakHashMap;
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExecutionSide;
@@ -42,8 +42,8 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
     private final int maxBarsToFill;
     private final PriceSource priceSource;
 
-    private final Map<TradingRecord, PendingOrder> pendingOrders = new IdentityHashMap<>();
-    private final Map<TradingRecord, List<RejectedOrder>> rejectedOrders = new IdentityHashMap<>();
+    private final Map<TradingRecord, PendingOrder> pendingOrders = new WeakHashMap<>();
+    private final Map<TradingRecord, List<RejectedOrder>> rejectedOrders = new WeakHashMap<>();
 
     /**
      * Creates a stop-limit execution model using next-bar open as the reference

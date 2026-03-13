@@ -104,4 +104,17 @@ public class FillBackedTradeTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertEquals(1, trade.getFills().size());
         assertEquals(fill, trade.getFills().getFirst());
     }
+
+    @Test
+    public void usesRecordedFeesByDefault() {
+        TradeFill firstFill = new TradeFill(1, null, numFactory.hundred(), numFactory.one(), numFactory.numOf(0.2),
+                null, null, null);
+        TradeFill secondFill = new TradeFill(2, null, numFactory.numOf(110), numFactory.two(), numFactory.numOf(0.3),
+                null, null, null);
+
+        Trade trade = Trade.fromFills(TradeType.BUY, List.of(firstFill, secondFill));
+
+        assertNumEquals(numFactory.numOf(0.5), trade.getCost());
+        assertNumEquals(numFactory.numOf(106.8333333333), trade.getNetPrice(), 0.0001);
+    }
 }

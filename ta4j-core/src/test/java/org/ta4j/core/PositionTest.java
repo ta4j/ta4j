@@ -109,12 +109,14 @@ public class PositionTest {
 
     @Test
     public void operateWithPrebuiltTradesSupportsEntryAndExit() {
-        Position position = new Position(TradeType.BUY);
+        Position position = new Position(TradeType.BUY, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
         Trade entry = Trade.fromFills(TradeType.BUY,
                 List.of(new TradeFill(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1)),
-                        new TradeFill(2, DoubleNum.valueOf(101), DoubleNum.valueOf(1))));
+                        new TradeFill(2, DoubleNum.valueOf(101), DoubleNum.valueOf(1))),
+                RecordedTradeCostModel.INSTANCE);
         Trade exit = Trade.fromFills(TradeType.SELL,
-                List.of(new TradeFill(3, DoubleNum.valueOf(110), DoubleNum.valueOf(2))));
+                List.of(new TradeFill(3, DoubleNum.valueOf(110), DoubleNum.valueOf(2))),
+                RecordedTradeCostModel.INSTANCE);
 
         position.operate(entry);
         position.operate(exit);

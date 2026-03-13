@@ -283,8 +283,8 @@ public interface Trade extends Serializable {
     }
 
     /**
-     * Creates a trade from one or more execution fills using zero transaction
-     * costs.
+     * Creates a trade from one or more execution fills using recorded-fee
+     * semantics.
      *
      * @param type  trade type
      * @param fills execution fills (must not be empty)
@@ -292,7 +292,7 @@ public interface Trade extends Serializable {
      * @since 0.22.4
      */
     static Trade fromFills(TradeType type, List<TradeFill> fills) {
-        return fromFills(type, fills, new ZeroCostModel());
+        return fromFills(type, fills, RecordedTradeCostModel.INSTANCE);
     }
 
     /**
