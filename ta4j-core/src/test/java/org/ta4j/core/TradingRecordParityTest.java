@@ -29,13 +29,13 @@ class TradingRecordParityTest {
         BaseTradingRecord liveRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), null, null);
 
-        applySyntheticTrade(baseRecord, 1, numOf(100), numOf(2));
-        applySyntheticTrade(baseRecord, 3, numOf(120), numOf(2));
-        applySyntheticTrade(baseRecord, 5, numOf(90), numOf(1));
+        applySyntheticTrade(baseRecord, 1, numOf(100), numFactory.two());
+        applySyntheticTrade(baseRecord, 3, numOf(120), numFactory.two());
+        applySyntheticTrade(baseRecord, 5, numOf(90), numFactory.one());
 
-        applySyntheticTrade(liveRecord, 1, numOf(100), numOf(2));
-        applySyntheticTrade(liveRecord, 3, numOf(120), numOf(2));
-        applySyntheticTrade(liveRecord, 5, numOf(90), numOf(1));
+        applySyntheticTrade(liveRecord, 1, numOf(100), numFactory.two());
+        applySyntheticTrade(liveRecord, 3, numOf(120), numFactory.two());
+        applySyntheticTrade(liveRecord, 5, numOf(90), numFactory.one());
 
         assertEquivalent(baseRecord, liveRecord);
     }
@@ -46,15 +46,15 @@ class TradingRecordParityTest {
         BaseTradingRecord liveRecord = new BaseTradingRecord(TradeType.SELL, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), null, null);
 
-        applySyntheticTrade(baseRecord, 2, numOf(100), numOf(1));
-        applySyntheticTrade(baseRecord, 4, numOf(90), numOf(1));
-        applySyntheticTrade(baseRecord, 6, numOf(95), numOf(1));
-        applySyntheticTrade(baseRecord, 7, numOf(85), numOf(1));
+        applySyntheticTrade(baseRecord, 2, numOf(100), numFactory.one());
+        applySyntheticTrade(baseRecord, 4, numOf(90), numFactory.one());
+        applySyntheticTrade(baseRecord, 6, numOf(95), numFactory.one());
+        applySyntheticTrade(baseRecord, 7, numOf(85), numFactory.one());
 
-        applySyntheticTrade(liveRecord, 2, numOf(100), numOf(1));
-        applySyntheticTrade(liveRecord, 4, numOf(90), numOf(1));
-        applySyntheticTrade(liveRecord, 6, numOf(95), numOf(1));
-        applySyntheticTrade(liveRecord, 7, numOf(85), numOf(1));
+        applySyntheticTrade(liveRecord, 2, numOf(100), numFactory.one());
+        applySyntheticTrade(liveRecord, 4, numOf(90), numFactory.one());
+        applySyntheticTrade(liveRecord, 6, numOf(95), numFactory.one());
+        applySyntheticTrade(liveRecord, 7, numOf(85), numFactory.one());
 
         assertEquivalent(baseRecord, liveRecord);
     }
@@ -80,9 +80,9 @@ class TradingRecordParityTest {
         BaseTradingRecord baseRecord = new BaseTradingRecord(TradeType.BUY, new ZeroCostModel(), new ZeroCostModel());
         BaseTradingRecord liveRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), null, null);
-        Trade aggregatedEntry = Trade.fromFills(TradeType.BUY,
-                List.of(new TradeFill(1, numOf(100), numOf(1)), new TradeFill(2, numOf(101), numOf(2))));
-        Num expectedAverage = numOf(302).dividedBy(numOf(3));
+        Trade aggregatedEntry = Trade.fromFills(TradeType.BUY, List.of(new TradeFill(1, numOf(100), numFactory.one()),
+                new TradeFill(2, numOf(101), numFactory.two())));
+        Num expectedAverage = numOf(302).dividedBy(numFactory.three());
 
         baseRecord.operate(aggregatedEntry);
         liveRecord.operate(aggregatedEntry);
@@ -91,8 +91,8 @@ class TradingRecordParityTest {
         Position liveCurrent = liveRecord.getCurrentPosition();
         assertNotNull(baseCurrent.getEntry());
         assertNotNull(liveCurrent.getEntry());
-        assertEquals(numOf(3), baseCurrent.getEntry().getAmount());
-        assertEquals(numOf(3), liveCurrent.getEntry().getAmount());
+        assertEquals(numFactory.three(), baseCurrent.getEntry().getAmount());
+        assertEquals(numFactory.three(), liveCurrent.getEntry().getAmount());
         assertEquals(expectedAverage, baseCurrent.getEntry().getPricePerAsset());
         assertEquals(expectedAverage, liveCurrent.getEntry().getPricePerAsset());
     }
@@ -103,10 +103,10 @@ class TradingRecordParityTest {
         BaseTradingRecord liveRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), null, null);
 
-        applySyntheticTrade(baseRecord, 1, numOf(100), numOf(2));
-        applySyntheticTrade(baseRecord, 3, numOf(120), numOf(2));
-        applySyntheticTrade(liveRecord, 1, numOf(100), numOf(2));
-        applySyntheticTrade(liveRecord, 3, numOf(120), numOf(2));
+        applySyntheticTrade(baseRecord, 1, numOf(100), numFactory.two());
+        applySyntheticTrade(baseRecord, 3, numOf(120), numFactory.two());
+        applySyntheticTrade(liveRecord, 1, numOf(100), numFactory.two());
+        applySyntheticTrade(liveRecord, 3, numOf(120), numFactory.two());
 
         BaseTradingRecord.DebugSnapshot baseSnapshot = baseRecord.debugSnapshot();
         BaseTradingRecord.DebugSnapshot liveSnapshot = liveRecord.debugSnapshot();
@@ -122,15 +122,15 @@ class TradingRecordParityTest {
         BaseTradingRecord liveRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), null, null);
 
-        applySyntheticTrade(baseRecord, 1, numOf(100), numOf(2));
-        applySyntheticTrade(liveRecord, 1, numOf(100), numOf(2));
+        applySyntheticTrade(baseRecord, 1, numOf(100), numFactory.two());
+        applySyntheticTrade(liveRecord, 1, numOf(100), numFactory.two());
 
         BaseTradingRecord.DebugSnapshot baseSnapshot = baseRecord.debugSnapshot();
         BaseTradingRecord.DebugSnapshot liveSnapshot = liveRecord.debugSnapshot();
 
         assertSnapshotEquivalent(baseSnapshot, liveSnapshot);
         assertEquals(1, baseSnapshot.openPositions().size());
-        assertEquals(numOf(2), baseSnapshot.netOpenPosition().amount());
+        assertEquals(numFactory.two(), baseSnapshot.netOpenPosition().amount());
         assertEquals(numOf(100), baseSnapshot.netOpenPosition().averageEntryPrice());
     }
 
