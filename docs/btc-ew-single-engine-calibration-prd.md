@@ -4,8 +4,8 @@
 
 - Last updated: 2026-03-12 22:15 EDT
 - Active phase: Phase 6
-- Active task: Ensure the historical chart and live chart cannot tell contradictory stories on the same series
-- Overall: 56/61 checklist items complete
+- Active task: Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent
+- Overall: 57/61 checklist items complete
 
 ## Status
 
@@ -524,7 +524,7 @@ Rationale note:
 
 - [x] Refactor historical chart rendering to consume canonical structure output only.
 - [x] Refactor live chart rendering to consume canonical structure output only.
-- [ ] Ensure the historical chart and live chart cannot tell contradictory stories on the same series.
+- [x] Ensure the historical chart and live chart cannot tell contradictory stories on the same series.
 - [x] Add chart/report regression tests proving both views are backed by the same structure ids or provenance markers.
 
 ### Phase 11: Update Demos and Wrappers

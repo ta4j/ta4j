@@ -78,6 +78,23 @@ class ElliottWaveMacroCycleDetectorTest {
         assertTrue(Files.exists(Path.of(seriesNative.summaryPath())));
     }
 
+    @Test
+    void seriesNativeHistoricalAndLiveReportsShareCanonicalProfileSelection() throws Exception {
+        final BarSeries series = loadBitcoinSeries();
+
+        final ElliottWaveBtcMacroCycleDemo.DemoReport historical = ElliottWaveMacroCycleDemo
+                .generateHistoricalReport(series, chartDirectory.resolve("historical"));
+        final ElliottWaveBtcMacroCycleDemo.LivePresetReport live = ElliottWaveMacroCycleDemo
+                .generateLivePresetReport(series, chartDirectory.resolve("live"));
+
+        assertEquals("canonical-structure", historical.structureSource());
+        assertEquals("canonical-structure", live.structureSource());
+        assertEquals(historical.selectedProfileId(), live.selectedProfileId());
+        assertEquals(historical.selectedHypothesisId(), live.selectedHypothesisId());
+        assertTrue(Files.exists(Path.of(live.chartPath())));
+        assertTrue(Files.exists(Path.of(live.summaryPath())));
+    }
+
     private static BarSeries loadBitcoinSeries() {
         final BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveMacroCycleDetectorTest.class,
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,

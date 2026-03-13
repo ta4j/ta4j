@@ -390,8 +390,8 @@ public final class ElliottWaveMacroCycleDemo {
         Objects.requireNonNull(summaryFileName, "summaryFileName");
         Objects.requireNonNull(historicalStatus, "historicalStatus");
 
-        final MacroLogicProfile profile = defaultLiveMacroProfile();
-        final CanonicalStructure structure = analyzeCanonicalStructure(series, profile, historicalStatus);
+        final CanonicalStructure structure = analyzeCanonicalStructure(series);
+        final MacroStudy study = structure.historicalStudy().orElseThrow();
         final CurrentCycleAnalysis currentCycle = structure.currentCycle();
         final Optional<Path> chartPath = saveLiveCurrentCycleChart(series, structure, chartDirectory, chartFileName);
         final String chartPathText = chartPath.map(path -> path.toAbsolutePath().normalize().toString()).orElse("");
@@ -399,8 +399,9 @@ public final class ElliottWaveMacroCycleDemo {
         final CurrentCycleSummary summary = currentCycle.summary().withChartPath(chartPathText);
         final ElliottWaveBtcMacroCycleDemo.LivePresetReport report = new ElliottWaveBtcMacroCycleDemo.LivePresetReport(
                 series.getName(), series.getFirstBar().getEndTime().toString(),
-                series.getLastBar().getEndTime().toString(), profile.id(), profile.hypothesisId(), chartPathText,
-                summaryPath.toString(), CANONICAL_STRUCTURE_SOURCE, summary);
+                series.getLastBar().getEndTime().toString(), study.selectedProfile().profile().id(),
+                study.selectedProfile().profile().hypothesisId(), chartPathText, summaryPath.toString(),
+                CANONICAL_STRUCTURE_SOURCE, summary);
         saveSummary(report.toJson(), summaryPath, "live macro summary");
         return new LivePresetExecution(currentCycle.withSummary(summary), report);
     }
