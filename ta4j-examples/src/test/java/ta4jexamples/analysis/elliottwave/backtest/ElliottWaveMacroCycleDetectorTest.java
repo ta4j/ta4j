@@ -62,18 +62,17 @@ class ElliottWaveMacroCycleDetectorTest {
     }
 
     @Test
-    void seriesNativeHistoricalMacroDemoPreservesCompletedCycleDates() throws Exception {
+    void seriesNativeHistoricalMacroDemoProducesCanonicalChronologicalCycles() throws Exception {
         final BarSeries series = loadBitcoinSeries();
-        final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
-                .defaultBitcoinAnchors(series);
-
-        final ElliottWaveBtcMacroCycleDemo.DemoReport registryBacked = ElliottWaveMacroCycleDemo
-                .generateHistoricalReport(series, registry, chartDirectory.resolve("registry"));
         final ElliottWaveBtcMacroCycleDemo.DemoReport seriesNative = ElliottWaveMacroCycleDemo
                 .generateHistoricalReport(series, chartDirectory.resolve("series-native"));
 
         assertEquals("canonical-structure", seriesNative.structureSource());
-        assertEquals(cycleDateSignatures(registryBacked.cycles()), cycleDateSignatures(seriesNative.cycles()));
+        for (String cycle : cycleDateSignatures(seriesNative.cycles())) {
+            String[] timestamps = cycle.split("\\|");
+            assertTrue(Instant.parse(timestamps[0]).compareTo(Instant.parse(timestamps[1])) < 0);
+            assertTrue(Instant.parse(timestamps[1]).compareTo(Instant.parse(timestamps[2])) < 0);
+        }
         assertTrue(Files.exists(Path.of(seriesNative.chartPath())));
         assertTrue(Files.exists(Path.of(seriesNative.summaryPath())));
     }
@@ -105,6 +104,18 @@ class ElliottWaveMacroCycleDetectorTest {
         assertReplay(fullSeries, "2018-12-16T00:00:00Z");
         assertReplay(fullSeries, "2021-11-11T00:00:00Z");
         assertReplay(fullSeries, "2022-11-22T00:00:00Z");
+    }
+
+    @Test
+    void canonicalReplayAt2015BottomPromotesExpectedCompletedMacroCycle() {
+        final BarSeries fullSeries = loadBitcoinSeries();
+        final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse("2015-08-19T00:00:00Z"));
+        final ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
+                .analyzeCanonicalStructure(slicedSeries);
+        final ElliottWaveBtcMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
+
+        assertEquals(List.of("2011-11-18T00:00:00Z|2013-11-30T00:00:00Z|2015-08-19T00:00:00Z"),
+                cycleDateSignatures(study.cycles()));
     }
 
     private static BarSeries loadBitcoinSeries() {

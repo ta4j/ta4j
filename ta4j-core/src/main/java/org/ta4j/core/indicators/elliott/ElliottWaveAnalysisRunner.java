@@ -721,8 +721,8 @@ public final class ElliottWaveAnalysisRunner {
             return List.of();
         }
 
-        final int lookaheadLimit = Math.min(8, Math.max(2, MACRO_PIVOT_GRAPH_MAX_PIVOTS / 3));
-        final int maxCandidatesPerStart = 3;
+        final int lookaheadLimit = Math.min(16, Math.max(4, pivotGraph.pivots().size() / 2));
+        final int maxCandidatesPerStart = 5;
         final List<CanonicalLegCandidate> candidates = new ArrayList<>(pivotGraph.pivots().size() * 2);
         for (int startIndex = 0; startIndex < pivotGraph.pivots().size() - 1; startIndex++) {
             final MacroPivot start = pivotGraph.pivots().get(startIndex);
@@ -875,10 +875,12 @@ public final class ElliottWaveAnalysisRunner {
         if (promotedCandidates.isEmpty()) {
             return List.of();
         }
-        if (promotedCandidates.size() == 1) {
-            return List.of(promotedCandidates.getFirst().toAssessment(this::historicalLegAssessment));
+        final List<HistoricalCycleCandidate> prunedCandidates = pruneSubordinateHistoricalCycleCandidates(
+                promotedCandidates);
+        if (prunedCandidates.size() == 1) {
+            return List.of(prunedCandidates.getFirst().toAssessment(this::historicalLegAssessment));
         }
-        return selectHistoricalCycleCandidates(promotedCandidates).stream()
+        return selectHistoricalCycleCandidates(prunedCandidates).stream()
                 .map(candidate -> candidate.toAssessment(this::historicalLegAssessment))
                 .toList();
     }
@@ -894,6 +896,10 @@ public final class ElliottWaveAnalysisRunner {
         final List<CanonicalLegCandidate> bearishCandidates = historicalCandidates.stream()
                 .filter(candidate -> !candidate.bullish())
                 .toList();
+        final int latestHistoricalEndIndex = historicalCandidates.stream()
+                .mapToInt(CanonicalLegCandidate::endPivotIndex)
+                .max()
+                .orElse(-1);
         final List<HistoricalCycleCandidate> rawCycleCandidates = new ArrayList<>();
         for (final CanonicalLegCandidate bullishLeg : bullishCandidates) {
             if (!hasHistoricalCycleStartSupport(bullishLeg, bearishCandidates)) {
@@ -903,7 +909,8 @@ public final class ElliottWaveAnalysisRunner {
                 if (bearishLeg.startPivotIndex() != bullishLeg.endPivotIndex()
                         || !eligibleForHistoricalCyclePromotion(bullishLeg, bearishLeg)
                         || !hasMeaningfulHistoricalCorrection(bullishLeg, bearishLeg)
-                        || !hasHistoricalCycleRecoverySupport(bearishLeg, bullishLeg, bullishCandidates)) {
+                        || !hasHistoricalCycleRecoverySupport(bearishLeg, bullishLeg, bullishCandidates,
+                                latestHistoricalEndIndex)) {
                     continue;
                 }
                 rawCycleCandidates.add(new HistoricalCycleCandidate(bullishLeg, bearishLeg,
@@ -933,8 +940,9 @@ public final class ElliottWaveAnalysisRunner {
             final double bestScore = family.stream().mapToDouble(HistoricalCycleCandidate::score).max().orElse(0.0);
             collapsed.add(family.stream()
                     .filter(candidate -> candidate.score() >= bestScore - HISTORICAL_CYCLE_FAMILY_SCORE_TOLERANCE)
-                    .min(Comparator.comparingInt(HistoricalCycleCandidate::startIndex)
-                            .thenComparing(Comparator.comparingDouble(HistoricalCycleCandidate::score).reversed()))
+                    .max(Comparator.comparingDouble(this::historicalCycleStructuralScore)
+                            .thenComparingDouble(HistoricalCycleCandidate::score)
+                            .thenComparingInt(HistoricalCycleCandidate::startIndex))
                     .orElseGet(() -> family.stream()
                             .max(Comparator.comparingDouble(HistoricalCycleCandidate::score))
                             .orElseThrow()));
@@ -1015,6 +1023,26 @@ public final class ElliottWaveAnalysisRunner {
         return List.copyOf(selected);
     }
 
+    private List<HistoricalCycleCandidate> pruneSubordinateHistoricalCycleCandidates(
+            final List<HistoricalCycleCandidate> cycleCandidates) {
+        if (cycleCandidates.size() <= 1) {
+            return List.copyOf(cycleCandidates);
+        }
+        final List<HistoricalCycleCandidate> retained = new ArrayList<>(cycleCandidates.size());
+        for (final HistoricalCycleCandidate candidate : cycleCandidates) {
+            final boolean dominated = cycleCandidates.stream()
+                    .filter(other -> other != candidate)
+                    .filter(other -> historicalCycleSpan(other) > historicalCycleSpan(candidate))
+                    .filter(other -> other.score() >= candidate.score() - HISTORICAL_CYCLE_FAMILY_SCORE_TOLERANCE)
+                    .anyMatch(other -> other.startIndex() <= candidate.startIndex()
+                            && other.endIndex() >= candidate.endIndex());
+            if (!dominated) {
+                retained.add(candidate);
+            }
+        }
+        return List.copyOf(retained);
+    }
+
     private boolean hasHistoricalCycleStartSupport(final CanonicalLegCandidate bullishLeg,
             final List<CanonicalLegCandidate> bearishCandidates) {
         final int supportFloor = historicalCycleSupportFloor(bullishLeg);
@@ -1030,12 +1058,19 @@ public final class ElliottWaveAnalysisRunner {
     }
 
     private boolean hasHistoricalCycleRecoverySupport(final CanonicalLegCandidate bearishLeg,
-            final CanonicalLegCandidate bullishLeg, final List<CanonicalLegCandidate> bullishCandidates) {
+            final CanonicalLegCandidate bullishLeg, final List<CanonicalLegCandidate> bullishCandidates,
+            final int latestHistoricalEndIndex) {
         final int supportFloor = historicalCycleSupportFloor(bullishLeg);
-        return bullishCandidates.stream()
+        final boolean explicitSupport = bullishCandidates.stream()
                 .filter(candidate -> candidate.startPivotIndex() == bearishLeg.endPivotIndex())
                 .filter(this::eligibleHistoricalSupport)
                 .anyMatch(candidate -> historicalLegSpan(candidate) >= supportFloor);
+        return explicitSupport || boundaryHistoricalCycleEnd(bearishLeg, latestHistoricalEndIndex);
+    }
+
+    private boolean boundaryHistoricalCycleEnd(final CanonicalLegCandidate bearishLeg,
+            final int latestHistoricalEndIndex) {
+        return bearishLeg.endPivotIndex() == latestHistoricalEndIndex && eligibleHistoricalSupport(bearishLeg);
     }
 
     private boolean eligibleHistoricalSupport(final CanonicalLegCandidate candidate) {
@@ -1044,6 +1079,10 @@ public final class ElliottWaveAnalysisRunner {
 
     private boolean historicalCandidateAccepted(final CanonicalLegCandidate candidate) {
         return candidate.selection() != null && candidate.selection().accepted();
+    }
+
+    private double historicalCycleStructuralScore(final HistoricalCycleCandidate cycleCandidate) {
+        return cycleCandidate.bullishLeg().fitScore() + cycleCandidate.bearishLeg().fitScore();
     }
 
     private int historicalCycleSupportFloor(final CanonicalLegCandidate bullishLeg) {
