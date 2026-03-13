@@ -214,6 +214,24 @@ public final class ElliottWaveAnchorCalibrationHarness {
         return generateReport(CalibrationDepth.EXHAUSTIVE, artifactSink);
     }
 
+    static ReplayCutoffDiffReport generateReplayCutoffDiffReport() {
+        return generateReplayCutoffDiffReport(new ArtifactSink() {
+        });
+    }
+
+    static ReplayCutoffDiffReport generateReplayCutoffDiffReport(ArtifactSink artifactSink) {
+        Objects.requireNonNull(artifactSink, "artifactSink");
+        ElliottWaveAnchorRegistry registryDocument = ElliottWaveAnchorRegistry
+                .load(ElliottWaveAnchorRegistry.DEFAULT_RESOURCE);
+        BarSeries btcSeries = requireSeries(registryDocument.datasetResource(), BTC_SERIES_NAME);
+        List<ReplayCutoffDiff> cutoffs = defaultReplayCutoffInstants().stream()
+                .map(cutoff -> replayCutoffDiff(registryDocument, btcSeries, cutoff))
+                .toList();
+        ReplayCutoffDiffReport report = new ReplayCutoffDiffReport(cutoffs);
+        artifactSink.recordReplayCutoffDiff(report, CalibrationDepth.ROUTINE);
+        return report;
+    }
+
     static ElliottWaveBtcMacroCycleDemo.MacroStudy evaluateCanonicalHistoricalStudy(final BarSeries series,
             final AnchorRegistry registry) {
         return ElliottWaveMacroCycleDemo.evaluateCanonicalMacroStudy(series, registry);
@@ -222,6 +240,26 @@ public final class ElliottWaveAnchorCalibrationHarness {
     static ElliottWaveBtcMacroCycleDemo.MacroStudy evaluateLegacyAnchoredHistoricalStudy(final BarSeries series,
             final AnchorRegistry registry) {
         return ElliottWaveMacroCycleDemo.evaluateLegacyAnchoredStudyForHarnessComparison(series, registry);
+    }
+
+    private static ReplayCutoffDiff replayCutoffDiff(final ElliottWaveAnchorRegistry registryDocument,
+            final BarSeries fullSeries, final Instant cutoff) {
+        BarSeries slicedSeries = replayCutoffSeries(fullSeries, cutoff);
+        AnchorRegistry cutoffRegistry = defaultBitcoinAnchors(registryDocument, slicedSeries);
+        HistoricalStudyDiffReport diff = HistoricalStudyDiffReport.from(cutoffRegistry,
+                evaluateLegacyAnchoredHistoricalStudy(slicedSeries, cutoffRegistry),
+                evaluateCanonicalHistoricalStudy(slicedSeries, cutoffRegistry));
+        return new ReplayCutoffDiff(UTC_TIME.format(cutoff), diff);
+    }
+
+    private static BarSeries replayCutoffSeries(final BarSeries fullSeries, final Instant cutoff) {
+        return fullSeries.getSubSeries(0, findLastBarAtOrBefore(fullSeries, cutoff) + 1);
+    }
+
+    private static List<Instant> defaultReplayCutoffInstants() {
+        return List.of(Instant.parse("2013-11-30T00:00:00Z"), Instant.parse("2015-08-19T00:00:00Z"),
+                Instant.parse("2018-12-16T00:00:00Z"), Instant.parse("2021-11-11T00:00:00Z"),
+                Instant.parse("2022-11-22T00:00:00Z"));
     }
 
     private static ReportBundle generateReport(CalibrationDepth depth, ArtifactSink artifactSink) {
@@ -1110,6 +1148,9 @@ public final class ElliottWaveAnchorCalibrationHarness {
         default void recordHistoricalStudyDiff(HistoricalStudyDiffReport diff, CalibrationDepth depth) {
         }
 
+        default void recordReplayCutoffDiff(ReplayCutoffDiffReport diff, CalibrationDepth depth) {
+        }
+
         default void recordPortabilitySummary(PortabilitySummary summary, CalibrationDepth depth) {
         }
 
@@ -1159,6 +1200,12 @@ public final class ElliottWaveAnchorCalibrationHarness {
         public void recordHistoricalStudyDiff(HistoricalStudyDiffReport diff, CalibrationDepth depth) {
             writeJson(routineDirectory(), "btc-historical-study-diff.json", diff);
             writeText(routineDirectory(), "btc-historical-study-diff.txt", diff.toText());
+        }
+
+        @Override
+        public void recordReplayCutoffDiff(ReplayCutoffDiffReport diff, CalibrationDepth depth) {
+            writeJson(routineDirectory(), "btc-replay-cutoff-diff.json", diff);
+            writeText(routineDirectory(), "btc-replay-cutoff-diff.txt", diff.toText());
         }
 
         @Override
@@ -2080,6 +2127,39 @@ public final class ElliottWaveAnchorCalibrationHarness {
                         .append(System.lineSeparator());
             }
             return builder.toString().trim();
+        }
+    }
+
+    /**
+     * Completed-cycle legacy-vs-canonical diff for one replay cutoff.
+     */
+    record ReplayCutoffDiff(String cutoffTimeUtc, HistoricalStudyDiffReport diff) {
+
+        ReplayCutoffDiff {
+            Objects.requireNonNull(cutoffTimeUtc, "cutoffTimeUtc");
+            Objects.requireNonNull(diff, "diff");
+        }
+
+        String toText() {
+            return "cutoff=" + cutoffTimeUtc + System.lineSeparator() + diff.toText();
+        }
+    }
+
+    /**
+     * Data-first replay cutoff sweep used to diagnose canonical completed-cycle
+     * drift on truncated BTC histories.
+     */
+    record ReplayCutoffDiffReport(List<ReplayCutoffDiff> cutoffs) {
+
+        ReplayCutoffDiffReport {
+            cutoffs = cutoffs == null ? List.of() : List.copyOf(cutoffs);
+        }
+
+        String toText() {
+            return cutoffs.stream()
+                    .map(ReplayCutoffDiff::toText)
+                    .collect(Collectors.joining(System.lineSeparator() + System.lineSeparator()))
+                    .trim();
         }
     }
 
