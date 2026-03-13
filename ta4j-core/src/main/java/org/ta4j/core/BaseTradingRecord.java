@@ -11,8 +11,10 @@ import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.Serial;
 import java.time.Instant;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -846,6 +848,304 @@ public class BaseTradingRecord implements TradingRecord {
     private static Trade[] positionsToTrades(List<Position> positions) {
         Objects.requireNonNull(positions, "positions must not be null");
         return positions.stream().flatMap(BaseTradingRecord::tradesOf).toArray(Trade[]::new);
+    }
+
+    /**
+     * Internal lot-matching ledger for fill-aware trading records.
+     */
+    private static final class PositionBook implements java.io.Serializable {
+
+        @Serial
+        private static final long serialVersionUID = -6897162194206253952L;
+
+        private final TradeType startingType;
+        private final ExecutionMatchPolicy matchPolicy;
+        private transient CostModel transactionCostModel;
+        private transient CostModel holdingCostModel;
+        private final Deque<PositionLot> openLots;
+        private final List<ClosedPosition> closedPositions;
+
+        private PositionBook(TradeType startingType, ExecutionMatchPolicy matchPolicy, CostModel transactionCostModel,
+                CostModel holdingCostModel) {
+            Objects.requireNonNull(startingType, "startingType");
+            Objects.requireNonNull(matchPolicy, "matchPolicy");
+            Objects.requireNonNull(transactionCostModel, "transactionCostModel");
+            Objects.requireNonNull(holdingCostModel, "holdingCostModel");
+            this.startingType = startingType;
+            this.matchPolicy = matchPolicy;
+            this.transactionCostModel = transactionCostModel;
+            this.holdingCostModel = holdingCostModel;
+            this.openLots = new ArrayDeque<>();
+            this.closedPositions = new ArrayList<>();
+        }
+
+        private void recordEntry(int index, Trade trade, long sequence) {
+            if (trade == null) {
+                throw new IllegalArgumentException("trade must not be null");
+            }
+            if (trade.getAmount() == null || !trade.getAmount().isPositive()) {
+                throw new IllegalArgumentException("trade amount must be positive");
+            }
+            if (trade.getPricePerAsset() == null) {
+                throw new IllegalArgumentException("trade price must be set");
+            }
+            if (trade.getType() == null) {
+                throw new IllegalArgumentException("trade type must be set");
+            }
+            if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
+                normalizeAvgCostLots();
+            }
+            PositionLot lot = new PositionLot(index, timeOf(trade), trade.getPricePerAsset(), sideOf(trade.getType()),
+                    trade.getAmount(), feeOf(trade), trade.getOrderId(), trade.getCorrelationId(), sequence);
+            if (matchPolicy == ExecutionMatchPolicy.AVG_COST && !openLots.isEmpty()) {
+                PositionLot merged = openLots.removeFirst().merge(lot);
+                openLots.addFirst(merged);
+                return;
+            }
+            openLots.addLast(lot);
+        }
+
+        private List<Position> recordExit(int index, Trade trade, long sequence) {
+            if (trade == null) {
+                throw new IllegalArgumentException("trade must not be null");
+            }
+            if (trade.getAmount() == null || !trade.getAmount().isPositive()) {
+                throw new IllegalArgumentException("trade amount must be positive");
+            }
+            if (trade.getPricePerAsset() == null) {
+                throw new IllegalArgumentException("trade price must be set");
+            }
+            if (trade.getType() == null) {
+                throw new IllegalArgumentException("trade type must be set");
+            }
+            if (matchPolicy == ExecutionMatchPolicy.AVG_COST) {
+                normalizeAvgCostLots();
+            }
+            Num remaining = trade.getAmount();
+            Num remainingFee = feeOf(trade);
+            List<Position> closed = new ArrayList<>();
+            while (remaining.isPositive()) {
+                PositionLot lot = nextLot(trade);
+                if (lot == null) {
+                    throw new IllegalStateException("No open lots to close");
+                }
+                Num lotAmount = lot.amount();
+                if (matchPolicy == ExecutionMatchPolicy.SPECIFIC_ID && remaining.isGreaterThan(lotAmount)) {
+                    throw new IllegalStateException("Exit amount exceeds matched lot amount");
+                }
+                Num closeAmount = remaining.isGreaterThan(lotAmount) ? lotAmount : remaining;
+                Num exitFeePortion = remainingFee.isZero() ? remainingFee
+                        : remainingFee.multipliedBy(closeAmount).dividedBy(remaining);
+                ClosedPosition closedPosition = closeLot(lot, trade, index, closeAmount, exitFeePortion, sequence);
+                closed.add(closedPosition.position());
+                closedPositions.add(closedPosition);
+                remaining = remaining.minus(closeAmount);
+                remainingFee = remainingFee.minus(exitFeePortion);
+            }
+            return List.copyOf(closed);
+        }
+
+        private List<PositionLot> openLots() {
+            return openLots.stream().map(PositionLot::snapshot).toList();
+        }
+
+        private List<Position> closedPositions() {
+            return closedPositions.stream().map(ClosedPosition::position).toList();
+        }
+
+        private List<OpenPosition> openPositions() {
+            List<OpenPosition> positions = new ArrayList<>();
+            for (PositionLot lot : openLots) {
+                Num totalCost = lot.entryPrice().multipliedBy(lot.amount());
+                positions.add(new OpenPosition(lot.side(), lot.amount(), lot.entryPrice(), totalCost, lot.fee(),
+                        lot.entryTime(), lot.entryTime(), List.of(lot.snapshot())));
+            }
+            return positions;
+        }
+
+        private OpenPosition netOpenPosition() {
+            if (openLots.isEmpty()) {
+                return null;
+            }
+            Num totalAmount = null;
+            Num totalCost = null;
+            Num totalFees = null;
+            Instant earliest = null;
+            Instant latest = null;
+            ExecutionSide side = null;
+            for (PositionLot lot : openLots) {
+                Num lotCost = lot.entryPrice().multipliedBy(lot.amount());
+                totalAmount = totalAmount == null ? lot.amount() : totalAmount.plus(lot.amount());
+                totalCost = totalCost == null ? lotCost : totalCost.plus(lotCost);
+                totalFees = totalFees == null ? lot.fee() : totalFees.plus(lot.fee());
+                earliest = earliest == null || lot.entryTime().isBefore(earliest) ? lot.entryTime() : earliest;
+                latest = latest == null || lot.entryTime().isAfter(latest) ? lot.entryTime() : latest;
+                if (side == null) {
+                    side = lot.side();
+                } else if (side != lot.side()) {
+                    throw new IllegalStateException("Open lots contain mixed entry sides");
+                }
+            }
+            Num average = totalAmount == null || totalAmount.isZero() ? totalCost : totalCost.dividedBy(totalAmount);
+            return new OpenPosition(side, totalAmount, average, totalCost,
+                    totalFees == null ? totalCost.getNumFactory().zero() : totalFees, earliest, latest, snapshotLots());
+        }
+
+        private PositionLot nextLot(Trade trade) {
+            if (openLots.isEmpty()) {
+                return null;
+            }
+            if (matchPolicy == ExecutionMatchPolicy.LIFO) {
+                return openLots.peekLast();
+            }
+            if (matchPolicy == ExecutionMatchPolicy.SPECIFIC_ID) {
+                return matchSpecificLot(trade);
+            }
+            return openLots.peekFirst();
+        }
+
+        private PositionLot matchSpecificLot(Trade trade) {
+            String correlationId = trade.getCorrelationId();
+            String key = correlationId != null && !correlationId.isBlank() ? correlationId : trade.getOrderId();
+            if (key == null || key.isBlank()) {
+                throw new IllegalStateException("Specific-id matching requires correlationId or orderId");
+            }
+            for (PositionLot lot : openLots) {
+                if (key.equals(lot.correlationId()) || key.equals(lot.orderId())) {
+                    return lot;
+                }
+            }
+            throw new IllegalStateException("No open lot matches " + key);
+        }
+
+        private void normalizeAvgCostLots() {
+            if (openLots.size() <= 1) {
+                return;
+            }
+            PositionLot merged = null;
+            while (!openLots.isEmpty()) {
+                PositionLot lot = openLots.removeFirst();
+                merged = merged == null ? lot : merged.merge(lot);
+            }
+            if (merged != null) {
+                openLots.addFirst(merged);
+            }
+        }
+
+        private ClosedPosition closeLot(PositionLot lot, Trade trade, int index, Num closeAmount, Num exitFeePortion,
+                long exitSequence) {
+            Num lotAmount = lot.amount();
+            Num entryFeePortion = lot.fee().isZero() ? lot.fee()
+                    : lot.fee().multipliedBy(closeAmount).dividedBy(lotAmount);
+            if (closeAmount.isEqual(lotAmount)) {
+                openLots.remove(lot);
+            } else {
+                lot.reduce(closeAmount, entryFeePortion);
+            }
+            Trade entry = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), closeAmount,
+                    entryFeePortion, lot.side(), lot.orderId(), lot.correlationId());
+            Trade exit = new BaseTrade(index, timeOf(trade), trade.getPricePerAsset(), closeAmount, exitFeePortion,
+                    sideOf(trade.getType()), trade.getOrderId(), trade.getCorrelationId());
+            return new ClosedPosition(new Position(entry, exit, RecordedTradeCostModel.INSTANCE, holdingCostModel),
+                    lot.entrySequence(), exitSequence);
+        }
+
+        private static Num feeOf(Trade trade) {
+            Num cost = trade.getCost();
+            if (cost != null && !cost.isNaN()) {
+                return cost;
+            }
+            Num price = trade.getPricePerAsset();
+            if (price != null && !price.isNaN()) {
+                return price.getNumFactory().zero();
+            }
+            Num amount = trade.getAmount();
+            if (amount != null && !amount.isNaN()) {
+                return amount.getNumFactory().zero();
+            }
+            return DoubleNumFactory.getInstance().zero();
+        }
+
+        private static Instant timeOf(Trade trade) {
+            Instant time = trade.getTime();
+            if (time != null) {
+                return time;
+            }
+            return Instant.EPOCH;
+        }
+
+        private static ExecutionSide sideOf(TradeType tradeType) {
+            Objects.requireNonNull(tradeType, "tradeType");
+            if (tradeType == TradeType.BUY) {
+                return ExecutionSide.BUY;
+            }
+            if (tradeType == TradeType.SELL) {
+                return ExecutionSide.SELL;
+            }
+            throw new IllegalArgumentException("Unsupported trade type: " + tradeType);
+        }
+
+        private List<ClosedPosition> closedPositionsWithSequence() {
+            return List.copyOf(closedPositions);
+        }
+
+        private void rehydrateCostModels(CostModel transactionCostModel, CostModel holdingCostModel) {
+            this.transactionCostModel = transactionCostModel == null ? RecordedTradeCostModel.INSTANCE
+                    : transactionCostModel;
+            this.holdingCostModel = holdingCostModel == null ? new ZeroCostModel() : holdingCostModel;
+            for (int i = 0; i < closedPositions.size(); i++) {
+                ClosedPosition closed = closedPositions.get(i);
+                Position position = closed.position();
+                Position rehydrated = rehydratePosition(position, this.transactionCostModel, this.holdingCostModel);
+                closedPositions.set(i, new ClosedPosition(rehydrated, closed.entrySequence(), closed.exitSequence()));
+            }
+        }
+
+        private List<PositionLot> snapshotLots() {
+            return openLots.stream().map(PositionLot::snapshot).toList();
+        }
+
+        private record ClosedPosition(Position position, long entrySequence,
+                long exitSequence) implements java.io.Serializable {
+        }
+
+        @Override
+        public String toString() {
+            JsonObject json = new JsonObject();
+            json.addProperty("startingType", startingType == null ? null : startingType.name());
+            json.addProperty("matchPolicy", matchPolicy == null ? null : matchPolicy.name());
+            json.addProperty("openLotCount", openLots.size());
+            json.addProperty("closedPositionCount", closedPositions.size());
+
+            JsonArray openLotsJson = new JsonArray();
+            for (PositionLot lot : openLots) {
+                openLotsJson.add(JsonParser.parseString(lot.toString()));
+            }
+            json.add("openLots", openLotsJson);
+            return GSON.toJson(json);
+        }
+
+        @Serial
+        private void readObject(ObjectInputStream inputStream) throws IOException, ClassNotFoundException {
+            inputStream.defaultReadObject();
+            if (transactionCostModel == null) {
+                transactionCostModel = RecordedTradeCostModel.INSTANCE;
+            }
+            if (holdingCostModel == null) {
+                holdingCostModel = new ZeroCostModel();
+            }
+        }
+
+        private static Position rehydratePosition(Position position, CostModel transactionCostModel,
+                CostModel holdingCostModel) {
+            if (position == null || position.getEntry() == null) {
+                return position;
+            }
+            if (position.getExit() == null) {
+                return new Position(position.getEntry(), transactionCostModel, holdingCostModel);
+            }
+            return new Position(position.getEntry(), position.getExit(), transactionCostModel, holdingCostModel);
+        }
     }
 
     private record SequencedTrade(Trade trade, long sequence) {

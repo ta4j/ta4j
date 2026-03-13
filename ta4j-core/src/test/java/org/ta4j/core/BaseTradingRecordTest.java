@@ -580,6 +580,28 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    void recordFillAcceptsTradeInterfaceEntriesAndExitsWithNullFeeAndTime() {
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        Trade entry = tradeView(7, TradeType.BUY, null, numFactory.hundred(), numFactory.one(), null, "order-1",
+                "corr-1");
+        Trade exit = tradeView(8, TradeType.SELL, null, numFactory.numOf(120), numFactory.one(), null, "order-1",
+                "corr-1");
+
+        record.recordFill(entry);
+        record.recordFill(exit);
+
+        assertEquals(1, record.getPositions().size());
+        Position position = record.getPositions().getFirst();
+        assertEquals(0, position.getEntry().getIndex());
+        assertEquals(1, position.getExit().getIndex());
+        assertEquals(Instant.EPOCH, position.getEntry().getTime());
+        assertEquals(Instant.EPOCH, position.getExit().getTime());
+        assertEquals(numFactory.zero(), position.getEntry().getCost());
+        assertEquals(numFactory.zero(), position.getExit().getCost());
+    }
+
+    @Test
     void operateTradeRejectsExitAmountGreaterThanOpenPosition() {
         BaseTradingRecord record = new BaseTradingRecord();
         record.operate(0, numFactory.hundred(), numFactory.one());
@@ -733,7 +755,12 @@ class BaseTradingRecordTest {
     void supportsRecordSerializationRoundTrip() throws Exception {
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
-        record.recordFill(fill(ExecutionSide.BUY, numFactory.hundred(), numFactory.one()));
+        record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
+                numFactory.two(), numFactory.numOf(0.1), ExecutionSide.BUY, "order-1", "corr-1"));
+        record.recordFill(new BaseTrade(1, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
+                numFactory.one(), numFactory.numOf(0.05), ExecutionSide.SELL, null, "corr-1"));
+        record.recordFill(new BaseTrade(2, Instant.parse("2025-01-01T00:00:02Z"), numFactory.numOf(120),
+                numFactory.one(), numFactory.numOf(0.2), ExecutionSide.BUY, "order-2", "corr-2"));
 
         byte[] data;
         try (var output = new ByteArrayOutputStream(); var objectOutput = new ObjectOutputStream(output)) {
@@ -744,8 +771,22 @@ class BaseTradingRecordTest {
 
         try (var input = new ByteArrayInputStream(data); var objectInput = new ObjectInputStream(input)) {
             BaseTradingRecord rehydrated = (BaseTradingRecord) objectInput.readObject();
+
+            List<Position> closed = rehydrated.getPositions();
+            assertEquals(1, closed.size());
+            assertEquals(numFactory.one(), closed.getFirst().getEntry().getAmount());
+            assertEquals(numFactory.numOf(0.05), closed.getFirst().getEntry().getCost());
+
+            List<OpenPosition> openPositions = rehydrated.getOpenPositions();
+            assertEquals(2, openPositions.size());
+            assertEquals("order-1", openPositions.getFirst().lots().getFirst().orderId());
+            assertEquals("corr-1", openPositions.getFirst().lots().getFirst().correlationId());
+            assertEquals(numFactory.numOf(0.05), openPositions.getFirst().lots().getFirst().fee());
+            assertEquals("order-2", openPositions.get(1).lots().getFirst().orderId());
+            assertEquals("corr-2", openPositions.get(1).lots().getFirst().correlationId());
+
             rehydrated.recordFill(fill(ExecutionSide.SELL, numFactory.numOf(120), numFactory.one()));
-            assertEquals(1, rehydrated.getPositions().size());
+            assertEquals(2, rehydrated.getPositions().size());
             assertNotNull(rehydrated.getPositions().getFirst().getTransactionCostModel());
             assertNotNull(rehydrated.getPositions().getFirst().getHoldingCostModel());
         }
