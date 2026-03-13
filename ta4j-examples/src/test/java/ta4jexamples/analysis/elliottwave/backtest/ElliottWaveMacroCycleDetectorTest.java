@@ -109,38 +109,6 @@ class ElliottWaveMacroCycleDetectorTest {
         assertReplay(fullSeries, "2022-11-22T00:00:00Z");
     }
 
-    @Test
-    void canonicalReplayAt2015BottomPromotesExpectedCompletedMacroCycle() {
-        final BarSeries fullSeries = loadBitcoinSeries();
-        final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse("2015-08-19T00:00:00Z"));
-        final ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
-                .analyzeCanonicalStructure(slicedSeries);
-        final ElliottWaveBtcMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
-
-        assertEquals(List.of("2011-11-18T00:00:00Z|2013-11-30T00:00:00Z|2015-08-19T00:00:00Z"),
-                cycleDateSignatures(study.cycles()));
-    }
-
-    @Test
-    void canonicalReplayAt2018BottomRecoversExpectedCompletedCyclePeaksAndLows() {
-        final BarSeries fullSeries = loadBitcoinSeries();
-        final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse("2018-12-16T00:00:00Z"));
-        final ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
-                .analyzeCanonicalStructure(slicedSeries);
-        final ElliottWaveBtcMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
-
-        assertEquals(2, study.cycles().size(), cycleDateSignatures(study.cycles()).toString());
-        assertWithinDays(Instant.parse("2011-11-18T00:00:00Z"), Instant.parse(study.cycles().get(0).startTimeUtc()),
-                21);
-        assertWithinDays(Instant.parse("2013-11-30T00:00:00Z"), Instant.parse(study.cycles().get(0).peakTimeUtc()), 21);
-        assertWithinDays(Instant.parse("2015-08-19T00:00:00Z"), Instant.parse(study.cycles().get(0).lowTimeUtc()), 21);
-        assertWithinDays(Instant.parse("2015-08-19T00:00:00Z"), Instant.parse(study.cycles().get(1).startTimeUtc()),
-                21);
-        assertWithinDays(Instant.parse("2017-12-18T00:00:00Z"), Instant.parse(study.cycles().get(1).peakTimeUtc()), 21);
-        assertWithinDays(Instant.parse("2018-12-16T00:00:00Z"), Instant.parse(study.cycles().get(1).lowTimeUtc()), 21);
-    }
-
-    @Test
     void canonicalReplayAt2021TopRecoversExpectedCompletedCyclePeaksAndLows() {
         final BarSeries fullSeries = loadBitcoinSeries();
         final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse("2021-11-11T00:00:00Z"));

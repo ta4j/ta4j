@@ -2,9 +2,9 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-13 15:34 EDT
+- Last updated: 2026-03-13 16:39 EDT
 - Active phase: Phase 12
-- Active task: Sweep the remaining earlier and later BTC replay cutoffs now that the `2021-11-11` replay recovers the intended `2015 -> 2017 -> 2018` completed cycle within tolerance
+- Active task: Replace the current leg-local replay cycle promotion with a top-level macro backbone that can recover the `2013`, `2015`, `2018`, and `2022` replay cutoffs without regressing the improved `2021` slice
 - Overall: 57/61 checklist items complete
 
 ## Status
@@ -538,7 +538,7 @@ Rationale note:
 
 - [x] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
 - [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
-  Current status: the `2015-08-19` replay slice promotes the intended `2011 -> 2013 -> 2015` completed macro cycle, the `2018-12-16` slice recovers the intended `2011/2013/2015` and `2015/2017/2018` completed-cycle starts, peaks, and lows within tolerance, and the corrected `2021-11-11` replay now recovers `2011-11-18 -> 2013-11-30 -> 2015-08-19` plus `2015-08-19 -> 2017-12-18 -> 2018-11-26`, which stays within the existing 21-day replay tolerance for the intended `2018-12-16` macro low. The canonical replay surface now filters subordinate unaccepted structures so only accepted completed cycles remain at the top level. The remaining replay work is the earlier and later BTC cutoff sweep plus the final historical/live coherence pass.
+  Current status: a corrected same-package replay sweep shows the canonical detector path is only stably aligned at the `2021-11-11` cutoff right now. The `2013-11-30` replay still promotes a stale `2010 -> 2011 -> 2012` completed cycle, the `2015-08-19` replay still closes subordinate `2012 -> 2013 -> 2015` subcycles instead of the intended `2011 -> 2013 -> 2015` macro cycle, the `2018-12-16` replay still stops at a single `2015 -> 2016 -> 2016` completed cycle, and the `2022-11-22` replay still exposes only the first two completed cycles. The underlying diagnosis is that replay promotion is still too leg-local: it can improve one cutoff at a time, but it does not yet synthesize the correct top-level macro backbone across truncated histories. The remaining replay work is to replace that leg-local promotion with milestone-driven macro cycle assembly, then rerun the full cutoff sweep.
 - [ ] Confirm historical chart and live chart are both drawn from the same structure object.
 - [ ] Run full verification and record the final build log.
 
