@@ -6,12 +6,14 @@ package org.ta4j.core;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.time.Instant;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,6 +21,7 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNum;
@@ -314,6 +317,31 @@ public class PositionTest {
         Position position = new Position(TradeType.BUY, transactionModel, holdingModel);
 
         assertSame(holdingModel, position.getHoldingCostModel());
+    }
+
+    @Test
+    public void openViewAccessorsExposeEntryDerivedValues() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        Trade entry = new BaseTrade(5, Instant.EPOCH, numFactory.numOf(123), numFactory.numOf(2), numFactory.numOf(0.3),
+                ExecutionSide.BUY, "order-5", "corr-5");
+        Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        assertEquals(ExecutionSide.BUY, position.side());
+        assertNumEquals(numFactory.numOf(2), position.amount());
+        assertNumEquals(numFactory.numOf(123), position.averageEntryPrice());
+        assertNumEquals(numFactory.numOf(246), position.totalEntryCost());
+        assertNumEquals(numFactory.numOf(0.3), position.totalFees());
+    }
+
+    @Test
+    public void openViewAccessorsReturnNullWhenPositionHasNoEntry() {
+        Position position = new Position(TradeType.BUY);
+
+        assertNull(position.side());
+        assertNull(position.amount());
+        assertNull(position.averageEntryPrice());
+        assertNull(position.totalEntryCost());
+        assertNull(position.totalFees());
     }
 
     @Test(expected = IllegalArgumentException.class)

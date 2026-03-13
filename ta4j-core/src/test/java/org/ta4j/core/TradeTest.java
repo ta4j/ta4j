@@ -8,6 +8,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -21,6 +22,7 @@ import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.FixedTransactionCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -305,6 +307,62 @@ public class TradeTest {
                 List.of(new TradeFill(1, numFactory.hundred(), numFactory.zero()))));
         assertThrows(IllegalArgumentException.class, () -> Trade.fromFills(TradeType.BUY,
                 List.of(new TradeFill(1, numFactory.hundred(), numFactory.minusOne()))));
+    }
+
+    @Test
+    public void fromFillInfersTypeFromSideAndUsesRecordedFees() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        TradeFill fill = new TradeFill(4, null, numFactory.hundred(), numFactory.two(), numFactory.numOf(0.5),
+                ExecutionSide.SELL, null, null);
+
+        Trade trade = Trade.fromFill(fill);
+
+        assertEquals(TradeType.SELL, trade.getType());
+        assertEquals(4, trade.getIndex());
+        assertNumEquals(numFactory.hundred(), trade.getPricePerAsset());
+        assertNumEquals(numFactory.two(), trade.getAmount());
+        assertNumEquals(numFactory.numOf(0.5), trade.getCost());
+        assertTrue(trade.getCostModel() instanceof RecordedTradeCostModel);
+    }
+
+    @Test
+    public void fromFillWithExplicitTypeAcceptsMissingSide() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        TradeFill fill = new TradeFill(6, null, numFactory.numOf(105), numFactory.one(), numFactory.numOf(0.2), null,
+                "order-6", "corr-6");
+
+        Trade trade = Trade.fromFill(TradeType.BUY, fill);
+
+        assertEquals(TradeType.BUY, trade.getType());
+        assertEquals(6, trade.getIndex());
+        assertEquals("order-6", trade.getOrderId());
+        assertEquals("corr-6", trade.getCorrelationId());
+        assertNumEquals(numFactory.numOf(0.2), trade.getCost());
+        assertEquals(ExecutionSide.BUY, ((BaseTrade) trade).side());
+    }
+
+    @Test
+    public void fromFillWithExplicitCostModelUsesProvidedCostModel() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        FixedTransactionCostModel costModel = new FixedTransactionCostModel(1.0);
+        TradeFill fill = new TradeFill(8, null, numFactory.numOf(110), numFactory.numOf(4), ExecutionSide.BUY);
+
+        Trade trade = Trade.fromFill(fill, costModel);
+
+        assertSame(costModel, trade.getCostModel());
+        assertNumEquals(numFactory.one(), trade.getCost());
+        assertNumEquals(numFactory.numOf(110.25), trade.getNetPrice());
+    }
+
+    @Test
+    public void fromFillRejectsSideThatConflictsWithExplicitType() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        TradeFill fill = new TradeFill(9, null, numFactory.hundred(), numFactory.one(), ExecutionSide.SELL);
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Trade.fromFill(TradeType.BUY, fill));
+
+        assertEquals("fill side must match trade type at index 9", exception.getMessage());
     }
 
     @Test
