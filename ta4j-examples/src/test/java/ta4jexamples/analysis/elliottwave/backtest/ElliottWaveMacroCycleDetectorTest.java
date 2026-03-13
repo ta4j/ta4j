@@ -18,6 +18,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 
 import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 
@@ -95,6 +96,18 @@ class ElliottWaveMacroCycleDetectorTest {
         assertTrue(Files.exists(Path.of(live.summaryPath())));
     }
 
+    @Test
+    void canonicalReplayAtMajorMacroTurnsPreservesHistoricalCurrentProfileCoherence() {
+        final BarSeries fullSeries = loadBitcoinSeries();
+
+        assertReplay(fullSeries, "2013-11-30T00:00:00Z");
+        assertReplay(fullSeries, "2015-08-19T00:00:00Z");
+        assertReplay(fullSeries, "2017-12-18T00:00:00Z");
+        assertReplay(fullSeries, "2018-12-16T00:00:00Z");
+        assertReplay(fullSeries, "2021-11-11T00:00:00Z");
+        assertReplay(fullSeries, "2022-11-22T00:00:00Z");
+    }
+
     private static BarSeries loadBitcoinSeries() {
         final BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveMacroCycleDetectorTest.class,
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
@@ -107,6 +120,33 @@ class ElliottWaveMacroCycleDetectorTest {
         final Duration delta = Duration.between(expected, actual).abs();
         assertTrue(delta.compareTo(Duration.ofDays(maxDays)) <= 0,
                 () -> "expected " + actual + " to stay within " + maxDays + " days of " + expected);
+    }
+
+    private static void assertReplay(final BarSeries fullSeries, final String cutoffIso) {
+        final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse(cutoffIso));
+        final ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
+                .analyzeCanonicalStructure(slicedSeries);
+        final ElliottWaveBtcMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
+
+        for (String cycle : cycleDateSignatures(study.cycles())) {
+            String[] timestamps = cycle.split("\\|");
+            assertTrue(Instant.parse(timestamps[0]).compareTo(Instant.parse(timestamps[1])) < 0);
+            assertTrue(Instant.parse(timestamps[1]).compareTo(Instant.parse(timestamps[2])) < 0);
+            assertTrue(!Instant.parse(timestamps[2]).isAfter(Instant.parse(cutoffIso)));
+        }
+        assertEquals(study.selectedProfile().profile().id(), structure.currentCycle().summary().winningProfileId());
+    }
+
+    private static BarSeries sliceThrough(final BarSeries fullSeries, final Instant cutoff) {
+        final BarSeries slicedSeries = new BaseBarSeriesBuilder().withName(fullSeries.getName() + "@" + cutoff).build();
+        for (int index = fullSeries.getBeginIndex(); index <= fullSeries.getEndIndex(); index++) {
+            if (fullSeries.getBar(index).getEndTime().isAfter(cutoff)) {
+                break;
+            }
+            slicedSeries.addBar(fullSeries.getBar(index));
+        }
+        assertTrue(slicedSeries.getBarCount() > 0, () -> "No bars found through cutoff " + cutoff);
+        return slicedSeries;
     }
 
     private static List<String> cycleDateSignatures(
