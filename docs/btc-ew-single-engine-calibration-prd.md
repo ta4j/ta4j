@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-13 17:20 EDT
+- Last updated: 2026-03-13 18:07 EDT
 - Active phase: Phase 12
 - Active task: Replace the current leg-local replay cycle promotion with a top-level macro backbone that can recover the `2013`, `2015`, and `2018` replay cutoffs without regressing the improved `2021` and `2022` slices
-- Overall: 57/61 checklist items complete
+- Overall: 58/62 checklist items complete
 
 ## Status
 
@@ -425,6 +425,7 @@ Avoid exposing calibration internals publicly.
 - [x] Remove the anchor-registry-driven runtime decomposition path as a primary renderer input.
 - [x] Stop using `buildLegSegments(...)` as a runtime truth source.
 - [x] Emit a harness-side legacy-vs-canonical completed-cycle diff artifact so canonical misses are visible on underlying cycle data before any runtime switchover.
+- [x] Emit an on-demand replay cutoff profile sweep artifact so per-profile cutoff behavior is visible before changing comparator or backbone rules.
 - [x] Keep raw accepted historical legs available as evidence, but promote only top-level completed macro cycles for completed-cycle truth comparison.
 - [x] Stop using `buildHistoricalCycles(...)` as a runtime truth source.
 - [x] Retain registry-backed comparison only inside the calibration harness.
@@ -538,7 +539,7 @@ Rationale note:
 
 - [x] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
 - [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
-  Current status: a corrected same-package replay sweep now stably aligns at the `2021-11-11` and `2022-11-22` cutoffs. The `2013-11-30` replay still promotes a stale `2010 -> 2011 -> 2012` completed cycle, the `2015-08-19` replay still closes subordinate `2012 -> 2013 -> 2015` subcycles instead of the intended `2011 -> 2013 -> 2015` macro cycle, and the `2018-12-16` replay still promotes subordinate `2013 -> 2015`, `2015 -> 2016`, and `2016 -> 2018` cycles instead of the intended macro backbone. An on-demand harness-side replay cutoff diff artifact now exists for the major BTC cutoffs so these completed-cycle mismatches are visible on underlying data before any further runner heuristics land. The underlying diagnosis is still that replay promotion is too leg-local: it can now recover later truncated histories, but it does not yet synthesize the correct top-level macro backbone across the earlier cutoffs. The remaining replay work is to replace that leg-local promotion with milestone-driven macro cycle assembly, then rerun the full cutoff sweep.
+  Current status: a corrected same-package replay sweep now stably aligns at the `2021-11-11` and `2022-11-22` cutoffs. The `2013-11-30` replay still promotes a stale `2010 -> 2011 -> 2012` completed cycle, the `2015-08-19` replay still closes subordinate `2012 -> 2013 -> 2015` subcycles instead of the intended `2011 -> 2013 -> 2015` macro cycle, and the `2018-12-16` replay still promotes subordinate `2013 -> 2015`, `2015 -> 2016`, and `2016 -> 2018` cycles instead of the intended macro backbone. On-demand harness-side replay cutoff diff and profile-sweep artifacts now exist for the major BTC cutoffs, so we can see both the completed-cycle mismatches and which canonical profiles generate stale or missing truncated-history cycles before changing comparator or backbone rules. The underlying diagnosis is still that replay promotion is too leg-local: it can now recover later truncated histories, but it does not yet synthesize the correct top-level macro backbone across the earlier cutoffs. The remaining replay work is to replace that leg-local promotion with milestone-driven macro cycle assembly, then rerun the full cutoff sweep.
 - [ ] Confirm historical chart and live chart are both drawn from the same structure object.
 - [ ] Run full verification and record the final build log.
 

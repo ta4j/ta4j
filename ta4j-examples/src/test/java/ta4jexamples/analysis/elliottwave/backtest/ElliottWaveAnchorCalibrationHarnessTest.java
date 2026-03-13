@@ -828,6 +828,7 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                 .skipped("eth-usd", ElliottWaveAnchorCalibrationHarness.ETH_RESOURCE, "synthetic");
         ElliottWaveAnchorCalibrationHarness.HistoricalStudyDiffReport diff = historicalStudyDiff();
         ElliottWaveAnchorCalibrationHarness.ReplayCutoffDiffReport replayDiff = replayCutoffDiff(diff);
+        ElliottWaveAnchorCalibrationHarness.ReplayCutoffProfileSweepReport replayProfileSweep = replayCutoffProfileSweepReport();
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
                 "synthetic-v1", "synthetic-btc.json", "synthetic provenance", List.of());
         ElliottWaveAnchorCalibrationHarness.BaselinePolicy baselinePolicy = new ElliottWaveAnchorCalibrationHarness.BaselinePolicy(
@@ -844,6 +845,8 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                 ElliottWaveAnchorCalibrationHarness.CalibrationDepth.ROUTINE);
         sink.recordHistoricalStudyDiff(diff, ElliottWaveAnchorCalibrationHarness.CalibrationDepth.ROUTINE);
         sink.recordReplayCutoffDiff(replayDiff, ElliottWaveAnchorCalibrationHarness.CalibrationDepth.ROUTINE);
+        sink.recordReplayCutoffProfileSweep(replayProfileSweep,
+                ElliottWaveAnchorCalibrationHarness.CalibrationDepth.ROUTINE);
         sink.recordPortabilitySummary(portability, ElliottWaveAnchorCalibrationHarness.CalibrationDepth.EXHAUSTIVE);
         sink.recordFinalReport(report, ElliottWaveAnchorCalibrationHarness.CalibrationDepth.ROUTINE);
         sink.recordFinalReport(report, ElliottWaveAnchorCalibrationHarness.CalibrationDepth.EXHAUSTIVE);
@@ -857,6 +860,8 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         Path diffTextFile = routineDirectory.resolve("btc-historical-study-diff.txt");
         Path replayDiffJsonFile = routineDirectory.resolve("btc-replay-cutoff-diff.json");
         Path replayDiffTextFile = routineDirectory.resolve("btc-replay-cutoff-diff.txt");
+        Path replayProfileSweepJsonFile = routineDirectory.resolve("btc-replay-cutoff-profile-sweep.json");
+        Path replayProfileSweepTextFile = routineDirectory.resolve("btc-replay-cutoff-profile-sweep.txt");
         Path portabilityFile = exhaustiveDirectory.resolve("portability-eth-usd.json");
         Path routineFinalReportFile = routineDirectory.resolve("ew-anchor-report.json");
         Path exhaustiveFinalReportFile = exhaustiveDirectory.resolve("ew-anchor-report.json");
@@ -870,6 +875,8 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         assertTrue(Files.exists(diffTextFile));
         assertTrue(Files.exists(replayDiffJsonFile));
         assertTrue(Files.exists(replayDiffTextFile));
+        assertTrue(Files.exists(replayProfileSweepJsonFile));
+        assertTrue(Files.exists(replayProfileSweepTextFile));
         assertTrue(Files.exists(portabilityFile));
         assertTrue(Files.exists(routineFinalReportFile));
         assertTrue(Files.exists(exhaustiveFinalReportFile));
@@ -880,6 +887,8 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         assertTrue(Files.readString(diffTextFile).contains("canonicalMissingAcceptedCycles="));
         assertTrue(Files.readString(replayDiffJsonFile).contains("\"cutoffTimeUtc\""));
         assertTrue(Files.readString(replayDiffTextFile).contains("cutoff=2022-11-22T00:00:00Z"));
+        assertTrue(Files.readString(replayProfileSweepJsonFile).contains("\"canonicalProfiles\""));
+        assertTrue(Files.readString(replayProfileSweepTextFile).contains("canonicalSelectedProfile=canonical-profile"));
         assertTrue(Files.readString(portabilityFile).contains("\"datasetId\": \"eth-usd\""));
         assertTrue(Files.readString(routineFinalReportFile).contains("\"reportVersion\": \"synthetic-report\""));
         assertTrue(Files.readString(exhaustiveFinalReportFile).contains("\"reportVersion\": \"synthetic-report\""));
@@ -927,6 +936,22 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         assertEquals(diff, replayDiff.cutoffs().getFirst().diff());
         assertTrue(replayDiff.toText().contains("cutoff=2015-08-19T00:00:00Z"));
         assertTrue(replayDiff.toText().contains("cutoff=2022-11-22T00:00:00Z"));
+    }
+
+    @Test
+    void replayCutoffProfileSweepReportCarriesCutoffScopedCanonicalProfiles() {
+        ElliottWaveAnchorCalibrationHarness.ReplayCutoffProfileSweepReport sweep = replayCutoffProfileSweepReport();
+
+        assertEquals(2, sweep.cutoffs().size());
+        assertEquals("2015-08-19T00:00:00Z", sweep.cutoffs().getFirst().cutoffTimeUtc());
+        assertEquals(List.of("cycle-1"), sweep.cutoffs().getFirst().truthCycleIds());
+        assertEquals("legacy-profile", sweep.cutoffs().getFirst().legacySelectedProfileId());
+        assertEquals(List.of("cycle-1"), sweep.cutoffs().getFirst().legacyAcceptedCycleIds());
+        assertEquals("canonical-profile", sweep.cutoffs().getFirst().canonicalSelectedProfileId());
+        assertEquals(2, sweep.cutoffs().getFirst().canonicalProfiles().size());
+        assertEquals("canonical-profile", sweep.cutoffs().getFirst().canonicalProfiles().getFirst().profileId());
+        assertTrue(sweep.toText().contains("profile=canonical-profile"));
+        assertTrue(sweep.toText().contains("cutoff=2022-11-22T00:00:00Z"));
     }
 
     @Test
@@ -1068,6 +1093,22 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         return new ElliottWaveAnchorCalibrationHarness.ReplayCutoffDiffReport(
                 List.of(new ElliottWaveAnchorCalibrationHarness.ReplayCutoffDiff("2015-08-19T00:00:00Z", diff),
                         new ElliottWaveAnchorCalibrationHarness.ReplayCutoffDiff("2022-11-22T00:00:00Z", diff)));
+    }
+
+    private static ElliottWaveAnchorCalibrationHarness.ReplayCutoffProfileSweepReport replayCutoffProfileSweepReport() {
+        return new ElliottWaveAnchorCalibrationHarness.ReplayCutoffProfileSweepReport(List.of(
+                new ElliottWaveAnchorCalibrationHarness.ReplayCutoffProfileSweep("2015-08-19T00:00:00Z",
+                        List.of("cycle-1"), "legacy-profile", List.of("cycle-1"), "canonical-profile",
+                        List.of(new ElliottWaveAnchorCalibrationHarness.ReplayCutoffCanonicalProfile(
+                                "canonical-profile", "H0", true, 1, 1, 2, 0.93, List.of("cycle-1"), List.of("cycle-1")),
+                                new ElliottWaveAnchorCalibrationHarness.ReplayCutoffCanonicalProfile(
+                                        "alternate-profile", "H1", false, 2, 0, 1, 0.67, List.of("cycle-x", "cycle-y"),
+                                        List.of()))),
+                new ElliottWaveAnchorCalibrationHarness.ReplayCutoffProfileSweep("2022-11-22T00:00:00Z",
+                        List.of("cycle-1"), "legacy-profile", List.of("cycle-1"), "canonical-profile",
+                        List.of(new ElliottWaveAnchorCalibrationHarness.ReplayCutoffCanonicalProfile(
+                                "canonical-profile", "H0", true, 1, 1, 2, 0.94, List.of("cycle-1"),
+                                List.of("cycle-1"))))));
     }
 
     private static ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary directionalCycle(String partition,

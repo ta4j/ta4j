@@ -233,6 +233,25 @@ public final class ElliottWaveAnchorCalibrationHarness {
         return report;
     }
 
+    static ReplayCutoffProfileSweepReport generateReplayCutoffProfileSweepReport() {
+        return generateReplayCutoffProfileSweepReport(new ArtifactSink() {
+        });
+    }
+
+    static ReplayCutoffProfileSweepReport generateReplayCutoffProfileSweepReport(ArtifactSink artifactSink) {
+        Objects.requireNonNull(artifactSink, "artifactSink");
+        ElliottWaveAnchorRegistry registryDocument = ElliottWaveAnchorRegistry
+                .load(ElliottWaveAnchorRegistry.DEFAULT_RESOURCE);
+        BarSeries btcSeries = requireSeries(registryDocument.datasetResource(), BTC_SERIES_NAME);
+        AnchorRegistry fullRegistry = defaultBitcoinAnchors(registryDocument, btcSeries);
+        List<ReplayCutoffProfileSweep> cutoffs = defaultReplayCutoffInstants().stream()
+                .map(cutoff -> replayCutoffProfileSweep(fullRegistry, btcSeries, cutoff))
+                .toList();
+        ReplayCutoffProfileSweepReport report = new ReplayCutoffProfileSweepReport(cutoffs);
+        artifactSink.recordReplayCutoffProfileSweep(report, CalibrationDepth.ROUTINE);
+        return report;
+    }
+
     static ElliottWaveBtcMacroCycleDemo.MacroStudy evaluateCanonicalHistoricalStudy(final BarSeries series,
             final AnchorRegistry registry) {
         return ElliottWaveMacroCycleDemo.evaluateCanonicalMacroStudy(series, registry);
@@ -251,6 +270,48 @@ public final class ElliottWaveAnchorCalibrationHarness {
                 evaluateLegacyAnchoredHistoricalStudy(slicedSeries, cutoffRegistry),
                 evaluateCanonicalHistoricalStudy(slicedSeries, cutoffRegistry));
         return new ReplayCutoffDiff(UTC_TIME.format(cutoff), diff);
+    }
+
+    private static ReplayCutoffProfileSweep replayCutoffProfileSweep(final AnchorRegistry fullRegistry,
+            final BarSeries fullSeries, final Instant cutoff) {
+        BarSeries slicedSeries = replayCutoffSeries(fullSeries, cutoff);
+        AnchorRegistry cutoffRegistry = replayCutoffAnchors(fullRegistry, cutoff);
+        ElliottWaveBtcMacroCycleDemo.MacroStudy legacyStudy = evaluateLegacyAnchoredHistoricalStudy(slicedSeries,
+                cutoffRegistry);
+        List<CycleTriplet> truthCycles = completedCycles(cutoffRegistry);
+        List<String> truthCycleIds = truthCycles.stream().map(CycleTriplet::id).toList();
+        List<String> legacyAcceptedCycleIds = acceptedDirectionalCycleIdsInTruthOrder(legacyStudy.cycles(),
+                truthCycleIds);
+        List<ElliottWaveBtcMacroCycleDemo.MacroProfileEvaluation> canonicalEvaluations = ElliottWaveMacroCycleDemo
+                .evaluateCanonicalProfileSweep(slicedSeries, cutoffRegistry);
+        String canonicalSelectedProfileId = canonicalEvaluations.isEmpty() ? ""
+                : canonicalEvaluations.getFirst().profile().id();
+        List<ReplayCutoffCanonicalProfile> canonicalProfiles = canonicalEvaluations.stream()
+                .map(evaluation -> ReplayCutoffCanonicalProfile.from(evaluation, truthCycleIds))
+                .toList();
+        return new ReplayCutoffProfileSweep(UTC_TIME.format(cutoff), truthCycleIds,
+                legacyStudy.selectedProfile().profile().id(), legacyAcceptedCycleIds, canonicalSelectedProfileId,
+                canonicalProfiles);
+    }
+
+    private static List<String> acceptedDirectionalCycleIdsInTruthOrder(
+            final List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> cycles, final List<String> truthCycleIds) {
+        Set<String> accepted = (cycles == null ? List.<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary>of()
+                : cycles).stream()
+                .filter(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::accepted)
+                .map(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::cycleId)
+                .collect(Collectors.toSet());
+        return truthCycleIds.stream().filter(accepted::contains).toList();
+    }
+
+    private static List<String> acceptedProfileCycleIdsInTruthOrder(
+            final ElliottWaveBtcMacroCycleDemo.MacroProfileEvaluation evaluation, final List<String> truthCycleIds) {
+        Set<String> accepted = evaluation.cycleFits()
+                .stream()
+                .filter(ElliottWaveBtcMacroCycleDemo.CycleFit::accepted)
+                .map(cycleFit -> cycleFit.cycle().id())
+                .collect(Collectors.toSet());
+        return truthCycleIds.stream().filter(accepted::contains).toList();
     }
 
     private static BarSeries replayCutoffSeries(final BarSeries fullSeries, final Instant cutoff) {
@@ -1162,6 +1223,9 @@ public final class ElliottWaveAnchorCalibrationHarness {
         default void recordReplayCutoffDiff(ReplayCutoffDiffReport diff, CalibrationDepth depth) {
         }
 
+        default void recordReplayCutoffProfileSweep(ReplayCutoffProfileSweepReport sweep, CalibrationDepth depth) {
+        }
+
         default void recordPortabilitySummary(PortabilitySummary summary, CalibrationDepth depth) {
         }
 
@@ -1217,6 +1281,12 @@ public final class ElliottWaveAnchorCalibrationHarness {
         public void recordReplayCutoffDiff(ReplayCutoffDiffReport diff, CalibrationDepth depth) {
             writeJson(routineDirectory(), "btc-replay-cutoff-diff.json", diff);
             writeText(routineDirectory(), "btc-replay-cutoff-diff.txt", diff.toText());
+        }
+
+        @Override
+        public void recordReplayCutoffProfileSweep(ReplayCutoffProfileSweepReport sweep, CalibrationDepth depth) {
+            writeJson(routineDirectory(), "btc-replay-cutoff-profile-sweep.json", sweep);
+            writeText(routineDirectory(), "btc-replay-cutoff-profile-sweep.txt", sweep.toText());
         }
 
         @Override
@@ -2169,6 +2239,101 @@ public final class ElliottWaveAnchorCalibrationHarness {
         String toText() {
             return cutoffs.stream()
                     .map(ReplayCutoffDiff::toText)
+                    .collect(Collectors.joining(System.lineSeparator() + System.lineSeparator()))
+                    .trim();
+        }
+    }
+
+    /**
+     * Per-profile canonical study summary at one replay cutoff.
+     */
+    record ReplayCutoffCanonicalProfile(String profileId, String hypothesisId, boolean historicalFitPassed,
+            int cycleCount, int acceptedCycles, int acceptedSegments, double aggregateScore, List<String> cycleIds,
+            List<String> acceptedCycleIds) {
+
+        ReplayCutoffCanonicalProfile {
+            Objects.requireNonNull(profileId, "profileId");
+            Objects.requireNonNull(hypothesisId, "hypothesisId");
+            cycleIds = cycleIds == null ? List.of() : List.copyOf(cycleIds);
+            acceptedCycleIds = acceptedCycleIds == null ? List.of() : List.copyOf(acceptedCycleIds);
+        }
+
+        static ReplayCutoffCanonicalProfile from(ElliottWaveBtcMacroCycleDemo.MacroProfileEvaluation evaluation,
+                List<String> truthCycleIds) {
+            List<String> cycleIds = evaluation.cycleFits().stream().map(cycleFit -> cycleFit.cycle().id()).toList();
+            List<String> acceptedCycleIds = acceptedProfileCycleIdsInTruthOrder(evaluation, truthCycleIds);
+            return new ReplayCutoffCanonicalProfile(evaluation.profile().id(), evaluation.profile().hypothesisId(),
+                    evaluation.historicalFitPassed(), evaluation.cycleFits().size(), evaluation.acceptedCycles(),
+                    evaluation.acceptedSegments(), evaluation.aggregateScore(), cycleIds, acceptedCycleIds);
+        }
+
+        String toText() {
+            return "profile=" + profileId + ", hypothesis=" + hypothesisId + ", passed=" + historicalFitPassed
+                    + ", score=" + String.format(java.util.Locale.ROOT, "%.4f", aggregateScore) + ", cycles="
+                    + cycleCount + ", acceptedCycles=" + acceptedCycles + ", acceptedSegments=" + acceptedSegments
+                    + ", cycleIds=" + cycleIds + ", acceptedCycleIds=" + acceptedCycleIds;
+        }
+    }
+
+    /**
+     * Per-cutoff canonical profile sweep used to separate comparator issues from
+     * missing completed-cycle candidates.
+     */
+    record ReplayCutoffProfileSweep(String cutoffTimeUtc, List<String> truthCycleIds, String legacySelectedProfileId,
+            List<String> legacyAcceptedCycleIds, String canonicalSelectedProfileId,
+            List<ReplayCutoffCanonicalProfile> canonicalProfiles) {
+
+        ReplayCutoffProfileSweep {
+            Objects.requireNonNull(cutoffTimeUtc, "cutoffTimeUtc");
+            truthCycleIds = truthCycleIds == null ? List.of() : List.copyOf(truthCycleIds);
+            Objects.requireNonNull(legacySelectedProfileId, "legacySelectedProfileId");
+            legacyAcceptedCycleIds = legacyAcceptedCycleIds == null ? List.of() : List.copyOf(legacyAcceptedCycleIds);
+            Objects.requireNonNull(canonicalSelectedProfileId, "canonicalSelectedProfileId");
+            canonicalProfiles = canonicalProfiles == null ? List.of() : List.copyOf(canonicalProfiles);
+        }
+
+        String toText() {
+            StringBuilder builder = new StringBuilder();
+            builder.append("cutoff=")
+                    .append(cutoffTimeUtc)
+                    .append(System.lineSeparator())
+                    .append("truthCycleIds=")
+                    .append(truthCycleIds)
+                    .append(System.lineSeparator())
+                    .append("legacySelectedProfile=")
+                    .append(legacySelectedProfileId)
+                    .append(System.lineSeparator())
+                    .append("legacyAcceptedCycleIds=")
+                    .append(legacyAcceptedCycleIds)
+                    .append(System.lineSeparator())
+                    .append("canonicalSelectedProfile=")
+                    .append(canonicalSelectedProfileId)
+                    .append(System.lineSeparator())
+                    .append("canonicalProfiles=");
+            if (canonicalProfiles.isEmpty()) {
+                builder.append("[]");
+            } else {
+                for (ReplayCutoffCanonicalProfile profile : canonicalProfiles) {
+                    builder.append(System.lineSeparator()).append("  - ").append(profile.toText());
+                }
+            }
+            return builder.toString();
+        }
+    }
+
+    /**
+     * Ordered replay-cutoff profile sweeps for diagnosing truncated-history profile
+     * behavior.
+     */
+    record ReplayCutoffProfileSweepReport(List<ReplayCutoffProfileSweep> cutoffs) {
+
+        ReplayCutoffProfileSweepReport {
+            cutoffs = cutoffs == null ? List.of() : List.copyOf(cutoffs);
+        }
+
+        String toText() {
+            return cutoffs.stream()
+                    .map(ReplayCutoffProfileSweep::toText)
                     .collect(Collectors.joining(System.lineSeparator() + System.lineSeparator()))
                     .trim();
         }

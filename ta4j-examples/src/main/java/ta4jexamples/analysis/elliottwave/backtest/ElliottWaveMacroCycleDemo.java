@@ -271,12 +271,7 @@ public final class ElliottWaveMacroCycleDemo {
     static MacroStudy evaluateCanonicalMacroStudy(final BarSeries series) {
         Objects.requireNonNull(series, "series");
 
-        final List<MacroLogicProfile> profiles = logicProfiles();
-        final List<MacroProfileEvaluation> evaluations = new ArrayList<>();
-        for (final MacroLogicProfile profile : profiles) {
-            evaluations.add(evaluateCanonicalProfile(series, profile));
-        }
-        evaluations.sort(profileEvaluationComparator());
+        final List<MacroProfileEvaluation> evaluations = evaluateCanonicalProfileSweep(series);
         final MacroProfileEvaluation selectedProfile = evaluations.getFirst();
         final List<ProfileScoreSummary> profileScores = evaluations.stream().map(ProfileScoreSummary::from).toList();
         final List<DirectionalCycleSummary> cycles = acceptedCycleSummaries(selectedProfile);
@@ -298,12 +293,7 @@ public final class ElliottWaveMacroCycleDemo {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(registry, "registry");
 
-        final List<MacroLogicProfile> profiles = logicProfiles();
-        final List<MacroProfileEvaluation> evaluations = new ArrayList<>();
-        for (final MacroLogicProfile profile : profiles) {
-            evaluations.add(evaluateCanonicalProfile(series, profile, registry));
-        }
-        evaluations.sort(profileEvaluationComparator());
+        final List<MacroProfileEvaluation> evaluations = evaluateCanonicalProfileSweep(series, registry);
         final MacroProfileEvaluation selectedProfile = evaluations.getFirst();
         final List<ProfileScoreSummary> profileScores = evaluations.stream().map(ProfileScoreSummary::from).toList();
         final List<DirectionalCycleSummary> cycles = selectedProfile.cycleFits()
@@ -316,6 +306,28 @@ public final class ElliottWaveMacroCycleDemo {
                         : "historical BTC fit still partial");
         return new MacroStudy(selectedProfile, List.copyOf(evaluations), profileScores, cycles, hypotheses,
                 currentCycle);
+    }
+
+    static List<MacroProfileEvaluation> evaluateCanonicalProfileSweep(final BarSeries series) {
+        Objects.requireNonNull(series, "series");
+        final List<MacroProfileEvaluation> evaluations = new ArrayList<>();
+        for (final MacroLogicProfile profile : logicProfiles()) {
+            evaluations.add(evaluateCanonicalProfile(series, profile));
+        }
+        evaluations.sort(profileEvaluationComparator());
+        return List.copyOf(evaluations);
+    }
+
+    static List<MacroProfileEvaluation> evaluateCanonicalProfileSweep(final BarSeries series,
+            final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(registry, "registry");
+        final List<MacroProfileEvaluation> evaluations = new ArrayList<>();
+        for (final MacroLogicProfile profile : logicProfiles()) {
+            evaluations.add(evaluateCanonicalProfile(series, profile, registry));
+        }
+        evaluations.sort(profileEvaluationComparator());
+        return List.copyOf(evaluations);
     }
 
     static MacroStudy evaluateLegacyAnchoredStudyForHarnessComparison(final BarSeries series,
