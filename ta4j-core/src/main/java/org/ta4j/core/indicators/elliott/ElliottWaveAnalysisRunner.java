@@ -947,31 +947,14 @@ public final class ElliottWaveAnalysisRunner {
 
         final List<ElliottWaveAnalysisResult.HistoricalLegAssessment> bearishLegs = legs.stream()
                 .filter(leg -> !leg.bullish())
+                .filter(this::eligibleHistoricalMacroBottom)
                 .toList();
         if (bearishLegs.size() < 2) {
             return List.of();
         }
 
-        final List<ElliottWaveAnalysisResult.HistoricalLegAssessment> macroBottoms = new ArrayList<>();
-        for (int index = 0; index < bearishLegs.size(); index++) {
-            final ElliottWaveAnalysisResult.HistoricalLegAssessment candidate = bearishLegs.get(index);
-            if (index == bearishLegs.size() - 1) {
-                macroBottoms.add(candidate);
-                continue;
-            }
-            final double candidateLow = lowPrice(series, candidate.endIndex());
-            final double nextLow = lowPrice(series, bearishLegs.get(index + 1).endIndex());
-            if (index == 0) {
-                if (bearishLegs.size() == 2 || candidateLow <= nextLow) {
-                    macroBottoms.add(candidate);
-                }
-                continue;
-            }
-            final double previousLow = lowPrice(series, bearishLegs.get(index - 1).endIndex());
-            if (candidateLow <= previousLow && candidateLow <= nextLow) {
-                macroBottoms.add(candidate);
-            }
-        }
+        final List<ElliottWaveAnalysisResult.HistoricalLegAssessment> macroBottoms = selectHistoricalMacroBottoms(
+                series, bearishLegs);
         if (macroBottoms.size() < 2) {
             return List.of();
         }
@@ -1007,6 +990,45 @@ public final class ElliottWaveAnalysisRunner {
             cycles.add(new ElliottWaveAnalysisResult.HistoricalCycleAssessment(bullishLeg, bearishLeg));
         }
         return List.copyOf(cycles);
+    }
+
+    private List<ElliottWaveAnalysisResult.HistoricalLegAssessment> selectHistoricalMacroBottoms(final BarSeries series,
+            final List<ElliottWaveAnalysisResult.HistoricalLegAssessment> bearishLegs) {
+        if (bearishLegs.size() < 2) {
+            return List.of();
+        }
+
+        final List<ElliottWaveAnalysisResult.HistoricalLegAssessment> macroBottoms = new ArrayList<>();
+        ElliottWaveAnalysisResult.HistoricalLegAssessment pending = bearishLegs.getFirst();
+        for (int index = 1; index < bearishLegs.size(); index++) {
+            final ElliottWaveAnalysisResult.HistoricalLegAssessment next = bearishLegs.get(index);
+            if (historicalMacroBottomConfirmed(series, pending, next.startIndex())) {
+                macroBottoms.add(pending);
+                pending = next;
+                continue;
+            }
+            if (lowPrice(series, next.endIndex()) <= lowPrice(series, pending.endIndex())) {
+                pending = next;
+            }
+        }
+        if (historicalMacroBottomConfirmed(series, pending, series.getEndIndex())) {
+            macroBottoms.add(pending);
+        }
+        return List.copyOf(macroBottoms);
+    }
+
+    private boolean historicalMacroBottomConfirmed(final BarSeries series,
+            final ElliottWaveAnalysisResult.HistoricalLegAssessment candidate, final int recoveryEndIndex) {
+        if (recoveryEndIndex <= candidate.endIndex()) {
+            return false;
+        }
+        final int boundedRecoveryEndIndex = Math.min(series.getEndIndex(), recoveryEndIndex);
+        return highestHigh(series, candidate.endIndex(), boundedRecoveryEndIndex) > highPrice(series,
+                candidate.startIndex());
+    }
+
+    private boolean eligibleHistoricalMacroBottom(final ElliottWaveAnalysisResult.HistoricalLegAssessment leg) {
+        return leg.accepted();
     }
 
     List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> promoteHistoricalMacroCycles(

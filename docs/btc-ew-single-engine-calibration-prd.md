@@ -2,9 +2,9 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-13 22:12 EDT
+- Last updated: 2026-03-13 15:34 EDT
 - Active phase: Phase 12
-- Active task: Replace the 2021 replay absolute-low correction promotion heuristic now that per-start candidate diversity is in place and the accepted second cycle still closes at `2020-05-26`
+- Active task: Sweep the remaining earlier and later BTC replay cutoffs now that the `2021-11-11` replay recovers the intended `2015 -> 2017 -> 2018` completed cycle within tolerance
 - Overall: 57/61 checklist items complete
 
 ## Status
@@ -538,7 +538,7 @@ Rationale note:
 
 - [x] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
 - [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
-  Current status: the `2015-08-19` replay slice promotes the intended `2011 -> 2013 -> 2015` completed macro cycle, the `2018-12-16` slice recovers the intended `2011/2013/2015` and `2015/2017/2018` completed-cycle starts, peaks, and lows within tolerance, and the canonical replay surface now filters subordinate unaccepted structures so only accepted completed cycles remain at the top level. Per-start historical candidate diversity is now landed and covered by focused runner tests, but a corrected worktree-class replay probe shows that it does not change the `2021-11-11` result: the accepted second cycle still closes at the internal `2020-05-26` low instead of the intended `2018-12-16` macro low. The remaining replay work is replacing the absolute-low correction-promotion heuristic that still prefers later subordinate lows once more than two bearish legs survive the path, plus the earlier and later BTC cutoffs.
+  Current status: the `2015-08-19` replay slice promotes the intended `2011 -> 2013 -> 2015` completed macro cycle, the `2018-12-16` slice recovers the intended `2011/2013/2015` and `2015/2017/2018` completed-cycle starts, peaks, and lows within tolerance, and the corrected `2021-11-11` replay now recovers `2011-11-18 -> 2013-11-30 -> 2015-08-19` plus `2015-08-19 -> 2017-12-18 -> 2018-11-26`, which stays within the existing 21-day replay tolerance for the intended `2018-12-16` macro low. The canonical replay surface now filters subordinate unaccepted structures so only accepted completed cycles remain at the top level. The remaining replay work is the earlier and later BTC cutoff sweep plus the final historical/live coherence pass.
 - [ ] Confirm historical chart and live chart are both drawn from the same structure object.
 - [ ] Run full verification and record the final build log.
 
