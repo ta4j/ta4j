@@ -2,7 +2,7 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-13 18:31 EDT
+- Last updated: 2026-03-13 18:47 EDT
 - Active phase: Phase 12
 - Active task: Replace the current leg-local replay cycle promotion with a top-level macro backbone that can recover the `2013`, `2015`, and `2018` replay cutoffs without regressing the improved `2021` and `2022` slices
 - Overall: 58/62 checklist items complete
@@ -539,7 +539,7 @@ Rationale note:
 
 - [x] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
 - [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
-  Current status: a corrected same-package replay sweep now stably aligns at the `2021-11-11` and `2022-11-22` cutoffs. The `2013-11-30` replay still promotes a stale `2010 -> 2011 -> 2012` completed cycle, the `2015-08-19` replay still closes subordinate `2012 -> 2013 -> 2015` subcycles instead of the intended `2011 -> 2013 -> 2015` macro cycle, and the `2018-12-16` replay still promotes subordinate `2013 -> 2015`, `2015 -> 2016`, and `2016 -> 2018` cycles instead of the intended macro backbone. On-demand harness-side replay cutoff diff and profile-sweep artifacts now exist for the major BTC cutoffs. The corrected no-registry profile sweep shows a more useful split: `2015`, `2018`, and `2022` now surface non-empty canonical completed-cycle candidates for some profiles, while `2013` and `2021` still flatline. Even where cycles exist, none of the current cutoff-profile candidates match the truth windows yet, so the blocker is no longer just comparator behavior. The remaining replay work is still milestone-driven macro cycle assembly that promotes the right top-level backbone on truncated histories, then reruns the full cutoff sweep.
+  Current status: a corrected same-package replay sweep now stably aligns at the `2021-11-11` and `2022-11-22` cutoffs. The `2013-11-30` replay still promotes a stale `2010 -> 2011 -> 2012` completed cycle, the `2015-08-19` replay still closes subordinate `2012 -> 2013 -> 2015` subcycles instead of the intended `2011 -> 2013 -> 2015` macro cycle, and the `2018-12-16` replay still promotes subordinate `2013 -> 2015`, `2015 -> 2016`, and `2016 -> 2018` cycles instead of the intended macro backbone. On-demand harness-side replay cutoff diff and profile-sweep artifacts now exist for the major BTC cutoffs. The corrected no-registry profile sweep shows a more useful split: `2015`, `2018`, and `2022` now surface non-empty canonical completed-cycle candidates for some profiles, while `2013` and `2021` still flatline. Preferring candidate-based promotion over the older series-bottom fallback in the series-backed historical surface did not move that replay sweep, which narrows the remaining blocker further: the next fix belongs in truncated-history candidate generation and family collapse, not in the fallback promotion order.
 - [ ] Confirm historical chart and live chart are both drawn from the same structure object.
 - [ ] Run full verification and record the final build log.
 

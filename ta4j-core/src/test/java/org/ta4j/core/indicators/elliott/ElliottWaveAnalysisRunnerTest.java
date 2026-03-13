@@ -1128,6 +1128,49 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void historicalStructureAssessmentSeriesPrefersCandidateBasedMacroCyclesBeforeLegFallback() {
+        BarSeries series = buildHistoricalPromotionSeries();
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        ElliottWaveAnalysisRunner.CanonicalStructurePath path = new ElliottWaveAnalysisRunner.CanonicalStructurePath(
+                List.of(new ElliottWaveAnalysisRunner.CanonicalLegCandidate("support-bear-1", 0, 4, false, 0.82,
+                        historicalAnchoredSelection(factory, "support-bear-1", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.82)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-1", 4, 10, true, 0.89,
+                                historicalAnchoredSelection(factory, "bull-1", ElliottPhase.WAVE5, true, true, 0.89)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-1", 10, 15, false, 0.87,
+                                historicalAnchoredSelection(factory, "bear-1", ElliottPhase.CORRECTIVE_C, false, true,
+                                        0.87)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("support-bull-1", 15, 20, true, 0.84,
+                                historicalAnchoredSelection(factory, "support-bull-1", ElliottPhase.WAVE5, true, true,
+                                        0.84)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-2", 15, 25, true, 0.90,
+                                historicalAnchoredSelection(factory, "bull-2", ElliottPhase.WAVE5, true, true, 0.90)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-2", 25, 32, false, 0.88,
+                                historicalAnchoredSelection(factory, "bear-2", ElliottPhase.CORRECTIVE_C, false, true,
+                                        0.88)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("support-bull-2", 32, 37, true, 0.85,
+                                historicalAnchoredSelection(factory, "support-bull-2", ElliottPhase.WAVE5, true, true,
+                                        0.85))),
+                5.05);
+
+        ElliottWaveAnalysisResult.HistoricalStructureAssessment structure = analysis
+                .historicalStructureAssessment(series, path);
+
+        assertThat(structure.cycles()).hasSize(2);
+        assertThat(structure.cycles()
+                .stream()
+                .map(cycle -> cycle.bullishLeg().scenario().id() + "->" + cycle.bearishLeg().scenario().id()))
+                .containsExactly("bull-1->bear-1", "bull-2->bear-2");
+    }
+
+    @Test
     void historicalStructureAssessmentKeepsAllCyclesWhenNoClearSpanBreakExists() {
         NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
         ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
@@ -1897,6 +1940,25 @@ class ElliottWaveAnalysisRunnerTest {
                     .openPrice(close)
                     .highPrice(close)
                     .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1_000)
+                    .add();
+        }
+        return series;
+    }
+
+    private BarSeries buildHistoricalPromotionSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("HistoricalPromotion").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2020-01-01T00:00:00Z");
+        for (int index = 0; index < 40; index++) {
+            double close = 100 + index;
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(close)
+                    .highPrice(close + 10)
+                    .lowPrice(close - 10)
                     .closePrice(close)
                     .volume(1_000)
                     .add();

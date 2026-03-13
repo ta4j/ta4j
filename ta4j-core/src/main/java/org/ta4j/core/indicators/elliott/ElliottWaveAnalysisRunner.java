@@ -822,13 +822,18 @@ public final class ElliottWaveAnalysisRunner {
                 .stream()
                 .map(this::historicalLegAssessment)
                 .toList();
-        final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> promotedCycles = promoteHistoricalMacroCyclesFromLegs(
-                series, legs);
+        final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> promotedCycles = promoteHistoricalMacroCycles(
+                path.legs());
         if (!promotedCycles.isEmpty()) {
             return new ElliottWaveAnalysisResult.HistoricalStructureAssessment(legs, promotedCycles);
         }
         if (!path.legs().isEmpty() && path.legs().getLast().bullish()) {
             return new ElliottWaveAnalysisResult.HistoricalStructureAssessment(legs, List.of());
+        }
+        final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> fallbackCycles = promoteHistoricalMacroCyclesFromLegs(
+                series, legs);
+        if (!fallbackCycles.isEmpty()) {
+            return new ElliottWaveAnalysisResult.HistoricalStructureAssessment(legs, fallbackCycles);
         }
         return historicalStructureAssessment(path);
     }
