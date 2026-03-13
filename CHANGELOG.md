@@ -9,7 +9,7 @@
 - **Shared scoring/weighting primitives for library extensions**: Added `NamedScoreFunction<I, S>` and `WeightedValue<T>` so indicator, confidence, and walk-forward components can reuse the same scoring and weighted-aggregation contracts.
 - **Live Elliott preset demo support**: `ElliottWavePresetDemo` now accepts live tickers (for example `BTC-USD`, `ETH-USD`, `SPY`) so you can run the same EW workflow on non-ossified daily data.
 
-### Changed
+### Changed (Trading Record and Execution Flow)
 - **Elliott APIs and demos now follow runner-centric naming and defaults**: The project has moved from legacy analyzer naming to `ElliottWaveAnalysisRunner`, examples are organized under `analysis.elliottwave.{demo,backtest,support}`, and demo defaults now emphasize auto-degree selection with multi-degree context.
 - **HighRewardElliottWaveStrategy momentum confirmation now uses MACD-V**: The strategy now uses `VolatilityNormalizedMACDIndicator` and drops redundant exit-rule guarding to keep rule flow cleaner.
 - **Release automation now favors safer incremental bumps**: `release-scheduler.yml` and `semver-rules-override.txt` now drive explicit go/no-go decisions with `patch|minor` outputs only, normalize noisy AI bump values (for example ` MAJOR ` or ` minor `), and keep major bumps disabled so automated releases stay predictable for library consumers and maintainers (`#1477`).
@@ -22,6 +22,16 @@
 - **Enter-and-hold wrappers now keep return format metadata intact**: `EnterAndHoldCriterion` now forwards `getReturnRepresentation()` from its wrapped criterion, so downstream consumers can reliably detect whether outputs are decimal, percentage, multiplicative, or log without special casing wrapper criteria.
 - **Elliott analysis hardening**: Enforced bounded `ElliottDegree.RecommendedHistory` ranges, hardened ossified resource loading for classpath edge cases, and simplified redundant trend-bias null guarding in EW analysis reporting.
 - **Walk-forward fold metadata stability**: Fixed fold-value reporting so criterion maps and fold views remain stable and deterministic when consumers rely on fold order for downstream comparisons.
+
+### Breaking
+- **Trade and record handling now has one obvious happy path**: Build fill-aware trades with `Trade.fromFill(...)` or `Trade.fromFills(...)`, then pass them to `TradingRecord#operate(...)`. The older live-only wrappers (`ExecutionFill`, `LiveTrade`, `LiveTradingRecord`, and `PositionLedger`) are still available in 0.22.x as deprecated migration shims, but they are no longer the API you should reach for first.
+- **Open-position APIs now use `Position` end to end**: `TradingRecord#getOpenPositions()` returns open `Position` snapshots, `getCurrentPosition()` remains the canonical net-open view, and `getNetOpenPosition()` is now just a compatibility alias. The separate `OpenPosition` type is gone.
+- **Lot bookkeeping is finally internal again**: `PositionBook` and `PositionLot` now stay inside `BaseTradingRecord`, while FIFO, LIFO, average-cost, and specific-id matching keep the same external behavior.
+
+### Changed (Backtest Execution Models and Custom Records)
+- **Partial-fill recording is cleaner and more explicit**: Use `Trade.fromFill(...)` when fills arrive one at a time, or `Trade.fromFills(...)` when you already have the batch for one logical order. Missing timestamps still fall back deterministically, but single-fill helpers now require an explicit `ExecutionSide` instead of guessing direction inside the record.
+- **Bring your own trading record in backtests**: `BarSeriesManager` can now run directly against a caller-provided `TradingRecord` (`run(strategy, tradingRecord[, amount, start, end])`) and can also be configured with a default `TradingRecordFactory`, so you can keep standard `BaseTradingRecord` runs or wire custom record implementations without changing existing `run(...)` calls.
+- **Stop-limit/live parity hardening**: `StopLimitExecutionModel` now expires stale pending orders before accepting new signals (so old orders cannot block fresh ones), commits partial expiry fills on unified `BaseTradingRecord` exit flows for better real-world fill progression, and keeps rejection metadata for the unfilled remainder.
 
 ## 0.22.3 (2026-03-01)
 
