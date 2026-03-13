@@ -213,8 +213,8 @@ class TradingRecordParityTest {
             assertTradeEqual(expectedPosition.getExit(), actualPosition.getExit());
         }
 
-        OpenPosition expectedNet = expected.netOpenPosition();
-        OpenPosition actualNet = actual.netOpenPosition();
+        Position expectedNet = expected.netOpenPosition();
+        Position actualNet = actual.netOpenPosition();
         if (expectedNet == null || actualNet == null) {
             assertEquals(expectedNet, actualNet);
             return;

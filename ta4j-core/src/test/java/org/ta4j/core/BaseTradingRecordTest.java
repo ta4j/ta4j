@@ -69,7 +69,7 @@ class BaseTradingRecordTest {
         assertEquals(numFactory.two(), closed.getEntry().getAmount());
         assertEquals(numFactory.numOf(120), closed.getExit().getPricePerAsset());
 
-        OpenPosition net = record.getNetOpenPosition();
+        Position net = record.getNetOpenPosition();
         assertNotNull(net);
         assertEquals(numFactory.one(), net.amount());
         assertEquals(numFactory.numOf(110), net.averageEntryPrice());
@@ -82,7 +82,7 @@ class BaseTradingRecordTest {
 
         record.recordFill(fill(ExecutionSide.SELL, numFactory.hundred(), numFactory.two()));
 
-        OpenPosition net = record.getNetOpenPosition();
+        Position net = record.getNetOpenPosition();
         assertNotNull(net);
         assertEquals(ExecutionSide.SELL, net.side());
         assertEquals(numFactory.two(), net.amount());
@@ -129,7 +129,7 @@ class BaseTradingRecordTest {
         assertEquals(2, record.getTrades().size());
         assertEquals(4, record.getTrades().get(0).getIndex());
         assertEquals(5, record.getTrades().get(1).getIndex());
-        OpenPosition net = record.getNetOpenPosition();
+        Position net = record.getNetOpenPosition();
         assertNotNull(net);
         assertEquals(numFactory.three(), net.amount());
         assertEquals(numFactory.numOf(302).dividedBy(numFactory.three()), net.averageEntryPrice());
@@ -273,7 +273,7 @@ class BaseTradingRecordTest {
         assertEquals(numFactory.numOf(105), closed.getEntry().getPricePerAsset());
         assertEquals(numFactory.one(), closed.getEntry().getAmount());
 
-        OpenPosition net = record.getNetOpenPosition();
+        Position net = record.getNetOpenPosition();
         assertNotNull(net);
         assertEquals(numFactory.three(), net.amount());
         assertEquals(numFactory.numOf(105), net.averageEntryPrice());
@@ -324,7 +324,7 @@ class BaseTradingRecordTest {
 
         record.recordFill(fillWithIds(ExecutionSide.BUY, numFactory.hundred(), numFactory.one(), "order-1", "corr-1"));
 
-        assertThrows(IllegalStateException.class, () -> record
+        assertThrows(IllegalArgumentException.class, () -> record
                 .recordFill(fillWithIds(ExecutionSide.SELL, numFactory.numOf(120), numFactory.two(), null, "corr-1")));
     }
 
@@ -342,7 +342,7 @@ class BaseTradingRecordTest {
         assertEquals(numFactory.one(), closed.getEntry().getAmount());
         assertEquals(numFactory.hundred(), closed.getEntry().getPricePerAsset());
 
-        OpenPosition net = record.getNetOpenPosition();
+        Position net = record.getNetOpenPosition();
         assertNotNull(net);
         assertEquals(numFactory.two(), net.amount());
         assertEquals(numFactory.hundred(), net.averageEntryPrice());
@@ -355,7 +355,7 @@ class BaseTradingRecordTest {
 
         record.recordFill(fill(ExecutionSide.BUY, numFactory.hundred(), numFactory.one()));
 
-        assertThrows(IllegalStateException.class,
+        assertThrows(IllegalArgumentException.class,
                 () -> record.recordFill(fill(ExecutionSide.SELL, numFactory.numOf(120), numFactory.two())));
     }
 
@@ -364,22 +364,22 @@ class BaseTradingRecordTest {
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
         record.recordFill(fill(ExecutionSide.BUY, numFactory.hundred(), numFactory.one()));
-        var openPositions = record.getOpenPositions();
+        List<Position> openPositions = record.getOpenPositions();
         assertThrows(UnsupportedOperationException.class, () -> openPositions.add(null));
-        assertThrows(UnsupportedOperationException.class, () -> openPositions.getFirst().lots().add(null));
     }
 
     @Test
-    void openPositionsExposeSnapshotLots() {
+    void openPositionsExposeSnapshotPositions() {
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
         record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
                 numFactory.one(), numFactory.zero(), ExecutionSide.BUY, null, null));
 
-        OpenPosition first = record.getOpenPositions().getFirst();
-        OpenPosition second = record.getOpenPositions().getFirst();
+        Position first = record.getOpenPositions().getFirst();
+        Position second = record.getOpenPositions().getFirst();
 
-        assertTrue(first.lots().getFirst() != second.lots().getFirst());
+        assertNotSame(first, second);
+        assertNotSame(first.getEntry(), second.getEntry());
     }
 
     @Test
@@ -412,7 +412,7 @@ class BaseTradingRecordTest {
         record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
                 numFactory.one(), numFactory.numOf(0.2), ExecutionSide.BUY, null, null));
 
-        OpenPosition net = record.getNetOpenPosition();
+        Position net = record.getNetOpenPosition();
         assertNotNull(net);
         assertEquals(numFactory.numOf(0.3), net.totalFees());
     }
@@ -777,13 +777,13 @@ class BaseTradingRecordTest {
             assertEquals(numFactory.one(), closed.getFirst().getEntry().getAmount());
             assertEquals(numFactory.numOf(0.05), closed.getFirst().getEntry().getCost());
 
-            List<OpenPosition> openPositions = rehydrated.getOpenPositions();
+            List<Position> openPositions = rehydrated.getOpenPositions();
             assertEquals(2, openPositions.size());
-            assertEquals("order-1", openPositions.getFirst().lots().getFirst().orderId());
-            assertEquals("corr-1", openPositions.getFirst().lots().getFirst().correlationId());
-            assertEquals(numFactory.numOf(0.05), openPositions.getFirst().lots().getFirst().fee());
-            assertEquals("order-2", openPositions.get(1).lots().getFirst().orderId());
-            assertEquals("corr-2", openPositions.get(1).lots().getFirst().correlationId());
+            assertEquals("order-1", openPositions.getFirst().getEntry().getOrderId());
+            assertEquals("corr-1", openPositions.getFirst().getEntry().getCorrelationId());
+            assertEquals(numFactory.numOf(0.05), openPositions.getFirst().getEntry().getCost());
+            assertEquals("order-2", openPositions.get(1).getEntry().getOrderId());
+            assertEquals("corr-2", openPositions.get(1).getEntry().getCorrelationId());
 
             rehydrated.recordFill(fill(ExecutionSide.SELL, numFactory.numOf(120), numFactory.one()));
             assertEquals(2, rehydrated.getPositions().size());
@@ -826,18 +826,18 @@ class BaseTradingRecordTest {
 
     @Test
     void toStringSupportsDecimalNumValues() {
-        var decimalFactory = DecimalNumFactory.getInstance();
+        NumFactory decimalFactory = DecimalNumFactory.getInstance();
         BaseTradingRecord record = new BaseTradingRecord();
         record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), decimalFactory.hundred(),
                 decimalFactory.one(), decimalFactory.zero(), ExecutionSide.BUY, "order-1", "corr-1"));
 
         String recordJson = record.toString();
         String openPositionJson = record.getNetOpenPosition().toString();
-        String lotJson = record.getOpenPositions().getFirst().lots().getFirst().toString();
+        String openEntryJson = record.getOpenPositions().getFirst().getEntry().toString();
 
         assertTrue(recordJson.contains("\"tradeCount\":1"));
         assertTrue(openPositionJson.contains("\"side\":\"BUY\""));
-        assertTrue(lotJson.contains("\"entryIndex\":0"));
+        assertTrue(openEntryJson.contains("\"index\":0"));
     }
 
     private BaseTrade fill(ExecutionSide side, Num price, Num amount) {

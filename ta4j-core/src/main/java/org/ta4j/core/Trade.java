@@ -8,6 +8,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Objects;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
@@ -29,8 +30,8 @@ import org.ta4j.core.num.Num;
  * </p>
  *
  * <p>
- * Use {@link BaseTrade} as the default implementation for both simulation and
- * live-recorded fills.
+ * Use the static factory methods on {@link Trade} for new code. The concrete
+ * implementation type is an internal detail.
  * </p>
  *
  * @since 0.22.2
@@ -214,6 +215,71 @@ public interface Trade extends Serializable {
         ExecutionSide side = trade.getType() == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
         return List.of(new TradeFill(trade.getIndex(), trade.getTime(), trade.getPricePerAsset(), trade.getAmount(),
                 trade.getCost(), side, trade.getOrderId(), trade.getCorrelationId()));
+    }
+
+    /**
+     * Creates a trade from one execution fill using recorded-fee semantics.
+     *
+     * <p>
+     * The fill must expose {@link TradeFill#side()} so the trade direction is
+     * explicit at construction time.
+     * </p>
+     *
+     * @param fill execution fill
+     * @return a trade representing the provided fill
+     * @throws IllegalArgumentException when {@code fill.side()} is missing
+     * @since 0.22.4
+     */
+    static Trade fromFill(TradeFill fill) {
+        return fromFill(fill, RecordedTradeCostModel.INSTANCE);
+    }
+
+    /**
+     * Creates a trade from one execution fill using an explicit cost model.
+     *
+     * <p>
+     * The fill must expose {@link TradeFill#side()} so the trade direction is
+     * explicit at construction time.
+     * </p>
+     *
+     * @param fill                 execution fill
+     * @param transactionCostModel transaction cost model
+     * @return a trade representing the provided fill
+     * @throws IllegalArgumentException when {@code fill.side()} is missing
+     * @since 0.22.4
+     */
+    static Trade fromFill(TradeFill fill, CostModel transactionCostModel) {
+        Objects.requireNonNull(fill, "fill");
+        if (fill.side() == null) {
+            throw new IllegalArgumentException("fill.side must be set when trade type is not provided");
+        }
+        return fromFill(fill.side().toTradeType(), fill, transactionCostModel);
+    }
+
+    /**
+     * Creates a trade from one execution fill using recorded-fee semantics.
+     *
+     * @param type trade type
+     * @param fill execution fill
+     * @return a trade representing the provided fill
+     * @since 0.22.4
+     */
+    static Trade fromFill(TradeType type, TradeFill fill) {
+        return fromFill(type, fill, RecordedTradeCostModel.INSTANCE);
+    }
+
+    /**
+     * Creates a trade from one execution fill.
+     *
+     * @param type                 trade type
+     * @param fill                 execution fill
+     * @param transactionCostModel transaction cost model
+     * @return a trade representing the provided fill
+     * @since 0.22.4
+     */
+    static Trade fromFill(TradeType type, TradeFill fill, CostModel transactionCostModel) {
+        Objects.requireNonNull(fill, "fill");
+        return fromFills(type, List.of(fill), transactionCostModel);
     }
 
     /**

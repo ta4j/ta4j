@@ -324,9 +324,9 @@ public interface AnalysisCriterion {
 
     private static List<Position> openPositionsForMarkToMarket(TradingRecord source, int windowEndIndex,
             CostModel transactionCostModel, CostModel holdingCostModel) {
-        List<OpenPosition> openPositions = source.getOpenPositions();
+        List<Position> openPositions = source.getOpenPositions();
         if (!openPositions.isEmpty()) {
-            return openPositionsFromLots(openPositions, windowEndIndex, transactionCostModel, holdingCostModel);
+            return openPositionsWithinWindow(openPositions, windowEndIndex);
         }
         Position currentPosition = source.getCurrentPosition();
         if (currentPosition == null || !currentPosition.isOpened()) {
@@ -335,25 +335,16 @@ public interface AnalysisCriterion {
         return List.of(currentPosition);
     }
 
-    private static List<Position> openPositionsFromLots(List<OpenPosition> openPositions, int windowEndIndex,
-            CostModel transactionCostModel, CostModel holdingCostModel) {
+    private static List<Position> openPositionsWithinWindow(List<Position> openPositions, int windowEndIndex) {
         List<Position> positions = new ArrayList<>();
-        for (OpenPosition openPosition : openPositions) {
-            for (PositionLot lot : openPosition.lots()) {
-                if (lot.entryIndex() > windowEndIndex) {
-                    continue;
-                }
-                TradeFill entryFill = new TradeFill(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
-                        lot.fee(), lot.side(), lot.orderId(), lot.correlationId());
-                Trade entryTrade;
-                if (entryFill.price().isNaN()) {
-                    entryTrade = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
-                            lot.fee(), lot.side(), lot.orderId(), lot.correlationId());
-                } else {
-                    entryTrade = Trade.fromFills(lot.side().toTradeType(), List.of(entryFill), transactionCostModel);
-                }
-                positions.add(new Position(entryTrade, transactionCostModel, holdingCostModel));
+        for (Position openPosition : openPositions) {
+            if (openPosition == null || !openPosition.isOpened()) {
+                continue;
             }
+            if (openPosition.getEntry().getIndex() > windowEndIndex) {
+                continue;
+            }
+            positions.add(openPosition);
         }
         return positions;
     }

@@ -8,8 +8,10 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import java.io.IOException;
+import java.io.InvalidObjectException;
 import java.io.ObjectInputStream;
 import java.io.Serial;
+import java.io.Serializable;
 import java.time.Instant;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -33,9 +35,8 @@ import org.ta4j.core.num.NumFactory;
  *
  * <p>
  * This class combines classic index/price/amount operations with fill-aware
- * APIs ({@link #recordFill(Trade)} and
- * {@link #recordExecutionFill(TradeFill)}), so a single record type can model
- * both simulated and live execution behavior.
+ * {@link #operate(Trade)} support, so a single record type can model both
+ * simulated and live execution behavior.
  * </p>
  *
  * @since 0.22.2
@@ -222,51 +223,50 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     /**
-     * Records a fill using an auto-incremented index.
+     * Records one trade using an auto-incremented index.
      *
-     * @param trade fill trade
+     * <p>
+     * Use {@link #operate(Trade)} in new code.
+     * </p>
+     *
+     * @param trade trade to record
      * @since 0.22.4
      */
+    @Deprecated(since = "0.22.4", forRemoval = true)
     public void recordFill(Trade trade) {
-        applyTradeInternal(nextIndex(), trade, -1L);
+        operate(tradeWithAssignedIndex(trade, nextIndex()));
     }
 
     /**
-     * Records a fill using an explicit index.
+     * Records one trade using an explicit index.
+     *
+     * <p>
+     * Use {@link #operate(Trade)} in new code.
+     * </p>
      *
      * @param index trade index
-     * @param trade fill trade
+     * @param trade trade to record
      * @since 0.22.4
      */
+    @Deprecated(since = "0.22.4", forRemoval = true)
     public void recordFill(int index, Trade trade) {
-        applyTradeInternal(index, trade, -1L);
+        operate(tradeWithAssignedIndex(trade, index));
     }
 
     /**
      * Records one execution fill.
      *
      * <p>
-     * If {@link TradeFill#index()} is non-negative, that index is used; otherwise
-     * this record auto-assigns the next index.
+     * Use {@link Trade#fromFill(TradeFill)} plus {@link #operate(Trade)} in new
+     * code.
      * </p>
      *
      * @param fill execution fill
      * @since 0.22.4
      */
+    @Deprecated(since = "0.22.4", forRemoval = true)
     public void recordExecutionFill(TradeFill fill) {
-        Objects.requireNonNull(fill, "fill");
-        int index = fill.index();
-        ExecutionSide side = resolveExecutionSide(fill.side());
-        Instant time = resolveExecutionTime(fill.time(), null);
-        Num normalizedAmount = normalizeRecordedAmount(fill.amount(), fill.price());
-        Num normalizedFee = normalizeFee(fill.fee(), fill.price());
-        BaseTrade trade = new BaseTrade(index >= 0 ? index : 0, time, fill.price(), normalizedAmount, normalizedFee,
-                side, fill.orderId(), fill.correlationId());
-        if (index >= 0) {
-            recordFill(index, trade);
-        } else {
-            recordFill(trade);
-        }
+        operate(Trade.fromFill(fill));
     }
 
     @Override
@@ -289,7 +289,7 @@ public class BaseTradingRecord implements TradingRecord {
     public void operate(int index, Num price, Num amount) {
         lock.writeLock().lock();
         try {
-            TradeType tradeType = positionBook.openLots().isEmpty() ? startingType : startingType.complementType();
+            TradeType tradeType = positionBook.hasOpenLots() ? startingType.complementType() : startingType;
             applySyntheticInternal(index, tradeType, price, amount, transactionCostModel);
         } finally {
             lock.writeLock().unlock();
@@ -300,7 +300,7 @@ public class BaseTradingRecord implements TradingRecord {
     public boolean enter(int index, Num price, Num amount) {
         lock.writeLock().lock();
         try {
-            if (!positionBook.openLots().isEmpty()) {
+            if (positionBook.hasOpenLots()) {
                 return false;
             }
             applySyntheticInternal(index, startingType, price, amount, transactionCostModel);
@@ -314,7 +314,7 @@ public class BaseTradingRecord implements TradingRecord {
     public boolean exit(int index, Num price, Num amount) {
         lock.writeLock().lock();
         try {
-            if (positionBook.openLots().isEmpty()) {
+            if (!positionBook.hasOpenLots()) {
                 return false;
             }
             applySyntheticInternal(index, startingType.complementType(), price, amount, transactionCostModel);
@@ -370,13 +370,13 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     /**
-     * Returns open positions as lots.
+     * Returns open positions.
      *
      * @return open positions
      * @since 0.22.4
      */
     @Override
-    public List<OpenPosition> getOpenPositions() {
+    public List<Position> getOpenPositions() {
         return openPositionsSnapshot();
     }
 
@@ -387,7 +387,8 @@ public class BaseTradingRecord implements TradingRecord {
      * @since 0.22.4
      */
     @Override
-    public OpenPosition getNetOpenPosition() {
+    @Deprecated(since = "0.22.4")
+    public Position getNetOpenPosition() {
         return netOpenPositionSnapshot();
     }
 
@@ -425,7 +426,7 @@ public class BaseTradingRecord implements TradingRecord {
         TradeType tradeType = trade.getType();
         ExecutionSide tradeSide = sideOf(tradeType);
         ExecutionSide openSide = currentOpenSide();
-        OpenPosition netOpenPosition = positionBook.netOpenPosition();
+        Position netOpenPosition = positionBook.netOpenPosition();
         int plannedNextIndex = nextTradeIndex;
         Num totalAmount = fills.getFirst().price().getNumFactory().zero();
         List<PlannedTradeFill> plannedTradeFills = new ArrayList<>(fills.size());
@@ -437,9 +438,9 @@ public class BaseTradingRecord implements TradingRecord {
             totalAmount = totalAmount.plus(plannedTradeFill.trade().getAmount());
         }
         if (openSide != null && tradeSide != openSide && netOpenPosition != null
-                && totalAmount.isGreaterThan(netOpenPosition.amount())) {
-            throw new IllegalArgumentException(
-                    "Exit amount " + totalAmount + " exceeds open position amount " + netOpenPosition.amount());
+                && totalAmount.isGreaterThan(netOpenPosition.getEntry().getAmount())) {
+            throw new IllegalArgumentException("Exit amount " + totalAmount + " exceeds open position amount "
+                    + netOpenPosition.getEntry().getAmount());
         }
         return List.copyOf(plannedTradeFills);
     }
@@ -459,6 +460,30 @@ public class BaseTradingRecord implements TradingRecord {
                 tradeSide, orderId, correlationId);
         validateFill(baseTrade);
         return new PlannedTradeFill(resolvedIndex, baseTrade);
+    }
+
+    private Trade tradeWithAssignedIndex(Trade trade, int index) {
+        Objects.requireNonNull(trade, "trade");
+        List<TradeFill> fills = Trade.executionFillsOf(trade);
+        if (fills.isEmpty()) {
+            throw new IllegalArgumentException("trade must expose at least one fill");
+        }
+        int firstIndex = fills.getFirst().index() >= 0 ? fills.getFirst().index() : 0;
+        List<TradeFill> indexedFills = new ArrayList<>(fills.size());
+        for (int i = 0; i < fills.size(); i++) {
+            TradeFill fill = fills.get(i);
+            int assignedIndex = fill.index() >= 0 ? index + (fill.index() - firstIndex) : index + i;
+            indexedFills.add(new TradeFill(assignedIndex, fill.time(), fill.price(), fill.amount(), fill.fee(),
+                    fill.side(), chooseValue(fill.orderId(), trade.getOrderId()),
+                    chooseValue(fill.correlationId(), trade.getCorrelationId())));
+        }
+        if (indexedFills.size() == 1) {
+            TradeFill fill = indexedFills.getFirst();
+            return new BaseTrade(fill.index(), resolveExecutionTime(fill.time(), trade.getTime()), fill.price(),
+                    fill.amount(), normalizeFee(fill.fee(), fill.price()),
+                    fill.side() == null ? sideOf(trade.getType()) : fill.side(), fill.orderId(), fill.correlationId());
+        }
+        return Trade.fromFills(trade.getType(), indexedFills, trade.getCostModel());
     }
 
     private void applyTradeInternal(int index, Trade trade, long sequence) {
@@ -510,14 +535,14 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     private ExecutionSide currentOpenSide() {
-        OpenPosition net = positionBook.netOpenPosition();
-        if (net == null) {
+        Position net = positionBook.netOpenPosition();
+        if (net == null || !net.isOpened()) {
             return null;
         }
-        return net.side();
+        return sideOf(net.getEntry().getType());
     }
 
-    private List<OpenPosition> openPositionsSnapshot() {
+    private List<Position> openPositionsSnapshot() {
         lock.readLock().lock();
         try {
             return List.copyOf(positionBook.openPositions());
@@ -526,7 +551,7 @@ public class BaseTradingRecord implements TradingRecord {
         }
     }
 
-    private OpenPosition netOpenPositionSnapshot() {
+    private Position netOpenPositionSnapshot() {
         lock.readLock().lock();
         try {
             return positionBook.netOpenPosition();
@@ -547,15 +572,11 @@ public class BaseTradingRecord implements TradingRecord {
     private Position currentPositionView() {
         lock.readLock().lock();
         try {
-            OpenPosition net = positionBook.netOpenPosition();
-            if (net == null || net.amount() == null || net.amount().isZero()) {
+            Position net = positionBook.netOpenPosition();
+            if (net == null || !net.isOpened()) {
                 return new Position(startingType, transactionCostModel, holdingCostModel);
             }
-            int entryIndex = positionBook.openLots().stream().mapToInt(PositionLot::entryIndex).min().orElse(0);
-            Instant entryTime = net.earliestEntryTime() == null ? Instant.EPOCH : net.earliestEntryTime();
-            Trade entryTrade = new BaseTrade(entryIndex, entryTime, net.averageEntryPrice(), net.amount(),
-                    net.totalFees(), net.side(), null, null);
-            return new Position(entryTrade, RecordedTradeCostModel.INSTANCE, holdingCostModel);
+            return net;
         } finally {
             lock.readLock().unlock();
         }
@@ -589,9 +610,8 @@ public class BaseTradingRecord implements TradingRecord {
             trades.add(new SequencedTrade(closed.position().getEntry(), closed.entrySequence()));
             trades.add(new SequencedTrade(closed.position().getExit(), closed.exitSequence()));
         }
-        for (PositionLot lot : positionBook.openLots()) {
-            trades.add(new SequencedTrade(new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(),
-                    lot.amount(), lot.fee(), lot.side(), lot.orderId(), lot.correlationId()), lot.entrySequence()));
+        for (SequencedTrade openEntry : positionBook.openEntryTradesWithSequence()) {
+            trades.add(openEntry);
         }
         trades.sort(Comparator.comparingInt((SequencedTrade trade) -> trade.trade().getIndex())
                 .thenComparingLong(SequencedTrade::sequence));
@@ -605,10 +625,8 @@ public class BaseTradingRecord implements TradingRecord {
             for (PositionBook.ClosedPosition closed : positionBook.closedPositionsWithSequence()) {
                 candidate = newerTrade(candidate, closed.position().getEntry(), closed.entrySequence());
             }
-            for (PositionLot lot : positionBook.openLots()) {
-                Trade entry = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
-                        lot.fee(), lot.side(), lot.orderId(), lot.correlationId());
-                candidate = newerTrade(candidate, entry, lot.entrySequence());
+            for (SequencedTrade openEntry : positionBook.openEntryTradesWithSequence()) {
+                candidate = newerTrade(candidate, openEntry.trade(), openEntry.sequence());
             }
             return candidate == null ? null : candidate.trade();
         } finally {
@@ -718,17 +736,6 @@ public class BaseTradingRecord implements TradingRecord {
         this.transactionCostModel = resolvedTransaction;
         this.holdingCostModel = resolvedHolding;
         positionBook.rehydrateCostModels(resolvedTransaction, resolvedHolding);
-    }
-
-    private ExecutionSide resolveExecutionSide(ExecutionSide side) {
-        if (side != null) {
-            return side;
-        }
-        OpenPosition net = netOpenPositionSnapshot();
-        if (net == null || net.amount() == null || net.amount().isZero()) {
-            return sideOf(startingType);
-        }
-        return net.side() == ExecutionSide.BUY ? ExecutionSide.SELL : ExecutionSide.BUY;
     }
 
     private static Instant resolveExecutionTime(Instant fillTime, Instant fallbackTime) {
@@ -853,7 +860,7 @@ public class BaseTradingRecord implements TradingRecord {
     /**
      * Internal lot-matching ledger for fill-aware trading records.
      */
-    private static final class PositionBook implements java.io.Serializable {
+    private static final class PositionBook implements Serializable {
 
         @Serial
         private static final long serialVersionUID = -6897162194206253952L;
@@ -945,25 +952,35 @@ public class BaseTradingRecord implements TradingRecord {
             return List.copyOf(closed);
         }
 
-        private List<PositionLot> openLots() {
-            return openLots.stream().map(PositionLot::snapshot).toList();
+        private boolean hasOpenLots() {
+            return !openLots.isEmpty();
+        }
+
+        private List<SequencedTrade> openEntryTradesWithSequence() {
+            List<SequencedTrade> trades = new ArrayList<>(openLots.size());
+            for (PositionLot lot : openLots) {
+                Trade entry = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
+                        lot.fee(), lot.side(), lot.orderId(), lot.correlationId());
+                trades.add(new SequencedTrade(entry, lot.entrySequence()));
+            }
+            return List.copyOf(trades);
         }
 
         private List<Position> closedPositions() {
             return closedPositions.stream().map(ClosedPosition::position).toList();
         }
 
-        private List<OpenPosition> openPositions() {
-            List<OpenPosition> positions = new ArrayList<>();
+        private List<Position> openPositions() {
+            List<Position> positions = new ArrayList<>();
             for (PositionLot lot : openLots) {
-                Num totalCost = lot.entryPrice().multipliedBy(lot.amount());
-                positions.add(new OpenPosition(lot.side(), lot.amount(), lot.entryPrice(), totalCost, lot.fee(),
-                        lot.entryTime(), lot.entryTime(), List.of(lot.snapshot())));
+                Trade entry = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
+                        lot.fee(), lot.side(), lot.orderId(), lot.correlationId());
+                positions.add(new Position(entry, RecordedTradeCostModel.INSTANCE, holdingCostModel));
             }
             return positions;
         }
 
-        private OpenPosition netOpenPosition() {
+        private Position netOpenPosition() {
             if (openLots.isEmpty()) {
                 return null;
             }
@@ -971,15 +988,15 @@ public class BaseTradingRecord implements TradingRecord {
             Num totalCost = null;
             Num totalFees = null;
             Instant earliest = null;
-            Instant latest = null;
             ExecutionSide side = null;
+            int entryIndex = Integer.MAX_VALUE;
             for (PositionLot lot : openLots) {
                 Num lotCost = lot.entryPrice().multipliedBy(lot.amount());
                 totalAmount = totalAmount == null ? lot.amount() : totalAmount.plus(lot.amount());
                 totalCost = totalCost == null ? lotCost : totalCost.plus(lotCost);
                 totalFees = totalFees == null ? lot.fee() : totalFees.plus(lot.fee());
                 earliest = earliest == null || lot.entryTime().isBefore(earliest) ? lot.entryTime() : earliest;
-                latest = latest == null || lot.entryTime().isAfter(latest) ? lot.entryTime() : latest;
+                entryIndex = Math.min(entryIndex, lot.entryIndex());
                 if (side == null) {
                     side = lot.side();
                 } else if (side != lot.side()) {
@@ -987,8 +1004,10 @@ public class BaseTradingRecord implements TradingRecord {
                 }
             }
             Num average = totalAmount == null || totalAmount.isZero() ? totalCost : totalCost.dividedBy(totalAmount);
-            return new OpenPosition(side, totalAmount, average, totalCost,
-                    totalFees == null ? totalCost.getNumFactory().zero() : totalFees, earliest, latest, snapshotLots());
+            Num fee = totalFees == null ? totalCost.getNumFactory().zero() : totalFees;
+            Trade entry = new BaseTrade(entryIndex == Integer.MAX_VALUE ? 0 : entryIndex,
+                    earliest == null ? Instant.EPOCH : earliest, average, totalAmount, fee, side, null, null);
+            return new Position(entry, RecordedTradeCostModel.INSTANCE, holdingCostModel);
         }
 
         private PositionLot nextLot(Trade trade) {
@@ -1101,12 +1120,134 @@ public class BaseTradingRecord implements TradingRecord {
             }
         }
 
-        private List<PositionLot> snapshotLots() {
-            return openLots.stream().map(PositionLot::snapshot).toList();
+        private record ClosedPosition(Position position, long entrySequence,
+                long exitSequence) implements Serializable {
         }
 
-        private record ClosedPosition(Position position, long entrySequence,
-                long exitSequence) implements java.io.Serializable {
+        private static final class PositionLot implements Serializable {
+
+            @Serial
+            private static final long serialVersionUID = -2333496329345071348L;
+
+            private final int entryIndex;
+            private final long entrySequence;
+            private final Instant entryTime;
+            private final Num entryPrice;
+            private final ExecutionSide side;
+            private Num amount;
+            private Num fee;
+            private final String orderId;
+            private final String correlationId;
+
+            private PositionLot(int entryIndex, Instant entryTime, Num entryPrice, ExecutionSide side, Num amount,
+                    Num fee, String orderId, String correlationId, long entrySequence) {
+                Objects.requireNonNull(entryTime, "entryTime");
+                Objects.requireNonNull(entryPrice, "entryPrice");
+                Objects.requireNonNull(side, "side");
+                Objects.requireNonNull(amount, "amount");
+                Objects.requireNonNull(fee, "fee");
+                this.entryIndex = entryIndex;
+                this.entrySequence = entrySequence;
+                this.entryTime = entryTime;
+                this.entryPrice = entryPrice;
+                this.side = side;
+                this.amount = amount;
+                this.fee = fee;
+                this.orderId = orderId;
+                this.correlationId = correlationId;
+            }
+
+            private int entryIndex() {
+                return entryIndex;
+            }
+
+            private long entrySequence() {
+                return entrySequence;
+            }
+
+            private Instant entryTime() {
+                return entryTime;
+            }
+
+            private Num entryPrice() {
+                return entryPrice;
+            }
+
+            private ExecutionSide side() {
+                return side;
+            }
+
+            private Num amount() {
+                return amount;
+            }
+
+            private Num fee() {
+                return fee;
+            }
+
+            private String orderId() {
+                return orderId;
+            }
+
+            private String correlationId() {
+                return correlationId;
+            }
+
+            private PositionLot reduce(Num reduceAmount, Num reduceFee) {
+                amount = amount.minus(reduceAmount);
+                fee = fee.minus(reduceFee);
+                return this;
+            }
+
+            private PositionLot merge(PositionLot other) {
+                if (side != other.side) {
+                    throw new IllegalArgumentException("cannot merge lots with different sides");
+                }
+                Num totalAmount = amount.plus(other.amount);
+                Num totalCost = entryPrice.multipliedBy(amount).plus(other.entryPrice.multipliedBy(other.amount));
+                Num mergedPrice = totalCost.dividedBy(totalAmount);
+                Num mergedFee = fee.plus(other.fee);
+                int mergedIndex = Math.min(entryIndex, other.entryIndex);
+                Instant mergedTime = entryTime.isBefore(other.entryTime) ? entryTime : other.entryTime;
+                long mergedSequence = Math.min(entrySequence, other.entrySequence);
+                return new PositionLot(mergedIndex, mergedTime, mergedPrice, side, totalAmount, mergedFee, null, null,
+                        mergedSequence);
+            }
+
+            @Serial
+            private Object readResolve() throws InvalidObjectException {
+                if (side == null) {
+                    throw new InvalidObjectException("PositionLot.side is required");
+                }
+                if (entryTime == null) {
+                    throw new InvalidObjectException("PositionLot.entryTime is required");
+                }
+                if (entryPrice == null) {
+                    throw new InvalidObjectException("PositionLot.entryPrice is required");
+                }
+                if (amount == null) {
+                    throw new InvalidObjectException("PositionLot.amount is required");
+                }
+                if (fee == null) {
+                    throw new InvalidObjectException("PositionLot.fee is required");
+                }
+                return this;
+            }
+
+            @Override
+            public String toString() {
+                JsonObject json = new JsonObject();
+                json.addProperty("entryIndex", entryIndex);
+                json.addProperty("entrySequence", entrySequence);
+                json.addProperty("entryTime", entryTime.toString());
+                json.addProperty("entryPrice", entryPrice.toString());
+                json.addProperty("side", side.name());
+                json.addProperty("amount", amount.toString());
+                json.addProperty("fee", fee.toString());
+                json.addProperty("orderId", orderId);
+                json.addProperty("correlationId", correlationId);
+                return GSON.toJson(json);
+            }
         }
 
         @Override
@@ -1155,7 +1296,7 @@ public class BaseTradingRecord implements TradingRecord {
     }
 
     static record DebugSnapshot(TradeType startingType, List<Trade> trades, List<Position> closedPositions,
-            Position currentPosition, List<OpenPosition> openPositions, OpenPosition netOpenPosition, Num totalFees) {
+            Position currentPosition, List<Position> openPositions, Position netOpenPosition, Num totalFees) {
 
         DebugSnapshot {
             Objects.requireNonNull(startingType, "startingType");

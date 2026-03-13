@@ -74,7 +74,10 @@ public class LiveTradingRecord extends BaseTradingRecord implements PositionLedg
      * @since 0.22.2
      */
     public void recordFill(LiveTrade trade) {
-        super.recordFill(trade);
+        Objects.requireNonNull(trade, "trade");
+        TradeFill fill = new TradeFill(-1, trade.time(), trade.price(), trade.amount(), trade.fee(), trade.side(),
+                trade.orderId(), trade.correlationId());
+        super.operate(Trade.fromFill(fill));
     }
 
     /**
@@ -85,7 +88,10 @@ public class LiveTradingRecord extends BaseTradingRecord implements PositionLedg
      * @since 0.22.2
      */
     public void recordFill(int index, LiveTrade trade) {
-        super.recordFill(index, trade);
+        Objects.requireNonNull(trade, "trade");
+        TradeFill fill = new TradeFill(index, trade.time(), trade.price(), trade.amount(), trade.fee(), trade.side(),
+                trade.orderId(), trade.correlationId());
+        super.operate(Trade.fromFill(fill));
     }
 
     /**
@@ -96,22 +102,11 @@ public class LiveTradingRecord extends BaseTradingRecord implements PositionLedg
      */
     public void recordExecutionFill(ExecutionFill fill) {
         Objects.requireNonNull(fill, "fill");
-        int index = fill.index();
-        LiveTrade trade;
-        if (fill instanceof LiveTrade liveTrade) {
-            trade = liveTrade;
-        } else {
-            ExecutionSide side = resolveExecutionSide(fill.side());
-            Instant time = fill.time() == null ? Instant.EPOCH : fill.time();
-            Num fee = fill.fee();
-            trade = new LiveTrade(index >= 0 ? index : 0, time, fill.price(), fill.amount(), fee, side, fill.orderId(),
-                    fill.correlationId());
-        }
-        if (index >= 0) {
-            recordFill(index, trade);
-        } else {
-            recordFill(trade);
-        }
+        ExecutionSide side = resolveExecutionSide(fill.side());
+        Instant time = fill.time() == null ? Instant.EPOCH : fill.time();
+        TradeFill tradeFill = new TradeFill(fill.index(), time, fill.price(), fill.amount(), fill.fee(), side,
+                fill.orderId(), fill.correlationId());
+        super.operate(Trade.fromFill(tradeFill));
     }
 
     /**
@@ -153,11 +148,11 @@ public class LiveTradingRecord extends BaseTradingRecord implements PositionLedg
         if (side != null) {
             return side;
         }
-        OpenPosition netOpenPosition = getNetOpenPosition();
-        if (netOpenPosition == null || netOpenPosition.amount() == null || netOpenPosition.amount().isZero()) {
+        Position currentPosition = getCurrentPosition();
+        if (currentPosition == null || !currentPosition.isOpened() || currentPosition.getEntry() == null) {
             return getStartingType() == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
         }
-        return netOpenPosition.side() == ExecutionSide.BUY ? ExecutionSide.SELL : ExecutionSide.BUY;
+        return currentPosition.getEntry().isBuy() ? ExecutionSide.SELL : ExecutionSide.BUY;
     }
 
     private static void warnDeprecated() {

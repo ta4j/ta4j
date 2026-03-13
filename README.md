@@ -663,8 +663,9 @@ while (true) {
 
 ### Migration note: Trade and TradingRecord surfaces
 
-Treat `Trade` and `TradingRecord` as the primary APIs. `BaseTrade` and `BaseTradingRecord` provide the unified
-implementation for both backtests and live execution recording.
+Treat `Trade` and `TradingRecord` as the primary APIs. Build execution-aware trades with
+`Trade.fromFill(...)` or `Trade.fromFills(...)`, then feed them through `TradingRecord.operate(...)`.
+`BaseTrade` and `BaseTradingRecord` remain the shared implementation behind those contracts.
 
 ```java
 TradingRecord defaultBacktest = new BarSeriesManager(series).run(strategy);
@@ -677,24 +678,28 @@ TradingRecord parityBacktest = new BarSeriesManager(series).run(
 
 ## Recording live executions
 
-When you route orders to an exchange, record the fills in a `BaseTradingRecord`. It tracks partial fills, multiple open
-lots, and recorded fees so analytics can include open exposure.
+When you route orders to an exchange, build `Trade` objects from your fills and pass them to
+`TradingRecord.operate(...)`. `BaseTradingRecord` still tracks partial fills, multiple open lots, and recorded fees so
+analytics can include open exposure.
 
 ```java
+import java.util.List;
 import java.time.Instant;
 
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
-import org.ta4j.core.BaseTrade;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Trade;
 import org.ta4j.core.TradeFill;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.num.Num;
 
-BaseTradingRecord record = new BaseTradingRecord(
+TradingRecord record = new BaseTradingRecord(
         TradeType.BUY,
         ExecutionMatchPolicy.FIFO,
         new ZeroCostModel(),
@@ -702,27 +707,32 @@ BaseTradingRecord record = new BaseTradingRecord(
         null,
         null);
 
-record.recordFill(new BaseTrade(
-        barIndex,
+TradeFill firstFill = new TradeFill(
+        -1,
         Instant.now(),
         price,
         amount,
         fee,
         ExecutionSide.BUY,
         orderId,
-        correlationId));
+        correlationId);
+record.operate(Trade.fromFill(firstFill));
 
-// Or map exchange DTOs directly into TradeFill and record them.
-TradeFill exchangeFill = mapExchangeFill();
-record.recordExecutionFill(exchangeFill);
+// If the exchange already gives you the partial fills for one logical order,
+// keep them together and record them in one call.
+List<TradeFill> exchangeFills = List.of(
+        mapExchangeFill(partialOne),
+        mapExchangeFill(partialTwo));
+record.operate(Trade.fromFills(TradeType.BUY, exchangeFills));
 
 CashFlow equity = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET,
         OpenPositionHandling.MARK_TO_MARKET);
-var latest = equity.getValue(series.getEndIndex());
+Num latest = equity.getValue(series.getEndIndex());
 ```
 
 Notes:
 - `ExecutionMatchPolicy.SPECIFIC_ID` matches exits to the lot with a matching `correlationId` or `orderId`.
+- Single fills need an explicit `ExecutionSide` so `Trade.fromFill(...)` can create the right trade direction.
 - After deserializing a `BaseTradingRecord`, call `rehydrate(holdingCostModel)` to restore transient cost models.
 
 ## Streaming trade ingestion (gap handling)

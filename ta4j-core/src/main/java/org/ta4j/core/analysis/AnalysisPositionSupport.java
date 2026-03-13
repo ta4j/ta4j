@@ -56,9 +56,9 @@ final class AnalysisPositionSupport {
     }
 
     static List<Position> openPositions(TradingRecord record, int finalIndex) {
-        List<OpenPosition> openPositions = record.getOpenPositions();
+        List<Position> openPositions = record.getOpenPositions();
         if (!openPositions.isEmpty()) {
-            return openPositionsFromLots(record, openPositions, finalIndex);
+            return openPositionsWithinRange(openPositions, finalIndex);
         }
         List<Position> positions = new ArrayList<>();
         Position current = record.getCurrentPosition();
@@ -69,33 +69,17 @@ final class AnalysisPositionSupport {
         return positions;
     }
 
-    private static List<Position> openPositionsFromLots(TradingRecord record, List<OpenPosition> openPositions,
-            int finalIndex) {
+    private static List<Position> openPositionsWithinRange(List<Position> openPositions, int finalIndex) {
         List<Position> positions = new ArrayList<>();
-        CostModel transactionCostModel = defaultCostModel(record.getTransactionCostModel());
-        CostModel holdingCostModel = defaultCostModel(record.getHoldingCostModel());
-        for (OpenPosition openPosition : openPositions) {
-            for (PositionLot lot : openPosition.lots()) {
-                if (lot.entryIndex() > finalIndex) {
-                    continue;
-                }
-                TradeFill entryFill = new TradeFill(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
-                        lot.fee(), lot.side(), lot.orderId(), lot.correlationId());
-                Trade entryTrade;
-                if (entryFill.price().isNaN()) {
-                    entryTrade = new BaseTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
-                            lot.fee(), lot.side(), lot.orderId(), lot.correlationId());
-                } else {
-                    entryTrade = Trade.fromFills(lot.side().toTradeType(), List.of(entryFill), transactionCostModel);
-                }
-                Position position = new Position(entryTrade, transactionCostModel, holdingCostModel);
-                positions.add(position);
+        for (Position openPosition : openPositions) {
+            if (openPosition == null || !openPosition.isOpened()) {
+                continue;
             }
+            if (openPosition.getEntry().getIndex() > finalIndex) {
+                continue;
+            }
+            positions.add(openPosition);
         }
         return positions;
-    }
-
-    private static CostModel defaultCostModel(CostModel costModel) {
-        return costModel == null ? new ZeroCostModel() : costModel;
     }
 }
