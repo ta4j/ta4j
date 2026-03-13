@@ -517,8 +517,7 @@ public final class ElliottWaveAnalysisRunner {
         final MacroPivotGraph macroPivotGraph = buildMacroPivotGraph(series, baseAnalysis);
         final List<CanonicalLegCandidate> historicalCandidates = buildHistoricalCanonicalLegCandidates(series,
                 macroPivotGraph);
-        return searchCanonicalStructure(historicalCandidates)
-                .map(path -> historicalStructureAssessment(historicalCandidates, path))
+        return searchCanonicalStructure(historicalCandidates).map(path -> historicalStructureAssessment(series, path))
                 .orElseGet(() -> new ElliottWaveAnalysisResult.HistoricalStructureAssessment(List.of(), List.of()));
     }
 
@@ -763,14 +762,18 @@ public final class ElliottWaveAnalysisRunner {
         return List.copyOf(candidates);
     }
 
-    ElliottWaveAnalysisResult.HistoricalStructureAssessment historicalStructureAssessment(
-            final List<CanonicalLegCandidate> historicalCandidates, final CanonicalStructurePath path) {
+    ElliottWaveAnalysisResult.HistoricalStructureAssessment historicalStructureAssessment(final BarSeries series,
+            final CanonicalStructurePath path) {
         final List<ElliottWaveAnalysisResult.HistoricalLegAssessment> legs = path.legs()
                 .stream()
                 .map(this::historicalLegAssessment)
                 .toList();
-        return new ElliottWaveAnalysisResult.HistoricalStructureAssessment(legs,
-                promoteHistoricalMacroCycles(historicalCandidates));
+        final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> promotedCycles = promoteHistoricalMacroCyclesFromLegs(
+                series, legs);
+        if (!promotedCycles.isEmpty()) {
+            return new ElliottWaveAnalysisResult.HistoricalStructureAssessment(legs, promotedCycles);
+        }
+        return historicalStructureAssessment(path);
     }
 
     ElliottWaveAnalysisResult.HistoricalStructureAssessment historicalStructureAssessment(
@@ -864,19 +867,103 @@ public final class ElliottWaveAnalysisRunner {
                 candidate.selection().accepted());
     }
 
+    private ElliottWaveAnalysisResult.HistoricalLegAssessment historicalLegAssessment(final int startIndex,
+            final int endIndex, final boolean bullish, final AnchoredWindowSelection selection) {
+        final int alignedStartIndex = bullish ? alignedHistoricalLegStartIndex(startIndex, endIndex, selection)
+                : startIndex;
+        return new ElliottWaveAnalysisResult.HistoricalLegAssessment(alignedStartIndex, endIndex, bullish,
+                selection.assessment(), selection.accepted());
+    }
+
+    private int alignedHistoricalLegStartIndex(final int startIndex, final int endIndex,
+            final AnchoredWindowSelection selection) {
+        final List<ElliottSwing> scenarioSwings = selection.assessment().scenario().swings();
+        if (scenarioSwings.isEmpty()) {
+            return startIndex;
+        }
+        final int scenarioStartIndex = scenarioSwings.getFirst().fromIndex();
+        return scenarioStartIndex > startIndex && scenarioStartIndex < endIndex ? scenarioStartIndex : startIndex;
+    }
+
+    private List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> promoteHistoricalMacroCyclesFromLegs(
+            final BarSeries series, final List<ElliottWaveAnalysisResult.HistoricalLegAssessment> legs) {
+        Objects.requireNonNull(series, "series");
+        if (legs == null || legs.isEmpty()) {
+            return List.of();
+        }
+
+        final List<ElliottWaveAnalysisResult.HistoricalLegAssessment> bearishLegs = legs.stream()
+                .filter(leg -> !leg.bullish())
+                .toList();
+        if (bearishLegs.size() < 2) {
+            return List.of();
+        }
+
+        final List<ElliottWaveAnalysisResult.HistoricalLegAssessment> macroBottoms = new ArrayList<>();
+        for (int index = 0; index < bearishLegs.size(); index++) {
+            final ElliottWaveAnalysisResult.HistoricalLegAssessment candidate = bearishLegs.get(index);
+            if (index == bearishLegs.size() - 1) {
+                macroBottoms.add(candidate);
+                continue;
+            }
+            final double candidateLow = lowPrice(series, candidate.endIndex());
+            final double nextLow = lowPrice(series, bearishLegs.get(index + 1).endIndex());
+            if (index == 0) {
+                if (bearishLegs.size() == 2 || candidateLow <= nextLow) {
+                    macroBottoms.add(candidate);
+                }
+                continue;
+            }
+            final double previousLow = lowPrice(series, bearishLegs.get(index - 1).endIndex());
+            if (candidateLow <= previousLow && candidateLow <= nextLow) {
+                macroBottoms.add(candidate);
+            }
+        }
+        if (macroBottoms.size() < 2) {
+            return List.of();
+        }
+
+        final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> cycles = new ArrayList<>(
+                macroBottoms.size() - 1);
+        for (int index = 0; index < macroBottoms.size() - 1; index++) {
+            final int startIndex = macroBottoms.get(index).endIndex();
+            final int endIndex = macroBottoms.get(index + 1).endIndex();
+            if (endIndex - startIndex < CURRENT_CYCLE_MIN_WINDOW_BARS) {
+                continue;
+            }
+            final int peakIndex = highestHighIndex(series, startIndex, endIndex);
+            if (peakIndex <= startIndex || peakIndex >= endIndex) {
+                continue;
+            }
+
+            final Optional<AnchoredWindowSelection> bullishSelection = selectAcceptedOrFallbackTerminalLegForWindow(
+                    series, startIndex, peakIndex, true, CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS, 0.0, 0.0, 0.0, 0.0);
+            final Optional<AnchoredWindowSelection> bearishSelection = selectAcceptedOrFallbackTerminalLegForWindow(
+                    series, peakIndex, endIndex, false, CURRENT_CYCLE_MAX_ANCHOR_DRIFT_BARS, 0.0, 0.0, 0.0, 0.0);
+            if (bullishSelection.isEmpty() || bearishSelection.isEmpty()) {
+                continue;
+            }
+
+            final ElliottWaveAnalysisResult.HistoricalLegAssessment bullishLeg = historicalLegAssessment(startIndex,
+                    peakIndex, true, bullishSelection.orElseThrow());
+            final ElliottWaveAnalysisResult.HistoricalLegAssessment bearishLeg = historicalLegAssessment(peakIndex,
+                    endIndex, false, bearishSelection.orElseThrow());
+            if (!eligibleForHistoricalCyclePromotion(bullishLeg, bearishLeg)) {
+                continue;
+            }
+            cycles.add(new ElliottWaveAnalysisResult.HistoricalCycleAssessment(bullishLeg, bearishLeg));
+        }
+        return List.copyOf(cycles);
+    }
+
     List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> promoteHistoricalMacroCycles(
             final List<CanonicalLegCandidate> historicalCandidates) {
         final List<HistoricalCycleCandidate> cycleCandidates = buildHistoricalCycleCandidates(historicalCandidates);
         if (cycleCandidates.isEmpty()) {
             return List.of();
         }
-        final List<HistoricalCycleCandidate> promotedCandidates = filterPromotedHistoricalCycleCandidates(
-                cycleCandidates);
-        if (promotedCandidates.isEmpty()) {
-            return List.of();
-        }
         final List<HistoricalCycleCandidate> prunedCandidates = pruneSubordinateHistoricalCycleCandidates(
-                promotedCandidates);
+                cycleCandidates);
         if (prunedCandidates.size() == 1) {
             return List.of(prunedCandidates.getFirst().toAssessment(this::historicalLegAssessment));
         }
@@ -1034,6 +1121,8 @@ public final class ElliottWaveAnalysisRunner {
                     .filter(other -> other != candidate)
                     .filter(other -> historicalCycleSpan(other) > historicalCycleSpan(candidate))
                     .filter(other -> other.score() >= candidate.score() - HISTORICAL_CYCLE_FAMILY_SCORE_TOLERANCE)
+                    .filter(other -> other.startIndex() == candidate.startIndex()
+                            || other.peakIndex() == candidate.peakIndex())
                     .anyMatch(other -> other.startIndex() <= candidate.startIndex()
                             && other.endIndex() >= candidate.endIndex());
             if (!dominated) {

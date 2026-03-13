@@ -414,15 +414,15 @@ public final class ElliottWaveMacroCycleDemo {
     static List<MacroLogicProfile> logicProfiles() {
         return List.of(
                 new MacroLogicProfile("orthodox-classical", "H0", "Classical Elliott constraints", 0,
-                        ElliottLogicProfile.ORTHODOX_CLASSICAL, ElliottDegree.MINOR),
+                        ElliottLogicProfile.ORTHODOX_CLASSICAL, ElliottDegree.MINUTE),
                 new MacroLogicProfile("h1-hierarchical-swing", "H1", "Hierarchical swing extraction", 1,
-                        ElliottLogicProfile.HIERARCHICAL_SWING, ElliottDegree.MINOR),
+                        ElliottLogicProfile.HIERARCHICAL_SWING, ElliottDegree.MINUTE),
                 new MacroLogicProfile("h2-btc-relaxed-impulse", "H2", "Relaxed impulse rules for BTC", 2,
-                        ElliottLogicProfile.BTC_RELAXED_IMPULSE, ElliottDegree.MINOR),
+                        ElliottLogicProfile.BTC_RELAXED_IMPULSE, ElliottDegree.MINUTE),
                 new MacroLogicProfile("h3-btc-relaxed-corrective", "H3", "Relaxed corrective coverage for BTC", 3,
-                        ElliottLogicProfile.BTC_RELAXED_CORRECTIVE, ElliottDegree.MINOR),
+                        ElliottLogicProfile.BTC_RELAXED_CORRECTIVE, ElliottDegree.MINUTE),
                 new MacroLogicProfile("h4-anchor-first-hybrid", "H4", "Anchor-first hybrid profile", 4,
-                        ElliottLogicProfile.ANCHOR_FIRST_HYBRID, ElliottDegree.MINOR));
+                        ElliottLogicProfile.ANCHOR_FIRST_HYBRID, ElliottDegree.MINUTE));
     }
 
     static MacroLogicProfile defaultLiveMacroProfile() {

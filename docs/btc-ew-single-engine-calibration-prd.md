@@ -2,9 +2,9 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-13 10:18 EDT
+- Last updated: 2026-03-13 14:57 EDT
 - Active phase: Phase 12
-- Active task: Validate replay coherence at the remaining major BTC cutoffs now that the `2015-08-19` slice promotes the intended completed macro cycle
+- Active task: Validate the remaining major BTC replay cutoffs now that the `2018-12-16` slice recovers the intended completed-cycle starts, peaks, and lows
 - Overall: 57/61 checklist items complete
 
 ## Status
@@ -538,7 +538,7 @@ Rationale note:
 
 - [x] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
 - [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
-  Current status: the `2015-08-19` replay slice now promotes the intended `2011 -> 2013 -> 2015` completed macro cycle. The remaining replay work is to confirm the same coherence at the other major BTC tops and lows, especially `2018-12-16`, without regressing the completed-cycle truth surface.
+  Current status: the `2015-08-19` replay slice promotes the intended `2011 -> 2013 -> 2015` completed macro cycle, and the `2018-12-16` slice now recovers the intended `2011/2013/2015` and `2015/2017/2018` completed-cycle starts, peaks, and lows within tolerance. The remaining replay work is to confirm the other major BTC cutoffs without regressing the completed-cycle truth surface.
 - [ ] Confirm historical chart and live chart are both drawn from the same structure object.
 - [ ] Run full verification and record the final build log.
 

@@ -810,7 +810,7 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(history.cycles()).hasSize(1);
         assertThat(history.cycles().getFirst().bullishLeg().startIndex()).isEqualTo(3);
         assertThat(history.cycles().getFirst().bullishLeg().endIndex()).isEqualTo(8);
-        assertThat(history.cycles().getFirst().bearishLeg().endIndex()).isEqualTo(15);
+        assertThat(history.cycles().getFirst().bearishLeg().endIndex()).isEqualTo(11);
     }
 
     @Test
@@ -994,6 +994,49 @@ class ElliottWaveAnalysisRunnerTest {
 
         assertThat(retained).hasSize(1);
         assertThat(retained.getFirst().bullishLeg().id()).isEqualTo("macro-bull");
+    }
+
+    @Test
+    void pruneSubordinateHistoricalCycleCandidatesKeepsBroaderCyclesWithDifferentStartsAndPeaks() throws Exception {
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        ElliottWaveAnalysisRunner.HistoricalCycleCandidate firstCycle = new ElliottWaveAnalysisRunner.HistoricalCycleCandidate(
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("first-bull", 10, 30, true, 0.88,
+                        historicalAnchoredSelection(factory, "first-bull", ElliottPhase.WAVE5, true, true, 0.88)),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("first-bear", 30, 40, false, 0.85,
+                        historicalAnchoredSelection(factory, "first-bear", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.85)),
+                1.78);
+        ElliottWaveAnalysisRunner.HistoricalCycleCandidate secondCycle = new ElliottWaveAnalysisRunner.HistoricalCycleCandidate(
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("second-bull", 40, 60, true, 0.87,
+                        historicalAnchoredSelection(factory, "second-bull", ElliottPhase.WAVE5, true, true, 0.87)),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("second-bear", 60, 70, false, 0.84,
+                        historicalAnchoredSelection(factory, "second-bear", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.84)),
+                1.74);
+        ElliottWaveAnalysisRunner.HistoricalCycleCandidate broadEnvelope = new ElliottWaveAnalysisRunner.HistoricalCycleCandidate(
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("broad-bull", 5, 55, true, 0.90,
+                        historicalAnchoredSelection(factory, "broad-bull", ElliottPhase.WAVE5, true, true, 0.90)),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("broad-bear", 55, 70, false, 0.88,
+                        historicalAnchoredSelection(factory, "broad-bear", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.88)),
+                1.80);
+
+        Method pruneSubordinateHistoricalCycles = ElliottWaveAnalysisRunner.class
+                .getDeclaredMethod("pruneSubordinateHistoricalCycleCandidates", List.class);
+        pruneSubordinateHistoricalCycles.setAccessible(true);
+
+        @SuppressWarnings("unchecked")
+        List<ElliottWaveAnalysisRunner.HistoricalCycleCandidate> retained = (List<ElliottWaveAnalysisRunner.HistoricalCycleCandidate>) pruneSubordinateHistoricalCycles
+                .invoke(analysis, List.of(firstCycle, secondCycle, broadEnvelope));
+
+        assertThat(retained).containsExactly(firstCycle, secondCycle, broadEnvelope);
     }
 
     @Test

@@ -13,6 +13,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.apache.logging.log4j.LogManager;
@@ -34,6 +35,8 @@ import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader
  *
  * @since 0.22.4
  */
+@Tag("integration")
+@Tag("slow")
 class ElliottWaveMacroCycleDetectorTest {
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveMacroCycleDetectorTest.class);
@@ -116,6 +119,25 @@ class ElliottWaveMacroCycleDetectorTest {
 
         assertEquals(List.of("2011-11-18T00:00:00Z|2013-11-30T00:00:00Z|2015-08-19T00:00:00Z"),
                 cycleDateSignatures(study.cycles()));
+    }
+
+    @Test
+    void canonicalReplayAt2018BottomRecoversExpectedCompletedCyclePeaksAndLows() {
+        final BarSeries fullSeries = loadBitcoinSeries();
+        final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse("2018-12-16T00:00:00Z"));
+        final ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
+                .analyzeCanonicalStructure(slicedSeries);
+        final ElliottWaveBtcMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
+
+        assertEquals(2, study.cycles().size());
+        assertWithinDays(Instant.parse("2011-11-18T00:00:00Z"), Instant.parse(study.cycles().get(0).startTimeUtc()),
+                21);
+        assertWithinDays(Instant.parse("2013-11-30T00:00:00Z"), Instant.parse(study.cycles().get(0).peakTimeUtc()), 21);
+        assertWithinDays(Instant.parse("2015-08-19T00:00:00Z"), Instant.parse(study.cycles().get(0).lowTimeUtc()), 21);
+        assertWithinDays(Instant.parse("2015-08-19T00:00:00Z"), Instant.parse(study.cycles().get(1).startTimeUtc()),
+                21);
+        assertWithinDays(Instant.parse("2017-12-18T00:00:00Z"), Instant.parse(study.cycles().get(1).peakTimeUtc()), 21);
+        assertWithinDays(Instant.parse("2018-12-16T00:00:00Z"), Instant.parse(study.cycles().get(1).lowTimeUtc()), 21);
     }
 
     private static BarSeries loadBitcoinSeries() {
