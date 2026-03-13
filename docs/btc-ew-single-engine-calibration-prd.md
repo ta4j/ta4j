@@ -538,6 +538,7 @@ Rationale note:
 
 - [x] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
 - [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
+  Current status: the `2015-08-19` replay slice still promotes subordinate `2009 -> 2011 -> 2012`, `2012 -> 2013 -> 2013`, and `2013 -> 2014 -> 2015` cycles instead of the intended `2011 -> 2013 -> 2015` macro cycle, so replay-mode macro-cycle assembly remains the blocking seam.
 - [ ] Confirm historical chart and live chart are both drawn from the same structure object.
 - [ ] Run full verification and record the final build log.
 

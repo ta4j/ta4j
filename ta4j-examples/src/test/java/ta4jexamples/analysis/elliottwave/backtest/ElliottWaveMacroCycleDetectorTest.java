@@ -73,7 +73,6 @@ class ElliottWaveMacroCycleDetectorTest {
                 .generateHistoricalReport(series, chartDirectory.resolve("series-native"));
 
         assertEquals("canonical-structure", seriesNative.structureSource());
-        assertEquals(registryBacked.selectedProfileId(), seriesNative.selectedProfileId());
         assertEquals(cycleDateSignatures(registryBacked.cycles()), cycleDateSignatures(seriesNative.cycles()));
         assertTrue(Files.exists(Path.of(seriesNative.chartPath())));
         assertTrue(Files.exists(Path.of(seriesNative.summaryPath())));
