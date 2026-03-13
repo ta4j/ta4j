@@ -224,8 +224,9 @@ public final class ElliottWaveAnchorCalibrationHarness {
         ElliottWaveAnchorRegistry registryDocument = ElliottWaveAnchorRegistry
                 .load(ElliottWaveAnchorRegistry.DEFAULT_RESOURCE);
         BarSeries btcSeries = requireSeries(registryDocument.datasetResource(), BTC_SERIES_NAME);
+        AnchorRegistry fullRegistry = defaultBitcoinAnchors(registryDocument, btcSeries);
         List<ReplayCutoffDiff> cutoffs = defaultReplayCutoffInstants().stream()
-                .map(cutoff -> replayCutoffDiff(registryDocument, btcSeries, cutoff))
+                .map(cutoff -> replayCutoffDiff(fullRegistry, btcSeries, cutoff))
                 .toList();
         ReplayCutoffDiffReport report = new ReplayCutoffDiffReport(cutoffs);
         artifactSink.recordReplayCutoffDiff(report, CalibrationDepth.ROUTINE);
@@ -242,10 +243,10 @@ public final class ElliottWaveAnchorCalibrationHarness {
         return ElliottWaveMacroCycleDemo.evaluateLegacyAnchoredStudyForHarnessComparison(series, registry);
     }
 
-    private static ReplayCutoffDiff replayCutoffDiff(final ElliottWaveAnchorRegistry registryDocument,
-            final BarSeries fullSeries, final Instant cutoff) {
+    private static ReplayCutoffDiff replayCutoffDiff(final AnchorRegistry fullRegistry, final BarSeries fullSeries,
+            final Instant cutoff) {
         BarSeries slicedSeries = replayCutoffSeries(fullSeries, cutoff);
-        AnchorRegistry cutoffRegistry = defaultBitcoinAnchors(registryDocument, slicedSeries);
+        AnchorRegistry cutoffRegistry = replayCutoffAnchors(fullRegistry, cutoff);
         HistoricalStudyDiffReport diff = HistoricalStudyDiffReport.from(cutoffRegistry,
                 evaluateLegacyAnchoredHistoricalStudy(slicedSeries, cutoffRegistry),
                 evaluateCanonicalHistoricalStudy(slicedSeries, cutoffRegistry));
@@ -260,6 +261,16 @@ public final class ElliottWaveAnchorCalibrationHarness {
         return List.of(Instant.parse("2013-11-30T00:00:00Z"), Instant.parse("2015-08-19T00:00:00Z"),
                 Instant.parse("2018-12-16T00:00:00Z"), Instant.parse("2021-11-11T00:00:00Z"),
                 Instant.parse("2022-11-22T00:00:00Z"));
+    }
+
+    private static AnchorRegistry replayCutoffAnchors(final AnchorRegistry fullRegistry, final Instant cutoff) {
+        List<Anchor> anchors = fullRegistry.anchors().stream().filter(anchor -> !anchor.at().isAfter(cutoff)).toList();
+        if (anchors.isEmpty()) {
+            throw new IllegalStateException("Replay cutoff " + cutoff + " resolved no anchors");
+        }
+        return new AnchorRegistry(fullRegistry.version(),
+                fullRegistry.datasetResource() + "#replay-" + UTC_TIME.format(cutoff),
+                fullRegistry.provenance() + "; replay-cutoff<=" + UTC_TIME.format(cutoff), anchors);
     }
 
     private static ReportBundle generateReport(CalibrationDepth depth, ArtifactSink artifactSink) {

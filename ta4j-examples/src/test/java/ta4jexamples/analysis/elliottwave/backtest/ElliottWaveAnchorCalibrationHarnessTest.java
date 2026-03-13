@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertIterableEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.Instant;
 import java.nio.file.Files;
@@ -926,6 +927,35 @@ class ElliottWaveAnchorCalibrationHarnessTest {
         assertEquals(diff, replayDiff.cutoffs().getFirst().diff());
         assertTrue(replayDiff.toText().contains("cutoff=2015-08-19T00:00:00Z"));
         assertTrue(replayDiff.toText().contains("cutoff=2022-11-22T00:00:00Z"));
+    }
+
+    @Test
+    void replayCutoffAnchorsFiltersResolvedRegistryToAvailableTruthAnchors() throws Exception {
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry fullRegistry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
+                "synthetic-v1", "synthetic-btc.json", "synthetic provenance",
+                List.of(anchor("a1", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                        Instant.parse("2011-11-18T00:00:00Z"), Duration.ZERO, Duration.ZERO,
+                        Set.of(ElliottPhase.CORRECTIVE_C), ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION,
+                        "cycle start"),
+                        anchor("a2", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
+                                Instant.parse("2013-11-30T00:00:00Z"), Duration.ZERO, Duration.ZERO,
+                                Set.of(ElliottPhase.WAVE5), ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION,
+                                "cycle peak"),
+                        anchor("a3", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                                Instant.parse("2015-08-19T00:00:00Z"), Duration.ZERO, Duration.ZERO,
+                                Set.of(ElliottPhase.CORRECTIVE_C), ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION,
+                                "cycle low")));
+
+        Method replayCutoffAnchors = ElliottWaveAnchorCalibrationHarness.class.getDeclaredMethod("replayCutoffAnchors",
+                ElliottWaveAnchorCalibrationHarness.AnchorRegistry.class, Instant.class);
+        replayCutoffAnchors.setAccessible(true);
+
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry filtered = (ElliottWaveAnchorCalibrationHarness.AnchorRegistry) replayCutoffAnchors
+                .invoke(null, fullRegistry, Instant.parse("2013-11-30T00:00:00Z"));
+
+        assertEquals(2, filtered.anchors().size());
+        assertEquals(List.of("a1", "a2"), filtered.anchors().stream().map(anchor -> anchor.id()).toList());
+        assertTrue(filtered.datasetResource().contains("#replay-2013-11-30T00:00:00Z"));
     }
 
     @Test
