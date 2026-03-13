@@ -749,17 +749,70 @@ public final class ElliottWaveAnalysisRunner {
                 perStartCandidates.add(new CanonicalLegCandidate(id, start.barIndex(), end.barIndex(), bullish,
                         fitScore, anchoredSelection));
             }
-            perStartCandidates.sort(Comparator.<CanonicalLegCandidate>comparingDouble(CanonicalLegCandidate::fitScore)
-                    .reversed()
-                    .thenComparing(
-                            Comparator.comparingInt((CanonicalLegCandidate candidate) -> candidate.endPivotIndex()
-                                    - candidate.startPivotIndex()).reversed())
-                    .thenComparing(CanonicalLegCandidate::id));
-            for (int index = 0; index < Math.min(maxCandidatesPerStart, perStartCandidates.size()); index++) {
-                candidates.add(perStartCandidates.get(index));
-            }
+            final List<CanonicalLegCandidate> rankedPerStartCandidates = perStartCandidates.stream()
+                    .sorted(Comparator.<CanonicalLegCandidate>comparingDouble(CanonicalLegCandidate::fitScore)
+                            .reversed()
+                            .thenComparing(Comparator
+                                    .comparingInt((CanonicalLegCandidate candidate) -> candidate.endPivotIndex()
+                                            - candidate.startPivotIndex())
+                                    .reversed())
+                            .thenComparing(CanonicalLegCandidate::id))
+                    .toList();
+            candidates.addAll(retainHistoricalCanonicalLegCandidates(rankedPerStartCandidates, maxCandidatesPerStart));
         }
         return List.copyOf(candidates);
+    }
+
+    private List<CanonicalLegCandidate> retainHistoricalCanonicalLegCandidates(
+            final List<CanonicalLegCandidate> rankedCandidates, final int maxCandidatesPerStart) {
+        if (rankedCandidates.isEmpty()) {
+            return List.of();
+        }
+        if (rankedCandidates.size() <= maxCandidatesPerStart) {
+            return List.copyOf(rankedCandidates);
+        }
+
+        final Map<String, CanonicalLegCandidate> retained = new LinkedHashMap<>();
+        retainHistoricalCanonicalLegCandidate(retained, rankedCandidates.getFirst());
+        rankedCandidates.stream()
+                .max(Comparator.comparingInt(this::historicalLegSpan)
+                        .thenComparingDouble(CanonicalLegCandidate::fitScore)
+                        .thenComparing(CanonicalLegCandidate::id))
+                .ifPresent(candidate -> retainHistoricalCanonicalLegCandidate(retained, candidate));
+
+        final int milestoneSpanFloor = historicalRetentionMilestoneSpanFloor(rankedCandidates);
+        rankedCandidates.stream()
+                .filter(this::eligibleHistoricalSupport)
+                .filter(candidate -> historicalLegSpan(candidate) >= milestoneSpanFloor)
+                .min(Comparator.comparingInt(CanonicalLegCandidate::endPivotIndex)
+                        .thenComparing(Comparator.comparingDouble(CanonicalLegCandidate::fitScore).reversed())
+                        .thenComparing(CanonicalLegCandidate::id))
+                .ifPresent(candidate -> retainHistoricalCanonicalLegCandidate(retained, candidate));
+        rankedCandidates.stream()
+                .filter(this::eligibleHistoricalSupport)
+                .max(Comparator.comparingDouble(CanonicalLegCandidate::fitScore)
+                        .thenComparingInt(this::historicalLegSpan)
+                        .thenComparing(CanonicalLegCandidate::id))
+                .ifPresent(candidate -> retainHistoricalCanonicalLegCandidate(retained, candidate));
+
+        for (final CanonicalLegCandidate candidate : rankedCandidates) {
+            if (retained.size() >= maxCandidatesPerStart) {
+                break;
+            }
+            retainHistoricalCanonicalLegCandidate(retained, candidate);
+        }
+        return List.copyOf(retained.values());
+    }
+
+    private void retainHistoricalCanonicalLegCandidate(final Map<String, CanonicalLegCandidate> retained,
+            final CanonicalLegCandidate candidate) {
+        retained.putIfAbsent(candidate.id(), candidate);
+    }
+
+    private int historicalRetentionMilestoneSpanFloor(final List<CanonicalLegCandidate> rankedCandidates) {
+        final int longestSpan = rankedCandidates.stream().mapToInt(this::historicalLegSpan).max().orElse(0);
+        return Math.max(CURRENT_CYCLE_MIN_WINDOW_BARS,
+                (int) Math.ceil(longestSpan * HISTORICAL_CYCLE_PROMOTION_MIN_GAP_RATIO));
     }
 
     ElliottWaveAnalysisResult.HistoricalStructureAssessment historicalStructureAssessment(final BarSeries series,

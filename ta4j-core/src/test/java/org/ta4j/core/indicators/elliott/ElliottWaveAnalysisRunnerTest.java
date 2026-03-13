@@ -1157,6 +1157,45 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(structure.cycles()).hasSize(2);
     }
 
+    void retainHistoricalCanonicalLegCandidatesKeepsEarliestMeaningfulPromotableLeg() throws Exception {
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        Method retainHistoricalCandidates = ElliottWaveAnalysisRunner.class
+                .getDeclaredMethod("retainHistoricalCanonicalLegCandidates", List.class, int.class);
+        retainHistoricalCandidates.setAccessible(true);
+
+        List<ElliottWaveAnalysisRunner.CanonicalLegCandidate> rankedCandidates = List.of(
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("late-best", 30, 58, false, 0.97,
+                        historicalAnchoredSelection(factory, "late-best", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.97)),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("too-short-noise", 30, 38, false, 0.95,
+                        historicalAnchoredSelection(factory, "too-short-noise", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.95)),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("earliest-meaningful", 30, 42, false, 0.78,
+                        historicalAnchoredSelection(factory, "earliest-meaningful", ElliottPhase.CORRECTIVE_C, false,
+                                true, 0.78)),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("longest-span", 30, 90, false, 0.71,
+                        historicalAnchoredSelection(factory, "longest-span", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.71)),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("fill-1", 30, 54, false, 0.76,
+                        historicalAnchoredSelection(factory, "fill-1", ElliottPhase.CORRECTIVE_C, false, false, 0.76)),
+                new ElliottWaveAnalysisRunner.CanonicalLegCandidate("fill-2", 30, 50, false, 0.75,
+                        historicalAnchoredSelection(factory, "fill-2", ElliottPhase.CORRECTIVE_C, false, false, 0.75)));
+
+        @SuppressWarnings("unchecked")
+        List<ElliottWaveAnalysisRunner.CanonicalLegCandidate> retained = (List<ElliottWaveAnalysisRunner.CanonicalLegCandidate>) retainHistoricalCandidates
+                .invoke(analysis, rankedCandidates, 3);
+
+        assertThat(retained.stream().map(ElliottWaveAnalysisRunner.CanonicalLegCandidate::id))
+                .containsExactly("late-best", "longest-span", "earliest-meaningful");
+    }
+
     @Test
     void boundCanonicalCandidatesCapsSearchFrontier() {
         ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
