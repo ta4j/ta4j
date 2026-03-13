@@ -2,9 +2,9 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-13 14:57 EDT
+- Last updated: 2026-03-13 17:11 EDT
 - Active phase: Phase 12
-- Active task: Validate the remaining major BTC replay cutoffs now that the `2018-12-16` slice recovers the intended completed-cycle starts, peaks, and lows
+- Active task: Fix the remaining 2021 replay promotion drift now that the canonical replay surface exposes accepted completed cycles only
 - Overall: 57/61 checklist items complete
 
 ## Status
@@ -538,7 +538,7 @@ Rationale note:
 
 - [x] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
 - [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
-  Current status: the `2015-08-19` replay slice promotes the intended `2011 -> 2013 -> 2015` completed macro cycle, and the `2018-12-16` slice now recovers the intended `2011/2013/2015` and `2015/2017/2018` completed-cycle starts, peaks, and lows within tolerance. The remaining replay work is to confirm the other major BTC cutoffs without regressing the completed-cycle truth surface.
+  Current status: the `2015-08-19` replay slice promotes the intended `2011 -> 2013 -> 2015` completed macro cycle, the `2018-12-16` slice recovers the intended `2011/2013/2015` and `2015/2017/2018` completed-cycle starts, peaks, and lows within tolerance, and the canonical replay surface now filters subordinate unaccepted structures so only accepted completed cycles remain at the top level. The remaining replay work is the `2021-11-11` drift, where the accepted second cycle still closes at the internal `2020-03/05` low instead of the intended `2018-12-16` macro low, plus the earlier and later BTC cutoffs.
 - [ ] Confirm historical chart and live chart are both drawn from the same structure object.
 - [ ] Run full verification and record the final build log.
 

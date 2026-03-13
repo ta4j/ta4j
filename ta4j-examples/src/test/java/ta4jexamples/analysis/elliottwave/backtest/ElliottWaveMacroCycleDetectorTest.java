@@ -129,7 +129,7 @@ class ElliottWaveMacroCycleDetectorTest {
                 .analyzeCanonicalStructure(slicedSeries);
         final ElliottWaveBtcMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
 
-        assertEquals(2, study.cycles().size());
+        assertEquals(2, study.cycles().size(), cycleDateSignatures(study.cycles()).toString());
         assertWithinDays(Instant.parse("2011-11-18T00:00:00Z"), Instant.parse(study.cycles().get(0).startTimeUtc()),
                 21);
         assertWithinDays(Instant.parse("2013-11-30T00:00:00Z"), Instant.parse(study.cycles().get(0).peakTimeUtc()), 21);

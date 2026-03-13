@@ -279,10 +279,7 @@ public final class ElliottWaveMacroCycleDemo {
         evaluations.sort(profileEvaluationComparator());
         final MacroProfileEvaluation selectedProfile = evaluations.getFirst();
         final List<ProfileScoreSummary> profileScores = evaluations.stream().map(ProfileScoreSummary::from).toList();
-        final List<DirectionalCycleSummary> cycles = selectedProfile.cycleFits()
-                .stream()
-                .map(DirectionalCycleSummary::from)
-                .toList();
+        final List<DirectionalCycleSummary> cycles = acceptedCycleSummaries(selectedProfile);
         final List<HypothesisResult> hypotheses = buildHypotheses(evaluations);
         final CurrentCycleAnalysis currentCycle = evaluateCurrentCycle(series, selectedProfile.profile(),
                 selectedProfile.historicalFitPassed() ? "historical structure fit passed"
@@ -1126,6 +1123,10 @@ public final class ElliottWaveMacroCycleDemo {
         final boolean historicalFitPassed = !cycleFits.isEmpty() && acceptedCycles == cycleFits.size();
         return new MacroProfileEvaluation(profile, aggregateScore, acceptedCycles, acceptedSegments,
                 historicalFitPassed, List.copyOf(cycleFits), List.copyOf(chartSegments));
+    }
+
+    private static List<DirectionalCycleSummary> acceptedCycleSummaries(final MacroProfileEvaluation evaluation) {
+        return evaluation.cycleFits().stream().filter(CycleFit::accepted).map(DirectionalCycleSummary::from).toList();
     }
 
     private static Optional<MacroCycle> matchCycleToRegistry(final BarSeries series,
