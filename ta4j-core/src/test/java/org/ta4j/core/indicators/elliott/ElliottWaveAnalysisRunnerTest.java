@@ -1158,6 +1158,34 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void historicalStructureAssessmentDoesNotFallbackToSubordinatePathCyclesWhenNoMacroCycleIsPromoted() {
+        BarSeries series = buildSeries();
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        ElliottWaveAnalysisRunner.CanonicalStructurePath path = new ElliottWaveAnalysisRunner.CanonicalStructurePath(
+                List.of(new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-1", 0, 5, true, 0.84,
+                        historicalAnchoredSelection(factory, "bull-1", ElliottPhase.WAVE5, true, true, 0.84)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-1", 5, 8, false, 0.83,
+                                historicalAnchoredSelection(factory, "bear-1", ElliottPhase.CORRECTIVE_C, false, true,
+                                        0.83)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-2", 8, 10, true, 0.82,
+                                historicalAnchoredSelection(factory, "bull-2", ElliottPhase.WAVE5, true, true, 0.82))),
+                2.49);
+
+        ElliottWaveAnalysisResult.HistoricalStructureAssessment structure = analysis
+                .historicalStructureAssessment(series, path);
+
+        assertThat(structure.legs()).hasSize(3);
+        assertThat(structure.cycles()).isEmpty();
+    }
+
+    @Test
     void selectHistoricalMacroBottomsKeepsEarlierBottomUntilPeakIsReclaimed() throws Exception {
         BarSeries series = buildHistoricalMacroBottomSeries();
         NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
@@ -1193,6 +1221,40 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(macroBottoms).hasSize(2);
         assertThat(macroBottoms.get(0).endIndex()).isEqualTo(2);
         assertThat(macroBottoms.get(1).endIndex()).isEqualTo(14);
+    }
+
+    @Test
+    void selectHistoricalMacroBottomsKeepsBoundaryLowWhenFinalBearLegHasStrongFit() throws Exception {
+        BarSeries series = buildHistoricalBoundaryBottomSeries();
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        Method selectHistoricalMacroBottoms = ElliottWaveAnalysisRunner.class
+                .getDeclaredMethod("selectHistoricalMacroBottoms", BarSeries.class, List.class);
+        selectHistoricalMacroBottoms.setAccessible(true);
+
+        List<ElliottWaveAnalysisResult.HistoricalLegAssessment> bearishLegs = List.of(
+                new ElliottWaveAnalysisResult.HistoricalLegAssessment(0, 2, false,
+                        historicalAnchoredSelection(factory, "macro-bottom-1", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.88).assessment(),
+                        true),
+                new ElliottWaveAnalysisResult.HistoricalLegAssessment(11, 16, false,
+                        historicalAnchoredSelection(factory, "boundary-bottom", ElliottPhase.CORRECTIVE_C, false, false,
+                                0.79).assessment(),
+                        false));
+
+        @SuppressWarnings("unchecked")
+        List<ElliottWaveAnalysisResult.HistoricalLegAssessment> macroBottoms = (List<ElliottWaveAnalysisResult.HistoricalLegAssessment>) selectHistoricalMacroBottoms
+                .invoke(analysis, series, bearishLegs);
+
+        assertThat(macroBottoms).hasSize(2);
+        assertThat(macroBottoms.get(0).endIndex()).isEqualTo(2);
+        assertThat(macroBottoms.get(1).endIndex()).isEqualTo(16);
     }
 
     @Test
@@ -1807,6 +1869,26 @@ class ElliottWaveAnalysisRunnerTest {
         Instant time = Instant.parse("2021-01-01T00:00:00Z");
         double[] closes = { 220, 180, 100, 140, 180, 230, 270, 290, 300, 260, 220, 190, 175, 165, 150, 190, 220, 250,
                 280, 240, 200, 240, 280, 320, 360 };
+        for (int index = 0; index < closes.length; index++) {
+            double close = closes[index];
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1_000)
+                    .add();
+        }
+        return series;
+    }
+
+    private BarSeries buildHistoricalBoundaryBottomSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("HistoricalBoundaryBottom").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2021-06-01T00:00:00Z");
+        double[] closes = { 300, 200, 100, 180, 260, 320, 300, 280, 260, 240, 300, 340, 300, 250, 210, 170, 130 };
         for (int index = 0; index < closes.length; index++) {
             double close = closes[index];
             series.barBuilder()

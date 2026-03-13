@@ -110,6 +110,7 @@ public final class ElliottWaveAnalysisRunner {
     private static final double CANONICAL_SEARCH_GAP_PENALTY_PER_PIVOT = 0.05;
     private static final double HISTORICAL_CYCLE_PROMOTION_MIN_GAP_RATIO = 0.20;
     private static final double HISTORICAL_CYCLE_FALLBACK_FIT_FLOOR = 0.80;
+    private static final double HISTORICAL_BOUNDARY_BOTTOM_FIT_FLOOR = 0.78;
     private static final double HISTORICAL_CYCLE_SPAN_BONUS_PER_BAR = 0.0001;
     private static final double HISTORICAL_CYCLE_FAMILY_SCORE_TOLERANCE = 0.10;
 
@@ -826,6 +827,9 @@ public final class ElliottWaveAnalysisRunner {
         if (!promotedCycles.isEmpty()) {
             return new ElliottWaveAnalysisResult.HistoricalStructureAssessment(legs, promotedCycles);
         }
+        if (!path.legs().isEmpty() && path.legs().getLast().bullish()) {
+            return new ElliottWaveAnalysisResult.HistoricalStructureAssessment(legs, List.of());
+        }
         return historicalStructureAssessment(path);
     }
 
@@ -1011,7 +1015,8 @@ public final class ElliottWaveAnalysisRunner {
                 pending = next;
             }
         }
-        if (historicalMacroBottomConfirmed(series, pending, series.getEndIndex())) {
+        if (historicalMacroBottomConfirmed(series, pending, series.getEndIndex())
+                || boundaryHistoricalMacroBottom(series, pending)) {
             macroBottoms.add(pending);
         }
         return List.copyOf(macroBottoms);
@@ -1025,6 +1030,12 @@ public final class ElliottWaveAnalysisRunner {
         final int boundedRecoveryEndIndex = Math.min(series.getEndIndex(), recoveryEndIndex);
         return highestHigh(series, candidate.endIndex(), boundedRecoveryEndIndex) > highPrice(series,
                 candidate.startIndex());
+    }
+
+    private boolean boundaryHistoricalMacroBottom(final BarSeries series,
+            final ElliottWaveAnalysisResult.HistoricalLegAssessment candidate) {
+        return candidate.endIndex() == series.getEndIndex()
+                && (candidate.accepted() || candidate.fitScore() >= HISTORICAL_BOUNDARY_BOTTOM_FIT_FLOOR);
     }
 
     private boolean eligibleHistoricalMacroBottom(final ElliottWaveAnalysisResult.HistoricalLegAssessment leg) {
