@@ -15,8 +15,17 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 - Use loggers (`LogManager` / `Logger`) instead of `System.out` / `System.err`.
 - Prefer imports over fully qualified class names in implementation code.
 - Prefer explicit local variable types. Use `var` only when the inferred type is immediately obvious and meaningfully reduces noise.
+- When a valid reference `Num` or `BarSeries` already exists, derive the `NumFactory` from that reference instead of creating a parallel default factory.
+- Do not keep generic null/NaN fallback helpers when the call site already guarantees a usable reference; encode the stronger invariant directly at the call site.
 - For DTO/model carrier types, prefer immutable shapes: `record` first, then public final fields, then mutable getter/setter models only when required.
 - For component metadata JSON, use helpers from `org.ta4j.core.serialization` (`ComponentDescriptor`, `ComponentSerialization`) instead of hand-rolled structures.
+
+## Core surface-area gate (MUST)
+
+- New top-level classes in `org.ta4j.core` are a last resort.
+- Prefer package-private nested helpers or existing extension points before adding new top-level core types.
+- Reuse existing shared APIs first (for example shared enums) rather than introducing parallel concepts.
+- If adding a new top-level core type is unavoidable, include a short rationale in the active PRD/checklist or PR notes.
 
 ## Scoped guides
 

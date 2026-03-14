@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.wyckoff;
 
+import static org.ta4j.core.indicators.IndicatorUtils.isInvalid;
+import static org.ta4j.core.num.NaN.NaN;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -16,15 +18,13 @@ import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.indicators.helpers.LowPriceIndicator;
 import org.ta4j.core.num.Num;
 
-import static org.ta4j.core.num.NaN.NaN;
-
 /**
  * Tracks trading-range structure using recent swing highs and lows.
  *
  * <p>
  * This is a lower-level building block used by {@link WyckoffPhaseIndicator}
  * and the higher-level entry points {@link WyckoffCycleFacade} and
- * {@link WyckoffCycleAnalysis}.
+ * {@link WyckoffCycleAnalysisRunner}.
  *
  * @since 0.22.3
  */
@@ -166,10 +166,4 @@ public final class WyckoffStructureTracker {
         }
     }
 
-    /**
-     * Returns whether invalid.
-     */
-    private static boolean isInvalid(Num value) {
-        return Num.isNaNOrNull(value);
-    }
 }

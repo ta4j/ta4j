@@ -3,13 +3,13 @@
  */
 package org.ta4j.core.indicators.supportresistance;
 
+import static org.ta4j.core.indicators.IndicatorUtils.isInvalid;
+import static org.ta4j.core.num.NaN.NaN;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-
-import static org.ta4j.core.num.NaN.NaN;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -263,13 +263,6 @@ public abstract class AbstractPriceClusterIndicator extends CachedIndicator<Num>
      * @since 0.22.3
      */
     protected abstract boolean preferLowerPriceOnTie();
-
-    /**
-     * Returns whether invalid.
-     */
-    private static boolean isInvalid(Num value) {
-        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
-    }
 
     private static final class PriceCluster {
         private Num weightedSum;

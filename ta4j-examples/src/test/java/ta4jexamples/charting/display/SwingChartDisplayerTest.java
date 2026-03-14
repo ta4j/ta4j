@@ -13,10 +13,9 @@ import org.junit.jupiter.api.Test;
 import java.awt.Dimension;
 import java.awt.Frame;
 import java.awt.GraphicsEnvironment;
+import java.util.UUID;
 
 import javax.swing.JFrame;
-
-import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -40,59 +39,11 @@ class SwingChartDisplayerTest {
 
     @AfterEach
     void tearDown() {
-        // CRITICAL: Remove frames from openWindows tracking set BEFORE disposing to
-        // prevent System.exit(0) from being called. Use reflection to access the
-        // private static field.
-        java.util.Set<JFrame> openWindows = null;
-        try {
-            Field openWindowsField = SwingChartDisplayer.class.getDeclaredField("openWindows");
-            openWindowsField.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            java.util.Set<JFrame> set = (java.util.Set<JFrame>) openWindowsField.get(null);
-            openWindows = set;
-        } catch (NoSuchFieldException | IllegalAccessException e) {
-            // If reflection fails, we'll try to clear the set after getting frames
-        }
-
-        // CRITICAL: Add a dummy frame to openWindows to prevent it from being empty
-        // when real frames are disposed. The WindowListener checks if openWindows is
-        // empty after removing a frame, and calls System.exit(0) if it is.
-        JFrame dummyFrame = null;
-        if (openWindows != null && !openWindows.isEmpty()) {
-            dummyFrame = new JFrame("Dummy - Test Cleanup");
-            openWindows.add(dummyFrame);
-        }
-
-        // Get all frames and dispose them
+        // Keep display disabled while frames are torn down.
+        System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
         Frame[] frames = Frame.getFrames();
         for (Frame frame : frames) {
-            if (frame instanceof JFrame && frame != dummyFrame) {
-                frame.dispose();
-            }
-        }
-
-        // Remove dummy frame and clear openWindows
-        if (openWindows != null) {
-            if (dummyFrame != null) {
-                openWindows.remove(dummyFrame);
-            }
-            openWindows.clear();
-            if (dummyFrame != null) {
-                dummyFrame.dispose();
-            }
-        } else {
-            // Fallback: try to clear the set if we couldn't get it earlier
-            try {
-                Field openWindowsField = SwingChartDisplayer.class.getDeclaredField("openWindows");
-                openWindowsField.setAccessible(true);
-                @SuppressWarnings("unchecked")
-                java.util.Set<JFrame> set = (java.util.Set<JFrame>) openWindowsField.get(null);
-                if (set != null) {
-                    set.clear();
-                }
-            } catch (NoSuchFieldException | IllegalAccessException e) {
-                // If reflection fails completely, continue with cleanup
-            }
+            frame.dispose();
         }
         // Clean up properties
         System.clearProperty(SwingChartDisplayer.DISPLAY_SCALE_PROPERTY);
@@ -188,6 +139,25 @@ class SwingChartDisplayerTest {
     @Test
     void testDisplayWithNullChart() {
         assertThrows(Exception.class, () -> displayer.display(null), "Display should throw exception for null chart");
+    }
+
+    @Test
+    void testDisplayCreatesNonFocusableWindowWhenEnabled() {
+        Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
+
+        String title = "Focusability Test " + UUID.randomUUID();
+        System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
+
+        JFreeChart chart = ChartFactory.createLineChart("Test", "X", "Y", null);
+        displayer.display(chart, title);
+
+        JFrame frame = findFrameByTitle(title);
+        assertNotNull(frame, "Expected frame created by public display API");
+        assertFalse(frame.getFocusableWindowState(), "Displayed chart frame should not be focusable");
+
+        // Keep cleanup deterministic in tests and avoid exit-on-close behavior.
+        System.setProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY, "true");
+        frame.dispose();
     }
 
     /**
@@ -477,6 +447,16 @@ class SwingChartDisplayerTest {
         } finally {
             System.clearProperty(SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY);
         }
+    }
+
+    private JFrame findFrameByTitle(String title) {
+        Frame[] frames = Frame.getFrames();
+        for (Frame frame : frames) {
+            if (frame instanceof JFrame jFrame && title.equals(jFrame.getTitle())) {
+                return jFrame;
+            }
+        }
+        return null;
     }
 
 }

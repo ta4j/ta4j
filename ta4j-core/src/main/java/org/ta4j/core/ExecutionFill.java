@@ -8,16 +8,17 @@ import java.time.Instant;
 import org.ta4j.core.num.Num;
 
 /**
- * Generic execution fill contract for live trading.
+ * Deprecated live-fill compatibility contract.
  *
  * <p>
- * Implementations should provide execution price/amount/fee, side, and
- * timestamps. The optional correlation id can be used to associate a fill with
- * an {@link ExecutionIntent} or external decision id when available.
+ * Use {@link TradeFill} for new code. This interface remains available in the
+ * 0.22.x line so existing live adapters can migrate without a hard compile
+ * break.
  * </p>
  *
  * @since 0.22.2
  */
+@Deprecated(since = "0.22.4")
 public interface ExecutionFill extends Serializable {
 
     /**

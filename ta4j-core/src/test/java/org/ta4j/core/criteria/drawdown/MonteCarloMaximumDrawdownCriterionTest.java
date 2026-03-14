@@ -12,8 +12,7 @@ import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
-import org.ta4j.core.LiveTrade;
-import org.ta4j.core.LiveTradingRecord;
+import org.ta4j.core.BaseTrade;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.EquityCurveMode;
@@ -122,8 +121,8 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 90, 110, 80, 120, 70, 130)
                 .build();
-        var record = buildLiveRecordWithOpenLot(series, true);
-        var closedOnly = buildLiveRecordWithOpenLot(series, false);
+        var record = buildRecordWithOpenLot(series, true);
+        var closedOnly = buildRecordWithOpenLot(series, false);
 
         class FixedRandom implements RandomGenerator {
             @Override
@@ -191,7 +190,7 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(100, 90, 110, 80, 120, 70, 130)
                 .build();
-        var record = buildLiveRecordWithOpenLot(series, true);
+        var record = buildRecordWithOpenLot(series, true);
 
         var seedMarkToMarket = new MonteCarloMaximumDrawdownCriterion(1, 1, 7L, Statistics.MAX,
                 EquityCurveMode.MARK_TO_MARKET);
@@ -253,26 +252,26 @@ public class MonteCarloMaximumDrawdownCriterionTest extends AbstractCriterionTes
         assertEquals(2, counter.get());
     }
 
-    private LiveTradingRecord buildLiveRecordWithOpenLot(org.ta4j.core.BarSeries series, boolean includeOpenLot) {
-        var record = new LiveTradingRecord(Trade.TradeType.BUY, ExecutionMatchPolicy.SPECIFIC_ID, new ZeroCostModel(),
+    private BaseTradingRecord buildRecordWithOpenLot(org.ta4j.core.BarSeries series, boolean includeOpenLot) {
+        var record = new BaseTradingRecord(Trade.TradeType.BUY, ExecutionMatchPolicy.SPECIFIC_ID, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
         var numFactory = series.numFactory();
 
         if (includeOpenLot) {
-            record.recordFill(0, new LiveTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.numOf(10),
+            record.recordFill(0, new BaseTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.numOf(10),
                     null, ExecutionSide.BUY, "order-open", "open"));
         }
-        record.recordFill(1, new LiveTrade(1, Instant.EPOCH, series.getBar(1).getClosePrice(), numFactory.one(), null,
+        record.recordFill(1, new BaseTrade(1, Instant.EPOCH, series.getBar(1).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.BUY, "order-1", "c1"));
-        record.recordFill(2, new LiveTrade(2, Instant.EPOCH, series.getBar(2).getClosePrice(), numFactory.one(), null,
+        record.recordFill(2, new BaseTrade(2, Instant.EPOCH, series.getBar(2).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.SELL, "order-1", "c1"));
-        record.recordFill(3, new LiveTrade(3, Instant.EPOCH, series.getBar(3).getClosePrice(), numFactory.one(), null,
+        record.recordFill(3, new BaseTrade(3, Instant.EPOCH, series.getBar(3).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.BUY, "order-2", "c2"));
-        record.recordFill(4, new LiveTrade(4, Instant.EPOCH, series.getBar(4).getClosePrice(), numFactory.one(), null,
+        record.recordFill(4, new BaseTrade(4, Instant.EPOCH, series.getBar(4).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.SELL, "order-2", "c2"));
-        record.recordFill(5, new LiveTrade(5, Instant.EPOCH, series.getBar(5).getClosePrice(), numFactory.one(), null,
+        record.recordFill(5, new BaseTrade(5, Instant.EPOCH, series.getBar(5).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.BUY, "order-3", "c3"));
-        record.recordFill(6, new LiveTrade(6, Instant.EPOCH, series.getBar(6).getClosePrice(), numFactory.one(), null,
+        record.recordFill(6, new BaseTrade(6, Instant.EPOCH, series.getBar(6).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.SELL, "order-3", "c3"));
 
         return record;

@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.num.NaN.NaN;
 
 import org.junit.Before;
@@ -72,6 +73,17 @@ public class RecentFractalSwingLowIndicatorTest extends AbstractIndicatorTest<In
     }
 
     @Test
+    public void shouldRejectInvalidConfiguration() {
+        final var lowPrice = new LowPriceIndicator(series);
+
+        assertThrows(NullPointerException.class,
+                () -> new RecentFractalSwingLowIndicator((Indicator<Num>) null, 1, 1, 0));
+        assertThrows(IllegalArgumentException.class, () -> new RecentFractalSwingLowIndicator(lowPrice, 0, 1, 0));
+        assertThrows(IllegalArgumentException.class, () -> new RecentFractalSwingLowIndicator(lowPrice, 1, -1, 0));
+        assertThrows(IllegalArgumentException.class, () -> new RecentFractalSwingLowIndicator(lowPrice, 1, 1, -1));
+    }
+
+    @Test
     public void shouldAllowRoundedBottomsWhenEqualBarsPermitted() {
         final var roundedSeries = createSeriesFromLows(9, 7, 8, 6, 6, 9, 10, 11);
         final var noEquals = new RecentFractalSwingLowIndicator(new LowPriceIndicator(roundedSeries), 2, 2, 0);
@@ -94,6 +106,19 @@ public class RecentFractalSwingLowIndicatorTest extends AbstractIndicatorTest<In
     }
 
     @Test
+    public void shouldRemoveStaleSwingPointsWhenRoundedBottomExceedsAllowance() {
+        final var roundedSeries = createSeriesFromLows(10, 9, 9, 9, 9, 11, 12);
+        final var indicator = new RecentFractalSwingLowIndicator(new LowPriceIndicator(roundedSeries), 1, 0, 1);
+
+        assertThat(indicator.getSwingPointIndexesUpTo(2)).containsExactly(1, 2);
+        assertThat(indicator.getLatestSwingIndex(2)).isEqualTo(2);
+
+        assertThat(indicator.getLatestSwingIndex(4)).isEqualTo(-1);
+        assertThat(indicator.getSwingPointIndexesUpTo(4)).isEmpty();
+        assertThat(indicator.getSwingPointIndexes()).isEmpty();
+    }
+
+    @Test
     public void shouldPropagateNaNFromUnderlyingIndicator() {
         final var baseSeries = createSeriesFromLows(12, 10, 7, 8, 9, 6, 7, 8, 5, 7, 8);
         final var lowIndicator = new LowPriceIndicator(baseSeries);
@@ -110,6 +135,15 @@ public class RecentFractalSwingLowIndicatorTest extends AbstractIndicatorTest<In
 
         assertThat(indicator.getValue(6).isNaN()).isTrue();
         assertThat(indicator.getLatestSwingIndex(6)).isEqualTo(-1);
+    }
+
+    @Test
+    public void shouldExposeSwingPointIndexes() {
+        final var indicator = new RecentFractalSwingLowIndicator(new LowPriceIndicator(series), 2, 2, 0);
+
+        assertThat(indicator.getSwingPointIndexesUpTo(6)).containsExactly(2);
+        assertThat(indicator.getSwingPointIndexesUpTo(7)).containsExactly(2, 5);
+        assertThat(indicator.getSwingPointIndexes()).containsExactly(2, 5, 8, 11);
     }
 
     private BarSeries createSeriesFromLows(double... lows) {

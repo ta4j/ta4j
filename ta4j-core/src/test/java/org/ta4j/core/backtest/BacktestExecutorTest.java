@@ -15,11 +15,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.NumberOfBarsCriterion;
@@ -31,6 +33,7 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedRule;
 import org.ta4j.core.num.NaN;
+import org.ta4j.core.walkforward.WalkForwardConfig;
 
 public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> {
 
@@ -156,6 +159,68 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         assertEquals(strategies.size(), result.tradingStatements().size());
         assertEquals(strategies.size(), result.runtimeReport().strategyCount());
+    }
+
+    @Test
+    public void constructorWithTradeExecutionModelUsesConfiguredExecutionPrices() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        BacktestExecutor executor = new BacktestExecutor(series, new TradeOnCurrentCloseModel());
+
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numFactory.one());
+
+        TradingRecord tradingRecord = result.tradingStatements().getFirst().getTradingRecord();
+        Position position = tradingRecord.getPositions().getFirst();
+        assertEquals(series.getBar(0).getClosePrice(), position.getEntry().getPricePerAsset());
+        assertEquals(series.getBar(1).getClosePrice(), position.getExit().getPricePerAsset());
+    }
+
+    @Test
+    public void constructorWithCostModelsAndTradeExecutionModelUsesBoth() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        LinearTransactionCostModel costModel = new LinearTransactionCostModel(0.1);
+        BacktestExecutor executor = new BacktestExecutor(series, costModel, new ZeroCostModel(),
+                new TradeOnCurrentCloseModel());
+
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numFactory.one());
+
+        TradingRecord tradingRecord = result.tradingStatements().getFirst().getTradingRecord();
+        Position position = tradingRecord.getPositions().getFirst();
+        Trade entry = position.getEntry();
+        Trade exit = position.getExit();
+
+        assertSame(costModel, tradingRecord.getTransactionCostModel());
+        assertEquals(series.getBar(0).getClosePrice(), entry.getPricePerAsset());
+        assertEquals(series.getBar(1).getClosePrice(), exit.getPricePerAsset());
+        assertEquals(costModel.calculate(entry.getPricePerAsset(), entry.getAmount()), entry.getCost());
+        assertEquals(costModel.calculate(exit.getPricePerAsset(), exit.getAmount()), exit.getCost());
+    }
+
+    @Test
+    public void constructorWithSeriesManagerUsesItsTradingRecordFactory() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
+        Strategy strategyOne = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy strategyTwo = new BaseStrategy(new FixedRule(2), new FixedRule(3));
+        AtomicInteger createdRecords = new AtomicInteger();
+        BarSeriesManager.TradingRecordFactory tradingRecordFactory = (tradeType, startIndex, endIndex,
+                transactionCostModel, holdingCostModel) -> {
+            createdRecords.incrementAndGet();
+            return new TrackingTradingRecord(tradeType, startIndex, endIndex, transactionCostModel, holdingCostModel);
+        };
+        BarSeriesManager seriesManager = new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(),
+                new TradeOnCurrentCloseModel(), tradingRecordFactory);
+        BacktestExecutor executor = new BacktestExecutor(seriesManager);
+
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategyOne, strategyTwo),
+                numFactory.one());
+
+        assertEquals(2, createdRecords.get());
+        assertEquals(2, result.tradingStatements().size());
+        assertTrue(result.tradingStatements()
+                .stream()
+                .map(statement -> statement.getTradingRecord())
+                .allMatch(TrackingTradingRecord.class::isInstance));
     }
 
     @Test
@@ -354,6 +419,42 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertTrue(firstScore.isGreaterThanOrEqual(secondScore));
     }
 
+    @Test
+    public void executeWalkForwardRunsStrategyAcrossFolds() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25)
+                .build();
+        Strategy strategy = new BaseStrategy(new FixedRule(4, 8, 12), new FixedRule(5, 9, 13));
+        WalkForwardConfig config = new WalkForwardConfig(4, 4, 4, 0, 0, 4, 2, List.of(1), 1, List.of(1), 3L);
+        BacktestExecutor executor = new BacktestExecutor(series, new ZeroCostModel(), new ZeroCostModel(),
+                new TradeOnCurrentCloseModel());
+
+        StrategyWalkForwardExecutionResult result = executor.executeWalkForward(strategy, numOf(1), Trade.TradeType.BUY,
+                config);
+
+        assertSame(series, result.barSeries());
+        assertFalse(result.folds().isEmpty());
+        assertEquals(result.folds().size(), result.runtimeReport().foldRuntimes().size());
+    }
+
+    @Test
+    public void executeWithWalkForwardReturnsCombinedBacktestAndWalkForwardOutputs() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25)
+                .build();
+        Strategy strategy = new BaseStrategy(new FixedRule(4, 8, 12), new FixedRule(5, 9, 13));
+        WalkForwardConfig config = new WalkForwardConfig(4, 4, 4, 0, 0, 4, 2, List.of(1), 1, List.of(1), 3L);
+        BacktestExecutor executor = new BacktestExecutor(series, new ZeroCostModel(), new ZeroCostModel(),
+                new TradeOnCurrentCloseModel());
+
+        BacktestExecutor.BacktestAndWalkForwardResult result = executor.executeWithWalkForward(strategy, numOf(1),
+                Trade.TradeType.BUY, config);
+
+        assertEquals(1, result.backtest().tradingStatements().size());
+        assertFalse(result.walkForward().folds().isEmpty());
+        assertSame(result.backtest().barSeries(), result.walkForward().barSeries());
+    }
+
     private static final class NaNPenalizingCriterion implements AnalysisCriterion {
 
         @Override
@@ -382,6 +483,14 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
                 return true;
             }
             return criterionValue1.isGreaterThan(criterionValue2);
+        }
+    }
+
+    private static final class TrackingTradingRecord extends BaseTradingRecord {
+
+        private TrackingTradingRecord(Trade.TradeType tradeType, int startIndex, int endIndex,
+                CostModel transactionCostModel, CostModel holdingCostModel) {
+            super(tradeType, startIndex, endIndex, transactionCostModel, holdingCostModel);
         }
     }
 

@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.wyckoff;
 
+import static org.ta4j.core.indicators.IndicatorUtils.isInvalid;
+import static org.ta4j.core.num.NaN.NaN;
 import java.util.Objects;
 
 import org.ta4j.core.BarSeries;
@@ -10,15 +12,13 @@ import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
 
-import static org.ta4j.core.num.NaN.NaN;
-
 /**
  * Provides relative volume measurements to support Wyckoff event detection.
  *
  * <p>
  * This is a lower-level building block used by {@link WyckoffPhaseIndicator}
  * and the higher-level entry points {@link WyckoffCycleFacade} and
- * {@link WyckoffCycleAnalysis}.
+ * {@link WyckoffCycleAnalysisRunner}.
  *
  * @since 0.22.3
  */
@@ -100,10 +100,4 @@ public final class WyckoffVolumeProfile {
         }
     }
 
-    /**
-     * Returns whether invalid.
-     */
-    private static boolean isInvalid(Num value) {
-        return Num.isNaNOrNull(value);
-    }
 }

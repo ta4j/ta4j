@@ -85,4 +85,29 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
         assertNumEquals(0.9841, coef.getValue(18));
         assertNumEquals(0.9799, coef.getValue(19));
     }
+
+    @Test
+    public void sampleAndPopulationCorrelationMatchWhenCovarianceIsScaledConsistently() {
+        var population = CorrelationCoefficientIndicator.ofPopulation(close, volume, 5);
+        var sample = CorrelationCoefficientIndicator.ofSample(close, volume, 5);
+
+        assertTrue(population.getValue(0).isNaN());
+        assertTrue(sample.getValue(0).isNaN());
+        for (int i = 1; i <= 19; i++) {
+            assertNumEquals(population.getValue(i), sample.getValue(i), 1.0e-12);
+        }
+    }
+
+    @Test
+    public void nonPositiveBarCountFallsBackToOne() {
+        var populationWithOne = CorrelationCoefficientIndicator.ofPopulation(close, volume, 1);
+        var populationWithZero = CorrelationCoefficientIndicator.ofPopulation(close, volume, 0);
+        var sampleWithOne = CorrelationCoefficientIndicator.ofSample(close, volume, 1);
+        var sampleWithNegative = CorrelationCoefficientIndicator.ofSample(close, volume, -5);
+
+        for (int i = 0; i <= 19; i++) {
+            assertNumEquals(populationWithOne.getValue(i), populationWithZero.getValue(i), 1.0e-12);
+            assertNumEquals(sampleWithOne.getValue(i), sampleWithNegative.getValue(i), 1.0e-12);
+        }
+    }
 }

@@ -44,8 +44,8 @@ public class ReadmeContentManagerTest {
 
         String updatedContent = Files.readString(readmeFile, StandardCharsets.UTF_8);
         LineEndingCounts counts = countLineEndings(updatedContent);
-        assertTrue(counts.lf > 0);
-        assertEquals(0, counts.crlf);
+        assertTrue(counts.lf() > 0);
+        assertEquals(0, counts.crlf());
         assertTrue(updatedContent.contains(snippetBlock("ema-crossover", "ema_crossover", 1, lineSeparator)));
     }
 
@@ -63,8 +63,8 @@ public class ReadmeContentManagerTest {
 
         String updatedContent = Files.readString(readmeFile, StandardCharsets.UTF_8);
         LineEndingCounts counts = countLineEndings(updatedContent);
-        assertTrue(counts.crlf > 0);
-        assertEquals(0, counts.lf);
+        assertTrue(counts.crlf() > 0);
+        assertEquals(0, counts.lf());
         assertTrue(updatedContent.contains(snippetBlock("ema-crossover", "ema_crossover", 1, lineSeparator)));
     }
 
@@ -127,13 +127,6 @@ public class ReadmeContentManagerTest {
         return new LineEndingCounts(crlf, lf);
     }
 
-    private static final class LineEndingCounts {
-        private final int crlf;
-        private final int lf;
-
-        private LineEndingCounts(int crlf, int lf) {
-            this.crlf = crlf;
-            this.lf = lf;
-        }
+    private record LineEndingCounts(int crlf, int lf) {
     }
 }

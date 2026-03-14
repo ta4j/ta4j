@@ -4,9 +4,6 @@
 package org.ta4j.core.criteria;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.ExecutionSide;
-import org.ta4j.core.LiveTradingRecord;
-import org.ta4j.core.OpenPosition;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.NaN;
@@ -18,10 +15,9 @@ import org.ta4j.core.num.NumFactory;
  * position.
  *
  * <p>
- * For {@link LiveTradingRecord} it marks the net open position to the series
- * end price and subtracts any remaining entry fees. For other trading records
- * it delegates to {@link Position#getProfit(int, Num)} using the series end
- * price. Returns zero when no open position exists.
+ * This marks the current open position to the series end price via
+ * {@link Position#getProfit(int, Num)}. Returns zero when no open position
+ * exists.
  * </p>
  *
  * @since 0.22.2
@@ -45,19 +41,6 @@ public class OpenPositionUnrealizedProfitCriterion extends AbstractAnalysisCrite
         NumFactory factory = series.numFactory();
         int endIndex = tradingRecord.getEndIndex(series);
         Num closePrice = series.getBar(endIndex).getClosePrice();
-        if (tradingRecord instanceof LiveTradingRecord liveRecord) {
-            OpenPosition open = liveRecord.getNetOpenPosition();
-            if (open == null || open.amount() == null || open.amount().isZero()) {
-                return factory.zero();
-            }
-            Num amount = toSeriesNum(factory, open.amount());
-            Num entryCost = toSeriesNum(factory, open.totalEntryCost());
-            Num fees = toSeriesNum(factory, open.totalFees());
-            Num currentValue = closePrice.multipliedBy(amount);
-            Num gross = open.side() == ExecutionSide.BUY ? currentValue.minus(entryCost)
-                    : entryCost.minus(currentValue);
-            return gross.minus(fees);
-        }
         Position current = tradingRecord.getCurrentPosition();
         if (!current.isOpened()) {
             return factory.zero();
