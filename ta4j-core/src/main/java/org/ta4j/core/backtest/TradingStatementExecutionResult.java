@@ -17,6 +17,7 @@ import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.WeightedValue;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -206,6 +207,24 @@ public interface TradingStatementExecutionResult<R> {
     }
 
     /**
+     * Ranks all statements using weighted criteria with the default normalizer and
+     * missing-value policy.
+     *
+     * <p>
+     * This is the shortest path when callers already know the criteria and weights
+     * they want to combine and do not need a reusable {@link RankingProfile}
+     * instance.
+     * </p>
+     *
+     * @param criteria weighted criteria to normalize and combine
+     * @return ranked statement rows sorted by composite score descending
+     * @since 0.22.4
+     */
+    default List<RankedTradingStatement> rankTradingStatements(WeightedCriterion... criteria) {
+        return rankTradingStatements(RankingProfile.weighted(criteria));
+    }
+
+    /**
      * Returns top-ranked statements for the supplied weighted profile.
      *
      * @param limit   maximum number of statements to return
@@ -228,6 +247,19 @@ public interface TradingStatementExecutionResult<R> {
             topStatements.add(ranked.get(i).statement());
         }
         return Collections.unmodifiableList(topStatements);
+    }
+
+    /**
+     * Returns top-ranked statements for the supplied weighted criteria using the
+     * default normalizer and missing-value policy.
+     *
+     * @param limit    maximum number of statements to return
+     * @param criteria weighted criteria to normalize and combine
+     * @return top-ranked statements
+     * @since 0.22.4
+     */
+    default List<TradingStatement> topTradingStatements(int limit, WeightedCriterion... criteria) {
+        return topTradingStatements(limit, RankingProfile.weighted(criteria));
     }
 
     /**
@@ -258,6 +290,46 @@ public interface TradingStatementExecutionResult<R> {
             if (multiplier.isNegative()) {
                 throw new IllegalArgumentException("multiplier must be >= 0");
             }
+        }
+
+        /**
+         * Creates an equally weighted criterion.
+         *
+         * @param criterion criterion to evaluate
+         * @return weighted criterion with multiplier {@code 1}
+         * @since 0.22.4
+         */
+        public static WeightedCriterion of(AnalysisCriterion criterion) {
+            return new WeightedCriterion(criterion, DoubleNumFactory.getInstance().one());
+        }
+
+        /**
+         * Creates a weighted criterion from an explicit {@link Num} multiplier.
+         *
+         * @param criterion  criterion to evaluate
+         * @param multiplier arbitrary non-negative multiplier
+         * @return weighted criterion
+         * @since 0.22.4
+         */
+        public static WeightedCriterion of(AnalysisCriterion criterion, Num multiplier) {
+            return new WeightedCriterion(criterion, multiplier);
+        }
+
+        /**
+         * Creates a weighted criterion from a primitive multiplier.
+         *
+         * <p>
+         * Primitive multipliers are stored as {@link org.ta4j.core.num.DoubleNum}
+         * values and normalized into the result series factory during ranking.
+         * </p>
+         *
+         * @param criterion  criterion to evaluate
+         * @param multiplier arbitrary non-negative multiplier
+         * @return weighted criterion
+         * @since 0.22.4
+         */
+        public static WeightedCriterion of(AnalysisCriterion criterion, double multiplier) {
+            return new WeightedCriterion(criterion, DoubleNumFactory.getInstance().numOf(multiplier));
         }
     }
 
@@ -404,6 +476,22 @@ public interface TradingStatementExecutionResult<R> {
          * @since 0.22.4
          */
         public static RankingProfile of(List<WeightedCriterion> criteria) {
+            return weighted(criteria);
+        }
+
+        /**
+         * Creates a profile with default normalizer and missing-value policy.
+         *
+         * <p>
+         * This named factory is the main entry point for callers who want weighted,
+         * normalized ranking without choosing custom normalization behavior.
+         * </p>
+         *
+         * @param criteria criterion multipliers
+         * @return ranking profile
+         * @since 0.22.4
+         */
+        public static RankingProfile weighted(List<WeightedCriterion> criteria) {
             return new RankingProfile(criteria, DirectionAwareMinMaxNormalizer.INSTANCE,
                     MissingValuePolicy.WORST_SCORE);
         }
@@ -417,7 +505,19 @@ public interface TradingStatementExecutionResult<R> {
          */
         public static RankingProfile of(WeightedCriterion... criteria) {
             Objects.requireNonNull(criteria, "criteria");
-            return of(List.of(criteria));
+            return weighted(criteria);
+        }
+
+        /**
+         * Creates a profile with default normalizer and missing-value policy.
+         *
+         * @param criteria criterion multipliers
+         * @return ranking profile
+         * @since 0.22.4
+         */
+        public static RankingProfile weighted(WeightedCriterion... criteria) {
+            Objects.requireNonNull(criteria, "criteria");
+            return weighted(List.of(criteria));
         }
     }
 

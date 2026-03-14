@@ -1,12 +1,12 @@
 # Flow:
 #  - analyze (checkout, diff, changelog, AI decision, compute version) -> job outputs
-#  - approval (environment-protected) -> runs only when bump == "major"
+#  - approval (environment-protected) -> reserved for future major-release re-enable
 #  - publish (patch/minor) -> depends on analyze
-#  - publish_major -> depends on analyze + approval
+#  - publish_major -> reserved for future major-release re-enable
 #
 #
-# IMPORTANT: create the environment "major-release" and configure required reviewers.
-# The approval job will pause in the Actions UI until an approver clicks Approve/Reject.
+# NOTE: major bumps are currently disabled and downgraded to minor.
+# The major-release approval path is kept for future re-enable.
 
 name: AI Semantic Release Scheduler
 
@@ -340,7 +340,7 @@ jobs:
             semver_rules=$(cat "$semver_rules_file")
             echo "audit:semver_rules_source=file"
           else
-            semver_rules="Determine if there is enough unreleased functionality here to warrant a release:\nMAJOR: Breaking API changes in public/core APIs.\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\nIf binary change count is 0 => should_release=false.\nIf binary change list empty or changelog-only => should_release=false.\nPre-1.0.0: breaking changes can be MINOR, not necessarily MAJOR."
+            semver_rules="Decide release go/no-go from unreleased binary-impacting changes.\nIf go, choose bump: patch|minor.\nMINOR: backward-compatible, user-visible new features, and breaking-change cases.\nPATCH: backward-compatible bug fixes or internal improvements.\nIf binary change count is 0 => should_release=false.\nIf binary change list empty or changelog-only => should_release=false.\nIf unsure between MINOR and PATCH, prefer PATCH.\nPre-1.0.0: breaking changes can be MINOR."
             echo "audit:semver_rules_source=default"
           fi
 
@@ -362,14 +362,14 @@ jobs:
                 { role: "system", content: "You are a SemVer assistant. Reply with JSON only." },
                 { role: "user", content:
                   (
-                    "Decide release? bump: patch|minor|major.\n" +
+                    "Decide release go/no-go. If go, choose bump: patch|minor.\n" +
                     "Current: " + $current_version + "\n" +
                     "Last tag: " + $last_tag + "\n" +
                     "Binary change count: " + $binary_count + "\n" +
                     "Rules:\n" + $semver_rules + "\n" +
                     "Binary-impacting changes summary:\n" + $binary_prompt + "\n" +
                     "Changelog highlights:\n" + $changelog + "\n" +
-                    "Return JSON: {\"should_release\":true|false,\"bump\":\"patch|minor|major\",\"reason\":\"1-2 sentences\"}"
+                    "Return JSON only: {\"should_release\":true|false,\"bump\":\"patch|minor\",\"reason\":\"1-2 sentences\"}. If should_release=false, set bump to \"patch\"."
                   )
                 }
               ]
@@ -527,8 +527,27 @@ jobs:
 
           should=$(jq -r 'if .should_release then "true" else "false" end' ai.json)
           bump=$(jq -r '.bump // "patch"' ai.json)
+          bump=$(printf '%s' "$bump" | tr '[:upper:]' '[:lower:]' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
+          if [ -z "$bump" ]; then
+            bump="patch"
+          fi
           warning=$(jq -r '.warning // ""' ai.json)
           reason=$(jq -r '.reason // ""' ai.json)
+
+          if [ "$bump" = "major" ]; then
+            echo "audit:major_bump_downgraded=true"
+            bump="minor"
+            if [ -n "$warning" ]; then
+              warning="${warning}; major bump disabled, downgraded to minor"
+            else
+              warning="major bump disabled, downgraded to minor"
+            fi
+            if [ -n "$reason" ]; then
+              reason="${reason} Major bumps are currently disabled, so this was downgraded to minor."
+            else
+              reason="Major bumps are currently disabled, so this was downgraded to minor."
+            fi
+          fi
 
           echo "should_release=$should" >> $GITHUB_OUTPUT
           echo "bump=$bump" >> $GITHUB_OUTPUT
@@ -667,8 +686,8 @@ jobs:
           echo "decision:pom_version=${POM_VERSION:-} pom_base=${POM_BASE:-}"
           echo "decision:last_default_branch_tag=${LAST_TAG:-}"
 
-  # Human approval job: only runs for major bumps and uses a protected environment to require reviewers.
-  # Create an environment named `major-release` and configure required reviewers in repo settings.
+  # Reserved major-release approval path.
+  # Major bumps are currently downgraded to minor in analyze/parsing and this job should not run.
   approval:
     name: Major release approval (human)
     needs: analyze

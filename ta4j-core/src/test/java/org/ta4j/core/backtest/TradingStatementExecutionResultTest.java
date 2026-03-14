@@ -118,6 +118,31 @@ public class TradingStatementExecutionResultTest extends AbstractIndicatorTest<B
     }
 
     @Test
+    public void weightedFactoriesAndConvenienceAliasesPreserveDefaultBehavior() {
+        BacktestExecutionResult result = createBacktestResult();
+        MappedCriterion criterionOne = mappedCriterion(result, true, 3.0, 2.0, 1.0);
+        MappedCriterion criterionTwo = mappedCriterion(result, false, 1.0, 2.0, 3.0);
+
+        TradingStatementExecutionResult.WeightedCriterion equalWeight = TradingStatementExecutionResult.WeightedCriterion
+                .of(criterionOne);
+        TradingStatementExecutionResult.WeightedCriterion explicitWeight = TradingStatementExecutionResult.WeightedCriterion
+                .of(criterionTwo, 2.5);
+
+        assertEquals(1.0, equalWeight.multiplier().doubleValue(), 1.0e-12);
+        assertEquals(2.5, explicitWeight.multiplier().doubleValue(), 1.0e-12);
+
+        TradingStatementExecutionResult.RankingProfile expectedProfile = TradingStatementExecutionResult.RankingProfile
+                .of(equalWeight, explicitWeight);
+        TradingStatementExecutionResult.RankingProfile actualProfile = TradingStatementExecutionResult.RankingProfile
+                .weighted(equalWeight, explicitWeight);
+
+        assertEquals(expectedProfile, actualProfile);
+        assertSame(TradingStatementExecutionResult.DirectionAwareMinMaxNormalizer.INSTANCE, actualProfile.normalizer());
+        assertEquals(TradingStatementExecutionResult.MissingValuePolicy.WORST_SCORE,
+                actualProfile.missingValuePolicy());
+    }
+
+    @Test
     public void weightedRankingHandlesMixedCriterionDirections() {
         BacktestExecutionResult result = createBacktestResult();
         MappedCriterion rewardCriterion = mappedCriterion(result, true, 10.0, 7.0, 4.0);
@@ -221,14 +246,40 @@ public class TradingStatementExecutionResultTest extends AbstractIndicatorTest<B
     }
 
     @Test
+    public void weightedRankingConvenienceOverloadsMatchProfileBehavior() {
+        BacktestExecutionResult result = createBacktestResult();
+        MappedCriterion criterionOne = mappedCriterion(result, true, 4.0, 3.0, 1.0);
+        MappedCriterion criterionTwo = mappedCriterion(result, false, 5.0, 4.0, 2.0);
+        TradingStatementExecutionResult.WeightedCriterion weightedOne = TradingStatementExecutionResult.WeightedCriterion
+                .of(criterionOne, 3.0);
+        TradingStatementExecutionResult.WeightedCriterion weightedTwo = TradingStatementExecutionResult.WeightedCriterion
+                .of(criterionTwo, 1.0);
+        TradingStatementExecutionResult.RankingProfile profile = TradingStatementExecutionResult.RankingProfile
+                .weighted(weightedOne, weightedTwo);
+
+        List<TradingStatementExecutionResult.RankedTradingStatement> rankedFromProfile = result
+                .rankTradingStatements(profile);
+        List<TradingStatementExecutionResult.RankedTradingStatement> rankedFromVarargs = result
+                .rankTradingStatements(weightedOne, weightedTwo);
+        assertEquals(rankedIndexes(rankedFromProfile), rankedIndexes(rankedFromVarargs));
+
+        List<TradingStatement> topFromProfile = result.topTradingStatements(2, profile);
+        List<TradingStatement> topFromVarargs = result.topTradingStatements(2, weightedOne, weightedTwo);
+        assertEquals(topFromProfile.size(), topFromVarargs.size());
+        for (int i = 0; i < topFromProfile.size(); i++) {
+            assertSame(topFromProfile.get(i), topFromVarargs.get(i));
+        }
+    }
+
+    @Test
     public void backtestWeightedTopStrategiesAttachRawCriterionScores() {
         BacktestExecutionResult result = createBacktestResult();
         MappedCriterion criterionOne = mappedCriterion(result, true, 3.0, 2.0, 1.0);
         MappedCriterion criterionTwo = mappedCriterion(result, false, 5.0, 4.0, 1.0);
-        TradingStatementExecutionResult.RankingProfile profile = TradingStatementExecutionResult.RankingProfile
-                .of(weightedCriterion(criterionOne, 1.0), weightedCriterion(criterionTwo, 1.0));
 
-        List<TradingStatement> topStatements = result.getTopStrategiesWeighted(2, profile);
+        List<TradingStatement> topStatements = result.getTopStrategiesWeighted(2,
+                TradingStatementExecutionResult.WeightedCriterion.of(criterionOne, 1.0),
+                TradingStatementExecutionResult.WeightedCriterion.of(criterionTwo, 1.0));
         assertEquals(2, topStatements.size());
         for (TradingStatement statement : topStatements) {
             Num expectedOne = criterionOne.calculate(result.barSeries(), statement.getTradingRecord());
@@ -244,7 +295,10 @@ public class TradingStatementExecutionResultTest extends AbstractIndicatorTest<B
         MappedCriterion criterionOne = mappedCriterion(result, true, 3.0, 2.0, 1.0);
         MappedCriterion criterionTwo = mappedCriterion(result, true, 1.0, 2.0, 3.0);
 
-        assertThrows(NullPointerException.class, () -> result.rankTradingStatements(null));
+        assertThrows(NullPointerException.class,
+                () -> result.rankTradingStatements((TradingStatementExecutionResult.RankingProfile) null));
+        assertThrows(NullPointerException.class,
+                () -> result.rankTradingStatements((TradingStatementExecutionResult.WeightedCriterion[]) null));
         assertThrows(IllegalArgumentException.class,
                 () -> new TradingStatementExecutionResult.RankingProfile(List.of(), null, null));
         assertThrows(NullPointerException.class,
@@ -262,7 +316,7 @@ public class TradingStatementExecutionResultTest extends AbstractIndicatorTest<B
 
     private TradingStatementExecutionResult.WeightedCriterion weightedCriterion(AnalysisCriterion criterion,
             double multiplier) {
-        return new TradingStatementExecutionResult.WeightedCriterion(criterion, numOf(multiplier));
+        return TradingStatementExecutionResult.WeightedCriterion.of(criterion, numOf(multiplier));
     }
 
     private MappedCriterion mappedCriterion(TradingStatementExecutionResult<?> result, boolean higherIsBetter,

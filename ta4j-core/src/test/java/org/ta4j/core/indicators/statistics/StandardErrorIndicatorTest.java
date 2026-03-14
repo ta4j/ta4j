@@ -53,4 +53,35 @@ public class StandardErrorIndicatorTest extends AbstractIndicatorTest<Indicator<
         assertNumEquals(0, se.getValue(1));
         assertNumEquals(0, se.getValue(3));
     }
+
+    @Test
+    public void sampleStandardErrorCanBeRequestedExplicitly() {
+        var se = StandardErrorIndicator.ofSample(new ClosePriceIndicator(data), 5);
+
+        assertNumEquals(0, se.getValue(0));
+        assertNumEquals(5.0000, se.getValue(1));
+        assertNumEquals(5.7735, se.getValue(2));
+        assertNumEquals(6.4550, se.getValue(3));
+        assertNumEquals(7.0711, se.getValue(4));
+        assertNumEquals(5.0990, se.getValue(5));
+        assertNumEquals(3.1623, se.getValue(6));
+        assertNumEquals(2.4495, se.getValue(7));
+        assertNumEquals(2.4495, se.getValue(8));
+        assertNumEquals(3.1623, se.getValue(9));
+        assertNumEquals(5.0990, se.getValue(10));
+        assertNumEquals(7.0711, se.getValue(11));
+    }
+
+    @Test
+    public void nonPositiveBarCountFallsBackToOne() {
+        var closePrice = new ClosePriceIndicator(data);
+        var withOne = StandardErrorIndicator.ofPopulation(closePrice, 1);
+        var withZero = StandardErrorIndicator.ofPopulation(closePrice, 0);
+        var withNegative = StandardErrorIndicator.ofPopulation(closePrice, -3);
+
+        for (int i = 0; i <= 11; i++) {
+            assertNumEquals(withOne.getValue(i), withZero.getValue(i), 1.0e-12);
+            assertNumEquals(withOne.getValue(i), withNegative.getValue(i), 1.0e-12);
+        }
+    }
 }

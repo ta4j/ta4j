@@ -47,7 +47,8 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
      * This method preserves the legacy lexicographic behavior where the first
      * criterion is primary and later criteria are tie-breakers. For weighted and
      * normalized ranking, use
-     * {@link #getTopStrategiesWeighted(int, RankingProfile)}.
+     * {@link #getTopStrategiesWeighted(int, RankingProfile)} or
+     * {@link #getTopStrategiesWeighted(int, TradingStatementExecutionResult.WeightedCriterion...)}.
      * </p>
      *
      * @param limit    the maximum number of strategies to return
@@ -77,7 +78,8 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
      * This method preserves the legacy lexicographic behavior where the first
      * criterion is primary and later criteria are tie-breakers. For weighted and
      * normalized ranking, use
-     * {@link #getTopStrategiesWeighted(int, RankingProfile)}.
+     * {@link #getTopStrategiesWeighted(int, RankingProfile)} or
+     * {@link #getTopStrategiesWeighted(int, TradingStatementExecutionResult.WeightedCriterion...)}.
      * </p>
      * <p>
      * Performance: Uses a hybrid approach that selects the optimal algorithm based
@@ -167,6 +169,27 @@ public record BacktestExecutionResult(BarSeries barSeries, List<TradingStatement
 
         List<RankedTradingStatement> rankedStatements = rankTradingStatements(profile);
         return attachRankedCriterionScores(rankedStatements, limit);
+    }
+
+    /**
+     * Returns the top strategies using weighted, normalized criterion ranking with
+     * the default normalizer and missing-value policy.
+     *
+     * <p>
+     * This overload is the shortest path for weighted ranking when callers already
+     * know their criteria and relative weights.
+     * </p>
+     *
+     * @param limit    the maximum number of strategies to return
+     * @param criteria weighted criteria to normalize and combine
+     * @return the top trading statements ordered by composite weighted score
+     * @throws NullPointerException     if criteria is null
+     * @throws IllegalArgumentException if limit is negative
+     * @since 0.22.4
+     */
+    public List<TradingStatement> getTopStrategiesWeighted(int limit,
+            TradingStatementExecutionResult.WeightedCriterion... criteria) {
+        return getTopStrategiesWeighted(limit, RankingProfile.weighted(criteria));
     }
 
     /**
