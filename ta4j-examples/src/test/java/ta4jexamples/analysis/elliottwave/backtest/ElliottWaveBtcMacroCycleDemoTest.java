@@ -367,7 +367,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
         try {
             ElliottWaveBtcMacroCycleDemo.DemoReport wrapperReport = ElliottWaveBtcMacroCycleDemo
                     .generateReport(wrapperDir);
-            ElliottWaveBtcMacroCycleDemo.DemoReport genericReport = ElliottWaveMacroCycleDemo
+            ElliottWaveMacroCycleDemo.DemoReport genericReport = ElliottWaveMacroCycleDemo
                     .generateHistoricalReport(series, registry, genericDir);
 
             assertEquals(ElliottWaveAnchorCalibrationHarness.canonicalBtcCalibratedProfile().id(),
@@ -416,7 +416,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
         try {
             ElliottWaveBtcMacroCycleDemo.LivePresetReport wrapperReport = ElliottWaveBtcMacroCycleDemo
                     .generateLivePresetReport(liveWindow, wrapperDir);
-            ElliottWaveBtcMacroCycleDemo.LivePresetReport genericReport = ElliottWaveMacroCycleDemo
+            ElliottWaveMacroCycleDemo.LivePresetReport genericReport = ElliottWaveMacroCycleDemo
                     .generateLivePresetReport(liveWindow, genericDir);
 
             assertEquals("canonical-structure", wrapperReport.structureSource());

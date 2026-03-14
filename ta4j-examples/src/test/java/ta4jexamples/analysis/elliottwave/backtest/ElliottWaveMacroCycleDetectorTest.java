@@ -67,7 +67,7 @@ class ElliottWaveMacroCycleDetectorTest {
     @Test
     void seriesNativeHistoricalMacroDemoProducesCanonicalChronologicalCycles() throws Exception {
         final BarSeries series = loadBitcoinSeries();
-        final ElliottWaveBtcMacroCycleDemo.DemoReport seriesNative = ElliottWaveMacroCycleDemo
+        final ElliottWaveMacroCycleDemo.DemoReport seriesNative = ElliottWaveMacroCycleDemo
                 .generateHistoricalReport(series, chartDirectory.resolve("series-native"));
 
         assertEquals("canonical-structure", seriesNative.structureSource());
@@ -84,9 +84,9 @@ class ElliottWaveMacroCycleDetectorTest {
     void seriesNativeHistoricalAndLiveReportsShareCanonicalProfileSelection() throws Exception {
         final BarSeries series = loadBitcoinSeries();
 
-        final ElliottWaveBtcMacroCycleDemo.DemoReport historical = ElliottWaveMacroCycleDemo
+        final ElliottWaveMacroCycleDemo.DemoReport historical = ElliottWaveMacroCycleDemo
                 .generateHistoricalReport(series, chartDirectory.resolve("historical"));
-        final ElliottWaveBtcMacroCycleDemo.LivePresetReport live = ElliottWaveMacroCycleDemo
+        final ElliottWaveMacroCycleDemo.LivePresetReport live = ElliottWaveMacroCycleDemo
                 .generateLivePresetReport(series, chartDirectory.resolve("live"));
 
         assertEquals("canonical-structure", historical.structureSource());

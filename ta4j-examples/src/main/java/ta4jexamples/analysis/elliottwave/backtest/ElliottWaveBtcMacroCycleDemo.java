@@ -101,17 +101,17 @@ public final class ElliottWaveBtcMacroCycleDemo {
                 ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME);
         final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
                 .defaultBitcoinAnchors(series);
-        return ElliottWaveMacroCycleDemo.generateHistoricalReport(series, registry, chartDirectory);
+        return DemoReport.from(ElliottWaveMacroCycleDemo.generateHistoricalReport(series, registry, chartDirectory));
     }
 
     static DemoReport generateReport(final BarSeries series,
             final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry, final Path chartDirectory) {
-        return ElliottWaveMacroCycleDemo.generateHistoricalReport(series, registry, chartDirectory);
+        return DemoReport.from(ElliottWaveMacroCycleDemo.generateHistoricalReport(series, registry, chartDirectory));
     }
 
     static LivePresetReport generateLivePresetReport(final BarSeries series, final Path chartDirectory) {
-        return ElliottWaveMacroCycleDemo.generateLivePresetReport(series, chartDirectory, DEFAULT_LIVE_CHART_FILE_NAME,
-                DEFAULT_LIVE_SUMMARY_FILE_NAME, BTC_LIVE_HISTORICAL_STATUS);
+        return LivePresetReport.from(ElliottWaveMacroCycleDemo.generateLivePresetReport(series, chartDirectory,
+                DEFAULT_LIVE_CHART_FILE_NAME, DEFAULT_LIVE_SUMMARY_FILE_NAME, BTC_LIVE_HISTORICAL_STATUS));
     }
 
     static Optional<Path> saveMacroCycleChart(final BarSeries series,
@@ -167,6 +167,14 @@ public final class ElliottWaveBtcMacroCycleDemo {
         String toJson() {
             return GSON.toJson(this);
         }
+
+        static DemoReport from(final ElliottWaveMacroCycleDemo.DemoReport report) {
+            return new DemoReport(report.registryVersion(), report.datasetResource(), report.baselineProfileId(),
+                    report.selectedProfileId(), report.selectedHypothesisId(), report.historicalFitPassed(),
+                    report.harnessDecisionRationale(), report.chartPath(), report.summaryPath(),
+                    report.structureSource(), report.profileScores(), report.cycles(), report.hypotheses(),
+                    report.currentCycle());
+        }
     }
 
     record LivePresetReport(String seriesName, String startTimeUtc, String latestTimeUtc, String selectedProfileId,
@@ -187,6 +195,12 @@ public final class ElliottWaveBtcMacroCycleDemo {
 
         String toJson() {
             return GSON.toJson(this);
+        }
+
+        static LivePresetReport from(final ElliottWaveMacroCycleDemo.LivePresetReport report) {
+            return new LivePresetReport(report.seriesName(), report.startTimeUtc(), report.latestTimeUtc(),
+                    report.selectedProfileId(), report.selectedHypothesisId(), report.chartPath(), report.summaryPath(),
+                    report.structureSource(), report.currentCycle());
         }
     }
 

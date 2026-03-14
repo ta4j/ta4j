@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-14 12:49 EDT
-- Active phase: Phase 12
-- Active task: Re-run the remaining replay acceptance sweep and finish the final same-structure/build gate now that the `2018`, `2021`, and `2022` completed-cycle cutoffs are aligned
-- Overall: 59/62 checklist items complete
+- Last updated: 2026-03-14 13:31 EDT
+- Active phase: Phase 11
+- Active task: Remove the remaining example-layer structure inference from the generic demo, then close the final replay/same-structure/build acceptance gates
+- Overall: 60/62 checklist items complete
 
 ## Status
 
@@ -530,7 +530,7 @@ Rationale note:
 
 ### Phase 11: Update Demos and Wrappers
 
-- [ ] Keep [`ElliottWaveBtcMacroCycleDemo.java`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveBtcMacroCycleDemo.java) as a thin resource-loading wrapper only if it still adds value.
+- [x] Keep [`ElliottWaveBtcMacroCycleDemo.java`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveBtcMacroCycleDemo.java) as a thin resource-loading wrapper only if it still adds value.
 - [ ] Make [`ElliottWaveMacroCycleDemo.java`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDemo.java) a pure view/controller over canonical engine output.
 - [ ] Remove remaining example-layer structure inference logic.
 - [x] Update preset/demo docs to explain the new canonical engine and calibration role of the BTC truth target.

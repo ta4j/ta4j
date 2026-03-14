@@ -45,10 +45,12 @@ import org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardProfil
 import org.ta4j.core.indicators.helpers.FixedIndicator;
 import org.ta4j.core.num.Num;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
 import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.CurrentCycleAnalysis;
 import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.CurrentCycleSummary;
 import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.CycleFit;
-import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.DemoReport;
 import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary;
 import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.HypothesisResult;
 import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.LegSegment;
@@ -79,9 +81,91 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
 public final class ElliottWaveMacroCycleDemo {
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveMacroCycleDemo.class);
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final String CANONICAL_STRUCTURE_SOURCE = "canonical-structure";
 
     private ElliottWaveMacroCycleDemo() {
+    }
+
+    /**
+     * Generic historical macro-study report backed by the canonical analysis
+     * surface.
+     *
+     * @param registryVersion          comparison registry version
+     * @param datasetResource          source dataset resource identifier
+     * @param baselineProfileId        canonical baseline profile id
+     * @param selectedProfileId        selected profile id
+     * @param selectedHypothesisId     selected hypothesis id
+     * @param historicalFitPassed      whether completed-cycle truth matched within
+     *                                 tolerance
+     * @param harnessDecisionRationale summary selection rationale
+     * @param chartPath                rendered chart artifact path
+     * @param summaryPath              rendered summary artifact path
+     * @param structureSource          provenance marker for the structure surface
+     * @param profileScores            ordered profile score summaries
+     * @param cycles                   completed historical cycles
+     * @param hypotheses               ranked historical hypotheses
+     * @param currentCycle             attached current-cycle view
+     */
+    record DemoReport(String registryVersion, String datasetResource, String baselineProfileId,
+            String selectedProfileId, String selectedHypothesisId, boolean historicalFitPassed,
+            String harnessDecisionRationale, String chartPath, String summaryPath, String structureSource,
+            List<ProfileScoreSummary> profileScores, List<DirectionalCycleSummary> cycles,
+            List<HypothesisResult> hypotheses, CurrentCycleSummary currentCycle) {
+
+        DemoReport {
+            Objects.requireNonNull(registryVersion, "registryVersion");
+            Objects.requireNonNull(datasetResource, "datasetResource");
+            Objects.requireNonNull(baselineProfileId, "baselineProfileId");
+            Objects.requireNonNull(selectedProfileId, "selectedProfileId");
+            Objects.requireNonNull(selectedHypothesisId, "selectedHypothesisId");
+            Objects.requireNonNull(harnessDecisionRationale, "harnessDecisionRationale");
+            Objects.requireNonNull(chartPath, "chartPath");
+            Objects.requireNonNull(summaryPath, "summaryPath");
+            Objects.requireNonNull(structureSource, "structureSource");
+            profileScores = profileScores == null ? List.of() : List.copyOf(profileScores);
+            cycles = cycles == null ? List.of() : List.copyOf(cycles);
+            hypotheses = hypotheses == null ? List.of() : List.copyOf(hypotheses);
+            Objects.requireNonNull(currentCycle, "currentCycle");
+        }
+
+        String toJson() {
+            return GSON.toJson(this);
+        }
+    }
+
+    /**
+     * Generic live preset report backed by the canonical analysis surface.
+     *
+     * @param seriesName           analyzed series name
+     * @param startTimeUtc         first bar time in UTC
+     * @param latestTimeUtc        latest bar time in UTC
+     * @param selectedProfileId    selected profile id
+     * @param selectedHypothesisId selected hypothesis id
+     * @param chartPath            rendered chart artifact path
+     * @param summaryPath          rendered summary artifact path
+     * @param structureSource      provenance marker for the structure surface
+     * @param currentCycle         attached current-cycle view
+     */
+    record LivePresetReport(String seriesName, String startTimeUtc, String latestTimeUtc, String selectedProfileId,
+            String selectedHypothesisId, String chartPath, String summaryPath, String structureSource,
+            CurrentCycleSummary currentCycle) {
+
+        LivePresetReport {
+            Objects.requireNonNull(seriesName, "seriesName");
+            Objects.requireNonNull(startTimeUtc, "startTimeUtc");
+            Objects.requireNonNull(latestTimeUtc, "latestTimeUtc");
+            Objects.requireNonNull(selectedProfileId, "selectedProfileId");
+            Objects.requireNonNull(selectedHypothesisId, "selectedHypothesisId");
+            Objects.requireNonNull(chartPath, "chartPath");
+            Objects.requireNonNull(summaryPath, "summaryPath");
+            Objects.requireNonNull(structureSource, "structureSource");
+            Objects.requireNonNull(currentCycle, "currentCycle");
+        }
+
+        String toJson() {
+            return GSON.toJson(this);
+        }
     }
 
     /**
@@ -174,8 +258,7 @@ public final class ElliottWaveMacroCycleDemo {
      * @return generated live current-cycle report
      * @since 0.22.4
      */
-    public static ElliottWaveBtcMacroCycleDemo.LivePresetReport generateLivePresetReport(final BarSeries series,
-            final Path chartDirectory) {
+    public static LivePresetReport generateLivePresetReport(final BarSeries series, final Path chartDirectory) {
         final String seriesToken = scenarioSeriesName(series);
         return generateLivePresetReport(series, chartDirectory, liveCurrentCycleChartFileName(seriesToken),
                 liveSummaryFileName(seriesToken),
@@ -191,9 +274,8 @@ public final class ElliottWaveMacroCycleDemo {
         logLegacyCompatibleLivePreset(legacyView);
     }
 
-    static ElliottWaveBtcMacroCycleDemo.LivePresetReport generateLivePresetReport(final BarSeries series,
-            final Path chartDirectory, final String chartFileName, final String summaryFileName,
-            final String historicalStatus) {
+    static LivePresetReport generateLivePresetReport(final BarSeries series, final Path chartDirectory,
+            final String chartFileName, final String summaryFileName, final String historicalStatus) {
         return analyzeLivePreset(series, chartDirectory, chartFileName, summaryFileName, historicalStatus).report();
     }
 
@@ -406,11 +488,10 @@ public final class ElliottWaveMacroCycleDemo {
         final String chartPathText = chartPath.map(path -> path.toAbsolutePath().normalize().toString()).orElse("");
         final Path summaryPath = chartDirectory.resolve(summaryFileName).toAbsolutePath().normalize();
         final CurrentCycleSummary summary = currentCycle.summary().withChartPath(chartPathText);
-        final ElliottWaveBtcMacroCycleDemo.LivePresetReport report = new ElliottWaveBtcMacroCycleDemo.LivePresetReport(
-                series.getName(), series.getFirstBar().getEndTime().toString(),
-                series.getLastBar().getEndTime().toString(), study.selectedProfile().profile().id(),
-                study.selectedProfile().profile().hypothesisId(), chartPathText, summaryPath.toString(),
-                CANONICAL_STRUCTURE_SOURCE, summary);
+        final LivePresetReport report = new LivePresetReport(series.getName(),
+                series.getFirstBar().getEndTime().toString(), series.getLastBar().getEndTime().toString(),
+                study.selectedProfile().profile().id(), study.selectedProfile().profile().hypothesisId(), chartPathText,
+                summaryPath.toString(), CANONICAL_STRUCTURE_SOURCE, summary);
         saveSummary(report.toJson(), summaryPath, "live macro summary");
         return new LivePresetExecution(currentCycle.withSummary(summary), report);
     }
@@ -551,8 +632,8 @@ public final class ElliottWaveMacroCycleDemo {
     }
 
     private static LivePresetLegacyView generateLivePresetLegacyView(final BarSeries series,
-            final String scenarioSeriesToken, final CurrentCycleAnalysis currentCycle,
-            final ElliottWaveBtcMacroCycleDemo.LivePresetReport report, final Path chartDirectory) {
+            final String scenarioSeriesToken, final CurrentCycleAnalysis currentCycle, final LivePresetReport report,
+            final Path chartDirectory) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(scenarioSeriesToken, "scenarioSeriesToken");
         Objects.requireNonNull(currentCycle, "currentCycle");
@@ -656,7 +737,7 @@ public final class ElliottWaveMacroCycleDemo {
     private static void logLegacyCompatibleLivePreset(final LivePresetLegacyView legacyView) {
         Objects.requireNonNull(legacyView, "legacyView");
 
-        final ElliottWaveBtcMacroCycleDemo.LivePresetReport report = legacyView.report();
+        final LivePresetReport report = legacyView.report();
         final CurrentCycleSummary summary = report.currentCycle();
         final List<LivePresetScenarioView> scenarioViews = legacyView.scenarioViews();
 
@@ -1624,8 +1705,7 @@ public final class ElliottWaveMacroCycleDemo {
         }
     }
 
-    private record LivePresetExecution(CurrentCycleAnalysis currentCycle,
-            ElliottWaveBtcMacroCycleDemo.LivePresetReport report) {
+    private record LivePresetExecution(CurrentCycleAnalysis currentCycle, LivePresetReport report) {
 
         LivePresetExecution {
             Objects.requireNonNull(currentCycle, "currentCycle");
@@ -1633,8 +1713,7 @@ public final class ElliottWaveMacroCycleDemo {
         }
     }
 
-    private record LivePresetLegacyView(ElliottWaveBtcMacroCycleDemo.LivePresetReport report,
-            List<LivePresetScenarioView> scenarioViews) {
+    private record LivePresetLegacyView(LivePresetReport report, List<LivePresetScenarioView> scenarioViews) {
 
         LivePresetLegacyView {
             Objects.requireNonNull(report, "report");
