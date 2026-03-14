@@ -23,7 +23,7 @@ import org.ta4j.core.num.Num;
  * Input is an arbitrary basis indicator. On equal basis values, the previous
  * trend sign is carried forward.
  *
- * @since 0.22.2
+ * @since 0.22.4
  */
 public class TrendDirectionIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -38,7 +38,7 @@ public class TrendDirectionIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor using {@code high + low + close} as the trend basis.
      *
      * @param series the bar series
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public TrendDirectionIndicator(final BarSeries series) {
         this(new HighPriceIndicator(series), new LowPriceIndicator(series), new ClosePriceIndicator(series));
@@ -50,7 +50,7 @@ public class TrendDirectionIndicator extends RecursiveCachedIndicator<Num> {
      * @param highPriceIndicator  high-price indicator
      * @param lowPriceIndicator   low-price indicator
      * @param closePriceIndicator close-price indicator
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public TrendDirectionIndicator(final Indicator<Num> highPriceIndicator, final Indicator<Num> lowPriceIndicator,
             final Indicator<Num> closePriceIndicator) {
@@ -61,7 +61,7 @@ public class TrendDirectionIndicator extends RecursiveCachedIndicator<Num> {
      * Constructor.
      *
      * @param basisIndicator basis indicator used to derive direction
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public TrendDirectionIndicator(final Indicator<Num> basisIndicator) {
         super(basisIndicator);

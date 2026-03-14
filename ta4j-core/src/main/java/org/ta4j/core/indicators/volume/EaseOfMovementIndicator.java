@@ -40,7 +40,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/e/easeofmovement.asp">Investopedia:
  *      Ease of Movement</a>
- * @since 0.22.2
+ * @since 0.22.4
  */
 public class EaseOfMovementIndicator extends CachedIndicator<Num> {
 
@@ -69,7 +69,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
      * 100,000,000).
      *
      * @param series the bar series
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public EaseOfMovementIndicator(final BarSeries series) {
         this(series, DEFAULT_BAR_COUNT, DEFAULT_VOLUME_DIVISOR);
@@ -80,7 +80,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
      *
      * @param series   the bar series
      * @param barCount smoothing period (must be greater than 0)
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public EaseOfMovementIndicator(final BarSeries series, final int barCount) {
         this(series, barCount, DEFAULT_VOLUME_DIVISOR);
@@ -93,7 +93,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
      * @param barCount      smoothing period (must be greater than 0)
      * @param volumeDivisor scaling divisor used in the box-ratio term (must be
      *                      greater than 0)
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public EaseOfMovementIndicator(final BarSeries series, final int barCount, final Number volumeDivisor) {
         this(new HighPriceIndicator(series), new LowPriceIndicator(series), new VolumeIndicator(series), barCount,
@@ -107,7 +107,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
      * @param highPriceIndicator high-price indicator
      * @param lowPriceIndicator  low-price indicator
      * @param volumeIndicator    volume indicator
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public EaseOfMovementIndicator(final Indicator<Num> highPriceIndicator, final Indicator<Num> lowPriceIndicator,
             final Indicator<Num> volumeIndicator) {
@@ -121,7 +121,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
      * @param lowPriceIndicator  low-price indicator
      * @param volumeIndicator    volume indicator
      * @param barCount           smoothing period (must be greater than 0)
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public EaseOfMovementIndicator(final Indicator<Num> highPriceIndicator, final Indicator<Num> lowPriceIndicator,
             final Indicator<Num> volumeIndicator, final int barCount) {
@@ -137,7 +137,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
      * @param barCount           smoothing period (must be greater than 0)
      * @param volumeDivisor      scaling divisor used in the box-ratio term (must be
      *                           greater than 0)
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public EaseOfMovementIndicator(final Indicator<Num> highPriceIndicator, final Indicator<Num> lowPriceIndicator,
             final Indicator<Num> volumeIndicator, final int barCount, final Number volumeDivisor) {

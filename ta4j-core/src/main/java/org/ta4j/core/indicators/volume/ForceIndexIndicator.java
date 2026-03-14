@@ -37,7 +37,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.investopedia.com/terms/f/force-index.asp">Investopedia:
  *      Force Index</a>
- * @since 0.22.2
+ * @since 0.22.4
  */
 public class ForceIndexIndicator extends CachedIndicator<Num> {
 
@@ -60,7 +60,7 @@ public class ForceIndexIndicator extends CachedIndicator<Num> {
      * Constructor using the canonical 13-period smoothing.
      *
      * @param series the bar series
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public ForceIndexIndicator(final BarSeries series) {
         this(series, DEFAULT_BAR_COUNT);
@@ -71,7 +71,7 @@ public class ForceIndexIndicator extends CachedIndicator<Num> {
      *
      * @param series   the bar series
      * @param barCount smoothing period (must be greater than 0)
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public ForceIndexIndicator(final BarSeries series, final int barCount) {
         this(new ClosePriceIndicator(series), new VolumeIndicator(series), barCount);
@@ -82,7 +82,7 @@ public class ForceIndexIndicator extends CachedIndicator<Num> {
      *
      * @param closePriceIndicator close-price indicator
      * @param volumeIndicator     volume indicator
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public ForceIndexIndicator(final Indicator<Num> closePriceIndicator, final Indicator<Num> volumeIndicator) {
         this(closePriceIndicator, volumeIndicator, DEFAULT_BAR_COUNT);
@@ -94,7 +94,7 @@ public class ForceIndexIndicator extends CachedIndicator<Num> {
      * @param closePriceIndicator close-price indicator
      * @param volumeIndicator     volume indicator
      * @param barCount            smoothing period (must be greater than 0)
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public ForceIndexIndicator(final Indicator<Num> closePriceIndicator, final Indicator<Num> volumeIndicator,
             final int barCount) {

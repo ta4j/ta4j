@@ -20,7 +20,7 @@ import org.ta4j.core.num.Num;
  * This lightweight indicator is useful as an atomic building block for range
  * based volume formulas such as the Klinger family of indicators.
  *
- * @since 0.22.2
+ * @since 0.22.4
  */
 public class DailyMeasurementIndicator extends CachedIndicator<Num> {
 
@@ -34,7 +34,7 @@ public class DailyMeasurementIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param series the bar series
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public DailyMeasurementIndicator(final BarSeries series) {
         this(new HighPriceIndicator(series), new LowPriceIndicator(series));
@@ -45,7 +45,7 @@ public class DailyMeasurementIndicator extends CachedIndicator<Num> {
      *
      * @param highPriceIndicator high-price indicator
      * @param lowPriceIndicator  low-price indicator
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public DailyMeasurementIndicator(final Indicator<Num> highPriceIndicator, final Indicator<Num> lowPriceIndicator) {
         super(IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator));

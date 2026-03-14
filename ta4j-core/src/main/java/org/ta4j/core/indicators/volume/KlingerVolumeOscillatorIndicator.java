@@ -37,7 +37,7 @@ import org.ta4j.core.num.Num;
  * @see <a href=
  *      "https://www.fmlabs.com/reference/default.htm?url=KlingerOscillator.htm">FMLabs:
  *      Klinger Oscillator</a>
- * @since 0.22.2
+ * @since 0.22.4
  */
 public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
 
@@ -73,7 +73,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
      * Constructor using canonical periods (34, 55).
      *
      * @param series the bar series
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public KlingerVolumeOscillatorIndicator(final BarSeries series) {
         this(series, DEFAULT_SHORT_PERIOD, DEFAULT_LONG_PERIOD);
@@ -85,7 +85,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
      * @param series      the bar series
      * @param shortPeriod short EMA period (must be greater than 0)
      * @param longPeriod  long EMA period (must be greater than shortPeriod)
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public KlingerVolumeOscillatorIndicator(final BarSeries series, final int shortPeriod, final int longPeriod) {
         this(new HighPriceIndicator(series), new LowPriceIndicator(series), new ClosePriceIndicator(series),
@@ -99,7 +99,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
      * @param lowPriceIndicator   low-price indicator
      * @param closePriceIndicator close-price indicator
      * @param volumeIndicator     volume indicator
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public KlingerVolumeOscillatorIndicator(final Indicator<Num> highPriceIndicator,
             final Indicator<Num> lowPriceIndicator, final Indicator<Num> closePriceIndicator,
@@ -117,7 +117,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
      * @param volumeIndicator     volume indicator
      * @param shortPeriod         short EMA period (must be greater than 0)
      * @param longPeriod          long EMA period (must be greater than shortPeriod)
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public KlingerVolumeOscillatorIndicator(final Indicator<Num> highPriceIndicator,
             final Indicator<Num> lowPriceIndicator, final Indicator<Num> closePriceIndicator,

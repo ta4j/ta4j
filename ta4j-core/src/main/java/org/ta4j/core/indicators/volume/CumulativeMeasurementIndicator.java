@@ -22,7 +22,7 @@ import org.ta4j.core.num.Num;
  *         m(i-1) + m(i),  otherwise
  * </pre>
  *
- * @since 0.22.2
+ * @since 0.22.4
  */
 public class CumulativeMeasurementIndicator extends RecursiveCachedIndicator<Num> {
 
@@ -39,7 +39,7 @@ public class CumulativeMeasurementIndicator extends RecursiveCachedIndicator<Num
      *
      * @param measurementIndicator measurement indicator
      * @param trendIndicator       trend indicator
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public CumulativeMeasurementIndicator(final Indicator<Num> measurementIndicator,
             final Indicator<Num> trendIndicator) {

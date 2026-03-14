@@ -22,7 +22,7 @@ import org.ta4j.core.num.Num;
  * vf(i) = volume(i) * trend(i) * |2 * ((measurement(i) / cumulativeMeasurement(i)) - 1)| * scaleMultiplier
  * </pre>
  *
- * @since 0.22.2
+ * @since 0.22.4
  */
 public class VolumeForceIndicator extends CachedIndicator<Num> {
 
@@ -53,7 +53,7 @@ public class VolumeForceIndicator extends CachedIndicator<Num> {
      * @param measurementIndicator           measurement indicator
      * @param trendIndicator                 trend indicator
      * @param cumulativeMeasurementIndicator cumulative measurement indicator
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public VolumeForceIndicator(final Indicator<Num> volumeIndicator, final Indicator<Num> measurementIndicator,
             final Indicator<Num> trendIndicator, final Indicator<Num> cumulativeMeasurementIndicator) {
@@ -70,7 +70,7 @@ public class VolumeForceIndicator extends CachedIndicator<Num> {
      * @param cumulativeMeasurementIndicator cumulative measurement indicator
      * @param scaleMultiplier                scale multiplier (must be greater than
      *                                       0)
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public VolumeForceIndicator(final Indicator<Num> volumeIndicator, final Indicator<Num> measurementIndicator,
             final Indicator<Num> trendIndicator, final Indicator<Num> cumulativeMeasurementIndicator,
