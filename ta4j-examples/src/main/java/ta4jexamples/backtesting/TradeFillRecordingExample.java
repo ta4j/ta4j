@@ -5,8 +5,6 @@ package ta4jexamples.backtesting;
 
 import java.time.Instant;
 import java.util.List;
-import java.util.Objects;
-import java.util.function.Supplier;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BaseTradingRecord;
@@ -22,34 +20,40 @@ import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
 /**
- * Demonstrates two equivalent ways to record partial fills in a
- * {@link TradingRecord}: stream one {@link TradeFill} at a time with
- * {@link TradingRecord#operate(TradeFill)}, or group a logical order with
- * {@link Trade#fromFills(TradeType, List)} and submit it in one call.
+ * Demonstrates a live-style fill workflow where one entry order and one exit
+ * order arrive as partial fills over time.
+ *
+ * <p>
+ * The example first streams each {@link TradeFill} directly into a
+ * {@link TradingRecord} with {@link TradingRecord#operate(TradeFill)}, then
+ * shows the equivalent grouped-order path with
+ * {@link Trade#fromFills(TradeType, List)}. Both paths end on the same
+ * analytics surface: positions, fees, and closed profit are read from the
+ * resulting {@link TradingRecord}.
+ * </p>
  */
 public class TradeFillRecordingExample {
 
     private static final Logger LOG = LogManager.getLogger(TradeFillRecordingExample.class);
 
     public static void main(String[] args) {
-        BaseTradingRecord streamingRecord = buildStreamingRecord();
+        LOG.info("Step 1: stream partial fills directly into TradingRecord");
+        BaseTradingRecord streamingRecord = newRecord();
+        recordStreamingOrder(streamingRecord, "BUY entry order", entryFills());
+        recordStreamingOrder(streamingRecord, "SELL exit order", exitFills());
+        logRecordSummary("Streaming fills", streamingRecord);
+
+        LOG.info("Step 2: record the same exchange fills as grouped logical orders");
         BaseTradingRecord groupedTradeRecord = buildGroupedTradeRecord();
+        logRecordSummary("Grouped order batches", groupedTradeRecord);
 
-        assertEquivalent(streamingRecord, groupedTradeRecord, "grouped trade parity");
-
-        LOG.info("Streaming fills matched grouped trades: trades={}, positions={}, fees={}, profit={}",
-                streamingRecord.getTrades().size(), streamingRecord.getPositionCount(),
-                streamingRecord.getRecordedTotalFees(), totalClosedProfit(streamingRecord));
+        LOG.info("Both approaches feed the same TradingRecord analytics workflow once fills are recorded.");
     }
 
     static BaseTradingRecord buildStreamingRecord() {
         BaseTradingRecord record = newRecord();
-        for (TradeFill fill : entryFills()) {
-            record.operate(fill);
-        }
-        for (TradeFill fill : exitFills()) {
-            record.operate(fill);
-        }
+        applyFills(record, entryFills());
+        applyFills(record, exitFills());
         return record;
     }
 
@@ -68,29 +72,38 @@ public class TradeFillRecordingExample {
         return total;
     }
 
-    static void assertEquivalent(TradingRecord expected, TradingRecord actual, String label) {
-        require(expected.getTrades().size() == actual.getTrades().size(), () -> label + ": trade count mismatch");
-        require(expected.getPositionCount() == actual.getPositionCount(), () -> label + ": position count mismatch");
-        assertNum(expected.getRecordedTotalFees(), actual.getRecordedTotalFees(), label + ": fee mismatch");
-
-        for (int i = 0; i < expected.getTrades().size(); i++) {
-            Trade left = expected.getTrades().get(i);
-            Trade right = actual.getTrades().get(i);
-            assertTrade(left, right, label + ": trade[" + i + "]");
-        }
-
-        for (int i = 0; i < expected.getPositions().size(); i++) {
-            Position left = expected.getPositions().get(i);
-            Position right = actual.getPositions().get(i);
-            assertTrade(left.getEntry(), right.getEntry(), label + ": position[" + i + "].entry");
-            assertTrade(left.getExit(), right.getExit(), label + ": position[" + i + "].exit");
-            assertNum(left.getProfit(), right.getProfit(), label + ": position[" + i + "].profit");
-        }
-    }
-
     private static BaseTradingRecord newRecord() {
         return new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(), new ZeroCostModel(),
                 null, null);
+    }
+
+    private static void applyFills(TradingRecord record, List<TradeFill> fills) {
+        for (TradeFill fill : fills) {
+            record.operate(fill);
+        }
+    }
+
+    private static void recordStreamingOrder(TradingRecord record, String label, List<TradeFill> fills) {
+        LOG.info("{} ({})", label, fills.get(0).orderId());
+        for (TradeFill fill : fills) {
+            record.operate(fill);
+            LOG.info("  {} fill {} -> index={}, price={}, amount={}, fee={}, openPositions={}", fill.side(),
+                    fill.correlationId(), fill.index(), fill.price(), fill.amount(), fill.fee(),
+                    record.getOpenPositions().size());
+        }
+    }
+
+    private static void logRecordSummary(String label, TradingRecord record) {
+        LOG.info("{} -> trades={}, closedPositions={}, openPositions={}, fees={}, closedProfit={}", label,
+                record.getTrades().size(), record.getPositionCount(), record.getOpenPositions().size(),
+                record.getRecordedTotalFees(), totalClosedProfit(record));
+        for (int i = 0; i < record.getPositions().size(); i++) {
+            Position position = record.getPositions().get(i);
+            LOG.info("  position[{}] entry={} @ {} amount={}, exit={} @ {}, profit={}", i,
+                    position.getEntry().getIndex(), position.getEntry().getPricePerAsset(),
+                    position.getEntry().getAmount(), position.getExit().getIndex(),
+                    position.getExit().getPricePerAsset(), position.getProfit());
+        }
     }
 
     private static List<TradeFill> entryFills() {
@@ -109,30 +122,5 @@ public class TradeFillRecordingExample {
                         numFactory.numOf(0.05), ExecutionSide.SELL, "exit-fill-1", "exit-order"),
                 new TradeFill(9, Instant.parse("2025-01-01T00:03:00Z"), numFactory.numOf(111), numFactory.two(),
                         numFactory.numOf(0.06), ExecutionSide.SELL, "exit-fill-2", "exit-order"));
-    }
-
-    private static void assertTrade(Trade expected, Trade actual, String label) {
-        require(expected.getType() == actual.getType(), () -> label + ": type mismatch");
-        require(expected.getIndex() == actual.getIndex(), () -> label + ": index mismatch");
-        assertNum(expected.getPricePerAsset(), actual.getPricePerAsset(), label + ": price mismatch");
-        assertNum(expected.getAmount(), actual.getAmount(), label + ": amount mismatch");
-        assertNum(expected.getCost(), actual.getCost(), label + ": fee mismatch");
-        require(Objects.equals(expected.getOrderId(), actual.getOrderId()), () -> label + ": orderId mismatch");
-        require(Objects.equals(expected.getCorrelationId(), actual.getCorrelationId()),
-                () -> label + ": correlationId mismatch");
-    }
-
-    private static void assertNum(Num expected, Num actual, String message) {
-        if (expected == null || actual == null) {
-            require(Objects.equals(expected, actual), () -> message);
-            return;
-        }
-        require(expected.isEqual(actual), () -> message + " expected=" + expected + ", actual=" + actual);
-    }
-
-    private static void require(boolean condition, Supplier<String> messageSupplier) {
-        if (!condition) {
-            throw new IllegalStateException(messageSupplier.get());
-        }
     }
 }
