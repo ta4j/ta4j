@@ -1227,15 +1227,13 @@ public final class ElliottWaveMacroCycleDemo {
     }
 
     private static Comparator<MacroProfileEvaluation> profileEvaluationComparator() {
-        return Comparator.comparingInt(MacroProfileEvaluation::acceptedCycles)
+        return Comparator.comparingLong(MacroProfileEvaluation::acceptedCycleSpanMillis)
                 .reversed()
-                .thenComparing(Comparator.comparingLong(MacroProfileEvaluation::acceptedCycleSpanMillis).reversed())
                 .thenComparing(MacroProfileEvaluation::earliestAcceptedStartTime)
+                .thenComparingInt(MacroProfileEvaluation::acceptedCycles)
                 .thenComparing(Comparator.comparingDouble(MacroProfileEvaluation::aggregateScore).reversed())
                 .thenComparing(Comparator.comparingInt(MacroProfileEvaluation::acceptedSegments).reversed())
-                .thenComparing(
-                        Comparator.comparingInt((MacroProfileEvaluation evaluation) -> evaluation.cycleFits().size())
-                                .reversed())
+                .thenComparingInt((MacroProfileEvaluation evaluation) -> evaluation.cycleFits().size())
                 .thenComparingInt(evaluation -> evaluation.profile().orthodoxyRank());
     }
 
