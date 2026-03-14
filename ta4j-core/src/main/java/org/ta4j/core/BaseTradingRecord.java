@@ -519,7 +519,7 @@ public class BaseTradingRecord implements TradingRecord {
                 numFactory = price.getNumFactory();
             }
             if (totalFees == null) {
-                totalFees = resolveNumFactory(price).zero();
+                totalFees = defaultNumFactory().zero();
             }
             totalFees = totalFees.plus(fee);
             modificationCount++;
@@ -535,7 +535,7 @@ public class BaseTradingRecord implements TradingRecord {
         Objects.requireNonNull(price, "price");
         Objects.requireNonNull(amount, "amount");
         Objects.requireNonNull(transactionCostModel, "transactionCostModel");
-        Num normalizedAmount = normalizeSyntheticAmount(amount, price);
+        Num normalizedAmount = normalizeSyntheticAmount(amount);
         applyTradeInternal(index, new BaseTrade(index, type, price, normalizedAmount, transactionCostModel), -1L);
     }
 
@@ -792,29 +792,26 @@ public class BaseTradingRecord implements TradingRecord {
             }
             return amount;
         }
-        return resolveNumFactory(reference).one();
+        return reference.getNumFactory().one();
     }
 
-    private Num normalizeSyntheticAmount(Num amount, Num reference) {
+    private Num normalizeSyntheticAmount(Num amount) {
         if (amount != null && !amount.isNaN()) {
             // Synthetic enter/exit APIs carry direction in the trade type, so signed
             // quantities are normalized to their absolute magnitudes.
             return amount.isNegative() ? amount.abs() : amount;
         }
-        return resolveNumFactory(reference).one();
+        return defaultNumFactory().one();
     }
 
     private Num normalizeFee(Num fee, Num reference) {
         if (fee != null && !fee.isNaN()) {
             return fee;
         }
-        return resolveNumFactory(reference).zero();
+        return reference.getNumFactory().zero();
     }
 
-    private NumFactory resolveNumFactory(Num reference) {
-        if (reference != null && !reference.isNaN()) {
-            return reference.getNumFactory();
-        }
+    private NumFactory defaultNumFactory() {
         if (numFactory != null) {
             return numFactory;
         }
