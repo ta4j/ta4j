@@ -411,21 +411,23 @@ BacktestExecutionResult result = new BacktestExecutor(series)
         Trade.TradeType.BUY,           // long positions (use Trade.TradeType.SELL for shorts)
         ProgressCompletion.loggingWithMemory()); // logs progress with memory stats
 
-// Get top 10 strategies sorted by net profit, then by RoMaD (for ties)
-// You can sort by any combination of AnalysisCriterion - mix and match to find strategies that meet your goals
-AnalysisCriterion returnOverMaxDradownCriterion = new ReturnOverMaxDrawdownCriterion();
+// Build a weighted ranking profile: 70% net profit, 30% return over max drawdown.
+// Weights are normalized internally, so 7/3 and 0.7/0.3 are equivalent.
 AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
+AnalysisCriterion returnOverMaxDrawdownCriterion = new ReturnOverMaxDrawdownCriterion();
+RankingProfile rankingProfile = RankingProfile.of(
+    new WeightedCriterion(netProfitCriterion, series.numFactory().numOf(7)),
+    new WeightedCriterion(returnOverMaxDrawdownCriterion, series.numFactory().numOf(3)));
 
-List<TradingStatement> topStrategies = result.getTopStrategies(10,
-    netProfitCriterion,    // primary sort: highest net profit first
-    returnOverMaxDradownCriterion);  // secondary sort: highest RoMaD for ties
+// Get the top 10 strategies by composite weighted score
+List<TradingStatement> topStrategies = result.getTopStrategiesWeighted(10, rankingProfile);
 
 // Review the winners
 topStrategies.forEach(statement -> {
-    System.out.printf("Strategy: %s, Net Profit: %.2f, Return over Max Drawdown: %.2f%n",
+    System.out.printf("Strategy: %s, Net Profit: %s, Return over Max Drawdown: %s%n",
         statement.getStrategy().getName(),
         statement.getCriterionScore(netProfitCriterion).orElse(series.numOf(0)),
-        statement.getCriterionScore(returnOverMaxDradownCriterion).orElse(series.numOf(0)));
+        statement.getCriterionScore(returnOverMaxDrawdownCriterion).orElse(series.numOf(0)));
 });
 ```
 
