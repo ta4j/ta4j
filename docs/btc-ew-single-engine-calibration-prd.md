@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-14 13:57 EDT
+- Last updated: 2026-03-14 14:17 EDT
 - Active phase: Phase 11
 - Active task: Remove the remaining example-layer structure inference from the generic demo, then close the final replay/same-structure/build acceptance gates
-- Overall: 60/62 checklist items complete
+- Overall: 61/62 checklist items complete
 
 ## Status
 
@@ -542,7 +542,7 @@ Current status: the generic demo now owns the shared historical-study and live c
 - [x] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
 - [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
   Current status: the truncated-history replay backbone now recovers the intended completed cycles at the `2018-12-16`, `2021-11-11`, and `2022-11-22` cutoffs from price alone. The key fix was to let strong-fit fallback bearish legs participate in macro-bottom promotion while requiring a later higher milestone peak plus a macro-sized corrective leg before a bottom is considered confirmed. The remaining acceptance work is narrower now: re-run the full major-turn replay sweep intentionally, then close the final chart-structure and full-build gates.
-- [ ] Confirm historical chart and live chart are both drawn from the same structure object.
+- [x] Confirm historical chart and live chart are both drawn from the same structure object.
 - [ ] Run full verification and record the final build log.
 
 ### Phase 13: Design Elliott Oscillator Representation

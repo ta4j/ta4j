@@ -442,6 +442,46 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
+    void pairedCanonicalReportsReuseSingleStructureForHistoricalAndLiveViews() throws Exception {
+        BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
+        Path pairedDir = Files.createTempDirectory("btc-paired-generic");
+
+        try {
+            ElliottWaveMacroCycleDemo.CanonicalReportPair pair = ElliottWaveMacroCycleDemo
+                    .generateCanonicalReportPair(series, pairedDir);
+            ElliottWaveMacroCycleDemo.CanonicalStructure structure = pair.structure();
+            ElliottWaveMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
+            ElliottWaveMacroCycleDemo.CurrentCycleSummary structureSummary = structure.currentCycle().summary();
+
+            assertEquals(study.selectedProfile().profile().id(), pair.historicalReport().selectedProfileId());
+            assertEquals(study.selectedProfile().profile().id(), pair.liveReport().selectedProfileId());
+            assertEquals(study.selectedProfile().profile().hypothesisId(),
+                    pair.historicalReport().selectedHypothesisId());
+            assertEquals(study.selectedProfile().profile().hypothesisId(), pair.liveReport().selectedHypothesisId());
+            assertEquals(structureSummary.startTimeUtc(), pair.historicalReport().currentCycle().startTimeUtc());
+            assertEquals(structureSummary.startTimeUtc(), pair.liveReport().currentCycle().startTimeUtc());
+            assertEquals(structureSummary.latestTimeUtc(), pair.historicalReport().currentCycle().latestTimeUtc());
+            assertEquals(structureSummary.latestTimeUtc(), pair.liveReport().currentCycle().latestTimeUtc());
+            assertEquals(structureSummary.primaryCount(), pair.historicalReport().currentCycle().primaryCount());
+            assertEquals(structureSummary.primaryCount(), pair.liveReport().currentCycle().primaryCount());
+            assertTrue(Files.exists(Path.of(pair.historicalReport().chartPath())));
+            assertTrue(Files.exists(Path.of(pair.historicalReport().summaryPath())));
+            assertTrue(Files.exists(Path.of(pair.liveReport().chartPath())));
+            assertTrue(Files.exists(Path.of(pair.liveReport().summaryPath())));
+        } finally {
+            Files.walk(pairedDir).sorted(java.util.Comparator.reverseOrder()).forEach(path -> {
+                try {
+                    Files.deleteIfExists(path);
+                } catch (IOException ignored) {
+                    // best effort cleanup
+                }
+            });
+        }
+    }
+
+    @Test
     void canonicalStructureCarriesHistoricalStudyWhenRegistryProvided() {
         BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
