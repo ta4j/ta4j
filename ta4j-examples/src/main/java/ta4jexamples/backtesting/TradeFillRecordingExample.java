@@ -21,6 +21,7 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Demonstrates the core live-style trading-record workflow: streaming fills
@@ -46,6 +47,7 @@ public class TradeFillRecordingExample {
             .withName("trade-fill-recording-analysis")
             .withNumFactory(DoubleNumFactory.getInstance())
             .build();
+    private static final NumFactory NUM_FACTORY = ANALYSIS_SERIES.numFactory();
     private static final NetProfitCriterion NET_PROFIT_CRITERION = new NetProfitCriterion();
 
     public static void main(String[] args) {
@@ -101,10 +103,9 @@ public class TradeFillRecordingExample {
             record.operate(fill);
         }
 
-        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
         String correlationId = matchPolicy == ExecutionMatchPolicy.SPECIFIC_ID ? "lot-b" : null;
-        record.operate(new TradeFill(3, Instant.parse("2025-02-01T00:02:00Z"), numFactory.numOf(120), numFactory.one(),
-                numFactory.zero(), ExecutionSide.SELL, "policy-exit", correlationId));
+        record.operate(new TradeFill(3, Instant.parse("2025-02-01T00:02:00Z"), NUM_FACTORY.numOf(120),
+                NUM_FACTORY.one(), NUM_FACTORY.zero(), ExecutionSide.SELL, "policy-exit", correlationId));
         return record;
     }
 
@@ -158,29 +159,26 @@ public class TradeFillRecordingExample {
     }
 
     private static List<TradeFill> entryFills() {
-        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
         return List.of(
-                new TradeFill(4, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(), numFactory.one(),
-                        numFactory.numOf(0.1), ExecutionSide.BUY, "entry-fill-1", "entry-order"),
-                new TradeFill(5, Instant.parse("2025-01-01T00:01:00Z"), numFactory.numOf(101), numFactory.two(),
-                        numFactory.numOf(0.2), ExecutionSide.BUY, "entry-fill-2", "entry-order"));
+                new TradeFill(4, Instant.parse("2025-01-01T00:00:00Z"), NUM_FACTORY.hundred(), NUM_FACTORY.one(),
+                        NUM_FACTORY.numOf(0.1), ExecutionSide.BUY, "entry-fill-1", "entry-order"),
+                new TradeFill(5, Instant.parse("2025-01-01T00:01:00Z"), NUM_FACTORY.numOf(101), NUM_FACTORY.two(),
+                        NUM_FACTORY.numOf(0.2), ExecutionSide.BUY, "entry-fill-2", "entry-order"));
     }
 
     private static List<TradeFill> exitFills() {
-        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
         return List.of(
-                new TradeFill(8, Instant.parse("2025-01-01T00:02:00Z"), numFactory.numOf(110), numFactory.one(),
-                        numFactory.numOf(0.05), ExecutionSide.SELL, "exit-fill-1", "exit-order"),
-                new TradeFill(9, Instant.parse("2025-01-01T00:03:00Z"), numFactory.numOf(111), numFactory.two(),
-                        numFactory.numOf(0.06), ExecutionSide.SELL, "exit-fill-2", "exit-order"));
+                new TradeFill(8, Instant.parse("2025-01-01T00:02:00Z"), NUM_FACTORY.numOf(110), NUM_FACTORY.one(),
+                        NUM_FACTORY.numOf(0.05), ExecutionSide.SELL, "exit-fill-1", "exit-order"),
+                new TradeFill(9, Instant.parse("2025-01-01T00:03:00Z"), NUM_FACTORY.numOf(111), NUM_FACTORY.two(),
+                        NUM_FACTORY.numOf(0.06), ExecutionSide.SELL, "exit-fill-2", "exit-order"));
     }
 
     private static List<TradeFill> matchingPolicyEntryFills() {
-        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
         return List.of(
-                new TradeFill(1, Instant.parse("2025-02-01T00:00:00Z"), numFactory.hundred(), numFactory.two(),
-                        numFactory.zero(), ExecutionSide.BUY, "policy-entry-a", "lot-a"),
-                new TradeFill(2, Instant.parse("2025-02-01T00:01:00Z"), numFactory.numOf(106), numFactory.one(),
-                        numFactory.zero(), ExecutionSide.BUY, "policy-entry-b", "lot-b"));
+                new TradeFill(1, Instant.parse("2025-02-01T00:00:00Z"), NUM_FACTORY.hundred(), NUM_FACTORY.two(),
+                        NUM_FACTORY.zero(), ExecutionSide.BUY, "policy-entry-a", "lot-a"),
+                new TradeFill(2, Instant.parse("2025-02-01T00:01:00Z"), NUM_FACTORY.numOf(106), NUM_FACTORY.one(),
+                        NUM_FACTORY.zero(), ExecutionSide.BUY, "policy-entry-b", "lot-b"));
     }
 }

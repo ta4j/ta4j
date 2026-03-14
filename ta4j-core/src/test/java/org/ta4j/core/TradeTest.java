@@ -30,6 +30,7 @@ import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 public class TradeTest {
 
@@ -112,8 +113,10 @@ public class TradeTest {
 
     @Test
     public void factoryBuyAtSeriesOverloads() {
-        var numFactory = DoubleNumFactory.getInstance();
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(100, 110)
+                .build();
+        NumFactory numFactory = series.numFactory();
 
         Trade trade = Trade.buyAt(1, series);
         assertEquals(TradeType.BUY, trade.getType());
@@ -141,8 +144,10 @@ public class TradeTest {
 
     @Test
     public void factorySellAtSeriesOverloads() {
-        var numFactory = DoubleNumFactory.getInstance();
-        var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110).build();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(100, 110)
+                .build();
+        NumFactory numFactory = series.numFactory();
 
         Trade trade = Trade.sellAt(1, series);
         assertEquals(TradeType.SELL, trade.getType());

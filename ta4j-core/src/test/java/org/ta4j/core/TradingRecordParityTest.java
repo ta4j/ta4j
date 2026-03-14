@@ -66,11 +66,12 @@ class TradingRecordParityTest {
                 .build();
         Strategy strategy = new BaseStrategy(new FixedRule(1, 4), new FixedRule(2, 5));
         BarSeriesManager manager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Num unitAmount = series.numFactory().one();
 
-        TradingRecord baseRecord = manager.run(strategy, TradeType.BUY, numFactory.one(), 0, series.getEndIndex());
+        TradingRecord baseRecord = manager.run(strategy, TradeType.BUY, unitAmount, 0, series.getEndIndex());
         BaseTradingRecord liveRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
                 new ZeroCostModel(), new ZeroCostModel(), 0, series.getEndIndex());
-        TradingRecord liveBacktestRecord = manager.run(strategy, liveRecord, numFactory.one(), 0, series.getEndIndex());
+        TradingRecord liveBacktestRecord = manager.run(strategy, liveRecord, unitAmount, 0, series.getEndIndex());
 
         assertEquivalent(baseRecord, liveBacktestRecord);
     }
