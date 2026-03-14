@@ -3,14 +3,13 @@
  */
 package org.ta4j.core.criteria;
 
-import java.util.List;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
-import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -32,8 +31,8 @@ import org.ta4j.core.utils.BarSeriesUtils;
  * <b>Implementation details.</b> This criterion reuses existing analysis
  * utilities:
  * <ul>
- * <li>{@link Returns} with {@link ReturnRepresentation#LOG} to aggregate total
- * return from per-bar log returns.</li>
+ * <li>{@link CashFlow} to reuse the existing compounded equity curve and derive
+ * CAGR from the evaluated start and end equity values.</li>
  * <li>{@link MaximumDrawdownCriterion} for denominator calculation.</li>
  * </ul>
  *
@@ -119,9 +118,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             return zero;
         }
 
-        Returns returns = new Returns(series, tradingRecord, ReturnRepresentation.LOG, equityCurveMode,
-                openPositionHandling);
-        Num annualizedReturn = annualizedReturn(series, returns.getRawValues(), beginIndex, endIndex);
+        Num annualizedReturn = annualizedReturn(series, tradingRecord, beginIndex, endIndex);
 
         Num maximumDrawdown = maximumDrawdownCriterion.calculate(series, tradingRecord);
         if (maximumDrawdown.isZero()) {
@@ -135,22 +132,16 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         return criterionValue1.isGreaterThan(criterionValue2);
     }
 
-    private Num annualizedReturn(BarSeries series, List<Num> logReturns, int beginIndex, int endIndex) {
+    private Num annualizedReturn(BarSeries series, TradingRecord tradingRecord, int beginIndex, int endIndex) {
         NumFactory numFactory = series.numFactory();
         Num zero = numFactory.zero();
+        Num one = numFactory.one();
         Num years = BarSeriesUtils.deltaYears(series, beginIndex, endIndex);
         if (years.isZero()) {
             return zero;
         }
-
-        Num totalLogReturn = zero;
-        for (int i = beginIndex + 1; i <= endIndex; i++) {
-            Num logReturn = logReturns.get(i);
-            if (!logReturn.isNaN()) {
-                totalLogReturn = totalLogReturn.plus(logReturn);
-            }
-        }
-
-        return totalLogReturn.dividedBy(years).exp().minus(numFactory.one());
+        CashFlow cashFlow = new CashFlow(series, tradingRecord, endIndex, equityCurveMode, openPositionHandling);
+        Num totalReturn = cashFlow.getValue(endIndex).dividedBy(cashFlow.getValue(beginIndex));
+        return totalReturn.pow(one.dividedBy(years)).minus(one);
     }
 }
