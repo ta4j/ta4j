@@ -387,6 +387,11 @@ TradingRecord stopLimitRecord = new BarSeriesManager(series,
         .run(strategy, strategy.getStartingType(), series.numFactory().numOf(10));
 ```
 
+Want a runnable side-by-side demo? `ta4j-examples` now includes
+`TradingRecordParityBacktest`, which compares next-open, current-close, and
+slippage fills on the same strategy and then shows the same setup with provided
+and factory-configured `BaseTradingRecord` flows.
+
 ### Backtest hundreds or even thousands of strategies
 
 Want to find the top performers? Generate strategies with varying parameters and compare them:
@@ -816,7 +821,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[HighRewardElliottWaveBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/HighRewardElliottWaveBacktest.java)** - Backtests the high-reward Elliott Wave strategy presets.
 - **[WyckoffCycleIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleIndicatorSuiteDemo.java)** - Demonstrates the Wyckoff cycle entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`) and prints phase transitions on an ossified bar series dataset
 - **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
-- **[TradingRecordParityBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java)** - Runs the same strategy through default and provided `BaseTradingRecord` backtest paths to verify parity and show record-factory wiring.
+- **[TradingRecordParityBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java)** - Compare next-open, current-close, and slippage execution models side by side, then verify the same fills across default, provided, and factory-configured `BaseTradingRecord` runs.
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
 
 ### Charting Examples

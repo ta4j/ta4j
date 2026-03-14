@@ -22,13 +22,17 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.backtest.BarSeriesManager;
+import org.ta4j.core.backtest.SlippageExecutionModel;
+import org.ta4j.core.backtest.TradeExecutionModel;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
+import org.ta4j.core.backtest.TradeOnNextOpenModel;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.FixedRule;
 
 /**
- * Demonstrates parity-oriented backtests using different {@link TradingRecord}
- * implementations.
+ * Demonstrates how {@link TradeExecutionModel trade execution models} change
+ * fills, and how those fills stay consistent across the default, provided, and
+ * factory-configured {@link TradingRecord} flows.
  */
 public class TradingRecordParityBacktest {
 
@@ -36,54 +40,83 @@ public class TradingRecordParityBacktest {
 
     public static void main(String[] args) {
         BarSeries series = createSeries();
-        Strategy strategy = new BaseStrategy(new FixedRule(1, 4), new FixedRule(2, 5));
+        Strategy strategy = createStrategy();
+        Num slippageRatio = series.numFactory().numOf(0.01);
 
-        BarSeriesManager manager = new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(),
+        TradingRecord nextOpenRecord = runWithExecutionModel(series, strategy, new TradeOnNextOpenModel());
+        TradingRecord currentCloseRecord = runWithExecutionModel(series, strategy, new TradeOnCurrentCloseModel());
+        TradingRecord slippageRecord = runWithExecutionModel(series, strategy,
+                new SlippageExecutionModel(slippageRatio, TradeExecutionModel.PriceSource.CURRENT_CLOSE));
+
+        logExecutionComparison("Next-open fills", nextOpenRecord);
+        logExecutionComparison("Current-close fills", currentCloseRecord);
+        logExecutionComparison("Current-close fills with 1% slippage", slippageRecord);
+
+        TradingRecord providedRecord = runWithProvidedRecord(series, strategy, new TradeOnCurrentCloseModel());
+        assertEquivalent(currentCloseRecord, providedRecord, "provided BaseTradingRecord");
+
+        TradingRecord factoryConfiguredRecord = runWithFactoryConfiguredRecord(series, strategy,
                 new TradeOnCurrentCloseModel());
-        TradingRecord baseRecord = manager.run(strategy, TradeType.BUY, series.numFactory().one(), 0,
-                series.getEndIndex());
+        assertEquivalent(currentCloseRecord, factoryConfiguredRecord, "factory-configured BaseTradingRecord");
 
-        BaseTradingRecord providedRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
-                new ZeroCostModel(), new ZeroCostModel(), 0, series.getEndIndex());
-        TradingRecord explicitRun = manager.run(strategy, providedRecord, series.numFactory().one(), 0,
-                series.getEndIndex());
-        assertEquivalent(baseRecord, explicitRun, "provided BaseTradingRecord");
-
-        BarSeriesManager configuredManager = new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(),
-                new TradeOnCurrentCloseModel(),
-                (tradeType, startIndex, endIndex, txCost, holdCost) -> new BaseTradingRecord(tradeType,
-                        ExecutionMatchPolicy.FIFO, txCost, holdCost, startIndex, endIndex));
-        TradingRecord defaultRun = configuredManager.run(strategy, TradeType.BUY, series.numFactory().one(), 0,
-                series.getEndIndex());
-        assertEquivalent(baseRecord, defaultRun, "factory-configured BaseTradingRecord");
-
-        LOG.info("Parity checks passed for both unified-record backtest flows.");
+        LOG.info("Execution-model comparison and record-parity checks passed.");
     }
 
-    private static BarSeries createSeries() {
+    static Strategy createStrategy() {
+        return new BaseStrategy("Single-entry timing demo", new FixedRule(1), new FixedRule(3));
+    }
+
+    static BarSeries createSeries() {
         BarSeries series = new BaseBarSeriesBuilder().withName("parity-series").build();
-        addBar(series, 1, 10d);
-        addBar(series, 2, 20d);
-        addBar(series, 3, 30d);
-        addBar(series, 4, 15d);
-        addBar(series, 5, 25d);
-        addBar(series, 6, 35d);
+        addBar(series, 1, 100d, 100d);
+        addBar(series, 2, 102d, 104d);
+        addBar(series, 3, 109d, 111d);
+        addBar(series, 4, 107d, 103d);
+        addBar(series, 5, 99d, 101d);
+        addBar(series, 6, 105d, 107d);
         return series;
     }
 
-    private static void addBar(BarSeries series, int day, double closePrice) {
+    static TradingRecord runWithExecutionModel(BarSeries series, Strategy strategy,
+            TradeExecutionModel tradeExecutionModel) {
+        BarSeriesManager manager = new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(),
+                tradeExecutionModel);
+        return manager.run(strategy, TradeType.BUY, series.numFactory().one(), 0, series.getEndIndex());
+    }
+
+    static TradingRecord runWithProvidedRecord(BarSeries series, Strategy strategy,
+            TradeExecutionModel tradeExecutionModel) {
+        BarSeriesManager manager = new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(),
+                tradeExecutionModel);
+        BaseTradingRecord providedRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+                new ZeroCostModel(), new ZeroCostModel(), 0, series.getEndIndex());
+        return manager.run(strategy, providedRecord, series.numFactory().one(), 0, series.getEndIndex());
+    }
+
+    static TradingRecord runWithFactoryConfiguredRecord(BarSeries series, Strategy strategy,
+            TradeExecutionModel tradeExecutionModel) {
+        BarSeriesManager configuredManager = new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(),
+                tradeExecutionModel,
+                (tradeType, startIndex, endIndex, txCost, holdCost) -> new BaseTradingRecord(tradeType,
+                        ExecutionMatchPolicy.FIFO, txCost, holdCost, startIndex, endIndex));
+        return configuredManager.run(strategy, TradeType.BUY, series.numFactory().one(), 0, series.getEndIndex());
+    }
+
+    private static void addBar(BarSeries series, int day, double openPrice, double closePrice) {
+        double highPrice = Math.max(openPrice, closePrice);
+        double lowPrice = Math.min(openPrice, closePrice);
         series.barBuilder()
                 .timePeriod(Duration.ofDays(1))
                 .endTime(ZonedDateTime.of(2025, 1, day, 12, 0, 0, 0, ZoneOffset.UTC).toInstant())
-                .openPrice(closePrice)
-                .highPrice(closePrice)
-                .lowPrice(closePrice)
+                .openPrice(openPrice)
+                .highPrice(highPrice)
+                .lowPrice(lowPrice)
                 .closePrice(closePrice)
                 .volume(1000d + day)
                 .add();
     }
 
-    private static void assertEquivalent(TradingRecord expected, TradingRecord actual, String runLabel) {
+    static void assertEquivalent(TradingRecord expected, TradingRecord actual, String runLabel) {
         require(expected.getTrades().size() == actual.getTrades().size(), () -> runLabel + ": trade count mismatch");
         require(expected.getPositions().size() == actual.getPositions().size(),
                 () -> runLabel + ": position count mismatch");
@@ -104,6 +137,13 @@ public class TradingRecordParityBacktest {
                 assertTrade(left.getExit(), right.getExit(), runLabel + ": position[" + i + "].exit");
             }
         }
+    }
+
+    private static void logExecutionComparison(String label, TradingRecord tradingRecord) {
+        Position position = tradingRecord.getPositions().get(0);
+        LOG.info("{} -> entry={} @ {}, exit={} @ {}, gross profit={}", label, position.getEntry().getIndex(),
+                position.getEntry().getPricePerAsset(), position.getExit().getIndex(),
+                position.getExit().getPricePerAsset(), position.getGrossProfit());
     }
 
     private static void assertTrade(Trade expected, Trade actual, String label) {
