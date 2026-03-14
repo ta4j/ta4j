@@ -411,16 +411,15 @@ BacktestExecutionResult result = new BacktestExecutor(series)
         Trade.TradeType.BUY,           // long positions (use Trade.TradeType.SELL for shorts)
         ProgressCompletion.loggingWithMemory()); // logs progress with memory stats
 
-// Build a weighted ranking profile: 70% net profit, 30% return over max drawdown.
+// Weight net profit at 70% and return over max drawdown at 30%.
 // Weights are normalized internally, so 7/3 and 0.7/0.3 are equivalent.
 AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
 AnalysisCriterion returnOverMaxDrawdownCriterion = new ReturnOverMaxDrawdownCriterion();
-RankingProfile rankingProfile = RankingProfile.of(
-    new WeightedCriterion(netProfitCriterion, series.numFactory().numOf(7)),
-    new WeightedCriterion(returnOverMaxDrawdownCriterion, series.numFactory().numOf(3)));
 
 // Get the top 10 strategies by composite weighted score
-List<TradingStatement> topStrategies = result.getTopStrategiesWeighted(10, rankingProfile);
+List<TradingStatement> topStrategies = result.getTopStrategiesWeighted(10,
+    WeightedCriterion.of(netProfitCriterion, 7.0),
+    WeightedCriterion.of(returnOverMaxDrawdownCriterion, 3.0));
 
 // Review the winners
 topStrategies.forEach(statement -> {

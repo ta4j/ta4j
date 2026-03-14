@@ -8,7 +8,6 @@ import org.apache.logging.log4j.Logger;
 import org.ta4j.core.*;
 import org.ta4j.core.backtest.BacktestExecutionResult;
 import org.ta4j.core.backtest.BacktestExecutor;
-import org.ta4j.core.backtest.TradingStatementExecutionResult.RankingProfile;
 import org.ta4j.core.backtest.TradingStatementExecutionResult.WeightedCriterion;
 import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
@@ -16,7 +15,6 @@ import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.reports.BasePerformanceReport;
 import org.ta4j.core.reports.PositionStatsReport;
 import org.ta4j.core.reports.TradingStatement;
@@ -68,36 +66,17 @@ public class SimpleMovingAverageRangeBacktest {
     }
 
     /**
-     * Builds the weighted ranking profile used by this example.
-     *
-     * <p>
-     * Multipliers are normalized internally by the ranking engine, so the relative
-     * 7:3 split is what matters rather than the absolute scale.
-     * </p>
-     *
-     * @param numFactory number factory used to create the profile weights
-     * @return weighted ranking profile for shortlist selection
-     */
-    static RankingProfile createRankingProfile(NumFactory numFactory) {
-        Objects.requireNonNull(numFactory, "numFactory cannot be null");
-
-        AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
-        AnalysisCriterion returnOverMaxDrawdownCriterion = new ReturnOverMaxDrawdownCriterion();
-        return RankingProfile.of(new WeightedCriterion(netProfitCriterion, numFactory.numOf(7)),
-                new WeightedCriterion(returnOverMaxDrawdownCriterion, numFactory.numOf(3)));
-    }
-
-    /**
      * Selects the top strategies for this example using weighted, normalized
      * ranking.
      *
      * @param result full backtest result for the SMA parameter sweep
      * @param limit  maximum number of strategies to keep
-     * @return top strategies ordered by the example ranking profile
+     * @return top strategies ordered by the example weighted criteria
      */
     static List<TradingStatement> selectTopStrategies(BacktestExecutionResult result, int limit) {
         Objects.requireNonNull(result, "result cannot be null");
-        return result.getTopStrategiesWeighted(limit, createRankingProfile(result.barSeries().numFactory()));
+        return result.getTopStrategiesWeighted(limit, WeightedCriterion.of(new NetProfitCriterion(), 7.0),
+                WeightedCriterion.of(new ReturnOverMaxDrawdownCriterion(), 3.0));
     }
 
     private static Rule createEntryRule(BarSeries series, int barCount) {

@@ -17,7 +17,7 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.backtest.BacktestExecutionResult;
 import org.ta4j.core.backtest.BacktestExecutor;
-import org.ta4j.core.backtest.TradingStatementExecutionResult.RankingProfile;
+import org.ta4j.core.backtest.TradingStatementExecutionResult.WeightedCriterion;
 import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -32,24 +32,12 @@ public class SimpleMovingAverageRangeBacktestTest {
     }
 
     @Test
-    public void createRankingProfileUsesNetProfitAndRomadWeights() {
-        BarSeries series = new MockBarSeriesBuilder().withData(100d, 105d, 98d, 120d, 115d, 130d).build();
-
-        RankingProfile profile = SimpleMovingAverageRangeBacktest.createRankingProfile(series.numFactory());
-
-        assertEquals(2, profile.criteria().size());
-        assertEquals(NetProfitCriterion.class, profile.criteria().get(0).criterion().getClass());
-        assertEquals(7.0d, profile.criteria().get(0).multiplier().doubleValue(), 1.0e-12);
-        assertEquals(ReturnOverMaxDrawdownCriterion.class, profile.criteria().get(1).criterion().getClass());
-        assertEquals(3.0d, profile.criteria().get(1).multiplier().doubleValue(), 1.0e-12);
-    }
-
-    @Test
-    public void selectTopStrategiesUsesWeightedRankingProfileAndPreservesCriterionScores() {
+    public void selectTopStrategiesUsesWeightedRankingConvenienceApiAndPreservesCriterionScores() {
         BacktestExecutionResult result = createBacktestResult();
 
-        RankingProfile profile = SimpleMovingAverageRangeBacktest.createRankingProfile(result.barSeries().numFactory());
-        List<TradingStatement> expected = result.getTopStrategiesWeighted(2, profile);
+        List<TradingStatement> expected = result.getTopStrategiesWeighted(2,
+                WeightedCriterion.of(new NetProfitCriterion(), 7.0),
+                WeightedCriterion.of(new ReturnOverMaxDrawdownCriterion(), 3.0));
         List<TradingStatement> actual = SimpleMovingAverageRangeBacktest.selectTopStrategies(result, 2);
 
         assertEquals(expected.size(), actual.size());
