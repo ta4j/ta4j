@@ -8,6 +8,7 @@
 - **Weighted strategy ranking across execution results**: `TradingStatementExecutionResult` and `BacktestExecutionResult#getTopStrategiesWeighted(...)` now support normalized weighted ranking (for example net profit + drawdown + trade count) with pluggable normalization and deterministic ordering. You can jump in with `WeightedCriterion.of(...)`, `RankingProfile.weighted(...)`, or the direct weighted overloads, and the README plus `SimpleMovingAverageRangeBacktest` now show a concrete “net profit + RoMaD” shortlist flow you can copy directly.
 - **Shared scoring/weighting primitives for library extensions**: Added `NamedScoreFunction<I, S>` and `WeightedValue<T>` so indicator, confidence, and walk-forward components can reuse the same scoring and weighted-aggregation contracts.
 - **Live Elliott preset demo support**: `ElliottWavePresetDemo` now accepts live tickers (for example `BTC-USD`, `ETH-USD`, `SPY`) so you can run the same EW workflow on non-ossified daily data.
+- **Calmar and Omega ratios**: Added `CalmarRatioCriterion` and `OmegaRatioCriterion` for drawdown-adjusted CAGR and threshold-based return-distribution asymmetry analysis.
 
 ### Changed (Trading Record and Execution Flow)
 - **Elliott APIs and demos now follow runner-centric naming and defaults**: The project has moved from legacy analyzer naming to `ElliottWaveAnalysisRunner`, examples are organized under `analysis.elliottwave.{demo,backtest,support}`, and demo defaults now emphasize auto-degree selection with multi-degree context.
@@ -110,24 +111,14 @@
 - Added **MorningStarIndicator** and **EveningStarIndicator**
 - Added **BullishKickerIndicator** and **BearishKickerIndicator**
 - Added **PiercingIndicator** and **DarkCloudIndicator**
-- Added **PiercingLineIndicator** and **DarkCloudCoverIndicator** with configurable body-size, gap, and penetration thresholds for candlestick pattern detection.
 - **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
 - Added constructors accepting custom ATR indicator to **AverageTrueRangeStopGainRule** **AverageTrueRangeStopLossRule** and **AverageTrueRangeTrailingStopLossRule**
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
-- **Calmar and Omega ratios**: Added `CalmarRatioCriterion` and `OmegaRatioCriterion` for drawdown-adjusted CAGR and threshold-based return-distribution asymmetry analysis.
-- **Trend confirmation oscillators**: Added `VortexIndicator` (+VI, -VI, and oscillator output) and `UltimateOscillatorIndicator` with configurable periods, warm-up guards, and regression tests against published reference values.
 
 ### Changed
-- **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
-  `./mvnw` when present (falling back to `mvn`), so wrapper adoption does not require a second build command.
-- **Full build script portability**: `scripts/run-full-build-quiet.sh` no longer requires Python; timeout handling,
-  quiet-output filtering, heartbeat logging, and test-summary aggregation now run in Bash.
-- **README snippet synchronization line endings**: `ReadmeContentManager.updateReadmeSnippets(...)` now preserves the
-  target README's dominant line separator (LF/CRLF), with regression tests covering both newline modes.
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
-- **Indicator composition reuse**: Added `IndicatorUtils.requireSameSeries(...)` to centralize same-series validation and refactored `VortexIndicator`, `UltimateOscillatorIndicator`, and `TRIndicator` to compose shared true-range/series-validation logic instead of duplicating private helpers.
 - **Charting overlays**: Refactored overlay renderer construction and centralized time-axis domain value selection to reduce branching without changing chart output.
 - **Charting defaults**: Centralized chart styling defaults (anti-aliasing, background, title paint) for consistency across chart types.
 - **Chart builder metadata**: Chart definitions now surface a shared metadata object for domain series, title, and time axis mode; chart plans expose a ChartContext and derive their primary series from it, with ChartWorkflow rendering helpers accepting contexts.
