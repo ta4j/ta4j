@@ -49,7 +49,7 @@ import org.ta4j.core.utils.BarSeriesUtils;
  *
  * @see <a href=
  *      "https://www.investopedia.com/terms/c/calmarratio.asp">https://www.investopedia.com/terms/c/calmarratio.asp</a>
- * @since 0.22.2
+ * @since 0.22.4
  */
 public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
@@ -58,7 +58,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
     /**
      * Constructor using {@link EquityCurveMode#MARK_TO_MARKET} by default.
      *
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public CalmarRatioCriterion() {
         this(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
@@ -68,7 +68,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * Constructor using a specific equity curve calculation mode.
      *
      * @param equityCurveMode the equity curve mode to use
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public CalmarRatioCriterion(EquityCurveMode equityCurveMode) {
         this(equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
@@ -78,7 +78,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * Constructor using the provided open position handling.
      *
      * @param openPositionHandling how to handle open positions
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public CalmarRatioCriterion(OpenPositionHandling openPositionHandling) {
         this(EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
@@ -89,7 +89,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      *
      * @param equityCurveMode      the equity curve mode to use
      * @param openPositionHandling how to handle open positions
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public CalmarRatioCriterion(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         super(equityCurveMode, openPositionHandling);

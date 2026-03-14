@@ -47,7 +47,7 @@ import org.ta4j.core.num.NumFactory;
  *
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Omega_ratio">https://en.wikipedia.org/wiki/Omega_ratio</a>
- * @since 0.22.2
+ * @since 0.22.4
  */
 public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
@@ -56,7 +56,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
     /**
      * Constructor with zero threshold.
      *
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public OmegaRatioCriterion() {
         this(0d, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
@@ -67,7 +67,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      *
      * @param threshold return threshold in decimal form (for example {@code 0.01}
      *                  for 1%)
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public OmegaRatioCriterion(double threshold) {
         this(threshold, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
@@ -77,7 +77,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * Constructor using a specific equity curve calculation mode.
      *
      * @param equityCurveMode the equity curve mode to use
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public OmegaRatioCriterion(EquityCurveMode equityCurveMode) {
         this(0d, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
@@ -87,7 +87,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * Constructor using the provided open position handling.
      *
      * @param openPositionHandling how to handle open positions
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public OmegaRatioCriterion(OpenPositionHandling openPositionHandling) {
         this(0d, EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
@@ -100,7 +100,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @param threshold            return threshold in decimal form
      * @param equityCurveMode      the equity curve mode to use
      * @param openPositionHandling how to handle open positions
-     * @since 0.22.2
+     * @since 0.22.4
      */
     public OmegaRatioCriterion(double threshold, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
