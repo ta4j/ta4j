@@ -657,11 +657,19 @@ public final class ElliottScenarioGenerator {
             return false;
         }
 
-        if (cutPoints.size() < 4) {
+        if (cutPoints.size() < 3) {
             return true;
         }
 
         final ElliottSwing wave3 = swingBetween(degree, pivots, cutPoints.get(1), cutPoints.get(2));
+        if (!fibValidator.isWaveThreeExtensionValid(wave1, wave3)) {
+            return false;
+        }
+
+        if (cutPoints.size() < 4) {
+            return true;
+        }
+
         final ElliottSwing wave4 = swingBetween(degree, pivots, cutPoints.get(2), cutPoints.get(3));
         final double wave4End = pivots.get(cutPoints.get(3)).price().doubleValue();
         return (wave1Direction > 0 ? wave4End >= wave1End : wave4End <= wave1End)

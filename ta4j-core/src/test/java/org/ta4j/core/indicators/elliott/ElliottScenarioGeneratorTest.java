@@ -244,6 +244,18 @@ class ElliottScenarioGeneratorTest {
     }
 
     @Test
+    void partialImpulseDecompositionRejectsWaveThreeOutsideExtensionBand() throws Exception {
+        List<ElliottSwing> invalidWaveThreeExtension = List.of(
+                new ElliottSwing(0, 2, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),
+                new ElliottSwing(2, 4, numFactory.numOf(120), numFactory.numOf(110), ElliottDegree.MINOR),
+                new ElliottSwing(4, 6, numFactory.numOf(110), numFactory.numOf(128), ElliottDegree.MINOR),
+                new ElliottSwing(6, 8, numFactory.numOf(128), numFactory.numOf(118), ElliottDegree.MINOR),
+                new ElliottSwing(8, 10, numFactory.numOf(118), numFactory.numOf(145), ElliottDegree.MINOR));
+
+        assertThat(invokePartialImpulseBranchValidator(invalidWaveThreeExtension, List.of(1, 2, 3))).isFalse();
+    }
+
+    @Test
     void decompositionSearchPrunesWaveFourOverlapBeforeFullScoring() {
         ElliottScenarioGenerator decompositionGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 10,
                 ConfidenceProfiles.defaultModel(numFactory), PatternSet.of(ScenarioType.IMPULSE));
