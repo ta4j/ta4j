@@ -9,7 +9,6 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
-import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.reports.TradingStatementGenerator;
@@ -65,7 +64,18 @@ public class BacktestExecutor {
      * @param series the bar series
      */
     public BacktestExecutor(BarSeries series) {
-        this(series, new TradingStatementGenerator());
+        this(new BarSeriesManager(series), new TradingStatementGenerator());
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param series              the bar series
+     * @param tradeExecutionModel the trade execution model
+     * @since 0.22.4
+     */
+    public BacktestExecutor(BarSeries series, TradeExecutionModel tradeExecutionModel) {
+        this(new BarSeriesManager(series, tradeExecutionModel), new TradingStatementGenerator());
     }
 
     /**
@@ -79,7 +89,8 @@ public class BacktestExecutor {
      */
     public BacktestExecutor(BarSeries series, CostModel transactionCostModel, CostModel holdingCostModel,
             TradeExecutionModel tradeExecutionModel) {
-        this(series, new TradingStatementGenerator(), transactionCostModel, holdingCostModel, tradeExecutionModel);
+        this(new BarSeriesManager(series, transactionCostModel, holdingCostModel, tradeExecutionModel),
+                new TradingStatementGenerator());
     }
 
     /**
@@ -89,7 +100,20 @@ public class BacktestExecutor {
      * @param tradingStatementGenerator the TradingStatementGenerator
      */
     public BacktestExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator) {
-        this(series, tradingStatementGenerator, new ZeroCostModel(), new ZeroCostModel(), new TradeOnNextOpenModel());
+        this(new BarSeriesManager(series), tradingStatementGenerator);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param series                    the bar series
+     * @param tradingStatementGenerator the TradingStatementGenerator
+     * @param tradeExecutionModel       the trade execution model
+     * @since 0.22.4
+     */
+    public BacktestExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator,
+            TradeExecutionModel tradeExecutionModel) {
+        this(new BarSeriesManager(series, tradeExecutionModel), tradingStatementGenerator);
     }
 
     /**
@@ -103,8 +127,34 @@ public class BacktestExecutor {
      */
     public BacktestExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator,
             CostModel transactionCostModel, CostModel holdingCostModel, TradeExecutionModel tradeExecutionModel) {
-        this.seriesManager = new BarSeriesManager(series, transactionCostModel, holdingCostModel, tradeExecutionModel);
-        this.tradingStatementGenerator = tradingStatementGenerator;
+        this(new BarSeriesManager(series, transactionCostModel, holdingCostModel, tradeExecutionModel),
+                tradingStatementGenerator);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param seriesManager the preconfigured series manager including its cost
+     *                      models, trade execution model, and default
+     *                      trading-record creation policy
+     * @since 0.22.4
+     */
+    public BacktestExecutor(BarSeriesManager seriesManager) {
+        this(seriesManager, new TradingStatementGenerator());
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param seriesManager             the preconfigured series manager including
+     *                                  its cost models, trade execution model, and
+     *                                  default trading-record creation policy
+     * @param tradingStatementGenerator the TradingStatementGenerator
+     * @since 0.22.4
+     */
+    public BacktestExecutor(BarSeriesManager seriesManager, TradingStatementGenerator tradingStatementGenerator) {
+        this.seriesManager = Objects.requireNonNull(seriesManager, "seriesManager");
+        this.tradingStatementGenerator = Objects.requireNonNull(tradingStatementGenerator, "tradingStatementGenerator");
     }
 
     /**

@@ -15,11 +15,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.NumberOfBarsCriterion;
@@ -157,6 +159,46 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         assertEquals(strategies.size(), result.tradingStatements().size());
         assertEquals(strategies.size(), result.runtimeReport().strategyCount());
+    }
+
+    @Test
+    public void constructorWithTradeExecutionModelUsesConfiguredExecutionPrices() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        BacktestExecutor executor = new BacktestExecutor(series, new TradeOnCurrentCloseModel());
+
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numFactory.one());
+
+        TradingRecord tradingRecord = result.tradingStatements().getFirst().getTradingRecord();
+        Position position = tradingRecord.getPositions().getFirst();
+        assertEquals(series.getBar(0).getClosePrice(), position.getEntry().getPricePerAsset());
+        assertEquals(series.getBar(1).getClosePrice(), position.getExit().getPricePerAsset());
+    }
+
+    @Test
+    public void constructorWithSeriesManagerUsesItsTradingRecordFactory() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
+        Strategy strategyOne = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        Strategy strategyTwo = new BaseStrategy(new FixedRule(2), new FixedRule(3));
+        AtomicInteger createdRecords = new AtomicInteger();
+        BarSeriesManager.TradingRecordFactory tradingRecordFactory = (tradeType, startIndex, endIndex,
+                transactionCostModel, holdingCostModel) -> {
+            createdRecords.incrementAndGet();
+            return new TrackingTradingRecord(tradeType, startIndex, endIndex, transactionCostModel, holdingCostModel);
+        };
+        BarSeriesManager seriesManager = new BarSeriesManager(series, new ZeroCostModel(), new ZeroCostModel(),
+                new TradeOnCurrentCloseModel(), tradingRecordFactory);
+        BacktestExecutor executor = new BacktestExecutor(seriesManager);
+
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategyOne, strategyTwo),
+                numFactory.one());
+
+        assertEquals(2, createdRecords.get());
+        assertEquals(2, result.tradingStatements().size());
+        assertTrue(result.tradingStatements()
+                .stream()
+                .map(statement -> statement.getTradingRecord())
+                .allMatch(TrackingTradingRecord.class::isInstance));
     }
 
     @Test
@@ -419,6 +461,14 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
                 return true;
             }
             return criterionValue1.isGreaterThan(criterionValue2);
+        }
+    }
+
+    private static final class TrackingTradingRecord extends BaseTradingRecord {
+
+        private TrackingTradingRecord(Trade.TradeType tradeType, int startIndex, int endIndex,
+                CostModel transactionCostModel, CostModel holdingCostModel) {
+            super(tradeType, startIndex, endIndex, transactionCostModel, holdingCostModel);
         }
     }
 

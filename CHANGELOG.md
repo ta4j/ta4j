@@ -31,6 +31,7 @@
 ### Changed (Backtest Execution Models and Custom Records)
 - **Partial-fill recording is cleaner and more explicit**: Use `Trade.fromFill(...)` when fills arrive one at a time, or `Trade.fromFills(...)` when you already have the batch for one logical order. Missing timestamps still fall back deterministically, but single-fill helpers now require an explicit `ExecutionSide` instead of guessing direction inside the record.
 - **Bring your own trading record in backtests**: `BarSeriesManager` can now run directly against a caller-provided `TradingRecord` (`run(strategy, tradingRecord[, amount, start, end])`) and can also be configured with a default `TradingRecordFactory`, so you can keep standard `BaseTradingRecord` runs or wire custom record implementations without changing existing `run(...)` calls.
+- **`BacktestExecutor` now picks up the same backtest wiring without extra boilerplate**: You can construct it directly with a `TradeExecutionModel` for the common slippage/stop-limit case, or hand it a preconfigured `BarSeriesManager` so custom `TradingRecordFactory` behavior flows through normal backtest, top-K, and walk-forward execution.
 - **Stop-limit/live parity hardening**: `StopLimitExecutionModel` now expires stale pending orders before accepting new signals (so old orders cannot block fresh ones), commits partial expiry fills on unified `BaseTradingRecord` exit flows for better real-world fill progression, and keeps rejection metadata for the unfilled remainder.
 
 ## 0.22.3 (2026-03-01)
