@@ -8,3 +8,8 @@
 - Prefer explicit imports for charting dependencies (e.g., `org.jfree.*`, Swing) instead of repeating fully qualified names inline; this keeps the samples easier to scan when iterating quickly.
 - Charting code is split into subpackages: `charting.builder` (builder/plan), `charting.workflow` (facade), `charting.compose` (factory/renderers), `charting.display`, `charting.storage`, and `charting.renderer`. Keep new classes grouped similarly rather than dropping more files into the root.
 - Benchmark harness tests are tagged `benchmark` and remain skipped unless enabled with `-Dta4j.runBenchmarks=true`; the tagged methods live alongside the regression tests so CI stays fast by default.
+- Example classes should demonstrate realistic usage flows and how to reason about the API in practice; do not turn examples into assertion-heavy test harnesses.
+- Move parity checks, behavioral assertions, and detailed correctness validation into unit tests; keep examples focused on walkthroughs, logging, and user-facing usage patterns.
+- In examples, prefer existing `AnalysisCriterion` implementations over hand-rolled profit or performance calculations when a criterion already expresses the metric.
+- When a `BarSeries` already exists, derive the `NumFactory` from `series.numFactory()` instead of creating a separate `DoubleNumFactory` instance.
+- Inline tiny private helpers in examples when extraction would make readers jump around for one or two lines of implementation.

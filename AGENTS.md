@@ -48,6 +48,9 @@ Worktree lifecycle and PRD/checklist process conventions live in `scripts/AGENTS
 
 - Consolidation-first helper rule: inline new logic into the owning type (private static methods or package-private nested helpers) before creating a new utility class.
 - Only extract to a dedicated helper/utility class after at least two concrete call sites require shared behavior, or when testability/complexity clearly demands extraction.
+- Readability-first helper rule: do not extract private helpers that are only 1-3 lines and used once unless the extracted name carries important domain meaning or materially simplifies a long method.
+- When a tiny helper forces readers to jump around for one or two lines of logic, inline it back into the main flow.
+- When stronger invariants already hold at the call site, prefer direct code over generic fallback helpers that obscure those invariants.
 - New classes and methods should be package-private by default; treat public API additions as exceptional and require a short rationale in PRD/checklist or PR notes.
 - Redundancy cleanup requirement: when new code overlaps existing behavior, remove or fold the redundant abstraction in the same change unless there is a documented blocker.
 
