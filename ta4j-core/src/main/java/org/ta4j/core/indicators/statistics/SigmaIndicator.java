@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import java.util.Objects;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
@@ -22,17 +24,55 @@ public class SigmaIndicator extends CachedIndicator<Num> {
     private final StandardDeviationIndicator sd;
 
     /**
-     * Constructor.
+     * Constructor using {@link SampleType#POPULATION} for backward compatibility.
      *
      * @param ref      the indicator
      * @param barCount the time frame
      */
     public SigmaIndicator(Indicator<Num> ref, int barCount) {
+        this(ref, barCount, SampleType.POPULATION);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param ref        the indicator
+     * @param barCount   the time frame
+     * @param sampleType sample/population variance selection
+     * @since 0.22.4
+     */
+    public SigmaIndicator(Indicator<Num> ref, int barCount, SampleType sampleType) {
         super(ref);
         this.ref = ref;
         this.barCount = barCount;
         this.mean = new SMAIndicator(ref, barCount);
-        this.sd = new StandardDeviationIndicator(ref, barCount);
+        this.sd = Objects.requireNonNull(sampleType, "sampleType must not be null").isSample()
+                ? StandardDeviationIndicator.ofSample(ref, barCount)
+                : StandardDeviationIndicator.ofPopulation(ref, barCount);
+    }
+
+    /**
+     * Creates a sigma indicator using sample standard deviation.
+     *
+     * @param ref      the indicator
+     * @param barCount the time frame
+     * @return a sample sigma indicator
+     * @since 0.22.4
+     */
+    public static SigmaIndicator ofSample(Indicator<Num> ref, int barCount) {
+        return new SigmaIndicator(ref, barCount, SampleType.SAMPLE);
+    }
+
+    /**
+     * Creates a sigma indicator using population standard deviation.
+     *
+     * @param ref      the indicator
+     * @param barCount the time frame
+     * @return a population sigma indicator
+     * @since 0.22.4
+     */
+    public static SigmaIndicator ofPopulation(Indicator<Num> ref, int barCount) {
+        return new SigmaIndicator(ref, barCount, SampleType.POPULATION);
     }
 
     @Override

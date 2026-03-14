@@ -19,6 +19,7 @@ import org.ta4j.core.num.NumFactory;
 
 import java.math.BigDecimal;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -348,6 +349,17 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
 
         // net = (110-100) = 10
         assertNumEquals(10, criterion.calculate(series, record));
+    }
+
+    @Test
+    public void getReturnRepresentationDelegatesToWrappedCriterion() {
+        EnterAndHoldCriterion criterionWithRepresentation = new EnterAndHoldCriterion(
+                new GrossReturnCriterion(ReturnRepresentation.DECIMAL));
+        assertTrue(criterionWithRepresentation.getReturnRepresentation().isPresent());
+        assertEquals(ReturnRepresentation.DECIMAL, criterionWithRepresentation.getReturnRepresentation().get());
+
+        EnterAndHoldCriterion criterionWithoutRepresentation = new EnterAndHoldCriterion(new NumberOfBarsCriterion());
+        assertFalse(criterionWithoutRepresentation.getReturnRepresentation().isPresent());
     }
 
 }

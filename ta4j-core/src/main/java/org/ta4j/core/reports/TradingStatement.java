@@ -55,7 +55,8 @@ public interface TradingStatement {
      * available.
      * <p>
      * Criterion scores are typically populated when using
-     * {@link org.ta4j.core.backtest.BacktestExecutionResult#getTopStrategies(int, AnalysisCriterion...)}
+     * {@link org.ta4j.core.backtest.BacktestExecutionResult#getTopStrategies(int, AnalysisCriterion...)},
+     * {@link org.ta4j.core.backtest.BacktestExecutionResult#getTopStrategiesWeighted(int, org.ta4j.core.backtest.TradingStatementExecutionResult.WeightedCriterion...)},
      * or similar methods that calculate and store criterion values for ranking
      * purposes.
      *
@@ -73,7 +74,8 @@ public interface TradingStatement {
      * Returns an unmodifiable map of all stored criterion scores.
      * <p>
      * Criterion scores are typically populated when using
-     * {@link org.ta4j.core.backtest.BacktestExecutionResult#getTopStrategies(int, AnalysisCriterion...)}
+     * {@link org.ta4j.core.backtest.BacktestExecutionResult#getTopStrategies(int, AnalysisCriterion...)},
+     * {@link org.ta4j.core.backtest.BacktestExecutionResult#getTopStrategiesWeighted(int, org.ta4j.core.backtest.TradingStatementExecutionResult.WeightedCriterion...)},
      * or similar methods that calculate and store criterion values for ranking
      * purposes.
      *

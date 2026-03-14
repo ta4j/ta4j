@@ -5,11 +5,15 @@ package org.ta4j.core;
 
 import java.io.Serializable;
 import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
 import org.ta4j.core.analysis.cost.CostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
+import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 
 /**
- * Read-only trade contract shared by simulated trades and live executions.
+ * Read-only trade contract shared by simulated and live executions.
  *
  * <ul>
  * <li>the index (in the {@link BarSeries bar series}) on which the trade is
@@ -26,8 +30,8 @@ import org.ta4j.core.num.Num;
  * </p>
  *
  * <p>
- * Use {@link SimulatedTrade} as the default simulated implementation and
- * {@link LiveTrade} for live fills.
+ * Use the static factory methods on {@link Trade} for new code. The concrete
+ * implementation type is an internal detail.
  * </p>
  *
  * @since 0.22.2
@@ -172,12 +176,158 @@ public interface Trade extends Serializable {
     }
 
     /**
+     * Returns execution fills for this trade.
+     *
+     * <p>
+     * Default simulated trades expose a single fill. Aggregated/partial trades may
+     * return multiple fills. The default single fill mirrors trade-level metadata
+     * (time, fee, order/correlation ids) when available.
+     * </p>
+     *
+     * @return execution fills of this trade
+     * @since 0.22.4
+     */
+    default List<TradeFill> getFills() {
+        ExecutionSide side = getType() == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        return List.of(new TradeFill(getIndex(), getTime(), getPricePerAsset(), getAmount(), getCost(), side,
+                getOrderId(), getCorrelationId()));
+    }
+
+    /**
+     * Resolves execution fills for the provided trade.
+     *
+     * <p>
+     * Trades should expose fills via {@link #getFills()}. When an implementation
+     * returns an empty list, this method falls back to index/price/amount to
+     * preserve compatibility with legacy scalar trade semantics.
+     * </p>
+     *
+     * @param trade trade to inspect
+     * @return immutable execution fills for the trade
+     * @since 0.22.4
+     */
+    static List<TradeFill> executionFillsOf(Trade trade) {
+        Objects.requireNonNull(trade, "trade");
+        List<TradeFill> fills = List.copyOf(trade.getFills());
+        if (!fills.isEmpty()) {
+            return fills;
+        }
+        ExecutionSide side = trade.getType() == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+        return List.of(new TradeFill(trade.getIndex(), trade.getTime(), trade.getPricePerAsset(), trade.getAmount(),
+                trade.getCost(), side, trade.getOrderId(), trade.getCorrelationId()));
+    }
+
+    /**
+     * Creates a trade from one execution fill using recorded-fee semantics.
+     *
+     * <p>
+     * The fill must expose {@link TradeFill#side()} so the trade direction is
+     * explicit at construction time.
+     * </p>
+     *
+     * @param fill execution fill
+     * @return a trade representing the provided fill
+     * @throws IllegalArgumentException when {@code fill.side()} is missing
+     * @since 0.22.4
+     */
+    static Trade fromFill(TradeFill fill) {
+        return fromFill(fill, RecordedTradeCostModel.INSTANCE);
+    }
+
+    /**
+     * Creates a trade from one execution fill using an explicit cost model.
+     *
+     * <p>
+     * The fill must expose {@link TradeFill#side()} so the trade direction is
+     * explicit at construction time.
+     * </p>
+     *
+     * @param fill                 execution fill
+     * @param transactionCostModel transaction cost model
+     * @return a trade representing the provided fill
+     * @throws IllegalArgumentException when {@code fill.side()} is missing
+     * @since 0.22.4
+     */
+    static Trade fromFill(TradeFill fill, CostModel transactionCostModel) {
+        Objects.requireNonNull(fill, "fill");
+        if (fill.side() == null) {
+            throw new IllegalArgumentException("fill.side must be set when trade type is not provided");
+        }
+        return fromFill(fill.side().toTradeType(), fill, transactionCostModel);
+    }
+
+    /**
+     * Creates a trade from one execution fill using recorded-fee semantics.
+     *
+     * @param type trade type
+     * @param fill execution fill
+     * @return a trade representing the provided fill
+     * @since 0.22.4
+     */
+    static Trade fromFill(TradeType type, TradeFill fill) {
+        return fromFill(type, fill, RecordedTradeCostModel.INSTANCE);
+    }
+
+    /**
+     * Creates a trade from one execution fill.
+     *
+     * @param type                 trade type
+     * @param fill                 execution fill
+     * @param transactionCostModel transaction cost model
+     * @return a trade representing the provided fill
+     * @since 0.22.4
+     */
+    static Trade fromFill(TradeType type, TradeFill fill, CostModel transactionCostModel) {
+        Objects.requireNonNull(fill, "fill");
+        return fromFills(type, List.of(fill), transactionCostModel);
+    }
+
+    /**
+     * Creates a trade from one or more execution fills using recorded-fee
+     * semantics.
+     *
+     * @param type  trade type
+     * @param fills execution fills (must not be empty)
+     * @return a trade representing the provided fills
+     * @since 0.22.4
+     */
+    static Trade fromFills(TradeType type, List<TradeFill> fills) {
+        return fromFills(type, fills, RecordedTradeCostModel.INSTANCE);
+    }
+
+    /**
+     * Creates a trade from one or more execution fills.
+     *
+     * <p>
+     * The returned trade is a {@link BaseTrade}. Single-fill inputs keep scalar
+     * semantics; multi-fill inputs preserve full fill progression while exposing
+     * aggregated price/amount views.
+     * </p>
+     *
+     * @param type                 trade type
+     * @param fills                execution fills (must not be empty)
+     * @param transactionCostModel transaction cost model
+     * @return a trade representing the provided fills
+     * @throws IllegalArgumentException when fills are empty or invalid
+     * @since 0.22.4
+     */
+    static Trade fromFills(TradeType type, List<TradeFill> fills, CostModel transactionCostModel) {
+        Objects.requireNonNull(type, "type");
+        Objects.requireNonNull(fills, "fills");
+        Objects.requireNonNull(transactionCostModel, "transactionCostModel");
+        if (fills.isEmpty()) {
+            throw new IllegalArgumentException("fills must not be empty");
+        }
+        return new BaseTrade(type, fills, transactionCostModel);
+    }
+
+    /**
      * @param index  the index the trade is executed
      * @param series the bar series
      * @return a BUY trade
      */
     static Trade buyAt(int index, BarSeries series) {
-        return new SimulatedTrade(index, series, TradeType.BUY);
+        return new BaseTrade(index, series, TradeType.BUY);
     }
 
     /**
@@ -188,7 +338,7 @@ public interface Trade extends Serializable {
      * @return a BUY trade
      */
     static Trade buyAt(int index, Num price, Num amount, CostModel transactionCostModel) {
-        return new SimulatedTrade(index, TradeType.BUY, price, amount, transactionCostModel);
+        return new BaseTrade(index, TradeType.BUY, price, amount, transactionCostModel);
     }
 
     /**
@@ -198,7 +348,7 @@ public interface Trade extends Serializable {
      * @return a BUY trade
      */
     static Trade buyAt(int index, Num price, Num amount) {
-        return new SimulatedTrade(index, TradeType.BUY, price, amount);
+        return new BaseTrade(index, TradeType.BUY, price, amount);
     }
 
     /**
@@ -208,7 +358,7 @@ public interface Trade extends Serializable {
      * @return a BUY trade
      */
     static Trade buyAt(int index, BarSeries series, Num amount) {
-        return new SimulatedTrade(index, series, TradeType.BUY, amount);
+        return new BaseTrade(index, series, TradeType.BUY, amount);
     }
 
     /**
@@ -219,7 +369,7 @@ public interface Trade extends Serializable {
      * @return a BUY trade
      */
     static Trade buyAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
-        return new SimulatedTrade(index, series, TradeType.BUY, amount, transactionCostModel);
+        return new BaseTrade(index, series, TradeType.BUY, amount, transactionCostModel);
     }
 
     /**
@@ -228,7 +378,7 @@ public interface Trade extends Serializable {
      * @return a SELL trade
      */
     static Trade sellAt(int index, BarSeries series) {
-        return new SimulatedTrade(index, series, TradeType.SELL);
+        return new BaseTrade(index, series, TradeType.SELL);
     }
 
     /**
@@ -238,7 +388,7 @@ public interface Trade extends Serializable {
      * @return a SELL trade
      */
     static Trade sellAt(int index, Num price, Num amount) {
-        return new SimulatedTrade(index, TradeType.SELL, price, amount);
+        return new BaseTrade(index, TradeType.SELL, price, amount);
     }
 
     /**
@@ -249,7 +399,7 @@ public interface Trade extends Serializable {
      * @return a SELL trade
      */
     static Trade sellAt(int index, Num price, Num amount, CostModel transactionCostModel) {
-        return new SimulatedTrade(index, TradeType.SELL, price, amount, transactionCostModel);
+        return new BaseTrade(index, TradeType.SELL, price, amount, transactionCostModel);
     }
 
     /**
@@ -259,7 +409,7 @@ public interface Trade extends Serializable {
      * @return a SELL trade
      */
     static Trade sellAt(int index, BarSeries series, Num amount) {
-        return new SimulatedTrade(index, series, TradeType.SELL, amount);
+        return new BaseTrade(index, series, TradeType.SELL, amount);
     }
 
     /**
@@ -270,6 +420,6 @@ public interface Trade extends Serializable {
      * @return a SELL trade
      */
     static Trade sellAt(int index, BarSeries series, Num amount, CostModel transactionCostModel) {
-        return new SimulatedTrade(index, series, TradeType.SELL, amount, transactionCostModel);
+        return new BaseTrade(index, series, TradeType.SELL, amount, transactionCostModel);
     }
 }

@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.indicators.statistics;
 
+import java.util.Objects;
+
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
@@ -10,24 +12,69 @@ import org.ta4j.core.num.Num;
 
 /**
  * Variance indicator.
+ *
+ * <p>
+ * The default constructor computes <b>sample variance</b> (divisor
+ * {@code n - 1}) for rolling windows. Use {@link #ofPopulation(Indicator, int)}
+ * (or the {@link SampleType} constructor) when population variance is required.
+ * </p>
  */
 public class VarianceIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
     private final SMAIndicator sma;
+    private final SampleType sampleType;
+
+    /**
+     * Constructor using {@link SampleType#SAMPLE}.
+     *
+     * @param indicator the indicator
+     * @param barCount  the time frame
+     * @since 0.22.4
+     */
+    public VarianceIndicator(Indicator<Num> indicator, int barCount) {
+        this(indicator, barCount, SampleType.SAMPLE);
+    }
 
     /**
      * Constructor.
      *
+     * @param indicator  the indicator
+     * @param barCount   the time frame
+     * @param sampleType sample/population variance selection
+     * @since 0.22.4
+     */
+    public VarianceIndicator(Indicator<Num> indicator, int barCount, SampleType sampleType) {
+        super(indicator);
+        this.indicator = Objects.requireNonNull(indicator, "indicator must not be null");
+        this.barCount = Math.max(barCount, 1);
+        this.sampleType = Objects.requireNonNull(sampleType, "sampleType must not be null");
+        this.sma = new SMAIndicator(indicator, this.barCount);
+    }
+
+    /**
+     * Creates an indicator using sample variance ({@code n - 1} divisor).
+     *
      * @param indicator the indicator
      * @param barCount  the time frame
+     * @return a sample-variance indicator
+     * @since 0.22.4
      */
-    public VarianceIndicator(Indicator<Num> indicator, int barCount) {
-        super(indicator);
-        this.indicator = indicator;
-        this.barCount = barCount;
-        this.sma = new SMAIndicator(indicator, barCount);
+    public static VarianceIndicator ofSample(Indicator<Num> indicator, int barCount) {
+        return new VarianceIndicator(indicator, barCount, SampleType.SAMPLE);
+    }
+
+    /**
+     * Creates an indicator using population variance ({@code n} divisor).
+     *
+     * @param indicator the indicator
+     * @param barCount  the time frame
+     * @return a population-variance indicator
+     * @since 0.22.4
+     */
+    public static VarianceIndicator ofPopulation(Indicator<Num> indicator, int barCount) {
+        return new VarianceIndicator(indicator, barCount, SampleType.POPULATION);
     }
 
     @Override
@@ -41,8 +88,11 @@ public class VarianceIndicator extends CachedIndicator<Num> {
             Num pow = indicator.getValue(i).minus(average).pow(2);
             variance = variance.plus(pow);
         }
-        variance = variance.dividedBy(numFactory.numOf(numberOfObservations));
-        return variance;
+        final int divisor = sampleType.isSample() ? numberOfObservations - 1 : numberOfObservations;
+        if (divisor <= 0) {
+            return numFactory.zero();
+        }
+        return variance.dividedBy(numFactory.numOf(divisor));
     }
 
     @Override
@@ -52,6 +102,6 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     public String toString() {
-        return getClass().getSimpleName() + " barCount: " + barCount;
+        return getClass().getSimpleName() + " barCount: " + barCount + " sampleType: " + sampleType;
     }
 }
