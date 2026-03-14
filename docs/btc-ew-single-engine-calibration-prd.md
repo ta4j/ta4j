@@ -501,7 +501,7 @@ Rationale note:
   - minimum segment span pruning
   - impossible direction/overlap pruning
   - retracement and amplitude bound pruning
-  Landed so far: alternation pruning plus impulse-side wave-2 invalidation and wave-4 overlap pruning, and corrective wave-B retracement pruning before full decomposition scoring.
+  Landed so far: alternation pruning plus impulse-side wave-2 invalidation, wave-2 Fibonacci retracement pruning, wave-4 overlap pruning, wave-4 Fibonacci retracement pruning, and corrective wave-B retracement pruning before full decomposition scoring.
 - [x] Record pruning hit rates and runtime deltas so performance work stays evidence-driven.
 - [x] Decide whether the default search lane should use a reduced geometry while an exhaustive lane remains opt-in.
   Implemented: default harness runs `routine` depth with the locked canonical BTC profile and non-overlapping fold steps; `--exhaustive` enables the full controlled search plan plus portability.

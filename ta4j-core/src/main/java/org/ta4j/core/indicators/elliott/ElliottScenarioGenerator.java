@@ -637,6 +637,9 @@ public final class ElliottScenarioGenerator {
             return true;
         }
 
+        final ElliottDegree degree = ElliottDegree.MINOR;
+        final ElliottSwing wave1 = swingBetween(degree, pivots, 0, cutPoints.getFirst());
+        final ElliottSwing wave2 = swingBetween(degree, pivots, cutPoints.getFirst(), cutPoints.get(1));
         final double wave1Start = pivots.getFirst().price().doubleValue();
         final double wave1End = pivots.get(cutPoints.getFirst()).price().doubleValue();
         final double wave2End = pivots.get(cutPoints.get(1)).price().doubleValue();
@@ -650,13 +653,19 @@ public final class ElliottScenarioGenerator {
         if (wave1Direction < 0 && wave2End > wave1Start) {
             return false;
         }
+        if (!fibValidator.isWaveTwoRetracementValid(wave1, wave2)) {
+            return false;
+        }
 
         if (cutPoints.size() < 4) {
             return true;
         }
 
+        final ElliottSwing wave3 = swingBetween(degree, pivots, cutPoints.get(1), cutPoints.get(2));
+        final ElliottSwing wave4 = swingBetween(degree, pivots, cutPoints.get(2), cutPoints.get(3));
         final double wave4End = pivots.get(cutPoints.get(3)).price().doubleValue();
-        return wave1Direction > 0 ? wave4End >= wave1End : wave4End <= wave1End;
+        return (wave1Direction > 0 ? wave4End >= wave1End : wave4End <= wave1End)
+                && fibValidator.isWaveFourRetracementValid(wave3, wave4);
     }
 
     private boolean partialCorrectiveDecompositionRemainsViable(final ElliottDegree degree,

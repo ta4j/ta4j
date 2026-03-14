@@ -230,6 +230,20 @@ class ElliottScenarioGeneratorTest {
     }
 
     @Test
+    void partialImpulseDecompositionRejectsWaveTwoOutsideFibBand() throws Exception {
+        List<ElliottSwing> invalidWaveTwoRetracement = List.of(
+                new ElliottSwing(0, 2, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),
+                new ElliottSwing(2, 4, numFactory.numOf(120), numFactory.numOf(103), ElliottDegree.MINOR),
+                new ElliottSwing(4, 6, numFactory.numOf(103), numFactory.numOf(130), ElliottDegree.MINOR),
+                new ElliottSwing(6, 8, numFactory.numOf(130), numFactory.numOf(106), ElliottDegree.MINOR),
+                new ElliottSwing(8, 10, numFactory.numOf(106), numFactory.numOf(145), ElliottDegree.MINOR),
+                new ElliottSwing(10, 12, numFactory.numOf(145), numFactory.numOf(108), ElliottDegree.MINOR),
+                new ElliottSwing(12, 14, numFactory.numOf(108), numFactory.numOf(160), ElliottDegree.MINOR));
+
+        assertThat(invokePartialImpulseBranchValidator(invalidWaveTwoRetracement, List.of(1, 2))).isFalse();
+    }
+
+    @Test
     void decompositionSearchPrunesWaveFourOverlapBeforeFullScoring() {
         ElliottScenarioGenerator decompositionGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 10,
                 ConfidenceProfiles.defaultModel(numFactory), PatternSet.of(ScenarioType.IMPULSE));
@@ -253,6 +267,18 @@ class ElliottScenarioGeneratorTest {
         assertThat(diagnostics.impulseDecompositionPrunedBranchCount()).isPositive();
         assertThat(diagnostics.totalImpulseDecompositionBranchCount())
                 .isLessThan(naiveImpulseDecompositionBranchCount(overlappingWaveFourImpulse.size()));
+    }
+
+    @Test
+    void partialImpulseDecompositionRejectsWaveFourOutsideFibBand() throws Exception {
+        List<ElliottSwing> invalidWaveFourRetracement = List.of(
+                new ElliottSwing(0, 2, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),
+                new ElliottSwing(2, 4, numFactory.numOf(120), numFactory.numOf(110), ElliottDegree.MINOR),
+                new ElliottSwing(4, 6, numFactory.numOf(110), numFactory.numOf(179), ElliottDegree.MINOR),
+                new ElliottSwing(6, 8, numFactory.numOf(179), numFactory.numOf(121), ElliottDegree.MINOR),
+                new ElliottSwing(8, 10, numFactory.numOf(121), numFactory.numOf(185), ElliottDegree.MINOR));
+
+        assertThat(invokePartialImpulseBranchValidator(invalidWaveFourRetracement, List.of(1, 2, 3, 4))).isFalse();
     }
 
     @Test
@@ -471,6 +497,20 @@ class ElliottScenarioGeneratorTest {
                 .doesNotContain(earliestStart);
         assertThat(limitedSet.all().stream().map(ElliottScenario::startIndex).toList()).contains(earliestStart);
         assertThat(limitedSet.all().stream().map(ElliottScenario::startIndex).distinct().count()).isGreaterThan(1);
+    }
+
+    private boolean invokePartialImpulseBranchValidator(final List<ElliottSwing> swings, final List<Integer> cutPoints)
+            throws Exception {
+        java.lang.reflect.Method extractPivots = ElliottScenarioGenerator.class.getDeclaredMethod("extractPivots",
+                List.class);
+        extractPivots.setAccessible(true);
+        @SuppressWarnings("unchecked")
+        List<?> pivots = (List<?>) extractPivots.invoke(generator, swings);
+
+        java.lang.reflect.Method validator = ElliottScenarioGenerator.class
+                .getDeclaredMethod("partialImpulseDecompositionRemainsViable", List.class, List.class);
+        validator.setAccessible(true);
+        return (boolean) validator.invoke(generator, pivots, cutPoints);
     }
 
     private List<ElliottSwing> createAlternatingSwings() {
