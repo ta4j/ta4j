@@ -24,6 +24,7 @@ import org.jfree.chart.JFreeChart;
 import org.junit.Assume;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.indicators.elliott.ElliottFibonacciValidator;
 import org.ta4j.core.indicators.elliott.ElliottSwingIndicator;
@@ -44,6 +45,8 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 import ta4jexamples.datasources.BarSeriesDataSource;
 
+@Tag("integration")
+@Tag("slow")
 class ElliottWaveAnalysisTest {
 
     private static final String OSSIFIED_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";

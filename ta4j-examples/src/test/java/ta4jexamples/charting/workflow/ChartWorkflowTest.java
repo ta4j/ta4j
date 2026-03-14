@@ -24,12 +24,17 @@ import org.ta4j.core.num.Num;
 
 import ta4jexamples.charting.display.SwingChartDisplayer;
 
+import java.awt.Dimension;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.util.Collection;
 import java.util.Comparator;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
+
+import javax.imageio.ImageIO;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -331,6 +336,25 @@ public class ChartWorkflowTest {
         assertTrue(bytes.length > 0, "Bytes should not be empty");
     }
 
+    @Test
+    public void testGetChartAsByteArrayWithCustomResolution() throws IOException {
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+
+        byte[] bytes = chartWorkflow.getChartAsByteArray(chart, 640, 360);
+
+        BufferedImage image = decodeImage(bytes);
+        assertEquals(640, image.getWidth());
+        assertEquals(360, image.getHeight());
+    }
+
+    @Test
+    public void testGetChartAsByteArrayRejectsInvalidResolution() {
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.getChartAsByteArray(chart, 0, 360));
+        assertThrows(IllegalArgumentException.class, () -> chartWorkflow.getChartAsByteArray(chart, 640, -1));
+    }
+
     // Display scale tests moved to SwingChartDisplayerTest
 
     @Test
@@ -358,6 +382,33 @@ public class ChartWorkflowTest {
             result.ifPresent(path -> assertTrue(Files.exists(path), "Saved chart path should exist"));
         } finally {
             // Clean up
+            if (Files.exists(tempDir)) {
+                Files.walk(tempDir).sorted(Comparator.reverseOrder()).forEach(path -> {
+                    try {
+                        Files.deleteIfExists(path);
+                    } catch (IOException e) {
+                        // Ignore cleanup errors
+                    }
+                });
+            }
+        }
+    }
+
+    @Test
+    public void testSaveChartImageWithCustomResolution() throws IOException {
+        Path tempDir = Files.createTempDirectory("ChartWorkflow-custom-resolution");
+        try {
+            ChartWorkflow makerWithSave = new ChartWorkflow(tempDir.toString());
+            JFreeChart chart = makerWithSave.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+
+            Optional<Path> result = makerWithSave.saveChartImage(chart, barSeries, "custom-resolution", 1024, 576);
+
+            assertTrue(result.isPresent(), "Custom resolution save should return a path");
+            BufferedImage image = ImageIO.read(result.orElseThrow().toFile());
+            assertNotNull(image, "Saved image should be readable");
+            assertEquals(1024, image.getWidth());
+            assertEquals(576, image.getHeight());
+        } finally {
             if (Files.exists(tempDir)) {
                 Files.walk(tempDir).sorted(Comparator.reverseOrder()).forEach(path -> {
                     try {
@@ -675,6 +726,21 @@ public class ChartWorkflowTest {
         assertEquals(1, spyDisplayer.getDisplayCallCount(), "Display without title should be called once");
         assertTrue(spyDisplayer.wasDisplayCalledWithoutTitle(), "Display without title should have been called");
         assertEquals(chart, spyDisplayer.getLastChart(), "Same chart instance should be passed to displayer");
+    }
+
+    @Test
+    public void testDisplayChartWithPreferredSize() {
+        MockChartDisplayer spyDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, spyDisplayer, ChartStorage.noOp());
+        Dimension preferredSize = new Dimension(1280, 720);
+
+        JFreeChart chart = workflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+        workflow.displayChart(chart, "Sized Window", preferredSize);
+
+        assertEquals(preferredSize, spyDisplayer.getLastPreferredSize());
+        assertEquals("Sized Window", spyDisplayer.getLastWindowTitle());
+        assertEquals(chart, spyDisplayer.getLastChart());
     }
 
     @Test
@@ -1286,6 +1352,12 @@ public class ChartWorkflowTest {
         assertNotNull(mockDisplayer.getLastChart(), "Chart should have been passed to displayer");
     }
 
+    private static BufferedImage decodeImage(byte[] bytes) throws IOException {
+        BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
+        assertNotNull(image, "Encoded chart bytes should decode into an image");
+        return image;
+    }
+
     /**
      * Spy implementation of ChartDisplayer that tracks all display calls for
      * testing purposes. This prevents charts from actually being displayed during
@@ -1294,6 +1366,7 @@ public class ChartWorkflowTest {
     private static class MockChartDisplayer implements ChartDisplayer {
         private JFreeChart lastChart;
         private String lastWindowTitle;
+        private Dimension lastPreferredSize;
         private boolean displayWithoutTitleCalled;
         private int displayCallCount = 0;
         private int displayWithTitleCallCount = 0;
@@ -1318,6 +1391,7 @@ public class ChartWorkflowTest {
         public void display(JFreeChart chart) {
             this.lastChart = chart;
             this.lastWindowTitle = null;
+            this.lastPreferredSize = null;
             this.displayWithoutTitleCalled = true;
             this.displayCallCount++;
             this.allCalls.add(new DisplayCall(chart, null, false));
@@ -1327,6 +1401,26 @@ public class ChartWorkflowTest {
         public void display(JFreeChart chart, String windowTitle) {
             this.lastChart = chart;
             this.lastWindowTitle = windowTitle;
+            this.lastPreferredSize = null;
+            this.displayWithoutTitleCalled = false;
+            this.displayWithTitleCallCount++;
+            this.allCalls.add(new DisplayCall(chart, windowTitle, true));
+        }
+
+        public void display(JFreeChart chart, Dimension preferredSize) {
+            this.lastChart = chart;
+            this.lastWindowTitle = null;
+            this.lastPreferredSize = preferredSize;
+            this.displayWithoutTitleCalled = true;
+            this.displayCallCount++;
+            this.allCalls.add(new DisplayCall(chart, null, false));
+        }
+
+        @Override
+        public void display(JFreeChart chart, String windowTitle, Dimension preferredSize) {
+            this.lastChart = chart;
+            this.lastWindowTitle = windowTitle;
+            this.lastPreferredSize = preferredSize;
             this.displayWithoutTitleCalled = false;
             this.displayWithTitleCallCount++;
             this.allCalls.add(new DisplayCall(chart, windowTitle, true));
@@ -1338,6 +1432,10 @@ public class ChartWorkflowTest {
 
         String getLastWindowTitle() {
             return lastWindowTitle;
+        }
+
+        Dimension getLastPreferredSize() {
+            return lastPreferredSize;
         }
 
         boolean wasDisplayCalledWithoutTitle() {
