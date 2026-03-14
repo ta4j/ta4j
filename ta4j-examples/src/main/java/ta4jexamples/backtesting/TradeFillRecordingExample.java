@@ -7,6 +7,8 @@ import java.time.Instant;
 import java.util.List;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
@@ -16,6 +18,7 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
@@ -39,6 +42,11 @@ import org.ta4j.core.num.Num;
 public class TradeFillRecordingExample {
 
     private static final Logger LOG = LogManager.getLogger(TradeFillRecordingExample.class);
+    private static final BarSeries ANALYSIS_SERIES = new BaseBarSeriesBuilder()
+            .withName("trade-fill-recording-analysis")
+            .withNumFactory(DoubleNumFactory.getInstance())
+            .build();
+    private static final NetProfitCriterion NET_PROFIT_CRITERION = new NetProfitCriterion();
 
     public static void main(String[] args) {
         LOG.info("Step 1: stream partial fills directly into TradingRecord");
@@ -75,12 +83,8 @@ public class TradeFillRecordingExample {
         return record;
     }
 
-    static Num totalClosedProfit(TradingRecord record) {
-        Num total = DoubleNumFactory.getInstance().zero();
-        for (Position position : record.getPositions()) {
-            total = total.plus(position.getProfit());
-        }
-        return total;
+    static Num closedNetProfit(TradingRecord record) {
+        return NET_PROFIT_CRITERION.calculate(ANALYSIS_SERIES, record);
     }
 
     static BaseTradingRecord buildMatchingPolicyRecord(ExecutionMatchPolicy matchPolicy) {
@@ -129,7 +133,7 @@ public class TradeFillRecordingExample {
     private static void logRecordSummary(String label, TradingRecord record) {
         LOG.info("{} -> trades={}, closedPositions={}, openPositions={}, fees={}, closedProfit={}", label,
                 record.getTrades().size(), record.getPositionCount(), record.getOpenPositions().size(),
-                record.getRecordedTotalFees(), totalClosedProfit(record));
+                record.getRecordedTotalFees(), closedNetProfit(record));
         for (int i = 0; i < record.getPositions().size(); i++) {
             Position position = record.getPositions().get(i);
             LOG.info("  position[{}] entry={} @ {} amount={}, exit={} @ {}, profit={}", i,

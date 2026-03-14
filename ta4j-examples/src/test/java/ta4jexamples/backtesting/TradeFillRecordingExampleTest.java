@@ -34,7 +34,7 @@ public class TradeFillRecordingExampleTest {
         assertEquals(4, streamingRecord.getTrades().size());
         assertEquals(2, streamingRecord.getPositionCount());
         assertEquals(0.41, streamingRecord.getRecordedTotalFees().doubleValue(), 1.0e-10);
-        assertEquals(29.59, TradeFillRecordingExample.totalClosedProfit(streamingRecord).doubleValue(), 1.0e-10);
+        assertEquals(29.59, TradeFillRecordingExample.closedNetProfit(streamingRecord).doubleValue(), 1.0e-10);
     }
 
     @Test
