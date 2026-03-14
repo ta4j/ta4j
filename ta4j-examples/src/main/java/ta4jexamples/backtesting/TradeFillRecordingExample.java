@@ -50,7 +50,8 @@ public class TradeFillRecordingExample {
 
     public static void main(String[] args) {
         LOG.info("Step 1: stream partial fills directly into TradingRecord");
-        BaseTradingRecord streamingRecord = newRecord();
+        BaseTradingRecord streamingRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+                new ZeroCostModel(), new ZeroCostModel(), null, null);
         recordStreamingOrder(streamingRecord, "BUY entry order", entryFills());
         logOpenExposure("After BUY entry order", streamingRecord);
         recordStreamingOrder(streamingRecord, "SELL exit order", exitFills());
@@ -70,14 +71,20 @@ public class TradeFillRecordingExample {
     }
 
     static BaseTradingRecord buildStreamingRecord() {
-        BaseTradingRecord record = newRecord();
-        applyFills(record, entryFills());
-        applyFills(record, exitFills());
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        for (TradeFill fill : entryFills()) {
+            record.operate(fill);
+        }
+        for (TradeFill fill : exitFills()) {
+            record.operate(fill);
+        }
         return record;
     }
 
     static BaseTradingRecord buildGroupedTradeRecord() {
-        BaseTradingRecord record = newRecord();
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
         record.operate(Trade.fromFills(TradeType.BUY, entryFills()));
         record.operate(Trade.fromFills(TradeType.SELL, exitFills()));
         return record;
@@ -88,24 +95,17 @@ public class TradeFillRecordingExample {
     }
 
     static BaseTradingRecord buildMatchingPolicyRecord(ExecutionMatchPolicy matchPolicy) {
-        BaseTradingRecord record = newRecord(matchPolicy);
-        applyFills(record, matchingPolicyEntryFills());
-        record.operate(matchingPolicyExitFill(matchPolicy));
-        return record;
-    }
-
-    private static BaseTradingRecord newRecord() {
-        return newRecord(ExecutionMatchPolicy.FIFO);
-    }
-
-    private static BaseTradingRecord newRecord(ExecutionMatchPolicy matchPolicy) {
-        return new BaseTradingRecord(TradeType.BUY, matchPolicy, new ZeroCostModel(), new ZeroCostModel(), null, null);
-    }
-
-    private static void applyFills(TradingRecord record, List<TradeFill> fills) {
-        for (TradeFill fill : fills) {
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, matchPolicy, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+        for (TradeFill fill : matchingPolicyEntryFills()) {
             record.operate(fill);
         }
+
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        String correlationId = matchPolicy == ExecutionMatchPolicy.SPECIFIC_ID ? "lot-b" : null;
+        record.operate(new TradeFill(3, Instant.parse("2025-02-01T00:02:00Z"), numFactory.numOf(120), numFactory.one(),
+                numFactory.zero(), ExecutionSide.SELL, "policy-exit", correlationId));
+        return record;
     }
 
     private static void recordStreamingOrder(TradingRecord record, String label, List<TradeFill> fills) {
@@ -182,12 +182,5 @@ public class TradeFillRecordingExample {
                         numFactory.zero(), ExecutionSide.BUY, "policy-entry-a", "lot-a"),
                 new TradeFill(2, Instant.parse("2025-02-01T00:01:00Z"), numFactory.numOf(106), numFactory.one(),
                         numFactory.zero(), ExecutionSide.BUY, "policy-entry-b", "lot-b"));
-    }
-
-    private static TradeFill matchingPolicyExitFill(ExecutionMatchPolicy matchPolicy) {
-        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
-        String correlationId = matchPolicy == ExecutionMatchPolicy.SPECIFIC_ID ? "lot-b" : null;
-        return new TradeFill(3, Instant.parse("2025-02-01T00:02:00Z"), numFactory.numOf(120), numFactory.one(),
-                numFactory.zero(), ExecutionSide.SELL, "policy-exit", correlationId);
     }
 }
