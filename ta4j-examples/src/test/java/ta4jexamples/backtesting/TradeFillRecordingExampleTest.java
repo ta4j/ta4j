@@ -11,6 +11,7 @@ import java.util.function.Supplier;
 
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
@@ -47,6 +48,37 @@ public class TradeFillRecordingExampleTest {
         assertEquals(19.74, streamingRecord.getPositions().get(1).getProfit().doubleValue(), 1.0e-10);
     }
 
+    @Test
+    public void matchingPoliciesShowHowPartialExitsCloseDifferentLots() {
+        BaseTradingRecord fifoRecord = TradeFillRecordingExample.buildMatchingPolicyRecord(ExecutionMatchPolicy.FIFO);
+        BaseTradingRecord lifoRecord = TradeFillRecordingExample.buildMatchingPolicyRecord(ExecutionMatchPolicy.LIFO);
+        BaseTradingRecord averageCostRecord = TradeFillRecordingExample
+                .buildMatchingPolicyRecord(ExecutionMatchPolicy.AVG_COST);
+        BaseTradingRecord specificIdRecord = TradeFillRecordingExample
+                .buildMatchingPolicyRecord(ExecutionMatchPolicy.SPECIFIC_ID);
+
+        assertPosition(fifoRecord.getPositions().get(0), "lot-a", 100.0, 1.0, 20.0);
+        assertPosition(lifoRecord.getPositions().get(0), "lot-b", 106.0, 1.0, 14.0);
+        assertPosition(averageCostRecord.getPositions().get(0), null, 102.0, 1.0, 18.0);
+        assertPosition(specificIdRecord.getPositions().get(0), "lot-b", 106.0, 1.0, 14.0);
+
+        assertOpenExposure(fifoRecord, 2, 103.0);
+        assertOpenExposure(lifoRecord, 2, 100.0);
+        assertOpenExposure(averageCostRecord, 2, 102.0);
+        assertOpenExposure(specificIdRecord, 2, 100.0);
+
+        assertEquals(2, fifoRecord.getOpenPositions().size());
+        assertEquals(1, lifoRecord.getOpenPositions().size());
+        assertEquals(1, averageCostRecord.getOpenPositions().size());
+        assertEquals(1, specificIdRecord.getOpenPositions().size());
+
+        assertOpenLot(fifoRecord.getOpenPositions().get(0), "lot-a", 100.0, 1.0);
+        assertOpenLot(fifoRecord.getOpenPositions().get(1), "lot-b", 106.0, 1.0);
+        assertOpenLot(lifoRecord.getOpenPositions().get(0), "lot-a", 100.0, 2.0);
+        assertOpenLot(averageCostRecord.getOpenPositions().get(0), null, 102.0, 2.0);
+        assertOpenLot(specificIdRecord.getOpenPositions().get(0), "lot-a", 100.0, 2.0);
+    }
+
     private static void assertEquivalent(TradingRecord expected, TradingRecord actual, String label) {
         require(expected.getTrades().size() == actual.getTrades().size(), () -> label + ": trade count mismatch");
         require(expected.getPositionCount() == actual.getPositionCount(), () -> label + ": position count mismatch");
@@ -76,6 +108,29 @@ public class TradeFillRecordingExampleTest {
         require(Objects.equals(expected.getOrderId(), actual.getOrderId()), () -> label + ": orderId mismatch");
         require(Objects.equals(expected.getCorrelationId(), actual.getCorrelationId()),
                 () -> label + ": correlationId mismatch");
+    }
+
+    private static void assertPosition(Position position, String expectedCorrelationId, double expectedPrice,
+            double expectedAmount, double expectedProfit) {
+        require(Objects.equals(expectedCorrelationId, position.getEntry().getCorrelationId()),
+                () -> "Unexpected closed lot correlationId");
+        assertEquals(expectedPrice, position.getEntry().getPricePerAsset().doubleValue(), 1.0e-10);
+        assertEquals(expectedAmount, position.getEntry().getAmount().doubleValue(), 1.0e-10);
+        assertEquals(expectedProfit, position.getProfit().doubleValue(), 1.0e-10);
+    }
+
+    private static void assertOpenExposure(TradingRecord record, double expectedAmount,
+            double expectedAverageEntryPrice) {
+        assertEquals(expectedAmount, record.getCurrentPosition().amount().doubleValue(), 1.0e-10);
+        assertEquals(expectedAverageEntryPrice, record.getCurrentPosition().averageEntryPrice().doubleValue(), 1.0e-10);
+    }
+
+    private static void assertOpenLot(Position position, String expectedCorrelationId, double expectedPrice,
+            double expectedAmount) {
+        require(Objects.equals(expectedCorrelationId, position.getEntry().getCorrelationId()),
+                () -> "Unexpected open lot correlationId");
+        assertEquals(expectedPrice, position.averageEntryPrice().doubleValue(), 1.0e-10);
+        assertEquals(expectedAmount, position.amount().doubleValue(), 1.0e-10);
     }
 
     private static void assertNum(Num expected, Num actual, String message) {
