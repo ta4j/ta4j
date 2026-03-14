@@ -296,8 +296,8 @@ public interface AnalysisCriterion {
         for (Position position : includedPositions) {
             Trade entry = position.getEntry();
             Trade exit = position.getExit();
-            projectedRecord.operate(entry.getIndex(), entry.getPricePerAsset(), entry.getAmount());
-            projectedRecord.operate(exit.getIndex(), exit.getPricePerAsset(), exit.getAmount());
+            projectedRecord.operate(entry);
+            projectedRecord.operate(exit);
         }
         return projectedRecord;
     }
@@ -324,9 +324,9 @@ public interface AnalysisCriterion {
 
     private static List<Position> openPositionsForMarkToMarket(TradingRecord source, int windowEndIndex,
             CostModel transactionCostModel, CostModel holdingCostModel) {
-        if (source instanceof PositionLedger positionLedger) {
-            return openPositionsFromLedger(positionLedger, source.getStartingType(), windowEndIndex,
-                    transactionCostModel, holdingCostModel);
+        List<Position> openPositions = source.getOpenPositions();
+        if (!openPositions.isEmpty()) {
+            return openPositionsWithinWindow(openPositions, windowEndIndex);
         }
         Position currentPosition = source.getCurrentPosition();
         if (currentPosition == null || !currentPosition.isOpened()) {
@@ -335,19 +335,16 @@ public interface AnalysisCriterion {
         return List.of(currentPosition);
     }
 
-    private static List<Position> openPositionsFromLedger(PositionLedger positionLedger, TradeType startingType,
-            int windowEndIndex, CostModel transactionCostModel, CostModel holdingCostModel) {
-        ExecutionSide entrySide = startingType == TradeType.BUY ? ExecutionSide.BUY : ExecutionSide.SELL;
+    private static List<Position> openPositionsWithinWindow(List<Position> openPositions, int windowEndIndex) {
         List<Position> positions = new ArrayList<>();
-        for (OpenPosition openPosition : positionLedger.getOpenPositions()) {
-            for (PositionLot lot : openPosition.lots()) {
-                if (lot.entryIndex() > windowEndIndex) {
-                    continue;
-                }
-                LiveTrade entryTrade = new LiveTrade(lot.entryIndex(), lot.entryTime(), lot.entryPrice(), lot.amount(),
-                        lot.fee(), entrySide, lot.orderId(), lot.correlationId());
-                positions.add(new Position(entryTrade, transactionCostModel, holdingCostModel));
+        for (Position openPosition : openPositions) {
+            if (openPosition == null || !openPosition.isOpened()) {
+                continue;
             }
+            if (openPosition.getEntry().getIndex() > windowEndIndex) {
+                continue;
+            }
+            positions.add(openPosition);
         }
         return positions;
     }

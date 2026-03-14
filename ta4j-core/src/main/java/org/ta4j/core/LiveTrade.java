@@ -11,10 +11,14 @@ import java.util.Objects;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.utils.DeprecationNotifier;
 
 /**
- * Live trade for live trading record updates (implements
- * {@link ExecutionFill}).
+ * Deprecated live-trade compatibility record.
+ *
+ * <p>
+ * Use {@link BaseTrade} and {@link TradeFill} for new code.
+ * </p>
  *
  * @param index         trade index
  * @param time          execution timestamp (UTC)
@@ -26,6 +30,7 @@ import org.ta4j.core.num.Num;
  * @param correlationId optional correlation identifier
  * @since 0.22.2
  */
+@Deprecated(since = "0.22.4")
 public record LiveTrade(int index, Instant time, Num price, Num amount, Num fee, ExecutionSide side, String orderId,
         String correlationId) implements Trade, ExecutionFill {
 
@@ -33,10 +38,10 @@ public record LiveTrade(int index, Instant time, Num price, Num amount, Num fee,
     private static final long serialVersionUID = 3196554864123769210L;
 
     private static final Gson GSON = new Gson();
-
     private static final CostModel RECORDED_COST_MODEL = RecordedTradeCostModel.INSTANCE;
 
     public LiveTrade {
+        DeprecationNotifier.warnOnce(LiveTrade.class, "org.ta4j.core.BaseTrade");
         if (index < 0) {
             throw new IllegalArgumentException("index must be >= 0");
         }
@@ -47,15 +52,6 @@ public record LiveTrade(int index, Instant time, Num price, Num amount, Num fee,
         if (fee == null) {
             fee = price.getNumFactory().zero();
         }
-    }
-
-    /**
-     * @return true when the fill has a non-zero fee
-     * @since 0.22.2
-     */
-    @Override
-    public boolean hasFee() {
-        return fee != null && !fee.isZero();
     }
 
     @Override
@@ -100,28 +96,16 @@ public record LiveTrade(int index, Instant time, Num price, Num amount, Num fee,
         return RECORDED_COST_MODEL;
     }
 
-    /**
-     * @return execution timestamp (UTC)
-     * @since 0.22.2
-     */
     @Override
     public Instant getTime() {
         return time;
     }
 
-    /**
-     * @return the originating order id if available
-     * @since 0.22.2
-     */
     @Override
     public String getOrderId() {
         return orderId;
     }
 
-    /**
-     * @return the correlation id if available
-     * @since 0.22.2
-     */
     @Override
     public String getCorrelationId() {
         return correlationId;

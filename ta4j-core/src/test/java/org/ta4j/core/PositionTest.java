@@ -6,17 +6,22 @@ package org.ta4j.core;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.time.Instant;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.LinearBorrowingCostModel;
 import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
+import org.ta4j.core.analysis.cost.RecordedTradeCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNum;
@@ -100,6 +105,60 @@ public class PositionTest {
         newPosition.operate(3);
         newPosition.operate(3);
         assertTrue(newPosition.isClosed());
+    }
+
+    @Test
+    public void operateWithPrebuiltTradesSupportsEntryAndExit() {
+        Position position = new Position(TradeType.BUY, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+        Trade entry = Trade.fromFills(TradeType.BUY,
+                List.of(new TradeFill(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1)),
+                        new TradeFill(2, DoubleNum.valueOf(101), DoubleNum.valueOf(1))),
+                RecordedTradeCostModel.INSTANCE);
+        Trade exit = Trade.fromFills(TradeType.SELL,
+                List.of(new TradeFill(3, DoubleNum.valueOf(110), DoubleNum.valueOf(2))),
+                RecordedTradeCostModel.INSTANCE);
+
+        position.operate(entry);
+        position.operate(exit);
+
+        assertEquals(entry, position.getEntry());
+        assertEquals(exit, position.getExit());
+        assertTrue(position.isClosed());
+    }
+
+    @Test
+    public void operateWithPrebuiltTradeRejectsMismatchedEntryType() {
+        Position position = new Position(TradeType.BUY);
+        Trade entry = Trade.sellAt(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+
+        assertThrows(IllegalArgumentException.class, () -> position.operate(entry));
+    }
+
+    @Test
+    public void operateWithPrebuiltTradeRejectsMismatchedExitType() {
+        Position position = new Position(TradeType.BUY);
+        position.operate(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        Trade exit = Trade.buyAt(2, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
+
+        assertThrows(IllegalArgumentException.class, () -> position.operate(exit));
+    }
+
+    @Test
+    public void operateWithPrebuiltTradeRejectsExitBeforeEntryIndex() {
+        Position position = new Position(TradeType.BUY);
+        position.operate(3, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        Trade exit = Trade.sellAt(2, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
+
+        assertThrows(IllegalStateException.class, () -> position.operate(exit));
+    }
+
+    @Test
+    public void operateWithPrebuiltTradeRejectsMismatchedCostModel() {
+        Position position = new Position(TradeType.BUY, transactionModel, holdingModel);
+        Trade entry = Trade.fromFills(TradeType.BUY,
+                List.of(new TradeFill(1, DoubleNum.valueOf(100), DoubleNum.valueOf(1))), new ZeroCostModel());
+
+        assertThrows(IllegalArgumentException.class, () -> position.operate(entry));
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -228,8 +287,8 @@ public class PositionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 105)
                 .build();
-        Position position = new Position(new SimulatedTrade(0, TradeType.BUY, NaN, NaN),
-                new SimulatedTrade(1, TradeType.SELL, NaN, NaN));
+        Position position = new Position(new BaseTrade(0, TradeType.BUY, NaN, NaN),
+                new BaseTrade(1, TradeType.SELL, NaN, NaN));
         assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series));
     }
 
@@ -238,8 +297,8 @@ public class PositionTest {
         var series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
                 .withData(100, 95)
                 .build();
-        Position position = new Position(new SimulatedTrade(0, TradeType.SELL, NaN, NaN),
-                new SimulatedTrade(1, TradeType.BUY, NaN, NaN));
+        Position position = new Position(new BaseTrade(0, TradeType.SELL, NaN, NaN),
+                new BaseTrade(1, TradeType.BUY, NaN, NaN));
         assertNumEquals(DoubleNum.valueOf(1.05), position.getGrossReturn(series));
     }
 
@@ -260,6 +319,31 @@ public class PositionTest {
         Position position = new Position(TradeType.BUY, transactionModel, holdingModel);
 
         assertSame(holdingModel, position.getHoldingCostModel());
+    }
+
+    @Test
+    public void openViewAccessorsExposeEntryDerivedValues() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        Trade entry = new BaseTrade(5, Instant.EPOCH, numFactory.numOf(123), numFactory.numOf(2), numFactory.numOf(0.3),
+                ExecutionSide.BUY, "order-5", "corr-5");
+        Position position = new Position(entry, RecordedTradeCostModel.INSTANCE, new ZeroCostModel());
+
+        assertEquals(ExecutionSide.BUY, position.side());
+        assertNumEquals(numFactory.numOf(2), position.amount());
+        assertNumEquals(numFactory.numOf(123), position.averageEntryPrice());
+        assertNumEquals(numFactory.numOf(246), position.totalEntryCost());
+        assertNumEquals(numFactory.numOf(0.3), position.totalFees());
+    }
+
+    @Test
+    public void openViewAccessorsReturnNullWhenPositionHasNoEntry() {
+        Position position = new Position(TradeType.BUY);
+
+        assertNull(position.side());
+        assertNull(position.amount());
+        assertNull(position.averageEntryPrice());
+        assertNull(position.totalEntryCost());
+        assertNull(position.totalFees());
     }
 
     @Test(expected = IllegalArgumentException.class)
