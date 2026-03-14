@@ -2,9 +2,9 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-13 22:14 EDT
+- Last updated: 2026-03-13 23:53 EDT
 - Active phase: Phase 12
-- Active task: Replace the remaining early correction closes in truncated-history replay so the `2018` and `2022` cutoffs promote the intended macro bottoms without regressing the now-stable `2021` slice
+- Active task: Re-run the remaining replay acceptance sweep and finish the final same-structure/build gate now that the `2018`, `2021`, and `2022` completed-cycle cutoffs are aligned
 - Overall: 58/62 checklist items complete
 
 ## Status
@@ -539,7 +539,7 @@ Rationale note:
 
 - [x] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
 - [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
-  Current status: the latest replay-selection changes are now validated at the `2021-11-11` cutoff and materially improve the truncated-history slices. The `2018-12-16` cutoff now selects `orthodox-classical` and drops the extra third local cycle, but it still closes the first correction too early at `2015-01-15` instead of the intended `2015-08-19` macro low. The `2022-11-22` cutoff now also selects `orthodox-classical` and recovers the first completed `2011 -> 2013 -> 2015` cycle, but the second completed cycle still closes too early at `2020-03-14` instead of the intended `2018-12-16`, so the `2018 -> 2021 -> 2022` cycle is not yet promoted. On-demand harness-side replay cutoff diff and profile-sweep artifacts remain the primary diagnostics. The remaining bottleneck is no longer generic path selection; it is truncated-history correction-boundary promotion inside the otherwise improved macro backbone.
+  Current status: the truncated-history replay backbone now recovers the intended completed cycles at the `2018-12-16`, `2021-11-11`, and `2022-11-22` cutoffs from price alone. The key fix was to let strong-fit fallback bearish legs participate in macro-bottom promotion while requiring a later higher milestone peak plus a macro-sized corrective leg before a bottom is considered confirmed. The remaining acceptance work is narrower now: re-run the full major-turn replay sweep intentionally, then close the final chart-structure and full-build gates.
 - [ ] Confirm historical chart and live chart are both drawn from the same structure object.
 - [ ] Run full verification and record the final build log.
 

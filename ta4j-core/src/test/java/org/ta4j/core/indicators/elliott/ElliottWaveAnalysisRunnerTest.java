@@ -1338,9 +1338,7 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(structure.cycles()).isEmpty();
     }
 
-    @Test
-    void selectHistoricalMacroBottomsKeepsEarlierBottomUntilPeakIsReclaimed() throws Exception {
-        BarSeries series = buildHistoricalMacroBottomSeries();
+    void meaningfulHistoricalBottomConfirmationRequiresMacroSizedCorrection() throws Exception {
         NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
         ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
                 .degree(ElliottDegree.PRIMARY)
@@ -1349,31 +1347,58 @@ class ElliottWaveAnalysisRunnerTest {
                 .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
                 .build();
 
-        Method selectHistoricalMacroBottoms = ElliottWaveAnalysisRunner.class
-                .getDeclaredMethod("selectHistoricalMacroBottoms", BarSeries.class, List.class);
-        selectHistoricalMacroBottoms.setAccessible(true);
+        Method meaningfulHistoricalBottomConfirmation = ElliottWaveAnalysisRunner.class.getDeclaredMethod(
+                "meaningfulHistoricalBottomConfirmation", ElliottWaveAnalysisResult.HistoricalLegAssessment.class,
+                ElliottWaveAnalysisResult.HistoricalLegAssessment.class);
+        meaningfulHistoricalBottomConfirmation.setAccessible(true);
 
-        List<ElliottWaveAnalysisResult.HistoricalLegAssessment> bearishLegs = List.of(
-                new ElliottWaveAnalysisResult.HistoricalLegAssessment(0, 2, false,
-                        historicalAnchoredSelection(factory, "macro-bottom-1", ElliottPhase.CORRECTIVE_C, false, true,
-                                0.88).assessment(),
-                        true),
-                new ElliottWaveAnalysisResult.HistoricalLegAssessment(8, 14, false,
-                        historicalAnchoredSelection(factory, "macro-bottom-2", ElliottPhase.CORRECTIVE_C, false, true,
-                                0.86).assessment(),
-                        true),
-                new ElliottWaveAnalysisResult.HistoricalLegAssessment(18, 20, false,
-                        historicalAnchoredSelection(factory, "internal-bottom", ElliottPhase.CORRECTIVE_C, false, true,
-                                0.84).assessment(),
-                        true));
+        ElliottWaveAnalysisResult.HistoricalLegAssessment pending = new ElliottWaveAnalysisResult.HistoricalLegAssessment(
+                11, 16, false,
+                historicalAnchoredSelection(factory, "pending-bottom", ElliottPhase.CORRECTIVE_C, false, true, 0.87)
+                        .assessment(),
+                true);
+        ElliottWaveAnalysisResult.HistoricalLegAssessment shortCorrection = new ElliottWaveAnalysisResult.HistoricalLegAssessment(
+                40, 44, false,
+                historicalAnchoredSelection(factory, "short-correction", ElliottPhase.CORRECTIVE_C, false, true, 0.85)
+                        .assessment(),
+                true);
+        ElliottWaveAnalysisResult.HistoricalLegAssessment macroCorrection = new ElliottWaveAnalysisResult.HistoricalLegAssessment(
+                40, 52, false,
+                historicalAnchoredSelection(factory, "macro-correction", ElliottPhase.CORRECTIVE_C, false, true, 0.85)
+                        .assessment(),
+                true);
 
-        @SuppressWarnings("unchecked")
-        List<ElliottWaveAnalysisResult.HistoricalLegAssessment> macroBottoms = (List<ElliottWaveAnalysisResult.HistoricalLegAssessment>) selectHistoricalMacroBottoms
-                .invoke(analysis, series, bearishLegs);
+        assertThat((boolean) meaningfulHistoricalBottomConfirmation.invoke(analysis, pending, shortCorrection))
+                .isFalse();
+        assertThat((boolean) meaningfulHistoricalBottomConfirmation.invoke(analysis, pending, macroCorrection))
+                .isTrue();
+    }
 
-        assertThat(macroBottoms).hasSize(2);
-        assertThat(macroBottoms.get(0).endIndex()).isEqualTo(2);
-        assertThat(macroBottoms.get(1).endIndex()).isEqualTo(14);
+    @Test
+    void eligibleHistoricalMacroBottomAllowsHighFitFallbackLow() throws Exception {
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        Method eligibleHistoricalMacroBottom = ElliottWaveAnalysisRunner.class.getDeclaredMethod(
+                "eligibleHistoricalMacroBottom", ElliottWaveAnalysisResult.HistoricalLegAssessment.class);
+        eligibleHistoricalMacroBottom.setAccessible(true);
+
+        ElliottWaveAnalysisResult.HistoricalLegAssessment strongFallback = new ElliottWaveAnalysisResult.HistoricalLegAssessment(
+                11, 16, false, historicalAnchoredSelection(factory, "deeper-fallback-bottom", ElliottPhase.CORRECTIVE_C,
+                        false, false, 0.79).assessment(),
+                false);
+        ElliottWaveAnalysisResult.HistoricalLegAssessment weakFallback = new ElliottWaveAnalysisResult.HistoricalLegAssessment(
+                18, 20, false, historicalAnchoredSelection(factory, "weak-fallback-bottom", ElliottPhase.CORRECTIVE_C,
+                        false, false, 0.10).assessment(),
+                false);
+
+        assertThat((boolean) eligibleHistoricalMacroBottom.invoke(analysis, strongFallback)).isTrue();
+        assertThat((boolean) eligibleHistoricalMacroBottom.invoke(analysis, weakFallback)).isFalse();
     }
 
     @Test
@@ -2009,27 +2034,6 @@ class ElliottWaveAnalysisRunnerTest {
                     .highPrice(high)
                     .lowPrice(low)
                     .closePrice(base + 3.0)
-                    .volume(1_000)
-                    .add();
-        }
-        return series;
-    }
-
-    private BarSeries buildHistoricalMacroBottomSeries() {
-        BarSeries series = new MockBarSeriesBuilder().withName("HistoricalMacroBottom").build();
-        Duration period = Duration.ofDays(1);
-        Instant time = Instant.parse("2021-01-01T00:00:00Z");
-        double[] closes = { 220, 180, 100, 140, 180, 230, 270, 290, 300, 260, 220, 190, 175, 165, 150, 190, 220, 250,
-                280, 240, 200, 240, 280, 320, 360 };
-        for (int index = 0; index < closes.length; index++) {
-            double close = closes[index];
-            series.barBuilder()
-                    .timePeriod(period)
-                    .endTime(time.plus(period.multipliedBy(index)))
-                    .openPrice(close)
-                    .highPrice(close)
-                    .lowPrice(close)
-                    .closePrice(close)
                     .volume(1_000)
                     .add();
         }
