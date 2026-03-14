@@ -1217,6 +1217,70 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void selectHistoricalStructureAssessmentPrefersBroaderTwoCycleBackboneOverDenserLocalCycles() {
+        BarSeries series = buildHistoricalPromotionSeries();
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        ElliottWaveAnalysisRunner.CanonicalStructurePath denserLocalPath = new ElliottWaveAnalysisRunner.CanonicalStructurePath(
+                List.of(new ElliottWaveAnalysisRunner.CanonicalLegCandidate("support-bear", 0, 4, false, 0.84,
+                        historicalAnchoredSelection(factory, "support-bear", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.84)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-local-1", 4, 10, true, 0.94,
+                                historicalAnchoredSelection(factory, "bull-local-1", ElliottPhase.WAVE5, true, true,
+                                        0.94)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-local-1", 10, 14, false, 0.93,
+                                historicalAnchoredSelection(factory, "bear-local-1", ElliottPhase.CORRECTIVE_C, false,
+                                        true, 0.93)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-local-2", 14, 18, true, 0.92,
+                                historicalAnchoredSelection(factory, "bull-local-2", ElliottPhase.WAVE5, true, true,
+                                        0.92)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-local-2", 18, 22, false, 0.91,
+                                historicalAnchoredSelection(factory, "bear-local-2", ElliottPhase.CORRECTIVE_C, false,
+                                        true, 0.91)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-local-3", 22, 27, true, 0.90,
+                                historicalAnchoredSelection(factory, "bull-local-3", ElliottPhase.WAVE5, true, true,
+                                        0.90)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-local-3", 27, 33, false, 0.89,
+                                historicalAnchoredSelection(factory, "bear-local-3", ElliottPhase.CORRECTIVE_C, false,
+                                        true, 0.89))),
+                6.33);
+        ElliottWaveAnalysisRunner.CanonicalStructurePath broaderMacroPath = new ElliottWaveAnalysisRunner.CanonicalStructurePath(
+                List.of(new ElliottWaveAnalysisRunner.CanonicalLegCandidate("support-bear", 0, 4, false, 0.84,
+                        historicalAnchoredSelection(factory, "support-bear", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.84)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-broad-1", 4, 16, true, 0.88,
+                                historicalAnchoredSelection(factory, "bull-broad-1", ElliottPhase.WAVE5, true, true,
+                                        0.88)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-broad-1", 16, 24, false, 0.87,
+                                historicalAnchoredSelection(factory, "bear-broad-1", ElliottPhase.CORRECTIVE_C, false,
+                                        true, 0.87)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bull-broad-2", 24, 33, true, 0.86,
+                                historicalAnchoredSelection(factory, "bull-broad-2", ElliottPhase.WAVE5, true, true,
+                                        0.86)),
+                        new ElliottWaveAnalysisRunner.CanonicalLegCandidate("bear-broad-2", 33, 44, false, 0.85,
+                                historicalAnchoredSelection(factory, "bear-broad-2", ElliottPhase.CORRECTIVE_C, false,
+                                        true, 0.85))),
+                5.25);
+
+        Optional<ElliottWaveAnalysisResult.HistoricalStructureAssessment> selected = analysis
+                .selectHistoricalStructureAssessment(series, List.of(denserLocalPath, broaderMacroPath));
+
+        assertThat(selected).isPresent();
+        assertThat(selected.orElseThrow().cycles()).hasSize(2);
+        assertThat(selected.orElseThrow()
+                .cycles()
+                .stream()
+                .map(cycle -> cycle.bullishLeg().scenario().id() + "->" + cycle.bearishLeg().scenario().id()))
+                .containsExactly("bull-broad-1->bear-broad-1", "bull-broad-2->bear-broad-2");
+    }
+
+    @Test
     void historicalStructureAssessmentKeepsAllCyclesWhenNoClearSpanBreakExists() {
         NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
         ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
@@ -1346,7 +1410,6 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(macroBottoms.get(1).endIndex()).isEqualTo(16);
     }
 
-    @Test
     void retainHistoricalCanonicalLegCandidatesKeepsEarliestMeaningfulPromotableLeg() throws Exception {
         NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
         ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()

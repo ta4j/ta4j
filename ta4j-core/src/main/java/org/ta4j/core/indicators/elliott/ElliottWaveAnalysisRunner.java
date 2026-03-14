@@ -833,18 +833,17 @@ public final class ElliottWaveAnalysisRunner {
                 .stream()
                 .map(this::historicalLegAssessment)
                 .toList();
-        final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> promotedCycles = promoteHistoricalMacroCycles(
+        final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> candidatePromotedCycles = promoteHistoricalMacroCycles(
                 path.legs());
-        if (!promotedCycles.isEmpty()) {
-            return new ElliottWaveAnalysisResult.HistoricalStructureAssessment(legs, promotedCycles);
+        final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> fallbackCycles = promoteHistoricalMacroCyclesFromLegs(
+                series, legs);
+        final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> preferredCycles = preferredHistoricalCycles(
+                candidatePromotedCycles, fallbackCycles);
+        if (!preferredCycles.isEmpty()) {
+            return new ElliottWaveAnalysisResult.HistoricalStructureAssessment(legs, preferredCycles);
         }
         if (!path.legs().isEmpty() && path.legs().getLast().bullish()) {
             return new ElliottWaveAnalysisResult.HistoricalStructureAssessment(legs, List.of());
-        }
-        final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> fallbackCycles = promoteHistoricalMacroCyclesFromLegs(
-                series, legs);
-        if (!fallbackCycles.isEmpty()) {
-            return new ElliottWaveAnalysisResult.HistoricalStructureAssessment(legs, fallbackCycles);
         }
         return historicalStructureAssessment(path);
     }
@@ -915,6 +914,22 @@ public final class ElliottWaveAnalysisRunner {
         }
         final double gapRatio = largestGap / (double) Math.max(1, maxSpan);
         return gapRatio >= HISTORICAL_CYCLE_PROMOTION_MIN_GAP_RATIO ? threshold : orderedSpans.getFirst().intValue();
+    }
+
+    private List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> preferredHistoricalCycles(
+            final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> primaryCycles,
+            final List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> fallbackCycles) {
+        final List<HistoricalCycleBundle> candidates = new ArrayList<>(2);
+        if (primaryCycles != null && !primaryCycles.isEmpty()) {
+            candidates.add(new HistoricalCycleBundle(primaryCycles));
+        }
+        if (fallbackCycles != null && !fallbackCycles.isEmpty()) {
+            candidates.add(new HistoricalCycleBundle(fallbackCycles));
+        }
+        if (candidates.isEmpty()) {
+            return List.of();
+        }
+        return candidates.stream().max(HistoricalCycleBundle.ORDERING).orElseThrow().cycles();
     }
 
     private int historicalCycleSpan(final ElliottWaveAnalysisResult.HistoricalCycleAssessment cycle) {
@@ -2970,15 +2985,27 @@ public final class ElliottWaveAnalysisRunner {
             ElliottWaveAnalysisResult.HistoricalStructureAssessment assessment) {
 
         private static final Comparator<HistoricalStructureCandidate> ORDERING = Comparator
-                .comparingInt(HistoricalStructureCandidate::cycleCount)
-                .thenComparingInt(HistoricalStructureCandidate::terminalCycleEndIndex)
+                .comparing(HistoricalStructureCandidate::hasMultipleCycles)
+                .thenComparingDouble(HistoricalStructureCandidate::averageCycleSpan)
                 .thenComparingInt(HistoricalStructureCandidate::totalCycleSpan)
+                .thenComparingInt(HistoricalStructureCandidate::terminalCycleEndIndex)
+                .thenComparing(
+                        Comparator.comparingInt(HistoricalStructureCandidate::earliestCycleStartIndex).reversed())
+                .thenComparingInt(HistoricalStructureCandidate::cycleCount)
                 .thenComparingDouble(HistoricalStructureCandidate::totalCycleFitScore)
                 .thenComparingDouble(candidate -> candidate.path().score())
                 .thenComparingInt(HistoricalStructureCandidate::terminalLegEndIndex);
 
+        private boolean hasMultipleCycles() {
+            return cycleCount() > 1;
+        }
+
         private int cycleCount() {
             return assessment.cycles().size();
+        }
+
+        private double averageCycleSpan() {
+            return cycleCount() == 0 ? 0.0 : totalCycleSpan() / (double) cycleCount();
         }
 
         private int terminalCycleEndIndex() {
@@ -2999,8 +3026,61 @@ public final class ElliottWaveAnalysisRunner {
                     .sum();
         }
 
+        private int earliestCycleStartIndex() {
+            return assessment.cycles().isEmpty() ? Integer.MAX_VALUE
+                    : assessment.cycles().getFirst().bullishLeg().startIndex();
+        }
+
         private int terminalLegEndIndex() {
             return assessment.legs().isEmpty() ? -1 : assessment.legs().getLast().endIndex();
+        }
+    }
+
+    private record HistoricalCycleBundle(List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> cycles) {
+
+        private static final Comparator<HistoricalCycleBundle> ORDERING = Comparator
+                .comparing(HistoricalCycleBundle::hasMultipleCycles)
+                .thenComparingDouble(HistoricalCycleBundle::averageCycleSpan)
+                .thenComparingInt(HistoricalCycleBundle::totalCycleSpan)
+                .thenComparingInt(HistoricalCycleBundle::terminalCycleEndIndex)
+                .thenComparing(Comparator.comparingInt(HistoricalCycleBundle::earliestCycleStartIndex).reversed())
+                .thenComparingInt(HistoricalCycleBundle::cycleCount)
+                .thenComparingDouble(HistoricalCycleBundle::totalCycleFitScore);
+
+        HistoricalCycleBundle {
+            cycles = cycles == null ? List.of() : List.copyOf(cycles);
+        }
+
+        private boolean hasMultipleCycles() {
+            return cycleCount() > 1;
+        }
+
+        private int cycleCount() {
+            return cycles.size();
+        }
+
+        private double averageCycleSpan() {
+            return cycleCount() == 0 ? 0.0 : totalCycleSpan() / (double) cycleCount();
+        }
+
+        private int totalCycleSpan() {
+            return cycles.stream()
+                    .mapToInt(cycle -> cycle.bearishLeg().endIndex() - cycle.bullishLeg().startIndex())
+                    .sum();
+        }
+
+        private int terminalCycleEndIndex() {
+            return cycles.isEmpty() ? -1 : cycles.getLast().bearishLeg().endIndex();
+        }
+
+        private double totalCycleFitScore() {
+            return cycles.stream()
+                    .mapToDouble(cycle -> cycle.bullishLeg().fitScore() + cycle.bearishLeg().fitScore())
+                    .sum();
+        }
+
+        private int earliestCycleStartIndex() {
+            return cycles.isEmpty() ? Integer.MAX_VALUE : cycles.getFirst().bullishLeg().startIndex();
         }
     }
 

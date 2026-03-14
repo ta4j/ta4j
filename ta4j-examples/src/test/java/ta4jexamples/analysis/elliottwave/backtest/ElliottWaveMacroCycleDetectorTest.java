@@ -109,6 +109,7 @@ class ElliottWaveMacroCycleDetectorTest {
         assertReplay(fullSeries, "2022-11-22T00:00:00Z");
     }
 
+    @Test
     void canonicalReplayAt2021TopRecoversExpectedCompletedCyclePeaksAndLows() {
         final BarSeries fullSeries = loadBitcoinSeries();
         final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse("2021-11-11T00:00:00Z"));

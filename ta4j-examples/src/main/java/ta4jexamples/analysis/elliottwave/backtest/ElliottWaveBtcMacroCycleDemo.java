@@ -5,6 +5,9 @@ package ta4jexamples.analysis.elliottwave.backtest;
 
 import java.awt.Color;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -319,6 +322,22 @@ public final class ElliottWaveBtcMacroCycleDemo {
             Objects.requireNonNull(profile, "profile");
             cycleFits = cycleFits == null ? List.of() : List.copyOf(cycleFits);
             chartSegments = chartSegments == null ? List.of() : List.copyOf(chartSegments);
+        }
+
+        long acceptedCycleSpanMillis() {
+            return cycleFits.stream()
+                    .filter(CycleFit::accepted)
+                    .mapToLong(cycleFit -> Duration.between(cycleFit.cycle().start().at(), cycleFit.cycle().low().at())
+                            .toMillis())
+                    .sum();
+        }
+
+        Instant earliestAcceptedStartTime() {
+            return cycleFits.stream()
+                    .filter(CycleFit::accepted)
+                    .map(cycleFit -> cycleFit.cycle().start().at())
+                    .min(Comparator.naturalOrder())
+                    .orElse(Instant.MAX);
         }
     }
 

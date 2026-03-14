@@ -2,9 +2,9 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-13 19:20 EDT
+- Last updated: 2026-03-13 22:14 EDT
 - Active phase: Phase 12
-- Active task: Replace the current generic-path-first replay selection with a top-level macro backbone selector that can recover the `2015` and `2018` replay cutoffs without regressing the improved `2021` and `2022` slices
+- Active task: Replace the remaining early correction closes in truncated-history replay so the `2018` and `2022` cutoffs promote the intended macro bottoms without regressing the now-stable `2021` slice
 - Overall: 58/62 checklist items complete
 
 ## Status
@@ -539,7 +539,7 @@ Rationale note:
 
 - [x] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
 - [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
-  Current status: a corrected same-package replay sweep now stably aligns at the `2021-11-11` and `2022-11-22` cutoffs. The `2015-08-19` replay still closes subordinate `2012 -> 2013 -> 2015` subcycles instead of the intended `2011 -> 2013 -> 2015` macro cycle, and the `2018-12-16` replay still promotes subordinate `2013 -> 2015`, `2015 -> 2016`, and `2016 -> 2018` cycles instead of the intended macro backbone. On-demand harness-side replay cutoff diff and profile-sweep artifacts now exist for the major BTC cutoffs. The corrected no-registry profile sweep shows a more useful split: `2015`, `2018`, and `2022` now surface non-empty canonical completed-cycle candidates for some profiles, while `2013` and `2021` still flatline. The latest historical-selection change now ranks the top canonical paths by promoted completed-cycle backbone instead of taking the first generic path score winner; replay validation for that selector is still pending, but it moves the remaining bottleneck out of fallback promotion order and squarely into truncated-history macro backbone generation.
+  Current status: the latest replay-selection changes are now validated at the `2021-11-11` cutoff and materially improve the truncated-history slices. The `2018-12-16` cutoff now selects `orthodox-classical` and drops the extra third local cycle, but it still closes the first correction too early at `2015-01-15` instead of the intended `2015-08-19` macro low. The `2022-11-22` cutoff now also selects `orthodox-classical` and recovers the first completed `2011 -> 2013 -> 2015` cycle, but the second completed cycle still closes too early at `2020-03-14` instead of the intended `2018-12-16`, so the `2018 -> 2021 -> 2022` cycle is not yet promoted. On-demand harness-side replay cutoff diff and profile-sweep artifacts remain the primary diagnostics. The remaining bottleneck is no longer generic path selection; it is truncated-history correction-boundary promotion inside the otherwise improved macro backbone.
 - [ ] Confirm historical chart and live chart are both drawn from the same structure object.
 - [ ] Run full verification and record the final build log.
 
