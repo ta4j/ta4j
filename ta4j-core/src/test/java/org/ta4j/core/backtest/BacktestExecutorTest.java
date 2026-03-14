@@ -176,6 +176,28 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
+    public void constructorWithCostModelsAndTradeExecutionModelUsesBoth() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
+        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+        LinearTransactionCostModel costModel = new LinearTransactionCostModel(0.1);
+        BacktestExecutor executor = new BacktestExecutor(series, costModel, new ZeroCostModel(),
+                new TradeOnCurrentCloseModel());
+
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), numFactory.one());
+
+        TradingRecord tradingRecord = result.tradingStatements().getFirst().getTradingRecord();
+        Position position = tradingRecord.getPositions().getFirst();
+        Trade entry = position.getEntry();
+        Trade exit = position.getExit();
+
+        assertSame(costModel, tradingRecord.getTransactionCostModel());
+        assertEquals(series.getBar(0).getClosePrice(), entry.getPricePerAsset());
+        assertEquals(series.getBar(1).getClosePrice(), exit.getPricePerAsset());
+        assertEquals(costModel.calculate(entry.getPricePerAsset(), entry.getAmount()), entry.getCost());
+        assertEquals(costModel.calculate(exit.getPricePerAsset(), exit.getAmount()), exit.getCost());
+    }
+
+    @Test
     public void constructorWithSeriesManagerUsesItsTradingRecordFactory() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
         Strategy strategyOne = new BaseStrategy(new FixedRule(0), new FixedRule(1));

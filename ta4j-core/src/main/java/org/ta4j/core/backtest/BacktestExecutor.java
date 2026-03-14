@@ -86,6 +86,7 @@ public class BacktestExecutor {
      * @param holdingCostModel     the cost model for holding the asset (e.g.
      *                             borrowing)
      * @param tradeExecutionModel  the trade execution model
+     * @since 0.22.4
      */
     public BacktestExecutor(BarSeries series, CostModel transactionCostModel, CostModel holdingCostModel,
             TradeExecutionModel tradeExecutionModel) {

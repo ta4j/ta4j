@@ -56,6 +56,12 @@ public class BarSeriesManager {
     /**
      * Factory for creating trading records for backtest runs.
      *
+     * <p>
+     * Implementations must return a fresh mutable {@link TradingRecord} for each
+     * invocation. Reusing the same instance across runs causes state leakage
+     * between executions.
+     * </p>
+     *
      * @since 0.22.4
      */
     @FunctionalInterface
@@ -68,7 +74,8 @@ public class BarSeriesManager {
          * @param endIndex             run end index (already clamped)
          * @param transactionCostModel transaction cost model
          * @param holdingCostModel     holding cost model
-         * @return a trading record instance for the run
+         * @return a new trading record instance for the run
+         * @since 0.22.4
          */
         TradingRecord create(TradeType tradeType, int startIndex, int endIndex, CostModel transactionCostModel,
                 CostModel holdingCostModel);
@@ -88,6 +95,7 @@ public class BarSeriesManager {
      *
      * @param barSeries           the bar series to be managed
      * @param tradeExecutionModel the trade execution model to use
+     * @since 0.22.4
      */
     public BarSeriesManager(BarSeries barSeries, TradeExecutionModel tradeExecutionModel) {
         this(barSeries, new ZeroCostModel(), new ZeroCostModel(), tradeExecutionModel);

@@ -232,7 +232,15 @@ public interface TradingRecord extends Serializable {
     }
 
     /**
-     * @return the current (open) position
+     * Returns the canonical current-position view for this record.
+     *
+     * <p>
+     * When the record has open exposure, this is the aggregated net-open
+     * {@link Position}. When the record is flat, this returns a new/empty
+     * {@link Position} snapshot instead of {@code null}.
+     * </p>
+     *
+     * @return the canonical current-position view
      */
     Position getCurrentPosition();
 
@@ -256,11 +264,13 @@ public interface TradingRecord extends Serializable {
      * Returns open positions when supported by the implementation.
      *
      * <p>
-     * Legacy trading-record implementations that only model a single synthetic
-     * current position can rely on this default and return an empty list.
+     * Lot-aware implementations should return one open {@link Position} snapshot
+     * per remaining open lot. Legacy trading-record implementations that only model
+     * a single synthetic current position can rely on this default and return an
+     * empty list.
      * </p>
      *
-     * @return open positions
+     * @return open per-lot position snapshots
      * @since 0.22.4
      */
     default List<Position> getOpenPositions() {

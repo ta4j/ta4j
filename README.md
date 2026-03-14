@@ -714,7 +714,7 @@ TradingRecord record = new BaseTradingRecord(
         null,
         null);
 
-TradeFill firstFill = new TradeFill(
+TradeFill incomingFill = new TradeFill(
         -1,
         Instant.now(),
         price,
@@ -723,13 +723,19 @@ TradeFill firstFill = new TradeFill(
         ExecutionSide.BUY,
         orderId,
         correlationId);
-record.operate(firstFill);
+record.operate(incomingFill);
 
-// If the exchange already gives you the partial fills for one logical order,
-// keep them together and record them in one call.
-List<TradeFill> exchangeFills = List.of(
-        mapExchangeFill(partialOne),
-        mapExchangeFill(partialTwo));
+// If the exchange already gives you multiple partial fills for one logical order,
+// you can either stream them one at a time...
+TradeFill batchFillOne = mapExchangeFill(partialOne);
+TradeFill batchFillTwo = mapExchangeFill(partialTwo);
+
+// Stream fills directly as they arrive
+record.operate(batchFillOne);
+record.operate(batchFillTwo);
+
+// ...or, if you already have the whole batch, keep them together:
+List<TradeFill> exchangeFills = List.of(batchFillOne, batchFillTwo);
 record.operate(Trade.fromFills(TradeType.BUY, exchangeFills));
 
 CashFlow equity = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET,

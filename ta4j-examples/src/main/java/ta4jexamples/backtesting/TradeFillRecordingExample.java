@@ -19,7 +19,6 @@ import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
-import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -45,7 +44,6 @@ public class TradeFillRecordingExample {
     private static final Logger LOG = LogManager.getLogger(TradeFillRecordingExample.class);
     private static final BarSeries ANALYSIS_SERIES = new BaseBarSeriesBuilder()
             .withName("trade-fill-recording-analysis")
-            .withNumFactory(DoubleNumFactory.getInstance())
             .build();
     private static final NumFactory NUM_FACTORY = ANALYSIS_SERIES.numFactory();
     private static final NetProfitCriterion NET_PROFIT_CRITERION = new NetProfitCriterion();
