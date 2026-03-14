@@ -60,6 +60,11 @@ public class EaseOfMovementIndicatorTest extends AbstractIndicatorTest<BarSeries
         assertThrows(IllegalArgumentException.class, () -> new EaseOfMovementIndicator(series, -4, 1000));
         assertThrows(IllegalArgumentException.class, () -> new EaseOfMovementIndicator(series, 3, 0));
         assertThrows(IllegalArgumentException.class, () -> new EaseOfMovementIndicator(series, 3, -10));
+        assertThrows(IllegalArgumentException.class, () -> new EaseOfMovementIndicator(series, 3, Double.NaN));
+        assertThrows(IllegalArgumentException.class,
+                () -> new EaseOfMovementIndicator(series, 3, Double.POSITIVE_INFINITY));
+        assertThrows(IllegalArgumentException.class,
+                () -> new EaseOfMovementIndicator(series, 3, Double.NEGATIVE_INFINITY));
     }
 
     @Test

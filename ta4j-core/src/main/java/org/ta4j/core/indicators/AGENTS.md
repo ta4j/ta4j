@@ -7,8 +7,9 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 - Provide a `BarSeries` convenience constructor and overloads that accept the underlying source indicator when applicable.
 - Prefer existing helper indicators (`BinaryOperationIndicator`, `VolumeIndicator`, numeric/statistics helpers) over reimplementing arithmetic.
 - Extract reusable building blocks before adding context-specific wrappers.
-- Prefer immutability; if stateful properties are required, make sure they are thread-safe and declared as `transient`.
+- Prefer immutability; if stateful properties are required, make sure they are thread-safe.
 - Keep logical source indicators serializable; mark derived/cached helper fields (`EMA` stacks, internal arithmetic helpers) as `transient` when they are reconstruction artifacts.
+- Thread-safety and `transient` are orthogonal: only reconstruction-only runtime helpers should be `transient`.
 - When composing indicators, avoid keeping fields that are only constructor-local intermediates and are not reused outside construction.
 - Avoid look-ahead bias: result at index `i` may only depend on data from `getBeginIndex()` through `i`.
 

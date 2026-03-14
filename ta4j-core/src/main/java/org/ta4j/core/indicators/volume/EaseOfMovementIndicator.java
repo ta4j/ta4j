@@ -92,7 +92,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
      * @param series        the bar series
      * @param barCount      smoothing period (must be greater than 0)
      * @param volumeDivisor scaling divisor used in the box-ratio term (must be
-     *                      greater than 0)
+     *                      finite and greater than 0)
      * @since 0.22.4
      */
     public EaseOfMovementIndicator(final BarSeries series, final int barCount, final Number volumeDivisor) {
@@ -136,7 +136,7 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
      * @param volumeIndicator    volume indicator
      * @param barCount           smoothing period (must be greater than 0)
      * @param volumeDivisor      scaling divisor used in the box-ratio term (must be
-     *                           greater than 0)
+     *                           finite and greater than 0)
      * @since 0.22.4
      */
     public EaseOfMovementIndicator(final Indicator<Num> highPriceIndicator, final Indicator<Num> lowPriceIndicator,
@@ -146,9 +146,12 @@ public class EaseOfMovementIndicator extends CachedIndicator<Num> {
 
         this.barCount = barCount;
         final Number validatedDivisor = Objects.requireNonNull(volumeDivisor, "volumeDivisor must not be null");
+        if (!Double.isFinite(validatedDivisor.doubleValue())) {
+            throw new IllegalArgumentException("Ease of Movement volumeDivisor must be finite and greater than 0");
+        }
         this.volumeDivisor = getBarSeries().numFactory().numOf(validatedDivisor);
         if (this.volumeDivisor.isLessThanOrEqual(getBarSeries().numFactory().zero())) {
-            throw new IllegalArgumentException("Ease of Movement volumeDivisor must be greater than 0");
+            throw new IllegalArgumentException("Ease of Movement volumeDivisor must be finite and greater than 0");
         }
 
         this.highPriceIndicator = highPriceIndicator;
