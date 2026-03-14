@@ -13,6 +13,20 @@
   - infers the current-cycle start from that supplied window alone
   - emits the current-cycle JSON summary plus the base case and alternate charts
 
+## Canonical entrypoints
+
+- Generic canonical demo:
+  - `ElliottWaveMacroCycleDemo`
+  - owns the series-native historical study, live preset, and shared chart/report rendering flow
+- Stable BTC wrapper:
+  - `ElliottWaveBtcMacroCycleDemo`
+  - keeps fixed BTC resources, default filenames, and BTC-oriented entrypoints for users and regression tests
+- Calibration and compatibility harness:
+  - `ElliottWaveAnchorCalibrationHarness`
+  - owns truth-target scoring, routine/targeted calibration artifacts, and the temporary legacy anchored comparison path
+
+The important line is that the legacy anchored study is no longer a first-class runtime demo. If you need legacy-versus-canonical comparison, use the harness artifacts rather than treating the old anchored path as a second production engine.
+
 ## What stays the same
 
 - The BTC demo still writes the same chart/report artifacts.
@@ -47,6 +61,8 @@ The harness resolves broad committed registry windows against the ossified BTC d
 
 - Runtime historical decomposition must not depend on the BTC anchor registry.
 - Live current-cycle analysis must not depend on the BTC anchor registry.
+- `ElliottWaveMacroCycleDemo` is the canonical runtime controller/view surface.
+- `ElliottWaveBtcMacroCycleDemo` may remain as a thin BTC convenience wrapper, but it must not own distinct structure inference logic.
 - The registry is valid only for:
   - offline calibration
   - offline regression
@@ -64,3 +80,7 @@ The harness resolves broad committed registry windows against the ossified BTC d
   - phase and structural invalidation output
 - Historical truth-set validation answers “does core still explain the locked BTC cycle turns?”
 - Live runtime analysis answers “what does the unified core engine infer from the bars supplied right now?”
+- Prefer these operating modes when validating changes:
+  - `--targeted` for fast BTC window checks
+  - `routine` for the default full-history BTC sanity lane
+  - `--exhaustive` only when you explicitly need the broader profile search and portability sweep
