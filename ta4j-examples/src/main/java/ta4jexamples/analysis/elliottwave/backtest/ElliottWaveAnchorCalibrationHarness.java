@@ -252,12 +252,12 @@ public final class ElliottWaveAnchorCalibrationHarness {
         return report;
     }
 
-    static ElliottWaveBtcMacroCycleDemo.MacroStudy evaluateCanonicalHistoricalStudy(final BarSeries series,
+    static ElliottWaveMacroCycleDemo.MacroStudy evaluateCanonicalHistoricalStudy(final BarSeries series,
             final AnchorRegistry registry) {
         return ElliottWaveMacroCycleDemo.evaluateCanonicalMacroStudy(series, registry);
     }
 
-    static ElliottWaveBtcMacroCycleDemo.MacroStudy evaluateLegacyAnchoredHistoricalStudy(final BarSeries series,
+    static ElliottWaveMacroCycleDemo.MacroStudy evaluateLegacyAnchoredHistoricalStudy(final BarSeries series,
             final AnchorRegistry registry) {
         return ElliottWaveMacroCycleDemo.evaluateLegacyAnchoredStudyForHarnessComparison(series, registry);
     }
@@ -276,13 +276,13 @@ public final class ElliottWaveAnchorCalibrationHarness {
             final BarSeries fullSeries, final Instant cutoff) {
         BarSeries slicedSeries = replayCutoffSeries(fullSeries, cutoff);
         AnchorRegistry cutoffRegistry = replayCutoffAnchors(fullRegistry, cutoff);
-        ElliottWaveBtcMacroCycleDemo.MacroStudy legacyStudy = evaluateLegacyAnchoredHistoricalStudy(slicedSeries,
+        ElliottWaveMacroCycleDemo.MacroStudy legacyStudy = evaluateLegacyAnchoredHistoricalStudy(slicedSeries,
                 cutoffRegistry);
         List<CycleTriplet> truthCycles = completedCycles(cutoffRegistry);
         List<String> truthCycleIds = truthCycles.stream().map(CycleTriplet::id).toList();
         List<String> legacyAcceptedCycleIds = acceptedDirectionalCycleIdsInTruthOrder(legacyStudy.cycles(),
                 truthCycleIds);
-        List<ElliottWaveBtcMacroCycleDemo.MacroProfileEvaluation> canonicalEvaluations = ElliottWaveMacroCycleDemo
+        List<ElliottWaveMacroCycleDemo.MacroProfileEvaluation> canonicalEvaluations = ElliottWaveMacroCycleDemo
                 .evaluateCanonicalProfileSweep(slicedSeries);
         String canonicalSelectedProfileId = canonicalEvaluations.isEmpty() ? ""
                 : canonicalEvaluations.getFirst().profile().id();
@@ -295,28 +295,27 @@ public final class ElliottWaveAnchorCalibrationHarness {
     }
 
     private static List<String> acceptedDirectionalCycleIdsInTruthOrder(
-            final List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> cycles, final List<String> truthCycleIds) {
-        Set<String> accepted = (cycles == null ? List.<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary>of()
-                : cycles).stream()
-                .filter(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::accepted)
-                .map(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::cycleId)
+            final List<ElliottWaveMacroCycleDemo.DirectionalCycleSummary> cycles, final List<String> truthCycleIds) {
+        Set<String> accepted = (cycles == null ? List.<ElliottWaveMacroCycleDemo.DirectionalCycleSummary>of() : cycles)
+                .stream()
+                .filter(ElliottWaveMacroCycleDemo.DirectionalCycleSummary::accepted)
+                .map(ElliottWaveMacroCycleDemo.DirectionalCycleSummary::cycleId)
                 .collect(Collectors.toSet());
         return truthCycleIds.stream().filter(accepted::contains).toList();
     }
 
     private static List<String> acceptedProfileCycleIdsInTruthOrder(
-            final ElliottWaveBtcMacroCycleDemo.MacroProfileEvaluation evaluation,
-            final List<CycleTriplet> truthCycles) {
+            final ElliottWaveMacroCycleDemo.MacroProfileEvaluation evaluation, final List<CycleTriplet> truthCycles) {
         return truthCycles.stream()
                 .filter(truthCycle -> evaluation.cycleFits()
                         .stream()
-                        .filter(ElliottWaveBtcMacroCycleDemo.CycleFit::accepted)
+                        .filter(ElliottWaveMacroCycleDemo.CycleFit::accepted)
                         .anyMatch(cycleFit -> matchesTruthCycle(cycleFit, truthCycle)))
                 .map(CycleTriplet::id)
                 .toList();
     }
 
-    private static boolean matchesTruthCycle(final ElliottWaveBtcMacroCycleDemo.CycleFit cycleFit,
+    private static boolean matchesTruthCycle(final ElliottWaveMacroCycleDemo.CycleFit cycleFit,
             final CycleTriplet truthCycle) {
         return withinTolerance(cycleFit.cycle().peak().at(), truthCycle.peak())
                 && withinTolerance(cycleFit.cycle().low().at(), truthCycle.low());
@@ -2114,8 +2113,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
             cycles = cycles == null ? List.of() : List.copyOf(cycles);
         }
 
-        static HistoricalStudyDiffReport from(AnchorRegistry registry, ElliottWaveBtcMacroCycleDemo.MacroStudy legacy,
-                ElliottWaveBtcMacroCycleDemo.MacroStudy canonical) {
+        static HistoricalStudyDiffReport from(AnchorRegistry registry, ElliottWaveMacroCycleDemo.MacroStudy legacy,
+                ElliottWaveMacroCycleDemo.MacroStudy canonical) {
             return from(registry, legacy.selectedProfile().profile().id(),
                     legacy.selectedProfile().historicalFitPassed(), legacy.cycles(),
                     canonical.selectedProfile().profile().id(), canonical.selectedProfile().historicalFitPassed(),
@@ -2123,20 +2122,19 @@ public final class ElliottWaveAnchorCalibrationHarness {
         }
 
         static HistoricalStudyDiffReport from(AnchorRegistry registry, String legacyProfileId,
-                boolean legacyHistoricalFitPassed,
-                List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> legacyCycles, String canonicalProfileId,
-                boolean canonicalHistoricalFitPassed,
-                List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> canonicalCycles) {
+                boolean legacyHistoricalFitPassed, List<ElliottWaveMacroCycleDemo.DirectionalCycleSummary> legacyCycles,
+                String canonicalProfileId, boolean canonicalHistoricalFitPassed,
+                List<ElliottWaveMacroCycleDemo.DirectionalCycleSummary> canonicalCycles) {
             List<CycleTriplet> truthCycles = completedCycles(registry);
-            Map<String, ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> legacyById = (legacyCycles == null
-                    ? List.<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary>of()
+            Map<String, ElliottWaveMacroCycleDemo.DirectionalCycleSummary> legacyById = (legacyCycles == null
+                    ? List.<ElliottWaveMacroCycleDemo.DirectionalCycleSummary>of()
                     : legacyCycles).stream()
-                    .collect(Collectors.toMap(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::cycleId,
+                    .collect(Collectors.toMap(ElliottWaveMacroCycleDemo.DirectionalCycleSummary::cycleId,
                             Function.identity(), (left, right) -> left, LinkedHashMap::new));
-            Map<String, ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> canonicalById = (canonicalCycles == null
-                    ? List.<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary>of()
+            Map<String, ElliottWaveMacroCycleDemo.DirectionalCycleSummary> canonicalById = (canonicalCycles == null
+                    ? List.<ElliottWaveMacroCycleDemo.DirectionalCycleSummary>of()
                     : canonicalCycles).stream()
-                    .collect(Collectors.toMap(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::cycleId,
+                    .collect(Collectors.toMap(ElliottWaveMacroCycleDemo.DirectionalCycleSummary::cycleId,
                             Function.identity(), (left, right) -> left, LinkedHashMap::new));
             List<HistoricalStudyCycleDiff> diffs = truthCycles.stream()
                     .map(cycle -> HistoricalStudyCycleDiff.from(cycle, legacyById.get(cycle.id()),
@@ -2150,10 +2148,10 @@ public final class ElliottWaveAnchorCalibrationHarness {
                     .map(HistoricalStudyCycleDiff::cycleId)
                     .toList();
             List<String> canonicalExtraAcceptedCycleIds = (canonicalCycles == null
-                    ? List.<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary>of()
+                    ? List.<ElliottWaveMacroCycleDemo.DirectionalCycleSummary>of()
                     : canonicalCycles).stream()
-                    .filter(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::accepted)
-                    .map(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::cycleId)
+                    .filter(ElliottWaveMacroCycleDemo.DirectionalCycleSummary::accepted)
+                    .map(ElliottWaveMacroCycleDemo.DirectionalCycleSummary::cycleId)
                     .filter(cycleId -> !truthCycleIds.contains(cycleId))
                     .toList();
             return new HistoricalStudyDiffReport(registry.version(), truthCycles.size(), legacyProfileId,
@@ -2163,11 +2161,11 @@ public final class ElliottWaveAnchorCalibrationHarness {
         }
 
         private static List<String> acceptedCycleIdsInTruthOrder(
-                List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> cycles, List<String> truthCycleIds) {
-            Set<String> accepted = (cycles == null ? List.<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary>of()
+                List<ElliottWaveMacroCycleDemo.DirectionalCycleSummary> cycles, List<String> truthCycleIds) {
+            Set<String> accepted = (cycles == null ? List.<ElliottWaveMacroCycleDemo.DirectionalCycleSummary>of()
                     : cycles).stream()
-                    .filter(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::accepted)
-                    .map(ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary::cycleId)
+                    .filter(ElliottWaveMacroCycleDemo.DirectionalCycleSummary::accepted)
+                    .map(ElliottWaveMacroCycleDemo.DirectionalCycleSummary::cycleId)
                     .collect(Collectors.toSet());
             return truthCycleIds.stream().filter(accepted::contains).toList();
         }
@@ -2272,7 +2270,7 @@ public final class ElliottWaveAnchorCalibrationHarness {
             acceptedCycleIds = acceptedCycleIds == null ? List.of() : List.copyOf(acceptedCycleIds);
         }
 
-        static ReplayCutoffCanonicalProfile from(ElliottWaveBtcMacroCycleDemo.MacroProfileEvaluation evaluation,
+        static ReplayCutoffCanonicalProfile from(ElliottWaveMacroCycleDemo.MacroProfileEvaluation evaluation,
                 List<CycleTriplet> truthCycles) {
             List<String> cycleIds = evaluation.cycleFits().stream().map(cycleFit -> cycleFit.cycle().id()).toList();
             List<String> acceptedCycleIds = acceptedProfileCycleIdsInTruthOrder(evaluation, truthCycles);
@@ -2375,8 +2373,8 @@ public final class ElliottWaveAnchorCalibrationHarness {
         }
 
         static HistoricalStudyCycleDiff from(CycleTriplet cycle,
-                ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary legacy,
-                ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary canonical) {
+                ElliottWaveMacroCycleDemo.DirectionalCycleSummary legacy,
+                ElliottWaveMacroCycleDemo.DirectionalCycleSummary canonical) {
             return new HistoricalStudyCycleDiff(cycle.partition().name().toLowerCase(), cycle.id(), cycle.start().id(),
                     cycle.peak().id(), cycle.low().id(), UTC_TIME.format(cycle.peak().at()),
                     UTC_TIME.format(cycle.low().at()), legacy != null, legacy != null && legacy.accepted(),

@@ -1111,9 +1111,9 @@ class ElliottWaveAnchorCalibrationHarnessTest {
                                 List.of("cycle-1"))))));
     }
 
-    private static ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary directionalCycle(String partition,
-            String cycleId, boolean accepted, String status, double bullishScore, double bearishScore) {
-        return new ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary(partition, cycleId, "Bullish 1-2-3-4-5",
+    private static ElliottWaveMacroCycleDemo.DirectionalCycleSummary directionalCycle(String partition, String cycleId,
+            boolean accepted, String status, double bullishScore, double bearishScore) {
+        return new ElliottWaveMacroCycleDemo.DirectionalCycleSummary(partition, cycleId, "Bullish 1-2-3-4-5",
                 "Bullish WAVE5 top", "Bearish A-B-C", "Bearish CORRECTIVE_C low", "2021-11-11T00:00:00Z",
                 "2021-11-11T00:00:00Z", "2022-11-22T00:00:00Z", bullishScore, bearishScore, accepted, accepted,
                 accepted, status);

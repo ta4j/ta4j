@@ -99,7 +99,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
     @Test
     void fitFromCoreAssessmentUsesCoreCompositeAsPrimaryAcceptanceGate() throws Exception {
         BarSeries series = studySyntheticSeries();
-        ElliottWaveBtcMacroCycleDemo.LegSegment segment = new ElliottWaveBtcMacroCycleDemo.LegSegment(
+        ElliottWaveMacroCycleDemo.LegSegment segment = new ElliottWaveMacroCycleDemo.LegSegment(
                 anchor("btc-bottom", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 2),
                 anchor("btc-top", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 7), true);
         ElliottScenario scenario = ElliottScenario.builder()
@@ -128,8 +128,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 new ElliottWaveAnalysisResult.BaseScenarioAssessment(scenario, 0.84, 0.79, 0.82, List.of()), 0.90, 0.96,
                 0.94, 1.0);
 
-        ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit fit = invokeFitFromCoreAssessment(segment, assessment, true,
-                true);
+        ElliottWaveMacroCycleDemo.SegmentScenarioFit fit = invokeFitFromCoreAssessment(segment, assessment, true, true);
 
         assertTrue(fit.accepted());
         assertTrue(fit.ruleScore() < 0.35);
@@ -139,7 +138,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
     @Test
     void fitFromCoreAssessmentDoesNotRequireDemoStrengthThresholdWhenCompositeIsHigh() throws Exception {
         BarSeries series = studySyntheticSeries();
-        ElliottWaveBtcMacroCycleDemo.LegSegment segment = new ElliottWaveBtcMacroCycleDemo.LegSegment(
+        ElliottWaveMacroCycleDemo.LegSegment segment = new ElliottWaveMacroCycleDemo.LegSegment(
                 anchor("btc-bottom", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 2),
                 anchor("btc-top", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 7), true);
         ElliottScenario scenario = ElliottScenario.builder()
@@ -168,8 +167,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 new ElliottWaveAnalysisResult.BaseScenarioAssessment(scenario, 0.28, 0.18, 0.95, List.of()), 0.96, 0.92,
                 0.90, 1.0);
 
-        ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit fit = invokeFitFromCoreAssessment(segment, assessment, true,
-                true);
+        ElliottWaveMacroCycleDemo.SegmentScenarioFit fit = invokeFitFromCoreAssessment(segment, assessment, true, true);
 
         assertTrue(fit.accepted());
         assertTrue(fit.strengthScore() < 0.55);
@@ -186,7 +184,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
                         anchor("btc-top-2013", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 5),
                         anchor("btc-bottom-2015", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 7)));
 
-        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
+        ElliottWaveMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
                 .evaluateLegacyAnchoredHistoricalStudy(series, registry);
 
         assertEquals(5, study.profileScores().size());
@@ -237,7 +235,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
         Path tempDir = Files.createTempDirectory("btc-macro-cycle-real");
 
         try {
-            ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveBtcMacroCycleDemo.evaluateMacroStudy(series,
+            ElliottWaveMacroCycleDemo.MacroStudy study = ElliottWaveBtcMacroCycleDemo.evaluateMacroStudy(series,
                     registry);
             ElliottWaveBtcMacroCycleDemo.DemoReport report = ElliottWaveBtcMacroCycleDemo.generateReport(tempDir);
 
@@ -261,7 +259,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
                     .chartSegments()
                     .stream()
                     .allMatch(segment -> segment.rationale().startsWith("Core-ranked anchored-window")));
-            Optional<ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit> coreBullSegment = study.selectedProfile()
+            Optional<ElliottWaveMacroCycleDemo.SegmentScenarioFit> coreBullSegment = study.selectedProfile()
                     .chartSegments()
                     .stream()
                     .filter(segment -> segment.segment().bullish())
@@ -316,7 +314,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
                 .defaultBitcoinAnchors(series);
-        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveMacroCycleDemo.evaluateMacroStudy(series, registry);
+        ElliottWaveMacroCycleDemo.MacroStudy study = ElliottWaveMacroCycleDemo.evaluateMacroStudy(series, registry);
 
         assertTrue(study.selectedProfile().cycleFits().size() >= 3);
         assertTruthTargetCycleCoverage(series, study.selectedProfile().cycleFits(), registry);
@@ -329,7 +327,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
                 .defaultBitcoinAnchors(series);
-        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
+        ElliottWaveMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
                 .evaluateLegacyAnchoredHistoricalStudy(series, registry);
 
         assertTrue(study.selectedProfile().historicalFitPassed());
@@ -346,7 +344,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 .defaultBitcoinAnchors(series);
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry inferredRegistry = ElliottWaveMacroCycleDetector
                 .inferAnchorRegistry(series);
-        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
+        ElliottWaveMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
                 .evaluateLegacyAnchoredHistoricalStudy(series, inferredRegistry);
 
         assertTrue(study.selectedProfile().historicalFitPassed());
@@ -453,7 +451,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
         ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
                 .analyzeCanonicalStructure(series, registry);
-        ElliottWaveBtcMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
+        ElliottWaveMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
 
         assertEquals(study.profileScores(), structure.historicalStudy().orElseThrow().profileScores());
         assertEquals(study.cycles(), structure.historicalStudy().orElseThrow().cycles());
@@ -471,7 +469,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
         Method profileMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("defaultLiveMacroProfile");
         profileMethod.setAccessible(true);
-        ElliottWaveBtcMacroCycleDemo.MacroLogicProfile profile = (ElliottWaveBtcMacroCycleDemo.MacroLogicProfile) profileMethod
+        ElliottWaveMacroCycleDemo.MacroLogicProfile profile = (ElliottWaveMacroCycleDemo.MacroLogicProfile) profileMethod
                 .invoke(null);
 
         ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
@@ -515,7 +513,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
         Method profilesMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("logicProfiles");
         Method defaultProfileMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("defaultLiveMacroProfile");
 
-        assertFalse(Modifier.isPublic(ElliottWaveBtcMacroCycleDemo.MacroLogicProfile.class.getModifiers()));
+        assertFalse(Modifier.isPublic(ElliottWaveMacroCycleDemo.MacroLogicProfile.class.getModifiers()));
         assertTrue(Modifier.isPrivate(profilesMethod.getModifiers()));
         assertTrue(Modifier.isPrivate(defaultProfileMethod.getModifiers()));
     }
@@ -529,7 +527,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
                         anchor("btc-top", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 4),
                         anchor("btc-low", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 6)));
 
-        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
+        ElliottWaveMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
                 .evaluateLegacyAnchoredHistoricalStudy(series, registry);
         JFreeChart chart = ElliottWaveBtcMacroCycleDemo.renderMacroCycleChart(series, study);
 
@@ -558,7 +556,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
                         anchor("btc-top-2", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 3),
                         anchor("btc-bottom-2", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 5)));
 
-        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
+        ElliottWaveMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
                 .evaluateLegacyAnchoredHistoricalStudy(series, registry);
         JFreeChart chart = ElliottWaveBtcMacroCycleDemo.renderMacroCycleChart(series, study);
         XYPlot mainPlot = (XYPlot) ((CombinedDomainXYPlot) chart.getPlot()).getSubplots().getFirst();
@@ -581,7 +579,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
                         anchor("btc-bottom-2011", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 2),
                         anchor("btc-top-2013", ElliottWaveAnchorCalibrationHarness.AnchorType.TOP, series, 5),
                         anchor("btc-bottom-2015", ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM, series, 7)));
-        ElliottWaveBtcMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
+        ElliottWaveMacroCycleDemo.MacroStudy study = ElliottWaveAnchorCalibrationHarness
                 .evaluateLegacyAnchoredHistoricalStudy(series, registry);
         ElliottWaveAnchorCalibrationHarness.AnchorRegistry expandedRegistry = new ElliottWaveAnchorCalibrationHarness.AnchorRegistry(
                 "btc-demo-test-expanded", "synthetic.json", "synthetic provenance",
@@ -626,15 +624,14 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, "synthetic");
     }
 
-    private static ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit invokeFitFromCoreAssessment(
-            ElliottWaveBtcMacroCycleDemo.LegSegment segment,
-            ElliottWaveAnalysisResult.WindowScenarioAssessment assessment, boolean bullish, boolean accepted)
-            throws Exception {
+    private static ElliottWaveMacroCycleDemo.SegmentScenarioFit invokeFitFromCoreAssessment(
+            ElliottWaveMacroCycleDemo.LegSegment segment, ElliottWaveAnalysisResult.WindowScenarioAssessment assessment,
+            boolean bullish, boolean accepted) throws Exception {
         return ElliottWaveMacroCycleDemo.fitFromCoreAssessment(segment, assessment, bullish, accepted);
     }
 
     private static boolean isAnchoredToMacroEndpoints(BarSeries series,
-            ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit segmentFit) {
+            ElliottWaveMacroCycleDemo.SegmentScenarioFit segmentFit) {
         ElliottScenario scenario = segmentFit.scenario();
         int expectedStart = indexOf(series, segmentFit.segment().fromAnchor().at());
         int expectedEnd = indexOf(series, segmentFit.segment().toAnchor().at());
@@ -645,7 +642,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     private static void assertAcceptedCoreRankedCycleFit(BarSeries series,
-            ElliottWaveBtcMacroCycleDemo.CycleFit cycleFit) {
+            ElliottWaveMacroCycleDemo.CycleFit cycleFit) {
         assertTrue(cycleFit.accepted());
         assertNotNull(cycleFit.bullishFit());
         assertNotNull(cycleFit.bearishFit());
@@ -666,7 +663,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     private static void assertTerminalPivotWithinTolerance(BarSeries series,
-            ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit segmentFit) {
+            ElliottWaveMacroCycleDemo.SegmentScenarioFit segmentFit) {
         int expectedTerminalIndex = indexOf(series, segmentFit.segment().toAnchor().at());
         int actualTerminalIndex = segmentFit.scenario().swings().getLast().toIndex();
         assertTrue(
@@ -741,14 +738,13 @@ class ElliottWaveBtcMacroCycleDemoTest {
         return bestIndex;
     }
 
-    private static void assertTruthTargetCycleFits(BarSeries series,
-            List<ElliottWaveBtcMacroCycleDemo.CycleFit> cycleFits,
+    private static void assertTruthTargetCycleFits(BarSeries series, List<ElliottWaveMacroCycleDemo.CycleFit> cycleFits,
             ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
         List<ExpectedTruthCycle> expectedCycles = expectedTruthCycles();
-        List<ElliottWaveBtcMacroCycleDemo.CycleFit> remainingCycleFits = new java.util.ArrayList<>(cycleFits);
+        List<ElliottWaveMacroCycleDemo.CycleFit> remainingCycleFits = new java.util.ArrayList<>(cycleFits);
 
         for (ExpectedTruthCycle expected : expectedCycles) {
-            ElliottWaveBtcMacroCycleDemo.CycleFit actual = findCycleFitByPeak(series, remainingCycleFits,
+            ElliottWaveMacroCycleDemo.CycleFit actual = findCycleFitByPeak(series, remainingCycleFits,
                     findAnchor(registry, expected.peakAnchorId()));
 
             assertAcceptedCoreRankedCycleFit(series, actual);
@@ -767,13 +763,13 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     private static void assertTruthTargetCycleCoverage(BarSeries series,
-            List<ElliottWaveBtcMacroCycleDemo.CycleFit> cycleFits,
+            List<ElliottWaveMacroCycleDemo.CycleFit> cycleFits,
             ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
         List<ExpectedTruthCycle> expectedCycles = expectedTruthCycles();
-        List<ElliottWaveBtcMacroCycleDemo.CycleFit> remainingCycleFits = new java.util.ArrayList<>(cycleFits);
+        List<ElliottWaveMacroCycleDemo.CycleFit> remainingCycleFits = new java.util.ArrayList<>(cycleFits);
 
         for (ExpectedTruthCycle expected : expectedCycles) {
-            ElliottWaveBtcMacroCycleDemo.CycleFit actual = findCycleFitByPeak(series, remainingCycleFits,
+            ElliottWaveMacroCycleDemo.CycleFit actual = findCycleFitByPeak(series, remainingCycleFits,
                     findAnchor(registry, expected.peakAnchorId()));
 
             assertEquals(expected.partition(), actual.cycle().partition());
@@ -788,9 +784,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
         }
     }
 
-    private static ElliottWaveBtcMacroCycleDemo.CycleFit findCycleFitByPeak(BarSeries series,
-            List<ElliottWaveBtcMacroCycleDemo.CycleFit> cycleFits,
-            ElliottWaveAnchorCalibrationHarness.Anchor peakAnchor) {
+    private static ElliottWaveMacroCycleDemo.CycleFit findCycleFitByPeak(BarSeries series,
+            List<ElliottWaveMacroCycleDemo.CycleFit> cycleFits, ElliottWaveAnchorCalibrationHarness.Anchor peakAnchor) {
         return cycleFits.stream()
                 .filter(cycleFit -> isWithinTolerance(
                         series.getBar(cycleFit.bullishFit().scenario().swings().getLast().toIndex()).getEndTime(),

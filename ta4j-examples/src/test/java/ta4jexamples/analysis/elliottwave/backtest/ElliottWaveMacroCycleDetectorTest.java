@@ -115,7 +115,7 @@ class ElliottWaveMacroCycleDetectorTest {
         final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse("2018-12-16T00:00:00Z"));
         final ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
                 .analyzeCanonicalStructure(slicedSeries);
-        final ElliottWaveBtcMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
+        final ElliottWaveMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
 
         assertEquals(2, study.cycles().size(), cycleDateSignatures(study.cycles()).toString());
         assertWithinDays(Instant.parse("2011-11-18T00:00:00Z"), Instant.parse(study.cycles().get(0).startTimeUtc()),
@@ -134,7 +134,7 @@ class ElliottWaveMacroCycleDetectorTest {
         final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse("2021-11-11T00:00:00Z"));
         final ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
                 .analyzeCanonicalStructure(slicedSeries);
-        final ElliottWaveBtcMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
+        final ElliottWaveMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
 
         assertEquals(2, study.cycles().size(), cycleDateSignatures(study.cycles()).toString());
         assertWithinDays(Instant.parse("2011-11-18T00:00:00Z"), Instant.parse(study.cycles().get(0).startTimeUtc()),
@@ -153,7 +153,7 @@ class ElliottWaveMacroCycleDetectorTest {
         final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse("2022-11-22T00:00:00Z"));
         final ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
                 .analyzeCanonicalStructure(slicedSeries);
-        final ElliottWaveBtcMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
+        final ElliottWaveMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
 
         assertEquals(3, study.cycles().size(), cycleDateSignatures(study.cycles()).toString());
         assertWithinDays(Instant.parse("2011-11-18T00:00:00Z"), Instant.parse(study.cycles().get(0).startTimeUtc()),
@@ -188,7 +188,7 @@ class ElliottWaveMacroCycleDetectorTest {
         final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse(cutoffIso));
         final ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
                 .analyzeCanonicalStructure(slicedSeries);
-        final ElliottWaveBtcMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
+        final ElliottWaveMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
 
         for (String cycle : cycleDateSignatures(study.cycles())) {
             String[] timestamps = cycle.split("\\|");
@@ -212,7 +212,7 @@ class ElliottWaveMacroCycleDetectorTest {
     }
 
     private static List<String> cycleDateSignatures(
-            final List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> cycles) {
+            final List<ElliottWaveMacroCycleDemo.DirectionalCycleSummary> cycles) {
         return cycles.stream()
                 .map(cycle -> String.join("|", cycle.startTimeUtc(), cycle.peakTimeUtc(), cycle.lowTimeUtc()))
                 .toList();

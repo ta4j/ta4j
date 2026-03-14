@@ -23,6 +23,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -48,18 +49,6 @@ import org.ta4j.core.num.Num;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.CurrentCycleAnalysis;
-import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.CurrentCycleSummary;
-import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.CycleFit;
-import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary;
-import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.HypothesisResult;
-import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.LegSegment;
-import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.MacroCycle;
-import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.MacroLogicProfile;
-import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.MacroProfileEvaluation;
-import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.MacroStudy;
-import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.ProfileScoreSummary;
-import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo.SegmentScenarioFit;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.LabelPlacement;
@@ -165,6 +154,209 @@ public final class ElliottWaveMacroCycleDemo {
 
         String toJson() {
             return GSON.toJson(this);
+        }
+    }
+
+    record ProfileScoreSummary(String profileId, String hypothesisId, String title, double aggregateScore,
+            int acceptedCycles, int acceptedSegments, boolean historicalFitPassed) {
+
+        static ProfileScoreSummary from(final MacroProfileEvaluation evaluation) {
+            return new ProfileScoreSummary(evaluation.profile().id(), evaluation.profile().hypothesisId(),
+                    evaluation.profile().title(), evaluation.aggregateScore(), evaluation.acceptedCycles(),
+                    evaluation.acceptedSegments(), evaluation.historicalFitPassed());
+        }
+    }
+
+    record DirectionalCycleSummary(String partition, String cycleId, String impulseLabel, String peakLabel,
+            String correctionLabel, String lowLabel, String startTimeUtc, String peakTimeUtc, String lowTimeUtc,
+            double bullishScore, double bearishScore, boolean bullishAccepted, boolean bearishAccepted,
+            boolean accepted, String status) {
+
+        static DirectionalCycleSummary from(final CycleFit cycleFit) {
+            final MacroCycle cycle = cycleFit.cycle();
+            final String status;
+            if (cycleFit.accepted()) {
+                status = "accepted historical fit";
+            } else if (cycleFit.bullishFit() != null && cycleFit.bullishFit().accepted()) {
+                status = "bullish fit only";
+            } else if (cycleFit.bearishFit() != null && cycleFit.bearishFit().accepted()) {
+                status = "bearish fit only";
+            } else {
+                status = "fallback or miss";
+            }
+            return new DirectionalCycleSummary(cycle.partition(), cycle.id(), "Bullish 1-2-3-4-5", "Bullish WAVE5 top",
+                    "Bearish A-B-C", "Bearish CORRECTIVE_C low", cycle.start().at().toString(),
+                    cycle.peak().at().toString(), cycle.low().at().toString(),
+                    cycleFit.bullishFit() == null ? 0.0 : cycleFit.bullishFit().fitScore(),
+                    cycleFit.bearishFit() == null ? 0.0 : cycleFit.bearishFit().fitScore(),
+                    cycleFit.bullishFit() != null && cycleFit.bullishFit().accepted(),
+                    cycleFit.bearishFit() != null && cycleFit.bearishFit().accepted(), cycleFit.accepted(), status);
+        }
+    }
+
+    record HypothesisResult(String id, String title, boolean supported, String summary, Map<String, String> evidence) {
+
+        HypothesisResult {
+            Objects.requireNonNull(id, "id");
+            Objects.requireNonNull(title, "title");
+            Objects.requireNonNull(summary, "summary");
+            evidence = evidence == null ? Map.of() : new TreeMap<>(evidence);
+        }
+    }
+
+    record CurrentCycleSummary(String startTimeUtc, String latestTimeUtc, String winningProfileId,
+            String historicalStatus, String primaryCount, String alternateCount, String currentWave,
+            String invalidationPrice, String structuralInvalidationPrice, String orthodoxWaveFiveTargetRange,
+            double primaryScore, double alternateScore, String chartPath) {
+
+        CurrentCycleSummary withChartPath(final String newChartPath) {
+            return new CurrentCycleSummary(startTimeUtc, latestTimeUtc, winningProfileId, historicalStatus,
+                    primaryCount, alternateCount, currentWave, invalidationPrice, structuralInvalidationPrice,
+                    orthodoxWaveFiveTargetRange, primaryScore, alternateScore, newChartPath);
+        }
+    }
+
+    record CurrentCycleAnalysis(CurrentCycleSummary summary,
+            ElliottWaveAnalysisResult.CurrentPhaseAssessment primaryFit,
+            ElliottWaveAnalysisResult.CurrentPhaseAssessment alternateFit,
+            List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates,
+            List<ElliottWaveAnalysisResult.CurrentCycleCandidate> displayCandidates) {
+
+        CurrentCycleAnalysis {
+            Objects.requireNonNull(summary, "summary");
+            candidates = candidates == null ? List.of() : List.copyOf(candidates);
+            displayCandidates = displayCandidates == null ? List.of() : List.copyOf(displayCandidates);
+        }
+
+        CurrentCycleAnalysis withSummary(final CurrentCycleSummary updatedSummary) {
+            return new CurrentCycleAnalysis(updatedSummary, primaryFit, alternateFit, candidates, displayCandidates);
+        }
+    }
+
+    record MacroStudy(MacroProfileEvaluation selectedProfile, List<MacroProfileEvaluation> evaluations,
+            List<ProfileScoreSummary> profileScores, List<DirectionalCycleSummary> cycles,
+            List<HypothesisResult> hypotheses, CurrentCycleAnalysis currentCycleAnalysis) {
+
+        MacroStudy {
+            Objects.requireNonNull(selectedProfile, "selectedProfile");
+            evaluations = evaluations == null ? List.of() : List.copyOf(evaluations);
+            profileScores = profileScores == null ? List.of() : List.copyOf(profileScores);
+            cycles = cycles == null ? List.of() : List.copyOf(cycles);
+            hypotheses = hypotheses == null ? List.of() : List.copyOf(hypotheses);
+            Objects.requireNonNull(currentCycleAnalysis, "currentCycleAnalysis");
+        }
+
+        CurrentCycleSummary currentCycle() {
+            return currentCycleAnalysis.summary();
+        }
+
+        ElliottWaveAnalysisResult.CurrentPhaseAssessment currentPrimaryFit() {
+            return currentCycleAnalysis.primaryFit();
+        }
+
+        ElliottWaveAnalysisResult.CurrentPhaseAssessment currentAlternateFit() {
+            return currentCycleAnalysis.alternateFit();
+        }
+    }
+
+    record MacroProfileEvaluation(MacroLogicProfile profile, double aggregateScore, int acceptedCycles,
+            int acceptedSegments, boolean historicalFitPassed, List<CycleFit> cycleFits,
+            List<SegmentScenarioFit> chartSegments) {
+
+        MacroProfileEvaluation {
+            Objects.requireNonNull(profile, "profile");
+            cycleFits = cycleFits == null ? List.of() : List.copyOf(cycleFits);
+            chartSegments = chartSegments == null ? List.of() : List.copyOf(chartSegments);
+        }
+
+        long acceptedCycleSpanMillis() {
+            return cycleFits.stream()
+                    .filter(CycleFit::accepted)
+                    .mapToLong(cycleFit -> Duration.between(cycleFit.cycle().start().at(), cycleFit.cycle().low().at())
+                            .toMillis())
+                    .sum();
+        }
+
+        Instant earliestAcceptedStartTime() {
+            return cycleFits.stream()
+                    .filter(CycleFit::accepted)
+                    .map(cycleFit -> cycleFit.cycle().start().at())
+                    .min(Comparator.naturalOrder())
+                    .orElse(Instant.MAX);
+        }
+    }
+
+    record MacroLogicProfile(String id, String hypothesisId, String title, int orthodoxyRank,
+            ElliottLogicProfile coreLogicProfile, ElliottDegree runnerDegree) {
+
+        MacroLogicProfile {
+            Objects.requireNonNull(id, "id");
+            Objects.requireNonNull(hypothesisId, "hypothesisId");
+            Objects.requireNonNull(title, "title");
+            Objects.requireNonNull(coreLogicProfile, "coreLogicProfile");
+            Objects.requireNonNull(runnerDegree, "runnerDegree");
+        }
+
+        int runnerMaxScenarios() {
+            return coreLogicProfile.maxScenarios();
+        }
+
+        int runnerScenarioSwingWindow() {
+            return coreLogicProfile.scenarioSwingWindow();
+        }
+
+        double acceptanceThreshold() {
+            return coreLogicProfile.acceptanceThreshold();
+        }
+    }
+
+    record MacroCycle(String id, String partition, ElliottWaveAnchorCalibrationHarness.Anchor start,
+            ElliottWaveAnchorCalibrationHarness.Anchor peak, ElliottWaveAnchorCalibrationHarness.Anchor low,
+            LegSegment bullishLeg, LegSegment bearishLeg) {
+    }
+
+    record CycleFit(MacroCycle cycle, SegmentScenarioFit bullishFit, SegmentScenarioFit bearishFit,
+            double aggregateScore, boolean accepted) {
+
+        static CycleFit create(final MacroCycle cycle, final SegmentScenarioFit bullishFit,
+                final SegmentScenarioFit bearishFit) {
+            final double bullishScore = bullishFit == null ? 0.0 : bullishFit.fitScore();
+            final double bearishScore = bearishFit == null ? 0.0 : bearishFit.fitScore();
+            final double aggregate = (bullishScore + bearishScore) / 2.0;
+            final boolean accepted = bullishFit != null && bullishFit.accepted() && bearishFit != null
+                    && bearishFit.accepted();
+            return new CycleFit(cycle, bullishFit, bearishFit, aggregate, accepted);
+        }
+    }
+
+    record LegSegment(ElliottWaveAnchorCalibrationHarness.Anchor fromAnchor,
+            ElliottWaveAnchorCalibrationHarness.Anchor toAnchor, boolean bullish) {
+
+        LegSegment {
+            Objects.requireNonNull(fromAnchor, "fromAnchor");
+            Objects.requireNonNull(toAnchor, "toAnchor");
+        }
+    }
+
+    record SegmentScenarioFit(LegSegment segment, ElliottScenario scenario, double fitScore, double structureScore,
+            double ruleScore, double spacingScore, double strengthScore, boolean bullish, boolean accepted,
+            String rationale) implements Comparable<SegmentScenarioFit> {
+
+        @Override
+        public int compareTo(final SegmentScenarioFit other) {
+            final int acceptedComparison = Boolean.compare(other.accepted, accepted);
+            if (acceptedComparison != 0) {
+                return acceptedComparison;
+            }
+            final int scoreComparison = Double.compare(other.fitScore, fitScore);
+            if (scoreComparison != 0) {
+                return scoreComparison;
+            }
+            return scenario.id().compareTo(other.scenario.id());
+        }
+
+        boolean eyeballPass() {
+            return accepted;
         }
     }
 
@@ -1024,7 +1216,7 @@ public final class ElliottWaveMacroCycleDemo {
         Objects.requireNonNull(study, "study");
 
         final ChartWorkflow chartWorkflow = new ChartWorkflow();
-        final List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> cycleSummaries = study.cycles();
+        final List<DirectionalCycleSummary> cycleSummaries = study.cycles();
         final List<SegmentScenarioFit> segmentFits = study.selectedProfile().chartSegments();
         final boolean useStudyCycles = !cycleSummaries.isEmpty();
         final List<ElliottWaveAnchorCalibrationHarness.Anchor> cycleAnchors = useStudyCycles
@@ -1100,9 +1292,9 @@ public final class ElliottWaveMacroCycleDemo {
     }
 
     private static List<ElliottWaveAnchorCalibrationHarness.Anchor> buildCycleAnchors(
-            final List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> cycleSummaries) {
+            final List<DirectionalCycleSummary> cycleSummaries) {
         final LinkedHashMap<String, ElliottWaveAnchorCalibrationHarness.Anchor> anchors = new LinkedHashMap<>();
-        for (final ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary cycle : cycleSummaries) {
+        for (final DirectionalCycleSummary cycle : cycleSummaries) {
             final ElliottWaveAnchorRegistry.AnchorPartition partition = ElliottWaveAnchorRegistry.AnchorPartition
                     .valueOf(cycle.partition().toUpperCase(Locale.ROOT));
             anchors.putIfAbsent(cycle.cycleId() + "-start",
@@ -1544,7 +1736,7 @@ public final class ElliottWaveMacroCycleDemo {
     }
 
     private static List<LegSegment> buildLegSegmentsFromCycleSummaries(
-            final List<ElliottWaveBtcMacroCycleDemo.DirectionalCycleSummary> cycleSummaries) {
+            final List<DirectionalCycleSummary> cycleSummaries) {
         return buildLegSegmentsFromAnchors(buildCycleAnchors(cycleSummaries));
     }
 
