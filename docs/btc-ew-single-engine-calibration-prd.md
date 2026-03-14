@@ -542,6 +542,7 @@ Current status: the generic demo now owns the shared historical-study and live c
 - [x] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
 - [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
   Current status: the truncated-history replay backbone now recovers the intended completed cycles at the `2018-12-16`, `2021-11-11`, and `2022-11-22` cutoffs from price alone. The key fix was to let strong-fit fallback bearish legs participate in macro-bottom promotion while requiring a later higher milestone peak plus a macro-sized corrective leg before a bottom is considered confirmed. The remaining acceptance work is narrower now: re-run the full major-turn replay sweep intentionally, then close the final chart-structure and full-build gates.
+  Validation note: future replay-promotion or profile-selection changes should first clear synthetic/unit diagnostics for substructure-backed macro acceptance and truncated-history profile ranking before rerunning the expensive BTC detector cutoffs.
 - [x] Confirm historical chart and live chart are both drawn from the same structure object.
 - [ ] Run full verification and record the final build log.
 
