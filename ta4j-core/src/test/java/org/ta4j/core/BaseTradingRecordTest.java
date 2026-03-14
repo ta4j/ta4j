@@ -136,6 +136,38 @@ class BaseTradingRecordTest {
     }
 
     @Test
+    void operateWithDirectTradeFillsMatchesGroupedTradePath() {
+        BaseTradingRecord directFillRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+                new ZeroCostModel(), new ZeroCostModel(), null, null);
+        BaseTradingRecord groupedTradeRecord = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+                new ZeroCostModel(), new ZeroCostModel(), null, null);
+        List<TradeFill> entryFills = List.of(
+                new TradeFill(4, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(), numFactory.one(),
+                        numFactory.numOf(0.1), ExecutionSide.BUY, "entry-1", "entry-order"),
+                new TradeFill(5, Instant.parse("2025-01-01T00:01:00Z"), numFactory.numOf(101), numFactory.two(),
+                        numFactory.numOf(0.2), ExecutionSide.BUY, "entry-2", "entry-order"));
+        List<TradeFill> exitFills = List.of(
+                new TradeFill(8, Instant.parse("2025-01-01T00:02:00Z"), numFactory.numOf(110), numFactory.one(),
+                        numFactory.numOf(0.05), ExecutionSide.SELL, "exit-1", "exit-order"),
+                new TradeFill(9, Instant.parse("2025-01-01T00:03:00Z"), numFactory.numOf(111), numFactory.two(),
+                        numFactory.numOf(0.06), ExecutionSide.SELL, "exit-2", "exit-order"));
+
+        for (TradeFill fill : entryFills) {
+            directFillRecord.operate(fill);
+        }
+        for (TradeFill fill : exitFills) {
+            directFillRecord.operate(fill);
+        }
+
+        groupedTradeRecord.operate(Trade.fromFills(TradeType.BUY, entryFills));
+        groupedTradeRecord.operate(Trade.fromFills(TradeType.SELL, exitFills));
+
+        assertEquals(groupedTradeRecord.getTrades(), directFillRecord.getTrades());
+        assertEquals(groupedTradeRecord.getPositions(), directFillRecord.getPositions());
+        assertEquals(groupedTradeRecord.getRecordedTotalFees(), directFillRecord.getRecordedTotalFees());
+    }
+
+    @Test
     void operatePreservesFillLevelMetadataWhenPresent() {
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
@@ -482,8 +514,8 @@ class BaseTradingRecordTest {
     @Test
     void rejectsNegativeExecutionFillAmounts() {
         BaseTradingRecord record = new BaseTradingRecord();
-        assertThrows(IllegalArgumentException.class,
-                () -> record.recordExecutionFill(new TradeFill(0, numFactory.hundred(), numFactory.minusOne())));
+        assertThrows(IllegalArgumentException.class, () -> record
+                .operate(new TradeFill(0, null, numFactory.hundred(), numFactory.minusOne(), ExecutionSide.BUY)));
     }
 
     @Test
@@ -832,7 +864,7 @@ class BaseTradingRecordTest {
                 "generic-order", "generic-correlation");
 
         liveFillRecord.recordFill(42, liveFill);
-        genericFillRecord.recordExecutionFill(genericFill);
+        genericFillRecord.operate(genericFill);
 
         assertEquals(42, liveFillRecord.getLastTrade().getIndex());
         assertEquals(42, genericFillRecord.getLastTrade().getIndex());
@@ -842,10 +874,10 @@ class BaseTradingRecordTest {
     void tradeFillWithoutIndexUsesAutoIncrementedIndex() {
         BaseTradingRecord record = new BaseTradingRecord();
 
-        record.recordExecutionFill(fillContract(-1, ExecutionSide.BUY, numFactory.hundred(), numFactory.one(),
-                "order-1", "generic-correlation-1"));
-        record.recordExecutionFill(fillContract(-1, ExecutionSide.BUY, numFactory.numOf(101), numFactory.one(),
-                "order-2", "generic-correlation-2"));
+        record.operate(fillContract(-1, ExecutionSide.BUY, numFactory.hundred(), numFactory.one(), "order-1",
+                "generic-correlation-1"));
+        record.operate(fillContract(-1, ExecutionSide.BUY, numFactory.numOf(101), numFactory.one(), "order-2",
+                "generic-correlation-2"));
 
         List<Trade> trades = record.getTrades();
         assertEquals(2, trades.size());

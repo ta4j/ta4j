@@ -257,8 +257,7 @@ public class BaseTradingRecord implements TradingRecord {
      * Records one execution fill.
      *
      * <p>
-     * Use {@link Trade#fromFill(TradeFill)} plus {@link #operate(Trade)} in new
-     * code.
+     * Use {@link #operate(TradeFill)} in new code.
      * </p>
      *
      * @param fill execution fill
@@ -266,7 +265,7 @@ public class BaseTradingRecord implements TradingRecord {
      */
     @Deprecated(since = "0.22.4", forRemoval = true)
     public void recordExecutionFill(TradeFill fill) {
-        operate(Trade.fromFill(fill));
+        operate(fill);
     }
 
     @Override

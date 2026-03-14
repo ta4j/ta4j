@@ -669,9 +669,10 @@ while (true) {
 
 ### Migration note: Trade and TradingRecord surfaces
 
-Treat `Trade` and `TradingRecord` as the primary APIs. Build execution-aware trades with
-`Trade.fromFill(...)` or `Trade.fromFills(...)`, then feed them through `TradingRecord.operate(...)`.
-`BaseTrade` and `BaseTradingRecord` remain the shared implementation behind those contracts.
+Treat `Trade` and `TradingRecord` as the primary APIs. Stream single fills directly with
+`TradingRecord.operate(fill)`, or batch one logical order with `Trade.fromFills(...)` and pass that through
+`TradingRecord.operate(...)`. `BaseTrade` and `BaseTradingRecord` remain the shared implementation behind those
+contracts.
 
 ```java
 TradingRecord defaultBacktest = new BarSeriesManager(series).run(strategy);
@@ -684,9 +685,9 @@ TradingRecord parityBacktest = new BarSeriesManager(series).run(
 
 ## Recording live executions
 
-When you route orders to an exchange, build `Trade` objects from your fills and pass them to
-`TradingRecord.operate(...)`. `BaseTradingRecord` still tracks partial fills, multiple open lots, and recorded fees so
-analytics can include open exposure.
+When you route orders to an exchange, stream one fill at a time with `TradingRecord.operate(fill)`, or group an
+exchange-reported batch with `Trade.fromFills(...)`. `BaseTradingRecord` still tracks partial fills, multiple open
+lots, and recorded fees so analytics can include open exposure.
 
 ```java
 import java.util.List;
@@ -722,7 +723,7 @@ TradeFill firstFill = new TradeFill(
         ExecutionSide.BUY,
         orderId,
         correlationId);
-record.operate(Trade.fromFill(firstFill));
+record.operate(firstFill);
 
 // If the exchange already gives you the partial fills for one logical order,
 // keep them together and record them in one call.
@@ -738,8 +739,10 @@ Num latest = equity.getValue(series.getEndIndex());
 
 Notes:
 - `ExecutionMatchPolicy.SPECIFIC_ID` matches exits to the lot with a matching `correlationId` or `orderId`.
-- Single fills need an explicit `ExecutionSide` so `Trade.fromFill(...)` can create the right trade direction.
+- Single fills need an explicit `ExecutionSide` so `TradingRecord.operate(fill)` can infer the right trade direction.
 - After deserializing a `BaseTradingRecord`, call `rehydrate(holdingCostModel)` to restore transient cost models.
+- See `TradeFillRecordingExample` in `ta4j-examples` for a runnable parity check between streaming fills and grouped
+  `Trade.fromFills(...)` recording.
 
 ## Streaming trade ingestion (gap handling)
 
@@ -821,6 +824,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[HighRewardElliottWaveBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/HighRewardElliottWaveBacktest.java)** - Backtests the high-reward Elliott Wave strategy presets.
 - **[WyckoffCycleIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleIndicatorSuiteDemo.java)** - Demonstrates the Wyckoff cycle entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`) and prints phase transitions on an ossified bar series dataset
 - **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
+- **[TradeFillRecordingExample](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java)** - Stream partial fills directly with `TradingRecord.operate(fill)` and compare the result with grouped `Trade.fromFills(...)` recording.
 - **[TradingRecordParityBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java)** - Compare next-open, current-close, and slippage execution models side by side, then verify the same fills across default, provided, and factory-configured `BaseTradingRecord` runs.
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
 

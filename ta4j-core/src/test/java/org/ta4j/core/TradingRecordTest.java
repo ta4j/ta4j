@@ -259,8 +259,35 @@ public class TradingRecordTest {
         TradingRecord record = new BaseTradingRecord();
 
         assertThrows(NullPointerException.class, () -> record.operate((Trade) null));
+        assertThrows(NullPointerException.class, () -> record.operate((TradeFill) null));
         assertThrows(NullPointerException.class, () -> record.enter((Trade) null));
         assertThrows(NullPointerException.class, () -> record.exit((Trade) null));
+    }
+
+    @Test
+    public void defaultOperateFillDelegatesThroughTradeFactory() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        TradingRecord record = newTradingRecordUsingDefaultOperateImplementation();
+        TradeFill fill = new TradeFill(2, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(), numFactory.one(),
+                null, ExecutionSide.BUY, "order-1", "corr-1");
+
+        record.operate(fill);
+
+        assertFalse(record.isClosed());
+        assertEquals(2, record.getLastTrade().getIndex());
+        assertEquals(numFactory.hundred(), record.getLastTrade().getPricePerAsset());
+        assertEquals(numFactory.one(), record.getLastTrade().getAmount());
+        assertEquals(1, record.getLastTrade().getFills().size());
+    }
+
+    @Test
+    public void defaultOperateFillRejectsMissingSide() {
+        DoubleNumFactory numFactory = DoubleNumFactory.getInstance();
+        TradingRecord record = newTradingRecordUsingDefaultOperateImplementation();
+        TradeFill fillWithoutSide = new TradeFill(2, null, numFactory.hundred(), numFactory.one(), null, null, null,
+                null);
+
+        assertThrows(IllegalArgumentException.class, () -> record.operate(fillWithoutSide));
     }
 
     @Test

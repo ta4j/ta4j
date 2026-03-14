@@ -17,7 +17,7 @@ import org.ta4j.core.num.Num;
 class TradeFillExecutionTest {
 
     @Test
-    void operateAcceptsTradeBuiltFromTradeFill() {
+    void operateAcceptsTradeFillDirectly() {
         Num price = DoubleNumFactory.getInstance().numOf(100);
         Num amount = DoubleNumFactory.getInstance().numOf(1);
         TradeFill fill = new TradeFill(5, Instant.parse("2025-01-01T00:00:00Z"), price, amount, null, ExecutionSide.BUY,
@@ -25,21 +25,21 @@ class TradeFillExecutionTest {
 
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
-        record.operate(Trade.fromFill(fill));
+        record.operate(fill);
 
         assertEquals(1, record.getTrades().size());
         assertEquals("corr-1", record.getTrades().get(0).getCorrelationId());
     }
 
     @Test
-    void operateKeepsExplicitIndexFromTradeFill() {
+    void operateFillKeepsExplicitIndexFromTradeFill() {
         Num price = DoubleNumFactory.getInstance().numOf(101);
         Num amount = DoubleNumFactory.getInstance().numOf(2);
         TradeFill fill = new TradeFill(7, Instant.parse("2025-01-01T00:00:00Z"), price, amount, ExecutionSide.BUY);
 
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
-        record.operate(Trade.fromFill(fill));
+        record.operate(fill);
 
         assertEquals(1, record.getTrades().size());
         assertEquals(7, record.getTrades().getFirst().getIndex());
@@ -47,23 +47,26 @@ class TradeFillExecutionTest {
     }
 
     @Test
-    void tradeFromFillRequiresExplicitSide() {
+    void operateFillRequiresExplicitSide() {
         Num price = DoubleNumFactory.getInstance().numOf(100);
         Num amount = DoubleNumFactory.getInstance().numOf(1);
         TradeFill fillWithoutSide = new TradeFill(-1, null, price, amount, null, null, null, null);
 
-        assertThrows(IllegalArgumentException.class, () -> Trade.fromFill(fillWithoutSide));
+        BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+                new ZeroCostModel(), null, null);
+
+        assertThrows(IllegalArgumentException.class, () -> record.operate(fillWithoutSide));
     }
 
     @Test
-    void operateFromTradeFillPreservesMissingTimeAsNull() {
+    void operateFillPreservesMissingTimeAsNull() {
         Num price = DoubleNumFactory.getInstance().numOf(100);
         Num amount = DoubleNumFactory.getInstance().numOf(1);
         TradeFill fillWithoutTime = new TradeFill(-1, null, price, amount, null, ExecutionSide.BUY, null, null);
 
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
-        record.operate(Trade.fromFill(fillWithoutTime));
+        record.operate(fillWithoutTime);
 
         assertEquals(1, record.getTrades().size());
         assertNull(record.getTrades().getFirst().getTime());

@@ -67,6 +67,27 @@ public interface TradingRecord extends Serializable {
     void operate(int index, Num price, Num amount);
 
     /**
+     * Places one execution fill in the trading record.
+     *
+     * <p>
+     * This is a convenience overload for streaming partial fills directly into a
+     * fill-aware record. It is equivalent to {@code operate(Trade.fromFill(fill))}.
+     * </p>
+     *
+     * <p>
+     * The fill must expose {@link TradeFill#side()} so the trade direction is
+     * explicit at ingestion time.
+     * </p>
+     *
+     * @param fill the execution fill to place
+     * @throws IllegalArgumentException when {@code fill.side()} is missing
+     * @since 0.22.4
+     */
+    default void operate(TradeFill fill) {
+        operate(Trade.fromFill(fill));
+    }
+
+    /**
      * Places a pre-built trade in the trading record.
      *
      * <p>
