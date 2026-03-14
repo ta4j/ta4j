@@ -133,28 +133,6 @@ public final class ElliottWaveBtcMacroCycleDemo {
         return ElliottWaveMacroCycleDemo.evaluateMacroStudy(series, registry);
     }
 
-    static List<BarLabel> buildWaveLabelsFromScenario(final BarSeries series, final ElliottScenario scenario,
-            final Color labelColor) {
-        return ElliottWaveMacroCycleDemo.buildWaveLabelsFromScenario(series, scenario, labelColor);
-    }
-
-    static double interpolateOverlayPrice(final double fromPrice, final double toPrice, final double progress) {
-        return ElliottWaveMacroCycleDemo.interpolateOverlayPrice(fromPrice, toPrice, progress);
-    }
-
-    private static CurrentCycleAnalysis evaluateCurrentCycle(final BarSeries series, final MacroLogicProfile profile,
-            final String historicalStatus) {
-        return ElliottWaveMacroCycleDemo.evaluateCurrentCycle(series, profile, historicalStatus);
-    }
-
-    private static List<MacroLogicProfile> logicProfiles() {
-        return ElliottWaveMacroCycleDemo.logicProfiles();
-    }
-
-    private static MacroLogicProfile defaultLiveMacroProfile() {
-        return ElliottWaveMacroCycleDemo.defaultLiveMacroProfile();
-    }
-
     private static BarSeries requireSeries(final String resource, final String seriesName) {
         final BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
                 resource, seriesName, LOG);

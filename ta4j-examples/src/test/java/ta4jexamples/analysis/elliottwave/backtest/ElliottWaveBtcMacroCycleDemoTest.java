@@ -87,9 +87,9 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 .startIndex(0)
                 .build();
 
-        List<BarLabel> bullishLabels = ElliottWaveBtcMacroCycleDemo.buildWaveLabelsFromScenario(series, bullishScenario,
+        List<BarLabel> bullishLabels = ElliottWaveMacroCycleDemo.buildWaveLabelsFromScenario(series, bullishScenario,
                 ElliottWaveBtcMacroCycleDemo.BULLISH_LEG_COLOR);
-        List<BarLabel> correctiveLabels = ElliottWaveBtcMacroCycleDemo.buildWaveLabelsFromScenario(series,
+        List<BarLabel> correctiveLabels = ElliottWaveMacroCycleDemo.buildWaveLabelsFromScenario(series,
                 correctiveScenario, ElliottWaveBtcMacroCycleDemo.BEARISH_LEG_COLOR);
 
         assertEquals(List.of("1", "2", "3", "4", "5"), bullishLabels.stream().map(BarLabel::text).toList());
@@ -612,7 +612,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
     @Test
     void interpolateOverlayPriceUsesLogSpaceOnPositivePrices() {
-        double midpoint = ElliottWaveBtcMacroCycleDemo.interpolateOverlayPrice(100.0, 1600.0, 0.5);
+        double midpoint = ElliottWaveMacroCycleDemo.interpolateOverlayPrice(100.0, 1600.0, 0.5);
 
         assertEquals(400.0, midpoint, 1.0e-10);
     }
