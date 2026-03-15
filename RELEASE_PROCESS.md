@@ -45,10 +45,17 @@ Code and docs:
 1. Update `CHANGELOG.md` under `Unreleased`.
 2. Keep README version references current.
 3. Ensure release notes can be generated cleanly (`release/<version>.md`).
+4. Confirm release PRs are visible to release owner:
+   - release PR must be labeled `release`.
+   - release PR is auto-assigned to `TheCookieLab`.
+   - `TheCookieLab` is auto-requested as reviewer.
+5. While any labeled release PR is open, only that release PR can be merged.
+6. Open PRs will receive an automatic release-freeze notice comment while the freeze is active. The workflow removes that notice once no release PR remains open.
 
 Repository settings:
 1. Actions workflow permissions must allow write operations (dispatch, PR updates, tag push).
 2. Use merge-commit discipline for release PRs (no squash/rebase for those PRs).
+3. Add `Release Merge Freeze` as a required status check on `master` in branch protection.
 
 Secrets and variables:
 1. Required secrets for publish/snapshot must be configured.
@@ -63,14 +70,18 @@ Secrets and variables:
 - Inputs: `releaseVersion` (optional if auto-detected), `nextVersion` (optional), `dryRun=false`.
 - If `nextVersion` is omitted and `releaseVersion` is a plain `X.Y.Z`, it is auto-generated as `<major>.<minor>.<patch+1>-SNAPSHOT` (for example `0.22.2` -> `0.22.3-SNAPSHOT`).
 - For RC/non-plain release versions, provide `nextVersion` explicitly.
+ - The workflow auto-labels the PR with `release`, assigns it to `TheCookieLab`, and requests review from `TheCookieLab`.
+ - Opening a release PR automatically triggers freeze notices on other open PRs.
 
 2. Review generated release PR
 - Confirm release commit + next snapshot commit are present.
 - Confirm release notes file exists (`release/<version>.md`).
+- If a release PR is open, wait for it to merge before merging any non-release PRs to `master`.
 
 3. Merge release PR to `master`
 - Use a **merge commit**.
 - Do not squash/rebase release PRs.
+- This merge is allowed because the `Release Merge Freeze` check allows only release PRs to merge during freeze.
 
 4. Observe **Publish Release**
 - Workflow validates release metadata and ancestry.

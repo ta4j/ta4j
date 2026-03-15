@@ -613,6 +613,30 @@ jobs:
               console.warn(`Failed to add release label: ${error.message}`);
             }
 
+            const releaseOwner = "TheCookieLab";
+
+            try {
+              await github.rest.issues.addAssignees({
+                owner,
+                repo,
+                issue_number: prNumber,
+                assignees: [releaseOwner]
+              });
+            } catch (error) {
+              console.warn(`Failed to assign ${releaseOwner}: ${error.message}`);
+            }
+
+            try {
+              await github.rest.pulls.requestReviewers({
+                owner,
+                repo,
+                pull_number: prNumber,
+                reviewers: [releaseOwner]
+              });
+            } catch (error) {
+              console.warn(`Failed to request review from ${releaseOwner}: ${error.message}`);
+            }
+
       # -----------------------
       # Summary
       # -----------------------
