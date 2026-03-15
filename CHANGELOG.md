@@ -1,6 +1,7 @@
 ## Unreleased
 
-- _No changes yet._
+### Added
+- **Calmar and Omega ratios**: Added `CalmarRatioCriterion` and `OmegaRatioCriterion` for drawdown-adjusted CAGR and threshold-based return-distribution asymmetry analysis.
 
 ## 0.22.4 (2026-03-15)
 
@@ -12,7 +13,6 @@
 - **Weighted strategy ranking across execution results**: `TradingStatementExecutionResult` and `BacktestExecutionResult#getTopStrategiesWeighted(...)` now support normalized weighted ranking (for example net profit + drawdown + trade count) with pluggable normalization and deterministic ordering. You can jump in with `WeightedCriterion.of(...)`, `RankingProfile.weighted(...)`, or the direct weighted overloads, and the README plus `SimpleMovingAverageRangeBacktest` now show a concrete “net profit + RoMaD” shortlist flow you can copy directly.
 - **Shared scoring/weighting primitives for library extensions**: Added `NamedScoreFunction<I, S>` and `WeightedValue<T>` so indicator, confidence, and walk-forward components can reuse the same scoring and weighted-aggregation contracts.
 - **Live Elliott preset demo support**: `ElliottWavePresetDemo` now accepts live tickers (for example `BTC-USD`, `ETH-USD`, `SPY`) so you can run the same EW workflow on non-ossified daily data.
-- **Calmar and Omega ratios**: Added `CalmarRatioCriterion` and `OmegaRatioCriterion` for drawdown-adjusted CAGR and threshold-based return-distribution asymmetry analysis.
 
 ### Changed (Trading Record and Execution Flow)
 - **Elliott APIs and demos now follow runner-centric naming and defaults**: The project has moved from legacy analyzer naming to `ElliottWaveAnalysisRunner`, examples are organized under `analysis.elliottwave.{demo,backtest,support}`, and demo defaults now emphasize auto-degree selection with multi-degree context.
