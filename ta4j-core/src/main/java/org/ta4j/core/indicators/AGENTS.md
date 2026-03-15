@@ -7,15 +7,20 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 - Provide a `BarSeries` convenience constructor and overloads that accept the underlying source indicator when applicable.
 - Prefer existing helper indicators (`BinaryOperationIndicator`, `VolumeIndicator`, numeric/statistics helpers) over reimplementing arithmetic.
 - Extract reusable building blocks before adding context-specific wrappers.
+- Prefer immutability; if stateful properties are required, make sure they are thread-safe.
 - Keep logical source indicators serializable; mark derived/cached helper fields (`EMA` stacks, internal arithmetic helpers) as `transient` when they are reconstruction artifacts.
+- Thread-safety and `transient` are orthogonal: only reconstruction-only runtime helpers should be `transient`.
+- When composing indicators, avoid keeping fields that are only constructor-local intermediates and are not reused outside construction.
 - Avoid look-ahead bias: result at index `i` may only depend on data from `getBeginIndex()` through `i`.
 
 ## Numerical safety
 
 - Guard against zero-volume and undefined inputs; return `NaN.NaN` for undefined results.
 - Validate both `Num.isNaN()` and `Double.isNaN(value.doubleValue())` where relevant because `DoubleNumFactory` can surface raw `Double.NaN`.
+- Guard both current values and neighbors used in calculation; prefer returning `NaN` over propagating invalid data silently.
 - Keep flat/plateau handling symmetric for highs and lows when scanning neighboring bars.
 - For EMA-like smoothing, prefer extending `AbstractEMAIndicator` to preserve NaN reset behavior and unstable-period handling.
+- Prefer exposing helper methods (for example returning the source index of a detected event) when they improve testing and downstream reuse.
 
 ## Unstable bar contract
 
@@ -27,6 +32,11 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
   - Parallel merges should use `max` across branches.
   - Include explicit lookback offsets required by local logic.
   - Avoid double-counting upstream unstable contributions already included by components.
+- Indicator-specific caveats still apply when composing:
+  - `EMAIndicator` does not include input unstable bars in its own count, so EMA-on-EMA chains are typically additive.
+  - `SMAIndicator` includes upstream unstable bars in its reported count (`input + barCount - 1`), so do not add upstream again.
+- Pattern indicators that combine fixed candle lookback with trend/confirmation indicators should use the stricter boundary, for example `Math.max(patternLookback, trendIndicator.getCountOfUnstableBars())`.
+- Keep test assertions aligned with the contract: assert unstable count directly and verify warm-up boundaries (`unstable - 1` versus `unstable`).
 
 ## NetMomentumIndicator specifics
 

@@ -110,13 +110,19 @@
 - Added **MorningStarIndicator** and **EveningStarIndicator**
 - Added **BullishKickerIndicator** and **BearishKickerIndicator**
 - Added **PiercingIndicator** and **DarkCloudIndicator**
+- Added **PiercingLineIndicator** and **DarkCloudCoverIndicator** with configurable body-size, gap, and penetration thresholds for candlestick pattern detection.
 - **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
 - Added constructors accepting custom ATR indicator to **AverageTrueRangeStopGainRule** **AverageTrueRangeStopLossRule** and **AverageTrueRangeTrailingStopLossRule**
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
+- **Trend confirmation oscillators**: Added `VortexIndicator` (+VI, -VI, and oscillator output) and `UltimateOscillatorIndicator` with configurable periods, warm-up guards, and regression tests against published reference values.
+- **Volume indicator coverage**: Added `ForceIndexIndicator`, `EaseOfMovementIndicator`, and `KlingerVolumeOscillatorIndicator` with documented formulas and bullish/bearish/sideways spreadsheet regression fixtures.
 
 ### Changed
+- **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
+- **Indicator composition reuse**: Added `IndicatorUtils.requireSameSeries(...)` to centralize same-series validation and refactored `VortexIndicator`, `UltimateOscillatorIndicator`, and `TRIndicator` to compose shared true-range/series-validation logic instead of duplicating private helpers.
+- **Charting overlays**: Refactored overlay renderer construction and centralized time-axis domain value selection to reduce branching without changing chart output.
 - **Volume indicator coverage**: Added `ForceIndexIndicator`, `EaseOfMovementIndicator`, and `KlingerVolumeOscillatorIndicator` with documented formulas and bullish/bearish/sideways spreadsheet regression fixtures.
 - **Charting defaults**: Centralized chart styling defaults (anti-aliasing, background, title paint) for consistency across chart types.
 - **Chart builder metadata**: Chart definitions now surface a shared metadata object for domain series, title, and time axis mode; chart plans expose a ChartContext and derive their primary series from it, with ChartWorkflow rendering helpers accepting contexts.
