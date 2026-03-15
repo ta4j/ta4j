@@ -230,7 +230,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             return upsideExcess.isZero() ? zero : NaN.NaN;
         }
         Num ratio = upsideExcess.dividedBy(downsideShortfall);
-        return toRepresentation(ratio, numFactory);
+        return toRepresentation(ratio);
     }
 
     @Override
@@ -243,7 +243,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         return Optional.of(returnRepresentation);
     }
 
-    private Num toRepresentation(Num omegaRatio, NumFactory numFactory) {
+    private Num toRepresentation(Num omegaRatio) {
         if (omegaRatio.isNaN()) {
             return NaN.NaN;
         }

@@ -165,10 +165,10 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
         Num maximumDrawdown = maximumDrawdownCriterion.calculate(series, tradingRecord);
         if (maximumDrawdown.isZero()) {
-            return toRepresentation(annualizedReturn, numFactory);
+            return toRepresentation(annualizedReturn);
         }
         Num calmarRatio = annualizedReturn.dividedBy(maximumDrawdown);
-        return toRepresentation(calmarRatio, numFactory);
+        return toRepresentation(calmarRatio);
     }
 
     @Override
@@ -204,7 +204,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         return totalReturn.pow(one.dividedBy(years)).minus(one);
     }
 
-    private Num toRepresentation(Num value, NumFactory numFactory) {
+    private Num toRepresentation(Num value) {
         if (value.isNaN()) {
             return NaN.NaN;
         }
