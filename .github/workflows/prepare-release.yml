@@ -624,7 +624,7 @@ jobs:
                 assignees: [releaseOwner]
               });
             } catch (error) {
-              console.warn(`Failed to assign ${releaseOwner}: ${error.message}`);
+              throw new Error(`Failed to assign release owner ${releaseOwner}: ${error.message}`);
             }
 
             try {
@@ -635,7 +635,7 @@ jobs:
                 reviewers: [releaseOwner]
               });
             } catch (error) {
-              console.warn(`Failed to request review from ${releaseOwner}: ${error.message}`);
+              throw new Error(`Failed to request review from ${releaseOwner}: ${error.message}`);
             }
 
       # -----------------------

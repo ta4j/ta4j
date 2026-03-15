@@ -74,12 +74,8 @@ jobs:
               });
             };
 
-            const createNoticeComment = async (issueNumber, releasePrLinks) => {
+            const upsertNoticeComment = async (issueNumber, releasePrLinks) => {
               const existing = await findNoticeComment(issueNumber);
-              if (existing) {
-                return;
-              }
-
               const body = [
                 `${noticeMarker}`,
                 "⚠️ Release Freeze is active.",
@@ -89,6 +85,20 @@ jobs:
                 "",
                 "Please merge/close the active release PRs first."
               ].join("\n");
+
+              if (existing && existing.body === body) {
+                return;
+              }
+
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existing.id,
+                  body
+                });
+                return;
+              }
 
               await github.rest.issues.createComment({
                 owner,
@@ -123,7 +133,7 @@ jobs:
 
             for (const candidate of openNonReleasePrs) {
               if (releasePrs.length > 0) {
-                await createNoticeComment(candidate.number, releasePrLinks);
+                await upsertNoticeComment(candidate.number, releasePrLinks);
               } else {
                 await removeNoticeComment(candidate.number);
               }
