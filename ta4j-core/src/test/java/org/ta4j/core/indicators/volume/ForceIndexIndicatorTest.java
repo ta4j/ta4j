@@ -64,7 +64,7 @@ public class ForceIndexIndicatorTest extends AbstractIndicatorTest<BarSeries, Nu
     @SuppressWarnings("unchecked")
     public void serializationRoundTripPreservesValuesAndUnstableBars() {
         final BarSeries series = VolumeSpreadsheetReferenceScenarios.bullish(numFactory);
-        final ForceIndexIndicator original = new ForceIndexIndicator(series, 3);
+        final ForceIndexIndicator original = new ForceIndexIndicator(series, 7);
 
         final String json = original.toJson();
         final Indicator<Num> restoredBase = (Indicator<Num>) Indicator.fromJson(series, json);

@@ -61,10 +61,22 @@ public class KlingerVolumeOscillatorIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
+    public void throwsForInvalidScaleMultiplier() {
+        final BarSeries series = VolumeSpreadsheetReferenceScenarios.bullish(numFactory);
+
+        assertThrows(IllegalArgumentException.class, () -> new KlingerVolumeOscillatorIndicator(series, 3, 5, null));
+        assertThrows(IllegalArgumentException.class, () -> new KlingerVolumeOscillatorIndicator(series, 3, 5, 0));
+        assertThrows(IllegalArgumentException.class, () -> new KlingerVolumeOscillatorIndicator(series, 3, 5, -100));
+        assertThrows(IllegalArgumentException.class, () -> new KlingerVolumeOscillatorIndicator(series, 3, 5, Double.NaN));
+        assertThrows(IllegalArgumentException.class,
+                () -> new KlingerVolumeOscillatorIndicator(series, 3, 5, Double.POSITIVE_INFINITY));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void serializationRoundTripPreservesValuesAndUnstableBars() {
         final BarSeries series = VolumeSpreadsheetReferenceScenarios.bullish(numFactory);
-        final KlingerVolumeOscillatorIndicator original = new KlingerVolumeOscillatorIndicator(series, 3, 5);
+        final KlingerVolumeOscillatorIndicator original = new KlingerVolumeOscillatorIndicator(series, 3, 5, 250);
 
         final String json = original.toJson();
         final Indicator<Num> restoredBase = (Indicator<Num>) Indicator.fromJson(series, json);
@@ -79,7 +91,7 @@ public class KlingerVolumeOscillatorIndicatorTest extends AbstractIndicatorTest<
     }
 
     private void assertScenarioMatches(final BarSeries series, final double[] expectedStableValues) {
-        final KlingerVolumeOscillatorIndicator indicator = new KlingerVolumeOscillatorIndicator(series, 3, 5);
+        final KlingerVolumeOscillatorIndicator indicator = new KlingerVolumeOscillatorIndicator(series, 3, 5, 250);
         final int unstableBars = indicator.getCountOfUnstableBars();
 
         assertThat(unstableBars).isEqualTo(6);
