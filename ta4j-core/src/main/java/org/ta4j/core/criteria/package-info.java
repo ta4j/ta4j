@@ -44,5 +44,10 @@
  * </ul>
  * See each ratio-producing criterion's javadoc for specific examples and usage
  * guidance.
+ * <p>
+ * <b>Risk-adjusted ratios</b> include {@link SharpeRatioCriterion},
+ * {@link SortinoRatioCriterion}, {@link CalmarRatioCriterion}, and
+ * {@link OmegaRatioCriterion}, which combine return observations with
+ * volatility, downside, drawdown, or threshold asymmetry lenses.
  */
 package org.ta4j.core.criteria;

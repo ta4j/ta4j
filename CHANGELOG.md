@@ -1,6 +1,7 @@
 ## Unreleased
 
-- _No changes yet._
+### Added
+- **Calmar and Omega ratios**: Added `CalmarRatioCriterion` and `OmegaRatioCriterion` for drawdown-adjusted CAGR and threshold-based return-distribution asymmetry analysis.
 
 ## 0.22.4 (2026-03-15)
 
