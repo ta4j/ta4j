@@ -52,7 +52,7 @@ import java.util.Optional;
  *
  * @see <a href=
  *      "https://www.investopedia.com/terms/c/calmarratio.asp">https://www.investopedia.com/terms/c/calmarratio.asp</a>
- * @since 0.22.4
+ * @since 0.22.5
  */
 public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
@@ -62,7 +62,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
     /**
      * Constructor using {@link EquityCurveMode#MARK_TO_MARKET} by default.
      *
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public CalmarRatioCriterion() {
         this(ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
@@ -73,7 +73,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      *
      * @param returnRepresentation the return representation for the final criterion
      *                             value
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public CalmarRatioCriterion(ReturnRepresentation returnRepresentation) {
         this(returnRepresentation, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
@@ -83,7 +83,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * Constructor using a specific equity curve calculation mode.
      *
      * @param equityCurveMode the equity curve mode to use
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public CalmarRatioCriterion(EquityCurveMode equityCurveMode) {
         this(ReturnRepresentation.DECIMAL, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
@@ -93,7 +93,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * Constructor using the provided open position handling.
      *
      * @param openPositionHandling how to handle open positions
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public CalmarRatioCriterion(OpenPositionHandling openPositionHandling) {
         this(ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
@@ -105,7 +105,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @param returnRepresentation the return representation for the final criterion
      *                             value
      * @param equityCurveMode      the equity curve mode to use
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public CalmarRatioCriterion(ReturnRepresentation returnRepresentation, EquityCurveMode equityCurveMode) {
         this(returnRepresentation, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
@@ -116,7 +116,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      *
      * @param equityCurveMode      the equity curve mode to use
      * @param openPositionHandling how to handle open positions
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public CalmarRatioCriterion(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         this(ReturnRepresentation.DECIMAL, equityCurveMode, openPositionHandling);
@@ -129,7 +129,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      *                             value
      * @param equityCurveMode      the equity curve mode to use
      * @param openPositionHandling how to handle open positions
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public CalmarRatioCriterion(ReturnRepresentation returnRepresentation, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {

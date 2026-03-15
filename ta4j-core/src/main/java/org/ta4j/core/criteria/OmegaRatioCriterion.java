@@ -50,7 +50,7 @@ import java.util.Optional;
  *
  * @see <a href=
  *      "https://en.wikipedia.org/wiki/Omega_ratio">https://en.wikipedia.org/wiki/Omega_ratio</a>
- * @since 0.22.4
+ * @since 0.22.5
  */
 public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
@@ -60,7 +60,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
     /**
      * Constructor with zero threshold.
      *
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public OmegaRatioCriterion() {
         this(ReturnRepresentation.DECIMAL, 0d, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
@@ -71,7 +71,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      *
      * @param returnRepresentation the return representation for the final criterion
      *                             value
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public OmegaRatioCriterion(ReturnRepresentation returnRepresentation) {
         this(returnRepresentation, 0d, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
@@ -82,7 +82,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      *
      * @param threshold return threshold in decimal form (for example {@code 0.01}
      *                  for 1%)
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public OmegaRatioCriterion(double threshold) {
         this(ReturnRepresentation.DECIMAL, threshold, EquityCurveMode.MARK_TO_MARKET,
@@ -95,7 +95,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @param threshold            return threshold in decimal form
      * @param returnRepresentation the return representation for the final criterion
      *                             value
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public OmegaRatioCriterion(double threshold, ReturnRepresentation returnRepresentation) {
         this(returnRepresentation, threshold, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
@@ -105,7 +105,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * Constructor using a specific equity curve calculation mode.
      *
      * @param equityCurveMode the equity curve mode to use
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public OmegaRatioCriterion(EquityCurveMode equityCurveMode) {
         this(ReturnRepresentation.DECIMAL, 0d, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
@@ -117,7 +117,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @param returnRepresentation the return representation for the final criterion
      *                             value
      * @param equityCurveMode      the equity curve mode to use
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public OmegaRatioCriterion(ReturnRepresentation returnRepresentation, EquityCurveMode equityCurveMode) {
         this(returnRepresentation, 0d, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
@@ -127,7 +127,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * Constructor using the provided open position handling.
      *
      * @param openPositionHandling how to handle open positions
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public OmegaRatioCriterion(OpenPositionHandling openPositionHandling) {
         this(ReturnRepresentation.DECIMAL, 0d, EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
@@ -140,7 +140,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @param returnRepresentation the return representation for the final criterion
      *                             value
      * @param openPositionHandling how to handle open positions
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public OmegaRatioCriterion(ReturnRepresentation returnRepresentation, OpenPositionHandling openPositionHandling) {
         this(returnRepresentation, 0d, EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
@@ -153,7 +153,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @param threshold            return threshold in decimal form
      * @param equityCurveMode      the equity curve mode to use
      * @param openPositionHandling how to handle open positions
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public OmegaRatioCriterion(double threshold, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
@@ -169,7 +169,7 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @param threshold            return threshold in decimal form
      * @param equityCurveMode      the equity curve mode to use
      * @param openPositionHandling how to handle open positions
-     * @since 0.22.4
+     * @since 0.22.5
      */
     public OmegaRatioCriterion(ReturnRepresentation returnRepresentation, double threshold,
             EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
