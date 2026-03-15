@@ -117,8 +117,7 @@
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
 
 ### Changed
-- **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
-- **Charting overlays**: Refactored overlay renderer construction and centralized time-axis domain value selection to reduce branching without changing chart output.
+- **Volume indicator coverage**: Added `ForceIndexIndicator`, `EaseOfMovementIndicator`, and `KlingerVolumeOscillatorIndicator` with documented formulas and bullish/bearish/sideways spreadsheet regression fixtures.
 - **Charting defaults**: Centralized chart styling defaults (anti-aliasing, background, title paint) for consistency across chart types.
 - **Chart builder metadata**: Chart definitions now surface a shared metadata object for domain series, title, and time axis mode; chart plans expose a ChartContext and derive their primary series from it, with ChartWorkflow rendering helpers accepting contexts.
 - **TimeBarBuilder**: Enhanced with trade ingestion logic, time alignment validation, and RealtimeBar support.
