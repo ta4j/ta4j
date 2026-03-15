@@ -67,7 +67,7 @@ Add Ta4j from Maven Central:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.22.3</version>
+  <version>0.22.4</version>
 </dependency>
 ```
 
@@ -86,7 +86,7 @@ Prefer living on the edge? Use the snapshot repository and version:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.22.4-SNAPSHOT</version>
+  <version>0.22.5-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -100,7 +100,7 @@ Sample applications are also published so you can copy/paste entire flows:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.22.3</version>
+  <version>0.22.4</version>
 </dependency>
 ```
 
@@ -114,7 +114,7 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.22.4-SNAPSHOT</version>
+  <version>0.22.5-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -620,6 +620,7 @@ Bar series serialization (Java):
 ## Features at a glance
 
 - **190+ technical indicators (and counting)** - Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and many more. New indicators are added regularly.
+- **Candlestick pattern coverage** - Includes bullish/bearish reversal patterns such as Morning/Evening Star, Piercing Line, Dark Cloud Cover, engulfing, harami, and marubozu variants.
 - **Composable strategy API** - Build complex trading rules using fluent Java patterns
 - **Built-in backtesting engine** - Test strategies on years of data in seconds. Same code for backtesting and live trading — no rewrites.
 - **Performance metrics** - 30+ analysis criteria including Sharpe ratio, drawdown, win rate, and more
@@ -661,7 +662,6 @@ while (true) {
     Thread.sleep(60000); // Wait 1 minute (or your bar interval)
 }
 ```
-
 **Why this works:**
 - **Same code, different data**: Your strategy logic is identical for backtests and live trading
 - **Deterministic**: Same inputs always produce same outputs - critical for testing and debugging
