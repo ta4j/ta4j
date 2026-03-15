@@ -11,6 +11,9 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -65,6 +68,28 @@ public class EaseOfMovementIndicatorTest extends AbstractIndicatorTest<BarSeries
                 () -> new EaseOfMovementIndicator(series, 3, Double.POSITIVE_INFINITY));
         assertThrows(IllegalArgumentException.class,
                 () -> new EaseOfMovementIndicator(series, 3, Double.NEGATIVE_INFINITY));
+    }
+
+    @Test
+    public void sourceIndicatorConstructorMatchesSeriesConstructor() {
+        final BarSeries series = VolumeSpreadsheetReferenceScenarios.bullish(numFactory);
+        final double volumeDivisor = 1000;
+
+        final EaseOfMovementIndicator bySeries = new EaseOfMovementIndicator(series, 3, volumeDivisor);
+        final EaseOfMovementIndicator byIndicators = new EaseOfMovementIndicator(new HighPriceIndicator(series),
+                new LowPriceIndicator(series), new VolumeIndicator(series), 3, volumeDivisor);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertNumEquals(bySeries.getValue(i), byIndicators.getValue(i));
+        }
+    }
+
+    @Test
+    public void toStringIncludesConfiguredParameters() {
+        final EaseOfMovementIndicator indicator = new EaseOfMovementIndicator(
+                VolumeSpreadsheetReferenceScenarios.bullish(numFactory), 3, 1000);
+
+        assertThat(indicator.toString()).contains("barCount: 3").contains("volumeDivisor: 1000");
     }
 
     @Test

@@ -11,6 +11,10 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.HighPriceIndicator;
+import org.ta4j.core.indicators.helpers.LowPriceIndicator;
+import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -28,17 +32,48 @@ public class KlingerVolumeOscillatorIndicatorTest extends AbstractIndicatorTest<
     private static final double[] SIDEWAYS_EXPECTED = { 58541.66666667, 18215.27777778, 35153.93518519, 1574.49845679,
             23452.26980453, -6480.51804698 };
 
+    private static final double[] BULLISH_250X_EXPECTED = { -22849.130629025, 6262.818985775, 24062.1931656,
+            31710.47684015, 41411.693945175, 43456.272249275 };
+
+    private static final double[] BEARISH_250X_EXPECTED = { 23364.130927575, -6180.493124575, -24186.653142575,
+            -31836.9876792, -41644.065891325, -43639.343034675 };
+
+    private static final double[] SIDEWAYS_250X_EXPECTED = { 146354.166666675, 45538.19444445, 87884.837962975,
+            3936.246141975, 58630.674511325, -16201.29511745 };
+
     public KlingerVolumeOscillatorIndicatorTest(final NumFactory numFactory) {
         super(numFactory);
     }
 
     @Test
-    public void matchesSpreadsheetReferenceValuesAcrossBullishBearishAndSidewaysScenarios() {
+    public void matchesSpreadsheetReferenceValuesWithDefaultScaleAcrossScenarios() {
         // Spreadsheet references were generated with Klinger VF, EMA(3), EMA(5),
         // and KVO = EMA(3) - EMA(5).
         assertScenarioMatches(VolumeSpreadsheetReferenceScenarios.bullish(numFactory), BULLISH_EXPECTED);
         assertScenarioMatches(VolumeSpreadsheetReferenceScenarios.bearish(numFactory), BEARISH_EXPECTED);
         assertScenarioMatches(VolumeSpreadsheetReferenceScenarios.sideways(numFactory), SIDEWAYS_EXPECTED);
+    }
+
+    @Test
+    public void matchesSpreadsheetReferenceValuesWithCustomScaleAcrossScenarios() {
+        // Spreadsheet references were generated using the same input bars and periods,
+        // with Klinger VF scale multiplier set to 250.
+        assertScenarioMatches(VolumeSpreadsheetReferenceScenarios.bullish(numFactory), BULLISH_250X_EXPECTED, 250);
+        assertScenarioMatches(VolumeSpreadsheetReferenceScenarios.bearish(numFactory), BEARISH_250X_EXPECTED, 250);
+        assertScenarioMatches(VolumeSpreadsheetReferenceScenarios.sideways(numFactory), SIDEWAYS_250X_EXPECTED, 250);
+    }
+
+    @Test
+    public void supportsSourceIndicatorConstructorWithCustomScale() {
+        final BarSeries series = VolumeSpreadsheetReferenceScenarios.bullish(numFactory);
+        final KlingerVolumeOscillatorIndicator bySeries = new KlingerVolumeOscillatorIndicator(series, 3, 5, 250);
+        final KlingerVolumeOscillatorIndicator byIndicators = new KlingerVolumeOscillatorIndicator(
+                new HighPriceIndicator(series), new LowPriceIndicator(series), new ClosePriceIndicator(series),
+                new VolumeIndicator(series), 3, 5, 250);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertNumEquals(bySeries.getValue(i), byIndicators.getValue(i));
+        }
     }
 
     @Test
@@ -67,9 +102,20 @@ public class KlingerVolumeOscillatorIndicatorTest extends AbstractIndicatorTest<
         assertThrows(IllegalArgumentException.class, () -> new KlingerVolumeOscillatorIndicator(series, 3, 5, null));
         assertThrows(IllegalArgumentException.class, () -> new KlingerVolumeOscillatorIndicator(series, 3, 5, 0));
         assertThrows(IllegalArgumentException.class, () -> new KlingerVolumeOscillatorIndicator(series, 3, 5, -100));
-        assertThrows(IllegalArgumentException.class, () -> new KlingerVolumeOscillatorIndicator(series, 3, 5, Double.NaN));
+        assertThrows(IllegalArgumentException.class,
+                () -> new KlingerVolumeOscillatorIndicator(series, 3, 5, Double.NaN));
         assertThrows(IllegalArgumentException.class,
                 () -> new KlingerVolumeOscillatorIndicator(series, 3, 5, Double.POSITIVE_INFINITY));
+    }
+
+    @Test
+    public void toStringIncludesConfiguredPeriodsAndScale() {
+        final KlingerVolumeOscillatorIndicator indicator = new KlingerVolumeOscillatorIndicator(
+                VolumeSpreadsheetReferenceScenarios.bullish(numFactory), 3, 5, 250);
+
+        assertThat(indicator.toString()).contains("shortPeriod: 3")
+                .contains("longPeriod: 5")
+                .contains("scaleMultiplier: 250");
     }
 
     @Test
@@ -91,7 +137,19 @@ public class KlingerVolumeOscillatorIndicatorTest extends AbstractIndicatorTest<
     }
 
     private void assertScenarioMatches(final BarSeries series, final double[] expectedStableValues) {
-        final KlingerVolumeOscillatorIndicator indicator = new KlingerVolumeOscillatorIndicator(series, 3, 5, 250);
+        final KlingerVolumeOscillatorIndicator indicator = new KlingerVolumeOscillatorIndicator(series, 3, 5);
+        assertScenarioMatchesWithIndicator(series, expectedStableValues, indicator);
+    }
+
+    private void assertScenarioMatches(final BarSeries series, final double[] expectedStableValues,
+            final double scaleMultiplier) {
+        final KlingerVolumeOscillatorIndicator indicator = new KlingerVolumeOscillatorIndicator(series, 3, 5,
+                scaleMultiplier);
+        assertScenarioMatchesWithIndicator(series, expectedStableValues, indicator);
+    }
+
+    private void assertScenarioMatchesWithIndicator(final BarSeries series, final double[] expectedStableValues,
+            final KlingerVolumeOscillatorIndicator indicator) {
         final int unstableBars = indicator.getCountOfUnstableBars();
 
         assertThat(unstableBars).isEqualTo(6);

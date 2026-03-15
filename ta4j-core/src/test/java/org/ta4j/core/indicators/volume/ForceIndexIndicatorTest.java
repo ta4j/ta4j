@@ -11,6 +11,8 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.VolumeIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -58,6 +60,27 @@ public class ForceIndexIndicatorTest extends AbstractIndicatorTest<BarSeries, Nu
 
         assertThrows(IllegalArgumentException.class, () -> new ForceIndexIndicator(series, 0));
         assertThrows(IllegalArgumentException.class, () -> new ForceIndexIndicator(series, -2));
+    }
+
+    @Test
+    public void sourceIndicatorConstructorMatchesSeriesConstructor() {
+        final BarSeries series = VolumeSpreadsheetReferenceScenarios.bullish(numFactory);
+
+        final ForceIndexIndicator bySeries = new ForceIndexIndicator(series, 7);
+        final ForceIndexIndicator byIndicators = new ForceIndexIndicator(new ClosePriceIndicator(series),
+                new VolumeIndicator(series), 7);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertNumEquals(bySeries.getValue(i), byIndicators.getValue(i));
+        }
+    }
+
+    @Test
+    public void toStringIncludesConfiguredParameters() {
+        final ForceIndexIndicator indicator = new ForceIndexIndicator(
+                VolumeSpreadsheetReferenceScenarios.bullish(numFactory), 7);
+
+        assertThat(indicator.toString()).contains("barCount: 7");
     }
 
     @Test

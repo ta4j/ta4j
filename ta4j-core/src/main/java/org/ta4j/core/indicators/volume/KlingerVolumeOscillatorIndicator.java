@@ -103,8 +103,8 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
      * Constructor using canonical periods (34, 55) with a custom scale multiplier.
      *
      * @param series          the bar series
-     * @param scaleMultiplier scale multiplier used in the volume-force term (must be
-     *                        finite and greater than 0)
+     * @param scaleMultiplier scale multiplier used in the volume-force term (must
+     *                        be finite and greater than 0)
      * @since 0.22.4
      */
     public KlingerVolumeOscillatorIndicator(final BarSeries series, final Number scaleMultiplier) {
@@ -117,8 +117,8 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
      * @param series          the bar series
      * @param shortPeriod     short EMA period (must be greater than 0)
      * @param longPeriod      long EMA period (must be greater than shortPeriod)
-     * @param scaleMultiplier scale multiplier used in the volume-force term (must be
-     *                        finite and greater than 0)
+     * @param scaleMultiplier scale multiplier used in the volume-force term (must
+     *                        be finite and greater than 0)
      * @since 0.22.4
      */
     public KlingerVolumeOscillatorIndicator(final BarSeries series, final int shortPeriod, final int longPeriod,
@@ -170,8 +170,8 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
      * @param volumeIndicator     volume indicator
      * @param shortPeriod         short EMA period (must be greater than 0)
      * @param longPeriod          long EMA period (must be greater than shortPeriod)
-     * @param scaleMultiplier     scale multiplier used in the volume-force term (must be
-     *                            finite and greater than 0)
+     * @param scaleMultiplier     scale multiplier used in the volume-force term
+     *                            (must be finite and greater than 0)
      * @since 0.22.4
      */
     public KlingerVolumeOscillatorIndicator(final Indicator<Num> highPriceIndicator,
@@ -251,8 +251,10 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
     }
 
     private static Number validateScaleMultiplier(final Number scaleMultiplier) {
-        final Number validatedScaleMultiplier = Objects.requireNonNull(scaleMultiplier,
-                "scaleMultiplier must not be null");
+        if (scaleMultiplier == null) {
+            throw new IllegalArgumentException("Klinger scaleMultiplier must be finite and greater than 0");
+        }
+        final Number validatedScaleMultiplier = scaleMultiplier;
         final double scaleMultiplierValue = validatedScaleMultiplier.doubleValue();
         if (!Double.isFinite(scaleMultiplierValue) || scaleMultiplierValue <= 0) {
             throw new IllegalArgumentException("Klinger scaleMultiplier must be finite and greater than 0");
@@ -388,7 +390,8 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
 
         private final int unstableBars;
 
-        private DailyMeasurementIndicator(final Indicator<Num> highPriceIndicator, final Indicator<Num> lowPriceIndicator) {
+        private DailyMeasurementIndicator(final Indicator<Num> highPriceIndicator,
+                final Indicator<Num> lowPriceIndicator) {
             super(IndicatorUtils.requireSameSeries(highPriceIndicator, lowPriceIndicator));
             this.highPriceIndicator = highPriceIndicator;
             this.lowPriceIndicator = lowPriceIndicator;
@@ -429,7 +432,7 @@ public class KlingerVolumeOscillatorIndicator extends CachedIndicator<Num> {
         }
 
         private TrendDirectionIndicator(final Indicator<Num> basisIndicator) {
-            super(IndicatorUtils.requireSameSeries(basisIndicator));
+            super(IndicatorUtils.requireSameSeries(basisIndicator, basisIndicator));
             this.basisIndicator = basisIndicator;
             this.one = getBarSeries().numFactory().one();
             this.minusOne = getBarSeries().numFactory().minusOne();
