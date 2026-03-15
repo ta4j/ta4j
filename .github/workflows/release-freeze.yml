@@ -150,10 +150,14 @@ jobs:
             const releasePrLinks = buildReleaseSummary(releasePrs);
 
             for (const candidate of openNonReleasePrs) {
-              if (releasePrs.length > 0) {
-                await upsertNoticeComment(candidate.number, releasePrLinks);
-              } else {
-                await removeNoticeComment(candidate.number);
+              try {
+                if (releasePrs.length > 0) {
+                  await upsertNoticeComment(candidate.number, releasePrLinks);
+                } else {
+                  await removeNoticeComment(candidate.number);
+                }
+              } catch (error) {
+                core.warning(`Failed to sync release-freeze notice for PR #${candidate.number}: ${error.message}`);
               }
             }
 
