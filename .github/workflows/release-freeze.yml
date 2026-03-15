@@ -1,0 +1,179 @@
+name: Release Merge Freeze
+
+on:
+  pull_request:
+    branches:
+      - master
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+      - edited
+      - labeled
+      - unlabeled
+      - closed
+
+env:
+  RELEASE_FREEZE_AUTHORS: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  enforce-release-freeze:
+    name: Enforce release freeze on master merges
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Block non-release merges while release PR is open
+        uses: actions/github-script@v8
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const pr = context.payload.pull_request;
+            const baseBranch = pr?.base?.ref || context.payload.repository?.default_branch;
+            const noticeMarker = "<!-- ta4j:release-freeze-notice -->";
+            const releaseLabel = "release";
+            const action = context.payload.action;
+            const trustedAuthors = new Set(
+              (process.env.RELEASE_FREEZE_AUTHORS || "TheCookieLab")
+                .split(",")
+                .map((author) => (author || "").trim().toLowerCase())
+                .filter((author) => author.length > 0),
+            );
+
+            if (!pr || !baseBranch) {
+              core.info(`Skipping release freeze check: missing pull request context or base branch.`);
+              return;
+            }
+
+            const hasLabel = (labels, name) =>
+              (labels || []).some((label) => label.name === name);
+
+            const isReleaseBranch = (candidate) =>
+              (candidate?.head?.ref || "").startsWith("release/");
+
+            const isTrustedReleaseAuthor = (candidate) =>
+              trustedAuthors.has((candidate?.user?.login || "").toLowerCase());
+
+            const isTrustedReleasePr = (candidate) =>
+              hasLabel(candidate.labels, releaseLabel) &&
+              isTrustedReleaseAuthor(candidate) &&
+              isReleaseBranch(candidate);
+
+            const buildReleaseSummary = (releasePr) =>
+              releasePr.map((candidate) => `- [#${candidate.number}](${candidate.html_url})`).join("\n");
+
+            const findNoticeComment = async (issueNumber) => {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number: issueNumber,
+                per_page: 100
+              });
+
+              return comments.find((comment) =>
+                comment.user?.type === "Bot" && comment.body && comment.body.includes(noticeMarker)
+              );
+            };
+
+            const removeNoticeComment = async (issueNumber) => {
+              const notice = await findNoticeComment(issueNumber);
+              if (!notice) {
+                return;
+              }
+
+              await github.rest.issues.deleteComment({
+                owner,
+                repo,
+                comment_id: notice.id
+              });
+            };
+
+            const upsertNoticeComment = async (issueNumber, releasePrLinks) => {
+              const existing = await findNoticeComment(issueNumber);
+              const body = [
+                `${noticeMarker}`,
+                "⚠️ Release Freeze is active.",
+                "",
+                `One or more trusted release PRs (label \`release\`, branch \`release/*\`) are currently open against \`${baseBranch}\`, so non-release merges are blocked until these PRs merge or close:`,
+                releasePrLinks,
+                "",
+                "Please merge/close the active release PRs first."
+              ].join("\n");
+
+              if (existing && existing.body === body) {
+                return;
+              }
+
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existing.id,
+                  body
+                });
+                return;
+              }
+
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issueNumber,
+                body
+              });
+            };
+
+            if (!pr || pr.base.ref !== baseBranch) {
+              core.info(`Skipping release freeze check for PR #${pr?.number}. Base is ${pr?.base?.ref ?? "unknown"}, expected ${baseBranch}.`);
+              return;
+            }
+
+            const isReleasePr = isTrustedReleasePr(pr);
+
+            const openPrs = await github.paginate(github.rest.pulls.list, {
+              owner,
+              repo,
+              state: "open",
+              base: baseBranch
+            });
+
+            const releasePrs = openPrs.filter((candidate) => isTrustedReleasePr(candidate));
+
+            const openNonReleasePrs = openPrs.filter((candidate) =>
+              !hasLabel(candidate.labels, releaseLabel)
+            );
+            const releasePrLinks = buildReleaseSummary(releasePrs);
+
+            for (const candidate of openNonReleasePrs) {
+              try {
+                if (releasePrs.length > 0) {
+                  await upsertNoticeComment(candidate.number, releasePrLinks);
+                } else {
+                  await removeNoticeComment(candidate.number);
+                }
+              } catch (error) {
+                core.warning(`Failed to sync release-freeze notice for PR #${candidate.number}: ${error.message}`);
+              }
+            }
+
+            if (releasePrs.length === 0) {
+              core.info("No open release PRs detected; merge allowed.");
+              return;
+            }
+
+            if (isReleasePr) {
+              core.info(`PR #${pr.number} is a trusted release PR; freeze check is informational only.`);
+              return;
+            }
+
+            if (action === "closed") {
+              core.info(`Skipping merge block for closed PR #${pr.number}; freeze notice cleanup already handled.`);
+              return;
+            }
+
+            core.setFailed(`Release freeze is active on ${baseBranch}. Merge blocked while release PRs are open: ${releasePrLinks}. Close or merge the release PR(s) before merging this PR.`);
