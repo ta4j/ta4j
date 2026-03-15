@@ -4,12 +4,14 @@
 package org.ta4j.core.criteria;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.criteria.RatioCriterionTestSupport.alwaysInvested;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
@@ -38,6 +40,32 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
         double expected = referenceCalmar(series, closes);
 
         assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
+    }
+
+    @Test
+    public void returnsPercentageRepresentation() {
+        double[] closes = new double[] { 100d, 80d, 120d };
+        BarSeries series = buildYearlySeries("calmar_percentage", closes);
+        TradingRecord tradingRecord = alwaysInvested(series);
+
+        CalmarRatioCriterion criterion = new CalmarRatioCriterion(ReturnRepresentation.PERCENTAGE);
+        Num actual = criterion.calculate(series, tradingRecord);
+        double expected = referenceCalmar(series, closes);
+
+        assertNumEquals(numFactory.numOf(expected * 100d), actual, 1e-12);
+    }
+
+    @Test
+    public void returnsMultiplicativeRepresentation() {
+        double[] closes = new double[] { 100d, 80d, 120d };
+        BarSeries series = buildYearlySeries("calmar_multiplicative", closes);
+        TradingRecord tradingRecord = alwaysInvested(series);
+
+        CalmarRatioCriterion criterion = new CalmarRatioCriterion(ReturnRepresentation.MULTIPLICATIVE);
+        Num actual = criterion.calculate(series, tradingRecord);
+        double expected = referenceCalmar(series, closes);
+
+        assertNumEquals(numFactory.numOf(1d + expected), actual, 1e-12);
     }
 
     @Test
@@ -125,6 +153,23 @@ public class CalmarRatioCriterionTest extends AbstractCriterionTest {
         assertTrue(markToMarketValue.isNegative());
         assertNumEquals(numFactory.zero(), ignoreOpenValue, 0d);
         assertNumEquals(numFactory.zero(), realizedValue, 0d);
+    }
+
+    @Test
+    public void returnsNaNWhenBeginValueCannotBeUsed() {
+        BarSeries series = buildYearlySeries("calmar_zero_begin", new double[] { 0d, 120d, 80d });
+        CalmarRatioCriterion criterion = new CalmarRatioCriterion(ReturnRepresentation.DECIMAL);
+
+        Num actual = criterion.calculate(series, alwaysInvested(series));
+
+        assertTrue(actual.isNaN());
+    }
+
+    @Test
+    public void exposesReturnRepresentation() {
+        CalmarRatioCriterion criterion = new CalmarRatioCriterion(ReturnRepresentation.PERCENTAGE);
+
+        assertEquals(Optional.of(ReturnRepresentation.PERCENTAGE), criterion.getReturnRepresentation());
     }
 
     @Test

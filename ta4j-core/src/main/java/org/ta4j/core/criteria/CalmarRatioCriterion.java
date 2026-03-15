@@ -11,9 +11,13 @@ import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.utils.BarSeriesUtils;
+
+import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Computes the Calmar ratio.
@@ -53,6 +57,7 @@ import org.ta4j.core.utils.BarSeriesUtils;
 public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
     private final MaximumDrawdownCriterion maximumDrawdownCriterion;
+    private final ReturnRepresentation returnRepresentation;
 
     /**
      * Constructor using {@link EquityCurveMode#MARK_TO_MARKET} by default.
@@ -60,7 +65,18 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.4
      */
     public CalmarRatioCriterion() {
-        this(EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        this(ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor with explicit ratio return representation.
+     *
+     * @param returnRepresentation the return representation for the final criterion
+     *                             value
+     * @since 0.22.4
+     */
+    public CalmarRatioCriterion(ReturnRepresentation returnRepresentation) {
+        this(returnRepresentation, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
@@ -70,7 +86,7 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.4
      */
     public CalmarRatioCriterion(EquityCurveMode equityCurveMode) {
-        this(equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
+        this(ReturnRepresentation.DECIMAL, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
@@ -80,7 +96,19 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.4
      */
     public CalmarRatioCriterion(OpenPositionHandling openPositionHandling) {
-        this(EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
+        this(ReturnRepresentation.DECIMAL, EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
+    }
+
+    /**
+     * Constructor with explicit ratio return representation.
+     *
+     * @param returnRepresentation the return representation for the final criterion
+     *                             value
+     * @param equityCurveMode      the equity curve mode to use
+     * @since 0.22.4
+     */
+    public CalmarRatioCriterion(ReturnRepresentation returnRepresentation, EquityCurveMode equityCurveMode) {
+        this(returnRepresentation, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
@@ -91,7 +119,22 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.4
      */
     public CalmarRatioCriterion(EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
+        this(ReturnRepresentation.DECIMAL, equityCurveMode, openPositionHandling);
+    }
+
+    /**
+     * Constructor using explicit ratio return representation and position settings.
+     *
+     * @param returnRepresentation the return representation for the final criterion
+     *                             value
+     * @param equityCurveMode      the equity curve mode to use
+     * @param openPositionHandling how to handle open positions
+     * @since 0.22.4
+     */
+    public CalmarRatioCriterion(ReturnRepresentation returnRepresentation, EquityCurveMode equityCurveMode,
+            OpenPositionHandling openPositionHandling) {
         super(equityCurveMode, openPositionHandling);
+        this.returnRepresentation = Objects.requireNonNull(returnRepresentation, "returnRepresentation");
         this.maximumDrawdownCriterion = new MaximumDrawdownCriterion(equityCurveMode, openPositionHandling);
     }
 
@@ -122,9 +165,15 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
         Num maximumDrawdown = maximumDrawdownCriterion.calculate(series, tradingRecord);
         if (maximumDrawdown.isZero()) {
-            return annualizedReturn;
+            return toRepresentation(annualizedReturn, numFactory);
         }
-        return annualizedReturn.dividedBy(maximumDrawdown);
+        Num calmarRatio = annualizedReturn.dividedBy(maximumDrawdown);
+        return toRepresentation(calmarRatio, numFactory);
+    }
+
+    @Override
+    public Optional<ReturnRepresentation> getReturnRepresentation() {
+        return Optional.of(returnRepresentation);
     }
 
     @Override
@@ -141,7 +190,24 @@ public class CalmarRatioCriterion extends AbstractEquityCurveSettingsCriterion {
             return zero;
         }
         CashFlow cashFlow = new CashFlow(series, tradingRecord, endIndex, equityCurveMode, openPositionHandling);
-        Num totalReturn = cashFlow.getValue(endIndex).dividedBy(cashFlow.getValue(beginIndex));
+        Num startValue = cashFlow.getValue(beginIndex);
+        if (startValue.isNaN() || startValue.isZero()) {
+            return NaN.NaN;
+        }
+
+        Num endValue = cashFlow.getValue(endIndex);
+        if (endValue.isNaN()) {
+            return NaN.NaN;
+        }
+
+        Num totalReturn = endValue.dividedBy(startValue);
         return totalReturn.pow(one.dividedBy(years)).minus(one);
+    }
+
+    private Num toRepresentation(Num value, NumFactory numFactory) {
+        if (value.isNaN()) {
+            return NaN.NaN;
+        }
+        return returnRepresentation.toRepresentationFromRateOfReturn(value);
     }
 }

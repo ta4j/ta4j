@@ -4,12 +4,15 @@
 package org.ta4j.core.criteria;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.ta4j.core.criteria.RatioCriterionTestSupport.alwaysInvested;
 import static org.ta4j.core.criteria.RatioCriterionTestSupport.buildDailySeries;
 
 import java.time.Instant;
+import java.util.Optional;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
@@ -51,6 +54,38 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
         double expected = referenceOmega(returnsFromCloses(closes), threshold);
 
         assertNumEquals(numFactory.numOf(expected), actual, 1e-12);
+    }
+
+    @Test
+    public void returnsPercentageRepresentation() {
+        double[] closes = new double[] { 100d, 120d, 90d, 99d };
+        BarSeries series = buildSeries("omega_percentage", closes);
+        TradingRecord tradingRecord = alwaysInvested(series);
+
+        OmegaRatioCriterion criterion = new OmegaRatioCriterion(ReturnRepresentation.PERCENTAGE);
+        Num actual = criterion.calculate(series, tradingRecord);
+        double expected = referenceOmega(returnsFromCloses(closes), 0d);
+
+        assertNumEquals(numFactory.numOf(expected * 100d), actual, 1e-12);
+    }
+
+    @Test
+    public void returnsMultiplicativeRepresentation() {
+        double[] closes = new double[] { 100d, 120d, 90d, 99d };
+        BarSeries series = buildSeries("omega_multiplicative", closes);
+        TradingRecord tradingRecord = alwaysInvested(series);
+
+        OmegaRatioCriterion criterion = new OmegaRatioCriterion(ReturnRepresentation.MULTIPLICATIVE);
+        Num actual = criterion.calculate(series, tradingRecord);
+        double expected = referenceOmega(returnsFromCloses(closes), 0d);
+
+        assertNumEquals(numFactory.numOf(1d + expected), actual, 1e-12);
+    }
+
+    @Test
+    public void validateThresholdMustBeFinite() {
+        assertThrows(IllegalArgumentException.class, () -> new OmegaRatioCriterion(Double.POSITIVE_INFINITY));
+        assertThrows(IllegalArgumentException.class, () -> new OmegaRatioCriterion(Double.NaN));
     }
 
     @Test
@@ -152,6 +187,13 @@ public class OmegaRatioCriterionTest extends AbstractCriterionTest {
 
         assertTrue(criterion.betterThan(numFactory.one(), numFactory.zero()));
         assertFalse(criterion.betterThan(numFactory.zero(), numFactory.one()));
+    }
+
+    @Test
+    public void exposesReturnRepresentation() {
+        OmegaRatioCriterion criterion = new OmegaRatioCriterion(ReturnRepresentation.PERCENTAGE);
+
+        assertEquals(Optional.of(ReturnRepresentation.PERCENTAGE), criterion.getReturnRepresentation());
     }
 
     private BarSeries buildSeries(String name, double[] closes) {

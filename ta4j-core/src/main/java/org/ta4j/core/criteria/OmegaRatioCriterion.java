@@ -15,6 +15,9 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
+import java.util.Objects;
+import java.util.Optional;
+
 /**
  * Computes the Omega ratio.
  *
@@ -52,6 +55,7 @@ import org.ta4j.core.num.NumFactory;
 public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
 
     private final double threshold;
+    private final ReturnRepresentation returnRepresentation;
 
     /**
      * Constructor with zero threshold.
@@ -59,7 +63,18 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.4
      */
     public OmegaRatioCriterion() {
-        this(0d, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        this(ReturnRepresentation.DECIMAL, 0d, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor with explicit ratio return representation.
+     *
+     * @param returnRepresentation the return representation for the final criterion
+     *                             value
+     * @since 0.22.4
+     */
+    public OmegaRatioCriterion(ReturnRepresentation returnRepresentation) {
+        this(returnRepresentation, 0d, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
@@ -70,7 +85,20 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.4
      */
     public OmegaRatioCriterion(double threshold) {
-        this(threshold, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
+        this(ReturnRepresentation.DECIMAL, threshold, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor with explicit threshold and ratio return representation.
+     *
+     * @param threshold            return threshold in decimal form
+     * @param returnRepresentation the return representation for the final criterion
+     *                             value
+     * @since 0.22.4
+     */
+    public OmegaRatioCriterion(double threshold, ReturnRepresentation returnRepresentation) {
+        this(returnRepresentation, threshold, EquityCurveMode.MARK_TO_MARKET, OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
@@ -80,7 +108,19 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.4
      */
     public OmegaRatioCriterion(EquityCurveMode equityCurveMode) {
-        this(0d, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
+        this(ReturnRepresentation.DECIMAL, 0d, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
+    }
+
+    /**
+     * Constructor with explicit ratio return representation and equity curve mode.
+     *
+     * @param returnRepresentation the return representation for the final criterion
+     *                             value
+     * @param equityCurveMode      the equity curve mode to use
+     * @since 0.22.4
+     */
+    public OmegaRatioCriterion(ReturnRepresentation returnRepresentation, EquityCurveMode equityCurveMode) {
+        this(returnRepresentation, 0d, equityCurveMode, OpenPositionHandling.MARK_TO_MARKET);
     }
 
     /**
@@ -90,7 +130,20 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      * @since 0.22.4
      */
     public OmegaRatioCriterion(OpenPositionHandling openPositionHandling) {
-        this(0d, EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
+        this(ReturnRepresentation.DECIMAL, 0d, EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
+    }
+
+    /**
+     * Constructor with explicit ratio return representation and open position
+     * handling.
+     *
+     * @param returnRepresentation the return representation for the final criterion
+     *                             value
+     * @param openPositionHandling how to handle open positions
+     * @since 0.22.4
+     */
+    public OmegaRatioCriterion(ReturnRepresentation returnRepresentation, OpenPositionHandling openPositionHandling) {
+        this(returnRepresentation, 0d, EquityCurveMode.MARK_TO_MARKET, openPositionHandling);
     }
 
     /**
@@ -104,7 +157,28 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
      */
     public OmegaRatioCriterion(double threshold, EquityCurveMode equityCurveMode,
             OpenPositionHandling openPositionHandling) {
+        this(ReturnRepresentation.DECIMAL, threshold, equityCurveMode, openPositionHandling);
+    }
+
+    /**
+     * Constructor with explicit ratio return representation, threshold, equity
+     * curve mode, and open position handling.
+     *
+     * @param returnRepresentation the return representation for the final criterion
+     *                             value
+     * @param threshold            return threshold in decimal form
+     * @param equityCurveMode      the equity curve mode to use
+     * @param openPositionHandling how to handle open positions
+     * @since 0.22.4
+     */
+    public OmegaRatioCriterion(ReturnRepresentation returnRepresentation, double threshold,
+            EquityCurveMode equityCurveMode, OpenPositionHandling openPositionHandling) {
         super(equityCurveMode, openPositionHandling);
+        this.returnRepresentation = Objects.requireNonNull(returnRepresentation,
+                "returnRepresentation must not be null");
+        if (!Double.isFinite(threshold)) {
+            throw new IllegalArgumentException("threshold must be finite");
+        }
         this.threshold = threshold;
     }
 
@@ -155,11 +229,24 @@ public class OmegaRatioCriterion extends AbstractEquityCurveSettingsCriterion {
         if (downsideShortfall.isZero()) {
             return upsideExcess.isZero() ? zero : NaN.NaN;
         }
-        return upsideExcess.dividedBy(downsideShortfall);
+        Num ratio = upsideExcess.dividedBy(downsideShortfall);
+        return toRepresentation(ratio, numFactory);
     }
 
     @Override
     public boolean betterThan(Num criterionValue1, Num criterionValue2) {
         return criterionValue1.isGreaterThan(criterionValue2);
+    }
+
+    @Override
+    public Optional<ReturnRepresentation> getReturnRepresentation() {
+        return Optional.of(returnRepresentation);
+    }
+
+    private Num toRepresentation(Num omegaRatio, NumFactory numFactory) {
+        if (omegaRatio.isNaN()) {
+            return NaN.NaN;
+        }
+        return returnRepresentation.toRepresentationFromRateOfReturn(omegaRatio);
     }
 }
