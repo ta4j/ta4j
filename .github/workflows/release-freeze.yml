@@ -14,6 +14,9 @@ on:
       - unlabeled
       - closed
 
+env:
+  RELEASE_FREEZE_AUTHORS: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
+
 permissions:
   pull-requests: write
   issues: write
@@ -36,6 +39,12 @@ jobs:
             const noticeMarker = "<!-- ta4j:release-freeze-notice -->";
             const releaseLabel = "release";
             const action = context.payload.action;
+            const trustedAuthors = new Set(
+              (process.env.RELEASE_FREEZE_AUTHORS || "TheCookieLab")
+                .split(",")
+                .map((author) => (author || "").trim().toLowerCase())
+                .filter((author) => author.length > 0),
+            );
 
             if (!pr || !baseBranch) {
               core.info(`Skipping release freeze check: missing pull request context or base branch.`);
@@ -44,6 +53,17 @@ jobs:
 
             const hasLabel = (labels, name) =>
               (labels || []).some((label) => label.name === name);
+
+            const isReleaseBranch = (candidate) =>
+              (candidate?.head?.ref || "").startsWith("release/");
+
+            const isTrustedReleaseAuthor = (candidate) =>
+              trustedAuthors.has((candidate?.user?.login || "").toLowerCase());
+
+            const isTrustedReleasePr = (candidate) =>
+              hasLabel(candidate.labels, releaseLabel) &&
+              isTrustedReleaseAuthor(candidate) &&
+              isReleaseBranch(candidate);
 
             const buildReleaseSummary = (releasePr) =>
               releasePr.map((candidate) => `- [#${candidate.number}](${candidate.html_url})`).join("\n");
@@ -80,7 +100,7 @@ jobs:
                 `${noticeMarker}`,
                 "⚠️ Release Freeze is active.",
                 "",
-                `One or more PRs labeled \`release\` are currently open against \`${baseBranch}\`, so non-release merges are blocked until these PRs merge or close:`,
+                `One or more trusted release PRs (label \`release\`, branch \`release/*\`) are currently open against \`${baseBranch}\`, so non-release merges are blocked until these PRs merge or close:`,
                 releasePrLinks,
                 "",
                 "Please merge/close the active release PRs first."
@@ -113,7 +133,7 @@ jobs:
               return;
             }
 
-            const isReleasePr = hasLabel(pr.labels, releaseLabel);
+            const isReleasePr = isTrustedReleasePr(pr);
 
             const openPrs = await github.paginate(github.rest.pulls.list, {
               owner,
@@ -122,9 +142,7 @@ jobs:
               base: baseBranch
             });
 
-            const releasePrs = openPrs.filter((candidate) =>
-              hasLabel(candidate.labels, releaseLabel)
-            );
+            const releasePrs = openPrs.filter((candidate) => isTrustedReleasePr(candidate));
 
             const openNonReleasePrs = openPrs.filter((candidate) =>
               !hasLabel(candidate.labels, releaseLabel)
@@ -145,7 +163,7 @@ jobs:
             }
 
             if (isReleasePr) {
-              core.info(`PR #${pr.number} is labeled release; freeze check is informational only.`);
+              core.info(`PR #${pr.number} is a trusted release PR; freeze check is informational only.`);
               return;
             }
 
