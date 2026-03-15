@@ -16,7 +16,11 @@ Follow `ta4j-core/src/test/java/AGENTS.md` for global policy; this file adds ind
 
 ## Coverage expectations
 
-- Include round-trip serialization tests for indicators that support serialization.
+- Include both descriptor round-trip tests via `IndicatorSerialization.fromDescriptor(series, indicator.toDescriptor())`
+  and JSON round-trip tests via `Indicator.fromJson(series, indicator.toJson())` for indicators that support
+  serialization.
+- For those round-trip tests, assert canonical descriptor equality after reconstruction and compare reconstructed
+  indicator outputs against the original across representative indices.
 - Test exposed helper methods alongside numeric outputs.
 - Include missing/NaN data scenarios and plateau edge cases where applicable.
 - For oscillator/reference-sequence checks, embed expected arrays sourced from authoritative calculators or references.

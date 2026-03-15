@@ -110,9 +110,9 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
 
     @Test
     public void shouldSerializeIncludingBarCount() {
-        final var series = seriesFromHighs(11, 14, 13, 16, 12, 15, 11, 14, 13);
-        final var highIndicator = new HighPriceIndicator(series);
-        final var indicator = new TrendLineResistanceIndicator(highIndicator, 1, 1, 0, 20);
+        final BarSeries series = seriesFromHighs(11, 14, 13, 16, 12, 15, 11, 14, 13);
+        final HighPriceIndicator highIndicator = new HighPriceIndicator(series);
+        final TrendLineResistanceIndicator indicator = new TrendLineResistanceIndicator(highIndicator, 1, 1, 0, 20);
 
         for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
             indicator.getValue(i);
@@ -132,6 +132,36 @@ public class TrendLineResistanceIndicatorTest extends AbstractIndicatorTest<Indi
         final String json = indicator.toJson();
         assertThat(json).contains("TrendLineResistanceIndicator");
         assertThat(json).contains("\"barCount\":20");
+    }
+
+    @Test
+    public void shouldRoundTripThroughDescriptorAndJson() {
+        final BarSeries series = seriesFromHighs(11, 14, 13, 16, 12, 15, 11, 14, 13);
+        final HighPriceIndicator highIndicator = new HighPriceIndicator(series);
+        final TrendLineResistanceIndicator original = new TrendLineResistanceIndicator(highIndicator, 1, 1, 0, 20);
+
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            original.getValue(i);
+        }
+
+        final ComponentDescriptor descriptor = original.toDescriptor();
+        final Indicator<?> restoredFromDescriptor = IndicatorSerialization.fromDescriptor(series, descriptor);
+        final Indicator<?> restoredFromJson = IndicatorSerialization.fromJson(series, original.toJson());
+
+        assertThat(restoredFromDescriptor).isInstanceOf(TrendLineResistanceIndicator.class);
+        assertThat(restoredFromJson).isInstanceOf(TrendLineResistanceIndicator.class);
+        assertThat(restoredFromDescriptor.toDescriptor()).isEqualTo(descriptor);
+        assertThat(restoredFromJson.toDescriptor()).isEqualTo(descriptor);
+
+        final TrendLineResistanceIndicator descriptorIndicator = (TrendLineResistanceIndicator) restoredFromDescriptor;
+        final TrendLineResistanceIndicator jsonIndicator = (TrendLineResistanceIndicator) restoredFromJson;
+        for (int i = series.getBeginIndex(); i <= series.getEndIndex(); i++) {
+            assertThat(descriptorIndicator.getValue(i)).isEqualByComparingTo(original.getValue(i));
+            assertThat(jsonIndicator.getValue(i)).isEqualByComparingTo(original.getValue(i));
+        }
+        assertThat(descriptorIndicator.getSwingPointIndexes())
+                .containsExactlyElementsOf(original.getSwingPointIndexes());
+        assertThat(jsonIndicator.getSwingPointIndexes()).containsExactlyElementsOf(original.getSwingPointIndexes());
     }
 
     @Test
