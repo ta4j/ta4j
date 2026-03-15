@@ -2,9 +2,9 @@
 
 ### Added
 - **Calmar and Omega ratios**: Added `CalmarRatioCriterion` and `OmegaRatioCriterion` for drawdown-adjusted CAGR and threshold-based return-distribution asymmetry analysis.
+- **Release PR freeze is now visible and enforced**: while any PR labeled `release` is open against `master`, non-release PR merges are now blocked by `.github/workflows/release-freeze.yml`; other open PRs automatically get a freeze notice with direct links to active release PRs, and that notice is removed once release PRs close or merge. This prevents “whoops, this should have waited for release” merge windows during release prep (`#1481`).
 
 ### Changed
-- **Release PR freeze is now visible and enforced**: while any PR labeled `release` is open against `master`, non-release PR merges are now blocked by `.github/workflows/release-freeze.yml`; other open PRs automatically get a freeze notice with direct links to active release PRs, and that notice is removed once release PRs close or merge. This prevents “whoops, this should have waited for release” merge windows during release prep (`#1481`).
 
 ## 0.22.4 (2026-03-15)
 
