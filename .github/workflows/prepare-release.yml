@@ -539,6 +539,7 @@ jobs:
           RELEASE_COMMIT: ${{ steps.release_commit.outputs.release_commit }}
           RELEASE_BRANCH: release/${{ steps.versions.outputs.release }}
           TARGET_BRANCH: ${{ github.event.repository.default_branch }}
+          RELEASE_OWNER: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
         with:
           github-token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
           script: |
@@ -613,7 +614,7 @@ jobs:
               console.warn(`Failed to add release label: ${error.message}`);
             }
 
-            const releaseOwner = "TheCookieLab";
+            const releaseOwner = process.env.RELEASE_OWNER?.trim() || "TheCookieLab";
 
             try {
               await github.rest.issues.addAssignees({
