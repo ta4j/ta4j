@@ -376,6 +376,78 @@ class TradingChartFactoryTest {
         assertTrue(labelDatasetIndex >= 0, "Label dataset should be present on the plot");
         assertInstanceOf(XYLineAndShapeRenderer.class, basePlot.getRenderer(labelDatasetIndex),
                 "Label dataset should render with the line/shape renderer");
+        XYLineAndShapeRenderer renderer = (XYLineAndShapeRenderer) basePlot.getRenderer(labelDatasetIndex);
+        assertFalse(renderer.getItemLineVisible(0, 0),
+                "Sparse label overlays should render markers and annotations without connecting lines");
+    }
+
+    @Test
+    void testBarSeriesLabelOverlayUsesExplicitAnnotationColors() {
+        BarSeries series = ChartingTestFixtures.standardDailySeries();
+        List<BarLabel> labels = List.of(
+                new BarLabel(5, series.getBar(5).getClosePrice(), "Bull", LabelPlacement.ABOVE, Color.GREEN),
+                new BarLabel(8, series.getBar(8).getClosePrice(), "Bear", LabelPlacement.BELOW, Color.RED));
+        BarSeriesLabelIndicator labelIndicator = new BarSeriesLabelIndicator(series, labels);
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(labelIndicator)
+                .withLineColor(Color.ORANGE)
+                .withOpacity(1.0f)
+                .withLabel("Labels")
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+
+        List<XYTextAnnotation> annotations = basePlot.getAnnotations()
+                .stream()
+                .filter(XYTextAnnotation.class::isInstance)
+                .map(XYTextAnnotation.class::cast)
+                .toList();
+
+        assertEquals(2, annotations.size(), "Each non-blank label should render as an annotation");
+        assertEquals(Color.GREEN,
+                annotations.stream()
+                        .filter(annotation -> "Bull".equals(annotation.getText()))
+                        .findFirst()
+                        .orElseThrow()
+                        .getPaint());
+        assertEquals(Color.RED,
+                annotations.stream()
+                        .filter(annotation -> "Bear".equals(annotation.getText()))
+                        .findFirst()
+                        .orElseThrow()
+                        .getPaint());
+    }
+
+    @Test
+    void testBarSeriesLabelOverlayAppliesPerLabelFontScale() {
+        BarSeries series = ChartingTestFixtures.standardDailySeries();
+        List<BarLabel> labels = List.of(
+                new BarLabel(5, series.getBar(5).getClosePrice(), "Wave 1", LabelPlacement.ABOVE, Color.GREEN, 3.0));
+        BarSeriesLabelIndicator labelIndicator = new BarSeriesLabelIndicator(series, labels);
+
+        ChartWorkflow workflow = new ChartWorkflow();
+        JFreeChart chart = workflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(labelIndicator)
+                .withLabel("Labels")
+                .toChart();
+
+        CombinedDomainXYPlot combinedPlot = (CombinedDomainXYPlot) chart.getPlot();
+        XYPlot basePlot = combinedPlot.getSubplots().get(0);
+
+        XYTextAnnotation annotation = basePlot.getAnnotations()
+                .stream()
+                .filter(XYTextAnnotation.class::isInstance)
+                .map(XYTextAnnotation.class::cast)
+                .filter(candidate -> "Wave 1".equals(candidate.getText()))
+                .findFirst()
+                .orElseThrow();
+
+        assertEquals(36.0, annotation.getFont().getSize2D(), 0.001);
     }
 
     @Test

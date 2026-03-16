@@ -1,0 +1,127 @@
+{
+  "registryId": "btc-cycle-anchors-v1",
+  "datasetResource": "Coinbase-BTC-USD-PT4H-20160518_20251028.json",
+  "provenance": "Windows were chosen from widely cited BTC turning points, then resolved deterministically to the local extrema inside each window against the ossified Coinbase BTC-USD PT4H dataset committed in ta4j-examples.",
+  "anchors": [
+    {
+      "id": "btc-2017-cycle-top",
+      "label": "2017 cycle top",
+      "kind": "TOP",
+      "windowStart": "2017-12-01T00:00:00Z",
+      "windowEnd": "2018-01-15T00:00:00Z",
+      "expectedPhases": ["WAVE5"],
+      "source": "Coinbase BTC-USD PT4H local extremum inside the 2017 Q4 blow-off window.",
+      "notes": "Major cycle peak used as the first completed bullish impulse anchor."
+    },
+    {
+      "id": "btc-2018-cycle-bottom",
+      "label": "2018 cycle bottom",
+      "kind": "BOTTOM",
+      "windowStart": "2018-11-01T00:00:00Z",
+      "windowEnd": "2019-02-15T00:00:00Z",
+      "expectedPhases": ["CORRECTIVE_C", "WAVE1"],
+      "source": "Coinbase BTC-USD PT4H local extremum inside the 2018 capitulation window.",
+      "notes": "Bottoms are accepted as either corrective-C completion or the first bullish impulse leg."
+    },
+    {
+      "id": "btc-2019-relief-top",
+      "label": "2019 relief-rally top",
+      "kind": "TOP",
+      "windowStart": "2019-06-01T00:00:00Z",
+      "windowEnd": "2019-07-31T00:00:00Z",
+      "expectedPhases": ["WAVE5"],
+      "source": "Coinbase BTC-USD PT4H local extremum inside the 2019 relief-rally window.",
+      "notes": "Intermediate top kept to improve anchor density before the 2020 reset."
+    },
+    {
+      "id": "btc-2020-covid-bottom",
+      "label": "2020 liquidity-crash bottom",
+      "kind": "BOTTOM",
+      "windowStart": "2020-03-01T00:00:00Z",
+      "windowEnd": "2020-04-15T00:00:00Z",
+      "expectedPhases": ["CORRECTIVE_C", "WAVE1"],
+      "source": "Coinbase BTC-USD PT4H local extremum inside the 2020 liquidity-crash window.",
+      "notes": "Stress-event bottom used to test whether the profile still resets cleanly after sharp capitulation."
+    },
+    {
+      "id": "btc-2021-apr-top",
+      "label": "2021 spring top",
+      "kind": "TOP",
+      "windowStart": "2021-03-15T00:00:00Z",
+      "windowEnd": "2021-05-15T00:00:00Z",
+      "expectedPhases": ["WAVE5"],
+      "source": "Coinbase BTC-USD PT4H local extremum inside the 2021 spring breakout window.",
+      "notes": "First 2021 major top."
+    },
+    {
+      "id": "btc-2021-summer-bottom",
+      "label": "2021 summer bottom",
+      "kind": "BOTTOM",
+      "windowStart": "2021-06-15T00:00:00Z",
+      "windowEnd": "2021-08-15T00:00:00Z",
+      "expectedPhases": ["CORRECTIVE_C", "WAVE1"],
+      "source": "Coinbase BTC-USD PT4H local extremum inside the 2021 summer reset window.",
+      "notes": "Mid-cycle bottom used to check repeatability on a non-terminal correction."
+    },
+    {
+      "id": "btc-2021-cycle-top",
+      "label": "2021 cycle top",
+      "kind": "TOP",
+      "windowStart": "2021-10-01T00:00:00Z",
+      "windowEnd": "2021-12-15T00:00:00Z",
+      "expectedPhases": ["WAVE5"],
+      "source": "Coinbase BTC-USD PT4H local extremum inside the 2021 Q4 peak window.",
+      "notes": "Second 2021 major top."
+    },
+    {
+      "id": "btc-2022-cycle-bottom",
+      "label": "2022 cycle bottom",
+      "kind": "BOTTOM",
+      "windowStart": "2022-10-15T00:00:00Z",
+      "windowEnd": "2022-12-31T00:00:00Z",
+      "expectedPhases": ["CORRECTIVE_C", "WAVE1"],
+      "source": "Coinbase BTC-USD PT4H local extremum inside the 2022 bear-market low window.",
+      "notes": "Primary post-2021 cycle floor."
+    },
+    {
+      "id": "btc-2024-breakout-top",
+      "label": "2024 breakout top",
+      "kind": "TOP",
+      "windowStart": "2024-02-15T00:00:00Z",
+      "windowEnd": "2024-04-15T00:00:00Z",
+      "expectedPhases": ["WAVE5"],
+      "source": "Coinbase BTC-USD PT4H local extremum inside the 2024 breakout window.",
+      "notes": "Late-cycle top used to keep holdout coverage on the most recent completed regime."
+    },
+    {
+      "id": "btc-2024-aug-bottom",
+      "label": "2024 summer bottom",
+      "kind": "BOTTOM",
+      "windowStart": "2024-08-01T00:00:00Z",
+      "windowEnd": "2024-09-30T00:00:00Z",
+      "expectedPhases": ["CORRECTIVE_C", "WAVE1"],
+      "source": "Coinbase BTC-USD PT4H local extremum inside the 2024 summer retracement window.",
+      "notes": "Recent bottom used for the holdout segment."
+    },
+    {
+      "id": "btc-2025-spring-bottom",
+      "label": "2025 spring bottom",
+      "kind": "BOTTOM",
+      "windowStart": "2025-03-01T00:00:00Z",
+      "windowEnd": "2025-05-15T00:00:00Z",
+      "expectedPhases": ["CORRECTIVE_C", "WAVE1"],
+      "source": "Coinbase BTC-USD PT4H local extremum inside the 2025 spring pullback window.",
+      "notes": "Recent bottom used to stress later holdout stability."
+    },
+    {
+      "id": "btc-2025-autumn-top",
+      "label": "2025 autumn top",
+      "kind": "TOP",
+      "windowStart": "2025-09-01T00:00:00Z",
+      "windowEnd": "2025-10-28T00:00:00Z",
+      "expectedPhases": ["WAVE5"],
+      "source": "Coinbase BTC-USD PT4H local extremum inside the latest completed window available in the ossified dataset.",
+      "notes": "Newest top retained as the terminal holdout anchor for this registry version."
+    }
+  ]
+}

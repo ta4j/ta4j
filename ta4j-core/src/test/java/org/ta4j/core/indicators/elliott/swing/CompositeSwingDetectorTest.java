@@ -61,6 +61,43 @@ class CompositeSwingDetectorTest {
         assertThat(result.swings()).hasSize(2);
     }
 
+    @Test
+    void orPolicyCollapsesSharedIndexOppositePivotsIntoStrictlyIncreasingSwings() {
+        BarSeries series = singleSeries();
+        NumFactory factory = series.numFactory();
+        List<SwingPivot> pivotsA = List.of(new SwingPivot(1, factory.hundred(), SwingPivotType.LOW),
+                new SwingPivot(2, factory.numOf(120), SwingPivotType.HIGH),
+                new SwingPivot(4, factory.numOf(105), SwingPivotType.LOW));
+        List<SwingPivot> pivotsB = List.of(new SwingPivot(1, factory.hundred().plus(factory.one()), SwingPivotType.LOW),
+                new SwingPivot(2, factory.numOf(90), SwingPivotType.LOW),
+                new SwingPivot(5, factory.numOf(125), SwingPivotType.HIGH));
+
+        SwingDetector detectorA = (s, index, degree) -> new SwingDetectorResult(pivotsA, List.of());
+        SwingDetector detectorB = (s, index, degree) -> new SwingDetectorResult(pivotsB, List.of());
+
+        CompositeSwingDetector composite = new CompositeSwingDetector(CompositeSwingDetector.Policy.OR,
+                List.of(detectorA, detectorB));
+        SwingDetectorResult result = composite.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
+
+        assertThat(result.pivots()).extracting(SwingPivot::index).doesNotHaveDuplicates();
+        assertThat(result.swings()).allSatisfy(swing -> assertThat(swing.toIndex()).isGreaterThan(swing.fromIndex()));
+    }
+
+    @Test
+    void swingsFromPivotsSkipsDuplicateIndexNeighborsDefensively() {
+        BarSeries series = singleSeries();
+        NumFactory factory = series.numFactory();
+        List<SwingPivot> pivots = List.of(new SwingPivot(1, factory.hundred(), SwingPivotType.LOW),
+                new SwingPivot(1, factory.numOf(120), SwingPivotType.HIGH),
+                new SwingPivot(4, factory.numOf(105), SwingPivotType.LOW));
+
+        assertThat(SwingDetectorSupport.swingsFromPivots(pivots, ElliottDegree.PRIMARY)).singleElement()
+                .satisfies(swing -> {
+                    assertThat(swing.fromIndex()).isEqualTo(1);
+                    assertThat(swing.toIndex()).isEqualTo(4);
+                });
+    }
+
     private BarSeries singleSeries() {
         BarSeries series = new MockBarSeriesBuilder().withName("CompositeTest").build();
         Duration period = Duration.ofDays(1);
