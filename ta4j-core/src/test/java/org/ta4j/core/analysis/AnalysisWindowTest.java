@@ -8,6 +8,8 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
 import java.time.Duration;
 import java.time.Instant;
 
@@ -29,7 +31,9 @@ import org.ta4j.core.criteria.helpers.AverageCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
 import org.ta4j.core.criteria.pnl.NetReturnCriterion;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Unit tests for {@link AnalysisWindow} and window-aware
@@ -386,6 +390,29 @@ public class AnalysisWindowTest {
     }
 
     @Test
+    public void windowedDrawdownDoesNotScaleWithTrailingBars() {
+        CountingNumFactory numFactory = new CountingNumFactory();
+        BarSeries fullSeries = buildSeries(30, numFactory);
+        TradingRecord fullRecord = new BaseTradingRecord(Trade.buyAt(0, fullSeries), Trade.sellAt(1, fullSeries));
+        MaximumDrawdownCriterion criterion = new MaximumDrawdownCriterion();
+        AnalysisWindow window = AnalysisWindow.barRange(0, 2);
+
+        numFactory.resetMultiplicationCount();
+        Num fullWindowed = criterion.calculate(fullSeries, fullRecord, window);
+        long fullWindowedMultiplications = numFactory.multiplicationCount();
+
+        BarSeries slicedSeries = fullSeries.getSubSeries(0, 3);
+        TradingRecord slicedRecord = new BaseTradingRecord(Trade.buyAt(0, slicedSeries), Trade.sellAt(1, slicedSeries));
+
+        numFactory.resetMultiplicationCount();
+        Num slicedWindowed = criterion.calculate(slicedSeries, slicedRecord, window);
+        long slicedWindowedMultiplications = numFactory.multiplicationCount();
+
+        assertNumEquals(slicedWindowed, fullWindowed);
+        assertEquals(slicedWindowedMultiplications, fullWindowedMultiplications);
+    }
+
+    @Test
     public void wholeWindowMatchesLegacyHelperCalculation() {
         BarSeries series = buildSeries(10);
         TradingRecord record = new BaseTradingRecord(Trade.buyAt(1, series), Trade.sellAt(3, series),
@@ -399,7 +426,14 @@ public class AnalysisWindowTest {
     }
 
     private static BarSeries buildSeries(int barCount) {
+        return buildSeries(barCount, null);
+    }
+
+    private static BarSeries buildSeries(int barCount, NumFactory numFactory) {
         BarSeries series = new BaseBarSeriesBuilder().withName("windowed-series").build();
+        if (numFactory != null) {
+            series = new BaseBarSeriesBuilder().withName("windowed-series").withNumFactory(numFactory).build();
+        }
         Instant base = Instant.parse("2026-02-01T00:00:00Z");
         for (int i = 0; i < barCount; i++) {
             series.barBuilder()
@@ -415,5 +449,287 @@ public class AnalysisWindowTest {
                     .add();
         }
         return series;
+    }
+
+    private static final class CountingNumFactory implements NumFactory {
+
+        private static final long serialVersionUID = 1L;
+
+        private final DoubleNumFactory delegate = DoubleNumFactory.getInstance();
+        private long multiplicationCount;
+
+        @Override
+        public Num minusOne() {
+            return wrap(delegate.minusOne());
+        }
+
+        @Override
+        public Num zero() {
+            return wrap(delegate.zero());
+        }
+
+        @Override
+        public Num one() {
+            return wrap(delegate.one());
+        }
+
+        @Override
+        public Num two() {
+            return wrap(delegate.two());
+        }
+
+        @Override
+        public Num three() {
+            return wrap(delegate.three());
+        }
+
+        @Override
+        public Num hundred() {
+            return wrap(delegate.hundred());
+        }
+
+        @Override
+        public Num thousand() {
+            return wrap(delegate.thousand());
+        }
+
+        @Override
+        public Num numOf(Number number) {
+            return wrap(delegate.numOf(number));
+        }
+
+        @Override
+        public Num numOf(String number) {
+            return wrap(delegate.numOf(number));
+        }
+
+        long multiplicationCount() {
+            return multiplicationCount;
+        }
+
+        void resetMultiplicationCount() {
+            multiplicationCount = 0;
+        }
+
+        private Num wrap(Num value) {
+            if (value instanceof CountingNum countingNum && countingNum.factory == this) {
+                return value;
+            }
+            return new CountingNum(this, value);
+        }
+
+        private Num unwrap(Num value) {
+            if (value instanceof CountingNum countingNum) {
+                return countingNum.delegate;
+            }
+            return value;
+        }
+
+        private void incrementMultiplicationCount() {
+            multiplicationCount++;
+        }
+    }
+
+    private static final class CountingNum implements Num {
+
+        private static final long serialVersionUID = 1L;
+
+        private final CountingNumFactory factory;
+        private final Num delegate;
+
+        private CountingNum(CountingNumFactory factory, Num delegate) {
+            this.factory = factory;
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Number getDelegate() {
+            return delegate.getDelegate();
+        }
+
+        @Override
+        public NumFactory getNumFactory() {
+            return factory;
+        }
+
+        @Override
+        public String getName() {
+            return delegate.getName();
+        }
+
+        @Override
+        public Num plus(Num augend) {
+            return factory.wrap(delegate.plus(factory.unwrap(augend)));
+        }
+
+        @Override
+        public Num minus(Num subtrahend) {
+            return factory.wrap(delegate.minus(factory.unwrap(subtrahend)));
+        }
+
+        @Override
+        public Num multipliedBy(Num multiplicand) {
+            factory.incrementMultiplicationCount();
+            return factory.wrap(delegate.multipliedBy(factory.unwrap(multiplicand)));
+        }
+
+        @Override
+        public Num dividedBy(Num divisor) {
+            return factory.wrap(delegate.dividedBy(factory.unwrap(divisor)));
+        }
+
+        @Override
+        public Num remainder(Num divisor) {
+            return factory.wrap(delegate.remainder(factory.unwrap(divisor)));
+        }
+
+        @Override
+        public Num floor() {
+            return factory.wrap(delegate.floor());
+        }
+
+        @Override
+        public Num ceil() {
+            return factory.wrap(delegate.ceil());
+        }
+
+        @Override
+        public Num pow(int n) {
+            return factory.wrap(delegate.pow(n));
+        }
+
+        @Override
+        public Num pow(Num n) {
+            return factory.wrap(delegate.pow(factory.unwrap(n)));
+        }
+
+        @Override
+        public Num log() {
+            return factory.wrap(delegate.log());
+        }
+
+        @Override
+        public Num exp() {
+            return factory.wrap(delegate.exp());
+        }
+
+        @Override
+        public Num sqrt() {
+            return factory.wrap(delegate.sqrt());
+        }
+
+        @Override
+        public Num sqrt(MathContext mathContext) {
+            return factory.wrap(delegate.sqrt(mathContext));
+        }
+
+        @Override
+        public Num abs() {
+            return factory.wrap(delegate.abs());
+        }
+
+        @Override
+        public Num negate() {
+            return factory.wrap(delegate.negate());
+        }
+
+        @Override
+        public boolean isZero() {
+            return delegate.isZero();
+        }
+
+        @Override
+        public boolean isPositive() {
+            return delegate.isPositive();
+        }
+
+        @Override
+        public boolean isPositiveOrZero() {
+            return delegate.isPositiveOrZero();
+        }
+
+        @Override
+        public boolean isNegative() {
+            return delegate.isNegative();
+        }
+
+        @Override
+        public boolean isNegativeOrZero() {
+            return delegate.isNegativeOrZero();
+        }
+
+        @Override
+        public boolean isEqual(Num other) {
+            return delegate.isEqual(factory.unwrap(other));
+        }
+
+        @Override
+        public boolean isGreaterThan(Num other) {
+            return delegate.isGreaterThan(factory.unwrap(other));
+        }
+
+        @Override
+        public boolean isGreaterThanOrEqual(Num other) {
+            return delegate.isGreaterThanOrEqual(factory.unwrap(other));
+        }
+
+        @Override
+        public boolean isLessThan(Num other) {
+            return delegate.isLessThan(factory.unwrap(other));
+        }
+
+        @Override
+        public boolean isLessThanOrEqual(Num other) {
+            return delegate.isLessThanOrEqual(factory.unwrap(other));
+        }
+
+        @Override
+        public Num min(Num other) {
+            return factory.wrap(delegate.min(factory.unwrap(other)));
+        }
+
+        @Override
+        public Num max(Num other) {
+            return factory.wrap(delegate.max(factory.unwrap(other)));
+        }
+
+        @Override
+        public boolean isNaN() {
+            return delegate.isNaN();
+        }
+
+        @Override
+        public BigDecimal bigDecimalValue() {
+            return delegate.bigDecimalValue();
+        }
+
+        @Override
+        public int compareTo(Num other) {
+            return delegate.compareTo(factory.unwrap(other));
+        }
+
+        @Override
+        public int hashCode() {
+            return delegate.hashCode();
+        }
+
+        @Override
+        public String toString() {
+            return delegate.toString();
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (obj instanceof CountingNum other) {
+                return delegate.equals(other.delegate);
+            }
+            if (obj instanceof Num otherNum) {
+                return delegate.equals(factory.unwrap(otherNum));
+            }
+            return false;
+        }
     }
 }
