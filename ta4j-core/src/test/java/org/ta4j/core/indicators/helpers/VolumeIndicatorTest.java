@@ -4,9 +4,11 @@
 package org.ta4j.core.indicators.helpers;
 
 import static junit.framework.TestCase.assertEquals;
+import static org.junit.Assert.fail;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
 import org.junit.Test;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -94,6 +96,23 @@ public class VolumeIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             expected = expected.plus(numFactory.numOf(i + 1));
         }
         assertNumEquals(expected, volumeIndicator.getValue(19));
+    }
+
+    @Test
+    public void warmupAtEndIndexDoesNotOverflowOnColdCache() {
+        final BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        for (int i = 0; i < 35_041; i++) {
+            series.barBuilder().closePrice(i).volume(i + 1).add();
+        }
+
+        final VolumeIndicator volumeIndicator = new VolumeIndicator(series);
+        final int endIndex = series.getEndIndex();
+
+        try {
+            assertNumEquals(series.getBar(endIndex).getVolume(), volumeIndicator.getValue(endIndex));
+        } catch (StackOverflowError error) {
+            fail("VolumeIndicator warmup at the end index should not overflow on a cold cache");
+        }
     }
 
     @Test
