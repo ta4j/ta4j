@@ -254,8 +254,7 @@ public class CashFlow implements PerformanceIndicator {
             Num exitPrice = resolveExitPrice(position, endIndex, barSeries);
             Num netExitPrice = addCost(exitPrice, averageHoldingCostPerPeriod, isLongTrade);
             Num ratio = getIntermediateRatio(isLongTrade, netEntryPrice, netExitPrice);
-            if (ratioIndex >= windowStartIndex && ratioIndex <= windowEndIndex
-                    && !(windowStartSeeded && ratioIndex == windowStartIndex)) {
+            if (ratioIndex <= windowEndIndex && !(windowStartSeeded && ratioIndex == windowStartIndex)) {
                 multiplyValue(ratioIndex, ratio);
             }
             multiplyRange(ratioIndex + 1, windowEndIndex, ratio);
