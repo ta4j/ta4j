@@ -7,6 +7,9 @@
 ### Changed
 - **Release workflows are now safer for release orchestration**: `cancel-in-progress` is disabled in `prepare-release.yml`, `publish-release.yml`, `github-release.yml`, `release-health.yml`, and `release-scheduler.yml` so release runs can continue through manual triggers, schedules, and chained events. Fast-feedback workflows keep concurrency cancellation (`actionlint.yml`, `check.yml`, `test.yml`, `validate.yml`, `snapshot.yml`) enabled for PR responsiveness.
 
+### Fixed
+- **Windowed maximum drawdown now stays inside the requested analysis range**: `MaximumDrawdownCriterion#calculate(series, tradingRecord, window[, context])` now bounds its cash-flow work to the requested window instead of propagating across the full trailing series, so long cached histories no longer make small windowed drawdown calculations slower as the overall series grows (`#1485`).
+
 ## 0.22.4 (2026-03-15)
 
 ### Added
