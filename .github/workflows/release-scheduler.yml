@@ -87,7 +87,6 @@ jobs:
           done < "$tag_state_file"
 
           cat "$tag_state_file" >> "$GITHUB_OUTPUT"
-          echo "last=$last_reachable_tag" >> "$GITHUB_OUTPUT"
           rm -f "$tag_state_file"
 
           echo "audit:last_tag=$last_reachable_tag default_branch=$default_branch first_parent_tag=$last_first_parent_tag prefer_no_v_tags=true"

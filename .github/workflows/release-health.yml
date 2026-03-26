@@ -77,13 +77,9 @@ jobs:
           scripts/resolve-release-tags.sh "$target_ref" > "$tag_state_file"
 
           latest_tag="none"
-          last_reachable="none"
-          latest_reachable="n/a"
           while IFS='=' read -r key value; do
             case "$key" in
               latest_tag) latest_tag="$value" ;;
-              last_reachable_tag) last_reachable="$value" ;;
-              latest_tag_reachable) latest_reachable="$value" ;;
             esac
           done < "$tag_state_file"
 
