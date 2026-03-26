@@ -6,6 +6,7 @@
 
 ### Changed
 - **Release workflows are now safer for release orchestration**: `cancel-in-progress` is disabled in `prepare-release.yml`, `publish-release.yml`, `github-release.yml`, `release-health.yml`, and `release-scheduler.yml` so release runs can continue through manual triggers, schedules, and chained events. Fast-feedback workflows keep concurrency cancellation (`actionlint.yml`, `check.yml`, `test.yml`, `validate.yml`, `snapshot.yml`) enabled for PR responsiveness.
+- **Release tag baselines now follow reachable ancestry instead of first-parent only**: `release-health.yml` and `release-scheduler.yml` now resolve tags through a shared `scripts/resolve-release-tags.sh` helper, so the scheduler diffs and version floors use the newest release tag actually reachable from `master`, while first-parent tag lag remains an explicit diagnostic only.
 
 ## 0.22.4 (2026-03-15)
 
