@@ -4,7 +4,7 @@
 package org.ta4j.core.indicators.helpers;
 
 import org.ta4j.core.BarSeries;
-import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.RecursiveCachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -22,10 +22,13 @@ import org.ta4j.core.num.Num;
  * {@code i >= barCount}, otherwise {@code sum(i) = sum(i-1) + volume(i)} with
  * {@code sum(beginIndex - 1) = 0}. This reduces per-index work from O(barCount)
  * to O(1), improving performance when {@code barCount} is large or when many
- * indices are evaluated. The base case {@code index <= beginIndex} returns
+ * indices are evaluated. Because the rolling sum depends on {@code sum(i-1)},
+ * this indicator extends {@link RecursiveCachedIndicator} so large cold-cache
+ * warmups are prefetched iteratively instead of recursing through the entire
+ * series. The base case {@code index <= beginIndex} returns
  * {@code volume(index)} directly.
  */
-public class VolumeIndicator extends CachedIndicator<Num> {
+public class VolumeIndicator extends RecursiveCachedIndicator<Num> {
 
     private final int barCount;
 
