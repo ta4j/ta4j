@@ -34,27 +34,35 @@ list_tags() {
 
 find_preferred_release_tag() {
   local merged_ref="${1:-}"
+  local selected_tag="none"
   local tag=""
+  local tag_list=""
 
-  while IFS= read -r tag; do
-    case "$tag" in
-      [0-9]*)
-        printf '%s\n' "$tag"
-        return 0
-        ;;
-    esac
-  done < <(list_tags "$merged_ref")
+  tag_list="$(list_tags "$merged_ref")"
 
-  while IFS= read -r tag; do
-    case "$tag" in
-      v[0-9]*)
-        printf '%s\n' "$tag"
-        return 0
-        ;;
-    esac
-  done < <(list_tags "$merged_ref")
+  if [ -n "$tag_list" ]; then
+    while IFS= read -r tag; do
+      case "$tag" in
+        [0-9]*)
+          selected_tag="$tag"
+          break
+          ;;
+      esac
+    done <<< "$tag_list"
 
-  printf 'none\n'
+    if [ "$selected_tag" = "none" ]; then
+      while IFS= read -r tag; do
+        case "$tag" in
+          v[0-9]*)
+            selected_tag="$tag"
+            break
+            ;;
+        esac
+      done <<< "$tag_list"
+    fi
+  fi
+
+  printf '%s\n' "$selected_tag"
 }
 
 describe_first_parent_release_tag() {
