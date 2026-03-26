@@ -95,6 +95,33 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
+    public void cashFlowWindowedMarkToMarketSeedsWindowStartForOpenPosition() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 120d, 110d, 90d)
+                .build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(3, sampleBarSeries));
+
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, 1, 3, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(1.2d, cashFlow.getValue(1));
+        assertNumEquals(1.1d, cashFlow.getValue(2));
+        assertNumEquals(0.9d, cashFlow.getValue(3));
+    }
+
+    @Test
+    public void cashFlowWindowedRealizedKeepsWindowStartFlatForOpenPosition() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 120d, 110d).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(2, sampleBarSeries));
+
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, 1, 2, EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(1d, cashFlow.getValue(1));
+        assertNumEquals(1.1d, cashFlow.getValue(2));
+    }
+
+    @Test
     public void cashFlowMarkToMarketCanIgnoreOpenPositions() {
         var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries));

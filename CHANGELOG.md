@@ -2,6 +2,13 @@
 
 ### Added
 - **Calmar and Omega ratios**: Added `CalmarRatioCriterion` and `OmegaRatioCriterion` for drawdown-adjusted CAGR and threshold-based return-distribution asymmetry analysis.
+- **Release PR freeze is now visible and enforced**: while any PR labeled `release` is open against `master`, non-release PR merges are now blocked by `.github/workflows/release-freeze.yml`; other open PRs automatically get a freeze notice with direct links to active release PRs, and that notice is removed once release PRs close or merge. This prevents “whoops, this should have waited for release” merge windows during release prep (`#1481`).
+
+### Changed
+- **Release workflows are now safer for release orchestration**: `cancel-in-progress` is disabled in `prepare-release.yml`, `publish-release.yml`, `github-release.yml`, `release-health.yml`, and `release-scheduler.yml` so release runs can continue through manual triggers, schedules, and chained events. Fast-feedback workflows keep concurrency cancellation (`actionlint.yml`, `check.yml`, `test.yml`, `validate.yml`, `snapshot.yml`) enabled for PR responsiveness.
+
+### Fixed
+- **Windowed maximum drawdown now stays inside the requested analysis range**: `MaximumDrawdownCriterion#calculate(series, tradingRecord, window[, context])` now bounds its cash-flow work to the requested window instead of propagating across the full trailing series, so long cached histories no longer make small windowed drawdown calculations slower as the overall series grows (`#1485`).
 
 ## 0.22.4 (2026-03-15)
 
@@ -21,8 +28,8 @@
 - **HighRewardElliottWaveStrategy momentum confirmation now uses MACD-V**: The strategy now uses `VolatilityNormalizedMACDIndicator` and drops redundant exit-rule guarding to keep rule flow cleaner.
 - **Release automation now favors safer incremental bumps**: `release-scheduler.yml` and `semver-rules-override.txt` now drive explicit go/no-go decisions with `patch|minor` outputs only, normalize noisy AI bump values (for example ` MAJOR ` or ` minor `), and keep major bumps disabled so automated releases stay predictable for library consumers and maintainers (`#1477`).
 - **`@since` policy is now explicit for contributors**: `.github/CONTRIBUTING.md` now clearly requires introducing release versions without `-SNAPSHOT` (for example `@since 0.22.4`), plus a documented 5-minor volatility window so teams can adopt new APIs with clearer risk expectations (`#1477`).
-
 ### Fixed
+- **Volume indicator cold-cache warmup**: `VolumeIndicator` now uses recursive-indicator prefill protection, so requesting a late bar first no longer triggers a `StackOverflowError` during rolling-sum warmup (`#1484`).
 - **Net momentum can now jump straight to later bars without falling over**: `NetMomentumIndicator` now handles large first-lookups and constrained `maximumBarCount` series without blowing the stack, so replay/backtest flows can request a late bar first, warm up on pruned rolling windows, and keep the same momentum values they would get from sequential evaluation.
 - **Release workflow drift guardrails**: Release maintainers now get near-immediate drift detection because `release-health.yml` runs on every `master` push and after `Publish Release to Maven Central` completes, and `publish-release.yml` now hard-fails if the pushed release tag does not resolve to the expected `releaseCommit` or is not reachable from `origin/<default_branch>`.
 - **Rolling variance now matches sample-statistics expectations by default**: `VarianceIndicator` now computes sample variance out of the box (`n-1` divisor), so spreadsheet-style checks like issue `#1152` line up directly. You can now choose behavior explicitly with `SampleType`/factory helpers across `VarianceIndicator`, `StandardDeviationIndicator`, `StandardErrorIndicator`, `SigmaIndicator`, and `CorrelationCoefficientIndicator` (for example: `VarianceIndicator.ofSample(...)`, `VarianceIndicator.ofPopulation(...)`, `StandardDeviationIndicator.ofSample(...)`, or `CorrelationCoefficientIndicator.ofPopulation(...)`).

@@ -2,7 +2,6 @@ name: Publish Release to Maven Central
 
 concurrency:
   group: publish-release-${{ github.repository }}
-  cancel-in-progress: true
 
 on:
   pull_request:
