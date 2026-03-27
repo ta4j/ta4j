@@ -508,6 +508,7 @@ public class ReadmeContentManager {
     public static boolean updateReadmeSnippets(Path readmePath, Path sourceFile) {
         try {
             String readmeContent = Files.readString(readmePath, StandardCharsets.UTF_8);
+            String lineSeparator = detectPreferredLineSeparator(readmeContent);
             String[] snippetIds = { "ema-crossover", "rsi-strategy", "strategy-performance", "advanced-strategy",
                     "serialize-indicator", "serialize-rule", "serialize-strategy" };
 
@@ -526,7 +527,9 @@ public class ReadmeContentManager {
                 Pattern pattern = Pattern.compile(Pattern.quote(startMarker) + ".*?" + Pattern.quote(endMarker),
                         Pattern.DOTALL);
 
-                String replacement = startMarker + "\n```java\n" + snippet.get() + "\n```\n" + endMarker;
+                String normalizedSnippet = normalizeLineSeparators(snippet.get(), lineSeparator);
+                String replacement = startMarker + lineSeparator + "```java" + lineSeparator + normalizedSnippet
+                        + lineSeparator + "```" + lineSeparator + endMarker;
                 String before = readmeContent;
                 readmeContent = pattern.matcher(readmeContent).replaceAll(Matcher.quoteReplacement(replacement));
 
@@ -550,6 +553,37 @@ public class ReadmeContentManager {
             LOG.error("Error updating README: {}", e.getMessage());
             return false;
         }
+    }
+
+    private static String detectPreferredLineSeparator(String content) {
+        int crlfCount = 0;
+        int lfCount = 0;
+
+        for (int i = 0; i < content.length(); i++) {
+            if (content.charAt(i) == '\n') {
+                if (i > 0 && content.charAt(i - 1) == '\r') {
+                    crlfCount++;
+                } else {
+                    lfCount++;
+                }
+            }
+        }
+
+        if (crlfCount >= lfCount && crlfCount > 0) {
+            return "\r\n";
+        }
+        if (lfCount > 0) {
+            return "\n";
+        }
+        return System.lineSeparator();
+    }
+
+    private static String normalizeLineSeparators(String content, String lineSeparator) {
+        String normalized = content.replace("\r\n", "\n").replace("\r", "\n");
+        if ("\n".equals(lineSeparator)) {
+            return normalized;
+        }
+        return normalized.replace("\n", lineSeparator);
     }
 
     /**

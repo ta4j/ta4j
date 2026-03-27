@@ -6,7 +6,11 @@ package ta4jexamples.backtesting;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.*;
+import org.ta4j.core.backtest.BacktestExecutionResult;
 import org.ta4j.core.backtest.BacktestExecutor;
+import org.ta4j.core.backtest.TradingStatementExecutionResult.WeightedCriterion;
+import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DecimalNum;
@@ -20,10 +24,23 @@ import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
+/**
+ * Runs a simple moving-average parameter sweep and then highlights the best
+ * candidates with weighted, normalized strategy ranking.
+ *
+ * <p>
+ * The example keeps the strategy definitions intentionally simple, then uses a
+ * composite score that favors net profit while still rewarding smoother equity
+ * curves through return-over-max-drawdown. That makes the shortlist more
+ * realistic than sorting on a single raw metric alone.
+ * </p>
+ */
 public class SimpleMovingAverageRangeBacktest {
 
     private static final Logger LOG = LogManager.getLogger(SimpleMovingAverageRangeBacktest.class);
+    private static final int DEFAULT_TOP_STRATEGIES = 3;
 
     public static void main(String[] args) {
         BarSeries series = CsvFileBarSeriesDataSource.loadSeriesFromFile();
@@ -39,10 +56,27 @@ public class SimpleMovingAverageRangeBacktest {
             strategies.add(strategy);
         }
         BacktestExecutor backtestExecutor = new BacktestExecutor(series);
-        List<TradingStatement> tradingStatements = backtestExecutor.execute(strategies, DecimalNum.valueOf(50),
+        BacktestExecutionResult result = backtestExecutor.executeWithRuntimeReport(strategies, DecimalNum.valueOf(50),
                 Trade.TradeType.BUY);
+        List<TradingStatement> tradingStatements = selectTopStrategies(result, DEFAULT_TOP_STRATEGIES);
 
+        LOG.debug("Top {} weighted SMA strategies (7 parts net profit, 3 parts return over max drawdown)",
+                tradingStatements.size());
         LOG.debug(printReport(tradingStatements));
+    }
+
+    /**
+     * Selects the top strategies for this example using weighted, normalized
+     * ranking.
+     *
+     * @param result full backtest result for the SMA parameter sweep
+     * @param limit  maximum number of strategies to keep
+     * @return top strategies ordered by the example weighted criteria
+     */
+    static List<TradingStatement> selectTopStrategies(BacktestExecutionResult result, int limit) {
+        Objects.requireNonNull(result, "result cannot be null");
+        return result.getTopStrategiesWeighted(limit, WeightedCriterion.of(new NetProfitCriterion(), 7.0),
+                WeightedCriterion.of(new ReturnOverMaxDrawdownCriterion(), 3.0));
     }
 
     private static Rule createEntryRule(BarSeries series, int barCount) {

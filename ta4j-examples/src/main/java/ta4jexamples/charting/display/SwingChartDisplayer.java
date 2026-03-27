@@ -46,7 +46,8 @@ import javax.swing.event.AncestorListener;
  * {@link #DISPLAY_SCALE_PROPERTY system property}. Each window closes
  * independently using {@link JFrame#DISPOSE_ON_CLOSE} to prevent closing one
  * window from affecting others. When all chart windows are closed, the program
- * automatically exits.
+ * automatically exits. Windows are also configured as non-focusable so chart
+ * rendering in automated runs does not steal desktop focus.
  * </p>
  *
  * @since 0.19
@@ -197,6 +198,7 @@ public final class SwingChartDisplayer implements ChartDisplayer {
         frame.pack();
         frame.setAlwaysOnTop(false);
         frame.setAutoRequestFocus(false);
+        frame.setFocusableWindowState(false);
         // Set to DISPOSE_ON_CLOSE so closing one window doesn't close all windows
         frame.setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
@@ -218,8 +220,12 @@ public final class SwingChartDisplayer implements ChartDisplayer {
                 openWindows.remove(frame);
                 // If all windows are closed, exit the program
                 if (openWindows.isEmpty()) {
-                    LOG.debug("All chart windows closed, exiting program");
-                    System.exit(0);
+                    if (isDisplayDisabled()) {
+                        LOG.debug("All chart windows closed while display is disabled; skipping System.exit(0)");
+                    } else {
+                        LOG.debug("All chart windows closed, exiting program");
+                        System.exit(0);
+                    }
                 }
             }
 

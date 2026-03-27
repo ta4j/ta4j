@@ -1,8 +1,102 @@
 ## Unreleased
 
+### Added
+- **Calmar and Omega ratios**: Added `CalmarRatioCriterion` and `OmegaRatioCriterion` for drawdown-adjusted CAGR and threshold-based return-distribution asymmetry analysis.
+- **Release PR freeze is now visible and enforced**: while any PR labeled `release` is open against `master`, non-release PR merges are now blocked by `.github/workflows/release-freeze.yml`; other open PRs automatically get a freeze notice with direct links to active release PRs, and that notice is removed once release PRs close or merge. This prevents “whoops, this should have waited for release” merge windows during release prep (`#1481`).
+
+### Changed
+- **Release workflows are now safer for release orchestration**: `cancel-in-progress` is disabled in `prepare-release.yml`, `publish-release.yml`, `github-release.yml`, `release-health.yml`, and `release-scheduler.yml` so release runs can continue through manual triggers, schedules, and chained events. Fast-feedback workflows keep concurrency cancellation (`actionlint.yml`, `check.yml`, `test.yml`, `validate.yml`, `snapshot.yml`) enabled for PR responsiveness.
+- **Release tag baselines now follow reachable ancestry instead of first-parent only**: `release-health.yml` and `release-scheduler.yml` now resolve tags through a shared `scripts/resolve-release-tags.sh` helper, so the scheduler diffs and version floors use the newest release tag actually reachable from `master`, while first-parent tag lag remains an explicit diagnostic only.
+
 ### Fixed
+- **Windowed maximum drawdown now stays inside the requested analysis range**: `MaximumDrawdownCriterion#calculate(series, tradingRecord, window[, context])` now bounds its cash-flow work to the requested window instead of propagating across the full trailing series, so long cached histories no longer make small windowed drawdown calculations slower as the overall series grows (`#1485`).
+
+## 0.22.4 (2026-03-15)
+
+### Added
+- **Window-aware criterion evaluation API**: `AnalysisCriterion` can now analyze exactly the slice you care about, including specific bar ranges, date/time ranges, lookback bars, and lookback durations, via `AnalysisWindow`/`AnalysisContext` and `AnalysisCriterion#calculate(series, tradingRecord, window[, context])`, with strict/clamp history policies and configurable open-position handling.
+- **Price-structure aggregators**: Added `RangeBarAggregator`, `VolumeBarAggregator`, and `RenkoBarAggregator` for range-, volume-, and Renko-brick derived bar series with externally configurable thresholds and comprehensive fixture-driven regression coverage.
+- **One-shot multi-timeframe Elliott Wave analysis**: You can now run `ElliottWaveAnalysisRunner` once and get an `ElliottWaveAnalysisResult` with base + neighboring degree outputs, ranked scenarios, and confidence context in one place.
+- **Reusable walk-forward framework with backtest integration**: Added `WalkForwardEngine`, `WalkForwardTuner`, `WalkForwardObjective`, and `StrategyWalkForwardExecutor`, plus `BacktestExecutor` entrypoints so you can run backtest-only, walk-forward-only, or both in one consistent flow.
+- **Weighted strategy ranking across execution results**: `TradingStatementExecutionResult` and `BacktestExecutionResult#getTopStrategiesWeighted(...)` now support normalized weighted ranking (for example net profit + drawdown + trade count) with pluggable normalization and deterministic ordering. You can jump in with `WeightedCriterion.of(...)`, `RankingProfile.weighted(...)`, or the direct weighted overloads, and the README plus `SimpleMovingAverageRangeBacktest` now show a concrete “net profit + RoMaD” shortlist flow you can copy directly.
+- **Shared scoring/weighting primitives for library extensions**: Added `NamedScoreFunction<I, S>` and `WeightedValue<T>` so indicator, confidence, and walk-forward components can reuse the same scoring and weighted-aggregation contracts.
+- **Live Elliott preset demo support**: `ElliottWavePresetDemo` now accepts live tickers (for example `BTC-USD`, `ETH-USD`, `SPY`) so you can run the same EW workflow on non-ossified daily data.
+
+### Changed (Trading Record and Execution Flow)
+- **Elliott APIs and demos now follow runner-centric naming and defaults**: The project has moved from legacy analyzer naming to `ElliottWaveAnalysisRunner`, examples are organized under `analysis.elliottwave.{demo,backtest,support}`, and demo defaults now emphasize auto-degree selection with multi-degree context.
+- **HighRewardElliottWaveStrategy momentum confirmation now uses MACD-V**: The strategy now uses `VolatilityNormalizedMACDIndicator` and drops redundant exit-rule guarding to keep rule flow cleaner.
+- **Release automation now favors safer incremental bumps**: `release-scheduler.yml` and `semver-rules-override.txt` now drive explicit go/no-go decisions with `patch|minor` outputs only, normalize noisy AI bump values (for example ` MAJOR ` or ` minor `), and keep major bumps disabled so automated releases stay predictable for library consumers and maintainers (`#1477`).
+- **`@since` policy is now explicit for contributors**: `.github/CONTRIBUTING.md` now clearly requires introducing release versions without `-SNAPSHOT` (for example `@since 0.22.4`), plus a documented 5-minor volatility window so teams can adopt new APIs with clearer risk expectations (`#1477`).
+### Fixed
+- **Volume indicator cold-cache warmup**: `VolumeIndicator` now uses recursive-indicator prefill protection, so requesting a late bar first no longer triggers a `StackOverflowError` during rolling-sum warmup (`#1484`).
+- **Net momentum can now jump straight to later bars without falling over**: `NetMomentumIndicator` now handles large first-lookups and constrained `maximumBarCount` series without blowing the stack, so replay/backtest flows can request a late bar first, warm up on pruned rolling windows, and keep the same momentum values they would get from sequential evaluation.
+- **Release workflow drift guardrails**: Release maintainers now get near-immediate drift detection because `release-health.yml` runs on every `master` push and after `Publish Release to Maven Central` completes, and `publish-release.yml` now hard-fails if the pushed release tag does not resolve to the expected `releaseCommit` or is not reachable from `origin/<default_branch>`.
+- **Rolling variance now matches sample-statistics expectations by default**: `VarianceIndicator` now computes sample variance out of the box (`n-1` divisor), so spreadsheet-style checks like issue `#1152` line up directly. You can now choose behavior explicitly with `SampleType`/factory helpers across `VarianceIndicator`, `StandardDeviationIndicator`, `StandardErrorIndicator`, `SigmaIndicator`, and `CorrelationCoefficientIndicator` (for example: `VarianceIndicator.ofSample(...)`, `VarianceIndicator.ofPopulation(...)`, `StandardDeviationIndicator.ofSample(...)`, or `CorrelationCoefficientIndicator.ofPopulation(...)`).
+- **Enter-and-hold wrappers now keep return format metadata intact**: `EnterAndHoldCriterion` now forwards `getReturnRepresentation()` from its wrapped criterion, so downstream consumers can reliably detect whether outputs are decimal, percentage, multiplicative, or log without special casing wrapper criteria.
+- **Elliott analysis hardening**: Enforced bounded `ElliottDegree.RecommendedHistory` ranges, hardened ossified resource loading for classpath edge cases, and simplified redundant trend-bias null guarding in EW analysis reporting.
+- **Walk-forward fold metadata stability**: Fixed fold-value reporting so criterion maps and fold views remain stable and deterministic when consumers rely on fold order for downstream comparisons.
+
+### Breaking
+- **Trade and record handling now has one obvious happy path**: Build fill-aware trades with `Trade.fromFill(...)` or `Trade.fromFills(...)`, then pass them to `TradingRecord#operate(...)`. The older live-only wrappers (`ExecutionFill`, `LiveTrade`, `LiveTradingRecord`, and `PositionLedger`) are still available in 0.22.x as deprecated migration shims, but they are no longer the API you should reach for first.
+- **Open-position APIs now use `Position` end to end**: `TradingRecord#getOpenPositions()` returns open `Position` snapshots, `getCurrentPosition()` remains the canonical net-open view, and `getNetOpenPosition()` is now just a compatibility alias. The separate `OpenPosition` type is gone.
+- **Lot bookkeeping is finally internal again**: `PositionBook` and `PositionLot` now stay inside `BaseTradingRecord`, while FIFO, LIFO, average-cost, and specific-id matching keep the same external behavior.
+
+### Changed (Backtest Execution Models and Custom Records)
+- **Partial-fill recording is smoother in live-style flows**: You can now stream one fill at a time with `TradingRecord.operate(fill)` when fills arrive incrementally, or keep using `Trade.fromFills(...)` plus `operate(...)` when you already have the whole batch for one logical order. `TradeFillRecordingExample` in `ta4j-examples` now walks through both styles and also shows how `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` change partial-exit matching.
+- **Bring your own trading record in backtests**: `BarSeriesManager` can now run directly against a caller-provided `TradingRecord` (`run(strategy, tradingRecord[, amount, start, end])`) and can also be configured with a default `TradingRecordFactory`, so you can keep standard `BaseTradingRecord` runs or wire custom record implementations without changing existing `run(...)` calls.
+- **`BacktestExecutor` now picks up the same backtest wiring without extra boilerplate**: You can construct it directly with a `TradeExecutionModel` for the common slippage/stop-limit case, or hand it a preconfigured `BarSeriesManager` so custom `TradingRecordFactory` behavior flows through normal backtest, top-K, and walk-forward execution.
+- **Execution-model examples are easier to copy straight into your own backtests**: `TradingRecordParityBacktest` in `ta4j-examples` now walks through next-open, current-close, and slippage fills side by side, then verifies the same behavior with provided and factory-configured `BaseTradingRecord` runs.
+- **Stop-limit/live parity hardening**: `StopLimitExecutionModel` now expires stale pending orders before accepting new signals (so old orders cannot block fresh ones), commits partial expiry fills on unified `BaseTradingRecord` exit flows for better real-world fill progression, and keeps rejection metadata for the unfilled remainder.
+
+## 0.22.3 (2026-03-01)
+
+### Added
+- **Bill Williams indicator suite**: Added `FractalHighIndicator`, `FractalLowIndicator`, `AlligatorIndicator` (jaw/teeth/lips defaults), `GatorOscillatorIndicator` (upper/lower histogram branches), and `MarketFacilitationIndexIndicator` with comprehensive regression coverage for confirmation delays, overlapping windows, flat-price/zero-volume edge cases, constructor validation, unstable-bar boundaries, and lower-histogram signed-zero handling.
+- **Risk controls APIs**: Added `PositionRiskModel`, `StopLossPositionRiskModel`, and `RMultipleCriterion` for risk-unit (R-multiple) evaluation, plus `StopLossPriceModel`/`StopGainPriceModel` and fixed/trailing/volatility/ATR stop-loss and stop-gain rule variants.
+- **Agent guidance tooling and docs**: Reorganized project `AGENTS.md` into scoped, task-local guides and added `scripts/agents_for_target.sh` to resolve effective instructions for any target path.
+- **Regression coverage additions**: Added explicit tests for `TimeBarBuilder` gap placement, `NetMomentumIndicator` pivot/decay edge handling, mixed-field serialization routing, named-strategy label/vararg diagnostics, and `VolumeIndicator` rolling-window behavior.
+- Added **PiercingLineIndicator** and **DarkCloudCoverIndicator** with configurable body-size, gap, and penetration thresholds for candlestick pattern detection.
+- **Trend confirmation oscillators**: Added `VortexIndicator` (+VI, -VI, and oscillator output) and `UltimateOscillatorIndicator` with configurable periods, warm-up guards, and regression tests against published reference values.
+- **Volatility-normalized MACD-V toolkit**: Added `VolatilityNormalizedMACDIndicator` with canonical ATR-normalized MACD-V calculation, configurable signal/histogram helpers, and `MACDVMomentumState` classification utilities.
+- **MACD-V momentum helper components**: Added `MACDHistogramMode`, `MACDLineValues`, `MACDVMomentumProfile`, `MACDVMomentumStateIndicator`, and `MomentumStateRule` to support configurable histogram polarity, bundled line snapshots, and momentum-state rule composition.
+- **MACD-V strategy demo**: Added `MACDVMomentumStateStrategy` to `ta4j-examples`, demonstrating custom signal-line injection and momentum-state filtered entry/exit rules.
+
+### Changed
+- **Risk/stop-rule refinements**: Tightened volatility stop-gain coefficient validation, removed redundant risk recomputation in `RMultipleCriterion`, added the missing `AverageTrueRangeTrailingStopLossRule` lookback overload, and expanded shared stop-rule fixtures/tests and Javadocs.
+- **VolumeIndicator performance**: Replaced O(barCount) per-index summation with an O(1) rolling partial-sum update, including clearer algorithm/complexity Javadocs.
+- **Serialization routing precedence**: `ComponentSerialization` now resolves mixed payloads by descriptor type so strategies prefer `rules` while indicators/rules prefer `components`, while keeping legacy `children`/`baseIndicators` compatibility.
+- **NamedStrategy reconstruction diagnostics**: Strategy reconstruction now emits richer, label-aware errors for missing identifiers, malformed labels, and constructor/parameter failures.
+- **Build entrypoint + Maven Wrapper compatibility**: `scripts/run-full-build-quiet.sh` now auto-detects and uses
+  `./mvnw` when present (falling back to `mvn`), so wrapper adoption does not require a second build command.
+- **Full build script portability**: `scripts/run-full-build-quiet.sh` no longer requires Python; timeout handling,
+  quiet-output filtering, heartbeat logging, and test-summary aggregation now run in Bash.
+- **Indicator composition reuse**: Added `IndicatorUtils.requireSameSeries(...)` to centralize same-series validation and refactored `VortexIndicator`, `UltimateOscillatorIndicator`, and `TRIndicator` to compose shared true-range/series-validation logic instead of duplicating private helpers.
+- **Indicator validation helper consolidation**: Merged `IndicatorSeriesUtils` into `IndicatorUtils`, added shared
+  `IndicatorUtils.requireIndicator(...)` / `IndicatorUtils.isInvalid(...)`, and refactored Bill Williams, VWAP,
+  support/resistance, and Wyckoff indicators to reuse centralized validation and NaN-guard logic.
+- **Fractal hierarchy consolidation**: Extracted `AbstractFractalConfirmationIndicator` and
+  `AbstractRecentFractalSwingIndicator`, and added `FractalDetectionHelper.findLatestConfirmedFractalIndex(...)` so
+  high/low fractal families share confirmation and scanning logic while preserving the existing public APIs.
+- **Fractal documentation and regression hardening**: Expanded Javadocs for shared fractal internals and added
+  `FractalDetectionHelperTest` coverage for latest-pivot scanning, bounds handling, equality allowances, and invalid
+  input guards.
+- **MACD-V signal-line extensibility**: `VolatilityNormalizedMACDIndicator` now supports custom signal-line indicator injection for both signal and histogram generation.
+- **MACDVIndicator API robustness and clarity**: Clarified that `MACDVIndicator` is a volume/ATR-weighted MACD variant (not ATR-normalized MACD-V), added default signal/histogram conveniences and constructor overloads, and hardened warm-up/NaN handling with lazy transient sub-indicator rebuild.
+- **MACD-V indicator ergonomics**: `MACDVIndicator` and `VolatilityNormalizedMACDIndicator` now expose configuration/sub-indicator getters, line bundle helpers, momentum-state indicator factories, and crossover/momentum rule helpers for strategy composition.
+- **MACD-V package organization**: Grouped MACD-V specific helpers and indicators under `org.ta4j.core.indicators.macd` to reduce top-level indicators package clutter, and retained a deprecated compatibility shim for moved `MACDVIndicator` in `org.ta4j.core.indicators` so downstream projects can migrate imports without immediate build breakage.
+- **Deprecation visibility for deprecated classes**: Added runtime deprecation warnings (emitted once per classloader) for deprecated compatibility classes in core and legacy JSON helper classes in examples so migration guidance appears directly in logs.
+
+### Fixed
+- **Stop-rule behavior and efficiency**: Trailing stop-gain variants now arm only after the configured favorable move, volatility stop-loss variants trigger on exact threshold touches, gain-side helpers are used consistently, and trailing volatility/fixed-amount rules now reuse stabilized max-lookback indicators to reduce hot-path allocations.
+- **NetMomentum neutral pivot validation**: Constructor now rejects `NaN`/infinite neutral pivot values to prevent undefined momentum output states.
+- **VolumeIndicator constrained-window correctness**: Rolling sums now anchor to the series `beginIndex` so max-bar-count eviction does not double-count or backtrack into pruned history.
 - **Publish-release manual dispatch inputs**: `publish-release.yml` now reads `workflow_dispatch` metadata from event inputs so manual reruns correctly receive `releaseVersion`/`releaseCommit`.
 - **Prepare-release metadata guard**: Added a Maven Central metadata validation gate in `prepare-release.yml` (including dry-run mode) to fail early when required POM metadata (including developers) is missing.
+- **VWAP and Wyckoff market-structure toolkit**: Added rolling/anchored VWAP analytics (deviation, standard deviation, z-score, bands), support/resistance clustering (bounce-count, price-cluster, KDE volume profile), and Wyckoff cycle analysis APIs with a runnable demo.
+- **Release workflow dispatch and metadata checks**: `publish-release.yml` now reads `workflow_dispatch` inputs correctly for manual reruns, and `prepare-release.yml` now fails early when required Maven Central POM metadata is missing.
+- **README snippet synchronization line endings**: `ReadmeContentManager.updateReadmeSnippets(...)` now preserves the
+  target README's dominant line separator (LF/CRLF), with regression tests covering both newline modes.
+- **Indicator serialization and stability**: Aligned VWAP, price-cluster, and Wyckoff indicators on descriptor ordering, NaN handling, and unstable-bar conventions.
 
 ## 0.22.2 (2026-02-15)
 
@@ -29,24 +123,20 @@
 - Added **MorningStarIndicator** and **EveningStarIndicator**
 - Added **BullishKickerIndicator** and **BearishKickerIndicator**
 - Added **PiercingIndicator** and **DarkCloudIndicator**
+- Added **PiercingLineIndicator** and **DarkCloudCoverIndicator** with configurable body-size, gap, and penetration thresholds for candlestick pattern detection.
 - **Threshold-based boolean rules**: [#1422](https://github.com/ta4j/ta4j/issues/1422) Added `AndWithThresholdRule`/`OrWithThresholdRule` that also work backwards with a certain threshold.
 - Added versions-maven-plugin
-- **Elliott Wave analysis toolkit**: Added `ElliottWaveAnalyzer`, `ElliottAnalysisResult`, configurable `PatternSet`,
-  and the `org.ta4j.core.indicators.elliott.swing` detector/filter package for pluggable, chart-independent analysis.
-- **Elliott Wave confidence modeling**: Added profile-driven confidence scoring with factor breakdowns, time
-  alternation diagnostics, and granular Fibonacci relationship scoring.
-- **Elliott Wave trend bias**: Added `ElliottTrendBias` and `ElliottTrendBiasIndicator` for scenario-weighted
-  bullish/bearish context, plus `ElliottScenarioSet#trendBias()` and `ElliottWaveFacade#trendBias()` helpers.
-- **Elliott Wave strategy demos**: Added `ElliottWaveAdaptiveSwingAnalysis`, `ElliottWavePatternProfileDemo`,
-  `ElliottWaveTrendBacktest`, and `HighRewardElliottWaveBacktest` with `HighRewardElliottWaveStrategy` for
-  selective impulse entries using confidence, alternation, and risk/reward filters.
 - **DonchianChannelFacade**: [#1407](https://github.com/ta4j/ta4j/issues/1407): Added **DonchianChannelFacade** new class providing a facade for DonchianChannel Indicators by using lightweight `NumericIndicators`
 - Added constructors accepting custom ATR indicator to **AverageTrueRangeStopGainRule** **AverageTrueRangeStopLossRule** and **AverageTrueRangeTrailingStopLossRule**
 - **Sortino Ratio**: Added `SortinoRatioCriterion` for downside deviation-based risk adjustment
+- **Trend confirmation oscillators**: Added `VortexIndicator` (+VI, -VI, and oscillator output) and `UltimateOscillatorIndicator` with configurable periods, warm-up guards, and regression tests against published reference values.
+- **Volume indicator coverage**: Added `ForceIndexIndicator`, `EaseOfMovementIndicator`, and `KlingerVolumeOscillatorIndicator` with documented formulas and bullish/bearish/sideways spreadsheet regression fixtures.
 
 ### Changed
 - **Bar builders null handling**: Bar builders now skip null-valued bars entirely instead of inserting placeholder/null bars, leaving gaps when inputs are missing or invalid.
+- **Indicator composition reuse**: Added `IndicatorUtils.requireSameSeries(...)` to centralize same-series validation and refactored `VortexIndicator`, `UltimateOscillatorIndicator`, and `TRIndicator` to compose shared true-range/series-validation logic instead of duplicating private helpers.
 - **Charting overlays**: Refactored overlay renderer construction and centralized time-axis domain value selection to reduce branching without changing chart output.
+- **Volume indicator coverage**: Added `ForceIndexIndicator`, `EaseOfMovementIndicator`, and `KlingerVolumeOscillatorIndicator` with documented formulas and bullish/bearish/sideways spreadsheet regression fixtures.
 - **Charting defaults**: Centralized chart styling defaults (anti-aliasing, background, title paint) for consistency across chart types.
 - **Chart builder metadata**: Chart definitions now surface a shared metadata object for domain series, title, and time axis mode; chart plans expose a ChartContext and derive their primary series from it, with ChartWorkflow rendering helpers accepting contexts.
 - **TimeBarBuilder**: Enhanced with trade ingestion logic, time alignment validation, and RealtimeBar support.
@@ -65,18 +155,18 @@
   serialization plus explicit cost-model rehydration.
 - **Recorded fee semantics**: Live-trading positions and criteria now use recorded `LiveTrade` fees via
   `RecordedTradeCostModel` so PnL reflects actual execution costs.
+- **Quiet full-build lifecycle**: `scripts/run-full-build-quiet.sh` now traps `SIGINT`/`SIGTERM`/`EXIT` and cleanly
+  terminates background build/heartbeat processes.
 - **License headers**: Switch Java source file headers to SPDX identifiers.
-- **Elliott Wave analysis example**: Scenario probability weighting now applies adaptive confidence contrast so closely scored scenarios separate more clearly.
 - **Position duration criterion**: implemented `PositionDurationCriterion` to measure positions duration.
 - **Statistics helper**: Consolidated statistics selection into the `Statistics` enum, with Num calculations.
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 - **Dependencies**: update to latest versions
-- **Elliott Wave scoring and diagnostics**: Extension ratio scoring now penalizes under/over-extended projections,
-  chart/JSON outputs include scenario-weighted trend bias, and logs include time alternation diagnostics.
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
 - **JDK**: updated to Java 25
 
 ### Fixed
+- **Chart window focus stealing**: `ta4j-examples` chart display paths now set `setFocusableWindowState(false)` so chart-related test/example runs do not steal desktop focus.
 - **Build script**: Ensure `scripts/run-full-build-quiet.sh` creates a temp filter script on macOS by using a trailing-`X` mktemp template and guarding cleanup when the temp list is unset.
 - **TimeBarBuilder**: Preserve in-progress bars when trade ingestion skips across multiple time periods.
 - **Release workflow notifications**: Fix discussion comment posting in workflows (unescaped template literals).
@@ -100,6 +190,12 @@
 - **Release scheduler**: Gate release decisions on binary-impacting changes (`pom.xml` or `src/main/**`) so workflow-only updates no longer trigger releases.
 - **Release scheduler redaction**: Avoid masking long Java class names in binary-change listings.
 - **Release version validation**: Fixed version comparison in `prepare-release.yml` to properly validate that `nextVersion` is greater than `releaseVersion` using semantic version sorting, preventing invalid version sequences.
+- **Release token preflight hardening**: `prepare-release.yml` now requires literal `repo`/`public_repo` scopes for
+  push capability and uses a 30-second GitHub API timeout.
+- **Candlestick ratio safety**: `DarkCloudCoverIndicator` and `PiercingLineIndicator` now short-circuit on zero/NaN
+  denominators, with regression coverage for zero and NaN inputs.
+- **TRIndicator unstable bars**: `getCountOfUnstableBars()` now includes the previous-close lookback when the close
+  input has warm-up bars.
 - **Fixed incorrect @since 0.23** by replacing with 0.22.2
 - **Full build script**: Fix macOS temp file creation in `run-full-build-quiet.sh` by using a portable mktemp template.
 
@@ -196,6 +292,7 @@
 - Fixed **SuperTrendUpperBandIndicator** NaN contamination by recovering once ATR leaves its unstable window and aligning unstable-bar counts across SuperTrend components so values stabilize after ATR warms up.
 - **Consistent NaN handling across all SuperTrend indicators**: `SuperTrendLowerBandIndicator` and `SuperTrendIndicator` now return NaN during the unstable period (when ATR values are not yet reliable), consistent with `SuperTrendUpperBandIndicator` and the project convention that indicators should return NaN during their unstable period. Previously, these indicators returned zero during the unstable period, which was inconsistent with other indicators and could lead to misleading calculations.
 - **Test improvements for headless environment compatibility**: Updated strategy and charting tests (`RSI2StrategyTest`, `CCICorrectionStrategyTest`, `GlobalExtremaStrategyTest`, `MovingMomentumStrategyTest`, `ChartWorkflowTest`) to use `SwingChartDisplayer.DISABLE_DISPLAY_PROPERTY` instead of `Assume.assumeFalse()` for headless environment checks. This allows tests to run reliably in both headless and non-headless environments without skipping, improving CI/CD compatibility and test coverage.
+- **Cross-platform non-interactive chart test JVMs**: `ta4j-examples` Surefire now sets `java.awt.headless=true` and `ta4j.chart.disableDisplay=true` during tests, and swing-overlay chart assertions no longer skip in headless mode.
 
 ## 0.21.0 (2025-11-29) Skipped 0.20.0 due to a double version incrementing bug in the release-scheduler workflow
 

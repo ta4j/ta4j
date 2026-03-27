@@ -1,18 +1,17 @@
 # Flow:
 #  - analyze (checkout, diff, changelog, AI decision, compute version) -> job outputs
-#  - approval (environment-protected) -> runs only when bump == "major"
+#  - approval (environment-protected) -> reserved for future major-release re-enable
 #  - publish (patch/minor) -> depends on analyze
-#  - publish_major -> depends on analyze + approval
+#  - publish_major -> reserved for future major-release re-enable
 #
 #
-# IMPORTANT: create the environment "major-release" and configure required reviewers.
-# The approval job will pause in the Actions UI until an approver clicks Approve/Reject.
+# NOTE: major bumps are currently disabled and downgraded to minor.
+# The major-release approval path is kept for future re-enable.
 
 name: AI Semantic Release Scheduler
 
 concurrency:
   group: semantic-release-ai-${{ github.repository }}
-  cancel-in-progress: true
 
 on:
   schedule:
@@ -48,7 +47,8 @@ jobs:
       gate_proceed: ${{ steps.gate.outputs.proceed }}
       token_present: ${{ steps.model_token.outputs.present }}
       token_gate: ${{ steps.token_gate.outputs.proceed }}
-      last_tag: ${{ steps.lasttag.outputs.last }}
+      last_tag: ${{ steps.lasttag.outputs.last_reachable_tag }}
+      last_first_parent_tag: ${{ steps.lasttag.outputs.last_first_parent_tag }}
       pom_version: ${{ steps.pom_version.outputs.version }}
       pom_base: ${{ steps.pom_version.outputs.base }}
     steps:
@@ -63,39 +63,34 @@ jobs:
       - name: Fetch tags
         run: git fetch --tags
 
-      - name: Determine last tag
+      - name: Resolve release tag baselines
         id: lasttag
         run: |
           default_branch="${{ github.event.repository.default_branch }}"
           target_ref="origin/${default_branch}"
           git fetch origin "$default_branch" --tags
 
-          # Prefer tags reachable from the default branch (origin/<default_branch>), with and without first-parent
-          last=$(git describe --tags --abbrev=0 --first-parent --match '[0-9]*' "$target_ref" 2>/dev/null || true)
-          if [ -z "$last" ]; then
-            last=$(git describe --tags --abbrev=0 --match '[0-9]*' "$target_ref" 2>/dev/null || true)
-          fi
-          if [ -z "$last" ]; then
-            last=$(git describe --tags --abbrev=0 --first-parent --match 'v[0-9]*' "$target_ref" 2>/dev/null || true)
-          fi
-          if [ -z "$last" ]; then
-            last=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$target_ref" 2>/dev/null || true)
-          fi
+          tag_state_file=$(mktemp)
+          scripts/resolve-release-tags.sh "$target_ref" > "$tag_state_file"
 
-          # Fallback: describe from HEAD if the default branch ref isn't available locally
-          if [ -z "$last" ]; then
-            last=$(git describe --tags --abbrev=0 --first-parent --match '[0-9]*' 2>/dev/null || true)
-          fi
-          if [ -z "$last" ]; then
-            last=$(git describe --tags --abbrev=0 --match '[0-9]*' 2>/dev/null || true)
-          fi
+          latest_tag="none"
+          last_reachable_tag="none"
+          last_first_parent_tag="none"
+          latest_tag_reachable="n/a"
+          while IFS='=' read -r key value; do
+            case "$key" in
+              latest_tag) latest_tag="$value" ;;
+              last_reachable_tag) last_reachable_tag="$value" ;;
+              last_first_parent_tag) last_first_parent_tag="$value" ;;
+              latest_tag_reachable) latest_tag_reachable="$value" ;;
+            esac
+          done < "$tag_state_file"
 
-          if [ -z "$last" ]; then
-            last="none"
-          fi
+          cat "$tag_state_file" >> "$GITHUB_OUTPUT"
+          rm -f "$tag_state_file"
 
-          echo "last=$last" >> $GITHUB_OUTPUT
-          echo "audit:last_tag=$last default_branch=$default_branch first_parent_only=true prefer_no_v_tags=true"
+          echo "audit:last_tag=$last_reachable_tag default_branch=$default_branch first_parent_tag=$last_first_parent_tag prefer_no_v_tags=true"
+          echo "audit:latest_tag=$latest_tag latest_tag_reachable=$latest_tag_reachable"
 
       - name: Capture event and normalize dry run flag
         id: run_meta
@@ -142,7 +137,7 @@ jobs:
       - name: Collect binary-impacting changes since last release
         id: diff
         env:
-          LAST_TAG: ${{ steps.lasttag.outputs.last }}
+          LAST_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
         run: |
           if [ "$LAST_TAG" = "none" ]; then
             changed_files=$(git ls-tree -r --name-only HEAD)
@@ -320,7 +315,7 @@ jobs:
 
           current_version="${{ steps.pom_version.outputs.version }}"
           base_version="${{ steps.pom_version.outputs.base }}"
-          last_tag="${{ steps.lasttag.outputs.last }}"
+          last_tag="${{ steps.lasttag.outputs.last_reachable_tag }}"
           model="${RELEASE_AI_MODEL:-openai/gpt-4.1-nano}"
 
           if [ -z "$current_version" ]; then
@@ -340,7 +335,7 @@ jobs:
             semver_rules=$(cat "$semver_rules_file")
             echo "audit:semver_rules_source=file"
           else
-            semver_rules="Determine if there is enough unreleased functionality here to warrant a release:\nMAJOR: Breaking API changes in public/core APIs.\nMINOR: Backward-compatible new features.\nPATCH: Backward-compatible bug fixes.\nIf binary change count is 0 => should_release=false.\nIf binary change list empty or changelog-only => should_release=false.\nPre-1.0.0: breaking changes can be MINOR, not necessarily MAJOR."
+            semver_rules="Decide release go/no-go from unreleased binary-impacting changes.\nIf go, choose bump: patch|minor.\nMINOR: backward-compatible, user-visible new features, and breaking-change cases.\nPATCH: backward-compatible bug fixes or internal improvements.\nIf binary change count is 0 => should_release=false.\nIf binary change list empty or changelog-only => should_release=false.\nIf unsure between MINOR and PATCH, prefer PATCH.\nPre-1.0.0: breaking changes can be MINOR."
             echo "audit:semver_rules_source=default"
           fi
 
@@ -362,14 +357,14 @@ jobs:
                 { role: "system", content: "You are a SemVer assistant. Reply with JSON only." },
                 { role: "user", content:
                   (
-                    "Decide release? bump: patch|minor|major.\n" +
+                    "Decide release go/no-go. If go, choose bump: patch|minor.\n" +
                     "Current: " + $current_version + "\n" +
                     "Last tag: " + $last_tag + "\n" +
                     "Binary change count: " + $binary_count + "\n" +
                     "Rules:\n" + $semver_rules + "\n" +
                     "Binary-impacting changes summary:\n" + $binary_prompt + "\n" +
                     "Changelog highlights:\n" + $changelog + "\n" +
-                    "Return JSON: {\"should_release\":true|false,\"bump\":\"patch|minor|major\",\"reason\":\"1-2 sentences\"}"
+                    "Return JSON only: {\"should_release\":true|false,\"bump\":\"patch|minor\",\"reason\":\"1-2 sentences\"}. If should_release=false, set bump to \"patch\"."
                   )
                 }
               ]
@@ -527,8 +522,27 @@ jobs:
 
           should=$(jq -r 'if .should_release then "true" else "false" end' ai.json)
           bump=$(jq -r '.bump // "patch"' ai.json)
+          bump=$(printf '%s' "$bump" | tr '[:upper:]' '[:lower:]' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
+          if [ -z "$bump" ]; then
+            bump="patch"
+          fi
           warning=$(jq -r '.warning // ""' ai.json)
           reason=$(jq -r '.reason // ""' ai.json)
+
+          if [ "$bump" = "major" ]; then
+            echo "audit:major_bump_downgraded=true"
+            bump="minor"
+            if [ -n "$warning" ]; then
+              warning="${warning}; major bump disabled, downgraded to minor"
+            else
+              warning="major bump disabled, downgraded to minor"
+            fi
+            if [ -n "$reason" ]; then
+              reason="${reason} Major bumps are currently disabled, so this was downgraded to minor."
+            else
+              reason="Major bumps are currently disabled, so this was downgraded to minor."
+            fi
+          fi
 
           echo "should_release=$should" >> $GITHUB_OUTPUT
           echo "bump=$bump" >> $GITHUB_OUTPUT
@@ -553,7 +567,7 @@ jobs:
         if: steps.parsed.outputs.should_release == 'true'
         run: |
           set -euo pipefail
-          last="${{ steps.lasttag.outputs.last }}"
+          last="${{ steps.lasttag.outputs.last_reachable_tag }}"
           current="${{ steps.pom_version.outputs.version }}"
           base="${{ steps.pom_version.outputs.base }}"
           bump="${{ steps.parsed.outputs.bump }}"
@@ -575,7 +589,7 @@ jobs:
           fi
 
           bump_base="$base"
-          # Prevent regressions relative to last default-branch tag
+          # Prevent regressions relative to the last reachable default-branch release tag
           if [ "$last" != "none" ] && echo "$last" | grep -Eq '^v?[0-9]+\.[0-9]+(\.[0-9]+)?([-+].*)?$'; then
             last_norm=$(printf '%s\n' "$last" | sed -E 's/^v?([0-9]+)\.([0-9]+)(\.[0-9]+)?([-+].*)?$/\1.\2\3/')
             last_norm=${last_norm:-}
@@ -587,14 +601,14 @@ jobs:
             if [ -n "$last_norm" ]; then
               highest=$(printf '%s\n' "$last_norm" "$base_norm" | sort -V | tail -n1)
               if [ "$highest" != "$base_norm" ]; then
-                echo "POM base version '$base' is behind the last default-branch tag '$last_norm'; refusing to compute a lower release." >&2
+                echo "POM base version '$base' is behind the last reachable default-branch tag '$last_norm'; refusing to compute a lower release." >&2
                 exit 1
               fi
               bump_base="$last_norm"
             fi
           fi
 
-          # Use the selected bump base (prefer last tag when present) for incrementing
+          # Use the selected bump base (prefer the last reachable tag when present) for incrementing
           if [[ "$bump_base" =~ ^([0-9]+)\.([0-9]+)$ ]]; then
             major="${BASH_REMATCH[1]}"
             minor="${BASH_REMATCH[2]}"
@@ -653,7 +667,7 @@ jobs:
           VERSION: ${{ steps.version.outputs.version }}
           POM_VERSION: ${{ steps.pom_version.outputs.version }}
           POM_BASE: ${{ steps.pom_version.outputs.base }}
-          LAST_TAG: ${{ steps.lasttag.outputs.last }}
+          LAST_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
         run: |
           echo "decision:event_name=${EVENT_NAME:-}"
           echo "decision:dry_run_input='${DRY_RUN_INPUT:-}' normalized=${DRY_RUN:-}"
@@ -665,10 +679,11 @@ jobs:
           echo "decision:reason=${REASON:-}"
           echo "decision:computed_version=${VERSION:-}"
           echo "decision:pom_version=${POM_VERSION:-} pom_base=${POM_BASE:-}"
-          echo "decision:last_default_branch_tag=${LAST_TAG:-}"
+          echo "decision:last_reachable_default_branch_tag=${LAST_TAG:-}"
+          echo "decision:last_first_parent_tag=${{ steps.lasttag.outputs.last_first_parent_tag }}"
 
-  # Human approval job: only runs for major bumps and uses a protected environment to require reviewers.
-  # Create an environment named `major-release` and configure required reviewers in repo settings.
+  # Reserved major-release approval path.
+  # Major bumps are currently downgraded to minor in analyze/parsing and this job should not run.
   approval:
     name: Major release approval (human)
     needs: analyze
@@ -793,6 +808,7 @@ jobs:
           TOKEN_PRESENT: ${{ needs.analyze.outputs.token_present }}
           TOKEN_GATE: ${{ needs.analyze.outputs.token_gate }}
           LAST_TAG: ${{ needs.analyze.outputs.last_tag }}
+          LAST_FIRST_PARENT_TAG: ${{ needs.analyze.outputs.last_first_parent_tag }}
           POM_VERSION: ${{ needs.analyze.outputs.pom_version }}
           POM_BASE: ${{ needs.analyze.outputs.pom_base }}
           RELEASE_NOTIFY_USER: ${{ vars.RELEASE_NOTIFY_USER }}
@@ -820,6 +836,7 @@ jobs:
           warning="${WARNING:-}"
           dry_run="${DRY_RUN:-unknown}"
           last_tag="${LAST_TAG:-}"
+          last_first_parent_tag="${LAST_FIRST_PARENT_TAG:-}"
           pom_version="${POM_VERSION:-}"
           pom_base="${POM_BASE:-}"
           binary_changes="${BINARY_CHANGES:-}"
@@ -855,6 +872,9 @@ jobs:
           if [ -z "$last_tag" ]; then
             last_tag="(none)"
           fi
+          if [ -z "$last_first_parent_tag" ]; then
+            last_first_parent_tag="(none)"
+          fi
           if [ -z "$pom_version" ]; then
             pom_version="(unknown)"
           fi
@@ -865,7 +885,7 @@ jobs:
           notify_user="${RELEASE_NOTIFY_USER:-TheCookieLab}"
 
           cat > notification-body.txt <<EOF
-          <!-- ta4j:post-type=release-scheduler;run=${marker_run};lastTag=${last_tag};pomVersion=${pom_version};pomBase=${pom_base} -->
+          <!-- ta4j:post-type=release-scheduler;run=${marker_run};lastTag=${last_tag};firstParentTag=${last_first_parent_tag};pomVersion=${pom_version};pomBase=${pom_base} -->
           @${notify_user}
 
           **Release Scheduler ${mode_label} ${completion_text} at ${timestamp}**
@@ -886,7 +906,8 @@ jobs:
           - reason: ${reason}
           - warning: ${warning}
           - dryRun: ${dry_run}
-          - last tag: ${last_tag}
+          - last reachable tag: ${last_tag}
+          - last first-parent tag: ${last_first_parent_tag}
           - pom version: ${pom_version}
           - pom base: ${pom_base}
 
@@ -983,7 +1004,7 @@ jobs:
                 return fields;
               };
               const parseLegacyFields = (text) => {
-                const lastTagMatch = text.match(/- last tag:\s*(.+)\s*$/im);
+                const lastTagMatch = text.match(/- (?:last tag|last reachable tag):\s*(.+)\s*$/im);
                 const pomVersionMatch = text.match(/- pom version:\s*(.+)\s*$/im);
                 const pomBaseMatch = text.match(/- pom base:\s*(.+)\s*$/im);
                 if (!lastTagMatch || !pomVersionMatch || !pomBaseMatch) {

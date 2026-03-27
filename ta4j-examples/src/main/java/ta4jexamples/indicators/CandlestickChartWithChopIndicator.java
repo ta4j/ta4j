@@ -118,7 +118,8 @@ public class CandlestickChartWithChopIndicator {
     }
 
     /**
-     * Displays a chart in a frame.
+     * Displays a chart in a frame. The frame is configured to avoid stealing focus
+     * when launched from tests or scripts.
      *
      * @param ohlcDataset
      * @param xyDataset
@@ -184,6 +185,7 @@ public class CandlestickChartWithChopIndicator {
         frame.setContentPane(combinedChartPanel);
         frame.pack();
         UIUtils.centerFrameOnScreen(frame);
+        frame.setFocusableWindowState(false);
         frame.setVisible(true);
         frame.setAlwaysOnTop(false);
         frame.setAutoRequestFocus(false);

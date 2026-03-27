@@ -196,6 +196,7 @@ public class AverageTrueRangeTrailingStopLossRuleTest {
                 baseline);
 
         var rules = Arrays.asList(new AverageTrueRangeTrailingStopLossRule(series, referencePrice, 5, 2.0),
+                new AverageTrueRangeTrailingStopLossRule(series, referencePrice, 5, 2.0, 3),
                 new AverageTrueRangeTrailingStopLossRule(referencePrice, new ATRIndicator(series, 5), 2.0));
 
         for (var rule : rules) {
@@ -206,6 +207,8 @@ public class AverageTrueRangeTrailingStopLossRuleTest {
 
     private List<AverageTrueRangeTrailingStopLossRule> constructRules(int atrBarCount, Number atrCoefficient) {
         return Arrays.asList(new AverageTrueRangeTrailingStopLossRule(series, atrBarCount, atrCoefficient),
+                new AverageTrueRangeTrailingStopLossRule(series, new ClosePriceIndicator(series), atrBarCount,
+                        atrCoefficient, 3),
                 new AverageTrueRangeTrailingStopLossRule(series, new ClosePriceIndicator(series), atrBarCount,
                         atrCoefficient),
                 new AverageTrueRangeTrailingStopLossRule(new ClosePriceIndicator(series),

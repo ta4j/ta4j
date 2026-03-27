@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.backtest;
 
+import java.util.Objects;
+import java.util.function.Consumer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
@@ -13,15 +15,30 @@ import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.reports.TradingStatementGenerator;
+import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
+import org.ta4j.core.walkforward.WalkForwardConfig;
 
 /**
  * A manager for {@link BarSeries} objects used for backtesting. Allows to run a
  * {@link Strategy trading strategy} over the managed bar series.
+ *
+ * <p>
+ * Default {@code run(...)} overloads create a fresh trading record through this
+ * manager's configured {@link TradingRecordFactory}. Existing behavior remains
+ * unchanged by default ({@link BaseTradingRecord}), while callers can inject a
+ * custom record implementation for unified backtest/live execution paths.
+ * </p>
  */
 public class BarSeriesManager {
 
     /** The logger */
     private static final Logger log = LoggerFactory.getLogger(BarSeriesManager.class);
+
+    /** Default trading record factory. */
+    private static final TradingRecordFactory DEFAULT_TRADING_RECORD_FACTORY = (tradeType, startIndex, endIndex,
+            transactionCostModel, holdingCostModel) -> new BaseTradingRecord(tradeType, startIndex, endIndex,
+                    transactionCostModel, holdingCostModel);
 
     /** The managed bar series */
     private final BarSeries barSeries;
@@ -32,6 +49,37 @@ public class BarSeriesManager {
 
     /** The trade execution model to use */
     private final TradeExecutionModel tradeExecutionModel;
+
+    /** The trading record factory used by default run overloads. */
+    private final TradingRecordFactory tradingRecordFactory;
+
+    /**
+     * Factory for creating trading records for backtest runs.
+     *
+     * <p>
+     * Implementations must return a fresh mutable {@link TradingRecord} for each
+     * invocation. Reusing the same instance across runs causes state leakage
+     * between executions.
+     * </p>
+     *
+     * @since 0.22.4
+     */
+    @FunctionalInterface
+    public interface TradingRecordFactory {
+        /**
+         * Creates a trading record.
+         *
+         * @param tradeType            strategy entry type
+         * @param startIndex           run start index (already clamped)
+         * @param endIndex             run end index (already clamped)
+         * @param transactionCostModel transaction cost model
+         * @param holdingCostModel     holding cost model
+         * @return a new trading record instance for the run
+         * @since 0.22.4
+         */
+        TradingRecord create(TradeType tradeType, int startIndex, int endIndex, CostModel transactionCostModel,
+                CostModel holdingCostModel);
+    }
 
     /**
      * Constructor with {@link #tradeExecutionModel} = {@link TradeOnNextOpenModel}.
@@ -47,6 +95,7 @@ public class BarSeriesManager {
      *
      * @param barSeries           the bar series to be managed
      * @param tradeExecutionModel the trade execution model to use
+     * @since 0.22.4
      */
     public BarSeriesManager(BarSeries barSeries, TradeExecutionModel tradeExecutionModel) {
         this(barSeries, new ZeroCostModel(), new ZeroCostModel(), tradeExecutionModel);
@@ -61,10 +110,8 @@ public class BarSeriesManager {
      *                             borrowing)
      */
     public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel) {
-        this.barSeries = barSeries;
-        this.transactionCostModel = transactionCostModel;
-        this.holdingCostModel = holdingCostModel;
-        this.tradeExecutionModel = new TradeOnNextOpenModel();
+        this(barSeries, transactionCostModel, holdingCostModel, new TradeOnNextOpenModel(),
+                DEFAULT_TRADING_RECORD_FACTORY);
     }
 
     /**
@@ -77,10 +124,31 @@ public class BarSeriesManager {
      */
     public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel,
             TradeExecutionModel tradeExecutionModel) {
+        this(barSeries, transactionCostModel, holdingCostModel, tradeExecutionModel, DEFAULT_TRADING_RECORD_FACTORY);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param barSeries            the bar series to be managed
+     * @param transactionCostModel the cost model for transactions of the asset
+     * @param holdingCostModel     the cost model for holding asset (e.g. borrowing)
+     * @param tradeExecutionModel  the trade execution model to use
+     * @param tradingRecordFactory factory for default run overloads
+     * @since 0.22.4
+     */
+    public BarSeriesManager(BarSeries barSeries, CostModel transactionCostModel, CostModel holdingCostModel,
+            TradeExecutionModel tradeExecutionModel, TradingRecordFactory tradingRecordFactory) {
+        Objects.requireNonNull(barSeries, "barSeries");
+        Objects.requireNonNull(transactionCostModel, "transactionCostModel");
+        Objects.requireNonNull(holdingCostModel, "holdingCostModel");
+        Objects.requireNonNull(tradeExecutionModel, "tradeExecutionModel");
+        Objects.requireNonNull(tradingRecordFactory, "tradingRecordFactory");
         this.barSeries = barSeries;
         this.transactionCostModel = transactionCostModel;
         this.holdingCostModel = holdingCostModel;
         this.tradeExecutionModel = tradeExecutionModel;
+        this.tradingRecordFactory = tradingRecordFactory;
     }
 
     /**
@@ -183,19 +251,80 @@ public class BarSeriesManager {
      * @return the trading record coming from the run
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, Num amount, int startIndex, int finishIndex) {
+        TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
+        return run(strategy, tradingRecord, amount, startIndex, finishIndex);
+    }
 
+    /**
+     * Runs the provided strategy over the managed series using the supplied trading
+     * record.
+     *
+     * <p>
+     * This allows callers to backtest with alternate {@link TradingRecord}
+     * implementations (for example a lot-aware {@code BaseTradingRecord}) while
+     * reusing {@link BarSeriesManager}'s execution loop.
+     * </p>
+     *
+     * @param strategy      the trading strategy
+     * @param tradingRecord the trading record instance to mutate
+     * @return the supplied trading record after execution
+     * @since 0.22.4
+     */
+    public TradingRecord run(Strategy strategy, TradingRecord tradingRecord) {
+        return run(strategy, tradingRecord, barSeries.numFactory().one());
+    }
+
+    /**
+     * Runs the provided strategy over the managed series using the supplied trading
+     * record.
+     *
+     * @param strategy      the trading strategy
+     * @param tradingRecord the trading record instance to mutate
+     * @param amount        the amount used to open/close the trades
+     * @return the supplied trading record after execution
+     * @since 0.22.4
+     */
+    public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount) {
+        return run(strategy, tradingRecord, amount, barSeries.getBeginIndex(), barSeries.getEndIndex());
+    }
+
+    /**
+     * Runs the provided strategy over the managed series using the supplied trading
+     * record (from startIndex to finishIndex).
+     *
+     * <p>
+     * <strong>Thread safety:</strong> This {@code BarSeriesManager.run(...)}
+     * overload mutates the supplied {@link TradingRecord}. Callers must ensure
+     * exclusive access to that record, or synchronize externally, while the run is
+     * executing. Concurrent reads or writes against the same {@link TradingRecord}
+     * during execution lead to undefined behavior.
+     * </p>
+     *
+     * @param strategy      the trading strategy
+     * @param tradingRecord the trading record instance to mutate
+     * @param amount        the amount used to open/close the trades
+     * @param startIndex    the start index for the run (included)
+     * @param finishIndex   the finish index for the run (included)
+     * @return the supplied trading record after execution
+     * @since 0.22.4
+     */
+    public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount, int startIndex,
+            int finishIndex) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(tradingRecord, "tradingRecord");
+        Objects.requireNonNull(amount, "amount");
         int runBeginIndex = Math.max(startIndex, barSeries.getBeginIndex());
         int runEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
 
         if (log.isTraceEnabled()) {
             log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex,
-                    strategy, tradeType);
+                    strategy, tradingRecord.getStartingType());
         }
 
-        TradingRecord tradingRecord = new BaseTradingRecord(tradeType, runBeginIndex, runEndIndex, transactionCostModel,
-                holdingCostModel);
-
+        int lastProcessedIndex = runEndIndex;
         for (int i = runBeginIndex; i <= runEndIndex; i++) {
+            lastProcessedIndex = i;
+            tradeExecutionModel.onBar(i, tradingRecord, barSeries);
             // For each bar between both indexes...
             if (strategy.shouldOperate(i, tradingRecord)) {
                 tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
@@ -208,6 +337,8 @@ public class BarSeriesManager {
             // to give an opportunity to close this position.
             int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
             for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
+                lastProcessedIndex = i;
+                tradeExecutionModel.onBar(i, tradingRecord, barSeries);
                 // For each bar after the end index of this run...
                 // --> Trying to close the last position
                 if (strategy.shouldOperate(i, tradingRecord)) {
@@ -216,7 +347,84 @@ public class BarSeriesManager {
                 }
             }
         }
+        tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord);
         return tradingRecord;
+    }
+
+    private TradingRecord createDefaultTradingRecord(TradeType tradeType, int startIndex, int finishIndex) {
+        int clampedStartIndex = Math.max(startIndex, barSeries.getBeginIndex());
+        int clampedEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
+        TradingRecord tradingRecord = tradingRecordFactory.create(tradeType, clampedStartIndex, clampedEndIndex,
+                transactionCostModel, holdingCostModel);
+        if (tradingRecord == null) {
+            throw new IllegalStateException("tradingRecordFactory returned null");
+        }
+        return tradingRecord;
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy using the strategy starting
+     * trade type and unit amount.
+     *
+     * @param strategy strategy to execute
+     * @param config   walk-forward configuration
+     * @return walk-forward execution result
+     * @since 0.22.4
+     */
+    public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, WalkForwardConfig config) {
+        Objects.requireNonNull(strategy, "strategy");
+        Num unitAmount = barSeries.numFactory().one();
+        return runWalkForward(strategy, strategy.getStartingType(), unitAmount, config, null);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy using the provided entry trade
+     * type and unit amount.
+     *
+     * @param strategy  strategy to execute
+     * @param tradeType trade type used to open positions
+     * @param config    walk-forward configuration
+     * @return walk-forward execution result
+     * @since 0.22.4
+     */
+    public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, TradeType tradeType,
+            WalkForwardConfig config) {
+        Num unitAmount = barSeries.numFactory().one();
+        return runWalkForward(strategy, tradeType, unitAmount, config, null);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy with explicit amount.
+     *
+     * @param strategy  strategy to execute
+     * @param tradeType trade type used to open positions
+     * @param amount    amount used to open/close trades
+     * @param config    walk-forward configuration
+     * @return walk-forward execution result
+     * @since 0.22.4
+     */
+    public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, TradeType tradeType, Num amount,
+            WalkForwardConfig config) {
+        return runWalkForward(strategy, tradeType, amount, config, null);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy with optional per-fold
+     * progress updates.
+     *
+     * @param strategy         strategy to execute
+     * @param tradeType        trade type used to open positions
+     * @param amount           amount used to open/close trades
+     * @param config           walk-forward configuration
+     * @param progressCallback optional callback receiving completed fold count
+     * @return walk-forward execution result
+     * @since 0.22.4
+     */
+    public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, TradeType tradeType, Num amount,
+            WalkForwardConfig config, Consumer<Integer> progressCallback) {
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(this, new TradingStatementGenerator(),
+                new AnchoredExpandingWalkForwardSplitter());
+        return executor.execute(strategy, tradeType, amount, config, progressCallback);
     }
 
 }

@@ -9,11 +9,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
-import org.ta4j.core.LiveTrade;
+import org.ta4j.core.BaseTrade;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Indicator;
-import org.ta4j.core.LiveTradingRecord;
 import org.ta4j.core.Position;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
@@ -93,6 +92,33 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         assertNumEquals(1, cashFlow.getValue(0));
         assertNumEquals(2, cashFlow.getValue(1));
         assertNumEquals(2, cashFlow.getValue(2)); // padded with last computed value at finalIndex
+    }
+
+    @Test
+    public void cashFlowWindowedMarkToMarketSeedsWindowStartForOpenPosition() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100d, 120d, 110d, 90d)
+                .build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(3, sampleBarSeries));
+
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, 1, 3, EquityCurveMode.MARK_TO_MARKET,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(1.2d, cashFlow.getValue(1));
+        assertNumEquals(1.1d, cashFlow.getValue(2));
+        assertNumEquals(0.9d, cashFlow.getValue(3));
+    }
+
+    @Test
+    public void cashFlowWindowedRealizedKeepsWindowStartFlatForOpenPosition() {
+        var sampleBarSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100d, 120d, 110d).build();
+        var tradingRecord = new BaseTradingRecord(Trade.buyAt(0, sampleBarSeries), Trade.sellAt(2, sampleBarSeries));
+
+        var cashFlow = new CashFlow(sampleBarSeries, tradingRecord, 1, 2, EquityCurveMode.REALIZED,
+                OpenPositionHandling.MARK_TO_MARKET);
+
+        assertNumEquals(1d, cashFlow.getValue(1));
+        assertNumEquals(1.1d, cashFlow.getValue(2));
     }
 
     @Test
@@ -482,14 +508,14 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
     }
 
     @Test
-    public void cashFlowIncludesMultipleOpenLotsFromLiveTradingRecord() {
+    public void cashFlowIncludesMultipleOpenLotsFromBaseTradingRecord() {
         var series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 12d, 14d).build();
-        var record = new LiveTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
+        var record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
-        record.recordFill(0, new LiveTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
+        record.recordFill(0, new BaseTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.BUY, null, null));
-        record.recordFill(1, new LiveTrade(1, Instant.EPOCH, series.getBar(1).getClosePrice(), numFactory.one(), null,
+        record.recordFill(1, new BaseTrade(1, Instant.EPOCH, series.getBar(1).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.BUY, null, null));
 
         var cashFlow = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET,

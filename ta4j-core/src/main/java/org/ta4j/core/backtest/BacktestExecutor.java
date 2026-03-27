@@ -9,10 +9,11 @@ import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
-import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.reports.TradingStatementGenerator;
+import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
+import org.ta4j.core.walkforward.WalkForwardConfig;
 
 import java.time.Duration;
 import java.util.*;
@@ -63,7 +64,18 @@ public class BacktestExecutor {
      * @param series the bar series
      */
     public BacktestExecutor(BarSeries series) {
-        this(series, new TradingStatementGenerator());
+        this(new BarSeriesManager(series), new TradingStatementGenerator());
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param series              the bar series
+     * @param tradeExecutionModel the trade execution model
+     * @since 0.22.4
+     */
+    public BacktestExecutor(BarSeries series, TradeExecutionModel tradeExecutionModel) {
+        this(new BarSeriesManager(series, tradeExecutionModel), new TradingStatementGenerator());
     }
 
     /**
@@ -74,10 +86,12 @@ public class BacktestExecutor {
      * @param holdingCostModel     the cost model for holding the asset (e.g.
      *                             borrowing)
      * @param tradeExecutionModel  the trade execution model
+     * @since 0.22.4
      */
     public BacktestExecutor(BarSeries series, CostModel transactionCostModel, CostModel holdingCostModel,
             TradeExecutionModel tradeExecutionModel) {
-        this(series, new TradingStatementGenerator(), transactionCostModel, holdingCostModel, tradeExecutionModel);
+        this(new BarSeriesManager(series, transactionCostModel, holdingCostModel, tradeExecutionModel),
+                new TradingStatementGenerator());
     }
 
     /**
@@ -87,7 +101,20 @@ public class BacktestExecutor {
      * @param tradingStatementGenerator the TradingStatementGenerator
      */
     public BacktestExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator) {
-        this(series, tradingStatementGenerator, new ZeroCostModel(), new ZeroCostModel(), new TradeOnNextOpenModel());
+        this(new BarSeriesManager(series), tradingStatementGenerator);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param series                    the bar series
+     * @param tradingStatementGenerator the TradingStatementGenerator
+     * @param tradeExecutionModel       the trade execution model
+     * @since 0.22.4
+     */
+    public BacktestExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator,
+            TradeExecutionModel tradeExecutionModel) {
+        this(new BarSeriesManager(series, tradeExecutionModel), tradingStatementGenerator);
     }
 
     /**
@@ -101,8 +128,34 @@ public class BacktestExecutor {
      */
     public BacktestExecutor(BarSeries series, TradingStatementGenerator tradingStatementGenerator,
             CostModel transactionCostModel, CostModel holdingCostModel, TradeExecutionModel tradeExecutionModel) {
-        this.seriesManager = new BarSeriesManager(series, transactionCostModel, holdingCostModel, tradeExecutionModel);
-        this.tradingStatementGenerator = tradingStatementGenerator;
+        this(new BarSeriesManager(series, transactionCostModel, holdingCostModel, tradeExecutionModel),
+                tradingStatementGenerator);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param seriesManager the preconfigured series manager including its cost
+     *                      models, trade execution model, and default
+     *                      trading-record creation policy
+     * @since 0.22.4
+     */
+    public BacktestExecutor(BarSeriesManager seriesManager) {
+        this(seriesManager, new TradingStatementGenerator());
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param seriesManager             the preconfigured series manager including
+     *                                  its cost models, trade execution model, and
+     *                                  default trading-record creation policy
+     * @param tradingStatementGenerator the TradingStatementGenerator
+     * @since 0.22.4
+     */
+    public BacktestExecutor(BarSeriesManager seriesManager, TradingStatementGenerator tradingStatementGenerator) {
+        this.seriesManager = Objects.requireNonNull(seriesManager, "seriesManager");
+        this.tradingStatementGenerator = Objects.requireNonNull(tradingStatementGenerator, "tradingStatementGenerator");
     }
 
     /**
@@ -266,6 +319,129 @@ public class BacktestExecutor {
 
         BacktestRuntimeReport runtimeReport = buildRuntimeReport(durations, overallRuntime, strategyRuntimes);
         return new BacktestExecutionResult(seriesManager.getBarSeries(), tradingStatements, runtimeReport);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy using strategy starting type
+     * and unit amount.
+     *
+     * @param strategy strategy to execute
+     * @param config   walk-forward configuration
+     * @return walk-forward execution result
+     * @since 0.22.4
+     */
+    public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy, WalkForwardConfig config) {
+        Objects.requireNonNull(strategy, "strategy");
+        Num unitAmount = seriesManager.getBarSeries().numFactory().one();
+        return executeWalkForward(strategy, unitAmount, strategy.getStartingType(), config, null);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy with explicit amount and
+     * strategy starting trade type.
+     *
+     * @param strategy strategy to execute
+     * @param amount   amount used to open/close trades
+     * @param config   walk-forward configuration
+     * @return walk-forward execution result
+     * @since 0.22.4
+     */
+    public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy, Num amount,
+            WalkForwardConfig config) {
+        Objects.requireNonNull(strategy, "strategy");
+        return executeWalkForward(strategy, amount, strategy.getStartingType(), config, null);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy with explicit amount and trade
+     * type.
+     *
+     * @param strategy  strategy to execute
+     * @param amount    amount used to open/close trades
+     * @param tradeType trade type used to open positions
+     * @param config    walk-forward configuration
+     * @return walk-forward execution result
+     * @since 0.22.4
+     */
+    public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy, Num amount,
+            Trade.TradeType tradeType, WalkForwardConfig config) {
+        return executeWalkForward(strategy, amount, tradeType, config, null);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy with optional per-fold
+     * progress callback.
+     *
+     * @param strategy         strategy to execute
+     * @param amount           amount used to open/close trades
+     * @param tradeType        trade type used to open positions
+     * @param config           walk-forward configuration
+     * @param progressCallback optional callback receiving completed fold count
+     * @return walk-forward execution result
+     * @since 0.22.4
+     */
+    public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy, Num amount,
+            Trade.TradeType tradeType, WalkForwardConfig config, Consumer<Integer> progressCallback) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(amount, "amount");
+        Objects.requireNonNull(tradeType, "tradeType");
+        Objects.requireNonNull(config, "config");
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(seriesManager, tradingStatementGenerator,
+                new AnchoredExpandingWalkForwardSplitter());
+        return executor.execute(strategy, tradeType, amount, config, progressCallback);
+    }
+
+    /**
+     * Runs both standard backtest and walk-forward evaluation for one strategy
+     * using strategy starting type and unit amount.
+     *
+     * @param strategy strategy to execute
+     * @param config   walk-forward configuration
+     * @return combined backtest and walk-forward result
+     * @since 0.22.4
+     */
+    public BacktestAndWalkForwardResult executeWithWalkForward(Strategy strategy, WalkForwardConfig config) {
+        Objects.requireNonNull(strategy, "strategy");
+        Num unitAmount = seriesManager.getBarSeries().numFactory().one();
+        return executeWithWalkForward(strategy, unitAmount, strategy.getStartingType(), config);
+    }
+
+    /**
+     * Runs both standard backtest and walk-forward evaluation for one strategy with
+     * explicit amount and strategy starting trade type.
+     *
+     * @param strategy strategy to execute
+     * @param amount   amount used to open/close trades
+     * @param config   walk-forward configuration
+     * @return combined backtest and walk-forward result
+     * @since 0.22.4
+     */
+    public BacktestAndWalkForwardResult executeWithWalkForward(Strategy strategy, Num amount,
+            WalkForwardConfig config) {
+        Objects.requireNonNull(strategy, "strategy");
+        return executeWithWalkForward(strategy, amount, strategy.getStartingType(), config);
+    }
+
+    /**
+     * Runs both standard backtest and walk-forward evaluation for one strategy.
+     *
+     * @param strategy  strategy to execute
+     * @param amount    amount used to open/close trades
+     * @param tradeType trade type used to open positions
+     * @param config    walk-forward configuration
+     * @return combined backtest and walk-forward result
+     * @since 0.22.4
+     */
+    public BacktestAndWalkForwardResult executeWithWalkForward(Strategy strategy, Num amount, Trade.TradeType tradeType,
+            WalkForwardConfig config) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(amount, "amount");
+        Objects.requireNonNull(tradeType, "tradeType");
+        Objects.requireNonNull(config, "config");
+
+        BacktestExecutionResult backtestResult = executeWithRuntimeReport(List.of(strategy), amount, tradeType);
+        StrategyWalkForwardExecutionResult walkForwardResult = executeWalkForward(strategy, amount, tradeType, config);
+        return new BacktestAndWalkForwardResult(backtestResult, walkForwardResult);
     }
 
     /**
@@ -462,6 +638,29 @@ public class BacktestExecutor {
 
         private int index() {
             return index;
+        }
+    }
+
+    /**
+     * Combined result for one-strategy backtest and walk-forward execution.
+     *
+     * @param backtest    standard backtest output
+     * @param walkForward walk-forward output
+     * @since 0.22.4
+     */
+    public record BacktestAndWalkForwardResult(BacktestExecutionResult backtest,
+            StrategyWalkForwardExecutionResult walkForward) {
+
+        /**
+         * Creates a validated combined result.
+         *
+         * @param backtest    standard backtest output
+         * @param walkForward walk-forward output
+         * @since 0.22.4
+         */
+        public BacktestAndWalkForwardResult {
+            backtest = Objects.requireNonNull(backtest, "backtest");
+            walkForward = Objects.requireNonNull(walkForward, "walkForward");
         }
     }
 

@@ -2,11 +2,17 @@ name: Release Health Check
 
 concurrency:
   group: release-health-${{ github.repository }}
-  cancel-in-progress: true
 
 on:
+  push:
+    branches:
+      - master
   schedule:
     - cron: "0 9 * * *"
+  workflow_run:
+    workflows: ["Publish Release to Maven Central"]
+    types:
+      - completed
   workflow_dispatch:
     inputs:
       staleDays:
@@ -24,6 +30,11 @@ jobs:
   health:
     name: Release health checks
     runs-on: ubuntu-latest
+    if: |
+      github.event_name != 'workflow_run' ||
+      (
+        github.event.workflow_run.head_repository.full_name == github.repository
+      )
 
     steps:
       - name: Checkout repository
@@ -61,34 +72,19 @@ jobs:
 
           git fetch origin "$DEFAULT_BRANCH" --tags
 
-          latest_tag=$(git tag --sort=-creatordate | head -n 1 || true)
-          if [ -z "$latest_tag" ]; then
-            latest_tag="none"
-          fi
-
           target_ref="origin/${DEFAULT_BRANCH}"
-          last_reachable=$(git describe --tags --abbrev=0 --first-parent --match '[0-9]*' "$target_ref" 2>/dev/null || true)
-          if [ -z "$last_reachable" ]; then
-            last_reachable=$(git describe --tags --abbrev=0 --match '[0-9]*' "$target_ref" 2>/dev/null || true)
-          fi
-          if [ -z "$last_reachable" ]; then
-            last_reachable=$(git describe --tags --abbrev=0 --first-parent --match 'v[0-9]*' "$target_ref" 2>/dev/null || true)
-          fi
-          if [ -z "$last_reachable" ]; then
-            last_reachable=$(git describe --tags --abbrev=0 --match 'v[0-9]*' "$target_ref" 2>/dev/null || true)
-          fi
-          if [ -z "$last_reachable" ]; then
-            last_reachable="none"
-          fi
+          tag_state_file=$(mktemp)
+          scripts/resolve-release-tags.sh "$target_ref" > "$tag_state_file"
 
-          latest_reachable="n/a"
-          if [ "$latest_tag" != "none" ]; then
-            if git merge-base --is-ancestor "$latest_tag" "$target_ref"; then
-              latest_reachable=true
-            else
-              latest_reachable=false
-            fi
-          fi
+          latest_tag="none"
+          while IFS='=' read -r key value; do
+            case "$key" in
+              latest_tag) latest_tag="$value" ;;
+            esac
+          done < "$tag_state_file"
+
+          cat "$tag_state_file" >> "$GITHUB_OUTPUT"
+          rm -f "$tag_state_file"
 
           pom_version=$(python3 - <<'PY'
           import sys
@@ -148,9 +144,6 @@ jobs:
             fi
           fi
 
-          echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
-          echo "last_reachable_tag=$last_reachable" >> $GITHUB_OUTPUT
-          echo "latest_tag_reachable=$latest_reachable" >> $GITHUB_OUTPUT
           echo "pom_version=$pom_version" >> $GITHUB_OUTPUT
           echo "pom_base=$pom_base" >> $GITHUB_OUTPUT
           echo "pom_snapshot=$pom_snapshot" >> $GITHUB_OUTPUT
@@ -209,6 +202,7 @@ jobs:
           DEFAULT_BRANCH: ${{ steps.default_branch.outputs.branch }}
           LATEST_TAG: ${{ steps.state.outputs.latest_tag }}
           LAST_REACHABLE_TAG: ${{ steps.state.outputs.last_reachable_tag }}
+          LAST_FIRST_PARENT_TAG: ${{ steps.state.outputs.last_first_parent_tag }}
           LATEST_TAG_REACHABLE: ${{ steps.state.outputs.latest_tag_reachable }}
           POM_VERSION: ${{ steps.state.outputs.pom_version }}
           POM_BASE: ${{ steps.state.outputs.pom_base }}
@@ -230,6 +224,9 @@ jobs:
           fi
           if [ -z "${LAST_REACHABLE_TAG:-}" ]; then
             LAST_REACHABLE_TAG="(unknown)"
+          fi
+          if [ -z "${LAST_FIRST_PARENT_TAG:-}" ]; then
+            LAST_FIRST_PARENT_TAG="(unknown)"
           fi
           if [ -z "${LATEST_TAG_REACHABLE:-}" ]; then
             LATEST_TAG_REACHABLE="(unknown)"
@@ -310,6 +307,7 @@ jobs:
           Tag Health:
           - latest tag: ${LATEST_TAG}
           - last reachable tag: ${LAST_REACHABLE_TAG}
+          - last first-parent tag: ${LAST_FIRST_PARENT_TAG}
           - latest tag reachable: ${LATEST_TAG_REACHABLE}
           - release notes present: ${NOTES_PRESENT}
 

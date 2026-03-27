@@ -105,7 +105,7 @@ import static org.ta4j.core.num.NaN.NaN;
  *
  * @since 0.19
  */
-public class NetMomentumIndicator extends CachedIndicator<Num> {
+public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
 
     private static final double DEFAULT_RSI_NEUTRAL_PIVOT = 50.0;
     private static final double DEFAULT_DECAY_FACTOR = 1.0;
@@ -160,6 +160,11 @@ public class NetMomentumIndicator extends CachedIndicator<Num> {
 
         Objects.requireNonNull(neutralPivotValue, "Neutral pivot value must not be null");
         Objects.requireNonNull(decayFactor, "Decay factor must not be null");
+
+        double rawPivot = neutralPivotValue.doubleValue();
+        if (Double.isNaN(rawPivot) || Double.isInfinite(rawPivot)) {
+            throw new IllegalArgumentException("Neutral pivot value must be finite (not NaN or infinite)");
+        }
 
         if (timeFrame <= 0) {
             throw new IllegalArgumentException("Time frame must be greater than 0");

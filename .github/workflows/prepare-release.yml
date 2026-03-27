@@ -2,7 +2,6 @@ name: Prepare Release
 
 concurrency:
   group: prepare-release-${{ github.repository }}
-  cancel-in-progress: true
 
 on:
   workflow_dispatch:
@@ -77,7 +76,9 @@ jobs:
           python3 - <<'PY'
           import json
           import os
+          import socket
           import sys
+          import urllib.error
           import urllib.request
 
           token = os.environ.get("GH_TA4J_REPO_TOKEN", "")
@@ -112,6 +113,8 @@ jobs:
               print("::error::Unable to resolve repository context for permission preflight.")
               sys.exit(1)
 
+          request_timeout_seconds = 30
+
           def request_json(url: str, payload=None):
               headers = {
                   "Authorization": f"Bearer {token}",
@@ -123,9 +126,20 @@ jobs:
                   headers["Content-Type"] = "application/json"
                   data = json.dumps(payload).encode("utf-8")
               req = urllib.request.Request(url, data=data, headers=headers)
-              with urllib.request.urlopen(req, timeout=30) as resp:
-                  body = json.load(resp)
-                  response_headers = {k.lower(): v for k, v in resp.headers.items()}
+              try:
+                  with urllib.request.urlopen(req, timeout=request_timeout_seconds) as resp:
+                      body = json.load(resp)
+                      response_headers = {k.lower(): v for k, v in resp.headers.items()}
+              except TimeoutError as exc:
+                  raise TimeoutError(
+                      f"Request to {url} timed out after {request_timeout_seconds}s"
+                  ) from exc
+              except urllib.error.URLError as exc:
+                  if isinstance(exc.reason, socket.timeout):
+                      raise TimeoutError(
+                          f"Request to {url} timed out after {request_timeout_seconds}s"
+                      ) from exc
+                  raise
               return body, response_headers
 
           query = {
@@ -162,8 +176,8 @@ jobs:
           scope_check = "unknown"
           scope_allows_push = True
           if scopes:
-              scope_check = "pass" if (has_repo_scope or has_public_repo_scope) else "fail"
-              scope_allows_push = scope_check == "pass"
+              scope_allows_push = has_repo_scope or has_public_repo_scope
+              scope_check = "pass" if scope_allows_push else "fail"
 
           permission_allows_push = permission in ("WRITE", "MAINTAIN", "ADMIN") or push_permission
           allowed = permission_allows_push and scope_allows_push
@@ -524,6 +538,7 @@ jobs:
           RELEASE_COMMIT: ${{ steps.release_commit.outputs.release_commit }}
           RELEASE_BRANCH: release/${{ steps.versions.outputs.release }}
           TARGET_BRANCH: ${{ github.event.repository.default_branch }}
+          RELEASE_OWNER: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
         with:
           github-token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
           script: |
@@ -595,7 +610,31 @@ jobs:
                 labels: ["release"]
               });
             } catch (error) {
-              core.warning(`Failed to add release label: ${error.message}`);
+              console.warn(`Failed to add release label: ${error.message}`);
+            }
+
+            const releaseOwner = process.env.RELEASE_OWNER?.trim() || "TheCookieLab";
+
+            try {
+              await github.rest.issues.addAssignees({
+                owner,
+                repo,
+                issue_number: prNumber,
+                assignees: [releaseOwner]
+              });
+            } catch (error) {
+              throw new Error(`Failed to assign release owner ${releaseOwner}: ${error.message}`);
+            }
+
+            try {
+              await github.rest.pulls.requestReviewers({
+                owner,
+                repo,
+                pull_number: prNumber,
+                reviewers: [releaseOwner]
+              });
+            } catch (error) {
+              throw new Error(`Failed to request review from ${releaseOwner}: ${error.message}`);
             }
 
       # -----------------------

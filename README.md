@@ -1,4 +1,4 @@
-# ta4j  [![Build and Test](https://github.com/ta4j/ta4j/actions/workflows/test.yml/badge.svg)](https://github.com/ta4j/ta4j/actions/workflows/test.yml) [![Discord](https://img.shields.io/discord/745552125769023488.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/HX9MbWZ) [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT) ![Maven Central](https://img.shields.io/maven-central/v/org.ta4j/ta4j-parent?color=blue&label=Version) ![JDK](https://img.shields.io/badge/JDK-25%2B-orange)
+# ta4j  [![Build and Test](https://github.com/ta4j/ta4j/actions/workflows/test.yml/badge.svg)](https://github.com/ta4j/ta4j/actions/workflows/test.yml) [![Discord](https://img.shields.io/discord/745552125769023488.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/HX9MbWZ) [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT) ![Maven Central](https://img.shields.io/maven-central/v/org.ta4j/ta4j-parent?color=blue&label=Version) ![JDK](https://img.shields.io/badge/JDK-21%2B-orange)
 
 ***Technical Analysis for Java***
 
@@ -12,6 +12,7 @@ Build, test, and deploy trading bots in Java. With 200+ (and counting) technical
 
 - [Why Ta4j?](#why-ta4j)
 - [Install in seconds](#install-in-seconds)
+- [Build commands: Maven Wrapper or Maven](#build-commands-maven-wrapper-or-maven)
 - [Quick start: Your first strategy](#quick-start-your-first-strategy)
 - [Sourcing market data](#sourcing-market-data)
 - [Visualize and share strategies](#visualize-and-share-strategies)
@@ -66,7 +67,7 @@ Add Ta4j from Maven Central:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.22.2</version>
+  <version>0.22.4</version>
 </dependency>
 ```
 
@@ -85,7 +86,7 @@ Prefer living on the edge? Use the snapshot repository and version:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.22.3-SNAPSHOT</version>
+  <version>0.22.5-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -99,7 +100,7 @@ Sample applications are also published so you can copy/paste entire flows:
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.22.2</version>
+  <version>0.22.4</version>
 </dependency>
 ```
 
@@ -113,13 +114,22 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-examples</artifactId>
-  <version>0.22.3-SNAPSHOT</version>
+  <version>0.22.5-SNAPSHOT</version>
 </dependency>
 ```
 
 <!-- TA4J_VERSION_BLOCK:examples:snapshot:end -->
 
 **💡 Tip**: The `ta4j-examples` module includes runnable demos, data loaders, and charting utilities. It's a great way to see Ta4j in action and learn by example.
+
+## Build commands: Maven Wrapper or Maven
+
+Ta4j supports both approaches:
+
+- **Maven Wrapper (recommended):** Uses the repository-pinned Maven version and avoids requiring a global Maven installation.
+  Linux/macOS/Git Bash: `./mvnw ...`
+  Windows CMD/PowerShell: `mvnw.cmd ...`
+- **System Maven (optional):** Use `mvn ...` if you prefer your local Maven installation.
 
 ## Try it now
 
@@ -130,20 +140,24 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 git clone https://github.com/ta4j/ta4j.git
 cd ta4j
 
-# Build the project first
-mvn clean install -DskipTests
+# Build the project first (Linux/macOS/Git Bash)
+./mvnw clean install -DskipTests
+# Windows CMD/PowerShell: mvnw.cmd clean install -DskipTests
 
 # Run the Quickstart example (Quickstart is configured as the default)
-mvn -pl ta4j-examples exec:java
+./mvnw -pl ta4j-examples exec:java
+# Windows CMD/PowerShell: mvnw.cmd -pl ta4j-examples exec:java
 ```
+
+Prefer system Maven? Use the same commands with `mvn` instead of `./mvnw` or `mvnw.cmd`.
 
 **Alternative:** To run a different example class:
 ```bash
 # On Linux/Mac/Git Bash
-mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
+./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
 
 # On Windows CMD (use quotes)
-mvn -pl ta4j-examples exec:java "-Dexec.mainClass=ta4jexamples.Quickstart"
+mvnw.cmd -pl ta4j-examples exec:java "-Dexec.mainClass=ta4jexamples.Quickstart"
 ```
 
 This will load historical Bitcoin data, run a complete trading strategy, display performance metrics, and show an interactive chart - all in one go!
@@ -158,7 +172,7 @@ Load price data, plug in indicators, and describe when to enter/exit. The API re
 
 **💡 Want to see this in action?** The [`Quickstart` example](https://github.com/ta4j/ta4j/blob/master/ta4j-examples/src/main/java/ta4jexamples/Quickstart.java) includes this same pattern plus performance metrics and charting. Run it with:
 ```bash
-mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
+./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
 ```
 
 **Key concepts:**
@@ -253,7 +267,7 @@ BarSeries series = YahooFinanceHttpBarSeriesDataSource.loadSeries("BTC-USD",
 
 **See it in action:** Run the complete example with:
 ```bash
-mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.YahooFinanceBacktest
+./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.YahooFinanceBacktest
 ```
 
 This example demonstrates loading data from Yahoo Finance, building an advanced multi-indicator strategy (Bollinger Bands, RSI, ATR stops), running a backtest, and visualizing results.
@@ -288,7 +302,7 @@ BarSeries series = dataSource.loadSeriesInstance("ETH-USD",
 
 **See it in action:** Run the complete example with:
 ```bash
-mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.CoinbaseBacktest
+./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.CoinbaseBacktest
 ```
 
 ### Other data sources
@@ -351,6 +365,33 @@ System.out.printf("Max drawdown: %.2f%%%n",
 // See the wiki for the full list of available criteria
 ```
 
+You can also swap in execution models that simulate slippage and order-book-style
+fills:
+
+```java
+import org.ta4j.core.backtest.SlippageExecutionModel;
+import org.ta4j.core.backtest.StopLimitExecutionModel;
+
+// Example 1: next-open execution with 5 bps slippage
+TradingRecord slippageRecord = new BarSeriesManager(series,
+        new SlippageExecutionModel(series.numFactory().numOf(0.0005)))
+        .run(strategy);
+
+// Example 2: stop-limit orders with partial fills (max 25% bar-volume participation)
+TradingRecord stopLimitRecord = new BarSeriesManager(series,
+        new StopLimitExecutionModel(
+                series.numFactory().numOf(0.003),  // stop trigger ratio
+                series.numFactory().numOf(0.004),  // limit offset ratio
+                series.numFactory().numOf(0.25),   // max bar participation
+                4))                                // order TTL in bars
+        .run(strategy, strategy.getStartingType(), series.numFactory().numOf(10));
+```
+
+Want a runnable side-by-side demo? `ta4j-examples` now includes
+`TradingRecordParityBacktest`, which compares next-open, current-close, and
+slippage fills on the same strategy and then shows the same setup with provided
+and factory-configured `BaseTradingRecord` flows.
+
 ### Backtest hundreds or even thousands of strategies
 
 Want to find the top performers? Generate strategies with varying parameters and compare them:
@@ -373,23 +414,24 @@ BacktestExecutionResult result = new BacktestExecutor(series)
     .executeWithRuntimeReport(strategies, 
         series.numFactory().numOf(1),  // position size: 1 unit
         Trade.TradeType.BUY,           // long positions (use Trade.TradeType.SELL for shorts)
-        ProgressCompletion.loggingWithMemory(); // logs progress with memory stats
+        ProgressCompletion.loggingWithMemory()); // logs progress with memory stats
 
-// Get top 10 strategies sorted by net profit, then by RoMaD (for ties)
-// You can sort by any combination of AnalysisCriterion - mix and match to find strategies that meet your goals
-AnalysisCriterion returnOverMaxDradownCriterion = new ReturnOverMaxDrawdownCriterion();
+// Weight net profit at 70% and return over max drawdown at 30%.
+// Weights are normalized internally, so 7/3 and 0.7/0.3 are equivalent.
 AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
+AnalysisCriterion returnOverMaxDrawdownCriterion = new ReturnOverMaxDrawdownCriterion();
 
-List<TradingStatement> topStrategies = result.getTopStrategies(10,
-    netProfitCriterion,    // primary sort: highest net profit first
-    returnOverMaxDradownCriterion);  // secondary sort: highest RoMaD for ties
+// Get the top 10 strategies by composite weighted score
+List<TradingStatement> topStrategies = result.getTopStrategiesWeighted(10,
+    WeightedCriterion.of(netProfitCriterion, 7.0),
+    WeightedCriterion.of(returnOverMaxDrawdownCriterion, 3.0));
 
 // Review the winners
 topStrategies.forEach(statement -> {
-    System.out.printf("Strategy: %s, Net Profit: %.2f, Return over Max Drawdown: %.2f%n",
+    System.out.printf("Strategy: %s, Net Profit: %s, Return over Max Drawdown: %s%n",
         statement.getStrategy().getName(),
         statement.getCriterionScore(netProfitCriterion).orElse(series.numOf(0)),
-        statement.getCriterionScore(returnOverMaxDradownCriterion).orElse(series.numOf(0)));
+        statement.getCriterionScore(returnOverMaxDrawdownCriterion).orElse(series.numOf(0)));
 });
 ```
 
@@ -517,7 +559,7 @@ JFreeChart chart = chartWorkflow.builder()
 
 This comprehensive chart demonstrates combining multiple indicators (MACD, RSI) in separate subcharts with performance metrics, giving you a complete view of strategy behavior.
 
-See the [chart at the top of this README](#ta4j) for another example, or check the [wiki's charting guide](https://ta4j.github.io/ta4j-wiki/Charting.html) for more examples.
+See the chart at the top of this README for another example, or check the [wiki's charting guide](https://ta4j.github.io/ta4j-wiki/Charting.html) for more examples.
 
 **Export to any stack** (Python, TypeScript, etc.):
 
@@ -566,7 +608,7 @@ LOG.info("Output: {}", strategyJson);
 Restore from JSON:
 ```java
 // Restore indicators and strategies from JSON
-Indicator<?> restoredIndicator = Indicator.fromJson(series, indicatorJson);
+Indicator<?> restoredIndicator = Indicator.fromJson(series, rsiJson);
 Strategy restoredStrategy = Strategy.fromJson(series, strategyJson);
 ```
 
@@ -578,6 +620,7 @@ Bar series serialization (Java):
 ## Features at a glance
 
 - **190+ technical indicators (and counting)** - Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and many more. New indicators are added regularly.
+- **Candlestick pattern coverage** - Includes bullish/bearish reversal patterns such as Morning/Evening Star, Piercing Line, Dark Cloud Cover, engulfing, harami, and marubozu variants.
 - **Composable strategy API** - Build complex trading rules using fluent Java patterns
 - **Built-in backtesting engine** - Test strategies on years of data in seconds. Same code for backtesting and live trading — no rewrites.
 - **Performance metrics** - 30+ analysis criteria including Sharpe ratio, drawdown, win rate, and more
@@ -619,32 +662,51 @@ while (true) {
     Thread.sleep(60000); // Wait 1 minute (or your bar interval)
 }
 ```
-
 **Why this works:**
 - **Same code, different data**: Your strategy logic is identical for backtests and live trading
 - **Deterministic**: Same inputs always produce same outputs - critical for testing and debugging
 - **Type-safe**: Compile-time checks catch errors before they cost money
 
+### Migration note: Trade and TradingRecord surfaces
+
+Treat `Trade` and `TradingRecord` as the primary APIs. Stream single fills directly with
+`TradingRecord.operate(fill)`, or batch one logical order with `Trade.fromFills(...)` and pass that through
+`TradingRecord.operate(...)`. `BaseTrade` and `BaseTradingRecord` remain the shared implementation behind those
+contracts.
+
+```java
+TradingRecord defaultBacktest = new BarSeriesManager(series).run(strategy);
+
+TradingRecord parityBacktest = new BarSeriesManager(series).run(
+        strategy,
+        new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO,
+                new ZeroCostModel(), new ZeroCostModel(), null, null));
+```
+
 ## Recording live executions
 
-When you route orders to an exchange, record the fills in a `LiveTradingRecord`. It tracks partial fills, multiple open
+When you route orders to an exchange, stream one fill at a time with `TradingRecord.operate(fill)`, or group an
+exchange-reported batch with `Trade.fromFills(...)`. `BaseTradingRecord` still tracks partial fills, multiple open
 lots, and recorded fees so analytics can include open exposure.
 
 ```java
+import java.util.List;
 import java.time.Instant;
 
-import org.ta4j.core.ExecutionFill;
 import org.ta4j.core.ExecutionMatchPolicy;
 import org.ta4j.core.ExecutionSide;
-import org.ta4j.core.LiveTrade;
-import org.ta4j.core.LiveTradingRecord;
+import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Trade;
+import org.ta4j.core.TradeFill;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.num.Num;
 
-LiveTradingRecord record = new LiveTradingRecord(
+TradingRecord record = new BaseTradingRecord(
         TradeType.BUY,
         ExecutionMatchPolicy.FIFO,
         new ZeroCostModel(),
@@ -652,28 +714,42 @@ LiveTradingRecord record = new LiveTradingRecord(
         null,
         null);
 
-record.recordFill(new LiveTrade(
-        barIndex,
+TradeFill incomingFill = new TradeFill(
+        -1,
         Instant.now(),
         price,
         amount,
         fee,
         ExecutionSide.BUY,
         orderId,
-        correlationId));
+        correlationId);
+record.operate(incomingFill);
 
-// If you already have exchange DTOs mapped to ExecutionFill, use the generic API.
-ExecutionFill exchangeFill = mapExchangeFill();
-record.recordExecutionFill(exchangeFill);
+// If the exchange already gives you multiple partial fills for one logical order,
+// you can either stream them one at a time...
+TradeFill batchFillOne = mapExchangeFill(partialOne);
+TradeFill batchFillTwo = mapExchangeFill(partialTwo);
+
+// Stream fills directly as they arrive
+record.operate(batchFillOne);
+record.operate(batchFillTwo);
+
+// ...or, if you already have the whole batch, keep them together:
+List<TradeFill> exchangeFills = List.of(batchFillOne, batchFillTwo);
+record.operate(Trade.fromFills(TradeType.BUY, exchangeFills));
 
 CashFlow equity = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET,
         OpenPositionHandling.MARK_TO_MARKET);
-var latest = equity.getValue(series.getEndIndex());
+Num latest = equity.getValue(series.getEndIndex());
 ```
 
 Notes:
 - `ExecutionMatchPolicy.SPECIFIC_ID` matches exits to the lot with a matching `correlationId` or `orderId`.
-- After deserializing a `LiveTradingRecord`, call `rehydrate(holdingCostModel)` to restore transient cost models.
+- Single fills need an explicit `ExecutionSide` so `TradingRecord.operate(fill)` can infer the right trade direction.
+- After deserializing a `BaseTradingRecord`, call `rehydrate(holdingCostModel)` to restore transient cost models.
+- See `TradeFillRecordingExample` in `ta4j-examples` for a runnable live-style walkthrough that streams fills with
+  `TradingRecord.operate(fill)`, contrasts that with grouped `Trade.fromFills(...)` recording, and shows how
+  `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` change partial-exit matching.
 
 ## Streaming trade ingestion (gap handling)
 
@@ -746,11 +822,17 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 
 ### Analysis & Backtesting Examples
 - **[StrategyAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/StrategyAnalysis.java)** - Comprehensive strategy performance analysis
-- **[ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWaveAnalysis.java)** - Elliott Wave scenario analysis with confidence scoring and annotated charts. Supports command-line arguments for loading data from Yahoo Finance or Coinbase, or uses a default dataset if no arguments provided.
-- **[BTCUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/BTCUSDElliottWaveAnalysis.java)** - Example Elliott Wave analysis for Bitcoin (BTC-USD) using Coinbase data
-- **[ETHUSDElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ETHUSDElliottWaveAnalysis.java)** - Example Elliott Wave analysis for Ethereum (ETH-USD) using Coinbase data
-- **[SP500ElliottWaveAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/SP500ElliottWaveAnalysis.java)** - Example Elliott Wave analysis for S&P 500 Index (^GSPC) using Yahoo Finance data
+- **[ElliottWaveIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWaveIndicatorSuiteDemo.java)** - Canonical Elliott Wave scenario analysis with confidence scoring, structured reporting, and annotated charts. Defaults to an ossified classpath dataset when run without arguments; optional command-line arguments can load Yahoo Finance or Coinbase data.
+- **[ElliottWavePresetDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWavePresetDemo.java)** - Consolidated preset launcher with fixed ossified presets (`btc`, `eth`, `sp500`) and flexible live mode where you can provide any ticker.
+- **[ElliottWaveAdaptiveSwingAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/demo/ElliottWaveAdaptiveSwingAnalysis.java)** - Demonstrates adaptive/composite swing detection for scenario generation.
+- **[ElliottWavePatternProfileDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/demo/ElliottWavePatternProfileDemo.java)** - Compares default and pattern-aware confidence profiles.
+- **[ElliottWaveMultiDegreeAnalysisDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/demo/ElliottWaveMultiDegreeAnalysisDemo.java)** - Shows cross-degree validation and scenario recommendation.
+- **[ElliottWaveTrendBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveTrendBacktest.java)** - Evaluates trend-bias directionality over backtest and walk-forward windows.
+- **[HighRewardElliottWaveBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/HighRewardElliottWaveBacktest.java)** - Backtests the high-reward Elliott Wave strategy presets.
+- **[WyckoffCycleIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleIndicatorSuiteDemo.java)** - Demonstrates the Wyckoff cycle entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`) and prints phase transitions on an ossified bar series dataset
 - **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
+- **[TradeFillRecordingExample](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java)** - Walk through a live-style partial-fill workflow with `TradingRecord.operate(fill)`, inspect `getOpenPositions()` versus `getCurrentPosition()`, and compare `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` partial-exit matching.
+- **[TradingRecordParityBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java)** - Compare next-open, current-close, and slippage execution models side by side, then verify the same fills across default, provided, and factory-configured `BaseTradingRecord` runs.
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
 
 ### Charting Examples
@@ -758,7 +840,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[CandlestickChart](ta4j-examples/src/main/java/ta4jexamples/indicators/CandlestickChart.java)** - Basic candlestick chart with trading signals
 - **[CashFlowToChart](ta4j-examples/src/main/java/ta4jexamples/analysis/CashFlowToChart.java)** - Visualize cash flow and equity curves
 
-**💡 Tip**: Run any example with `mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart` (replace `Quickstart` with the class name).
+**💡 Tip**: Run any example with `./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart` (replace `Quickstart` with the class name; on Windows use `mvnw.cmd`).
 
 ## Performance
 
@@ -817,17 +899,17 @@ Ta4j uses automated workflows for publishing both snapshot and stable releases.
 
 ### Snapshots
 
-Every push to `master` triggers a snapshot deployment via the `snapshot.yml` Github workflow:
+Every push to `master` triggers a snapshot deployment via the `snapshot.yml` GitHub workflow:
 
 Snapshots are available at:
 
-```
+```text
 https://central.sonatype.com/repository/maven-snapshots/
 ```
 
 ### Stable releases
 
-Releases are also automated via Github workflows. For detailed information about the release process, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
+Releases are also automated via GitHub workflows. For detailed information about the release process, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
 
 
 ## Warranty
@@ -855,6 +937,3 @@ What *is* certain is this: whoever they are, and whatever motivates them, they d
 <a href = https://github.com/ta4j/ta4j/graphs/contributors>
   <img src = https://contrib.rocks/image?repo=ta4j/ta4j>
 </a>
-
-
-

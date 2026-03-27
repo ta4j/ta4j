@@ -342,6 +342,121 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     @Test
+    public void testConstructorRejectsNaNNeutralPivot() {
+        CachedIndicator<Num> oscillator = buildOscillator();
+        assertThrows(IllegalArgumentException.class, () -> new NetMomentumIndicator(oscillator, 5, Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> new NetMomentumIndicator(oscillator, 5, Double.NaN, 1.0));
+    }
+
+    @Test
+    public void testConstructorRejectsInfiniteNeutralPivot() {
+        CachedIndicator<Num> oscillator = buildOscillator();
+        assertThrows(IllegalArgumentException.class,
+                () -> new NetMomentumIndicator(oscillator, 5, Double.POSITIVE_INFINITY));
+        assertThrows(IllegalArgumentException.class,
+                () -> new NetMomentumIndicator(oscillator, 5, Double.NEGATIVE_INFINITY));
+        assertThrows(IllegalArgumentException.class,
+                () -> new NetMomentumIndicator(oscillator, 5, Double.POSITIVE_INFINITY, 1.0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new NetMomentumIndicator(oscillator, 5, Double.NEGATIVE_INFINITY, 1.0));
+    }
+
+    @Test
+    public void testUnstableBoundaryEdges() {
+        CachedIndicator<Num> oscillator = new CachedIndicator<>(closePrice) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return numOf(55);
+            }
+        };
+
+        int timeFrame = 4;
+        NetMomentumIndicator subject = new NetMomentumIndicator(oscillator, timeFrame, 50);
+        int unstableBars = subject.getCountOfUnstableBars();
+
+        assertTrue("Last unstable bar must be NaN", Num.isNaNOrNull(subject.getValue(unstableBars - 1)));
+        assertFalse("First stable bar must be non-NaN", Num.isNaNOrNull(subject.getValue(unstableBars)));
+    }
+
+    @Test
+    public void testDecayOneLegacyParityDeterministic() {
+        double constantOsc = 60.0;
+        double pivot = 50.0;
+        int timeFrame = 5;
+        CachedIndicator<Num> constantAbove = new CachedIndicator<>(closePrice) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return numOf(constantOsc);
+            }
+        };
+
+        NetMomentumIndicator decayOne = new NetMomentumIndicator(constantAbove, timeFrame, pivot, 1.0);
+        KalmanFilterIndicator smoothed = new KalmanFilterIndicator(constantAbove);
+        BinaryOperationIndicator deltaIndicator = BinaryOperationIndicator.difference(smoothed, pivot);
+
+        int unstableBars = decayOne.getCountOfUnstableBars();
+        for (int i = unstableBars; i < series.getBarCount(); i++) {
+            Num expected = numOf(0);
+            int start = Math.max(0, i - timeFrame + 1);
+            for (int j = start; j <= i; j++) {
+                if (j >= unstableBars) {
+                    expected = expected.plus(deltaIndicator.getValue(j));
+                }
+            }
+            assertTrue("Decay=1 must match legacy cumulative sum at index " + i,
+                    decayOne.getValue(i).isEqual(expected));
+        }
+    }
+
+    @Test
+    public void testDecayLessThanOneDeterministicWindow() {
+        double constantOsc = 65.0;
+        double pivot = 50.0;
+        double decay = 0.85;
+        int timeFrame = 6;
+        CachedIndicator<Num> constantAbove = new CachedIndicator<>(closePrice) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return numOf(constantOsc);
+            }
+        };
+
+        KalmanFilterIndicator smoothed = new KalmanFilterIndicator(constantAbove);
+        BinaryOperationIndicator deltaIndicator = BinaryOperationIndicator.difference(smoothed, pivot);
+        Num delta = deltaIndicator.getValue(series.getBarCount() - 1);
+
+        Num decayNum = numOf(decay);
+        Num decayAtWindow = decayNum.pow(timeFrame);
+        Num steadyState = delta.multipliedBy(numOf(1).minus(decayAtWindow)).dividedBy(numOf(1).minus(decayNum));
+
+        NetMomentumIndicator decayed = new NetMomentumIndicator(constantAbove, timeFrame, pivot, decay);
+        int unstableBars = decayed.getCountOfUnstableBars();
+        int lastIndex = series.getBarCount() - 1;
+
+        assertTrue("After warmup, decayed value should converge toward steady state",
+                lastIndex >= unstableBars + timeFrame);
+        Num actual = decayed.getValue(lastIndex);
+        Num tolerance = numOf(1e-6);
+        assertTrue("Decay<1 steady-state mismatch: actual=" + actual + " expected~" + steadyState,
+                actual.minus(steadyState).abs().isLessThan(tolerance));
+    }
+
+    @Test
     public void testUnstableBarsCountWithRSI() {
         RSIIndicator rsi = new RSIIndicator(closePrice, 14);
         NetMomentumIndicator subject = NetMomentumIndicator.forRsi(rsi, 5);
@@ -514,6 +629,51 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
             assertTrue("Access-order dependent mismatch at index " + i + " (delta=" + delta + ")",
                     delta.isLessThan(tolerance));
         }
+    }
+
+    @Test
+    public void testLargeFirstAccessMatchesSequentialAccess() {
+        BarSeries longSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
+
+        NetMomentumIndicator sequential = new NetMomentumIndicator(new ClosePriceIndicator(longSeries), 30, 2500, 0.9);
+        NetMomentumIndicator farFirst = new NetMomentumIndicator(new ClosePriceIndicator(longSeries), 30, 2500, 0.9);
+
+        int targetIndex = 4000;
+        Num expected = null;
+        for (int i = 0; i <= targetIndex; i++) {
+            expected = sequential.getValue(i);
+        }
+
+        Num actual = farFirst.getValue(targetIndex);
+        Num tolerance = numOf(1e-9);
+        assertTrue("Large first access mismatch: expected=" + expected + " actual=" + actual,
+                expected.minus(actual).abs().isLessThan(tolerance));
+    }
+
+    @Test
+    public void testFarFirstAccessMatchesSequentialAccessOnPrunedSeries() {
+        BarSeries movingSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        movingSeries.setMaximumBarCount(5);
+
+        for (int i = 0; i < 20; i++) {
+            movingSeries.barBuilder().closePrice(55 + i).add();
+        }
+
+        NetMomentumIndicator sequential = new NetMomentumIndicator(new ClosePriceIndicator(movingSeries), 7, 50, 0.85);
+        NetMomentumIndicator farFirst = new NetMomentumIndicator(new ClosePriceIndicator(movingSeries), 7, 50, 0.85);
+
+        int beginIndex = movingSeries.getBeginIndex();
+        int endIndex = movingSeries.getEndIndex();
+        assertTrue("Expected retained bars after populating the moving series", beginIndex <= endIndex);
+        Num expected = sequential.getValue(beginIndex);
+        for (int i = beginIndex + 1; i <= endIndex; i++) {
+            expected = sequential.getValue(i);
+        }
+
+        Num actual = farFirst.getValue(endIndex);
+        Num tolerance = numOf(1e-9);
+        assertTrue("Pruned-series large first access mismatch: expected=" + expected + " actual=" + actual,
+                expected.minus(actual).abs().isLessThan(tolerance));
     }
 
     private CachedIndicator<Num> buildOscillator() {

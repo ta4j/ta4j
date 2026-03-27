@@ -856,6 +856,17 @@ public final class IndicatorSerialization {
             return null;
         }
         if (types.size() > 1) {
+            Class<?> preferredType = null;
+            int nonDeprecatedCount = 0;
+            for (Class<?> type : types) {
+                if (!type.isAnnotationPresent(Deprecated.class)) {
+                    nonDeprecatedCount++;
+                    preferredType = type;
+                }
+            }
+            if (nonDeprecatedCount == 1) {
+                return preferredType;
+            }
             throw new IndicatorSerializationException(
                     "Multiple indicator classes share the simple name: " + simpleName);
         }

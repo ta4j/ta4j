@@ -1,12 +1,8 @@
-# Candlestick indicator test conventions
+# AGENTS instructions for candlestick indicator tests
 
-## Test structure
-- Mirror the class name under test (e.g., `BullishMarubozuIndicator` → `BullishMarubozuIndicatorTest`).
-- Extend `AbstractIndicatorTest<BarSeries, Num>` when possible to ensure compatibility with both `DoubleNum` and `DecimalNum`.
+Follow `ta4j-core/src/test/java/AGENTS.md` and `.../indicators/AGENTS.md`; this file adds candle-pattern specifics.
 
-## Test data and assertions
-- Use `MockBarSeriesBuilder` or `BaseBarSeriesBuilder` utilities from `org.ta4j.core` to construct deterministic bar data.
-- Prefer expressive assertion messages using AssertJ (`assertThat`).
-
-## Test coverage
-- Verify both positive and negative scenarios, including boundary cases where the pattern should not trigger.
+- Mirror class names under test (`BullishMarubozuIndicator` -> `BullishMarubozuIndicatorTest`).
+- Prefer extending `AbstractIndicatorTest<BarSeries, Num>` to exercise both `DoubleNum` and `DecimalNum`.
+- Build deterministic bars with `MockBarSeriesBuilder` or `BaseBarSeriesBuilder` utilities.
+- Verify positive, negative, and boundary-trigger scenarios for each pattern.

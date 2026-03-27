@@ -1,0 +1,130 @@
+/*
+ * SPDX-License-Identifier: MIT
+ */
+package org.ta4j.core.indicators.candles;
+
+import java.util.Objects;
+
+import org.ta4j.core.Bar;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.CachedIndicator;
+import org.ta4j.core.indicators.trend.UpTrendIndicator;
+import org.ta4j.core.num.Num;
+
+/**
+ * Dark cloud cover candlestick pattern indicator.
+ *
+ * <p>
+ * A dark cloud cover pattern is detected when a long bullish candle in an
+ * uptrend is followed by a long bearish candle that gaps up at the open and
+ * closes deep into the first candle's body.
+ * </p>
+ *
+ * <p>
+ * Invalid ratio denominators (zero or NaN in first open, second open, or first
+ * close) are treated as non-pattern bars and return {@code false}.
+ * </p>
+ *
+ * <p>
+ * Default thresholds:
+ * </p>
+ * <ul>
+ * <li>{@code bigBodyThresholdPercentage = 0.03} (3%)</li>
+ * <li>{@code gapThresholdPercentage = 0.0} (any strict gap up)</li>
+ * <li>{@code penetrationThresholdPercentage = 0.5} (close below midpoint)</li>
+ * </ul>
+ *
+ * @see <a href="https://www.investopedia.com/terms/d/darkcloudcover.asp">Dark
+ *      Cloud Cover</a>
+ * @since 0.22.3
+ */
+public class DarkCloudCoverIndicator extends CachedIndicator<Boolean> {
+
+    private final UpTrendIndicator trendIndicator;
+    private final RealBodyIndicator realBodyIndicator;
+    private final Num bigBodyThresholdPercentage;
+    private final Num gapThresholdPercentage;
+    private final Num penetrationThresholdPercentage;
+
+    /**
+     * Constructor using default thresholds.
+     *
+     * @param series the bar series
+     */
+    public DarkCloudCoverIndicator(final BarSeries series) {
+        this(Objects.requireNonNull(series, "series must not be null"), series.numFactory().numOf(0.03),
+                series.numFactory().zero(), series.numFactory().numOf(0.5));
+    }
+
+    /**
+     * Constructor exposing all tunable thresholds.
+     *
+     * @param series                         the bar series
+     * @param bigBodyThresholdPercentage     minimum body size ratio (body/open)
+     * @param gapThresholdPercentage         minimum gap up ratio from first close
+     *                                       to second open
+     * @param penetrationThresholdPercentage minimum penetration ratio into the
+     *                                       first body measured from first close
+     *                                       downward
+     */
+    public DarkCloudCoverIndicator(final BarSeries series, final Num bigBodyThresholdPercentage,
+            final Num gapThresholdPercentage, final Num penetrationThresholdPercentage) {
+        super(Objects.requireNonNull(series, "series must not be null"));
+        this.trendIndicator = new UpTrendIndicator(getBarSeries());
+        this.realBodyIndicator = new RealBodyIndicator(getBarSeries());
+        this.bigBodyThresholdPercentage = Objects.requireNonNull(bigBodyThresholdPercentage,
+                "bigBodyThresholdPercentage must not be null");
+        this.gapThresholdPercentage = Objects.requireNonNull(gapThresholdPercentage,
+                "gapThresholdPercentage must not be null");
+        this.penetrationThresholdPercentage = Objects.requireNonNull(penetrationThresholdPercentage,
+                "penetrationThresholdPercentage must not be null");
+    }
+
+    @Override
+    protected Boolean calculate(final int index) {
+        if (index < getCountOfUnstableBars()) {
+            return false;
+        }
+
+        final Bar firstBar = getBarSeries().getBar(index - 1);
+        final Bar secondBar = getBarSeries().getBar(index);
+        final Num firstOpenPrice = firstBar.getOpenPrice();
+        final Num secondOpenPrice = secondBar.getOpenPrice();
+        final Num firstClosePrice = firstBar.getClosePrice();
+        if (isInvalidDenominator(firstOpenPrice) || isInvalidDenominator(secondOpenPrice)
+                || isInvalidDenominator(firstClosePrice)) {
+            return false;
+        }
+
+        final Num firstBodyRatio = realBodyIndicator.getValue(index - 1).abs().dividedBy(firstOpenPrice);
+        final Num secondBodyRatio = realBodyIndicator.getValue(index).abs().dividedBy(secondOpenPrice);
+
+        final Num firstBodySize = firstClosePrice.minus(firstOpenPrice);
+        final Num requiredClose = firstClosePrice.minus(firstBodySize.multipliedBy(penetrationThresholdPercentage));
+        final Num gapRatio = secondOpenPrice.minus(firstClosePrice).dividedBy(firstClosePrice);
+        if (isInvalidValue(firstBodyRatio) || isInvalidValue(secondBodyRatio) || isInvalidValue(requiredClose)
+                || isInvalidValue(gapRatio)) {
+            return false;
+        }
+
+        return firstBar.isBullish() && firstBodyRatio.isGreaterThanOrEqual(bigBodyThresholdPercentage)
+                && secondBar.isBearish() && secondBodyRatio.isGreaterThanOrEqual(bigBodyThresholdPercentage)
+                && secondOpenPrice.isGreaterThan(firstClosePrice)
+                && gapRatio.isGreaterThanOrEqual(gapThresholdPercentage)
+                && secondBar.getClosePrice().isLessThan(requiredClose)
+                && secondBar.getClosePrice().isGreaterThan(firstOpenPrice) && trendIndicator.getValue(index);
+    }
+
+    private static boolean isInvalidDenominator(final Num value) {
+        return isInvalidValue(value) || value.isZero();
+    }
+
+    private static boolean isInvalidValue(final Num value) {
+        return Num.isNaNOrNull(value) || Double.isNaN(value.doubleValue());
+    }
+
+    @Override
+    public int getCountOfUnstableBars() {
+        return Math.max(1, trendIndicator.getCountOfUnstableBars());
+    }
+}

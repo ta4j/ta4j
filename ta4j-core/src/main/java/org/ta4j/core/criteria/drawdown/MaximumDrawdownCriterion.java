@@ -3,9 +3,14 @@
  */
 package org.ta4j.core.criteria.drawdown;
 
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
+import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.analysis.AnalysisContext;
+import org.ta4j.core.analysis.AnalysisWindow;
 import org.ta4j.core.analysis.CashFlow;
 import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.OpenPositionHandling;
@@ -89,6 +94,45 @@ public class MaximumDrawdownCriterion extends AbstractEquityCurveSettingsCriteri
     public Num calculate(BarSeries series, TradingRecord tradingRecord) {
         CashFlow cashFlow = new CashFlow(series, tradingRecord, equityCurveMode, openPositionHandling);
         return Drawdown.amount(series, tradingRecord, cashFlow);
+    }
+
+    @Override
+    public Num calculate(BarSeries series, TradingRecord tradingRecord, AnalysisWindow window,
+            AnalysisContext context) {
+        Objects.requireNonNull(series, "series");
+        Objects.requireNonNull(tradingRecord, "tradingRecord");
+        Objects.requireNonNull(window, "window");
+        Objects.requireNonNull(context, "context");
+        if (series.isEmpty()) {
+            return calculate(series, tradingRecord);
+        }
+
+        AtomicReference<TradingRecord> projectedRecordRef = new AtomicReference<>();
+        AnalysisCriterion projectionCapture = new AnalysisCriterion() {
+            @Override
+            public Num calculate(BarSeries capturedSeries, Position position) {
+                return capturedSeries.numFactory().zero();
+            }
+
+            @Override
+            public Num calculate(BarSeries capturedSeries, TradingRecord projectedRecord) {
+                projectedRecordRef.set(projectedRecord);
+                return capturedSeries.numFactory().zero();
+            }
+
+            @Override
+            public boolean betterThan(Num criterionValue1, Num criterionValue2) {
+                return false;
+            }
+        };
+        projectionCapture.calculate(series, tradingRecord, window, context);
+
+        TradingRecord projectedRecord = Objects.requireNonNull(projectedRecordRef.get(), "projectedRecord");
+        int windowStartIndex = projectedRecord.getStartIndex(series);
+        int windowEndIndex = projectedRecord.getEndIndex(series);
+        CashFlow cashFlow = new CashFlow(series, projectedRecord, windowStartIndex, windowEndIndex, equityCurveMode,
+                openPositionHandling);
+        return Drawdown.amount(series, projectedRecord, cashFlow);
     }
 
     /**
