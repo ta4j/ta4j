@@ -163,6 +163,7 @@
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 - **Dependencies**: update to latest versions
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
+- **JDK**: updated to Java 25
 
 ### Fixed
 - **Chart window focus stealing**: `ta4j-examples` chart display paths now set `setFocusableWindowState(false)` so chart-related test/example runs do not steal desktop focus.

@@ -64,7 +64,7 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- Build -->
-        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.release>25</maven.compiler.release>
         <maven.surefire.version>3.5.4</maven.surefire.version>
 
         <!-- Dependencies -->
@@ -277,7 +277,7 @@
                                     <version>[3.9.0,)</version>
                                 </requireMavenVersion>
                                 <requireJavaVersion>
-                                    <version>[21,)</version>
+                                    <version>[25,)</version>
                                 </requireJavaVersion>
                             </rules>
                         </configuration>
