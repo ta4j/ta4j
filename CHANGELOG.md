@@ -1,6 +1,7 @@
 ## Unreleased
 
-- _No changes yet._
+### Fixed
+- **GitHub Release reruns are much less fragile on cold runners**: `github-release.yml` now caches Maven dependencies and retries release artifact packaging with backoff, so a single Maven Central connection reset does not derail tag backfills or release reruns like `0.22.5`.
 
 ## 0.22.5 (2026-03-29)
 
@@ -14,7 +15,6 @@
 
 ### Fixed
 - **Windowed maximum drawdown now stays inside the requested analysis range**: `MaximumDrawdownCriterion#calculate(series, tradingRecord, window[, context])` now bounds its cash-flow work to the requested window instead of propagating across the full trailing series, so long cached histories no longer make small windowed drawdown calculations slower as the overall series grows (`#1485`).
-- **GitHub Release reruns are much less fragile on cold runners**: `github-release.yml` now caches Maven dependencies and retries release artifact packaging with backoff, so a single Maven Central connection reset does not derail tag backfills or release reruns like `0.22.5`.
 
 ## 0.22.4 (2026-03-15)
 
