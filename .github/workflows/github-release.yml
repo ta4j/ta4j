@@ -182,9 +182,31 @@ jobs:
         with:
           distribution: temurin
           java-version: 21
+          cache: maven
 
       - name: Build all module artifacts
-        run: mvn -B -DskipTests -Dgpg.skip=true -Pproduction-release package
+        shell: bash
+        run: |
+          set -euo pipefail
+          max_attempts=3
+          attempt=1
+
+          while true; do
+            echo "audit:release_artifact_build attempt=${attempt}/${max_attempts}"
+            if mvn -B -DskipTests -Dgpg.skip=true -Pproduction-release package; then
+              break
+            fi
+
+            if ((attempt >= max_attempts)); then
+              echo "::error::Release artifact build failed after ${max_attempts} attempts."
+              exit 1
+            fi
+
+            backoff_seconds=$((attempt * 15))
+            echo "::warning::Release artifact build failed on attempt ${attempt}. Retrying in ${backoff_seconds}s."
+            sleep "${backoff_seconds}"
+            attempt=$((attempt + 1))
+          done
 
       - name: Validate release artifacts
         id: artifacts
