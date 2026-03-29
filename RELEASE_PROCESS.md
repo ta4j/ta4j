@@ -124,6 +124,12 @@ Expected behavior:
 | `github-release.yml` | tag push, manual | GitHub release publication | tag/ref validation |
 | `snapshot.yml` | push to `master` | publish snapshots | deploy prechecks |
 
+Tag metrics used by release automation:
+- `latest tag`: newest release tag by tag creation date, preferring bare numeric tags before `v`-prefixed tags.
+- `last reachable tag`: newest release tag merged into `master`; `release-scheduler.yml` uses this as its diff and version baseline.
+- `last first-parent tag`: nearest release tag visible on `master`'s first-parent chain; informational only for diagnosing merge topology.
+- `latest tag reachable`: whether the newest release tag is an ancestor of `master`.
+
 ---
 
 ## 7. Verification Checklist (Post-Release)
@@ -162,6 +168,10 @@ Why health can still fail afterward:
 - missing `release/<version>.md` for latest tag.
 - stale release PRs.
 - existing repository drift not introduced by this publish run.
+
+Why a large `last first-parent tag` gap can still be healthy:
+- release PRs merge back to `master` with merge commits, so the tagged release commit often lives on the merge's second parent rather than the first-parent spine.
+- `release-health.yml` only fails when the newest release tag is not reachable from `master`; a lagging first-parent tag is diagnostic context, not drift by itself.
 
 Remediation playbook:
 1. Open the failed `release-health.yml` run and read `Drift reasons`.

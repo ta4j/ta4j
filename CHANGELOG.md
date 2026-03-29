@@ -1,11 +1,16 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.22.5 (2026-03-29)
+
 ### Added
 - **Calmar and Omega ratios**: Added `CalmarRatioCriterion` and `OmegaRatioCriterion` for drawdown-adjusted CAGR and threshold-based return-distribution asymmetry analysis.
 - **Release PR freeze is now visible and enforced**: while any PR labeled `release` is open against `master`, non-release PR merges are now blocked by `.github/workflows/release-freeze.yml`; other open PRs automatically get a freeze notice with direct links to active release PRs, and that notice is removed once release PRs close or merge. This prevents “whoops, this should have waited for release” merge windows during release prep (`#1481`).
 
 ### Changed
 - **Release workflows are now safer for release orchestration**: `cancel-in-progress` is disabled in `prepare-release.yml`, `publish-release.yml`, `github-release.yml`, `release-health.yml`, and `release-scheduler.yml` so release runs can continue through manual triggers, schedules, and chained events. Fast-feedback workflows keep concurrency cancellation (`actionlint.yml`, `check.yml`, `test.yml`, `validate.yml`, `snapshot.yml`) enabled for PR responsiveness.
+- **Release tag baselines now follow reachable ancestry instead of first-parent only**: `release-health.yml` and `release-scheduler.yml` now resolve tags through a shared `scripts/resolve-release-tags.sh` helper, so the scheduler diffs and version floors use the newest release tag actually reachable from `master`, while first-parent tag lag remains an explicit diagnostic only.
 
 ### Fixed
 - **Windowed maximum drawdown now stays inside the requested analysis range**: `MaximumDrawdownCriterion#calculate(series, tradingRecord, window[, context])` now bounds its cash-flow work to the requested window instead of propagating across the full trailing series, so long cached histories no longer make small windowed drawdown calculations slower as the overall series grows (`#1485`).
