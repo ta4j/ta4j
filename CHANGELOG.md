@@ -1,5 +1,8 @@
 ## Unreleased
 
+### Added
+- **Trade-sampled Sharpe/Sortino**: Added `SamplingFrequency.TRADE` support to `SharpeRatioCriterion` and `SortinoRatioCriterion`.
+
 ### Fixed
 - **GitHub Release reruns are much less fragile on cold runners**: `github-release.yml` now caches Maven dependencies and retries release artifact packaging with backoff, so a single Maven Central connection reset does not derail tag backfills or release reruns like `0.22.5`.
 

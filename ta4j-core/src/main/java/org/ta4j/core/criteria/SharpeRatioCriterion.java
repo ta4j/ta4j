@@ -16,15 +16,11 @@ import org.ta4j.core.analysis.EquityCurveMode;
 import org.ta4j.core.analysis.ExcessReturns;
 import org.ta4j.core.analysis.ExcessReturns.CashReturnPolicy;
 import org.ta4j.core.analysis.OpenPositionHandling;
-import org.ta4j.core.analysis.frequency.IndexPair;
 import org.ta4j.core.analysis.frequency.Sample;
 import org.ta4j.core.analysis.frequency.SampleSummary;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
-import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexes;
-import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
-import org.ta4j.core.utils.BarSeriesUtils;
 
 /**
  * Computes the Sharpe Ratio.
@@ -53,13 +49,20 @@ import org.ta4j.core.utils.BarSeriesUtils;
  * returns are computed between period endpoints detected from bar
  * {@code endTime} after converting it to {@link #groupingZoneId}. Period
  * boundaries follow ISO week semantics for {@code WEEKLY}.</li>
+ * <li>{@link SamplingFrequency#TRADE}: one return per position interval
+ * (entry-to-exit), with open positions included only when
+ * {@link OpenPositionHandling#MARK_TO_MARKET} is effective.</li>
  * </ul>
- * The first sampled return is anchored at the series begin index, even when
- * evaluating a single {@link Position}, so the first period return spans from
- * the series start to the first period end. Pre-entry intervals are handled by
- * {@link CashReturnPolicy}: {@link CashReturnPolicy#CASH_EARNS_RISK_FREE} keeps
- * flat pre-entry equity neutral, while {@link CashReturnPolicy#CASH_EARNS_ZERO}
- * treats flat pre-entry equity as underperforming cash.
+ * For time-based sampling ({@link SamplingFrequency#BAR},
+ * {@link SamplingFrequency#SECOND}, {@link SamplingFrequency#MINUTE},
+ * {@link SamplingFrequency#HOUR}, {@link SamplingFrequency#DAY},
+ * {@link SamplingFrequency#WEEK}, {@link SamplingFrequency#MONTH}), the first
+ * sampled return is anchored at the series begin index, even when evaluating a
+ * single {@link Position}. Trade sampling uses each position interval directly.
+ * Pre-entry intervals are handled by {@link CashReturnPolicy}:
+ * {@link CashReturnPolicy#CASH_EARNS_RISK_FREE} keeps flat pre-entry equity
+ * neutral, while {@link CashReturnPolicy#CASH_EARNS_ZERO} treats flat pre-entry
+ * equity as underperforming cash.
  *
  * <p>
  * <b>Risk-free rate.</b> {@link #annualRiskFreeRate} is interpreted as an
@@ -102,7 +105,7 @@ import org.ta4j.core.utils.BarSeriesUtils;
  */
 public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
 
-    private final SamplingFrequencyIndexes samplingFrequencyIndexes;
+    private final SamplingFrequency samplingFrequency;
     private final Annualization annualization;
     private final CashReturnPolicy cashReturnPolicy;
     private final double annualRiskFreeRate;
@@ -209,8 +212,7 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         this.equityCurveMode = Objects.requireNonNull(equityCurveMode, "equityCurveMode must not be null");
         this.openPositionHandling = Objects.requireNonNull(openPositionHandling,
                 "openPositionHandling must not be null");
-        Objects.requireNonNull(samplingFrequency, "samplingFrequency must not be null");
-        this.samplingFrequencyIndexes = new SamplingFrequencyIndexes(samplingFrequency, this.groupingZoneId);
+        this.samplingFrequency = Objects.requireNonNull(samplingFrequency, "samplingFrequency must not be null");
     }
 
     @Override
@@ -229,18 +231,12 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         if (tradingRecord == null) {
             return zero;
         }
-
-        int beginIndex = series.getBeginIndex();
-        int start = beginIndex + 1;
-        int end = series.getEndIndex();
-        if (end - start + 1 < 2) {
-            return zero;
-        }
+        OpenPositionHandling effectiveOpenPositionHandling = effectiveOpenPositionHandling();
         Num annualRiskFreeRateNum = numFactory.numOf(annualRiskFreeRate);
         ExcessReturns excessReturns = new ExcessReturns(series, annualRiskFreeRateNum, cashReturnPolicy, tradingRecord,
-                equityCurveMode, openPositionHandling);
-        Stream<Sample> samples = samplingFrequencyIndexes.sample(series, beginIndex, start, end)
-                .map(pair -> getSample(series, pair, excessReturns));
+                equityCurveMode, effectiveOpenPositionHandling);
+        Stream<Sample> samples = RatioSampleSupport.samples(series, tradingRecord, samplingFrequency, groupingZoneId,
+                excessReturns, effectiveOpenPositionHandling);
         SampleSummary summary = SampleSummary.fromSamples(samples, numFactory);
 
         if (summary.count() < 2) {
@@ -257,11 +253,8 @@ public class SharpeRatioCriterion extends AbstractAnalysisCriterion {
         return annualization.apply(sharpePerPeriod, summary, numFactory);
     }
 
-    private Sample getSample(BarSeries series, IndexPair pair, ExcessReturns excessReturns) {
-        int previousIndex = pair.previousIndex();
-        Num excessReturn = excessReturns.excessReturn(previousIndex, pair.currentIndex());
-        Num deltaYears = BarSeriesUtils.deltaYears(series, previousIndex, pair.currentIndex());
-        return new Sample(excessReturn, deltaYears);
+    private OpenPositionHandling effectiveOpenPositionHandling() {
+        return equityCurveMode == EquityCurveMode.REALIZED ? OpenPositionHandling.IGNORE : openPositionHandling;
     }
 
     @Override

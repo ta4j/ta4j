@@ -57,6 +57,9 @@ public final class SamplingFrequencyIndexes {
      * @since 0.22.2
      */
     public Stream<IndexPair> sample(BarSeries series, int anchorIndex, int start, int end) {
+        if (samplingFrequency == SamplingFrequency.TRADE) {
+            throw new IllegalArgumentException("SamplingFrequency.TRADE is not supported by SamplingFrequencyIndexes");
+        }
         if (start > end || end - start < 1) {
             return Stream.empty();
         }
@@ -96,6 +99,8 @@ public final class SamplingFrequencyIndexes {
         case WEEK -> !sameIsoWeek(now, next);
         case MONTH -> !YearMonth.from(now).equals(YearMonth.from(next));
         case BAR -> true;
+        case TRADE ->
+            throw new IllegalStateException("SamplingFrequency.TRADE is not supported by time-based period detection");
         };
     }
 

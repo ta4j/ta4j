@@ -12,6 +12,7 @@ import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import org.ta4j.core.analysis.frequency.IndexPair;
 import org.ta4j.core.analysis.frequency.SamplingFrequencyIndexes;
 import org.ta4j.core.analysis.frequency.SamplingFrequency;
@@ -84,6 +85,14 @@ public class SamplingFrequencyIndexesTest {
         var pairs = sampler.sample(series, 0, 3, 1).toList();
 
         assertEquals(List.of(), pairs);
+    }
+
+    @Test
+    public void sampleTradeThrowsIllegalArgumentException() {
+        var series = buildDailySeries();
+        var sampler = new SamplingFrequencyIndexes(SamplingFrequency.TRADE, ZoneOffset.UTC);
+
+        assertThrows(IllegalArgumentException.class, () -> sampler.sample(series, 0, 1, 3));
     }
 
     private static BarSeries buildDailySeries() {
