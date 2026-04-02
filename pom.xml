@@ -56,6 +56,7 @@
     <modules>
         <module>ta4j-core</module>
         <module>ta4j-examples</module>
+        <module>ta4j-cli</module>
     </modules>
 
     <properties>
