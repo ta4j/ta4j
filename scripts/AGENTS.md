@@ -11,7 +11,8 @@ Use this guide when editing helper scripts or when orchestrating worktree/proces
 ## Scoped AGENTS discovery helper
 
 - `agents_for_target.sh` should work from repo root or workspace root.
-- Accept either a class/file name or a path, and print prevailing `AGENTS.md` files in precedence order.
+- Accept either a class/file name or a path, and print path-scoped `AGENTS.md` files in precedence order for matching targets from the current repo/workspace root.
+- Keep the helper limited to path-scoped `AGENTS.md` discovery; agents must still load system, developer, user, and workflow-specific instructions separately.
 
 ## Worktree/process operations
 
