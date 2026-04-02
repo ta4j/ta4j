@@ -20,7 +20,7 @@ The package phase produces a runnable fat jar at `ta4j-cli/target/ta4j-cli-<vers
 ## Quick Start
 
 ```bash
-java -jar ta4j-cli/target/ta4j-cli-0.22.7-SNAPSHOT-jar-with-dependencies.jar \
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   backtest \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --strategy sma-crossover \
@@ -31,7 +31,7 @@ java -jar ta4j-cli/target/ta4j-cli-0.22.7-SNAPSHOT-jar-with-dependencies.jar \
 ```
 
 ```bash
-java -jar ta4j-cli/target/ta4j-cli-0.22.7-SNAPSHOT-jar-with-dependencies.jar \
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   walk-forward \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --strategy sma-crossover \
