@@ -67,13 +67,16 @@ public class CsvBarSeriesDataSourceTest {
             Files.copy(resourceStream, tempFile, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
         }
 
-        BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString());
+        try {
+            BarSeries series = CsvFileBarSeriesDataSource.loadCsvSeries(tempFile.toString());
 
-        assertNotNull(series, "Should load series from a local filesystem path");
-        assertTrue(series.getBarCount() > 0, "Series should contain bars");
-        assertEquals(tempFile.getFileName().toString(), series.getName(), "Series name should match the local file");
-
-        Files.deleteIfExists(tempFile);
+            assertNotNull(series, "Should load series from a local filesystem path");
+            assertTrue(series.getBarCount() > 0, "Series should contain bars");
+            assertEquals(tempFile.getFileName().toString(), series.getName(),
+                    "Series name should match the local file");
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
     }
 
     @Test

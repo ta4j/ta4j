@@ -12,7 +12,7 @@
 ## Build
 
 ```bash
-mvn -pl ta4j-cli -am package
+./mvnw -pl ta4j-cli -am package
 ```
 
 The package phase produces a runnable fat jar at `ta4j-cli/target/ta4j-cli-<version>-jar-with-dependencies.jar`.
