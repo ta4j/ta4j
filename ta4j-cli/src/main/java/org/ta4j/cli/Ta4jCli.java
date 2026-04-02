@@ -89,7 +89,8 @@ public final class Ta4jCli {
         String borrowRate = arguments.optional("borrow-rate").orElse(null);
         String output = arguments.optional("output").orElse(null);
         String chart = arguments.optional("chart").orElse(null);
-        Integer unstableBars = arguments.optional("unstable-bars").map(value -> Integer.parseInt(value)).orElse(null);
+        Integer unstableBars = CliSupport.parseOptionalInteger(arguments.optional("unstable-bars").orElse(null),
+                "unstable-bars");
         boolean progress = arguments.flag("progress");
         List<String> params = arguments.list("param");
         List<CliSupport.CriterionSpec> criteria = CliSupport.resolveCriteria(arguments.list("criteria"),
@@ -129,7 +130,8 @@ public final class Ta4jCli {
         String borrowRate = arguments.optional("borrow-rate").orElse(null);
         String output = arguments.optional("output").orElse(null);
         String chart = arguments.optional("chart").orElse(null);
-        Integer unstableBars = arguments.optional("unstable-bars").map(value -> Integer.parseInt(value)).orElse(null);
+        Integer unstableBars = CliSupport.parseOptionalInteger(arguments.optional("unstable-bars").orElse(null),
+                "unstable-bars");
         boolean progress = arguments.flag("progress");
         List<String> params = arguments.list("param");
         List<CliSupport.CriterionSpec> criteria = CliSupport.resolveCriteria(arguments.list("criteria"),
@@ -174,8 +176,11 @@ public final class Ta4jCli {
         String borrowRate = arguments.optional("borrow-rate").orElse(null);
         String output = arguments.optional("output").orElse(null);
         String chart = arguments.optional("chart").orElse(null);
-        Integer unstableBars = arguments.optional("unstable-bars").map(value -> Integer.parseInt(value)).orElse(null);
-        int topK = arguments.optional("top-k").map(Integer::parseInt).orElse(5);
+        Integer unstableBars = CliSupport.parseOptionalInteger(arguments.optional("unstable-bars").orElse(null),
+                "unstable-bars");
+        String topKToken = arguments.optional("top-k").orElse(null);
+        Integer parsedTopK = CliSupport.parseOptionalInteger(topKToken, "top-k");
+        int topK = parsedTopK == null ? 5 : parsedTopK;
         boolean progress = arguments.flag("progress");
         List<String> params = arguments.list("param");
         List<String> paramGrids = arguments.list("param-grid");
@@ -226,7 +231,8 @@ public final class Ta4jCli {
         String borrowRate = arguments.optional("borrow-rate").orElse(null);
         String output = arguments.optional("output").orElse(null);
         String chart = arguments.optional("chart").orElse(null);
-        Integer unstableBars = arguments.optional("unstable-bars").map(Integer::parseInt).orElse(null);
+        Integer unstableBars = CliSupport.parseOptionalInteger(arguments.optional("unstable-bars").orElse(null),
+                "unstable-bars");
         String entryBelow = arguments.optional("entry-below").orElse(null);
         String entryAbove = arguments.optional("entry-above").orElse(null);
         String exitBelow = arguments.optional("exit-below").orElse(null);

@@ -95,12 +95,39 @@ class Ta4jCliTest {
                 .isEqualTo("rsi-indicator-test");
     }
 
+    @Test
+    void backtestRejectsInvalidUnstableBarsValue() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("backtest", "--data-file", dataFile.toString(), "--strategy",
+                "sma-crossover", "--unstable-bars", "abc");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("Invalid integer value for --unstable-bars: abc.");
+    }
+
+    @Test
+    void sweepRejectsInvalidTopKValue() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("sweep", "--data-file", dataFile.toString(), "--strategy",
+                "sma-crossover", "--param-grid", "fast=3,5", "--param-grid", "slow=20,30", "--top-k", "abc");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("Invalid integer value for --top-k: abc.");
+    }
+
     private int runCli(String... args) {
+        CliRunResult result = runCliAllowingError(args);
+        assertThat(result.stderr()).isBlank();
+        return result.exitCode();
+    }
+
+    private CliRunResult runCliAllowingError(String... args) {
         StringWriter stdout = new StringWriter();
         StringWriter stderr = new StringWriter();
         int exitCode = Ta4jCli.run(args, new PrintWriter(stdout, true), new PrintWriter(stderr, true));
-        assertThat(stderr.toString()).isBlank();
-        return exitCode;
+        return new CliRunResult(exitCode, stdout.toString(), stderr.toString());
     }
 
     private Path copyResource(String resourceName) throws IOException {
@@ -113,5 +140,8 @@ class Ta4jCliTest {
 
     private JsonObject readJson(Path jsonFile) throws IOException {
         return JsonParser.parseString(Files.readString(jsonFile)).getAsJsonObject();
+    }
+
+    private record CliRunResult(int exitCode, String stdout, String stderr) {
     }
 }

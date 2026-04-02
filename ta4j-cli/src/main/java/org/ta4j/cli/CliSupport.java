@@ -319,6 +319,13 @@ final class CliSupport {
                 seed);
     }
 
+    static Integer parseOptionalInteger(String token, String optionName) {
+        if (token == null || token.isBlank()) {
+            return null;
+        }
+        return parseOptionalInt(token, 0, optionName);
+    }
+
     static Consumer<Integer> progressCallback(boolean enabled, PrintWriter err, String label) {
         if (!enabled) {
             return null;
