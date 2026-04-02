@@ -2,6 +2,11 @@
 
 - _No changes yet._
 
+## 0.22.6 (2026-04-01)
+
+### Fixed
+- **GitHub Release reruns are much less fragile on cold runners**: `github-release.yml` now caches Maven dependencies and retries release artifact packaging with backoff, so a single Maven Central connection reset does not derail tag backfills or release reruns like `0.22.5`.
+
 ## 0.22.5 (2026-03-29)
 
 ### Added
