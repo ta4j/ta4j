@@ -45,6 +45,9 @@ final class CliArguments {
             }
 
             String key = token.substring(2);
+            if (key.isEmpty()) {
+                throw new IllegalArgumentException("Empty option name: " + token + ".");
+            }
             String value = "true";
             if (index + 1 < args.length && !args[index + 1].startsWith("--")) {
                 value = args[++index];

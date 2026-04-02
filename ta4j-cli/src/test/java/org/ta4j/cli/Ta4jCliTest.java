@@ -17,6 +17,7 @@ import java.nio.file.Path;
 import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class Ta4jCliTest {
 
@@ -117,9 +118,17 @@ class Ta4jCliTest {
         assertThat(result.stderr()).contains("Invalid integer value for --top-k: abc.");
     }
 
+    @Test
+    void parserRejectsEmptyOptionName() {
+        assertThatThrownBy(() -> CliArguments.parse(new String[] { "backtest", "--" }))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Empty option name: --.");
+    }
+
     private int runCli(String... args) {
         CliRunResult result = runCliAllowingError(args);
-        assertThat(result.stderr()).isBlank();
+        assertThat(result.stderr()).withFailMessage("CLI stderr output should be blank but was:%n%s", result.stderr())
+                .isBlank();
         return result.exitCode();
     }
 

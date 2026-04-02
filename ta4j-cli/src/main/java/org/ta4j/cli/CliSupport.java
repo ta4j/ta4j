@@ -534,14 +534,6 @@ final class CliSupport {
         return scores;
     }
 
-    private static AnalysisCriterion criterionByAlias(String alias) {
-        Supplier<AnalysisCriterion> supplier = CRITERIA.get(alias);
-        if (supplier == null) {
-            throw new IllegalArgumentException("Unknown criterion alias: " + alias + ".");
-        }
-        return supplier.get();
-    }
-
     private static Map<String, Supplier<AnalysisCriterion>> createCriterionRegistry() {
         Map<String, Supplier<AnalysisCriterion>> criteria = new LinkedHashMap<>();
         criteria.put("gross-return", GrossReturnCriterion::new);
