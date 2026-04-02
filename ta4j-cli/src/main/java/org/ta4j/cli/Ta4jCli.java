@@ -105,23 +105,14 @@ public final class Ta4jCli {
                 strategy.getStartingType(), CliSupport.progressCallback(progress, err, "backtest"));
         TradingStatement statement = result.tradingStatements().getFirst();
         Path chartPath = CliSupport.saveChart(chart, series, statement);
+        Path outputPath = CliSupport.resolveOutputPath(output);
 
         Map<String, Object> response = CliSupport.buildCommandMetadata("backtest", series, dataFile, timeframe,
-                fromDate, toDate, executionModel, capital, stakeAmount, commission, borrowRate, criteria, null,
+                fromDate, toDate, executionModel, capital, stakeAmount, commission, borrowRate, criteria, outputPath,
                 chartPath);
         response.put("runtime", CliSupport.backtestRuntimeToMap(result.runtimeReport()));
         response.put("statement", CliSupport.statementToMap(series, statement, criteria));
-
-        String json = CliSupport.toJson(response);
-        Path outputPath = CliSupport.writeJson(json, output, out);
-        response = CliSupport.buildCommandMetadata("backtest", series, dataFile, timeframe, fromDate, toDate,
-                executionModel, capital, stakeAmount, commission, borrowRate, criteria, outputPath, chartPath);
-        response.put("runtime", CliSupport.backtestRuntimeToMap(result.runtimeReport()));
-        response.put("statement", CliSupport.statementToMap(series, statement, criteria));
-        json = CliSupport.toJson(response);
-        if (outputPath != null) {
-            CliSupport.writeJson(json, outputPath.toString(), out);
-        }
+        CliSupport.writeJson(CliSupport.toJson(response), outputPath, out);
         return 0;
     }
 
@@ -158,24 +149,15 @@ public final class Ta4jCli {
                 strategy.getStartingType(), config, CliSupport.progressCallback(progress, err, "walk-forward"));
         TradingStatement statement = backtest.tradingStatements().getFirst();
         Path chartPath = CliSupport.saveChart(chart, series, statement);
+        Path outputPath = CliSupport.resolveOutputPath(output);
 
         Map<String, Object> response = CliSupport.buildCommandMetadata("walk-forward", series, dataFile, timeframe,
-                fromDate, toDate, executionModel, capital, stakeAmount, commission, borrowRate, criteria, null,
+                fromDate, toDate, executionModel, capital, stakeAmount, commission, borrowRate, criteria, outputPath,
                 chartPath);
         response.put("backtest", CliSupport.statementToMap(series, statement, criteria));
         response.put("backtestRuntime", CliSupport.backtestRuntimeToMap(backtest.runtimeReport()));
         response.put("walkForward", CliSupport.walkForwardToMap(series, walkForward, criteria));
-
-        String json = CliSupport.toJson(response);
-        Path outputPath = CliSupport.writeJson(json, output, out);
-        if (outputPath != null) {
-            response = CliSupport.buildCommandMetadata("walk-forward", series, dataFile, timeframe, fromDate, toDate,
-                    executionModel, capital, stakeAmount, commission, borrowRate, criteria, outputPath, chartPath);
-            response.put("backtest", CliSupport.statementToMap(series, statement, criteria));
-            response.put("backtestRuntime", CliSupport.backtestRuntimeToMap(backtest.runtimeReport()));
-            response.put("walkForward", CliSupport.walkForwardToMap(series, walkForward, criteria));
-            CliSupport.writeJson(CliSupport.toJson(response), outputPath.toString(), out);
-        }
+        CliSupport.writeJson(CliSupport.toJson(response), outputPath, out);
         return 0;
     }
 
@@ -213,6 +195,7 @@ public final class Ta4jCli {
         TradingStatement topStatement = sweepResult.tradingStatements().isEmpty() ? null
                 : sweepResult.tradingStatements().getFirst();
         Path chartPath = topStatement == null ? null : CliSupport.saveChart(chart, series, topStatement);
+        Path outputPath = CliSupport.resolveOutputPath(output);
 
         List<Map<String, Object>> leaderboard = sweepResult.tradingStatements()
                 .stream()
@@ -220,23 +203,12 @@ public final class Ta4jCli {
                 .toList();
 
         Map<String, Object> response = CliSupport.buildCommandMetadata("sweep", series, dataFile, timeframe, fromDate,
-                toDate, executionModel, capital, stakeAmount, commission, borrowRate, criteria, null, chartPath);
+                toDate, executionModel, capital, stakeAmount, commission, borrowRate, criteria, outputPath, chartPath);
         response.put("candidateCount", strategies.size());
         response.put("topK", topK);
         response.put("runtime", CliSupport.backtestRuntimeToMap(sweepResult.runtimeReport()));
         response.put("leaderboard", leaderboard);
-
-        String json = CliSupport.toJson(response);
-        Path outputPath = CliSupport.writeJson(json, output, out);
-        if (outputPath != null) {
-            response = CliSupport.buildCommandMetadata("sweep", series, dataFile, timeframe, fromDate, toDate,
-                    executionModel, capital, stakeAmount, commission, borrowRate, criteria, outputPath, chartPath);
-            response.put("candidateCount", strategies.size());
-            response.put("topK", topK);
-            response.put("runtime", CliSupport.backtestRuntimeToMap(sweepResult.runtimeReport()));
-            response.put("leaderboard", leaderboard);
-            CliSupport.writeJson(CliSupport.toJson(response), outputPath.toString(), out);
-        }
+        CliSupport.writeJson(CliSupport.toJson(response), outputPath, out);
         return 0;
     }
 
@@ -274,24 +246,15 @@ public final class Ta4jCli {
                 strategy.getStartingType(), CliSupport.progressCallback(progress, err, "indicator-test"));
         TradingStatement statement = result.tradingStatements().getFirst();
         Path chartPath = CliSupport.saveChart(chart, series, statement);
+        Path outputPath = CliSupport.resolveOutputPath(output);
 
         Map<String, Object> response = CliSupport.buildCommandMetadata("indicator-test", series, dataFile, timeframe,
-                fromDate, toDate, executionModel, capital, stakeAmount, commission, borrowRate, criteria, null,
+                fromDate, toDate, executionModel, capital, stakeAmount, commission, borrowRate, criteria, outputPath,
                 chartPath);
         response.put("indicator", indicatorAlias);
         response.put("runtime", CliSupport.backtestRuntimeToMap(result.runtimeReport()));
         response.put("statement", CliSupport.statementToMap(series, statement, criteria));
-
-        String json = CliSupport.toJson(response);
-        Path outputPath = CliSupport.writeJson(json, output, out);
-        if (outputPath != null) {
-            response = CliSupport.buildCommandMetadata("indicator-test", series, dataFile, timeframe, fromDate, toDate,
-                    executionModel, capital, stakeAmount, commission, borrowRate, criteria, outputPath, chartPath);
-            response.put("indicator", indicatorAlias);
-            response.put("runtime", CliSupport.backtestRuntimeToMap(result.runtimeReport()));
-            response.put("statement", CliSupport.statementToMap(series, statement, criteria));
-            CliSupport.writeJson(CliSupport.toJson(response), outputPath.toString(), out);
-        }
+        CliSupport.writeJson(CliSupport.toJson(response), outputPath, out);
         return 0;
     }
 

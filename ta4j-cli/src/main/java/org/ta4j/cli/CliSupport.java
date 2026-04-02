@@ -84,6 +84,16 @@ import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+/**
+ * Shared validation, execution, and serialization helpers for the ta4j CLI.
+ *
+ * <p>
+ * This type keeps the command entry point thin while reusing existing ta4j
+ * execution, reporting, charting, and datasource APIs. The helpers are scoped
+ * to the CLI's bounded MVP surface so command behavior stays deterministic and
+ * file-oriented for both users and agents.
+ * </p>
+ */
 final class CliSupport {
 
     static final List<String> DEFAULT_BACKTEST_CRITERIA = List.of("net-profit", "romad", "total-fees");
@@ -321,18 +331,24 @@ final class CliSupport {
         };
     }
 
-    static Path writeJson(String json, String outputToken, PrintWriter out) throws IOException {
+    static Path resolveOutputPath(String outputToken) throws IOException {
         if (outputToken == null || outputToken.isBlank()) {
-            out.println(json);
-            out.flush();
             return null;
         }
         Path outputPath = Path.of(outputToken).toAbsolutePath().normalize();
         if (outputPath.getParent() != null) {
             Files.createDirectories(outputPath.getParent());
         }
-        Files.writeString(outputPath, json);
         return outputPath;
+    }
+
+    static void writeJson(String json, Path outputPath, PrintWriter out) throws IOException {
+        if (outputPath == null) {
+            out.println(json);
+            out.flush();
+            return;
+        }
+        Files.writeString(outputPath, json);
     }
 
     static Path saveChart(String chartToken, BarSeries series, TradingStatement statement) throws IOException {
@@ -796,6 +812,13 @@ final class CliSupport {
         return new LinkedHashMap<>();
     }
 
+    /**
+     * Binds a stable CLI alias to the concrete criterion instance used for a single
+     * command execution.
+     *
+     * @param alias     stable command-line alias used in JSON output
+     * @param criterion resolved analysis criterion instance
+     */
     record CriterionSpec(String alias, AnalysisCriterion criterion) {
     }
 }

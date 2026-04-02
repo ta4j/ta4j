@@ -11,6 +11,15 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
+/**
+ * Minimal argument parser for the bounded ta4j CLI contract.
+ *
+ * <p>
+ * The parser intentionally supports only the option shapes the CLI advertises:
+ * a command token followed by GNU-style `--option value` pairs, repeatable
+ * multi-value options, and explicit unknown-option detection.
+ * </p>
+ */
 final class CliArguments {
 
     private final String command;

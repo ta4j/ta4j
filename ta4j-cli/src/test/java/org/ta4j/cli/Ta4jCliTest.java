@@ -40,6 +40,8 @@ class Ta4jCliTest {
         JsonObject payload = readJson(outputFile);
         assertThat(payload.get("command").getAsString()).isEqualTo("backtest");
         assertThat(payload.getAsJsonObject("statement").get("strategyName").getAsString()).contains("sma-crossover");
+        assertThat(payload.getAsJsonObject("artifacts").get("outputFile").getAsString())
+                .isEqualTo(outputFile.toAbsolutePath().normalize().toString());
         assertThat(payload.getAsJsonObject("artifacts").get("chartFile").getAsString())
                 .isEqualTo(chartFile.toAbsolutePath().normalize().toString());
     }

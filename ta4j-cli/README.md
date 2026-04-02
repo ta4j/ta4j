@@ -57,6 +57,6 @@ JSON input may use the existing ta4j example bar-series formats already supporte
 ## Command Notes
 
 - Criterion aliases are stable CLI names such as `gross-return`, `net-profit`, `romad`, `sharpe`, and `total-fees`.
-- Charts are opt-in via `--chart <png-path>` and save directly to disk without opening a window.
+- Charts are opt-in via `--chart <jpeg-path>` and save directly to disk without opening a window.
 - `sweep` ranks candidate strategies deterministically and keeps only the requested top K output set.
 - `indicator-test` is intentionally bounded around common indicators and sanity-check strategy scaffolding.
