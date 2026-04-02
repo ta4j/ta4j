@@ -1,6 +1,7 @@
 ## Unreleased
 
-- _No changes yet._
+### Changed
+- **Agent guidance stays accurate across repo and personal workflows**: `scripts/agents_for_target.sh` guidance now clearly describes path-scoped `AGENTS.md` discovery from the current repo/workspace root, so contributors can use it for file-targeted lookup without assuming it also covers personal PR/comment policy such as `~/.codex/PULL_REQUESTS.md`.
 
 ## 0.22.6 (2026-04-01)
 
@@ -62,7 +63,7 @@
 ### Added
 - **Bill Williams indicator suite**: Added `FractalHighIndicator`, `FractalLowIndicator`, `AlligatorIndicator` (jaw/teeth/lips defaults), `GatorOscillatorIndicator` (upper/lower histogram branches), and `MarketFacilitationIndexIndicator` with comprehensive regression coverage for confirmation delays, overlapping windows, flat-price/zero-volume edge cases, constructor validation, unstable-bar boundaries, and lower-histogram signed-zero handling.
 - **Risk controls APIs**: Added `PositionRiskModel`, `StopLossPositionRiskModel`, and `RMultipleCriterion` for risk-unit (R-multiple) evaluation, plus `StopLossPriceModel`/`StopGainPriceModel` and fixed/trailing/volatility/ATR stop-loss and stop-gain rule variants.
-- **Agent guidance tooling and docs**: Reorganized project `AGENTS.md` into scoped, task-local guides and added `scripts/agents_for_target.sh` to resolve path-scoped `AGENTS.md` guidance for any target path from the current repo/workspace root while leaving user/system/workflow instructions to normal discovery.
+- **Agent guidance tooling and docs**: Reorganized project `AGENTS.md` into scoped, task-local guides and added `scripts/agents_for_target.sh` to resolve effective instructions for any target path.
 - **Regression coverage additions**: Added explicit tests for `TimeBarBuilder` gap placement, `NetMomentumIndicator` pivot/decay edge handling, mixed-field serialization routing, named-strategy label/vararg diagnostics, and `VolumeIndicator` rolling-window behavior.
 - Added **PiercingLineIndicator** and **DarkCloudCoverIndicator** with configurable body-size, gap, and penetration thresholds for candlestick pattern detection.
 - **Trend confirmation oscillators**: Added `VortexIndicator` (+VI, -VI, and oscillator output) and `UltimateOscillatorIndicator` with configurable periods, warm-up guards, and regression tests against published reference values.
