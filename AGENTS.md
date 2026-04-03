@@ -32,7 +32,7 @@ Before editing a feature area, discover and follow all applicable scoped `AGENTS
 - Use `bash scripts/agents_for_target.sh <file-or-class>` to list path-scoped `AGENTS.md` guides for that target in precedence order from the current repo/workspace root.
 - Deeper/closer `AGENTS.md` files override broader ones.
 - Apply only instructions relevant to the path you are changing.
-- This helper is only for path-scoped `AGENTS.md` discovery. Agents must still apply normal system, developer, user, and workflow-specific instructions independently (for example `~/.codex/PULL_REQUESTS.md` for PR workflows).
+- This helper is only for path-scoped `AGENTS.md` discovery. Agents must still apply normal system, developer, user, and workflow-specific instructions independently, including any personal PR workflow guidance.
 
 ## 5) Process/worktree guidance
 Worktree lifecycle and PRD/checklist process conventions live in `scripts/AGENTS.md`.

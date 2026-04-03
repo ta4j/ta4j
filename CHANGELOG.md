@@ -1,7 +1,7 @@
 ## Unreleased
 
 ### Changed
-- **Agent guidance stays accurate across repo and personal workflows**: `scripts/agents_for_target.sh` guidance now clearly describes path-scoped `AGENTS.md` discovery from the current repo/workspace root, so contributors can use it for file-targeted lookup without assuming it also covers personal PR/comment policy such as `~/.codex/PULL_REQUESTS.md`.
+- **Agent guidance stays accurate across repo and personal workflows**: `scripts/agents_for_target.sh` guidance now clearly describes path-scoped `AGENTS.md` discovery from the current repo/workspace root, so contributors can use it for file-targeted lookup without assuming it also covers personal PR/comment workflow guidance.
 
 ## 0.22.6 (2026-04-01)
 
