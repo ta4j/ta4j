@@ -176,17 +176,34 @@ class CliSupportTest {
     }
 
     @Test
+    void buildStrategySupportsNamedStrategyLabels() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+
+        Strategy namedStrategy = CliSupport.buildStrategy("DayOfWeekStrategy_MONDAY_FRIDAY", null, List.of(), null,
+                series);
+
+        assertThat(namedStrategy.getName()).isEqualTo("DayOfWeekStrategy_MONDAY_FRIDAY");
+        assertThat(namedStrategy.getUnstableBars()).isZero();
+    }
+
+    @Test
     void buildStrategyRejectsUnknownAliasesAndMalformedParams() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
 
         assertThatThrownBy(() -> CliSupport.buildStrategy("unknown", null, List.of(), null, series))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage(
-                        "Unknown strategy alias. Supported values are sma-crossover, rsi2, cci-correction, global-extrema, moving-momentum.");
+                .hasMessage("Unknown strategy value 'unknown'. Use a bounded alias (sma-crossover, rsi2, "
+                        + "cci-correction, global-extrema, moving-momentum) or a NamedStrategy label such as "
+                        + "DayOfWeekStrategy_MONDAY_FRIDAY.");
         assertThatThrownBy(() -> CliSupport.buildStrategy("sma-crossover", null, List.of("fast"), null, series))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid --param value 'fast'. Use key=value.");
+        assertThatThrownBy(() -> CliSupport.buildStrategy("DayOfWeekStrategy_MONDAY_FRIDAY", null,
+                List.of("entry=MONDAY"), null, series)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(
+                        "--param is not supported when --strategy uses a NamedStrategy label. Encode parameter values in the label.");
     }
 
     @Test

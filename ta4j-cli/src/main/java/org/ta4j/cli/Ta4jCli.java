@@ -267,8 +267,8 @@ public final class Ta4jCli {
     private static String usage() {
         return """
                 Usage:
-                  ta4j-cli backtest --data-file <path> (--strategy <alias> | --strategy-json <path>) [options]
-                  ta4j-cli walk-forward --data-file <path> --strategy <alias> [options]
+                  ta4j-cli backtest --data-file <path> (--strategy <alias-or-label> | --strategy-json <path>) [options]
+                  ta4j-cli walk-forward --data-file <path> --strategy <alias-or-label> [options]
                   ta4j-cli sweep --data-file <path> --strategy sma-crossover --param-grid fast=5,10 --param-grid slow=20,50 [options]
                   ta4j-cli indicator-test --data-file <path> --indicator <alias> [options]
 
@@ -290,6 +290,7 @@ public final class Ta4jCli {
                 Strategy options:
                   --param key=value
                   Supported strategy aliases: sma-crossover, rsi2, cci-correction, global-extrema, moving-momentum
+                  NamedStrategy labels: <SimpleClassName>_<param1>_<param2>... (for example DayOfWeekStrategy_MONDAY_FRIDAY)
 
                 Sweep options:
                   --param-grid key=v1,v2,...

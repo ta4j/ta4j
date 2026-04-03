@@ -96,6 +96,20 @@ class Ta4jCliTest {
     }
 
     @Test
+    void backtestAcceptsNamedStrategyLabels() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("named-strategy-backtest.json");
+
+        int exitCode = runCli("backtest", "--data-file", dataFile.toString(), "--strategy",
+                "DayOfWeekStrategy_MONDAY_FRIDAY", "--output", outputFile.toString());
+
+        assertThat(exitCode).isZero();
+        JsonObject payload = readJson(outputFile);
+        assertThat(payload.getAsJsonObject("statement").get("strategyName").getAsString())
+                .isEqualTo("DayOfWeekStrategy_MONDAY_FRIDAY");
+    }
+
+    @Test
     void backtestRejectsInvalidUnstableBarsValue() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
 
@@ -115,6 +129,18 @@ class Ta4jCliTest {
 
         assertThat(result.exitCode()).isEqualTo(2);
         assertThat(result.stderr()).contains("Invalid integer value for --top-k: abc.");
+    }
+
+    @Test
+    void backtestRejectsParamOverridesForNamedStrategyLabels() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("backtest", "--data-file", dataFile.toString(), "--strategy",
+                "DayOfWeekStrategy_MONDAY_FRIDAY", "--param", "entry=MONDAY");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains(
+                "--param is not supported when --strategy uses a NamedStrategy label. Encode parameter values in the label.");
     }
 
     private int runCli(String... args) {

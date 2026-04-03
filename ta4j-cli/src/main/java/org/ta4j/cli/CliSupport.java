@@ -52,6 +52,7 @@ import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
+import org.ta4j.core.strategy.named.NamedStrategy;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
 import org.ta4j.core.walkforward.WalkForwardSplit;
@@ -100,6 +101,7 @@ final class CliSupport {
     static final List<String> DEFAULT_WALK_FORWARD_CRITERIA = List.of("gross-return");
     static final List<String> DEFAULT_SWEEP_CRITERIA = List.of("net-profit");
     static final List<String> DEFAULT_INDICATOR_TEST_CRITERIA = List.of("net-profit", "sharpe");
+    static final String NAMED_STRATEGY_EXAMPLE = "DayOfWeekStrategy_MONDAY_FRIDAY";
 
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
 
@@ -207,9 +209,9 @@ final class CliSupport {
 
     static Strategy buildStrategy(String strategyAlias, String strategyJsonPath, List<String> paramOptions,
             Integer unstableBars, BarSeries series) {
-        Map<String, String> params = parseKeyValueOptions(paramOptions, "--param");
         Strategy strategy;
-        String normalizedAlias = strategyAlias == null ? "" : normalizeToken(strategyAlias);
+        String requestedStrategy = strategyAlias == null ? "" : strategyAlias.trim();
+        String normalizedAlias = normalizeToken(requestedStrategy);
         if (strategyJsonPath != null && !strategyJsonPath.isBlank()) {
             try {
                 String json = Files.readString(Path.of(strategyJsonPath));
@@ -218,6 +220,7 @@ final class CliSupport {
                 throw new IllegalArgumentException("Unable to read strategy JSON from " + strategyJsonPath + ".", ex);
             }
         } else if ("sma-crossover".equals(normalizedAlias)) {
+            Map<String, String> params = parseKeyValueOptions(paramOptions, "--param");
             strategy = buildSmaCrossoverStrategy(series, params);
         } else if ("rsi2".equals(normalizedAlias)) {
             strategy = RSI2Strategy.buildStrategy(series);
@@ -228,8 +231,7 @@ final class CliSupport {
         } else if ("moving-momentum".equals(normalizedAlias)) {
             strategy = MovingMomentumStrategy.buildStrategy(series);
         } else {
-            throw new IllegalArgumentException(
-                    "Unknown strategy alias. Supported values are sma-crossover, rsi2, cci-correction, global-extrema, moving-momentum.");
+            strategy = buildNamedStrategy(requestedStrategy, paramOptions, series);
         }
 
         if (unstableBars != null) {
@@ -777,6 +779,25 @@ final class CliSupport {
         return series.getSubSeries(startIndex, endIndexExclusive);
     }
 
+    private static Strategy buildNamedStrategy(String strategyLabel, List<String> paramOptions, BarSeries series) {
+        if (strategyLabel == null || strategyLabel.isBlank()) {
+            throw unknownStrategyValue(strategyLabel);
+        }
+        NamedStrategy.initializeRegistry("ta4jexamples.strategies");
+        List<String> labelTokens = NamedStrategy.splitLabel(strategyLabel);
+        String simpleName = labelTokens.getFirst();
+        if (simpleName.isBlank() || NamedStrategy.lookup(simpleName).isEmpty()) {
+            throw unknownStrategyValue(strategyLabel);
+        }
+        if (paramOptions != null && !paramOptions.isEmpty()) {
+            throw new IllegalArgumentException(
+                    "--param is not supported when --strategy uses a NamedStrategy label. Encode parameter values in the label.");
+        }
+
+        String json = toJson(Map.of("type", NamedStrategy.SERIALIZED_TYPE, "label", strategyLabel));
+        return Strategy.fromJson(series, json);
+    }
+
     private static Instant parseOptionalInstant(String token, boolean startOfRange) {
         if (token == null || token.isBlank()) {
             return null;
@@ -805,6 +826,12 @@ final class CliSupport {
 
     private static String normalizeToken(String token) {
         return token == null ? "" : token.trim().toLowerCase(Locale.ROOT);
+    }
+
+    private static IllegalArgumentException unknownStrategyValue(String strategyValue) {
+        return new IllegalArgumentException("Unknown strategy value '" + strategyValue
+                + "'. Use a bounded alias (sma-crossover, rsi2, cci-correction, global-extrema, moving-momentum) or a NamedStrategy label such as "
+                + NAMED_STRATEGY_EXAMPLE + ".");
     }
 
     private static Map<String, Object> linkedMap() {

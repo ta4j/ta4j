@@ -75,12 +75,12 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 ### Command-Specific Options
 
 - `backtest`
-  - `--strategy`: one of `sma-crossover`, `rsi2`, `cci-correction`, `global-extrema`, `moving-momentum`.
+  - `--strategy`: either a bounded alias (`sma-crossover`, `rsi2`, `cci-correction`, `global-extrema`, `moving-momentum`) or a `NamedStrategy` label such as `DayOfWeekStrategy_MONDAY_FRIDAY`.
   - `--strategy-json`: path to a serialized ta4j strategy payload. Use this instead of `--strategy` when you want to replay a previously exported strategy definition.
-  - `--param key=value`: strategy parameter override. The bounded built-in strategy that currently consumes custom params is `sma-crossover`.
+  - `--param key=value`: strategy parameter override. The bounded built-in strategy that currently consumes custom params is `sma-crossover`. When `--strategy` uses a `NamedStrategy` label, encode parameter values in the label instead of passing `--param`.
 - `walk-forward`
-  - `--strategy`: required built-in strategy alias.
-  - `--param key=value`: strategy parameter override.
+  - `--strategy`: required bounded alias or `NamedStrategy` label.
+  - `--param key=value`: strategy parameter override for alias-based strategies only.
   - `--min-train-bars`, `--test-bars`, `--step-bars`, `--purge-bars`, `--embargo-bars`, `--holdout-bars`, `--primary-horizon-bars`, `--optimization-top-k`, `--seed`: walk-forward splitter and ranking controls.
 - `sweep`
   - `--strategy`: currently `sma-crossover`.
@@ -133,6 +133,19 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   --strategy-json /absolute/path/exported-strategy.json \
   --criteria net-profit \
   --output /tmp/backtest-from-json.json
+```
+
+### Backtest From A NamedStrategy Label
+
+Use this when the strategy already has a compact serialized label of the form `<SimpleClassName>_<param1>_<param2>...`.
+
+```bash
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
+  backtest \
+  --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
+  --strategy DayOfWeekStrategy_MONDAY_FRIDAY \
+  --criteria net-profit,sharpe \
+  --output /tmp/backtest-day-of-week.json
 ```
 
 ### Walk-Forward With Full Fold Controls
@@ -254,6 +267,16 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   --output /tmp/aapl-walk-forward.json
 ```
 
+### Replay A Named Intraday Strategy Label
+
+```bash
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
+  backtest \
+  --data-file /absolute/path/Binance-ETH-USD-PT5M-20230313_20230315.json \
+  --strategy HourOfDayStrategy_9_17 \
+  --output /tmp/hour-of-day-backtest.json
+```
+
 ### Rank A Small SMA Search Grid
 
 ```bash
@@ -288,3 +311,4 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 - Charts are opt-in via `--chart <jpeg-path>` and save directly to disk without opening a window.
 - `sweep` ranks candidate strategies deterministically and keeps only the requested top-K output set.
 - `indicator-test` is intentionally bounded around common indicators and sanity-check strategy scaffolding.
+- `NamedStrategy` labels follow the compact format `<SimpleClassName>_<param1>_<param2>...`, for example `HourOfDayStrategy_9_17` or `DayOfWeekStrategy_MONDAY_FRIDAY`.
