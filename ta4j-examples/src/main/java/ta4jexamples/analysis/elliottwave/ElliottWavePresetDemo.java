@@ -3,6 +3,7 @@
  */
 package ta4jexamples.analysis.elliottwave;
 
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
@@ -11,7 +12,10 @@ import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.elliott.ElliottDegree;
+
+import ta4jexamples.analysis.elliottwave.backtest.ElliottWaveBtcMacroCycleDemo;
 
 /**
  * Consolidated preset launcher for Elliott Wave demos.
@@ -45,6 +49,7 @@ public class ElliottWavePresetDemo {
     private static final Logger LOG = LogManager.getLogger(ElliottWavePresetDemo.class);
     private static final String DEFAULT_BAR_DURATION = "PT1D";
     private static final long DEFAULT_LOOKBACK_DAYS = 1825L;
+    private static final Path DEFAULT_BTC_MACRO_CHART_DIRECTORY = Path.of("temp", "charts");
 
     /**
      * Runs a preset Elliott Wave demo.
@@ -125,8 +130,38 @@ public class ElliottWavePresetDemo {
             }
         }
 
+        if (shouldUseBtcMacroPreset(ticker, barDuration)) {
+            if (degree != null) {
+                LOG.info(
+                        "Ignoring explicit degree '{}' for BTC daily macro preset; the validated macro profile selects its own structural interpretation.",
+                        degree);
+            }
+            Instant endTime = Instant.now();
+            Instant startTime = endTime.minus(Duration.ofDays(lookbackDays));
+            Duration parsedDuration = parseBarDuration(barDuration);
+            BarSeries series = ElliottWaveIndicatorSuiteDemo.loadSeriesFromDataSource(dataSource, ticker,
+                    parsedDuration, startTime, endTime);
+            if (series == null || series.isEmpty()) {
+                LOG.error("Unable to load live BTC series for macro preset from {} {} {}", dataSource, ticker,
+                        barDuration);
+                return;
+            }
+            ElliottWaveBtcMacroCycleDemo.runLivePreset(series, DEFAULT_BTC_MACRO_CHART_DIRECTORY);
+            return;
+        }
+
         String[] suiteArgs = buildLiveSuiteArgs(dataSource, ticker, barDuration, lookbackDays, Instant.now(), degree);
         ElliottWaveIndicatorSuiteDemo.main(suiteArgs);
+    }
+
+    static boolean shouldUseBtcMacroPreset(String ticker, String barDuration) {
+        if (ticker == null || barDuration == null) {
+            return false;
+        }
+        String normalizedTicker = ticker.trim().toUpperCase(Locale.ROOT);
+        String normalizedDuration = barDuration.trim().toUpperCase(Locale.ROOT);
+        return "BTC-USD".equals(normalizedTicker)
+                && ("PT1D".equals(normalizedDuration) || "PT24H".equals(normalizedDuration));
     }
 
     static String[] buildLiveSuiteArgs(String dataSource, String ticker, String barDuration, long lookbackDays,
@@ -152,6 +187,21 @@ public class ElliottWavePresetDemo {
         LOG.info("Usage:");
         LOG.info("  ossified <btc|eth|sp500>");
         LOG.info("  live <Coinbase|YahooFinance> <ticker> [barDuration] [lookbackDays] [degree]");
+    }
+
+    private static Duration parseBarDuration(String barDuration) {
+        Objects.requireNonNull(barDuration, "barDuration");
+        String normalized = barDuration.trim().toUpperCase(Locale.ROOT);
+        if (normalized.startsWith("PT") && normalized.endsWith("D")) {
+            final String dayString = normalized.substring(2, normalized.length() - 1);
+            try {
+                final int days = Integer.parseInt(dayString);
+                return Duration.ofHours(days * 24L);
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException("Invalid day count in barDuration: " + barDuration, e);
+            }
+        }
+        return Duration.parse(normalized);
     }
 
     private static String normalize(String value) {

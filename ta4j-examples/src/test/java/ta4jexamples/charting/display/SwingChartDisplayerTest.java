@@ -225,6 +225,22 @@ class SwingChartDisplayerTest {
         assertTrue(size.width >= 800 && size.height >= 600, "Dimensions should respect minimum bounds");
     }
 
+    @Test
+    void testResolveDisplaySizeUsesExplicitPreferredSize() {
+        Dimension requested = new Dimension(1440, 900);
+
+        Dimension resolved = displayer.resolveDisplaySize(requested);
+
+        assertEquals(requested, resolved);
+        assertNotSame(requested, resolved, "Resolved size should be a defensive copy");
+    }
+
+    @Test
+    void testResolveDisplaySizeRejectsNonPositivePreferredDimensions() {
+        assertThrows(IllegalArgumentException.class, () -> displayer.resolveDisplaySize(new Dimension(0, 900)));
+        assertThrows(IllegalArgumentException.class, () -> displayer.resolveDisplaySize(new Dimension(1440, -1)));
+    }
+
     // ========== Mouseover functionality tests ==========
 
     @Test

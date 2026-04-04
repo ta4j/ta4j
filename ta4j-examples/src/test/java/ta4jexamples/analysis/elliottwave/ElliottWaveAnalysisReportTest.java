@@ -20,6 +20,7 @@ import java.util.Map;
 
 import org.junit.Assume;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.indicators.elliott.ElliottRatio.RatioType;
 import org.ta4j.core.indicators.elliott.ElliottScenarioSet;
@@ -39,6 +40,8 @@ import ta4jexamples.charting.display.SwingChartDisplayer;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
+@Tag("integration")
+@Tag("slow")
 class ElliottWaveAnalysisReportTest {
 
     private static final String OSSIFIED_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
