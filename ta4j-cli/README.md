@@ -4,10 +4,10 @@
 
 ## Supported Commands
 
-- `backtest`
-- `walk-forward`
-- `sweep`
-- `indicator-test`
+- `backtest`: runs one or more concrete strategies against one local dataset and emits a bounded JSON performance report. Use it when you already know which strategy definitions you want to validate and need a fast local answer.
+- `walk-forward`: runs rolling train/test evaluation for one or more concrete strategies and captures fold-by-fold out-of-sample behavior. Use it when a plain backtest looks promising and you want a robustness check before promoting the strategy.
+- `sweep`: ranks a bounded SMA crossover parameter grid on one dataset and returns the top candidates. Use it when you are tuning fast/slow crossover windows rather than evaluating pre-defined strategy labels.
+- `indicator-test`: turns one indicator configuration plus optional thresholds into a lightweight exploratory strategy. Use it when you are probing whether an indicator idea is worth turning into a NamedStrategy or serialized strategy definition.
 
 ## Build
 
@@ -36,9 +36,7 @@ JSON input may use the existing ta4j example bar-series formats already supporte
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   backtest \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
-  --strategy sma-crossover \
-  --param fast=5 \
-  --param slow=20 \
+  --strategy DayOfWeekStrategy_MONDAY_FRIDAY \
   --criteria net-profit,romad \
   --output /tmp/backtest.json
 ```
@@ -47,9 +45,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   walk-forward \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
-  --strategy sma-crossover \
-  --param fast=5 \
-  --param slow=20 \
+  --strategy-json-file /absolute/path/exported-strategy.json \
   --criteria gross-return \
   --output /tmp/walk-forward.json
 ```
@@ -75,17 +71,17 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 ### Command-Specific Options
 
 - `backtest`
-  - `--strategy`: either a bounded alias (`sma-crossover`, `rsi2`, `cci-correction`, `global-extrema`, `moving-momentum`) or a `NamedStrategy` label such as `DayOfWeekStrategy_MONDAY_FRIDAY`.
+  - `--strategy`: one `NamedStrategy` label such as `DayOfWeekStrategy_MONDAY_FRIDAY`.
   - `--strategies`: one or more `NamedStrategy` labels. You may repeat the flag or pass a comma-separated list such as `HourOfDayStrategy_9_17,DayOfWeekStrategy_MONDAY_FRIDAY`.
-  - `--strategy-json`: path to a serialized ta4j strategy payload. Use this instead of `--strategy` when you want to replay a previously exported strategy definition.
+  - `--strategy-json-file`: path to one serialized ta4j strategy payload.
   - `--strategies-json-file`: path to a JSON file containing an array of one or more serialized ta4j strategy objects.
-  - `--param key=value`: strategy parameter override. The bounded built-in strategy that currently consumes custom params is `sma-crossover`. When `--strategy` uses a `NamedStrategy` label, encode parameter values in the label instead of passing `--param`.
+  - strategy inputs are self-contained, so `backtest` does not accept `--param`.
 - `walk-forward`
-  - `--strategy`, `--strategies`, `--strategy-json`, `--strategies-json-file`: the same strategy input shapes supported by `backtest`.
-  - `--param key=value`: strategy parameter override for alias-based `--strategy` inputs only.
+  - `--strategy`, `--strategies`, `--strategy-json-file`, `--strategies-json-file`: the same strategy input shapes supported by `backtest`.
   - `--min-train-bars`, `--test-bars`, `--step-bars`, `--purge-bars`, `--embargo-bars`, `--holdout-bars`, `--primary-horizon-bars`, `--optimization-top-k`, `--seed`: walk-forward splitter and ranking controls.
+  - strategy inputs are self-contained, so `walk-forward` does not accept `--param`.
 - `sweep`
-  - `--strategy`: currently `sma-crossover`.
+  - always evaluates the bounded `sma-crossover` template.
   - `--param key=value`: fixed parameter applied to every candidate.
   - `--param-grid key=v1,v2,...`: candidate grid dimensions.
   - `--top-k`: number of ranked candidates to keep in the output.
@@ -98,17 +94,15 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 The examples in this section intentionally exercise every supported option at least once.
 
-### Backtest With Built-In Strategy Parameters
+### Backtest With A NamedStrategy Label
 
-This example covers the shared execution flags plus `--strategy` and repeatable `--param`.
+This example covers the shared execution flags with one concrete `NamedStrategy` label.
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   backtest \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
-  --strategy sma-crossover \
-  --param fast=5 \
-  --param slow=20 \
+  --strategy DayOfWeekStrategy_MONDAY_FRIDAY \
   --timeframe 1d \
   --from-date 2013-02-01 \
   --to-date 2013-10-31 \
@@ -124,15 +118,15 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   --progress
 ```
 
-### Backtest From Serialized Strategy JSON
+### Backtest From A Serialized Strategy JSON File
 
-Use this when you already have a serialized ta4j strategy payload and want to rerun it without mapping it back to a bounded alias.
+Use this when you already have a serialized ta4j strategy payload and want to rerun it without rebuilding the definition as a label.
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   backtest \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
-  --strategy-json /absolute/path/exported-strategy.json \
+  --strategy-json-file /absolute/path/exported-strategy.json \
   --criteria net-profit \
   --output /tmp/backtest-from-json.json
 ```
@@ -184,9 +178,7 @@ This example exercises every walk-forward-specific configuration flag in one run
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   walk-forward \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
-  --strategy sma-crossover \
-  --param fast=5 \
-  --param slow=20 \
+  --strategy DayOfWeekStrategy_MONDAY_FRIDAY \
   --timeframe 1d \
   --from-date 2013-01-02 \
   --to-date 2013-12-31 \
@@ -219,7 +211,6 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   sweep \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
-  --strategy sma-crossover \
   --param slow=50 \
   --param-grid fast=3,5,8 \
   --criteria net-profit \
@@ -270,7 +261,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --strategy DayOfWeekStrategy_MONDAY_FRIDAY \
   --strategies HourOfDayStrategy_9_17,MissingStrategy_VALUE \
-  --strategy-json /absolute/path/exported-strategy.json \
+  --strategy-json-file /absolute/path/exported-strategy.json \
   --strategies-json-file /absolute/path/exported-strategies.json \
   --output /tmp/backtest-mixed-inputs.json
 ```
@@ -285,9 +276,7 @@ These recipes are shorter than the coverage examples and focus on the workflows 
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   backtest \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
-  --strategy sma-crossover \
-  --param fast=5 \
-  --param slow=20 \
+  --strategy DayOfWeekStrategy_MONDAY_FRIDAY \
   --criteria net-profit,romad \
   --chart /tmp/aapl-backtest.jpg \
   --output /tmp/aapl-backtest.json
@@ -299,9 +288,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   walk-forward \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
-  --strategy sma-crossover \
-  --param fast=5 \
-  --param slow=20 \
+  --strategy-json-file /absolute/path/exported-strategy.json \
   --min-train-bars 120 \
   --test-bars 40 \
   --step-bars 20 \
@@ -341,7 +328,6 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   sweep \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
-  --strategy sma-crossover \
   --param-grid fast=3,5 \
   --param-grid slow=20,30 \
   --top-k 2 \
@@ -367,7 +353,8 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 - Criterion aliases are stable CLI names such as `gross-return`, `net-profit`, `romad`, `sharpe`, and `total-fees`.
 - Charts are opt-in via `--chart <jpeg-path>` and save directly to disk without opening a window.
-- `sweep` ranks candidate strategies deterministically and keeps only the requested top-K output set.
+- `backtest` and `walk-forward` share the same concrete strategy-input contract: one label, many labels, one serialized strategy file, or one serialized strategy-array file.
+- `sweep` ranks bounded SMA crossover candidates deterministically and keeps only the requested top-K output set.
 - `indicator-test` is intentionally bounded around common indicators and sanity-check strategy scaffolding.
 - `NamedStrategy` labels follow the compact format `<SimpleClassName>_<param1>_<param2>...`, for example `HourOfDayStrategy_9_17` or `DayOfWeekStrategy_MONDAY_FRIDAY`.
 - If every supplied strategy input is invalid, the command fails fast with a descriptive error and a non-zero exit code instead of producing an empty result artifact.

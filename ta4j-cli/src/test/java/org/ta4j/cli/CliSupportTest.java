@@ -98,7 +98,7 @@ class CliSupportTest {
     void buildExecutorConfiguresExecutionAndCostModels() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
-        Strategy strategy = CliSupport.buildStrategy("sma-crossover", null, List.of("fast=5", "slow=20"), null, series);
+        Strategy strategy = sampleSweepStrategy(series);
         Num amount = CliSupport.resolveAmount(series, "1000", null);
 
         BacktestExecutor nextOpenExecutor = CliSupport.buildExecutor(series, null, null, null);
@@ -160,19 +160,18 @@ class CliSupportTest {
     }
 
     @Test
-    void buildStrategySupportsAliasAndJsonDefinitions() throws Exception {
+    void buildStrategySupportsNamedLabelsAndJsonDefinitions() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
-        Strategy aliasStrategy = CliSupport.buildStrategy("sma-crossover", null, List.of("fast=3", "slow=8"), 12,
-                series);
-        Path strategyJson = tempDir.resolve("strategy.json");
-        Files.writeString(strategyJson, aliasStrategy.toJson());
+        Strategy labelStrategy = CliSupport.buildStrategy("DayOfWeekStrategy_MONDAY_FRIDAY", null, 12, series);
+        Path strategyJsonFile = tempDir.resolve("strategy.json");
+        Files.writeString(strategyJsonFile, labelStrategy.toJson());
 
-        Strategy jsonStrategy = CliSupport.buildStrategy("unknown", strategyJson.toString(), List.of(), 7, series);
+        Strategy jsonStrategy = CliSupport.buildStrategy("ignored", strategyJsonFile.toString(), 7, series);
 
-        assertThat(aliasStrategy.getName()).isEqualTo("sma-crossover-fast-3-slow-8");
-        assertThat(aliasStrategy.getUnstableBars()).isEqualTo(12);
-        assertThat(jsonStrategy.getName()).isEqualTo(aliasStrategy.getName());
+        assertThat(labelStrategy.getName()).isEqualTo("DayOfWeekStrategy_MONDAY_FRIDAY");
+        assertThat(labelStrategy.getUnstableBars()).isEqualTo(12);
+        assertThat(jsonStrategy.getName()).isEqualTo(labelStrategy.getName());
         assertThat(jsonStrategy.getUnstableBars()).isEqualTo(7);
     }
 
@@ -181,8 +180,7 @@ class CliSupportTest {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
 
-        Strategy namedStrategy = CliSupport.buildStrategy("DayOfWeekStrategy_MONDAY_FRIDAY", null, List.of(), null,
-                series);
+        Strategy namedStrategy = CliSupport.buildStrategy("DayOfWeekStrategy_MONDAY_FRIDAY", null, null, series);
 
         assertThat(namedStrategy.getName()).isEqualTo("DayOfWeekStrategy_MONDAY_FRIDAY");
         assertThat(namedStrategy.getUnstableBars()).isZero();
@@ -192,8 +190,7 @@ class CliSupportTest {
     void resolveStrategiesSupportsMixedInputsAndCollectsInvalidEntries() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
-        Strategy serializedStrategy = CliSupport.buildStrategy("sma-crossover", null, List.of("fast=3", "slow=8"), 5,
-                series);
+        Strategy serializedStrategy = sampleSweepStrategy(series);
         Path strategyJson = tempDir.resolve("strategy.json");
         Path strategiesJsonFile = tempDir.resolve("strategies.json");
         Files.writeString(strategyJson, serializedStrategy.toJson());
@@ -201,12 +198,12 @@ class CliSupportTest {
 
         CliSupport.ResolvedStrategies resolved = CliSupport.resolveStrategies("DayOfWeekStrategy_MONDAY_FRIDAY",
                 strategyJson.toString(), List.of("HourOfDayStrategy_9_17,MissingStrategy_VALUE"),
-                strategiesJsonFile.toString(), List.of(), 7, series);
+                strategiesJsonFile.toString(), 7, series);
 
         assertThat(resolved.strategies()).hasSize(4);
         assertThat(resolved.strategies()).extracting(Strategy::getUnstableBars).containsOnly(7);
         assertThat(resolved.invalidStrategies()).contains(
-                "--strategies MissingStrategy_VALUE: Unknown strategy value 'MissingStrategy_VALUE'. Use a bounded alias (sma-crossover, rsi2, cci-correction, global-extrema, moving-momentum) or a NamedStrategy label such as DayOfWeekStrategy_MONDAY_FRIDAY.",
+                "--strategies MissingStrategy_VALUE: Unknown strategy label 'MissingStrategy_VALUE'. Use a NamedStrategy label such as DayOfWeekStrategy_MONDAY_FRIDAY.",
                 "--strategies-json-file " + strategiesJsonFile
                         + "[1]: Each array element must be a serialized strategy object.");
     }
@@ -216,31 +213,24 @@ class CliSupportTest {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
 
-        assertThatThrownBy(() -> CliSupport.resolveStrategies(null, null, List.of("MissingStrategy_VALUE"), null,
-                List.of(), null, series)).isInstanceOf(IllegalArgumentException.class)
+        assertThatThrownBy(
+                () -> CliSupport.resolveStrategies(null, null, List.of("MissingStrategy_VALUE"), null, null, series))
+                .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("No valid strategies to run.")
                 .hasMessageContaining(
-                        "--strategies MissingStrategy_VALUE: Unknown strategy value 'MissingStrategy_VALUE'.")
-                .hasMessageContaining("Use --strategy, --strategy-json, --strategies, or --strategies-json-file.");
+                        "--strategies MissingStrategy_VALUE: Unknown strategy label 'MissingStrategy_VALUE'.")
+                .hasMessageContaining("Use --strategy, --strategies, --strategy-json-file, or --strategies-json-file.");
     }
 
     @Test
-    void buildStrategyRejectsUnknownAliasesAndMalformedParams() throws Exception {
+    void buildStrategyRejectsUnknownLabels() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
 
-        assertThatThrownBy(() -> CliSupport.buildStrategy("unknown", null, List.of(), null, series))
+        assertThatThrownBy(() -> CliSupport.buildStrategy("unknown", null, null, series))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Unknown strategy value 'unknown'. Use a bounded alias (sma-crossover, rsi2, "
-                        + "cci-correction, global-extrema, moving-momentum) or a NamedStrategy label such as "
+                .hasMessage("Unknown strategy label 'unknown'. Use a NamedStrategy label such as "
                         + "DayOfWeekStrategy_MONDAY_FRIDAY.");
-        assertThatThrownBy(() -> CliSupport.buildStrategy("sma-crossover", null, List.of("fast"), null, series))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Invalid --param value 'fast'. Use key=value.");
-        assertThatThrownBy(() -> CliSupport.buildStrategy("DayOfWeekStrategy_MONDAY_FRIDAY", null,
-                List.of("entry=MONDAY"), null, series)).isInstanceOf(IllegalArgumentException.class)
-                .hasMessage(
-                        "--param is not supported when --strategy uses a NamedStrategy label. Encode parameter values in the label.");
     }
 
     @Test
@@ -248,7 +238,7 @@ class CliSupportTest {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
 
-        List<Strategy> strategies = CliSupport.buildSweepStrategies("sma-crossover", List.of("slow=40"),
+        List<Strategy> strategies = CliSupport.buildSweepStrategies(List.of("slow=40"),
                 List.of("fast=3,5", "slow=20,30"), 9, series);
 
         assertThat(strategies).hasSize(4);
@@ -256,11 +246,10 @@ class CliSupportTest {
                 .containsExactly("sma-crossover-fast-3-slow-20", "sma-crossover-fast-3-slow-30",
                         "sma-crossover-fast-5-slow-20", "sma-crossover-fast-5-slow-30");
         assertThat(strategies).extracting(Strategy::getUnstableBars).containsOnly(9);
-        assertThatThrownBy(() -> CliSupport.buildSweepStrategies("rsi2", List.of(), List.of("fast=3,5"), null, series))
+        assertThatThrownBy(() -> CliSupport.buildSweepStrategies(List.of("slow"), List.of("fast=3,5"), null, series))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("The MVP sweep command currently supports --strategy sma-crossover.");
-        assertThatThrownBy(
-                () -> CliSupport.buildSweepStrategies("sma-crossover", List.of(), List.of("fast"), null, series))
+                .hasMessage("Invalid --param value 'slow'. Use key=value.");
+        assertThatThrownBy(() -> CliSupport.buildSweepStrategies(List.of(), List.of("fast"), null, series))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("Invalid --param-grid value 'fast'. Use key=v1,v2,...");
     }
@@ -356,9 +345,8 @@ class CliSupportTest {
     void invalidStrategyReportingAndRuntimeAggregationStayDeterministic() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
-        Strategy firstStrategy = CliSupport.buildStrategy("sma-crossover", null, List.of("fast=3", "slow=8"), null,
-                series);
-        Strategy secondStrategy = CliSupport.buildStrategy("rsi2", null, List.of(), null, series);
+        Strategy firstStrategy = sampleSweepStrategy(series);
+        Strategy secondStrategy = CliSupport.buildStrategy("DayOfWeekStrategy_MONDAY_FRIDAY", null, null, series);
         StringWriter stderr = new StringWriter();
         PrintWriter err = new PrintWriter(stderr, true);
         BacktestRuntimeReport firstRuntime = new BacktestRuntimeReport(Duration.ofSeconds(2), Duration.ofSeconds(2),
@@ -385,7 +373,7 @@ class CliSupportTest {
     void reportHelpersSerializeBacktestAndWalkForwardResultsAndSaveCharts() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
-        Strategy strategy = CliSupport.buildStrategy("sma-crossover", null, List.of("fast=5", "slow=20"), null, series);
+        Strategy strategy = sampleSweepStrategy(series);
         BacktestExecutor executor = CliSupport.buildExecutor(series, "current-close", "0.01", "0.02");
         Num amount = CliSupport.resolveAmount(series, "1000", null);
         List<CliSupport.CriterionSpec> backtestCriteria = CliSupport.resolveCriteria(List.of("net-profit", "sharpe"),
@@ -445,5 +433,9 @@ class CliSupportTest {
             Files.copy(inputStream, target);
         }
         return target;
+    }
+
+    private Strategy sampleSweepStrategy(BarSeries series) {
+        return CliSupport.buildSweepStrategies(List.of(), List.of("fast=5", "slow=20"), null, series).getFirst();
     }
 }

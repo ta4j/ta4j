@@ -80,8 +80,8 @@ public final class Ta4jCli {
 
     private static int executeBacktest(CliArguments arguments, PrintWriter out, PrintWriter err) throws IOException {
         String dataFile = arguments.require("data-file");
-        String strategyAlias = arguments.optional("strategy").orElse(null);
-        String strategyJson = arguments.optional("strategy-json").orElse(null);
+        String strategyLabel = arguments.optional("strategy").orElse(null);
+        String strategyJsonFile = arguments.optional("strategy-json-file").orElse(null);
         List<String> strategies = arguments.list("strategies");
         String strategiesJsonFile = arguments.optional("strategies-json-file").orElse(null);
         String timeframe = arguments.optional("timeframe").orElse(null);
@@ -98,13 +98,14 @@ public final class Ta4jCli {
                 "unstable-bars");
         boolean progress = arguments.flag("progress");
         List<String> params = arguments.list("param");
+        rejectUnsupportedParams("backtest", params);
         List<CliSupport.CriterionSpec> criteria = CliSupport.resolveCriteria(arguments.list("criteria"),
                 CliSupport.DEFAULT_BACKTEST_CRITERIA);
         arguments.assertNoUnknownOptions();
 
         BarSeries series = CliSupport.loadSeries(dataFile, timeframe, fromDate, toDate);
-        CliSupport.ResolvedStrategies resolvedStrategies = CliSupport.resolveStrategies(strategyAlias, strategyJson,
-                strategies, strategiesJsonFile, params, unstableBars, series);
+        CliSupport.ResolvedStrategies resolvedStrategies = CliSupport.resolveStrategies(strategyLabel, strategyJsonFile,
+                strategies, strategiesJsonFile, unstableBars, series);
         CliSupport.reportInvalidStrategies(resolvedStrategies.invalidStrategies(), err);
         BacktestExecutor executor = CliSupport.buildExecutor(series, executionModel, commission, borrowRate);
         Num amount = CliSupport.resolveAmount(series, capital, stakeAmount);
@@ -144,8 +145,8 @@ public final class Ta4jCli {
 
     private static int executeWalkForward(CliArguments arguments, PrintWriter out, PrintWriter err) throws IOException {
         String dataFile = arguments.require("data-file");
-        String strategyAlias = arguments.optional("strategy").orElse(null);
-        String strategyJson = arguments.optional("strategy-json").orElse(null);
+        String strategyLabel = arguments.optional("strategy").orElse(null);
+        String strategyJsonFile = arguments.optional("strategy-json-file").orElse(null);
         List<String> strategies = arguments.list("strategies");
         String strategiesJsonFile = arguments.optional("strategies-json-file").orElse(null);
         String timeframe = arguments.optional("timeframe").orElse(null);
@@ -162,14 +163,15 @@ public final class Ta4jCli {
                 "unstable-bars");
         boolean progress = arguments.flag("progress");
         List<String> params = arguments.list("param");
+        rejectUnsupportedParams("walk-forward", params);
         List<CliSupport.CriterionSpec> criteria = CliSupport.resolveCriteria(arguments.list("criteria"),
                 CliSupport.DEFAULT_WALK_FORWARD_CRITERIA);
 
         BarSeries series = CliSupport.loadSeries(dataFile, timeframe, fromDate, toDate);
         WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series, arguments);
         arguments.assertNoUnknownOptions();
-        CliSupport.ResolvedStrategies resolvedStrategies = CliSupport.resolveStrategies(strategyAlias, strategyJson,
-                strategies, strategiesJsonFile, params, unstableBars, series);
+        CliSupport.ResolvedStrategies resolvedStrategies = CliSupport.resolveStrategies(strategyLabel, strategyJsonFile,
+                strategies, strategiesJsonFile, unstableBars, series);
         CliSupport.reportInvalidStrategies(resolvedStrategies.invalidStrategies(), err);
 
         BacktestExecutor executor = CliSupport.buildExecutor(series, executionModel, commission, borrowRate);
@@ -229,7 +231,6 @@ public final class Ta4jCli {
 
     private static int executeSweep(CliArguments arguments, PrintWriter out, PrintWriter err) throws IOException {
         String dataFile = arguments.require("data-file");
-        String strategyAlias = arguments.require("strategy");
         String timeframe = arguments.optional("timeframe").orElse(null);
         String fromDate = arguments.optional("from-date").orElse(null);
         String toDate = arguments.optional("to-date").orElse(null);
@@ -253,8 +254,7 @@ public final class Ta4jCli {
         arguments.assertNoUnknownOptions();
 
         BarSeries series = CliSupport.loadSeries(dataFile, timeframe, fromDate, toDate);
-        List<Strategy> strategies = CliSupport.buildSweepStrategies(strategyAlias, params, paramGrids, unstableBars,
-                series);
+        List<Strategy> strategies = CliSupport.buildSweepStrategies(params, paramGrids, unstableBars, series);
         BacktestExecutor executor = CliSupport.buildExecutor(series, executionModel, commission, borrowRate);
         Num amount = CliSupport.resolveAmount(series, capital, stakeAmount);
 
@@ -333,7 +333,7 @@ public final class Ta4jCli {
                 Usage:
                   ta4j-cli backtest --data-file <path> <strategy-input> [options]
                   ta4j-cli walk-forward --data-file <path> <strategy-input> [options]
-                  ta4j-cli sweep --data-file <path> --strategy sma-crossover --param-grid fast=5,10 --param-grid slow=20,50 [options]
+                  ta4j-cli sweep --data-file <path> --param-grid fast=5,10 --param-grid slow=20,50 [options]
                   ta4j-cli indicator-test --data-file <path> --indicator <alias> [options]
 
                 Common options:
@@ -352,16 +352,16 @@ public final class Ta4jCli {
                   --unstable-bars <count>
 
                 Strategy options:
-                  --strategy <alias-or-label>
+                  --strategy <named-strategy-label>
                   --strategies <label[,label...]>
-                  --strategy-json <path>
+                  --strategy-json-file <path>
                   --strategies-json-file <path>
-                  --param key=value
-                  Supported strategy aliases: sma-crossover, rsi2, cci-correction, global-extrema, moving-momentum
                   NamedStrategy labels: <SimpleClassName>_<param1>_<param2>... (for example DayOfWeekStrategy_MONDAY_FRIDAY)
                   You may combine strategy inputs. Invalid entries are reported and skipped when at least one valid strategy remains.
 
                 Sweep options:
+                  Fixed to the bounded sma-crossover template
+                  --param key=value
                   --param-grid key=v1,v2,...
                   --top-k <count>
 
@@ -381,5 +381,13 @@ public final class Ta4jCli {
             err.printf("%s progress: %d%n", label, completed);
             err.flush();
         }
+    }
+
+    private static void rejectUnsupportedParams(String command, List<String> params) {
+        if (params == null || params.isEmpty()) {
+            return;
+        }
+        throw new IllegalArgumentException("The " + command
+                + " command does not accept --param. Encode parameter values in NamedStrategy labels or serialized strategy JSON.");
     }
 }

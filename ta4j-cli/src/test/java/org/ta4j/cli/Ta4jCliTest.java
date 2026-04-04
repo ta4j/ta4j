@@ -29,11 +29,13 @@ class Ta4jCliTest {
     @Test
     void backtestProducesJsonAndChartArtifacts() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        Path strategyJsonFile = writeSerializedStrategy("backtest-strategy.json", sampleSweepStrategy(series));
         Path outputFile = tempDir.resolve("backtest.json");
         Path chartFile = tempDir.resolve("backtest.jpg");
 
-        int exitCode = runCli("backtest", "--data-file", dataFile.toString(), "--strategy", "sma-crossover", "--param",
-                "fast=5", "--param", "slow=20", "--criteria", "net-profit,romad", "--output", outputFile.toString(),
+        int exitCode = runCli("backtest", "--data-file", dataFile.toString(), "--strategy-json-file",
+                strategyJsonFile.toString(), "--criteria", "net-profit,romad", "--output", outputFile.toString(),
                 "--chart", chartFile.toString());
 
         assertThat(exitCode).isZero();
@@ -52,12 +54,13 @@ class Ta4jCliTest {
     @Test
     void walkForwardProducesConfigHashAndFoldBreakdown() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        Path strategyJsonFile = writeSerializedStrategy("walk-forward-strategy.json", sampleSweepStrategy(series));
         Path outputFile = tempDir.resolve("walk-forward.json");
 
-        int exitCode = runCli("walk-forward", "--data-file", dataFile.toString(), "--strategy", "sma-crossover",
-                "--param", "fast=5", "--param", "slow=20", "--criteria", "gross-return", "--output",
-                outputFile.toString(), "--min-train-bars", "120", "--test-bars", "40", "--step-bars", "20",
-                "--holdout-bars", "20");
+        int exitCode = runCli("walk-forward", "--data-file", dataFile.toString(), "--strategy-json-file",
+                strategyJsonFile.toString(), "--criteria", "gross-return", "--output", outputFile.toString(),
+                "--min-train-bars", "120", "--test-bars", "40", "--step-bars", "20", "--holdout-bars", "20");
 
         assertThat(exitCode).isZero();
         JsonObject payload = readJson(outputFile);
@@ -72,9 +75,8 @@ class Ta4jCliTest {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         Path outputFile = tempDir.resolve("sweep.json");
 
-        int exitCode = runCli("sweep", "--data-file", dataFile.toString(), "--strategy", "sma-crossover",
-                "--param-grid", "fast=3,5", "--param-grid", "slow=20,30", "--top-k", "2", "--criteria", "net-profit",
-                "--output", outputFile.toString());
+        int exitCode = runCli("sweep", "--data-file", dataFile.toString(), "--param-grid", "fast=3,5", "--param-grid",
+                "slow=20,30", "--top-k", "2", "--criteria", "net-profit", "--output", outputFile.toString());
 
         assertThat(exitCode).isZero();
         JsonObject payload = readJson(outputFile);
@@ -116,18 +118,16 @@ class Ta4jCliTest {
     void backtestCombinesStrategyInputsAndSkipsInvalidEntries() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
-        Strategy serializedStrategy = CliSupport.buildStrategy("sma-crossover", null, List.of("fast=5", "slow=20"),
-                null, series);
-        Path strategyJson = tempDir.resolve("strategy.json");
+        Strategy serializedStrategy = sampleSweepStrategy(series);
+        Path strategyJsonFile = writeSerializedStrategy("strategy.json", serializedStrategy);
         Path strategiesJsonFile = tempDir.resolve("strategies.json");
         Path outputFile = tempDir.resolve("backtest-batch.json");
-        Files.writeString(strategyJson, serializedStrategy.toJson());
         Files.writeString(strategiesJsonFile, "[" + serializedStrategy.toJson() + ",\"invalid\"]");
 
         CliRunResult result = runCliAllowingError("backtest", "--data-file", dataFile.toString(), "--strategy",
                 "DayOfWeekStrategy_MONDAY_FRIDAY", "--strategies", "HourOfDayStrategy_9_17,MissingStrategy_VALUE",
-                "--strategy-json", strategyJson.toString(), "--strategies-json-file", strategiesJsonFile.toString(),
-                "--output", outputFile.toString());
+                "--strategy-json-file", strategyJsonFile.toString(), "--strategies-json-file",
+                strategiesJsonFile.toString(), "--output", outputFile.toString());
 
         assertThat(result.exitCode()).isZero();
         assertThat(result.stderr()).contains("Skipping invalid strategy inputs:")
@@ -147,8 +147,7 @@ class Ta4jCliTest {
     void walkForwardSupportsStrategiesJsonFileAndPreservesPrimaryFields() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
-        Strategy serializedStrategy = CliSupport.buildStrategy("sma-crossover", null, List.of("fast=5", "slow=20"),
-                null, series);
+        Strategy serializedStrategy = sampleSweepStrategy(series);
         Path strategiesJsonFile = tempDir.resolve("walk-forward-strategies.json");
         Path outputFile = tempDir.resolve("walk-forward-batch.json");
         Files.writeString(strategiesJsonFile, "[" + serializedStrategy.toJson() + ",{\"bad\":true}]");
@@ -175,7 +174,7 @@ class Ta4jCliTest {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
 
         CliRunResult result = runCliAllowingError("backtest", "--data-file", dataFile.toString(), "--strategy",
-                "sma-crossover", "--unstable-bars", "abc");
+                "DayOfWeekStrategy_MONDAY_FRIDAY", "--unstable-bars", "abc");
 
         assertThat(result.exitCode()).isEqualTo(2);
         assertThat(result.stderr()).contains("Invalid integer value for --unstable-bars: abc.");
@@ -185,15 +184,15 @@ class Ta4jCliTest {
     void sweepRejectsInvalidTopKValue() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
 
-        CliRunResult result = runCliAllowingError("sweep", "--data-file", dataFile.toString(), "--strategy",
-                "sma-crossover", "--param-grid", "fast=3,5", "--param-grid", "slow=20,30", "--top-k", "abc");
+        CliRunResult result = runCliAllowingError("sweep", "--data-file", dataFile.toString(), "--param-grid",
+                "fast=3,5", "--param-grid", "slow=20,30", "--top-k", "abc");
 
         assertThat(result.exitCode()).isEqualTo(2);
         assertThat(result.stderr()).contains("Invalid integer value for --top-k: abc.");
     }
 
     @Test
-    void backtestRejectsParamOverridesForNamedStrategyLabels() throws Exception {
+    void backtestRejectsParamOptions() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
 
         CliRunResult result = runCliAllowingError("backtest", "--data-file", dataFile.toString(), "--strategy",
@@ -201,7 +200,7 @@ class Ta4jCliTest {
 
         assertThat(result.exitCode()).isEqualTo(2);
         assertThat(result.stderr()).contains(
-                "--param is not supported when --strategy uses a NamedStrategy label. Encode parameter values in the label.");
+                "The backtest command does not accept --param. Encode parameter values in NamedStrategy labels or serialized strategy JSON.");
     }
 
     @Test
@@ -215,7 +214,7 @@ class Ta4jCliTest {
         assertThat(result.stderr()).contains("No valid strategies to run.")
                 .contains("--strategies MissingStrategy_VALUE")
                 .contains("--strategies-json-file " + tempDir.resolve("missing.json"))
-                .contains("Use --strategy, --strategy-json, --strategies, or --strategies-json-file.");
+                .contains("Use --strategy, --strategies, --strategy-json-file, or --strategies-json-file.");
     }
 
     private int runCli(String... args) {
@@ -242,6 +241,16 @@ class Ta4jCliTest {
 
     private JsonObject readJson(Path jsonFile) throws IOException {
         return JsonParser.parseString(Files.readString(jsonFile)).getAsJsonObject();
+    }
+
+    private Strategy sampleSweepStrategy(BarSeries series) {
+        return CliSupport.buildSweepStrategies(List.of(), List.of("fast=5", "slow=20"), null, series).getFirst();
+    }
+
+    private Path writeSerializedStrategy(String fileName, Strategy strategy) throws IOException {
+        Path strategyJsonFile = tempDir.resolve(fileName);
+        Files.writeString(strategyJsonFile, strategy.toJson());
+        return strategyJsonFile;
     }
 
     private record CliRunResult(int exitCode, String stdout, String stderr) {

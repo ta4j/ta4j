@@ -62,10 +62,6 @@ import org.ta4j.core.walkforward.WalkForwardSplit;
 import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
-import ta4jexamples.strategies.CCICorrectionStrategy;
-import ta4jexamples.strategies.GlobalExtremaStrategy;
-import ta4jexamples.strategies.MovingMomentumStrategy;
-import ta4jexamples.strategies.RSI2Strategy;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -105,7 +101,7 @@ final class CliSupport {
     static final List<String> DEFAULT_SWEEP_CRITERIA = List.of("net-profit");
     static final List<String> DEFAULT_INDICATOR_TEST_CRITERIA = List.of("net-profit", "sharpe");
     static final String NAMED_STRATEGY_EXAMPLE = "DayOfWeekStrategy_MONDAY_FRIDAY";
-    private static final String STRATEGY_INPUT_GUIDANCE = "Use --strategy, --strategy-json, --strategies, or --strategies-json-file.";
+    private static final String STRATEGY_INPUT_GUIDANCE = "Use --strategy, --strategies, --strategy-json-file, or --strategies-json-file.";
 
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
 
@@ -211,37 +207,24 @@ final class CliSupport {
         return List.copyOf(criteria);
     }
 
-    static Strategy buildStrategy(String strategyAlias, String strategyJsonPath, List<String> paramOptions,
-            Integer unstableBars, BarSeries series) {
+    static Strategy buildStrategy(String strategyLabel, String strategyJsonFile, Integer unstableBars,
+            BarSeries series) {
         Strategy strategy;
-        String requestedStrategy = strategyAlias == null ? "" : strategyAlias.trim();
-        String normalizedAlias = normalizeToken(requestedStrategy);
-        if (strategyJsonPath != null && !strategyJsonPath.isBlank()) {
-            strategy = buildStrategyFromJsonPath(strategyJsonPath, unstableBars, series);
-        } else if ("sma-crossover".equals(normalizedAlias)) {
-            Map<String, String> params = parseKeyValueOptions(paramOptions, "--param");
-            strategy = buildSmaCrossoverStrategy(series, params);
-        } else if ("rsi2".equals(normalizedAlias)) {
-            strategy = RSI2Strategy.buildStrategy(series);
-        } else if ("cci-correction".equals(normalizedAlias)) {
-            strategy = CCICorrectionStrategy.buildStrategy(series);
-        } else if ("global-extrema".equals(normalizedAlias)) {
-            strategy = GlobalExtremaStrategy.buildStrategy(series);
-        } else if ("moving-momentum".equals(normalizedAlias)) {
-            strategy = MovingMomentumStrategy.buildStrategy(series);
+        String requestedStrategy = strategyLabel == null ? "" : strategyLabel.trim();
+        if (strategyJsonFile != null && !strategyJsonFile.isBlank()) {
+            strategy = buildStrategyFromJsonPath(strategyJsonFile, unstableBars, series);
         } else {
-            strategy = buildNamedStrategy(requestedStrategy, paramOptions, series);
+            strategy = buildNamedStrategy(requestedStrategy, series);
         }
 
-        if (unstableBars != null && (strategyJsonPath == null || strategyJsonPath.isBlank())) {
+        if (unstableBars != null && (strategyJsonFile == null || strategyJsonFile.isBlank())) {
             strategy.setUnstableBars(unstableBars);
         }
         return strategy;
     }
 
-    static ResolvedStrategies resolveStrategies(String strategyToken, String strategyJsonPath,
-            List<String> strategyLabels, String strategiesJsonFile, List<String> paramOptions, Integer unstableBars,
-            BarSeries series) {
+    static ResolvedStrategies resolveStrategies(String strategyToken, String strategyJsonFile,
+            List<String> strategyLabels, String strategiesJsonFile, Integer unstableBars, BarSeries series) {
         List<Strategy> validStrategies = new ArrayList<>();
         List<String> invalidStrategies = new ArrayList<>();
         boolean hasStrategyInput = false;
@@ -249,23 +232,18 @@ final class CliSupport {
         if (strategyToken != null && !strategyToken.isBlank()) {
             hasStrategyInput = true;
             try {
-                validStrategies.add(buildStrategy(strategyToken, null, paramOptions, unstableBars, series));
+                validStrategies.add(buildStrategy(strategyToken, null, unstableBars, series));
             } catch (IllegalArgumentException ex) {
                 invalidStrategies.add("--strategy " + strategyToken + ": " + ex.getMessage());
             }
         }
 
-        if (strategyJsonPath != null && !strategyJsonPath.isBlank()) {
+        if (strategyJsonFile != null && !strategyJsonFile.isBlank()) {
             hasStrategyInput = true;
-            if (paramOptions != null && !paramOptions.isEmpty()) {
-                invalidStrategies.add("--strategy-json " + strategyJsonPath
-                        + ": --param is not supported when loading serialized strategies.");
-            } else {
-                try {
-                    validStrategies.add(buildStrategyFromJsonPath(strategyJsonPath, unstableBars, series));
-                } catch (IllegalArgumentException ex) {
-                    invalidStrategies.add("--strategy-json " + strategyJsonPath + ": " + ex.getMessage());
-                }
+            try {
+                validStrategies.add(buildStrategyFromJsonPath(strategyJsonFile, unstableBars, series));
+            } catch (IllegalArgumentException ex) {
+                invalidStrategies.add("--strategy-json-file " + strategyJsonFile + ": " + ex.getMessage());
             }
         }
 
@@ -273,7 +251,7 @@ final class CliSupport {
             hasStrategyInput = true;
             for (String label : parseStrategyLabels(strategyLabels, invalidStrategies)) {
                 try {
-                    validStrategies.add(buildNamedStrategy(label, List.of(), series));
+                    validStrategies.add(buildNamedStrategy(label, series));
                     if (unstableBars != null) {
                         validStrategies.getLast().setUnstableBars(unstableBars);
                     }
@@ -285,13 +263,8 @@ final class CliSupport {
 
         if (strategiesJsonFile != null && !strategiesJsonFile.isBlank()) {
             hasStrategyInput = true;
-            if (paramOptions != null && !paramOptions.isEmpty()) {
-                invalidStrategies.add("--strategies-json-file " + strategiesJsonFile
-                        + ": --param is not supported when loading serialized strategies.");
-            } else {
-                validStrategies.addAll(
-                        loadStrategiesFromJsonArrayFile(strategiesJsonFile, unstableBars, series, invalidStrategies));
-            }
+            validStrategies.addAll(
+                    loadStrategiesFromJsonArrayFile(strategiesJsonFile, unstableBars, series, invalidStrategies));
         }
 
         if (!hasStrategyInput) {
@@ -339,13 +312,8 @@ final class CliSupport {
                 averageDuration(durations), medianDuration(durations), strategyRuntimes);
     }
 
-    static List<Strategy> buildSweepStrategies(String strategyAlias, List<String> paramOptions,
-            List<String> gridOptions, Integer unstableBars, BarSeries series) {
-        String normalizedAlias = normalizeToken(strategyAlias);
-        if (!"sma-crossover".equals(normalizedAlias)) {
-            throw new IllegalArgumentException("The MVP sweep command currently supports --strategy sma-crossover.");
-        }
-
+    static List<Strategy> buildSweepStrategies(List<String> paramOptions, List<String> gridOptions,
+            Integer unstableBars, BarSeries series) {
         Map<String, String> fixedParams = parseKeyValueOptions(paramOptions, "--param");
         Map<String, List<String>> gridParams = parseGridOptions(gridOptions);
         if (gridParams.isEmpty()) {
@@ -878,7 +846,7 @@ final class CliSupport {
         return series.getSubSeries(startIndex, endIndexExclusive);
     }
 
-    private static Strategy buildNamedStrategy(String strategyLabel, List<String> paramOptions, BarSeries series) {
+    private static Strategy buildNamedStrategy(String strategyLabel, BarSeries series) {
         if (strategyLabel == null || strategyLabel.isBlank()) {
             throw unknownStrategyValue(strategyLabel);
         }
@@ -887,10 +855,6 @@ final class CliSupport {
         String simpleName = labelTokens.getFirst();
         if (simpleName.isBlank() || NamedStrategy.lookup(simpleName).isEmpty()) {
             throw unknownStrategyValue(strategyLabel);
-        }
-        if (paramOptions != null && !paramOptions.isEmpty()) {
-            throw new IllegalArgumentException(
-                    "--param is not supported when --strategy uses a NamedStrategy label. Encode parameter values in the label.");
         }
 
         String json = toJson(Map.of("type", NamedStrategy.SERIALIZED_TYPE, "label", strategyLabel));
@@ -1059,9 +1023,8 @@ final class CliSupport {
     }
 
     private static IllegalArgumentException unknownStrategyValue(String strategyValue) {
-        return new IllegalArgumentException("Unknown strategy value '" + strategyValue
-                + "'. Use a bounded alias (sma-crossover, rsi2, cci-correction, global-extrema, moving-momentum) or a NamedStrategy label such as "
-                + NAMED_STRATEGY_EXAMPLE + ".");
+        return new IllegalArgumentException("Unknown strategy label '" + strategyValue
+                + "'. Use a NamedStrategy label such as " + NAMED_STRATEGY_EXAMPLE + ".");
     }
 
     private static Map<String, Object> linkedMap() {
