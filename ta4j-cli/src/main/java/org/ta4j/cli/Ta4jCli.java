@@ -62,8 +62,9 @@ public final class Ta4jCli {
             case "walk-forward" -> executeWalkForward(arguments, out, err);
             case "sweep" -> executeSweep(arguments, out, err);
             case "indicator-test" -> executeIndicatorTest(arguments, out, err);
+            case "rule-test" -> executeRuleTest(arguments, out, err);
             default -> throw new IllegalArgumentException("Unknown command '" + arguments.command()
-                    + "'. Supported commands are backtest, walk-forward, sweep, indicator-test.");
+                    + "'. Supported commands are backtest, walk-forward, sweep, indicator-test, rule-test.");
             };
         } catch (IllegalArgumentException ex) {
             err.println(ex.getMessage());
@@ -284,7 +285,8 @@ public final class Ta4jCli {
     private static int executeIndicatorTest(CliArguments arguments, PrintWriter out, PrintWriter err)
             throws IOException {
         String dataFile = arguments.require("data-file");
-        String indicatorAlias = arguments.require("indicator");
+        String indicatorJson = arguments.optional("indicator").orElse(null);
+        String indicatorJsonFile = arguments.optional("indicator-json-file").orElse(null);
         String timeframe = arguments.optional("timeframe").orElse(null);
         String fromDate = arguments.optional("from-date").orElse(null);
         String toDate = arguments.optional("to-date").orElse(null);
@@ -303,13 +305,16 @@ public final class Ta4jCli {
         String exitAbove = arguments.optional("exit-above").orElse(null);
         boolean progress = arguments.flag("progress");
         List<String> params = arguments.list("param");
+        rejectUnsupportedParams("indicator-test", params);
         List<CliSupport.CriterionSpec> criteria = CliSupport.resolveCriteria(arguments.list("criteria"),
                 CliSupport.DEFAULT_INDICATOR_TEST_CRITERIA);
         arguments.assertNoUnknownOptions();
 
         BarSeries series = CliSupport.loadSeries(dataFile, timeframe, fromDate, toDate);
-        Strategy strategy = CliSupport.buildIndicatorTestStrategy(indicatorAlias, params, unstableBars, entryBelow,
-                entryAbove, exitBelow, exitAbove, series);
+        CliSupport.ResolvedIndicator resolvedIndicator = CliSupport.resolveIndicator(indicatorJson, indicatorJsonFile,
+                series);
+        Strategy strategy = CliSupport.buildIndicatorTestStrategy(indicatorJson, indicatorJsonFile, unstableBars,
+                entryBelow, entryAbove, exitBelow, exitAbove, series);
         BacktestExecutor executor = CliSupport.buildExecutor(series, executionModel, commission, borrowRate);
         Num amount = CliSupport.resolveAmount(series, capital, stakeAmount);
         BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), amount,
@@ -321,9 +326,65 @@ public final class Ta4jCli {
         Map<String, Object> response = CliSupport.buildCommandMetadata("indicator-test", series, dataFile, timeframe,
                 fromDate, toDate, executionModel, capital, stakeAmount, commission, borrowRate, criteria, outputPath,
                 chartPath);
-        response.put("indicator", indicatorAlias);
+        response.put("indicatorType", resolvedIndicator.typeName());
+        response.put("indicatorJson", resolvedIndicator.json());
         response.put("runtime", CliSupport.backtestRuntimeToMap(result.runtimeReport()));
         response.put("statement", CliSupport.statementToMap(series, statement, criteria));
+        CliSupport.writeJson(CliSupport.toJson(response), outputPath, out);
+        return 0;
+    }
+
+    private static int executeRuleTest(CliArguments arguments, PrintWriter out, PrintWriter err) throws IOException {
+        String dataFile = arguments.require("data-file");
+        String entryRuleLabel = arguments.optional("entry-rule").orElse(null);
+        String entryRuleJsonFile = arguments.optional("entry-rule-json-file").orElse(null);
+        String exitRuleLabel = arguments.optional("exit-rule").orElse(null);
+        String exitRuleJsonFile = arguments.optional("exit-rule-json-file").orElse(null);
+        String timeframe = arguments.optional("timeframe").orElse(null);
+        String fromDate = arguments.optional("from-date").orElse(null);
+        String toDate = arguments.optional("to-date").orElse(null);
+        String executionModel = arguments.optional("execution-model").orElse(null);
+        String capital = arguments.optional("capital").orElse(null);
+        String stakeAmount = arguments.optional("stake-amount").orElse(null);
+        String commission = arguments.optional("commission").orElse(null);
+        String borrowRate = arguments.optional("borrow-rate").orElse(null);
+        String output = arguments.optional("output").orElse(null);
+        String chart = arguments.optional("chart").orElse(null);
+        Integer unstableBars = CliSupport.parseOptionalInteger(arguments.optional("unstable-bars").orElse(null),
+                "unstable-bars");
+        boolean progress = arguments.flag("progress");
+        List<String> params = arguments.list("param");
+        rejectUnsupportedParams("rule-test", params);
+        List<CliSupport.CriterionSpec> criteria = CliSupport.resolveCriteria(arguments.list("criteria"),
+                CliSupport.DEFAULT_RULE_TEST_CRITERIA);
+
+        BarSeries series = CliSupport.loadSeries(dataFile, timeframe, fromDate, toDate);
+        WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series, arguments);
+        arguments.assertNoUnknownOptions();
+
+        Strategy strategy = CliSupport.buildRuleTestStrategy(entryRuleLabel, entryRuleJsonFile, exitRuleLabel,
+                exitRuleJsonFile, unstableBars, series);
+        BacktestExecutor executor = CliSupport.buildExecutor(series, executionModel, commission, borrowRate);
+        Num amount = CliSupport.resolveAmount(series, capital, stakeAmount);
+        BacktestExecutionResult backtest = executor.executeWithRuntimeReport(List.of(strategy), amount,
+                strategy.getStartingType());
+        StrategyWalkForwardExecutionResult walkForward = executor.executeWalkForward(strategy, amount,
+                strategy.getStartingType(), config, CliSupport.progressCallback(progress, err, "rule-test"));
+
+        TradingStatement statement = backtest.tradingStatements().getFirst();
+        Path chartPath = CliSupport.saveChart(chart, series, statement);
+        Path outputPath = CliSupport.resolveOutputPath(output);
+
+        Map<String, Object> response = CliSupport.buildCommandMetadata("rule-test", series, dataFile, timeframe,
+                fromDate, toDate, executionModel, capital, stakeAmount, commission, borrowRate, criteria, outputPath,
+                chartPath);
+        response.put("entryRuleName", strategy.getEntryRule().getName());
+        response.put("entryRuleJson", strategy.getEntryRule().toJson());
+        response.put("exitRuleName", strategy.getExitRule().getName());
+        response.put("exitRuleJson", strategy.getExitRule().toJson());
+        response.put("backtest", CliSupport.statementToMap(series, statement, criteria));
+        response.put("backtestRuntime", CliSupport.backtestRuntimeToMap(backtest.runtimeReport()));
+        response.put("walkForward", CliSupport.walkForwardToMap(series, walkForward, criteria));
         CliSupport.writeJson(CliSupport.toJson(response), outputPath, out);
         return 0;
     }
@@ -334,7 +395,8 @@ public final class Ta4jCli {
                   ta4j-cli backtest --data-file <path> <strategy-input> [options]
                   ta4j-cli walk-forward --data-file <path> <strategy-input> [options]
                   ta4j-cli sweep --data-file <path> --param-grid fast=5,10 --param-grid slow=20,50 [options]
-                  ta4j-cli indicator-test --data-file <path> --indicator <alias> [options]
+                  ta4j-cli indicator-test --data-file <path> (--indicator <json> | --indicator-json-file <path>) [options]
+                  ta4j-cli rule-test --data-file <path> <entry-rule-input> <exit-rule-input> [options]
 
                 Common options:
                   --timeframe 1m|5m|15m|1h|4h|1d|PT...
@@ -345,7 +407,7 @@ public final class Ta4jCli {
                   --stake-amount <number>
                   --commission <rate>
                   --borrow-rate <rate>
-                  --criteria alias[,alias...]
+                  --criteria fqcn[,fqcn...]
                   --output <json-path>
                   --chart <jpeg-path>
                   --progress
@@ -366,10 +428,16 @@ public final class Ta4jCli {
                   --top-k <count>
 
                 Indicator-test options:
-                  --indicator sma|ema|rsi|cci
+                  --indicator <serialized-indicator-json>
+                  --indicator-json-file <path>
                   --entry-below <number> | --entry-above <number>
                   --exit-below <number> | --exit-above <number>
-                  --param period=<count>
+
+                Rule-test options:
+                  --entry-rule <named-rule-label> | --entry-rule-json-file <path>
+                  --exit-rule <named-rule-label> | --exit-rule-json-file <path>
+                  --min-train-bars, --test-bars, --step-bars, --purge-bars, --embargo-bars, --holdout-bars
+                  --primary-horizon-bars, --optimization-top-k, --seed
                 """;
     }
 
@@ -387,7 +455,13 @@ public final class Ta4jCli {
         if (params == null || params.isEmpty()) {
             return;
         }
-        throw new IllegalArgumentException("The " + command
-                + " command does not accept --param. Encode parameter values in NamedStrategy labels or serialized strategy JSON.");
+        String guidance = switch (command) {
+        case "backtest", "walk-forward" ->
+            "Encode parameter values in NamedStrategy labels or serialized strategy JSON.";
+        case "indicator-test" -> "Encode indicator parameters in serialized indicator JSON.";
+        case "rule-test" -> "Encode rule parameters in NamedRule labels or serialized rule JSON.";
+        default -> "Use the command-specific structured inputs instead.";
+        };
+        throw new IllegalArgumentException("The " + command + " command does not accept --param. " + guidance);
     }
 }

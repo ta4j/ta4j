@@ -10,6 +10,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitCriterion;
+import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import ta4jexamples.rules.RsiThresholdRule;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -35,8 +40,9 @@ class Ta4jCliTest {
         Path chartFile = tempDir.resolve("backtest.jpg");
 
         int exitCode = runCli("backtest", "--data-file", dataFile.toString(), "--strategy-json-file",
-                strategyJsonFile.toString(), "--criteria", "net-profit,romad", "--output", outputFile.toString(),
-                "--chart", chartFile.toString());
+                strategyJsonFile.toString(), "--criteria",
+                NetProfitCriterion.class.getName() + ",org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion",
+                "--output", outputFile.toString(), "--chart", chartFile.toString());
 
         assertThat(exitCode).isZero();
         assertThat(outputFile).exists();
@@ -59,8 +65,9 @@ class Ta4jCliTest {
         Path outputFile = tempDir.resolve("walk-forward.json");
 
         int exitCode = runCli("walk-forward", "--data-file", dataFile.toString(), "--strategy-json-file",
-                strategyJsonFile.toString(), "--criteria", "gross-return", "--output", outputFile.toString(),
-                "--min-train-bars", "120", "--test-bars", "40", "--step-bars", "20", "--holdout-bars", "20");
+                strategyJsonFile.toString(), "--criteria", GrossReturnCriterion.class.getName(), "--output",
+                outputFile.toString(), "--min-train-bars", "120", "--test-bars", "40", "--step-bars", "20",
+                "--holdout-bars", "20");
 
         assertThat(exitCode).isZero();
         JsonObject payload = readJson(outputFile);
@@ -76,7 +83,8 @@ class Ta4jCliTest {
         Path outputFile = tempDir.resolve("sweep.json");
 
         int exitCode = runCli("sweep", "--data-file", dataFile.toString(), "--param-grid", "fast=3,5", "--param-grid",
-                "slow=20,30", "--top-k", "2", "--criteria", "net-profit", "--output", outputFile.toString());
+                "slow=20,30", "--top-k", "2", "--criteria", NetProfitCriterion.class.getName(), "--output",
+                outputFile.toString());
 
         assertThat(exitCode).isZero();
         JsonObject payload = readJson(outputFile);
@@ -88,16 +96,37 @@ class Ta4jCliTest {
     @Test
     void indicatorTestBuildsThresholdStrategy() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        String indicatorJson = new RSIIndicator(new ClosePriceIndicator(series), 14).toJson();
         Path outputFile = tempDir.resolve("indicator-test.json");
 
-        int exitCode = runCli("indicator-test", "--data-file", dataFile.toString(), "--indicator", "rsi", "--param",
-                "period=14", "--entry-below", "30", "--exit-above", "70", "--output", outputFile.toString());
+        int exitCode = runCli("indicator-test", "--data-file", dataFile.toString(), "--indicator", indicatorJson,
+                "--entry-below", "30", "--exit-above", "70", "--output", outputFile.toString());
 
         assertThat(exitCode).isZero();
         JsonObject payload = readJson(outputFile);
-        assertThat(payload.get("indicator").getAsString()).isEqualTo("rsi");
+        assertThat(payload.get("indicatorType").getAsString()).isEqualTo(RSIIndicator.class.getName());
         assertThat(payload.getAsJsonObject("statement").get("strategyName").getAsString())
-                .isEqualTo("rsi-indicator-test");
+                .isEqualTo("RSIIndicator-indicator-test");
+    }
+
+    @Test
+    void ruleTestBuildsBacktestAndWalkForwardArtifactsFromNamedRules() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        Path outputFile = tempDir.resolve("rule-test.json");
+
+        int exitCode = runCli("rule-test", "--data-file", dataFile.toString(), "--entry-rule",
+                "RsiThresholdRule_BELOW_14_30", "--exit-rule", "RsiThresholdRule_ABOVE_14_70", "--output",
+                outputFile.toString(), "--min-train-bars", "120", "--test-bars", "40", "--step-bars", "20",
+                "--holdout-bars", "20");
+
+        assertThat(exitCode).isZero();
+        JsonObject payload = readJson(outputFile);
+        assertThat(payload.get("entryRuleName").getAsString()).isEqualTo("RsiThresholdRule_BELOW_14_30");
+        assertThat(payload.get("exitRuleName").getAsString()).isEqualTo("RsiThresholdRule_ABOVE_14_70");
+        assertThat(payload.get("backtest")).isNotNull();
+        assertThat(payload.get("backtestRuntime")).isNotNull();
+        assertThat(payload.get("walkForward")).isNotNull();
     }
 
     @Test
@@ -201,6 +230,18 @@ class Ta4jCliTest {
         assertThat(result.exitCode()).isEqualTo(2);
         assertThat(result.stderr()).contains(
                 "The backtest command does not accept --param. Encode parameter values in NamedStrategy labels or serialized strategy JSON.");
+    }
+
+    @Test
+    void indicatorTestRejectsParamOptions() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("indicator-test", "--data-file", dataFile.toString(), "--indicator",
+                "{\"type\":\"EMAIndicator\"}", "--param", "period=14");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains(
+                "The indicator-test command does not accept --param. Encode indicator parameters in serialized indicator JSON.");
     }
 
     @Test

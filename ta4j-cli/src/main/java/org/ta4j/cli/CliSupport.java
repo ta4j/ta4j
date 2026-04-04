@@ -31,20 +31,11 @@ import org.ta4j.core.backtest.TradeExecutionModel;
 import org.ta4j.core.backtest.TradeOnCurrentCloseModel;
 import org.ta4j.core.backtest.TradeOnNextOpenModel;
 import org.ta4j.core.backtest.StrategyWalkForwardExecutionResult;
-import org.ta4j.core.criteria.ExpectancyCriterion;
 import org.ta4j.core.criteria.SharpeRatioCriterion;
-import org.ta4j.core.criteria.SqnCriterion;
-import org.ta4j.core.criteria.commissions.CommissionsCriterion;
 import org.ta4j.core.criteria.commissions.TotalFeesCriterion;
-import org.ta4j.core.criteria.drawdown.MaximumDrawdownCriterion;
 import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
-import org.ta4j.core.criteria.pnl.GrossProfitCriterion;
 import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
-import org.ta4j.core.criteria.pnl.NetProfitLossCriterion;
-import org.ta4j.core.criteria.pnl.NetReturnCriterion;
-import org.ta4j.core.indicators.CCIIndicator;
-import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -55,6 +46,7 @@ import org.ta4j.core.rules.CrossedDownIndicatorRule;
 import org.ta4j.core.rules.CrossedUpIndicatorRule;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
+import org.ta4j.core.rules.named.NamedRule;
 import org.ta4j.core.strategy.named.NamedStrategy;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 import org.ta4j.core.walkforward.WalkForwardRuntimeReport;
@@ -74,6 +66,7 @@ import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -82,7 +75,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
-import java.util.function.Supplier;
 
 /**
  * Shared validation, execution, and serialization helpers for the ta4j CLI.
@@ -96,16 +88,22 @@ import java.util.function.Supplier;
  */
 final class CliSupport {
 
-    static final List<String> DEFAULT_BACKTEST_CRITERIA = List.of("net-profit", "romad", "total-fees");
-    static final List<String> DEFAULT_WALK_FORWARD_CRITERIA = List.of("gross-return");
-    static final List<String> DEFAULT_SWEEP_CRITERIA = List.of("net-profit");
-    static final List<String> DEFAULT_INDICATOR_TEST_CRITERIA = List.of("net-profit", "sharpe");
+    static final List<String> DEFAULT_BACKTEST_CRITERIA = List.of(NetProfitCriterion.class.getName(),
+            ReturnOverMaxDrawdownCriterion.class.getName(), TotalFeesCriterion.class.getName());
+    static final List<String> DEFAULT_WALK_FORWARD_CRITERIA = List.of(GrossReturnCriterion.class.getName());
+    static final List<String> DEFAULT_SWEEP_CRITERIA = List.of(NetProfitCriterion.class.getName());
+    static final List<String> DEFAULT_INDICATOR_TEST_CRITERIA = List.of(NetProfitCriterion.class.getName(),
+            SharpeRatioCriterion.class.getName());
+    static final List<String> DEFAULT_RULE_TEST_CRITERIA = List.of(NetProfitCriterion.class.getName(),
+            SharpeRatioCriterion.class.getName());
     static final String NAMED_STRATEGY_EXAMPLE = "DayOfWeekStrategy_MONDAY_FRIDAY";
+    static final String NAMED_RULE_EXAMPLE = "RsiThresholdRule_BELOW_14_30";
+    static final String CRITERION_CLASS_EXAMPLE = NetProfitCriterion.class.getName();
     private static final String STRATEGY_INPUT_GUIDANCE = "Use --strategy, --strategies, --strategy-json-file, or --strategies-json-file.";
+    private static final String INDICATOR_INPUT_GUIDANCE = "Use --indicator with serialized indicator JSON or --indicator-json-file.";
+    private static final String RULE_INPUT_GUIDANCE = "Use --entry-rule or --entry-rule-json-file together with --exit-rule or --exit-rule-json-file.";
 
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
-
-    private static final Map<String, Supplier<AnalysisCriterion>> CRITERIA = createCriterionRegistry();
 
     private CliSupport() {
     }
@@ -177,32 +175,27 @@ final class CliSupport {
         return series.numFactory().numOf(resolved);
     }
 
-    static List<CriterionSpec> resolveCriteria(List<String> requestedAliases, List<String> defaults) {
-        List<String> effectiveAliases = requestedAliases == null || requestedAliases.isEmpty() ? defaults
-                : requestedAliases;
-        LinkedHashSet<String> normalizedAliases = new LinkedHashSet<>();
-        for (String value : effectiveAliases) {
+    static List<CriterionSpec> resolveCriteria(List<String> requestedTypes, List<String> defaults) {
+        List<String> effectiveTypes = requestedTypes == null || requestedTypes.isEmpty() ? defaults : requestedTypes;
+        LinkedHashSet<String> normalizedTypes = new LinkedHashSet<>();
+        for (String value : effectiveTypes) {
             if (value == null) {
                 continue;
             }
             for (String token : value.split(",")) {
-                String normalized = normalizeToken(token);
+                String normalized = token.trim();
                 if (!normalized.isEmpty()) {
-                    normalizedAliases.add(normalized);
+                    normalizedTypes.add(normalized);
                 }
             }
         }
-        if (normalizedAliases.isEmpty()) {
-            throw new IllegalArgumentException("At least one criterion alias is required.");
+        if (normalizedTypes.isEmpty()) {
+            throw new IllegalArgumentException("At least one criterion class is required.");
         }
 
-        List<CriterionSpec> criteria = new ArrayList<>(normalizedAliases.size());
-        for (String alias : normalizedAliases) {
-            Supplier<AnalysisCriterion> supplier = CRITERIA.get(alias);
-            if (supplier == null) {
-                throw new IllegalArgumentException("Unknown criterion alias: " + alias + ".");
-            }
-            criteria.add(new CriterionSpec(alias, supplier.get()));
+        List<CriterionSpec> criteria = new ArrayList<>(normalizedTypes.size());
+        for (String requestedType : normalizedTypes) {
+            criteria.add(resolveCriterion(requestedType));
         }
         return List.copyOf(criteria);
     }
@@ -335,13 +328,26 @@ final class CliSupport {
         return List.copyOf(strategies);
     }
 
-    static Strategy buildIndicatorTestStrategy(String indicatorAlias, List<String> paramOptions, Integer unstableBars,
+    static ResolvedIndicator resolveIndicator(String indicatorJson, String indicatorJsonFile, BarSeries series) {
+        String json = readSerializedInput("--indicator", indicatorJson, "--indicator-json-file", indicatorJsonFile,
+                INDICATOR_INPUT_GUIDANCE);
+        Indicator<?> rawIndicator;
+        try {
+            rawIndicator = Indicator.fromJson(series, json);
+        } catch (RuntimeException ex) {
+            throw new IllegalArgumentException("Invalid serialized indicator input.", ex);
+        }
+
+        Indicator<Num> indicator = castNumericIndicator(rawIndicator);
+        return new ResolvedIndicator(indicator, indicator.toJson(), indicator.getClass().getName());
+    }
+
+    static Strategy buildIndicatorTestStrategy(String indicatorJson, String indicatorJsonFile, Integer unstableBars,
             String entryBelowToken, String entryAboveToken, String exitBelowToken, String exitAboveToken,
             BarSeries series) {
-        Map<String, String> params = parseKeyValueOptions(paramOptions, "--param");
-        String normalizedAlias = normalizeToken(indicatorAlias);
+        ResolvedIndicator resolvedIndicator = resolveIndicator(indicatorJson, indicatorJsonFile, series);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        Indicator<Num> indicator = buildIndicator(normalizedAlias, params, series, closePrice);
+        Indicator<Num> indicator = resolvedIndicator.indicator();
 
         Rule entryRule;
         Rule exitRule;
@@ -353,12 +359,12 @@ final class CliSupport {
             exitRule = new CrossedDownIndicatorRule(closePrice, indicator);
         }
 
-        String strategyName = normalizedAlias + "-indicator-test";
+        String strategyName = indicator.getClass().getSimpleName() + "-indicator-test";
         BaseStrategy strategy = new BaseStrategy(strategyName, entryRule, exitRule);
         if (unstableBars != null) {
             strategy.setUnstableBars(unstableBars);
         } else {
-            strategy.setUnstableBars(resolveDefaultIndicatorUnstableBars(params));
+            strategy.setUnstableBars(indicator.getCountOfUnstableBars());
         }
         return strategy;
     }
@@ -466,7 +472,7 @@ final class CliSupport {
         execution.put("stakeAmount", stakeAmountToken);
         execution.put("commission", commissionToken);
         execution.put("borrowRate", borrowRateToken);
-        execution.put("criteria", criteria.stream().map(CriterionSpec::alias).toList());
+        execution.put("criteria", criteria.stream().map(CriterionSpec::className).toList());
         metadata.put("execution", execution);
 
         Map<String, Object> artifacts = linkedMap();
@@ -549,7 +555,7 @@ final class CliSupport {
             values.put("holdout",
                     result.holdoutCriterionValue(criterion.criterion()).map(CliSupport::numberString).orElse(null));
             values.put("outOfSampleAverage", average(result.outOfSampleCriterionValues(criterion.criterion())));
-            aggregateCriteria.put(criterion.alias(), values);
+            aggregateCriteria.put(criterion.className(), values);
         }
         walkForward.put("criteria", aggregateCriteria);
         return walkForward;
@@ -598,26 +604,9 @@ final class CliSupport {
             List<CriterionSpec> criteria) {
         Map<String, Object> scores = linkedMap();
         for (CriterionSpec criterion : criteria) {
-            scores.put(criterion.alias(), numberString(criterion.criterion().calculate(series, tradingRecord)));
+            scores.put(criterion.className(), numberString(criterion.criterion().calculate(series, tradingRecord)));
         }
         return scores;
-    }
-
-    private static Map<String, Supplier<AnalysisCriterion>> createCriterionRegistry() {
-        Map<String, Supplier<AnalysisCriterion>> criteria = new LinkedHashMap<>();
-        criteria.put("gross-return", GrossReturnCriterion::new);
-        criteria.put("net-return", NetReturnCriterion::new);
-        criteria.put("gross-profit", GrossProfitCriterion::new);
-        criteria.put("net-profit", NetProfitCriterion::new);
-        criteria.put("net-profit-loss", NetProfitLossCriterion::new);
-        criteria.put("sharpe", SharpeRatioCriterion::new);
-        criteria.put("romad", ReturnOverMaxDrawdownCriterion::new);
-        criteria.put("max-drawdown", MaximumDrawdownCriterion::new);
-        criteria.put("total-fees", TotalFeesCriterion::new);
-        criteria.put("commissions", CommissionsCriterion::new);
-        criteria.put("sqn", SqnCriterion::new);
-        criteria.put("expectancy", ExpectancyCriterion::new);
-        return Map.copyOf(criteria);
     }
 
     private static TradeExecutionModel resolveExecutionModel(String executionModelToken) {
@@ -706,19 +695,6 @@ final class CliSupport {
         return strategy;
     }
 
-    private static Indicator<Num> buildIndicator(String alias, Map<String, String> params, BarSeries series,
-            ClosePriceIndicator closePrice) {
-        int period = parsePositiveInt(params.getOrDefault("period", "14"), "period");
-        return switch (alias) {
-        case "sma" -> new SMAIndicator(closePrice, period);
-        case "ema" -> new EMAIndicator(closePrice, period);
-        case "rsi" -> new RSIIndicator(closePrice, period);
-        case "cci" -> new CCIIndicator(series, period);
-        default ->
-            throw new IllegalArgumentException("Unsupported indicator alias. Supported values are sma, ema, rsi, cci.");
-        };
-    }
-
     private static Rule buildThresholdRule(Indicator<Num> indicator, String belowToken, String aboveToken,
             BarSeries series, String phase) {
         if (belowToken != null && aboveToken != null) {
@@ -732,10 +708,6 @@ final class CliSupport {
             return new UnderIndicatorRule(indicator, series.numFactory().numOf(belowToken));
         }
         return new OverIndicatorRule(indicator, series.numFactory().numOf(aboveToken));
-    }
-
-    private static int resolveDefaultIndicatorUnstableBars(Map<String, String> params) {
-        return parsePositiveInt(params.getOrDefault("period", "14"), "period");
     }
 
     private static Map<String, String> parseKeyValueOptions(List<String> options, String optionName) {
@@ -846,6 +818,53 @@ final class CliSupport {
         return series.getSubSeries(startIndex, endIndexExclusive);
     }
 
+    private static CriterionSpec resolveCriterion(String requestedType) {
+        if (requestedType == null || requestedType.isBlank()) {
+            throw new IllegalArgumentException("Criterion class names must not be blank.");
+        }
+        if (!requestedType.contains(".")) {
+            throw new IllegalArgumentException(
+                    "Criteria aliases are no longer supported. Use a fully qualified AnalysisCriterion class name such as "
+                            + CRITERION_CLASS_EXAMPLE + ".");
+        }
+
+        Class<?> rawType;
+        try {
+            rawType = Class.forName(requestedType);
+        } catch (ClassNotFoundException ex) {
+            throw new IllegalArgumentException("Unknown criterion class: " + requestedType + ".", ex);
+        }
+        if (!AnalysisCriterion.class.isAssignableFrom(rawType)) {
+            throw new IllegalArgumentException(
+                    "Criterion class does not implement AnalysisCriterion: " + requestedType + ".");
+        }
+
+        AnalysisCriterion criterion;
+        try {
+            java.lang.reflect.Constructor<?> constructor = rawType.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            criterion = (AnalysisCriterion) constructor.newInstance();
+        } catch (NoSuchMethodException ex) {
+            throw new IllegalArgumentException(
+                    "Criterion class must expose a no-arg constructor: " + requestedType + ".", ex);
+        } catch (ReflectiveOperationException ex) {
+            throw new IllegalArgumentException("Unable to construct criterion: " + requestedType + ".", ex);
+        }
+        return new CriterionSpec(rawType.getName(), criterion);
+    }
+
+    static Strategy buildRuleTestStrategy(String entryRuleLabel, String entryRuleJsonFile, String exitRuleLabel,
+            String exitRuleJsonFile, Integer unstableBars, BarSeries series) {
+        Rule entryRule = buildRule(entryRuleLabel, entryRuleJsonFile, "--entry-rule", "--entry-rule-json-file", series);
+        Rule exitRule = buildRule(exitRuleLabel, exitRuleJsonFile, "--exit-rule", "--exit-rule-json-file", series);
+        BaseStrategy strategy = new BaseStrategy("rule-test-" + entryRule.getName() + "-to-" + exitRule.getName(),
+                entryRule, exitRule);
+        if (unstableBars != null) {
+            strategy.setUnstableBars(unstableBars);
+        }
+        return strategy;
+    }
+
     private static Strategy buildNamedStrategy(String strategyLabel, BarSeries series) {
         if (strategyLabel == null || strategyLabel.isBlank()) {
             throw unknownStrategyValue(strategyLabel);
@@ -859,6 +878,66 @@ final class CliSupport {
 
         String json = toJson(Map.of("type", NamedStrategy.SERIALIZED_TYPE, "label", strategyLabel));
         return buildStrategyFromJsonString(json, strategyLabel, null, series);
+    }
+
+    private static Rule buildRule(String ruleLabel, String ruleJsonFile, String labelOptionName, String jsonOptionName,
+            BarSeries series) {
+        boolean hasLabel = ruleLabel != null && !ruleLabel.isBlank();
+        boolean hasJsonFile = ruleJsonFile != null && !ruleJsonFile.isBlank();
+        if (hasLabel == hasJsonFile) {
+            throw new IllegalArgumentException(
+                    "Provide exactly one of " + labelOptionName + " or " + jsonOptionName + ". " + RULE_INPUT_GUIDANCE);
+        }
+        return hasJsonFile ? buildRuleFromJsonPath(ruleJsonFile, series) : buildNamedRule(ruleLabel, series);
+    }
+
+    private static Rule buildNamedRule(String ruleLabel, BarSeries series) {
+        if (ruleLabel == null || ruleLabel.isBlank()) {
+            throw unknownRuleValue(ruleLabel);
+        }
+        NamedRule.initializeRegistry("ta4jexamples.rules");
+        List<String> labelTokens = NamedRule.splitLabel(ruleLabel);
+        String simpleName = labelTokens.getFirst();
+        if (simpleName.isBlank() || NamedRule.lookup(simpleName).isEmpty()) {
+            throw unknownRuleValue(ruleLabel);
+        }
+
+        Class<? extends NamedRule> ruleType = NamedRule.requireRegistered(simpleName);
+        String[] parameters = labelTokens.size() == 1 ? new String[0]
+                : labelTokens.subList(1, labelTokens.size()).toArray(new String[0]);
+        try {
+            java.lang.reflect.Constructor<? extends NamedRule> constructor = ruleType
+                    .getDeclaredConstructor(BarSeries.class, String[].class);
+            constructor.setAccessible(true);
+            return constructor.newInstance(new Object[] { series, parameters });
+        } catch (NoSuchMethodException ex) {
+            throw new IllegalArgumentException(
+                    "Named rule missing (BarSeries, String...) constructor: " + ruleType.getName() + ".", ex);
+        } catch (ReflectiveOperationException ex) {
+            Throwable cause = ex.getCause();
+            if (cause instanceof IllegalArgumentException illegalArgumentException) {
+                throw new IllegalArgumentException("Named rule reconstruction failed for label '" + ruleLabel + "': "
+                        + illegalArgumentException.getMessage(), illegalArgumentException);
+            }
+            throw new IllegalArgumentException("Unable to construct named rule '" + ruleLabel + "'.", ex);
+        }
+    }
+
+    private static Rule buildRuleFromJsonPath(String ruleJsonPath, BarSeries series) {
+        try {
+            String json = Files.readString(Path.of(ruleJsonPath));
+            return buildRuleFromJsonString(json, ruleJsonPath, series);
+        } catch (IOException ex) {
+            throw new IllegalArgumentException("Unable to read rule JSON from " + ruleJsonPath + ".", ex);
+        }
+    }
+
+    private static Rule buildRuleFromJsonString(String json, String sourceDescription, BarSeries series) {
+        try {
+            return Rule.fromJson(series, json);
+        } catch (RuntimeException ex) {
+            throw new IllegalArgumentException("Invalid serialized rule from " + sourceDescription + ".", ex);
+        }
     }
 
     private static Strategy buildStrategyFromJsonPath(String strategyJsonPath, Integer unstableBars, BarSeries series) {
@@ -964,6 +1043,34 @@ final class CliSupport {
         return message.toString();
     }
 
+    private static String readSerializedInput(String inlineOptionName, String inlineValue, String fileOptionName,
+            String fileValue, String guidance) {
+        boolean hasInlineValue = inlineValue != null && !inlineValue.isBlank();
+        boolean hasFileValue = fileValue != null && !fileValue.isBlank();
+        if (hasInlineValue == hasFileValue) {
+            throw new IllegalArgumentException(
+                    "Provide exactly one of " + inlineOptionName + " or " + fileOptionName + ". " + guidance);
+        }
+        if (hasInlineValue) {
+            return inlineValue;
+        }
+        try {
+            return Files.readString(Path.of(fileValue));
+        } catch (IOException ex) {
+            throw new IllegalArgumentException("Unable to read serialized input from " + fileValue + ".", ex);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Indicator<Num> castNumericIndicator(Indicator<?> rawIndicator) {
+        int sampleIndex = rawIndicator.getBarSeries().getEndIndex();
+        Object sampleValue = rawIndicator.getValue(sampleIndex);
+        if (!(sampleValue instanceof Num)) {
+            throw new IllegalArgumentException("--indicator must deserialize to an Indicator<Num>.");
+        }
+        return (Indicator<Num>) rawIndicator;
+    }
+
     private static Duration minDuration(List<Duration> durations) {
         return durations.stream().min(Duration::compareTo).orElse(Duration.ZERO);
     }
@@ -1027,18 +1134,24 @@ final class CliSupport {
                 + "'. Use a NamedStrategy label such as " + NAMED_STRATEGY_EXAMPLE + ".");
     }
 
+    private static IllegalArgumentException unknownRuleValue(String ruleValue) {
+        return new IllegalArgumentException(
+                "Unknown rule label '" + ruleValue + "'. Use a NamedRule label such as " + NAMED_RULE_EXAMPLE + ".");
+    }
+
     private static Map<String, Object> linkedMap() {
         return new LinkedHashMap<>();
     }
 
     /**
-     * Binds a stable CLI alias to the concrete criterion instance used for a single
-     * command execution.
+     * Binds the resolved criterion class name to the concrete criterion instance
+     * used for a single command execution.
      *
-     * @param alias     stable command-line alias used in JSON output
+     * @param className fully qualified {@link AnalysisCriterion} class name used in
+     *                  JSON output
      * @param criterion resolved analysis criterion instance
      */
-    record CriterionSpec(String alias, AnalysisCriterion criterion) {
+    record CriterionSpec(String className, AnalysisCriterion criterion) {
     }
 
     /**
@@ -1049,5 +1162,16 @@ final class CliSupport {
      * @param invalidStrategies descriptive messages for rejected inputs
      */
     record ResolvedStrategies(List<Strategy> strategies, List<String> invalidStrategies) {
+    }
+
+    /**
+     * Represents a successfully reconstructed numeric indicator together with the
+     * canonical JSON used for execution metadata.
+     *
+     * @param indicator numeric indicator instance
+     * @param json      canonical serialized indicator JSON
+     * @param typeName  runtime type name
+     */
+    record ResolvedIndicator(Indicator<Num> indicator, String json, String typeName) {
     }
 }

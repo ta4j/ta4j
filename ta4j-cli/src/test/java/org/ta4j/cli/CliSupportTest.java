@@ -15,9 +15,17 @@ import org.ta4j.core.backtest.BacktestExecutionResult;
 import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.BacktestRuntimeReport;
 import org.ta4j.core.backtest.StrategyWalkForwardExecutionResult;
+import org.ta4j.core.criteria.SharpeRatioCriterion;
+import org.ta4j.core.criteria.pnl.GrossReturnCriterion;
+import org.ta4j.core.criteria.pnl.NetProfitCriterion;
+import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.helpers.FixedBooleanIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.walkforward.WalkForwardConfig;
+import ta4jexamples.rules.RsiThresholdRule;
 
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -145,18 +153,23 @@ class CliSupportTest {
     }
 
     @Test
-    void resolveCriteriaUsesDefaultsDeduplicatesAliasesAndRejectsUnknownValues() {
+    void resolveCriteriaUsesDefaultsDeduplicatesClassNamesAndRejectsAliases() {
         List<CliSupport.CriterionSpec> defaults = CliSupport.resolveCriteria(List.of(),
                 CliSupport.DEFAULT_BACKTEST_CRITERIA);
-        List<CliSupport.CriterionSpec> explicit = CliSupport.resolveCriteria(List.of("net-profit,sharpe", "net-profit"),
+        List<CliSupport.CriterionSpec> explicit = CliSupport.resolveCriteria(
+                List.of(NetProfitCriterion.class.getName() + "," + SharpeRatioCriterion.class.getName(),
+                        NetProfitCriterion.class.getName()),
                 CliSupport.DEFAULT_SWEEP_CRITERIA);
 
-        assertThat(defaults).extracting(CliSupport.CriterionSpec::alias)
+        assertThat(defaults).extracting(CliSupport.CriterionSpec::className)
                 .containsExactlyElementsOf(CliSupport.DEFAULT_BACKTEST_CRITERIA);
-        assertThat(explicit).extracting(CliSupport.CriterionSpec::alias).containsExactly("net-profit", "sharpe");
-        assertThatThrownBy(() -> CliSupport.resolveCriteria(List.of("unknown"), CliSupport.DEFAULT_SWEEP_CRITERIA))
+        assertThat(explicit).extracting(CliSupport.CriterionSpec::className)
+                .containsExactly(NetProfitCriterion.class.getName(), SharpeRatioCriterion.class.getName());
+        assertThatThrownBy(() -> CliSupport.resolveCriteria(List.of("net-profit"), CliSupport.DEFAULT_SWEEP_CRITERIA))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Unknown criterion alias: unknown.");
+                .hasMessage(
+                        "Criteria aliases are no longer supported. Use a fully qualified AnalysisCriterion class name such as "
+                                + NetProfitCriterion.class.getName() + ".");
     }
 
     @Test
@@ -255,38 +268,101 @@ class CliSupportTest {
     }
 
     @Test
+    void resolveIndicatorSupportsInlineAndFileInputs() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        String indicatorJson = new EMAIndicator(new ClosePriceIndicator(series), 5).toJson();
+        Path indicatorJsonFile = tempDir.resolve("indicator.json");
+        Files.writeString(indicatorJsonFile, indicatorJson);
+
+        CliSupport.ResolvedIndicator inlineIndicator = CliSupport.resolveIndicator(indicatorJson, null, series);
+        CliSupport.ResolvedIndicator fileIndicator = CliSupport.resolveIndicator(null, indicatorJsonFile.toString(),
+                series);
+
+        assertThat(inlineIndicator.typeName()).isEqualTo(EMAIndicator.class.getName());
+        assertThat(inlineIndicator.json()).isEqualTo(indicatorJson);
+        assertThat(fileIndicator.typeName()).isEqualTo(EMAIndicator.class.getName());
+    }
+
+    @Test
     void buildIndicatorTestStrategySupportsDefaultAndThresholdModes() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        String defaultIndicatorJson = new EMAIndicator(new ClosePriceIndicator(series), 5).toJson();
+        String thresholdIndicatorJson = new RSIIndicator(new ClosePriceIndicator(series), 14).toJson();
 
-        Strategy defaultStrategy = CliSupport.buildIndicatorTestStrategy("ema", List.of("period=5"), null, null, null,
+        Strategy defaultStrategy = CliSupport.buildIndicatorTestStrategy(defaultIndicatorJson, null, null, null, null,
                 null, null, series);
-        Strategy thresholdStrategy = CliSupport.buildIndicatorTestStrategy("rsi", List.of("period=14"), 20, "30", null,
+        Strategy thresholdStrategy = CliSupport.buildIndicatorTestStrategy(thresholdIndicatorJson, null, 20, "30", null,
                 null, "70", series);
 
-        assertThat(defaultStrategy.getName()).isEqualTo("ema-indicator-test");
+        assertThat(defaultStrategy.getName()).isEqualTo("EMAIndicator-indicator-test");
         assertThat(defaultStrategy.getUnstableBars()).isEqualTo(5);
-        assertThat(thresholdStrategy.getName()).isEqualTo("rsi-indicator-test");
+        assertThat(thresholdStrategy.getName()).isEqualTo("RSIIndicator-indicator-test");
         assertThat(thresholdStrategy.getUnstableBars()).isEqualTo(20);
     }
 
     @Test
-    void buildIndicatorTestStrategyRejectsInvalidThresholdInputs() throws Exception {
+    void buildIndicatorTestStrategyRejectsInvalidIndicatorAndThresholdInputs() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        String thresholdIndicatorJson = new RSIIndicator(new ClosePriceIndicator(series), 14).toJson();
+        Boolean[] booleanValues = new Boolean[series.getBarCount()];
+        java.util.Arrays.fill(booleanValues, Boolean.TRUE);
+        String booleanIndicatorJson = new FixedBooleanIndicator(series, booleanValues).toJson();
+
+        assertThatThrownBy(
+                () -> CliSupport.buildIndicatorTestStrategy("not-json", null, null, null, null, null, null, series))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Invalid serialized indicator input.");
+        assertThatThrownBy(() -> CliSupport.resolveIndicator(booleanIndicatorJson, null, series))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("--indicator must deserialize to an Indicator<Num>.");
+        assertThatThrownBy(() -> CliSupport.buildIndicatorTestStrategy(thresholdIndicatorJson, null, null, "30", "40",
+                null, null, series)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Use only one of --entry-below or --entry-above.");
+        assertThatThrownBy(() -> CliSupport.buildIndicatorTestStrategy(thresholdIndicatorJson, null, null, "30", null,
+                null, null, series)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Threshold indicator tests require either --exit-below or --exit-above.");
+    }
+
+    @Test
+    void buildRuleTestStrategySupportsNamedRuleLabelsAndJsonDefinitions() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        RsiThresholdRule entryRule = new RsiThresholdRule(series, "BELOW", "14", "30");
+        RsiThresholdRule exitRule = new RsiThresholdRule(series, "ABOVE", "14", "70");
+        Path entryRuleJsonFile = tempDir.resolve("entry-rule.json");
+        Path exitRuleJsonFile = tempDir.resolve("exit-rule.json");
+        Files.writeString(entryRuleJsonFile, entryRule.toJson());
+        Files.writeString(exitRuleJsonFile, exitRule.toJson());
+
+        Strategy labelStrategy = CliSupport.buildRuleTestStrategy("RsiThresholdRule_BELOW_14_30", null,
+                "RsiThresholdRule_ABOVE_14_70", null, 11, series);
+        Strategy jsonStrategy = CliSupport.buildRuleTestStrategy(null, entryRuleJsonFile.toString(), null,
+                exitRuleJsonFile.toString(), null, series);
+
+        assertThat(labelStrategy.getName()).contains("rule-test-RsiThresholdRule_BELOW_14_30");
+        assertThat(labelStrategy.getUnstableBars()).isEqualTo(11);
+        assertThat(labelStrategy.getEntryRule().getName()).isEqualTo("RsiThresholdRule_BELOW_14_30");
+        assertThat(jsonStrategy.getEntryRule().getName()).isEqualTo(entryRule.getName());
+        assertThat(jsonStrategy.getExitRule().getName()).isEqualTo(exitRule.getName());
+    }
+
+    @Test
+    void buildRuleTestStrategyRejectsMissingAndUnknownRuleInputs() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
 
         assertThatThrownBy(
-                () -> CliSupport.buildIndicatorTestStrategy("unknown", List.of(), null, null, null, null, null, series))
+                () -> CliSupport.buildRuleTestStrategy(null, null, "RsiThresholdRule_ABOVE_14_70", null, null, series))
                 .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Unsupported indicator alias. Supported values are sma, ema, rsi, cci.");
-        assertThatThrownBy(
-                () -> CliSupport.buildIndicatorTestStrategy("rsi", List.of(), null, "30", "40", null, null, series))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Use only one of --entry-below or --entry-above.");
-        assertThatThrownBy(
-                () -> CliSupport.buildIndicatorTestStrategy("rsi", List.of(), null, "30", null, null, null, series))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessage("Threshold indicator tests require either --exit-below or --exit-above.");
+                .hasMessage(
+                        "Provide exactly one of --entry-rule or --entry-rule-json-file. Use --entry-rule or --entry-rule-json-file together with --exit-rule or --exit-rule-json-file.");
+        assertThatThrownBy(() -> CliSupport.buildRuleTestStrategy("MissingRule_VALUE", null,
+                "RsiThresholdRule_ABOVE_14_70", null, null, series)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessage(
+                        "Unknown rule label 'MissingRule_VALUE'. Use a NamedRule label such as RsiThresholdRule_BELOW_14_30.");
     }
 
     @Test
@@ -376,10 +452,11 @@ class CliSupportTest {
         Strategy strategy = sampleSweepStrategy(series);
         BacktestExecutor executor = CliSupport.buildExecutor(series, "current-close", "0.01", "0.02");
         Num amount = CliSupport.resolveAmount(series, "1000", null);
-        List<CliSupport.CriterionSpec> backtestCriteria = CliSupport.resolveCriteria(List.of("net-profit", "sharpe"),
+        List<CliSupport.CriterionSpec> backtestCriteria = CliSupport.resolveCriteria(
+                List.of(NetProfitCriterion.class.getName(), SharpeRatioCriterion.class.getName()),
                 CliSupport.DEFAULT_BACKTEST_CRITERIA);
-        List<CliSupport.CriterionSpec> walkForwardCriteria = CliSupport.resolveCriteria(List.of("gross-return"),
-                CliSupport.DEFAULT_WALK_FORWARD_CRITERIA);
+        List<CliSupport.CriterionSpec> walkForwardCriteria = CliSupport.resolveCriteria(
+                List.of(GrossReturnCriterion.class.getName()), CliSupport.DEFAULT_WALK_FORWARD_CRITERIA);
 
         BacktestExecutionResult backtest = executor.executeWithRuntimeReport(List.of(strategy), amount,
                 strategy.getStartingType());
@@ -414,12 +491,13 @@ class CliSupportTest {
                 .containsEntry("chartFile", chartPath.toString());
         assertThat(statementMap).containsEntry("strategyName", strategy.getName())
                 .containsEntry("unstableBars", strategy.getUnstableBars());
-        assertThat(asMap(statementMap.get("criteria")).keySet()).containsAll(Set.of("net-profit", "sharpe"));
+        assertThat(asMap(statementMap.get("criteria")).keySet())
+                .containsAll(Set.of(NetProfitCriterion.class.getName(), SharpeRatioCriterion.class.getName()));
         assertThat(runtimeMap).containsEntry("strategyCount", 1);
         assertThat(asMap(walkForwardMap.get("config"))).containsKey("configHash");
         assertThat(asMap(walkForwardMap.get("runtime"))).containsEntry("foldCount", walkForward.folds().size());
         assertThat((List<?>) walkForwardMap.get("folds")).isNotEmpty();
-        assertThat(asMap(walkForwardMap.get("criteria"))).containsKey("gross-return");
+        assertThat(asMap(walkForwardMap.get("criteria"))).containsKey(GrossReturnCriterion.class.getName());
     }
 
     @SuppressWarnings("unchecked")
