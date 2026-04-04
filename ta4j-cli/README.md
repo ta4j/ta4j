@@ -12,7 +12,7 @@
 ## Build
 
 ```bash
-./mvnw -pl ta4j-cli -am package
+mvn -pl ta4j-cli -am package
 ```
 
 The package phase produces a runnable fat jar at `ta4j-cli/target/ta4j-cli-<version>-jar-with-dependencies.jar`.
@@ -76,11 +76,13 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 - `backtest`
   - `--strategy`: either a bounded alias (`sma-crossover`, `rsi2`, `cci-correction`, `global-extrema`, `moving-momentum`) or a `NamedStrategy` label such as `DayOfWeekStrategy_MONDAY_FRIDAY`.
+  - `--strategies`: one or more `NamedStrategy` labels. You may repeat the flag or pass a comma-separated list such as `HourOfDayStrategy_9_17,DayOfWeekStrategy_MONDAY_FRIDAY`.
   - `--strategy-json`: path to a serialized ta4j strategy payload. Use this instead of `--strategy` when you want to replay a previously exported strategy definition.
+  - `--strategies-json-file`: path to a JSON file containing an array of one or more serialized ta4j strategy objects.
   - `--param key=value`: strategy parameter override. The bounded built-in strategy that currently consumes custom params is `sma-crossover`. When `--strategy` uses a `NamedStrategy` label, encode parameter values in the label instead of passing `--param`.
 - `walk-forward`
-  - `--strategy`: required bounded alias or `NamedStrategy` label.
-  - `--param key=value`: strategy parameter override for alias-based strategies only.
+  - `--strategy`, `--strategies`, `--strategy-json`, `--strategies-json-file`: the same strategy input shapes supported by `backtest`.
+  - `--param key=value`: strategy parameter override for alias-based `--strategy` inputs only.
   - `--min-train-bars`, `--test-bars`, `--step-bars`, `--purge-bars`, `--embargo-bars`, `--holdout-bars`, `--primary-horizon-bars`, `--optimization-top-k`, `--seed`: walk-forward splitter and ranking controls.
 - `sweep`
   - `--strategy`: currently `sma-crossover`.
@@ -146,6 +148,32 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   --strategy DayOfWeekStrategy_MONDAY_FRIDAY \
   --criteria net-profit,sharpe \
   --output /tmp/backtest-day-of-week.json
+```
+
+### Backtest From Multiple NamedStrategy Labels
+
+Use `--strategies` when you want to evaluate several `NamedStrategy` labels in one command.
+
+```bash
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
+  backtest \
+  --data-file /absolute/path/Binance-ETH-USD-PT5M-20230313_20230315.json \
+  --strategies HourOfDayStrategy_9_17,DayOfWeekStrategy_MONDAY_FRIDAY \
+  --criteria net-profit,sharpe \
+  --output /tmp/backtest-named-batch.json
+```
+
+### Backtest From A Serialized Strategy Array File
+
+Use `--strategies-json-file` when you already have several serialized strategies on disk and want the CLI to load them in one run.
+
+```bash
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
+  backtest \
+  --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
+  --strategies-json-file /absolute/path/exported-strategies.json \
+  --criteria net-profit \
+  --output /tmp/backtest-from-json-array.json
 ```
 
 ### Walk-Forward With Full Fold Controls
@@ -232,6 +260,21 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   --progress
 ```
 
+### Composite Batch Input With Graceful Invalid-Strategy Skips
+
+You may combine the strategy input methods. When at least one strategy is valid, the CLI executes the valid set, prints skipped-input errors to stderr, and records them in `invalidStrategies` inside the JSON output.
+
+```bash
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
+  backtest \
+  --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
+  --strategy DayOfWeekStrategy_MONDAY_FRIDAY \
+  --strategies HourOfDayStrategy_9_17,MissingStrategy_VALUE \
+  --strategy-json /absolute/path/exported-strategy.json \
+  --strategies-json-file /absolute/path/exported-strategies.json \
+  --output /tmp/backtest-mixed-inputs.json
+```
+
 ## Common Use Cases
 
 These recipes are shorter than the coverage examples and focus on the workflows most users are likely to repeat.
@@ -265,6 +308,21 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   --holdout-bars 20 \
   --criteria gross-return \
   --output /tmp/aapl-walk-forward.json
+```
+
+### Walk-Forward A Strategy Batch From JSON
+
+```bash
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
+  walk-forward \
+  --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
+  --strategies-json-file /absolute/path/exported-strategies.json \
+  --min-train-bars 120 \
+  --test-bars 40 \
+  --step-bars 20 \
+  --holdout-bars 20 \
+  --criteria gross-return \
+  --output /tmp/aapl-walk-forward-batch.json
 ```
 
 ### Replay A Named Intraday Strategy Label
@@ -312,3 +370,4 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 - `sweep` ranks candidate strategies deterministically and keeps only the requested top-K output set.
 - `indicator-test` is intentionally bounded around common indicators and sanity-check strategy scaffolding.
 - `NamedStrategy` labels follow the compact format `<SimpleClassName>_<param1>_<param2>...`, for example `HourOfDayStrategy_9_17` or `DayOfWeekStrategy_MONDAY_FRIDAY`.
+- If every supplied strategy input is invalid, the command fails fast with a descriptive error and a non-zero exit code instead of producing an empty result artifact.

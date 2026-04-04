@@ -5,6 +5,9 @@ package org.ta4j.cli;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import org.jfree.chart.ChartUtils;
 import org.jfree.chart.JFreeChart;
 import org.ta4j.core.AnalysisCriterion;
@@ -102,6 +105,7 @@ final class CliSupport {
     static final List<String> DEFAULT_SWEEP_CRITERIA = List.of("net-profit");
     static final List<String> DEFAULT_INDICATOR_TEST_CRITERIA = List.of("net-profit", "sharpe");
     static final String NAMED_STRATEGY_EXAMPLE = "DayOfWeekStrategy_MONDAY_FRIDAY";
+    private static final String STRATEGY_INPUT_GUIDANCE = "Use --strategy, --strategy-json, --strategies, or --strategies-json-file.";
 
     private static final Gson GSON = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
 
@@ -213,12 +217,7 @@ final class CliSupport {
         String requestedStrategy = strategyAlias == null ? "" : strategyAlias.trim();
         String normalizedAlias = normalizeToken(requestedStrategy);
         if (strategyJsonPath != null && !strategyJsonPath.isBlank()) {
-            try {
-                String json = Files.readString(Path.of(strategyJsonPath));
-                strategy = Strategy.fromJson(series, json);
-            } catch (IOException ex) {
-                throw new IllegalArgumentException("Unable to read strategy JSON from " + strategyJsonPath + ".", ex);
-            }
+            strategy = buildStrategyFromJsonPath(strategyJsonPath, unstableBars, series);
         } else if ("sma-crossover".equals(normalizedAlias)) {
             Map<String, String> params = parseKeyValueOptions(paramOptions, "--param");
             strategy = buildSmaCrossoverStrategy(series, params);
@@ -234,10 +233,110 @@ final class CliSupport {
             strategy = buildNamedStrategy(requestedStrategy, paramOptions, series);
         }
 
-        if (unstableBars != null) {
+        if (unstableBars != null && (strategyJsonPath == null || strategyJsonPath.isBlank())) {
             strategy.setUnstableBars(unstableBars);
         }
         return strategy;
+    }
+
+    static ResolvedStrategies resolveStrategies(String strategyToken, String strategyJsonPath,
+            List<String> strategyLabels, String strategiesJsonFile, List<String> paramOptions, Integer unstableBars,
+            BarSeries series) {
+        List<Strategy> validStrategies = new ArrayList<>();
+        List<String> invalidStrategies = new ArrayList<>();
+        boolean hasStrategyInput = false;
+
+        if (strategyToken != null && !strategyToken.isBlank()) {
+            hasStrategyInput = true;
+            try {
+                validStrategies.add(buildStrategy(strategyToken, null, paramOptions, unstableBars, series));
+            } catch (IllegalArgumentException ex) {
+                invalidStrategies.add("--strategy " + strategyToken + ": " + ex.getMessage());
+            }
+        }
+
+        if (strategyJsonPath != null && !strategyJsonPath.isBlank()) {
+            hasStrategyInput = true;
+            if (paramOptions != null && !paramOptions.isEmpty()) {
+                invalidStrategies.add("--strategy-json " + strategyJsonPath
+                        + ": --param is not supported when loading serialized strategies.");
+            } else {
+                try {
+                    validStrategies.add(buildStrategyFromJsonPath(strategyJsonPath, unstableBars, series));
+                } catch (IllegalArgumentException ex) {
+                    invalidStrategies.add("--strategy-json " + strategyJsonPath + ": " + ex.getMessage());
+                }
+            }
+        }
+
+        if (strategyLabels != null && !strategyLabels.isEmpty()) {
+            hasStrategyInput = true;
+            for (String label : parseStrategyLabels(strategyLabels, invalidStrategies)) {
+                try {
+                    validStrategies.add(buildNamedStrategy(label, List.of(), series));
+                    if (unstableBars != null) {
+                        validStrategies.getLast().setUnstableBars(unstableBars);
+                    }
+                } catch (IllegalArgumentException ex) {
+                    invalidStrategies.add("--strategies " + label + ": " + ex.getMessage());
+                }
+            }
+        }
+
+        if (strategiesJsonFile != null && !strategiesJsonFile.isBlank()) {
+            hasStrategyInput = true;
+            if (paramOptions != null && !paramOptions.isEmpty()) {
+                invalidStrategies.add("--strategies-json-file " + strategiesJsonFile
+                        + ": --param is not supported when loading serialized strategies.");
+            } else {
+                validStrategies.addAll(
+                        loadStrategiesFromJsonArrayFile(strategiesJsonFile, unstableBars, series, invalidStrategies));
+            }
+        }
+
+        if (!hasStrategyInput) {
+            throw new IllegalArgumentException("At least one strategy input is required. " + STRATEGY_INPUT_GUIDANCE);
+        }
+        if (validStrategies.isEmpty()) {
+            throw new IllegalArgumentException(noValidStrategiesMessage(invalidStrategies));
+        }
+        return new ResolvedStrategies(List.copyOf(validStrategies), List.copyOf(invalidStrategies));
+    }
+
+    static void reportInvalidStrategies(List<String> invalidStrategies, PrintWriter err) {
+        if (invalidStrategies == null || invalidStrategies.isEmpty()) {
+            return;
+        }
+        err.println("Skipping invalid strategy inputs:");
+        for (String message : invalidStrategies) {
+            err.println("- " + message);
+        }
+        err.flush();
+    }
+
+    static BacktestRuntimeReport aggregateBacktestRuntimes(List<BacktestRuntimeReport> runtimeReports) {
+        if (runtimeReports == null || runtimeReports.isEmpty()) {
+            return BacktestRuntimeReport.empty();
+        }
+
+        List<BacktestRuntimeReport.StrategyRuntime> strategyRuntimes = new ArrayList<>();
+        Duration overallRuntime = Duration.ZERO;
+        for (BacktestRuntimeReport runtimeReport : runtimeReports) {
+            if (runtimeReport == null) {
+                continue;
+            }
+            overallRuntime = overallRuntime.plus(runtimeReport.overallRuntime());
+            strategyRuntimes.addAll(runtimeReport.strategyRuntimes());
+        }
+        if (strategyRuntimes.isEmpty()) {
+            return BacktestRuntimeReport.empty();
+        }
+
+        List<Duration> durations = strategyRuntimes.stream()
+                .map(BacktestRuntimeReport.StrategyRuntime::runtime)
+                .toList();
+        return new BacktestRuntimeReport(overallRuntime, minDuration(durations), maxDuration(durations),
+                averageDuration(durations), medianDuration(durations), strategyRuntimes);
     }
 
     static List<Strategy> buildSweepStrategies(String strategyAlias, List<String> paramOptions,
@@ -795,7 +894,138 @@ final class CliSupport {
         }
 
         String json = toJson(Map.of("type", NamedStrategy.SERIALIZED_TYPE, "label", strategyLabel));
-        return Strategy.fromJson(series, json);
+        return buildStrategyFromJsonString(json, strategyLabel, null, series);
+    }
+
+    private static Strategy buildStrategyFromJsonPath(String strategyJsonPath, Integer unstableBars, BarSeries series) {
+        try {
+            String json = Files.readString(Path.of(strategyJsonPath));
+            return buildStrategyFromJsonString(json, strategyJsonPath, unstableBars, series);
+        } catch (IOException ex) {
+            throw new IllegalArgumentException("Unable to read strategy JSON from " + strategyJsonPath + ".", ex);
+        }
+    }
+
+    private static Strategy buildStrategyFromJsonString(String json, String sourceDescription, Integer unstableBars,
+            BarSeries series) {
+        try {
+            Strategy strategy = Strategy.fromJson(series, json);
+            if (unstableBars != null) {
+                strategy.setUnstableBars(unstableBars);
+            }
+            return strategy;
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (RuntimeException ex) {
+            throw new IllegalArgumentException("Invalid serialized strategy from " + sourceDescription + ".", ex);
+        }
+    }
+
+    private static List<String> parseStrategyLabels(List<String> strategyLabels, List<String> invalidStrategies) {
+        List<String> labels = new ArrayList<>();
+        for (String rawValue : strategyLabels) {
+            if (rawValue == null) {
+                continue;
+            }
+            for (String token : rawValue.split(",")) {
+                String trimmed = token.trim();
+                if (trimmed.isEmpty()) {
+                    invalidStrategies.add("--strategies contains an empty strategy label.");
+                } else {
+                    labels.add(trimmed);
+                }
+            }
+        }
+        return labels;
+    }
+
+    private static List<Strategy> loadStrategiesFromJsonArrayFile(String strategiesJsonFile, Integer unstableBars,
+            BarSeries series, List<String> invalidStrategies) {
+        List<Strategy> validStrategies = new ArrayList<>();
+        String json;
+        try {
+            json = Files.readString(Path.of(strategiesJsonFile));
+        } catch (IOException ex) {
+            invalidStrategies.add("--strategies-json-file " + strategiesJsonFile + ": Unable to read JSON array file.");
+            return List.of();
+        }
+
+        JsonElement parsed;
+        try {
+            parsed = JsonParser.parseString(json);
+        } catch (RuntimeException ex) {
+            invalidStrategies.add("--strategies-json-file " + strategiesJsonFile + ": Invalid JSON content.");
+            return List.of();
+        }
+        if (!parsed.isJsonArray()) {
+            invalidStrategies.add("--strategies-json-file " + strategiesJsonFile
+                    + ": Expected a JSON array containing one or more serialized strategies.");
+            return List.of();
+        }
+
+        JsonArray strategyArray = parsed.getAsJsonArray();
+        if (strategyArray.isEmpty()) {
+            invalidStrategies.add(
+                    "--strategies-json-file " + strategiesJsonFile + ": Expected at least one serialized strategy.");
+            return List.of();
+        }
+
+        for (int index = 0; index < strategyArray.size(); index++) {
+            JsonElement entry = strategyArray.get(index);
+            if (!entry.isJsonObject()) {
+                invalidStrategies.add("--strategies-json-file " + strategiesJsonFile + "[" + index
+                        + "]: Each array element must be a serialized strategy object.");
+                continue;
+            }
+            try {
+                validStrategies.add(buildStrategyFromJsonString(entry.toString(),
+                        strategiesJsonFile + "[" + index + "]", unstableBars, series));
+            } catch (IllegalArgumentException ex) {
+                invalidStrategies
+                        .add("--strategies-json-file " + strategiesJsonFile + "[" + index + "]: " + ex.getMessage());
+            }
+        }
+        return List.copyOf(validStrategies);
+    }
+
+    private static String noValidStrategiesMessage(List<String> invalidStrategies) {
+        StringBuilder message = new StringBuilder("No valid strategies to run.");
+        if (invalidStrategies != null && !invalidStrategies.isEmpty()) {
+            message.append(System.lineSeparator()).append("Strategy input errors:");
+            for (String invalidStrategy : invalidStrategies) {
+                message.append(System.lineSeparator()).append("- ").append(invalidStrategy);
+            }
+        }
+        message.append(System.lineSeparator()).append(STRATEGY_INPUT_GUIDANCE);
+        return message.toString();
+    }
+
+    private static Duration minDuration(List<Duration> durations) {
+        return durations.stream().min(Duration::compareTo).orElse(Duration.ZERO);
+    }
+
+    private static Duration maxDuration(List<Duration> durations) {
+        return durations.stream().max(Duration::compareTo).orElse(Duration.ZERO);
+    }
+
+    private static Duration averageDuration(List<Duration> durations) {
+        long totalNanos = 0L;
+        for (Duration duration : durations) {
+            totalNanos += duration.toNanos();
+        }
+        return Duration.ofNanos(totalNanos / durations.size());
+    }
+
+    private static Duration medianDuration(List<Duration> durations) {
+        List<Duration> sorted = new ArrayList<>(durations);
+        sorted.sort(Duration::compareTo);
+        int middle = sorted.size() / 2;
+        if (sorted.size() % 2 == 1) {
+            return sorted.get(middle);
+        }
+        long lower = sorted.get(middle - 1).toNanos();
+        long upper = sorted.get(middle).toNanos();
+        return Duration.ofNanos((lower + upper) / 2L);
     }
 
     private static Instant parseOptionalInstant(String token, boolean startOfRange) {
@@ -846,5 +1076,15 @@ final class CliSupport {
      * @param criterion resolved analysis criterion instance
      */
     record CriterionSpec(String alias, AnalysisCriterion criterion) {
+    }
+
+    /**
+     * Represents the successfully resolved strategies together with any skipped
+     * invalid inputs.
+     *
+     * @param strategies        valid strategies that can be executed
+     * @param invalidStrategies descriptive messages for rejected inputs
+     */
+    record ResolvedStrategies(List<Strategy> strategies, List<String> invalidStrategies) {
     }
 }

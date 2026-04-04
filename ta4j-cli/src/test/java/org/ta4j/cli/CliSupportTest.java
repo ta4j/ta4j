@@ -13,6 +13,7 @@ import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.backtest.BacktestExecutionResult;
 import org.ta4j.core.backtest.BacktestExecutor;
+import org.ta4j.core.backtest.BacktestRuntimeReport;
 import org.ta4j.core.backtest.StrategyWalkForwardExecutionResult;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatement;
@@ -188,6 +189,42 @@ class CliSupportTest {
     }
 
     @Test
+    void resolveStrategiesSupportsMixedInputsAndCollectsInvalidEntries() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        Strategy serializedStrategy = CliSupport.buildStrategy("sma-crossover", null, List.of("fast=3", "slow=8"), 5,
+                series);
+        Path strategyJson = tempDir.resolve("strategy.json");
+        Path strategiesJsonFile = tempDir.resolve("strategies.json");
+        Files.writeString(strategyJson, serializedStrategy.toJson());
+        Files.writeString(strategiesJsonFile, "[" + serializedStrategy.toJson() + ",\"invalid\"]");
+
+        CliSupport.ResolvedStrategies resolved = CliSupport.resolveStrategies("DayOfWeekStrategy_MONDAY_FRIDAY",
+                strategyJson.toString(), List.of("HourOfDayStrategy_9_17,MissingStrategy_VALUE"),
+                strategiesJsonFile.toString(), List.of(), 7, series);
+
+        assertThat(resolved.strategies()).hasSize(4);
+        assertThat(resolved.strategies()).extracting(Strategy::getUnstableBars).containsOnly(7);
+        assertThat(resolved.invalidStrategies()).contains(
+                "--strategies MissingStrategy_VALUE: Unknown strategy value 'MissingStrategy_VALUE'. Use a bounded alias (sma-crossover, rsi2, cci-correction, global-extrema, moving-momentum) or a NamedStrategy label such as DayOfWeekStrategy_MONDAY_FRIDAY.",
+                "--strategies-json-file " + strategiesJsonFile
+                        + "[1]: Each array element must be a serialized strategy object.");
+    }
+
+    @Test
+    void resolveStrategiesFailsFastWhenNoValidStrategiesRemain() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+
+        assertThatThrownBy(() -> CliSupport.resolveStrategies(null, null, List.of("MissingStrategy_VALUE"), null,
+                List.of(), null, series)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("No valid strategies to run.")
+                .hasMessageContaining(
+                        "--strategies MissingStrategy_VALUE: Unknown strategy value 'MissingStrategy_VALUE'.")
+                .hasMessageContaining("Use --strategy, --strategy-json, --strategies, or --strategies-json-file.");
+    }
+
+    @Test
     void buildStrategyRejectsUnknownAliasesAndMalformedParams() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
@@ -313,6 +350,35 @@ class CliSupportTest {
         assertThat(outputPath).exists();
         assertThat(Files.readString(outputPath)).isEqualTo("{\"ok\":true}");
         assertThat(stdout.toString()).contains("{\"printed\":true}");
+    }
+
+    @Test
+    void invalidStrategyReportingAndRuntimeAggregationStayDeterministic() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        Strategy firstStrategy = CliSupport.buildStrategy("sma-crossover", null, List.of("fast=3", "slow=8"), null,
+                series);
+        Strategy secondStrategy = CliSupport.buildStrategy("rsi2", null, List.of(), null, series);
+        StringWriter stderr = new StringWriter();
+        PrintWriter err = new PrintWriter(stderr, true);
+        BacktestRuntimeReport firstRuntime = new BacktestRuntimeReport(Duration.ofSeconds(2), Duration.ofSeconds(2),
+                Duration.ofSeconds(2), Duration.ofSeconds(2), Duration.ofSeconds(2),
+                List.of(new BacktestRuntimeReport.StrategyRuntime(firstStrategy, Duration.ofSeconds(2))));
+        BacktestRuntimeReport secondRuntime = new BacktestRuntimeReport(Duration.ofSeconds(4), Duration.ofSeconds(4),
+                Duration.ofSeconds(4), Duration.ofSeconds(4), Duration.ofSeconds(4),
+                List.of(new BacktestRuntimeReport.StrategyRuntime(secondStrategy, Duration.ofSeconds(4))));
+
+        CliSupport.reportInvalidStrategies(List.of("bad first", "bad second"), err);
+        BacktestRuntimeReport aggregate = CliSupport.aggregateBacktestRuntimes(List.of(firstRuntime, secondRuntime));
+
+        assertThat(stderr.toString().lines().toList()).containsExactly("Skipping invalid strategy inputs:",
+                "- bad first", "- bad second");
+        assertThat(aggregate.overallRuntime()).isEqualTo(Duration.ofSeconds(6));
+        assertThat(aggregate.minStrategyRuntime()).isEqualTo(Duration.ofSeconds(2));
+        assertThat(aggregate.maxStrategyRuntime()).isEqualTo(Duration.ofSeconds(4));
+        assertThat(aggregate.averageStrategyRuntime()).isEqualTo(Duration.ofSeconds(3));
+        assertThat(aggregate.medianStrategyRuntime()).isEqualTo(Duration.ofSeconds(3));
+        assertThat(aggregate.strategyCount()).isEqualTo(2);
     }
 
     @Test

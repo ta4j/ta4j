@@ -7,14 +7,17 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.backtest.BacktestExecutionResult;
 import org.ta4j.core.backtest.BacktestExecutor;
-import org.ta4j.core.reports.TradingStatement;
+import org.ta4j.core.backtest.BacktestRuntimeReport;
 import org.ta4j.core.backtest.StrategyWalkForwardExecutionResult;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.walkforward.WalkForwardConfig;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -79,6 +82,8 @@ public final class Ta4jCli {
         String dataFile = arguments.require("data-file");
         String strategyAlias = arguments.optional("strategy").orElse(null);
         String strategyJson = arguments.optional("strategy-json").orElse(null);
+        List<String> strategies = arguments.list("strategies");
+        String strategiesJsonFile = arguments.optional("strategies-json-file").orElse(null);
         String timeframe = arguments.optional("timeframe").orElse(null);
         String fromDate = arguments.optional("from-date").orElse(null);
         String toDate = arguments.optional("to-date").orElse(null);
@@ -98,28 +103,51 @@ public final class Ta4jCli {
         arguments.assertNoUnknownOptions();
 
         BarSeries series = CliSupport.loadSeries(dataFile, timeframe, fromDate, toDate);
-        Strategy strategy = CliSupport.buildStrategy(strategyAlias, strategyJson, params, unstableBars, series);
+        CliSupport.ResolvedStrategies resolvedStrategies = CliSupport.resolveStrategies(strategyAlias, strategyJson,
+                strategies, strategiesJsonFile, params, unstableBars, series);
+        CliSupport.reportInvalidStrategies(resolvedStrategies.invalidStrategies(), err);
         BacktestExecutor executor = CliSupport.buildExecutor(series, executionModel, commission, borrowRate);
         Num amount = CliSupport.resolveAmount(series, capital, stakeAmount);
 
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), amount,
-                strategy.getStartingType(), CliSupport.progressCallback(progress, err, "backtest"));
-        TradingStatement statement = result.tradingStatements().getFirst();
+        List<TradingStatement> statements = new ArrayList<>(resolvedStrategies.strategies().size());
+        List<BacktestRuntimeReport> runtimeReports = new ArrayList<>(resolvedStrategies.strategies().size());
+        for (int index = 0; index < resolvedStrategies.strategies().size(); index++) {
+            Strategy strategy = resolvedStrategies.strategies().get(index);
+            BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), amount,
+                    strategy.getStartingType(),
+                    resolvedStrategies.strategies().size() == 1 ? CliSupport.progressCallback(progress, err, "backtest")
+                            : null);
+            statements.add(result.tradingStatements().getFirst());
+            runtimeReports.add(result.runtimeReport());
+            reportProgress(progress && resolvedStrategies.strategies().size() > 1, err, "backtest", index + 1);
+        }
+
+        List<Map<String, Object>> statementMaps = statements.stream()
+                .map(statement -> CliSupport.statementToMap(series, statement, criteria))
+                .toList();
+        TradingStatement statement = statements.getFirst();
         Path chartPath = CliSupport.saveChart(chart, series, statement);
         Path outputPath = CliSupport.resolveOutputPath(output);
 
         Map<String, Object> response = CliSupport.buildCommandMetadata("backtest", series, dataFile, timeframe,
                 fromDate, toDate, executionModel, capital, stakeAmount, commission, borrowRate, criteria, outputPath,
                 chartPath);
-        response.put("runtime", CliSupport.backtestRuntimeToMap(result.runtimeReport()));
-        response.put("statement", CliSupport.statementToMap(series, statement, criteria));
+        response.put("runtime", CliSupport.backtestRuntimeToMap(CliSupport.aggregateBacktestRuntimes(runtimeReports)));
+        response.put("strategyCount", resolvedStrategies.strategies().size());
+        response.put("invalidStrategyCount", resolvedStrategies.invalidStrategies().size());
+        response.put("invalidStrategies", resolvedStrategies.invalidStrategies());
+        response.put("statement", statementMaps.getFirst());
+        response.put("statements", statementMaps);
         CliSupport.writeJson(CliSupport.toJson(response), outputPath, out);
         return 0;
     }
 
     private static int executeWalkForward(CliArguments arguments, PrintWriter out, PrintWriter err) throws IOException {
         String dataFile = arguments.require("data-file");
-        String strategyAlias = arguments.require("strategy");
+        String strategyAlias = arguments.optional("strategy").orElse(null);
+        String strategyJson = arguments.optional("strategy-json").orElse(null);
+        List<String> strategies = arguments.list("strategies");
+        String strategiesJsonFile = arguments.optional("strategies-json-file").orElse(null);
         String timeframe = arguments.optional("timeframe").orElse(null);
         String fromDate = arguments.optional("from-date").orElse(null);
         String toDate = arguments.optional("to-date").orElse(null);
@@ -138,27 +166,63 @@ public final class Ta4jCli {
                 CliSupport.DEFAULT_WALK_FORWARD_CRITERIA);
 
         BarSeries series = CliSupport.loadSeries(dataFile, timeframe, fromDate, toDate);
-        Strategy strategy = CliSupport.buildStrategy(strategyAlias, null, params, unstableBars, series);
         WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series, arguments);
         arguments.assertNoUnknownOptions();
+        CliSupport.ResolvedStrategies resolvedStrategies = CliSupport.resolveStrategies(strategyAlias, strategyJson,
+                strategies, strategiesJsonFile, params, unstableBars, series);
+        CliSupport.reportInvalidStrategies(resolvedStrategies.invalidStrategies(), err);
 
         BacktestExecutor executor = CliSupport.buildExecutor(series, executionModel, commission, borrowRate);
         Num amount = CliSupport.resolveAmount(series, capital, stakeAmount);
 
-        BacktestExecutionResult backtest = executor.executeWithRuntimeReport(List.of(strategy), amount,
-                strategy.getStartingType());
-        StrategyWalkForwardExecutionResult walkForward = executor.executeWalkForward(strategy, amount,
-                strategy.getStartingType(), config, CliSupport.progressCallback(progress, err, "walk-forward"));
-        TradingStatement statement = backtest.tradingStatements().getFirst();
+        List<Map<String, Object>> resultEntries = new ArrayList<>(resolvedStrategies.strategies().size());
+        TradingStatement primaryStatement = null;
+        Map<String, Object> primaryBacktest = null;
+        Map<String, Object> primaryBacktestRuntime = null;
+        Map<String, Object> primaryWalkForward = null;
+        for (int index = 0; index < resolvedStrategies.strategies().size(); index++) {
+            Strategy strategy = resolvedStrategies.strategies().get(index);
+            BacktestExecutionResult backtest = executor.executeWithRuntimeReport(List.of(strategy), amount,
+                    strategy.getStartingType());
+            StrategyWalkForwardExecutionResult walkForward = executor.executeWalkForward(strategy, amount,
+                    strategy.getStartingType(), config,
+                    resolvedStrategies.strategies().size() == 1
+                            ? CliSupport.progressCallback(progress, err, "walk-forward")
+                            : null);
+
+            TradingStatement statement = backtest.tradingStatements().getFirst();
+            Map<String, Object> backtestMap = CliSupport.statementToMap(series, statement, criteria);
+            Map<String, Object> backtestRuntimeMap = CliSupport.backtestRuntimeToMap(backtest.runtimeReport());
+            Map<String, Object> walkForwardMap = CliSupport.walkForwardToMap(series, walkForward, criteria);
+            Map<String, Object> resultEntry = new LinkedHashMap<>();
+            resultEntry.put("backtest", backtestMap);
+            resultEntry.put("backtestRuntime", backtestRuntimeMap);
+            resultEntry.put("walkForward", walkForwardMap);
+            resultEntries.add(resultEntry);
+
+            if (primaryStatement == null) {
+                primaryStatement = statement;
+                primaryBacktest = backtestMap;
+                primaryBacktestRuntime = backtestRuntimeMap;
+                primaryWalkForward = walkForwardMap;
+            }
+            reportProgress(progress && resolvedStrategies.strategies().size() > 1, err, "walk-forward", index + 1);
+        }
+
+        TradingStatement statement = primaryStatement;
         Path chartPath = CliSupport.saveChart(chart, series, statement);
         Path outputPath = CliSupport.resolveOutputPath(output);
 
         Map<String, Object> response = CliSupport.buildCommandMetadata("walk-forward", series, dataFile, timeframe,
                 fromDate, toDate, executionModel, capital, stakeAmount, commission, borrowRate, criteria, outputPath,
                 chartPath);
-        response.put("backtest", CliSupport.statementToMap(series, statement, criteria));
-        response.put("backtestRuntime", CliSupport.backtestRuntimeToMap(backtest.runtimeReport()));
-        response.put("walkForward", CliSupport.walkForwardToMap(series, walkForward, criteria));
+        response.put("strategyCount", resolvedStrategies.strategies().size());
+        response.put("invalidStrategyCount", resolvedStrategies.invalidStrategies().size());
+        response.put("invalidStrategies", resolvedStrategies.invalidStrategies());
+        response.put("backtest", primaryBacktest);
+        response.put("backtestRuntime", primaryBacktestRuntime);
+        response.put("walkForward", primaryWalkForward);
+        response.put("results", resultEntries);
         CliSupport.writeJson(CliSupport.toJson(response), outputPath, out);
         return 0;
     }
@@ -267,8 +331,8 @@ public final class Ta4jCli {
     private static String usage() {
         return """
                 Usage:
-                  ta4j-cli backtest --data-file <path> (--strategy <alias-or-label> | --strategy-json <path>) [options]
-                  ta4j-cli walk-forward --data-file <path> --strategy <alias-or-label> [options]
+                  ta4j-cli backtest --data-file <path> <strategy-input> [options]
+                  ta4j-cli walk-forward --data-file <path> <strategy-input> [options]
                   ta4j-cli sweep --data-file <path> --strategy sma-crossover --param-grid fast=5,10 --param-grid slow=20,50 [options]
                   ta4j-cli indicator-test --data-file <path> --indicator <alias> [options]
 
@@ -288,9 +352,14 @@ public final class Ta4jCli {
                   --unstable-bars <count>
 
                 Strategy options:
+                  --strategy <alias-or-label>
+                  --strategies <label[,label...]>
+                  --strategy-json <path>
+                  --strategies-json-file <path>
                   --param key=value
                   Supported strategy aliases: sma-crossover, rsi2, cci-correction, global-extrema, moving-momentum
                   NamedStrategy labels: <SimpleClassName>_<param1>_<param2>... (for example DayOfWeekStrategy_MONDAY_FRIDAY)
+                  You may combine strategy inputs. Invalid entries are reported and skipped when at least one valid strategy remains.
 
                 Sweep options:
                   --param-grid key=v1,v2,...
@@ -302,5 +371,15 @@ public final class Ta4jCli {
                   --exit-below <number> | --exit-above <number>
                   --param period=<count>
                 """;
+    }
+
+    private static void reportProgress(boolean enabled, PrintWriter err, String label, int completed) {
+        if (!enabled) {
+            return;
+        }
+        if (completed == 1 || completed % 25 == 0) {
+            err.printf("%s progress: %d%n", label, completed);
+            err.flush();
+        }
     }
 }

@@ -8,12 +8,15 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.Strategy;
 
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -110,6 +113,64 @@ class Ta4jCliTest {
     }
 
     @Test
+    void backtestCombinesStrategyInputsAndSkipsInvalidEntries() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        Strategy serializedStrategy = CliSupport.buildStrategy("sma-crossover", null, List.of("fast=5", "slow=20"),
+                null, series);
+        Path strategyJson = tempDir.resolve("strategy.json");
+        Path strategiesJsonFile = tempDir.resolve("strategies.json");
+        Path outputFile = tempDir.resolve("backtest-batch.json");
+        Files.writeString(strategyJson, serializedStrategy.toJson());
+        Files.writeString(strategiesJsonFile, "[" + serializedStrategy.toJson() + ",\"invalid\"]");
+
+        CliRunResult result = runCliAllowingError("backtest", "--data-file", dataFile.toString(), "--strategy",
+                "DayOfWeekStrategy_MONDAY_FRIDAY", "--strategies", "HourOfDayStrategy_9_17,MissingStrategy_VALUE",
+                "--strategy-json", strategyJson.toString(), "--strategies-json-file", strategiesJsonFile.toString(),
+                "--output", outputFile.toString());
+
+        assertThat(result.exitCode()).isZero();
+        assertThat(result.stderr()).contains("Skipping invalid strategy inputs:")
+                .contains("--strategies MissingStrategy_VALUE")
+                .contains("--strategies-json-file " + strategiesJsonFile + "[1]");
+
+        JsonObject payload = readJson(outputFile);
+        assertThat(payload.get("strategyCount").getAsInt()).isEqualTo(4);
+        assertThat(payload.get("invalidStrategyCount").getAsInt()).isEqualTo(2);
+        assertThat(payload.getAsJsonArray("statements")).hasSize(4);
+        assertThat(payload.getAsJsonArray("invalidStrategies")).hasSize(2);
+        assertThat(payload.getAsJsonObject("statement").get("strategyName").getAsString())
+                .isEqualTo("DayOfWeekStrategy_MONDAY_FRIDAY");
+    }
+
+    @Test
+    void walkForwardSupportsStrategiesJsonFileAndPreservesPrimaryFields() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+        Strategy serializedStrategy = CliSupport.buildStrategy("sma-crossover", null, List.of("fast=5", "slow=20"),
+                null, series);
+        Path strategiesJsonFile = tempDir.resolve("walk-forward-strategies.json");
+        Path outputFile = tempDir.resolve("walk-forward-batch.json");
+        Files.writeString(strategiesJsonFile, "[" + serializedStrategy.toJson() + ",{\"bad\":true}]");
+
+        CliRunResult result = runCliAllowingError("walk-forward", "--data-file", dataFile.toString(),
+                "--strategies-json-file", strategiesJsonFile.toString(), "--output", outputFile.toString(),
+                "--min-train-bars", "120", "--test-bars", "40", "--step-bars", "20", "--holdout-bars", "20");
+
+        assertThat(result.exitCode()).isZero();
+        assertThat(result.stderr()).contains("Skipping invalid strategy inputs:")
+                .contains("--strategies-json-file " + strategiesJsonFile + "[1]");
+
+        JsonObject payload = readJson(outputFile);
+        assertThat(payload.get("strategyCount").getAsInt()).isEqualTo(1);
+        assertThat(payload.get("invalidStrategyCount").getAsInt()).isEqualTo(1);
+        assertThat(payload.get("backtest")).isNotNull();
+        assertThat(payload.get("backtestRuntime")).isNotNull();
+        assertThat(payload.get("walkForward")).isNotNull();
+        assertThat(payload.getAsJsonArray("results")).hasSize(1);
+    }
+
+    @Test
     void backtestRejectsInvalidUnstableBarsValue() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
 
@@ -141,6 +202,20 @@ class Ta4jCliTest {
         assertThat(result.exitCode()).isEqualTo(2);
         assertThat(result.stderr()).contains(
                 "--param is not supported when --strategy uses a NamedStrategy label. Encode parameter values in the label.");
+    }
+
+    @Test
+    void backtestFailsFastWhenEveryStrategyInputIsInvalid() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("backtest", "--data-file", dataFile.toString(), "--strategies",
+                "MissingStrategy_VALUE", "--strategies-json-file", tempDir.resolve("missing.json").toString());
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("No valid strategies to run.")
+                .contains("--strategies MissingStrategy_VALUE")
+                .contains("--strategies-json-file " + tempDir.resolve("missing.json"))
+                .contains("Use --strategy, --strategy-json, --strategies, or --strategies-json-file.");
     }
 
     private int runCli(String... args) {
