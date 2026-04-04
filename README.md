@@ -122,6 +122,8 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 
 **💡 Tip**: The `ta4j-examples` module includes runnable demos, data loaders, and charting utilities. It's a great way to see Ta4j in action and learn by example.
 
+**💡 Also new**: The `ta4j-cli` module gives you a stable local command surface for `backtest`, `walk-forward`, `sweep`, and `indicator-test`. Build it with `./mvnw -pl ta4j-cli -am package`, then run the fat jar from `ta4j-cli/target/`.
+
 ## Build commands: Maven Wrapper or Maven
 
 Ta4j supports both approaches:
