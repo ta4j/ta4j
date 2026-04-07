@@ -4,7 +4,9 @@
 package org.ta4j.core.analysis.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +50,20 @@ public class IndicatorFamilyManifestTest {
         IndicatorFamilyManifest manifestB = manifest(closePrice, metadata("b", "2", "a", "1"));
 
         assertThat(manifestA.configHash()).isEqualTo(manifestB.configHash());
+        assertThat(manifestA.configHash()).hasSize(64).matches("[0-9a-f]{64}");
+    }
+
+    @Test
+    public void rejectsNullIndicatorItems() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        List<IndicatorFamilyManifest.IndicatorManifestItem> items = new ArrayList<>();
+        items.add(new IndicatorFamilyManifest.IndicatorManifestItem("close", closePrice.toJson(), Map.of()));
+        items.add(null);
+
+        assertThatThrownBy(() -> new IndicatorFamilyManifest("manifest", "v1", "dataset", items, Map.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("indicators[1]");
     }
 
     private static IndicatorFamilyManifest manifest(ClosePriceIndicator closePrice, Map<String, String> metadata) {

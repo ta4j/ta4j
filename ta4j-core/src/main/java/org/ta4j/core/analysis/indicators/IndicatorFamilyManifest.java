@@ -3,10 +3,14 @@
  */
 package org.ta4j.core.analysis.indicators;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -53,7 +57,11 @@ public record IndicatorFamilyManifest(String manifestId, String schemaVersion, S
         }
 
         HashSet<String> indicatorIds = new HashSet<>(indicators.size() * 2);
-        for (IndicatorManifestItem item : indicators) {
+        for (int index = 0; index < indicators.size(); index++) {
+            IndicatorManifestItem item = indicators.get(index);
+            if (item == null) {
+                throw new IllegalArgumentException("indicators[" + index + "] must not be null");
+            }
             if (!indicatorIds.add(item.indicatorId())) {
                 throw new IllegalArgumentException("indicator ids must be unique");
             }
@@ -104,7 +112,7 @@ public record IndicatorFamilyManifest(String manifestId, String schemaVersion, S
      * @since 0.22.7
      */
     public String configHash() {
-        return Integer.toHexString(canonicalDefinition().hashCode());
+        return sha256Hex(canonicalDefinition());
     }
 
     private String canonicalDefinition() {
@@ -152,6 +160,16 @@ public record IndicatorFamilyManifest(String manifestId, String schemaVersion, S
             canonicalMetadata.put(entry.getKey(), entry.getValue());
         }
         return Map.copyOf(canonicalMetadata);
+    }
+
+    private static String sha256Hex(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 algorithm unavailable", exception);
+        }
     }
 
     /**

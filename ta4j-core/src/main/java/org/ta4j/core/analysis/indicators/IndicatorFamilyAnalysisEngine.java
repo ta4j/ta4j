@@ -3,7 +3,11 @@
  */
 package org.ta4j.core.analysis.indicators;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -125,7 +129,7 @@ public final class IndicatorFamilyAnalysisEngine {
         String pairwiseFingerprint = buildPairwiseFingerprint(pairSimilarityMap);
 
         return new IndicatorFamilyCatalog(catalogId, manifest.manifestId(), manifest.configHash(), config, stableIndex,
-                familyByIndicator, families, Map.copyOf(pairSimilarityMap), pairwiseFingerprint);
+                familyByIndicator, families, pairSimilarityMap, pairwiseFingerprint);
     }
 
     private static double estimatePairSimilarity(CorrelationCoefficientIndicator correlation,
@@ -231,7 +235,7 @@ public final class IndicatorFamilyAnalysisEngine {
                     .append(formatFingerprintValue(entry.getValue()))
                     .append(FINGERPRINT_DELIMITER);
         }
-        return Integer.toHexString(builder.toString().hashCode());
+        return sha256Hex(builder.toString());
     }
 
     private static String formatFingerprintValue(double value) {
@@ -243,6 +247,16 @@ public final class IndicatorFamilyAnalysisEngine {
 
     private static double clamp(double value) {
         return Math.max(-1.0, Math.min(1.0, value));
+    }
+
+    private static String sha256Hex(String value) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(value.getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(hash);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 algorithm unavailable", exception);
+        }
     }
 
     private static final class UnionFind {

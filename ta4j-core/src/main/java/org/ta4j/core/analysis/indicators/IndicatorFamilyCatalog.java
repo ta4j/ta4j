@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.analysis.indicators;
 
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -45,12 +47,19 @@ public record IndicatorFamilyCatalog(String catalogId, String manifestId, String
         if (stableIndex < 0) {
             throw new IllegalArgumentException("stableIndex must be >= 0");
         }
-        familyByIndicator = familyByIndicator == null ? Map.of() : Map.copyOf(familyByIndicator);
+        familyByIndicator = immutableLinkedMap(familyByIndicator);
         families = families == null ? List.of() : List.copyOf(families);
-        pairSimilarity = pairSimilarity == null ? Map.of() : Map.copyOf(pairSimilarity);
+        pairSimilarity = immutableLinkedMap(pairSimilarity);
         if (pairwiseFingerprint == null || pairwiseFingerprint.isBlank()) {
             throw new IllegalArgumentException("pairwiseFingerprint must not be blank");
         }
+    }
+
+    private static <K, V> Map<K, V> immutableLinkedMap(Map<K, V> source) {
+        if (source == null || source.isEmpty()) {
+            return Map.of();
+        }
+        return Collections.unmodifiableMap(new LinkedHashMap<>(source));
     }
 
     /**

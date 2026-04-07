@@ -87,6 +87,7 @@ public record IndicatorFamilyAnalysisConfig(String configId, int correlationWind
         ABSOLUTE("absolute") {
             @Override
             public double score(double correlation, int overlapBars, int correlationWindow) {
+                validateScoringInputs(overlapBars, correlationWindow);
                 return clamp(Math.abs(correlation));
             }
         },
@@ -94,6 +95,7 @@ public record IndicatorFamilyAnalysisConfig(String configId, int correlationWind
         SIGNED("signed") {
             @Override
             public double score(double correlation, int overlapBars, int correlationWindow) {
+                validateScoringInputs(overlapBars, correlationWindow);
                 return clamp(correlation);
             }
         };
@@ -122,6 +124,15 @@ public record IndicatorFamilyAnalysisConfig(String configId, int correlationWind
          */
         public String id() {
             return id;
+        }
+
+        private static void validateScoringInputs(int overlapBars, int correlationWindow) {
+            if (correlationWindow <= 0) {
+                throw new IllegalArgumentException("correlationWindow must be > 0");
+            }
+            if (overlapBars < 0) {
+                throw new IllegalArgumentException("overlapBars must be >= 0");
+            }
         }
 
         private static double clamp(double value) {

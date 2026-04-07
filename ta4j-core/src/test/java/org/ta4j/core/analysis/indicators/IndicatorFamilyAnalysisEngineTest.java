@@ -59,12 +59,15 @@ public class IndicatorFamilyAnalysisEngineTest {
         assertThat(signedCatalog.familyByIndicator().get("smaInverse")).isEqualTo("family-002");
         assertThat(signedCatalog.familyByIndicator().get("close"))
                 .isNotEqualTo(signedCatalog.familyByIndicator().get("closeInverse"));
+        assertThat(signedCatalog.pairSimilarity().keySet()).containsExactly("close/sma", "close/closeInverse",
+                "close/smaInverse", "sma/closeInverse", "sma/smaInverse", "closeInverse/smaInverse");
 
         IndicatorFamilyAnalysisResult repeated = IndicatorFamilyAnalysisEngine.run(series, manifest,
                 List.of(absolute, signed));
         assertThat(repeated.drifts()).hasSize(1);
         assertThat(repeated.drifts().get(0).changedCount()).isEqualTo(2);
         assertThat(repeated.catalogs().get(0).pairwiseFingerprint()).isEqualTo(absoluteCatalog.pairwiseFingerprint());
+        assertThat(absoluteCatalog.pairwiseFingerprint()).hasSize(64).matches("[0-9a-f]{64}");
         assertThat(repeated.catalogs().get(0).pairwiseFingerprint()).isEqualTo(
                 IndicatorFamilyAnalysisEngine.runSingleConfig(series, manifest, absolute).pairwiseFingerprint());
     }
@@ -99,5 +102,15 @@ public class IndicatorFamilyAnalysisEngineTest {
         assertThatThrownBy(() -> IndicatorFamilyAnalysisEngine.run(series, manifest, configs))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("configs[1]");
+    }
+
+    @Test
+    public void similarityModesValidateScoringInputs() {
+        assertThatThrownBy(() -> IndicatorFamilyAnalysisConfig.SimilarityMode.ABSOLUTE.score(0.5, 1, 0))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("correlationWindow");
+        assertThatThrownBy(() -> IndicatorFamilyAnalysisConfig.SimilarityMode.SIGNED.score(0.5, -1, 5))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("overlapBars");
     }
 }
