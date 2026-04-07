@@ -4,7 +4,6 @@
 package org.ta4j.core.analysis.indicators;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -45,6 +44,11 @@ public final class IndicatorFamilyAnalysisEngine {
         Objects.requireNonNull(manifest, "manifest");
         if (configs == null || configs.isEmpty()) {
             throw new IllegalArgumentException("configs must not be empty");
+        }
+        for (int index = 0; index < configs.size(); index++) {
+            if (configs.get(index) == null) {
+                throw new IllegalArgumentException("configs[" + index + "] must not be null");
+            }
         }
 
         List<IndicatorFamilyManifest.ResolvedManifestItem> indicators = manifest.resolveIndicators(series);
@@ -198,11 +202,6 @@ public final class IndicatorFamilyAnalysisEngine {
 
     private static List<IndicatorFamilyCatalog.Family> clusterIntoFamilies(List<String> orderedIndicatorIds,
             List<PairSimilarity> pairSimilarities, double similarityThreshold) {
-        Map<String, Integer> indexById = new HashMap<>(orderedIndicatorIds.size() * 2);
-        for (int index = 0; index < orderedIndicatorIds.size(); index++) {
-            indexById.put(orderedIndicatorIds.get(index), index);
-        }
-
         UnionFind unionFind = new UnionFind(orderedIndicatorIds.size());
         for (PairSimilarity pair : pairSimilarities) {
             if (pair.similarity() >= similarityThreshold) {
@@ -211,8 +210,8 @@ public final class IndicatorFamilyAnalysisEngine {
         }
 
         Map<Integer, List<String>> grouped = new LinkedHashMap<>();
-        for (String indicatorId : orderedIndicatorIds) {
-            int index = indexById.get(indicatorId);
+        for (int index = 0; index < orderedIndicatorIds.size(); index++) {
+            String indicatorId = orderedIndicatorIds.get(index);
             grouped.computeIfAbsent(unionFind.find(index), ignored -> new ArrayList<>()).add(indicatorId);
         }
 

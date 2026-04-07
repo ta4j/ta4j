@@ -4,7 +4,9 @@
 package org.ta4j.core.analysis.indicators;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -80,5 +82,22 @@ public class IndicatorFamilyAnalysisEngineTest {
         IndicatorFamilyCatalog second = IndicatorFamilyAnalysisEngine.runSingleConfig(series, manifest, config);
 
         assertThat(first).isEqualTo(second);
+    }
+
+    @Test
+    public void runRejectsNullConfigEntries() {
+        BarSeries series = new MockBarSeriesBuilder().withData(10, 20, 30, 40, 50).build();
+        Indicator<Num> close = new ClosePriceIndicator(series);
+        IndicatorFamilyManifest manifest = new IndicatorFamilyManifest("det", "v1", "dataset",
+                List.of(new IndicatorFamilyManifest.IndicatorManifestItem("close", close.toJson(), Map.of())),
+                Map.of("dataset", "unit-test"));
+
+        List<IndicatorFamilyAnalysisConfig> configs = new ArrayList<>();
+        configs.add(IndicatorFamilyAnalysisConfig.defaultMode("default"));
+        configs.add(null);
+
+        assertThatThrownBy(() -> IndicatorFamilyAnalysisEngine.run(series, manifest, configs))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("configs[1]");
     }
 }

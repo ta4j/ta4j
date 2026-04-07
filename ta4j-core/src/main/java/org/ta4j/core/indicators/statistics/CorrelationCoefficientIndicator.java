@@ -8,6 +8,7 @@ import java.util.Objects;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Correlation coefficient indicator.
@@ -97,7 +98,7 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
             final int startIndex = Math.max(0, index - barCount + 1);
             final int numberOfObservations = index - startIndex + 1;
             if (numberOfObservations > 1) {
-                final var numFactory = getBarSeries().numFactory();
+                final NumFactory numFactory = getBarSeries().numFactory();
                 cov = cov.multipliedBy(numFactory.numOf(numberOfObservations))
                         .dividedBy(numFactory.numOf(numberOfObservations - 1));
             }

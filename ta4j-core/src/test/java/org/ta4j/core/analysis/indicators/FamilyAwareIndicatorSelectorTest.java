@@ -6,6 +6,7 @@ package org.ta4j.core.analysis.indicators;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.assertThrows;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -46,6 +47,20 @@ public class FamilyAwareIndicatorSelectorTest {
 
         assertThrows(IllegalArgumentException.class,
                 () -> FamilyAwareIndicatorSelector.select(List.of("ema", "sma"), catalog, -1, true));
+    }
+
+    @Test
+    public void validatesCandidateIds() {
+        IndicatorFamilyCatalog catalog = catalog();
+        List<String> rankedWithNull = new ArrayList<>();
+        rankedWithNull.add("ema");
+        rankedWithNull.add(null);
+        rankedWithNull.add("sma");
+
+        assertThrows(IllegalArgumentException.class,
+                () -> FamilyAwareIndicatorSelector.select(rankedWithNull, catalog, 3, true));
+        assertThrows(IllegalArgumentException.class,
+                () -> FamilyAwareIndicatorSelector.select(List.of("ema", " ", "sma"), catalog, 3, true));
     }
 
     private static IndicatorFamilyCatalog catalog() {

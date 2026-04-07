@@ -5,7 +5,6 @@ package org.ta4j.core.analysis.indicators;
 
 import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -47,11 +46,14 @@ public final class FamilyAwareIndicatorSelector {
         Map<String, String> familyByIndicator = catalog == null ? Map.of() : catalog.familyByIndicator();
         List<String> selected = new ArrayList<>(Math.min(maxCount, rankedIndicatorIds.size()));
         Set<String> usedFamilies = new HashSet<>();
-        Set<String> usedIndicators = new LinkedHashSet<>();
+        Set<String> usedIndicators = new HashSet<>();
 
         for (String indicatorId : rankedIndicatorIds) {
             if (selected.size() >= maxCount) {
                 break;
+            }
+            if (indicatorId == null || indicatorId.isBlank()) {
+                throw new IllegalArgumentException("rankedIndicatorIds must not contain null or blank entries");
             }
             if (!usedIndicators.add(indicatorId)) {
                 continue;
