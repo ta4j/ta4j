@@ -12,7 +12,6 @@ name: AI Semantic Release Scheduler
 
 concurrency:
   group: semantic-release-ai-${{ github.repository }}
-  cancel-in-progress: true
 
 on:
   schedule:

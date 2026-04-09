@@ -2,7 +2,6 @@ name: Release Health Check
 
 concurrency:
   group: release-health-${{ github.repository }}
-  cancel-in-progress: true
 
 on:
   push:

@@ -18,7 +18,6 @@ on:
 
 concurrency:
   group: github-release-${{ github.repository }}
-  cancel-in-progress: true
 
 permissions:
   contents: write
