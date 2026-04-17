@@ -21,6 +21,8 @@ import org.ta4j.core.backtest.TradingStatementExecutionResult.WeightedCriterion;
 import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.research.ParameterResearch.ParameterResearchReport;
+import org.ta4j.core.research.ParameterResearch.PruningPolicy;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.FixedRule;
 
@@ -53,6 +55,22 @@ public class SimpleMovingAverageRangeBacktestTest {
             assertTrue(criterionTypes.contains(NetProfitCriterion.class.getName()));
             assertTrue(criterionTypes.contains(ReturnOverMaxDrawdownCriterion.class.getName()));
         }
+    }
+
+    @Test
+    public void smaResearchUsesTrainingWindowAndHoldoutValidation() {
+        BarSeries series = new MockBarSeriesBuilder()
+                .withData(100d, 101d, 103d, 106d, 110d, 115d, 121d, 128d, 136d, 145d, 155d, 166d, 178d, 191d, 205d)
+                .build();
+        ParameterResearchReport report = SimpleMovingAverageRangeBacktest.runSmaResearch(series, PruningPolicy.NONE, 5);
+
+        assertEquals(0, report.prunedCandidateCount());
+        assertEquals(3, report.trainingScores().size());
+        assertEquals(3, report.validationScores().size());
+        assertEquals(0, report.window().trainingStartIndex());
+        assertEquals(9, report.window().trainingEndIndex());
+        assertEquals(10, report.window().validationStartIndex());
+        assertEquals(14, report.window().validationEndIndex());
     }
 
     private BacktestExecutionResult createBacktestResult() {
