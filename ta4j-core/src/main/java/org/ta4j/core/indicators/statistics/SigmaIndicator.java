@@ -13,7 +13,8 @@ import org.ta4j.core.num.Num;
 /**
  * Sigma-Indicator (also called, "z-score" or "standard score").
  *
- * @see http://www.statisticshowto.com/probability-and-statistics/z-score/
+ * @see <a href=
+ *      "http://www.statisticshowto.com/probability-and-statistics/z-score/">Z-score</a>
  */
 public class SigmaIndicator extends CachedIndicator<Num> {
 

@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.criteria;
 
+import org.ta4j.core.analysis.Returns;
 import org.ta4j.core.num.Num;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

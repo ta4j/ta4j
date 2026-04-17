@@ -15,8 +15,9 @@ import java.math.MathContext;
  * <p>
  * It uses a precision of up to {@value #EPS} decimal places.
  *
- * @apiNote the delegate should never become a NaN value. No self NaN checks are
- *          provided.
+ * <p>
+ * API note: the delegate should never become a NaN value. No self NaN checks
+ * are provided.
  */
 public class DoubleNum implements Num {
 

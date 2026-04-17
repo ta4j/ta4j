@@ -22,8 +22,8 @@ import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.UnderIndicatorRule;
 
 /**
- * NumericIndicator is a "fluent decorator" for Indicator<Num>. It provides
- * methods to create rules and other "lightweight" indicators, using a
+ * NumericIndicator is a "fluent decorator" for {@code Indicator<Num>}. It
+ * provides methods to create rules and other "lightweight" indicators, using a
  * (hopefully) natural-looking and expressive series of method calls.
  *
  * <p>

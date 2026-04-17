@@ -435,6 +435,17 @@ topStrategies.forEach(statement -> {
 });
 ```
 
+`SimpleMovingAverageRangeBacktest` uses the parameter research workflow to define
+an SMA bar-count candidate domain, run a baseline search, prune exact duplicate
+trading records, rank representatives with weighted criteria, and validate the
+selected candidates on a holdout window. Period-like parameters are capped by the
+training series length, and the structured report includes the candidate-space
+hash, train/validation windows, normalized candidates, pruning groups, warnings,
+and baseline, representative, and validation ranked scores.
+The default research config uses exact trading-record pruning; fuzzy indicator
+or objective-distance grouping must be enabled explicitly and is reported with
+warnings so it is not mistaken for behavioral equivalence.
+
 It’s not uncommon for a first backtest to look promising. Very promising. Resist the urge to extrapolate annualized returns, quit your job, or price out yachts.
 
 
@@ -831,6 +842,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[HighRewardElliottWaveBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/HighRewardElliottWaveBacktest.java)** - Backtests the high-reward Elliott Wave strategy presets.
 - **[WyckoffCycleIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleIndicatorSuiteDemo.java)** - Demonstrates the Wyckoff cycle entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`) and prints phase transitions on an ossified bar series dataset
 - **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
+- **[SimpleMovingAverageRangeBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/SimpleMovingAverageRangeBacktest.java)** - Run baseline and exact-record-pruned SMA parameter research, rank representatives with weighted criteria, and validate selected candidates on a holdout window.
 - **[TradeFillRecordingExample](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java)** - Walk through a live-style partial-fill workflow with `TradingRecord.operate(fill)`, inspect `getOpenPositions()` versus `getCurrentPosition()`, and compare `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` partial-exit matching.
 - **[TradingRecordParityBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java)** - Compare next-open, current-close, and slippage execution models side by side, then verify the same fills across default, provided, and factory-configured `BaseTradingRecord` runs.
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
