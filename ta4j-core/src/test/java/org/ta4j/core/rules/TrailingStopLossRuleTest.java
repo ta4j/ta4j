@@ -28,6 +28,8 @@ package org.ta4j.core.rules;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade.TradeType;
@@ -40,6 +42,19 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
 
     public TrailingStopLossRuleTest(NumFactory numFactory) {
         super(numFactory);
+    }
+
+    private RuleTraceTestLogger ruleTraceTestLogger;
+
+    @Before
+    public void setUpLogger() {
+        ruleTraceTestLogger = new RuleTraceTestLogger();
+        ruleTraceTestLogger.open();
+    }
+
+    @After
+    public void tearDownLogger() {
+        ruleTraceTestLogger.close();
     }
 
     @Test
@@ -67,6 +82,60 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         tradingRecord.enter(5, numOf(128), numOf(1));
         assertFalse(rule.isSatisfied(5, tradingRecord));
         assertTrue(rule.isSatisfied(6, tradingRecord));
+    }
+
+    @Test
+    public void traceLoggingUsesCustomNameForTrailingStopLossRule() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(
+                new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130, 117.00).build());
+        TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
+        rule.setName("5min Trailing Stop");
+        ruleTraceTestLogger.clear();
+
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+        tradingRecord.enter(2, numOf(114), numOf(1));
+        rule.isSatisfied(4, tradingRecord);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("TrailingStopLossRule trace log should contain custom name when set",
+                logContent.contains("5min Trailing Stop#isSatisfied"));
+        assertFalse("TrailingStopLossRule trace log should not contain class name when custom name is set",
+                logContent.contains("TrailingStopLossRule#isSatisfied"));
+    }
+
+    @Test
+    public void traceLoggingUsesClassNameForTrailingStopLossRuleWhenNoCustomName() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(
+                new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130, 117.00).build());
+        TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
+        ruleTraceTestLogger.clear();
+
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+        tradingRecord.enter(2, numOf(114), numOf(1));
+        rule.isSatisfied(4, tradingRecord);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("TrailingStopLossRule trace log should contain class name when no custom name is set",
+                logContent.contains("TrailingStopLossRule#isSatisfied"));
+    }
+
+    @Test
+    public void traceLoggingIncludesAdditionalInfoForTrailingStopLossRule() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(
+                new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130, 117.00).build());
+        TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
+        rule.setName("Custom Stop Loss");
+        ruleTraceTestLogger.clear();
+
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+        tradingRecord.enter(2, numOf(114), numOf(1));
+        rule.isSatisfied(4, tradingRecord);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("TrailingStopLossRule trace log should include custom name",
+                logContent.contains("Custom Stop Loss#isSatisfied"));
+        assertTrue("TrailingStopLossRule trace log should include current price",
+                logContent.contains("Current price:"));
     }
 
     @Test

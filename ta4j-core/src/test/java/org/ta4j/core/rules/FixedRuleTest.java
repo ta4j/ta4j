@@ -6,11 +6,27 @@ package org.ta4j.core.rules;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.Rule;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class FixedRuleTest {
+
+    private RuleTraceTestLogger ruleTraceTestLogger;
+
+    @Before
+    public void setUpLogger() {
+        ruleTraceTestLogger = new RuleTraceTestLogger();
+        ruleTraceTestLogger.open();
+    }
+
+    @After
+    public void tearDownLogger() {
+        ruleTraceTestLogger.close();
+    }
 
     @Test
     public void isSatisfied() {
@@ -32,6 +48,80 @@ public class FixedRuleTest {
         assertFalse(fixedRule.isSatisfied(8));
         assertFalse(fixedRule.isSatisfied(9));
         assertFalse(fixedRule.isSatisfied(10));
+    }
+
+    @Test
+    public void traceLoggingUsesClassNameWhenNoCustomNameSet() {
+        FixedRule rule = new FixedRule(1);
+        ruleTraceTestLogger.clear();
+
+        rule.isSatisfied(0);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("Trace log should contain class name when no custom name is set",
+                logContent.contains("FixedRule#isSatisfied"));
+    }
+
+    @Test
+    public void traceLoggingUsesCustomNameWhenSet() {
+        FixedRule rule = new FixedRule(1);
+        rule.setName("My Custom Entry Rule");
+        ruleTraceTestLogger.clear();
+
+        rule.isSatisfied(0);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("Trace log should contain custom name when set",
+                logContent.contains("My Custom Entry Rule#isSatisfied"));
+        assertFalse("Trace log should not contain class name when custom name is set",
+                logContent.contains("FixedRule#isSatisfied"));
+    }
+
+    @Test
+    public void traceLoggingFallsBackToClassNameWhenCustomNameIsReset() {
+        FixedRule rule = new FixedRule(1);
+        rule.setName("My Custom Rule");
+        rule.setName(null);
+        ruleTraceTestLogger.clear();
+
+        rule.isSatisfied(0);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("Trace log should fall back to class name when custom name is reset",
+                logContent.contains("FixedRule#isSatisfied"));
+        assertFalse("Trace log should not contain custom name after reset",
+                logContent.contains("My Custom Rule#isSatisfied"));
+    }
+
+    @Test
+    public void traceLoggingWorksForDifferentCustomNames() {
+        FixedRule rule1 = new FixedRule(1);
+        rule1.setName("Entry Rule 5min");
+
+        FixedRule rule2 = new FixedRule(2);
+        rule2.setName("Exit Rule 15min");
+
+        ruleTraceTestLogger.clear();
+        rule1.isSatisfied(1);
+        rule2.isSatisfied(2);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("First rule should use its custom name in trace log",
+                logContent.contains("Entry Rule 5min#isSatisfied"));
+        assertTrue("Second rule should use its custom name in trace log",
+                logContent.contains("Exit Rule 15min#isSatisfied"));
+    }
+
+    @Test
+    public void traceLoggingCanBeDisabledForRule() {
+        FixedRule rule = new FixedRule(1);
+        rule.setTraceMode(Rule.TraceMode.OFF);
+        ruleTraceTestLogger.clear();
+
+        rule.isSatisfied(0);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertFalse("Trace log should be empty when trace mode is OFF", logContent.contains("FixedRule#isSatisfied"));
     }
 
     @Test

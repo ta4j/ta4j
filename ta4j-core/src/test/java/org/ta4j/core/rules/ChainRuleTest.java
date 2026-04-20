@@ -6,9 +6,11 @@ package org.ta4j.core.rules;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Rule;
 import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.rules.helper.ChainLink;
@@ -17,9 +19,13 @@ public class ChainRuleTest {
 
     private ChainRule chainRule;
     private BarSeries series;
+    private RuleTraceTestLogger ruleTraceTestLogger;
 
     @Before
     public void setUp() {
+        ruleTraceTestLogger = new RuleTraceTestLogger();
+        ruleTraceTestLogger.open();
+
         series = new MockBarSeriesBuilder().build();
         var indicator = new FixedNumIndicator(series, 6, 5, 8, 5, 1, 10, 2, 30);
         var underIndicatorRule = new UnderIndicatorRule(indicator, series.numFactory().numOf(5));
@@ -27,6 +33,11 @@ public class ChainRuleTest {
         var isEqualRule = new IsEqualRule(indicator, 5);
         chainRule = new ChainRule(underIndicatorRule, new ChainLink(overIndicatorRule, 3),
                 new ChainLink(isEqualRule, 2));
+    }
+
+    @After
+    public void tearDownLogger() {
+        ruleTraceTestLogger.close();
     }
 
     @Test
@@ -41,5 +52,47 @@ public class ChainRuleTest {
     public void serializeAndDeserialize() {
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, chainRule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, chainRule);
+    }
+
+    @Test
+    public void traceLoggingRollupModeSuppressesChildRuleLogs() {
+        FixedRule initial = new FixedRule(4);
+        initial.setName("Initial");
+        FixedRule child = new FixedRule(2);
+        child.setName("Chain Child");
+
+        ChainRule testChainRule = new ChainRule(initial, new ChainLink(child, 2));
+        testChainRule.setName("Chain Rollup");
+        testChainRule.setTraceMode(Rule.TraceMode.ROLLUP);
+
+        ruleTraceTestLogger.clear();
+        testChainRule.isSatisfied(4);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("Rollup mode should log the chain rule", logContent.contains("Chain Rollup#isSatisfied"));
+        assertFalse("Rollup mode should suppress child rule logs", logContent.contains("Initial#isSatisfied"));
+        assertFalse("Rollup mode should suppress child rule logs", logContent.contains("Chain Child#isSatisfied"));
+        assertTrue("Rollup mode should restore child trace mode",
+                initial.getTraceMode() == Rule.TraceMode.VERBOSE && child.getTraceMode() == Rule.TraceMode.VERBOSE);
+    }
+
+    @Test
+    public void traceLoggingVerboseModePreservesChildRuleLogs() {
+        FixedRule initial = new FixedRule(4);
+        initial.setName("Initial");
+        FixedRule child = new FixedRule(2);
+        child.setName("Chain Child");
+
+        ChainRule testChainRule = new ChainRule(initial, new ChainLink(child, 2));
+        testChainRule.setName("Chain Verbose");
+        testChainRule.setTraceMode(Rule.TraceMode.VERBOSE);
+
+        ruleTraceTestLogger.clear();
+        testChainRule.isSatisfied(4);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("Verbose mode should log the chain rule", logContent.contains("Chain Verbose#isSatisfied"));
+        assertTrue("Verbose mode should keep child rule logs", logContent.contains("Initial#isSatisfied"));
+        assertTrue("Verbose mode should keep child rule logs", logContent.contains("Chain Child#isSatisfied"));
     }
 }
