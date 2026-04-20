@@ -9,6 +9,7 @@ import java.util.function.IntFunction;
 
 import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.BarSeriesListener;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.Num;
 
@@ -42,7 +43,7 @@ import org.ta4j.core.num.Num;
  * on synchronizing on indicator instances for atomicity guarantees must be
  * updated to use explicit external synchronization.
  */
-public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
+public abstract class CachedIndicator<T> extends AbstractIndicator<T> implements BarSeriesListener {
 
     /**
      * Maximum time (in milliseconds) to wait for a concurrent last-bar computation
@@ -98,6 +99,8 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
         super(series);
         int limit = series.getMaximumBarCount();
         this.cache = new CachedBuffer<>(limit);
+        // Auto-subscribe to bar events for incremental computation
+        series.addListener(this);
     }
 
     /**
@@ -114,6 +117,23 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @return the value of the indicator
      */
     protected abstract T calculate(int index);
+
+    /**
+     * Pre-computes and caches the indicator value when a new bar arrives. Delegates
+     * to {@link #getValue(int)} which handles cache management.
+     *
+     * @since 0.22.7
+     */
+    @Override
+    public void onBarAdded(final int index, final Bar bar) {
+        // Trigger lazy computation when accessed via getValue(index)
+        // The try-catch handles indicators not yet ready with sufficient data
+        try {
+            getValue(index);
+        } catch (Exception e) {
+            // Indicator may not be ready to compute yet (insufficient data)
+        }
+    }
 
     @Override
     public T getValue(int index) {

@@ -11,10 +11,12 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 import java.io.Serial;
+import java.lang.ref.WeakReference;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 /**
  * Base implementation of a {@link BarSeries}.
@@ -62,6 +64,13 @@ public class BaseBarSeries implements BarSeries {
      * The number of removed bars.
      */
     private int removedBarsCount = 0;
+
+    /**
+     * Weak-referenced listeners notified on bar additions/replacements.
+     *
+     * @since 0.22.7
+     */
+    private final transient List<WeakReference<BarSeriesListener>> listeners = new CopyOnWriteArrayList<>();
 
     /**
      * Convenience constructor for BaseBarSeries minimizing upfront parameter
@@ -280,6 +289,13 @@ public class BaseBarSeries implements BarSeries {
         }
         this.seriesEndIndex++;
         removeExceedingBars();
+
+        // Notify listeners
+        if (replace) {
+            notifyBarReplaced(this.seriesEndIndex);
+        } else {
+            notifyBarAdded(this.seriesEndIndex);
+        }
     }
 
     /**
@@ -343,6 +359,50 @@ public class BaseBarSeries implements BarSeries {
             // Updating removed bars count
             this.removedBarsCount += nbBarsToRemove;
             this.seriesBeginIndex = Math.max(this.seriesBeginIndex, this.removedBarsCount);
+        }
+    }
+
+    /** @since 0.22.7 */
+    @Override
+    public void addListener(final BarSeriesListener listener) {
+        if (listener == null || listeners == null)
+            return;
+        for (WeakReference<BarSeriesListener> ref : listeners) {
+            if (ref.get() == listener)
+                return;
+        }
+        listeners.add(new WeakReference<>(listener));
+    }
+
+    /** @since 0.22.7 */
+    @Override
+    public void removeListener(final BarSeriesListener listener) {
+        if (listeners == null)
+            return;
+        listeners.removeIf(ref -> ref.get() == listener || ref.get() == null);
+    }
+
+    private void notifyBarAdded(final int index) {
+        if (listeners == null || listeners.isEmpty())
+            return;
+        final Bar bar = getBar(index);
+        listeners.removeIf(ref -> ref.get() == null);
+        for (WeakReference<BarSeriesListener> ref : listeners) {
+            final BarSeriesListener l = ref.get();
+            if (l != null)
+                l.onBarAdded(index, bar);
+        }
+    }
+
+    private void notifyBarReplaced(final int index) {
+        if (listeners == null || listeners.isEmpty())
+            return;
+        final Bar bar = getBar(index);
+        listeners.removeIf(ref -> ref.get() == null);
+        for (WeakReference<BarSeriesListener> ref : listeners) {
+            final BarSeriesListener l = ref.get();
+            if (l != null)
+                l.onBarReplaced(index, bar);
         }
     }
 

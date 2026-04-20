@@ -252,4 +252,24 @@ public interface BarSeries extends Serializable {
      */
     BarSeries getSubSeries(int startIndex, int endIndex);
 
+    /**
+     * Register a listener to receive bar-change events.
+     *
+     * @param listener the listener to register
+     * @since 0.22.7
+     */
+    default void addListener(BarSeriesListener listener) {
+        // no-op default for backward compatibility
+    }
+
+    /**
+     * Remove a previously registered listener.
+     *
+     * @param listener the listener to remove
+     * @since 0.22.7
+     */
+    default void removeListener(BarSeriesListener listener) {
+        // no-op default for backward compatibility
+    }
+
 }
