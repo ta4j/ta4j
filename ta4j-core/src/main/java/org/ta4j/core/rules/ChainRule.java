@@ -37,7 +37,7 @@ public class ChainRule extends AbstractRule {
         int lastRuleWasSatisfiedAfterBars = 0;
         int startIndex = index;
 
-        if (!initialRule.isSatisfied(index, tradingRecord)) {
+        if (!evaluateChildWithTraceMode(initialRule, index, tradingRecord)) {
             traceIsSatisfied(index, false);
             return false;
         }
@@ -54,7 +54,7 @@ public class ChainRule extends AbstractRule {
                     break;
                 }
 
-                satisfiedWithinThreshold = link.getRule().isSatisfied(resultingIndex, tradingRecord);
+                satisfiedWithinThreshold = evaluateChildWithTraceMode(link.getRule(), resultingIndex, tradingRecord);
 
                 if (satisfiedWithinThreshold) {
                     break;

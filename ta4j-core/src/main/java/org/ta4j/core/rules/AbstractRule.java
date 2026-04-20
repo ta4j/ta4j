@@ -6,6 +6,7 @@ package org.ta4j.core.rules;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Rule;
+import org.ta4j.core.TradingRecord;
 
 /**
  * An abstract trading {@link Rule rule}.
@@ -20,6 +21,9 @@ public abstract class AbstractRule implements Rule {
 
     /** Configurable display name */
     private volatile String name;
+
+    /** The trace logging mode. */
+    private volatile TraceMode traceMode = TraceMode.VERBOSE;
 
     /**
      * Returns the display name to use in trace logs. Uses the configured name if
@@ -38,9 +42,47 @@ public abstract class AbstractRule implements Rule {
      * @param isSatisfied true if the rule is satisfied, false otherwise
      */
     protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        if (log.isTraceEnabled()) {
+        if (log.isTraceEnabled() && isTraceEnabled()) {
             log.trace("{}#isSatisfied({}): {}", getTraceDisplayName(), index, isSatisfied);
         }
+    }
+
+    /**
+     * @return true if trace logging is enabled for this rule
+     */
+    protected boolean isTraceEnabled() {
+        return getTraceMode() != TraceMode.OFF;
+    }
+
+    /**
+     * Evaluates a child rule with the selected child trace mode and restores the
+     * previous mode afterwards.
+     *
+     * @param childRule     rule to evaluate
+     * @param index         the bar index
+     * @param tradingRecord trading history
+     * @return true if the child rule is satisfied
+     */
+    protected boolean evaluateChildWithTraceMode(Rule childRule, int index, TradingRecord tradingRecord) {
+        TraceMode original = childRule.getTraceMode();
+        TraceMode childMode = getTraceMode() == TraceMode.ROLLUP ? TraceMode.OFF : getTraceMode();
+
+        try {
+            childRule.setTraceMode(childMode);
+            return childRule.isSatisfied(index, tradingRecord);
+        } finally {
+            childRule.setTraceMode(original);
+        }
+    }
+
+    @Override
+    public void setTraceMode(TraceMode traceMode) {
+        this.traceMode = traceMode == null ? TraceMode.OFF : traceMode;
+    }
+
+    @Override
+    public TraceMode getTraceMode() {
+        return traceMode;
     }
 
     @Override

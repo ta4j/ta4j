@@ -18,6 +18,22 @@ import org.ta4j.core.serialization.RuleSerialization;
 public interface Rule {
 
     /**
+     * Controls trace logging behavior for rule evaluation.
+     *
+     * @since 0.22.7
+     */
+    enum TraceMode {
+        /** Do not emit trace logs. */
+        OFF,
+        /**
+         * Emit trace logs only for this rule while forcing children to {@link #OFF}.
+         */
+        ROLLUP,
+        /** Emit trace logs for this rule and all children. */
+        VERBOSE
+    }
+
+    /**
      * Serializes this rule to JSON.
      *
      * @return JSON representation
@@ -90,6 +106,28 @@ public interface Rule {
      *         otherwise
      */
     boolean isSatisfied(int index, TradingRecord tradingRecord);
+
+    /**
+     * Configures trace logging for this rule.
+     *
+     * @param traceMode OFF, ROLLUP, or VERBOSE. A {@code null} value is treated as
+     *                  OFF.
+     * @since 0.22.7
+     */
+    default void setTraceMode(TraceMode traceMode) {
+        // no-op by default to preserve compatibility for custom Rule implementations
+        // that do not support trace mode yet
+    }
+
+    /**
+     * Returns the current trace mode for this rule.
+     *
+     * @return the active trace mode, defaults to {@link TraceMode#VERBOSE}
+     * @since 0.22.7
+     */
+    default TraceMode getTraceMode() {
+        return TraceMode.VERBOSE;
+    }
 
     /**
      * Sets a human friendly name for this rule. Implementations that support naming

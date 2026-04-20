@@ -18,10 +18,12 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.Rule;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.rules.helper.ChainLink;
 
 import java.io.StringWriter;
 
@@ -213,5 +215,80 @@ public class RuleTraceLoggingTest {
                 logContent.contains("Entry Rule 5min#isSatisfied"));
         assertTrue("Second rule should use its custom name in trace log",
                 logContent.contains("Exit Rule 15min#isSatisfied"));
+    }
+
+    @Test
+    public void traceLoggingCanBeDisabledForRule() {
+        FixedRule rule = new FixedRule(1);
+        rule.setTraceMode(Rule.TraceMode.OFF);
+        logOutput.getBuffer().setLength(0);
+
+        rule.isSatisfied(0);
+
+        String logContent = logOutput.toString();
+        assertFalse("Trace log should be empty when trace mode is OFF", logContent.contains("FixedRule#isSatisfied"));
+    }
+
+    @Test
+    public void traceLoggingRollupModeSuppressesChildRuleLogs() {
+        FixedRule entryRule = new FixedRule(1);
+        entryRule.setName("Entry Rule");
+        FixedRule exitRule = new FixedRule(1, 2);
+        exitRule.setName("Exit Rule");
+
+        OrRule orRule = new OrRule(entryRule, exitRule);
+        orRule.setName("EntryOrExit");
+        orRule.setTraceMode(Rule.TraceMode.ROLLUP);
+
+        logOutput.getBuffer().setLength(0);
+        orRule.isSatisfied(1);
+
+        String logContent = logOutput.toString();
+        assertTrue("Rollup mode should still log the parent composite rule",
+                logContent.contains("EntryOrExit#isSatisfied"));
+        assertFalse("Rollup mode should suppress child rule logs", logContent.contains("Entry Rule#isSatisfied"));
+        assertFalse("Rollup mode should suppress child rule logs", logContent.contains("Exit Rule#isSatisfied"));
+        assertTrue("Rollup mode should restore child trace mode", entryRule.getTraceMode() == Rule.TraceMode.VERBOSE
+                && exitRule.getTraceMode() == Rule.TraceMode.VERBOSE);
+    }
+
+    @Test
+    public void traceLoggingVerboseModePreservesChildRuleLogs() {
+        FixedRule rule1 = new FixedRule(1);
+        rule1.setName("Rule 1");
+        FixedRule rule2 = new FixedRule(2);
+        rule2.setName("Rule 2");
+
+        AndRule andRule = new AndRule(rule1, rule2);
+        andRule.setName("Rule Pair");
+        andRule.setTraceMode(Rule.TraceMode.VERBOSE);
+
+        logOutput.getBuffer().setLength(0);
+        andRule.isSatisfied(1);
+
+        String logContent = logOutput.toString();
+        assertTrue("Verbose mode should log the parent composite rule", logContent.contains("Rule Pair#isSatisfied"));
+        assertTrue("Verbose mode should keep child rule logs", logOutput.toString().contains("Rule 1#isSatisfied"));
+        assertTrue("Verbose mode should keep child rule logs", logOutput.toString().contains("Rule 2#isSatisfied"));
+    }
+
+    @Test
+    public void traceLoggingRollupModeWorksInChainRule() {
+        FixedRule initial = new FixedRule(1);
+        initial.setName("Initial");
+        FixedRule child = new FixedRule(0);
+        child.setName("Chain Child");
+
+        ChainRule chainRule = new ChainRule(initial, new ChainLink(child, 0));
+        chainRule.setName("Chain");
+        chainRule.setTraceMode(Rule.TraceMode.ROLLUP);
+
+        logOutput.getBuffer().setLength(0);
+        chainRule.isSatisfied(1);
+
+        String logContent = logOutput.toString();
+        assertTrue("Chain rollup should log the chain rule", logContent.contains("Chain#isSatisfied"));
+        assertFalse("Chain rollup should suppress child rule logs", logContent.contains("Initial#isSatisfied"));
+        assertFalse("Chain rollup should suppress child rule logs", logContent.contains("Chain Child#isSatisfied"));
     }
 }
