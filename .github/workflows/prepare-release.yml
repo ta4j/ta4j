@@ -472,10 +472,10 @@ jobs:
           REPORT_JSON: ${{ runner.temp }}/removal-ready-deprecations.json
           REPORT_MD: ${{ runner.temp }}/removal-ready-deprecations.md
         run: |
-          chmod +x scripts/scan-removal-ready-deprecations.py
-          python3 scripts/scan-removal-ready-deprecations.py \
-            --output-json "$REPORT_JSON" \
-            --output-md "$REPORT_MD"
+          mvn -B -q -pl ta4j-examples -am compile
+          mvn -B -q -pl ta4j-examples exec:java \
+            -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner \
+            "-Dexec.args=--repo-root ${GITHUB_WORKSPACE} --pom-file pom.xml --output-json ${REPORT_JSON} --output-md ${REPORT_MD}"
 
           echo "report_json=$REPORT_JSON" >> $GITHUB_OUTPUT
           echo "report_md=$REPORT_MD" >> $GITHUB_OUTPUT

@@ -40,5 +40,23 @@ test_issue_sync_uses_targeted_search() {
   pass "test_issue_sync_uses_targeted_search"
 }
 
+test_deprecation_scan_uses_java_scanner() {
+  echo "Running test_deprecation_scan_uses_java_scanner"
+
+  expect_file_contains "$WORKFLOW" "exec:java" "deprecation scan should run through Maven exec"
+  expect_file_contains "$WORKFLOW" "-pl ta4j-examples -am compile" \
+    "deprecation scan should compile the Java tool before execution"
+  expect_file_contains "$WORKFLOW" "-pl ta4j-examples exec:java" \
+    "deprecation scan should run exec:java only on ta4j-examples"
+  expect_file_contains "$WORKFLOW" "ta4jexamples.doc.RemovalReadyDeprecationScanner" \
+    "deprecation scan should invoke the Java scanner"
+  if grep -Fq "scan-removal-ready-deprecations.py" "$WORKFLOW"; then
+    fail "deprecation scan should not depend on the removed Python scanner"
+  fi
+
+  pass "test_deprecation_scan_uses_java_scanner"
+}
+
 test_issue_permissions_declared
 test_issue_sync_uses_targeted_search
+test_deprecation_scan_uses_java_scanner

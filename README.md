@@ -910,7 +910,7 @@ https://central.sonatype.com/repository/maven-snapshots/
 ### Stable releases
 
 Releases are also automated via GitHub workflows. For detailed information about the release process, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
-The prepare-release workflow also scans the new snapshot version for removal-ready deprecations and syncs GitHub cleanup issues with an attached report artifact.
+The prepare-release workflow also runs a Java-based removal-ready deprecation scanner against the new snapshot version and syncs GitHub cleanup issues with an attached report artifact.
 
 
 ## Warranty

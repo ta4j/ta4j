@@ -70,7 +70,7 @@ Secrets and variables:
 - Inputs: `releaseVersion` (optional if auto-detected), `nextVersion` (optional), `dryRun=false`.
 - If `nextVersion` is omitted and `releaseVersion` is a plain `X.Y.Z`, it is auto-generated as `<major>.<minor>.<patch+1>-SNAPSHOT` (for example `0.22.2` -> `0.22.3-SNAPSHOT`).
 - For RC/non-plain release versions, provide `nextVersion` explicitly.
-- After the workflow commits the next snapshot version, it scans `src/main/java` for removal-ready deprecations scheduled for that snapshot and syncs deduplicated GitHub cleanup issues.
+- After the workflow commits the next snapshot version, it runs the Java-based `ta4jexamples.doc.RemovalReadyDeprecationScanner` over `src/main/java` sources scheduled for that snapshot and syncs deduplicated GitHub cleanup issues.
 - The workflow uploads a removal-ready deprecation report artifact with grouped findings, symbols, and synced issue links.
 - The workflow auto-labels the PR with `release`, assigns it to `TheCookieLab`, and requests review from `TheCookieLab`.
 - Opening a release PR automatically triggers freeze notices on other open PRs.
