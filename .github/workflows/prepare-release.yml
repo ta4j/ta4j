@@ -464,6 +464,167 @@ jobs:
         run: |
           git commit -am "Start ${{ steps.versions.outputs.next }}"
 
+      - name: Scan removal-ready deprecations
+        id: deprecation_scan
+        if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          REPORT_JSON: ${{ runner.temp }}/removal-ready-deprecations.json
+          REPORT_MD: ${{ runner.temp }}/removal-ready-deprecations.md
+        run: |
+          chmod +x scripts/scan-removal-ready-deprecations.py
+          python3 scripts/scan-removal-ready-deprecations.py \
+            --output-json "$REPORT_JSON" \
+            --output-md "$REPORT_MD"
+
+          echo "report_json=$REPORT_JSON" >> $GITHUB_OUTPUT
+          echo "report_md=$REPORT_MD" >> $GITHUB_OUTPUT
+
+          {
+            echo ""
+            cat "$REPORT_MD"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create or update removal-ready deprecation issues
+        id: deprecation_issues
+        if: steps.dry_run.outputs.dryRun != 'true'
+        uses: actions/github-script@v8
+        env:
+          REPORT_JSON: ${{ steps.deprecation_scan.outputs.report_json }}
+          REPORT_WITH_ISSUES_JSON: ${{ runner.temp }}/removal-ready-deprecations-with-issues.json
+          REPORT_WITH_ISSUES_MD: ${{ runner.temp }}/removal-ready-deprecations-with-issues.md
+        with:
+          github-token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
+          script: |
+            const core = require("@actions/core");
+            const fs = require("fs");
+
+            const reportPath = process.env.REPORT_JSON;
+            const outputJsonPath = process.env.REPORT_WITH_ISSUES_JSON;
+            const outputMarkdownPath = process.env.REPORT_WITH_ISSUES_MD;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            if (!reportPath) {
+              throw new Error("Missing REPORT_JSON for deprecation issue sync.");
+            }
+
+            const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+            const issuePlans = Array.isArray(report.issuePlans) ? report.issuePlans : [];
+            const repoIssues = (await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: "all",
+              per_page: 100
+            })).filter((issue) => !issue.pull_request);
+
+            let createdCount = 0;
+            let updatedCount = 0;
+            let reopenedCount = 0;
+
+            for (const plan of issuePlans) {
+              const marker = plan.issueMarker;
+              if (!marker) {
+                throw new Error(`Missing issue marker for dedupe key ${plan.dedupeKey}`);
+              }
+
+              let existingIssue = repoIssues.find((issue) => (issue.body || "").includes(marker));
+
+              if (existingIssue) {
+                if (existingIssue.title !== plan.issueTitle || (existingIssue.body || "") !== plan.issueBody) {
+                  existingIssue = (await github.rest.issues.update({
+                    owner,
+                    repo,
+                    issue_number: existingIssue.number,
+                    title: plan.issueTitle,
+                    body: plan.issueBody
+                  })).data;
+                  updatedCount += 1;
+                }
+
+                if (existingIssue.state !== "open") {
+                  existingIssue = (await github.rest.issues.update({
+                    owner,
+                    repo,
+                    issue_number: existingIssue.number,
+                    state: "open"
+                  })).data;
+                  reopenedCount += 1;
+                }
+              } else {
+                existingIssue = (await github.rest.issues.create({
+                  owner,
+                  repo,
+                  title: plan.issueTitle,
+                  body: plan.issueBody
+                })).data;
+                repoIssues.push(existingIssue);
+                createdCount += 1;
+              }
+
+              plan.githubIssue = {
+                number: existingIssue.number,
+                state: existingIssue.state,
+                url: existingIssue.html_url
+              };
+            }
+
+            report.githubIssueSummary = {
+              createdCount,
+              updatedCount,
+              reopenedCount,
+              planCount: issuePlans.length
+            };
+
+            const markdownLines = [
+              `# Removal-ready deprecation issue sync for ${report.snapshotVersion}`,
+              "",
+              `- Planned issues: ${issuePlans.length}`,
+              `- Created: ${createdCount}`,
+              `- Updated: ${updatedCount}`,
+              `- Reopened: ${reopenedCount}`,
+              ""
+            ];
+
+            if (issuePlans.length === 0) {
+              markdownLines.push("No removal-ready deprecations matched the current snapshot version.");
+            } else {
+              for (const plan of issuePlans) {
+                const issueUrl = plan.githubIssue?.url || "(missing issue url)";
+                const issueNumber = plan.githubIssue?.number || "n/a";
+                markdownLines.push(`## ${plan.issueTitle}`);
+                markdownLines.push("");
+                markdownLines.push(`- Module: \`${plan.module}\``);
+                markdownLines.push(`- File: \`${plan.filePath}\``);
+                markdownLines.push(`- GitHub issue: #${issueNumber} (${issueUrl})`);
+                markdownLines.push("- Symbols:");
+                for (const symbol of plan.symbols || []) {
+                  markdownLines.push(`  - \`${symbol.name}\` (${symbol.kind}, line ${symbol.line})`);
+                }
+                markdownLines.push("");
+              }
+            }
+
+            fs.writeFileSync(outputJsonPath, JSON.stringify(report, null, 2));
+            fs.writeFileSync(outputMarkdownPath, markdownLines.join("\n"));
+
+            core.setOutput("report_json", outputJsonPath);
+            core.setOutput("report_md", outputMarkdownPath);
+            core.setOutput("plan_count", String(issuePlans.length));
+            core.setOutput("created_count", String(createdCount));
+            core.setOutput("updated_count", String(updatedCount));
+            core.setOutput("reopened_count", String(reopenedCount));
+
+      - name: Upload removal-ready deprecation report
+        if: always() && steps.deprecation_scan.outputs.report_json != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: removal-ready-deprecations-${{ steps.versions.outputs.next }}
+          path: |
+            ${{ steps.deprecation_scan.outputs.report_json }}
+            ${{ steps.deprecation_scan.outputs.report_md }}
+            ${{ steps.deprecation_issues.outputs.report_json }}
+            ${{ steps.deprecation_issues.outputs.report_md }}
+
       # -----------------------
       # Push or PR
       # -----------------------
@@ -539,6 +700,9 @@ jobs:
           RELEASE_BRANCH: release/${{ steps.versions.outputs.release }}
           TARGET_BRANCH: ${{ github.event.repository.default_branch }}
           RELEASE_OWNER: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
+          REMOVAL_PLAN_COUNT: ${{ steps.deprecation_issues.outputs.plan_count }}
+          REMOVAL_CREATED_COUNT: ${{ steps.deprecation_issues.outputs.created_count }}
+          REMOVAL_UPDATED_COUNT: ${{ steps.deprecation_issues.outputs.updated_count }}
         with:
           github-token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
           script: |
@@ -547,6 +711,9 @@ jobs:
             const releaseCommit = process.env.RELEASE_COMMIT;
             const releaseBranch = process.env.RELEASE_BRANCH;
             const baseBranch = process.env.TARGET_BRANCH;
+            const removalPlanCount = process.env.REMOVAL_PLAN_COUNT || "0";
+            const removalCreatedCount = process.env.REMOVAL_CREATED_COUNT || "0";
+            const removalUpdatedCount = process.env.REMOVAL_UPDATED_COUNT || "0";
 
             if (!releaseVersion || !nextVersion || !releaseCommit || !releaseBranch || !baseBranch) {
               throw new Error("Missing required release metadata for PR creation.");
@@ -563,6 +730,7 @@ jobs:
               `- Set version to ${releaseVersion}`,
               `- Generated release notes: release/${releaseVersion}.md`,
               `- Bump to next snapshot: ${nextVersion}`,
+              `- Synced removal-ready deprecation issues: ${removalPlanCount} plan(s), ${removalCreatedCount} created, ${removalUpdatedCount} updated`,
               "",
               "<!-- release-meta",
               `releaseVersion: ${releaseVersion}`,
@@ -649,6 +817,9 @@ jobs:
           NEXT: ${{ steps.versions.outputs.next }}
           CURRENT: ${{ steps.versions.outputs.current }}
           RELEASE_COMMIT: ${{ steps.release_commit.outputs.release_commit }}
+          REMOVAL_PLAN_COUNT: ${{ steps.deprecation_issues.outputs.plan_count }}
+          REMOVAL_CREATED_COUNT: ${{ steps.deprecation_issues.outputs.created_count }}
+          REMOVAL_UPDATED_COUNT: ${{ steps.deprecation_issues.outputs.updated_count }}
         run: |
           echo "summary: dryRun=${DRY_RUN:-}"
           echo "summary: directPush=${DIRECT_PUSH:-}"
@@ -656,3 +827,6 @@ jobs:
           echo "summary: current=${CURRENT:-}"
           echo "summary: next=${NEXT:-}"
           echo "summary: releaseCommit=${RELEASE_COMMIT:-}"
+          echo "summary: removalIssuePlans=${REMOVAL_PLAN_COUNT:-0}"
+          echo "summary: removalIssuesCreated=${REMOVAL_CREATED_COUNT:-0}"
+          echo "summary: removalIssuesUpdated=${REMOVAL_UPDATED_COUNT:-0}"

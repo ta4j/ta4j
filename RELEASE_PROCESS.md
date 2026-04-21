@@ -70,6 +70,8 @@ Secrets and variables:
 - Inputs: `releaseVersion` (optional if auto-detected), `nextVersion` (optional), `dryRun=false`.
 - If `nextVersion` is omitted and `releaseVersion` is a plain `X.Y.Z`, it is auto-generated as `<major>.<minor>.<patch+1>-SNAPSHOT` (for example `0.22.2` -> `0.22.3-SNAPSHOT`).
 - For RC/non-plain release versions, provide `nextVersion` explicitly.
+- After the workflow commits the next snapshot version, it scans `src/main/java` for removal-ready deprecations scheduled for that snapshot and syncs deduplicated GitHub cleanup issues.
+- The workflow uploads a removal-ready deprecation report artifact with grouped findings, symbols, and synced issue links.
 - The workflow auto-labels the PR with `release`, assigns it to `TheCookieLab`, and requests review from `TheCookieLab`.
 - Opening a release PR automatically triggers freeze notices on other open PRs.
 
@@ -139,8 +141,9 @@ Tag metrics used by release automation:
 3. Tag reachability from `master` is true.
 4. Maven Central artifacts are visible (allow propagation time).
 5. GitHub release exists with expected notes/artifacts.
-6. `master` is on next `-SNAPSHOT` version.
-7. `release-health.yml` reports no drift.
+6. Removal-ready deprecation report artifact exists for the new snapshot version, and any matching cleanup issues were created or refreshed successfully.
+7. `master` is on next `-SNAPSHOT` version.
+8. `release-health.yml` reports no drift.
 
 Quick checks:
 ```bash
