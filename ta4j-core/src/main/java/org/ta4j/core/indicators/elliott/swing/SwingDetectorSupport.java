@@ -96,7 +96,7 @@ final class SwingDetectorSupport {
         return List.copyOf(normalized);
     }
 
-    private static SwingPivot chooseSharedIndexPivot(final List<SwingPivot> normalized, final SwingPivot existing,
+    private static SwingPivot chooseSharedIndexPivot(final List<SwingPivot> priorPivots, final SwingPivot existing,
             final SwingPivot candidate) {
         if (existing == null) {
             return candidate;
@@ -107,7 +107,7 @@ final class SwingDetectorSupport {
         if (existing.type() == candidate.type()) {
             return chooseMoreExtreme(existing, candidate);
         }
-        final SwingPivot previous = normalized.isEmpty() ? null : normalized.getLast();
+        final SwingPivot previous = priorPivots.isEmpty() ? null : priorPivots.getLast();
         if (previous != null) {
             if (previous.type() == existing.type()) {
                 return candidate;

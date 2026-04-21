@@ -54,10 +54,10 @@ Live current-cycle flow:
 
 That historical split created four concrete failures:
 
-1. There is still no single canonical EW structure for a given `BarSeries`.
-2. Historical and live charts are not guaranteed to tell the same story.
-3. BTC truth alignment is still achieved partly through anchored decomposition rather than purely through native search.
-4. The repo cannot honestly claim that one engine explains both the full macro history and the current right-edge count.
+1. There was no single canonical EW structure for a given `BarSeries`.
+2. Historical and live charts were not guaranteed to tell the same story.
+3. BTC truth alignment was achieved partly through anchored decomposition rather than purely through native search.
+4. The repo could not honestly claim that one engine explained both the full macro history and the current right-edge count.
 
 ## Ground Truth and Calibration Premise
 
@@ -100,9 +100,9 @@ Create one series-native Elliott engine that can:
 ## Non-Goals
 
 - Do not throw away the BTC truth target in the name of purity.
-- Do not keep historical anchors as production runtime inputs.
-- Do not build a BTC-only engine.
-- Do not introduce a large new public API surface before the canonical model stabilizes.
+- Avoid keeping historical anchors as production runtime inputs.
+- Avoid building a BTC-only engine.
+- Delay introducing a large new public API surface until the canonical model stabilizes.
 - Do not treat chart rendering work as the fix. The problem is inference, not annotation.
 
 ## Migration Background

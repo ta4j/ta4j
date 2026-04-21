@@ -70,7 +70,16 @@ public final class WalkForwardEngine<C, P, O> {
      * @param predictionProvider prediction provider
      * @param outcomeLabeler     outcome labeler
      * @param metrics            metrics to compute
-     * @param maxParallelFolds   maximum number of folds to evaluate concurrently
+     * @param maxParallelFolds   maximum number of folds to evaluate concurrently.
+     *                           When {@code maxParallelFolds > 1},
+     *                           {@link WalkForwardEngine} invokes the shared
+     *                           {@code predictionProvider} from
+     *                           {@link #executeFold(BarSeries, Object, WalkForwardConfig, WalkForwardSplit, int, int, AtomicInteger)}
+     *                           on multiple worker threads while reusing the same
+     *                           {@code context} instance, so the provider and any
+     *                           mutable state reachable from the context must be
+     *                           stateless, thread-safe, or otherwise
+     *                           thread-confined by the caller
      * @since 0.22.4
      */
     public WalkForwardEngine(WalkForwardSplitter splitter, PredictionProvider<C, P> predictionProvider,
@@ -107,7 +116,16 @@ public final class WalkForwardEngine<C, P, O> {
      * @param metrics            metrics to compute
      * @param progressCallback   callback invoked after each decision index
      * @param leakageAuditHook   callback invoked for each audit record
-     * @param maxParallelFolds   maximum number of folds to evaluate concurrently
+     * @param maxParallelFolds   maximum number of folds to evaluate concurrently.
+     *                           When {@code maxParallelFolds > 1},
+     *                           {@link WalkForwardEngine} invokes the shared
+     *                           {@code predictionProvider} from
+     *                           {@link #executeFold(BarSeries, Object, WalkForwardConfig, WalkForwardSplit, int, int, AtomicInteger)}
+     *                           on multiple worker threads while reusing the same
+     *                           {@code context} instance, so the provider and any
+     *                           mutable state reachable from the context must be
+     *                           stateless, thread-safe, or otherwise
+     *                           thread-confined by the caller
      * @since 0.22.4
      */
     public WalkForwardEngine(WalkForwardSplitter splitter, PredictionProvider<C, P> predictionProvider,
@@ -261,7 +279,7 @@ public final class WalkForwardEngine<C, P, O> {
                     Thread.currentThread().interrupt();
                     throw new IllegalStateException("Interrupted while executing walk-forward folds", e);
                 } catch (ExecutionException e) {
-                    throw new IllegalStateException("Walk-forward fold execution failed", e.getCause());
+                    rethrowParallelFailure(e.getCause());
                 }
             }
             executions.sort(Comparator.comparingInt(FoldExecution::foldOrder));
@@ -269,6 +287,16 @@ public final class WalkForwardEngine<C, P, O> {
         } finally {
             executor.shutdownNow();
         }
+    }
+
+    private static void rethrowParallelFailure(Throwable cause) {
+        if (cause instanceof Error error) {
+            throw error;
+        }
+        if (cause instanceof RuntimeException runtimeException) {
+            throw runtimeException;
+        }
+        throw new IllegalStateException("Walk-forward fold execution failed", cause);
     }
 
     private FoldExecution<P, O> executeFold(BarSeries series, C context, WalkForwardConfig config,

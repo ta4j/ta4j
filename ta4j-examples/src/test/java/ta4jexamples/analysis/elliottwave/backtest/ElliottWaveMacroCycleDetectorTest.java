@@ -71,11 +71,7 @@ class ElliottWaveMacroCycleDetectorTest {
                 .generateHistoricalReport(series, chartDirectory.resolve("series-native"));
 
         assertEquals("canonical-structure", seriesNative.structureSource());
-        for (String cycle : cycleDateSignatures(seriesNative.cycles())) {
-            String[] timestamps = cycle.split("\\|");
-            assertTrue(Instant.parse(timestamps[0]).compareTo(Instant.parse(timestamps[1])) < 0);
-            assertTrue(Instant.parse(timestamps[1]).compareTo(Instant.parse(timestamps[2])) < 0);
-        }
+        assertChronologicalCycles(seriesNative.cycles(), "historical demo");
         assertTrue(Files.exists(Path.of(seriesNative.chartPath())));
         assertTrue(Files.exists(Path.of(seriesNative.summaryPath())));
     }
@@ -199,11 +195,9 @@ class ElliottWaveMacroCycleDetectorTest {
                 .analyzeCanonicalStructure(slicedSeries);
         final ElliottWaveMacroCycleDemo.MacroStudy study = structure.historicalStudy().orElseThrow();
 
-        for (String cycle : cycleDateSignatures(study.cycles())) {
-            String[] timestamps = cycle.split("\\|");
-            assertTrue(Instant.parse(timestamps[0]).compareTo(Instant.parse(timestamps[1])) < 0);
-            assertTrue(Instant.parse(timestamps[1]).compareTo(Instant.parse(timestamps[2])) < 0);
-            assertTrue(!Instant.parse(timestamps[2]).isAfter(Instant.parse(cutoffIso)));
+        assertChronologicalCycles(study.cycles(), cutoffIso);
+        for (ElliottWaveMacroCycleDemo.DirectionalCycleSummary cycle : study.cycles()) {
+            assertTrue(!Instant.parse(cycle.lowTimeUtc()).isAfter(Instant.parse(cutoffIso)));
         }
         assertEquals(study.selectedProfile().profile().id(), structure.currentCycle().summary().winningProfileId());
     }
@@ -222,10 +216,24 @@ class ElliottWaveMacroCycleDetectorTest {
         return slicedSeries;
     }
 
+    private static void assertChronologicalCycles(final List<ElliottWaveMacroCycleDemo.DirectionalCycleSummary> cycles,
+            final String contextLabel) {
+        assertTrue(!cycles.isEmpty(), () -> "Expected at least one completed cycle for " + contextLabel);
+        for (ElliottWaveMacroCycleDemo.DirectionalCycleSummary cycle : cycles) {
+            final Instant cycleStart = Instant.parse(cycle.startTimeUtc());
+            final Instant cyclePeak = Instant.parse(cycle.peakTimeUtc());
+            final Instant cycleLow = Instant.parse(cycle.lowTimeUtc());
+            assertTrue(cycleStart.compareTo(cyclePeak) < 0, () -> "Non-chronological peak in " + cycleLabel(cycle));
+            assertTrue(cyclePeak.compareTo(cycleLow) < 0, () -> "Non-chronological low in " + cycleLabel(cycle));
+        }
+    }
+
     private static List<String> cycleDateSignatures(
             final List<ElliottWaveMacroCycleDemo.DirectionalCycleSummary> cycles) {
-        return cycles.stream()
-                .map(cycle -> String.join("|", cycle.startTimeUtc(), cycle.peakTimeUtc(), cycle.lowTimeUtc()))
-                .toList();
+        return cycles.stream().map(ElliottWaveMacroCycleDetectorTest::cycleLabel).toList();
+    }
+
+    private static String cycleLabel(final ElliottWaveMacroCycleDemo.DirectionalCycleSummary cycle) {
+        return String.join("|", cycle.startTimeUtc(), cycle.peakTimeUtc(), cycle.lowTimeUtc());
     }
 }

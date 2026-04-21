@@ -230,7 +230,7 @@ class ElliottScenarioGeneratorTest {
     }
 
     @Test
-    void partialImpulseDecompositionRejectsWaveTwoOutsideFibBand() throws Exception {
+    void partialImpulseDecompositionRejectsWaveTwoOutsideFibBand() {
         List<ElliottSwing> invalidWaveTwoRetracement = List.of(
                 new ElliottSwing(0, 2, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),
                 new ElliottSwing(2, 4, numFactory.numOf(120), numFactory.numOf(103), ElliottDegree.MINOR),
@@ -244,7 +244,7 @@ class ElliottScenarioGeneratorTest {
     }
 
     @Test
-    void partialImpulseDecompositionRejectsWaveThreeOutsideExtensionBand() throws Exception {
+    void partialImpulseDecompositionRejectsWaveThreeOutsideExtensionBand() {
         List<ElliottSwing> invalidWaveThreeExtension = List.of(
                 new ElliottSwing(0, 2, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),
                 new ElliottSwing(2, 4, numFactory.numOf(120), numFactory.numOf(110), ElliottDegree.MINOR),
@@ -282,7 +282,7 @@ class ElliottScenarioGeneratorTest {
     }
 
     @Test
-    void partialImpulseDecompositionRejectsWaveFourOutsideFibBand() throws Exception {
+    void partialImpulseDecompositionRejectsWaveFourOutsideFibBand() {
         List<ElliottSwing> invalidWaveFourRetracement = List.of(
                 new ElliottSwing(0, 2, numFactory.numOf(100), numFactory.numOf(120), ElliottDegree.MINOR),
                 new ElliottSwing(2, 4, numFactory.numOf(120), numFactory.numOf(110), ElliottDegree.MINOR),
@@ -521,18 +521,10 @@ class ElliottScenarioGeneratorTest {
         assertThat(limitedGenerator.lastDiagnostics().retainedScenarioCount()).isZero();
     }
 
-    private boolean invokePartialImpulseBranchValidator(final List<ElliottSwing> swings, final List<Integer> cutPoints)
-            throws Exception {
-        java.lang.reflect.Method extractPivots = ElliottScenarioGenerator.class.getDeclaredMethod("extractPivots",
-                List.class);
-        extractPivots.setAccessible(true);
-        @SuppressWarnings("unchecked")
-        List<?> pivots = (List<?>) extractPivots.invoke(generator, swings);
-
-        java.lang.reflect.Method validator = ElliottScenarioGenerator.class
-                .getDeclaredMethod("partialImpulseDecompositionRemainsViable", List.class, List.class);
-        validator.setAccessible(true);
-        return (boolean) validator.invoke(generator, pivots, cutPoints);
+    private boolean invokePartialImpulseBranchValidator(final List<ElliottSwing> swings,
+            final List<Integer> cutPoints) {
+        final List<ElliottScenarioGenerator.SwingPivotPoint> pivots = generator.extractPivots(swings);
+        return generator.partialImpulseDecompositionRemainsViable(pivots, cutPoints);
     }
 
     private List<ElliottSwing> createAlternatingSwings() {

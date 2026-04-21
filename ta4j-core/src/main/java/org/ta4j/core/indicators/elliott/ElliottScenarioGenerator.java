@@ -623,7 +623,7 @@ public final class ElliottScenarioGenerator {
         return Double.compare(delta, 0.0);
     }
 
-    private boolean partialImpulseDecompositionRemainsViable(final List<SwingPivotPoint> pivots,
+    boolean partialImpulseDecompositionRemainsViable(final List<SwingPivotPoint> pivots,
             final List<Integer> cutPoints) {
         if (cutPoints.size() < 2) {
             return true;
@@ -679,7 +679,7 @@ public final class ElliottScenarioGenerator {
         return fibValidator.isWaveBRetracementValid(waveA, waveB);
     }
 
-    private List<SwingPivotPoint> extractPivots(final List<ElliottSwing> swings) {
+    List<SwingPivotPoint> extractPivots(final List<ElliottSwing> swings) {
         final List<SwingPivotPoint> pivots = new ArrayList<>(swings.size() + 1);
         final ElliottSwing first = swings.get(0);
         pivots.add(new SwingPivotPoint(first.fromIndex(), first.fromPrice()));
@@ -1345,7 +1345,7 @@ public final class ElliottScenarioGenerator {
             }
             final ElliottScenario candidate = sorted.stream()
                     .filter(scenario -> scenario.startIndex() == startIndex)
-                    .min(startAnchoredComparator())
+                    .min(startDiversityComparator())
                     .orElse(null);
             if (candidate != null && selectedIds.add(candidate.id())) {
                 selected.add(candidate);
@@ -1389,24 +1389,13 @@ public final class ElliottScenarioGenerator {
             if (minimumSpacing == 0) {
                 return;
             }
-            if (!addedAny) {
-                minimumSpacing = Math.max(0, minimumSpacing / 2);
-            } else if (selected.size() < quota) {
+            if (!addedAny || selected.size() < quota) {
                 minimumSpacing = Math.max(0, minimumSpacing / 2);
             }
         }
     }
 
     private Comparator<ElliottScenario> startDiversityComparator() {
-        return Comparator.comparing(ElliottScenario::expectsCompletion)
-                .reversed()
-                .thenComparing(Comparator.comparingInt(ElliottScenario::waveCount).reversed())
-                .thenComparing(Comparator.comparingInt(this::scenarioSpan).reversed())
-                .thenComparing(ElliottScenario::confidenceScore, Comparator.reverseOrder())
-                .thenComparing(ElliottScenario::id);
-    }
-
-    private Comparator<ElliottScenario> startAnchoredComparator() {
         return Comparator.comparing(ElliottScenario::expectsCompletion)
                 .reversed()
                 .thenComparing(Comparator.comparingInt(ElliottScenario::waveCount).reversed())
@@ -1499,7 +1488,7 @@ public final class ElliottScenarioGenerator {
         }
     }
 
-    private record SwingPivotPoint(int index, Num price) {
+    record SwingPivotPoint(int index, Num price) {
     }
 
     private static double clamp01(final double value) {

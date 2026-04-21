@@ -8,6 +8,7 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.List;
@@ -165,6 +166,8 @@ final class ElliottWaveAnchorRegistry {
         int bestIndex = -1;
         double bestPrice = anchor.kind() == AnchorKind.TOP ? Double.NEGATIVE_INFINITY : Double.POSITIVE_INFINITY;
         long bestDistance = Long.MAX_VALUE;
+        boolean foundBarInWindow = false;
+        boolean foundValidPrice = false;
 
         for (int index = series.getBeginIndex(); index <= series.getEndIndex(); index++) {
             Bar bar = series.getBar(index);
@@ -173,7 +176,12 @@ final class ElliottWaveAnchorRegistry {
                 continue;
             }
 
+            foundBarInWindow = true;
             double candidatePrice = priceFor(bar, anchor.kind());
+            if (!Double.isFinite(candidatePrice)) {
+                continue;
+            }
+            foundValidPrice = true;
             long candidateDistance = Math.abs(endTime.toEpochMilli() - midpointEpochMillis);
             if (bestIndex < 0 || better(anchor.kind(), candidatePrice, bestPrice)
                     || (same(candidatePrice, bestPrice) && (candidateDistance < bestDistance
@@ -185,7 +193,14 @@ final class ElliottWaveAnchorRegistry {
         }
 
         if (bestIndex < 0) {
-            throw new IllegalStateException("No bars found inside anchor window " + anchor.id());
+            if (!foundBarInWindow) {
+                throw new IllegalStateException("No bars found inside anchor window " + anchor.id());
+            }
+            if (!foundValidPrice) {
+                throw new IllegalStateException("Bars found inside anchor window " + anchor.id() + " but no finite "
+                        + anchor.kind() + " prices were available");
+            }
+            throw new IllegalStateException("Failed to resolve anchor window " + anchor.id());
         }
 
         return new ResolvedAnchor(anchor, bestIndex, series.getBar(bestIndex).getEndTime(), bestPrice,
@@ -267,7 +282,7 @@ final class ElliottWaveAnchorRegistry {
                 throw new IllegalArgumentException("windowEnd must not be before windowStart");
             }
             expectedPhases = expectedPhases == null || expectedPhases.isEmpty() ? EnumSet.noneOf(ElliottPhase.class)
-                    : EnumSet.copyOf(expectedPhases);
+                    : Collections.unmodifiableSet(EnumSet.copyOf(expectedPhases));
             if (expectedPhases.isEmpty()) {
                 throw new IllegalArgumentException("expectedPhases must not be empty");
             }

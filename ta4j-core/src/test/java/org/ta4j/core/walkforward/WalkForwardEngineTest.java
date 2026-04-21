@@ -8,6 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
@@ -24,9 +27,8 @@ class WalkForwardEngineTest {
         WalkForwardConfig config = new WalkForwardConfig(80, 30, 30, 2, 2, 0, 5, List.of(3), 2, List.of(1), 7L);
 
         List<WalkForwardRunResult.LeakageAudit> auditRecords = new ArrayList<>();
-        PredictionProvider<String, String> provider = (fullSeries, decisionIndex, context) -> List.of(
-                new RankedPrediction<>(context + "-bull", 1, numFactory.numOf(0.7), numFactory.numOf(0.8), "bull"),
-                new RankedPrediction<>(context + "-bear", 2, numFactory.numOf(0.3), numFactory.numOf(0.4), "bear"));
+        PredictionProvider<String, String> provider = (fullSeries, decisionIndex,
+                context) -> samplePredictions(numFactory, context);
 
         OutcomeLabeler<String, Boolean> labeler = (fullSeries, decisionIndex, horizonBars, prediction) -> {
             double start = fullSeries.getBar(decisionIndex).getClosePrice().doubleValue();
@@ -104,9 +106,8 @@ class WalkForwardEngineTest {
         NumFactory numFactory = series.numFactory();
         WalkForwardConfig config = new WalkForwardConfig(80, 30, 30, 2, 2, 0, 5, List.of(3), 2, List.of(1), 7L);
 
-        PredictionProvider<String, String> provider = (fullSeries, decisionIndex, context) -> List.of(
-                new RankedPrediction<>(context + "-bull", 1, numFactory.numOf(0.7), numFactory.numOf(0.8), "bull"),
-                new RankedPrediction<>(context + "-bear", 2, numFactory.numOf(0.3), numFactory.numOf(0.4), "bear"));
+        PredictionProvider<String, String> provider = (fullSeries, decisionIndex,
+                context) -> samplePredictions(numFactory, context);
 
         OutcomeLabeler<String, Boolean> labeler = (fullSeries, decisionIndex, horizonBars, prediction) -> {
             double start = fullSeries.getBar(decisionIndex).getClosePrice().doubleValue();
@@ -127,8 +128,31 @@ class WalkForwardEngineTest {
                 }, serialAudit::add);
 
         List<WalkForwardRunResult.LeakageAudit> parallelAudit = new ArrayList<>();
+        AtomicInteger inFlightProviders = new AtomicInteger();
+        AtomicInteger probeSlots = new AtomicInteger();
+        AtomicBoolean overlapDetected = new AtomicBoolean();
+        CountDownLatch probeRelease = new CountDownLatch(1);
+        PredictionProvider<String, String> parallelProvider = (fullSeries, decisionIndex, context) -> {
+            int activeProviders = inFlightProviders.incrementAndGet();
+            int probeSlot = probeSlots.getAndIncrement();
+            try {
+                if (activeProviders > 1) {
+                    overlapDetected.set(true);
+                    probeRelease.countDown();
+                }
+                if (probeSlot < 2) {
+                    probeRelease.await(500, TimeUnit.MILLISECONDS);
+                }
+                return samplePredictions(numFactory, context);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new IllegalStateException("parallel overlap probe interrupted", e);
+            } finally {
+                inFlightProviders.decrementAndGet();
+            }
+        };
         WalkForwardEngine<String, String, Boolean> parallelEngine = new WalkForwardEngine<>(
-                new AnchoredExpandingWalkForwardSplitter(), provider, labeler, metrics, ignored -> {
+                new AnchoredExpandingWalkForwardSplitter(), parallelProvider, labeler, metrics, ignored -> {
                     // no-op
                 }, parallelAudit::add, 3);
 
@@ -143,6 +167,7 @@ class WalkForwardEngineTest {
         assertThat(parallel.leakageAudit()).isEqualTo(serial.leakageAudit());
         assertThat(parallel.manifest()).isEqualTo(serial.manifest());
         assertThat(parallelAudit).isEqualTo(serialAudit);
+        assertThat(overlapDetected).isTrue();
         assertThat(parallel.runtimeReport()
                 .foldRuntimes()
                 .stream()
@@ -152,6 +177,27 @@ class WalkForwardEngineTest {
                         .stream()
                         .map(fold -> fold.foldId() + ":" + fold.snapshotCount())
                         .toList());
+    }
+
+    @Test
+    void parallelFoldFailuresPreserveOriginalRuntimeExceptionType() {
+        BarSeries series = new MockBarSeriesBuilder().withData(prices(220)).build();
+        WalkForwardConfig config = new WalkForwardConfig(80, 30, 30, 2, 2, 0, 5, List.of(3), 2, List.of(1), 7L);
+
+        WalkForwardEngine<String, String, Boolean> engine = new WalkForwardEngine<>(
+                new AnchoredExpandingWalkForwardSplitter(), (fullSeries, decisionIndex, context) -> {
+                    throw new IllegalArgumentException("synthetic provider failure");
+                }, (fullSeries, decisionIndex, horizonBars, prediction) -> true,
+                List.of(WalkForwardMetric.agreement("agreement", 1, (prediction, outcome) -> outcome)), ignored -> {
+                    // no-op
+                }, ignored -> {
+                    // no-op
+                }, 3);
+
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                () -> engine.run(series, "ctx", config));
+
+        assertThat(failure).hasMessage("synthetic provider failure");
     }
 
     @Test
@@ -187,5 +233,11 @@ class WalkForwardEngineTest {
             prices[i] = 100 + (i * 0.5);
         }
         return prices;
+    }
+
+    private static List<RankedPrediction<String>> samplePredictions(NumFactory numFactory, String context) {
+        return List.of(
+                new RankedPrediction<>(context + "-bull", 1, numFactory.numOf(0.7), numFactory.numOf(0.8), "bull"),
+                new RankedPrediction<>(context + "-bear", 2, numFactory.numOf(0.3), numFactory.numOf(0.4), "bear"));
     }
 }

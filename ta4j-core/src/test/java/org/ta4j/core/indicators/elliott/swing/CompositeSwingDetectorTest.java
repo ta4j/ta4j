@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.elliott.swing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.groups.Tuple.tuple;
 import static org.ta4j.core.num.NaN.NaN;
 
 import java.time.Duration;
@@ -81,11 +82,9 @@ class CompositeSwingDetectorTest {
         SwingDetectorResult result = composite.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
 
         assertThat(result.pivots()).extracting(SwingPivot::index, SwingPivot::type)
-                .containsExactly(org.assertj.core.groups.Tuple.tuple(1, SwingPivotType.LOW),
-                        org.assertj.core.groups.Tuple.tuple(2, SwingPivotType.HIGH),
-                        org.assertj.core.groups.Tuple.tuple(4, SwingPivotType.LOW),
-                        org.assertj.core.groups.Tuple.tuple(5, SwingPivotType.HIGH));
-        assertThat(result.pivots().get(1).price()).isEqualTo(factory.numOf(120));
+                .containsExactly(tuple(1, SwingPivotType.LOW), tuple(2, SwingPivotType.HIGH),
+                        tuple(4, SwingPivotType.LOW), tuple(5, SwingPivotType.HIGH));
+        assertThat(result.pivots().get(1).price()).isEqualByComparingTo(factory.numOf(120));
         assertThat(result.swings()).allSatisfy(swing -> assertThat(swing.toIndex()).isGreaterThan(swing.fromIndex()));
     }
 
@@ -107,11 +106,9 @@ class CompositeSwingDetectorTest {
         SwingDetectorResult result = composite.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
 
         assertThat(result.pivots()).extracting(SwingPivot::index, SwingPivot::type)
-                .containsExactly(org.assertj.core.groups.Tuple.tuple(1, SwingPivotType.LOW),
-                        org.assertj.core.groups.Tuple.tuple(2, SwingPivotType.HIGH),
-                        org.assertj.core.groups.Tuple.tuple(4, SwingPivotType.LOW),
-                        org.assertj.core.groups.Tuple.tuple(5, SwingPivotType.HIGH));
-        assertThat(result.pivots().get(1).price()).isEqualTo(factory.numOf(120));
+                .containsExactly(tuple(1, SwingPivotType.LOW), tuple(2, SwingPivotType.HIGH),
+                        tuple(4, SwingPivotType.LOW), tuple(5, SwingPivotType.HIGH));
+        assertThat(result.pivots().get(1).price()).isEqualByComparingTo(factory.numOf(120));
     }
 
     @Test
