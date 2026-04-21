@@ -23,6 +23,7 @@ MAIN_SOURCE_MARKER = ("src", "main", "java")
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse command line arguments."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--repo-root", default=".", help="Repository root to scan")
     parser.add_argument("--pom-file", default="pom.xml", help="Pom file with the authoritative snapshot version")
@@ -32,6 +33,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def read_snapshot_version(pom_file: Path) -> tuple[str, str]:
+    """Read the authoritative snapshot and target removal version from pom.xml."""
     text = pom_file.read_text(encoding="utf-8")
     match = VERSION_RE.search(text)
     if match is None:
@@ -44,6 +46,7 @@ def read_snapshot_version(pom_file: Path) -> tuple[str, str]:
 
 
 def iter_java_files(repo_root: Path) -> list[Path]:
+    """Return tracked Java source files under src/main/java-like roots."""
     java_files: list[Path] = []
     for path in repo_root.rglob("*.java"):
         if any(part in SKIP_PARTS for part in path.parts):
@@ -55,18 +58,22 @@ def iter_java_files(repo_root: Path) -> list[Path]:
 
 
 def removal_versions(text: str) -> set[str]:
+    """Extract scheduled removal versions from free text or notifier calls."""
     versions: set[str] = set()
     for pattern in REMOVAL_VERSION_PATTERNS:
         versions.update(pattern.findall(text))
     return versions
 
 
-def find_symbols(text: str, file_stem: str) -> list[dict[str, object]]:
+def find_symbols(text: str, file_stem: str, target_removal_version: str) -> list[dict[str, object]]:
+    """Extract only the deprecated symbols scheduled for the target removal version."""
     lines = text.splitlines()
-    symbols: list[dict[str, object]] = []
+    candidates: list[dict[str, object]] = []
     seen: set[tuple[str, str, int]] = set()
+    matches = list(DEPRECATED_ANNOTATION_RE.finditer(text))
 
-    for match in DEPRECATED_ANNOTATION_RE.finditer(text):
+    for index, match in enumerate(matches):
+        explicit_versions = removal_versions(symbol_context(text, matches, index, match))
         annotation_line = text.count("\n", 0, match.end()) + 1
         declaration_line = annotation_line
         declaration_lines: list[str] = []
@@ -90,12 +97,28 @@ def find_symbols(text: str, file_stem: str) -> list[dict[str, object]]:
             continue
         seen.add(key)
         symbol["line"] = declaration_line
-        symbols.append(symbol)
+        symbol["explicitRemovalVersions"] = sorted(explicit_versions)
+        candidates.append(symbol)
+
+    symbols: list[dict[str, object]] = []
+    inherited_versions: set[str] = set()
+    for candidate in candidates:
+        explicit_versions = set(candidate.pop("explicitRemovalVersions", []))
+        if is_type_kind(str(candidate["kind"])):
+            candidate_versions = explicit_versions
+            if explicit_versions:
+                inherited_versions = explicit_versions
+        else:
+            candidate_versions = explicit_versions or inherited_versions
+
+        if target_removal_version in candidate_versions:
+            symbols.append(candidate)
 
     return symbols
 
 
 def parse_symbol(declaration: str, file_stem: str) -> dict[str, object] | None:
+    """Parse the declaration line into a symbol name and kind."""
     compact = " ".join(declaration.split())
     if not compact:
         return None
@@ -124,15 +147,48 @@ def parse_symbol(declaration: str, file_stem: str) -> dict[str, object] | None:
     return None
 
 
+def is_type_kind(kind: str) -> bool:
+    """Return whether the symbol kind establishes an enclosing type scope."""
+    return kind in {"class", "interface", "enum", "record"}
+
+
 def module_name(path: Path) -> str:
+    """Return the module name that owns the source file."""
     for index, part in enumerate(path.parts):
         if path.parts[index + 1 : index + 4] == MAIN_SOURCE_MARKER:
             return part
     return path.parts[0]
 
 
+def symbol_context(text: str, matches: list[re.Match[str]], index: int, match: re.Match[str]) -> str:
+    """Return nearby text that belongs to the current deprecated declaration."""
+    start = javadoc_start(text, match.start())
+    if start == -1:
+        start = match.start()
+
+    end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+    return text[start:end]
+
+
+def javadoc_start(text: str, annotation_start: int) -> int:
+    """Return the start of the javadoc directly attached to the annotation, if any."""
+    javadoc_open = text.rfind("/**", 0, annotation_start)
+    if javadoc_open == -1:
+        return -1
+
+    javadoc_close = text.find("*/", javadoc_open, annotation_start)
+    if javadoc_close == -1:
+        return -1
+
+    gap = text[javadoc_close + 2 : annotation_start]
+    if gap.strip():
+        return -1
+    return javadoc_open
+
+
 def build_issue_plan(snapshot_version: str, removal_version: str, relative_path: str,
         module: str, symbols: list[dict[str, object]]) -> dict[str, object]:
+    """Build one deduplicated GitHub issue plan for a file's matching symbols."""
     symbol_count = len(symbols)
     if symbol_count == 1:
         symbol_label = str(symbols[0]["name"])
@@ -176,6 +232,7 @@ def build_issue_plan(snapshot_version: str, removal_version: str, relative_path:
 
 
 def generate_report(repo_root: Path, pom_file: Path) -> dict[str, object]:
+    """Generate the full removal-ready deprecation report for the current snapshot."""
     snapshot_version, removal_version = read_snapshot_version(pom_file)
     issue_plans: list[dict[str, object]] = []
 
@@ -183,11 +240,8 @@ def generate_report(repo_root: Path, pom_file: Path) -> dict[str, object]:
         text = java_file.read_text(encoding="utf-8")
         if "forRemoval = true" not in text and "forRemoval=true" not in text:
             continue
-        if removal_version not in removal_versions(text):
-            continue
-
         relative_path = java_file.relative_to(repo_root).as_posix()
-        symbols = find_symbols(text, java_file.stem)
+        symbols = find_symbols(text, java_file.stem, removal_version)
         if not symbols:
             continue
 
@@ -210,6 +264,7 @@ def generate_report(repo_root: Path, pom_file: Path) -> dict[str, object]:
 
 
 def render_markdown(report: dict[str, object]) -> str:
+    """Render a concise Markdown summary for workflow artifacts and logs."""
     lines = [
         f"# Removal-ready deprecations for {report['snapshotVersion']}",
         "",
@@ -236,12 +291,14 @@ def render_markdown(report: dict[str, object]) -> str:
 
 
 def write_output(path_text: str, content: str) -> None:
+    """Write a UTF-8 text file, creating parent directories as needed."""
     path = Path(path_text)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(content, encoding="utf-8")
 
 
 def main() -> int:
+    """Run the scanner CLI."""
     args = parse_args()
     repo_root = Path(args.repo_root).resolve()
     pom_file = Path(args.pom_file)

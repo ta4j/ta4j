@@ -137,6 +137,58 @@ PY
   pass "test_notifier_version_detection"
 }
 
+test_mixed_versions_in_one_file() {
+  echo "Running test_mixed_versions_in_one_file"
+  run_test
+
+  cat > pom.xml <<'EOF'
+<project>
+  <version>0.24.0-SNAPSHOT</version>
+</project>
+EOF
+
+  mkdir -p ta4j-core/src/main/java/org/ta4j/core/legacy
+  cat > ta4j-core/src/main/java/org/ta4j/core/legacy/MixedRemovalBridge.java <<'EOF'
+package org.ta4j.core.legacy;
+
+public class MixedRemovalBridge {
+
+    /**
+     * @deprecated Scheduled for removal in 0.24.0.
+     */
+    @Deprecated(since = "0.20.0", forRemoval = true)
+    public void removeNow() {
+    }
+
+    /**
+     * @deprecated Scheduled for removal in 0.25.0.
+     */
+    @Deprecated(since = "0.21.0", forRemoval = true)
+    public void removeLater() {
+    }
+}
+EOF
+
+  python3 scripts/scan-removal-ready-deprecations.py \
+    --output-json report.json \
+    --output-md report.md >/dev/null
+
+  python3 - <<'PY'
+import json
+from pathlib import Path
+
+report = json.loads(Path("report.json").read_text())
+assert report["findingCount"] == 1
+assert report["issuePlanCount"] == 1
+symbols = report["issuePlans"][0]["symbols"]
+assert [symbol["name"] for symbol in symbols] == ["removeNow"]
+assert "removeLater" not in Path("report.md").read_text()
+PY
+
+  finish_test
+  pass "test_mixed_versions_in_one_file"
+}
+
 test_requires_snapshot_version() {
   echo "Running test_requires_snapshot_version"
   run_test
@@ -159,4 +211,5 @@ EOF
 
 test_matching_snapshot_detection
 test_notifier_version_detection
+test_mixed_versions_in_one_file
 test_requires_snapshot_version
