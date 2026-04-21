@@ -59,17 +59,24 @@ public class ChartWorkflow {
      *
      * <p>
      * Saved/exported charts default to 4K so persisted artifacts retain detail even
-     * when the on-screen display uses a smaller, screen-aware size.
+     * when the on-screen display uses a smaller, screen-aware size. The constant
+     * itself has existed since 0.19; the default export size was raised from
+     * 1920x1080 to 3840x2160 in 0.22.7.
      * </p>
      *
-     * @since 0.22.4
+     * @since 0.19
      */
     static final int DEFAULT_CHART_IMAGE_WIDTH = 3840;
 
     /**
      * Default saved chart image height.
      *
-     * @since 0.22.4
+     * <p>
+     * Paired with {@link #DEFAULT_CHART_IMAGE_WIDTH}, the default export size was
+     * raised to 3840x2160 in 0.22.7 while keeping the same constant in place.
+     * </p>
+     *
+     * @since 0.19
      */
     static final int DEFAULT_CHART_IMAGE_HEIGHT = 2160;
 
@@ -184,7 +191,7 @@ public class ChartWorkflow {
      * @param plan          the chart plan
      * @param windowTitle   custom window title
      * @param preferredSize preferred display size for the on-screen window
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public void display(ChartPlan plan, String windowTitle, Dimension preferredSize) {
         String effectiveWindowTitle = windowTitle;
@@ -213,7 +220,7 @@ public class ChartWorkflow {
      * @param imageWidth  exported image width
      * @param imageHeight exported image height
      * @return the optional path to the saved chart
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public Optional<Path> save(ChartPlan plan, int imageWidth, int imageHeight) {
         return saveChartImage(render(plan), plan.primarySeries(), imageWidth, imageHeight);
@@ -239,7 +246,7 @@ public class ChartWorkflow {
      * @param imageWidth  exported image width
      * @param imageHeight exported image height
      * @return the optional path to the saved chart
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public Optional<Path> save(ChartPlan plan, String filename, int imageWidth, int imageHeight) {
         return saveChartImage(render(plan), plan.primarySeries(), filename, imageWidth, imageHeight);
@@ -265,7 +272,7 @@ public class ChartWorkflow {
      * @param imageWidth  exported image width
      * @param imageHeight exported image height
      * @return optional saved path
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public Optional<Path> save(ChartPlan plan, Path directory, int imageWidth, int imageHeight) {
         return saveChartImage(render(plan), plan.primarySeries(), directory, imageWidth, imageHeight);
@@ -294,7 +301,7 @@ public class ChartWorkflow {
      * @param imageWidth  exported image width
      * @param imageHeight exported image height
      * @return optional saved path
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public Optional<Path> save(ChartPlan plan, String directory, String filename, int imageWidth, int imageHeight) {
         return saveChartImage(render(plan), plan.primarySeries(), filename, directory, imageWidth, imageHeight);
@@ -324,7 +331,7 @@ public class ChartWorkflow {
      * @param imageWidth  exported image width
      * @param imageHeight exported image height
      * @return optional saved path
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public Optional<Path> save(ChartPlan plan, Path directory, String filename, int imageWidth, int imageHeight) {
         Objects.requireNonNull(directory, "Directory cannot be null");
@@ -756,7 +763,7 @@ public class ChartWorkflow {
      * @param windowTitle   the title for the window/frame (optional, uses default
      *                      if null)
      * @param preferredSize preferred display size for the on-screen window
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public void displayChart(JFreeChart chart, String windowTitle, Dimension preferredSize) {
         if (chart == null) {
@@ -792,7 +799,7 @@ public class ChartWorkflow {
      * @param imageWidth    exported image width
      * @param imageHeight   exported image height
      * @return an optional path to the stored chart
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, String chartFileName, int imageWidth,
             int imageHeight) {
@@ -841,7 +848,7 @@ public class ChartWorkflow {
      * @param imageHeight exported image height
      * @return an Optional containing the Path where the chart image was saved, or
      *         empty if saving failed
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, int imageWidth, int imageHeight) {
         return saveChartImage(chart, series, (String) null, imageWidth, imageHeight);
@@ -871,7 +878,7 @@ public class ChartWorkflow {
      * @param imageWidth              exported image width
      * @param imageHeight             exported image height
      * @return an optional path to the stored chart
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, Path chartImageSaveDirectory,
             int imageWidth, int imageHeight) {
@@ -913,7 +920,7 @@ public class ChartWorkflow {
      * @param imageWidth              exported image width
      * @param imageHeight             exported image height
      * @return an optional path to the stored chart
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, String chartFileName,
             String chartImageSaveDirectory, int imageWidth, int imageHeight) {
@@ -948,7 +955,7 @@ public class ChartWorkflow {
      * @param imageWidth  exported image width
      * @param imageHeight exported image height
      * @return the encoded PNG bytes
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public byte[] getChartAsByteArray(JFreeChart chart, int imageWidth, int imageHeight) {
         if (chart == null) {
