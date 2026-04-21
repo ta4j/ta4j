@@ -46,7 +46,7 @@ def read_snapshot_version(pom_file: Path) -> tuple[str, str]:
 
 
 def iter_java_files(repo_root: Path) -> list[Path]:
-    """Return tracked Java source files under src/main/java-like roots."""
+    """Return Java source files under src/main/java-like roots."""
     java_files: list[Path] = []
     for path in repo_root.rglob("*.java"):
         if any(part in SKIP_PARTS for part in path.parts):
