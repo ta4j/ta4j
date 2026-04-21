@@ -49,7 +49,7 @@ import org.ta4j.core.indicators.elliott.ElliottWaveAnalysisResult;
  * 2017, and 2021 macro tops plus their following corrective lows closely enough
  * to compare against the truth-set registry.
  *
- * @since 0.22.4
+ * @since 0.22.7
  */
 final class ElliottWaveMacroCycleDetector {
 
@@ -67,7 +67,7 @@ final class ElliottWaveMacroCycleDetector {
      *
      * @param series series to analyze
      * @return inferred anchor registry
-     * @since 0.22.4
+     * @since 0.22.7
      */
     static ElliottWaveAnchorCalibrationHarness.AnchorRegistry inferAnchorRegistry(final BarSeries series) {
         Objects.requireNonNull(series, "series");

@@ -118,12 +118,27 @@ class WalkForwardModelRecordsTest {
         assertThat(foldRuntime.snapshotCount()).isEqualTo(1);
         assertThat(foldRuntime.snapshotRuntimes()).containsExactly(snapshotRuntime);
         assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.SnapshotRuntime(-1, Duration.ofMillis(1), 1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.SnapshotRuntime(12, Duration.ofMillis(-1), 1));
+        assertThrows(IllegalArgumentException.class,
                 () -> new WalkForwardRuntimeReport.SnapshotRuntime(12, Duration.ofMillis(1), -1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofMillis(-1), 0));
         assertThrows(IllegalArgumentException.class,
                 () -> new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofMillis(1), -1));
         assertThrows(IllegalArgumentException.class,
                 () -> new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofMillis(1), 2, Duration.ZERO,
                         Duration.ZERO, Duration.ZERO, Duration.ZERO, List.of(snapshotRuntime)));
+        assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofMillis(1), 1, Duration.ofMillis(5),
+                        Duration.ofMillis(4), Duration.ofMillis(4), Duration.ofMillis(4), List.of(snapshotRuntime)));
+        assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofMillis(1), 1, Duration.ofMillis(4),
+                        Duration.ofMillis(5), Duration.ofMillis(6), Duration.ofMillis(4), List.of(snapshotRuntime)));
+        assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofMillis(1), 1, Duration.ofMillis(4),
+                        Duration.ofMillis(5), Duration.ofMillis(3), Duration.ofMillis(4), List.of(snapshotRuntime)));
     }
 
     @Test

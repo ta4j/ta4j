@@ -511,6 +511,16 @@ class ElliottScenarioGeneratorTest {
         assertThat(limitedSet.all().stream().map(ElliottScenario::startIndex).distinct().count()).isGreaterThan(1);
     }
 
+    @Test
+    void zeroScenarioLimitReturnsAnEmptyScenarioSet() {
+        ElliottScenarioGenerator limitedGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 0);
+
+        ElliottScenarioSet set = limitedGenerator.generate(createAlternatingSwings(), ElliottDegree.MINOR, null, 25);
+
+        assertThat(set.all()).isEmpty();
+        assertThat(limitedGenerator.lastDiagnostics().retainedScenarioCount()).isZero();
+    }
+
     private boolean invokePartialImpulseBranchValidator(final List<ElliottSwing> swings, final List<Integer> cutPoints)
             throws Exception {
         java.lang.reflect.Method extractPivots = ElliottScenarioGenerator.class.getDeclaredMethod("extractPivots",

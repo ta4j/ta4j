@@ -36,9 +36,9 @@ Delivered engine guarantees:
 
 The anchor registry stays valuable, but only as labeled truth. It must stop acting as a runtime decomposition crutch.
 
-## Problem Statement
+## Historical Problem Statement
 
-The current architecture still splits responsibility across two different top-level flows.
+Before the single-engine migration, the architecture split responsibility across two different top-level flows.
 
 Historical macro-study flow:
 
@@ -52,7 +52,7 @@ Live current-cycle flow:
 - `ElliottWaveMacroCycleDemo.java:273`
 - `ElliottWaveAnalysisRunner.java:352`
 
-That split creates four concrete failures:
+That historical split created four concrete failures:
 
 1. There is still no single canonical EW structure for a given `BarSeries`.
 2. Historical and live charts are not guaranteed to tell the same story.
@@ -105,9 +105,9 @@ Create one series-native Elliott engine that can:
 - Do not introduce a large new public API surface before the canonical model stabilizes.
 - Do not treat chart rendering work as the fix. The problem is inference, not annotation.
 
-## Current State Analysis
+## Migration Background
 
-### What is already unified
+### What became unified during delivery
 
 - Shared core runner for anchored-window selection:
   - `ElliottWaveAnalysisRunner.java:322`
@@ -119,7 +119,7 @@ Create one series-native Elliott engine that can:
 - Shared current-cycle summary construction:
   - `ElliottWaveMacroCycleDemo.java:273`
 
-### What is still split
+### What was still split before migration
 
 - Historical decomposition still builds completed cycle legs from an anchor registry:
   - `ElliottWaveMacroCycleDemo.java:1204`
@@ -129,9 +129,10 @@ Create one series-native Elliott engine that can:
 - Live analysis still optimizes only for the current bullish cycle rather than full-history structure:
   - `ElliottWaveAnalysisRunner.java:352`
 
-### Empirical divergence already observed
+### Historical divergence that motivated the migration
 
-The historical macro-study report and the pure live-engine replay currently disagree on completed macro bearish closes.
+Before the canonical runtime was delivered, the historical macro-study report and the pure live-engine replay
+disagreed on completed macro bearish closes.
 
 Historical macro-study summary:
 

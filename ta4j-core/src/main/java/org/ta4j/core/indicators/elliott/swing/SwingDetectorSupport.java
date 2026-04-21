@@ -107,18 +107,41 @@ final class SwingDetectorSupport {
         if (existing.type() == candidate.type()) {
             return chooseMoreExtreme(existing, candidate);
         }
-        if (normalized.size() >= 2) {
-            final Num anchor = normalized.get(normalized.size() - 2).price();
-            if (!Num.isNaNOrNull(anchor)) {
-                final Num existingDistance = existing.price().minus(anchor).abs();
-                final Num candidateDistance = candidate.price().minus(anchor).abs();
-                return candidateDistance.isGreaterThan(existingDistance) ? candidate : existing;
+        final SwingPivot previous = normalized.isEmpty() ? null : normalized.getLast();
+        if (previous != null) {
+            if (previous.type() == existing.type()) {
+                return candidate;
+            }
+            if (previous.type() == candidate.type()) {
+                return existing;
             }
         }
-        if (existing.type() == SwingPivotType.HIGH || candidate.type() == SwingPivotType.LOW) {
-            return existing.price().isGreaterThan(candidate.price()) ? existing : candidate;
+        final Num existingPrice = existing.price();
+        final Num candidatePrice = candidate.price();
+        if (Num.isNaNOrNull(existingPrice)) {
+            return Num.isNaNOrNull(candidatePrice) ? deterministicSharedIndexTieBreak(existing, candidate) : candidate;
         }
-        return existing.price().isLessThan(candidate.price()) ? existing : candidate;
+        if (Num.isNaNOrNull(candidatePrice)) {
+            return existing;
+        }
+        if (existingPrice.isGreaterThan(candidatePrice)) {
+            return existing.type() == SwingPivotType.HIGH ? existing
+                    : (candidate.type() == SwingPivotType.HIGH ? candidate
+                            : deterministicSharedIndexTieBreak(existing, candidate));
+        }
+        if (candidatePrice.isGreaterThan(existingPrice)) {
+            return candidate.type() == SwingPivotType.HIGH ? candidate
+                    : (existing.type() == SwingPivotType.HIGH ? existing
+                            : deterministicSharedIndexTieBreak(existing, candidate));
+        }
+        return deterministicSharedIndexTieBreak(existing, candidate);
+    }
+
+    private static SwingPivot deterministicSharedIndexTieBreak(final SwingPivot existing, final SwingPivot candidate) {
+        if (existing.type() != candidate.type()) {
+            return existing.type() == SwingPivotType.HIGH ? existing : candidate;
+        }
+        return chooseMoreExtreme(existing, candidate);
     }
 
     private static SwingPivot chooseMoreExtreme(final SwingPivot first, final SwingPivot second) {

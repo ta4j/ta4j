@@ -16,6 +16,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import org.ta4j.core.BarSeries;
@@ -43,6 +44,7 @@ public final class WalkForwardEngine<C, P, O> {
     private final Consumer<Integer> progressCallback;
     private final Consumer<WalkForwardRunResult.LeakageAudit> leakageAuditHook;
     private final int maxParallelFolds;
+    private final Object progressCallbackLock = new Object();
 
     /**
      * Creates an engine with no-op progress and audit hooks.
@@ -177,10 +179,11 @@ public final class WalkForwardEngine<C, P, O> {
         }
 
         List<WalkForwardRuntimeReport.FoldRuntime> foldRuntimes = new ArrayList<>();
-        int progressCount = 0;
+        AtomicInteger progressCounter = new AtomicInteger();
         int maxPredictions = config.allTopKs().stream().max(Integer::compareTo).orElse(config.optimizationTopK());
 
-        List<FoldExecution<P, O>> foldExecutions = executeFolds(series, context, config, splits, maxPredictions);
+        List<FoldExecution<P, O>> foldExecutions = executeFolds(series, context, config, splits, maxPredictions,
+                progressCounter);
         for (FoldExecution<P, O> foldExecution : foldExecutions) {
             snapshots.addAll(foldExecution.snapshots());
             for (Map.Entry<Integer, List<WalkForwardObservation<P, O>>> horizonEntry : foldExecution
@@ -193,10 +196,6 @@ public final class WalkForwardEngine<C, P, O> {
             for (WalkForwardRunResult.LeakageAudit audit : foldExecution.leakageAudit()) {
                 leakageAudit.add(audit);
                 leakageAuditHook.accept(audit);
-            }
-            for (int i = 0; i < foldExecution.snapshots().size(); i++) {
-                progressCount++;
-                progressCallback.accept(progressCount);
             }
             foldRuntimes.add(foldExecution.foldRuntime());
         }
@@ -230,15 +229,15 @@ public final class WalkForwardEngine<C, P, O> {
     }
 
     private List<FoldExecution<P, O>> executeFolds(BarSeries series, C context, WalkForwardConfig config,
-            List<WalkForwardSplit> splits, int maxPredictions) {
+            List<WalkForwardSplit> splits, int maxPredictions, AtomicInteger progressCounter) {
         if (splits.isEmpty()) {
             return List.of();
         }
         if (maxParallelFolds == 1 || splits.size() == 1) {
             List<FoldExecution<P, O>> executions = new ArrayList<>(splits.size());
             for (int splitIndex = 0; splitIndex < splits.size(); splitIndex++) {
-                executions
-                        .add(executeFold(series, context, config, splits.get(splitIndex), splitIndex, maxPredictions));
+                executions.add(executeFold(series, context, config, splits.get(splitIndex), splitIndex, maxPredictions,
+                        progressCounter));
             }
             return executions;
         }
@@ -250,8 +249,8 @@ public final class WalkForwardEngine<C, P, O> {
             for (int splitIndex = 0; splitIndex < splits.size(); splitIndex++) {
                 WalkForwardSplit split = splits.get(splitIndex);
                 int foldOrder = splitIndex;
-                futures.add(
-                        executor.submit(() -> executeFold(series, context, config, split, foldOrder, maxPredictions)));
+                futures.add(executor.submit(
+                        () -> executeFold(series, context, config, split, foldOrder, maxPredictions, progressCounter)));
             }
 
             List<FoldExecution<P, O>> executions = new ArrayList<>(splits.size());
@@ -273,7 +272,7 @@ public final class WalkForwardEngine<C, P, O> {
     }
 
     private FoldExecution<P, O> executeFold(BarSeries series, C context, WalkForwardConfig config,
-            WalkForwardSplit split, int foldOrder, int maxPredictions) {
+            WalkForwardSplit split, int foldOrder, int maxPredictions, AtomicInteger progressCounter) {
         long foldStart = System.nanoTime();
         List<PredictionSnapshot<P>> snapshots = new ArrayList<>();
         List<WalkForwardRunResult.LeakageAudit> leakageAudit = new ArrayList<>();
@@ -319,12 +318,19 @@ public final class WalkForwardEngine<C, P, O> {
 
             snapshotRuntimes.add(new WalkForwardRuntimeReport.SnapshotRuntime(decisionIndex,
                     Duration.ofNanos(System.nanoTime() - snapshotStart), predictions.size()));
+            emitProgress(progressCounter);
         }
 
         Duration foldRuntime = Duration.ofNanos(System.nanoTime() - foldStart);
         return new FoldExecution<>(foldOrder, split, List.copyOf(snapshots), List.copyOf(leakageAudit),
                 immutableObservationLists(observationsByHorizon),
                 buildFoldRuntime(split.foldId(), foldRuntime, snapshotRuntimes));
+    }
+
+    private void emitProgress(AtomicInteger progressCounter) {
+        synchronized (progressCallbackLock) {
+            progressCallback.accept(progressCounter.incrementAndGet());
+        }
     }
 
     private Map<Integer, Map<String, Num>> computeGlobalMetrics(

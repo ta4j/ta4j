@@ -24,7 +24,7 @@ import java.util.Objects;
  * to apply one of these presets while still retaining the ability to override
  * individual builder settings afterwards.
  *
- * @since 0.22.4
+ * @since 0.22.7
  */
 public enum ElliottLogicProfile {
 
@@ -92,7 +92,7 @@ public enum ElliottLogicProfile {
 
     /**
      * @return stable profile identifier used in reports and demos
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public String id() {
         return id;
@@ -100,7 +100,7 @@ public enum ElliottLogicProfile {
 
     /**
      * @return human-readable profile title
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public String title() {
         return title;
@@ -108,7 +108,7 @@ public enum ElliottLogicProfile {
 
     /**
      * @return base fractal window used by the default hierarchical swing detector
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public int baseFractalWindow() {
         return baseFractalWindow;
@@ -116,7 +116,7 @@ public enum ElliottLogicProfile {
 
     /**
      * @return default number of higher-degree confirmations to include
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public int higherDegrees() {
         return higherDegrees;
@@ -124,7 +124,7 @@ public enum ElliottLogicProfile {
 
     /**
      * @return default number of lower-degree confirmations to include
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public int lowerDegrees() {
         return lowerDegrees;
@@ -132,7 +132,7 @@ public enum ElliottLogicProfile {
 
     /**
      * @return enabled scenario families for the profile
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public PatternSet patternSet() {
         return patternSet;
@@ -140,7 +140,7 @@ public enum ElliottLogicProfile {
 
     /**
      * @return {@code true} when the pattern-aware confidence model should be used
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public boolean patternAwareConfidence() {
         return patternAwareConfidence;
@@ -148,7 +148,7 @@ public enum ElliottLogicProfile {
 
     /**
      * @return default base-confidence weight used during cross-degree ranking
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public double baseConfidenceWeight() {
         return baseConfidenceWeight;
@@ -156,7 +156,7 @@ public enum ElliottLogicProfile {
 
     /**
      * @return default maximum number of ranked scenarios retained by the runner
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public int maxScenarios() {
         return maxScenarios;
@@ -164,7 +164,7 @@ public enum ElliottLogicProfile {
 
     /**
      * @return default swing window forwarded to scenario generation
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public int scenarioSwingWindow() {
         return scenarioSwingWindow;
@@ -172,7 +172,7 @@ public enum ElliottLogicProfile {
 
     /**
      * @return default anchored-fit acceptance threshold for macro profile studies
-     * @since 0.22.4
+     * @since 0.22.7
      */
     public double acceptanceThreshold() {
         return acceptanceThreshold;

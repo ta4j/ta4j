@@ -170,6 +170,15 @@ class ElliottWaveMacroCycleDetectorTest {
         assertWithinDays(Instant.parse("2022-11-22T00:00:00Z"), Instant.parse(study.cycles().get(2).lowTimeUtc()), 21);
     }
 
+    @Test
+    void sliceThroughPreservesSourceNumFactory() {
+        final BarSeries fullSeries = loadBitcoinSeries();
+
+        final BarSeries slicedSeries = sliceThrough(fullSeries, Instant.parse("2022-11-22T00:00:00Z"));
+
+        assertEquals(fullSeries.numFactory(), slicedSeries.numFactory());
+    }
+
     private static BarSeries loadBitcoinSeries() {
         final BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveMacroCycleDetectorTest.class,
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
@@ -200,7 +209,9 @@ class ElliottWaveMacroCycleDetectorTest {
     }
 
     private static BarSeries sliceThrough(final BarSeries fullSeries, final Instant cutoff) {
-        final BarSeries slicedSeries = new BaseBarSeriesBuilder().withName(fullSeries.getName() + "@" + cutoff).build();
+        final BarSeries slicedSeries = new BaseBarSeriesBuilder().withName(fullSeries.getName() + "@" + cutoff)
+                .withNumFactory(fullSeries.numFactory())
+                .build();
         for (int index = fullSeries.getBeginIndex(); index <= fullSeries.getEndIndex(); index++) {
             if (fullSeries.getBar(index).getEndTime().isAfter(cutoff)) {
                 break;

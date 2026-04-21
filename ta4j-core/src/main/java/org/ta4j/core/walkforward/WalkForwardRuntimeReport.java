@@ -30,6 +30,11 @@ public record WalkForwardRuntimeReport(Duration overallRuntime, Duration minFold
         Objects.requireNonNull(maxFoldRuntime, "maxFoldRuntime");
         Objects.requireNonNull(averageFoldRuntime, "averageFoldRuntime");
         Objects.requireNonNull(medianFoldRuntime, "medianFoldRuntime");
+        validateNonNegative("overallRuntime", overallRuntime);
+        validateNonNegative("minFoldRuntime", minFoldRuntime);
+        validateNonNegative("maxFoldRuntime", maxFoldRuntime);
+        validateNonNegative("averageFoldRuntime", averageFoldRuntime);
+        validateNonNegative("medianFoldRuntime", medianFoldRuntime);
         foldRuntimes = foldRuntimes == null ? List.of() : List.copyOf(foldRuntimes);
     }
 
@@ -57,6 +62,10 @@ public record WalkForwardRuntimeReport(Duration overallRuntime, Duration minFold
          */
         public SnapshotRuntime {
             Objects.requireNonNull(runtime, "runtime");
+            if (decisionIndex < 0) {
+                throw new IllegalArgumentException("decisionIndex must be >= 0");
+            }
+            validateNonNegative("runtime", runtime);
             if (predictionCount < 0) {
                 throw new IllegalArgumentException("predictionCount must be >= 0");
             }
@@ -100,6 +109,11 @@ public record WalkForwardRuntimeReport(Duration overallRuntime, Duration minFold
             Objects.requireNonNull(maxSnapshotRuntime, "maxSnapshotRuntime");
             Objects.requireNonNull(averageSnapshotRuntime, "averageSnapshotRuntime");
             Objects.requireNonNull(medianSnapshotRuntime, "medianSnapshotRuntime");
+            validateNonNegative("runtime", runtime);
+            validateNonNegative("minSnapshotRuntime", minSnapshotRuntime);
+            validateNonNegative("maxSnapshotRuntime", maxSnapshotRuntime);
+            validateNonNegative("averageSnapshotRuntime", averageSnapshotRuntime);
+            validateNonNegative("medianSnapshotRuntime", medianSnapshotRuntime);
             if (snapshotCount < 0) {
                 throw new IllegalArgumentException("snapshotCount must be >= 0");
             }
@@ -107,6 +121,27 @@ public record WalkForwardRuntimeReport(Duration overallRuntime, Duration minFold
             if (!snapshotRuntimes.isEmpty() && snapshotRuntimes.size() != snapshotCount) {
                 throw new IllegalArgumentException("snapshotRuntimes size must match snapshotCount");
             }
+            if (minSnapshotRuntime.compareTo(maxSnapshotRuntime) > 0) {
+                throw new IllegalArgumentException("minSnapshotRuntime must be <= maxSnapshotRuntime");
+            }
+            if (snapshotCount > 0) {
+                validateWithinBounds("averageSnapshotRuntime", averageSnapshotRuntime, minSnapshotRuntime,
+                        maxSnapshotRuntime);
+                validateWithinBounds("medianSnapshotRuntime", medianSnapshotRuntime, minSnapshotRuntime,
+                        maxSnapshotRuntime);
+            }
+        }
+    }
+
+    private static void validateNonNegative(String name, Duration duration) {
+        if (duration.isNegative()) {
+            throw new IllegalArgumentException(name + " must be >= 0");
+        }
+    }
+
+    private static void validateWithinBounds(String name, Duration duration, Duration min, Duration max) {
+        if (duration.compareTo(min) < 0 || duration.compareTo(max) > 0) {
+            throw new IllegalArgumentException(name + " must stay within min/max snapshot runtime bounds");
         }
     }
 }

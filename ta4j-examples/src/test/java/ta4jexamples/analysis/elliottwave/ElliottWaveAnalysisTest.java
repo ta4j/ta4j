@@ -45,8 +45,6 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 import ta4jexamples.datasources.BarSeriesDataSource;
 
-@Tag("integration")
-@Tag("slow")
 class ElliottWaveAnalysisTest {
 
     private static final String OSSIFIED_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";
@@ -66,6 +64,8 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
+    @org("integration")
+    @org("slow")
     void ossifiedDatasetProducesImpulseAndCorrection() {
         BarSeries series = loadOssifiedSeries();
         ElliottSwingIndicator swingIndicator = ElliottSwingIndicator.zigZag(series, ElliottDegree.PRIMARY);
@@ -83,6 +83,8 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
+    @org("integration")
+    @org("slow")
     void rendersWaveLabelsOnChart() {
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         BarSeries series = loadOssifiedSeries();
@@ -128,6 +130,24 @@ class ElliottWaveAnalysisTest {
         } catch (Exception ex) {
             throw new AssertionError("Failed to load dataset", ex);
         }
+    }
+
+    private static BarSeries syntheticSeries(String name, int barCount) {
+        BarSeries series = new BaseBarSeriesBuilder().withName(name).build();
+        Duration period = Duration.ofDays(1);
+        Instant start = Instant.parse("2023-01-01T00:00:00Z");
+        for (int index = 0; index < barCount; index++) {
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(start.plus(period.multipliedBy(index + 1L)))
+                    .openPrice(100 + index)
+                    .highPrice(103 + index)
+                    .lowPrice(97 + index)
+                    .closePrice(101 + index)
+                    .volume(1_000 + index)
+                    .add();
+        }
+        return series;
     }
 
     private static BarSeriesLabelIndicator buildWaveLabels(BarSeries series, ElliottPhaseIndicator phaseIndicator) {
@@ -223,7 +243,7 @@ class ElliottWaveAnalysisTest {
 
     @Test
     void loadSeriesFromDataSource_withStubSeries_returnsSeries() {
-        BarSeries series = loadOssifiedSeries();
+        BarSeries series = syntheticSeries("Stub", 8);
         BarSeriesDataSource source = new StubBarSeriesDataSource("Stub", series, false);
 
         BarSeries result = ElliottWaveIndicatorSuiteDemo.loadSeriesFromDataSource(source, "BTC-USD", Duration.ofDays(1),
@@ -306,7 +326,7 @@ class ElliottWaveAnalysisTest {
 
     @Test
     void resolveDegree_withExplicitDegree_usesProvidedDegree() {
-        BarSeries series = loadOssifiedSeries();
+        BarSeries series = syntheticSeries("Degree", 90);
         String[] args = { "Coinbase", "BTC-USD", "PT1D", "PRIMARY", "1686960000", "1697040000" };
 
         ElliottDegree resolved = ElliottWaveIndicatorSuiteDemo.resolveDegree(args, series);
@@ -316,7 +336,7 @@ class ElliottWaveAnalysisTest {
 
     @Test
     void resolveDegree_withCaseInsensitiveDegree_usesProvidedDegree() {
-        BarSeries series = loadOssifiedSeries();
+        BarSeries series = syntheticSeries("Degree", 90);
         String[] args = { "Coinbase", "BTC-USD", "PT1D", "primary", "1686960000", "1697040000" };
 
         ElliottDegree resolved = ElliottWaveIndicatorSuiteDemo.resolveDegree(args, series);
@@ -326,7 +346,7 @@ class ElliottWaveAnalysisTest {
 
     @Test
     void resolveDegree_withoutExplicitDegree_usesRecommendation() {
-        BarSeries series = loadOssifiedSeries();
+        BarSeries series = syntheticSeries("Degree", 90);
         String[] args = { "Coinbase", "BTC-USD", "PT1D", "1686960000", "1697040000" };
 
         List<ElliottDegree> recommendations = ElliottDegree.getRecommendedDegrees(series.getFirstBar().getTimePeriod(),
@@ -341,6 +361,8 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
+    @org("integration")
+    @org("slow")
     void analyze_withValidSeries_completesSuccessfully() {
         // Test that analyze() completes successfully and generates wave labels
         // This tests buildWaveLabelsFromScenario and placementForPivot indirectly
@@ -354,6 +376,8 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
+    @org("integration")
+    @org("slow")
     void analyze_withDifferentScenarioTypes_generatesAppropriateLabels() {
         // Test that analyze() handles different scenario types
         // This indirectly tests buildWaveLabelsFromScenario with different types
@@ -369,6 +393,8 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
+    @org("integration")
+    @org("slow")
     void analyze_withDifferentDegrees_completesSuccessfully() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -378,6 +404,8 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
+    @org("integration")
+    @org("slow")
     void analyze_withDifferentFibTolerances_completesSuccessfully() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -387,6 +415,8 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
+    @org("integration")
+    @org("slow")
     void analyze_returnsAnalysisResult() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -420,6 +450,8 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
+    @org("integration")
+    @org("slow")
     void analyze_withBaseCaseScenario_createsBaseCaseChartPlan() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -433,6 +465,8 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
+    @org("integration")
+    @org("slow")
     void analyze_createsChartPlansForAllScenarios() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -452,6 +486,8 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
+    @org("integration")
+    @org("slow")
     void visualizeAnalysisResult_withValidResult_completesSuccessfully() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -473,6 +509,8 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
+    @org("integration")
+    @org("slow")
     void visualizeAnalysisResult_withDifferentDegrees_formatsWindowTitlesCorrectly() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -514,6 +552,8 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
+    @org("integration")
+    @org("slow")
     void visualizeAnalysisResult_withAlternativeScenarios_formatsWindowTitlesCorrectly() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -556,6 +596,8 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
+    @org("integration")
+    @org("slow")
     void analyze_separatesAnalysisFromVisualization() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();

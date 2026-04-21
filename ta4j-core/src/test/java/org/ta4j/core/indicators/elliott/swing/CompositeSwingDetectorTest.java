@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.elliott.swing;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.ta4j.core.num.NaN.NaN;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -79,8 +80,38 @@ class CompositeSwingDetectorTest {
                 List.of(detectorA, detectorB));
         SwingDetectorResult result = composite.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
 
-        assertThat(result.pivots()).extracting(SwingPivot::index).doesNotHaveDuplicates();
+        assertThat(result.pivots()).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(1, SwingPivotType.LOW),
+                        org.assertj.core.groups.Tuple.tuple(2, SwingPivotType.HIGH),
+                        org.assertj.core.groups.Tuple.tuple(4, SwingPivotType.LOW),
+                        org.assertj.core.groups.Tuple.tuple(5, SwingPivotType.HIGH));
+        assertThat(result.pivots().get(1).price()).isEqualTo(factory.numOf(120));
         assertThat(result.swings()).allSatisfy(swing -> assertThat(swing.toIndex()).isGreaterThan(swing.fromIndex()));
+    }
+
+    @Test
+    void orPolicySharedIndexConflictPrefersValidAlternatingPivotWhenPeerPriceIsNaN() {
+        BarSeries series = singleSeries();
+        NumFactory factory = series.numFactory();
+        List<SwingPivot> pivotsA = List.of(new SwingPivot(1, factory.hundred(), SwingPivotType.LOW),
+                new SwingPivot(2, NaN, SwingPivotType.LOW), new SwingPivot(5, factory.numOf(125), SwingPivotType.HIGH));
+        List<SwingPivot> pivotsB = List.of(new SwingPivot(1, factory.hundred().plus(factory.one()), SwingPivotType.LOW),
+                new SwingPivot(2, factory.numOf(120), SwingPivotType.HIGH),
+                new SwingPivot(4, factory.numOf(105), SwingPivotType.LOW));
+
+        SwingDetector detectorA = (s, index, degree) -> new SwingDetectorResult(pivotsA, List.of());
+        SwingDetector detectorB = (s, index, degree) -> new SwingDetectorResult(pivotsB, List.of());
+
+        CompositeSwingDetector composite = new CompositeSwingDetector(CompositeSwingDetector.Policy.OR,
+                List.of(detectorA, detectorB));
+        SwingDetectorResult result = composite.detect(series, series.getEndIndex(), ElliottDegree.PRIMARY);
+
+        assertThat(result.pivots()).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(org.assertj.core.groups.Tuple.tuple(1, SwingPivotType.LOW),
+                        org.assertj.core.groups.Tuple.tuple(2, SwingPivotType.HIGH),
+                        org.assertj.core.groups.Tuple.tuple(4, SwingPivotType.LOW),
+                        org.assertj.core.groups.Tuple.tuple(5, SwingPivotType.HIGH));
+        assertThat(result.pivots().get(1).price()).isEqualTo(factory.numOf(120));
     }
 
     @Test

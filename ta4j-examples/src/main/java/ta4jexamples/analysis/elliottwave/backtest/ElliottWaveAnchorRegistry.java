@@ -39,7 +39,7 @@ import com.google.gson.Gson;
  * {@code toleranceAfter}, so acceptable match windows stay pinned to the
  * registry instead of drifting via runtime heuristics.
  *
- * @since 0.22.4
+ * @since 0.22.7
  */
 final class ElliottWaveAnchorRegistry {
 
@@ -68,7 +68,7 @@ final class ElliottWaveAnchorRegistry {
      *
      * @param resource classpath resource path
      * @return parsed registry
-     * @since 0.22.4
+     * @since 0.22.7
      */
     static ElliottWaveAnchorRegistry load(String resource) {
         String normalized = resource != null && resource.startsWith("/") ? resource : "/" + resource;
@@ -105,7 +105,7 @@ final class ElliottWaveAnchorRegistry {
      * @param series       BTC series used for resolution
      * @param holdoutCount trailing resolved anchors reserved for holdout
      * @return resolved anchors in chronological order
-     * @since 0.22.4
+     * @since 0.22.7
      */
     List<ResolvedAnchor> resolve(BarSeries series, int holdoutCount) {
         Objects.requireNonNull(series, "series");
@@ -128,7 +128,7 @@ final class ElliottWaveAnchorRegistry {
 
     /**
      * @return registry identifier
-     * @since 0.22.4
+     * @since 0.22.7
      */
     String registryId() {
         return registryId;
@@ -136,7 +136,7 @@ final class ElliottWaveAnchorRegistry {
 
     /**
      * @return backing BTC dataset resource name
-     * @since 0.22.4
+     * @since 0.22.7
      */
     String datasetResource() {
         return datasetResource;
@@ -144,7 +144,7 @@ final class ElliottWaveAnchorRegistry {
 
     /**
      * @return provenance summary
-     * @since 0.22.4
+     * @since 0.22.7
      */
     String provenance() {
         return provenance;
@@ -152,7 +152,7 @@ final class ElliottWaveAnchorRegistry {
 
     /**
      * @return stored anchor specs
-     * @since 0.22.4
+     * @since 0.22.7
      */
     List<AnchorSpec> anchors() {
         return anchors;
@@ -223,7 +223,7 @@ final class ElliottWaveAnchorRegistry {
     /**
      * Anchor direction used when resolving local extrema.
      *
-     * @since 0.22.4
+     * @since 0.22.7
      */
     enum AnchorKind {
         TOP, BOTTOM
@@ -232,7 +232,7 @@ final class ElliottWaveAnchorRegistry {
     /**
      * Chronological anchor partition used for validation-versus-holdout reporting.
      *
-     * @since 0.22.4
+     * @since 0.22.7
      */
     enum AnchorPartition {
         VALIDATION, HOLDOUT
@@ -249,7 +249,7 @@ final class ElliottWaveAnchorRegistry {
      * @param expectedPhases acceptable Elliott phases for a hit
      * @param source         provenance string
      * @param notes          optional note
-     * @since 0.22.4
+     * @since 0.22.7
      */
     record AnchorSpec(String id, String label, AnchorKind kind, Instant windowStart, Instant windowEnd,
             Set<ElliottPhase> expectedPhases, String source, String notes) {
@@ -284,7 +284,7 @@ final class ElliottWaveAnchorRegistry {
      * @param resolvedTime  resolved bar end time
      * @param resolvedPrice resolved bar high/low used for matching
      * @param partition     validation or holdout
-     * @since 0.22.4
+     * @since 0.22.7
      */
     record ResolvedAnchor(AnchorSpec spec, int decisionIndex, Instant resolvedTime, double resolvedPrice,
             AnchorPartition partition) {
@@ -309,7 +309,7 @@ final class ElliottWaveAnchorRegistry {
          *
          * @param newPartition new partition
          * @return copied resolved anchor
-         * @since 0.22.4
+         * @since 0.22.7
          */
         ResolvedAnchor withPartition(AnchorPartition newPartition) {
             return new ResolvedAnchor(spec, decisionIndex, resolvedTime, resolvedPrice, newPartition);

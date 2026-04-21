@@ -50,7 +50,7 @@ public interface ChartDisplayer {
      * @param chart         the chart to display
      * @param windowTitle   the title for the window/frame
      * @param preferredSize the preferred display size
-     * @since 0.22.4
+     * @since 0.22.7
      */
     default void display(JFreeChart chart, String windowTitle, Dimension preferredSize) {
         if (windowTitle != null && !windowTitle.trim().isEmpty()) {

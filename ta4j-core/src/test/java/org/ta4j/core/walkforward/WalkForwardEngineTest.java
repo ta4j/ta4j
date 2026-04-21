@@ -4,9 +4,11 @@
 package org.ta4j.core.walkforward;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -150,6 +152,33 @@ class WalkForwardEngineTest {
                         .stream()
                         .map(fold -> fold.foldId() + ":" + fold.snapshotCount())
                         .toList());
+    }
+
+    @Test
+    void engineStreamsProgressBeforePredictionFailuresBubbleOut() {
+        BarSeries series = new MockBarSeriesBuilder().withData(prices(120)).build();
+        WalkForwardConfig config = new WalkForwardConfig(60, 20, 20, 0, 0, 0, 5, List.of(), 1, List.of(), 1L);
+        AtomicInteger invocationCount = new AtomicInteger();
+        List<Integer> progress = new ArrayList<>();
+
+        WalkForwardEngine<String, String, Boolean> engine = new WalkForwardEngine<>(
+                new AnchoredExpandingWalkForwardSplitter(), (fullSeries, decisionIndex, context) -> {
+                    if (invocationCount.incrementAndGet() == 5) {
+                        throw new IllegalStateException("synthetic prediction failure");
+                    }
+                    return List.of(new RankedPrediction<>("p-" + decisionIndex, 1, fullSeries.numFactory().numOf(0.5),
+                            fullSeries.numFactory().numOf(0.5), "bull"));
+                }, (fullSeries, decisionIndex, horizonBars, prediction) -> true,
+                List.of(WalkForwardMetric.agreement("agreement", 1, (prediction, outcome) -> outcome)), progress::add,
+                ignored -> {
+                    // no-op
+                });
+
+        IllegalStateException failure = assertThrows(IllegalStateException.class,
+                () -> engine.run(series, "ctx", config));
+
+        assertThat(failure).hasMessage("synthetic prediction failure");
+        assertThat(progress).containsExactly(1, 2, 3, 4);
     }
 
     private static double[] prices(int size) {
