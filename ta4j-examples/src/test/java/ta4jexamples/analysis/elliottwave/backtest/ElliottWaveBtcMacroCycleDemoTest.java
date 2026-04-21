@@ -547,10 +547,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
         int windowStart = Math.max(fullSeries.getBeginIndex(), fullSeries.getEndIndex() - lookbackBars + 1);
         BarSeries liveWindow = fullSeries.getSubSeries(windowStart, fullSeries.getEndIndex() + 1);
 
-        Method profileMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("defaultLiveMacroProfile");
-        profileMethod.setAccessible(true);
-        ElliottWaveMacroCycleDemo.MacroLogicProfile profile = (ElliottWaveMacroCycleDemo.MacroLogicProfile) profileMethod
-                .invoke(null);
+        ElliottWaveMacroCycleDemo.MacroLogicProfile profile = ElliottWaveMacroCycleDemo.defaultLiveMacroProfile();
 
         ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
                 .analyzeCanonicalStructure(liveWindow, profile, "test");
@@ -590,12 +587,12 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
     @Test
     void macroLogicProfilesStayNonPublicWhileSelectionSurfaceIsUnsettled() throws Exception {
-        Method profilesMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("logicProfiles");
-        Method defaultProfileMethod = ElliottWaveBtcMacroCycleDemo.class.getDeclaredMethod("defaultLiveMacroProfile");
+        Method profilesMethod = ElliottWaveMacroCycleDemo.class.getDeclaredMethod("logicProfiles");
+        Method defaultProfileMethod = ElliottWaveMacroCycleDemo.class.getDeclaredMethod("defaultLiveMacroProfile");
 
         assertFalse(Modifier.isPublic(ElliottWaveMacroCycleDemo.MacroLogicProfile.class.getModifiers()));
-        assertTrue(Modifier.isPrivate(profilesMethod.getModifiers()));
-        assertTrue(Modifier.isPrivate(defaultProfileMethod.getModifiers()));
+        assertFalse(Modifier.isPublic(profilesMethod.getModifiers()));
+        assertFalse(Modifier.isPublic(defaultProfileMethod.getModifiers()));
     }
 
     @Test

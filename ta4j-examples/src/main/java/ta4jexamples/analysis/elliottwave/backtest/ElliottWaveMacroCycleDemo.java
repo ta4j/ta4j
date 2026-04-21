@@ -65,6 +65,12 @@ import ta4jexamples.charting.workflow.ChartWorkflow;
  * directly from the series. Both paths reuse the same historical study, chart
  * rendering, and JSON reporting flow that the BTC wrapper now delegates to.
  *
+ * <p>
+ * This class is intentionally the controller and rendering surface only. The
+ * canonical profile sweep, truth-target scoring, and current-cycle profile
+ * selection live behind the internal {@link CanonicalEngine} so the example API
+ * can stay stable without leaking more surface area into ta4j-core.
+ *
  * @since 0.22.4
  */
 public final class ElliottWaveMacroCycleDemo {
@@ -76,6 +82,33 @@ public final class ElliottWaveMacroCycleDemo {
     private static final String HISTORICAL_STRUCTURE_STILL_PARTIAL = "historical structure still partial";
     private static final String HISTORICAL_TRUTH_TARGET_FIT_PASSED = "historical truth-target fit passed";
     private static final String HISTORICAL_TRUTH_TARGET_STILL_PARTIAL = "historical truth-target fit still partial";
+    private static final List<MacroLogicProfile> CANONICAL_LOGIC_PROFILES = List.of(
+            new MacroLogicProfile("calibrated-baseline", "H0", "Calibrated baseline", 0,
+                    ElliottLogicProfile.ORTHODOX_CLASSICAL, ElliottDegree.MINUTE, 2, 2),
+            new MacroLogicProfile("h1-hierarchical-swing", "H1", "Hierarchical swing extraction", 1,
+                    ElliottLogicProfile.HIERARCHICAL_SWING, ElliottDegree.MINUTE, null, null),
+            new MacroLogicProfile("h2-pattern-aware-impulse", "H2", "Pattern-aware impulse emphasis", 2,
+                    ElliottLogicProfile.BTC_RELAXED_IMPULSE, ElliottDegree.MINUTE, null, null),
+            new MacroLogicProfile("h3-pattern-aware-corrective", "H3", "Pattern-aware corrective breadth", 3,
+                    ElliottLogicProfile.BTC_RELAXED_CORRECTIVE, ElliottDegree.MINUTE, null, null),
+            new MacroLogicProfile("h4-span-aware-hybrid", "H4", "Span-aware hybrid scoring", 4,
+                    ElliottLogicProfile.ANCHOR_FIRST_HYBRID, ElliottDegree.MINUTE, null, null));
+    private static final Comparator<MacroProfileEvaluation> PROFILE_EVALUATION_COMPARATOR = Comparator
+            .comparing((MacroProfileEvaluation evaluation) -> evaluation.truthTargetCoverage().hasExpectations(),
+                    Comparator.reverseOrder())
+            .thenComparing(Comparator.comparingInt(MacroProfileEvaluation::matchedExpectedCycles).reversed())
+            .thenComparingInt(MacroProfileEvaluation::missingExpectedCycles)
+            .thenComparingInt(MacroProfileEvaluation::unexpectedCycles)
+            .thenComparing(Comparator.comparingInt(MacroProfileEvaluation::acceptedCycles).reversed())
+            .thenComparing(Comparator.comparingDouble(MacroProfileEvaluation::truthTargetScore).reversed())
+            .thenComparing(Comparator.comparingDouble(MacroProfileEvaluation::aggregateScore).reversed())
+            .thenComparing(Comparator.comparingInt(MacroProfileEvaluation::acceptedSegments).reversed())
+            .thenComparing(Comparator.comparingLong(MacroProfileEvaluation::acceptedCycleSpanMillis).reversed())
+            .thenComparing(MacroProfileEvaluation::earliestAcceptedStartTime)
+            .thenComparing(Comparator.comparingInt((MacroProfileEvaluation evaluation) -> evaluation.cycleFits().size())
+                    .reversed())
+            .thenComparingInt(evaluation -> evaluation.profile().orthodoxyRank());
+    private static final CanonicalEngine CANONICAL_ENGINE = new CanonicalEngine(CANONICAL_LOGIC_PROFILES);
 
     private ElliottWaveMacroCycleDemo() {
     }
@@ -638,22 +671,11 @@ public final class ElliottWaveMacroCycleDemo {
     }
 
     static CanonicalStructure analyzeCanonicalStructure(final BarSeries series) {
-        final MacroStudy study = evaluateCanonicalMacroStudy(series);
-        return new CanonicalStructure(Optional.of(study), study.currentCycleAnalysis());
+        return CANONICAL_ENGINE.analyzeCanonicalStructure(series);
     }
 
     static MacroStudy evaluateCanonicalMacroStudy(final BarSeries series) {
-        Objects.requireNonNull(series, "series");
-
-        final List<MacroProfileEvaluation> evaluations = evaluateCanonicalProfileSweep(series);
-        final MacroProfileEvaluation selectedProfile = evaluations.getFirst();
-        final List<ProfileScoreSummary> profileScores = evaluations.stream().map(ProfileScoreSummary::from).toList();
-        final List<DirectionalCycleSummary> cycles = acceptedCycleSummaries(selectedProfile);
-        final List<HypothesisResult> hypotheses = buildHypotheses(evaluations);
-        final CurrentCycleAnalysis currentCycle = evaluateCurrentCycle(series, selectedProfile.profile(),
-                historicalStructureStatus(selectedProfile.historicalFitPassed()));
-        return new MacroStudy(selectedProfile, List.copyOf(evaluations), profileScores, cycles, hypotheses,
-                currentCycle);
+        return CANONICAL_ENGINE.evaluateCanonicalMacroStudy(series);
     }
 
     static MacroStudy evaluateMacroStudy(final BarSeries series,
@@ -663,116 +685,31 @@ public final class ElliottWaveMacroCycleDemo {
 
     static MacroStudy evaluateCanonicalMacroStudy(final BarSeries series,
             final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(registry, "registry");
-
-        final List<MacroProfileEvaluation> runtimeEvaluations = new ArrayList<>();
-        final List<MacroProfileEvaluation> truthTargetEvaluations = new ArrayList<>();
-        for (final MacroLogicProfile profile : logicProfiles()) {
-            final HistoricalProfileEvaluations profileEvaluations = evaluateCanonicalProfilePair(series, profile,
-                    registry);
-            runtimeEvaluations.add(profileEvaluations.runtimeEvaluation());
-            truthTargetEvaluations.add(profileEvaluations.truthTargetEvaluation());
-        }
-        runtimeEvaluations.sort(profileEvaluationComparator());
-        truthTargetEvaluations.sort(profileEvaluationComparator());
-
-        final MacroProfileEvaluation selectedRuntimeProfile = runtimeEvaluations.getFirst();
-        final MacroProfileEvaluation selectedProfile = truthTargetEvaluations.getFirst();
-        final List<ProfileScoreSummary> profileScores = truthTargetEvaluations.stream()
-                .map(ProfileScoreSummary::from)
-                .toList();
-        final List<DirectionalCycleSummary> cycles = selectedProfile.cycleFits()
-                .stream()
-                .map(DirectionalCycleSummary::from)
-                .toList();
-        final List<HypothesisResult> hypotheses = buildHypotheses(truthTargetEvaluations);
-        final CurrentCycleAnalysis currentCycle = evaluateCurrentCycle(series, selectedRuntimeProfile.profile(),
-                historicalTruthTargetStatus(selectedProfile.historicalFitPassed()));
-        return new MacroStudy(selectedProfile, List.copyOf(truthTargetEvaluations), profileScores, cycles, hypotheses,
-                currentCycle);
+        return CANONICAL_ENGINE.evaluateCanonicalMacroStudy(series, registry);
     }
 
     static List<MacroProfileEvaluation> evaluateCanonicalProfileSweep(final BarSeries series) {
-        Objects.requireNonNull(series, "series");
-        final List<MacroProfileEvaluation> evaluations = new ArrayList<>();
-        for (final MacroLogicProfile profile : logicProfiles()) {
-            evaluations.add(evaluateCanonicalProfile(series, profile));
-        }
-        evaluations.sort(profileEvaluationComparator());
-        return List.copyOf(evaluations);
+        return CANONICAL_ENGINE.evaluateCanonicalProfileSweep(series);
     }
 
     static List<MacroProfileEvaluation> evaluateCanonicalProfileSweep(final BarSeries series,
             final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(registry, "registry");
-        final List<MacroProfileEvaluation> evaluations = new ArrayList<>();
-        for (final MacroLogicProfile profile : logicProfiles()) {
-            evaluations.add(evaluateCanonicalProfilePair(series, profile, registry).truthTargetEvaluation());
-        }
-        evaluations.sort(profileEvaluationComparator());
-        return List.copyOf(evaluations);
+        return CANONICAL_ENGINE.evaluateCanonicalProfileSweep(series, registry);
     }
 
     static MacroStudy evaluateLegacyAnchoredStudyForHarnessComparison(final BarSeries series,
             final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(registry, "registry");
-
-        final List<MacroLogicProfile> profiles = logicProfiles();
-        final List<MacroCycle> historicalCycles = buildHistoricalCycles(registry);
-
-        final List<MacroProfileEvaluation> evaluations = new ArrayList<>();
-        for (final MacroLogicProfile profile : profiles) {
-            evaluations.add(evaluateLegacyAnchoredProfile(series, profile, historicalCycles));
-        }
-        evaluations.sort(profileEvaluationComparator());
-        final MacroProfileEvaluation selectedProfile = evaluations.getFirst();
-        final List<ProfileScoreSummary> profileScores = evaluations.stream().map(ProfileScoreSummary::from).toList();
-        final List<DirectionalCycleSummary> cycles = selectedProfile.cycleFits()
-                .stream()
-                .map(DirectionalCycleSummary::from)
-                .toList();
-        final List<HypothesisResult> hypotheses = buildHypotheses(evaluations);
-        final CurrentCycleAnalysis currentCycle = evaluateCurrentCycle(series, selectedProfile.profile(),
-                historicalTruthTargetStatus(selectedProfile.historicalFitPassed()));
-        return new MacroStudy(selectedProfile, List.copyOf(evaluations), profileScores, cycles, hypotheses,
-                currentCycle);
+        return CANONICAL_ENGINE.evaluateLegacyAnchoredStudyForHarnessComparison(series, registry);
     }
 
     static CanonicalStructure analyzeCanonicalStructure(final BarSeries series,
             final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
-        final MacroStudy study = evaluateMacroStudy(series, registry);
-        return new CanonicalStructure(Optional.of(study), study.currentCycleAnalysis());
+        return CANONICAL_ENGINE.analyzeCanonicalStructure(series, registry);
     }
 
     static CurrentCycleAnalysis evaluateCurrentCycle(final BarSeries series, final MacroLogicProfile profile,
             final String historicalStatus) {
-        Objects.requireNonNull(series, "series");
-        Objects.requireNonNull(profile, "profile");
-        Objects.requireNonNull(historicalStatus, "historicalStatus");
-
-        final ElliottWaveAnalysisRunner profileRunner = buildProfileRunner(profile);
-        final ElliottWaveAnalysisResult.CurrentCycleAssessment assessment = profileRunner.analyzeCurrentCycle(series);
-        final ElliottWaveAnalysisResult.CurrentPhaseAssessment primary = assessment.primary();
-        final ElliottWaveAnalysisResult.CurrentPhaseAssessment alternate = assessment.alternate();
-        final int startIndex = assessment.startIndex();
-        final String primaryCount = primary == null ? "No current bullish count" : primary.countLabel();
-        final String alternateCount = alternate == null ? "" : alternate.countLabel();
-        final String currentWave = primary == null ? "" : primary.currentPhase().name();
-        final String invalidation = primary == null ? ""
-                : formatInvalidationCondition(primary.scenario(), primary.phaseInvalidationPrice());
-        final String structuralInvalidation = primary == null ? ""
-                : formatInvalidationCondition(primary.scenario(), primary.invalidationPrice());
-        final String startTimeUtc = series.getBar(startIndex).getEndTime().toString();
-        final String latestTimeUtc = series.getLastBar().getEndTime().toString();
-        final CurrentCycleSummary summary = new CurrentCycleSummary(startTimeUtc, latestTimeUtc, profile.id(),
-                historicalStatus, primaryCount, alternateCount, currentWave, invalidation, structuralInvalidation,
-                orthodoxWaveFiveTargetRange(primary), primary == null ? 0.0 : primary.fitScore(),
-                alternate == null ? 0.0 : alternate.fitScore(), "");
-        return new CurrentCycleAnalysis(summary, primary, alternate, assessment.candidates(),
-                assessment.distinctCandidates(5));
+        return CANONICAL_ENGINE.evaluateCurrentCycle(series, profile, historicalStatus);
     }
 
     private static LivePresetExecution analyzeLivePreset(final BarSeries series, final Path chartDirectory,
@@ -813,28 +750,15 @@ public final class ElliottWaveMacroCycleDemo {
 
     static CanonicalStructure analyzeCanonicalStructure(final BarSeries series, final MacroLogicProfile profile,
             final String historicalStatus) {
-        return new CanonicalStructure(Optional.empty(), evaluateCurrentCycle(series, profile, historicalStatus));
+        return CANONICAL_ENGINE.analyzeCanonicalStructure(series, profile, historicalStatus);
     }
 
     static List<MacroLogicProfile> logicProfiles() {
-        return List.of(
-                new MacroLogicProfile("calibrated-baseline", "H0", "Calibrated baseline", 0,
-                        ElliottLogicProfile.ORTHODOX_CLASSICAL, ElliottDegree.MINUTE, 2, 2),
-                new MacroLogicProfile("h1-hierarchical-swing", "H1", "Hierarchical swing extraction", 1,
-                        ElliottLogicProfile.HIERARCHICAL_SWING, ElliottDegree.MINUTE, null, null),
-                new MacroLogicProfile("h2-pattern-aware-impulse", "H2", "Pattern-aware impulse emphasis", 2,
-                        ElliottLogicProfile.BTC_RELAXED_IMPULSE, ElliottDegree.MINUTE, null, null),
-                new MacroLogicProfile("h3-pattern-aware-corrective", "H3", "Pattern-aware corrective breadth", 3,
-                        ElliottLogicProfile.BTC_RELAXED_CORRECTIVE, ElliottDegree.MINUTE, null, null),
-                new MacroLogicProfile("h4-span-aware-hybrid", "H4", "Span-aware hybrid scoring", 4,
-                        ElliottLogicProfile.ANCHOR_FIRST_HYBRID, ElliottDegree.MINUTE, null, null));
+        return CANONICAL_ENGINE.logicProfiles();
     }
 
     static MacroLogicProfile defaultLiveMacroProfile() {
-        return logicProfiles().stream()
-                .filter(profile -> profile.id().equals("calibrated-baseline"))
-                .findFirst()
-                .orElseGet(() -> logicProfiles().getFirst());
+        return CANONICAL_ENGINE.defaultLiveMacroProfile();
     }
 
     static SegmentScenarioFit fitFromCoreAssessment(final LegSegment legSegment,
@@ -1661,23 +1585,180 @@ public final class ElliottWaveMacroCycleDemo {
                 .build();
     }
 
-    private static Comparator<MacroProfileEvaluation> profileEvaluationComparator() {
-        return Comparator
-                .comparing((MacroProfileEvaluation evaluation) -> evaluation.truthTargetCoverage().hasExpectations(),
-                        Comparator.reverseOrder())
-                .thenComparing(Comparator.comparingInt(MacroProfileEvaluation::matchedExpectedCycles).reversed())
-                .thenComparingInt(MacroProfileEvaluation::missingExpectedCycles)
-                .thenComparingInt(MacroProfileEvaluation::unexpectedCycles)
-                .thenComparing(Comparator.comparingInt(MacroProfileEvaluation::acceptedCycles).reversed())
-                .thenComparing(Comparator.comparingDouble(MacroProfileEvaluation::truthTargetScore).reversed())
-                .thenComparing(Comparator.comparingDouble(MacroProfileEvaluation::aggregateScore).reversed())
-                .thenComparing(Comparator.comparingInt(MacroProfileEvaluation::acceptedSegments).reversed())
-                .thenComparing(Comparator.comparingLong(MacroProfileEvaluation::acceptedCycleSpanMillis).reversed())
-                .thenComparing(MacroProfileEvaluation::earliestAcceptedStartTime)
-                .thenComparing(
-                        Comparator.comparingInt((MacroProfileEvaluation evaluation) -> evaluation.cycleFits().size())
-                                .reversed())
-                .thenComparingInt(evaluation -> evaluation.profile().orthodoxyRank());
+    static Comparator<MacroProfileEvaluation> profileEvaluationComparator() {
+        return PROFILE_EVALUATION_COMPARATOR;
+    }
+
+    /**
+     * Internal canonical macro engine used by the public demo controller.
+     *
+     * <p>
+     * This keeps profile sweep orchestration, truth-target scoring, and current
+     * profile selection behind one non-public boundary so the demo entry points can
+     * stay focused on report generation and chart persistence.
+     */
+    private static final class CanonicalEngine {
+
+        private final List<MacroLogicProfile> logicProfiles;
+        private final MacroLogicProfile defaultLiveMacroProfile;
+
+        private CanonicalEngine(final List<MacroLogicProfile> logicProfiles) {
+            Objects.requireNonNull(logicProfiles, "logicProfiles");
+            this.logicProfiles = List.copyOf(logicProfiles);
+            this.defaultLiveMacroProfile = this.logicProfiles.stream()
+                    .filter(profile -> profile.id().equals("calibrated-baseline"))
+                    .findFirst()
+                    .orElseGet(this.logicProfiles::getFirst);
+        }
+
+        private CanonicalStructure analyzeCanonicalStructure(final BarSeries series) {
+            final MacroStudy study = evaluateCanonicalMacroStudy(series);
+            return new CanonicalStructure(Optional.of(study), study.currentCycleAnalysis());
+        }
+
+        private MacroStudy evaluateCanonicalMacroStudy(final BarSeries series) {
+            Objects.requireNonNull(series, "series");
+
+            final List<MacroProfileEvaluation> evaluations = evaluateCanonicalProfileSweep(series);
+            final MacroProfileEvaluation selectedProfile = evaluations.getFirst();
+            final List<ProfileScoreSummary> profileScores = evaluations.stream()
+                    .map(ProfileScoreSummary::from)
+                    .toList();
+            final List<DirectionalCycleSummary> cycles = acceptedCycleSummaries(selectedProfile);
+            final List<HypothesisResult> hypotheses = buildHypotheses(evaluations);
+            final CurrentCycleAnalysis currentCycle = evaluateCurrentCycle(series, selectedProfile.profile(),
+                    historicalStructureStatus(selectedProfile.historicalFitPassed()));
+            return new MacroStudy(selectedProfile, List.copyOf(evaluations), profileScores, cycles, hypotheses,
+                    currentCycle);
+        }
+
+        private MacroStudy evaluateCanonicalMacroStudy(final BarSeries series,
+                final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
+            Objects.requireNonNull(series, "series");
+            Objects.requireNonNull(registry, "registry");
+
+            final List<MacroProfileEvaluation> runtimeEvaluations = new ArrayList<>();
+            final List<MacroProfileEvaluation> truthTargetEvaluations = new ArrayList<>();
+            for (final MacroLogicProfile profile : logicProfiles) {
+                final HistoricalProfileEvaluations profileEvaluations = evaluateCanonicalProfilePair(series, profile,
+                        registry);
+                runtimeEvaluations.add(profileEvaluations.runtimeEvaluation());
+                truthTargetEvaluations.add(profileEvaluations.truthTargetEvaluation());
+            }
+            runtimeEvaluations.sort(PROFILE_EVALUATION_COMPARATOR);
+            truthTargetEvaluations.sort(PROFILE_EVALUATION_COMPARATOR);
+
+            final MacroProfileEvaluation selectedRuntimeProfile = runtimeEvaluations.getFirst();
+            final MacroProfileEvaluation selectedProfile = truthTargetEvaluations.getFirst();
+            final List<ProfileScoreSummary> profileScores = truthTargetEvaluations.stream()
+                    .map(ProfileScoreSummary::from)
+                    .toList();
+            final List<DirectionalCycleSummary> cycles = selectedProfile.cycleFits()
+                    .stream()
+                    .map(DirectionalCycleSummary::from)
+                    .toList();
+            final List<HypothesisResult> hypotheses = buildHypotheses(truthTargetEvaluations);
+            final CurrentCycleAnalysis currentCycle = evaluateCurrentCycle(series, selectedRuntimeProfile.profile(),
+                    historicalTruthTargetStatus(selectedProfile.historicalFitPassed()));
+            return new MacroStudy(selectedProfile, List.copyOf(truthTargetEvaluations), profileScores, cycles,
+                    hypotheses, currentCycle);
+        }
+
+        private List<MacroProfileEvaluation> evaluateCanonicalProfileSweep(final BarSeries series) {
+            Objects.requireNonNull(series, "series");
+            final List<MacroProfileEvaluation> evaluations = new ArrayList<>();
+            for (final MacroLogicProfile profile : logicProfiles) {
+                evaluations.add(evaluateCanonicalProfile(series, profile));
+            }
+            evaluations.sort(PROFILE_EVALUATION_COMPARATOR);
+            return List.copyOf(evaluations);
+        }
+
+        private List<MacroProfileEvaluation> evaluateCanonicalProfileSweep(final BarSeries series,
+                final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
+            Objects.requireNonNull(series, "series");
+            Objects.requireNonNull(registry, "registry");
+            final List<MacroProfileEvaluation> evaluations = new ArrayList<>();
+            for (final MacroLogicProfile profile : logicProfiles) {
+                evaluations.add(evaluateCanonicalProfilePair(series, profile, registry).truthTargetEvaluation());
+            }
+            evaluations.sort(PROFILE_EVALUATION_COMPARATOR);
+            return List.copyOf(evaluations);
+        }
+
+        private MacroStudy evaluateLegacyAnchoredStudyForHarnessComparison(final BarSeries series,
+                final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
+            Objects.requireNonNull(series, "series");
+            Objects.requireNonNull(registry, "registry");
+
+            final List<MacroCycle> historicalCycles = buildHistoricalCycles(registry);
+            final List<MacroProfileEvaluation> evaluations = new ArrayList<>();
+            for (final MacroLogicProfile profile : logicProfiles) {
+                evaluations.add(evaluateLegacyAnchoredProfile(series, profile, historicalCycles));
+            }
+            evaluations.sort(PROFILE_EVALUATION_COMPARATOR);
+            final MacroProfileEvaluation selectedProfile = evaluations.getFirst();
+            final List<ProfileScoreSummary> profileScores = evaluations.stream()
+                    .map(ProfileScoreSummary::from)
+                    .toList();
+            final List<DirectionalCycleSummary> cycles = selectedProfile.cycleFits()
+                    .stream()
+                    .map(DirectionalCycleSummary::from)
+                    .toList();
+            final List<HypothesisResult> hypotheses = buildHypotheses(evaluations);
+            final CurrentCycleAnalysis currentCycle = evaluateCurrentCycle(series, selectedProfile.profile(),
+                    historicalTruthTargetStatus(selectedProfile.historicalFitPassed()));
+            return new MacroStudy(selectedProfile, List.copyOf(evaluations), profileScores, cycles, hypotheses,
+                    currentCycle);
+        }
+
+        private CanonicalStructure analyzeCanonicalStructure(final BarSeries series,
+                final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
+            final MacroStudy study = evaluateCanonicalMacroStudy(series, registry);
+            return new CanonicalStructure(Optional.of(study), study.currentCycleAnalysis());
+        }
+
+        private CurrentCycleAnalysis evaluateCurrentCycle(final BarSeries series, final MacroLogicProfile profile,
+                final String historicalStatus) {
+            Objects.requireNonNull(series, "series");
+            Objects.requireNonNull(profile, "profile");
+            Objects.requireNonNull(historicalStatus, "historicalStatus");
+
+            final ElliottWaveAnalysisRunner profileRunner = buildProfileRunner(profile);
+            final ElliottWaveAnalysisResult.CurrentCycleAssessment assessment = profileRunner
+                    .analyzeCurrentCycle(series);
+            final ElliottWaveAnalysisResult.CurrentPhaseAssessment primary = assessment.primary();
+            final ElliottWaveAnalysisResult.CurrentPhaseAssessment alternate = assessment.alternate();
+            final int startIndex = assessment.startIndex();
+            final String primaryCount = primary == null ? "No current bullish count" : primary.countLabel();
+            final String alternateCount = alternate == null ? "" : alternate.countLabel();
+            final String currentWave = primary == null ? "" : primary.currentPhase().name();
+            final String invalidation = primary == null ? ""
+                    : formatInvalidationCondition(primary.scenario(), primary.phaseInvalidationPrice());
+            final String structuralInvalidation = primary == null ? ""
+                    : formatInvalidationCondition(primary.scenario(), primary.invalidationPrice());
+            final String startTimeUtc = series.getBar(startIndex).getEndTime().toString();
+            final String latestTimeUtc = series.getLastBar().getEndTime().toString();
+            final CurrentCycleSummary summary = new CurrentCycleSummary(startTimeUtc, latestTimeUtc, profile.id(),
+                    historicalStatus, primaryCount, alternateCount, currentWave, invalidation, structuralInvalidation,
+                    orthodoxWaveFiveTargetRange(primary), primary == null ? 0.0 : primary.fitScore(),
+                    alternate == null ? 0.0 : alternate.fitScore(), "");
+            return new CurrentCycleAnalysis(summary, primary, alternate, assessment.candidates(),
+                    assessment.distinctCandidates(5));
+        }
+
+        private CanonicalStructure analyzeCanonicalStructure(final BarSeries series, final MacroLogicProfile profile,
+                final String historicalStatus) {
+            return new CanonicalStructure(Optional.empty(), evaluateCurrentCycle(series, profile, historicalStatus));
+        }
+
+        private List<MacroLogicProfile> logicProfiles() {
+            return logicProfiles;
+        }
+
+        private MacroLogicProfile defaultLiveMacroProfile() {
+            return defaultLiveMacroProfile;
+        }
     }
 
     private static List<HypothesisResult> buildHypotheses(final List<MacroProfileEvaluation> evaluations) {

@@ -6,7 +6,6 @@ package ta4jexamples.analysis.elliottwave.backtest;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.lang.reflect.Method;
 import java.util.Comparator;
 import java.util.List;
 
@@ -32,8 +31,9 @@ class ElliottWaveMacroCycleTruthTargetScoringTest {
     }
 
     @Test
-    void profileComparatorPrefersCompleteTruthTargetCoverageOverHigherAggregateScore() throws Exception {
-        Comparator<ElliottWaveMacroCycleDemo.MacroProfileEvaluation> comparator = invokeProfileComparator();
+    void profileComparatorPrefersCompleteTruthTargetCoverageOverHigherAggregateScore() {
+        Comparator<ElliottWaveMacroCycleDemo.MacroProfileEvaluation> comparator = ElliottWaveMacroCycleDemo
+                .profileEvaluationComparator();
         ElliottWaveMacroCycleDemo.MacroProfileEvaluation completeCoverage = evaluation("complete-coverage", 0, 0.62, 3,
                 6, true, new ElliottWaveMacroCycleDemo.TruthTargetCoverage(3, 3, 0, 0, List.of(), List.of()));
         ElliottWaveMacroCycleDemo.MacroProfileEvaluation unexpectedCoverage = evaluation("unexpected-coverage", 1, 0.98,
@@ -60,13 +60,5 @@ class ElliottWaveMacroCycleTruthTargetScoringTest {
                 null);
         return new ElliottWaveMacroCycleDemo.MacroProfileEvaluation(profile, aggregateScore, acceptedCycles,
                 acceptedSegments, historicalFitPassed, truthTargetCoverage, List.of(), List.of());
-    }
-
-    @SuppressWarnings("unchecked")
-    private static Comparator<ElliottWaveMacroCycleDemo.MacroProfileEvaluation> invokeProfileComparator()
-            throws Exception {
-        Method method = ElliottWaveMacroCycleDemo.class.getDeclaredMethod("profileEvaluationComparator");
-        method.setAccessible(true);
-        return (Comparator<ElliottWaveMacroCycleDemo.MacroProfileEvaluation>) method.invoke(null);
     }
 }

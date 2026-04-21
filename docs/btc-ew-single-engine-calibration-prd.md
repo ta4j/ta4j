@@ -2,10 +2,10 @@
 
 ## Execution Status
 
-- Last updated: 2026-03-14 14:17 EDT
-- Active phase: Phase 11
-- Active task: Remove the remaining example-layer structure inference from the generic demo, then close the final replay/same-structure/build acceptance gates
-- Overall: 61/62 checklist items complete
+- Last updated: 2026-04-21 13:30 EDT
+- Active phase: Phase 13
+- Active task: Canonical single-engine delivery is complete; the remaining follow-on work is oscillator representation plus optional future generalization and pruning
+- Overall: 65/73 checklist items complete
 
 ## Status
 
@@ -16,14 +16,16 @@
 
 ## Summary
 
-The prior macro unification effort successfully moved important Elliott logic out of the BTC demo wrapper and into shared core code. That work did not finish the real job. Today the repo still has two different Elliott orchestration paths:
+The canonical single-engine migration is now complete for production use. Historical macro decomposition and live current-cycle analysis are both driven by one series-native Elliott engine, while BTC anchors stay offline as calibration and regression truth only.
 
-1. a historical macro-study path that decomposes price history through anchor windows and completed cycle legs
-2. a live path that infers only the current bullish cycle directly from the series
+The generic demo is now the controller and rendering surface over an internal canonical engine boundary. The BTC wrapper remains a thin resource loader and filename adapter. Historical truth-target scoring no longer steers runtime current-cycle selection, so the attached live view stays series-native even when a different profile wins offline truth-target validation.
 
-Those paths now share some low-level scoring logic, but they still ask different questions and can still produce different narratives on the same BTC history. That means the repo does not yet have one canonical Elliott engine.
+This PRD now serves two roles:
 
-This PRD defines the next effort: build a single series-native Elliott structure engine that:
+1. record the delivered single-engine architecture and acceptance evidence
+2. track the remaining future-oriented work that is intentionally out of the runtime delivery path
+
+Delivered engine guarantees:
 
 - infers completed macro impulse and corrective legs from price alone
 - infers the current open structure from the same model
@@ -38,15 +40,15 @@ The current architecture still splits responsibility across two different top-le
 
 Historical macro-study flow:
 
-- [`ElliottWaveMacroCycleDemo.java:92`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDemo.java:92)
-- [`ElliottWaveMacroCycleDemo.java:245`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDemo.java:245)
-- [`ElliottWaveMacroCycleDetector.java:72`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDetector.java:72)
+- `ElliottWaveMacroCycleDemo.java:92`
+- `ElliottWaveMacroCycleDemo.java:245`
+- `ElliottWaveMacroCycleDetector.java:72`
 
 Live current-cycle flow:
 
-- [`ElliottWaveMacroCycleDemo.java:158`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDemo.java:158)
-- [`ElliottWaveMacroCycleDemo.java:273`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDemo.java:273)
-- [`ElliottWaveAnalysisRunner.java:352`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-core/src/main/java/org/ta4j/core/indicators/elliott/ElliottWaveAnalysisRunner.java:352)
+- `ElliottWaveMacroCycleDemo.java:158`
+- `ElliottWaveMacroCycleDemo.java:273`
+- `ElliottWaveAnalysisRunner.java:352`
 
 That split creates four concrete failures:
 
@@ -106,24 +108,24 @@ Create one series-native Elliott engine that can:
 ### What is already unified
 
 - Shared core runner for anchored-window selection:
-  - [`ElliottWaveAnalysisRunner.java:322`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-core/src/main/java/org/ta4j/core/indicators/elliott/ElliottWaveAnalysisRunner.java:322)
+  - `ElliottWaveAnalysisRunner.java:322`
 - Shared core runner for current-cycle analysis:
-  - [`ElliottWaveAnalysisRunner.java:352`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-core/src/main/java/org/ta4j/core/indicators/elliott/ElliottWaveAnalysisRunner.java:352)
+  - `ElliottWaveAnalysisRunner.java:352`
 - Shared profile plumbing:
-  - [`ElliottWaveMacroCycleDemo.java:323`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDemo.java:323)
-  - [`ElliottWaveMacroCycleDemo.java:957`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDemo.java:957)
+  - `ElliottWaveMacroCycleDemo.java:323`
+  - `ElliottWaveMacroCycleDemo.java:957`
 - Shared current-cycle summary construction:
-  - [`ElliottWaveMacroCycleDemo.java:273`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDemo.java:273)
+  - `ElliottWaveMacroCycleDemo.java:273`
 
 ### What is still split
 
 - Historical decomposition still builds completed cycle legs from an anchor registry:
-  - [`ElliottWaveMacroCycleDemo.java:1204`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDemo.java:1204)
-  - [`ElliottWaveMacroCycleDemo.java:1224`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDemo.java:1224)
+  - `ElliottWaveMacroCycleDemo.java:1204`
+  - `ElliottWaveMacroCycleDemo.java:1224`
 - Anchor-free historical mode still creates inferred anchors first, then reuses the anchored macro-study path:
-  - [`ElliottWaveMacroCycleDetector.java:72`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDetector.java:72)
+  - `ElliottWaveMacroCycleDetector.java:72`
 - Live analysis still optimizes only for the current bullish cycle rather than full-history structure:
-  - [`ElliottWaveAnalysisRunner.java:352`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-core/src/main/java/org/ta4j/core/indicators/elliott/ElliottWaveAnalysisRunner.java:352)
+  - `ElliottWaveAnalysisRunner.java:352`
 
 ### Empirical divergence already observed
 
@@ -131,11 +133,11 @@ The historical macro-study report and the pure live-engine replay currently disa
 
 Historical macro-study summary:
 
-- [`elliott-wave-btc-macro-cycles-summary.json`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/temp/chart-compare/rendered/with-registry/elliott-wave-btc-macro-cycles-summary.json)
+- `elliott-wave-btc-macro-cycles-summary.json`
 
 Pure live-engine replay summary:
 
-- [`elliott-wave-btc-live-engine-replay-summary.txt`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/temp/chart-compare/rendered/live-engine-replay-fixed/elliott-wave-btc-live-engine-replay-summary.txt)
+- `elliott-wave-btc-live-engine-replay-summary.txt`
 
 Observed difference:
 
@@ -241,7 +243,7 @@ Each edge is fit and scored through shared runner logic, not bespoke chart heuri
 
 Re-use and extend the core window scoring already centralized in:
 
-- [`ElliottWaveAnalysisRunner.java:322`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-core/src/main/java/org/ta4j/core/indicators/elliott/ElliottWaveAnalysisRunner.java:322)
+- `ElliottWaveAnalysisRunner.java:322`
 
 Required local outputs:
 
@@ -414,7 +416,7 @@ Avoid exposing calibration internals publicly.
 
 ### Phase 5: Move Current-Cycle Inference onto the Canonical Search
 
-- [x] Replace the separate current-cycle-only ranking path in [`ElliottWaveAnalysisRunner.java:352`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-core/src/main/java/org/ta4j/core/indicators/elliott/ElliottWaveAnalysisRunner.java:352).
+- [x] Replace the separate current-cycle-only ranking path in `ElliottWaveAnalysisRunner.java:352`.
 - [x] Make current-cycle output the open suffix of the canonical full-history structure.
 - [x] Preserve:
   - live chart/report support for the open suffix view
@@ -429,18 +431,18 @@ Avoid exposing calibration internals publicly.
 - [x] Keep raw accepted historical legs available as evidence, but promote only top-level completed macro cycles for completed-cycle truth comparison.
 - [x] Stop using `buildHistoricalCycles(...)` as a runtime truth source.
 - [x] Retain registry-backed comparison only inside the calibration harness.
-- [ ] Keep a temporary compatibility path only while the canonical engine is being proven.
+- [x] Keep a temporary compatibility path only while the canonical engine is being proven.
 
 Rationale note:
 - A minimal public core bridge for completed historical structure is acceptable here because `ta4j-examples` cannot consume package-private canonical search results across module boundaries. Keep that bridge narrow and evidence-carrying; do not expose calibration internals.
-- The legacy anchored historical study remains the runtime default for now because the first canonical switchover attempt did not yet reproduce the completed BTC truth surface. Keep the legacy flow available as a comparison mode through the calibration harness until the canonical path closes that gap.
+- The legacy anchored historical study is no longer a runtime default. It survives only as a harness-side comparison mode so canonical-vs-legacy diffs can still be inspected offline without reopening a public runtime seam.
 - The direct canonical BTC probe already showed that post-2022 pivots and alternating legs can be plausible while still being over-promoted into peer macro cycles. The next canonical improvement axis is degree-aware macro-cycle promotion, not pivot suppression.
 
 ### Phase 7: Replace the Macro Cycle Detector Heuristic
 
-- [x] Stop using [`ElliottWaveMacroCycleDetector.java:72`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDetector.java:72) as a runtime front-end.
+- [x] Stop using `ElliottWaveMacroCycleDetector.java:72` as a runtime front-end.
 - [x] If any inferred-anchor artifacts remain useful, keep them only as debugging/calibration output.
-- [ ] Ensure historical chart generation consumes canonical structure output directly.
+- [x] Ensure historical chart generation consumes canonical structure output directly.
 
 ### Phase 8: Build the BTC Calibration Harness
 
@@ -530,22 +532,23 @@ Rationale note:
 
 ### Phase 11: Update Demos and Wrappers
 
-- [x] Keep [`ElliottWaveBtcMacroCycleDemo.java`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveBtcMacroCycleDemo.java) as a thin resource-loading wrapper only if it still adds value.
-- [ ] Make [`ElliottWaveMacroCycleDemo.java`](/Users/davidpang/.codex/worktrees/deliver-prd-cf-17-ew-anchor-calibration-20260305-172251/ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveMacroCycleDemo.java) a pure view/controller over canonical engine output.
-- [ ] Remove remaining example-layer structure inference logic.
+- [x] Keep `ElliottWaveBtcMacroCycleDemo.java` as a thin resource-loading wrapper only if it still adds value.
+- [x] Make `ElliottWaveMacroCycleDemo.java` a pure view/controller over canonical engine output.
+- [x] Remove remaining example-layer structure inference logic.
 - [x] Update preset/demo docs to explain the new canonical engine and calibration role of the BTC truth target.
 
-Current status: the generic demo now owns the shared historical-study and live current-cycle model vocabulary, and the BTC wrapper is reduced to BTC-specific resource loading plus stable report adapters. The latest pass also split registry-backed truth-target validation from runtime current-cycle profile selection, so the attached live view stays series-native even when the historical truth-target winner differs. The remaining Phase 11 seam is behavioral, not ownership: move the last example-layer structure inference and profile-selection logic behind the canonical engine/controller boundary.
+Current status: the generic demo now owns the shared historical-study and live current-cycle model vocabulary, and the BTC wrapper is reduced to BTC-specific resource loading plus stable report adapters. The latest pass also split registry-backed truth-target validation from runtime current-cycle profile selection, and the remaining profile sweep / truth-target orchestration now sits behind a dedicated internal canonical engine boundary rather than inside the controller flow.
 
 ### Phase 12: Final Sanity and Acceptance Gate
 
 - [x] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
   Current status: the registry-backed canonical historical study now recovers all three committed BTC macro cycles in order and within tolerance on the full-history daily dataset. Truth-target ranking now prioritizes complete expected-cycle coverage over span, filters nested sub-cycles out of extra-cycle penalties, and scores completed-cycle recovery on the committed peak/low windows instead of requiring exact bullish-leg starts.
-- [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
-  Current status: the truncated-history replay backbone now recovers the intended completed cycles at the `2018-12-16`, `2021-11-11`, and `2022-11-22` cutoffs from price alone. The key fix was to let strong-fit fallback bearish legs participate in macro-bottom promotion while requiring a later higher milestone peak plus a macro-sized corrective leg before a bottom is considered confirmed. The remaining acceptance work is narrower now: re-run the full major-turn replay sweep intentionally, then close the final chart-structure and full-build gates.
+- [x] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
+  Current status: replay regressions now cover the major BTC turns at `2013-11-30`, `2015-08-19`, `2017-12-18`, `2018-12-16`, `2021-11-11`, and `2022-11-22`, and the canonical replay assertions confirm that completed cycles stay ordered, bounded by the replay cutoff, and coherent with the attached current-cycle profile selection.
   Validation note: future replay-promotion or profile-selection changes should first clear synthetic/unit diagnostics for substructure-backed macro acceptance and truncated-history profile ranking before rerunning the expensive BTC detector cutoffs.
 - [x] Confirm historical chart and live chart are both drawn from the same structure object.
-- [ ] Run full verification and record the final build log.
+- [x] Run full verification and record the final build log.
+  Current status: `scripts/run-full-build-quiet.sh` completed green on 2026-04-21 with `Tests run: 6226, Failures: 0, Errors: 0, Skipped: 16`; the recorded log lives at `.agents/logs/full-build-20260421-132915.log`.
 
 ### Phase 13: Design Elliott Oscillator Representation
 
