@@ -32,6 +32,12 @@ The important line is that the legacy anchored study is no longer a first-class 
 - The BTC demo still writes the same chart/report artifacts.
 - The live preset still keeps compatibility with the existing file naming and reporting flow.
 
+## Which entrypoint to use
+
+- Use `ElliottWaveBtcMacroCycleDemo` when you want the fixed ossified BTC dataset, the locked BTC truth registry, and the stable BTC artifact names.
+- Use `ElliottWaveMacroCycleDemo` when you already have a `BarSeries` and want the canonical historical study or live preset without BTC-specific resource loading.
+- Use `ElliottWaveAnchorCalibrationHarness` when you are calibrating, benchmarking, or comparing canonical output against the committed BTC truth target.
+
 ## What changed
 
 - Historical anchor-to-anchor fits and live current-cycle fits now come from the same core-ranked Elliott logic.
@@ -84,3 +90,17 @@ The harness resolves broad committed registry windows against the ossified BTC d
   - `--targeted` for fast BTC window checks
   - `routine` for the default full-history BTC sanity lane
   - `--exhaustive` only when you explicitly need the broader profile search and portability sweep
+
+## Release validation
+
+Before shipping changes that touch the canonical macro-cycle flow, rerun both the focused BTC regression slice and the quiet full build:
+
+```bash
+mvn -q -pl ta4j-examples -am -Dsurefire.failIfNoSpecifiedTests=false \
+  -Dtest=ElliottWaveBtcMacroCycleDemoTest,ElliottWaveMacroCycleTruthTargetScoringTest,ElliottWaveMacroCycleDetectorTest,ElliottWavePresetDemoTest \
+  test
+
+scripts/run-full-build-quiet.sh
+```
+
+The focused slice proves truth-target recovery, canonical historical/live reuse, and chart/report persistence. The quiet full build is the production gate.

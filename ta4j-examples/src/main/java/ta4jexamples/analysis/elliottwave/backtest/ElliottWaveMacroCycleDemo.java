@@ -244,6 +244,25 @@ public final class ElliottWaveMacroCycleDemo {
         }
     }
 
+    /**
+     * User-facing summary of the right-edge macro-cycle view.
+     *
+     * @param startTimeUtc                inferred cycle start time in UTC
+     * @param latestTimeUtc               latest analyzed bar time in UTC
+     * @param winningProfileId            profile that produced the selected live
+     *                                    view
+     * @param historicalStatus            compact relationship to the historical
+     *                                    study
+     * @param primaryCount                primary live Elliott count label
+     * @param alternateCount              alternate live Elliott count label
+     * @param currentWave                 inferred current wave/phase label
+     * @param invalidationPrice           price that invalidates the primary count
+     * @param structuralInvalidationPrice broader structural invalidation level
+     * @param orthodoxWaveFiveTargetRange formatted orthodox target range
+     * @param primaryScore                normalized score for the primary count
+     * @param alternateScore              normalized score for the alternate count
+     * @param chartPath                   persisted chart artifact path
+     */
     record CurrentCycleSummary(String startTimeUtc, String latestTimeUtc, String winningProfileId,
             String historicalStatus, String primaryCount, String alternateCount, String currentWave,
             String invalidationPrice, String structuralInvalidationPrice, String orthodoxWaveFiveTargetRange,
@@ -256,6 +275,16 @@ public final class ElliottWaveMacroCycleDemo {
         }
     }
 
+    /**
+     * Canonical live-cycle analysis plus the retained ranked candidates that feed
+     * charts and JSON reports.
+     *
+     * @param summary           user-facing summary for the selected live view
+     * @param primaryFit        selected primary current-cycle fit
+     * @param alternateFit      optional alternate current-cycle fit
+     * @param candidates        all ranked current-cycle candidates
+     * @param displayCandidates candidates retained for legacy chart persistence
+     */
     record CurrentCycleAnalysis(CurrentCycleSummary summary,
             ElliottWaveAnalysisResult.CurrentPhaseAssessment primaryFit,
             ElliottWaveAnalysisResult.CurrentPhaseAssessment alternateFit,
@@ -273,6 +302,17 @@ public final class ElliottWaveMacroCycleDemo {
         }
     }
 
+    /**
+     * Historical macro-study assembled from the canonical structure search.
+     *
+     * @param selectedProfile      winning historical profile evaluation
+     * @param evaluations          all ordered profile evaluations
+     * @param profileScores        compact score table for reporting
+     * @param cycles               accepted completed macro cycles
+     * @param hypotheses           ranked historical hypotheses for the report
+     * @param currentCycleAnalysis attached current-cycle analysis derived from the
+     *                             same canonical engine
+     */
     record MacroStudy(MacroProfileEvaluation selectedProfile, List<MacroProfileEvaluation> evaluations,
             List<ProfileScoreSummary> profileScores, List<DirectionalCycleSummary> cycles,
             List<HypothesisResult> hypotheses, CurrentCycleAnalysis currentCycleAnalysis) {
@@ -299,6 +339,17 @@ public final class ElliottWaveMacroCycleDemo {
         }
     }
 
+    /**
+     * Truth-target coverage summary used to rank historical candidates against the
+     * committed validation cycles.
+     *
+     * @param expectedCycleCount      number of expected cycles in the truth target
+     * @param matchedExpectedCycles   number of expected cycles recovered in-order
+     * @param missingExpectedCycles   number of expected cycles not recovered
+     * @param unexpectedCycles        number of extra unmatched accepted cycles
+     * @param missingExpectedCycleIds ids of missing expected cycles
+     * @param unexpectedCycleIds      ids of extra unexpected cycles
+     */
     record TruthTargetCoverage(int expectedCycleCount, int matchedExpectedCycles, int missingExpectedCycles,
             int unexpectedCycles, List<String> missingExpectedCycleIds, List<String> unexpectedCycleIds) {
 
@@ -332,6 +383,19 @@ public final class ElliottWaveMacroCycleDemo {
         }
     }
 
+    /**
+     * Historical evaluation of one canonical logic profile.
+     *
+     * @param profile             evaluated logic profile
+     * @param aggregateScore      aggregate internal score across accepted segments
+     * @param acceptedCycles      number of accepted completed cycles
+     * @param acceptedSegments    number of accepted leg segments
+     * @param historicalFitPassed whether the profile cleared the historical
+     *                            acceptance bar
+     * @param truthTargetCoverage committed-cycle coverage summary
+     * @param cycleFits           accepted completed cycle fits
+     * @param chartSegments       ranked segment fits used for rendering
+     */
     record MacroProfileEvaluation(MacroLogicProfile profile, double aggregateScore, int acceptedCycles,
             int acceptedSegments, boolean historicalFitPassed, TruthTargetCoverage truthTargetCoverage,
             List<CycleFit> cycleFits, List<SegmentScenarioFit> chartSegments) {
@@ -394,6 +458,19 @@ public final class ElliottWaveMacroCycleDemo {
         }
     }
 
+    /**
+     * Internal canonical profile descriptor used by the demo controller and
+     * calibration harness.
+     *
+     * @param id                    stable profile id
+     * @param hypothesisId          short hypothesis label for reports
+     * @param title                 human-readable profile title
+     * @param orthodoxyRank         deterministic tie-break rank
+     * @param coreLogicProfile      ta4j-core logic profile to execute
+     * @param runnerDegree          primary runner degree
+     * @param higherDegreesOverride optional higher-degree override for the runner
+     * @param lowerDegreesOverride  optional lower-degree override for the runner
+     */
     record MacroLogicProfile(String id, String hypothesisId, String title, int orthodoxyRank,
             ElliottLogicProfile coreLogicProfile, ElliottDegree runnerDegree, Integer higherDegreesOverride,
             Integer lowerDegreesOverride) {
@@ -2148,6 +2225,13 @@ public final class ElliottWaveMacroCycleDemo {
         }
     }
 
+    /**
+     * Canonical engine result shared by historical and live report generation.
+     *
+     * @param historicalStudy optional historical macro-study when the caller asked
+     *                        for completed-cycle evaluation
+     * @param currentCycle    series-native current-cycle analysis
+     */
     record CanonicalStructure(Optional<MacroStudy> historicalStudy, CurrentCycleAnalysis currentCycle) {
 
         CanonicalStructure {
