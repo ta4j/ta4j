@@ -41,25 +41,25 @@ public enum ElliottLogicProfile {
             25, 0, 0.72),
 
     /**
-     * Impulse-oriented BTC profile that narrows corrective coverage and uses the
+     * Impulse-oriented profile that narrows corrective coverage and uses the
      * pattern-aware confidence model.
      */
-    BTC_RELAXED_IMPULSE("h2-btc-relaxed-impulse", "Relaxed impulse rules for BTC", 4, 1, 1,
+    BTC_RELAXED_IMPULSE("h2-pattern-aware-impulse", "Pattern-aware impulse emphasis", 4, 1, 1,
             PatternSet.of(ScenarioType.IMPULSE, ScenarioType.CORRECTIVE_ZIGZAG, ScenarioType.CORRECTIVE_FLAT), true,
             0.82, 35, 0, 0.70),
 
     /**
-     * Corrective-oriented BTC profile with broader pattern coverage.
+     * Corrective-oriented profile with broader pattern coverage.
      */
-    BTC_RELAXED_CORRECTIVE("h3-btc-relaxed-corrective", "Relaxed corrective coverage for BTC", 5, 1, 1,
-            PatternSet.all(), true, 0.64, 35, 0, 0.68),
+    BTC_RELAXED_CORRECTIVE("h3-pattern-aware-corrective", "Pattern-aware corrective breadth", 5, 1, 1, PatternSet.all(),
+            true, 0.64, 35, 0, 0.68),
 
     /**
-     * Anchor-first hybrid profile used by the BTC macro study when start/end span
-     * fit matters as much as raw confidence.
+     * Span-aware hybrid profile used when start/end fit matters as much as raw
+     * confidence.
      */
-    ANCHOR_FIRST_HYBRID("h4-anchor-first-hybrid", "Anchor-first hybrid profile", 5, 2, 2, PatternSet.all(), true, 0.58,
-            40, 0, 0.66);
+    ANCHOR_FIRST_HYBRID("h4-span-aware-hybrid", "Span-aware hybrid scoring", 5, 2, 2, PatternSet.all(), true, 0.58, 40,
+            0, 0.66);
 
     private final String id;
     private final String title;

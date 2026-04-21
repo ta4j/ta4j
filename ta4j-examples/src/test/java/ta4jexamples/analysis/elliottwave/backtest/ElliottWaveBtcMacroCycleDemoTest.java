@@ -316,8 +316,48 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 .defaultBitcoinAnchors(series);
         ElliottWaveMacroCycleDemo.MacroStudy study = ElliottWaveMacroCycleDemo.evaluateMacroStudy(series, registry);
 
-        assertTrue(study.selectedProfile().cycleFits().size() >= 3);
+        List<ExpectedTruthCycle> expectedCycles = expectedTruthCycles();
+        assertTrue(study.selectedProfile().historicalFitPassed(),
+                () -> "profile=" + study.selectedProfile().profile().id() + " acceptedCycles="
+                        + study.selectedProfile().acceptedCycles() + " cycleFits="
+                        + study.selectedProfile().cycleFits().size() + " matchedExpected="
+                        + study.selectedProfile().matchedExpectedCycles() + " missingExpected="
+                        + study.selectedProfile().missingExpectedCycles() + " unexpected="
+                        + study.selectedProfile().unexpectedCycles() + " missingIds="
+                        + study.selectedProfile().truthTargetCoverage().missingExpectedCycleIds() + " unexpectedIds="
+                        + study.selectedProfile().truthTargetCoverage().unexpectedCycleIds() + " profileScores="
+                        + study.profileScores());
+        assertEquals(expectedCycles.size(), study.selectedProfile().truthTargetCoverage().expectedCycleCount());
+        assertEquals(expectedCycles.size(), study.selectedProfile().matchedExpectedCycles());
+        assertTrue(study.selectedProfile().truthTargetCoverage().missingExpectedCycleIds().isEmpty(),
+                () -> "Missing expected cycles: "
+                        + study.selectedProfile().truthTargetCoverage().missingExpectedCycleIds());
+        assertTrue(study.selectedProfile().truthTargetCoverage().unexpectedCycleIds().isEmpty(),
+                () -> "Unexpected cycles: " + study.selectedProfile().truthTargetCoverage().unexpectedCycleIds());
+        assertEquals(expectedCycles.size(), study.selectedProfile().cycleFits().size());
+        assertTruthTargetCycleOrdering(study.selectedProfile().cycleFits(), expectedCycles);
         assertTruthTargetCycleCoverage(series, study.selectedProfile().cycleFits(), registry);
+    }
+
+    @Test
+    void registryBackedCanonicalStructureKeepsSeriesNativeRuntimeCurrentCycleSelection() {
+        BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class));
+        ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry = ElliottWaveAnchorCalibrationHarness
+                .defaultBitcoinAnchors(series);
+
+        ElliottWaveMacroCycleDemo.MacroStudy runtimeStudy = ElliottWaveMacroCycleDemo
+                .evaluateCanonicalMacroStudy(series);
+        ElliottWaveMacroCycleDemo.CanonicalStructure structure = ElliottWaveMacroCycleDemo
+                .analyzeCanonicalStructure(series, registry);
+
+        assertTrue(structure.historicalStudy().isPresent());
+        assertEquals(runtimeStudy.currentCycle().winningProfileId(),
+                structure.currentCycle().summary().winningProfileId());
+        assertEquals(runtimeStudy.currentCycle().primaryCount(), structure.currentCycle().summary().primaryCount());
+        assertEquals(runtimeStudy.currentCycle().alternateCount(), structure.currentCycle().summary().alternateCount());
+        assertEquals(runtimeStudy.currentCycle().currentWave(), structure.currentCycle().summary().currentWave());
     }
 
     @Test
@@ -822,6 +862,16 @@ class ElliottWaveBtcMacroCycleDemoTest {
                     findAnchor(registry, expected.lowAnchorId()));
             remainingCycleFits.remove(actual);
         }
+    }
+
+    private static void assertTruthTargetCycleOrdering(List<ElliottWaveMacroCycleDemo.CycleFit> cycleFits,
+            List<ExpectedTruthCycle> expectedCycles) {
+        List<String> actualCycleIds = cycleFits.stream().map(cycleFit -> cycleFit.cycle().id()).toList();
+        List<String> expectedCycleIds = expectedCycles.stream()
+                .map(expected -> expected.startAnchorId() + "->" + expected.peakAnchorId() + "->"
+                        + expected.lowAnchorId())
+                .toList();
+        assertEquals(expectedCycleIds, actualCycleIds);
     }
 
     private static ElliottWaveMacroCycleDemo.CycleFit findCycleFitByPeak(BarSeries series,

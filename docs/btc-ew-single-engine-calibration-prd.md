@@ -535,11 +535,12 @@ Rationale note:
 - [ ] Remove remaining example-layer structure inference logic.
 - [x] Update preset/demo docs to explain the new canonical engine and calibration role of the BTC truth target.
 
-Current status: the generic demo now owns the shared historical-study and live current-cycle model vocabulary, and the BTC wrapper is reduced to BTC-specific resource loading plus stable report adapters. The remaining Phase 11 seam is behavioral, not ownership: move the last example-layer structure inference and profile-selection logic behind the canonical engine/controller boundary.
+Current status: the generic demo now owns the shared historical-study and live current-cycle model vocabulary, and the BTC wrapper is reduced to BTC-specific resource loading plus stable report adapters. The latest pass also split registry-backed truth-target validation from runtime current-cycle profile selection, so the attached live view stays series-native even when the historical truth-target winner differs. The remaining Phase 11 seam is behavioral, not ownership: move the last example-layer structure inference and profile-selection logic behind the canonical engine/controller boundary.
 
 ### Phase 12: Final Sanity and Acceptance Gate
 
 - [x] Run the canonical engine on full-history BTC daily and confirm it reproduces the truth target within tolerance.
+  Current status: the registry-backed canonical historical study now recovers all three committed BTC macro cycles in order and within tolerance on the full-history daily dataset. Truth-target ranking now prioritizes complete expected-cycle coverage over span, filters nested sub-cycles out of extra-cycle penalties, and scores completed-cycle recovery on the committed peak/low windows instead of requiring exact bullish-leg starts.
 - [ ] Run the same engine in replay mode at major BTC tops and lows and confirm the historical and current charts are coherent.
   Current status: the truncated-history replay backbone now recovers the intended completed cycles at the `2018-12-16`, `2021-11-11`, and `2022-11-22` cutoffs from price alone. The key fix was to let strong-fit fallback bearish legs participate in macro-bottom promotion while requiring a later higher milestone peak plus a macro-sized corrective leg before a bottom is considered confirmed. The remaining acceptance work is narrower now: re-run the full major-turn replay sweep intentionally, then close the final chart-structure and full-build gates.
   Validation note: future replay-promotion or profile-selection changes should first clear synthetic/unit diagnostics for substructure-backed macro acceptance and truncated-history profile ranking before rerunning the expensive BTC detector cutoffs.
