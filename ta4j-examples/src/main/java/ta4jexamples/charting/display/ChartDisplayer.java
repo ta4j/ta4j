@@ -3,6 +3,7 @@
  */
 package ta4jexamples.charting.display;
 
+import org.apache.logging.log4j.LogManager;
 import org.jfree.chart.JFreeChart;
 
 import java.awt.Dimension;
@@ -43,8 +44,9 @@ public interface ChartDisplayer {
      *
      * <p>
      * Implementations may ignore the preferred size when they cannot honor it. The
-     * default behavior delegates to the existing title-aware overload so current
-     * implementations remain source-compatible.
+     * default behavior logs that the hint was ignored, then delegates to the
+     * existing title-aware overload so current implementations remain
+     * source-compatible.
      * </p>
      *
      * @param chart         the chart to display
@@ -53,6 +55,11 @@ public interface ChartDisplayer {
      * @since 0.22.7
      */
     default void display(JFreeChart chart, String windowTitle, Dimension preferredSize) {
+        if (preferredSize != null) {
+            LogManager.getLogger(ChartDisplayer.class)
+                    .debug("Chart displayer {} ignored preferredSize {} because it does not override the size-aware display overload.",
+                            getClass().getName(), preferredSize);
+        }
         if (windowTitle != null && !windowTitle.trim().isEmpty()) {
             display(chart, windowTitle);
         } else {

@@ -7,6 +7,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -183,9 +184,8 @@ final class ElliottWaveAnchorRegistry {
             }
             foundValidPrice = true;
             long candidateDistance = Math.abs(endTime.toEpochMilli() - midpointEpochMillis);
-            if (bestIndex < 0 || better(anchor.kind(), candidatePrice, bestPrice)
-                    || (same(candidatePrice, bestPrice) && (candidateDistance < bestDistance
-                            || (candidateDistance == bestDistance && index < bestIndex)))) {
+            if (shouldReplaceBest(anchor.kind(), candidatePrice, bestPrice, candidateDistance, bestDistance, index,
+                    bestIndex)) {
                 bestIndex = index;
                 bestPrice = candidatePrice;
                 bestDistance = candidateDistance;
@@ -214,6 +214,13 @@ final class ElliottWaveAnchorRegistry {
         return candidatePrice < bestPrice;
     }
 
+    private static boolean shouldReplaceBest(AnchorKind kind, double candidatePrice, double bestPrice,
+            long candidateDistance, long bestDistance, int candidateIndex, int bestIndex) {
+        return bestIndex < 0 || better(kind, candidatePrice, bestPrice)
+                || (same(candidatePrice, bestPrice) && (candidateDistance < bestDistance
+                        || (candidateDistance == bestDistance && candidateIndex < bestIndex)));
+    }
+
     private static boolean same(double left, double right) {
         return Double.compare(left, right) == 0;
     }
@@ -233,6 +240,36 @@ final class ElliottWaveAnchorRegistry {
             throw new IllegalArgumentException(field + " must not be blank");
         }
         return value;
+    }
+
+    private static AnchorKind parseKind(String kind, String anchorId) {
+        String normalizedKind = requireText(kind, "kind");
+        try {
+            return AnchorKind.valueOf(normalizedKind);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Unknown anchor kind '" + normalizedKind + "' for anchor " + anchorId,
+                    ex);
+        }
+    }
+
+    private static Instant parseInstant(String value, String field, String anchorId) {
+        String normalizedValue = requireText(value, field);
+        try {
+            return Instant.parse(normalizedValue);
+        } catch (DateTimeParseException ex) {
+            throw new IllegalArgumentException("Invalid " + field + " '" + normalizedValue + "' for anchor " + anchorId,
+                    ex);
+        }
+    }
+
+    private static ElliottPhase parsePhase(String phase, String anchorId) {
+        String normalizedPhase = requireText(phase, "phase");
+        try {
+            return ElliottPhase.valueOf(normalizedPhase);
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException(
+                    "Unknown expected phase '" + normalizedPhase + "' for anchor " + anchorId, ex);
+        }
     }
 
     /**
@@ -355,16 +392,16 @@ final class ElliottWaveAnchorRegistry {
      * @param source         provenance string
      * @param notes          optional note
      */
-    private record RegistryAnchor(String id, String label, AnchorKind kind, String windowStart, String windowEnd,
+    private record RegistryAnchor(String id, String label, String kind, String windowStart, String windowEnd,
             List<String> expectedPhases, String source, String notes) {
 
         private AnchorSpec toSpec() {
             Set<ElliottPhase> phases = EnumSet.noneOf(ElliottPhase.class);
             for (String phase : Objects.requireNonNull(expectedPhases, "expectedPhases")) {
-                phases.add(ElliottPhase.valueOf(requireText(phase, "phase")));
+                phases.add(parsePhase(phase, id));
             }
-            return new AnchorSpec(id, label, kind, Instant.parse(requireText(windowStart, "windowStart")),
-                    Instant.parse(requireText(windowEnd, "windowEnd")), phases, source, notes);
+            return new AnchorSpec(id, label, parseKind(kind, id), parseInstant(windowStart, "windowStart", id),
+                    parseInstant(windowEnd, "windowEnd", id), phases, source, notes);
         }
     }
 }

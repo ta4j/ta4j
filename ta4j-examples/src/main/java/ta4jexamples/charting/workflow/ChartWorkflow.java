@@ -100,6 +100,20 @@ public class ChartWorkflow {
                 new FileSystemChartStorage(resolveSaveDirectory(chartImageSaveDirectory)));
     }
 
+    /**
+     * Creates a {@link ChartWorkflow} with explicit collaborators.
+     *
+     * <p>
+     * This constructor is the dependency-injection entry point for tests and
+     * callers that want to swap rendering, display, or persistence behavior without
+     * subclassing the workflow facade.
+     * </p>
+     *
+     * @param chartFactory   factory responsible for composing charts
+     * @param chartDisplayer display strategy used for on-screen rendering
+     * @param chartStorage   persistence strategy used for saved chart artifacts
+     * @since 0.22.7
+     */
     public ChartWorkflow(TradingChartFactory chartFactory, ChartDisplayer chartDisplayer, ChartStorage chartStorage) {
         this.chartFactory = Objects.requireNonNull(chartFactory, "Chart factory cannot be null");
         this.chartDisplayer = Objects.requireNonNull(chartDisplayer, "Chart displayer cannot be null");

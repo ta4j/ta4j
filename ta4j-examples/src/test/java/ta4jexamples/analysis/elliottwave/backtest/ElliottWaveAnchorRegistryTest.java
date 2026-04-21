@@ -9,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
@@ -110,6 +112,30 @@ class ElliottWaveAnchorRegistryTest {
     }
 
     @Test
+    void registryAnchorRejectsUnknownKindsWithAnchorSpecificMessage() {
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> toSpec("btc-top", "sideways", "2024-01-01T00:00:00Z", "2024-01-02T00:00:00Z", List.of("WAVE5")));
+
+        assertEquals("Unknown anchor kind 'sideways' for anchor btc-top", thrown.getMessage());
+    }
+
+    @Test
+    void registryAnchorRejectsUnknownExpectedPhasesWithAnchorSpecificMessage() {
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> toSpec("btc-top", "TOP", "2024-01-01T00:00:00Z", "2024-01-02T00:00:00Z", List.of("WAVE6")));
+
+        assertEquals("Unknown expected phase 'WAVE6' for anchor btc-top", thrown.getMessage());
+    }
+
+    @Test
+    void registryAnchorRejectsInvalidWindowTimestampsWithAnchorSpecificMessage() {
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class,
+                () -> toSpec("btc-top", "TOP", "not-a-timestamp", "2024-01-02T00:00:00Z", List.of("WAVE5")));
+
+        assertEquals("Invalid windowStart 'not-a-timestamp' for anchor btc-top", thrown.getMessage());
+    }
+
+    @Test
     void resolveSkipsInvalidWindowPricesWhenLaterBarsRemainUsable() {
         BarSeries series = syntheticSeriesWithInvalidLeadingWindowPrice();
         ElliottWaveAnchorRegistry.AnchorSpec anchor = new ElliottWaveAnchorRegistry.AnchorSpec("btc-top", "Top",
@@ -159,6 +185,32 @@ class ElliottWaveAnchorRegistryTest {
                 .volume(1000)
                 .add();
         return series;
+    }
+
+    private static ElliottWaveAnchorRegistry.AnchorSpec toSpec(String id, String kind, String windowStart,
+            String windowEnd, List<String> expectedPhases) {
+        try {
+            Class<?> registryAnchorType = Class.forName(ElliottWaveAnchorRegistry.class.getName() + "$RegistryAnchor");
+            Constructor<?> constructor = registryAnchorType.getDeclaredConstructor(String.class, String.class,
+                    String.class, String.class, String.class, List.class, String.class, String.class);
+            constructor.setAccessible(true);
+            Object registryAnchor = constructor.newInstance(id, "Test anchor", kind, windowStart, windowEnd,
+                    expectedPhases, "test source", "");
+            Method toSpec = registryAnchorType.getDeclaredMethod("toSpec");
+            toSpec.setAccessible(true);
+            return (ElliottWaveAnchorRegistry.AnchorSpec) toSpec.invoke(registryAnchor);
+        } catch (InvocationTargetException ex) {
+            Throwable cause = ex.getCause();
+            if (cause instanceof RuntimeException runtimeException) {
+                throw runtimeException;
+            }
+            if (cause instanceof Error error) {
+                throw error;
+            }
+            throw new AssertionError("Failed to invoke RegistryAnchor.toSpec", cause);
+        } catch (ReflectiveOperationException ex) {
+            throw new AssertionError("Failed to create raw registry anchor", ex);
+        }
     }
 
     private static ElliottWaveAnchorRegistry registry(ElliottWaveAnchorRegistry.AnchorSpec anchor) {

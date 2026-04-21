@@ -194,9 +194,14 @@ class BarSeriesLabelIndicatorTest {
 
     @Test
     void testBarLabelThrowsWhenFontScaleIsNotPositive() {
-        assertThrows(IllegalArgumentException.class, () -> {
-            new BarLabel(0, numFactory.numOf(100.0), "Test", LabelPlacement.CENTER, null, 0.0);
-        });
+        List<Double> invalidFontScales = List.of(-1.0, 0.0, Double.NaN, Double.NEGATIVE_INFINITY,
+                Double.POSITIVE_INFINITY);
+
+        for (Double invalidFontScale : invalidFontScales) {
+            IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> new BarLabel(0,
+                    numFactory.numOf(100.0), "Test", LabelPlacement.CENTER, null, invalidFontScale));
+            assertEquals("fontScale must be positive and finite", thrown.getMessage());
+        }
     }
 
     @Test

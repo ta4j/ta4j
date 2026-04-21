@@ -156,37 +156,37 @@ final class ElliottWaveMacroCycleDetector {
 
     private static List<ElliottWaveAnchorCalibrationHarness.Anchor> toAnchors(
             final List<MacroDrawdown> macroDrawdowns) {
-        final List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors = new ArrayList<>(macroDrawdowns.size() * 2);
+        final int anchorCount = macroDrawdowns.size() * 2;
+        final int validationCutoff = Math.max(0, anchorCount - HOLDOUT_ANCHOR_COUNT);
+        final List<ElliottWaveAnchorCalibrationHarness.Anchor> anchors = new ArrayList<>(anchorCount);
+        int anchorIndex = 0;
         for (int index = 0; index < macroDrawdowns.size(); index++) {
             final MacroDrawdown drawdown = macroDrawdowns.get(index);
-            anchors.add(toAnchor(index, drawdown.top(), ElliottWaveAnchorCalibrationHarness.AnchorType.TOP));
-            anchors.add(toAnchor(index, drawdown.trough(), ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM));
+            anchors.add(toAnchor(index, drawdown.top(), ElliottWaveAnchorCalibrationHarness.AnchorType.TOP,
+                    partitionFor(anchorIndex, validationCutoff)));
+            anchorIndex++;
+            anchors.add(toAnchor(index, drawdown.trough(), ElliottWaveAnchorCalibrationHarness.AnchorType.BOTTOM,
+                    partitionFor(anchorIndex, validationCutoff)));
+            anchorIndex++;
         }
-
-        final int validationCutoff = Math.max(0, anchors.size() - HOLDOUT_ANCHOR_COUNT);
-        final List<ElliottWaveAnchorCalibrationHarness.Anchor> partitioned = new ArrayList<>(anchors.size());
-        for (int index = 0; index < anchors.size(); index++) {
-            final ElliottWaveAnchorCalibrationHarness.Anchor anchor = anchors.get(index);
-            final ElliottWaveAnchorRegistry.AnchorPartition partition = index < validationCutoff
-                    ? ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION
-                    : ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT;
-            partitioned.add(new ElliottWaveAnchorCalibrationHarness.Anchor(anchor.id(), anchor.type(), anchor.at(),
-                    anchor.toleranceBefore(), anchor.toleranceAfter(), anchor.expectedPhases(), partition,
-                    anchor.provenance()));
-        }
-        return List.copyOf(partitioned);
+        return List.copyOf(anchors);
     }
 
     private static ElliottWaveAnchorCalibrationHarness.Anchor toAnchor(final int sequence, final Pivot pivot,
-            final ElliottWaveAnchorCalibrationHarness.AnchorType type) {
+            final ElliottWaveAnchorCalibrationHarness.AnchorType type,
+            final ElliottWaveAnchorRegistry.AnchorPartition partition) {
         final Set<ElliottPhase> expectedPhases = type == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP
                 ? EnumSet.of(ElliottPhase.WAVE5)
                 : EnumSet.of(ElliottPhase.CORRECTIVE_C);
         final String direction = type == ElliottWaveAnchorCalibrationHarness.AnchorType.TOP ? "top" : "bottom";
         return new ElliottWaveAnchorCalibrationHarness.Anchor("inferred-" + direction + "-" + (sequence + 1), type,
-                pivot.at(), DEFAULT_TOLERANCE, DEFAULT_TOLERANCE, expectedPhases,
-                ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION,
+                pivot.at(), DEFAULT_TOLERANCE, DEFAULT_TOLERANCE, expectedPhases, partition,
                 "Inferred from full-history orthodox Elliott swings and macro drawdown turns.");
+    }
+
+    private static ElliottWaveAnchorRegistry.AnchorPartition partitionFor(int anchorIndex, int validationCutoff) {
+        return anchorIndex < validationCutoff ? ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION
+                : ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT;
     }
 
     private static String datasetResource(final BarSeries series) {
