@@ -15,7 +15,7 @@ fail() { echo "[FAIL] $1" >&2; exit 1; }
 pass() { echo "[PASS] $1"; }
 
 run_test() {
-  TMP="$(mktemp -d)"
+  TMP="$(mktemp -d "${TMPDIR:-/tmp}/scan-removal-ready-deprecations.XXXXXX")"
   mkdir -p "$TMP/scripts"
   cp "$SCRIPT" "$TMP/scripts/scan-removal-ready-deprecations.py"
   chmod +x "$TMP/scripts/scan-removal-ready-deprecations.py"
@@ -189,6 +189,154 @@ PY
   pass "test_mixed_versions_in_one_file"
 }
 
+test_next_javadoc_does_not_leak_backwards() {
+  echo "Running test_next_javadoc_does_not_leak_backwards"
+  run_test
+
+  cat > pom.xml <<'EOF'
+<project>
+  <version>0.24.0-SNAPSHOT</version>
+</project>
+EOF
+
+  mkdir -p ta4j-core/src/main/java/org/ta4j/core/legacy
+  cat > ta4j-core/src/main/java/org/ta4j/core/legacy/AdjacentJavadocBridge.java <<'EOF'
+package org.ta4j.core.legacy;
+
+public class AdjacentJavadocBridge {
+
+    @Deprecated(since = "0.20.0", forRemoval = true)
+    public void unscheduled() {
+    }
+
+    /**
+     * @deprecated Scheduled for removal in 0.24.0.
+     */
+    @Deprecated(since = "0.21.0", forRemoval = true)
+    public void removeNow() {
+    }
+}
+EOF
+
+  python3 scripts/scan-removal-ready-deprecations.py \
+    --output-json report.json \
+    --output-md report.md >/dev/null
+
+  python3 - <<'PY'
+import json
+from pathlib import Path
+
+report = json.loads(Path("report.json").read_text())
+assert report["findingCount"] == 1
+symbols = report["issuePlans"][0]["symbols"]
+assert [symbol["name"] for symbol in symbols] == ["removeNow"]
+assert "unscheduled" not in Path("report.md").read_text()
+PY
+
+  finish_test
+  pass "test_next_javadoc_does_not_leak_backwards"
+}
+
+test_type_inheritance_resets_between_types() {
+  echo "Running test_type_inheritance_resets_between_types"
+  run_test
+
+  cat > pom.xml <<'EOF'
+<project>
+  <version>0.24.0-SNAPSHOT</version>
+</project>
+EOF
+
+  mkdir -p ta4j-core/src/main/java/org/ta4j/core/legacy
+  cat > ta4j-core/src/main/java/org/ta4j/core/legacy/LegacyBridge.java <<'EOF'
+package org.ta4j.core.legacy;
+
+/**
+ * @deprecated Scheduled for removal in 0.24.0.
+ */
+@Deprecated(since = "0.20.0", forRemoval = true)
+public class LegacyBridge {
+
+    @Deprecated(since = "0.20.0", forRemoval = true)
+    public void removeNow() {
+    }
+}
+
+@Deprecated(since = "0.21.0", forRemoval = true)
+class UnscheduledBridge {
+
+    @Deprecated(since = "0.21.0", forRemoval = true)
+    void keepAround() {
+    }
+}
+EOF
+
+  python3 scripts/scan-removal-ready-deprecations.py \
+    --output-json report.json \
+    --output-md report.md >/dev/null
+
+  python3 - <<'PY'
+import json
+from pathlib import Path
+
+report = json.loads(Path("report.json").read_text())
+assert report["findingCount"] == 2
+symbols = report["issuePlans"][0]["symbols"]
+assert [symbol["name"] for symbol in symbols] == ["LegacyBridge", "removeNow"]
+assert "keepAround" not in Path("report.md").read_text()
+PY
+
+  finish_test
+  pass "test_type_inheritance_resets_between_types"
+}
+
+test_initialized_field_is_classified_as_field() {
+  echo "Running test_initialized_field_is_classified_as_field"
+  run_test
+
+  cat > pom.xml <<'EOF'
+<project>
+  <version>0.24.0-SNAPSHOT</version>
+</project>
+EOF
+
+  mkdir -p ta4j-core/src/main/java/org/ta4j/core/legacy
+  cat > ta4j-core/src/main/java/org/ta4j/core/legacy/LegacyFieldHolder.java <<'EOF'
+package org.ta4j.core.legacy;
+
+/**
+ * @deprecated Scheduled for removal in 0.24.0.
+ */
+@Deprecated(since = "0.20.0", forRemoval = true)
+public class LegacyFieldHolder {
+
+    @Deprecated(since = "0.20.0", forRemoval = true)
+    public static final LegacyFieldHolder LEGACY = createLegacy();
+
+    private static LegacyFieldHolder createLegacy() {
+        return new LegacyFieldHolder();
+    }
+}
+EOF
+
+  python3 scripts/scan-removal-ready-deprecations.py \
+    --output-json report.json \
+    --output-md report.md >/dev/null
+
+  python3 - <<'PY'
+import json
+from pathlib import Path
+
+report = json.loads(Path("report.json").read_text())
+symbols = report["issuePlans"][0]["symbols"]
+assert any(symbol["name"] == "LEGACY" and symbol["kind"] == "field" for symbol in symbols)
+assert "createLegacy" not in Path("report.md").read_text()
+PY
+
+  finish_test
+  pass "test_initialized_field_is_classified_as_field"
+}
+
 test_requires_snapshot_version() {
   echo "Running test_requires_snapshot_version"
   run_test
@@ -212,4 +360,7 @@ EOF
 test_matching_snapshot_detection
 test_notifier_version_detection
 test_mixed_versions_in_one_file
+test_next_javadoc_does_not_leak_backwards
+test_type_inheritance_resets_between_types
+test_initialized_field_is_classified_as_field
 test_requires_snapshot_version

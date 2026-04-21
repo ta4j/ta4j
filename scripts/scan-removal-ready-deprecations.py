@@ -101,15 +101,14 @@ def find_symbols(text: str, file_stem: str, target_removal_version: str) -> list
         candidates.append(symbol)
 
     symbols: list[dict[str, object]] = []
-    inherited_versions: set[str] = set()
+    current_type_versions: set[str] = set()
     for candidate in candidates:
         explicit_versions = set(candidate.pop("explicitRemovalVersions", []))
         if is_type_kind(str(candidate["kind"])):
+            current_type_versions = explicit_versions
             candidate_versions = explicit_versions
-            if explicit_versions:
-                inherited_versions = explicit_versions
         else:
-            candidate_versions = explicit_versions or inherited_versions
+            candidate_versions = explicit_versions or current_type_versions
 
         if target_removal_version in candidate_versions:
             symbols.append(candidate)
@@ -134,15 +133,15 @@ def parse_symbol(declaration: str, file_stem: str) -> dict[str, object] | None:
         if match is not None:
             return {"name": match.group(1), "kind": kind}
 
+    field_match = re.search(r"([A-Za-z_][A-Za-z0-9_]*)\s*(?:=|;)", compact)
+    if field_match is not None:
+        return {"name": field_match.group(1), "kind": "field"}
+
     callable_match = re.search(r"([A-Za-z_][A-Za-z0-9_]*)\s*\(", compact)
     if callable_match is not None:
         name = callable_match.group(1)
         kind = "constructor" if name == file_stem else "method"
         return {"name": name, "kind": kind}
-
-    field_match = re.search(r"([A-Za-z_][A-Za-z0-9_]*)\s*(?:=|;)", compact)
-    if field_match is not None:
-        return {"name": field_match.group(1), "kind": "field"}
 
     return None
 
@@ -166,7 +165,12 @@ def symbol_context(text: str, matches: list[re.Match[str]], index: int, match: r
     if start == -1:
         start = match.start()
 
-    end = matches[index + 1].start() if index + 1 < len(matches) else len(text)
+    if index + 1 < len(matches):
+        next_annotation_start = matches[index + 1].start()
+        next_javadoc = javadoc_start(text, next_annotation_start)
+        end = next_javadoc if next_javadoc != -1 else next_annotation_start
+    else:
+        end = len(text)
     return text[start:end]
 
 
