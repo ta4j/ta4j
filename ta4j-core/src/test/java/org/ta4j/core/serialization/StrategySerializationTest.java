@@ -288,6 +288,42 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void versionTwoPayloadInvalidNestedTypeIncludesLocation() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "BadType",
+                  "entryRule": { "type": 5, "args": ["SMA(2)", "SMA(3)"] },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, v2Json));
+
+        assertThat(exception).hasMessageContaining("entryRule.type");
+    }
+
+    @Test
+    public void versionTwoPayloadInvalidNumericArgumentIncludesLocation() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "BadNumber",
+                  "entryRule": { "type": "OverIndicatorRule", "args": ["RSI(14)", "abc"] },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, v2Json));
+
+        assertThat(exception).hasMessageContaining("entryRule.args[1]");
+    }
+
+    @Test
     public void roundTripCompositeStrategy() {
         BarSeries series = new MockBarSeriesBuilder().withData(10, 12, 11, 13, 15, 14).build();
         ClosePriceIndicator close = new ClosePriceIndicator(series);

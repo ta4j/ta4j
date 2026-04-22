@@ -69,6 +69,7 @@ public final class StrategySerialization {
     private static final String V2_ARGS_KEY = "args";
     private static final String DEFAULT_V2_STRATEGY_TYPE = "BaseStrategy";
     private static final int SUPPORTED_V2_VERSION = 2;
+    private static final String VERSION_TOKEN = "\"" + VERSION_KEY + "\"";
 
     private StrategySerialization() {
     }
@@ -148,6 +149,9 @@ public final class StrategySerialization {
         if (json == null || json.trim().isEmpty()) {
             return null;
         }
+        if (!json.contains(VERSION_TOKEN)) {
+            return null;
+        }
 
         JsonElement root;
         try {
@@ -194,7 +198,7 @@ public final class StrategySerialization {
     }
 
     private static Rule buildV2Rule(BarSeries series, JsonObject object, String location) {
-        String type = readRequiredString(object, TYPE_KEY);
+        String type = readRequiredString(object, TYPE_KEY, location + "." + TYPE_KEY);
         JsonElement rulesElement = object.get(RULES_KEY);
         if (rulesElement != null && !rulesElement.isJsonNull()) {
             JsonArray rulesArray = requireArray(rulesElement, location + "." + RULES_KEY);
@@ -294,7 +298,7 @@ public final class StrategySerialization {
         }
 
         JsonObject object = element.getAsJsonObject();
-        String type = readRequiredString(object, TYPE_KEY);
+        String type = readRequiredString(object, TYPE_KEY, location + "." + TYPE_KEY);
         String normalizedType = normalizeIndicatorType(type);
 
         if ("ClosePriceIndicator".equals(normalizedType)) {
@@ -392,7 +396,11 @@ public final class StrategySerialization {
             if (text.endsWith("%")) {
                 text = text.substring(0, text.length() - 1).trim();
             }
-            return Double.parseDouble(text);
+            try {
+                return Double.parseDouble(text);
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + text, ex);
+            }
         }
         throw new IllegalArgumentException("Unsupported numeric argument at " + location + ": " + element);
     }
@@ -417,14 +425,18 @@ public final class StrategySerialization {
     }
 
     private static String readRequiredString(JsonObject object, String key) {
+        return readRequiredString(object, key, key);
+    }
+
+    private static String readRequiredString(JsonObject object, String key, String location) {
         JsonElement element = object.get(key);
         if (element == null || element.isJsonNull() || !element.isJsonPrimitive()
                 || !element.getAsJsonPrimitive().isString()) {
-            throw new IllegalArgumentException("Expected string at " + key);
+            throw new IllegalArgumentException("Expected string at " + location);
         }
         String value = element.getAsString().trim();
         if (value.isEmpty()) {
-            throw new IllegalArgumentException("Expected non-blank string at " + key);
+            throw new IllegalArgumentException("Expected non-blank string at " + location);
         }
         return value;
     }
