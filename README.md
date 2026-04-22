@@ -632,6 +632,13 @@ Strategy conciseStrategy = Strategy.fromJson(series, v2StrategyJson);
 String canonicalJson = conciseStrategy.toJson(); // emits the canonical descriptor/v1 form
 ```
 
+The first cut keeps the shorthand deliberately bounded: use `BaseStrategy`
+metadata (`name`, `unstableBars`, `startingType`), `entryRule` / `exitRule`,
+`AndRule` / `OrRule`, rule aliases like `CrossedUpIndicatorRule`,
+`CrossedDownIndicatorRule`, `OverIndicatorRule`, `UnderIndicatorRule`,
+`StopGainRule`, and `StopLossRule`, plus indicators such as `ClosePrice`,
+`SMA(...)`, `EMA(...)`, and `RSI(...)` in string or object form.
+
 Bar series serialization (Java):
 - Bar data, the `NumFactory`, and the `BarBuilderFactory` configuration are preserved across the round-trip.
 - `ConcurrentBarSeries` reinitializes its locks after deserialization and recreates the trade bar builder lazily.

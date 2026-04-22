@@ -1,5 +1,8 @@
 ## Unreleased
 
+### Added
+- **Concise strategy JSON authoring with `Strategy.fromJson(...)` (`CF-113`)**: You can now hand ta4j an opt-in `version: 2` strategy envelope instead of writing the full descriptor tree, which makes quick SMA/EMA crossover setups, RSI threshold rules, stop-gain/stop-loss exits, and short-starting strategies much easier to generate or edit. The first cut accepts `entryRule` / `exitRule`, `AndRule` / `OrRule`, shorthand indicators like `ClosePrice`, `SMA(...)`, `EMA(...)`, and `RSI(...)`, then normalizes everything back to the canonical descriptor JSON internally.
+
 ### Changed
 - **Agent guidance stays accurate across repo and personal workflows**: `scripts/agents_for_target.sh` guidance now clearly describes path-scoped `AGENTS.md` discovery from the current repo/workspace root, so contributors can use it for file-targeted lookup without assuming it also covers personal PR/comment workflow guidance.
 

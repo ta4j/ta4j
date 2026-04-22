@@ -5,6 +5,7 @@ package org.ta4j.core.serialization;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.junit.Assert.assertThrows;
 
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -21,6 +22,7 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
@@ -207,6 +209,49 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void versionTwoPayloadSupportsNestedIndicatorObjectsAndShortStartingType() {
+        BarSeries series = new MockBarSeriesBuilder().withData(10, 11, 9, 12, 13, 8, 14, 15, 7, 16).build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "type": "org.ta4j.core.BaseStrategy",
+                  "name": "Short_RSI_Mean_Reversion",
+                  "unstableBars": "2",
+                  "startingType": "sell",
+                  "entryRule": {
+                    "type": "OverIndicatorRule",
+                    "args": [
+                      { "type": "RSI", "args": [14] },
+                      60
+                    ]
+                  },
+                  "exitRule": {
+                    "type": "CrossedDownIndicatorRule",
+                    "args": [
+                      { "type": "EMA", "args": [{ "type": "RSI", "args": [14] }, 5] },
+                      50
+                    ]
+                  }
+                }
+                """;
+
+        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePriceIndicator, 14);
+        Rule expectedEntry = new OverIndicatorRule(rsiIndicator, 60);
+        Rule expectedExit = new CrossedDownIndicatorRule(new EMAIndicator(rsiIndicator, 5), 50);
+        Strategy expected = new BaseStrategy("Short_RSI_Mean_Reversion", expectedEntry, expectedExit, 2,
+                TradeType.SELL);
+        Strategy expectedCanonical = Strategy.fromJson(series, expected.toJson());
+
+        Strategy restored = Strategy.fromJson(series, v2Json);
+
+        assertThat(restored).isInstanceOf(BaseStrategy.class);
+        assertThat(restored.getStartingType()).isEqualTo(TradeType.SELL);
+        assertThat(restored.getUnstableBars()).isEqualTo(2);
+        assertThat(restored.toJson()).isEqualTo(expectedCanonical.toJson());
+    }
+
+    @Test
     public void versionTwoPayloadUnsupportedVersionThrows() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
         String v2Json = """
@@ -218,8 +263,10 @@ public class StrategySerializationTest {
                 }
                 """;
 
-        assertThatThrownBy(() -> Strategy.fromJson(series, v2Json)).isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unsupported strategy JSON version: 3");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, v2Json));
+
+        assertThat(exception).hasMessageContaining("Unsupported strategy JSON version: 3");
     }
 
     @Test
@@ -234,8 +281,10 @@ public class StrategySerializationTest {
                 }
                 """;
 
-        assertThatThrownBy(() -> Strategy.fromJson(series, v2Json)).isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Unsupported v2 rule type: XorRule");
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, v2Json));
+
+        assertThat(exception).hasMessageContaining("Unsupported v2 rule type: XorRule");
     }
 
     @Test
