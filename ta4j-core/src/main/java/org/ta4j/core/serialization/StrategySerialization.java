@@ -15,11 +15,31 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Locale;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonSyntaxException;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.indicators.averages.EMAIndicator;
+import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.rules.AndRule;
+import org.ta4j.core.rules.CrossedDownIndicatorRule;
+import org.ta4j.core.rules.CrossedUpIndicatorRule;
+import org.ta4j.core.rules.OrRule;
+import org.ta4j.core.rules.OverIndicatorRule;
+import org.ta4j.core.rules.StopGainRule;
+import org.ta4j.core.rules.StopLossRule;
+import org.ta4j.core.rules.UnderIndicatorRule;
 import org.ta4j.core.strategy.named.NamedStrategy;
 
 /**
@@ -36,6 +56,15 @@ public final class StrategySerialization {
     private static final String UNSTABLE_BARS_KEY = "unstableBars";
     private static final String STARTING_TYPE_KEY = "startingType";
     private static final String ARGS_KEY = "__args";
+    private static final String VERSION_KEY = "version";
+    private static final String NAME_KEY = "name";
+    private static final String TYPE_KEY = "type";
+    private static final String ENTRY_RULE_KEY = "entryRule";
+    private static final String EXIT_RULE_KEY = "exitRule";
+    private static final String RULES_KEY = "rules";
+    private static final String V2_ARGS_KEY = "args";
+    private static final String DEFAULT_V2_STRATEGY_TYPE = "BaseStrategy";
+    private static final int SUPPORTED_V2_VERSION = 2;
 
     private StrategySerialization() {
     }
@@ -101,8 +130,357 @@ public final class StrategySerialization {
      * @return reconstructed strategy
      */
     public static Strategy fromJson(BarSeries series, String json) {
+        ComponentDescriptor v2Descriptor = tryParseV2Descriptor(series, json);
+        if (v2Descriptor != null) {
+            return fromDescriptor(series, v2Descriptor);
+        }
         ComponentDescriptor descriptor = ComponentSerialization.parse(json);
         return fromDescriptor(series, descriptor);
+    }
+
+    private static ComponentDescriptor tryParseV2Descriptor(BarSeries series, String json) {
+        if (json == null || json.trim().isEmpty()) {
+            return null;
+        }
+
+        JsonElement root;
+        try {
+            root = JsonParser.parseString(json);
+        } catch (JsonSyntaxException ex) {
+            return null;
+        }
+
+        if (!root.isJsonObject()) {
+            return null;
+        }
+
+        JsonObject object = root.getAsJsonObject();
+        if (!object.has(VERSION_KEY)) {
+            return null;
+        }
+
+        int version = readRequiredInt(object.get(VERSION_KEY), VERSION_KEY);
+        if (version != SUPPORTED_V2_VERSION) {
+            throw new IllegalArgumentException("Unsupported strategy JSON version: " + version);
+        }
+
+        Strategy strategy = buildV2Strategy(series, object);
+        return describe(strategy);
+    }
+
+    private static Strategy buildV2Strategy(BarSeries series, JsonObject object) {
+        String strategyType = readOptionalString(object, TYPE_KEY);
+        if (strategyType != null && !DEFAULT_V2_STRATEGY_TYPE.equals(strategyType)
+                && !BaseStrategy.class.getName().equals(strategyType)) {
+            throw new IllegalArgumentException("Unsupported v2 strategy type: " + strategyType);
+        }
+
+        String name = readRequiredString(object, NAME_KEY);
+        Rule entryRule = buildV2Rule(series, readRequiredObject(object, ENTRY_RULE_KEY), ENTRY_RULE_KEY);
+        Rule exitRule = buildV2Rule(series, readRequiredObject(object, EXIT_RULE_KEY), EXIT_RULE_KEY);
+        int unstableBars = readOptionalInt(object, UNSTABLE_BARS_KEY, 0);
+        TradeType startingType = readOptionalTradeType(object, STARTING_TYPE_KEY, TradeType.BUY);
+
+        if (startingType == TradeType.BUY) {
+            return new BaseStrategy(name, entryRule, exitRule, unstableBars);
+        }
+        return new BaseStrategy(name, entryRule, exitRule, unstableBars, startingType);
+    }
+
+    private static Rule buildV2Rule(BarSeries series, JsonObject object, String location) {
+        String type = readRequiredString(object, TYPE_KEY);
+        JsonElement rulesElement = object.get(RULES_KEY);
+        if (rulesElement != null && !rulesElement.isJsonNull()) {
+            JsonArray rulesArray = requireArray(rulesElement, location + "." + RULES_KEY);
+            if (rulesArray.size() != 2) {
+                throw new IllegalArgumentException(
+                        "V2 composite rules require exactly 2 child rules at " + location + "." + RULES_KEY);
+            }
+            Rule left = buildV2Rule(series, requireObject(rulesArray.get(0), location + "." + RULES_KEY + "[0]"),
+                    location + "." + RULES_KEY + "[0]");
+            Rule right = buildV2Rule(series, requireObject(rulesArray.get(1), location + "." + RULES_KEY + "[1]"),
+                    location + "." + RULES_KEY + "[1]");
+            return switch (type) {
+            case "AndRule" -> new AndRule(left, right);
+            case "OrRule" -> new OrRule(left, right);
+            default -> throw new IllegalArgumentException("Unsupported v2 composite rule type: " + type);
+            };
+        }
+
+        JsonArray args = requireArray(object.get(V2_ARGS_KEY), location + "." + V2_ARGS_KEY);
+        return switch (type) {
+        case "CrossedUpIndicatorRule" -> buildCrossedUpRule(series, args, location);
+        case "CrossedDownIndicatorRule" -> buildCrossedDownRule(series, args, location);
+        case "OverIndicatorRule" -> buildOverRule(series, args, location);
+        case "UnderIndicatorRule" -> buildUnderRule(series, args, location);
+        case "StopLossRule" -> buildStopLossRule(series, args, location);
+        case "StopGainRule" -> buildStopGainRule(series, args, location);
+        default -> throw new IllegalArgumentException("Unsupported v2 rule type: " + type);
+        };
+    }
+
+    private static Rule buildCrossedUpRule(BarSeries series, JsonArray args, String location) {
+        ensureArgCount(args, 2, location);
+        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]");
+        JsonElement thresholdOrIndicator = args.get(1);
+        if (looksLikeIndicator(thresholdOrIndicator)) {
+            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]");
+            return new CrossedUpIndicatorRule(indicator, secondIndicator);
+        }
+        return new CrossedUpIndicatorRule(indicator, parseNumericArgument(thresholdOrIndicator, location + ".args[1]"));
+    }
+
+    private static Rule buildCrossedDownRule(BarSeries series, JsonArray args, String location) {
+        ensureArgCount(args, 2, location);
+        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]");
+        JsonElement thresholdOrIndicator = args.get(1);
+        if (looksLikeIndicator(thresholdOrIndicator)) {
+            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]");
+            return new CrossedDownIndicatorRule(indicator, secondIndicator);
+        }
+        return new CrossedDownIndicatorRule(indicator,
+                parseNumericArgument(thresholdOrIndicator, location + ".args[1]"));
+    }
+
+    private static Rule buildOverRule(BarSeries series, JsonArray args, String location) {
+        ensureArgCount(args, 2, location);
+        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]");
+        JsonElement thresholdOrIndicator = args.get(1);
+        if (looksLikeIndicator(thresholdOrIndicator)) {
+            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]");
+            return new OverIndicatorRule(indicator, secondIndicator);
+        }
+        return new OverIndicatorRule(indicator, parseNumericArgument(thresholdOrIndicator, location + ".args[1]"));
+    }
+
+    private static Rule buildUnderRule(BarSeries series, JsonArray args, String location) {
+        ensureArgCount(args, 2, location);
+        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]");
+        JsonElement thresholdOrIndicator = args.get(1);
+        if (looksLikeIndicator(thresholdOrIndicator)) {
+            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]");
+            return new UnderIndicatorRule(indicator, secondIndicator);
+        }
+        return new UnderIndicatorRule(indicator, parseNumericArgument(thresholdOrIndicator, location + ".args[1]"));
+    }
+
+    private static Rule buildStopLossRule(BarSeries series, JsonArray args, String location) {
+        ensureArgCount(args, 1, location);
+        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
+        return new StopLossRule(closePriceIndicator, parseNumericArgument(args.get(0), location + ".args[0]"));
+    }
+
+    private static Rule buildStopGainRule(BarSeries series, JsonArray args, String location) {
+        ensureArgCount(args, 1, location);
+        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
+        return new StopGainRule(closePriceIndicator, parseNumericArgument(args.get(0), location + ".args[0]"));
+    }
+
+    private static Indicator<Num> buildV2Indicator(BarSeries series, JsonElement element, String location) {
+        if (element == null || element.isJsonNull()) {
+            throw new IllegalArgumentException("Missing indicator expression at " + location);
+        }
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+            return buildV2IndicatorFromString(series, element.getAsString(), location);
+        }
+        if (!element.isJsonObject()) {
+            throw new IllegalArgumentException("Unsupported v2 indicator payload at " + location + ": " + element);
+        }
+
+        JsonObject object = element.getAsJsonObject();
+        String type = readRequiredString(object, TYPE_KEY);
+        String normalizedType = normalizeIndicatorType(type);
+
+        if ("ClosePriceIndicator".equals(normalizedType)) {
+            return new ClosePriceIndicator(series);
+        }
+
+        JsonArray args = requireArray(object.get(V2_ARGS_KEY), location + "." + V2_ARGS_KEY);
+        if (args.size() == 1) {
+            Indicator<Num> closePriceIndicator = new ClosePriceIndicator(series);
+            int barCount = readRequiredInt(args.get(0), location + ".args[0]");
+            return instantiateParameterizedIndicator(normalizedType, closePriceIndicator, barCount, location);
+        }
+        if (args.size() == 2) {
+            Indicator<Num> baseIndicator = buildV2Indicator(series, args.get(0), location + ".args[0]");
+            int barCount = readRequiredInt(args.get(1), location + ".args[1]");
+            return instantiateParameterizedIndicator(normalizedType, baseIndicator, barCount, location);
+        }
+
+        throw new IllegalArgumentException("Unsupported v2 indicator arg count at " + location + ": " + args.size());
+    }
+
+    private static Indicator<Num> buildV2IndicatorFromString(BarSeries series, String expression, String location) {
+        String trimmed = expression == null ? null : expression.trim();
+        if (trimmed == null || trimmed.isEmpty()) {
+            throw new IllegalArgumentException("Empty indicator expression at " + location);
+        }
+        if ("ClosePrice".equals(trimmed) || "ClosePrice()".equals(trimmed) || "ClosePriceIndicator".equals(trimmed)) {
+            return new ClosePriceIndicator(series);
+        }
+
+        int openParen = trimmed.indexOf('(');
+        int closeParen = trimmed.lastIndexOf(')');
+        if (openParen <= 0 || closeParen != trimmed.length() - 1) {
+            throw new IllegalArgumentException("Unsupported v2 indicator expression: " + trimmed);
+        }
+
+        String type = normalizeIndicatorType(trimmed.substring(0, openParen).trim());
+        String argumentText = trimmed.substring(openParen + 1, closeParen).trim();
+        if (argumentText.isEmpty()) {
+            throw new IllegalArgumentException("Missing indicator arguments in expression: " + trimmed);
+        }
+
+        Indicator<Num> closePriceIndicator = new ClosePriceIndicator(series);
+        int barCount = parseInt(argumentText, location);
+        return instantiateParameterizedIndicator(type, closePriceIndicator, barCount, location);
+    }
+
+    private static Indicator<Num> instantiateParameterizedIndicator(String type, Indicator<Num> baseIndicator,
+            int barCount, String location) {
+        return switch (type) {
+        case "SMAIndicator" -> new SMAIndicator(baseIndicator, barCount);
+        case "EMAIndicator" -> new EMAIndicator(baseIndicator, barCount);
+        case "RSIIndicator" -> new RSIIndicator(baseIndicator, barCount);
+        default -> throw new IllegalArgumentException("Unsupported v2 indicator type at " + location + ": " + type);
+        };
+    }
+
+    private static String normalizeIndicatorType(String type) {
+        if (type == null) {
+            return null;
+        }
+        return switch (type) {
+        case "SMA" -> "SMAIndicator";
+        case "EMA" -> "EMAIndicator";
+        case "RSI" -> "RSIIndicator";
+        case "ClosePrice" -> "ClosePriceIndicator";
+        default -> type;
+        };
+    }
+
+    private static boolean looksLikeIndicator(JsonElement element) {
+        if (element == null || element.isJsonNull()) {
+            return false;
+        }
+        if (element.isJsonObject()) {
+            return true;
+        }
+        if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+            return false;
+        }
+        String value = element.getAsString().trim();
+        return "ClosePrice".equals(value) || "ClosePrice()".equals(value) || "ClosePriceIndicator".equals(value)
+                || value.contains("(");
+    }
+
+    private static Number parseNumericArgument(JsonElement element, String location) {
+        if (element == null || element.isJsonNull()) {
+            throw new IllegalArgumentException("Missing numeric argument at " + location);
+        }
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
+            return element.getAsDouble();
+        }
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+            String text = element.getAsString().trim();
+            if (text.endsWith("%")) {
+                text = text.substring(0, text.length() - 1).trim();
+            }
+            return Double.parseDouble(text);
+        }
+        throw new IllegalArgumentException("Unsupported numeric argument at " + location + ": " + element);
+    }
+
+    private static JsonObject readRequiredObject(JsonObject object, String key) {
+        JsonElement element = object.get(key);
+        return requireObject(element, key);
+    }
+
+    private static JsonObject requireObject(JsonElement element, String location) {
+        if (element == null || element.isJsonNull() || !element.isJsonObject()) {
+            throw new IllegalArgumentException("Expected object at " + location);
+        }
+        return element.getAsJsonObject();
+    }
+
+    private static JsonArray requireArray(JsonElement element, String location) {
+        if (element == null || element.isJsonNull() || !element.isJsonArray()) {
+            throw new IllegalArgumentException("Expected array at " + location);
+        }
+        return element.getAsJsonArray();
+    }
+
+    private static String readRequiredString(JsonObject object, String key) {
+        JsonElement element = object.get(key);
+        if (element == null || element.isJsonNull() || !element.isJsonPrimitive()
+                || !element.getAsJsonPrimitive().isString()) {
+            throw new IllegalArgumentException("Expected string at " + key);
+        }
+        String value = element.getAsString().trim();
+        if (value.isEmpty()) {
+            throw new IllegalArgumentException("Expected non-blank string at " + key);
+        }
+        return value;
+    }
+
+    private static String readOptionalString(JsonObject object, String key) {
+        JsonElement element = object.get(key);
+        if (element == null || element.isJsonNull()) {
+            return null;
+        }
+        if (!element.isJsonPrimitive() || !element.getAsJsonPrimitive().isString()) {
+            throw new IllegalArgumentException("Expected string at " + key);
+        }
+        String value = element.getAsString().trim();
+        return value.isEmpty() ? null : value;
+    }
+
+    private static int readOptionalInt(JsonObject object, String key, int defaultValue) {
+        JsonElement element = object.get(key);
+        if (element == null || element.isJsonNull()) {
+            return defaultValue;
+        }
+        return readRequiredInt(element, key);
+    }
+
+    private static int readRequiredInt(JsonElement element, String location) {
+        if (element == null || element.isJsonNull()) {
+            throw new IllegalArgumentException("Missing integer value at " + location);
+        }
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
+            return element.getAsInt();
+        }
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+            return parseInt(element.getAsString().trim(), location);
+        }
+        throw new IllegalArgumentException("Expected integer value at " + location);
+    }
+
+    private static int parseInt(String value, String location) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Expected integer value at " + location + ": " + value, ex);
+        }
+    }
+
+    private static TradeType readOptionalTradeType(JsonObject object, String key, TradeType defaultValue) {
+        String value = readOptionalString(object, key);
+        if (value == null) {
+            return defaultValue;
+        }
+        try {
+            return TradeType.valueOf(value.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Unsupported trade type at " + key + ": " + value, ex);
+        }
+    }
+
+    private static void ensureArgCount(JsonArray args, int expectedCount, String location) {
+        if (args.size() != expectedCount) {
+            throw new IllegalArgumentException(
+                    "Expected " + expectedCount + " args at " + location + " but found " + args.size());
+        }
     }
 
     /**

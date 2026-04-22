@@ -129,6 +129,116 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void versionTwoPayloadNormalizesToCanonicalDescriptor() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10).build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "LLM_Generated_Momentum",
+                  "unstableBars": 1,
+                  "entryRule": {
+                    "type": "CrossedUpIndicatorRule",
+                    "args": ["SMA(12)", "SMA(26)"]
+                  },
+                  "exitRule": {
+                    "type": "OrRule",
+                    "rules": [
+                      { "type": "StopLossRule", "args": ["2.5%"] },
+                      { "type": "CrossedDownIndicatorRule", "args": ["SMA(12)", "SMA(26)"] }
+                    ]
+                  }
+                }
+                """;
+
+        Strategy restored = Strategy.fromJson(series, v2Json);
+
+        ComponentDescriptor expectedDescriptor = ComponentDescriptor.builder()
+                .withType("BaseStrategy")
+                .withLabel("LLM_Generated_Momentum")
+                .withParameters(Map.of("unstableBars", 1))
+                .addComponent(ComponentDescriptor.builder()
+                        .withType("CrossedUpIndicatorRule")
+                        .withLabel("entry")
+                        .addComponent(ComponentDescriptor.builder()
+                                .withType("SMAIndicator")
+                                .withParameters(Map.of("barCount", 12))
+                                .addComponent(ComponentDescriptor.builder().withType("ClosePriceIndicator").build())
+                                .build())
+                        .addComponent(ComponentDescriptor.builder()
+                                .withType("SMAIndicator")
+                                .withParameters(Map.of("barCount", 26))
+                                .addComponent(ComponentDescriptor.builder().withType("ClosePriceIndicator").build())
+                                .build())
+                        .build())
+                .addComponent(ComponentDescriptor.builder()
+                        .withType("OrRule")
+                        .withLabel("exit")
+                        .withParameters(Map.of("__customName", "OrRule(StopLossRule,CrossedDownIndicatorRule)"))
+                        .addComponent(ComponentDescriptor.builder()
+                                .withType("StopLossRule")
+                                .withLabel("rule1")
+                                .withParameters(Map.of("lossPercentage", "2.5"))
+                                .addComponent(ComponentDescriptor.builder().withType("ClosePriceIndicator").build())
+                                .build())
+                        .addComponent(ComponentDescriptor.builder()
+                                .withType("CrossedDownIndicatorRule")
+                                .withLabel("rule2")
+                                .addComponent(ComponentDescriptor.builder()
+                                        .withType("SMAIndicator")
+                                        .withParameters(Map.of("barCount", 12))
+                                        .addComponent(
+                                                ComponentDescriptor.builder().withType("ClosePriceIndicator").build())
+                                        .build())
+                                .addComponent(ComponentDescriptor.builder()
+                                        .withType("SMAIndicator")
+                                        .withParameters(Map.of("barCount", 26))
+                                        .addComponent(
+                                                ComponentDescriptor.builder().withType("ClosePriceIndicator").build())
+                                        .build())
+                                .build())
+                        .build())
+                .build();
+
+        assertThat(restored).isInstanceOf(BaseStrategy.class);
+        assertThat(restored.getName()).isEqualTo("LLM_Generated_Momentum");
+        assertThat(restored.getUnstableBars()).isEqualTo(1);
+        assertThat(restored.toJson()).isEqualTo(ComponentSerialization.toJson(expectedDescriptor));
+        assertThat(restored.toJson()).doesNotContain("\"version\":2");
+    }
+
+    @Test
+    public void versionTwoPayloadUnsupportedVersionThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String v2Json = """
+                {
+                  "version": 3,
+                  "name": "Unsupported",
+                  "entryRule": { "type": "CrossedUpIndicatorRule", "args": ["SMA(2)", "SMA(3)"] },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+
+        assertThatThrownBy(() -> Strategy.fromJson(series, v2Json)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported strategy JSON version: 3");
+    }
+
+    @Test
+    public void versionTwoPayloadUnsupportedRuleThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "UnsupportedRule",
+                  "entryRule": { "type": "XorRule", "args": ["SMA(2)", "SMA(3)"] },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+
+        assertThatThrownBy(() -> Strategy.fromJson(series, v2Json)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("Unsupported v2 rule type: XorRule");
+    }
+
+    @Test
     public void roundTripCompositeStrategy() {
         BarSeries series = new MockBarSeriesBuilder().withData(10, 12, 11, 13, 15, 14).build();
         ClosePriceIndicator close = new ClosePriceIndicator(series);

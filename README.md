@@ -612,6 +612,26 @@ Indicator<?> restoredIndicator = Indicator.fromJson(series, rsiJson);
 Strategy restoredStrategy = Strategy.fromJson(series, strategyJson);
 ```
 
+Author concise strategy JSON with the opt-in `version: 2` envelope:
+```java
+String v2StrategyJson = """
+        {
+          "version": 2,
+          "name": "LLM_Generated_Momentum",
+          "entryRule": { "type": "CrossedUpIndicatorRule", "args": ["SMA(12)", "SMA(26)"] },
+          "exitRule": {
+            "type": "OrRule",
+            "rules": [
+              { "type": "StopLossRule", "args": ["2.5%"] },
+              { "type": "CrossedDownIndicatorRule", "args": ["SMA(12)", "SMA(26)"] }
+            ]
+          }
+        }
+        """;
+Strategy conciseStrategy = Strategy.fromJson(series, v2StrategyJson);
+String canonicalJson = conciseStrategy.toJson(); // emits the canonical descriptor/v1 form
+```
+
 Bar series serialization (Java):
 - Bar data, the `NumFactory`, and the `BarBuilderFactory` configuration are preserved across the round-trip.
 - `ConcurrentBarSeries` reinitializes its locks after deserialization and recreates the trade bar builder lazily.
