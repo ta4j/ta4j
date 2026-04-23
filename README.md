@@ -617,7 +617,7 @@ Author concise strategy JSON with the opt-in `version: 2` envelope:
 String v2StrategyJson = """
         {
           "version": 2,
-          "name": "LLM_Generated_Momentum",
+          "name": "Momentum_Crossover",
           "entryRule": { "type": "CrossedUpIndicatorRule", "args": ["SMA(12)", "SMA(26)"] },
           "exitRule": {
             "type": "OrRule",
@@ -632,12 +632,16 @@ Strategy conciseStrategy = Strategy.fromJson(series, v2StrategyJson);
 String canonicalJson = conciseStrategy.toJson(); // emits the canonical descriptor/v1 form
 ```
 
-The first cut keeps the shorthand deliberately bounded: use `BaseStrategy`
-metadata (`name`, `unstableBars`, `startingType`), `entryRule` / `exitRule`,
-`AndRule` / `OrRule`, rule aliases like `CrossedUpIndicatorRule`,
-`CrossedDownIndicatorRule`, `OverIndicatorRule`, `UnderIndicatorRule`,
-`StopGainRule`, and `StopLossRule`, plus indicators such as `ClosePrice`,
-`SMA(...)`, `EMA(...)`, and `RSI(...)` in string or object form.
+The shorthand is deliberately bounded and strict:
+
+| JSON area | Accepted values |
+| --- | --- |
+| Strategy metadata | `name`, optional `type` (`BaseStrategy`), optional non-negative integer `unstableBars`, optional `startingType` (`BUY` or `SELL`) |
+| Strategy rules | Required `entryRule` and `exitRule` objects |
+| Composite rules | `AndRule` and `OrRule`, each with exactly two child `rules` |
+| Leaf rules | `CrossedUpIndicatorRule`, `CrossedDownIndicatorRule`, `OverIndicatorRule`, `UnderIndicatorRule`, `StopGainRule`, and `StopLossRule` |
+| Indicators | `ClosePrice`, `SMA(...)`, `EMA(...)`, and `RSI(...)` in string or object form, with positive integer bar counts |
+| Numeric thresholds | Finite numbers or numeric strings, with an optional trailing `%` for stop percentages |
 
 Bar series serialization (Java):
 - Bar data, the `NumFactory`, and the `BarBuilderFactory` configuration are preserved across the round-trip.

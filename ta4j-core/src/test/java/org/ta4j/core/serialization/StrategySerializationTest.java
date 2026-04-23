@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.Assert.assertThrows;
 
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -136,7 +137,7 @@ public class StrategySerializationTest {
         String v2Json = """
                 {
                   "version": 2,
-                  "name": "LLM_Generated_Momentum",
+                  "name": "Momentum_Crossover",
                   "unstableBars": 1,
                   "entryRule": {
                     "type": "CrossedUpIndicatorRule",
@@ -156,7 +157,7 @@ public class StrategySerializationTest {
 
         ComponentDescriptor expectedDescriptor = ComponentDescriptor.builder()
                 .withType("BaseStrategy")
-                .withLabel("LLM_Generated_Momentum")
+                .withLabel("Momentum_Crossover")
                 .withParameters(Map.of("unstableBars", 1))
                 .addComponent(ComponentDescriptor.builder()
                         .withType("CrossedUpIndicatorRule")
@@ -202,7 +203,7 @@ public class StrategySerializationTest {
                 .build();
 
         assertThat(restored).isInstanceOf(BaseStrategy.class);
-        assertThat(restored.getName()).isEqualTo("LLM_Generated_Momentum");
+        assertThat(restored.getName()).isEqualTo("Momentum_Crossover");
         assertThat(restored.getUnstableBars()).isEqualTo(1);
         assertThat(restored.toJson()).isEqualTo(ComponentSerialization.toJson(expectedDescriptor));
         assertThat(restored.toJson()).doesNotContain("\"version\":2");
@@ -321,6 +322,160 @@ public class StrategySerializationTest {
                 () -> Strategy.fromJson(series, v2Json));
 
         assertThat(exception).hasMessageContaining("entryRule.args[1]");
+    }
+
+    @Test
+    public void versionTwoPayloadDecimalVersionThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String v2Json = """
+                {
+                  "version": 2.5,
+                  "name": "BadVersion",
+                  "entryRule": { "type": "CrossedUpIndicatorRule", "args": ["SMA(2)", "SMA(3)"] },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, v2Json));
+
+        assertThat(exception).hasMessageContaining("version").hasMessageContaining("2.5");
+    }
+
+    @Test
+    public void versionTwoPayloadDecimalUnstableBarsThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "BadUnstable",
+                  "unstableBars": 1.9,
+                  "entryRule": { "type": "CrossedUpIndicatorRule", "args": ["SMA(2)", "SMA(3)"] },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, v2Json));
+
+        assertThat(exception).hasMessageContaining("unstableBars").hasMessageContaining("1.9");
+    }
+
+    @Test
+    public void versionTwoPayloadNegativeUnstableBarsThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "BadUnstable",
+                  "unstableBars": -1,
+                  "entryRule": { "type": "CrossedUpIndicatorRule", "args": ["SMA(2)", "SMA(3)"] },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, v2Json));
+
+        assertThat(exception).hasMessageContaining("unstableBars").hasMessageContaining(">= 0");
+    }
+
+    @Test
+    public void versionTwoPayloadDecimalObjectIndicatorBarCountThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "BadBarCount",
+                  "entryRule": {
+                    "type": "OverIndicatorRule",
+                    "args": [
+                      { "type": "RSI", "args": [14.5] },
+                      50
+                    ]
+                  },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, v2Json));
+
+        assertThat(exception).hasMessageContaining("entryRule.args[0].args[0]").hasMessageContaining("14.5");
+    }
+
+    @Test
+    public void versionTwoPayloadNonPositiveIndicatorBarCountThrows() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String zeroBarCountJson = """
+                {
+                  "version": 2,
+                  "name": "ZeroBarCount",
+                  "entryRule": { "type": "OverIndicatorRule", "args": ["SMA(0)", 50] },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+        String negativeBarCountJson = """
+                {
+                  "version": 2,
+                  "name": "NegativeBarCount",
+                  "entryRule": {
+                    "type": "OverIndicatorRule",
+                    "args": [
+                      { "type": "RSI", "args": [-14] },
+                      50
+                    ]
+                  },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+
+        IllegalArgumentException zeroException = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, zeroBarCountJson));
+        IllegalArgumentException negativeException = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, negativeBarCountJson));
+
+        assertThat(zeroException).hasMessageContaining("entryRule.args[0]").hasMessageContaining("> 0");
+        assertThat(negativeException).hasMessageContaining("entryRule.args[0].args[0]").hasMessageContaining("> 0");
+    }
+
+    @Test
+    public void versionTwoPayloadNonFiniteNumericArgumentsThrow() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+
+        for (String numericValue : List.of("\"NaN\"", "\"Infinity\"", "\"1e309\"", "1e309")) {
+            String v2Json = """
+                    {
+                      "version": 2,
+                      "name": "BadNumber",
+                      "entryRule": { "type": "OverIndicatorRule", "args": ["RSI(14)", %s] },
+                      "exitRule": { "type": "StopLossRule", "args": ["1.5%%"] }
+                    }
+                    """.formatted(numericValue);
+
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                    () -> Strategy.fromJson(series, v2Json));
+
+            assertThat(exception).hasMessageContaining("entryRule.args[1]");
+        }
+    }
+
+    @Test
+    public void canonicalPayloadWithTopLevelVersionMetadataStillUsesDescriptorPath() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4).build();
+        String canonicalJson = "{\"version\":2,\"type\":\"BaseStrategy\",\"label\":\"Canonical\","
+                + "\"parameters\":{\"unstableBars\":1},\"rules\":[{\"type\":\"" + SerializableRule.class.getName()
+                + "\",\"label\":\"entry\",\"parameters\":{\"satisfied\":true}},{\"type\":\""
+                + SerializableRule.class.getName() + "\",\"label\":\"exit\",\"parameters\":{\"satisfied\":false}}]}";
+
+        Strategy restored = Strategy.fromJson(series, canonicalJson);
+
+        assertThat(restored).isInstanceOf(BaseStrategy.class);
+        assertThat(restored.getName()).isEqualTo("Canonical");
+        assertThat(restored.getUnstableBars()).isEqualTo(1);
+        TradingRecord record = new BaseTradingRecord();
+        assertThat(restored.shouldEnter(3, record)).isTrue();
+        assertThat(restored.shouldExit(3, record)).isFalse();
     }
 
     @Test

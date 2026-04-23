@@ -168,6 +168,9 @@ public final class StrategySerialization {
         if (!object.has(VERSION_KEY)) {
             return null;
         }
+        if (!looksLikeV2Envelope(object)) {
+            return null;
+        }
 
         int version = readRequiredInt(object.get(VERSION_KEY), VERSION_KEY);
         if (version != SUPPORTED_V2_VERSION) {
@@ -189,6 +192,7 @@ public final class StrategySerialization {
         Rule entryRule = buildV2Rule(series, readRequiredObject(object, ENTRY_RULE_KEY), ENTRY_RULE_KEY);
         Rule exitRule = buildV2Rule(series, readRequiredObject(object, EXIT_RULE_KEY), EXIT_RULE_KEY);
         int unstableBars = readOptionalInt(object, UNSTABLE_BARS_KEY, 0);
+        requireNonNegativeInt(unstableBars, UNSTABLE_BARS_KEY);
         TradeType startingType = readOptionalTradeType(object, STARTING_TYPE_KEY, TradeType.BUY);
 
         if (startingType == TradeType.BUY) {
@@ -309,12 +313,14 @@ public final class StrategySerialization {
         if (args.size() == 1) {
             Indicator<Num> closePriceIndicator = new ClosePriceIndicator(series);
             int barCount = readRequiredInt(args.get(0), location + ".args[0]");
-            return instantiateParameterizedIndicator(normalizedType, closePriceIndicator, barCount, location);
+            return instantiateParameterizedIndicator(normalizedType, closePriceIndicator, barCount, location,
+                    location + ".args[0]");
         }
         if (args.size() == 2) {
             Indicator<Num> baseIndicator = buildV2Indicator(series, args.get(0), location + ".args[0]");
             int barCount = readRequiredInt(args.get(1), location + ".args[1]");
-            return instantiateParameterizedIndicator(normalizedType, baseIndicator, barCount, location);
+            return instantiateParameterizedIndicator(normalizedType, baseIndicator, barCount, location,
+                    location + ".args[1]");
         }
 
         throw new IllegalArgumentException("Unsupported v2 indicator arg count at " + location + ": " + args.size());
@@ -343,15 +349,24 @@ public final class StrategySerialization {
 
         Indicator<Num> closePriceIndicator = new ClosePriceIndicator(series);
         int barCount = parseInt(argumentText, location);
-        return instantiateParameterizedIndicator(type, closePriceIndicator, barCount, location);
+        return instantiateParameterizedIndicator(type, closePriceIndicator, barCount, location, location);
     }
 
     private static Indicator<Num> instantiateParameterizedIndicator(String type, Indicator<Num> baseIndicator,
-            int barCount, String location) {
+            int barCount, String location, String barCountLocation) {
         return switch (type) {
-        case "SMAIndicator" -> new SMAIndicator(baseIndicator, barCount);
-        case "EMAIndicator" -> new EMAIndicator(baseIndicator, barCount);
-        case "RSIIndicator" -> new RSIIndicator(baseIndicator, barCount);
+        case "SMAIndicator" -> {
+            requirePositiveInt(barCount, barCountLocation);
+            yield new SMAIndicator(baseIndicator, barCount);
+        }
+        case "EMAIndicator" -> {
+            requirePositiveInt(barCount, barCountLocation);
+            yield new EMAIndicator(baseIndicator, barCount);
+        }
+        case "RSIIndicator" -> {
+            requirePositiveInt(barCount, barCountLocation);
+            yield new RSIIndicator(baseIndicator, barCount);
+        }
         default -> throw new IllegalArgumentException("Unsupported v2 indicator type at " + location + ": " + type);
         };
     }
@@ -389,18 +404,14 @@ public final class StrategySerialization {
             throw new IllegalArgumentException("Missing numeric argument at " + location);
         }
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
-            return element.getAsDouble();
+            return parseFiniteDouble(element.getAsString(), location);
         }
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
             String text = element.getAsString().trim();
             if (text.endsWith("%")) {
                 text = text.substring(0, text.length() - 1).trim();
             }
-            try {
-                return Double.parseDouble(text);
-            } catch (NumberFormatException ex) {
-                throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + text, ex);
-            }
+            return parseFiniteDouble(text, location);
         }
         throw new IllegalArgumentException("Unsupported numeric argument at " + location + ": " + element);
     }
@@ -466,7 +477,7 @@ public final class StrategySerialization {
             throw new IllegalArgumentException("Missing integer value at " + location);
         }
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isNumber()) {
-            return element.getAsInt();
+            return parseInt(element.getAsString(), location);
         }
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
             return parseInt(element.getAsString().trim(), location);
@@ -475,10 +486,14 @@ public final class StrategySerialization {
     }
 
     private static int parseInt(String value, String location) {
+        String trimmed = value == null ? "" : value.trim();
+        if (!isIntegerLiteral(trimmed)) {
+            throw new IllegalArgumentException("Expected integer value at " + location + ": " + trimmed);
+        }
         try {
-            return Integer.parseInt(value);
+            return Integer.parseInt(trimmed);
         } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("Expected integer value at " + location + ": " + value, ex);
+            throw new IllegalArgumentException("Expected integer value at " + location + ": " + trimmed, ex);
         }
     }
 
@@ -498,6 +513,51 @@ public final class StrategySerialization {
         if (args.size() != expectedCount) {
             throw new IllegalArgumentException(
                     "Expected " + expectedCount + " args at " + location + " but found " + args.size());
+        }
+    }
+
+    private static boolean looksLikeV2Envelope(JsonObject object) {
+        return object.has(NAME_KEY) || object.has(ENTRY_RULE_KEY) || object.has(EXIT_RULE_KEY);
+    }
+
+    private static boolean isIntegerLiteral(String value) {
+        if (value == null || value.isEmpty()) {
+            return false;
+        }
+        int start = value.charAt(0) == '-' || value.charAt(0) == '+' ? 1 : 0;
+        if (start == value.length()) {
+            return false;
+        }
+        for (int index = start; index < value.length(); index++) {
+            char character = value.charAt(index);
+            if (character < '0' || character > '9') {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static double parseFiniteDouble(String value, String location) {
+        try {
+            double parsed = Double.parseDouble(value);
+            if (!Double.isFinite(parsed)) {
+                throw new NumberFormatException("non-finite numeric value");
+            }
+            return parsed;
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + value, ex);
+        }
+    }
+
+    private static void requireNonNegativeInt(int value, String location) {
+        if (value < 0) {
+            throw new IllegalArgumentException("Expected integer value >= 0 at " + location + ": " + value);
+        }
+    }
+
+    private static void requirePositiveInt(int value, String location) {
+        if (value <= 0) {
+            throw new IllegalArgumentException("Expected integer value > 0 at " + location + ": " + value);
         }
     }
 
