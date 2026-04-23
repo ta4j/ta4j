@@ -70,7 +70,7 @@ public class BaseBarSeries implements BarSeries {
      *
      * @since 0.22.7
      */
-    private final transient List<WeakReference<BarSeriesListener>> listeners = new CopyOnWriteArrayList<>();
+    private transient List<WeakReference<BarSeriesListener>> listeners = new CopyOnWriteArrayList<>();
 
     /**
      * Convenience constructor for BaseBarSeries minimizing upfront parameter
@@ -271,6 +271,7 @@ public class BaseBarSeries implements BarSeries {
         if (!this.bars.isEmpty()) {
             if (replace) {
                 this.bars.set(this.bars.size() - 1, bar);
+                notifyBarReplaced(this.seriesEndIndex);
                 return;
             }
             final int lastBarIndex = this.bars.size() - 1;
@@ -290,12 +291,7 @@ public class BaseBarSeries implements BarSeries {
         this.seriesEndIndex++;
         removeExceedingBars();
 
-        // Notify listeners
-        if (replace) {
-            notifyBarReplaced(this.seriesEndIndex);
-        } else {
-            notifyBarAdded(this.seriesEndIndex);
-        }
+        notifyBarAdded(this.seriesEndIndex);
     }
 
     /**
@@ -362,10 +358,18 @@ public class BaseBarSeries implements BarSeries {
         }
     }
 
+    /**
+     * Reinitializes transient listener list after deserialization.
+     */
+    private Object readResolve() {
+        this.listeners = new CopyOnWriteArrayList<>();
+        return this;
+    }
+
     /** @since 0.22.7 */
     @Override
     public void addListener(final BarSeriesListener listener) {
-        if (listener == null || listeners == null)
+        if (listener == null)
             return;
         for (WeakReference<BarSeriesListener> ref : listeners) {
             if (ref.get() == listener)
@@ -377,13 +381,11 @@ public class BaseBarSeries implements BarSeries {
     /** @since 0.22.7 */
     @Override
     public void removeListener(final BarSeriesListener listener) {
-        if (listeners == null)
-            return;
         listeners.removeIf(ref -> ref.get() == listener || ref.get() == null);
     }
 
     private void notifyBarAdded(final int index) {
-        if (listeners == null || listeners.isEmpty())
+        if (listeners.isEmpty())
             return;
         final Bar bar = getBar(index);
         listeners.removeIf(ref -> ref.get() == null);
@@ -395,7 +397,7 @@ public class BaseBarSeries implements BarSeries {
     }
 
     private void notifyBarReplaced(final int index) {
-        if (listeners == null || listeners.isEmpty())
+        if (listeners.isEmpty())
             return;
         final Bar bar = getBar(index);
         listeners.removeIf(ref -> ref.get() == null);

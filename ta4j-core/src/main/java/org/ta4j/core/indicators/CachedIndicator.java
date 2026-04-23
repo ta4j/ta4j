@@ -126,13 +126,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> implements
      */
     @Override
     public void onBarAdded(final int index, final Bar bar) {
-        // Trigger lazy computation when accessed via getValue(index)
-        // The try-catch handles indicators not yet ready with sufficient data
-        try {
-            getValue(index);
-        } catch (Exception e) {
-            // Indicator may not be ready to compute yet (insufficient data)
-        }
+        getValue(index);
     }
 
     @Override
