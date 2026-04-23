@@ -445,6 +445,42 @@ jobs:
           sha=$(git rev-parse HEAD)
           echo "release_commit=$sha" >> $GITHUB_OUTPUT
 
+      - name: Gate release-ready deprecations
+        id: deprecation_release_gate
+        if: steps.dry_run.outputs.dryRun != 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.versions.outputs.release }}
+          REPORT_JSON: ${{ runner.temp }}/release-ready-deprecations.json
+          REPORT_MD: ${{ runner.temp }}/release-ready-deprecations.md
+        run: |
+          mvn -B -q -pl ta4j-examples -am compile
+
+          set +e
+          mvn -B -q -pl ta4j-examples exec:java \
+            -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner \
+            "-Dexec.args=--repo-root ${GITHUB_WORKSPACE} --pom-file pom.xml --target-removal-version ${RELEASE_VERSION} --include-overdue --fail-on-due --output-json ${REPORT_JSON} --output-md ${REPORT_MD}"
+          scan_status=$?
+          set -e
+
+          echo "report_json=$REPORT_JSON" >> $GITHUB_OUTPUT
+          echo "report_md=$REPORT_MD" >> $GITHUB_OUTPUT
+
+          {
+            echo ""
+            cat "$REPORT_MD"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          exit "$scan_status"
+
+      - name: Upload release-ready deprecation gate report
+        if: always() && steps.deprecation_release_gate.outputs.report_json != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-ready-deprecations-${{ steps.versions.outputs.release }}
+          path: |
+            ${{ steps.deprecation_release_gate.outputs.report_json }}
+            ${{ steps.deprecation_release_gate.outputs.report_md }}
+
       # -----------------------
       # Apply Next Snapshot Version
       # -----------------------
@@ -512,6 +548,8 @@ jobs:
 
             const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
             const issuePlans = Array.isArray(report.issuePlans) ? report.issuePlans : [];
+            const removalVersion = report.removalVersion;
+            const activeMarkers = new Set(issuePlans.map((plan) => plan.issueMarker).filter(Boolean));
 
             function escapeSearchPhrase(value) {
               return `"${value.replace(/["\\\\]/g, "\\\\$&")}"`;
@@ -531,9 +569,23 @@ jobs:
               return existingIssue;
             }
 
+            async function findManagedIssuesForVersion() {
+              if (!removalVersion) {
+                return [];
+              }
+
+              const markerSearch = `ta4j:deprecation-removal version=${removalVersion}`;
+              const issues = await github.paginate(github.rest.search.issuesAndPullRequests, {
+                q: `repo:${owner}/${repo} is:issue in:body ${escapeSearchPhrase(markerSearch)}`,
+                per_page: 100
+              });
+              return issues.filter((issue) => !issue.pull_request && (issue.body || "").includes(markerSearch));
+            }
+
             let createdCount = 0;
             let updatedCount = 0;
             let reopenedCount = 0;
+            let closedStaleCount = 0;
 
             for (const plan of issuePlans) {
               const marker = plan.issueMarker;
@@ -583,10 +635,26 @@ jobs:
               };
             }
 
+            for (const issue of await findManagedIssuesForVersion()) {
+              const body = issue.body || "";
+              const stillPlanned = [...activeMarkers].some((marker) => body.includes(marker));
+              if (!stillPlanned && issue.state === "open") {
+                await github.rest.issues.update({
+                  owner,
+                  repo,
+                  issue_number: issue.number,
+                  state: "closed",
+                  state_reason: "completed"
+                });
+                closedStaleCount += 1;
+              }
+            }
+
             report.githubIssueSummary = {
               createdCount,
               updatedCount,
               reopenedCount,
+              closedStaleCount,
               planCount: issuePlans.length
             };
 
@@ -597,6 +665,7 @@ jobs:
               `- Created: ${createdCount}`,
               `- Updated: ${updatedCount}`,
               `- Reopened: ${reopenedCount}`,
+              `- Closed stale: ${closedStaleCount}`,
               ""
             ];
 
@@ -628,6 +697,7 @@ jobs:
             core.setOutput("created_count", String(createdCount));
             core.setOutput("updated_count", String(updatedCount));
             core.setOutput("reopened_count", String(reopenedCount));
+            core.setOutput("closed_stale_count", String(closedStaleCount));
 
       - name: Upload removal-ready deprecation report
         if: always() && steps.deprecation_scan.outputs.report_json != ''
@@ -718,6 +788,8 @@ jobs:
           REMOVAL_PLAN_COUNT: ${{ steps.deprecation_issues.outputs.plan_count }}
           REMOVAL_CREATED_COUNT: ${{ steps.deprecation_issues.outputs.created_count }}
           REMOVAL_UPDATED_COUNT: ${{ steps.deprecation_issues.outputs.updated_count }}
+          REMOVAL_REOPENED_COUNT: ${{ steps.deprecation_issues.outputs.reopened_count }}
+          REMOVAL_CLOSED_STALE_COUNT: ${{ steps.deprecation_issues.outputs.closed_stale_count }}
         with:
           github-token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
           script: |
@@ -729,6 +801,8 @@ jobs:
             const removalPlanCount = process.env.REMOVAL_PLAN_COUNT || "0";
             const removalCreatedCount = process.env.REMOVAL_CREATED_COUNT || "0";
             const removalUpdatedCount = process.env.REMOVAL_UPDATED_COUNT || "0";
+            const removalReopenedCount = process.env.REMOVAL_REOPENED_COUNT || "0";
+            const removalClosedStaleCount = process.env.REMOVAL_CLOSED_STALE_COUNT || "0";
 
             if (!releaseVersion || !nextVersion || !releaseCommit || !releaseBranch || !baseBranch) {
               throw new Error("Missing required release metadata for PR creation.");
@@ -745,7 +819,7 @@ jobs:
               `- Set version to ${releaseVersion}`,
               `- Generated release notes: release/${releaseVersion}.md`,
               `- Bump to next snapshot: ${nextVersion}`,
-              `- Synced removal-ready deprecation issues: ${removalPlanCount} plan(s), ${removalCreatedCount} created, ${removalUpdatedCount} updated`,
+              `- Synced removal-ready deprecation issues: ${removalPlanCount} plan(s), ${removalCreatedCount} created, ${removalUpdatedCount} updated, ${removalReopenedCount} reopened, ${removalClosedStaleCount} stale closed`,
               "",
               "<!-- release-meta",
               `releaseVersion: ${releaseVersion}`,
@@ -835,6 +909,8 @@ jobs:
           REMOVAL_PLAN_COUNT: ${{ steps.deprecation_issues.outputs.plan_count }}
           REMOVAL_CREATED_COUNT: ${{ steps.deprecation_issues.outputs.created_count }}
           REMOVAL_UPDATED_COUNT: ${{ steps.deprecation_issues.outputs.updated_count }}
+          REMOVAL_REOPENED_COUNT: ${{ steps.deprecation_issues.outputs.reopened_count }}
+          REMOVAL_CLOSED_STALE_COUNT: ${{ steps.deprecation_issues.outputs.closed_stale_count }}
         run: |
           echo "summary: dryRun=${DRY_RUN:-}"
           echo "summary: directPush=${DIRECT_PUSH:-}"
@@ -845,3 +921,5 @@ jobs:
           echo "summary: removalIssuePlans=${REMOVAL_PLAN_COUNT:-0}"
           echo "summary: removalIssuesCreated=${REMOVAL_CREATED_COUNT:-0}"
           echo "summary: removalIssuesUpdated=${REMOVAL_UPDATED_COUNT:-0}"
+          echo "summary: removalIssuesReopened=${REMOVAL_REOPENED_COUNT:-0}"
+          echo "summary: removalIssuesClosedStale=${REMOVAL_CLOSED_STALE_COUNT:-0}"

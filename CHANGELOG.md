@@ -2,7 +2,7 @@
 
 ### Changed
 - **Agent guidance stays accurate across repo and personal workflows**: `scripts/agents_for_target.sh` guidance now clearly describes path-scoped `AGENTS.md` discovery from the current repo/workspace root, so contributors can use it for file-targeted lookup without assuming it also covers personal PR/comment workflow guidance.
-- **Release prep now opens cleanup issues for removal-ready APIs**: `prepare-release.yml` now runs a Java-based removal-ready deprecation scanner after bumping to the next snapshot, groups matching `@Deprecated(forRemoval = true)` symbols by source file, and creates or refreshes deduplicated GitHub issues plus an artifact report so maintainers can clear scheduled removals without a manual repo sweep.
+- **Release prep now keeps removal-ready APIs on schedule**: `prepare-release.yml` now runs a Java-based removal-ready deprecation scanner before release commits to block due or overdue removals, then scans the next snapshot to create, refresh, reopen, or close stale cleanup issues for matching `@Deprecated(forRemoval = true)` symbols.
 
 ## 0.22.6 (2026-04-01)
 

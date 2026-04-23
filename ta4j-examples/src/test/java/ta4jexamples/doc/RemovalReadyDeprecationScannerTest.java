@@ -147,9 +147,10 @@ public class RemovalReadyDeprecationScannerTest {
                 }
                 """);
 
-        JsonObject plan = firstPlan(runScanner());
+        JsonObject report = runScanner();
+        JsonObject plan = firstPlan(report);
         assertSymbolNames(plan.getAsJsonArray("symbols"), "removeNow");
-        assertFalse(Files.readString(tempDir.resolve("report.md")).contains("unscheduled"));
+        assertSymbolNames(report.getAsJsonArray("unscheduledSymbols"), "unscheduled");
     }
 
     @Test
@@ -182,7 +183,7 @@ public class RemovalReadyDeprecationScannerTest {
         assertEquals(2, report.get("findingCount").getAsInt());
         JsonObject plan = firstPlan(report);
         assertSymbolNames(plan.getAsJsonArray("symbols"), "LegacyBridge", "removeNow");
-        assertFalse(Files.readString(tempDir.resolve("report.md")).contains("keepAround"));
+        assertSymbolNames(report.getAsJsonArray("unscheduledSymbols"), "UnscheduledBridge", "keepAround");
     }
 
     @Test
@@ -212,6 +213,161 @@ public class RemovalReadyDeprecationScannerTest {
         assertEquals("LEGACY", field.get("name").getAsString());
         assertEquals("field", field.get("kind").getAsString());
         assertFalse(Files.readString(tempDir.resolve("report.md")).contains("createLegacy"));
+    }
+
+    @Test
+    public void testTargetVersionIncludesOverdueFindingsWhenRequested() throws IOException {
+        writePom("<version>0.24.1-SNAPSHOT</version>");
+        writeJava("ta4j-core/src/main/java/org/ta4j/core/legacy/OverdueBridge.java", """
+                package org.ta4j.core.legacy;
+
+                /**
+                 * @deprecated Scheduled for removal in 0.24.0.
+                 */
+                @Deprecated(since = "0.20.0", forRemoval = true)
+                public class OverdueBridge {
+                }
+                """);
+
+        JsonObject report = runScanner("--target-removal-version", "0.24.1", "--include-overdue");
+        assertEquals("0.24.1", report.get("removalVersion").getAsString());
+        assertEquals(1, report.get("overdueFindingCount").getAsInt());
+        assertEquals(1, report.get("findingCount").getAsInt());
+
+        JsonObject symbol = firstPlan(report).getAsJsonArray("symbols").get(0).getAsJsonObject();
+        assertEquals("overdue", symbol.get("status").getAsString());
+    }
+
+    @Test
+    public void testFailOnDueReturnsNonZeroAfterWritingReport() throws IOException {
+        writePom("<version>0.24.0-SNAPSHOT</version>");
+        writeJava("ta4j-core/src/main/java/org/ta4j/core/legacy/DueBridge.java", """
+                package org.ta4j.core.legacy;
+
+                /**
+                 * @deprecated Scheduled for removal in 0.24.0.
+                 */
+                @Deprecated(since = "0.20.0", forRemoval = true)
+                public class DueBridge {
+                }
+                """);
+
+        Path outputJson = tempDir.resolve("report.json");
+        Path outputMarkdown = tempDir.resolve("report.md");
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+        int exitCode = RemovalReadyDeprecationScanner.run(
+                scannerArgs(outputJson, outputMarkdown, "--target-removal-version", "0.24.0", "--fail-on-due"),
+                new PrintStream(new ByteArrayOutputStream()), new PrintStream(stderr));
+
+        assertEquals(2, exitCode);
+        assertTrue(Files.exists(outputJson));
+        assertTrue(Files.exists(outputMarkdown));
+        assertTrue(stderr.toString(StandardCharsets.UTF_8).contains("deprecation gate failed"));
+    }
+
+    @Test
+    public void testUnscheduledForRemovalIsReportedButNotPlanned() throws IOException {
+        writePom("<version>0.24.0-SNAPSHOT</version>");
+        writeJava("ta4j-core/src/main/java/org/ta4j/core/legacy/UnscheduledBridge.java", """
+                package org.ta4j.core.legacy;
+
+                @Deprecated(
+                        since = "0.20.0",
+                        forRemoval = true
+                )
+                public class UnscheduledBridge {
+                }
+                """);
+
+        JsonObject report = runScanner();
+        assertEquals(0, report.get("issuePlanCount").getAsInt());
+        assertEquals(1, report.get("unscheduledFindingCount").getAsInt());
+        assertSymbolNames(report.getAsJsonArray("unscheduledSymbols"), "UnscheduledBridge");
+    }
+
+    @Test
+    public void testMultilineAnnotationAndCommentFalsePositives() throws IOException {
+        writePom("<version>0.24.0-SNAPSHOT</version>");
+        writeJava("ta4j-core/src/main/java/org/ta4j/core/legacy/MultilineBridge.java", """
+                package org.ta4j.core.legacy;
+
+                public class MultilineBridge {
+                    // @Deprecated(since = "0.20.0", forRemoval = true)
+                    // Scheduled for removal in 0.24.0.
+
+                    /**
+                     * @deprecated Scheduled for removal in 0.24.0.
+                     */
+                    @Deprecated(
+                            since = "0.20.0",
+                            forRemoval =
+                                    true
+                    )
+                    public void removeNow() {
+                    }
+                }
+                """);
+
+        JsonObject report = runScanner();
+        assertEquals(1, report.get("findingCount").getAsInt());
+        assertSymbolNames(firstPlan(report).getAsJsonArray("symbols"), "removeNow");
+    }
+
+    @Test
+    public void testNestedDeprecatedTypeResetsInheritedVersions() throws IOException {
+        writePom("<version>0.24.0-SNAPSHOT</version>");
+        writeJava("ta4j-core/src/main/java/org/ta4j/core/legacy/NestedBridge.java", """
+                package org.ta4j.core.legacy;
+
+                /**
+                 * @deprecated Scheduled for removal in 0.24.0.
+                 */
+                @Deprecated(since = "0.20.0", forRemoval = true)
+                public class NestedBridge {
+
+                    @Deprecated(since = "0.20.0", forRemoval = true)
+                    public void removeOuterMember() {
+                    }
+
+                    @Deprecated(since = "0.20.0", forRemoval = true)
+                    static class UnscheduledNestedBridge {
+
+                        @Deprecated(since = "0.20.0", forRemoval = true)
+                        void keepNestedMember() {
+                        }
+                    }
+                }
+                """);
+
+        JsonObject report = runScanner();
+        assertEquals(2, report.get("findingCount").getAsInt());
+        assertEquals(2, report.get("unscheduledFindingCount").getAsInt());
+        assertSymbolNames(firstPlan(report).getAsJsonArray("symbols"), "NestedBridge", "removeOuterMember");
+    }
+
+    @Test
+    public void testIssuePlanIncludesVersionMarkerAndReplacementHint() throws IOException {
+        writePom("<version>0.24.0-SNAPSHOT</version>");
+        writeJava("ta4j-core/src/main/java/org/ta4j/core/legacy/ReplacementBridge.java",
+                """
+                        package org.ta4j.core.legacy;
+
+                        import org.ta4j.core.utils.DeprecationNotifier;
+
+                        /**
+                         * @deprecated Use {@link ModernBridge}. Scheduled for removal in 0.24.0.
+                         */
+                        @Deprecated(since = "0.20.0", forRemoval = true)
+                        public class ReplacementBridge {
+                            {
+                                DeprecationNotifier.warnOnce(ReplacementBridge.class, "org.ta4j.core.legacy.ModernBridge", "0.24.0");
+                            }
+                        }
+                        """);
+
+        JsonObject plan = firstPlan(runScanner());
+        assertTrue(plan.get("issueMarker").getAsString().contains("version=0.24.0"));
+        assertTrue(plan.get("issueBody").getAsString().contains("org.ta4j.core.legacy.ModernBridge"));
     }
 
     @Test
@@ -261,15 +417,22 @@ public class RemovalReadyDeprecationScannerTest {
         assertTrue(stderr.toString(StandardCharsets.UTF_8).contains("expected a SNAPSHOT version"));
     }
 
-    private JsonObject runScanner() throws IOException {
+    private JsonObject runScanner(String... extraArgs) throws IOException {
         Path outputJson = tempDir.resolve("report.json");
         Path outputMarkdown = tempDir.resolve("report.md");
-        int exitCode = RemovalReadyDeprecationScanner.run(
-                new String[] { "--repo-root", tempDir.toString(), "--output-json", outputJson.toString(), "--output-md",
-                        outputMarkdown.toString() },
+        int exitCode = RemovalReadyDeprecationScanner.run(scannerArgs(outputJson, outputMarkdown, extraArgs),
                 new PrintStream(new ByteArrayOutputStream()), new PrintStream(new ByteArrayOutputStream()));
         assertEquals(0, exitCode);
         return JsonParser.parseString(Files.readString(outputJson, StandardCharsets.UTF_8)).getAsJsonObject();
+    }
+
+    private String[] scannerArgs(Path outputJson, Path outputMarkdown, String... extraArgs) {
+        String[] baseArgs = { "--repo-root", tempDir.toString(), "--output-json", outputJson.toString(), "--output-md",
+                outputMarkdown.toString() };
+        String[] args = new String[baseArgs.length + extraArgs.length];
+        System.arraycopy(baseArgs, 0, args, 0, baseArgs.length);
+        System.arraycopy(extraArgs, 0, args, baseArgs.length, extraArgs.length);
+        return args;
     }
 
     private JsonObject firstPlan(JsonObject report) {
