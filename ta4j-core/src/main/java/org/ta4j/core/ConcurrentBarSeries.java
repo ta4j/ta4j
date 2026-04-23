@@ -105,6 +105,12 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         tradeBarBuilder = null;
     }
 
+    @Override
+    protected Object readResolve() {
+        super.readResolve();
+        return this;
+    }
+
     private static List<Bar> cut(final List<Bar> bars, final int startIndex, final int endIndex) {
         return new ArrayList<>(bars.subList(startIndex, endIndex));
     }

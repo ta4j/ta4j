@@ -361,7 +361,7 @@ public class BaseBarSeries implements BarSeries {
     /**
      * Reinitializes transient listener list after deserialization.
      */
-    private Object readResolve() {
+    protected Object readResolve() {
         this.listeners = new CopyOnWriteArrayList<>();
         return this;
     }
