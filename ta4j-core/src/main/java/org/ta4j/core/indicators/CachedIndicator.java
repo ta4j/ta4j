@@ -99,8 +99,6 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> implements
         super(series);
         int limit = series.getMaximumBarCount();
         this.cache = new CachedBuffer<>(limit);
-        // Auto-subscribe to bar events for incremental computation
-        series.addListener(this);
     }
 
     /**
@@ -124,9 +122,18 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> implements
      *
      * @since 0.22.7
      */
+    /**
+     * Called when a new bar is added to the series. Subclasses or external
+     * subscribers can use this for custom incremental logic. CachedIndicator
+     * does not auto-subscribe — the cache already handles incremental
+     * computation lazily via {@link #getValue(int)}.
+     *
+     * @since 0.22.7
+     */
     @Override
     public void onBarAdded(final int index, final Bar bar) {
-        getValue(index);
+        // No-op: CachedIndicator handles incrementality via getValue() cache.
+        // Custom subscribers (e.g. IncrementalZigZag) override this.
     }
 
     @Override

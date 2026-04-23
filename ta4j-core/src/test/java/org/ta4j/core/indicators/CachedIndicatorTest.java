@@ -302,25 +302,51 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     @Test
     public void lastBarCacheInvalidatesWhenLastBarIsReplacedDuringRead() throws Exception {
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-        barSeries.addBar(barSeries.barBuilder()
-                .closePrice(1).openPrice(1).highPrice(1).lowPrice(1)
-                .volume(0).amount(0).trades(0).build());
+
+        CountDownLatch tradesReadStarted = new CountDownLatch(1);
+        CountDownLatch allowTradesRead = new CountDownLatch(1);
+        BlockingTradesBar blockingBar = new BlockingTradesBar(barSeries.barBuilder()
+                .closePrice(1)
+                .openPrice(1)
+                .highPrice(1)
+                .lowPrice(1)
+                .volume(0)
+                .amount(0)
+                .trades(0)
+                .build(), tradesReadStarted, allowTradesRead);
+        barSeries.addBar(blockingBar);
 
         ClosePriceCountingIndicator indicator = new ClosePriceCountingIndicator(barSeries);
         int endIndex = barSeries.getEndIndex();
 
-        // First read: computes and caches
         assertNumEquals(1, indicator.getValue(endIndex));
         assertEquals(1, indicator.getCalculationCount());
 
-        // Replace bar with different close price
-        barSeries.addBar(barSeries.barBuilder()
-                .closePrice(2).openPrice(2).highPrice(2).lowPrice(2)
-                .volume(0).amount(0).trades(0).build(), true);
+        blockingBar.enableBlocking();
 
-        // Second read: cache was invalidated by onBarAdded, should recompute
-        assertNumEquals(2, indicator.getValue(endIndex));
-        assertEquals(2, indicator.getCalculationCount());
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        try {
+            Future<Num> future = executor.submit(() -> indicator.getValue(endIndex));
+            assertTrue("Expected last-bar cache read to start in time", tradesReadStarted.await(30, TimeUnit.SECONDS));
+
+            barSeries.addBar(barSeries.barBuilder()
+                    .closePrice(2)
+                    .openPrice(2)
+                    .highPrice(2)
+                    .lowPrice(2)
+                    .volume(0)
+                    .amount(0)
+                    .trades(0)
+                    .build(), true);
+
+            allowTradesRead.countDown();
+
+            assertNumEquals(2, future.get(30, TimeUnit.SECONDS));
+            assertEquals(2, indicator.getCalculationCount());
+        } finally {
+            executor.shutdownNow();
+            executor.awaitTermination(30, TimeUnit.SECONDS);
+        }
     }
 
     @Test
