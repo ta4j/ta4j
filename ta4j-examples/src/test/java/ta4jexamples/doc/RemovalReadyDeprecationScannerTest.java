@@ -417,6 +417,29 @@ public class RemovalReadyDeprecationScannerTest {
         assertTrue(stderr.toString(StandardCharsets.UTF_8).contains("expected a SNAPSHOT version"));
     }
 
+    @Test
+    public void testRejectsOutOfRangeVersionComponentsWithClearError() throws IOException {
+        writePom("<version>0.24.0-SNAPSHOT</version>");
+        writeJava("ta4j-core/src/main/java/org/ta4j/core/legacy/LargeVersionBridge.java", """
+                package org.ta4j.core.legacy;
+
+                /**
+                 * @deprecated Scheduled for removal in 999999999999.0.0.
+                 */
+                @Deprecated(since = "0.20.0", forRemoval = true)
+                public class LargeVersionBridge {
+                }
+                """);
+
+        ByteArrayOutputStream stderr = new ByteArrayOutputStream();
+        int exitCode = RemovalReadyDeprecationScanner.run(scannerArgs(tempDir.resolve("report.json"),
+                tempDir.resolve("report.md"), "--target-removal-version", "0.24.0"),
+                new PrintStream(new ByteArrayOutputStream()), new PrintStream(stderr));
+
+        assertEquals(1, exitCode);
+        assertTrue(stderr.toString(StandardCharsets.UTF_8).contains("version components must fit in an integer"));
+    }
+
     private JsonObject runScanner(String... extraArgs) throws IOException {
         Path outputJson = tempDir.resolve("report.json");
         Path outputMarkdown = tempDir.resolve("report.md");

@@ -480,7 +480,11 @@ public final class RemovalReadyDeprecationScanner {
     private static int[] versionParts(String version) {
         validateVersion(version, "version");
         String[] parts = version.split("\\.");
-        return new int[] { Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), Integer.parseInt(parts[2]) };
+        try {
+            return new int[] { Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), Integer.parseInt(parts[2]) };
+        } catch (NumberFormatException error) {
+            throw new IllegalArgumentException("version components must fit in an integer: '" + version + "'", error);
+        }
     }
 
     private static void writeOutput(Path path, String content) throws IOException {
