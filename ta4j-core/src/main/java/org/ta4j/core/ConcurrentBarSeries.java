@@ -7,6 +7,7 @@ import org.ta4j.core.bars.TimeBarBuilderFactory;
 import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.BarSeriesListener;
 
 import java.io.ObjectInputStream;
 import java.io.IOException;
@@ -105,10 +106,19 @@ public class ConcurrentBarSeries extends BaseBarSeries {
         tradeBarBuilder = null;
     }
 
+    /**
+     * Listeners are not supported on ConcurrentBarSeries — the eager
+     * computation in {@code onBarAdded} can deadlock with concurrent readers.
+     * Use {@link BaseBarSeries} for push-based indicator updates.
+     */
     @Override
-    protected Object readResolve() {
-        super.readResolve();
-        return this;
+    public void addListener(final BarSeriesListener listener) {
+        // no-op: listeners disabled for thread-safe series
+    }
+
+    @Override
+    public void removeListener(final BarSeriesListener listener) {
+        // no-op
     }
 
     private static List<Bar> cut(final List<Bar> bars, final int startIndex, final int endIndex) {
