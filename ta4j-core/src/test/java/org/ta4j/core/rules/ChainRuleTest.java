@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.rules;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -58,8 +59,10 @@ public class ChainRuleTest {
     public void traceLoggingRollupModeSuppressesChildRuleLogs() {
         FixedRule initial = new FixedRule(4);
         initial.setName("Initial");
+        initial.setTraceMode(Rule.TraceMode.VERBOSE);
         FixedRule child = new FixedRule(2);
         child.setName("Chain Child");
+        child.setTraceMode(Rule.TraceMode.VERBOSE);
 
         ChainRule testChainRule = new ChainRule(initial, new ChainLink(child, 2));
         testChainRule.setName("Chain Rollup");
@@ -72,8 +75,10 @@ public class ChainRuleTest {
         assertTrue("Rollup mode should log the chain rule", logContent.contains("Chain Rollup#isSatisfied"));
         assertFalse("Rollup mode should suppress child rule logs", logContent.contains("Initial#isSatisfied"));
         assertFalse("Rollup mode should suppress child rule logs", logContent.contains("Chain Child#isSatisfied"));
-        assertTrue("Rollup mode should restore child trace mode",
-                initial.getTraceMode() == Rule.TraceMode.VERBOSE && child.getTraceMode() == Rule.TraceMode.VERBOSE);
+        assertEquals("Rollup mode should not mutate initial rule trace mode", Rule.TraceMode.VERBOSE,
+                initial.getTraceMode());
+        assertEquals("Rollup mode should not mutate child rule trace mode", Rule.TraceMode.VERBOSE,
+                child.getTraceMode());
     }
 
     @Test
@@ -94,5 +99,24 @@ public class ChainRuleTest {
         assertTrue("Verbose mode should log the chain rule", logContent.contains("Chain Verbose#isSatisfied"));
         assertTrue("Verbose mode should keep child rule logs", logContent.contains("Initial#isSatisfied"));
         assertTrue("Verbose mode should keep child rule logs", logContent.contains("Chain Child#isSatisfied"));
+        assertTrue("Verbose mode should attribute child path", logContent.contains("path=root.chainRule0 depth=1"));
+    }
+
+    @Test
+    public void traceLoggingRollupModeIncludesFailureContext() {
+        FixedRule initial = new FixedRule(4);
+        FixedRule child = new FixedRule(0);
+
+        ChainRule testChainRule = new ChainRule(initial, new ChainLink(child, 1));
+        testChainRule.setName("Chain Failure");
+        testChainRule.setTraceMode(Rule.TraceMode.ROLLUP);
+
+        ruleTraceTestLogger.clear();
+        testChainRule.isSatisfied(4);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("Rollup failure should log the chain rule", logContent.contains("Chain Failure#isSatisfied"));
+        assertTrue("Rollup failure should include failed chain rule", logContent.contains("failedChainRule=0"));
+        assertTrue("Rollup failure should include threshold", logContent.contains("threshold=1"));
     }
 }

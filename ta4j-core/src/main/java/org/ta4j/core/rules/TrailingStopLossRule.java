@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.rules;
 
+import java.util.Map;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
@@ -123,9 +125,6 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
 
     @Override
     protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}. Current price: {}", getTraceDisplayName(), index, isSatisfied,
-                    priceIndicator.getValue(index));
-        }
+        traceIsSatisfied(index, isSatisfied, Map.of("currentPrice", priceIndicator.getValue(index).toString()));
     }
 }

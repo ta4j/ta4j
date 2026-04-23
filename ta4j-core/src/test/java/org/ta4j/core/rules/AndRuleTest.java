@@ -3,8 +3,16 @@
  */
 package org.ta4j.core.rules;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.junit.After;
 import org.junit.Before;
@@ -52,8 +60,10 @@ public class AndRuleTest {
     public void traceLoggingRollupModeSuppressesChildRuleLogs() {
         Rule rule1 = new FixedRule(1);
         rule1.setName("Entry Rule");
+        rule1.setTraceMode(Rule.TraceMode.VERBOSE);
         Rule rule2 = new FixedRule(1, 2);
         rule2.setName("Exit Rule");
+        rule2.setTraceMode(Rule.TraceMode.VERBOSE);
 
         AndRule andRule = new AndRule(rule1, rule2);
         andRule.setName("EntryAndExit");
@@ -67,8 +77,10 @@ public class AndRuleTest {
                 logContent.contains("EntryAndExit#isSatisfied"));
         assertFalse("Rollup mode should suppress child rule logs", logContent.contains("Entry Rule#isSatisfied"));
         assertFalse("Rollup mode should suppress child rule logs", logContent.contains("Exit Rule#isSatisfied"));
-        assertTrue("Rollup mode should restore child trace mode",
-                rule1.getTraceMode() == Rule.TraceMode.VERBOSE && rule2.getTraceMode() == Rule.TraceMode.VERBOSE);
+        assertEquals("Rollup mode should not mutate first child trace mode", Rule.TraceMode.VERBOSE,
+                rule1.getTraceMode());
+        assertEquals("Rollup mode should not mutate second child trace mode", Rule.TraceMode.VERBOSE,
+                rule2.getTraceMode());
     }
 
     @Test
@@ -92,9 +104,102 @@ public class AndRuleTest {
     }
 
     @Test
+    public void traceLoggingDoesNotMutateSharedChildRuleDuringConcurrentCompositeEvaluation() throws Exception {
+        BlockingFixedRule sharedChild = new BlockingFixedRule(1, 2);
+        sharedChild.setTraceMode(Rule.TraceMode.OFF);
+
+        AndRule verboseParent = new AndRule(sharedChild, BooleanRule.TRUE);
+        verboseParent.setTraceMode(Rule.TraceMode.VERBOSE);
+        AndRule rollupParent = new AndRule(sharedChild, BooleanRule.TRUE);
+        rollupParent.setTraceMode(Rule.TraceMode.ROLLUP);
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            var verboseEvaluation = executor.submit(() -> verboseParent.isSatisfied(1));
+            var rollupEvaluation = executor.submit(() -> rollupParent.isSatisfied(1));
+
+            assertTrue("Both parent evaluations should reach the shared child",
+                    sharedChild.awaitEntered(5, TimeUnit.SECONDS));
+            assertEquals("Shared child trace mode must not be mutated while evaluations are in flight",
+                    Rule.TraceMode.OFF, sharedChild.getTraceMode());
+
+            sharedChild.release();
+
+            assertTrue(verboseEvaluation.get(5, TimeUnit.SECONDS));
+            assertTrue(rollupEvaluation.get(5, TimeUnit.SECONDS));
+            assertEquals("Shared child trace mode must remain unchanged after concurrent evaluations",
+                    Rule.TraceMode.OFF, sharedChild.getTraceMode());
+            assertTrue("Shared child must only observe its own configured trace mode",
+                    sharedChild.observedModes().stream().allMatch(Rule.TraceMode.OFF::equals));
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    public void traceLoggingUsesPathDepthToDisambiguateRepeatedChildInstances() {
+        FixedRule repeatedChild = new FixedRule(1);
+        repeatedChild.setName("Repeated Child");
+        AndRule leftBranch = new AndRule(repeatedChild, new FixedRule(1));
+        leftBranch.setName("Same Label");
+        AndRule rightBranch = new AndRule(repeatedChild, new FixedRule(1));
+        rightBranch.setName("Same Label");
+        AndRule root = new AndRule(leftBranch, rightBranch);
+        root.setName("Root");
+        root.setTraceMode(Rule.TraceMode.VERBOSE);
+
+        ruleTraceTestLogger.clear();
+        root.isSatisfied(1);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("Left repeated child should have a unique path", logContent.contains(
+                "Repeated Child#isSatisfied(1): true traceMode=VERBOSE ruleType=FixedRule path=root.rule1.rule1 depth=2"));
+        assertTrue("Right repeated child should have a unique path", logContent.contains(
+                "Repeated Child#isSatisfied(1): true traceMode=VERBOSE ruleType=FixedRule path=root.rule2.rule1 depth=2"));
+        assertTrue("Repeated child events should retain parent attribution", logContent.contains("parent=Same Label"));
+    }
+
+    @Test
     public void serializeAndDeserialize() {
         Rule composite = satisfiedRule.and(BooleanRule.TRUE);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, composite);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, composite);
+    }
+
+    private static final class BlockingFixedRule extends FixedRule {
+
+        private final CountDownLatch entered;
+        private final CountDownLatch release = new CountDownLatch(1);
+        private final List<Rule.TraceMode> observedModes = new CopyOnWriteArrayList<>();
+
+        private BlockingFixedRule(int index, int expectedEntrants) {
+            super(index);
+            entered = new CountDownLatch(expectedEntrants);
+        }
+
+        @Override
+        public boolean isSatisfied(int index, org.ta4j.core.TradingRecord tradingRecord) {
+            observedModes.add(getTraceMode());
+            entered.countDown();
+            try {
+                release.await(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return false;
+            }
+            return super.isSatisfied(index, tradingRecord);
+        }
+
+        private boolean awaitEntered(long timeout, TimeUnit unit) throws InterruptedException {
+            return entered.await(timeout, unit);
+        }
+
+        private void release() {
+            release.countDown();
+        }
+
+        private List<Rule.TraceMode> observedModes() {
+            return observedModes;
+        }
     }
 }

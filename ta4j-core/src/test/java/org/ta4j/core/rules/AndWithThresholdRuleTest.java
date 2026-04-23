@@ -6,6 +6,7 @@ package org.ta4j.core.rules;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -17,12 +18,21 @@ public class AndWithThresholdRuleTest {
     private Rule satisfiedRule;
     private Rule unsatisfiedRule;
     private BarSeries series;
+    private RuleTraceTestLogger ruleTraceTestLogger;
 
     @Before
     public void setUp() {
+        ruleTraceTestLogger = new RuleTraceTestLogger();
+        ruleTraceTestLogger.open();
+
         satisfiedRule = new BooleanRule(true);
         unsatisfiedRule = new BooleanRule(false);
         series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10).build();
+    }
+
+    @After
+    public void tearDownLogger() {
+        ruleTraceTestLogger.close();
     }
 
     @Test
@@ -182,5 +192,44 @@ public class AndWithThresholdRuleTest {
         Rule composite = new AndWithThresholdRule(satisfiedRule, BooleanRule.TRUE, 3);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, composite);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, composite);
+    }
+
+    @Test
+    public void traceLoggingVerboseModeEmitsThresholdRollupAndChildren() {
+        FixedRule rule1 = new FixedRule(5);
+        rule1.setName("Threshold Rule 1");
+        FixedRule rule2 = new FixedRule(7);
+        rule2.setName("Threshold Rule 2");
+        AndWithThresholdRule rule = new AndWithThresholdRule(rule1, rule2, 4);
+        rule.setName("Threshold And");
+        rule.setTraceMode(Rule.TraceMode.VERBOSE);
+
+        ruleTraceTestLogger.clear();
+        rule.isSatisfied(7);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("Verbose mode should log threshold AND", logContent.contains("Threshold And#isSatisfied"));
+        assertTrue("Verbose mode should include threshold value", logContent.contains("threshold=4"));
+        assertTrue("Verbose mode should include first child result", logContent.contains("rule1=true"));
+        assertTrue("Verbose mode should include second child result", logContent.contains("rule2=true"));
+        assertTrue("Verbose mode should log first child", logContent.contains("Threshold Rule 1#isSatisfied"));
+        assertTrue("Verbose mode should log second child", logContent.contains("Threshold Rule 2#isSatisfied"));
+    }
+
+    @Test
+    public void traceLoggingRollupModeEmitsInsufficientBarsFailureContext() {
+        AndWithThresholdRule rule = new AndWithThresholdRule(satisfiedRule, satisfiedRule, 4);
+        rule.setName("Threshold And Failure");
+        rule.setTraceMode(Rule.TraceMode.ROLLUP);
+
+        ruleTraceTestLogger.clear();
+        rule.isSatisfied(2);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("Rollup mode should log threshold AND failure",
+                logContent.contains("Threshold And Failure#isSatisfied"));
+        assertTrue("Rollup mode should include threshold", logContent.contains("threshold=4"));
+        assertTrue("Rollup mode should include insufficient bars reason",
+                logContent.contains("reason=insufficientBars"));
     }
 }

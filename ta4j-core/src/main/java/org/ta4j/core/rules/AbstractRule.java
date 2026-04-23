@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.rules;
 
+import java.util.Map;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Rule;
@@ -23,7 +25,7 @@ public abstract class AbstractRule implements Rule {
     private volatile String name;
 
     /** The trace logging mode. */
-    private volatile TraceMode traceMode = TraceMode.VERBOSE;
+    private volatile TraceMode traceMode = TraceMode.OFF;
 
     /**
      * Returns the display name to use in trace logs. Uses the configured name if
@@ -42,8 +44,21 @@ public abstract class AbstractRule implements Rule {
      * @param isSatisfied true if the rule is satisfied, false otherwise
      */
     protected void traceIsSatisfied(int index, boolean isSatisfied) {
+        traceIsSatisfied(index, isSatisfied, Map.of());
+    }
+
+    /**
+     * Traces the {@code isSatisfied()} method calls with structured diagnostic
+     * context.
+     *
+     * @param index       the bar index
+     * @param isSatisfied true if the rule is satisfied, false otherwise
+     * @param context     deterministic context fields for the evaluation
+     * @since 0.22.7
+     */
+    protected void traceIsSatisfied(int index, boolean isSatisfied, Map<String, String> context) {
         if (log.isTraceEnabled() && isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}", getTraceDisplayName(), index, isSatisfied);
+            log.trace("{}", createTraceEvent(index, isSatisfied, context).formatMessage());
         }
     }
 
@@ -51,27 +66,22 @@ public abstract class AbstractRule implements Rule {
      * @return true if trace logging is enabled for this rule
      */
     protected boolean isTraceEnabled() {
-        return getTraceMode() != TraceMode.OFF;
+        return RuleTraceContext.activeMode(this) != TraceMode.OFF;
     }
 
     /**
-     * Evaluates a child rule with the selected child trace mode and restores the
-     * previous mode afterwards.
+     * Evaluates a child rule inside an evaluation-scoped trace context.
      *
      * @param childRule     rule to evaluate
+     * @param relation      child relation label for the trace path
      * @param index         the bar index
      * @param tradingRecord trading history
      * @return true if the child rule is satisfied
+     * @since 0.22.7
      */
-    protected boolean evaluateChildWithTraceMode(Rule childRule, int index, TradingRecord tradingRecord) {
-        TraceMode original = childRule.getTraceMode();
-        TraceMode childMode = getTraceMode() == TraceMode.ROLLUP ? TraceMode.OFF : getTraceMode();
-
-        try {
-            childRule.setTraceMode(childMode);
+    protected boolean evaluateChildRule(Rule childRule, String relation, int index, TradingRecord tradingRecord) {
+        try (var ignored = RuleTraceContext.openChild(getTraceDisplayName(), this, childRule, relation)) {
             return childRule.isSatisfied(index, tradingRecord);
-        } finally {
-            childRule.setTraceMode(original);
         }
     }
 
@@ -142,5 +152,14 @@ public abstract class AbstractRule implements Rule {
             builder.append(')');
         }
         return builder.toString();
+    }
+
+    private RuleTraceEvent createTraceEvent(int index, boolean isSatisfied, Map<String, String> context) {
+        var frame = RuleTraceContext.currentFrame();
+        var path = frame == null ? "root" : frame.path();
+        var depth = frame == null ? 0 : frame.depth();
+        var parentRuleName = frame == null ? null : frame.parentRuleName();
+        return new RuleTraceEvent(index, className, getTraceDisplayName(), RuleTraceContext.activeMode(this),
+                isSatisfied, path, depth, parentRuleName, context);
     }
 }

@@ -46,6 +46,28 @@ public interface Strategy {
     Rule getExitRule();
 
     /**
+     * Configures runtime trace logging for this strategy.
+     *
+     * @param traceMode OFF, ROLLUP, or VERBOSE. A {@code null} value is treated as
+     *                  OFF.
+     * @since 0.22.7
+     */
+    default void setTraceMode(Rule.TraceMode traceMode) {
+        // no-op by default to preserve compatibility for custom Strategy
+        // implementations that do not support trace mode yet
+    }
+
+    /**
+     * Returns the current trace mode for this strategy.
+     *
+     * @return the active trace mode, defaults to {@link Rule.TraceMode#OFF}
+     * @since 0.22.7
+     */
+    default Rule.TraceMode getTraceMode() {
+        return Rule.TraceMode.OFF;
+    }
+
+    /**
      * @param strategy the other strategy
      * @return the AND combination of two {@link Strategy strategies}
      */

@@ -4,7 +4,9 @@
 package org.ta4j.core.rules;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.LinkedList;
+import java.util.Map;
 
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
@@ -37,12 +39,12 @@ public class ChainRule extends AbstractRule {
         int lastRuleWasSatisfiedAfterBars = 0;
         int startIndex = index;
 
-        if (!evaluateChildWithTraceMode(initialRule, index, tradingRecord)) {
-            traceIsSatisfied(index, false);
+        if (!evaluateChildRule(initialRule, "initialRule", index, tradingRecord)) {
+            traceIsSatisfied(index, false, Map.of("initialRule", "false"));
             return false;
         }
-        traceIsSatisfied(index, true);
 
+        int linkIndex = 0;
         for (ChainLink link : rulesInChain) {
             boolean satisfiedWithinThreshold = false;
             startIndex = startIndex - lastRuleWasSatisfiedAfterBars;
@@ -54,7 +56,8 @@ public class ChainRule extends AbstractRule {
                     break;
                 }
 
-                satisfiedWithinThreshold = evaluateChildWithTraceMode(link.getRule(), resultingIndex, tradingRecord);
+                satisfiedWithinThreshold = evaluateChildRule(link.getRule(), "chainRule" + linkIndex, resultingIndex,
+                        tradingRecord);
 
                 if (satisfiedWithinThreshold) {
                     break;
@@ -64,12 +67,18 @@ public class ChainRule extends AbstractRule {
             }
 
             if (!satisfiedWithinThreshold) {
-                traceIsSatisfied(index, false);
+                var context = new LinkedHashMap<String, String>();
+                context.put("initialRule", "true");
+                context.put("failedChainRule", Integer.toString(linkIndex));
+                context.put("threshold", Integer.toString(link.getThreshold()));
+                traceIsSatisfied(index, false, context);
                 return false;
             }
+            linkIndex++;
         }
 
-        traceIsSatisfied(index, true);
+        traceIsSatisfied(index, true,
+                Map.of("initialRule", "true", "chainRules", Integer.toString(rulesInChain.size())));
         return true;
     }
 }

@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.rules;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 
 import org.ta4j.core.Rule;
@@ -54,6 +56,8 @@ public class AndWithThresholdRule extends AbstractRule {
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         if (index - this.threshold + 1 < 0) {
+            traceIsSatisfied(index, false,
+                    Map.of("threshold", Integer.toString(threshold), "reason", "insufficientBars"));
             return false;
         }
 
@@ -61,10 +65,10 @@ public class AndWithThresholdRule extends AbstractRule {
         boolean isSecondSatisfied = false;
         for (int i = index - this.threshold + 1; i <= index; i++) {
             if (!isFirstSatisfied) {
-                isFirstSatisfied = rule1.isSatisfied(i, tradingRecord);
+                isFirstSatisfied = evaluateChildRule(rule1, "rule1", i, tradingRecord);
             }
             if (!isSecondSatisfied) {
-                isSecondSatisfied = rule2.isSatisfied(i, tradingRecord);
+                isSecondSatisfied = evaluateChildRule(rule2, "rule2", i, tradingRecord);
             }
 
             if (isFirstSatisfied && isSecondSatisfied) {
@@ -72,7 +76,11 @@ public class AndWithThresholdRule extends AbstractRule {
             }
         }
         final boolean satisfied = isFirstSatisfied && isSecondSatisfied;
-        traceIsSatisfied(index, satisfied);
+        var context = new LinkedHashMap<String, String>();
+        context.put("threshold", Integer.toString(threshold));
+        context.put("rule1", Boolean.toString(isFirstSatisfied));
+        context.put("rule2", Boolean.toString(isSecondSatisfied));
+        traceIsSatisfied(index, satisfied, context);
         return satisfied;
     }
 

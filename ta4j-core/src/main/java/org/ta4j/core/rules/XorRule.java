@@ -32,7 +32,8 @@ public class XorRule extends AbstractRule {
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = rule1.isSatisfied(index, tradingRecord) ^ rule2.isSatisfied(index, tradingRecord);
+        final boolean satisfied = evaluateChildRule(rule1, "rule1", index, tradingRecord)
+                ^ evaluateChildRule(rule2, "rule2", index, tradingRecord);
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }

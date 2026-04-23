@@ -19,6 +19,7 @@ import org.apache.logging.log4j.core.layout.PatternLayout;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.FixedRule;
 
 /**
@@ -92,6 +93,7 @@ public class StrategyTraceLoggingTest {
     @Test
     public void traceLoggingUsesClassNameWhenNoCustomNameSet() {
         Strategy strategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+        strategy.setTraceMode(Rule.TraceMode.VERBOSE);
         logOutput.getBuffer().setLength(0);
 
         strategy.shouldEnter(0, new BaseTradingRecord());
@@ -104,6 +106,7 @@ public class StrategyTraceLoggingTest {
     @Test
     public void traceLoggingUsesCustomNameWhenSet() {
         Strategy strategy = new BaseStrategy("My Custom Strategy", new FixedRule(1), new FixedRule(2));
+        strategy.setTraceMode(Rule.TraceMode.VERBOSE);
         logOutput.getBuffer().setLength(0);
 
         strategy.shouldEnter(0, new BaseTradingRecord());
@@ -118,6 +121,7 @@ public class StrategyTraceLoggingTest {
     @Test
     public void traceLoggingUsesCustomNameForShouldExit() {
         Strategy strategy = new BaseStrategy("5min Entry Strategy", new FixedRule(1), new FixedRule(2));
+        strategy.setTraceMode(Rule.TraceMode.VERBOSE);
         logOutput.getBuffer().setLength(0);
 
         strategy.shouldExit(0, new BaseTradingRecord());
@@ -132,6 +136,7 @@ public class StrategyTraceLoggingTest {
     @Test
     public void traceLoggingUsesClassNameForShouldExitWhenNoCustomName() {
         Strategy strategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+        strategy.setTraceMode(Rule.TraceMode.VERBOSE);
         logOutput.getBuffer().setLength(0);
 
         strategy.shouldExit(0, new BaseTradingRecord());
@@ -144,6 +149,7 @@ public class StrategyTraceLoggingTest {
     @Test
     public void traceLoggingWorksForBothShouldEnterAndShouldExit() {
         Strategy strategy = new BaseStrategy("Multi-Timeframe Strategy", new FixedRule(1), new FixedRule(2));
+        strategy.setTraceMode(Rule.TraceMode.VERBOSE);
         logOutput.getBuffer().setLength(0);
 
         strategy.shouldEnter(0, new BaseTradingRecord());
@@ -160,6 +166,8 @@ public class StrategyTraceLoggingTest {
     public void traceLoggingWorksForMultipleStrategiesWithDifferentNames() {
         Strategy strategy1 = new BaseStrategy("Strategy 5min", new FixedRule(1), new FixedRule(2));
         Strategy strategy2 = new BaseStrategy("Strategy 15min", new FixedRule(3), new FixedRule(4));
+        strategy1.setTraceMode(Rule.TraceMode.VERBOSE);
+        strategy2.setTraceMode(Rule.TraceMode.VERBOSE);
 
         logOutput.getBuffer().setLength(0);
         strategy1.shouldEnter(0, new BaseTradingRecord());
@@ -175,6 +183,7 @@ public class StrategyTraceLoggingTest {
     @Test
     public void traceLoggingIncludesPrefixForStrategyTraces() {
         Strategy strategy = new BaseStrategy("Test Strategy", new FixedRule(1), new FixedRule(2));
+        strategy.setTraceMode(Rule.TraceMode.VERBOSE);
         logOutput.getBuffer().setLength(0);
 
         strategy.shouldEnter(0, new BaseTradingRecord());
@@ -183,5 +192,71 @@ public class StrategyTraceLoggingTest {
         assertTrue("Trace log should include >>> prefix for strategy traces", logContent.contains(">>>"));
         assertTrue("Trace log should contain custom name after prefix",
                 logContent.contains(">>> Test Strategy#shouldEnter"));
+    }
+
+    @Test
+    public void traceLoggingIsOffByDefaultForStrategy() {
+        Strategy strategy = new BaseStrategy("Default Off Strategy", new FixedRule(1), new FixedRule(2));
+        logOutput.getBuffer().setLength(0);
+
+        strategy.shouldEnter(0, new BaseTradingRecord());
+
+        String logContent = logOutput.toString();
+        assertFalse("Strategy trace log should be empty unless trace mode is explicitly enabled",
+                logContent.contains("Default Off Strategy#shouldEnter"));
+    }
+
+    @Test
+    public void traceLoggingRollupModeEvaluatesEntryRuleWithScopedTracePolicy() {
+        FixedRule child1 = new FixedRule(1);
+        child1.setName("Entry Child 1");
+        child1.setTraceMode(Rule.TraceMode.VERBOSE);
+        FixedRule child2 = new FixedRule(1);
+        child2.setName("Entry Child 2");
+        child2.setTraceMode(Rule.TraceMode.VERBOSE);
+        AndRule entryRule = new AndRule(child1, child2);
+        entryRule.setName("Entry Composite");
+        Strategy strategy = new BaseStrategy("Trace Strategy", entryRule, new FixedRule(2));
+        strategy.setTraceMode(Rule.TraceMode.ROLLUP);
+
+        logOutput.getBuffer().setLength(0);
+        strategy.shouldEnter(1, new BaseTradingRecord());
+
+        String logContent = logOutput.toString();
+        assertTrue("Rollup mode should log the strategy decision",
+                logContent.contains(">>> Trace Strategy#shouldEnter"));
+        assertTrue("Rollup mode should log the entry rule", logContent.contains("Entry Composite#isSatisfied"));
+        assertTrue("Rollup mode should mark the scoped root path",
+                logContent.contains("traceMode=ROLLUP ruleType=AndRule path=entryRule depth=0 parent=Trace Strategy"));
+        assertFalse("Rollup mode should suppress first child logs", logContent.contains("Entry Child 1#isSatisfied"));
+        assertFalse("Rollup mode should suppress second child logs", logContent.contains("Entry Child 2#isSatisfied"));
+        assertTrue("Rollup mode should not mutate child trace mode",
+                child1.getTraceMode() == Rule.TraceMode.VERBOSE && child2.getTraceMode() == Rule.TraceMode.VERBOSE);
+    }
+
+    @Test
+    public void traceLoggingVerboseModeEvaluatesExitRuleWithScopedTracePolicy() {
+        FixedRule child1 = new FixedRule(2);
+        child1.setName("Exit Child 1");
+        FixedRule child2 = new FixedRule(2);
+        child2.setName("Exit Child 2");
+        AndRule exitRule = new AndRule(child1, child2);
+        exitRule.setName("Exit Composite");
+        Strategy strategy = new BaseStrategy("Trace Strategy", new FixedRule(1), exitRule);
+        strategy.setTraceMode(Rule.TraceMode.VERBOSE);
+
+        logOutput.getBuffer().setLength(0);
+        strategy.shouldExit(2, new BaseTradingRecord());
+
+        String logContent = logOutput.toString();
+        assertTrue("Verbose mode should log the strategy exit decision",
+                logContent.contains(">>> Trace Strategy#shouldExit"));
+        assertTrue("Verbose mode should log the exit rule", logContent.contains("Exit Composite#isSatisfied"));
+        assertTrue("Verbose mode should log first exit child", logContent.contains("Exit Child 1#isSatisfied"));
+        assertTrue("Verbose mode should log second exit child", logContent.contains("Exit Child 2#isSatisfied"));
+        assertTrue("Verbose mode should attribute the first child path",
+                logContent.contains("path=exitRule.rule1 depth=1"));
+        assertTrue("Verbose mode should attribute the second child path",
+                logContent.contains("path=exitRule.rule2 depth=1"));
     }
 }

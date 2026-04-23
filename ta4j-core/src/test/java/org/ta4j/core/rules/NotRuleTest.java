@@ -6,6 +6,7 @@ package org.ta4j.core.rules;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
@@ -17,12 +18,21 @@ public class NotRuleTest {
     private Rule satisfiedRule;
     private Rule unsatisfiedRule;
     private BarSeries series;
+    private RuleTraceTestLogger ruleTraceTestLogger;
 
     @Before
     public void setUp() {
+        ruleTraceTestLogger = new RuleTraceTestLogger();
+        ruleTraceTestLogger.open();
+
         satisfiedRule = new BooleanRule(true);
         unsatisfiedRule = new BooleanRule(false);
         series = new MockBarSeriesBuilder().withData(1).build();
+    }
+
+    @After
+    public void tearDownLogger() {
+        ruleTraceTestLogger.close();
     }
 
     @Test
@@ -38,5 +48,23 @@ public class NotRuleTest {
     public void serializeAndDeserialize() {
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, satisfiedRule.negation());
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, satisfiedRule.negation());
+    }
+
+    @Test
+    public void traceLoggingVerboseModePreservesNegatedRuleLog() {
+        FixedRule ruleToNegate = new FixedRule(1);
+        ruleToNegate.setName("Negated Rule");
+        NotRule notRule = new NotRule(ruleToNegate);
+        notRule.setName("Not Wrapper");
+        notRule.setTraceMode(Rule.TraceMode.VERBOSE);
+
+        ruleTraceTestLogger.clear();
+        notRule.isSatisfied(1);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("Verbose mode should log the negated child", logContent.contains("Negated Rule#isSatisfied"));
+        assertTrue("Verbose mode should log the parent", logContent.contains("Not Wrapper#isSatisfied"));
+        assertTrue("Verbose mode should attribute the negated rule path",
+                logContent.contains("path=root.ruleToNegate depth=1"));
     }
 }

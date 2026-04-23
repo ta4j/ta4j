@@ -6,6 +6,7 @@ package org.ta4j.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.rules.RuleTraceContext;
 
 /**
  * Base implementation of a {@link Strategy}.
@@ -29,6 +30,9 @@ public class BaseStrategy implements Strategy {
 
     /** The entry trade type for this strategy. */
     private final TradeType startingType;
+
+    /** The trace logging mode. */
+    private volatile Rule.TraceMode traceMode = Rule.TraceMode.OFF;
 
     /**
      * The number of first bars in a bar series that this strategy ignores. During
@@ -168,6 +172,16 @@ public class BaseStrategy implements Strategy {
     }
 
     @Override
+    public void setTraceMode(Rule.TraceMode traceMode) {
+        this.traceMode = traceMode == null ? Rule.TraceMode.OFF : traceMode;
+    }
+
+    @Override
+    public Rule.TraceMode getTraceMode() {
+        return traceMode;
+    }
+
+    @Override
     public TradeType getStartingType() {
         return startingType;
     }
@@ -189,14 +203,18 @@ public class BaseStrategy implements Strategy {
 
     @Override
     public boolean shouldEnter(int index, TradingRecord tradingRecord) {
-        boolean enter = Strategy.super.shouldEnter(index, tradingRecord);
+        boolean enter = traceMode == Rule.TraceMode.OFF ? Strategy.super.shouldEnter(index, tradingRecord)
+                : RuleTraceContext.evaluate(traceMode, "entryRule", getTraceDisplayName(),
+                        () -> Strategy.super.shouldEnter(index, tradingRecord));
         traceShouldEnter(index, enter);
         return enter;
     }
 
     @Override
     public boolean shouldExit(int index, TradingRecord tradingRecord) {
-        boolean exit = Strategy.super.shouldExit(index, tradingRecord);
+        boolean exit = traceMode == Rule.TraceMode.OFF ? Strategy.super.shouldExit(index, tradingRecord)
+                : RuleTraceContext.evaluate(traceMode, "exitRule", getTraceDisplayName(),
+                        () -> Strategy.super.shouldExit(index, tradingRecord));
         traceShouldExit(index, exit);
         return exit;
     }
@@ -249,7 +267,7 @@ public class BaseStrategy implements Strategy {
      * @param enter true if the strategy should enter, false otherwise
      */
     protected void traceShouldEnter(int index, boolean enter) {
-        if (log.isTraceEnabled()) {
+        if (traceMode != Rule.TraceMode.OFF && log.isTraceEnabled()) {
             log.trace(">>> {}#shouldEnter({}): {}", getTraceDisplayName(), index, enter);
         }
     }
@@ -261,7 +279,7 @@ public class BaseStrategy implements Strategy {
      * @param exit  true if the strategy should exit, false otherwise
      */
     protected void traceShouldExit(int index, boolean exit) {
-        if (log.isTraceEnabled()) {
+        if (traceMode != Rule.TraceMode.OFF && log.isTraceEnabled()) {
             log.trace(">>> {}#shouldExit({}): {}", getTraceDisplayName(), index, exit);
         }
     }

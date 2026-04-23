@@ -3,10 +3,11 @@
  */
 package org.ta4j.core.rules;
 
+import java.util.Map;
+import java.util.Objects;
+
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
-
-import java.util.Objects;
 
 /**
  * An OR combination of two {@link Rule rules}.
@@ -37,15 +38,19 @@ public class OrRule extends AbstractRule {
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean firstSatisfied = evaluateChildWithTraceMode(rule1, index, tradingRecord);
+        final boolean firstSatisfied = evaluateChildRule(rule1, "rule1", index, tradingRecord);
         final boolean satisfied;
+        final boolean secondEvaluated;
 
         if (firstSatisfied) {
             satisfied = true;
+            secondEvaluated = false;
         } else {
-            satisfied = evaluateChildWithTraceMode(rule2, index, tradingRecord);
+            satisfied = evaluateChildRule(rule2, "rule2", index, tradingRecord);
+            secondEvaluated = true;
         }
-        traceIsSatisfied(index, satisfied);
+        traceIsSatisfied(index, satisfied, Map.of("rule1", Boolean.toString(firstSatisfied), "rule2Evaluated",
+                Boolean.toString(secondEvaluated), "rule2", secondEvaluated ? Boolean.toString(satisfied) : "skipped"));
         return satisfied;
     }
 

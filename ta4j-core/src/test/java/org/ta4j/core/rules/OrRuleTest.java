@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.rules;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -52,8 +53,10 @@ public class OrRuleTest {
     public void traceLoggingRollupModeSuppressesChildRuleLogs() {
         Rule rule1 = new FixedRule(2);
         rule1.setName("First Rule");
+        rule1.setTraceMode(Rule.TraceMode.VERBOSE);
         Rule rule2 = new FixedRule(1);
         rule2.setName("Second Rule");
+        rule2.setTraceMode(Rule.TraceMode.VERBOSE);
 
         OrRule orRule = new OrRule(rule1, rule2);
         orRule.setName("FirstOrSecond");
@@ -67,8 +70,33 @@ public class OrRuleTest {
                 logContent.contains("FirstOrSecond#isSatisfied"));
         assertFalse("Rollup mode should suppress child rule logs", logContent.contains("First Rule#isSatisfied"));
         assertFalse("Rollup mode should suppress child rule logs", logContent.contains("Second Rule#isSatisfied"));
-        assertTrue("Rollup mode should restore child trace mode",
-                rule1.getTraceMode() == Rule.TraceMode.VERBOSE && rule2.getTraceMode() == Rule.TraceMode.VERBOSE);
+        assertEquals("Rollup mode should not mutate first child trace mode", Rule.TraceMode.VERBOSE,
+                rule1.getTraceMode());
+        assertEquals("Rollup mode should not mutate second child trace mode", Rule.TraceMode.VERBOSE,
+                rule2.getTraceMode());
+    }
+
+    @Test
+    public void traceLoggingVerboseModePreservesChildRuleLogs() {
+        Rule rule1 = new FixedRule(2);
+        rule1.setName("First Rule");
+        Rule rule2 = new FixedRule(1);
+        rule2.setName("Second Rule");
+
+        OrRule orRule = new OrRule(rule1, rule2);
+        orRule.setName("FirstOrSecond");
+        orRule.setTraceMode(Rule.TraceMode.VERBOSE);
+
+        ruleTraceTestLogger.clear();
+        orRule.isSatisfied(1);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("Verbose mode should log the parent composite rule",
+                logContent.contains("FirstOrSecond#isSatisfied"));
+        assertTrue("Verbose mode should keep first child rule logs", logContent.contains("First Rule#isSatisfied"));
+        assertTrue("Verbose mode should keep second child rule logs", logContent.contains("Second Rule#isSatisfied"));
+        assertTrue("Verbose mode should attribute the second rule path",
+                logContent.contains("path=root.rule2 depth=1"));
     }
 
     @Test

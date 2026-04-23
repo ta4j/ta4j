@@ -31,7 +31,8 @@ public class NotRule extends AbstractRule {
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = !ruleToNegate.isSatisfied(index, tradingRecord);
+        final boolean childSatisfied = evaluateChildRule(ruleToNegate, "ruleToNegate", index, tradingRecord);
+        final boolean satisfied = !childSatisfied;
         traceIsSatisfied(index, satisfied);
         return satisfied;
     }

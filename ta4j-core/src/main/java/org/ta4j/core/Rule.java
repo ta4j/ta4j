@@ -26,10 +26,11 @@ public interface Rule {
         /** Do not emit trace logs. */
         OFF,
         /**
-         * Emit trace logs only for this rule while forcing children to {@link #OFF}.
+         * Emit trace logs only for this rule while evaluating children in a scoped
+         * {@link #OFF} context without mutating child rule instances.
          */
         ROLLUP,
-        /** Emit trace logs for this rule and all children. */
+        /** Emit trace logs for this rule and all children in an evaluation scope. */
         VERBOSE
     }
 
@@ -122,11 +123,11 @@ public interface Rule {
     /**
      * Returns the current trace mode for this rule.
      *
-     * @return the active trace mode, defaults to {@link TraceMode#VERBOSE}
+     * @return the active trace mode, defaults to {@link TraceMode#OFF}
      * @since 0.22.7
      */
     default TraceMode getTraceMode() {
-        return TraceMode.VERBOSE;
+        return TraceMode.OFF;
     }
 
     /**

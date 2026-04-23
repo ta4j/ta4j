@@ -53,6 +53,7 @@ public class FixedRuleTest {
     @Test
     public void traceLoggingUsesClassNameWhenNoCustomNameSet() {
         FixedRule rule = new FixedRule(1);
+        rule.setTraceMode(Rule.TraceMode.VERBOSE);
         ruleTraceTestLogger.clear();
 
         rule.isSatisfied(0);
@@ -66,6 +67,7 @@ public class FixedRuleTest {
     public void traceLoggingUsesCustomNameWhenSet() {
         FixedRule rule = new FixedRule(1);
         rule.setName("My Custom Entry Rule");
+        rule.setTraceMode(Rule.TraceMode.VERBOSE);
         ruleTraceTestLogger.clear();
 
         rule.isSatisfied(0);
@@ -82,6 +84,7 @@ public class FixedRuleTest {
         FixedRule rule = new FixedRule(1);
         rule.setName("My Custom Rule");
         rule.setName(null);
+        rule.setTraceMode(Rule.TraceMode.VERBOSE);
         ruleTraceTestLogger.clear();
 
         rule.isSatisfied(0);
@@ -97,9 +100,11 @@ public class FixedRuleTest {
     public void traceLoggingWorksForDifferentCustomNames() {
         FixedRule rule1 = new FixedRule(1);
         rule1.setName("Entry Rule 5min");
+        rule1.setTraceMode(Rule.TraceMode.VERBOSE);
 
         FixedRule rule2 = new FixedRule(2);
         rule2.setName("Exit Rule 15min");
+        rule2.setTraceMode(Rule.TraceMode.VERBOSE);
 
         ruleTraceTestLogger.clear();
         rule1.isSatisfied(1);
@@ -122,6 +127,18 @@ public class FixedRuleTest {
 
         String logContent = ruleTraceTestLogger.getLogOutput();
         assertFalse("Trace log should be empty when trace mode is OFF", logContent.contains("FixedRule#isSatisfied"));
+    }
+
+    @Test
+    public void traceLoggingIsOffByDefault() {
+        FixedRule rule = new FixedRule(1);
+        ruleTraceTestLogger.clear();
+
+        rule.isSatisfied(1);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertFalse("Trace log should be empty unless trace mode is explicitly enabled",
+                logContent.contains("FixedRule#isSatisfied"));
     }
 
     @Test
