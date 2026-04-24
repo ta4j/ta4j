@@ -36,7 +36,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -102,10 +101,7 @@ public final class RemovalReadyDeprecationScanner {
             DeprecationReport report = generateReport(options);
             writeOutput(options.outputJson(), PRETTY_GSON.toJson(report));
             writeOutput(options.outputMarkdown(), report.summaryMarkdown());
-            stdout.println(COMPACT_GSON.toJson(Map.of("snapshotVersion", report.snapshotVersion(), "removalVersion",
-                    report.removalVersion(), "issuePlanCount", report.issuePlanCount(), "dueFindingCount",
-                    report.dueFindingCount(), "overdueFindingCount", report.overdueFindingCount(),
-                    "unscheduledFindingCount", report.unscheduledFindingCount())));
+            stdout.println(COMPACT_GSON.toJson(summaryJson(report)));
             if (options.failOnDue() && report.blockingFindingCount() > 0) {
                 stderr.println("Removal-ready deprecation gate failed: " + report.blockingFindingCount()
                         + " symbol(s) are due or overdue for " + report.removalVersion() + ".");
@@ -116,6 +112,20 @@ public final class RemovalReadyDeprecationScanner {
             stderr.println("Error: " + error.getMessage());
             return 1;
         }
+    }
+
+    private static Map<String, Object> summaryJson(DeprecationReport report) {
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("snapshotVersion", report.snapshotVersion());
+        summary.put("removalVersion", report.removalVersion());
+        summary.put("issuePlanCount", report.issuePlanCount());
+        summary.put("findingCount", report.findingCount());
+        summary.put("dueFindingCount", report.dueFindingCount());
+        summary.put("overdueFindingCount", report.overdueFindingCount());
+        summary.put("futureFindingCount", report.futureFindingCount());
+        summary.put("unscheduledFindingCount", report.unscheduledFindingCount());
+        summary.put("blockingFindingCount", report.blockingFindingCount());
+        return summary;
     }
 
     private static DeprecationReport generateReport(ScanOptions options) throws IOException {
@@ -129,17 +139,18 @@ public final class RemovalReadyDeprecationScanner {
             targetRemovalVersion = projectVersion.version().substring(0, projectVersion.version().length() - 9);
         }
         validateVersion(targetRemovalVersion, "--target-removal-version");
+        String scanTargetRemovalVersion = targetRemovalVersion;
 
         List<SourceFinding> allFindings = scanSources(options.repoRoot());
         List<IssuePlan> issuePlans = new ArrayList<>();
-        List<SymbolFinding> selectedSymbols = new ArrayList<>();
         List<SymbolFinding> unscheduledSymbols = new ArrayList<>();
+        int selectedFindingCount = 0;
         int dueCount = 0;
         int overdueCount = 0;
         int futureCount = 0;
         int unscheduledCount = 0;
 
-        Map<String, List<SymbolFinding>> symbolsByIssue = new LinkedHashMap<>();
+        Map<String, List<SourceFinding>> findingsByIssue = new LinkedHashMap<>();
         for (SourceFinding finding : allFindings) {
             if (finding.removalVersion() == null) {
                 unscheduledCount++;
@@ -158,16 +169,18 @@ public final class RemovalReadyDeprecationScanner {
 
             boolean selected = versionComparison == 0 || options.includeOverdue() && versionComparison < 0;
             if (selected) {
-                SymbolFinding symbol = finding.toSymbolFinding(status(finding.removalVersion(), targetRemovalVersion));
-                selectedSymbols.add(symbol);
+                selectedFindingCount++;
                 String key = finding.removalVersion() + "|" + finding.filePath();
-                symbolsByIssue.computeIfAbsent(key, ignored -> new ArrayList<>()).add(symbol);
+                findingsByIssue.computeIfAbsent(key, ignored -> new ArrayList<>()).add(finding);
             }
         }
 
-        for (Map.Entry<String, List<SymbolFinding>> entry : symbolsByIssue.entrySet()) {
-            List<SymbolFinding> symbols = entry.getValue();
-            SourceFinding first = selectedSource(allFindings, symbols.get(0));
+        for (Map.Entry<String, List<SourceFinding>> entry : findingsByIssue.entrySet()) {
+            List<SourceFinding> findings = entry.getValue();
+            SourceFinding first = findings.get(0);
+            List<SymbolFinding> symbols = findings.stream()
+                    .map(finding -> finding.toSymbolFinding(status(finding.removalVersion(), scanTargetRemovalVersion)))
+                    .toList();
             issuePlans.add(buildIssuePlan(projectVersion.version(), first.removalVersion(), first.filePath(),
                     first.module(), symbols));
         }
@@ -175,20 +188,10 @@ public final class RemovalReadyDeprecationScanner {
         DeprecationReport partialReport = new DeprecationReport(OffsetDateTime.now(ZoneOffset.UTC).toString(),
                 options.repoRoot().toString(), projectVersion.version(), targetRemovalVersion,
                 options.targetRemovalVersion() == null ? "snapshot" : "target", options.includeOverdue(),
-                options.failOnDue(), allFindings.size(), selectedSymbols.size(), dueCount, overdueCount, futureCount,
+                options.failOnDue(), allFindings.size(), selectedFindingCount, dueCount, overdueCount, futureCount,
                 unscheduledCount, dueCount + overdueCount, issuePlans.size(), List.copyOf(issuePlans),
                 List.copyOf(unscheduledSymbols), "");
         return partialReport.withSummaryMarkdown(renderMarkdown(partialReport));
-    }
-
-    private static SourceFinding selectedSource(List<SourceFinding> allFindings, SymbolFinding selectedSymbol) {
-        return allFindings.stream()
-                .filter(finding -> Objects.equals(finding.filePath(), selectedSymbol.filePath())
-                        && Objects.equals(finding.name(), selectedSymbol.name())
-                        && Objects.equals(finding.kind(), selectedSymbol.kind())
-                        && finding.line() == selectedSymbol.line())
-                .findFirst()
-                .orElseThrow();
     }
 
     private static List<SourceFinding> scanSources(Path repoRoot) throws IOException {

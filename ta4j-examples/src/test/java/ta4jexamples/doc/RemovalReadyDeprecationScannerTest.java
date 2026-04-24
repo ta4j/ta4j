@@ -239,6 +239,26 @@ public class RemovalReadyDeprecationScannerTest {
     }
 
     @Test
+    public void testTargetVersionExcludesOverdueFindingsByDefault() throws IOException {
+        writePom("<version>0.24.1-SNAPSHOT</version>");
+        writeJava("ta4j-core/src/main/java/org/ta4j/core/legacy/OverdueBridge.java", """
+                package org.ta4j.core.legacy;
+
+                /**
+                 * @deprecated Scheduled for removal in 0.24.0.
+                 */
+                @Deprecated(since = "0.20.0", forRemoval = true)
+                public class OverdueBridge {
+                }
+                """);
+
+        JsonObject report = runScanner("--target-removal-version", "0.24.1");
+        assertEquals(1, report.get("overdueFindingCount").getAsInt());
+        assertEquals(0, report.get("findingCount").getAsInt());
+        assertEquals(0, report.get("issuePlanCount").getAsInt());
+    }
+
+    @Test
     public void testFailOnDueReturnsNonZeroAfterWritingReport() throws IOException {
         writePom("<version>0.24.0-SNAPSHOT</version>");
         writeJava("ta4j-core/src/main/java/org/ta4j/core/legacy/DueBridge.java", """
@@ -263,6 +283,45 @@ public class RemovalReadyDeprecationScannerTest {
         assertTrue(Files.exists(outputJson));
         assertTrue(Files.exists(outputMarkdown));
         assertTrue(stderr.toString(StandardCharsets.UTF_8).contains("deprecation gate failed"));
+    }
+
+    @Test
+    public void testStdoutSummaryIncludesLifecycleCounts() throws IOException {
+        writePom("<version>0.24.0-SNAPSHOT</version>");
+        writeJava("ta4j-core/src/main/java/org/ta4j/core/legacy/DueBridge.java", """
+                package org.ta4j.core.legacy;
+
+                /**
+                 * @deprecated Scheduled for removal in 0.24.0.
+                 */
+                @Deprecated(since = "0.20.0", forRemoval = true)
+                public class DueBridge {
+                }
+                """);
+        writeJava("ta4j-core/src/main/java/org/ta4j/core/legacy/FutureBridge.java", """
+                package org.ta4j.core.legacy;
+
+                /**
+                 * @deprecated Scheduled for removal in 0.25.0.
+                 */
+                @Deprecated(since = "0.20.0", forRemoval = true)
+                public class FutureBridge {
+                }
+                """);
+
+        ByteArrayOutputStream stdout = new ByteArrayOutputStream();
+        int exitCode = RemovalReadyDeprecationScanner.run(
+                scannerArgs(tempDir.resolve("report.json"), tempDir.resolve("report.md"), "--fail-on-due"),
+                new PrintStream(stdout), new PrintStream(new ByteArrayOutputStream()));
+
+        assertEquals(2, exitCode);
+        String summaryText = stdout.toString(StandardCharsets.UTF_8);
+        assertTrue(summaryText.startsWith("{\"snapshotVersion\""));
+        JsonObject summary = JsonParser.parseString(summaryText).getAsJsonObject();
+        assertEquals(1, summary.get("findingCount").getAsInt());
+        assertEquals(1, summary.get("dueFindingCount").getAsInt());
+        assertEquals(1, summary.get("futureFindingCount").getAsInt());
+        assertEquals(1, summary.get("blockingFindingCount").getAsInt());
     }
 
     @Test
