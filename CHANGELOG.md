@@ -1,7 +1,7 @@
 ## Unreleased
 
 ### Added
-- **BarSeries listener (OnChange) event system**: `BarSeries` now supports push-based `BarSeriesListener` notifications for bar append and replace events, enabling incremental indicator computation. `CachedIndicator` auto-subscribes to its series and pre-computes values when new bars arrive. Listeners use weak references to avoid memory leaks. Includes `readResolve` serialization support and comprehensive test coverage (`#1503`).
+- **BarSeries listener (OnChange) event system**: `BarSeries` now supports push-based `BarSeriesListener` notifications for bar append and replace events, enabling incremental indicator computation.  Includes `readResolve` serialization support and comprehensive test coverage (`#1503`).
 
 ### Changed
 - **Agent guidance stays accurate across repo and personal workflows**: `scripts/agents_for_target.sh` guidance now clearly describes path-scoped `AGENTS.md` discovery from the current repo/workspace root, so contributors can use it for file-targeted lookup without assuming it also covers personal PR/comment workflow guidance.
