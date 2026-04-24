@@ -142,6 +142,21 @@ public class FixedRuleTest {
     }
 
     @Test
+    public void traceLoggingCanBeEnabledForSingleEvaluationWithoutMutatingRuleMode() {
+        FixedRule rule = new FixedRule(1);
+        ruleTraceTestLogger.clear();
+
+        assertTrue(rule.isSatisfiedWithTraceMode(1, Rule.TraceMode.VERBOSE));
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("Scoped verbose evaluation should emit trace output", logContent.contains("FixedRule#isSatisfied"));
+        assertTrue("Scoped verbose evaluation should mark verbose mode", logContent.contains("traceMode=VERBOSE"));
+        assertTrue("Scoped verbose evaluation should keep root path", logContent.contains("path=root"));
+        assertTrue("Scoped verbose evaluation should not mutate the configured rule mode",
+                rule.getTraceMode() == Rule.TraceMode.OFF);
+    }
+
+    @Test
     public void serializeAndDeserialize() {
         BarSeries series = new MockBarSeriesBuilder().withData(1).build();
         FixedRule rule = new FixedRule(1, 4, 5);

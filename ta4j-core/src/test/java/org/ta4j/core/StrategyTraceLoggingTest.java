@@ -3,6 +3,7 @@
  */
 package org.ta4j.core;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -258,5 +259,31 @@ public class StrategyTraceLoggingTest {
                 logContent.contains("path=exitRule.rule1 depth=1"));
         assertTrue("Verbose mode should attribute the second child path",
                 logContent.contains("path=exitRule.rule2 depth=1"));
+    }
+
+    @Test
+    public void traceLoggingCanBeScopedToSingleStrategyEvaluationWithoutMutatingStrategyMode() {
+        FixedRule child1 = new FixedRule(1);
+        child1.setName("Scoped Entry Child 1");
+        FixedRule child2 = new FixedRule(1);
+        child2.setName("Scoped Entry Child 2");
+        AndRule entryRule = new AndRule(child1, child2);
+        entryRule.setName("Scoped Entry Composite");
+        Strategy strategy = new BaseStrategy("Scoped Strategy", entryRule, new FixedRule(2));
+
+        logOutput.getBuffer().setLength(0);
+        assertTrue(strategy.shouldEnterWithTraceMode(1, new BaseTradingRecord(), Rule.TraceMode.VERBOSE));
+
+        String logContent = logOutput.toString();
+        assertTrue("Scoped verbose evaluation should log the strategy decision",
+                logContent.contains(">>> Scoped Strategy#shouldEnter"));
+        assertTrue("Scoped verbose evaluation should log the entry composite",
+                logContent.contains("Scoped Entry Composite#isSatisfied"));
+        assertTrue("Scoped verbose evaluation should log first child",
+                logContent.contains("Scoped Entry Child 1#isSatisfied"));
+        assertTrue("Scoped verbose evaluation should log second child",
+                logContent.contains("Scoped Entry Child 2#isSatisfied"));
+        assertEquals("Scoped strategy evaluation should not mutate the strategy mode", Rule.TraceMode.OFF,
+                strategy.getTraceMode());
     }
 }

@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.rules.RuleTraceContext;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.StrategySerialization;
 
@@ -141,7 +142,7 @@ public interface Strategy {
      * @return true to recommend to enter, false otherwise
      */
     default boolean shouldEnter(int index) {
-        return shouldEnter(index, null);
+        return shouldEnter(index, (TradingRecord) null);
     }
 
     /**
@@ -154,11 +155,43 @@ public interface Strategy {
     }
 
     /**
+     * Evaluates the entry rule once with the supplied trace mode without changing
+     * the strategy's configured trace mode.
+     *
+     * @param index     the bar index
+     * @param traceMode trace mode for this evaluation only; {@code null} keeps the
+     *                  strategy's configured mode
+     * @return true to recommend to enter, false otherwise
+     * @since 0.22.7
+     */
+    default boolean shouldEnterWithTraceMode(int index, Rule.TraceMode traceMode) {
+        return shouldEnterWithTraceMode(index, null, traceMode);
+    }
+
+    /**
+     * Evaluates the entry rule once with the supplied trace mode without changing
+     * the strategy's configured trace mode.
+     *
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
+     * @param traceMode     trace mode for this evaluation only; {@code null} keeps
+     *                      the strategy's configured mode
+     * @return true to recommend to enter, false otherwise
+     * @since 0.22.7
+     */
+    default boolean shouldEnterWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
+        if (traceMode == null) {
+            return shouldEnter(index, tradingRecord);
+        }
+        return RuleTraceContext.evaluate(traceMode, "entryRule", getName(), () -> shouldEnter(index, tradingRecord));
+    }
+
+    /**
      * @param index the bar index
      * @return true to recommend to exit, false otherwise
      */
     default boolean shouldExit(int index) {
-        return shouldExit(index, null);
+        return shouldExit(index, (TradingRecord) null);
     }
 
     /**
@@ -168,6 +201,38 @@ public interface Strategy {
      */
     default boolean shouldExit(int index, TradingRecord tradingRecord) {
         return !isUnstableAt(index) && getExitRule().isSatisfied(index, tradingRecord);
+    }
+
+    /**
+     * Evaluates the exit rule once with the supplied trace mode without changing
+     * the strategy's configured trace mode.
+     *
+     * @param index     the bar index
+     * @param traceMode trace mode for this evaluation only; {@code null} keeps the
+     *                  strategy's configured mode
+     * @return true to recommend to exit, false otherwise
+     * @since 0.22.7
+     */
+    default boolean shouldExitWithTraceMode(int index, Rule.TraceMode traceMode) {
+        return shouldExitWithTraceMode(index, null, traceMode);
+    }
+
+    /**
+     * Evaluates the exit rule once with the supplied trace mode without changing
+     * the strategy's configured trace mode.
+     *
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
+     * @param traceMode     trace mode for this evaluation only; {@code null} keeps
+     *                      the strategy's configured mode
+     * @return true to recommend to exit, false otherwise
+     * @since 0.22.7
+     */
+    default boolean shouldExitWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
+        if (traceMode == null) {
+            return shouldExit(index, tradingRecord);
+        }
+        return RuleTraceContext.evaluate(traceMode, "exitRule", getName(), () -> shouldExit(index, tradingRecord));
     }
 
     /**

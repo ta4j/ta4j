@@ -6,6 +6,7 @@ package org.ta4j.core;
 import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OrRule;
+import org.ta4j.core.rules.RuleTraceContext;
 import org.ta4j.core.rules.XorRule;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.ComponentSerialization;
@@ -97,7 +98,7 @@ public interface Rule {
      *         otherwise
      */
     default boolean isSatisfied(int index) {
-        return isSatisfied(index, null);
+        return isSatisfied(index, (TradingRecord) null);
     }
 
     /**
@@ -107,6 +108,40 @@ public interface Rule {
      *         otherwise
      */
     boolean isSatisfied(int index, TradingRecord tradingRecord);
+
+    /**
+     * Evaluates this rule once with the supplied trace mode without changing the
+     * rule's configured trace mode.
+     *
+     * @param index     the bar index
+     * @param traceMode trace mode for this evaluation only; {@code null} keeps the
+     *                  rule's configured mode
+     * @return true if this rule is satisfied for the provided index, false
+     *         otherwise
+     * @since 0.22.7
+     */
+    default boolean isSatisfiedWithTraceMode(int index, TraceMode traceMode) {
+        return isSatisfiedWithTraceMode(index, null, traceMode);
+    }
+
+    /**
+     * Evaluates this rule once with the supplied trace mode without changing the
+     * rule's configured trace mode.
+     *
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
+     * @param traceMode     trace mode for this evaluation only; {@code null} keeps
+     *                      the rule's configured mode
+     * @return true if this rule is satisfied for the provided index, false
+     *         otherwise
+     * @since 0.22.7
+     */
+    default boolean isSatisfiedWithTraceMode(int index, TradingRecord tradingRecord, TraceMode traceMode) {
+        if (traceMode == null) {
+            return isSatisfied(index, tradingRecord);
+        }
+        return RuleTraceContext.evaluate(traceMode, "root", null, () -> isSatisfied(index, tradingRecord));
+    }
 
     /**
      * Configures trace logging for this rule.

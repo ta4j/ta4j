@@ -160,6 +160,33 @@ public class AndRuleTest {
     }
 
     @Test
+    public void traceLoggingCanBeScopedToSingleCompositeEvaluationWithoutMutatingRuleModes() {
+        FixedRule rule1 = new FixedRule(1);
+        rule1.setName("Scoped Child 1");
+        rule1.setTraceMode(Rule.TraceMode.VERBOSE);
+        FixedRule rule2 = new FixedRule(1);
+        rule2.setName("Scoped Child 2");
+        rule2.setTraceMode(Rule.TraceMode.VERBOSE);
+        AndRule andRule = new AndRule(rule1, rule2);
+        andRule.setName("Scoped Parent");
+
+        ruleTraceTestLogger.clear();
+        assertTrue(andRule.isSatisfiedWithTraceMode(1, null, Rule.TraceMode.ROLLUP));
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("Scoped rollup evaluation should log the parent", logContent.contains("Scoped Parent#isSatisfied"));
+        assertFalse("Scoped rollup evaluation should suppress first child logs",
+                logContent.contains("Scoped Child 1#isSatisfied"));
+        assertFalse("Scoped rollup evaluation should suppress second child logs",
+                logContent.contains("Scoped Child 2#isSatisfied"));
+        assertEquals("Scoped evaluation should not mutate parent mode", Rule.TraceMode.OFF, andRule.getTraceMode());
+        assertEquals("Scoped evaluation should not mutate first child mode", Rule.TraceMode.VERBOSE,
+                rule1.getTraceMode());
+        assertEquals("Scoped evaluation should not mutate second child mode", Rule.TraceMode.VERBOSE,
+                rule2.getTraceMode());
+    }
+
+    @Test
     public void serializeAndDeserialize() {
         Rule composite = satisfiedRule.and(BooleanRule.TRUE);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, composite);

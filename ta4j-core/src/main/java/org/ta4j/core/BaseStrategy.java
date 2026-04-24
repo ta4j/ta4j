@@ -203,19 +203,39 @@ public class BaseStrategy implements Strategy {
 
     @Override
     public boolean shouldEnter(int index, TradingRecord tradingRecord) {
-        boolean enter = traceMode == Rule.TraceMode.OFF ? Strategy.super.shouldEnter(index, tradingRecord)
-                : RuleTraceContext.evaluate(traceMode, "entryRule", getTraceDisplayName(),
+        return evaluateShouldEnter(index, tradingRecord, traceMode);
+    }
+
+    @Override
+    public boolean shouldEnterWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
+        return evaluateShouldEnter(index, tradingRecord, traceMode);
+    }
+
+    private boolean evaluateShouldEnter(int index, TradingRecord tradingRecord, Rule.TraceMode requestedTraceMode) {
+        Rule.TraceMode activeTraceMode = requestedTraceMode == null ? this.traceMode : requestedTraceMode;
+        boolean enter = activeTraceMode == Rule.TraceMode.OFF ? Strategy.super.shouldEnter(index, tradingRecord)
+                : RuleTraceContext.evaluate(activeTraceMode, "entryRule", getTraceDisplayName(),
                         () -> Strategy.super.shouldEnter(index, tradingRecord));
-        traceShouldEnter(index, enter);
+        traceShouldEnter(index, enter, activeTraceMode);
         return enter;
     }
 
     @Override
     public boolean shouldExit(int index, TradingRecord tradingRecord) {
-        boolean exit = traceMode == Rule.TraceMode.OFF ? Strategy.super.shouldExit(index, tradingRecord)
-                : RuleTraceContext.evaluate(traceMode, "exitRule", getTraceDisplayName(),
+        return evaluateShouldExit(index, tradingRecord, traceMode);
+    }
+
+    @Override
+    public boolean shouldExitWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
+        return evaluateShouldExit(index, tradingRecord, traceMode);
+    }
+
+    private boolean evaluateShouldExit(int index, TradingRecord tradingRecord, Rule.TraceMode requestedTraceMode) {
+        Rule.TraceMode activeTraceMode = requestedTraceMode == null ? this.traceMode : requestedTraceMode;
+        boolean exit = activeTraceMode == Rule.TraceMode.OFF ? Strategy.super.shouldExit(index, tradingRecord)
+                : RuleTraceContext.evaluate(activeTraceMode, "exitRule", getTraceDisplayName(),
                         () -> Strategy.super.shouldExit(index, tradingRecord));
-        traceShouldExit(index, exit);
+        traceShouldExit(index, exit, activeTraceMode);
         return exit;
     }
 
@@ -267,7 +287,11 @@ public class BaseStrategy implements Strategy {
      * @param enter true if the strategy should enter, false otherwise
      */
     protected void traceShouldEnter(int index, boolean enter) {
-        if (traceMode != Rule.TraceMode.OFF && log.isTraceEnabled()) {
+        traceShouldEnter(index, enter, traceMode);
+    }
+
+    private void traceShouldEnter(int index, boolean enter, Rule.TraceMode activeTraceMode) {
+        if (activeTraceMode != Rule.TraceMode.OFF && log.isTraceEnabled()) {
             log.trace(">>> {}#shouldEnter({}): {}", getTraceDisplayName(), index, enter);
         }
     }
@@ -279,7 +303,11 @@ public class BaseStrategy implements Strategy {
      * @param exit  true if the strategy should exit, false otherwise
      */
     protected void traceShouldExit(int index, boolean exit) {
-        if (traceMode != Rule.TraceMode.OFF && log.isTraceEnabled()) {
+        traceShouldExit(index, exit, traceMode);
+    }
+
+    private void traceShouldExit(int index, boolean exit, Rule.TraceMode activeTraceMode) {
+        if (activeTraceMode != Rule.TraceMode.OFF && log.isTraceEnabled()) {
             log.trace(">>> {}#shouldExit({}): {}", getTraceDisplayName(), index, exit);
         }
     }
