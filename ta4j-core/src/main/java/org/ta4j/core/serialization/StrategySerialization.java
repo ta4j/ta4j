@@ -10,10 +10,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Locale;
+import java.util.regex.Pattern;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -70,6 +71,8 @@ public final class StrategySerialization {
     private static final String DEFAULT_V2_STRATEGY_TYPE = "BaseStrategy";
     private static final int SUPPORTED_V2_VERSION = 2;
     private static final String VERSION_TOKEN = "\"" + VERSION_KEY + "\"";
+    private static final Pattern JSON_NUMBER_LITERAL = Pattern
+            .compile("-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?");
 
     private StrategySerialization() {
     }
@@ -205,6 +208,7 @@ public final class StrategySerialization {
         String type = readRequiredString(object, TYPE_KEY, location + "." + TYPE_KEY);
         JsonElement rulesElement = object.get(RULES_KEY);
         if (rulesElement != null && !rulesElement.isJsonNull()) {
+            rejectUnexpectedField(object, V2_ARGS_KEY, location + "." + V2_ARGS_KEY);
             JsonArray rulesArray = requireArray(rulesElement, location + "." + RULES_KEY);
             if (rulesArray.size() != 2) {
                 throw new IllegalArgumentException(
@@ -306,6 +310,7 @@ public final class StrategySerialization {
         String normalizedType = normalizeIndicatorType(type);
 
         if ("ClosePriceIndicator".equals(normalizedType)) {
+            rejectUnexpectedField(object, V2_ARGS_KEY, location + "." + V2_ARGS_KEY);
             return new ClosePriceIndicator(series);
         }
 
@@ -516,6 +521,12 @@ public final class StrategySerialization {
         }
     }
 
+    private static void rejectUnexpectedField(JsonObject object, String key, String location) {
+        if (object.has(key)) {
+            throw new IllegalArgumentException("Unexpected field at " + location);
+        }
+    }
+
     private static boolean looksLikeV2Envelope(JsonObject object) {
         return object.has(NAME_KEY) || object.has(ENTRY_RULE_KEY) || object.has(EXIT_RULE_KEY);
     }
@@ -538,14 +549,18 @@ public final class StrategySerialization {
     }
 
     private static double parseFiniteDouble(String value, String location) {
+        String trimmed = value == null ? "" : value.trim();
+        if (!JSON_NUMBER_LITERAL.matcher(trimmed).matches()) {
+            throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + trimmed);
+        }
         try {
-            double parsed = Double.parseDouble(value);
+            double parsed = Double.parseDouble(trimmed);
             if (!Double.isFinite(parsed)) {
                 throw new NumberFormatException("non-finite numeric value");
             }
             return parsed;
         } catch (NumberFormatException ex) {
-            throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + value, ex);
+            throw new IllegalArgumentException("Invalid numeric argument at " + location + ": " + trimmed, ex);
         }
     }
 

@@ -253,6 +253,30 @@ public class StrategySerializationTest {
     }
 
     @Test
+    public void versionTwoPayloadBuildsUsableStrategyFromAuthoredJson() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 6, 4).build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "Close_Price_Thresholds",
+                  "entryRule": {
+                    "type": "OverIndicatorRule",
+                    "args": [{ "type": "ClosePrice" }, 5]
+                  },
+                  "exitRule": {
+                    "type": "UnderIndicatorRule",
+                    "args": ["ClosePrice", "5"]
+                  }
+                }
+                """;
+
+        Strategy restored = Strategy.fromJson(series, v2Json);
+
+        assertThat(restored.shouldEnter(1, new BaseTradingRecord())).isTrue();
+        assertThat(restored.shouldExit(2, new BaseTradingRecord())).isTrue();
+    }
+
+    @Test
     public void versionTwoPayloadUnsupportedVersionThrows() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
         String v2Json = """
@@ -458,6 +482,76 @@ public class StrategySerializationTest {
 
             assertThat(exception).hasMessageContaining("entryRule.args[1]");
         }
+    }
+
+    @Test
+    public void versionTwoPayloadRejectsJavaSpecificNumericStrings() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+
+        for (String numericValue : List.of("0x1.0p0", "1d")) {
+            String v2Json = """
+                    {
+                      "version": 2,
+                      "name": "BadNumber",
+                      "entryRule": { "type": "OverIndicatorRule", "args": ["RSI(14)", "%s"] },
+                      "exitRule": { "type": "StopLossRule", "args": ["1.5%%"] }
+                    }
+                    """.formatted(numericValue);
+
+            IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                    () -> Strategy.fromJson(series, v2Json));
+
+            assertThat(exception).hasMessageContaining("entryRule.args[1]").hasMessageContaining(numericValue);
+        }
+    }
+
+    @Test
+    public void versionTwoPayloadRejectsIgnoredClosePriceObjectArgs() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "IgnoredClosePriceArgs",
+                  "entryRule": {
+                    "type": "OverIndicatorRule",
+                    "args": [
+                      { "type": "ClosePrice", "args": [12] },
+                      50
+                    ]
+                  },
+                  "exitRule": { "type": "StopLossRule", "args": ["1.5%"] }
+                }
+                """;
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, v2Json));
+
+        assertThat(exception).hasMessageContaining("entryRule.args[0].args");
+    }
+
+    @Test
+    public void versionTwoPayloadRejectsIgnoredCompositeRuleArgs() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        String v2Json = """
+                {
+                  "version": 2,
+                  "name": "IgnoredCompositeArgs",
+                  "entryRule": { "type": "OverIndicatorRule", "args": ["RSI(2)", 50] },
+                  "exitRule": {
+                    "type": "OrRule",
+                    "args": ["ignored"],
+                    "rules": [
+                      { "type": "StopLossRule", "args": ["1.5%"] },
+                      { "type": "StopGainRule", "args": ["2.5%"] }
+                    ]
+                  }
+                }
+                """;
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> Strategy.fromJson(series, v2Json));
+
+        assertThat(exception).hasMessageContaining("exitRule.args");
     }
 
     @Test

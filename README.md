@@ -641,7 +641,7 @@ The shorthand is deliberately bounded and strict:
 | Composite rules | `AndRule` and `OrRule`, each with exactly two child `rules` |
 | Leaf rules | `CrossedUpIndicatorRule`, `CrossedDownIndicatorRule`, `OverIndicatorRule`, `UnderIndicatorRule`, `StopGainRule`, and `StopLossRule` |
 | Indicators | `ClosePrice`, `SMA(...)`, `EMA(...)`, and `RSI(...)` in string or object form, with positive integer bar counts |
-| Numeric thresholds | Finite numbers or numeric strings, with an optional trailing `%` for stop percentages |
+| Numeric thresholds | Finite JSON-style numbers or numeric strings, with an optional trailing `%` for stop percentages |
 
 Bar series serialization (Java):
 - Bar data, the `NumFactory`, and the `BarBuilderFactory` configuration are preserved across the round-trip.
