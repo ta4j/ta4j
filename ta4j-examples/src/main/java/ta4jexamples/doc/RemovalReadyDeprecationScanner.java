@@ -57,6 +57,8 @@ import javax.tools.ToolProvider;
  * Typical usage:
  * {@code mvn -pl ta4j-examples -am compile exec:java -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner -Dexec.args="--output-json build/report.json --output-md build/report.md"}
  * </p>
+ *
+ * @since 0.22.7
  */
 public final class RemovalReadyDeprecationScanner {
 
@@ -79,6 +81,7 @@ public final class RemovalReadyDeprecationScanner {
      * Launches the CLI scanner.
      *
      * @param args command-line arguments
+     * @since 0.22.7
      */
     public static void main(String[] args) {
         int exitCode = run(args, System.out, System.err);
