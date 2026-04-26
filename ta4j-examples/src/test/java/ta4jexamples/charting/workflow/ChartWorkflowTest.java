@@ -1352,6 +1352,19 @@ public class ChartWorkflowTest {
         assertNotNull(mockDisplayer.getLastChart(), "Chart should have been passed to displayer");
     }
 
+    @Test
+    public void testDisplayChartPlanWithPreferredSizeRejectsNullPlanBeforeFallbackTitleLookup() {
+        MockChartDisplayer mockDisplayer = new MockChartDisplayer();
+        TradingChartFactory factory = new TradingChartFactory();
+        ChartWorkflow workflow = new ChartWorkflow(factory, mockDisplayer, ChartStorage.noOp());
+
+        NullPointerException thrown = assertThrows(NullPointerException.class,
+                () -> workflow.display(null, null, new Dimension(1280, 720)));
+
+        assertEquals("Chart plan cannot be null", thrown.getMessage());
+        assertNull(mockDisplayer.getLastChart(), "Displayer should not be invoked when plan validation fails");
+    }
+
     private static BufferedImage decodeImage(byte[] bytes) throws IOException {
         BufferedImage image = ImageIO.read(new ByteArrayInputStream(bytes));
         assertNotNull(image, "Encoded chart bytes should decode into an image");

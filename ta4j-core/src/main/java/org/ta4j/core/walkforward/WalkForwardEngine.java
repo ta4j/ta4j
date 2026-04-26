@@ -351,7 +351,7 @@ public final class WalkForwardEngine<C, P, O> {
 
         Duration foldRuntime = Duration.ofNanos(System.nanoTime() - foldStart);
         return new FoldExecution<>(foldOrder, split, List.copyOf(snapshots), List.copyOf(leakageAudit),
-                immutableObservationLists(observationsByHorizon),
+                immutableObservationMap(observationsByHorizon),
                 buildFoldRuntime(split.foldId(), foldRuntime, snapshotRuntimes));
     }
 
@@ -470,15 +470,6 @@ public final class WalkForwardEngine<C, P, O> {
                 perFold.put(foldEntry.getKey(), Map.copyOf(foldEntry.getValue()));
             }
             immutable.put(horizonEntry.getKey(), Map.copyOf(perFold));
-        }
-        return Map.copyOf(immutable);
-    }
-
-    private static <P, O> Map<Integer, List<WalkForwardObservation<P, O>>> immutableObservationLists(
-            Map<Integer, List<WalkForwardObservation<P, O>>> mutable) {
-        Map<Integer, List<WalkForwardObservation<P, O>>> immutable = new LinkedHashMap<>();
-        for (Map.Entry<Integer, List<WalkForwardObservation<P, O>>> entry : mutable.entrySet()) {
-            immutable.put(entry.getKey(), List.copyOf(entry.getValue()));
         }
         return Map.copyOf(immutable);
     }

@@ -81,8 +81,17 @@ final class ElliottWaveAnchorRegistry {
             try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
                 RegistryDocument document = GSON.fromJson(reader, RegistryDocument.class);
                 Objects.requireNonNull(document, "document");
-                List<AnchorSpec> anchorSpecs = new ArrayList<>();
-                for (RegistryAnchor anchor : document.anchors()) {
+                List<RegistryAnchor> rawAnchors = document.anchors();
+                if (rawAnchors == null) {
+                    throw new IllegalArgumentException("Anchor registry " + normalized + " is missing \"anchors\"");
+                }
+                List<AnchorSpec> anchorSpecs = new ArrayList<>(rawAnchors.size());
+                for (int index = 0; index < rawAnchors.size(); index++) {
+                    RegistryAnchor anchor = rawAnchors.get(index);
+                    if (anchor == null) {
+                        throw new IllegalArgumentException(
+                                "Anchor registry " + normalized + " contains null anchor at index " + index);
+                    }
                     anchorSpecs.add(anchor.toSpec());
                 }
                 return new ElliottWaveAnchorRegistry(document.registryId(), document.datasetResource(),
@@ -117,8 +126,10 @@ final class ElliottWaveAnchorRegistry {
         }
         resolved.sort(Comparator.comparing(ResolvedAnchor::resolvedTime));
 
-        int normalizedHoldout = Math.max(0, Math.min(holdoutCount, resolved.size()));
-        int validationCutoff = Math.max(0, resolved.size() - normalizedHoldout);
+        if (holdoutCount < 0 || holdoutCount > resolved.size()) {
+            throw new IllegalArgumentException("holdoutCount must be between 0 and " + resolved.size());
+        }
+        int validationCutoff = resolved.size() - holdoutCount;
 
         List<ResolvedAnchor> partitioned = new ArrayList<>(resolved.size());
         for (int i = 0; i < resolved.size(); i++) {

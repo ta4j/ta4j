@@ -53,12 +53,14 @@ class ElliottWaveAnchorRegistryTest {
         List<ElliottWaveAnchorRegistry.ResolvedAnchor> resolved = registry.resolve(series, 3);
 
         assertEquals(registry.anchors().size(), resolved.size());
-        assertEquals(3,
-                resolved.stream()
-                        .filter(anchor -> anchor.partition() == ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT)
-                        .count());
-        assertEquals(ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION, resolved.getFirst().partition());
-        assertEquals(ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT, resolved.getLast().partition());
+        int firstHoldoutIndex = resolved.size() - 3;
+        for (int index = 0; index < resolved.size(); index++) {
+            ElliottWaveAnchorRegistry.AnchorPartition expectedPartition = index < firstHoldoutIndex
+                    ? ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION
+                    : ElliottWaveAnchorRegistry.AnchorPartition.HOLDOUT;
+            assertEquals(expectedPartition, resolved.get(index).partition(),
+                    "partition at resolved anchor index " + index);
+        }
         for (ElliottWaveAnchorRegistry.ResolvedAnchor anchor : resolved) {
             assertTrue(anchor.decisionIndex() >= series.getBeginIndex());
             assertTrue(anchor.decisionIndex() <= series.getEndIndex());
@@ -83,6 +85,22 @@ class ElliottWaveAnchorRegistryTest {
                         .count());
         assertTrue(resolved.stream()
                 .allMatch(anchor -> anchor.partition() == ElliottWaveAnchorRegistry.AnchorPartition.VALIDATION));
+    }
+
+    @Test
+    void resolveRejectsInvalidHoldoutCounts() {
+        ElliottWaveAnchorRegistry registry = ElliottWaveAnchorRegistry.load(ElliottWaveAnchorRegistry.DEFAULT_RESOURCE);
+        BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveAnchorRegistryTest.class,
+                ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
+                org.apache.logging.log4j.LogManager.getLogger(ElliottWaveAnchorRegistryTest.class));
+
+        IllegalArgumentException negative = assertThrows(IllegalArgumentException.class,
+                () -> registry.resolve(series, -1));
+        IllegalArgumentException oversized = assertThrows(IllegalArgumentException.class,
+                () -> registry.resolve(series, registry.anchors().size() + 1));
+
+        assertEquals("holdoutCount must be between 0 and " + registry.anchors().size(), negative.getMessage());
+        assertEquals("holdoutCount must be between 0 and " + registry.anchors().size(), oversized.getMessage());
     }
 
     @Test
@@ -133,6 +151,26 @@ class ElliottWaveAnchorRegistryTest {
                 () -> toSpec("btc-top", "TOP", "not-a-timestamp", "2024-01-02T00:00:00Z", List.of("WAVE5")));
 
         assertEquals("Invalid windowStart 'not-a-timestamp' for anchor btc-top", thrown.getMessage());
+    }
+
+    @Test
+    void loadRejectsMissingAnchorsListWithClearMessage() {
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> ElliottWaveAnchorRegistry
+                .load("ta4jexamples/analysis/elliottwave/backtest/test-anchor-registry-missing-anchors.json"));
+
+        assertEquals(
+                "Anchor registry /ta4jexamples/analysis/elliottwave/backtest/test-anchor-registry-missing-anchors.json is missing \"anchors\"",
+                thrown.getMessage());
+    }
+
+    @Test
+    void loadRejectsNullAnchorEntriesWithClearMessage() {
+        IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> ElliottWaveAnchorRegistry
+                .load("ta4jexamples/analysis/elliottwave/backtest/test-anchor-registry-null-anchor.json"));
+
+        assertEquals(
+                "Anchor registry /ta4jexamples/analysis/elliottwave/backtest/test-anchor-registry-null-anchor.json contains null anchor at index 0",
+                thrown.getMessage());
     }
 
     @Test

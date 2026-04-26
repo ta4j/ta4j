@@ -107,6 +107,14 @@ final class SwingDetectorSupport {
         if (existing.type() == candidate.type()) {
             return chooseMoreExtreme(existing, candidate);
         }
+        final Num existingPrice = existing.price();
+        final Num candidatePrice = candidate.price();
+        if (Num.isNaNOrNull(existingPrice)) {
+            return Num.isNaNOrNull(candidatePrice) ? deterministicSharedIndexTieBreak(existing, candidate) : candidate;
+        }
+        if (Num.isNaNOrNull(candidatePrice)) {
+            return existing;
+        }
         final SwingPivot previous = priorPivots.isEmpty() ? null : priorPivots.getLast();
         if (previous != null) {
             if (previous.type() == existing.type()) {
@@ -115,14 +123,6 @@ final class SwingDetectorSupport {
             if (previous.type() == candidate.type()) {
                 return existing;
             }
-        }
-        final Num existingPrice = existing.price();
-        final Num candidatePrice = candidate.price();
-        if (Num.isNaNOrNull(existingPrice)) {
-            return Num.isNaNOrNull(candidatePrice) ? deterministicSharedIndexTieBreak(existing, candidate) : candidate;
-        }
-        if (Num.isNaNOrNull(candidatePrice)) {
-            return existing;
         }
         if (existingPrice.isGreaterThan(candidatePrice)) {
             return existing.type() == SwingPivotType.HIGH ? existing

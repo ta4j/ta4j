@@ -112,6 +112,20 @@ class CompositeSwingDetectorTest {
     }
 
     @Test
+    void normalizePivotsPrefersFiniteSharedIndexPivotBeforeAlternation() {
+        BarSeries series = singleSeries();
+        NumFactory factory = series.numFactory();
+        List<SwingPivot> normalized = SwingDetectorSupport.normalizePivots(List.of(
+                new SwingPivot(1, factory.hundred(), SwingPivotType.LOW),
+                new SwingPivot(2, factory.numOf(120), SwingPivotType.HIGH), new SwingPivot(4, NaN, SwingPivotType.LOW),
+                new SwingPivot(4, factory.numOf(118), SwingPivotType.HIGH)));
+
+        assertThat(normalized).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(1, SwingPivotType.LOW), tuple(2, SwingPivotType.HIGH));
+        assertThat(normalized).allSatisfy(pivot -> assertThat(pivot.price()).isNotEqualTo(NaN));
+    }
+
+    @Test
     void swingsFromPivotsSkipsDuplicateIndexNeighborsDefensively() {
         BarSeries series = singleSeries();
         NumFactory factory = series.numFactory();

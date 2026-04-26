@@ -25,7 +25,7 @@
   - `ElliottWaveAnchorCalibrationHarness`
   - owns truth-target scoring, routine/targeted calibration artifacts, and the temporary legacy anchored comparison path
 
-The important line is that the legacy anchored study is no longer a first-class runtime demo. If you need legacy-versus-canonical comparison, use the harness artifacts rather than treating the old anchored path as a second production engine.
+The important line is that the legacy-anchored study is no longer a first-class runtime demo. If you need legacy-versus-canonical comparison, use the harness artifacts rather than treating the old anchored path as a second production engine.
 
 ## What stays the same
 

@@ -194,6 +194,7 @@ public class ChartWorkflow {
      * @since 0.22.7
      */
     public void display(ChartPlan plan, String windowTitle, Dimension preferredSize) {
+        Objects.requireNonNull(plan, "Chart plan cannot be null");
         String effectiveWindowTitle = windowTitle;
         if (effectiveWindowTitle == null || effectiveWindowTitle.trim().isEmpty()) {
             effectiveWindowTitle = plan.metadata().title();

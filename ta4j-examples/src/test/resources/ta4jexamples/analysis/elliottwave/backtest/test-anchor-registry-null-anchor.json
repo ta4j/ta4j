@@ -1,0 +1,8 @@
+{
+  "registryId": "test-registry-null-anchor",
+  "datasetResource": "test-dataset.csv",
+  "provenance": "unit test fixture",
+  "anchors": [
+    null
+  ]
+}
