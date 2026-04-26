@@ -35,6 +35,7 @@ public final class RuleTraceContext {
      * @param parentRuleName optional parent name, such as a strategy name
      * @param supplier       evaluation callback
      * @return the callback result
+     * @since 0.22.7
      */
     public static boolean evaluate(Rule.TraceMode traceMode, String path, String parentRuleName,
             BooleanSupplier supplier) {

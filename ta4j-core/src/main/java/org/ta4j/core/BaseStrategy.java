@@ -171,11 +171,21 @@ public class BaseStrategy implements Strategy {
         return exitRule;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.7
+     */
     @Override
     public void setTraceMode(Rule.TraceMode traceMode) {
         this.traceMode = traceMode == null ? Rule.TraceMode.OFF : traceMode;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.7
+     */
     @Override
     public Rule.TraceMode getTraceMode() {
         return traceMode;
@@ -206,6 +216,11 @@ public class BaseStrategy implements Strategy {
         return evaluateShouldEnter(index, tradingRecord, traceMode);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.7
+     */
     @Override
     public boolean shouldEnterWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
         return evaluateShouldEnter(index, tradingRecord, traceMode);
@@ -225,6 +240,11 @@ public class BaseStrategy implements Strategy {
         return evaluateShouldExit(index, tradingRecord, traceMode);
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.7
+     */
     @Override
     public boolean shouldExitWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
         return evaluateShouldExit(index, tradingRecord, traceMode);

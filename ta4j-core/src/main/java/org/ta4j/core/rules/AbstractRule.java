@@ -85,11 +85,21 @@ public abstract class AbstractRule implements Rule {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.7
+     */
     @Override
     public void setTraceMode(TraceMode traceMode) {
         this.traceMode = traceMode == null ? TraceMode.OFF : traceMode;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.7
+     */
     @Override
     public TraceMode getTraceMode() {
         return traceMode;

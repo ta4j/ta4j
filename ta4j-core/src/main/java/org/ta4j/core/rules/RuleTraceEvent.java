@@ -28,6 +28,8 @@ public record RuleTraceEvent(int index, String ruleType, String ruleName, Rule.T
 
     /**
      * Constructor.
+     *
+     * @since 0.22.7
      */
     public RuleTraceEvent {
         context = context == null || context.isEmpty() ? Map.of()
@@ -38,6 +40,7 @@ public record RuleTraceEvent(int index, String ruleType, String ruleName, Rule.T
      * Formats this structured event for the legacy SLF4J trace sink.
      *
      * @return stable log message
+     * @since 0.22.7
      */
     public String formatMessage() {
         var builder = new StringBuilder().append(ruleName)
