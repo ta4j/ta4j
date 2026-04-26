@@ -71,6 +71,7 @@ public abstract class NamedRule extends AbstractRule {
      * Protected constructor that fixes the rule label.
      *
      * @param label compact label used for lookup and serialization
+     * @since 0.22.7
      */
     protected NamedRule(String label) {
         this.label = validateLabel(label);
@@ -82,6 +83,7 @@ public abstract class NamedRule extends AbstractRule {
      * rules.
      *
      * @param basePackages optional extra packages to scan
+     * @since 0.22.7
      */
     public static void initializeRegistry(String... basePackages) {
         ensureDefaultRegistryInitialized();
@@ -189,21 +191,46 @@ public abstract class NamedRule extends AbstractRule {
                 + "'. Ensure it is registered via NamedRule.registerImplementation() or initializeRegistry()."));
     }
 
+    /**
+     * Keeps the reconstruction label fixed by ignoring rename attempts.
+     *
+     * @param name ignored because named-rule labels are reconstruction-critical
+     * @since 0.22.7
+     */
     @Override
     public final void setName(String name) {
         // NamedRule labels are reconstruction-critical and stay fixed.
     }
 
+    /**
+     * Returns the compact reconstruction label.
+     *
+     * @return compact rule label
+     * @since 0.22.7
+     */
     @Override
     public final String getName() {
         return label;
     }
 
+    /**
+     * Indicates that named rules always expose their compact label as a custom
+     * name.
+     *
+     * @return always {@code true}
+     * @since 0.22.7
+     */
     @Override
     public boolean hasCustomName() {
         return true;
     }
 
+    /**
+     * Returns the compact reconstruction label as the default name.
+     *
+     * @return compact rule label
+     * @since 0.22.7
+     */
     @Override
     protected final String createDefaultName() {
         return label;

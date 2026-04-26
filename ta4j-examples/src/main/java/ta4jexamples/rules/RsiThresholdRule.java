@@ -76,6 +76,14 @@ public class RsiThresholdRule extends NamedRule {
                 parseThreshold(series, params), parseDirection(params));
     }
 
+    /**
+     * Tests whether the RSI value is above or below the configured threshold.
+     *
+     * @param index         the bar index
+     * @param tradingRecord trading record context
+     * @return {@code true} when the threshold condition is satisfied
+     * @since 0.22.7
+     */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         Num value = getRsiIndicator().getValue(index);

@@ -85,6 +85,8 @@ import java.util.function.Consumer;
  * to the CLI's bounded MVP surface so command behavior stays deterministic and
  * file-oriented for both users and agents.
  * </p>
+ *
+ * @since 0.22.7
  */
 final class CliSupport {
 
@@ -1150,6 +1152,7 @@ final class CliSupport {
      * @param className fully qualified {@link AnalysisCriterion} class name used in
      *                  JSON output
      * @param criterion resolved analysis criterion instance
+     * @since 0.22.7
      */
     record CriterionSpec(String className, AnalysisCriterion criterion) {
     }
@@ -1160,6 +1163,7 @@ final class CliSupport {
      *
      * @param strategies        valid strategies that can be executed
      * @param invalidStrategies descriptive messages for rejected inputs
+     * @since 0.22.7
      */
     record ResolvedStrategies(List<Strategy> strategies, List<String> invalidStrategies) {
     }
@@ -1171,6 +1175,7 @@ final class CliSupport {
      * @param indicator numeric indicator instance
      * @param json      canonical serialized indicator JSON
      * @param typeName  runtime type name
+     * @since 0.22.7
      */
     record ResolvedIndicator(Indicator<Num> indicator, String json, String typeName) {
     }

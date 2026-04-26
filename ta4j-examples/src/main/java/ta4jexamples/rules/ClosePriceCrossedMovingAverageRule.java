@@ -79,6 +79,14 @@ public class ClosePriceCrossedMovingAverageRule extends NamedRule {
         this(series, parseAverageType(params), parseDirection(params), parsePeriod(params));
     }
 
+    /**
+     * Tests whether the configured crossover happened at the given index.
+     *
+     * @param index         the bar index
+     * @param tradingRecord trading record context
+     * @return {@code true} when the crossover condition is satisfied
+     * @since 0.22.7
+     */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         return getDelegateRule().isSatisfied(index, tradingRecord);

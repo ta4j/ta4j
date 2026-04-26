@@ -41,6 +41,7 @@ public final class Ta4jCli {
      * Executes the CLI.
      *
      * @param args command-line arguments
+     * @since 0.22.7
      */
     public static void main(String[] args) {
         int exitCode = run(args, new PrintWriter(System.out, true), new PrintWriter(System.err, true));

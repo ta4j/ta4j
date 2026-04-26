@@ -19,6 +19,8 @@ import java.util.Set;
  * a command token followed by GNU-style `--option value` pairs, repeatable
  * multi-value options, and explicit unknown-option detection.
  * </p>
+ *
+ * @since 0.22.7
  */
 final class CliArguments {
 
