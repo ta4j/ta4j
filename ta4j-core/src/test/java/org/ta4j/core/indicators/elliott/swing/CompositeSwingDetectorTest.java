@@ -126,6 +126,23 @@ class CompositeSwingDetectorTest {
     }
 
     @Test
+    void normalizePivotsUsesEarlierAnchorDistanceToBreakSharedIndexOpposites() {
+        BarSeries series = singleSeries();
+        NumFactory factory = series.numFactory();
+        List<SwingPivot> normalized = SwingDetectorSupport
+                .normalizePivots(List.of(new SwingPivot(1, factory.hundred(), SwingPivotType.LOW),
+                        new SwingPivot(2, factory.numOf(130), SwingPivotType.HIGH),
+                        new SwingPivot(4, factory.numOf(110), SwingPivotType.LOW),
+                        new SwingPivot(6, factory.numOf(125), SwingPivotType.HIGH),
+                        new SwingPivot(6, factory.numOf(95), SwingPivotType.LOW)));
+
+        assertThat(normalized).extracting(SwingPivot::index, SwingPivot::type)
+                .containsExactly(tuple(1, SwingPivotType.LOW), tuple(2, SwingPivotType.HIGH),
+                        tuple(6, SwingPivotType.LOW));
+        assertThat(normalized.getLast().price()).isEqualByComparingTo(factory.numOf(95));
+    }
+
+    @Test
     void swingsFromPivotsSkipsDuplicateIndexNeighborsDefensively() {
         BarSeries series = singleSeries();
         NumFactory factory = series.numFactory();

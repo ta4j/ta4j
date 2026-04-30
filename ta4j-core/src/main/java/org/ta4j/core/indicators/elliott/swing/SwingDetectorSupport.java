@@ -115,15 +115,21 @@ final class SwingDetectorSupport {
         if (Num.isNaNOrNull(candidatePrice)) {
             return existing;
         }
-        final SwingPivot previous = priorPivots.isEmpty() ? null : priorPivots.getLast();
-        if (previous != null) {
-            if (previous.type() == existing.type()) {
-                return candidate;
-            }
-            if (previous.type() == candidate.type()) {
-                return existing;
+
+        if (priorPivots.size() >= 2) {
+            final Num anchor = priorPivots.get(priorPivots.size() - 2).price();
+            if (!Num.isNaNOrNull(anchor)) {
+                final Num existingDistance = existingPrice.minus(anchor).abs();
+                final Num candidateDistance = candidatePrice.minus(anchor).abs();
+                if (candidateDistance.isGreaterThan(existingDistance)) {
+                    return candidate;
+                }
+                if (existingDistance.isGreaterThan(candidateDistance)) {
+                    return existing;
+                }
             }
         }
+
         if (existingPrice.isGreaterThan(candidatePrice)) {
             return existing.type() == SwingPivotType.HIGH ? existing
                     : (candidate.type() == SwingPivotType.HIGH ? candidate

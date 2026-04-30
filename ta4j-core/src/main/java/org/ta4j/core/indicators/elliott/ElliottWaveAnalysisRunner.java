@@ -111,6 +111,7 @@ public final class ElliottWaveAnalysisRunner {
     private static final double HISTORICAL_CYCLE_PROMOTION_MIN_GAP_RATIO = 0.20;
     private static final double HISTORICAL_CYCLE_FALLBACK_FIT_FLOOR = 0.80;
     private static final double HISTORICAL_BOUNDARY_BOTTOM_FIT_FLOOR = 0.78;
+    private static final double HISTORICAL_CONTINUATION_BOTTOM_FIT_FLOOR = 0.75;
     private static final double HISTORICAL_CYCLE_SPAN_BONUS_PER_BAR = 0.0001;
     private static final double HISTORICAL_CYCLE_FAMILY_SCORE_TOLERANCE = 0.10;
 
@@ -957,20 +958,8 @@ public final class ElliottWaveAnalysisRunner {
 
     private ElliottWaveAnalysisResult.HistoricalLegAssessment historicalLegAssessment(final int startIndex,
             final int endIndex, final boolean bullish, final AnchoredWindowSelection selection) {
-        final int alignedStartIndex = bullish ? alignedHistoricalLegStartIndex(startIndex, endIndex, selection)
-                : startIndex;
-        return new ElliottWaveAnalysisResult.HistoricalLegAssessment(alignedStartIndex, endIndex, bullish,
+        return new ElliottWaveAnalysisResult.HistoricalLegAssessment(startIndex, endIndex, bullish,
                 selection.assessment(), selection.accepted());
-    }
-
-    private int alignedHistoricalLegStartIndex(final int startIndex, final int endIndex,
-            final AnchoredWindowSelection selection) {
-        final List<ElliottSwing> scenarioSwings = selection.assessment().scenario().swings();
-        if (scenarioSwings.isEmpty()) {
-            return startIndex;
-        }
-        final int scenarioStartIndex = scenarioSwings.getFirst().fromIndex();
-        return scenarioStartIndex > startIndex && scenarioStartIndex < endIndex ? scenarioStartIndex : startIndex;
     }
 
     private List<ElliottWaveAnalysisResult.HistoricalCycleAssessment> promoteHistoricalMacroCyclesFromLegs(
@@ -982,7 +971,6 @@ public final class ElliottWaveAnalysisRunner {
 
         final List<ElliottWaveAnalysisResult.HistoricalLegAssessment> bearishLegs = legs.stream()
                 .filter(leg -> !leg.bullish())
-                .filter(this::eligibleHistoricalMacroBottom)
                 .toList();
         if (bearishLegs.size() < 2) {
             return List.of();
@@ -1034,13 +1022,29 @@ public final class ElliottWaveAnalysisRunner {
         }
 
         final List<ElliottWaveAnalysisResult.HistoricalLegAssessment> macroBottoms = new ArrayList<>();
-        ElliottWaveAnalysisResult.HistoricalLegAssessment pending = bearishLegs.getFirst();
+        final ElliottWaveAnalysisResult.HistoricalLegAssessment pendingSeed = bearishLegs.stream()
+                .filter(this::eligibleHistoricalMacroBottom)
+                .findFirst()
+                .orElse(null);
+        if (pendingSeed == null) {
+            return List.of();
+        }
+        ElliottWaveAnalysisResult.HistoricalLegAssessment pending = pendingSeed;
         double lastCommittedPeakPrice = Double.NEGATIVE_INFINITY;
-        for (int index = 1; index < bearishLegs.size(); index++) {
+        for (int index = bearishLegs.indexOf(pendingSeed) + 1; index < bearishLegs.size(); index++) {
             final ElliottWaveAnalysisResult.HistoricalLegAssessment next = bearishLegs.get(index);
+            if (!eligibleHistoricalMacroBottom(next) && !eligibleHistoricalContinuationBottom(next)) {
+                continue;
+            }
             if (lowPrice(series, boundedHistoricalIndex(series, next.endIndex())) <= lowPrice(series,
                     boundedHistoricalIndex(series, pending.endIndex()))) {
                 pending = next;
+                continue;
+            }
+            if (!historicalMacroBottomConfirmed(series, pending, next.startIndex())) {
+                if (eligibleHistoricalContinuationBottom(next)) {
+                    pending = next;
+                }
                 continue;
             }
             final double recoveryPeakPrice = highPrice(series, boundedHistoricalIndex(series, next.startIndex()));
@@ -1077,7 +1081,7 @@ public final class ElliottWaveAnalysisRunner {
     private boolean boundaryHistoricalMacroBottom(final BarSeries series,
             final ElliottWaveAnalysisResult.HistoricalLegAssessment candidate) {
         return candidate.endIndex() == series.getEndIndex()
-                && (candidate.accepted() || candidate.fitScore() >= HISTORICAL_BOUNDARY_BOTTOM_FIT_FLOOR);
+                && (eligibleHistoricalMacroBottom(candidate) || eligibleHistoricalContinuationBottom(candidate));
     }
 
     private boolean meaningfulHistoricalBottomConfirmation(
@@ -1093,6 +1097,10 @@ public final class ElliottWaveAnalysisRunner {
 
     private boolean eligibleHistoricalMacroBottom(final ElliottWaveAnalysisResult.HistoricalLegAssessment leg) {
         return leg.accepted() || leg.fitScore() >= HISTORICAL_BOUNDARY_BOTTOM_FIT_FLOOR;
+    }
+
+    private boolean eligibleHistoricalContinuationBottom(final ElliottWaveAnalysisResult.HistoricalLegAssessment leg) {
+        return leg.accepted() || leg.fitScore() >= HISTORICAL_CONTINUATION_BOTTOM_FIT_FLOOR;
     }
 
     private static int boundedHistoricalIndex(final BarSeries series, final int index) {
@@ -3015,7 +3023,7 @@ public final class ElliottWaveAnalysisRunner {
                 .thenComparing(
                         Comparator.comparingInt(HistoricalStructureCandidate::earliestCycleStartIndex).reversed())
                 .thenComparingInt(HistoricalStructureCandidate::terminalCycleEndIndex)
-                .thenComparing(Comparator.comparingInt(HistoricalStructureCandidate::cycleCount).reversed())
+                .thenComparingInt(HistoricalStructureCandidate::cycleCount)
                 .thenComparingInt(HistoricalStructureCandidate::totalCycleSpan)
                 .thenComparingDouble(HistoricalStructureCandidate::averageCycleSpan)
                 .thenComparingDouble(HistoricalStructureCandidate::totalCycleFitScore)
@@ -3068,7 +3076,7 @@ public final class ElliottWaveAnalysisRunner {
                 .comparing(HistoricalCycleBundle::hasMultipleCycles)
                 .thenComparing(Comparator.comparingInt(HistoricalCycleBundle::earliestCycleStartIndex).reversed())
                 .thenComparingInt(HistoricalCycleBundle::terminalCycleEndIndex)
-                .thenComparing(Comparator.comparingInt(HistoricalCycleBundle::cycleCount).reversed())
+                .thenComparingInt(HistoricalCycleBundle::cycleCount)
                 .thenComparingInt(HistoricalCycleBundle::totalCycleSpan)
                 .thenComparingDouble(HistoricalCycleBundle::averageCycleSpan)
                 .thenComparingDouble(HistoricalCycleBundle::totalCycleFitScore);

@@ -108,6 +108,15 @@ public final class ElliottWaveMacroCycleDemo {
             .thenComparing(Comparator.comparingInt((MacroProfileEvaluation evaluation) -> evaluation.cycleFits().size())
                     .reversed())
             .thenComparingInt(evaluation -> evaluation.profile().orthodoxyRank());
+    private static final Comparator<MacroProfileEvaluation> RUNTIME_PROFILE_EVALUATION_COMPARATOR = Comparator
+            .comparingInt((MacroProfileEvaluation evaluation) -> evaluation.cycleFits().size())
+            .reversed()
+            .thenComparing(Comparator.comparingLong(MacroProfileEvaluation::totalCycleSpanMillis).reversed())
+            .thenComparing(MacroProfileEvaluation::earliestCycleStartTime)
+            .thenComparing(Comparator.comparingInt(MacroProfileEvaluation::acceptedCycles).reversed())
+            .thenComparing(Comparator.comparingDouble(MacroProfileEvaluation::aggregateScore).reversed())
+            .thenComparing(Comparator.comparingInt(MacroProfileEvaluation::acceptedSegments).reversed())
+            .thenComparingInt(evaluation -> evaluation.profile().orthodoxyRank());
     private static final CanonicalEngine CANONICAL_ENGINE = new CanonicalEngine(CANONICAL_LOGIC_PROFILES);
 
     private ElliottWaveMacroCycleDemo() {
@@ -413,6 +422,20 @@ public final class ElliottWaveMacroCycleDemo {
                     .mapToLong(cycleFit -> Duration.between(cycleFit.cycle().start().at(), cycleFit.cycle().low().at())
                             .toMillis())
                     .sum();
+        }
+
+        long totalCycleSpanMillis() {
+            return cycleFits.stream()
+                    .mapToLong(cycleFit -> Duration.between(cycleFit.cycle().start().at(), cycleFit.cycle().low().at())
+                            .toMillis())
+                    .sum();
+        }
+
+        Instant earliestCycleStartTime() {
+            return cycleFits.stream()
+                    .map(cycleFit -> cycleFit.cycle().start().at())
+                    .min(Comparator.naturalOrder())
+                    .orElse(Instant.MAX);
         }
 
         Instant earliestAcceptedStartTime() {
@@ -1446,6 +1469,7 @@ public final class ElliottWaveMacroCycleDemo {
             final MacroLogicProfile profile, final List<MacroCycle> historicalCycles) {
         final ElliottWaveAnalysisRunner profileRunner = buildProfileRunner(profile);
         final Map<String, SegmentScenarioFit> segmentById = new LinkedHashMap<>();
+        final Map<String, CycleFit> matchedCycleFitsById = new LinkedHashMap<>();
         final List<CycleFit> cycleFits = new ArrayList<>();
         for (final MacroCycle cycle : historicalCycles) {
             final SegmentScenarioFit bullishFit = fitSegment(series, cycle.bullishLeg(), profile, profileRunner)
@@ -1458,10 +1482,16 @@ public final class ElliottWaveMacroCycleDemo {
             if (bearishFit != null) {
                 segmentById.putIfAbsent(segmentKey(cycle.bearishLeg()), bearishFit);
             }
-            cycleFits.add(CycleFit.create(cycle, bullishFit, bearishFit));
+            final CycleFit cycleFit = CycleFit.create(cycle, bullishFit, bearishFit);
+            cycleFits.add(cycleFit);
+            if (bullishFit != null && bearishFit != null) {
+                matchedCycleFitsById.putIfAbsent(cycle.id(), cycleFit);
+            }
         }
         final List<SegmentScenarioFit> chartSegments = List.copyOf(segmentById.values());
-        return buildMacroProfileEvaluation(profile, cycleFits, chartSegments, TruthTargetCoverage.none());
+        final TruthTargetCoverage truthTargetCoverage = truthTargetCoverage(historicalCycles, matchedCycleFitsById,
+                List.of());
+        return buildMacroProfileEvaluation(profile, cycleFits, chartSegments, truthTargetCoverage);
     }
 
     private static MacroProfileEvaluation evaluateCanonicalProfile(final BarSeries series,
@@ -1570,8 +1600,8 @@ public final class ElliottWaveMacroCycleDemo {
                 historicalFitPassed, truthTargetCoverage, List.copyOf(cycleFits), List.copyOf(chartSegments));
     }
 
-    private static List<DirectionalCycleSummary> acceptedCycleSummaries(final MacroProfileEvaluation evaluation) {
-        return evaluation.cycleFits().stream().filter(CycleFit::accepted).map(DirectionalCycleSummary::from).toList();
+    private static List<DirectionalCycleSummary> cycleSummaries(final MacroProfileEvaluation evaluation) {
+        return evaluation.cycleFits().stream().map(DirectionalCycleSummary::from).toList();
     }
 
     private static Optional<MacroCycle> matchCycleToRegistry(final BarSeries series,
@@ -1591,6 +1621,11 @@ public final class ElliottWaveMacroCycleDemo {
             final ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry,
             final Map<String, CycleFit> cycleFitsById, final List<MacroCycle> unexpectedCycles) {
         final List<MacroCycle> expectedCycles = buildHistoricalCycles(registry);
+        return truthTargetCoverage(expectedCycles, cycleFitsById, unexpectedCycles);
+    }
+
+    private static TruthTargetCoverage truthTargetCoverage(final List<MacroCycle> expectedCycles,
+            final Map<String, CycleFit> cycleFitsById, final List<MacroCycle> unexpectedCycles) {
         final List<String> expectedCycleIds = expectedCycles.stream().map(MacroCycle::id).toList();
         final Instant earliestExpectedStart = expectedCycles.getFirst().start().at();
         final Instant latestExpectedLow = expectedCycles.getLast().low().at();
@@ -1701,7 +1736,7 @@ public final class ElliottWaveMacroCycleDemo {
             final List<ProfileScoreSummary> profileScores = evaluations.stream()
                     .map(ProfileScoreSummary::from)
                     .toList();
-            final List<DirectionalCycleSummary> cycles = acceptedCycleSummaries(selectedProfile);
+            final List<DirectionalCycleSummary> cycles = cycleSummaries(selectedProfile);
             final List<HypothesisResult> hypotheses = buildHypotheses(evaluations);
             final CurrentCycleAnalysis currentCycle = evaluateCurrentCycle(series, selectedProfile.profile(),
                     historicalStructureStatus(selectedProfile.historicalFitPassed()));
@@ -1722,7 +1757,7 @@ public final class ElliottWaveMacroCycleDemo {
                 runtimeEvaluations.add(profileEvaluations.runtimeEvaluation());
                 truthTargetEvaluations.add(profileEvaluations.truthTargetEvaluation());
             }
-            runtimeEvaluations.sort(PROFILE_EVALUATION_COMPARATOR);
+            runtimeEvaluations.sort(RUNTIME_PROFILE_EVALUATION_COMPARATOR);
             truthTargetEvaluations.sort(PROFILE_EVALUATION_COMPARATOR);
 
             final MacroProfileEvaluation selectedRuntimeProfile = runtimeEvaluations.getFirst();
@@ -1747,7 +1782,7 @@ public final class ElliottWaveMacroCycleDemo {
             for (final MacroLogicProfile profile : logicProfiles) {
                 evaluations.add(evaluateCanonicalProfile(series, profile));
             }
-            evaluations.sort(PROFILE_EVALUATION_COMPARATOR);
+            evaluations.sort(RUNTIME_PROFILE_EVALUATION_COMPARATOR);
             return List.copyOf(evaluations);
         }
 

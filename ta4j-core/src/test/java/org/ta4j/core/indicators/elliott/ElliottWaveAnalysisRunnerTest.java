@@ -65,6 +65,45 @@ class ElliottWaveAnalysisRunnerTest {
     }
 
     @Test
+    void compressionRestoresAlternationWhenFilteredSequenceDropsCounterTrendSwing() {
+        BarSeries series = buildSeries();
+        NumFactory factory = series.numFactory();
+        ElliottDegree degree = ElliottDegree.PRIMARY;
+        List<ElliottSwing> swings = List.of(new ElliottSwing(0, 2, factory.hundred(), factory.numOf(120), degree),
+                new ElliottSwing(2, 3, factory.numOf(120), factory.numOf(117), degree),
+                new ElliottSwing(3, 5, factory.numOf(117), factory.numOf(130), degree),
+                new ElliottSwing(5, 7, factory.numOf(130), factory.numOf(112), degree));
+
+        SwingDetector detector = (s, index, deg) -> SwingDetectorResult.fromSwings(swings);
+        ConfidenceModel model = (input, phase, channel,
+                type) -> new ElliottConfidenceBreakdown(new ElliottConfidence(series.numFactory().numOf(0.9),
+                        series.numFactory().numOf(0.9), series.numFactory().numOf(0.9), series.numFactory().numOf(0.9),
+                        series.numFactory().numOf(0.9), series.numFactory().numOf(0.9), "stub"), List.of());
+
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(degree)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .swingDetector(detector)
+                .swingFilter(input -> List.of(input.get(0), input.get(2), input.get(3)))
+                .patternSet(PatternSet.of(ScenarioType.IMPULSE))
+                .minConfidence(0.0)
+                .confidenceModel(model)
+                .build();
+
+        ElliottWaveAnalysisResult result = analysis.analyze(series);
+        ElliottAnalysisResult base = result.analysisFor(degree).orElseThrow().analysis();
+
+        assertThat(base.processedSwings()).hasSize(2);
+        assertThat(base.processedSwings().getFirst().fromIndex()).isEqualTo(0);
+        assertThat(base.processedSwings().getFirst().toIndex()).isEqualTo(5);
+        assertThat(base.processedSwings().getFirst().isRising()).isTrue();
+        assertThat(base.processedSwings().getLast().fromIndex()).isEqualTo(5);
+        assertThat(base.processedSwings().getLast().toIndex()).isEqualTo(7);
+        assertThat(base.processedSwings().getLast().isRising()).isFalse();
+    }
+
+    @Test
     void usesAllProcessedSwingsByDefaultForScenarioGeneration() {
         BarSeries series = buildSeries();
         NumFactory factory = series.numFactory();
@@ -1435,6 +1474,44 @@ class ElliottWaveAnalysisRunnerTest {
         assertThat(macroBottoms.get(1).endIndex()).isEqualTo(16);
     }
 
+    @Test
+    void selectHistoricalMacroBottomsPrefersLaterUnconfirmedCorrectiveTerminalLow() throws Exception {
+        BarSeries series = buildHistoricalContinuationBottomSeries();
+        NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
+        ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner((window, ignoredDegree) -> currentCycleSnapshot(window, factory))
+                .build();
+
+        Method selectHistoricalMacroBottoms = ElliottWaveAnalysisRunner.class
+                .getDeclaredMethod("selectHistoricalMacroBottoms", BarSeries.class, List.class);
+        selectHistoricalMacroBottoms.setAccessible(true);
+
+        List<ElliottWaveAnalysisResult.HistoricalLegAssessment> bearishLegs = List.of(
+                new ElliottWaveAnalysisResult.HistoricalLegAssessment(8, 16, false,
+                        historicalAnchoredSelection(factory, "corrective-a", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.82).assessment(),
+                        true),
+                new ElliottWaveAnalysisResult.HistoricalLegAssessment(19, 20, false,
+                        historicalAnchoredSelection(factory, "corrective-c", ElliottPhase.CORRECTIVE_C, false, false,
+                                0.776).assessment(),
+                        false),
+                new ElliottWaveAnalysisResult.HistoricalLegAssessment(26, 38, false,
+                        historicalAnchoredSelection(factory, "next-bottom", ElliottPhase.CORRECTIVE_C, false, true,
+                                0.84).assessment(),
+                        true));
+
+        @SuppressWarnings("unchecked")
+        List<ElliottWaveAnalysisResult.HistoricalLegAssessment> macroBottoms = (List<ElliottWaveAnalysisResult.HistoricalLegAssessment>) selectHistoricalMacroBottoms
+                .invoke(analysis, series, bearishLegs);
+
+        assertThat(macroBottoms).hasSize(2);
+        assertThat(macroBottoms.get(0).endIndex()).isEqualTo(20);
+        assertThat(macroBottoms.get(1).endIndex()).isEqualTo(38);
+    }
+
     void retainHistoricalCanonicalLegCandidatesKeepsEarliestMeaningfulPromotableLeg() throws Exception {
         NumFactory factory = org.ta4j.core.num.DecimalNumFactory.getInstance();
         ElliottWaveAnalysisRunner analysis = ElliottWaveAnalysisRunner.builder()
@@ -2045,6 +2122,28 @@ class ElliottWaveAnalysisRunnerTest {
         Duration period = Duration.ofDays(1);
         Instant time = Instant.parse("2021-06-01T00:00:00Z");
         double[] closes = { 300, 200, 100, 180, 260, 320, 300, 280, 260, 240, 300, 340, 300, 250, 210, 170, 130 };
+        for (int index = 0; index < closes.length; index++) {
+            double close = closes[index];
+            series.barBuilder()
+                    .timePeriod(period)
+                    .endTime(time.plus(period.multipliedBy(index)))
+                    .openPrice(close)
+                    .highPrice(close)
+                    .lowPrice(close)
+                    .closePrice(close)
+                    .volume(1_000)
+                    .add();
+        }
+        return series;
+    }
+
+    private BarSeries buildHistoricalContinuationBottomSeries() {
+        BarSeries series = new MockBarSeriesBuilder().withName("HistoricalContinuationBottom").build();
+        Duration period = Duration.ofDays(1);
+        Instant time = Instant.parse("2021-01-01T00:00:00Z");
+        double[] closes = { 320, 200, 120, 180, 260, 360, 460, 560, 650, 600, 540, 480, 420, 320, 240, 190, 170, 220,
+                280, 310, 214, 260, 340, 420, 500, 620, 700, 660, 620, 580, 540, 500, 460, 420, 380, 340, 300, 260,
+                230 };
         for (int index = 0; index < closes.length; index++) {
             double close = closes[index];
             series.barBuilder()

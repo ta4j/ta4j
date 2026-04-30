@@ -6,6 +6,8 @@ package org.ta4j.core.indicators.elliott;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
+
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
@@ -69,6 +71,34 @@ class ElliottSwingCompressorTest {
         // Zero-parameter constructor should retain all swings (no filtering)
         assertThat(compressed).hasSameSizeAs(swings);
         assertThat(compressed).containsExactlyElementsOf(swings);
+    }
+
+    @Test
+    void compressCollapsesAdjacentSameDirectionSwingsAfterFilteringAwayCounterMove() {
+        var series = new MockBarSeriesBuilder().build();
+        for (int index = 0; index < 8; index++) {
+            double close = 100 + index;
+            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
+        }
+        var factory = series.numFactory();
+        var degree = ElliottDegree.MINOR;
+        var swings = List.of(new ElliottSwing(0, 2, factory.hundred(), factory.numOf(120), degree),
+                new ElliottSwing(2, 3, factory.numOf(120), factory.numOf(117), degree),
+                new ElliottSwing(3, 5, factory.numOf(117), factory.numOf(130), degree),
+                new ElliottSwing(5, 7, factory.numOf(130), factory.numOf(112), degree));
+
+        var compressor = new ElliottSwingCompressor(factory.numOf(5), 0);
+        var compressed = compressor.compress(swings);
+
+        assertThat(compressed).hasSize(2);
+        assertThat(compressed.getFirst().fromIndex()).isEqualTo(0);
+        assertThat(compressed.getFirst().toIndex()).isEqualTo(5);
+        assertThat(compressed.getFirst().fromPrice()).isEqualByComparingTo(factory.hundred());
+        assertThat(compressed.getFirst().toPrice()).isEqualByComparingTo(factory.numOf(130));
+        assertThat(compressed.getFirst().isRising()).isTrue();
+        assertThat(compressed.getLast().fromIndex()).isEqualTo(5);
+        assertThat(compressed.getLast().toIndex()).isEqualTo(7);
+        assertThat(compressed.getLast().isRising()).isFalse();
     }
 
     @Test

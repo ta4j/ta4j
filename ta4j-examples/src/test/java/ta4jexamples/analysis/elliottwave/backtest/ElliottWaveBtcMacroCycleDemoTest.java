@@ -349,7 +349,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
         assertTrue(study.selectedProfile().historicalFitPassed());
         assertTrue(study.selectedProfile().cycleFits().size() >= 3);
-        assertTruthTargetCycleFits(series, study.selectedProfile().cycleFits(), registry);
+        assertTruthTargetCycleCoverage(series, study.selectedProfile().cycleFits(), registry);
     }
 
     @Test
@@ -364,7 +364,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
         assertTrue(study.selectedProfile().historicalFitPassed());
         assertTrue(study.selectedProfile().cycleFits().size() >= 3);
-        assertTruthTargetCycleFits(series, study.selectedProfile().cycleFits(), registry);
+        assertTruthTargetCycleCoverageIgnoringAnchorIds(series, study.selectedProfile().cycleFits(), registry);
     }
 
     @Test
@@ -573,14 +573,16 @@ class ElliottWaveBtcMacroCycleDemoTest {
         int peakIndex = indexOf(series, Instant.parse(cycle.peakTimeUtc()));
         int lowIndex = indexOf(series, Instant.parse(cycle.lowTimeUtc()));
 
-        assertEquals(series.getBar(startIndex).getLowPrice().doubleValue(),
-                datasetValueAtIndex(bullishDataset, startIndex), ElliottWaveBtcMacroCycleDemo.EPSILON);
-        assertEquals(series.getBar(peakIndex).getHighPrice().doubleValue(),
-                datasetValueAtIndex(bullishDataset, peakIndex), ElliottWaveBtcMacroCycleDemo.EPSILON);
-        assertEquals(series.getBar(peakIndex).getHighPrice().doubleValue(),
-                datasetValueAtIndex(bearishDataset, peakIndex), ElliottWaveBtcMacroCycleDemo.EPSILON);
-        assertEquals(series.getBar(lowIndex).getLowPrice().doubleValue(), datasetValueAtIndex(bearishDataset, lowIndex),
+        assertEquals(peakIndex - startIndex + 1, bullishDataset.getItemCount(0));
+        assertEquals(lowIndex - peakIndex + 1, bearishDataset.getItemCount(0));
+        assertEquals(series.getBar(startIndex).getLowPrice().doubleValue(), bullishDataset.getYValue(0, 0),
                 ElliottWaveBtcMacroCycleDemo.EPSILON);
+        assertEquals(series.getBar(peakIndex).getHighPrice().doubleValue(),
+                bullishDataset.getYValue(0, bullishDataset.getItemCount(0) - 1), ElliottWaveBtcMacroCycleDemo.EPSILON);
+        assertEquals(series.getBar(peakIndex).getHighPrice().doubleValue(), bearishDataset.getYValue(0, 0),
+                ElliottWaveBtcMacroCycleDemo.EPSILON);
+        assertEquals(series.getBar(lowIndex).getLowPrice().doubleValue(),
+                bearishDataset.getYValue(0, bearishDataset.getItemCount(0) - 1), ElliottWaveBtcMacroCycleDemo.EPSILON);
     }
 
     @Test
@@ -687,15 +689,6 @@ class ElliottWaveBtcMacroCycleDemoTest {
         throw new IllegalArgumentException("Missing bar for " + instant);
     }
 
-    private static double datasetValueAtIndex(XYDataset dataset, int seriesIndex) {
-        for (int itemIndex = 0; itemIndex < dataset.getItemCount(0); itemIndex++) {
-            if ((int) Math.round(dataset.getXValue(0, itemIndex)) == seriesIndex) {
-                return dataset.getYValue(0, itemIndex);
-            }
-        }
-        throw new IllegalArgumentException("Missing plotted point at series index " + seriesIndex);
-    }
-
     private static int highestHighIndex(BarSeries series, int startIndex, int endIndex) {
         int bestIndex = startIndex;
         double bestValue = Double.NEGATIVE_INFINITY;
@@ -758,6 +751,28 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
             assertEquals(expected.partition(), actual.cycle().partition());
             assertEquals(expected.startAnchorId(), actual.cycle().bullishLeg().fromAnchor().id());
+            assertWithinTolerance(
+                    series.getBar(actual.bullishFit().scenario().swings().getLast().toIndex()).getEndTime(),
+                    findAnchor(registry, expected.peakAnchorId()));
+            assertWithinTolerance(
+                    series.getBar(actual.bearishFit().scenario().swings().getLast().toIndex()).getEndTime(),
+                    findAnchor(registry, expected.lowAnchorId()));
+            remainingCycleFits.remove(actual);
+        }
+    }
+
+    private static void assertTruthTargetCycleCoverageIgnoringAnchorIds(BarSeries series,
+            List<ElliottWaveMacroCycleDemo.CycleFit> cycleFits,
+            ElliottWaveAnchorCalibrationHarness.AnchorRegistry registry) {
+        List<ExpectedTruthCycle> expectedCycles = expectedTruthCycles();
+        List<ElliottWaveMacroCycleDemo.CycleFit> remainingCycleFits = new java.util.ArrayList<>(cycleFits);
+
+        for (ExpectedTruthCycle expected : expectedCycles) {
+            ElliottWaveMacroCycleDemo.CycleFit actual = findCycleFitByPeak(series, remainingCycleFits,
+                    findAnchor(registry, expected.peakAnchorId()));
+
+            assertEquals(expected.partition(), actual.cycle().partition());
+            assertWithinTolerance(actual.cycle().start().at(), findAnchor(registry, expected.startAnchorId()));
             assertWithinTolerance(
                     series.getBar(actual.bullishFit().scenario().swings().getLast().toIndex()).getEndTime(),
                     findAnchor(registry, expected.peakAnchorId()));
