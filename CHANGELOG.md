@@ -2,6 +2,7 @@
 
 ### Added
 - **Anchor-aware Elliott tuning harness**: You can now run `ElliottWaveAnchorCalibrationHarness` with the versioned `BTC-anchor-registry-v1.json` registry to replay major BTC tops and bottoms, compare the locked baseline against coarse challenger profiles on top-1/top-3 anchor hits plus `ECE`/`Brier`/`LogLoss`, and get a deterministic promote-or-retain bundle that also sanity-checks the selected profile on ETH/USD and S&P 500 data.
+- **LPPL exhaustion indicators for crash and bubble setup detection**: Added `LpplExhaustionIndicator` for rich Log-Periodic Power Law fit diagnostics plus `LpplExhaustionScoreIndicator` for bounded `[-1, 1]` oscillator-style output, where positive values represent crash exhaustion and negative values represent bubble exhaustion. The examples module now includes an offline State Street SPDR sector ETF rotation demo using adjusted daily resources through 2026-04-29.
 
 ### Changed
 - **Agent guidance stays accurate across repo and personal workflows**: `scripts/agents_for_target.sh` guidance now clearly describes path-scoped `AGENTS.md` discovery from the current repo/workspace root, so contributors can use it for file-targeted lookup without assuming it also covers personal PR/comment workflow guidance.
