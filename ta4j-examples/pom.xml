@@ -10,6 +10,10 @@
     <name>Ta4j Examples</name>
     <description>Provides examples that demonstrate how to use ta4j</description>
 
+    <properties>
+        <exec.mainClass>ta4jexamples.Quickstart</exec.mainClass>
+    </properties>
+
     <dependencies>
 
         <!-- Test dependencies -->
@@ -126,6 +130,9 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.6.3</version>
+                <configuration>
+                    <mainClass>${exec.mainClass}</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>
