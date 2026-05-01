@@ -98,9 +98,8 @@ class LpplExhaustionIndicatorTest {
 
     @Test
     void rejectsValidFitWithNonFiniteDiagnostics() {
-        assertThatThrownBy(() -> new LpplFit(WINDOW, LpplExhaustionStatus.VALID, 1.0, 0.03, 0.01, 0.02,
-                WINDOW + 20.0, 0.5, 8.0, Double.NaN, 0.1, 0.9, 20, 5))
-                .isInstanceOf(IllegalArgumentException.class)
+        assertThatThrownBy(() -> new LpplFit(WINDOW, LpplExhaustionStatus.VALID, 1.0, 0.03, 0.01, 0.02, WINDOW + 20.0,
+                0.5, 8.0, Double.NaN, 0.1, 0.9, 20, 5)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("valid fits");
     }
 
