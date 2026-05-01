@@ -92,6 +92,11 @@ public class BarSeriesManager {
      * open amount so a changing provider does not over-close an existing position.
      * </p>
      * <p>
+     * Implementations may use any subset of the context parameters; they are
+     * included so one provider can size entries differently across strategies,
+     * series, or trade directions.
+     * </p>
+     * <p>
      * When used with {@link BacktestExecutor} methods that evaluate strategies in
      * parallel, implementations may be called concurrently and should be
      * thread-safe.
@@ -111,6 +116,7 @@ public class BarSeriesManager {
          * @return amount used for entry execution
          * @since 0.22.7
          */
+        @SuppressWarnings("unused")
         Num amount(int index, Strategy strategy, BarSeries barSeries, TradeType tradeType);
     }
 

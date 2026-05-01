@@ -117,8 +117,12 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40, 50).build();
         BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
         Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1, 2), new FixedRule(3), TradeType.SELL);
-        BarSeriesManager.AmountProvider amountProvider = (index, currentStrategy, barSeries, tradeType) -> numFactory
-                .numOf(index);
+        BarSeriesManager.AmountProvider amountProvider = (index, currentStrategy, barSeries, tradeType) -> {
+            assertSame(oneTradeStrategy, currentStrategy);
+            assertSame(series, barSeries);
+            assertEquals(TradeType.SELL, tradeType);
+            return barSeries.getBar(index).getClosePrice().dividedBy(numFactory.numOf(10));
+        };
 
         TradingRecord tradingRecord = localManager.run(oneTradeStrategy, amountProvider, 2, 3);
         Position position = tradingRecord.getPositions().getFirst();
@@ -126,9 +130,9 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertEquals(1, tradingRecord.getPositionCount());
         assertEquals(2, position.getEntry().getIndex());
         assertEquals(TradeType.SELL, position.getEntry().getType());
-        assertEquals(numFactory.numOf(2), position.getEntry().getAmount());
+        assertEquals(numFactory.numOf(3), position.getEntry().getAmount());
         assertEquals(3, position.getExit().getIndex());
-        assertEquals(numFactory.numOf(2), position.getExit().getAmount());
+        assertEquals(numFactory.numOf(3), position.getExit().getAmount());
     }
 
     @Test
