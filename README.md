@@ -427,6 +427,8 @@ BacktestExecutionResult dynamicallySizedResult = new BacktestExecutor(series)
 
 // The same provider works with top-K and walk-forward execution. It sizes
 // entries; exits close the currently open amount.
+// Reused AmountProvider instances should be stateless or thread-safe because
+// executor and top-K variants can evaluate strategies in parallel.
 
 // Weight net profit at 70% and return over max drawdown at 30%.
 // Weights are normalized internally, so 7/3 and 0.7/0.3 are equivalent.

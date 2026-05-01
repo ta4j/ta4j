@@ -635,8 +635,14 @@ public class BarSeriesManager {
         if (amount.isNaN()) {
             throw new IllegalArgumentException("Amount provider returned NaN");
         }
-        Num zero = barSeries.numFactory().zero();
-        if (amount.isLessThanOrEqual(zero)) {
+        if (!Double.isFinite(amount.doubleValue())) {
+            throw new IllegalArgumentException("Amount provider returned non-finite amount");
+        }
+        Class<?> expectedAmountType = barSeries.numFactory().one().getClass();
+        if (!expectedAmountType.isInstance(amount)) {
+            throw new IllegalArgumentException("Amount provider returned incompatible Num implementation");
+        }
+        if (!amount.isPositive()) {
             throw new IllegalArgumentException("Amount provider returned non-positive amount");
         }
         return amount;
@@ -648,7 +654,7 @@ public class BarSeriesManager {
             return amountForIndex(amountProvider, index, strategy, tradeType);
         }
         Num amount = tradingRecord.getCurrentPosition().amount();
-        if (amount == null || amount.isNaN() || !amount.isPositive()) {
+        if (amount == null || amount.isNaN() || !Double.isFinite(amount.doubleValue()) || !amount.isPositive()) {
             throw new IllegalStateException("Current position amount must be positive");
         }
         return amount;

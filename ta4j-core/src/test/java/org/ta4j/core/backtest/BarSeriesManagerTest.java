@@ -27,6 +27,8 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedRule;
@@ -154,6 +156,28 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
                 .numOf(Double.NaN);
         assertThrows(IllegalArgumentException.class,
                 () -> localManager.run(oneTradeStrategy, TradeType.BUY, nanAmountProvider));
+
+        BarSeriesManager.AmountProvider mismatchedNumProvider = (index, strategy, barSeries, tradeType) -> {
+            if (numFactory instanceof DoubleNumFactory) {
+                return DecimalNumFactory.getInstance().one();
+            }
+            return DoubleNumFactory.getInstance().one();
+        };
+        assertThrows(IllegalArgumentException.class,
+                () -> localManager.run(oneTradeStrategy, TradeType.BUY, mismatchedNumProvider));
+    }
+
+    @Test
+    public void runWithAmountProviderRejectsInfiniteAmount() {
+        NumFactory doubleNumFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleNumFactory).withData(10, 20, 30, 40).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+        BarSeriesManager.AmountProvider infiniteAmountProvider = (index, strategy, barSeries,
+                tradeType) -> doubleNumFactory.numOf(Double.POSITIVE_INFINITY);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> localManager.run(oneTradeStrategy, TradeType.BUY, infiniteAmountProvider));
     }
 
     @Test
