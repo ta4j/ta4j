@@ -81,13 +81,27 @@ class LpplExhaustionIndicatorTest {
         LpplExhaustionIndicator indicator = new LpplExhaustionIndicator(new ClosePriceIndicator(series),
                 compactProfile());
         LpplExhaustionScoreIndicator scoreIndicator = new LpplExhaustionScoreIndicator(indicator);
-        int warmupIndex = indicator.getCountOfUnstableBars() - 1;
+        int unstableBars = indicator.getCountOfUnstableBars();
+        int warmupIndex = unstableBars - 1;
 
         LpplExhaustion exhaustion = indicator.getValue(warmupIndex);
         Num score = scoreIndicator.getValue(warmupIndex);
+        LpplExhaustion firstStableExhaustion = indicator.getValue(unstableBars);
+        Num firstStableScore = scoreIndicator.getValue(unstableBars);
 
+        assertThat(unstableBars).isEqualTo(WINDOW - 1);
         assertThat(exhaustion.status()).isEqualTo(LpplExhaustionStatus.INSUFFICIENT_DATA);
         assertThat(score.isNaN()).isTrue();
+        assertThat(firstStableExhaustion.status()).isNotEqualTo(LpplExhaustionStatus.INSUFFICIENT_DATA);
+        assertThat(firstStableScore.isNaN()).isFalse();
+    }
+
+    @Test
+    void rejectsValidFitWithNonFiniteDiagnostics() {
+        assertThatThrownBy(() -> new LpplFit(WINDOW, LpplExhaustionStatus.VALID, 1.0, 0.03, 0.01, 0.02,
+                WINDOW + 20.0, 0.5, 8.0, Double.NaN, 0.1, 0.9, 20, 5))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("valid fits");
     }
 
     @Test

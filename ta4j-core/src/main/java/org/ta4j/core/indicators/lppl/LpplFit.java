@@ -52,6 +52,12 @@ public record LpplFit(int window, LpplExhaustionStatus status, double a, double 
         if (status == null) {
             throw new IllegalArgumentException("status must not be null");
         }
+        if (status == LpplExhaustionStatus.VALID
+                && (!Double.isFinite(a) || !Double.isFinite(b) || !Double.isFinite(c1) || !Double.isFinite(c2)
+                        || !Double.isFinite(criticalTime) || !Double.isFinite(m) || !Double.isFinite(omega)
+                        || !Double.isFinite(rss) || !Double.isFinite(rms) || !Double.isFinite(rSquared))) {
+            throw new IllegalArgumentException("valid fits must have finite parameters and diagnostics");
+        }
     }
 
     /**
@@ -61,7 +67,7 @@ public record LpplFit(int window, LpplExhaustionStatus status, double a, double 
     public boolean isConverged() {
         return status == LpplExhaustionStatus.VALID && Double.isFinite(a) && Double.isFinite(b) && Double.isFinite(c1)
                 && Double.isFinite(c2) && Double.isFinite(criticalTime) && Double.isFinite(m) && Double.isFinite(omega)
-                && Double.isFinite(rSquared);
+                && Double.isFinite(rss) && Double.isFinite(rms) && Double.isFinite(rSquared);
     }
 
     /**
