@@ -70,10 +70,30 @@ class SpdrSectorLpplRotationDemoTest {
 
         String report = SpdrSectorLpplRotationDemo.renderReport(snapshots);
 
-        assertEquals(
+        assertTrue(report.startsWith(
                 "date,sector,ticker,total,crash_count,bubble_count,net_exhaustion_score,standalone_lppl_score,relative_rotation_score\n"
-                        + "2026-04-29,Industrials,XLI,1,1,0,1.0000,0.6000,0.4000\n",
-                report);
+                        + "2026-04-29,Industrials,XLI,1,1,0,1.0000,0.6000,0.4000\n\n" + "Interpretation\n"));
+        assertTrue(report.contains(
+                "This snapshot has 1 dominant crash-exhaustion sector and 0 dominant bubble-exhaustion sectors"));
+        assertTrue(report.contains(
+                "Strongest crash-exhaustion candidates: Industrials (XLI, standalone=0.6000, relative=0.4000)."));
+    }
+
+    @Test
+    void renderInterpretationRanksSignalsAndExplainsSingleProxyCaveat() {
+        List<SpdrSectorLpplRotationDemo.SectorSnapshot> snapshots = List.of(
+                new SpdrSectorLpplRotationDemo.SectorSnapshot("Financials", "XLF", 1, 0, 1, -1.0, -0.1884, -0.1345),
+                new SpdrSectorLpplRotationDemo.SectorSnapshot("Utilities", "XLU", 1, 0, 1, -1.0, -0.1381, -0.0841),
+                new SpdrSectorLpplRotationDemo.SectorSnapshot("Technology", "XLK", 1, 0, 0, 0.0, 0.0, 0.0540));
+
+        String interpretation = SpdrSectorLpplRotationDemo.renderInterpretation(snapshots);
+
+        assertTrue(interpretation
+                .contains("0 dominant crash-exhaustion sectors and 2 dominant bubble-exhaustion sectors"));
+        assertTrue(interpretation.indexOf("Financials") < interpretation.indexOf("Utilities"));
+        assertTrue(interpretation
+                .contains("Neutral under this profile: Technology (XLK, standalone=0.0000, relative=0.0540)."));
+        assertTrue(interpretation.contains("one ETF proxy per sector"));
     }
 
     @Test

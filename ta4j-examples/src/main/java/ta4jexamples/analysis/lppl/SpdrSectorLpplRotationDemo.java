@@ -113,10 +113,11 @@ public final class SpdrSectorLpplRotationDemo {
     }
 
     static String renderReport(List<SectorSnapshot> snapshots) {
+        List<SectorSnapshot> safeSnapshots = snapshots == null ? List.of() : List.copyOf(snapshots);
         StringBuilder builder = new StringBuilder();
         builder.append(
                 "date,sector,ticker,total,crash_count,bubble_count,net_exhaustion_score,standalone_lppl_score,relative_rotation_score\n");
-        for (SectorSnapshot snapshot : snapshots) {
+        for (SectorSnapshot snapshot : safeSnapshots) {
             builder.append(SNAPSHOT_DATE)
                     .append(',')
                     .append(snapshot.sector())
@@ -136,7 +137,99 @@ public final class SpdrSectorLpplRotationDemo {
                     .append(format(snapshot.relativeRotationScore()))
                     .append('\n');
         }
+        builder.append('\n').append(renderInterpretation(safeSnapshots));
         return builder.toString();
+    }
+
+    static String renderInterpretation(List<SectorSnapshot> snapshots) {
+        List<SectorSnapshot> safeSnapshots = snapshots == null ? List.of() : List.copyOf(snapshots);
+        if (safeSnapshots.isEmpty()) {
+            return "Interpretation\nNo sector snapshots were available for interpretation.\n";
+        }
+
+        List<SectorSnapshot> crashSignals = safeSnapshots.stream()
+                .filter(snapshot -> snapshot.crashCount() > snapshot.bubbleCount())
+                .sorted(Comparator.comparingDouble(SectorSnapshot::lpplScore).reversed())
+                .toList();
+        List<SectorSnapshot> bubbleSignals = safeSnapshots.stream()
+                .filter(snapshot -> snapshot.bubbleCount() > snapshot.crashCount())
+                .sorted(Comparator.comparingDouble(SectorSnapshot::lpplScore))
+                .toList();
+        List<SectorSnapshot> neutralSignals = safeSnapshots.stream()
+                .filter(snapshot -> snapshot.crashCount() == snapshot.bubbleCount())
+                .sorted(Comparator.comparing(SectorSnapshot::sector))
+                .toList();
+
+        int totalInstruments = safeSnapshots.stream().mapToInt(SectorSnapshot::totalInstruments).sum();
+        SectorSnapshot strongestRelative = safeSnapshots.stream()
+                .max(Comparator.comparingDouble(SectorSnapshot::relativeRotationScore))
+                .orElseThrow();
+        SectorSnapshot weakestRelative = safeSnapshots.stream()
+                .min(Comparator.comparingDouble(SectorSnapshot::relativeRotationScore))
+                .orElseThrow();
+
+        StringBuilder builder = new StringBuilder();
+        builder.append("Interpretation\n");
+        builder.append(
+                "Positive standalone LPPL scores indicate crash exhaustion; negative scores indicate bubble exhaustion.\n");
+        builder.append("This snapshot has ")
+                .append(crashSignals.size())
+                .append(" dominant crash-exhaustion ")
+                .append(label(crashSignals.size(), "sector"))
+                .append(" and ")
+                .append(bubbleSignals.size())
+                .append(" dominant bubble-exhaustion ")
+                .append(label(bubbleSignals.size(), "sector"))
+                .append(" across ")
+                .append(totalInstruments)
+                .append(' ')
+                .append(label(totalInstruments, "instrument"))
+                .append(".\n");
+
+        appendSignalSummary(builder, "Strongest crash-exhaustion candidates", crashSignals);
+        appendSignalSummary(builder, "Strongest bubble-exhaustion warnings", bubbleSignals);
+
+        if (!neutralSignals.isEmpty()) {
+            builder.append("Neutral under this profile: ")
+                    .append(formatSectors(neutralSignals))
+                    .append(". Their positive or negative relative score only reflects position versus the universe average.\n");
+        }
+
+        builder.append("Highest relative rotation score: ")
+                .append(formatSector(strongestRelative))
+                .append("; lowest relative rotation score: ")
+                .append(formatSector(weakestRelative))
+                .append(".\n");
+
+        if (safeSnapshots.stream().allMatch(snapshot -> snapshot.totalInstruments() == 1)) {
+            builder.append(
+                    "This closed SPDR demo uses one ETF proxy per sector, so net_exhaustion_score is binary; a production constituent universe would make it a breadth percentage.\n");
+        }
+        return builder.toString();
+    }
+
+    private static void appendSignalSummary(StringBuilder builder, String label, List<SectorSnapshot> snapshots) {
+        if (snapshots.isEmpty()) {
+            builder.append(label).append(": none.\n");
+            return;
+        }
+        builder.append(label).append(": ").append(formatSectors(snapshots)).append(".\n");
+    }
+
+    private static String formatSectors(List<SectorSnapshot> snapshots) {
+        return snapshots.stream()
+                .map(SpdrSectorLpplRotationDemo::formatSector)
+                .reduce((left, right) -> left + "; " + right)
+                .orElse("none");
+    }
+
+    private static String formatSector(SectorSnapshot snapshot) {
+        return snapshot.sector() + " (" + snapshot.ticker() + ", standalone=" + format(snapshot.lpplScore())
+                + ", relative=" + format(snapshot.relativeRotationScore()) + ")";
+    }
+
+    private static String label(int count, String singular) {
+        return count == 1 ? singular : singular + "s";
     }
 
     private static boolean hasCrashExhaustion(InstrumentSnapshot instrument) {
