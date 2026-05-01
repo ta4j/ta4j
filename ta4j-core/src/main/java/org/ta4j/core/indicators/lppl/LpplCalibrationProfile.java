@@ -99,7 +99,7 @@ public record LpplCalibrationProfile(int[] windows, double minM, double maxM, in
      */
     @Override
     public int[] windows() {
-        return windows.clone();
+        return Arrays.copyOf(windows, windows.length);
     }
 
     /**
