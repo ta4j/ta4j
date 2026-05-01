@@ -7,6 +7,9 @@
 - **Agent guidance stays accurate across repo and personal workflows**: `scripts/agents_for_target.sh` guidance now clearly describes path-scoped `AGENTS.md` discovery from the current repo/workspace root, so contributors can use it for file-targeted lookup without assuming it also covers personal PR/comment workflow guidance.
 - **BTC daily Elliott runs now share one macro-validated core path**: You can now run the historical BTC macro study and the live BTC preset through the same core-ranked Elliott engine, keep the locked `1-2-3-4-5` / `A-B-C` truth-set regression in place, and read the current-cycle invalidation directly as a condition like `<= 68997.75` instead of reverse-engineering a raw number from the demo output. The BTC wrapper is now primarily about loading ossified data, choosing the prevalidated profile, and rendering charts/reports.
 
+### Fixed
+- **All-tags Elliott replay checks stay lined up with canonical BTC continuation lows**: Contributors can now rerun the slow BTC macro-cycle replay suite with `-Dta4j.excludedTestTags=` and see the 2021/2022 canonical expectations match the continuation-adjusted lows emitted by `ElliottWaveMacroCycleDemo`.
+
 ## 0.22.6 (2026-04-01)
 
 ### Fixed
