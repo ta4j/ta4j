@@ -14,7 +14,8 @@ import java.util.Arrays;
  * active exhaustion only when the critical time is near enough to matter for a
  * trading or rotation signal.
  *
- * @param windows                 rolling fit windows in bars
+ * @param windows                 rolling fit windows in bars; values are sorted
+ *                                and duplicates are removed
  * @param minM                    lower bound for the power-law exponent
  * @param maxM                    upper bound for the power-law exponent
  * @param mSteps                  grid-search steps for {@code m}
@@ -47,8 +48,7 @@ public record LpplCalibrationProfile(int[] windows, double minM, double maxM, in
         if (windows == null || windows.length == 0) {
             throw new IllegalArgumentException("windows must contain at least one value");
         }
-        windows = windows.clone();
-        Arrays.sort(windows);
+        windows = Arrays.stream(windows).sorted().distinct().toArray();
         for (int window : windows) {
             if (window < 5) {
                 throw new IllegalArgumentException("windows must be at least 5 bars");
@@ -100,6 +100,67 @@ public record LpplCalibrationProfile(int[] windows, double minM, double maxM, in
     @Override
     public int[] windows() {
         return windows.clone();
+    }
+
+    /**
+     * Compares profiles using window values instead of array identity.
+     *
+     * @since 0.22.7
+     */
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+        if (!(object instanceof LpplCalibrationProfile other)) {
+            return false;
+        }
+        return Arrays.equals(windows, other.windows) && Double.compare(minM, other.minM) == 0
+                && Double.compare(maxM, other.maxM) == 0 && mSteps == other.mSteps
+                && Double.compare(minOmega, other.minOmega) == 0 && Double.compare(maxOmega, other.maxOmega) == 0
+                && omegaSteps == other.omegaSteps && minCriticalOffset == other.minCriticalOffset
+                && maxCriticalOffset == other.maxCriticalOffset && criticalOffsetStep == other.criticalOffsetStep
+                && activeMinCriticalOffset == other.activeMinCriticalOffset
+                && activeMaxCriticalOffset == other.activeMaxCriticalOffset && maxEvaluations == other.maxEvaluations
+                && Double.compare(minRSquared, other.minRSquared) == 0;
+    }
+
+    /**
+     * @return hash code based on window values and scalar profile settings
+     * @since 0.22.7
+     */
+    @Override
+    public int hashCode() {
+        int result = Arrays.hashCode(windows);
+        result = 31 * result + Double.hashCode(minM);
+        result = 31 * result + Double.hashCode(maxM);
+        result = 31 * result + Integer.hashCode(mSteps);
+        result = 31 * result + Double.hashCode(minOmega);
+        result = 31 * result + Double.hashCode(maxOmega);
+        result = 31 * result + Integer.hashCode(omegaSteps);
+        result = 31 * result + Integer.hashCode(minCriticalOffset);
+        result = 31 * result + Integer.hashCode(maxCriticalOffset);
+        result = 31 * result + Integer.hashCode(criticalOffsetStep);
+        result = 31 * result + Integer.hashCode(activeMinCriticalOffset);
+        result = 31 * result + Integer.hashCode(activeMaxCriticalOffset);
+        result = 31 * result + Integer.hashCode(maxEvaluations);
+        result = 31 * result + Double.hashCode(minRSquared);
+        return result;
+    }
+
+    /**
+     * @return readable profile description with window values instead of array
+     *         identity
+     * @since 0.22.7
+     */
+    @Override
+    public String toString() {
+        return "LpplCalibrationProfile[windows=" + Arrays.toString(windows) + ", minM=" + minM + ", maxM=" + maxM
+                + ", mSteps=" + mSteps + ", minOmega=" + minOmega + ", maxOmega=" + maxOmega + ", omegaSteps="
+                + omegaSteps + ", minCriticalOffset=" + minCriticalOffset + ", maxCriticalOffset=" + maxCriticalOffset
+                + ", criticalOffsetStep=" + criticalOffsetStep + ", activeMinCriticalOffset=" + activeMinCriticalOffset
+                + ", activeMaxCriticalOffset=" + activeMaxCriticalOffset + ", maxEvaluations=" + maxEvaluations
+                + ", minRSquared=" + minRSquared + "]";
     }
 
     int maxWindow() {

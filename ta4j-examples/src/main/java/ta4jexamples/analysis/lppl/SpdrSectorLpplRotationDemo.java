@@ -9,8 +9,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.lppl.LpplCalibrationProfile;
@@ -31,7 +29,6 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  */
 public final class SpdrSectorLpplRotationDemo {
 
-    private static final Logger LOG = LogManager.getLogger(SpdrSectorLpplRotationDemo.class);
     private static final LocalDate SNAPSHOT_DATE = LocalDate.of(2026, 4, 29);
 
     private static final List<SectorDefinition> UNIVERSE = List.of(
@@ -57,15 +54,7 @@ public final class SpdrSectorLpplRotationDemo {
      */
     public static void main(String[] args) {
         List<SectorSnapshot> snapshots = analyze(LpplCalibrationProfile.defaults());
-        LOG.info("SPDR sector LPPL rotation snapshot: {}", SNAPSHOT_DATE);
-        LOG.info("Positive = crash exhaustion, negative = bubble exhaustion");
-        LOG.info(
-                "sector,ticker,total,crash_count,bubble_count,net_exhaustion_score,lppl_score,relative_rotation_score");
-        for (SectorSnapshot snapshot : snapshots) {
-            LOG.info("{},{},{},{},{},{},{},{}", snapshot.sector(), snapshot.ticker(), snapshot.totalInstruments(),
-                    snapshot.crashCount(), snapshot.bubbleCount(), format(snapshot.netExhaustionScore()),
-                    format(snapshot.lpplScore()), format(snapshot.relativeRotationScore()));
-        }
+        System.out.print(renderReport(snapshots));
     }
 
     static List<SectorDefinition> closedUniverse() {
@@ -90,7 +79,7 @@ public final class SpdrSectorLpplRotationDemo {
     static List<SectorSnapshot> aggregate(List<InstrumentSnapshot> instruments) {
         List<InstrumentSnapshot> safeInstruments = instruments == null ? List.of() : List.copyOf(instruments);
         double universeAverage = safeInstruments.stream()
-                .mapToDouble(instrument -> instrument.exhaustion().score().doubleValue())
+                .mapToDouble(SpdrSectorLpplRotationDemo::scoreValue)
                 .average()
                 .orElse(0.0);
 
@@ -103,13 +92,13 @@ public final class SpdrSectorLpplRotationDemo {
                 continue;
             }
             int crashCount = (int) sectorInstruments.stream()
-                    .filter(instrument -> instrument.exhaustion().side() == LpplExhaustionSide.CRASH_EXHAUSTION)
+                    .filter(SpdrSectorLpplRotationDemo::hasCrashExhaustion)
                     .count();
             int bubbleCount = (int) sectorInstruments.stream()
-                    .filter(instrument -> instrument.exhaustion().side() == LpplExhaustionSide.BUBBLE_EXHAUSTION)
+                    .filter(SpdrSectorLpplRotationDemo::hasBubbleExhaustion)
                     .count();
             double lpplScore = sectorInstruments.stream()
-                    .mapToDouble(instrument -> instrument.exhaustion().score().doubleValue())
+                    .mapToDouble(SpdrSectorLpplRotationDemo::scoreValue)
                     .average()
                     .orElse(0.0);
             double total = sectorInstruments.size();
@@ -121,6 +110,51 @@ public final class SpdrSectorLpplRotationDemo {
                 .reversed()
                 .thenComparing(SectorSnapshot::sector));
         return List.copyOf(snapshots);
+    }
+
+    static String renderReport(List<SectorSnapshot> snapshots) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(
+                "date,sector,ticker,total,crash_count,bubble_count,net_exhaustion_score,standalone_lppl_score,relative_rotation_score\n");
+        for (SectorSnapshot snapshot : snapshots) {
+            builder.append(SNAPSHOT_DATE)
+                    .append(',')
+                    .append(snapshot.sector())
+                    .append(',')
+                    .append(snapshot.ticker())
+                    .append(',')
+                    .append(snapshot.totalInstruments())
+                    .append(',')
+                    .append(snapshot.crashCount())
+                    .append(',')
+                    .append(snapshot.bubbleCount())
+                    .append(',')
+                    .append(format(snapshot.netExhaustionScore()))
+                    .append(',')
+                    .append(format(snapshot.lpplScore()))
+                    .append(',')
+                    .append(format(snapshot.relativeRotationScore()))
+                    .append('\n');
+        }
+        return builder.toString();
+    }
+
+    private static boolean hasCrashExhaustion(InstrumentSnapshot instrument) {
+        return instrument.exhaustion().isValid()
+                && instrument.exhaustion().side() == LpplExhaustionSide.CRASH_EXHAUSTION;
+    }
+
+    private static boolean hasBubbleExhaustion(InstrumentSnapshot instrument) {
+        return instrument.exhaustion().isValid()
+                && instrument.exhaustion().side() == LpplExhaustionSide.BUBBLE_EXHAUSTION;
+    }
+
+    private static double scoreValue(InstrumentSnapshot instrument) {
+        if (!instrument.exhaustion().isValid()) {
+            return 0.0;
+        }
+        double value = instrument.exhaustion().score().doubleValue();
+        return Double.isFinite(value) ? value : 0.0;
     }
 
     private static String format(double value) {

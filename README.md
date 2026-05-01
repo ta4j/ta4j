@@ -814,7 +814,9 @@ LpplExhaustionScoreIndicator score = new LpplExhaustionScoreIndicator(exhaustion
 Num boundedScore = score.getValue(index); // positive = crash exhaustion, negative = bubble exhaustion
 ```
 
-The `ta4j-examples` module includes `SpdrSectorLpplRotationDemo`, an offline State Street SPDR sector ETF universe example that ranks sector exhaustion scores using adjusted daily resources.
+Use `new LpplExhaustionIndicator(priceIndicator, profile)` or `new LpplExhaustionScoreIndicator(priceIndicator, profile)` when you need injected prices or tighter calibration settings. LPPL fitting is sensitive to start date and split/distribution discontinuities, so equity examples should use adjusted prices.
+
+The `ta4j-examples` module includes `SpdrSectorLpplRotationDemo`, an offline State Street SPDR sector ETF universe example that emits a pipe-friendly CSV table with signed standalone LPPL scores and universe-relative rotation scores using adjusted daily resources.
 
 ## Real-world examples
 
@@ -847,7 +849,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[ElliottWaveAnchorCalibrationHarness](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveAnchorCalibrationHarness.java)** - Replays a versioned BTC cycle-anchor registry against the locked walk-forward baseline, promotes a challenger only when every holdout gate clears, and otherwise keeps the baseline while printing the failed-gate summary plus ETH/USD and S&P 500 portability checks.
 - **[ElliottWaveTrendBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveTrendBacktest.java)** - Evaluates trend-bias directionality over backtest and walk-forward windows.
 - **[HighRewardElliottWaveBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/HighRewardElliottWaveBacktest.java)** - Backtests the high-reward Elliott Wave strategy presets.
-- **[SpdrSectorLpplRotationDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/lppl/SpdrSectorLpplRotationDemo.java)** - Runs LPPL crash/bubble exhaustion scoring across the closed State Street SPDR sector ETF universe using adjusted offline daily resources.
+- **[SpdrSectorLpplRotationDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/lppl/SpdrSectorLpplRotationDemo.java)** - Runs LPPL crash/bubble exhaustion scoring across the closed State Street SPDR sector ETF universe using adjusted offline daily resources and prints deterministic CSV output.
 - **[WyckoffCycleIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleIndicatorSuiteDemo.java)** - Demonstrates the Wyckoff cycle entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`) and prints phase transitions on an ossified bar series dataset
 - **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
 - **[TradeFillRecordingExample](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java)** - Walk through a live-style partial-fill workflow with `TradingRecord.operate(fill)`, inspect `getOpenPositions()` versus `getCurrentPosition()`, and compare `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` partial-exit matching.

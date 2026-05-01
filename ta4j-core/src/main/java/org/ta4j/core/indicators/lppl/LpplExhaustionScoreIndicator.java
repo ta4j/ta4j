@@ -37,6 +37,18 @@ public class LpplExhaustionScoreIndicator extends CachedIndicator<Num> {
     }
 
     /**
+     * Creates a score indicator over close prices using an explicit calibration
+     * profile.
+     *
+     * @param series  underlying bar series
+     * @param profile calibration profile
+     * @since 0.22.7
+     */
+    public LpplExhaustionScoreIndicator(BarSeries series, LpplCalibrationProfile profile) {
+        this(new LpplExhaustionIndicator(series, profile));
+    }
+
+    /**
      * Creates a score indicator using the supplied price source and default
      * calibration settings.
      *
@@ -45,6 +57,18 @@ public class LpplExhaustionScoreIndicator extends CachedIndicator<Num> {
      */
     public LpplExhaustionScoreIndicator(Indicator<Num> priceIndicator) {
         this(new LpplExhaustionIndicator(priceIndicator));
+    }
+
+    /**
+     * Creates a score indicator using the supplied price source and explicit
+     * calibration profile.
+     *
+     * @param priceIndicator price source to model
+     * @param profile        calibration profile
+     * @since 0.22.7
+     */
+    public LpplExhaustionScoreIndicator(Indicator<Num> priceIndicator, LpplCalibrationProfile profile) {
+        this(new LpplExhaustionIndicator(priceIndicator, profile));
     }
 
     /**
@@ -66,6 +90,10 @@ public class LpplExhaustionScoreIndicator extends CachedIndicator<Num> {
         return exhaustionIndicator.getValue(index).score();
     }
 
+    /**
+     * @return unstable bar count from the wrapped rich LPPL exhaustion indicator
+     * @since 0.22.7
+     */
     @Override
     public int getCountOfUnstableBars() {
         return exhaustionIndicator.getCountOfUnstableBars();

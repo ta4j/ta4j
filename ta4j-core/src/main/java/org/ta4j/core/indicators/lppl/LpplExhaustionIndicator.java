@@ -60,6 +60,18 @@ public class LpplExhaustionIndicator extends CachedIndicator<LpplExhaustion> {
     }
 
     /**
+     * Creates an LPPL exhaustion indicator over close prices using an explicit
+     * calibration profile.
+     *
+     * @param series  underlying bar series
+     * @param profile calibration profile
+     * @since 0.22.7
+     */
+    public LpplExhaustionIndicator(BarSeries series, LpplCalibrationProfile profile) {
+        this(new ClosePriceIndicator(Objects.requireNonNull(series, "series")), profile);
+    }
+
+    /**
      * Creates an LPPL exhaustion indicator using the supplied price source and
      * default calibration settings.
      *
@@ -225,7 +237,8 @@ public class LpplExhaustionIndicator extends CachedIndicator<LpplExhaustion> {
     private double horizonWeight(LpplFit fit) {
         double middle = (activeMinCriticalOffset + activeMaxCriticalOffset) * 0.5;
         double halfWidth = Math.max(1.0, (activeMaxCriticalOffset - activeMinCriticalOffset) * 0.5);
-        return clamp(1.0 - Math.abs(fit.criticalOffset() - middle) / halfWidth, 0.0, 1.0);
+        double centeredWeight = 1.0 - Math.abs(fit.criticalOffset() - middle) / halfWidth;
+        return 0.5 + 0.5 * clamp(centeredWeight, 0.0, 1.0);
     }
 
     private double clamp(double value, double min, double max) {
@@ -235,6 +248,10 @@ public class LpplExhaustionIndicator extends CachedIndicator<LpplExhaustion> {
         return Math.max(min, Math.min(max, value));
     }
 
+    /**
+     * @return source unstable bars plus the largest configured LPPL fit window
+     * @since 0.22.7
+     */
     @Override
     public int getCountOfUnstableBars() {
         return priceIndicator.getCountOfUnstableBars() + profile.maxWindow() - 1;

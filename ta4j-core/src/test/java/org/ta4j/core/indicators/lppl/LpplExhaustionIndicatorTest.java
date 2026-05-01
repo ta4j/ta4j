@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.lppl;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Arrays;
 
@@ -46,6 +47,16 @@ class LpplExhaustionIndicatorTest {
         assertThat(exhaustion.score().doubleValue()).isGreaterThan(0.0).isLessThanOrEqualTo(1.0);
         assertThat(exhaustion.dominantFit().b()).isGreaterThan(0.0);
         assertThat(exhaustion.dominantFit().criticalOffset()).isBetween(10, 30);
+    }
+
+    @Test
+    void edgeOfActionableHorizonStillProducesNonZeroScore() {
+        BarSeries series = syntheticSeries(0.03, 10);
+        LpplExhaustionScoreIndicator indicator = new LpplExhaustionScoreIndicator(series, compactProfile());
+
+        Num score = indicator.getValue(series.getEndIndex());
+
+        assertThat(score.doubleValue()).isGreaterThan(0.0).isLessThanOrEqualTo(1.0);
     }
 
     @Test
@@ -109,17 +120,55 @@ class LpplExhaustionIndicatorTest {
                 .isEqualTo(LpplExhaustionSide.CRASH_EXHAUSTION);
     }
 
+    @Test
+    void profileUsesValueSemanticsAndDefensiveWindows() {
+        int[] windows = { WINDOW, 40, WINDOW };
+        LpplCalibrationProfile profile = new LpplCalibrationProfile(windows, 0.1, 0.9, 5, 7.5, 8.5, 3, 10, 30, 5, 10,
+                30, 80, 0.6);
+        windows[0] = 5;
+
+        assertThat(profile.windows()).containsExactly(40, WINDOW);
+        assertThat(profile).isEqualTo(new LpplCalibrationProfile(new int[] { 40, WINDOW }, 0.1, 0.9, 5, 7.5, 8.5, 3, 10,
+                30, 5, 10, 30, 80, 0.6));
+        assertThat(profile.toString()).contains("windows=[40, 80]");
+
+        int[] copy = profile.windows();
+        copy[0] = 5;
+        assertThat(profile.windows()).containsExactly(40, WINDOW);
+    }
+
+    @Test
+    void rejectsInvalidProfileSettings() {
+        assertThatThrownBy(
+                () -> new LpplCalibrationProfile(new int[] { 4 }, 0.1, 0.9, 5, 7.5, 8.5, 3, 10, 30, 5, 10, 30, 80, 0.6))
+                .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new LpplCalibrationProfile(new int[] { WINDOW }, 0.9, 0.1, 5, 7.5, 8.5, 3, 10, 30, 5,
+                10, 30, 80, 0.6)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new LpplCalibrationProfile(new int[] { WINDOW }, 0.1, 0.9, 5, 7.5, 8.5, 3, 10, 30, 0,
+                10, 30, 80, 0.6)).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> new LpplCalibrationProfile(new int[] { WINDOW }, 0.1, 0.9, 5, 7.5, 8.5, 3, 10, 30, 5,
+                9, 30, 80, 0.6)).isInstanceOf(IllegalArgumentException.class);
+    }
+
     private static LpplCalibrationProfile compactProfile() {
         return new LpplCalibrationProfile(new int[] { WINDOW }, 0.1, 0.9, 5, 7.5, 8.5, 3, 10, 30, 5, 10, 30, 80, 0.6);
     }
 
     private static BarSeries syntheticSeries(double b) {
-        return new MockBarSeriesBuilder().withData(syntheticPrices(b)).build();
+        return syntheticSeries(b, 20);
+    }
+
+    private static BarSeries syntheticSeries(double b, int criticalOffset) {
+        return new MockBarSeriesBuilder().withData(syntheticPrices(b, criticalOffset)).build();
     }
 
     private static double[] syntheticPrices(double b) {
+        return syntheticPrices(b, 20);
+    }
+
+    private static double[] syntheticPrices(double b, int criticalOffset) {
         double[] prices = new double[WINDOW];
-        double criticalTime = WINDOW - 1 + 20.0;
+        double criticalTime = WINDOW - 1 + criticalOffset;
         double a = 4.6;
         double c1 = 0.01;
         double c2 = -0.006;
