@@ -19,6 +19,15 @@ expect_file_contains() {
   fi
 }
 
+expect_file_matches() {
+  local file="$1"
+  local pattern="$2"
+  local msg="$3"
+  if ! grep -Eq -- "$pattern" "$file"; then
+    fail "$msg (pattern: '$pattern')"
+  fi
+}
+
 expect_file_not_contains() {
   local file="$1"
   local needle="$2"
@@ -31,8 +40,8 @@ expect_file_not_contains() {
 test_parent_declares_advisory_quality_defaults() {
   echo "Running test_parent_declares_advisory_quality_defaults"
 
-  expect_file_contains "$POM" "<spotbugs.version>4.9.8.0</spotbugs.version>" "parent pom should pin SpotBugs"
-  expect_file_contains "$POM" "<jacoco.version>0.8.13</jacoco.version>" "parent pom should pin JaCoCo"
+  expect_file_matches "$POM" "<spotbugs.version>[0-9]+(\\.[0-9]+)+</spotbugs.version>" "parent pom should pin SpotBugs with an explicit version"
+  expect_file_matches "$POM" "<jacoco.version>[0-9]+(\\.[0-9]+)+</jacoco.version>" "parent pom should pin JaCoCo with an explicit version"
   expect_file_contains "$POM" "<ta4j.spotbugs.failOnError>false</ta4j.spotbugs.failOnError>" "SpotBugs should stay advisory"
   expect_file_contains "$POM" "<ta4j.jacoco.haltOnFailure>false</ta4j.jacoco.haltOnFailure>" "JaCoCo should stay advisory"
   expect_file_contains "$POM" "<ta4j.jacoco.line.minimum>0.80</ta4j.jacoco.line.minimum>" "line coverage threshold should be declared"
