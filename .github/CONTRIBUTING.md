@@ -25,6 +25,10 @@ Run tagged suites manually from GitHub Actions, or locally with:
 - `xvfb-run mvn -B test -Dgroups=slow -Dta4j.excludedTestTags=`
 - `xvfb-run mvn -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.runBenchmarks=true`
 
+These examples match the Linux GitHub Actions runners. On macOS, use XQuartz or
+run the Maven command without `xvfb-run` when your local display can satisfy
+UI-dependent tests. On Windows, use WSL2, a CI runner, or an equivalent X server.
+
 The dedicated workflows are:
 
 - `Run Integration Tagged Tests` (`.github/workflows/test-tag-integration.yml`)
