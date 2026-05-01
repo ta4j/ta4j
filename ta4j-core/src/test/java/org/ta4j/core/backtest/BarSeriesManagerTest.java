@@ -4,6 +4,7 @@
 package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -90,6 +91,65 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertEquals(HUNDRED, allPositions.get(0).getEntry().getAmount());
         assertEquals(HUNDRED, allPositions.get(1).getEntry().getAmount());
 
+    }
+
+    @Test
+    public void runWithAmountProviderUsesDynamicEntryAmount() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+        BarSeriesManager.AmountProvider amountProvider = (index, currentStrategy, barSeries, tradeType) -> numFactory
+                .numOf(index);
+
+        TradingRecord tradingRecord = localManager.run(oneTradeStrategy, TradeType.BUY, amountProvider);
+        Position position = tradingRecord.getPositions().getFirst();
+
+        assertEquals(1, tradingRecord.getPositionCount());
+        assertEquals(1, position.getEntry().getIndex());
+        assertEquals(TradeType.BUY, position.getEntry().getType());
+        assertEquals(numFactory.one(), position.getEntry().getAmount());
+        assertEquals(2, position.getExit().getIndex());
+        assertEquals(numFactory.one(), position.getExit().getAmount());
+    }
+
+    @Test
+    public void runWithAmountProviderUsesStrategyStartingTypeAndRange() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40, 50).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1, 2), new FixedRule(3), TradeType.SELL);
+        BarSeriesManager.AmountProvider amountProvider = (index, currentStrategy, barSeries, tradeType) -> numFactory
+                .numOf(index);
+
+        TradingRecord tradingRecord = localManager.run(oneTradeStrategy, amountProvider, 2, 3);
+        Position position = tradingRecord.getPositions().getFirst();
+
+        assertEquals(1, tradingRecord.getPositionCount());
+        assertEquals(2, position.getEntry().getIndex());
+        assertEquals(TradeType.SELL, position.getEntry().getType());
+        assertEquals(numFactory.numOf(2), position.getEntry().getAmount());
+        assertEquals(3, position.getExit().getIndex());
+        assertEquals(numFactory.numOf(2), position.getExit().getAmount());
+    }
+
+    @Test
+    public void runWithAmountProviderRejectsInvalidAmount() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+
+        BarSeriesManager.AmountProvider nullAmountProvider = (index, strategy, barSeries, tradeType) -> null;
+        assertThrows(IllegalArgumentException.class,
+                () -> localManager.run(oneTradeStrategy, TradeType.BUY, nullAmountProvider));
+
+        BarSeriesManager.AmountProvider nonPositiveAmountProvider = (index, strategy, barSeries,
+                tradeType) -> numFactory.zero();
+        assertThrows(IllegalArgumentException.class,
+                () -> localManager.run(oneTradeStrategy, TradeType.BUY, nonPositiveAmountProvider));
+
+        BarSeriesManager.AmountProvider nanAmountProvider = (index, strategy, barSeries, tradeType) -> numFactory
+                .numOf(Double.NaN);
+        assertThrows(IllegalArgumentException.class,
+                () -> localManager.run(oneTradeStrategy, TradeType.BUY, nanAmountProvider));
     }
 
     @Test
@@ -353,6 +413,24 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         assertEquals(TradeType.SELL, entry.getType());
         assertEquals(HUNDRED, entry.getAmount());
+    }
+
+    @Test
+    public void runWalkForwardWithAmountProviderUsesDynamicAmount() {
+        WalkForwardConfig config = new WalkForwardConfig(3, 2, 2, 0, 0, 2, 1, List.of(), 1, List.of(1), 7L);
+        List<WalkForwardSplit> splits = new AnchoredExpandingWalkForwardSplitter().split(seriesForRun, config);
+        StrategyWalkForwardExecutionResult result = manager.runWalkForward(strategy, TradeType.BUY,
+                (index, currentStrategy, barSeries, tradeType) -> numFactory.numOf(index), config);
+
+        assertEquals(splits.size(), result.folds().size());
+        for (StrategyWalkForwardExecutionResult.FoldResult fold : result.folds()) {
+            if (!fold.tradingRecord().getPositions().isEmpty()) {
+                Position firstPosition = fold.tradingRecord().getPositions().getFirst();
+                assertEquals(numFactory.numOf(firstPosition.getEntry().getIndex()),
+                        firstPosition.getEntry().getAmount());
+                assertEquals(firstPosition.getEntry().getAmount(), firstPosition.getExit().getAmount());
+            }
+        }
     }
 
     private Trade buyAt(int index, Num price, Num amount) {

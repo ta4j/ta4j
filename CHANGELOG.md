@@ -2,6 +2,7 @@
 
 ### Added
 - **Anchor-aware Elliott tuning harness**: You can now run `ElliottWaveAnchorCalibrationHarness` with the versioned `BTC-anchor-registry-v1.json` registry to replay major BTC tops and bottoms, compare the locked baseline against coarse challenger profiles on top-1/top-3 anchor hits plus `ECE`/`Brier`/`LogLoss`, and get a deterministic promote-or-retain bundle that also sanity-checks the selected profile on ETH/USD and S&P 500 data.
+- **Dynamic backtest sizing**: You can now pass a `BarSeriesManager.AmountProvider` into `BarSeriesManager`, `BacktestExecutor`, top-K strategy ranking, and walk-forward execution to size each entry from the signal bar while exits automatically close the currently open amount (CF-90).
 
 ### Changed
 - **Agent guidance stays accurate across repo and personal workflows**: `scripts/agents_for_target.sh` guidance now clearly describes path-scoped `AGENTS.md` discovery from the current repo/workspace root, so contributors can use it for file-targeted lookup without assuming it also covers personal PR/comment workflow guidance.

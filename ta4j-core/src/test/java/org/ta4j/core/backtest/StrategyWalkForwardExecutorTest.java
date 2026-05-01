@@ -16,6 +16,7 @@ import org.junit.Test;
 import org.ta4j.core.AnalysisCriterion;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
@@ -51,6 +52,28 @@ public class StrategyWalkForwardExecutorTest extends AbstractIndicatorTest<BarSe
         assertTrue(result.holdoutFold().isPresent());
         assertFalse(result.inSampleFolds().isEmpty());
         assertFalse(result.outOfSampleFolds().isEmpty());
+    }
+
+    @Test
+    public void executeWithAmountProviderUsesDynamicAmount() {
+        BarSeries series = buildSeries(48);
+        Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
+        WalkForwardConfig config = walkForwardConfig();
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series);
+        BarSeriesManager.AmountProvider amountProvider = (index, currentStrategy, barSeries, tradeType) -> numFactory
+                .numOf(index + 1);
+
+        StrategyWalkForwardExecutionResult result = executor.execute(strategy, Trade.TradeType.BUY, amountProvider,
+                config);
+
+        assertEquals(new AnchoredExpandingWalkForwardSplitter().split(series, config).size(), result.folds().size());
+        for (StrategyWalkForwardExecutionResult.FoldResult fold : result.folds()) {
+            if (!fold.tradingRecord().getPositions().isEmpty()) {
+                Position position = fold.tradingRecord().getPositions().getFirst();
+                assertEquals(numFactory.numOf(position.getEntry().getIndex()), position.getEntry().getAmount());
+                assertEquals(position.getEntry().getAmount(), position.getExit().getAmount());
+            }
+        }
     }
 
     @Test

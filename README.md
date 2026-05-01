@@ -416,6 +416,18 @@ BacktestExecutionResult result = new BacktestExecutor(series)
         Trade.TradeType.BUY,           // long positions (use Trade.TradeType.SELL for shorts)
         ProgressCompletion.loggingWithMemory()); // logs progress with memory stats
 
+// Or size each entry dynamically from the signal bar.
+BarSeriesManager.AmountProvider amountByBar = (index, strategy, barSeries, tradeType) -> {
+    Num budget = barSeries.numFactory().numOf(1000);
+    return budget.dividedBy(barSeries.getBar(index).getClosePrice());
+};
+
+BacktestExecutionResult dynamicallySizedResult = new BacktestExecutor(series)
+    .executeWithRuntimeReport(strategies, amountByBar, Trade.TradeType.BUY);
+
+// The same provider works with top-K and walk-forward execution. It sizes
+// entries; exits close the currently open amount.
+
 // Weight net profit at 70% and return over max drawdown at 30%.
 // Weights are normalized internally, so 7/3 and 0.7/0.3 are equivalent.
 AnalysisCriterion netProfitCriterion = new NetProfitCriterion();

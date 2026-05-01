@@ -5,6 +5,7 @@ package org.ta4j.core.backtest;
 
 import java.util.Objects;
 import java.util.function.Consumer;
+import java.util.function.IntFunction;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.ta4j.core.BarSeries;
@@ -79,6 +80,38 @@ public class BarSeriesManager {
          */
         TradingRecord create(TradeType tradeType, int startIndex, int endIndex, CostModel transactionCostModel,
                 CostModel holdingCostModel);
+    }
+
+    /**
+     * Provides a dynamic entry amount for each strategy operation opportunity.
+     *
+     * <p>
+     * The index corresponds to the bar index passed to
+     * {@link TradeExecutionModel#execute}. Implementations should return a strictly
+     * positive amount when a strategy opens a position. Exits close the currently
+     * open amount so a changing provider does not over-close an existing position.
+     * </p>
+     * <p>
+     * When used with {@link BacktestExecutor} methods that evaluate strategies in
+     * parallel, implementations may be called concurrently and should be
+     * thread-safe.
+     * </p>
+     *
+     * @since 0.22.7
+     */
+    @FunctionalInterface
+    public interface AmountProvider {
+        /**
+         * Provides the amount used to open a new position.
+         *
+         * @param index     bar index where execution is attempted
+         * @param strategy  strategy being evaluated
+         * @param barSeries backtested bar series
+         * @param tradeType strategy entry trade type
+         * @return amount used for entry execution
+         * @since 0.22.7
+         */
+        Num amount(int index, Strategy strategy, BarSeries barSeries, TradeType tradeType);
     }
 
     /**
@@ -256,6 +289,69 @@ public class BarSeriesManager {
     }
 
     /**
+     * Runs the provided strategy over the managed series using a dynamic entry
+     * amount provider.
+     *
+     * @param strategy       strategy to execute
+     * @param tradeType      the {@link TradeType} used to open the position
+     * @param amountProvider provider returning the amount used to open trades
+     * @return the trading record coming from the run
+     * @since 0.22.7
+     */
+    public TradingRecord run(Strategy strategy, TradeType tradeType, AmountProvider amountProvider) {
+        return run(strategy, tradeType, amountProvider, barSeries.getBeginIndex(), barSeries.getEndIndex());
+    }
+
+    /**
+     * Runs the provided strategy over the managed series using a dynamic entry
+     * amount provider.
+     *
+     * @param strategy       strategy to execute
+     * @param amountProvider provider returning the amount used to open trades
+     * @return the trading record coming from the run
+     * @since 0.22.7
+     */
+    public TradingRecord run(Strategy strategy, AmountProvider amountProvider) {
+        Objects.requireNonNull(strategy, "strategy");
+        return run(strategy, strategy.getStartingType(), amountProvider);
+    }
+
+    /**
+     * Runs the provided strategy over the managed series (from startIndex to
+     * finishIndex) using the strategy starting type and a dynamic entry amount
+     * provider.
+     *
+     * @param strategy       strategy to execute
+     * @param amountProvider provider returning the amount used to open trades
+     * @param startIndex     the start index for the run (included)
+     * @param finishIndex    the finish index for the run (included)
+     * @return the trading record coming from the run
+     * @since 0.22.7
+     */
+    public TradingRecord run(Strategy strategy, AmountProvider amountProvider, int startIndex, int finishIndex) {
+        Objects.requireNonNull(strategy, "strategy");
+        return run(strategy, strategy.getStartingType(), amountProvider, startIndex, finishIndex);
+    }
+
+    /**
+     * Runs the provided strategy over the managed series (from startIndex to
+     * finishIndex) using a dynamic entry amount provider.
+     *
+     * @param strategy       strategy to execute
+     * @param tradeType      the {@link TradeType} used to open the position
+     * @param amountProvider provider returning the amount used to open trades
+     * @param startIndex     the start index for the run (included)
+     * @param finishIndex    the finish index for the run (included)
+     * @return the trading record coming from the run
+     * @since 0.22.7
+     */
+    public TradingRecord run(Strategy strategy, TradeType tradeType, AmountProvider amountProvider, int startIndex,
+            int finishIndex) {
+        TradingRecord tradingRecord = createDefaultTradingRecord(tradeType, startIndex, finishIndex);
+        return run(strategy, tradingRecord, amountProvider, startIndex, finishIndex);
+    }
+
+    /**
      * Runs the provided strategy over the managed series using the supplied trading
      * record.
      *
@@ -310,45 +406,40 @@ public class BarSeriesManager {
      */
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, Num amount, int startIndex,
             int finishIndex) {
-        Objects.requireNonNull(strategy, "strategy");
-        Objects.requireNonNull(tradingRecord, "tradingRecord");
         Objects.requireNonNull(amount, "amount");
-        int runBeginIndex = Math.max(startIndex, barSeries.getBeginIndex());
-        int runEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
+        return run(strategy, tradingRecord, startIndex, finishIndex, index -> amount);
+    }
 
-        if (log.isTraceEnabled()) {
-            log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex,
-                    strategy, tradingRecord.getStartingType());
-        }
+    /**
+     * Runs the provided strategy over the managed series using a dynamic entry
+     * amount provider and a supplied trading record.
+     *
+     * @param strategy       strategy to execute
+     * @param tradingRecord  the trading record instance to mutate
+     * @param amountProvider provider returning the amount used to open trades
+     * @return the supplied trading record after execution
+     * @since 0.22.7
+     */
+    public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, AmountProvider amountProvider) {
+        return run(strategy, tradingRecord, amountProvider, barSeries.getBeginIndex(), barSeries.getEndIndex());
+    }
 
-        int lastProcessedIndex = runEndIndex;
-        for (int i = runBeginIndex; i <= runEndIndex; i++) {
-            lastProcessedIndex = i;
-            tradeExecutionModel.onBar(i, tradingRecord, barSeries);
-            // For each bar between both indexes...
-            if (strategy.shouldOperate(i, tradingRecord)) {
-                tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
-            }
-        }
-
-        if (!tradingRecord.isClosed() && runEndIndex == barSeries.getEndIndex()) {
-            // If the last position is still open and there are still bars after the
-            // endIndex of the barSeries, then we execute the strategy on these bars
-            // to give an opportunity to close this position.
-            int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
-            for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
-                lastProcessedIndex = i;
-                tradeExecutionModel.onBar(i, tradingRecord, barSeries);
-                // For each bar after the end index of this run...
-                // --> Trying to close the last position
-                if (strategy.shouldOperate(i, tradingRecord)) {
-                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amount);
-                    break;
-                }
-            }
-        }
-        tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord);
-        return tradingRecord;
+    /**
+     * Runs the provided strategy over the managed series (from startIndex to
+     * finishIndex) using a supplied trading record and dynamic entry amount
+     * provider.
+     *
+     * @param strategy       strategy to execute
+     * @param tradingRecord  the trading record instance to mutate
+     * @param amountProvider provider returning the amount used to open trades
+     * @param startIndex     the start index for the run (included)
+     * @param finishIndex    the finish index for the run (included)
+     * @return the supplied trading record after execution
+     * @since 0.22.7
+     */
+    public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, AmountProvider amountProvider,
+            int startIndex, int finishIndex) {
+        return runWithAmountProvider(strategy, tradingRecord, amountProvider, startIndex, finishIndex);
     }
 
     private TradingRecord createDefaultTradingRecord(TradeType tradeType, int startIndex, int finishIndex) {
@@ -409,6 +500,38 @@ public class BarSeriesManager {
     }
 
     /**
+     * Executes walk-forward testing for one strategy using the provided entry trade
+     * type and dynamic entry amount provider.
+     *
+     * @param strategy       strategy to execute
+     * @param tradeType      trade type used to open positions
+     * @param amountProvider dynamic entry amount provider
+     * @param config         walk-forward configuration
+     * @return walk-forward execution result
+     * @since 0.22.7
+     */
+    public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, TradeType tradeType,
+            AmountProvider amountProvider, WalkForwardConfig config) {
+        return runWalkForward(strategy, tradeType, amountProvider, config, null);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy with dynamic entry amount
+     * provider.
+     *
+     * @param strategy       strategy to execute
+     * @param amountProvider dynamic entry amount provider
+     * @param config         walk-forward configuration
+     * @return walk-forward execution result
+     * @since 0.22.7
+     */
+    public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, AmountProvider amountProvider,
+            WalkForwardConfig config) {
+        Objects.requireNonNull(strategy, "strategy");
+        return runWalkForward(strategy, strategy.getStartingType(), amountProvider, config, null);
+    }
+
+    /**
      * Executes walk-forward testing for one strategy with optional per-fold
      * progress updates.
      *
@@ -425,6 +548,104 @@ public class BarSeriesManager {
         StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(this, new TradingStatementGenerator(),
                 new AnchoredExpandingWalkForwardSplitter());
         return executor.execute(strategy, tradeType, amount, config, progressCallback);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy with dynamic entry amount
+     * provider and optional per-fold progress updates.
+     *
+     * @param strategy         strategy to execute
+     * @param tradeType        trade type used to open positions
+     * @param amountProvider   dynamic entry amount provider
+     * @param config           walk-forward configuration
+     * @param progressCallback optional callback receiving completed fold count
+     * @return walk-forward execution result
+     * @since 0.22.7
+     */
+    public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, TradeType tradeType,
+            AmountProvider amountProvider, WalkForwardConfig config, Consumer<Integer> progressCallback) {
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(this, new TradingStatementGenerator(),
+                new AnchoredExpandingWalkForwardSplitter());
+        return executor.execute(strategy, tradeType, amountProvider, config, progressCallback);
+    }
+
+    private TradingRecord runWithAmountProvider(Strategy strategy, TradingRecord tradingRecord,
+            AmountProvider amountProvider, int startIndex, int finishIndex) {
+        Objects.requireNonNull(tradingRecord, "tradingRecord");
+        Objects.requireNonNull(amountProvider, "amountProvider");
+        TradeType runTradeType = tradingRecord.getStartingType();
+        return run(strategy, tradingRecord, startIndex, finishIndex,
+                index -> amountForNextOperation(amountProvider, index, strategy, tradingRecord, runTradeType));
+    }
+
+    private TradingRecord run(Strategy strategy, TradingRecord tradingRecord, int startIndex, int finishIndex,
+            IntFunction<Num> amountResolver) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(tradingRecord, "tradingRecord");
+        Objects.requireNonNull(amountResolver, "amountResolver");
+        int runBeginIndex = Math.max(startIndex, barSeries.getBeginIndex());
+        int runEndIndex = Math.min(finishIndex, barSeries.getEndIndex());
+
+        if (log.isTraceEnabled()) {
+            log.trace("Running strategy (indexes: {} -> {}): {} (starting with {})", runBeginIndex, runEndIndex,
+                    strategy, tradingRecord.getStartingType());
+        }
+
+        int lastProcessedIndex = runEndIndex;
+        for (int i = runBeginIndex; i <= runEndIndex; i++) {
+            lastProcessedIndex = i;
+            tradeExecutionModel.onBar(i, tradingRecord, barSeries);
+            // For each bar between both indexes...
+            if (strategy.shouldOperate(i, tradingRecord)) {
+                tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
+            }
+        }
+
+        if (!tradingRecord.isClosed() && runEndIndex == barSeries.getEndIndex()) {
+            // If the last position is still open and there are still bars after the
+            // endIndex of the barSeries, then we execute the strategy on these bars
+            // to give an opportunity to close this position.
+            int seriesMaxSize = Math.max(barSeries.getEndIndex() + 1, barSeries.getBarData().size());
+            for (int i = runEndIndex + 1; i < seriesMaxSize; i++) {
+                lastProcessedIndex = i;
+                tradeExecutionModel.onBar(i, tradingRecord, barSeries);
+                // For each bar after the end index of this run...
+                // --> Trying to close the last position
+                if (strategy.shouldOperate(i, tradingRecord)) {
+                    tradeExecutionModel.execute(i, tradingRecord, barSeries, amountResolver.apply(i));
+                    break;
+                }
+            }
+        }
+        tradeExecutionModel.onRunEnd(lastProcessedIndex, tradingRecord);
+        return tradingRecord;
+    }
+
+    private Num amountForIndex(AmountProvider amountProvider, int index, Strategy strategy, TradeType tradeType) {
+        Num amount = amountProvider.amount(index, strategy, barSeries, tradeType);
+        if (amount == null) {
+            throw new IllegalArgumentException("Amount provider returned null");
+        }
+        if (amount.isNaN()) {
+            throw new IllegalArgumentException("Amount provider returned NaN");
+        }
+        Num zero = barSeries.numFactory().zero();
+        if (amount.isLessThanOrEqual(zero)) {
+            throw new IllegalArgumentException("Amount provider returned non-positive amount");
+        }
+        return amount;
+    }
+
+    private Num amountForNextOperation(AmountProvider amountProvider, int index, Strategy strategy,
+            TradingRecord tradingRecord, TradeType tradeType) {
+        if (tradingRecord.isClosed()) {
+            return amountForIndex(amountProvider, index, strategy, tradeType);
+        }
+        Num amount = tradingRecord.getCurrentPosition().amount();
+        if (amount == null || amount.isNaN() || !amount.isPositive()) {
+            throw new IllegalStateException("Current position amount must be positive");
+        }
+        return amount;
     }
 
 }
