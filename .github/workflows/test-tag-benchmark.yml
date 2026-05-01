@@ -1,0 +1,54 @@
+name: Run Benchmark Tagged Tests
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "57 4 * * *"
+    - cron: "57 5 * * 1"
+    - cron: "57 6 1 * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test-benchmark:
+    name: Build and Test (benchmark tag)
+    runs-on: ubuntu-latest
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          vars.TA4J_TAGGED_TEST_BENCHMARK_SCHEDULE_ENABLED == 'true' &&
+          (
+            (vars.TA4J_TAGGED_TEST_BENCHMARK_SCHEDULE_SLOT == 'daily' && github.event.schedule == '57 4 * * *') ||
+            (vars.TA4J_TAGGED_TEST_BENCHMARK_SCHEDULE_SLOT == 'weekly' && github.event.schedule == '57 5 * * 1') ||
+            (vars.TA4J_TAGGED_TEST_BENCHMARK_SCHEDULE_SLOT == 'monthly' && github.event.schedule == '57 6 1 * *')
+          )
+        )
+      }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Build and run benchmark tagged tests with Maven
+        run: xvfb-run mvn -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.runBenchmarks=true

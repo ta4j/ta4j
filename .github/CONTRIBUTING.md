@@ -16,6 +16,27 @@ Optional: to lint workflow changes before pushing, set `git config core.hooksPat
 
 Ideas: [Roadmap](https://github.com/ta4j/ta4j/wiki/Roadmap) · [Open issues](https://github.com/ta4j/ta4j/issues?q=is%3Aissue+is%3Aopen).
 
+## Tagged test workflows
+
+Regular PR and push CI skips test tags configured by `ta4j.excludedTestTags`.
+Run tagged suites manually from GitHub Actions, or locally with:
+
+- `xvfb-run mvn -B test -Dgroups=integration -Dta4j.excludedTestTags=`
+- `xvfb-run mvn -B test -Dgroups=slow -Dta4j.excludedTestTags=`
+- `xvfb-run mvn -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.runBenchmarks=true`
+
+The dedicated workflows are:
+
+- `Run Integration Tagged Tests` (`.github/workflows/test-tag-integration.yml`)
+- `Run Slow Tagged Tests` (`.github/workflows/test-tag-slow.yml`)
+- `Run Benchmark Tagged Tests` (`.github/workflows/test-tag-benchmark.yml`)
+
+Scheduled runs are opt-in per tag. Set `TA4J_TAGGED_TEST_<TAG>_SCHEDULE_ENABLED=true`
+and `TA4J_TAGGED_TEST_<TAG>_SCHEDULE_SLOT=daily`, `weekly`, or `monthly`.
+Unset variables leave scheduled runs disabled, while manual workflow dispatches run
+regardless of the schedule variables. Tests with multiple tags run in each matching
+workflow.
+
 ## API lifecycle and @since policy
 
 - Add `@since <version>` to every newly introduced class and API member, using the introducing release version without `-SNAPSHOT` (for example `0.22.4`, not `0.22.4-SNAPSHOT`).
