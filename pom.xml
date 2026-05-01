@@ -67,6 +67,13 @@
         <maven.compiler.release>25</maven.compiler.release>
         <maven.surefire.version>3.5.4</maven.surefire.version>
         <ta4j.excludedTestTags>integration,analysis-demo,elliott-macro-cycle-replay</ta4j.excludedTestTags>
+        <spotbugs.version>4.9.8.0</spotbugs.version>
+        <jacoco.version>0.8.13</jacoco.version>
+        <ta4j.surefire.argLine></ta4j.surefire.argLine>
+        <ta4j.spotbugs.failOnError>false</ta4j.spotbugs.failOnError>
+        <ta4j.jacoco.haltOnFailure>false</ta4j.jacoco.haltOnFailure>
+        <ta4j.jacoco.line.minimum>0.80</ta4j.jacoco.line.minimum>
+        <ta4j.jacoco.branch.minimum>0.80</ta4j.jacoco.branch.minimum>
 
         <!-- Dependencies -->
         <assertj.version>3.27.7</assertj.version>
@@ -278,6 +285,79 @@
     </profiles>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>com.github.spotbugs</groupId>
+                    <artifactId>spotbugs-maven-plugin</artifactId>
+                    <version>${spotbugs.version}</version>
+                    <configuration>
+                        <failOnError>${ta4j.spotbugs.failOnError}</failOnError>
+                        <quiet>true</quiet>
+                        <xmlOutput>true</xmlOutput>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>spotbugs-check</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco.version}</version>
+                    <configuration>
+                        <haltOnFailure>${ta4j.jacoco.haltOnFailure}</haltOnFailure>
+                        <rules>
+                            <rule>
+                                <element>BUNDLE</element>
+                                <limits>
+                                    <limit>
+                                        <counter>LINE</counter>
+                                        <value>COVEREDRATIO</value>
+                                        <minimum>${ta4j.jacoco.line.minimum}</minimum>
+                                    </limit>
+                                    <limit>
+                                        <counter>BRANCH</counter>
+                                        <value>COVEREDRATIO</value>
+                                        <minimum>${ta4j.jacoco.branch.minimum}</minimum>
+                                    </limit>
+                                </limits>
+                            </rule>
+                        </rules>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>jacoco-prepare-agent</id>
+                            <goals>
+                                <goal>prepare-agent</goal>
+                            </goals>
+                            <configuration>
+                                <propertyName>ta4j.surefire.argLine</propertyName>
+                            </configuration>
+                        </execution>
+                        <execution>
+                            <id>jacoco-report</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>report</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>jacoco-check</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
 
             <plugin>
@@ -328,6 +408,7 @@
                     <excludedGroups>${ta4j.excludedTestTags}</excludedGroups>
                     <useModulePath>false</useModulePath>
                     <argLine>
+                        ${ta4j.surefire.argLine}
                         -XX:+EnableDynamicAgentLoading
                         -Xshare:off
                         -Djdk.instrument.traceUsage=false

@@ -126,6 +126,8 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 
 Ta4j requires Java 25+ and Maven 3.9+. Use `mvn ...` from the repository root.
 
+For fast local loops, `./mvnw test` still works. The contributor and CI quality path now runs `./mvnw verify`, which includes advisory SpotBugs and JaCoCo checks in addition to the existing test suite.
+
 ## Try it now
 
 **Option 1: Run the Quickstart example** (2-3 minutes)
@@ -880,6 +882,7 @@ Get help, share ideas, and connect with other Ta4j users:
 - Scan the [roadmap](https://ta4j.github.io/ta4j-wiki/Roadmap-and-Tasks.html) and [how-to-contribute guide](https://ta4j.github.io/ta4j-wiki/How-to-contribute).
 - [Fork the repo](http://help.github.com/forking/), open pull requests, and join code discussions on Discord.
 - See the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
+- Run `./mvnw verify` before opening or updating a pull request. It now matches CI and includes advisory SpotBugs and JaCoCo reporting alongside the test suite.
 
 ## Release & snapshot publishing
 
