@@ -81,6 +81,8 @@ test_docs_point_to_real_maven_commands() {
   echo "Running test_docs_point_to_real_maven_commands"
 
   expect_file_contains "$ROOT/README.md" "Run \`mvn verify\` before opening or updating a pull request." "README should point contributors at the real verify command"
+  expect_file_contains "$ROOT/README.md" "- [Build commands: Maven](#build-commands-maven)" "README table of contents should link to the renamed build section"
+  expect_file_contains "$ROOT/README.md" "mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest" "README should demonstrate overriding exec:java with a non-default example"
   expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "**Run this before every PR:** \`mvn -B clean license:format formatter:format test install\`" "contributing guide should use system Maven"
   expect_file_not_contains "$ROOT/README.md" "./mvnw" "README should not advertise a missing Maven Wrapper"
 

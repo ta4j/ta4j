@@ -1,4 +1,4 @@
-name: Run Unit Tests
+name: Run Verify
 
 permissions:
   contents: read
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   test:
-    name: Build and Test
+    name: Build and Verify
     runs-on: ubuntu-latest
 
     steps:
