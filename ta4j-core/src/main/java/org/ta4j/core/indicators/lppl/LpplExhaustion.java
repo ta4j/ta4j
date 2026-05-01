@@ -53,6 +53,12 @@ public record LpplExhaustion(LpplExhaustionStatus status, LpplExhaustionSide sid
         if (attemptedFits < 0 || validFits < 0 || crashFits < 0 || bubbleFits < 0) {
             throw new IllegalArgumentException("fit counts must be non-negative");
         }
+        if (validFits > attemptedFits) {
+            throw new IllegalArgumentException("validFits must not exceed attemptedFits");
+        }
+        if (crashFits + bubbleFits != validFits) {
+            throw new IllegalArgumentException("crashFits + bubbleFits must equal validFits");
+        }
     }
 
     /**

@@ -7,12 +7,14 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Arrays;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
 class LpplExhaustionIndicatorTest {
@@ -76,6 +78,24 @@ class LpplExhaustionIndicatorTest {
     }
 
     @Test
+    void returnsInvalidResultForNaNInput() {
+        double[] prices = syntheticPrices(0.03);
+        prices[prices.length - 10] = Double.NaN;
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(DoubleNumFactory.getInstance())
+                .withData(prices)
+                .build();
+        LpplExhaustionIndicator indicator = new LpplExhaustionIndicator(new ClosePriceIndicator(series),
+                compactProfile());
+
+        LpplExhaustion exhaustion = indicator.getValue(series.getEndIndex());
+
+        assertThat(exhaustion.isValid()).isFalse();
+        assertThat(exhaustion.status()).isEqualTo(LpplExhaustionStatus.NO_VALID_FIT);
+        assertThat(exhaustion.score().isZero()).isTrue();
+        assertThat(exhaustion.fits()).extracting(LpplFit::status).contains(LpplExhaustionStatus.INVALID_INPUT);
+    }
+
+    @Test
     void returnsWarmupStatusBeforeEnoughHistoryAndNaNScoreProjection() {
         BarSeries series = syntheticSeries(0.03);
         LpplExhaustionIndicator indicator = new LpplExhaustionIndicator(new ClosePriceIndicator(series),
@@ -101,6 +121,23 @@ class LpplExhaustionIndicatorTest {
         assertThatThrownBy(() -> new LpplFit(WINDOW, LpplExhaustionStatus.VALID, 1.0, 0.03, 0.01, 0.02, WINDOW + 20.0,
                 0.5, 8.0, Double.NaN, 0.1, 0.9, 20, 5)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("valid fits");
+    }
+
+    @Test
+    void rejectsInconsistentExhaustionFitCounts() {
+        BarSeries series = syntheticSeries(0.03);
+        Num score = series.numFactory().one();
+        LpplFit fit = new LpplFit(WINDOW, LpplExhaustionStatus.VALID, 1.0, 0.03, 0.01, 0.02, WINDOW + 20.0, 0.5, 8.0,
+                0.1, 0.1, 0.9, 20, 5);
+        List<LpplFit> fits = List.of(fit);
+
+        assertThatThrownBy(() -> new LpplExhaustion(LpplExhaustionStatus.VALID, LpplExhaustionSide.CRASH_EXHAUSTION,
+                score, score, fit, fits, 0, 1, 1, 0)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("validFits")
+                .hasMessageContaining("attemptedFits");
+        assertThatThrownBy(() -> new LpplExhaustion(LpplExhaustionStatus.VALID, LpplExhaustionSide.CRASH_EXHAUSTION,
+                score, score, fit, fits, 1, 1, 0, 0)).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("crashFits + bubbleFits");
     }
 
     @Test
