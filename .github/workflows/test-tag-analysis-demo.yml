@@ -1,0 +1,107 @@
+name: Run Analysis Demo Tagged Tests
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "7 7 * * *"
+    - cron: "17 7 * * 1"
+    - cron: "27 7 1 * *"
+  workflow_dispatch:
+    inputs:
+      instrument:
+        description: "Provider-qualified instrument, for example coinbase:BTC-USD"
+        required: false
+        default: "coinbase:BTC-USD"
+        type: string
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test-analysis-demo:
+    name: Build and Test (analysis-demo tag)
+    runs-on: ubuntu-latest
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_ENABLED == 'true' &&
+          (
+            (vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_SLOT == 'daily' && github.event.schedule == '7 7 * * *') ||
+            (vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_SLOT == 'weekly' && github.event.schedule == '17 7 * * 1') ||
+            (vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_SLOT == 'monthly' && github.event.schedule == '27 7 1 * *')
+          )
+        )
+      }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+
+      - name: Resolve analysis demo instrument
+        env:
+          DEFAULT_ANALYSIS_DEMO_INSTRUMENT: coinbase:BTC-USD
+          DISPATCH_INSTRUMENT: ${{ github.event.inputs.instrument }}
+          SCHEDULED_INSTRUMENT: ${{ vars.TA4J_ANALYSIS_DEMO_INSTRUMENT }}
+        run: |
+          set -euo pipefail
+          instrument="${DEFAULT_ANALYSIS_DEMO_INSTRUMENT}"
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            if [ -n "${DISPATCH_INSTRUMENT:-}" ]; then
+              instrument="${DISPATCH_INSTRUMENT}"
+            fi
+          elif [ -n "${SCHEDULED_INSTRUMENT:-}" ]; then
+            instrument="${SCHEDULED_INSTRUMENT}"
+          fi
+
+          provider="${instrument%%:*}"
+          product="${instrument#*:}"
+          if [ "${instrument}" = "${product}" ] || [ -z "${provider}" ] || [ -z "${product}" ]; then
+            echo "::error::analysis-demo instrument must use provider-qualified format, for example coinbase:BTC-USD"
+            exit 1
+          fi
+          if [ "${provider,,}" != "coinbase" ]; then
+            echo "::error::Unsupported analysis-demo provider '${provider}'. Supported providers: coinbase"
+            exit 1
+          fi
+          if [[ ! "${product}" =~ ^[A-Za-z0-9]+([/-][A-Za-z0-9]+)+$ ]]; then
+            echo "::error::Coinbase analysis-demo product id must use Coinbase product format, for example BTC-USD"
+            exit 1
+          fi
+
+          printf 'TA4J_ANALYSIS_DEMO_INSTRUMENT=%s\n' "${instrument}" >> "${GITHUB_ENV}"
+          echo "analysis-demo:instrument=${instrument}"
+
+      - name: Build and run analysis-demo tagged tests with Maven
+        run: >
+          xvfb-run mvn -B test
+          -Dgroups=analysis-demo
+          -Dta4j.excludedTestTags=
+          -Dta4j.analysisDemoInstrument="${TA4J_ANALYSIS_DEMO_INSTRUMENT}"
+          -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave
+
+      - name: Upload analysis demo artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: analysis-demo-elliott-wave
+          path: target/analysis-demos/**
+          if-no-files-found: warn

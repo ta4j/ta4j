@@ -66,7 +66,7 @@
         <!-- Build -->
         <maven.compiler.release>25</maven.compiler.release>
         <maven.surefire.version>3.5.4</maven.surefire.version>
-        <ta4j.excludedTestTags>integration,slow</ta4j.excludedTestTags>
+        <ta4j.excludedTestTags>integration,slow,analysis-demo</ta4j.excludedTestTags>
 
         <!-- Dependencies -->
         <assertj.version>3.27.7</assertj.version>

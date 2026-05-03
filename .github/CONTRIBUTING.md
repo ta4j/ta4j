@@ -24,6 +24,7 @@ Run tagged suites manually from GitHub Actions, or locally with:
 
 - `xvfb-run mvn -B test -Dgroups=integration -Dta4j.excludedTestTags=`
 - `xvfb-run mvn -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.runBenchmarks=true`
+- `xvfb-run mvn -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags= -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
 
 These examples match the Linux GitHub Actions runners. On macOS, use XQuartz or
 run the Maven command without `xvfb-run` when your local display can satisfy
@@ -33,12 +34,23 @@ The dedicated workflows are:
 
 - `Run Integration Tagged Tests` (`.github/workflows/test-tag-integration.yml`)
 - `Run Benchmark Tagged Tests` (`.github/workflows/test-tag-benchmark.yml`)
+- `Run Analysis Demo Tagged Tests` (`.github/workflows/test-tag-analysis-demo.yml`)
 
 Scheduled runs are opt-in per tag. Set `TA4J_TAGGED_TEST_<TAG>_SCHEDULE_ENABLED=true`
 and `TA4J_TAGGED_TEST_<TAG>_SCHEDULE_SLOT=daily`, `weekly`, or `monthly`.
 Unset variables leave scheduled runs disabled, while manual workflow dispatches run
 regardless of the schedule variables. Tests with multiple tags run in each matching
 workflow.
+
+The `analysis-demo` tag is for long-running examples that produce analysis reports.
+Its workflow defaults to `coinbase:BTC-USD`, accepts provider-qualified manual
+inputs such as `coinbase:ETH-USD` or `coinbase:ETH/USD`, and uploads generated
+JSON, charts, and cached provider responses from `target/analysis-demos/**`.
+Version 1 supports Coinbase instruments only. For scheduled analysis-demo runs,
+`weekly` is the intended slot; use
+`TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_ENABLED=true` with
+`TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_SLOT=weekly`, and set
+`TA4J_ANALYSIS_DEMO_INSTRUMENT` to override the scheduled instrument.
 
 ## API lifecycle and @since policy
 

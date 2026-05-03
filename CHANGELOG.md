@@ -3,6 +3,7 @@
 ### Added
 - **Anchor-aware Elliott tuning harness**: You can now run `ElliottWaveAnchorCalibrationHarness` with the versioned `BTC-anchor-registry-v1.json` registry to replay major BTC tops and bottoms, compare the locked baseline against coarse challenger profiles on top-1/top-3 anchor hits plus `ECE`/`Brier`/`LogLoss`, and get a deterministic promote-or-retain bundle that also sanity-checks the selected profile on ETH/USD and S&P 500 data.
 - **Release automation audit artifacts**: Release workflows now emit structured release dossiers, model catalog preflight data, normalized AI decisions, exact artifact manifests, tag-resolution snapshots, full-build logs, and workflow summaries so release failures can be diagnosed from the exact step that produced them.
+- **Report-producing analysis demos can run on demand or on schedule**: The new `analysis-demo` JUnit tag starts with a live Elliott Wave BTC/USD macro report backed by Coinbase daily candles, plus a dedicated GitHub Actions workflow that can be manually run for provider-qualified instruments like `coinbase:BTC-USD` and uploads the resulting JSON, chart, and cached data artifacts.
 
 ### Changed
 - **Agent guidance stays accurate across repo and personal workflows**: `scripts/agents_for_target.sh` guidance now clearly describes path-scoped `AGENTS.md` discovery from the current repo/workspace root, so contributors can use it for file-targeted lookup without assuming it also covers personal PR/comment workflow guidance.
