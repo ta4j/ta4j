@@ -61,6 +61,37 @@ public class NamedAssetRegistryTest {
     }
 
     @Test
+    public void customAliasCanReadQuotedAndBareStringArguments() {
+        NamedAssetRegistry registry = NamedAssetRegistry.builder()
+                .registerAnalysisCriterion("WindowedScore", List.of("label", "mode"), args -> {
+                    args.requireCount(2);
+                    return ComponentDescriptor.builder()
+                            .withType("WindowedScoreCriterion")
+                            .withParameters(Map.of("label", args.stringValue(0), "mode", args.stringValue(1)))
+                            .build();
+                })
+                .build();
+
+        ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.ANALYSIS_CRITERION,
+                "WindowedScore(\"a,b\",LONG)");
+
+        assertThat(descriptor.getParameters()).containsEntry("label", "a,b").containsEntry("mode", "LONG");
+    }
+
+    @Test
+    public void integerArgumentsUseJsonNumberGrammar() {
+        NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
+
+        IllegalArgumentException plusPrefixed = assertThrows(IllegalArgumentException.class,
+                () -> registry.toDescriptor(NamedAssetKind.INDICATOR, "SMA(+7)"));
+        IllegalArgumentException leadingZero = assertThrows(IllegalArgumentException.class,
+                () -> registry.toDescriptor(NamedAssetKind.INDICATOR, "SMA(07)"));
+
+        assertThat(plusPrefixed).hasMessageContaining("indicator.args[0]").hasMessageContaining("+7");
+        assertThat(leadingZero).hasMessageContaining("indicator.args[0]").hasMessageContaining("07");
+    }
+
+    @Test
     public void splitTopLevelIgnoresNestedExpressionCommas() {
         NamedAssetRegistry registry = NamedAssetRegistry.defaultRegistry();
 

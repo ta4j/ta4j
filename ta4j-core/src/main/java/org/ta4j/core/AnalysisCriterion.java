@@ -45,6 +45,8 @@ public interface AnalysisCriterion {
      * Serializes this criterion into canonical descriptor JSON.
      *
      * @return JSON representation
+     * @throws IllegalArgumentException if this criterion has constructor state that
+     *                                  cannot be represented safely
      * @since 0.22.7
      */
     default String toJson() {
@@ -55,6 +57,8 @@ public interface AnalysisCriterion {
      * Converts this criterion into a structured descriptor.
      *
      * @return component descriptor for this criterion
+     * @throws IllegalArgumentException if this criterion has constructor state that
+     *                                  cannot be represented safely
      * @since 0.22.7
      */
     default ComponentDescriptor toDescriptor() {
@@ -66,6 +70,8 @@ public interface AnalysisCriterion {
      * default named asset registry.
      *
      * @return compact shorthand expression
+     * @throws IllegalArgumentException if no registered shorthand can represent the
+     *                                  criterion without dropping constructor state
      * @since 0.22.7
      */
     default String toExpression() {
@@ -78,6 +84,8 @@ public interface AnalysisCriterion {
      *
      * @param registry named asset registry
      * @return compact shorthand expression
+     * @throws IllegalArgumentException if no registered shorthand can represent the
+     *                                  criterion without dropping constructor state
      * @since 0.22.7
      */
     default String toExpression(NamedAssetRegistry registry) {

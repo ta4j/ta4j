@@ -37,6 +37,7 @@ public final class NamedAssetRegistry {
 
     private static final Pattern JSON_NUMBER_LITERAL = Pattern
             .compile("-?(?:0|[1-9]\\d*)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?");
+    private static final Pattern JSON_INTEGER_LITERAL = Pattern.compile("-?(?:0|[1-9]\\d*)");
     private static final AtomicReference<NamedAssetRegistry> DEFAULT_REGISTRY = new AtomicReference<>();
 
     private final Map<NamedAssetKind, Map<String, Binding>> bindings;
@@ -166,7 +167,7 @@ public final class NamedAssetRegistry {
             throw new IllegalArgumentException(
                     "Unknown named " + displayKind(kind) + " alias at " + location + ": " + parsed.alias());
         }
-        Arguments arguments = new Arguments(this, kind, binding, parsed.arguments(), location);
+        Arguments arguments = new Arguments(this, binding, parsed.arguments(), location);
         return binding.factory().create(arguments);
     }
 
@@ -774,15 +775,13 @@ public final class NamedAssetRegistry {
     public static final class Arguments {
 
         private final NamedAssetRegistry registry;
-        private final NamedAssetKind kind;
         private final Binding binding;
         private final List<ParsedArgument> arguments;
         private final String location;
 
-        private Arguments(NamedAssetRegistry registry, NamedAssetKind kind, Binding binding,
-                List<ParsedArgument> arguments, String location) {
+        private Arguments(NamedAssetRegistry registry, Binding binding, List<ParsedArgument> arguments,
+                String location) {
             this.registry = registry;
-            this.kind = kind;
             this.binding = binding;
             this.arguments = arguments;
             this.location = location;
@@ -850,6 +849,21 @@ public final class NamedAssetRegistry {
             } catch (NumberFormatException ex) {
                 throw new IllegalArgumentException("Expected integer value at " + argLocation(index) + ": " + text, ex);
             }
+        }
+
+        /**
+         * Reads a literal string argument.
+         * <p>
+         * Quoted values are returned unescaped. Bare tokens are returned exactly as
+         * parsed, so custom bindings can use enum-like values such as {@code LONG}
+         * without requiring quotes.
+         *
+         * @param index argument index
+         * @return string argument
+         * @since 0.22.7
+         */
+        public String stringValue(int index) {
+            return literalText(index);
         }
 
         /**
@@ -927,9 +941,6 @@ public final class NamedAssetRegistry {
             return location + ".args[" + index + "]";
         }
 
-        private NamedAssetKind kind() {
-            return kind;
-        }
     }
 
     private record Binding(String alias, List<String> parameterNames, DescriptorFactory factory,
@@ -1189,20 +1200,7 @@ public final class NamedAssetRegistry {
     }
 
     private static boolean isIntegerLiteral(String value) {
-        if (value == null || value.isEmpty()) {
-            return false;
-        }
-        int start = value.charAt(0) == '-' || value.charAt(0) == '+' ? 1 : 0;
-        if (start == value.length()) {
-            return false;
-        }
-        for (int index = start; index < value.length(); index++) {
-            char character = value.charAt(index);
-            if (character < '0' || character > '9') {
-                return false;
-            }
-        }
-        return true;
+        return value != null && JSON_INTEGER_LITERAL.matcher(value).matches();
     }
 
     private static double parseFiniteDouble(String value, String location) {

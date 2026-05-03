@@ -662,7 +662,7 @@ The shorthand grammar is deliberately bounded and strict:
 | Composite rules | `And(...)` / `AndRule` and `Or(...)` / `OrRule`, each with exactly two child rules |
 | Leaf rules | `CrossedUp(...)`, `CrossedDown(...)`, `Over(...)`, `Under(...)`, `SmaCrossUp(...)`, `SmaCrossDown(...)`, `StopGain(...)`, and `StopLoss(...)` |
 | Indicators | `ClosePrice`, `ClosePriceIndicator`, `SMA(...)`, `EMA(...)`, and `RSI(...)`, with positive integer bar counts |
-| Analysis criteria | `NetProfit`, `GrossReturn`, `NetReturn`, `MaximumDrawdown`, `ReturnOverMaxDrawdown`, `SharpeRatio`, `SortinoRatio`, `TotalFees`, `NumberOfPositions`, or a fully qualified `AnalysisCriterion` class name |
+| Analysis criteria | Default forms of `NetProfit`, `GrossReturn`, `NetReturn`, `MaximumDrawdown`, `ReturnOverMaxDrawdown`, `SharpeRatio`, `SortinoRatio`, `TotalFees`, `NumberOfPositions`, or a fully qualified `AnalysisCriterion` class name |
 | Numeric thresholds | Finite JSON-style numbers or numeric strings, with an optional trailing `%` for stop percentages |
 
 Custom shorthand is registered up front with an immutable `NamedAssetRegistry`:
@@ -682,6 +682,12 @@ NamedAssetRegistry registry = NamedAssetRegistry.builder()
 Indicator<?> indicator = Indicator.fromExpression(series, "FastCloseSma(5)", registry);
 AnalysisCriterion criterion = AnalysisCriterion.fromExpression("NetProfit");
 ```
+Custom bindings read parsed arguments through typed helpers such as
+`positiveInt(...)`, `finiteNumberText(...)`, `stringValue(...)`,
+`indicatorDescriptor(...)`, and `ruleDescriptor(...)`.
+Parameterized analysis criteria serialize through canonical descriptor JSON;
+compact aliases are reserved for descriptors a registry formatter can represent
+without dropping constructor state.
 
 For command-line or agent workflows, split comma-separated shorthand lists with
 `NamedAssetRegistry#splitTopLevel(...)` instead of `String#split(",")`; nested
