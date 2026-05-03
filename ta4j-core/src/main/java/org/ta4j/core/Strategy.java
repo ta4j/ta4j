@@ -4,6 +4,7 @@
 package org.ta4j.core;
 
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.StrategySerialization;
 
@@ -166,6 +167,29 @@ public interface Strategy {
     }
 
     /**
+     * Serializes {@code this} strategy into the compact opt-in strategy JSON v2
+     * authoring form using ta4j's default named asset registry.
+     *
+     * @return compact JSON v2 payload
+     * @since 0.22.7
+     */
+    default String toCompactJson() {
+        return StrategySerialization.toCompactJson(this);
+    }
+
+    /**
+     * Serializes {@code this} strategy into the compact opt-in strategy JSON v2
+     * authoring form using the supplied named asset registry.
+     *
+     * @param registry named asset registry
+     * @return compact JSON v2 payload
+     * @since 0.22.7
+     */
+    default String toCompactJson(NamedAssetRegistry registry) {
+        return StrategySerialization.toCompactJson(this, registry);
+    }
+
+    /**
      * Converts {@code this} strategy into a structured descriptor that can be
      * embedded inside other component metadata.
      *
@@ -205,5 +229,19 @@ public interface Strategy {
      */
     static Strategy fromJson(BarSeries series, String json) {
         return StrategySerialization.fromJson(series, json);
+    }
+
+    /**
+     * Reconstructs a strategy from canonical JSON or the opt-in strategy JSON v2
+     * authoring form using the supplied named asset registry.
+     *
+     * @param series   backing series to attach to the reconstructed strategy
+     * @param json     canonical or v2 JSON payload
+     * @param registry named asset registry
+     * @return reconstructed strategy
+     * @since 0.22.7
+     */
+    static Strategy fromJson(BarSeries series, String json, NamedAssetRegistry registry) {
+        return StrategySerialization.fromJson(series, json, registry);
     }
 }

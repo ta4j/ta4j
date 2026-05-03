@@ -632,16 +632,60 @@ Strategy conciseStrategy = Strategy.fromJson(series, v2StrategyJson);
 String canonicalJson = conciseStrategy.toJson(); // emits the canonical descriptor/v1 form
 ```
 
-The shorthand is deliberately bounded and strict:
+Strategy JSON v2 also accepts named shorthand strings for rules and a compact
+top-level strategy macro:
+```java
+String compactStrategyJson = """
+        {
+          "version": 2,
+          "strategy": "SMA(7,21)",
+          "name": "Daily_SMA_Crossover"
+        }
+        """;
+Strategy strategy = Strategy.fromJson(series, compactStrategyJson);
+String compactJson = strategy.toCompactJson(); // optional v2 output; toJson() stays canonical
+```
+
+Named shorthand is kind-specific. `SMA(7)` is a single indicator over close
+price, while strategy-level `SMA(7,21)` expands to an SMA crossover strategy.
+Rule-level direction stays explicit with `SmaCrossUp(7,21)`,
+`SmaCrossDown(7,21)`, or generic forms such as
+`CrossedUp(SMA(7),SMA(21))`.
+
+The shorthand grammar is deliberately bounded and strict:
 
 | JSON area | Accepted values |
 | --- | --- |
-| Strategy metadata | `name`, optional `type` (`BaseStrategy`), optional non-negative integer `unstableBars`, optional `startingType` (`BUY` or `SELL`) |
-| Strategy rules | Required `entryRule` and `exitRule` objects |
-| Composite rules | `AndRule` and `OrRule`, each with exactly two child `rules` |
-| Leaf rules | `CrossedUpIndicatorRule`, `CrossedDownIndicatorRule`, `OverIndicatorRule`, `UnderIndicatorRule`, `StopGainRule`, and `StopLossRule` |
-| Indicators | `ClosePrice`, `SMA(...)`, `EMA(...)`, and `RSI(...)` in string or object form, with positive integer bar counts |
+| Expression grammar | `Alias`, `Alias(arg,...)`, nested expressions, quoted strings, bare enum/string tokens, and finite JSON-style numbers |
+| Strategy metadata | `name`, optional `type` (`BaseStrategy`), optional `strategy` macro, optional non-negative integer `unstableBars`, optional `startingType` (`BUY` or `SELL`) |
+| Strategy rules | Required `entryRule` and `exitRule` objects or rule expression strings unless `strategy` is supplied |
+| Composite rules | `And(...)` / `AndRule` and `Or(...)` / `OrRule`, each with exactly two child rules |
+| Leaf rules | `CrossedUp(...)`, `CrossedDown(...)`, `Over(...)`, `Under(...)`, `SmaCrossUp(...)`, `SmaCrossDown(...)`, `StopGain(...)`, and `StopLoss(...)` |
+| Indicators | `ClosePrice`, `ClosePriceIndicator`, `SMA(...)`, `EMA(...)`, and `RSI(...)`, with positive integer bar counts |
+| Analysis criteria | `NetProfit`, `GrossReturn`, `NetReturn`, `MaximumDrawdown`, `ReturnOverMaxDrawdown`, `SharpeRatio`, `SortinoRatio`, `TotalFees`, `NumberOfPositions`, or a fully qualified `AnalysisCriterion` class name |
 | Numeric thresholds | Finite JSON-style numbers or numeric strings, with an optional trailing `%` for stop percentages |
+
+Custom shorthand is registered up front with an immutable `NamedAssetRegistry`:
+```java
+NamedAssetRegistry registry = NamedAssetRegistry.builder()
+        .withDefaults()
+        .registerIndicator("FastCloseSma", List.of("barCount"), args -> {
+            args.requireCount(1);
+            return ComponentDescriptor.builder()
+                    .withType("SMAIndicator")
+                    .withParameters(Map.of("barCount", args.positiveInt(0)))
+                    .addComponent(ComponentDescriptor.typeOnly("ClosePriceIndicator"))
+                    .build();
+        })
+        .build();
+
+Indicator<?> indicator = Indicator.fromExpression(series, "FastCloseSma(5)", registry);
+AnalysisCriterion criterion = AnalysisCriterion.fromExpression("NetProfit");
+```
+
+For command-line or agent workflows, split comma-separated shorthand lists with
+`NamedAssetRegistry#splitTopLevel(...)` instead of `String#split(",")`; nested
+forms such as `Custom("a,b",SMA(7))` then remain intact.
 
 Bar series serialization (Java):
 - Bar data, the `NumFactory`, and the `BarBuilderFactory` configuration are preserved across the round-trip.

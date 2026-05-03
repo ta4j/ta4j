@@ -43,6 +43,8 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.RecursiveCachedIndicator;
+import org.ta4j.core.named.NamedAssetKind;
+import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.Num;
 
 /**
@@ -147,6 +149,68 @@ public final class IndicatorSerialization {
             }
             throw new IndicatorSerializationException("Failed to deserialize indicator from JSON", e);
         }
+    }
+
+    /**
+     * Renders an indicator as a compact named shorthand expression when the default
+     * registry recognizes its descriptor.
+     *
+     * @param indicator indicator instance
+     * @return compact expression
+     * @throws IllegalArgumentException if no shorthand binding can represent the
+     *                                  indicator
+     * @since 0.22.7
+     */
+    public static String toExpression(Indicator<?> indicator) {
+        return toExpression(indicator, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Renders an indicator as a compact named shorthand expression when the
+     * supplied registry recognizes its descriptor.
+     *
+     * @param indicator indicator instance
+     * @param registry  named asset registry
+     * @return compact expression
+     * @throws IllegalArgumentException if no shorthand binding can represent the
+     *                                  indicator
+     * @since 0.22.7
+     */
+    public static String toExpression(Indicator<?> indicator, NamedAssetRegistry registry) {
+        Objects.requireNonNull(registry, "registry");
+        ComponentDescriptor descriptor = describe(indicator);
+        return registry.toExpression(NamedAssetKind.INDICATOR, descriptor)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No named indicator shorthand registered for descriptor: " + descriptor));
+    }
+
+    /**
+     * Rebuilds an indicator from a compact named shorthand expression using the
+     * default registry.
+     *
+     * @param series     bar series to attach to the indicator
+     * @param expression shorthand expression
+     * @return reconstructed indicator
+     * @since 0.22.7
+     */
+    public static Indicator<?> fromExpression(BarSeries series, String expression) {
+        return fromExpression(series, expression, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Rebuilds an indicator from a compact named shorthand expression using the
+     * supplied registry.
+     *
+     * @param series     bar series to attach to the indicator
+     * @param expression shorthand expression
+     * @param registry   named asset registry
+     * @return reconstructed indicator
+     * @since 0.22.7
+     */
+    public static Indicator<?> fromExpression(BarSeries series, String expression, NamedAssetRegistry registry) {
+        Objects.requireNonNull(registry, "registry");
+        ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.INDICATOR, expression);
+        return fromDescriptor(series, descriptor);
     }
 
     /**

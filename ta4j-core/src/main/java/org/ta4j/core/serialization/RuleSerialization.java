@@ -6,6 +6,8 @@ package org.ta4j.core.serialization;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
+import org.ta4j.core.named.NamedAssetKind;
+import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.indicators.helpers.CrossIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.helper.ChainLink;
@@ -94,6 +96,68 @@ public final class RuleSerialization {
     public static ComponentDescriptor describe(Rule rule) {
         Objects.requireNonNull(rule, "rule");
         return describe(rule, new IdentityHashMap<>());
+    }
+
+    /**
+     * Renders a rule as a compact named shorthand expression when the default
+     * registry recognizes its descriptor.
+     *
+     * @param rule rule instance
+     * @return compact expression
+     * @throws IllegalArgumentException if no shorthand binding can represent the
+     *                                  rule
+     * @since 0.22.7
+     */
+    public static String toExpression(Rule rule) {
+        return toExpression(rule, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Renders a rule as a compact named shorthand expression when the supplied
+     * registry recognizes its descriptor.
+     *
+     * @param rule     rule instance
+     * @param registry named asset registry
+     * @return compact expression
+     * @throws IllegalArgumentException if no shorthand binding can represent the
+     *                                  rule
+     * @since 0.22.7
+     */
+    public static String toExpression(Rule rule, NamedAssetRegistry registry) {
+        Objects.requireNonNull(registry, "registry");
+        ComponentDescriptor descriptor = describe(rule);
+        return registry.toExpression(NamedAssetKind.RULE, descriptor)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No named rule shorthand registered for descriptor: " + descriptor));
+    }
+
+    /**
+     * Rebuilds a rule from a compact named shorthand expression using the default
+     * registry.
+     *
+     * @param series     bar series to use for indicator construction
+     * @param expression shorthand expression
+     * @return reconstructed rule
+     * @since 0.22.7
+     */
+    public static Rule fromExpression(BarSeries series, String expression) {
+        return fromExpression(series, expression, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Rebuilds a rule from a compact named shorthand expression using the supplied
+     * registry.
+     *
+     * @param series     bar series to use for indicator construction
+     * @param expression shorthand expression
+     * @param registry   named asset registry
+     * @return reconstructed rule
+     * @since 0.22.7
+     */
+    public static Rule fromExpression(BarSeries series, String expression, NamedAssetRegistry registry) {
+        Objects.requireNonNull(registry, "registry");
+        ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.RULE, expression);
+        return fromDescriptor(series, descriptor);
     }
 
     private static ComponentDescriptor describe(Rule rule, IdentityHashMap<Rule, ComponentDescriptor> visited) {

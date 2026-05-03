@@ -7,6 +7,7 @@ import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OrRule;
 import org.ta4j.core.rules.XorRule;
+import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.ComponentSerialization;
 import org.ta4j.core.serialization.RuleSerialization;
@@ -29,6 +30,43 @@ public interface Rule {
     }
 
     /**
+     * Converts this rule into a structured descriptor.
+     *
+     * @return component descriptor for the rule
+     * @since 0.22.7
+     */
+    default ComponentDescriptor toDescriptor() {
+        return RuleSerialization.describe(this);
+    }
+
+    /**
+     * Renders this rule as a compact named shorthand expression using ta4j's
+     * default named asset registry.
+     *
+     * @return compact shorthand expression
+     * @throws IllegalArgumentException if no registered shorthand can represent the
+     *                                  rule
+     * @since 0.22.7
+     */
+    default String toExpression() {
+        return RuleSerialization.toExpression(this);
+    }
+
+    /**
+     * Renders this rule as a compact named shorthand expression using the supplied
+     * named asset registry.
+     *
+     * @param registry named asset registry
+     * @return compact shorthand expression
+     * @throws IllegalArgumentException if no registered shorthand can represent the
+     *                                  rule
+     * @since 0.22.7
+     */
+    default String toExpression(NamedAssetRegistry registry) {
+        return RuleSerialization.toExpression(this, registry);
+    }
+
+    /**
      * Builds a rule from JSON.
      *
      * @param series bar series context
@@ -39,6 +77,33 @@ public interface Rule {
     static Rule fromJson(BarSeries series, String json) {
         ComponentDescriptor descriptor = ComponentSerialization.parse(json);
         return RuleSerialization.fromDescriptor(series, descriptor);
+    }
+
+    /**
+     * Builds a rule from a compact named shorthand expression using ta4j's default
+     * named asset registry.
+     *
+     * @param series     bar series context
+     * @param expression shorthand expression
+     * @return reconstructed rule
+     * @since 0.22.7
+     */
+    static Rule fromExpression(BarSeries series, String expression) {
+        return RuleSerialization.fromExpression(series, expression);
+    }
+
+    /**
+     * Builds a rule from a compact named shorthand expression using the supplied
+     * named asset registry.
+     *
+     * @param series     bar series context
+     * @param expression shorthand expression
+     * @param registry   named asset registry
+     * @return reconstructed rule
+     * @since 0.22.7
+     */
+    static Rule fromExpression(BarSeries series, String expression, NamedAssetRegistry registry) {
+        return RuleSerialization.fromExpression(series, expression, registry);
     }
 
     /**

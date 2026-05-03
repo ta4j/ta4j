@@ -32,6 +32,8 @@ import org.ta4j.core.indicators.RSIIndicator;
 import org.ta4j.core.indicators.averages.EMAIndicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.named.NamedAssetKind;
+import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.CrossedDownIndicatorRule;
@@ -62,6 +64,7 @@ public final class StrategySerialization {
     private static final String STARTING_TYPE_KEY = "startingType";
     private static final String ARGS_KEY = "__args";
     private static final String VERSION_KEY = "version";
+    private static final String STRATEGY_KEY = "strategy";
     private static final String NAME_KEY = "name";
     private static final String TYPE_KEY = "type";
     private static final String ENTRY_RULE_KEY = "entryRule";
@@ -85,6 +88,51 @@ public final class StrategySerialization {
      */
     public static String toJson(Strategy strategy) {
         return ComponentSerialization.toJson(describe(strategy));
+    }
+
+    /**
+     * Serializes a {@link Strategy} to the compact opt-in strategy JSON v2 form
+     * using the default named asset registry.
+     *
+     * @param strategy strategy instance
+     * @return compact JSON v2 representation
+     * @since 0.22.7
+     */
+    public static String toCompactJson(Strategy strategy) {
+        return toCompactJson(strategy, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Serializes a {@link Strategy} to the compact opt-in strategy JSON v2 form
+     * using the supplied named asset registry.
+     *
+     * @param strategy strategy instance
+     * @param registry named asset registry
+     * @return compact JSON v2 representation
+     * @since 0.22.7
+     */
+    public static String toCompactJson(Strategy strategy, NamedAssetRegistry registry) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(registry, "registry");
+
+        ComponentDescriptor descriptor = describe(strategy);
+        JsonObject object = new JsonObject();
+        object.addProperty(VERSION_KEY, SUPPORTED_V2_VERSION);
+
+        Optional<String> strategyExpression = registry.toExpression(NamedAssetKind.STRATEGY, descriptor);
+        if (strategyExpression.isPresent()) {
+            object.addProperty(STRATEGY_KEY, strategyExpression.get());
+            addStrategyOverrides(object, descriptor, strategyExpression.get(), registry);
+            return object.toString();
+        }
+
+        if (descriptor.getLabel() != null && !descriptor.getLabel().isBlank()) {
+            object.addProperty(NAME_KEY, descriptor.getLabel());
+        }
+        addParameterOverrides(object, descriptor.getParameters());
+        object.add(ENTRY_RULE_KEY, compactRuleElement(extractChild(descriptor, ENTRY_LABEL), registry));
+        object.add(EXIT_RULE_KEY, compactRuleElement(extractChild(descriptor, EXIT_LABEL), registry));
+        return object.toString();
     }
 
     /**
@@ -140,7 +188,22 @@ public final class StrategySerialization {
      * @return reconstructed strategy
      */
     public static Strategy fromJson(BarSeries series, String json) {
-        ComponentDescriptor v2Descriptor = tryParseV2Descriptor(series, json);
+        return fromJson(series, json, NamedAssetRegistry.defaultRegistry());
+    }
+
+    /**
+     * Rebuilds a strategy from canonical descriptor JSON or an opt-in
+     * {@code version: 2} authoring payload using the supplied named asset registry.
+     *
+     * @param series   bar series to attach to the strategy
+     * @param json     canonical or v2 JSON payload
+     * @param registry named asset registry
+     * @return reconstructed strategy
+     * @since 0.22.7
+     */
+    public static Strategy fromJson(BarSeries series, String json, NamedAssetRegistry registry) {
+        Objects.requireNonNull(registry, "registry");
+        ComponentDescriptor v2Descriptor = tryParseV2Descriptor(series, json, registry);
         if (v2Descriptor != null) {
             return fromDescriptor(series, v2Descriptor);
         }
@@ -148,7 +211,8 @@ public final class StrategySerialization {
         return fromDescriptor(series, descriptor);
     }
 
-    private static ComponentDescriptor tryParseV2Descriptor(BarSeries series, String json) {
+    private static ComponentDescriptor tryParseV2Descriptor(BarSeries series, String json,
+            NamedAssetRegistry registry) {
         if (json == null || json.trim().isEmpty()) {
             return null;
         }
@@ -180,11 +244,20 @@ public final class StrategySerialization {
             throw new IllegalArgumentException("Unsupported strategy JSON version: " + version);
         }
 
-        Strategy strategy = buildV2Strategy(series, object);
+        Strategy strategy = buildV2Strategy(series, object, registry);
         return describe(strategy);
     }
 
-    private static Strategy buildV2Strategy(BarSeries series, JsonObject object) {
+    private static Strategy buildV2Strategy(BarSeries series, JsonObject object, NamedAssetRegistry registry) {
+        if (object.has(STRATEGY_KEY) && !object.get(STRATEGY_KEY).isJsonNull()) {
+            rejectUnexpectedField(object, ENTRY_RULE_KEY, ENTRY_RULE_KEY);
+            rejectUnexpectedField(object, EXIT_RULE_KEY, EXIT_RULE_KEY);
+            rejectUnexpectedField(object, TYPE_KEY, TYPE_KEY);
+            String expression = readRequiredString(object, STRATEGY_KEY);
+            ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.STRATEGY, expression, STRATEGY_KEY);
+            return fromDescriptor(series, applyV2StrategyOverrides(descriptor, object));
+        }
+
         String strategyType = readOptionalString(object, TYPE_KEY);
         if (strategyType != null && !DEFAULT_V2_STRATEGY_TYPE.equals(strategyType)
                 && !BaseStrategy.class.getName().equals(strategyType)) {
@@ -192,8 +265,8 @@ public final class StrategySerialization {
         }
 
         String name = readRequiredString(object, NAME_KEY);
-        Rule entryRule = buildV2Rule(series, readRequiredObject(object, ENTRY_RULE_KEY), ENTRY_RULE_KEY);
-        Rule exitRule = buildV2Rule(series, readRequiredObject(object, EXIT_RULE_KEY), EXIT_RULE_KEY);
+        Rule entryRule = buildV2Rule(series, object.get(ENTRY_RULE_KEY), ENTRY_RULE_KEY, registry);
+        Rule exitRule = buildV2Rule(series, object.get(EXIT_RULE_KEY), EXIT_RULE_KEY, registry);
         int unstableBars = readOptionalInt(object, UNSTABLE_BARS_KEY, 0);
         requireNonNegativeInt(unstableBars, UNSTABLE_BARS_KEY);
         TradeType startingType = readOptionalTradeType(object, STARTING_TYPE_KEY, TradeType.BUY);
@@ -204,7 +277,17 @@ public final class StrategySerialization {
         return new BaseStrategy(name, entryRule, exitRule, unstableBars, startingType);
     }
 
-    private static Rule buildV2Rule(BarSeries series, JsonObject object, String location) {
+    private static Rule buildV2Rule(BarSeries series, JsonElement element, String location,
+            NamedAssetRegistry registry) {
+        if (element == null || element.isJsonNull()) {
+            throw new IllegalArgumentException("Expected rule at " + location);
+        }
+        if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
+            ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.RULE, element.getAsString(),
+                    location);
+            return RuleSerialization.fromDescriptor(series, descriptor);
+        }
+        JsonObject object = requireObject(element, location);
         String type = readRequiredString(object, TYPE_KEY, location + "." + TYPE_KEY);
         JsonElement rulesElement = object.get(RULES_KEY);
         if (rulesElement != null && !rulesElement.isJsonNull()) {
@@ -214,69 +297,73 @@ public final class StrategySerialization {
                 throw new IllegalArgumentException(
                         "V2 composite rules require exactly 2 child rules at " + location + "." + RULES_KEY);
             }
-            Rule left = buildV2Rule(series, requireObject(rulesArray.get(0), location + "." + RULES_KEY + "[0]"),
-                    location + "." + RULES_KEY + "[0]");
-            Rule right = buildV2Rule(series, requireObject(rulesArray.get(1), location + "." + RULES_KEY + "[1]"),
-                    location + "." + RULES_KEY + "[1]");
+            Rule left = buildV2Rule(series, rulesArray.get(0), location + "." + RULES_KEY + "[0]", registry);
+            Rule right = buildV2Rule(series, rulesArray.get(1), location + "." + RULES_KEY + "[1]", registry);
             return switch (type) {
-            case "AndRule" -> new AndRule(left, right);
-            case "OrRule" -> new OrRule(left, right);
+            case "And", "AndRule" -> new AndRule(left, right);
+            case "Or", "OrRule" -> new OrRule(left, right);
             default -> throw new IllegalArgumentException("Unsupported v2 composite rule type: " + type);
             };
         }
 
         JsonArray args = requireArray(object.get(V2_ARGS_KEY), location + "." + V2_ARGS_KEY);
         return switch (type) {
-        case "CrossedUpIndicatorRule" -> buildCrossedUpRule(series, args, location);
-        case "CrossedDownIndicatorRule" -> buildCrossedDownRule(series, args, location);
-        case "OverIndicatorRule" -> buildOverRule(series, args, location);
-        case "UnderIndicatorRule" -> buildUnderRule(series, args, location);
-        case "StopLossRule" -> buildStopLossRule(series, args, location);
-        case "StopGainRule" -> buildStopGainRule(series, args, location);
+        case "CrossedUp", "CrossedUpIndicatorRule" -> buildCrossedUpRule(series, args, location, registry);
+        case "CrossedDown", "CrossedDownIndicatorRule" -> buildCrossedDownRule(series, args, location, registry);
+        case "Over", "OverIndicatorRule" -> buildOverRule(series, args, location, registry);
+        case "Under", "UnderIndicatorRule" -> buildUnderRule(series, args, location, registry);
+        case "StopLoss", "StopLossRule" -> buildStopLossRule(series, args, location);
+        case "StopGain", "StopGainRule" -> buildStopGainRule(series, args, location);
         default -> throw new IllegalArgumentException("Unsupported v2 rule type: " + type);
         };
     }
 
-    private static Rule buildCrossedUpRule(BarSeries series, JsonArray args, String location) {
+    private static Rule buildCrossedUpRule(BarSeries series, JsonArray args, String location,
+            NamedAssetRegistry registry) {
         ensureArgCount(args, 2, location);
-        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]");
+        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]", registry);
         JsonElement thresholdOrIndicator = args.get(1);
         if (looksLikeIndicator(thresholdOrIndicator)) {
-            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]");
+            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]",
+                    registry);
             return new CrossedUpIndicatorRule(indicator, secondIndicator);
         }
         return new CrossedUpIndicatorRule(indicator, parseNumericArgument(thresholdOrIndicator, location + ".args[1]"));
     }
 
-    private static Rule buildCrossedDownRule(BarSeries series, JsonArray args, String location) {
+    private static Rule buildCrossedDownRule(BarSeries series, JsonArray args, String location,
+            NamedAssetRegistry registry) {
         ensureArgCount(args, 2, location);
-        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]");
+        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]", registry);
         JsonElement thresholdOrIndicator = args.get(1);
         if (looksLikeIndicator(thresholdOrIndicator)) {
-            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]");
+            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]",
+                    registry);
             return new CrossedDownIndicatorRule(indicator, secondIndicator);
         }
         return new CrossedDownIndicatorRule(indicator,
                 parseNumericArgument(thresholdOrIndicator, location + ".args[1]"));
     }
 
-    private static Rule buildOverRule(BarSeries series, JsonArray args, String location) {
+    private static Rule buildOverRule(BarSeries series, JsonArray args, String location, NamedAssetRegistry registry) {
         ensureArgCount(args, 2, location);
-        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]");
+        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]", registry);
         JsonElement thresholdOrIndicator = args.get(1);
         if (looksLikeIndicator(thresholdOrIndicator)) {
-            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]");
+            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]",
+                    registry);
             return new OverIndicatorRule(indicator, secondIndicator);
         }
         return new OverIndicatorRule(indicator, parseNumericArgument(thresholdOrIndicator, location + ".args[1]"));
     }
 
-    private static Rule buildUnderRule(BarSeries series, JsonArray args, String location) {
+    private static Rule buildUnderRule(BarSeries series, JsonArray args, String location, NamedAssetRegistry registry) {
         ensureArgCount(args, 2, location);
-        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]");
+        Indicator<Num> indicator = buildV2Indicator(series, args.get(0), location + ".args[0]", registry);
         JsonElement thresholdOrIndicator = args.get(1);
         if (looksLikeIndicator(thresholdOrIndicator)) {
-            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]");
+            Indicator<Num> secondIndicator = buildV2Indicator(series, thresholdOrIndicator, location + ".args[1]",
+                    registry);
             return new UnderIndicatorRule(indicator, secondIndicator);
         }
         return new UnderIndicatorRule(indicator, parseNumericArgument(thresholdOrIndicator, location + ".args[1]"));
@@ -294,12 +381,15 @@ public final class StrategySerialization {
         return new StopGainRule(closePriceIndicator, parseNumericArgument(args.get(0), location + ".args[0]"));
     }
 
-    private static Indicator<Num> buildV2Indicator(BarSeries series, JsonElement element, String location) {
+    private static Indicator<Num> buildV2Indicator(BarSeries series, JsonElement element, String location,
+            NamedAssetRegistry registry) {
         if (element == null || element.isJsonNull()) {
             throw new IllegalArgumentException("Missing indicator expression at " + location);
         }
         if (element.isJsonPrimitive() && element.getAsJsonPrimitive().isString()) {
-            return buildV2IndicatorFromString(series, element.getAsString(), location);
+            ComponentDescriptor descriptor = registry.toDescriptor(NamedAssetKind.INDICATOR, element.getAsString(),
+                    location);
+            return castNumIndicator(IndicatorSerialization.fromDescriptor(series, descriptor), location);
         }
         if (!element.isJsonObject()) {
             throw new IllegalArgumentException("Unsupported v2 indicator payload at " + location + ": " + element);
@@ -322,39 +412,13 @@ public final class StrategySerialization {
                     location + ".args[0]");
         }
         if (args.size() == 2) {
-            Indicator<Num> baseIndicator = buildV2Indicator(series, args.get(0), location + ".args[0]");
+            Indicator<Num> baseIndicator = buildV2Indicator(series, args.get(0), location + ".args[0]", registry);
             int barCount = readRequiredInt(args.get(1), location + ".args[1]");
             return instantiateParameterizedIndicator(normalizedType, baseIndicator, barCount, location,
                     location + ".args[1]");
         }
 
         throw new IllegalArgumentException("Unsupported v2 indicator arg count at " + location + ": " + args.size());
-    }
-
-    private static Indicator<Num> buildV2IndicatorFromString(BarSeries series, String expression, String location) {
-        String trimmed = expression == null ? null : expression.trim();
-        if (trimmed == null || trimmed.isEmpty()) {
-            throw new IllegalArgumentException("Empty indicator expression at " + location);
-        }
-        if ("ClosePrice".equals(trimmed) || "ClosePrice()".equals(trimmed) || "ClosePriceIndicator".equals(trimmed)) {
-            return new ClosePriceIndicator(series);
-        }
-
-        int openParen = trimmed.indexOf('(');
-        int closeParen = trimmed.lastIndexOf(')');
-        if (openParen <= 0 || closeParen != trimmed.length() - 1) {
-            throw new IllegalArgumentException("Unsupported v2 indicator expression: " + trimmed);
-        }
-
-        String type = normalizeIndicatorType(trimmed.substring(0, openParen).trim());
-        String argumentText = trimmed.substring(openParen + 1, closeParen).trim();
-        if (argumentText.isEmpty()) {
-            throw new IllegalArgumentException("Missing indicator arguments in expression: " + trimmed);
-        }
-
-        Indicator<Num> closePriceIndicator = new ClosePriceIndicator(series);
-        int barCount = parseInt(argumentText, location);
-        return instantiateParameterizedIndicator(type, closePriceIndicator, barCount, location, location);
     }
 
     private static Indicator<Num> instantiateParameterizedIndicator(String type, Indicator<Num> baseIndicator,
@@ -387,6 +451,14 @@ public final class StrategySerialization {
         case "ClosePrice" -> "ClosePriceIndicator";
         default -> type;
         };
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Indicator<Num> castNumIndicator(Indicator<?> indicator, String location) {
+        if (indicator == null) {
+            throw new IllegalArgumentException("Missing indicator expression at " + location);
+        }
+        return (Indicator<Num>) indicator;
     }
 
     private static boolean looksLikeIndicator(JsonElement element) {
@@ -528,7 +600,8 @@ public final class StrategySerialization {
     }
 
     private static boolean looksLikeV2Envelope(JsonObject object) {
-        return object.has(NAME_KEY) || object.has(ENTRY_RULE_KEY) || object.has(EXIT_RULE_KEY);
+        return object.has(STRATEGY_KEY) || object.has(NAME_KEY) || object.has(ENTRY_RULE_KEY)
+                || object.has(EXIT_RULE_KEY);
     }
 
     private static boolean isIntegerLiteral(String value) {
@@ -657,6 +730,75 @@ public final class StrategySerialization {
         ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(descriptor.getType());
         if (!descriptor.getParameters().isEmpty()) {
             builder.withParameters(descriptor.getParameters());
+        }
+        for (ComponentDescriptor component : descriptor.getComponents()) {
+            builder.addComponent(component);
+        }
+        return builder.build();
+    }
+
+    private static JsonElement compactRuleElement(ComponentDescriptor descriptor, NamedAssetRegistry registry) {
+        Optional<String> expression = registry.toExpression(NamedAssetKind.RULE, descriptor);
+        if (expression.isPresent()) {
+            return new com.google.gson.JsonPrimitive(expression.get());
+        }
+        return JsonParser.parseString(ComponentSerialization.toJson(descriptor));
+    }
+
+    private static void addStrategyOverrides(JsonObject object, ComponentDescriptor descriptor, String expression,
+            NamedAssetRegistry registry) {
+        ComponentDescriptor defaults = registry.toDescriptor(NamedAssetKind.STRATEGY, expression, STRATEGY_KEY);
+        if (descriptor.getLabel() != null && !descriptor.getLabel().isBlank()
+                && !descriptor.getLabel().equals(defaults.getLabel())) {
+            object.addProperty(NAME_KEY, descriptor.getLabel());
+        }
+        Object unstableBars = descriptor.getParameters().get(UNSTABLE_BARS_KEY);
+        Object defaultUnstableBars = defaults.getParameters().get(UNSTABLE_BARS_KEY);
+        if (unstableBars != null
+                && !Objects.equals(String.valueOf(unstableBars), String.valueOf(defaultUnstableBars))) {
+            object.addProperty(UNSTABLE_BARS_KEY, extractUnstableBars(unstableBars));
+        }
+        Object startingType = descriptor.getParameters().get(STARTING_TYPE_KEY);
+        Object defaultStartingType = defaults.getParameters().get(STARTING_TYPE_KEY);
+        if (startingType != null
+                && !Objects.equals(String.valueOf(startingType), String.valueOf(defaultStartingType))) {
+            object.addProperty(STARTING_TYPE_KEY, String.valueOf(startingType));
+        }
+    }
+
+    private static void addParameterOverrides(JsonObject object, Map<String, Object> parameters) {
+        Object unstableBars = parameters.get(UNSTABLE_BARS_KEY);
+        if (unstableBars != null) {
+            int value = extractUnstableBars(unstableBars);
+            if (value != 0) {
+                object.addProperty(UNSTABLE_BARS_KEY, value);
+            }
+        }
+        Object startingType = parameters.get(STARTING_TYPE_KEY);
+        if (startingType != null) {
+            object.addProperty(STARTING_TYPE_KEY, String.valueOf(startingType));
+        }
+    }
+
+    private static ComponentDescriptor applyV2StrategyOverrides(ComponentDescriptor descriptor, JsonObject object) {
+        String name = object.has(NAME_KEY) && !object.get(NAME_KEY).isJsonNull() ? readRequiredString(object, NAME_KEY)
+                : descriptor.getLabel();
+        Map<String, Object> parameters = new LinkedHashMap<>(descriptor.getParameters());
+        if (object.has(UNSTABLE_BARS_KEY) && !object.get(UNSTABLE_BARS_KEY).isJsonNull()) {
+            int unstableBars = readRequiredInt(object.get(UNSTABLE_BARS_KEY), UNSTABLE_BARS_KEY);
+            requireNonNegativeInt(unstableBars, UNSTABLE_BARS_KEY);
+            parameters.put(UNSTABLE_BARS_KEY, unstableBars);
+        }
+        if (object.has(STARTING_TYPE_KEY) && !object.get(STARTING_TYPE_KEY).isJsonNull()) {
+            parameters.put(STARTING_TYPE_KEY, readOptionalTradeType(object, STARTING_TYPE_KEY, TradeType.BUY).name());
+        }
+
+        ComponentDescriptor.Builder builder = ComponentDescriptor.builder().withType(descriptor.getType());
+        if (name != null && !name.isBlank()) {
+            builder.withLabel(name);
+        }
+        if (!parameters.isEmpty()) {
+            builder.withParameters(parameters);
         }
         for (ComponentDescriptor component : descriptor.getComponents()) {
             builder.addComponent(component);

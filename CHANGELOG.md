@@ -2,6 +2,7 @@
 
 ### Added
 - **Concise strategy JSON authoring with `Strategy.fromJson(...)` (`CF-113`)**: You can now hand ta4j an opt-in `version: 2` strategy envelope instead of writing the full descriptor tree, which makes quick SMA/EMA crossover setups, RSI threshold rules, stop-gain/stop-loss exits, and short-starting strategies much easier to generate or edit. The bounded shorthand accepts `entryRule` / `exitRule`, `AndRule` / `OrRule`, shorthand indicators like `ClosePrice`, `SMA(...)`, `EMA(...)`, and `RSI(...)`, then validates inputs strictly and normalizes everything back to canonical descriptor JSON internally.
+- **Unified named-asset shorthand for v2 serialization**: Added immutable `NamedAssetRegistry` / `NamedAssetProvider` APIs and compact function-call shorthand for indicators, rules, strategies, and analysis criteria. Existing canonical `toJson()` output remains unchanged, while opt-in helpers such as `Strategy#toCompactJson()`, `Rule#fromExpression(...)`, `Indicator#fromExpression(...)`, and `AnalysisCriterion#fromExpression(...)` support compact authoring and CLI-friendly criterion names like `NetProfit` and `SharpeRatio`.
 
 ### Changed
 - **Agent guidance stays accurate across repo and personal workflows**: `scripts/agents_for_target.sh` guidance now clearly describes path-scoped `AGENTS.md` discovery from the current repo/workspace root, so contributors can use it for file-targeted lookup without assuming it also covers personal PR/comment workflow guidance.

@@ -18,7 +18,10 @@ import org.ta4j.core.analysis.OpenPositionHandling;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.backtest.BarSeriesManager;
+import org.ta4j.core.named.NamedAssetRegistry;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.serialization.AnalysisCriterionSerialization;
+import org.ta4j.core.serialization.ComponentDescriptor;
 
 /**
  * An analysis criterion. It can be used to:
@@ -36,6 +39,85 @@ public interface AnalysisCriterion {
         PROFIT,
         /** Consider only losing positions. */
         LOSS;
+    }
+
+    /**
+     * Serializes this criterion into canonical descriptor JSON.
+     *
+     * @return JSON representation
+     * @since 0.22.7
+     */
+    default String toJson() {
+        return AnalysisCriterionSerialization.toJson(this);
+    }
+
+    /**
+     * Converts this criterion into a structured descriptor.
+     *
+     * @return component descriptor for this criterion
+     * @since 0.22.7
+     */
+    default ComponentDescriptor toDescriptor() {
+        return AnalysisCriterionSerialization.describe(this);
+    }
+
+    /**
+     * Renders this criterion as a compact named shorthand expression using ta4j's
+     * default named asset registry.
+     *
+     * @return compact shorthand expression
+     * @since 0.22.7
+     */
+    default String toExpression() {
+        return AnalysisCriterionSerialization.toExpression(this);
+    }
+
+    /**
+     * Renders this criterion as a compact named shorthand expression using the
+     * supplied named asset registry.
+     *
+     * @param registry named asset registry
+     * @return compact shorthand expression
+     * @since 0.22.7
+     */
+    default String toExpression(NamedAssetRegistry registry) {
+        return AnalysisCriterionSerialization.toExpression(this, registry);
+    }
+
+    /**
+     * Reconstructs an analysis criterion from canonical descriptor JSON.
+     *
+     * @param json JSON payload
+     * @return reconstructed criterion
+     * @since 0.22.7
+     */
+    static AnalysisCriterion fromJson(String json) {
+        return AnalysisCriterionSerialization.fromJson(json);
+    }
+
+    /**
+     * Reconstructs an analysis criterion from compact named shorthand using ta4j's
+     * default named asset registry.
+     *
+     * @param expression shorthand expression
+     * @return reconstructed criterion
+     * @since 0.22.7
+     */
+    static AnalysisCriterion fromExpression(String expression) {
+        return AnalysisCriterionSerialization.fromExpression(expression);
+    }
+
+    /**
+     * Reconstructs an analysis criterion from compact named shorthand using the
+     * supplied named asset registry.
+     *
+     * @param expression shorthand expression
+     * @param registry   named asset registry
+     * @return reconstructed criterion
+     * @since 0.22.7
+     */
+    static AnalysisCriterion fromExpression(String expression, NamedAssetRegistry registry) {
+        return AnalysisCriterionSerialization.fromExpression(expression, registry);
     }
 
     /**
