@@ -6,11 +6,13 @@ package org.ta4j.core.rules;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.apache.logging.log4j.Level;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
-import org.ta4j.core.Rule;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Rule;
+import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class FixedRuleTest {
@@ -157,10 +159,44 @@ public class FixedRuleTest {
     }
 
     @Test
+    public void scopedTraceEvaluationSkipsTraceScopeWhenLoggerTraceIsDisabled() {
+        FrameObservingFixedRule rule = new FrameObservingFixedRule(1);
+        ruleTraceTestLogger.setLoggerLevel(FrameObservingFixedRule.class, Level.INFO);
+        ruleTraceTestLogger.clear();
+
+        assertTrue(rule.isSatisfiedWithTraceMode(1, Rule.TraceMode.VERBOSE));
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertFalse("Scoped trace evaluation should not create a trace frame when logger trace is disabled",
+                rule.observedTraceFrame());
+        assertFalse("Scoped trace evaluation should not emit trace output when logger trace is disabled",
+                logContent.contains("FrameObservingFixedRule#isSatisfied"));
+    }
+
+    @Test
     public void serializeAndDeserialize() {
         BarSeries series = new MockBarSeriesBuilder().withData(1).build();
         FixedRule rule = new FixedRule(1, 4, 5);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
+    }
+
+    private static final class FrameObservingFixedRule extends FixedRule {
+
+        private boolean observedTraceFrame;
+
+        private FrameObservingFixedRule(int index) {
+            super(index);
+        }
+
+        @Override
+        public boolean isSatisfied(int index, TradingRecord tradingRecord) {
+            observedTraceFrame = RuleTraceContext.currentFrame() != null;
+            return super.isSatisfied(index, tradingRecord);
+        }
+
+        private boolean observedTraceFrame() {
+            return observedTraceFrame;
+        }
     }
 }

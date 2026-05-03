@@ -4,6 +4,8 @@
 package org.ta4j.core.rules;
 
 import java.io.StringWriter;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -25,6 +27,7 @@ final class RuleTraceTestLogger {
     private Appender consoleAppender;
     private Level originalLevel;
     private LoggerConfig rootLoggerConfig;
+    private final Set<String> configuredLoggerNames = new HashSet<>();
 
     void open() {
         loggerContext = (LoggerContext) LogManager.getContext(false);
@@ -61,16 +64,30 @@ final class RuleTraceTestLogger {
             loggerConfig.removeAppender(appender.getName());
         }
 
+        Configuration config = loggerContext.getConfiguration();
+        for (String loggerName : configuredLoggerNames) {
+            config.removeLogger(loggerName);
+        }
+        configuredLoggerNames.clear();
+
         if (consoleAppender != null) {
             rootLoggerConfig.addAppender(consoleAppender, null, null);
         }
 
         if (originalLevel != null) {
-            Configuration config = loggerContext.getConfiguration();
             LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
             loggerConfig.setLevel(originalLevel);
             loggerContext.updateLoggers();
         }
+    }
+
+    void setLoggerLevel(Class<?> loggerClass, Level level) {
+        String loggerName = loggerClass.getName();
+        Configuration config = loggerContext.getConfiguration();
+        config.removeLogger(loggerName);
+        config.addLogger(loggerName, new LoggerConfig(loggerName, level, true));
+        configuredLoggerNames.add(loggerName);
+        loggerContext.updateLoggers();
     }
 
     void clear() {

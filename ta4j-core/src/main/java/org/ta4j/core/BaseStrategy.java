@@ -228,10 +228,12 @@ public class BaseStrategy implements Strategy {
 
     private boolean evaluateShouldEnter(int index, TradingRecord tradingRecord, Rule.TraceMode requestedTraceMode) {
         Rule.TraceMode activeTraceMode = requestedTraceMode == null ? this.traceMode : requestedTraceMode;
-        boolean enter = activeTraceMode == Rule.TraceMode.OFF ? Strategy.super.shouldEnter(index, tradingRecord)
-                : RuleTraceContext.evaluate(activeTraceMode, "entryRule", getTraceDisplayName(),
-                        () -> Strategy.super.shouldEnter(index, tradingRecord));
-        traceShouldEnter(index, enter, activeTraceMode);
+        boolean traceLoggingEnabled = activeTraceMode != Rule.TraceMode.OFF && log.isTraceEnabled();
+        boolean enter = traceLoggingEnabled
+                ? RuleTraceContext.evaluate(activeTraceMode, "entryRule", getTraceDisplayName(),
+                        () -> Strategy.super.shouldEnter(index, tradingRecord))
+                : Strategy.super.shouldEnter(index, tradingRecord);
+        traceShouldEnter(index, enter, traceLoggingEnabled ? activeTraceMode : Rule.TraceMode.OFF);
         return enter;
     }
 
@@ -252,10 +254,12 @@ public class BaseStrategy implements Strategy {
 
     private boolean evaluateShouldExit(int index, TradingRecord tradingRecord, Rule.TraceMode requestedTraceMode) {
         Rule.TraceMode activeTraceMode = requestedTraceMode == null ? this.traceMode : requestedTraceMode;
-        boolean exit = activeTraceMode == Rule.TraceMode.OFF ? Strategy.super.shouldExit(index, tradingRecord)
-                : RuleTraceContext.evaluate(activeTraceMode, "exitRule", getTraceDisplayName(),
-                        () -> Strategy.super.shouldExit(index, tradingRecord));
-        traceShouldExit(index, exit, activeTraceMode);
+        boolean traceLoggingEnabled = activeTraceMode != Rule.TraceMode.OFF && log.isTraceEnabled();
+        boolean exit = traceLoggingEnabled
+                ? RuleTraceContext.evaluate(activeTraceMode, "exitRule", getTraceDisplayName(),
+                        () -> Strategy.super.shouldExit(index, tradingRecord))
+                : Strategy.super.shouldExit(index, tradingRecord);
+        traceShouldExit(index, exit, traceLoggingEnabled ? activeTraceMode : Rule.TraceMode.OFF);
         return exit;
     }
 

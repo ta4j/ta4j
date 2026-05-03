@@ -57,7 +57,7 @@ public abstract class AbstractRule implements Rule {
      * @since 0.22.7
      */
     protected void traceIsSatisfied(int index, boolean isSatisfied, Map<String, String> context) {
-        if (log.isTraceEnabled() && isTraceEnabled()) {
+        if (isTraceEnabled()) {
             log.trace("{}", createTraceEvent(index, isSatisfied, context).formatMessage());
         }
     }
@@ -66,7 +66,7 @@ public abstract class AbstractRule implements Rule {
      * @return true if trace logging is enabled for this rule
      */
     protected boolean isTraceEnabled() {
-        return RuleTraceContext.activeMode(this) != TraceMode.OFF;
+        return log.isTraceEnabled() && RuleTraceContext.activeMode(this) != TraceMode.OFF;
     }
 
     /**
@@ -80,9 +80,25 @@ public abstract class AbstractRule implements Rule {
      * @since 0.22.7
      */
     protected boolean evaluateChildRule(Rule childRule, String relation, int index, TradingRecord tradingRecord) {
+        if (RuleTraceContext.currentFrame() == null && !log.isTraceEnabled()) {
+            return childRule.isSatisfied(index, tradingRecord);
+        }
         try (var ignored = RuleTraceContext.openChild(getTraceDisplayName(), this, childRule, relation)) {
             return childRule.isSatisfied(index, tradingRecord);
         }
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.7
+     */
+    @Override
+    public boolean isSatisfiedWithTraceMode(int index, TradingRecord tradingRecord, TraceMode traceMode) {
+        if (traceMode == null || traceMode == TraceMode.OFF || !log.isTraceEnabled()) {
+            return isSatisfied(index, tradingRecord);
+        }
+        return RuleTraceContext.evaluate(traceMode, "root", null, () -> isSatisfied(index, tradingRecord));
     }
 
     /**

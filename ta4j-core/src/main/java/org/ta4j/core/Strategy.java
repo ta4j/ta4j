@@ -3,6 +3,7 @@
  */
 package org.ta4j.core;
 
+import org.slf4j.LoggerFactory;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.rules.RuleTraceContext;
 import org.ta4j.core.serialization.ComponentDescriptor;
@@ -180,7 +181,8 @@ public interface Strategy {
      * @since 0.22.7
      */
     default boolean shouldEnterWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
-        if (traceMode == null) {
+        if (traceMode == null || traceMode == Rule.TraceMode.OFF
+                || !LoggerFactory.getLogger(getClass()).isTraceEnabled()) {
             return shouldEnter(index, tradingRecord);
         }
         return RuleTraceContext.evaluate(traceMode, "entryRule", getName(), () -> shouldEnter(index, tradingRecord));
@@ -229,7 +231,8 @@ public interface Strategy {
      * @since 0.22.7
      */
     default boolean shouldExitWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
-        if (traceMode == null) {
+        if (traceMode == null || traceMode == Rule.TraceMode.OFF
+                || !LoggerFactory.getLogger(getClass()).isTraceEnabled()) {
             return shouldExit(index, tradingRecord);
         }
         return RuleTraceContext.evaluate(traceMode, "exitRule", getName(), () -> shouldExit(index, tradingRecord));

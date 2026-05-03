@@ -262,6 +262,31 @@ public class StrategyTraceLoggingTest {
     }
 
     @Test
+    public void traceLoggingDoesNotPropagateStrategyVerboseScopeWhenStrategyLoggerTraceIsDisabled() {
+        FixedRule entryRule = new FixedRule(1);
+        entryRule.setName("Entry Child");
+        entryRule.setTraceMode(Rule.TraceMode.OFF);
+        Strategy strategy = new BaseStrategy("Trace Strategy", entryRule, new FixedRule(2));
+        strategy.setTraceMode(Rule.TraceMode.VERBOSE);
+
+        setLoggerLevel(BaseStrategy.class, Level.INFO);
+        setLoggerLevel(FixedRule.class, Level.TRACE);
+        logOutput.getBuffer().setLength(0);
+        try {
+            strategy.shouldEnter(1, new BaseTradingRecord());
+        } finally {
+            clearLoggerLevel(FixedRule.class);
+            clearLoggerLevel(BaseStrategy.class);
+        }
+
+        String logContent = logOutput.toString();
+        assertFalse("Strategy trace mode should not emit strategy logs when the strategy logger is not tracing",
+                logContent.contains(">>> Trace Strategy#shouldEnter"));
+        assertFalse("Strategy trace mode should not force child logs when the strategy logger is not tracing",
+                logContent.contains("Entry Child#isSatisfied"));
+    }
+
+    @Test
     public void traceLoggingCanBeScopedToSingleStrategyEvaluationWithoutMutatingStrategyMode() {
         FixedRule child1 = new FixedRule(1);
         child1.setName("Scoped Entry Child 1");
@@ -285,5 +310,18 @@ public class StrategyTraceLoggingTest {
                 logContent.contains("Scoped Entry Child 2#isSatisfied"));
         assertEquals("Scoped strategy evaluation should not mutate the strategy mode", Rule.TraceMode.OFF,
                 strategy.getTraceMode());
+    }
+
+    private void setLoggerLevel(Class<?> loggerClass, Level level) {
+        Configuration config = loggerContext.getConfiguration();
+        config.removeLogger(loggerClass.getName());
+        config.addLogger(loggerClass.getName(), new LoggerConfig(loggerClass.getName(), level, true));
+        loggerContext.updateLoggers();
+    }
+
+    private void clearLoggerLevel(Class<?> loggerClass) {
+        Configuration config = loggerContext.getConfiguration();
+        config.removeLogger(loggerClass.getName());
+        loggerContext.updateLoggers();
     }
 }

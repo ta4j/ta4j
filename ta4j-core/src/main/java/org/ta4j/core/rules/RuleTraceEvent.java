@@ -63,9 +63,6 @@ public record RuleTraceEvent(int index, String ruleType, String ruleName, Rule.T
         if (!context.isEmpty()) {
             builder.append(" context=").append(context);
         }
-        if (context.containsKey("currentPrice")) {
-            builder.append(" Current price: ").append(context.get("currentPrice"));
-        }
 
         return builder.toString();
     }

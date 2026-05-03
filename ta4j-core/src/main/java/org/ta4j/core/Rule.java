@@ -3,6 +3,7 @@
  */
 package org.ta4j.core;
 
+import org.slf4j.LoggerFactory;
 import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OrRule;
@@ -137,7 +138,7 @@ public interface Rule {
      * @since 0.22.7
      */
     default boolean isSatisfiedWithTraceMode(int index, TradingRecord tradingRecord, TraceMode traceMode) {
-        if (traceMode == null) {
+        if (traceMode == null || traceMode == TraceMode.OFF || !LoggerFactory.getLogger(getClass()).isTraceEnabled()) {
             return isSatisfied(index, tradingRecord);
         }
         return RuleTraceContext.evaluate(traceMode, "root", null, () -> isSatisfied(index, tradingRecord));

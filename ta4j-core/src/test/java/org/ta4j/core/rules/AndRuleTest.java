@@ -14,6 +14,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.apache.logging.log4j.Level;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -184,6 +185,29 @@ public class AndRuleTest {
                 rule1.getTraceMode());
         assertEquals("Scoped evaluation should not mutate second child mode", Rule.TraceMode.VERBOSE,
                 rule2.getTraceMode());
+    }
+
+    @Test
+    public void traceLoggingDoesNotPropagateVerboseScopeWhenCompositeLoggerTraceIsDisabled() {
+        FixedRule childRule = new FixedRule(1);
+        childRule.setName("Composite Child");
+        childRule.setTraceMode(Rule.TraceMode.OFF);
+
+        AndRule andRule = new AndRule(childRule, BooleanRule.TRUE);
+        andRule.setName("Composite Parent");
+        andRule.setTraceMode(Rule.TraceMode.VERBOSE);
+
+        ruleTraceTestLogger.setLoggerLevel(AndRule.class, Level.INFO);
+        ruleTraceTestLogger.setLoggerLevel(FixedRule.class, Level.TRACE);
+        ruleTraceTestLogger.clear();
+
+        assertTrue(andRule.isSatisfied(1));
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertFalse("Composite trace mode should not emit parent logs when the composite logger is not tracing",
+                logContent.contains("Composite Parent#isSatisfied"));
+        assertFalse("Composite trace mode should not force child logs when the composite logger is not tracing",
+                logContent.contains("Composite Child#isSatisfied"));
     }
 
     @Test

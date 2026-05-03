@@ -137,10 +137,10 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         String logContent = ruleTraceTestLogger.getLogOutput();
         assertTrue("TrailingStopLossRule trace log should include custom name",
                 logContent.contains("Custom Stop Loss#isSatisfied"));
-        assertTrue("TrailingStopLossRule trace log should include current price",
-                logContent.contains("Current price:"));
         assertTrue("TrailingStopLossRule trace log should include structured current price context",
                 logContent.contains("context={currentPrice="));
+        assertFalse("TrailingStopLossRule trace log should keep structured key=value formatting without legacy suffix",
+                logContent.contains("Current price:"));
         assertTrue("TrailingStopLossRule trace log should include rule type",
                 logContent.contains("ruleType=TrailingStopLossRule"));
         assertTrue("TrailingStopLossRule trace log should include active trace mode",
