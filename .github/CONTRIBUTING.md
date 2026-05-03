@@ -4,8 +4,14 @@
 
 - **Use Java 25+ and Maven 3.9+.** The build enforces these versions during Maven validation.
 
-- **Run this before every PR:** `mvn -B clean license:format formatter:format test install`
-  CI will fail if your changes are not formatted or lack the project license header. First-time contributors almost always hit this; run the command locally first.
+- **Run this before opening or updating a PR:** `mvn -B verify`
+  This matches the main CI path and keeps SpotBugs and JaCoCo advisory in the full contributor flow.
+
+- **Use focused local quality loops when iterating:** `mvn -pl ta4j-core -am spotbugs:check` and `mvn -pl ta4j-core -am test jacoco:report jacoco:check`
+  These are intentionally strict for the module you are changing, so you can tighten one tool at a time before rerunning the full `mvn -B verify`.
+
+- **Fix formatting and license headers when needed:** `mvn -B license:format formatter:format`
+  First-time contributors almost always hit this; run the formatter command locally before your final `mvn -B verify`.
 
 - [Search existing issues](https://github.com/ta4j/ta4j/issues?q=is%3Aissue) before opening a new one.
 

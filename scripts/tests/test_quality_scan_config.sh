@@ -37,15 +37,45 @@ expect_file_not_contains() {
   fi
 }
 
+expect_execution_contains() {
+  local file="$1"
+  local execution_id="$2"
+  local needle="$3"
+  local msg="$4"
+  local block
+  block="$(awk -v id="$execution_id" '
+    /<execution>/ { in_execution=1; block=$0 ORS; next }
+    in_execution { block = block $0 ORS }
+    /<\/execution>/ {
+      if (block ~ "<id>" id "</id>") {
+        print block
+        found=1
+        exit
+      }
+      in_execution=0
+      block=""
+    }
+    END {
+      if (!found) {
+        exit 1
+      }
+    }
+  ' "$file")" || fail "$msg (execution not found: '$execution_id')"
+
+  if ! grep -Fq -- "$needle" <<<"$block"; then
+    fail "$msg (missing: '$needle' in execution '$execution_id')"
+  fi
+}
+
 test_parent_declares_advisory_quality_defaults() {
   echo "Running test_parent_declares_advisory_quality_defaults"
 
   expect_file_matches "$POM" "<spotbugs.version>[0-9]+(\\.[0-9]+)+</spotbugs.version>" "parent pom should pin SpotBugs with an explicit version"
   expect_file_matches "$POM" "<jacoco.version>[0-9]+(\\.[0-9]+)+</jacoco.version>" "parent pom should pin JaCoCo with an explicit version"
-  expect_file_contains "$POM" "<ta4j.spotbugs.failOnError>false</ta4j.spotbugs.failOnError>" "SpotBugs should stay advisory"
-  expect_file_contains "$POM" "<ta4j.jacoco.haltOnFailure>false</ta4j.jacoco.haltOnFailure>" "JaCoCo should stay advisory"
   expect_file_contains "$POM" "<ta4j.jacoco.line.minimum>0.80</ta4j.jacoco.line.minimum>" "line coverage threshold should be declared"
   expect_file_contains "$POM" "<ta4j.jacoco.branch.minimum>0.80</ta4j.jacoco.branch.minimum>" "branch coverage threshold should be declared"
+  expect_file_not_contains "$POM" "<ta4j.spotbugs.failOnError>" "SpotBugs advisory mode should not rely on a shared property"
+  expect_file_not_contains "$POM" "<ta4j.jacoco.haltOnFailure>" "JaCoCo advisory mode should not rely on a shared property"
 
   pass "test_parent_declares_advisory_quality_defaults"
 }
@@ -59,7 +89,10 @@ test_parent_manages_quality_plugins_for_verify() {
   expect_file_contains "$POM" "<skip>true</skip>" "parent pom should skip exec:java on the aggregator"
   expect_file_contains "$POM" "<quiet>true</quiet>" "SpotBugs should stay compact in verify logs"
   expect_file_contains "$POM" "@{argLine}" "Surefire should late-bind the JaCoCo agent argLine"
-  expect_file_contains "$POM" "<goal>check</goal>" "quality checks should be wired into verify"
+  expect_execution_contains "$POM" "spotbugs-check" "<phase>verify</phase>" "SpotBugs should stay wired into verify"
+  expect_execution_contains "$POM" "spotbugs-check" "<failOnError>false</failOnError>" "SpotBugs should stay advisory only for the verify-bound execution"
+  expect_execution_contains "$POM" "jacoco-check" "<phase>verify</phase>" "JaCoCo should stay wired into verify"
+  expect_execution_contains "$POM" "jacoco-check" "<haltOnFailure>false</haltOnFailure>" "JaCoCo should stay advisory only for the verify-bound execution"
 
   pass "test_parent_manages_quality_plugins_for_verify"
 }
@@ -90,9 +123,15 @@ test_docs_point_to_real_maven_commands() {
   echo "Running test_docs_point_to_real_maven_commands"
 
   expect_file_contains "$ROOT/README.md" "Run \`mvn verify\` before opening or updating a pull request." "README should point contributors at the real verify command"
+  expect_file_contains "$ROOT/README.md" "mvn -pl ta4j-core -am spotbugs:check" "README should document the standalone SpotBugs loop"
+  expect_file_contains "$ROOT/README.md" "mvn -pl ta4j-core -am test jacoco:report jacoco:check" "README should document the standalone JaCoCo gate"
+  expect_file_contains "$ROOT/README.md" "mvn -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report" "README should document a focused JaCoCo report-only loop"
   expect_file_contains "$ROOT/README.md" "- [Build commands: Maven](#build-commands-maven)" "README table of contents should link to the renamed build section"
   expect_file_contains "$ROOT/README.md" "mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest" "README should demonstrate overriding exec:java with a non-default example"
-  expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "**Run this before every PR:** \`mvn -B clean license:format formatter:format test install\`" "contributing guide should use system Maven"
+  expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "**Run this before opening or updating a PR:** \`mvn -B verify\`" "contributing guide should use verify as the canonical PR command"
+  expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "mvn -pl ta4j-core -am spotbugs:check" "contributing guide should document the standalone SpotBugs loop"
+  expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "mvn -pl ta4j-core -am test jacoco:report jacoco:check" "contributing guide should document the standalone JaCoCo gate"
+  expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "mvn -B license:format formatter:format" "contributing guide should keep the formatter and license fix command"
   expect_file_not_contains "$ROOT/README.md" "./mvnw" "README should not advertise a missing Maven Wrapper"
 
   pass "test_docs_point_to_real_maven_commands"

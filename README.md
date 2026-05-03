@@ -128,6 +128,9 @@ Ta4j requires Java 25+ and Maven 3.9+. Use system Maven from the repository root
 
 - **Standard build command:** Use `mvn ...`
 - **Contributor quality path:** Use `mvn verify` to match CI and get advisory SpotBugs and JaCoCo feedback alongside the test suite
+- **SpotBugs-only local gate:** Use `mvn -pl ta4j-core -am spotbugs:check` to fail fast on module-scoped findings before rerunning the full build
+- **JaCoCo-only local gate:** Use `mvn -pl ta4j-core -am test jacoco:report jacoco:check` to run tests, generate coverage output, and enforce the module threshold locally
+- **Focused coverage report:** Use `mvn -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report` when you want a quick report without enforcing the bundle threshold yet
 
 Run `mvn verify` before opening or updating a pull request.
 
@@ -886,6 +889,7 @@ Get help, share ideas, and connect with other Ta4j users:
 - [Fork the repo](http://help.github.com/forking/), open pull requests, and join code discussions on Discord.
 - See the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
 - Run `mvn verify` before opening or updating a pull request. It matches CI and includes advisory SpotBugs and JaCoCo reporting alongside the test suite.
+- For faster local quality loops, use `mvn -pl ta4j-core -am spotbugs:check` or `mvn -pl ta4j-core -am test jacoco:report jacoco:check` before rerunning the full `mvn verify`.
 
 ## Release & snapshot publishing
 
