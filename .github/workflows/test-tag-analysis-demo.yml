@@ -53,7 +53,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
           cache: maven
 
       - name: Resolve analysis demo instrument
@@ -94,7 +94,7 @@ jobs:
         run: >
           xvfb-run mvn -B test
           -Dgroups=analysis-demo
-          -Dta4j.excludedTestTags=
+          -Dta4j.excludedTestTags=elliott-macro-cycle-replay
           -Dta4j.analysisDemoInstrument="${TA4J_ANALYSIS_DEMO_INSTRUMENT}"
           -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave
 

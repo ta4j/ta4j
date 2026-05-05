@@ -22,9 +22,10 @@ Ideas: [Roadmap](https://github.com/ta4j/ta4j/wiki/Roadmap) · [Open issues](htt
 Regular PR and push CI skips test tags configured by `ta4j.excludedTestTags`.
 Run tagged suites manually from GitHub Actions, or locally with:
 
-- `xvfb-run mvn -B test -Dgroups=integration -Dta4j.excludedTestTags=`
+- `xvfb-run mvn -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay`
 - `xvfb-run mvn -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.runBenchmarks=true`
-- `xvfb-run mvn -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags= -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
+- `xvfb-run mvn -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags=elliott-macro-cycle-replay -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
+- `xvfb-run mvn -B test -Dgroups=elliott-macro-cycle-replay -Dta4j.excludedTestTags= -Dtest=ElliottWaveMacroCycleDetectorTest`
 
 These examples match the Linux GitHub Actions runners. On macOS, use XQuartz or
 run the Maven command without `xvfb-run` when your local display can satisfy
@@ -35,14 +36,16 @@ The dedicated workflows are:
 - `Run Integration Tagged Tests` (`.github/workflows/test-tag-integration.yml`)
 - `Run Benchmark Tagged Tests` (`.github/workflows/test-tag-benchmark.yml`)
 - `Run Analysis Demo Tagged Tests` (`.github/workflows/test-tag-analysis-demo.yml`)
+- `Run Elliott Macro Cycle Replay Tagged Tests` (`.github/workflows/test-tag-elliott-macro-cycle-replay.yml`)
 
 Scheduled runs are opt-in per tag. Set `TA4J_TAGGED_TEST_<TAG>_SCHEDULE_ENABLED=true`
 and `TA4J_TAGGED_TEST_<TAG>_SCHEDULE_SLOT=daily`, `weekly`, or `monthly`.
 Unset variables leave scheduled runs disabled, while manual workflow dispatches run
-regardless of the schedule variables. Tests with multiple tags run in each matching
-workflow.
+regardless of the schedule variables. The `elliott-macro-cycle-replay` workflow
+is manual-only and requires a self-hosted runner labeled `ta4j-macro-cycle-replay`.
 
-The `analysis-demo` tag is for long-running examples that produce analysis reports.
+The `analysis-demo` tag is for examples that produce analysis reports and must
+be the only JUnit tag on each tagged test or class.
 Its workflow defaults to `coinbase:BTC-USD`, accepts provider-qualified manual
 inputs such as `coinbase:ETH-USD` or `coinbase:ETH/USD`, and uploads generated
 JSON, charts, and cached provider responses from `target/analysis-demos/**`.

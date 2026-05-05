@@ -35,8 +35,7 @@ import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader
  *
  * @since 0.22.4
  */
-@Tag("integration")
-@Tag("slow")
+@Tag("elliott-macro-cycle-replay")
 class ElliottWaveMacroCycleDetectorTest {
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveMacroCycleDetectorTest.class);
