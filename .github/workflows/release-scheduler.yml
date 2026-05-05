@@ -47,6 +47,10 @@ jobs:
       gate_proceed: ${{ steps.gate.outputs.proceed }}
       token_present: ${{ steps.model_token.outputs.present }}
       token_gate: ${{ steps.token_gate.outputs.proceed }}
+      model: ${{ steps.model_catalog.outputs.model_id }}
+      model_max_input_tokens: ${{ steps.model_catalog.outputs.model_max_input_tokens }}
+      model_max_output_tokens: ${{ steps.model_catalog.outputs.model_max_output_tokens }}
+      dossier_chars: ${{ steps.build_request.outputs.dossier_chars }}
       last_tag: ${{ steps.lasttag.outputs.last_reachable_tag }}
       last_first_parent_tag: ${{ steps.lasttag.outputs.last_first_parent_tag }}
       pom_version: ${{ steps.pom_version.outputs.version }}
@@ -300,83 +304,53 @@ jobs:
       # -----------------------
       # AI Analysis
       # -----------------------
-      - name: Build and validate AI request JSON
-        id: build_request
+      - name: Preflight GitHub Models catalog
+        id: model_catalog
         if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true'
         env:
           RELEASE_AI_MODEL: ${{ vars.RELEASE_AI_MODEL }}
         run: |
           set -euo pipefail
+          model="${RELEASE_AI_MODEL:-openai/gpt-4.1}"
+          echo "::group::GitHub Models catalog preflight"
+          python3 scripts/release/release_helpers.py catalog-preflight \
+            --model "$model" \
+            --output release-ai-model.json
+          echo "::endgroup::"
 
-          binary_prompt=$(printf '%s' "${{ steps.diff.outputs.binary_prompt_b64 }}" | base64 -d 2>/dev/null || true)
-          changelog_decoded=$(printf '%s' "${{ steps.changelog.outputs.changelog_b64 }}" | base64 -d 2>/dev/null || true)
-          binary_count="${{ steps.diff.outputs.lines }}"
-          binary_count=${binary_count:-0}
+      - name: Build release dossier
+        id: dossier
+        if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true'
+        run: |
+          set -euo pipefail
+          echo "::group::Build release dossier"
+          python3 scripts/release/release_helpers.py build-dossier \
+            --last-tag "${{ steps.lasttag.outputs.last_reachable_tag }}" \
+            --current-version "${{ steps.pom_version.outputs.version }}" \
+            --pom-base "${{ steps.pom_version.outputs.base }}" \
+            --max-diff-chars 600000 \
+            --output release-dossier.md \
+            --audit-output release-audit.json
+          echo "::endgroup::"
 
-          current_version="${{ steps.pom_version.outputs.version }}"
-          base_version="${{ steps.pom_version.outputs.base }}"
-          last_tag="${{ steps.lasttag.outputs.last_reachable_tag }}"
-          model="${RELEASE_AI_MODEL:-openai/gpt-4.1-nano}"
-
-          if [ -z "$current_version" ]; then
-            echo "audit:current_version_missing=true" >&2
-            exit 1
-          fi
-          echo "audit:current_version_source=pom.xml value=$current_version base=$base_version last_tag=$last_tag"
-          echo "audit:ai_model=$model"
-
-          if [ -z "$binary_prompt" ]; then
-            binary_prompt="(none)"
-          fi
-
-          # Read SemVer rules from file if it exists and has content, otherwise use defaults
-          semver_rules_file=".github/workflows/semver-rules-override.txt"
-          if [ -f "$semver_rules_file" ] && [ -s "$semver_rules_file" ]; then
-            semver_rules=$(cat "$semver_rules_file")
-            echo "audit:semver_rules_source=file"
-          else
-            semver_rules="Decide release go/no-go from unreleased binary-impacting changes.\nIf go, choose bump: patch|minor.\nMINOR: backward-compatible, user-visible new features, and breaking-change cases.\nPATCH: backward-compatible bug fixes or internal improvements.\nIf binary change count is 0 => should_release=false.\nIf binary change list empty or changelog-only => should_release=false.\nIf unsure between MINOR and PATCH, prefer PATCH.\nPre-1.0.0: breaking changes can be MINOR."
-            echo "audit:semver_rules_source=default"
-          fi
-
-          # Build the JSON request using jq and safe string args.
-          echo "build.request_json:build.start"
-          jq -n \
-            --arg binary_prompt "$binary_prompt" \
-            --arg binary_count "$binary_count" \
-            --arg changelog "$changelog_decoded" \
-            --arg current_version "$current_version" \
-            --arg semver_rules "$semver_rules" \
-            --arg last_tag "$last_tag" \
-            --arg model "$model" \
-            --arg temp "0" \
-            '{
-              model: $model,
-              temperature: ($temp | tonumber),
-              messages: [
-                { role: "system", content: "You are a SemVer assistant. Reply with JSON only." },
-                { role: "user", content:
-                  (
-                    "Decide release go/no-go. If go, choose bump: patch|minor.\n" +
-                    "Current: " + $current_version + "\n" +
-                    "Last tag: " + $last_tag + "\n" +
-                    "Binary change count: " + $binary_count + "\n" +
-                    "Rules:\n" + $semver_rules + "\n" +
-                    "Binary-impacting changes summary:\n" + $binary_prompt + "\n" +
-                    "Changelog highlights:\n" + $changelog + "\n" +
-                    "Return JSON only: {\"should_release\":true|false,\"bump\":\"patch|minor\",\"reason\":\"1-2 sentences\"}. If should_release=false, set bump to \"patch\"."
-                  )
-                }
-              ]
-            }' > request.json
-
-          echo "build.request_json:validate.start"
+      - name: Build and validate AI request JSON
+        id: build_request
+        if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true'
+        run: |
+          set -euo pipefail
+          echo "::group::Build AI request"
+          python3 scripts/release/release_helpers.py build-ai-request \
+            --model "${{ steps.model_catalog.outputs.model_id }}" \
+            --dossier release-dossier.md \
+            --semver-rules .github/workflows/semver-rules-override.txt \
+            --output request.json
           if ! jq -e '.model and .messages and (.messages | length > 0)' request.json > /dev/null; then
             echo "audit:request_json_valid=false" >&2
             exit 1
           fi
 
           echo "audit:request_json_valid=true"
+          echo "::endgroup::"
 
       - name: Call AI API with retry
         id: ai_call
@@ -385,10 +359,12 @@ jobs:
           GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
         run: |
           set -uo pipefail
+          echo "::group::Call GitHub Models inference"
           echo "audit:request_json_size_bytes=$(wc -c < request.json | tr -d ' ')"
-          echo "audit:binary_prompt_chars=${{ steps.diff.outputs.binary_prompt_len }}"
-          echo "audit:binary_change_truncated_chars=$(printf '%s' "${{ steps.diff.outputs.diff_b64 }}" | base64 -d 2>/dev/null | wc -c | tr -d ' ' || true)"
-          echo "audit:changelog_truncated_chars=$(printf '%s' "${{ steps.changelog.outputs.changelog_b64 }}" | base64 -d 2>/dev/null | wc -c | tr -d ' ' || true)"
+          echo "audit:dossier_chars=${{ steps.build_request.outputs.dossier_chars }}"
+          echo "audit:model=${{ steps.model_catalog.outputs.model_id }}"
+          echo "audit:model_max_input_tokens=${{ steps.model_catalog.outputs.model_max_input_tokens }}"
+          echo "audit:model_max_output_tokens=${{ steps.model_catalog.outputs.model_max_output_tokens }}"
           echo "audit:external_call target=models.github.ai payload=request.json sanitized=true"
 
           attempts=3
@@ -420,6 +396,7 @@ jobs:
           done
 
           echo "response_status=$response_status" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
 
       - name: Handle AI API failure
         id: ai_failure
@@ -435,6 +412,7 @@ jobs:
           head -c 500 response.json || true
           fallback=$(jq -n --arg msg "$err_msg" --arg status "$RESPONSE_STATUS" \
             '{should_release:false,bump:"patch",warning:$msg,reason:$msg}')
+          printf '%s\n' "$fallback" > ai-content.txt
           delim="AI_RESP_$(date +%s%N)"
           {
             echo "content<<$delim"
@@ -461,6 +439,7 @@ jobs:
           fi
 
           content=$(jq -r '.choices[0].message.content // ""' response.json)
+          printf '%s\n' "$content" > ai-content.txt
           delim="AI_RESP_$(date +%s%N)"
           {
             echo "content<<$delim"
@@ -474,80 +453,27 @@ jobs:
         env:
           GATE_PROCEED: ${{ steps.gate.outputs.proceed }}
           MODEL_TOKEN_PRESENT: ${{ steps.model_token.outputs.present }}
-          RAW_CONTENT: ${{ steps.ai.outputs.content }}
-          RAW_FALLBACK: ${{ steps.ai_failure.outputs.content }}
         run: |
           gate_proceed="${GATE_PROCEED:-false}"
-          parsed_ok=false
 
           if [ "$gate_proceed" != "true" ]; then
-            echo '{"should_release":false,"bump":"patch","warning":"No binary changes","reason":"No binary-impacting changes detected"}' > ai.json
-            parsed_ok=true
+            echo '{"should_release":false,"bump":"patch","confidence":1.0,"warning":"No binary changes","reason":"No binary-impacting changes detected"}' > ai-content.txt
           else
             model_token_present="${MODEL_TOKEN_PRESENT:-false}"
             if [ "$model_token_present" != "true" ]; then
               echo "AI call skipped because GH_MODELS_TOKEN is missing." >&2
-              echo '{"should_release":false,"bump":"patch","warning":"GH_MODELS_TOKEN missing","reason":"GH_MODELS_TOKEN secret missing; cannot call AI"}' > ai.json
-              parsed_ok=true
-            else
-              raw_content="${RAW_CONTENT:-}"
-              if [ -z "$raw_content" ]; then
-                raw_content="${RAW_FALLBACK:-}"
-              fi
-              if [ -z "$raw_content" ]; then
-                raw_content='{"should_release":false,"bump":"patch","warning":"Missing AI response","reason":"AI response content missing"}'
-              fi
-
-              if printf '%s' "$raw_content" | jq -e -R 'fromjson' > ai.json 2>/dev/null; then
-                parsed_ok=true
-              else
-                extracted=$(printf '%s' "$raw_content" | perl -0777 -ne 'print $1 if m/(\{(?:.|\n)*\})/s')
-                if [ -n "$extracted" ] && printf '%s' "$extracted" | jq -e '.' > ai.json 2>/dev/null; then
-                  parsed_ok=true
-                fi
-              fi
-
-              if ! $parsed_ok; then
-                echo "AI response not valid JSON. Defaulting to no release." >&2
-                err_hint=$(printf '%s' "$raw_content" | head -c 200 | tr '\n' ' ' | sed 's/"/\\"/g')
-                if [ -n "$err_hint" ]; then
-                  reason_msg="AI response was not valid JSON: ${err_hint}"
-                else
-                  reason_msg="AI response was not valid JSON"
-                fi
-                printf '{"should_release":false,"bump":"patch","warning":"Invalid AI JSON","reason":"%s"}' "$reason_msg" > ai.json
-              fi
+              echo '{"should_release":false,"bump":"patch","confidence":1.0,"warning":"GH_MODELS_TOKEN missing","reason":"GH_MODELS_TOKEN secret missing; cannot call AI"}' > ai-content.txt
+            elif [ ! -s ai-content.txt ]; then
+              echo '{"should_release":false,"bump":"patch","confidence":0.0,"warning":"Missing AI response","reason":"AI response content missing"}' > ai-content.txt
             fi
           fi
 
-          should=$(jq -r 'if .should_release then "true" else "false" end' ai.json)
-          bump=$(jq -r '.bump // "patch"' ai.json)
-          bump=$(printf '%s' "$bump" | tr '[:upper:]' '[:lower:]' | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//')
-          if [ -z "$bump" ]; then
-            bump="patch"
-          fi
-          warning=$(jq -r '.warning // ""' ai.json)
-          reason=$(jq -r '.reason // ""' ai.json)
-
-          if [ "$bump" = "major" ]; then
-            echo "audit:major_bump_downgraded=true"
-            bump="minor"
-            if [ -n "$warning" ]; then
-              warning="${warning}; major bump disabled, downgraded to minor"
-            else
-              warning="major bump disabled, downgraded to minor"
-            fi
-            if [ -n "$reason" ]; then
-              reason="${reason} Major bumps are currently disabled, so this was downgraded to minor."
-            else
-              reason="Major bumps are currently disabled, so this was downgraded to minor."
-            fi
-          fi
-
-          echo "should_release=$should" >> $GITHUB_OUTPUT
-          echo "bump=$bump" >> $GITHUB_OUTPUT
-          echo "warning=$warning" >> $GITHUB_OUTPUT
-          echo "reason=$reason" >> $GITHUB_OUTPUT
+          echo "::group::Parse AI release decision"
+          python3 scripts/release/release_helpers.py parse-decision \
+            --raw-file ai-content.txt \
+            --output release-decision.json \
+            --github-output "$GITHUB_OUTPUT"
+          echo "::endgroup::"
 
       - name: Stop if AI says no release
         if: steps.parsed.outputs.should_release == 'false'
@@ -661,8 +587,14 @@ jobs:
           PROCEED: ${{ steps.gate.outputs.proceed }}
           TOKEN_PRESENT: ${{ steps.model_token.outputs.present }}
           TOKEN_GATE: ${{ steps.token_gate.outputs.proceed }}
+          MODEL: ${{ steps.model_catalog.outputs.model_id }}
+          MODEL_MAX_INPUT_TOKENS: ${{ steps.model_catalog.outputs.model_max_input_tokens }}
+          MODEL_MAX_OUTPUT_TOKENS: ${{ steps.model_catalog.outputs.model_max_output_tokens }}
+          DOSSIER_CHARS: ${{ steps.build_request.outputs.dossier_chars }}
+          REQUEST_JSON_SIZE_BYTES: ${{ steps.build_request.outputs.request_json_size_bytes }}
           SHOULD_RELEASE: ${{ steps.parsed.outputs.should_release }}
           BUMP: ${{ steps.parsed.outputs.bump }}
+          CONFIDENCE: ${{ steps.parsed.outputs.confidence }}
           REASON: ${{ steps.parsed.outputs.reason }}
           VERSION: ${{ steps.version.outputs.version }}
           POM_VERSION: ${{ steps.pom_version.outputs.version }}
@@ -674,13 +606,50 @@ jobs:
           echo "decision:gate_proceed=${PROCEED:-}"
           echo "decision:token_present=${TOKEN_PRESENT:-}"
           echo "decision:token_gate_proceed=${TOKEN_GATE:-}"
+          echo "decision:model=${MODEL:-}"
+          echo "decision:model_max_input_tokens=${MODEL_MAX_INPUT_TOKENS:-}"
+          echo "decision:model_max_output_tokens=${MODEL_MAX_OUTPUT_TOKENS:-}"
+          echo "decision:dossier_chars=${DOSSIER_CHARS:-}"
+          echo "decision:request_json_size_bytes=${REQUEST_JSON_SIZE_BYTES:-}"
           echo "decision:should_release=${SHOULD_RELEASE:-}"
           echo "decision:bump=${BUMP:-}"
+          echo "decision:confidence=${CONFIDENCE:-}"
           echo "decision:reason=${REASON:-}"
           echo "decision:computed_version=${VERSION:-}"
           echo "decision:pom_version=${POM_VERSION:-} pom_base=${POM_BASE:-}"
           echo "decision:last_reachable_default_branch_tag=${LAST_TAG:-}"
           echo "decision:last_first_parent_tag=${{ steps.lasttag.outputs.last_first_parent_tag }}"
+          {
+            echo "## Release Scheduler Decision"
+            echo ""
+            echo "- model: ${MODEL:-unknown}"
+            echo "- model max input tokens: ${MODEL_MAX_INPUT_TOKENS:-unknown}"
+            echo "- model max output tokens: ${MODEL_MAX_OUTPUT_TOKENS:-unknown}"
+            echo "- dossier chars: ${DOSSIER_CHARS:-0}"
+            echo "- request bytes: ${REQUEST_JSON_SIZE_BYTES:-0}"
+            echo "- should release: ${SHOULD_RELEASE:-unknown}"
+            echo "- bump: ${BUMP:-unknown}"
+            echo "- confidence: ${CONFIDENCE:-unknown}"
+            echo "- computed version: ${VERSION:-none}"
+            echo "- last reachable tag: ${LAST_TAG:-unknown}"
+            echo "- reason: ${REASON:-none}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload release scheduler audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-scheduler-audit-${{ github.run_id }}
+          path: |
+            release-ai-model.json
+            release-dossier.md
+            release-audit.json
+            request.json
+            response.json
+            ai-content.txt
+            release-decision.json
+          if-no-files-found: ignore
+          retention-days: 14
 
   # Reserved major-release approval path.
   # Major bumps are currently downgraded to minor in analyze/parsing and this job should not run.
@@ -807,6 +776,10 @@ jobs:
           GATE_PROCEED: ${{ needs.analyze.outputs.gate_proceed }}
           TOKEN_PRESENT: ${{ needs.analyze.outputs.token_present }}
           TOKEN_GATE: ${{ needs.analyze.outputs.token_gate }}
+          MODEL: ${{ needs.analyze.outputs.model }}
+          MODEL_MAX_INPUT_TOKENS: ${{ needs.analyze.outputs.model_max_input_tokens }}
+          MODEL_MAX_OUTPUT_TOKENS: ${{ needs.analyze.outputs.model_max_output_tokens }}
+          DOSSIER_CHARS: ${{ needs.analyze.outputs.dossier_chars }}
           LAST_TAG: ${{ needs.analyze.outputs.last_tag }}
           LAST_FIRST_PARENT_TAG: ${{ needs.analyze.outputs.last_first_parent_tag }}
           POM_VERSION: ${{ needs.analyze.outputs.pom_version }}
@@ -829,6 +802,10 @@ jobs:
           changelog_len="${CHANGELOG_LEN:-0}"
           token_present="${TOKEN_PRESENT:-unknown}"
           token_gate="${TOKEN_GATE:-unknown}"
+          model="${MODEL:-}"
+          model_max_input_tokens="${MODEL_MAX_INPUT_TOKENS:-}"
+          model_max_output_tokens="${MODEL_MAX_OUTPUT_TOKENS:-}"
+          dossier_chars="${DOSSIER_CHARS:-}"
           should_release="${SHOULD_RELEASE:-unknown}"
           bump="${BUMP:-unknown}"
           version="${VERSION:-}"
@@ -881,6 +858,18 @@ jobs:
           if [ -z "$pom_base" ]; then
             pom_base="(unknown)"
           fi
+          if [ -z "$model" ]; then
+            model="(none)"
+          fi
+          if [ -z "$model_max_input_tokens" ]; then
+            model_max_input_tokens="(unknown)"
+          fi
+          if [ -z "$model_max_output_tokens" ]; then
+            model_max_output_tokens="(unknown)"
+          fi
+          if [ -z "$dossier_chars" ]; then
+            dossier_chars="0"
+          fi
 
           notify_user="${RELEASE_NOTIFY_USER:-TheCookieLab}"
 
@@ -900,6 +889,10 @@ jobs:
           - changelog length: ${changelog_len}
           - models token present: ${token_present}
           - token gate proceed: ${token_gate}
+          - model: ${model}
+          - model max input tokens: ${model_max_input_tokens}
+          - model max output tokens: ${model_max_output_tokens}
+          - dossier chars: ${dossier_chars}
           - should release: ${should_release}
           - bump: ${bump}
           - computed version: ${version}
