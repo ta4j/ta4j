@@ -96,7 +96,7 @@ public final class CompositeSwingDetector implements SwingDetector {
         final List<SwingPivot> merged = new ArrayList<>();
         for (final Map.Entry<PivotKey, PivotAccumulator> entry : accumulatorMap.entrySet()) {
             final PivotAccumulator accumulator = entry.getValue();
-            if (accumulator.count < requiredCount) {
+            if (accumulator.count < requiredCount || accumulator.price == null || Num.isNaNOrNull(accumulator.price)) {
                 continue;
             }
             merged.add(new SwingPivot(entry.getKey().index(), accumulator.price, accumulator.type));

@@ -64,8 +64,9 @@
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 
         <!-- Build -->
-        <maven.compiler.release>21</maven.compiler.release>
+        <maven.compiler.release>25</maven.compiler.release>
         <maven.surefire.version>3.5.4</maven.surefire.version>
+        <ta4j.excludedTestTags>integration,slow</ta4j.excludedTestTags>
 
         <!-- Dependencies -->
         <assertj.version>3.27.7</assertj.version>
@@ -277,7 +278,7 @@
                                     <version>[3.9.0,)</version>
                                 </requireMavenVersion>
                                 <requireJavaVersion>
-                                    <version>[21,)</version>
+                                    <version>[25,)</version>
                                 </requireJavaVersion>
                             </rules>
                         </configuration>
@@ -305,6 +306,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${maven.surefire.version}</version>
                 <configuration>
+                    <excludedGroups>${ta4j.excludedTestTags}</excludedGroups>
                     <useModulePath>false</useModulePath>
                     <argLine>
                         -XX:+EnableDynamicAgentLoading

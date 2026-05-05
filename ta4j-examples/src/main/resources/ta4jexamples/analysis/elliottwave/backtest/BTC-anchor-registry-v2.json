@@ -1,0 +1,87 @@
+{
+  "registryId": "btc-macro-cycle-anchors-v2",
+  "datasetResource": "TradingView-INDEX_BTCUSD-PT1D-20091005_20260306.json",
+  "provenance": "Windows were chosen from widely cited BTC macro-cycle turns plus a user-supplied TradingView INDEX_BTCUSD PT1D export, then resolved deterministically to the local extrema inside each window against the ossified daily dataset committed in ta4j-examples.",
+  "anchors": [
+    {
+      "id": "btc-2011-cycle-top",
+      "label": "2011 cycle top",
+      "kind": "TOP",
+      "windowStart": "2011-05-15T00:00:00Z",
+      "windowEnd": "2011-07-15T00:00:00Z",
+      "expectedPhases": ["WAVE5"],
+      "source": "TradingView INDEX_BTCUSD PT1D local extremum inside the June 2011 blow-off window.",
+      "notes": "Early macro-cycle peak retained as an anchor-only exhaustion check."
+    },
+    {
+      "id": "btc-2011-cycle-bottom",
+      "label": "2011 cycle bottom",
+      "kind": "BOTTOM",
+      "windowStart": "2011-10-15T00:00:00Z",
+      "windowEnd": "2011-12-15T00:00:00Z",
+      "expectedPhases": ["CORRECTIVE_C"],
+      "source": "TradingView INDEX_BTCUSD PT1D local extremum inside the 2011 washout window.",
+      "notes": "Bottoms are now treated strictly as bearish corrective-C completions."
+    },
+    {
+      "id": "btc-2013-cycle-top",
+      "label": "2013 cycle top",
+      "kind": "TOP",
+      "windowStart": "2013-11-20T00:00:00Z",
+      "windowEnd": "2013-12-03T00:00:00Z",
+      "expectedPhases": ["WAVE5"],
+      "source": "TradingView INDEX_BTCUSD PT1D local extremum inside the late-November 2013 blow-off window.",
+      "notes": "Second early macro-cycle peak used to complete the 2011-2013-2015 bull cycle."
+    },
+    {
+      "id": "btc-2015-cycle-bottom",
+      "label": "2015 cycle bottom",
+      "kind": "BOTTOM",
+      "windowStart": "2015-07-01T00:00:00Z",
+      "windowEnd": "2015-09-30T00:00:00Z",
+      "expectedPhases": ["CORRECTIVE_C"],
+      "source": "TradingView INDEX_BTCUSD PT1D local extremum inside the 2015 capitulation window.",
+      "notes": "First clean macro-cycle low used as the start of the completed 2015-2017-2018 bull cycle."
+    },
+    {
+      "id": "btc-2017-cycle-top",
+      "label": "2017 cycle top",
+      "kind": "TOP",
+      "windowStart": "2017-11-15T00:00:00Z",
+      "windowEnd": "2018-01-15T00:00:00Z",
+      "expectedPhases": ["WAVE5"],
+      "source": "TradingView INDEX_BTCUSD PT1D local extremum inside the 2017 Q4 blow-off window.",
+      "notes": "Macro-cycle peak used as the bullish wave-5 target for the first completed cycle."
+    },
+    {
+      "id": "btc-2018-cycle-bottom",
+      "label": "2018 cycle bottom",
+      "kind": "BOTTOM",
+      "windowStart": "2018-11-01T00:00:00Z",
+      "windowEnd": "2019-02-15T00:00:00Z",
+      "expectedPhases": ["CORRECTIVE_C"],
+      "source": "TradingView INDEX_BTCUSD PT1D local extremum inside the 2018 capitulation window.",
+      "notes": "Bear-market floor used as the corrective-C completion for the first completed cycle."
+    },
+    {
+      "id": "btc-2021-cycle-top",
+      "label": "2021 cycle top",
+      "kind": "TOP",
+      "windowStart": "2021-10-01T00:00:00Z",
+      "windowEnd": "2021-12-15T00:00:00Z",
+      "expectedPhases": ["WAVE5"],
+      "source": "TradingView INDEX_BTCUSD PT1D local extremum inside the 2021 Q4 peak window.",
+      "notes": "Second major macro-cycle peak retained as the holdout bullish wave-5 target."
+    },
+    {
+      "id": "btc-2022-cycle-bottom",
+      "label": "2022 cycle bottom",
+      "kind": "BOTTOM",
+      "windowStart": "2022-10-15T00:00:00Z",
+      "windowEnd": "2022-12-31T00:00:00Z",
+      "expectedPhases": ["CORRECTIVE_C"],
+      "source": "TradingView INDEX_BTCUSD PT1D local extremum inside the 2022 bear-market low window.",
+      "notes": "Primary post-2021 bear-market floor used as the holdout corrective-C completion."
+    }
+  ]
+}

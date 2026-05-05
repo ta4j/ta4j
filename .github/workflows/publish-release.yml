@@ -550,7 +550,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
           cache: maven
 
       - name: Set up Java with publishing secrets
@@ -558,7 +558,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
           cache: maven
           server-id: central
           server-username: ${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}

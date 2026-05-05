@@ -1,8 +1,15 @@
 ## Unreleased
 
+### Added
+- **Anchor-aware Elliott tuning harness**: You can now run `ElliottWaveAnchorCalibrationHarness` with the versioned `BTC-anchor-registry-v1.json` registry to replay major BTC tops and bottoms, compare the locked baseline against coarse challenger profiles on top-1/top-3 anchor hits plus `ECE`/`Brier`/`LogLoss`, and get a deterministic promote-or-retain bundle that also sanity-checks the selected profile on ETH/USD and S&P 500 data.
+
 ### Changed
 - **Rule trace diagnostics are now explicit and safer for shared strategies**: rule and strategy trace modes now default off, evaluate child rules with scoped trace context instead of mutating shared rule instances, and emit stable path/depth/context fields while preserving readable trace logs.
 - **Agent guidance stays accurate across repo and personal workflows**: `scripts/agents_for_target.sh` guidance now clearly describes path-scoped `AGENTS.md` discovery from the current repo/workspace root, so contributors can use it for file-targeted lookup without assuming it also covers personal PR/comment workflow guidance.
+- **BTC daily Elliott runs now share one macro-validated core path**: You can now run the historical BTC macro study and the live BTC preset through the same core-ranked Elliott engine, keep the locked `1-2-3-4-5` / `A-B-C` truth-set regression in place, and read the current-cycle invalidation directly as a condition like `<= 68997.75` instead of reverse-engineering a raw number from the demo output. The BTC wrapper is now primarily about loading ossified data, choosing the prevalidated profile, and rendering charts/reports.
+
+### Fixed
+- **PR validation stays fast while the slow Elliott replay suite remains runnable**: GitHub build CI now keeps the standard `integration,slow` tag exclusions instead of running every tagged test on each PR, and contributors can still rerun the BTC macro-cycle replay suite locally with `-Dta4j.excludedTestTags=` when they need full validation.
 
 ## 0.22.6 (2026-04-01)
 
@@ -174,6 +181,7 @@
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 - **Dependencies**: update to latest versions
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
+- **Java 25 LTS baseline**: [#1338](https://github.com/ta4j/ta4j/issues/1338) Ta4j now builds and publishes for Java 25+, matching the project policy of tracking Java LTS releases.
 
 ### Fixed
 - **Chart window focus stealing**: `ta4j-examples` chart display paths now set `setFocusableWindowState(false)` so chart-related test/example runs do not steal desktop focus.

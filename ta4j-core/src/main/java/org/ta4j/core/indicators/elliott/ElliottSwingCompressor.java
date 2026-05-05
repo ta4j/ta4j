@@ -24,6 +24,12 @@ import org.ta4j.core.num.Num;
  * high-frequency.
  *
  * <p>
+ * After threshold-based filtering, adjacent swings with the same direction are
+ * collapsed back into one dominant swing. This preserves the alternating pivot
+ * stream expected by later Elliott scenario generation when a small
+ * counter-trend swing is filtered away.
+ *
+ * <p>
  * This class does not detect swings itself; it operates on the output of
  * {@link ElliottSwingIndicator} or
  * {@link org.ta4j.core.indicators.elliott.swing.SwingDetector}.
@@ -160,6 +166,42 @@ public class ElliottSwingCompressor {
         if (filtered.isEmpty()) {
             return List.of();
         }
-        return Collections.unmodifiableList(filtered);
+        return Collections.unmodifiableList(collapseAdjacentSameDirection(filtered));
+    }
+
+    private List<ElliottSwing> collapseAdjacentSameDirection(final List<ElliottSwing> swings) {
+        if (swings.size() < 2) {
+            return swings;
+        }
+
+        final List<ElliottSwing> collapsed = new ArrayList<>(swings.size());
+        ElliottSwing current = swings.getFirst();
+        for (int index = 1; index < swings.size(); index++) {
+            final ElliottSwing candidate = swings.get(index);
+            if (current.isRising() == candidate.isRising()) {
+                current = mergeSameDirectionCluster(current, candidate);
+                continue;
+            }
+            collapsed.add(current);
+            current = candidate;
+        }
+        collapsed.add(current);
+        return collapsed;
+    }
+
+    private ElliottSwing mergeSameDirectionCluster(final ElliottSwing current, final ElliottSwing candidate) {
+        if (current.isRising()) {
+            if (candidate.toPrice().isGreaterThan(current.toPrice())
+                    || candidate.toPrice().isEqual(current.toPrice())) {
+                return new ElliottSwing(current.fromIndex(), candidate.toIndex(), current.fromPrice(),
+                        candidate.toPrice(), current.degree());
+            }
+            return current;
+        }
+        if (candidate.toPrice().isLessThan(current.toPrice()) || candidate.toPrice().isEqual(current.toPrice())) {
+            return new ElliottSwing(current.fromIndex(), candidate.toIndex(), current.fromPrice(), candidate.toPrice(),
+                    current.degree());
+        }
+        return current;
     }
 }

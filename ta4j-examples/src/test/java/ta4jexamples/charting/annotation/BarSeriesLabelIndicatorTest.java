@@ -6,10 +6,12 @@ package ta4jexamples.charting.annotation;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.awt.Color;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -143,6 +145,23 @@ class BarSeriesLabelIndicatorTest {
         assertEquals(105.0, label.yValue().doubleValue(), 0.001);
         assertEquals("Test", label.text());
         assertEquals(LabelPlacement.ABOVE, label.placement());
+        assertNull(label.color());
+    }
+
+    @Test
+    void testBarLabelCreationRetainsExplicitColor() {
+        BarLabel label = new BarLabel(5, numFactory.numOf(105.0), "Test", LabelPlacement.ABOVE, Color.GREEN);
+
+        assertEquals(Color.GREEN, label.color());
+        assertEquals(1.0, label.fontScale());
+    }
+
+    @Test
+    void testBarLabelCreationRetainsExplicitFontScale() {
+        BarLabel label = new BarLabel(5, numFactory.numOf(105.0), "Test", LabelPlacement.ABOVE, Color.GREEN, 3.0);
+
+        assertEquals(Color.GREEN, label.color());
+        assertEquals(3.0, label.fontScale());
     }
 
     @Test
@@ -171,6 +190,18 @@ class BarSeriesLabelIndicatorTest {
         assertThrows(NullPointerException.class, () -> {
             new BarLabel(0, numFactory.numOf(100.0), "Test", null);
         });
+    }
+
+    @Test
+    void testBarLabelThrowsWhenFontScaleIsNotPositive() {
+        List<Double> invalidFontScales = List.of(-1.0, 0.0, Double.NaN, Double.NEGATIVE_INFINITY,
+                Double.POSITIVE_INFINITY);
+
+        for (Double invalidFontScale : invalidFontScales) {
+            IllegalArgumentException thrown = assertThrows(IllegalArgumentException.class, () -> new BarLabel(0,
+                    numFactory.numOf(100.0), "Test", LabelPlacement.CENTER, null, invalidFontScale));
+            assertEquals("fontScale must be positive and finite", thrown.getMessage());
+        }
     }
 
     @Test

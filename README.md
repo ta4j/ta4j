@@ -1,4 +1,4 @@
-# ta4j  [![Build and Test](https://github.com/ta4j/ta4j/actions/workflows/test.yml/badge.svg)](https://github.com/ta4j/ta4j/actions/workflows/test.yml) [![Discord](https://img.shields.io/discord/745552125769023488.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/HX9MbWZ) [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT) ![Maven Central](https://img.shields.io/maven-central/v/org.ta4j/ta4j-parent?color=blue&label=Version) ![JDK](https://img.shields.io/badge/JDK-21%2B-orange)
+# ta4j  [![Build and Test](https://github.com/ta4j/ta4j/actions/workflows/test.yml/badge.svg)](https://github.com/ta4j/ta4j/actions/workflows/test.yml) [![Discord](https://img.shields.io/discord/745552125769023488.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/HX9MbWZ) [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT) ![Maven Central](https://img.shields.io/maven-central/v/org.ta4j/ta4j-parent?color=blue&label=Version) ![JDK](https://img.shields.io/badge/JDK-25%2B-orange)
 
 ***Technical Analysis for Java***
 
@@ -12,7 +12,7 @@ Build, test, and deploy trading bots in Java. With 200+ (and counting) technical
 
 - [Why Ta4j?](#why-ta4j)
 - [Install in seconds](#install-in-seconds)
-- [Build commands: Maven Wrapper or Maven](#build-commands-maven-wrapper-or-maven)
+- [Build commands: Maven](#build-commands-maven)
 - [Quick start: Your first strategy](#quick-start-your-first-strategy)
 - [Sourcing market data](#sourcing-market-data)
 - [Visualize and share strategies](#visualize-and-share-strategies)
@@ -50,7 +50,7 @@ Ta4j does not promise profitable strategies. It promises reproducible experiment
 
 ### Why Java developers choose Ta4j
 
-- **Pure Java, zero friction**: Works anywhere Java 21+ runs - cloud functions, desktop tools, microservices, or trading bots. No Python bridges or external dependencies.
+- **Pure Java, zero friction**: Works anywhere Java 25+ runs - cloud functions, desktop tools, microservices, or trading bots. No Python bridges or external dependencies.
 - **Type-safe, Production-ready**: Ta4j favors explicit models, strong typing, and predictable performance over exploratory scripting. Deterministic outputs, JSON serialization for strategies/indicators, and minimal dependencies make it easy to deploy.
 - **Huge indicator catalog**: Aroon, ATR, Ichimoku, MACD, RSI, Renko, Heikin-Ashi, and 190+ more ready to plug together. New indicators are added regularly based on community needs and contributions.
 - **Composable strategies**: Chain rules fluently using familiar Java patterns - no DSLs or configuration files required.
@@ -122,14 +122,9 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 
 **💡 Tip**: The `ta4j-examples` module includes runnable demos, data loaders, and charting utilities. It's a great way to see Ta4j in action and learn by example.
 
-## Build commands: Maven Wrapper or Maven
+## Build commands: Maven
 
-Ta4j supports both approaches:
-
-- **Maven Wrapper (recommended):** Uses the repository-pinned Maven version and avoids requiring a global Maven installation.
-  Linux/macOS/Git Bash: `./mvnw ...`
-  Windows CMD/PowerShell: `mvnw.cmd ...`
-- **System Maven (optional):** Use `mvn ...` if you prefer your local Maven installation.
+Ta4j requires Java 25+ and Maven 3.9+. Use `mvn ...` from the repository root.
 
 ## Try it now
 
@@ -140,24 +135,16 @@ Ta4j supports both approaches:
 git clone https://github.com/ta4j/ta4j.git
 cd ta4j
 
-# Build the project first (Linux/macOS/Git Bash)
-./mvnw clean install -DskipTests
-# Windows CMD/PowerShell: mvnw.cmd clean install -DskipTests
+# Build the project first
+mvn clean install -DskipTests
 
 # Run the Quickstart example (Quickstart is configured as the default)
-./mvnw -pl ta4j-examples exec:java
-# Windows CMD/PowerShell: mvnw.cmd -pl ta4j-examples exec:java
+mvn -pl ta4j-examples exec:java
 ```
-
-Prefer system Maven? Use the same commands with `mvn` instead of `./mvnw` or `mvnw.cmd`.
 
 **Alternative:** To run a different example class:
 ```bash
-# On Linux/Mac/Git Bash
-./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
-
-# On Windows CMD (use quotes)
-mvnw.cmd -pl ta4j-examples exec:java "-Dexec.mainClass=ta4jexamples.Quickstart"
+mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
 ```
 
 This will load historical Bitcoin data, run a complete trading strategy, display performance metrics, and show an interactive chart - all in one go!
@@ -172,7 +159,7 @@ Load price data, plug in indicators, and describe when to enter/exit. The API re
 
 **💡 Want to see this in action?** The [`Quickstart` example](https://github.com/ta4j/ta4j/blob/master/ta4j-examples/src/main/java/ta4jexamples/Quickstart.java) includes this same pattern plus performance metrics and charting. Run it with:
 ```bash
-./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
+mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
 ```
 
 **Key concepts:**
@@ -267,7 +254,7 @@ BarSeries series = YahooFinanceHttpBarSeriesDataSource.loadSeries("BTC-USD",
 
 **See it in action:** Run the complete example with:
 ```bash
-./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.YahooFinanceBacktest
+mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.YahooFinanceBacktest
 ```
 
 This example demonstrates loading data from Yahoo Finance, building an advanced multi-indicator strategy (Bollinger Bands, RSI, ATR stops), running a backtest, and visualizing results.
@@ -302,7 +289,7 @@ BarSeries series = dataSource.loadSeriesInstance("ETH-USD",
 
 **See it in action:** Run the complete example with:
 ```bash
-./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.CoinbaseBacktest
+mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.CoinbaseBacktest
 ```
 
 ### Other data sources
@@ -827,6 +814,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[ElliottWaveAdaptiveSwingAnalysis](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/demo/ElliottWaveAdaptiveSwingAnalysis.java)** - Demonstrates adaptive/composite swing detection for scenario generation.
 - **[ElliottWavePatternProfileDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/demo/ElliottWavePatternProfileDemo.java)** - Compares default and pattern-aware confidence profiles.
 - **[ElliottWaveMultiDegreeAnalysisDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/demo/ElliottWaveMultiDegreeAnalysisDemo.java)** - Shows cross-degree validation and scenario recommendation.
+- **[ElliottWaveAnchorCalibrationHarness](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveAnchorCalibrationHarness.java)** - Replays a versioned BTC cycle-anchor registry against the locked walk-forward baseline, promotes a challenger only when every holdout gate clears, and otherwise keeps the baseline while printing the failed-gate summary plus ETH/USD and S&P 500 portability checks.
 - **[ElliottWaveTrendBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveTrendBacktest.java)** - Evaluates trend-bias directionality over backtest and walk-forward windows.
 - **[HighRewardElliottWaveBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/HighRewardElliottWaveBacktest.java)** - Backtests the high-reward Elliott Wave strategy presets.
 - **[WyckoffCycleIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleIndicatorSuiteDemo.java)** - Demonstrates the Wyckoff cycle entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`) and prints phase transitions on an ossified bar series dataset
@@ -840,7 +828,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[CandlestickChart](ta4j-examples/src/main/java/ta4jexamples/indicators/CandlestickChart.java)** - Basic candlestick chart with trading signals
 - **[CashFlowToChart](ta4j-examples/src/main/java/ta4jexamples/analysis/CashFlowToChart.java)** - Visualize cash flow and equity curves
 
-**💡 Tip**: Run any example with `./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart` (replace `Quickstart` with the class name; on Windows use `mvnw.cmd`).
+**💡 Tip**: Run any example with `mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart` (replace `Quickstart` with the class name).
 
 ## Performance
 
