@@ -135,6 +135,27 @@ EOF
   expect_json_value decision.json bump minor
   expect_file_contains outputs.txt "bump=minor" "major bumps should be downgraded in outputs"
 
+  cat > ai-content.txt <<'EOF'
+{"should_release":"false","bump":"minor","confidence":0.7,"reason":"No release needed"}
+EOF
+  "$PYTHON" "$SCRIPT" parse-decision --raw-file ai-content.txt --output string-false.json
+  expect_json_value string-false.json should_release false
+  expect_json_value string-false.json bump patch
+
+  cat > ai-content.txt <<'EOF'
+{"should_release":"1","bump":"patch","confidence":0.7,"reason":"Release needed"}
+EOF
+  "$PYTHON" "$SCRIPT" parse-decision --raw-file ai-content.txt --output string-true.json
+  expect_json_value string-true.json should_release true
+
+  cat > ai-content.txt <<'EOF'
+{"should_release":"maybe","bump":"minor","confidence":0.7,"reason":"Ambiguous response"}
+EOF
+  "$PYTHON" "$SCRIPT" parse-decision --raw-file ai-content.txt --output invalid-flag.json
+  expect_json_value invalid-flag.json should_release false
+  expect_json_value invalid-flag.json bump patch
+  expect_file_contains invalid-flag.json "invalid should_release 'maybe'" "invalid flag should be called out"
+
   printf 'not-json' > ai-content.txt
   "$PYTHON" "$SCRIPT" parse-decision --raw-file ai-content.txt --output invalid.json
   expect_json_value invalid.json should_release false

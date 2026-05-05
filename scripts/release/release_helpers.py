@@ -421,6 +421,23 @@ def parse_json_object(raw: str) -> dict[str, Any] | None:
     return None
 
 
+def parse_release_flag(value: Any) -> tuple[bool, str]:
+    if isinstance(value, bool):
+        return value, ""
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if value == 1:
+            return True, ""
+        if value == 0:
+            return False, ""
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized in {"true", "1", "yes", "y", "on"}:
+            return True, ""
+        if normalized in {"false", "0", "no", "n", "off", ""}:
+            return False, ""
+    return False, f"invalid should_release '{value}', defaulted to false"
+
+
 def normalize_decision(parsed: dict[str, Any] | None, raw: str) -> dict[str, Any]:
     if parsed is None:
         hint = raw[:200].replace("\n", " ").strip()
@@ -438,9 +455,11 @@ def normalize_decision(parsed: dict[str, Any] | None, raw: str) -> dict[str, Any
             "missing": [],
         }
 
-    should_release = bool(parsed.get("should_release"))
+    should_release, flag_warning = parse_release_flag(parsed.get("should_release", False))
     bump = str(parsed.get("bump") or "patch").strip().lower()
     warning = str(parsed.get("warning") or "")
+    if flag_warning:
+        warning = (warning + "; " if warning else "") + flag_warning
     if bump == "major":
         bump = "minor"
         warning = (warning + "; " if warning else "") + "major bump disabled, downgraded to minor"
