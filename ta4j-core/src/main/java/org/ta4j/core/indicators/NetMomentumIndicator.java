@@ -17,10 +17,14 @@ import static org.ta4j.core.num.NaN.NaN;
  *
  * <p>
  * This indicator measures the cumulative deviation of an oscillating indicator
- * from its neutral pivot point over a specified timeframe. It helps identify:
+ * from its neutral pivot point over a specified timeframe. Its primary use is
+ * short-memory continuation detection: when recent oscillator pressure crosses
+ * and remains above or below the neutral line, the market is showing
+ * directional pressure that can continue into nearby swing highs or swing lows.
+ * It helps identify:
  * <ul>
  * <li>Persistent momentum bias (bullish/bearish energy)</li>
- * <li>Potential mean reversion opportunities at extremes</li>
+ * <li>Continuation pressure after zero-line crosses</li>
  * <li>Divergences between price action and momentum</li>
  * </ul>
  *
@@ -51,17 +55,19 @@ import static org.ta4j.core.num.NaN.NaN;
  * <p>
  * Practical scenarios where Net Momentum adds insight beyond the oscillator:
  * <ul>
- * <li><b>Regime filter</b>: Sustained positive readings indicate a bullish
- * environment; sustained negative readings a bearish one. The zero line can act
- * as a trend filter for enabling/disabling strategies.</li>
- * <li><b>Breakout readiness</b>: A steady rise from negative to positive while
- * price is still range-bound can foreshadow directional breaks.</li>
+ * <li><b>Continuation gate</b>: Sustained positive readings indicate bullish
+ * pressure; sustained negative readings indicate bearish pressure. A cross up
+ * through zero is commonly treated as confirmation that upside pressure is
+ * active, while a cross down through zero confirms downside pressure.</li>
+ * <li><b>Breakout follow-through</b>: A fresh cross up can confirm that a local
+ * high is being pursued by recent momentum, while a fresh cross down can
+ * confirm pressure toward a local low.</li>
  * <li><b>Continuation vs. exhaustion</b>: New price highs with
  * flattening/falling net momentum warn of waning fuel; rising net momentum
  * confirms trend continuation.</li>
- * <li><b>Mean reversion extremes</b>: Unusually high/low cumulative values
- * versus a rolling history highlight stretched conditions that often
- * mean-revert.</li>
+ * <li><b>Control studies</b>: Reversal interpretations of zero-line crosses can
+ * be evaluated as controls, but the indicator's short-memory configuration is
+ * generally better suited to continuation hypotheses.</li>
  * <li><b>Noise reduction in ranges</b>: Oscillators often whipsaw around the
  * pivot in ranges; net momentum tends to hover near zero, reducing false
  * signals.</li>
@@ -81,23 +87,25 @@ import static org.ta4j.core.num.NaN.NaN;
  * pressure).</li>
  * <li>Two series can end at RSI = 60; the one that spent more time and distance
  * above 50 will show higher net momentum.</li>
- * <li>Zero-line crosses and slope changes in net momentum can be used as robust
- * filters or timing aids compared to single RSI threshold checks.</li>
+ * <li>Zero-line crosses and slope changes in net momentum can be used as
+ * continuation filters or timing aids compared to single RSI threshold
+ * checks.</li>
  * </ul>
  *
  * <p>
- * Common usage with RSI:
+ * Common short-memory continuation usage with RSI:
  *
  * <pre>{@code
- * RSIIndicator rsi = new RSIIndicator(closePrice, 14);
- * NetMomentumIndicator netMomentum = NetMomentumIndicator.forRsi(rsi, 20);
+ * RSIIndicator rsi = new RSIIndicator(closePrice, 7);
+ * NetMomentumIndicator netMomentum = NetMomentumIndicator.forRsiWithDecay(rsi, 14, 0.5);
  * }</pre>
  *
- * Including a decay factor to emphasize time-based mean reversion:
+ * A faster downside sit-out lens can use the same RSI source with a shorter
+ * memory:
  *
  * <pre>{@code
- * RSIIndicator rsi = new RSIIndicator(closePrice, 14);
- * NetMomentumIndicator netMomentum = NetMomentumIndicator.forRsiWithDecay(rsi, 20, 0.85);
+ * RSIIndicator rsi = new RSIIndicator(closePrice, 7);
+ * NetMomentumIndicator downsidePressure = NetMomentumIndicator.forRsiWithDecay(rsi, 7, 0.5);
  * }</pre>
  *
  * @see RSIIndicator

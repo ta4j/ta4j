@@ -179,6 +179,39 @@ public class NetMomentumIndicatorTest extends AbstractIndicatorTest<Indicator<Nu
     }
 
     @Test
+    public void testZeroLineCrossMarksContinuationPressure() {
+        CachedIndicator<Num> oscillator = new CachedIndicator<>(closePrice) {
+            @Override
+            public int getCountOfUnstableBars() {
+                return 0;
+            }
+
+            @Override
+            protected Num calculate(int index) {
+                return numOf(index < 8 ? 45 : 60);
+            }
+        };
+
+        NetMomentumIndicator subject = new NetMomentumIndicator(oscillator, 3, 50, 0.5);
+
+        int unstableBars = subject.getCountOfUnstableBars();
+        boolean crossedUp = false;
+        for (int i = Math.max(unstableBars + 1, 1); i < series.getBarCount(); i++) {
+            Num previous = subject.getValue(i - 1);
+            Num current = subject.getValue(i);
+            if (!Num.isNaNOrNull(previous) && !Num.isNaNOrNull(current) && !previous.isPositive()
+                    && current.isPositive()) {
+                crossedUp = true;
+                assertTrue("Positive side of zero should mark bullish continuation pressure",
+                        subject.getValue(series.getBarCount() - 1).isPositive());
+                break;
+            }
+        }
+
+        assertTrue("Expected NetMomentum to cross up through zero after persistent above-pivot input", crossedUp);
+    }
+
+    @Test
     public void testWithDifferentNeutralPivots() {
         // Use a non-NaN oscillator to compare pivot sensitivity
         CachedIndicator<Num> oscillator = new CachedIndicator<>(closePrice) {

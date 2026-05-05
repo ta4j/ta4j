@@ -27,11 +27,10 @@ public class NetMomentumStrategy {
 
     private static final Logger LOG = LogManager.getLogger(NetMomentumStrategy.class);
 
-    private static final int DEFAULT_OVERBOUGHT_THRESHOLD = 900;
-    private static final int DEFAULT_MOMENTUM_TIMEFRAME = 200;
-    private static final int DEFAULT_OVERSOLD_THRESHOLD = -200;
-    private static final int DEFAULT_RSI_BARCOUNT = 14;
-    private static final double DEFAULT_DECAY_FACTOR = 1;
+    private static final int DEFAULT_ZERO_LINE = 0;
+    private static final int DEFAULT_MOMENTUM_TIMEFRAME = 14;
+    private static final int DEFAULT_RSI_BARCOUNT = 7;
+    private static final double DEFAULT_DECAY_FACTOR = 0.5;
 
     public static void main(String[] args) {
         String jsonOhlcResourceFile = "Coinbase-ETH-USD-PT1D-20160517_20251028.json";
@@ -92,8 +91,8 @@ public class NetMomentumStrategy {
     }
 
     private static Strategy createStrategy(NetMomentumIndicator rsiM) {
-        Rule entryRule = new CrossedUpIndicatorRule(rsiM, DEFAULT_OVERSOLD_THRESHOLD);
-        Rule exitRule = new CrossedDownIndicatorRule(rsiM, DEFAULT_OVERBOUGHT_THRESHOLD);
+        Rule entryRule = new CrossedUpIndicatorRule(rsiM, DEFAULT_ZERO_LINE);
+        Rule exitRule = new CrossedDownIndicatorRule(rsiM, DEFAULT_ZERO_LINE);
 
         return new BaseStrategy(NetMomentumStrategy.class.getSimpleName(), entryRule, exitRule);
     }
