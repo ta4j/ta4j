@@ -35,6 +35,7 @@ jobs:
       - name: Normalize dry run input
         id: dry_run
         run: |
+          echo "::group::Normalize prepare-release dry-run input"
           raw="${{ github.event.inputs.dryRun }}"
           normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
 
@@ -47,12 +48,14 @@ jobs:
           echo "audit:dry_run_input_raw='${raw}'"
           echo "audit:dry_run_normalized=$dry_run"
           echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
 
       - name: Normalize direct push flag
         id: direct_push
         env:
           DIRECT_PUSH: ${{ vars.RELEASE_DIRECT_PUSH }}
         run: |
+          echo "::group::Normalize RELEASE_DIRECT_PUSH"
           raw="${DIRECT_PUSH:-}"
           normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
 
@@ -64,6 +67,7 @@ jobs:
 
           echo "audit:release_direct_push=$enabled raw='${raw}'"
           echo "enabled=$enabled" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
 
       - name: Preflight GH_TA4J_REPO_TOKEN permissions
         id: token_preflight
@@ -353,14 +357,15 @@ jobs:
           echo "current=$CURRENT" >> $GITHUB_OUTPUT
 
       - name: Preflight git push capability
-        if: steps.dry_run.outputs.dryRun != 'true'
         env:
           DIRECT_PUSH: ${{ steps.direct_push.outputs.enabled }}
           TARGET_BRANCH: ${{ github.event.repository.default_branch }}
           RELEASE_BRANCH: release/${{ steps.versions.outputs.release }}
           USE_REPO_TOKEN: ${{ steps.token_preflight.outputs.use_repo_token }}
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
         run: |
           set -euo pipefail
+          echo "::group::Git push dry-run capability probe"
           if [ "${DIRECT_PUSH}" = "true" ]; then
             if [ -z "${TARGET_BRANCH:-}" ]; then
               echo "Default branch was not set; refusing to probe push capability."
@@ -373,7 +378,7 @@ jobs:
             mode="release-branch"
           fi
 
-          echo "audit:push_probe_mode=${mode} refspec=${refspec} use_repo_token=${USE_REPO_TOKEN:-false}"
+          echo "audit:push_probe_mode=${mode} refspec=${refspec} use_repo_token=${USE_REPO_TOKEN:-false} dryRun=${DRY_RUN:-false}"
 
           set +e
           if [ "${DIRECT_PUSH}" = "true" ]; then
@@ -390,6 +395,7 @@ jobs:
             echo "::error::Push capability probe failed for ${mode}. Check token/repository permissions."
             exit "$status"
           fi
+          echo "::endgroup::"
 
       # -----------------------
       # Release Preparation
@@ -401,8 +407,10 @@ jobs:
 
       - name: Prepare Release Notes
         run: |
+          echo "::group::Prepare release notes and version references"
           chmod +x scripts/prepare-release.sh
           scripts/prepare-release.sh "${{ steps.versions.outputs.release }}"
+          echo "::endgroup::"
 
       - name: Configure git user
         if: steps.dry_run.outputs.dryRun != 'true'
@@ -427,8 +435,10 @@ jobs:
 
       - name: Validate Maven Central metadata
         run: |
+          echo "::group::Validate Maven Central metadata"
           chmod +x scripts/validate-central-metadata.sh
           scripts/validate-central-metadata.sh
+          echo "::endgroup::"
 
       - name: Commit release version and notes
         if: steps.dry_run.outputs.dryRun != 'true'
@@ -656,3 +666,35 @@ jobs:
           echo "summary: current=${CURRENT:-}"
           echo "summary: next=${NEXT:-}"
           echo "summary: releaseCommit=${RELEASE_COMMIT:-}"
+          cat > release-audit.json <<EOF
+          {
+            "dryRun": "${DRY_RUN:-}",
+            "directPush": "${DIRECT_PUSH:-}",
+            "release": "${RELEASE:-}",
+            "current": "${CURRENT:-}",
+            "next": "${NEXT:-}",
+            "releaseCommit": "${RELEASE_COMMIT:-}",
+            "runUrl": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          }
+          EOF
+          {
+            echo "## Prepare Release"
+            echo ""
+            echo "- dry run: ${DRY_RUN:-unknown}"
+            echo "- direct push: ${DIRECT_PUSH:-unknown}"
+            echo "- current: ${CURRENT:-unknown}"
+            echo "- release: ${RELEASE:-unknown}"
+            echo "- next snapshot: ${NEXT:-unknown}"
+            echo "- release commit: ${RELEASE_COMMIT:-none}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload prepare-release audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prepare-release-audit-${{ github.run_id }}
+          path: |
+            release-audit.json
+            release/${{ steps.versions.outputs.release }}.md
+          if-no-files-found: ignore
+          retention-days: 14

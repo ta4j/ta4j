@@ -19,3 +19,9 @@ Use this guide when editing helper scripts or when orchestrating worktree/proces
 - For non-trivial work, prefer dedicated worktrees under `.agents/worktrees/`.
 - Keep a living PRD/checklist during implementation so work can resume with minimal rediscovery.
 - Use branch prefixes `feature/`, `bugfix/`, or `refactor/`.
+
+## Release helper scripts
+
+- Keep release workflow business logic in reusable scripts under `scripts/release/` instead of copying large logic blocks into workflow YAML.
+- When adding release helper behavior, add fixture coverage under `scripts/tests/` and keep GitHub Actions outputs/artifacts sanitized.
+- Release helper scripts should emit concise `audit:` lines for workflow logs and write structured files that can be uploaded with `actions/upload-artifact`.

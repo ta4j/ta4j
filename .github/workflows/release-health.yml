@@ -49,6 +49,7 @@ jobs:
         id: default_branch
         run: |
           set -euo pipefail
+          echo "::group::Resolve default branch"
 
           branch="${{ github.event.repository.default_branch }}"
           if [ -z "$branch" ]; then
@@ -62,6 +63,8 @@ jobs:
             exit 1
           fi
           echo "branch=$branch" >> $GITHUB_OUTPUT
+          echo "audit:default_branch=$branch"
+          echo "::endgroup::"
 
       - name: Collect tag and version state
         id: state
@@ -69,6 +72,7 @@ jobs:
           DEFAULT_BRANCH: ${{ steps.default_branch.outputs.branch }}
         run: |
           set -euo pipefail
+          echo "::group::Collect release tag and version state"
 
           git fetch origin "$DEFAULT_BRANCH" --tags
 
@@ -84,6 +88,7 @@ jobs:
           done < "$tag_state_file"
 
           cat "$tag_state_file" >> "$GITHUB_OUTPUT"
+          cp "$tag_state_file" tag-resolution.txt
           rm -f "$tag_state_file"
 
           pom_version=$(python3 - <<'PY'
@@ -149,6 +154,7 @@ jobs:
           echo "pom_snapshot=$pom_snapshot" >> $GITHUB_OUTPUT
           echo "snapshot_ok=$snapshot_ok" >> $GITHUB_OUTPUT
           echo "release_notes_present=$notes_present" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
 
       - name: Check for stale release PRs
         id: stale_prs
@@ -326,6 +332,48 @@ jobs:
           EOF
 
           echo "drift_found=$drift" >> $GITHUB_OUTPUT
+          cat > release-health-audit.json <<EOF
+          {
+            "status": "${status}",
+            "drift": "${drift}",
+            "defaultBranch": "${DEFAULT_BRANCH}",
+            "latestTag": "${LATEST_TAG}",
+            "lastReachableTag": "${LAST_REACHABLE_TAG}",
+            "lastFirstParentTag": "${LAST_FIRST_PARENT_TAG}",
+            "latestTagReachable": "${LATEST_TAG_REACHABLE}",
+            "pomVersion": "${POM_VERSION}",
+            "pomBase": "${POM_BASE}",
+            "pomSnapshot": "${POM_SNAPSHOT}",
+            "snapshotOk": "${SNAPSHOT_OK}",
+            "releaseNotesPresent": "${NOTES_PRESENT}",
+            "staleReleasePrCount": "${STALE_COUNT}",
+            "runUrl": "${run_url}"
+          }
+          EOF
+          {
+            echo "## Release Health"
+            echo ""
+            echo "- status: ${status}"
+            echo "- drift: ${drift}"
+            echo "- latest tag: ${LATEST_TAG}"
+            echo "- last reachable tag: ${LAST_REACHABLE_TAG}"
+            echo "- latest tag reachable: ${LATEST_TAG_REACHABLE}"
+            echo "- pom version: ${POM_VERSION}"
+            echo "- snapshot ahead of latest tag: ${SNAPSHOT_OK}"
+            echo "- stale release PR count: ${STALE_COUNT}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload release health audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-health-audit-${{ github.run_id }}
+          path: |
+            tag-resolution.txt
+            release-health-audit.json
+            notification-body.txt
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Post to Release Scheduler discussion
         if: always()
