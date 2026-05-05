@@ -4,12 +4,17 @@
 package ta4jexamples.doc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -66,6 +71,37 @@ public class ReadmeContentManagerTest {
         assertTrue(counts.crlf() > 0);
         assertEquals(0, counts.lf());
         assertTrue(updatedContent.contains(snippetBlock("ema-crossover", "ema_crossover", 1, lineSeparator)));
+    }
+
+    @Test
+    public void testRepositoryJavaBaselineDocumentationAndWorkflowsStayAligned() throws IOException {
+        Path repositoryRoot = findRepositoryRoot();
+        String pom = readString(repositoryRoot.resolve("pom.xml"));
+        String readme = readString(repositoryRoot.resolve("README.md"));
+        String contributing = readString(repositoryRoot.resolve(".github").resolve("CONTRIBUTING.md"));
+        List<Path> setupJavaWorkflows = new ArrayList<>();
+
+        assertTrue(pom.contains("<maven.compiler.release>25</maven.compiler.release>"));
+        assertTrue(pom.contains("<requireJavaVersion>"));
+        assertTrue(pom.contains("<version>[25,)</version>"));
+        assertTrue(readme.contains("JDK-25%2B"));
+        assertTrue(readme.contains("Java 25+"));
+        assertFalse(readme.contains("./mvnw"));
+        assertFalse(readme.contains("mvnw.cmd"));
+        assertTrue(contributing.contains("Java 25+"));
+
+        try (Stream<Path> workflowPaths = Files.list(repositoryRoot.resolve(".github").resolve("workflows"))) {
+            workflowPaths.filter(path -> path.getFileName().toString().endsWith(".yml")).forEach(path -> {
+                String workflow = readString(path);
+                if (workflow.contains("actions/setup-java")) {
+                    setupJavaWorkflows.add(path);
+                    assertTrue(workflow.contains("java-version: 25"), path + " should set up Java 25");
+                    assertFalse(workflow.contains("java-version: 21"), path + " should not set up Java 21");
+                }
+            });
+        }
+
+        assertFalse(setupJavaWorkflows.isEmpty());
     }
 
     private static String buildSourceSnippets(String lineSeparator) {
@@ -125,6 +161,27 @@ public class ReadmeContentManagerTest {
             }
         }
         return new LineEndingCounts(crlf, lf);
+    }
+
+    private static Path findRepositoryRoot() throws IOException {
+        Path current = Path.of("").toAbsolutePath();
+        Path candidate = current;
+        while (candidate != null) {
+            if (Files.exists(candidate.resolve("pom.xml")) && Files.exists(candidate.resolve("README.md"))
+                    && Files.isDirectory(candidate.resolve(".github"))) {
+                return candidate;
+            }
+            candidate = candidate.getParent();
+        }
+        throw new IOException("Unable to locate repository root from " + current);
+    }
+
+    private static String readString(Path path) {
+        try {
+            return Files.readString(path, StandardCharsets.UTF_8);
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private record LineEndingCounts(int crlf, int lf) {
