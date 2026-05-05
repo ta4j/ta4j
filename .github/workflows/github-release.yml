@@ -3,7 +3,7 @@ name: Create GitHub Release
 on:
   push:
     tags:
-      - "*"
+      - "*.*.*"
   workflow_dispatch:
     inputs:
       tag:
@@ -83,6 +83,7 @@ jobs:
       - name: Determine Version
         id: version
         run: |
+          echo "::group::Resolve GitHub Release tag and notes"
           INPUT_TAG="${{ steps.checkout_ref.outputs.tag }}"
           if [[ -n "$INPUT_TAG" ]]; then
             TAG="$INPUT_TAG"
@@ -93,6 +94,10 @@ jobs:
             fi
             TAG="${GITHUB_REF##*/}"
           fi
+          if [[ ! "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::GitHub Release tags must be bare SemVer major.minor.patch values. Got: $TAG"
+            exit 1
+          fi
           echo "tag=$TAG" >> $GITHUB_OUTPUT
           NOTES_FILE="release/${TAG}.md"
           if [[ ! -f "$NOTES_FILE" ]]; then
@@ -100,6 +105,7 @@ jobs:
             exit 1
           fi
           echo "notes_file=$NOTES_FILE" >> $GITHUB_OUTPUT
+          echo "::endgroup::"
 
       - name: Preflight release permissions (dry run)
         if: steps.dry_run.outputs.dryRun == 'true'
@@ -188,12 +194,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          echo "::group::Build GitHub Release artifacts"
           max_attempts=3
           attempt=1
 
           while true; do
             echo "audit:release_artifact_build attempt=${attempt}/${max_attempts}"
-            if mvn -B -DskipTests -Dgpg.skip=true -Pproduction-release package; then
+            if mvn -B -DskipTests -Dgpg.skip=true -Pproduction-release package 2>&1 | tee release-artifact-build.log; then
               break
             fi
 
@@ -207,36 +214,19 @@ jobs:
             sleep "${backoff_seconds}"
             attempt=$((attempt + 1))
           done
+          echo "::endgroup::"
 
       - name: Validate release artifacts
         id: artifacts
         run: |
           set -euo pipefail
-          jars=$(find . -type f -path "*/target/*.jar" | sort || true)
-          sources=$(find . -type f -path "*/target/*-sources.jar" | sort || true)
-          javadocs=$(find . -type f -path "*/target/*-javadoc.jar" | sort || true)
-
-          missing=()
-          if [[ -z "${jars}" ]]; then
-            missing+=("**/target/*.jar")
-          fi
-          if [[ -z "${sources}" ]]; then
-            missing+=("**/target/*-sources.jar")
-          fi
-          if [[ -z "${javadocs}" ]]; then
-            missing+=("**/target/*-javadoc.jar")
-          fi
-
-          if [[ ${#missing[@]} -gt 0 ]]; then
-            echo "::error::Missing release artifacts for patterns: ${missing[*]}"
-            exit 1
-          fi
-
-          {
-            echo "jars<<EOF"
-            echo "${jars}"
-            echo "EOF"
-          } >> $GITHUB_OUTPUT
+          echo "::group::Validate exact GitHub Release artifact manifest"
+          python3 scripts/release/release_helpers.py artifact-manifest \
+            --version "${{ steps.version.outputs.tag }}" \
+            --output artifact-manifest.txt \
+            --github-output "$GITHUB_OUTPUT" \
+            --strict
+          echo "::endgroup::"
 
       - name: Dry-run summary
         if: steps.dry_run.outputs.dryRun == 'true'
@@ -246,7 +236,7 @@ jobs:
           echo "Release notes: ${{ steps.version.outputs.notes_file }}"
           echo "GH_TA4J_REPO_TOKEN permission: ${{ steps.token_preflight.outputs.repo_token_permission }}"
           echo "Artifacts:"
-          files="${{ steps.artifacts.outputs.jars }}"
+          files="${{ steps.artifacts.outputs.files }}"
           if [[ -z "${files}" ]]; then
             echo "  (none found)"
           else
@@ -264,7 +254,33 @@ jobs:
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           body_path: ${{ steps.version.outputs.notes_file }}
-          files: |
-            **/target/*.jar
+          files: ${{ steps.artifacts.outputs.files }}
         env:
           GITHUB_TOKEN: ${{ env.GH_TA4J_REPO_TOKEN }}
+
+      - name: GitHub Release summary
+        if: always()
+        env:
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          TAG: ${{ steps.version.outputs.tag }}
+          NOTES_FILE: ${{ steps.version.outputs.notes_file }}
+        run: |
+          {
+            echo "## GitHub Release"
+            echo ""
+            echo "- dry run: ${DRY_RUN:-unknown}"
+            echo "- tag: ${TAG:-unknown}"
+            echo "- notes file: ${NOTES_FILE:-unknown}"
+            echo "- artifact manifest: artifact-manifest.txt"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload GitHub Release audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-release-audit-${{ github.run_id }}
+          path: |
+            artifact-manifest.txt
+            release-artifact-build.log
+          if-no-files-found: ignore
+          retention-days: 14
