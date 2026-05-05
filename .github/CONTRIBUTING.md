@@ -23,7 +23,6 @@ Regular PR and push CI skips test tags configured by `ta4j.excludedTestTags`.
 Run tagged suites manually from GitHub Actions, or locally with:
 
 - `xvfb-run mvn -B test -Dgroups=integration -Dta4j.excludedTestTags=`
-- `xvfb-run mvn -B test -Dgroups=slow -Dta4j.excludedTestTags=`
 - `xvfb-run mvn -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.runBenchmarks=true`
 
 These examples match the Linux GitHub Actions runners. On macOS, use XQuartz or
@@ -33,7 +32,6 @@ UI-dependent tests. On Windows, use WSL2, a CI runner, or an equivalent X server
 The dedicated workflows are:
 
 - `Run Integration Tagged Tests` (`.github/workflows/test-tag-integration.yml`)
-- `Run Slow Tagged Tests` (`.github/workflows/test-tag-slow.yml`)
 - `Run Benchmark Tagged Tests` (`.github/workflows/test-tag-benchmark.yml`)
 
 Scheduled runs are opt-in per tag. Set `TA4J_TAGGED_TEST_<TAG>_SCHEDULE_ENABLED=true`
