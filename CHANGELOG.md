@@ -180,6 +180,7 @@
 - **Monte Carlo drawdown criterion**: Reused shared statistics helper for simulated drawdown summaries.
 - **Dependencies**: update to latest versions
 - **CI concurrency**: Cancel in-progress runs for the primary PR/push validation workflows to reduce backlog.
+- **Java 25 LTS baseline**: [#1338](https://github.com/ta4j/ta4j/issues/1338) Ta4j now builds and publishes for Java 25+, matching the project policy of tracking Java LTS releases.
 
 ### Fixed
 - **Chart window focus stealing**: `ta4j-examples` chart display paths now set `setFocusableWindowState(false)` so chart-related test/example runs do not steal desktop focus.
