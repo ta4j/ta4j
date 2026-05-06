@@ -3,6 +3,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SCRIPT="$ROOT/scripts/release/release_helpers.py"
+PYTHON="${PYTHON:-python3}"
 
 cleanup() {
   if [[ -n "${TMP:-}" && -d "$TMP" ]]; then
@@ -14,6 +15,10 @@ trap cleanup EXIT
 
 fail() { echo "[FAIL] $1" >&2; exit 1; }
 pass() { echo "[PASS] $1"; }
+
+new_temp_dir() {
+  mktemp -d "${TMPDIR:-/tmp}/snapshot-publication.XXXXXX"
+}
 
 expect_output_value() {
   local file="$1"
@@ -52,13 +57,13 @@ EOF
 test_snapshot_version_present() {
   echo "Running test_snapshot_version_present"
 
-  TMP="$(mktemp -d)"
+  TMP="$(new_temp_dir)"
   local metadata_file="$TMP/metadata.xml"
   local github_output="$TMP/github-output.txt"
   local output_file="$TMP/snapshot-publication.json"
   write_metadata_fixture "$metadata_file" "0.22.7-SNAPSHOT" $'      <version>0.22.6-SNAPSHOT</version>\n      <version>0.22.7-SNAPSHOT</version>' "20260506001534"
 
-  python3 "$SCRIPT" snapshot-publication \
+  "$PYTHON" "$SCRIPT" snapshot-publication \
     --version "0.22.7-SNAPSHOT" \
     --metadata-file "$metadata_file" \
     --output "$output_file" \
@@ -75,13 +80,13 @@ test_snapshot_version_present() {
 test_snapshot_version_missing() {
   echo "Running test_snapshot_version_missing"
 
-  TMP="$(mktemp -d)"
+  TMP="$(new_temp_dir)"
   local metadata_file="$TMP/metadata.xml"
   local github_output="$TMP/github-output.txt"
   local output_file="$TMP/snapshot-publication.json"
   write_metadata_fixture "$metadata_file" "0.22.7-SNAPSHOT" $'      <version>0.22.6-SNAPSHOT</version>\n      <version>0.22.7-SNAPSHOT</version>' "20260506001534"
 
-  python3 "$SCRIPT" snapshot-publication \
+  "$PYTHON" "$SCRIPT" snapshot-publication \
     --version "0.22.8-SNAPSHOT" \
     --metadata-file "$metadata_file" \
     --output "$output_file" \
@@ -97,13 +102,13 @@ test_snapshot_version_missing() {
 test_non_snapshot_version_returns_na() {
   echo "Running test_non_snapshot_version_returns_na"
 
-  TMP="$(mktemp -d)"
+  TMP="$(new_temp_dir)"
   local metadata_file="$TMP/metadata.xml"
   local github_output="$TMP/github-output.txt"
   local output_file="$TMP/snapshot-publication.json"
   write_metadata_fixture "$metadata_file" "0.22.7-SNAPSHOT" $'      <version>0.22.7-SNAPSHOT</version>' "20260506001534"
 
-  python3 "$SCRIPT" snapshot-publication \
+  "$PYTHON" "$SCRIPT" snapshot-publication \
     --version "0.22.7" \
     --metadata-file "$metadata_file" \
     --output "$output_file" \
@@ -118,13 +123,13 @@ test_non_snapshot_version_returns_na() {
 test_malformed_metadata_returns_unknown() {
   echo "Running test_malformed_metadata_returns_unknown"
 
-  TMP="$(mktemp -d)"
+  TMP="$(new_temp_dir)"
   local metadata_file="$TMP/metadata.xml"
   local github_output="$TMP/github-output.txt"
   local output_file="$TMP/snapshot-publication.json"
   printf '%s\n' '<metadata><versioning>' > "$metadata_file"
 
-  python3 "$SCRIPT" snapshot-publication \
+  "$PYTHON" "$SCRIPT" snapshot-publication \
     --version "0.22.7-SNAPSHOT" \
     --metadata-file "$metadata_file" \
     --output "$output_file" \
