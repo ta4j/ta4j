@@ -13,11 +13,12 @@ Core release invariant:
 ## 1. At a Glance
 
 Preferred path (PR mode):
-1. Prepare release (`prepare-release.yml`) creates release + next-snapshot commits on `release/<version>`.
-2. Maintainer reviews and merges release PR into `master` using a **merge commit**.
-3. Publish release (`publish-release.yml`) validates metadata/ancestry, tags, deploys to Maven Central, pushes tag.
-4. GitHub release (`github-release.yml`) runs on tag push.
-5. Release health (`release-health.yml`) audits drift and posts summary.
+1. Scheduler (`release-scheduler.yml`) builds a release dossier, validates the configured GitHub Models catalog entry, asks the model for a SemVer decision, and dispatches prepare when appropriate.
+2. Prepare release (`prepare-release.yml`) creates release + next-snapshot commits on `release/<version>`.
+3. Maintainer reviews and merges release PR into `master` using a **merge commit**.
+4. Publish release (`publish-release.yml`) validates metadata/ancestry, runs the release-candidate gate, validates the artifact manifest, tags, deploys to Maven Central, pushes tag, and explicitly dispatches snapshot publication.
+5. GitHub release (`github-release.yml`) runs on tag push.
+6. Release health (`release-health.yml`) audits drift, verifies the current snapshot version is published once snapshot publication is authoritative, and posts summary.
 
 Emergency path (direct push mode):
 1. `prepare-release.yml` pushes both commits directly to `master` when `RELEASE_DIRECT_PUSH=true`.
@@ -92,7 +93,7 @@ Secrets and variables:
 
 5. Observe post-publish workflows
 - `github-release.yml` should run from tag push.
-- `release-health.yml` should run and report `OK`.
+- `release-health.yml` may first report snapshot publication as pending during the async handoff, then should report `OK` after `snapshot.yml` completes.
 
 ---
 
@@ -110,6 +111,10 @@ Publish dry-run:
 Expected behavior:
 - dry-run can warn about missing deploy secrets/resources.
 - no tag push and no Maven Central deployment.
+- prepare dry-runs still run push capability probes with `git push --dry-run`.
+- publish dry-runs run the same metadata, ancestry, release-candidate, and artifact manifest checks without deploying.
+- release-candidate checks use the repository default `integration,slow` test-tag exclusions and log that policy in the workflow output.
+- workflows upload audit artifacts such as release dossiers, decisions, manifests, logs, and tag-resolution files so failures can be diagnosed from the exact phase that produced them.
 
 ---
 
@@ -117,12 +122,12 @@ Expected behavior:
 
 | Workflow | Trigger(s) | Primary responsibility | Critical guardrails |
 |---|---|---|---|
-| `release-scheduler.yml` | schedule, manual | decide whether/how to release | binary-impact gate, semver safety, tag collision checks |
-| `prepare-release.yml` | manual (or scheduler dispatch) | generate release artifacts and release PR/direct-push commits | version validation, metadata validation, push capability probes |
-| `publish-release.yml` | merged release PR close, manual | tag + Maven Central deploy + release summary | merge discipline + ancestry checks, post-push tag integrity/reachability checks |
-| `release-health.yml` | push to `master`, publish workflow completion, schedule, manual | detect drift in release state | fails on tag reachability drift, snapshot drift, missing notes, stale release PRs |
-| `github-release.yml` | tag push, manual | GitHub release publication | tag/ref validation |
-| `snapshot.yml` | push to `master` | publish snapshots | deploy prechecks |
+| `release-scheduler.yml` | schedule, manual | decide whether/how to release | binary-impact gate, model catalog preflight, release dossier, semver safety, tag collision checks |
+| `prepare-release.yml` | manual (or scheduler dispatch) | generate release artifacts and release PR/direct-push commits | version validation, metadata validation, dry-run push capability probes |
+| `publish-release.yml` | merged release PR close, manual | release-candidate verification + tag + Maven Central deploy + snapshot dispatch + release summary | merge discipline + ancestry checks, artifact manifest checks, post-push tag integrity/reachability checks |
+| `release-health.yml` | push to `master`, publish workflow completion, snapshot workflow completion, schedule, manual | detect drift in release state | fails on tag reachability drift, snapshot version drift, missing snapshot publication once snapshot publication is authoritative, missing notes, stale release PRs |
+| `github-release.yml` | semver-like tag push, manual | GitHub release publication | semver tag validation, exact artifact manifest |
+| `snapshot.yml` | push to `master`, publish workflow dispatch, manual | publish snapshots | build/test/deploy prechecks and source-release audit fields |
 
 Tag metrics used by release automation:
 - `latest tag`: newest release tag by tag creation date, preferring bare numeric tags before `v`-prefixed tags.
@@ -139,8 +144,9 @@ Tag metrics used by release automation:
 3. Tag reachability from `master` is true.
 4. Maven Central artifacts are visible (allow propagation time).
 5. GitHub release exists with expected notes/artifacts.
-6. `master` is on next `-SNAPSHOT` version.
-7. `release-health.yml` reports no drift.
+6. The chained `snapshot.yml` run succeeded for the next `-SNAPSHOT` version.
+7. `master` is on next `-SNAPSHOT` version.
+8. `release-health.yml` reports no drift and confirms the current snapshot version is published after `snapshot.yml` completes.
 
 Quick checks:
 ```bash
@@ -165,6 +171,7 @@ What should fail earlier now?
 
 Why health can still fail afterward:
 - `pom.xml` snapshot not ahead of latest tag.
+- current snapshot version is missing from the Maven snapshot repository after snapshot publication becomes authoritative.
 - missing `release/<version>.md` for latest tag.
 - stale release PRs.
 - existing repository drift not introduced by this publish run.
@@ -178,6 +185,7 @@ Remediation playbook:
 2. Apply targeted fix:
    - `latest tag not reachable from <branch>`: make tagged commit reachable from `master` (typically a reachability merge commit; avoid retagging published releases).
    - `pom.xml snapshot version not ahead of latest tag`: bump `master` to next `-SNAPSHOT`.
+   - `current snapshot version not published to Maven snapshot repository`: inspect the latest `snapshot.yml` run, fix the publication failure, and rerun health after the snapshot version appears in metadata.
    - `missing release notes for latest tag`: add `release/<version>.md`.
    - `stale release PRs detected`: merge or close stale release PRs.
 3. Re-run health via `workflow_dispatch`.
@@ -207,6 +215,21 @@ Remediation playbook:
 
 - Missing deploy secrets in dry-run are expected warnings.
 - Fix before production run.
+
+### 8.7 Finding the failure point
+
+Release workflows use grouped log sections and upload audit artifacts on every run.
+
+Look for these files first:
+- `release-dossier.md`: scheduler context sent to the model.
+- `release-decision.json`: normalized AI release decision.
+- `release-audit.json`: workflow-local release metadata.
+- `tag-resolution.txt`: resolved latest/reachable/first-parent tag state.
+- `artifact-manifest.txt`: exact jars expected for publish/GitHub Release.
+- `javadoc-warnings.txt`: Javadoc warning baseline comparison from release artifact/deploy logs; new warnings beyond the tracked `scripts/release/javadoc-warning-baseline.txt` debt fail publish.
+- `.agents/logs/full-build-*.log`: release-candidate full build log.
+
+If a grouped section fails, inspect the matching artifact before rerunning. Avoid rerunning publish until tag state, artifact state, and Central deployment state are understood.
 
 ---
 
@@ -260,7 +283,7 @@ Do not key automation off author/body heuristics; key off marker metadata.
 | `RELEASE_DISCUSSION_NUMBER` | publish | publish summary discussion |
 | `RELEASE_SCHEDULER_DISCUSSION_NUMBER` | scheduler, health | scheduler/health discussion |
 | `RELEASE_SCHEDULER_ENABLED` | scheduler | enable scheduled release decisions |
-| `RELEASE_AI_MODEL` | scheduler | model override |
+| `RELEASE_AI_MODEL` | scheduler | GitHub Models model override; default should be `openai/gpt-4.1` |
 | `RELEASE_PR_STALE_DAYS` | health | stale release PR threshold |
 
 ### 10.4 Environment
@@ -268,6 +291,7 @@ Do not key automation off author/body heuristics; key off marker metadata.
 | Environment | Purpose |
 |---|---|
 | `major-release` | manual approval gate for major bumps |
+| `release-recovery` | manual approval gate for `publish-release.yml` recovery mode when an explicit release commit is not reachable from `master` |
 
 ---
 
@@ -277,6 +301,8 @@ Do not key automation off author/body heuristics; key off marker metadata.
 2. Use merge commits for release PRs.
 3. Avoid force-retagging already-published versions.
 4. Prefer PR mode; use direct push only when justified.
+5. Keep `RELEASE_DIRECT_PUSH=false` for normal releases.
+6. Use `recoveryMode=true` only for manual publish recovery when the release commit is intentionally not reachable from `master`; this path is protected by the `release-recovery` environment.
 
 ---
 

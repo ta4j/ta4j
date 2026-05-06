@@ -1,20 +1,19 @@
-name: Validate Source Code
+name: Run Elliott Macro Cycle Replay Tagged Tests
+
 permissions:
   contents: read
 
 on:
-  pull_request:
-    branches:
-      - master
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  build:
-    name: Validate Source Code Formatting
-    runs-on: ubuntu-latest
+  test-elliott-macro-cycle-replay:
+    name: Build and Test (elliott-macro-cycle-replay tag)
+    runs-on: [self-hosted, ta4j-macro-cycle-replay]
 
     steps:
       - name: Checkout repository
@@ -35,5 +34,9 @@ jobs:
           java-version: 25
           cache: maven
 
-      - name: Validate source code formatting
-        run: xvfb-run mvn -B formatter:validate
+      - name: Build and run Elliott macro-cycle replay tagged tests with Maven
+        run: >
+          xvfb-run mvn -B test
+          -Dgroups=elliott-macro-cycle-replay
+          -Dta4j.excludedTestTags=
+          -Dtest=ElliottWaveMacroCycleDetectorTest
