@@ -66,7 +66,7 @@
         <!-- Build -->
         <maven.compiler.release>25</maven.compiler.release>
         <maven.surefire.version>3.5.4</maven.surefire.version>
-        <ta4j.excludedTestTags>integration,slow</ta4j.excludedTestTags>
+        <ta4j.excludedTestTags>integration,analysis-demo,elliott-macro-cycle-replay</ta4j.excludedTestTags>
 
         <!-- Dependencies -->
         <assertj.version>3.27.7</assertj.version>
@@ -164,6 +164,25 @@
     </dependencyManagement>
 
     <profiles>
+
+        <!-- Run Elliott-wave analysis demo tests intentionally with explicit opt-in -->
+        <profile>
+            <id>analysis-demo</id>
+            <properties>
+                <ta4j.excludedTestTags>elliott-macro-cycle-replay</ta4j.excludedTestTags>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <groups>analysis-demo</groups>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
 
         <!-- Only when performing a release (i.e. not for snapshots) -->
         <profile>
