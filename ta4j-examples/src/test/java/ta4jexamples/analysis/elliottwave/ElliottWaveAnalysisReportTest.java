@@ -40,8 +40,7 @@ import ta4jexamples.charting.display.SwingChartDisplayer;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-@Tag("integration")
-@Tag("slow")
+@Tag("analysis-demo")
 class ElliottWaveAnalysisReportTest {
 
     private static final String OSSIFIED_OHLCV_RESOURCE = "Coinbase-BTC-USD-PT1D-20230616_20231011.json";

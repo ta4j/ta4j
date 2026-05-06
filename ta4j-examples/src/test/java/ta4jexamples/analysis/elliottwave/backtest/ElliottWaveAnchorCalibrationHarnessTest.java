@@ -48,8 +48,7 @@ import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader
 
 class ElliottWaveAnchorCalibrationHarnessTest {
 
-    @Tag("integration")
-    @Tag("slow")
+    @Tag("analysis-demo")
     @Test
     void defaultBitcoinAnchorsLoadsResolvedVersionedRegistry() {
         BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveAnchorCalibrationHarnessTest.class,

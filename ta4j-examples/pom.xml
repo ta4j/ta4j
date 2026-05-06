@@ -10,6 +10,10 @@
     <name>Ta4j Examples</name>
     <description>Provides examples that demonstrate how to use ta4j</description>
 
+    <properties>
+        <exec.mainClass>ta4jexamples.Quickstart</exec.mainClass>
+    </properties>
+
     <dependencies>
 
         <!-- Test dependencies -->
@@ -104,6 +108,14 @@
                 </configuration>
             </plugin>
             <plugin>
+                <groupId>com.github.spotbugs</groupId>
+                <artifactId>spotbugs-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
@@ -117,7 +129,9 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <version>3.6.3</version>
+                <configuration>
+                    <mainClass>${exec.mainClass}</mainClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>

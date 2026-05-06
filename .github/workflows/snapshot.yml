@@ -6,6 +6,16 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
+    inputs:
+      sourceReleaseVersion:
+        description: "Optional release version that requested this snapshot publication."
+        required: false
+        type: string
+      sourceReleaseCommit:
+        description: "Optional release commit SHA that requested this snapshot publication."
+        required: false
+        type: string
 
 concurrency:
   group: snapshot-${{ github.repository }}
@@ -32,7 +42,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
           cache: maven
           server-id: central
           server-username: ${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}
@@ -42,6 +52,7 @@ jobs:
 
       - name: Write Maven settings
         run: |
+          echo "::group::Write Maven settings"
           mkdir -p ~/.m2
           printf '%s\n' \
             '<settings>' \
@@ -54,6 +65,7 @@ jobs:
             '  </servers>' \
             '</settings>' > ~/.m2/settings.xml
           echo "settings.xml created"
+          echo "::endgroup::"
 
       - name: Write Maven security settings
         shell: bash
@@ -90,10 +102,51 @@ jobs:
           echo "gpg.conf and gpg-agent.conf created"
 
       - name: Build and Test
-        run: mvn -B clean test
+        run: |
+          set -euo pipefail
+          echo "::group::Build and test snapshot candidate"
+          mvn -B clean test
+          echo "::endgroup::"
 
       - name: Deploy Snapshot
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: mvn -B deploy -Psign-snapshots
+        run: |
+          set -euo pipefail
+          echo "::group::Deploy snapshot to Maven Central"
+          mvn -B deploy -Psign-snapshots 2>&1 | tee snapshot-deploy.log
+          echo "::endgroup::"
+
+      - name: Snapshot publication summary
+        if: always()
+        env:
+          SOURCE_RELEASE_VERSION: ${{ github.event.inputs.sourceReleaseVersion }}
+          SOURCE_RELEASE_COMMIT: ${{ github.event.inputs.sourceReleaseCommit }}
+        run: |
+          cat > snapshot-audit.json <<EOF
+          {
+            "event": "${GITHUB_EVENT_NAME}",
+            "sourceReleaseVersion": "${SOURCE_RELEASE_VERSION:-}",
+            "sourceReleaseCommit": "${SOURCE_RELEASE_COMMIT:-}",
+            "runUrl": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          }
+          EOF
+          {
+            echo "## Snapshot Publication"
+            echo ""
+            echo "- event: ${GITHUB_EVENT_NAME}"
+            echo "- source release version: ${SOURCE_RELEASE_VERSION:-none}"
+            echo "- source release commit: ${SOURCE_RELEASE_COMMIT:-none}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload snapshot audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snapshot-audit-${{ github.run_id }}
+          path: |
+            snapshot-audit.json
+            snapshot-deploy.log
+          if-no-files-found: ignore
+          retention-days: 14
