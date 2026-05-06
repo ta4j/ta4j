@@ -89,7 +89,7 @@ public class ElliottWaveMultiDegreeAnalysisDemo {
     }
 
     private static void logScenario(final String label, final ElliottScenario scenario) {
-        LOG.info("{} scenarioId={} phase={} type={} confidence={} direction={}", label, scenario.id(),
+        LOG.info("{} scenarioId={} phase={} type={} confidence={}% direction={}", label, scenario.id(),
                 scenario.currentPhase(), scenario.type(), String.format("%.1f", scenario.confidence().asPercentage()),
                 scenario.hasKnownDirection() ? (scenario.isBullish() ? "bullish" : "bearish") : "unknown");
     }

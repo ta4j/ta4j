@@ -79,7 +79,7 @@ public class ElliottWaveAdaptiveSwingAnalysis {
      * @param result   analysis result containing factor breakdowns
      */
     private static void logScenario(String label, ElliottScenario scenario, ElliottAnalysisResult result) {
-        LOG.info("{} SCENARIO: {} ({}) - confidence={}%%", label, scenario.currentPhase(), scenario.type(),
+        LOG.info("{} SCENARIO: {} ({}) - confidence={}%", label, scenario.currentPhase(), scenario.type(),
                 String.format("%.1f", scenario.confidence().asPercentage()));
         ElliottConfidenceBreakdown breakdown = result.breakdownFor(scenario).orElse(null);
         if (breakdown == null) {
@@ -87,8 +87,8 @@ public class ElliottWaveAdaptiveSwingAnalysis {
         }
         for (ConfidenceFactorResult factor : breakdown.factors()) {
             LOG.info("  Factor: {} score={} weight={} diagnostics={}", factor.name(),
-                    String.format("%.2f", factor.score().doubleValue()), String.format("%.2f", factor.weight()),
-                    factor.diagnostics());
+                    String.format("%.2f", factor.score().doubleValue()),
+                    String.format("%.2f", factor.weight().doubleValue()), factor.diagnostics());
         }
     }
 

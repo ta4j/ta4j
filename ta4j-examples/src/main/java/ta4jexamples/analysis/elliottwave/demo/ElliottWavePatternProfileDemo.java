@@ -84,7 +84,7 @@ public class ElliottWavePatternProfileDemo {
             LOG.info("{}: No scenarios available", label);
             return;
         }
-        LOG.info("{}: {} ({}) confidence={}%%", label, base.currentPhase(), base.type(),
+        LOG.info("{}: {} ({}) confidence={}%", label, base.currentPhase(), base.type(),
                 String.format("%.1f", base.confidence().asPercentage()));
     }
 
