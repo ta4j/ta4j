@@ -83,18 +83,42 @@ class SpdrSectorLpplRotationDemoTest {
     }
 
     @Test
+    void aggregateReportsConvergedNonActionableFitDiagnostics() {
+        LpplFit fit = new LpplFit(200, LpplExhaustionStatus.VALID, 1.0, -0.03, 0.01, 0.02, 259.0, 0.5, 8.0, 0.02, 0.01,
+                0.91, 60, 25);
+        LpplExhaustion exhaustion = new LpplExhaustion(LpplExhaustionStatus.NO_VALID_FIT, LpplExhaustionSide.NONE,
+                numFactory.zero(), numFactory.zero(), fit, List.of(fit), 1, 0, 0, 0);
+
+        List<SpdrSectorLpplRotationDemo.SectorSnapshot> snapshots = SpdrSectorLpplRotationDemo.aggregate(List.of(
+                new SpdrSectorLpplRotationDemo.InstrumentSnapshot("XLI", "Industrials", SNAPSHOT_DATE, exhaustion)));
+        String report = SpdrSectorLpplRotationDemo.renderReport(snapshots);
+
+        SpdrSectorLpplRotationDemo.SectorSnapshot snapshot = snapshots.get(0);
+        assertEquals(LpplExhaustionStatus.NO_VALID_FIT, snapshot.status());
+        assertEquals(LpplExhaustionStatus.VALID, snapshot.dominantFitStatus());
+        assertEquals(1, snapshot.attemptedFits());
+        assertEquals(1, snapshot.convergedFits());
+        assertEquals(0, snapshot.actionableFits());
+        assertTrue(report.contains("NONE,NO_VALID_FIT,VALID,1,1,0,0,0"));
+    }
+
+    @Test
     void renderReportProducesDeterministicCsvTableWithDiagnostics() {
         List<SpdrSectorLpplRotationDemo.SectorSnapshot> snapshots = List
                 .of(new SpdrSectorLpplRotationDemo.SectorSnapshot("Industrials", "XLI", SNAPSHOT_DATE, 1, 1, 0, 1.0,
-                        0.6, 0.4, 1, 1, 1.25, LpplExhaustionSide.CRASH_EXHAUSTION, 1.0, 1.0, 0.7, 80, 20, 0.9, 0.1,
+                        0.6, 0.4, 1, 1, 1.25, LpplExhaustionSide.CRASH_EXHAUSTION, LpplExhaustionStatus.VALID,
+                        LpplExhaustionStatus.VALID, 1, 1, 1, 1, 0, 1.0, 1.0, 0.7, 80, 20, 0.9, 0.1,
                         SpdrSectorLpplRotationDemo.ExhaustionBucket.CRASH_EXHAUSTED_LEADER));
 
         String report = SpdrSectorLpplRotationDemo.renderReport(snapshots);
 
         assertTrue(report.startsWith(
-                "date,sector,ticker,total,crash_count,bubble_count,net_exhaustion_score,standalone_lppl_score,relative_rotation_score,relative_rank,absolute_signal_rank,universe_z_score,side,valid_fit_share,side_consensus,fit_quality,dominant_window,critical_offset,r_squared,rms,bucket\n"
-                        + "2026-04-29,Industrials,XLI,1,1,0,1.0000,0.6000,0.4000,1,1,1.2500,CRASH_EXHAUSTION,1.0000,1.0000,0.7000,80,20,0.9000,0.1000,CRASH_EXHAUSTED_LEADER\n\n"
-                        + "Interpretation\n"));
+                "date,sector,ticker,total,crash_count,bubble_count,net_exhaustion_score,standalone_lppl_score,relative_rotation_score,relative_rank,absolute_signal_rank,universe_z_score,side,status,dominant_fit_status,attempted_fits,converged_fits,actionable_fits,crash_fits,bubble_fits,valid_fit_share,side_consensus,fit_quality,dominant_window,critical_offset,r_squared,rms,bucket\n"
+                        + "2026-04-29,Industrials,XLI,1,1,0,1.0000,0.6000,0.4000,1,1,1.2500,CRASH_EXHAUSTION,VALID,VALID,1,1,1,1,0,1.0000,1.0000,0.7000,80,20,0.9000,0.1000,CRASH_EXHAUSTED_LEADER\n\n"
+                        + "LPPL calibration profile\n"));
+        assertTrue(report.contains("windows=[200, 300, 400, 500]"));
+        assertTrue(report.contains("min_r_squared=0.7500"));
+        assertTrue(report.contains("\nInterpretation\n"));
         assertTrue(report.contains(
                 "This snapshot has 1 dominant crash-exhaustion sector and 0 dominant bubble-exhaustion sectors"));
         assertTrue(report.contains("Qualitative buckets: CRASH_EXHAUSTED_LEADER=1."));
@@ -121,10 +145,10 @@ class SpdrSectorLpplRotationDemoTest {
 
     @Test
     void analyzeLoadsAllOfflineSpdrResources() {
-        LpplCalibrationProfile fastProfile = new LpplCalibrationProfile(new int[] { 200 }, 0.1, 0.9, 2, 6.0, 13.0, 2,
+        LpplCalibrationProfile smokeProfile = new LpplCalibrationProfile(new int[] { 200 }, 0.1, 0.9, 2, 6.0, 13.0, 2,
                 10, 30, 10, 10, 30, 25, 0.5);
 
-        List<SpdrSectorLpplRotationDemo.SectorSnapshot> snapshots = SpdrSectorLpplRotationDemo.analyze(fastProfile);
+        List<SpdrSectorLpplRotationDemo.SectorSnapshot> snapshots = SpdrSectorLpplRotationDemo.analyze(smokeProfile);
 
         assertEquals(11, snapshots.size());
         assertTrue(snapshots.stream().allMatch(snapshot -> Double.isFinite(snapshot.lpplScore())));
@@ -144,10 +168,11 @@ class SpdrSectorLpplRotationDemoTest {
         SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary = updater
                 .refresh(SpdrSectorLpplRotationDemo.closedUniverse(), settings);
 
-        List<SpdrSectorLpplRotationDemo.SectorSnapshot> snapshots = SpdrSectorLpplRotationDemo.analyze(
-                new LpplCalibrationProfile(new int[] { 200 }, 0.1, 0.9, 2, 6.0, 13.0, 2, 10, 30, 10, 10, 30, 25, 0.5),
+        LpplCalibrationProfile smokeProfile = new LpplCalibrationProfile(new int[] { 200 }, 0.1, 0.9, 2, 6.0, 13.0, 2,
+                10, 30, 10, 10, 30, 25, 0.5);
+        List<SpdrSectorLpplRotationDemo.SectorSnapshot> snapshots = SpdrSectorLpplRotationDemo.analyze(smokeProfile,
                 refreshSummary);
-        String report = SpdrSectorLpplRotationDemo.renderReport(snapshots, refreshSummary);
+        String report = SpdrSectorLpplRotationDemo.renderReport(snapshots, smokeProfile, refreshSummary);
 
         assertEquals(11, snapshots.size());
         assertTrue(report.contains("Reference data refresh"));
@@ -183,17 +208,18 @@ class SpdrSectorLpplRotationDemoTest {
     @Test
     @Tag("lppl-sector-rotation-demo")
     void lpplSectorRotationDemoFunnelRefreshesReferencesAndWritesArtifacts() throws IOException {
-        LpplCalibrationProfile fastProfile = new LpplCalibrationProfile(new int[] { 200 }, 0.1, 0.9, 2, 6.0, 13.0, 2,
-                10, 30, 10, 10, 30, 25, 0.5);
         SpdrSectorReferenceDataUpdater.Settings settings = SpdrSectorReferenceDataUpdater.Settings
                 .fromSystemProperties();
 
-        SpdrSectorLpplRotationDemo.DemoRun run = SpdrSectorLpplRotationDemo.runAnalysisDemo(fastProfile, settings);
+        SpdrSectorLpplRotationDemo.DemoRun run = SpdrSectorLpplRotationDemo
+                .runAnalysisDemo(SpdrSectorLpplRotationDemo.demoProfile(), settings);
 
         assertEquals(11, run.snapshots().size());
         assertTrue(Files.exists(settings.outputDirectory().resolve("lppl-sector-report.txt")));
         assertTrue(Files.exists(settings.outputDirectory().resolve("lppl-sector-snapshots.csv")));
         assertTrue(Files.exists(settings.outputDirectory().resolve("lppl-reference-refresh.csv")));
+        assertTrue(run.report()
+                .contains(SpdrSectorLpplRotationDemo.renderProfile(SpdrSectorLpplRotationDemo.demoProfile())));
         assertFalse(run.report().isBlank());
     }
 
@@ -234,7 +260,12 @@ class SpdrSectorLpplRotationDemoTest {
                 side == LpplExhaustionSide.BUBBLE_EXHAUSTION ? 1 : 0,
                 side == LpplExhaustionSide.CRASH_EXHAUSTION ? 1.0
                         : side == LpplExhaustionSide.BUBBLE_EXHAUSTION ? -1.0 : 0.0,
-                score, relativeScore, relativeRank, absoluteRank, 0.0, side, 1.0,
+                score, relativeScore, relativeRank, absoluteRank, 0.0, side,
+                side == LpplExhaustionSide.NONE ? LpplExhaustionStatus.NO_VALID_FIT : LpplExhaustionStatus.VALID,
+                side == LpplExhaustionSide.NONE ? LpplExhaustionStatus.NO_VALID_FIT : LpplExhaustionStatus.VALID, 1,
+                side == LpplExhaustionSide.NONE ? 0 : 1, side == LpplExhaustionSide.NONE ? 0 : 1,
+                side == LpplExhaustionSide.CRASH_EXHAUSTION ? 1 : 0,
+                side == LpplExhaustionSide.BUBBLE_EXHAUSTION ? 1 : 0, side == LpplExhaustionSide.NONE ? 0.0 : 1.0,
                 side == LpplExhaustionSide.NONE ? 0.0 : 1.0, Math.abs(score), 80, 20, 0.9, 0.1, bucket);
     }
 

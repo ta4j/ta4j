@@ -811,7 +811,7 @@ Num boundedScore = score.getValue(index); // positive = crash exhaustion, negati
 
 Use `new LpplExhaustionIndicator(priceIndicator, profile)` or `new LpplExhaustionScoreIndicator(priceIndicator, profile)` when you need injected prices or tighter calibration settings. LPPL fitting is sensitive to start date and split/distribution discontinuities, so equity examples should use adjusted prices.
 
-The `ta4j-examples` module includes `SpdrSectorLpplRotationDemo`, a State Street SPDR sector ETF universe example that emits deterministic CSV/report artifacts with signed standalone LPPL scores, universe-relative rotation scores, qualitative crash/bubble exhaustion buckets, and reference-data refresh metadata. By default the demo refreshes Yahoo Finance deltas into `target/analysis-demos/lppl-sector-rotation/reference-data`; set `ta4j.lpplUpdateReferenceData=true` only in the reviewable automation flow that updates committed adjusted resources.
+The `ta4j-examples` module includes `SpdrSectorLpplRotationDemo`, a State Street SPDR sector ETF universe example that emits deterministic CSV/report artifacts with signed standalone LPPL scores, universe-relative rotation scores, qualitative crash/bubble exhaustion buckets, calibration metadata, fit-status diagnostics, and reference-data refresh metadata. By default the demo refreshes Yahoo Finance deltas into `target/analysis-demos/lppl-sector-rotation/reference-data`; set `ta4j.lpplUpdateReferenceData=true` only in the reviewable automation flow that updates committed adjusted resources.
 
 ## Real-world examples
 

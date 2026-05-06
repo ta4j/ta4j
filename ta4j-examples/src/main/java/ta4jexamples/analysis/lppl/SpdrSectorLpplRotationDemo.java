@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -22,6 +23,7 @@ import org.ta4j.core.indicators.lppl.LpplCalibrationProfile;
 import org.ta4j.core.indicators.lppl.LpplExhaustion;
 import org.ta4j.core.indicators.lppl.LpplExhaustionIndicator;
 import org.ta4j.core.indicators.lppl.LpplExhaustionSide;
+import org.ta4j.core.indicators.lppl.LpplExhaustionStatus;
 import org.ta4j.core.indicators.lppl.LpplFit;
 
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
@@ -64,8 +66,7 @@ public final class SpdrSectorLpplRotationDemo {
      * @throws IOException if refreshed reference-data artifacts cannot be written
      */
     public static void main(String[] args) throws IOException {
-        DemoRun run = runAnalysisDemo(LpplCalibrationProfile.defaults(),
-                SpdrSectorReferenceDataUpdater.Settings.fromSystemProperties());
+        DemoRun run = runAnalysisDemo(demoProfile(), SpdrSectorReferenceDataUpdater.Settings.fromSystemProperties());
         System.out.print(run.report());
     }
 
@@ -73,12 +74,16 @@ public final class SpdrSectorLpplRotationDemo {
         return UNIVERSE;
     }
 
+    static LpplCalibrationProfile demoProfile() {
+        return LpplCalibrationProfile.defaults();
+    }
+
     static DemoRun runAnalysisDemo(LpplCalibrationProfile profile, SpdrSectorReferenceDataUpdater.Settings settings)
             throws IOException {
         SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary = new SpdrSectorReferenceDataUpdater()
                 .refresh(UNIVERSE, settings);
         List<SectorSnapshot> snapshots = analyze(profile, refreshSummary);
-        String report = renderReport(snapshots, refreshSummary);
+        String report = renderReport(snapshots, profile, refreshSummary);
         writeArtifacts(settings.outputDirectory(), report, snapshots, refreshSummary);
         return new DemoRun(snapshots, refreshSummary, report);
     }
@@ -133,15 +138,37 @@ public final class SpdrSectorLpplRotationDemo {
             double total = sectorInstruments.size();
             LpplExhaustion dominant = dominantExhaustion(sectorInstruments);
             LpplFit dominantFit = dominant.dominantFit();
+            int attemptedFits = sectorInstruments.stream()
+                    .map(InstrumentSnapshot::exhaustion)
+                    .mapToInt(LpplExhaustion::attemptedFits)
+                    .sum();
+            int convergedFits = sectorInstruments.stream()
+                    .map(InstrumentSnapshot::exhaustion)
+                    .mapToInt(SpdrSectorLpplRotationDemo::convergedFitCount)
+                    .sum();
+            int actionableFits = sectorInstruments.stream()
+                    .map(InstrumentSnapshot::exhaustion)
+                    .mapToInt(LpplExhaustion::validFits)
+                    .sum();
+            int crashFits = sectorInstruments.stream()
+                    .map(InstrumentSnapshot::exhaustion)
+                    .mapToInt(LpplExhaustion::crashFits)
+                    .sum();
+            int bubbleFits = sectorInstruments.stream()
+                    .map(InstrumentSnapshot::exhaustion)
+                    .mapToInt(LpplExhaustion::bubbleFits)
+                    .sum();
             double relativeScore = lpplScore - universeAverage;
             LpplExhaustionSide side = crashCount > bubbleCount ? LpplExhaustionSide.CRASH_EXHAUSTION
                     : bubbleCount > crashCount ? LpplExhaustionSide.BUBBLE_EXHAUSTION : LpplExhaustionSide.NONE;
             snapshots.add(new SectorSnapshot(definition.sector(), definition.ticker(), latestDate(sectorInstruments),
                     sectorInstruments.size(), crashCount, bubbleCount, (crashCount - bubbleCount) / total, lpplScore,
                     relativeScore, 0, 0, universeStdDev == 0.0 ? 0.0 : relativeScore / universeStdDev, side,
-                    validFitShare(dominant), sideConsensus(crashCount, bubbleCount, dominant.validFits()),
-                    finite(dominant.fitQuality().doubleValue()), dominantFit.window(), dominantFit.criticalOffset(),
-                    finite(dominantFit.rSquared()), finite(dominantFit.rms()), bucket(side, relativeScore)));
+                    dominant.status(), dominantFit.status(), attemptedFits, convergedFits, actionableFits, crashFits,
+                    bubbleFits, validFitShare(attemptedFits, actionableFits),
+                    sideConsensus(crashFits, bubbleFits, actionableFits), finite(dominant.fitQuality().doubleValue()),
+                    dominantFit.window(), dominantFit.criticalOffset(), finite(dominantFit.rSquared()),
+                    finite(dominantFit.rms()), bucket(side, relativeScore)));
         }
         snapshots = withRanks(snapshots);
         snapshots.sort(Comparator.comparingDouble(SectorSnapshot::relativeRotationScore)
@@ -151,19 +178,42 @@ public final class SpdrSectorLpplRotationDemo {
     }
 
     static String renderReport(List<SectorSnapshot> snapshots) {
-        return renderReport(snapshots, null);
+        return renderReport(snapshots, demoProfile(), null);
+    }
+
+    static String renderReport(List<SectorSnapshot> snapshots, LpplCalibrationProfile profile) {
+        return renderReport(snapshots, profile, null);
     }
 
     static String renderReport(List<SectorSnapshot> snapshots,
             SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary) {
+        return renderReport(snapshots, demoProfile(), refreshSummary);
+    }
+
+    static String renderReport(List<SectorSnapshot> snapshots, LpplCalibrationProfile profile,
+            SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary) {
         List<SectorSnapshot> safeSnapshots = snapshots == null ? List.of() : List.copyOf(snapshots);
         StringBuilder builder = new StringBuilder();
         builder.append(renderSnapshotCsv(safeSnapshots)).append('\n');
+        builder.append(renderProfile(profile)).append('\n');
         if (refreshSummary != null) {
             builder.append(renderRefreshSummary(refreshSummary)).append('\n');
         }
         builder.append(renderInterpretation(safeSnapshots));
         return builder.toString();
+    }
+
+    static String renderProfile(LpplCalibrationProfile profile) {
+        LpplCalibrationProfile safeProfile = profile == null ? demoProfile() : profile;
+        return "LPPL calibration profile\n" + "windows=" + Arrays.toString(safeProfile.windows()) + "\n" + "m_range="
+                + format(safeProfile.minM()) + ".." + format(safeProfile.maxM()) + ",m_steps=" + safeProfile.mSteps()
+                + "\n" + "omega_range=" + format(safeProfile.minOmega()) + ".." + format(safeProfile.maxOmega())
+                + ",omega_steps=" + safeProfile.omegaSteps() + "\n" + "critical_offset_range="
+                + safeProfile.minCriticalOffset() + ".." + safeProfile.maxCriticalOffset() + ",critical_offset_step="
+                + safeProfile.criticalOffsetStep() + "\n" + "active_critical_offset_range="
+                + safeProfile.activeMinCriticalOffset() + ".." + safeProfile.activeMaxCriticalOffset() + "\n"
+                + "max_evaluations=" + safeProfile.maxEvaluations() + "\n" + "min_r_squared="
+                + format(safeProfile.minRSquared()) + "\n";
     }
 
     static String renderRefreshSummary(SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary) {
@@ -273,7 +323,7 @@ public final class SpdrSectorLpplRotationDemo {
     private static String renderSnapshotCsv(List<SectorSnapshot> snapshots) {
         StringBuilder builder = new StringBuilder();
         builder.append(
-                "date,sector,ticker,total,crash_count,bubble_count,net_exhaustion_score,standalone_lppl_score,relative_rotation_score,relative_rank,absolute_signal_rank,universe_z_score,side,valid_fit_share,side_consensus,fit_quality,dominant_window,critical_offset,r_squared,rms,bucket\n");
+                "date,sector,ticker,total,crash_count,bubble_count,net_exhaustion_score,standalone_lppl_score,relative_rotation_score,relative_rank,absolute_signal_rank,universe_z_score,side,status,dominant_fit_status,attempted_fits,converged_fits,actionable_fits,crash_fits,bubble_fits,valid_fit_share,side_consensus,fit_quality,dominant_window,critical_offset,r_squared,rms,bucket\n");
         for (SectorSnapshot snapshot : snapshots) {
             appendSnapshotCsvRow(builder, snapshot);
         }
@@ -306,6 +356,20 @@ public final class SpdrSectorLpplRotationDemo {
                 .append(format(snapshot.universeZScore()))
                 .append(',')
                 .append(snapshot.side())
+                .append(',')
+                .append(snapshot.status())
+                .append(',')
+                .append(snapshot.dominantFitStatus())
+                .append(',')
+                .append(snapshot.attemptedFits())
+                .append(',')
+                .append(snapshot.convergedFits())
+                .append(',')
+                .append(snapshot.actionableFits())
+                .append(',')
+                .append(snapshot.crashFits())
+                .append(',')
+                .append(snapshot.bubbleFits())
                 .append(',')
                 .append(format(snapshot.validFitShare()))
                 .append(',')
@@ -417,8 +481,16 @@ public final class SpdrSectorLpplRotationDemo {
     private static LpplExhaustion dominantExhaustion(List<InstrumentSnapshot> instruments) {
         return instruments.stream()
                 .map(InstrumentSnapshot::exhaustion)
-                .max(Comparator.comparingDouble(exhaustion -> Math.abs(scoreValue(exhaustion))))
+                .max(Comparator.comparingDouble(SpdrSectorLpplRotationDemo::diagnosticStrength))
                 .orElseThrow();
+    }
+
+    private static double diagnosticStrength(LpplExhaustion exhaustion) {
+        if (exhaustion.isValid()) {
+            return 2.0 + Math.abs(scoreValue(exhaustion));
+        }
+        LpplFit fit = exhaustion.dominantFit();
+        return fit.isConverged() ? 1.0 + finite(fit.rSquared()) : 0.0;
     }
 
     private static double standardDeviation(List<InstrumentSnapshot> instruments, double average) {
@@ -433,12 +505,16 @@ public final class SpdrSectorLpplRotationDemo {
         return Math.sqrt(variance);
     }
 
-    private static double validFitShare(LpplExhaustion exhaustion) {
-        return exhaustion.attemptedFits() == 0 ? 0.0 : (double) exhaustion.validFits() / exhaustion.attemptedFits();
+    private static int convergedFitCount(LpplExhaustion exhaustion) {
+        return (int) exhaustion.fits().stream().filter(LpplFit::isConverged).count();
     }
 
-    private static double sideConsensus(int crashCount, int bubbleCount, int validFits) {
-        return validFits == 0 ? 0.0 : (double) Math.abs(crashCount - bubbleCount) / validFits;
+    private static double validFitShare(int attemptedFits, int actionableFits) {
+        return attemptedFits == 0 ? 0.0 : (double) actionableFits / attemptedFits;
+    }
+
+    private static double sideConsensus(int crashFits, int bubbleFits, int actionableFits) {
+        return actionableFits == 0 ? 0.0 : (double) Math.abs(crashFits - bubbleFits) / actionableFits;
     }
 
     private static ExhaustionBucket bucket(LpplExhaustionSide side, double relativeScore) {
@@ -509,13 +585,16 @@ public final class SpdrSectorLpplRotationDemo {
     record SectorSnapshot(String sector, String ticker, LocalDate latestDate, int totalInstruments, int crashCount,
             int bubbleCount, double netExhaustionScore, double lpplScore, double relativeRotationScore,
             int relativeRank, int absoluteSignalRank, double universeZScore, LpplExhaustionSide side,
-            double validFitShare, double sideConsensus, double fitQuality, int dominantWindow, int criticalOffset,
-            double rSquared, double rms, ExhaustionBucket bucket) {
+            LpplExhaustionStatus status, LpplExhaustionStatus dominantFitStatus, int attemptedFits, int convergedFits,
+            int actionableFits, int crashFits, int bubbleFits, double validFitShare, double sideConsensus,
+            double fitQuality, int dominantWindow, int criticalOffset, double rSquared, double rms,
+            ExhaustionBucket bucket) {
 
         SectorSnapshot withRanks(int relativeRank, int absoluteSignalRank) {
             return new SectorSnapshot(sector, ticker, latestDate, totalInstruments, crashCount, bubbleCount,
                     netExhaustionScore, lpplScore, relativeRotationScore, relativeRank, absoluteSignalRank,
-                    universeZScore, side, validFitShare, sideConsensus, fitQuality, dominantWindow, criticalOffset,
+                    universeZScore, side, status, dominantFitStatus, attemptedFits, convergedFits, actionableFits,
+                    crashFits, bubbleFits, validFitShare, sideConsensus, fitQuality, dominantWindow, criticalOffset,
                     rSquared, rms, bucket);
         }
     }

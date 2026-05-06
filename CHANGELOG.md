@@ -18,6 +18,7 @@
 - **Tagged tests use explicit execution lanes**: `benchmark`, `integration`, `analysis-demo`, `lppl-sector-rotation-demo`, and `elliott-macro-cycle-replay` JUnit tags now have dedicated GitHub Actions workflows or documented local commands, so long-running suites stay out of push CI without becoming hard to exercise.
 
 ### Fixed
+- **LPPL sector rotation demo reports now use the real calibration path**: The `lppl-sector-rotation-demo` tagged artifact funnel now runs the same default LPPL profile as the CLI demo, and its CSV/report output includes calibration metadata plus fit-status counts so zero scores distinguish neutral readings from non-actionable or failed fits.
 - **PR validation stays fast while demo and Elliott replay suites remain runnable**: GitHub build CI now keeps `integration`, `analysis-demo`, `lppl-sector-rotation-demo`, and `elliott-macro-cycle-replay` excluded by default instead of running every tagged test on each PR, and contributors can still rerun the BTC macro-cycle replay suite through its dedicated tag when they need full validation.
 
 ## 0.22.6 (2026-04-01)
