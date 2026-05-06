@@ -66,7 +66,11 @@
         <!-- Build -->
         <maven.compiler.release>25</maven.compiler.release>
         <maven.surefire.version>3.5.4</maven.surefire.version>
-        <ta4j.excludedTestTags>integration,slow</ta4j.excludedTestTags>
+        <ta4j.excludedTestTags>integration,analysis-demo,elliott-macro-cycle-replay</ta4j.excludedTestTags>
+        <spotbugs.version>4.9.8.0</spotbugs.version>
+        <jacoco.version>0.8.13</jacoco.version>
+        <ta4j.jacoco.line.minimum>0.80</ta4j.jacoco.line.minimum>
+        <ta4j.jacoco.branch.minimum>0.80</ta4j.jacoco.branch.minimum>
 
         <!-- Dependencies -->
         <assertj.version>3.27.7</assertj.version>
@@ -165,6 +169,25 @@
 
     <profiles>
 
+        <!-- Run Elliott-wave analysis demo tests intentionally with explicit opt-in -->
+        <profile>
+            <id>analysis-demo</id>
+            <properties>
+                <ta4j.excludedTestTags>elliott-macro-cycle-replay</ta4j.excludedTestTags>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-surefire-plugin</artifactId>
+                        <configuration>
+                            <groups>analysis-demo</groups>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+
         <!-- Only when performing a release (i.e. not for snapshots) -->
         <profile>
             <id>production-release</id>
@@ -259,6 +282,85 @@
     </profiles>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>com.github.spotbugs</groupId>
+                    <artifactId>spotbugs-maven-plugin</artifactId>
+                    <version>${spotbugs.version}</version>
+                    <configuration>
+                        <quiet>true</quiet>
+                        <xmlOutput>true</xmlOutput>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>spotbugs-check</id>
+                            <phase>verify</phase>
+                            <configuration>
+                                <failOnError>false</failOnError>
+                            </configuration>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.jacoco</groupId>
+                    <artifactId>jacoco-maven-plugin</artifactId>
+                    <version>${jacoco.version}</version>
+                    <configuration>
+                        <rules>
+                            <rule>
+                                <element>BUNDLE</element>
+                                <limits>
+                                    <limit>
+                                        <counter>LINE</counter>
+                                        <value>COVEREDRATIO</value>
+                                        <minimum>${ta4j.jacoco.line.minimum}</minimum>
+                                    </limit>
+                                    <limit>
+                                        <counter>BRANCH</counter>
+                                        <value>COVEREDRATIO</value>
+                                        <minimum>${ta4j.jacoco.branch.minimum}</minimum>
+                                    </limit>
+                                </limits>
+                            </rule>
+                        </rules>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>jacoco-prepare-agent</id>
+                            <goals>
+                                <goal>prepare-agent</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>jacoco-report</id>
+                            <phase>verify</phase>
+                            <goals>
+                                <goal>report</goal>
+                            </goals>
+                        </execution>
+                        <execution>
+                            <id>jacoco-check</id>
+                            <phase>verify</phase>
+                            <configuration>
+                                <haltOnFailure>false</haltOnFailure>
+                            </configuration>
+                            <goals>
+                                <goal>check</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>exec-maven-plugin</artifactId>
+                    <version>3.6.3</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
 
             <plugin>
@@ -309,6 +411,7 @@
                     <excludedGroups>${ta4j.excludedTestTags}</excludedGroups>
                     <useModulePath>false</useModulePath>
                     <argLine>
+                        @{argLine}
                         -XX:+EnableDynamicAgentLoading
                         -Xshare:off
                         -Djdk.instrument.traceUsage=false
@@ -354,6 +457,14 @@
                 <version>2.29.0</version>
                 <configuration>
                     <configFile>${project.basedir}/code-formatter.xml</configFile>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>exec-maven-plugin</artifactId>
+                <inherited>false</inherited>
+                <configuration>
+                    <skip>true</skip>
                 </configuration>
             </plugin>
 

@@ -1,4 +1,4 @@
-# ta4j  [![Build and Test](https://github.com/ta4j/ta4j/actions/workflows/test.yml/badge.svg)](https://github.com/ta4j/ta4j/actions/workflows/test.yml) [![Discord](https://img.shields.io/discord/745552125769023488.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/HX9MbWZ) [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT) ![Maven Central](https://img.shields.io/maven-central/v/org.ta4j/ta4j-parent?color=blue&label=Version) ![JDK](https://img.shields.io/badge/JDK-25%2B-orange)
+# ta4j  [![Run Verify](https://github.com/ta4j/ta4j/actions/workflows/test.yml/badge.svg)](https://github.com/ta4j/ta4j/actions/workflows/test.yml) [![Discord](https://img.shields.io/discord/745552125769023488.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2)](https://discord.gg/HX9MbWZ) [![License: MIT](https://img.shields.io/badge/License-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT) ![Maven Central](https://img.shields.io/maven-central/v/org.ta4j/ta4j-parent?color=blue&label=Version) ![JDK](https://img.shields.io/badge/JDK-25%2B-orange)
 
 ***Technical Analysis for Java***
 
@@ -124,7 +124,15 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 
 ## Build commands: Maven
 
-Ta4j requires Java 25+ and Maven 3.9+. Use `mvn ...` from the repository root.
+Ta4j requires Java 25+ and Maven 3.9+. Use system Maven from the repository root.
+
+- **Standard build command:** Use `mvn ...`
+- **Contributor quality path:** Use `mvn verify` to match CI and get advisory SpotBugs and JaCoCo feedback alongside the test suite
+- **SpotBugs-only local gate:** Use `mvn -pl ta4j-core -am spotbugs:check` to fail fast on module-scoped findings before rerunning the full build
+- **JaCoCo-only local gate:** Use `mvn -pl ta4j-core -am test jacoco:report jacoco:check` to run tests, generate coverage output, and enforce the module threshold locally
+- **Focused coverage report:** Use `mvn -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report` when you want a quick report without enforcing the bundle threshold yet
+
+Run `mvn verify` before opening or updating a pull request.
 
 ## Try it now
 
@@ -135,7 +143,7 @@ Ta4j requires Java 25+ and Maven 3.9+. Use `mvn ...` from the repository root.
 git clone https://github.com/ta4j/ta4j.git
 cd ta4j
 
-# Build the project first
+# Build the project first (Linux/macOS/Git Bash)
 mvn clean install -DskipTests
 
 # Run the Quickstart example (Quickstart is configured as the default)
@@ -144,7 +152,7 @@ mvn -pl ta4j-examples exec:java
 
 **Alternative:** To run a different example class:
 ```bash
-mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
+mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest
 ```
 
 This will load historical Bitcoin data, run a complete trading strategy, display performance metrics, and show an interactive chart - all in one go!
@@ -159,7 +167,7 @@ Load price data, plug in indicators, and describe when to enter/exit. The API re
 
 **💡 Want to see this in action?** The [`Quickstart` example](https://github.com/ta4j/ta4j/blob/master/ta4j-examples/src/main/java/ta4jexamples/Quickstart.java) includes this same pattern plus performance metrics and charting. Run it with:
 ```bash
-mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
+mvn -pl ta4j-examples exec:java
 ```
 
 **Key concepts:**
@@ -880,6 +888,8 @@ Get help, share ideas, and connect with other Ta4j users:
 - Scan the [roadmap](https://ta4j.github.io/ta4j-wiki/Roadmap-and-Tasks.html) and [how-to-contribute guide](https://ta4j.github.io/ta4j-wiki/How-to-contribute).
 - [Fork the repo](http://help.github.com/forking/), open pull requests, and join code discussions on Discord.
 - See the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
+- Run `mvn verify` before opening or updating a pull request. It matches CI and includes advisory SpotBugs and JaCoCo reporting alongside the test suite.
+- For faster local quality loops, use `mvn -pl ta4j-core -am spotbugs:check` or `mvn -pl ta4j-core -am test jacoco:report jacoco:check` before rerunning the full `mvn verify`.
 
 ## Release & snapshot publishing
 
