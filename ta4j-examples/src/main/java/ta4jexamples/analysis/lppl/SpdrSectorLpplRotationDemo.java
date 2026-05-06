@@ -3,18 +3,26 @@
  */
 package ta4jexamples.analysis.lppl;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Duration;
 import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 
+import org.ta4j.core.Bar;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.lppl.LpplCalibrationProfile;
 import org.ta4j.core.indicators.lppl.LpplExhaustion;
 import org.ta4j.core.indicators.lppl.LpplExhaustionIndicator;
 import org.ta4j.core.indicators.lppl.LpplExhaustionSide;
+import org.ta4j.core.indicators.lppl.LpplFit;
 
 import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
 
@@ -23,13 +31,15 @@ import ta4jexamples.datasources.JsonFileBarSeriesDataSource;
  * Sector SPDR ETF universe.
  *
  * <p>
- * The committed resources are daily Yahoo Finance bars through 2026-04-29. OHLC
- * values are scaled to adjusted close so the 2025 Select Sector SPDR share
- * splits do not create artificial LPPL discontinuities.
+ * The committed seed resources are adjusted daily Yahoo Finance bars ending
+ * near the 2026-04-29 reference snapshot. Analysis-demo runs can refresh those
+ * references incrementally with live Yahoo deltas before running the report,
+ * keeping local runs deterministic by writing refreshed copies under
+ * {@code target/analysis-demos}.
  */
 public final class SpdrSectorLpplRotationDemo {
 
-    private static final LocalDate SNAPSHOT_DATE = LocalDate.of(2026, 4, 29);
+    private static final LocalDate SEED_SNAPSHOT_DATE = LocalDate.of(2026, 4, 29);
 
     private static final List<SectorDefinition> UNIVERSE = List.of(
             new SectorDefinition("XLI", "Industrials", "YahooFinance-XLI-PT1D-20240102_20260429.json"),
@@ -48,29 +58,47 @@ public final class SpdrSectorLpplRotationDemo {
     }
 
     /**
-     * Runs the offline SPDR LPPL rotation demo.
+     * Runs the SPDR LPPL rotation demo.
      *
      * @param args ignored
+     * @throws IOException if refreshed reference-data artifacts cannot be written
      */
-    public static void main(String[] args) {
-        List<SectorSnapshot> snapshots = analyze(LpplCalibrationProfile.defaults());
-        System.out.print(renderReport(snapshots));
+    public static void main(String[] args) throws IOException {
+        DemoRun run = runAnalysisDemo(LpplCalibrationProfile.defaults(),
+                SpdrSectorReferenceDataUpdater.Settings.fromSystemProperties());
+        System.out.print(run.report());
     }
 
     static List<SectorDefinition> closedUniverse() {
         return UNIVERSE;
     }
 
+    static DemoRun runAnalysisDemo(LpplCalibrationProfile profile, SpdrSectorReferenceDataUpdater.Settings settings)
+            throws IOException {
+        SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary = new SpdrSectorReferenceDataUpdater()
+                .refresh(UNIVERSE, settings);
+        List<SectorSnapshot> snapshots = analyze(profile, refreshSummary);
+        String report = renderReport(snapshots, refreshSummary);
+        writeArtifacts(settings.outputDirectory(), report, snapshots, refreshSummary);
+        return new DemoRun(snapshots, refreshSummary, report);
+    }
+
     static List<SectorSnapshot> analyze(LpplCalibrationProfile profile) {
+        return analyze(profile, null);
+    }
+
+    static List<SectorSnapshot> analyze(LpplCalibrationProfile profile,
+            SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary) {
         JsonFileBarSeriesDataSource dataSource = new JsonFileBarSeriesDataSource();
         List<InstrumentSnapshot> instruments = new ArrayList<>(UNIVERSE.size());
         for (SectorDefinition definition : UNIVERSE) {
-            BarSeries series = dataSource.loadSeries(definition.resource());
+            String source = refreshSummary == null ? definition.resource() : refreshSummary.sourceFor(definition);
+            BarSeries series = dataSource.loadSeries(source);
             if (series == null || series.isEmpty()) {
-                throw new IllegalStateException("Unable to load SPDR resource: " + definition.resource());
+                throw new IllegalStateException("Unable to load SPDR resource: " + source);
             }
             LpplExhaustionIndicator indicator = new LpplExhaustionIndicator(new ClosePriceIndicator(series), profile);
-            instruments.add(new InstrumentSnapshot(definition.ticker(), definition.sector(),
+            instruments.add(new InstrumentSnapshot(definition.ticker(), definition.sector(), latestBarDate(series),
                     indicator.getValue(series.getEndIndex())));
         }
         return aggregate(instruments);
@@ -82,6 +110,7 @@ public final class SpdrSectorLpplRotationDemo {
                 .mapToDouble(SpdrSectorLpplRotationDemo::scoreValue)
                 .average()
                 .orElse(0.0);
+        double universeStdDev = standardDeviation(safeInstruments, universeAverage);
 
         List<SectorSnapshot> snapshots = new ArrayList<>();
         for (SectorDefinition definition : UNIVERSE) {
@@ -102,10 +131,19 @@ public final class SpdrSectorLpplRotationDemo {
                     .average()
                     .orElse(0.0);
             double total = sectorInstruments.size();
-            snapshots.add(
-                    new SectorSnapshot(definition.sector(), definition.ticker(), sectorInstruments.size(), crashCount,
-                            bubbleCount, (crashCount - bubbleCount) / total, lpplScore, lpplScore - universeAverage));
+            LpplExhaustion dominant = dominantExhaustion(sectorInstruments);
+            LpplFit dominantFit = dominant.dominantFit();
+            double relativeScore = lpplScore - universeAverage;
+            LpplExhaustionSide side = crashCount > bubbleCount ? LpplExhaustionSide.CRASH_EXHAUSTION
+                    : bubbleCount > crashCount ? LpplExhaustionSide.BUBBLE_EXHAUSTION : LpplExhaustionSide.NONE;
+            snapshots.add(new SectorSnapshot(definition.sector(), definition.ticker(), latestDate(sectorInstruments),
+                    sectorInstruments.size(), crashCount, bubbleCount, (crashCount - bubbleCount) / total, lpplScore,
+                    relativeScore, 0, 0, universeStdDev == 0.0 ? 0.0 : relativeScore / universeStdDev, side,
+                    validFitShare(dominant), sideConsensus(crashCount, bubbleCount, dominant.validFits()),
+                    finite(dominant.fitQuality().doubleValue()), dominantFit.window(), dominantFit.criticalOffset(),
+                    finite(dominantFit.rSquared()), finite(dominantFit.rms()), bucket(side, relativeScore)));
         }
+        snapshots = withRanks(snapshots);
         snapshots.sort(Comparator.comparingDouble(SectorSnapshot::relativeRotationScore)
                 .reversed()
                 .thenComparing(SectorSnapshot::sector));
@@ -113,31 +151,53 @@ public final class SpdrSectorLpplRotationDemo {
     }
 
     static String renderReport(List<SectorSnapshot> snapshots) {
+        return renderReport(snapshots, null);
+    }
+
+    static String renderReport(List<SectorSnapshot> snapshots,
+            SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary) {
         List<SectorSnapshot> safeSnapshots = snapshots == null ? List.of() : List.copyOf(snapshots);
         StringBuilder builder = new StringBuilder();
-        builder.append(
-                "date,sector,ticker,total,crash_count,bubble_count,net_exhaustion_score,standalone_lppl_score,relative_rotation_score\n");
-        for (SectorSnapshot snapshot : safeSnapshots) {
-            builder.append(SNAPSHOT_DATE)
+        builder.append(renderSnapshotCsv(safeSnapshots)).append('\n');
+        if (refreshSummary != null) {
+            builder.append(renderRefreshSummary(refreshSummary)).append('\n');
+        }
+        builder.append(renderInterpretation(safeSnapshots));
+        return builder.toString();
+    }
+
+    static String renderRefreshSummary(SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary) {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Reference data refresh\n")
+                .append("analysis_data_dir=")
+                .append(refreshSummary.analysisDataDirectory())
+                .append('\n')
+                .append("response_cache_dir=")
+                .append(refreshSummary.responseCacheDirectory())
+                .append('\n')
+                .append("ticker,previous_last_date,new_last_date,existing_bars,fetched_bars,merged_bars,added_bars,revised_bars,skipped,message\n");
+        for (SpdrSectorReferenceDataUpdater.TickerRefresh refresh : refreshSummary.tickers()) {
+            builder.append(refresh.ticker())
                     .append(',')
-                    .append(snapshot.sector())
+                    .append(refresh.previousLastDate())
                     .append(',')
-                    .append(snapshot.ticker())
+                    .append(refresh.newLastDate())
                     .append(',')
-                    .append(snapshot.totalInstruments())
+                    .append(refresh.existingBars())
                     .append(',')
-                    .append(snapshot.crashCount())
+                    .append(refresh.fetchedBars())
                     .append(',')
-                    .append(snapshot.bubbleCount())
+                    .append(refresh.mergedBars())
                     .append(',')
-                    .append(format(snapshot.netExhaustionScore()))
+                    .append(refresh.addedBars())
                     .append(',')
-                    .append(format(snapshot.lpplScore()))
+                    .append(refresh.revisedBars())
                     .append(',')
-                    .append(format(snapshot.relativeRotationScore()))
+                    .append(refresh.skipped())
+                    .append(',')
+                    .append(message(refresh))
                     .append('\n');
         }
-        builder.append('\n').append(renderInterpretation(safeSnapshots));
         return builder.toString();
     }
 
@@ -148,24 +208,24 @@ public final class SpdrSectorLpplRotationDemo {
         }
 
         List<SectorSnapshot> crashSignals = safeSnapshots.stream()
-                .filter(snapshot -> snapshot.crashCount() > snapshot.bubbleCount())
+                .filter(snapshot -> snapshot.side() == LpplExhaustionSide.CRASH_EXHAUSTION)
                 .sorted(Comparator.comparingDouble(SectorSnapshot::lpplScore).reversed())
                 .toList();
         List<SectorSnapshot> bubbleSignals = safeSnapshots.stream()
-                .filter(snapshot -> snapshot.bubbleCount() > snapshot.crashCount())
+                .filter(snapshot -> snapshot.side() == LpplExhaustionSide.BUBBLE_EXHAUSTION)
                 .sorted(Comparator.comparingDouble(SectorSnapshot::lpplScore))
                 .toList();
         List<SectorSnapshot> neutralSignals = safeSnapshots.stream()
-                .filter(snapshot -> snapshot.crashCount() == snapshot.bubbleCount())
+                .filter(snapshot -> snapshot.side() == LpplExhaustionSide.NONE)
                 .sorted(Comparator.comparing(SectorSnapshot::sector))
                 .toList();
 
         int totalInstruments = safeSnapshots.stream().mapToInt(SectorSnapshot::totalInstruments).sum();
         SectorSnapshot strongestRelative = safeSnapshots.stream()
-                .max(Comparator.comparingDouble(SectorSnapshot::relativeRotationScore))
+                .min(Comparator.comparingInt(SectorSnapshot::relativeRank))
                 .orElseThrow();
         SectorSnapshot weakestRelative = safeSnapshots.stream()
-                .min(Comparator.comparingDouble(SectorSnapshot::relativeRotationScore))
+                .max(Comparator.comparingInt(SectorSnapshot::relativeRank))
                 .orElseThrow();
 
         StringBuilder builder = new StringBuilder();
@@ -188,18 +248,20 @@ public final class SpdrSectorLpplRotationDemo {
 
         appendSignalSummary(builder, "Strongest crash-exhaustion candidates", crashSignals);
         appendSignalSummary(builder, "Strongest bubble-exhaustion warnings", bubbleSignals);
+        appendBucketSummary(builder, safeSnapshots);
 
         if (!neutralSignals.isEmpty()) {
-            builder.append("Neutral under this profile: ")
+            builder.append("Neutral or low-conviction under this profile: ")
                     .append(formatSectors(neutralSignals))
-                    .append(". Their positive or negative relative score only reflects position versus the universe average.\n");
+                    .append(". Their relative score only reflects position versus the universe average.\n");
         }
 
-        builder.append("Highest relative rotation score: ")
+        builder.append("Relative rotation leader: ")
                 .append(formatSector(strongestRelative))
-                .append("; lowest relative rotation score: ")
+                .append("; relative rotation laggard: ")
                 .append(formatSector(weakestRelative))
                 .append(".\n");
+        appendDivergenceSummary(builder, safeSnapshots);
 
         if (safeSnapshots.stream().allMatch(snapshot -> snapshot.totalInstruments() == 1)) {
             builder.append(
@@ -208,12 +270,122 @@ public final class SpdrSectorLpplRotationDemo {
         return builder.toString();
     }
 
+    private static String renderSnapshotCsv(List<SectorSnapshot> snapshots) {
+        StringBuilder builder = new StringBuilder();
+        builder.append(
+                "date,sector,ticker,total,crash_count,bubble_count,net_exhaustion_score,standalone_lppl_score,relative_rotation_score,relative_rank,absolute_signal_rank,universe_z_score,side,valid_fit_share,side_consensus,fit_quality,dominant_window,critical_offset,r_squared,rms,bucket\n");
+        for (SectorSnapshot snapshot : snapshots) {
+            appendSnapshotCsvRow(builder, snapshot);
+        }
+        return builder.toString();
+    }
+
+    private static void appendSnapshotCsvRow(StringBuilder builder, SectorSnapshot snapshot) {
+        builder.append(snapshot.latestDate())
+                .append(',')
+                .append(snapshot.sector())
+                .append(',')
+                .append(snapshot.ticker())
+                .append(',')
+                .append(snapshot.totalInstruments())
+                .append(',')
+                .append(snapshot.crashCount())
+                .append(',')
+                .append(snapshot.bubbleCount())
+                .append(',')
+                .append(format(snapshot.netExhaustionScore()))
+                .append(',')
+                .append(format(snapshot.lpplScore()))
+                .append(',')
+                .append(format(snapshot.relativeRotationScore()))
+                .append(',')
+                .append(snapshot.relativeRank())
+                .append(',')
+                .append(snapshot.absoluteSignalRank())
+                .append(',')
+                .append(format(snapshot.universeZScore()))
+                .append(',')
+                .append(snapshot.side())
+                .append(',')
+                .append(format(snapshot.validFitShare()))
+                .append(',')
+                .append(format(snapshot.sideConsensus()))
+                .append(',')
+                .append(format(snapshot.fitQuality()))
+                .append(',')
+                .append(snapshot.dominantWindow())
+                .append(',')
+                .append(snapshot.criticalOffset())
+                .append(',')
+                .append(format(snapshot.rSquared()))
+                .append(',')
+                .append(format(snapshot.rms()))
+                .append(',')
+                .append(snapshot.bucket())
+                .append('\n');
+    }
+
     private static void appendSignalSummary(StringBuilder builder, String label, List<SectorSnapshot> snapshots) {
         if (snapshots.isEmpty()) {
             builder.append(label).append(": none.\n");
             return;
         }
         builder.append(label).append(": ").append(formatSectors(snapshots)).append(".\n");
+    }
+
+    private static void appendBucketSummary(StringBuilder builder, List<SectorSnapshot> snapshots) {
+        builder.append("Qualitative buckets: ");
+        List<String> buckets = new ArrayList<>();
+        for (ExhaustionBucket bucket : ExhaustionBucket.values()) {
+            long count = snapshots.stream().filter(snapshot -> snapshot.bucket() == bucket).count();
+            if (count > 0) {
+                buckets.add(bucket + "=" + count);
+            }
+        }
+        builder.append(String.join(", ", buckets)).append(".\n");
+    }
+
+    private static void appendDivergenceSummary(StringBuilder builder, List<SectorSnapshot> snapshots) {
+        List<SectorSnapshot> divergences = snapshots.stream()
+                .filter(snapshot -> snapshot.bucket() == ExhaustionBucket.CRASH_EXHAUSTED_LAGGARD
+                        || snapshot.bucket() == ExhaustionBucket.BUBBLE_EXHAUSTED_RELATIVE_HOLDOUT)
+                .sorted(Comparator.comparingInt(SectorSnapshot::absoluteSignalRank))
+                .toList();
+        if (!divergences.isEmpty()) {
+            builder.append("Standalone/relative divergences: ")
+                    .append(formatSectors(divergences))
+                    .append(". These sectors have LPPL exhaustion in one direction but sit on the other side of the universe-relative rotation line.\n");
+        }
+    }
+
+    private static void writeArtifacts(Path outputDirectory, String report, List<SectorSnapshot> snapshots,
+            SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary) throws IOException {
+        Files.createDirectories(outputDirectory);
+        Files.writeString(outputDirectory.resolve("lppl-sector-report.txt"), report, StandardCharsets.UTF_8);
+        Files.writeString(outputDirectory.resolve("lppl-sector-snapshots.csv"), renderSnapshotCsv(snapshots),
+                StandardCharsets.UTF_8);
+        Files.writeString(outputDirectory.resolve("lppl-reference-refresh.csv"), renderRefreshSummary(refreshSummary),
+                StandardCharsets.UTF_8);
+    }
+
+    private static List<SectorSnapshot> withRanks(List<SectorSnapshot> snapshots) {
+        List<SectorSnapshot> rankedByRelative = snapshots.stream()
+                .sorted(Comparator.comparingDouble(SectorSnapshot::relativeRotationScore)
+                        .reversed()
+                        .thenComparing(SectorSnapshot::sector))
+                .toList();
+        List<SectorSnapshot> rankedByAbsolute = snapshots.stream()
+                .sorted(Comparator.comparingDouble((SectorSnapshot snapshot) -> Math.abs(snapshot.lpplScore()))
+                        .reversed()
+                        .thenComparing(SectorSnapshot::sector))
+                .toList();
+
+        List<SectorSnapshot> ranked = new ArrayList<>(snapshots.size());
+        for (SectorSnapshot snapshot : snapshots) {
+            ranked.add(
+                    snapshot.withRanks(rankedByRelative.indexOf(snapshot) + 1, rankedByAbsolute.indexOf(snapshot) + 1));
+        }
+        return ranked;
     }
 
     private static String formatSectors(List<SectorSnapshot> snapshots) {
@@ -225,11 +397,68 @@ public final class SpdrSectorLpplRotationDemo {
 
     private static String formatSector(SectorSnapshot snapshot) {
         return snapshot.sector() + " (" + snapshot.ticker() + ", standalone=" + format(snapshot.lpplScore())
-                + ", relative=" + format(snapshot.relativeRotationScore()) + ")";
+                + ", relative=" + format(snapshot.relativeRotationScore()) + ", rank=" + snapshot.relativeRank()
+                + ", confidence=" + format(snapshot.fitQuality()) + ")";
     }
 
-    private static String label(int count, String singular) {
+    private static LocalDate latestBarDate(BarSeries series) {
+        Bar bar = series.getLastBar();
+        Duration period = bar.getTimePeriod();
+        return bar.getEndTime().minus(period).atZone(ZoneId.of("America/New_York")).toLocalDate();
+    }
+
+    private static LocalDate latestDate(List<InstrumentSnapshot> instruments) {
+        return instruments.stream()
+                .map(InstrumentSnapshot::latestDate)
+                .max(LocalDate::compareTo)
+                .orElse(SEED_SNAPSHOT_DATE);
+    }
+
+    private static LpplExhaustion dominantExhaustion(List<InstrumentSnapshot> instruments) {
+        return instruments.stream()
+                .map(InstrumentSnapshot::exhaustion)
+                .max(Comparator.comparingDouble(exhaustion -> Math.abs(scoreValue(exhaustion))))
+                .orElseThrow();
+    }
+
+    private static double standardDeviation(List<InstrumentSnapshot> instruments, double average) {
+        if (instruments.isEmpty()) {
+            return 0.0;
+        }
+        double variance = instruments.stream()
+                .mapToDouble(SpdrSectorLpplRotationDemo::scoreValue)
+                .map(value -> Math.pow(value - average, 2.0))
+                .average()
+                .orElse(0.0);
+        return Math.sqrt(variance);
+    }
+
+    private static double validFitShare(LpplExhaustion exhaustion) {
+        return exhaustion.attemptedFits() == 0 ? 0.0 : (double) exhaustion.validFits() / exhaustion.attemptedFits();
+    }
+
+    private static double sideConsensus(int crashCount, int bubbleCount, int validFits) {
+        return validFits == 0 ? 0.0 : (double) Math.abs(crashCount - bubbleCount) / validFits;
+    }
+
+    private static ExhaustionBucket bucket(LpplExhaustionSide side, double relativeScore) {
+        if (side == LpplExhaustionSide.CRASH_EXHAUSTION) {
+            return relativeScore >= 0.0 ? ExhaustionBucket.CRASH_EXHAUSTED_LEADER
+                    : ExhaustionBucket.CRASH_EXHAUSTED_LAGGARD;
+        }
+        if (side == LpplExhaustionSide.BUBBLE_EXHAUSTION) {
+            return relativeScore <= 0.0 ? ExhaustionBucket.BUBBLE_EXHAUSTED_LAGGARD
+                    : ExhaustionBucket.BUBBLE_EXHAUSTED_RELATIVE_HOLDOUT;
+        }
+        return ExhaustionBucket.NEUTRAL_OR_LOW_CONVICTION;
+    }
+
+    private static String label(long count, String singular) {
         return count == 1 ? singular : singular + "s";
+    }
+
+    private static String message(SpdrSectorReferenceDataUpdater.TickerRefresh refresh) {
+        return refresh.message() == null ? "" : refresh.message().replace(',', ';');
     }
 
     private static boolean hasCrashExhaustion(InstrumentSnapshot instrument) {
@@ -243,10 +472,18 @@ public final class SpdrSectorLpplRotationDemo {
     }
 
     private static double scoreValue(InstrumentSnapshot instrument) {
-        if (!instrument.exhaustion().isValid()) {
+        return scoreValue(instrument.exhaustion());
+    }
+
+    private static double scoreValue(LpplExhaustion exhaustion) {
+        if (!exhaustion.isValid()) {
             return 0.0;
         }
-        double value = instrument.exhaustion().score().doubleValue();
+        double value = exhaustion.score().doubleValue();
+        return Double.isFinite(value) ? value : 0.0;
+    }
+
+    private static double finite(double value) {
         return Double.isFinite(value) ? value : 0.0;
     }
 
@@ -254,13 +491,32 @@ public final class SpdrSectorLpplRotationDemo {
         return String.format(Locale.US, "%.4f", value);
     }
 
+    enum ExhaustionBucket {
+        CRASH_EXHAUSTED_LEADER, CRASH_EXHAUSTED_LAGGARD, BUBBLE_EXHAUSTED_LAGGARD, BUBBLE_EXHAUSTED_RELATIVE_HOLDOUT,
+        NEUTRAL_OR_LOW_CONVICTION
+    }
+
+    record DemoRun(List<SectorSnapshot> snapshots, SpdrSectorReferenceDataUpdater.RefreshSummary refreshSummary,
+            String report) {
+    }
+
     record SectorDefinition(String ticker, String sector, String resource) {
     }
 
-    record InstrumentSnapshot(String ticker, String sector, LpplExhaustion exhaustion) {
+    record InstrumentSnapshot(String ticker, String sector, LocalDate latestDate, LpplExhaustion exhaustion) {
     }
 
-    record SectorSnapshot(String sector, String ticker, int totalInstruments, int crashCount, int bubbleCount,
-            double netExhaustionScore, double lpplScore, double relativeRotationScore) {
+    record SectorSnapshot(String sector, String ticker, LocalDate latestDate, int totalInstruments, int crashCount,
+            int bubbleCount, double netExhaustionScore, double lpplScore, double relativeRotationScore,
+            int relativeRank, int absoluteSignalRank, double universeZScore, LpplExhaustionSide side,
+            double validFitShare, double sideConsensus, double fitQuality, int dominantWindow, int criticalOffset,
+            double rSquared, double rms, ExhaustionBucket bucket) {
+
+        SectorSnapshot withRanks(int relativeRank, int absoluteSignalRank) {
+            return new SectorSnapshot(sector, ticker, latestDate, totalInstruments, crashCount, bubbleCount,
+                    netExhaustionScore, lpplScore, relativeRotationScore, relativeRank, absoluteSignalRank,
+                    universeZScore, side, validFitShare, sideConsensus, fitQuality, dominantWindow, criticalOffset,
+                    rSquared, rms, bucket);
+        }
     }
 }

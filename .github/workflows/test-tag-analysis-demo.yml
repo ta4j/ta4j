@@ -1,7 +1,8 @@
 name: Run Analysis Demo Tagged Tests
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 on:
   schedule:
@@ -28,11 +29,21 @@ jobs:
       ${{
         github.event_name == 'workflow_dispatch' ||
         (
-          vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_ENABLED == 'true' &&
+          github.event_name == 'schedule' &&
           (
-            (vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_SLOT == 'daily' && github.event.schedule == '7 7 * * *') ||
-            (vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_SLOT == 'weekly' && github.event.schedule == '17 7 * * 1') ||
-            (vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_SLOT == 'monthly' && github.event.schedule == '27 7 1 * *')
+            (
+              github.event.schedule == '17 7 * * 1' &&
+              vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_ENABLED != 'false' &&
+              (vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_SLOT == '' ||
+               vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_SLOT == 'weekly')
+            ) ||
+            (
+              vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_ENABLED == 'true' &&
+              (
+                (vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_SLOT == 'daily' && github.event.schedule == '7 7 * * *') ||
+                (vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_SLOT == 'monthly' && github.event.schedule == '27 7 1 * *')
+              )
+            )
           )
         )
       }}
@@ -97,11 +108,53 @@ jobs:
           -Dta4j.excludedTestTags=elliott-macro-cycle-replay
           -Dta4j.analysisDemoInstrument="${TA4J_ANALYSIS_DEMO_INSTRUMENT}"
           -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave
+          -Dta4j.lpplDemoOutputDir=target/analysis-demos/lppl-sector-rotation
+          -Dta4j.lpplReferenceDataDir=ta4j-examples/src/main/resources
+          -Dta4j.lpplUpdateReferenceData=true
+
+      - name: Detect LPPL reference data changes
+        id: lppl_reference_data
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- 'ta4j-examples/src/main/resources/YahooFinance-X*.json'; then
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Create or update LPPL reference data pull request
+        if: steps.lppl_reference_data.outputs.changed == 'true' && github.ref == 'refs/heads/master'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          branch="automation/lppl-spdr-reference-data"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin "${branch}:refs/remotes/origin/${branch}" || true
+          git switch -c "${branch}"
+          git add 'ta4j-examples/src/main/resources/YahooFinance-X*.json'
+          git commit -m "Update SPDR LPPL reference data"
+          git push --force-with-lease origin "HEAD:${branch}"
+
+          body_file="$(mktemp)"
+          cat > "${body_file}" <<'PR_BODY'
+          Updates the adjusted daily SPDR sector ETF reference data used by the LPPL analysis demo.
+
+          This PR was opened by the `analysis-demo` workflow after an incremental Yahoo Finance refresh.
+          PR_BODY
+
+          existing_pr="$(gh pr list --state open --head "${branch}" --json number --jq '.[0].number // empty')"
+          if [ -n "${existing_pr}" ]; then
+            gh pr edit "${existing_pr}" --title "Update SPDR LPPL reference data" --body-file "${body_file}"
+          else
+            gh pr create --base master --head "${branch}" --title "Update SPDR LPPL reference data" --body-file "${body_file}"
+          fi
 
       - name: Upload analysis demo artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: analysis-demo-elliott-wave
+          name: analysis-demo-reports
           path: target/analysis-demos/**
           if-no-files-found: warn
