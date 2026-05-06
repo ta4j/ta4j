@@ -10,7 +10,7 @@ on:
   schedule:
     - cron: "0 9 * * *"
   workflow_run:
-    workflows: ["Publish Release to Maven Central"]
+    workflows: ["Publish Release to Maven Central", "Publish Snapshot to Maven Central"]
     types:
       - completed
   workflow_dispatch:
@@ -167,6 +167,19 @@ jobs:
             --output snapshot-publication.json \
             --github-output "$GITHUB_OUTPUT"
 
+      - name: Resolve snapshot publication policy
+        id: snapshot_policy
+        env:
+          HEALTH_EVENT_NAME: ${{ github.event_name }}
+          HEALTH_TRIGGER_WORKFLOW: ${{ github.event.workflow_run.name }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release/release_helpers.py snapshot-publication-policy \
+            --event-name "${HEALTH_EVENT_NAME}" \
+            --workflow-name "${HEALTH_TRIGGER_WORKFLOW}" \
+            --output snapshot-publication-policy.json \
+            --github-output "$GITHUB_OUTPUT"
+
       - name: Check for stale release PRs
         id: stale_prs
         uses: actions/github-script@v8
@@ -229,11 +242,15 @@ jobs:
           SNAPSHOT_PUBLICATION_LATEST: ${{ steps.snapshot_publication.outputs.snapshot_publication_latest }}
           SNAPSHOT_PUBLICATION_LAST_UPDATED: ${{ steps.snapshot_publication.outputs.snapshot_publication_last_updated }}
           SNAPSHOT_PUBLICATION_SOURCE: ${{ steps.snapshot_publication.outputs.snapshot_publication_source }}
+          SNAPSHOT_PUBLICATION_ENFORCED: ${{ steps.snapshot_policy.outputs.snapshot_publication_enforced }}
+          SNAPSHOT_PUBLICATION_PENDING_REASON: ${{ steps.snapshot_policy.outputs.snapshot_publication_pending_reason }}
           NOTES_PRESENT: ${{ steps.state.outputs.release_notes_present }}
           STALE_DAYS: ${{ steps.stale_prs.outputs.stale_days }}
           STALE_COUNT: ${{ steps.stale_prs.outputs.stale_count }}
           STALE_LIST: ${{ steps.stale_prs.outputs.stale_list }}
           RELEASE_NOTIFY_USER: ${{ vars.RELEASE_NOTIFY_USER }}
+          HEALTH_EVENT_NAME: ${{ github.event_name }}
+          HEALTH_TRIGGER_WORKFLOW: ${{ github.event.workflow_run.name }}
         run: |
           set -euo pipefail
 
@@ -276,6 +293,12 @@ jobs:
           if [ -z "${SNAPSHOT_PUBLICATION_SOURCE:-}" ]; then
             SNAPSHOT_PUBLICATION_SOURCE="(unknown)"
           fi
+          if [ -z "${SNAPSHOT_PUBLICATION_ENFORCED:-}" ]; then
+            SNAPSHOT_PUBLICATION_ENFORCED="false"
+          fi
+          if [ -z "${SNAPSHOT_PUBLICATION_PENDING_REASON:-}" ]; then
+            SNAPSHOT_PUBLICATION_PENDING_REASON="(none)"
+          fi
           if [ -z "${NOTES_PRESENT:-}" ]; then
             NOTES_PRESENT="(unknown)"
           fi
@@ -287,6 +310,19 @@ jobs:
           fi
           if [ -z "${STALE_LIST:-}" ]; then
             STALE_LIST="(none)"
+          fi
+          if [ -z "${HEALTH_EVENT_NAME:-}" ]; then
+            HEALTH_EVENT_NAME="(unknown)"
+          fi
+          if [ -z "${HEALTH_TRIGGER_WORKFLOW:-}" ]; then
+            HEALTH_TRIGGER_WORKFLOW="(none)"
+          fi
+
+          effective_snapshot_publication="${SNAPSHOT_PUBLICATION}"
+          snapshot_publication_note="(none)"
+          if [ "${SNAPSHOT_PUBLICATION_ENFORCED}" != "true" ] && [[ "${SNAPSHOT_PUBLICATION}" == "false" || "${SNAPSHOT_PUBLICATION}" == "unknown" ]]; then
+            effective_snapshot_publication="pending"
+            snapshot_publication_note="${SNAPSHOT_PUBLICATION_PENDING_REASON}"
           fi
 
           drift=false
@@ -302,12 +338,12 @@ jobs:
             reasons+=("pom.xml snapshot version not ahead of latest tag")
           fi
 
-          if [ "$SNAPSHOT_PUBLICATION" = "false" ]; then
+          if [ "$effective_snapshot_publication" = "false" ]; then
             drift=true
             reasons+=("current snapshot version not published to Maven snapshot repository")
           fi
 
-          if [ "$SNAPSHOT_PUBLICATION" = "unknown" ]; then
+          if [ "$effective_snapshot_publication" = "unknown" ]; then
             drift=true
             reasons+=("snapshot publication state could not be verified")
           fi
@@ -346,6 +382,8 @@ jobs:
           - Repository: ${GITHUB_REPOSITORY}
           - Run: ${run_url}
           - Default branch: ${DEFAULT_BRANCH}
+          - Event: ${HEALTH_EVENT_NAME}
+          - Upstream workflow: ${HEALTH_TRIGGER_WORKFLOW}
 
           Tag Health:
           - latest tag: ${LATEST_TAG}
@@ -359,7 +397,9 @@ jobs:
           - pom.xml base: ${POM_BASE}
           - pom.xml snapshot: ${POM_SNAPSHOT}
           - snapshot ahead of latest tag: ${SNAPSHOT_OK}
-          - snapshot published: ${SNAPSHOT_PUBLICATION}
+          - snapshot publication enforced: ${SNAPSHOT_PUBLICATION_ENFORCED}
+          - snapshot published: ${effective_snapshot_publication}
+          - snapshot publication note: ${snapshot_publication_note}
           - snapshot metadata latest: ${SNAPSHOT_PUBLICATION_LATEST}
           - snapshot metadata last updated: ${SNAPSHOT_PUBLICATION_LAST_UPDATED}
 
@@ -385,7 +425,9 @@ jobs:
             "pomBase": "${POM_BASE}",
             "pomSnapshot": "${POM_SNAPSHOT}",
             "snapshotOk": "${SNAPSHOT_OK}",
-            "snapshotPublished": "${SNAPSHOT_PUBLICATION}",
+            "snapshotPublicationEnforced": "${SNAPSHOT_PUBLICATION_ENFORCED}",
+            "snapshotPublished": "${effective_snapshot_publication}",
+            "snapshotPublicationNote": "${snapshot_publication_note}",
             "snapshotMetadataLatest": "${SNAPSHOT_PUBLICATION_LATEST}",
             "snapshotMetadataLastUpdated": "${SNAPSHOT_PUBLICATION_LAST_UPDATED}",
             "snapshotMetadataSource": "${SNAPSHOT_PUBLICATION_SOURCE}",
@@ -404,7 +446,8 @@ jobs:
             echo "- latest tag reachable: ${LATEST_TAG_REACHABLE}"
             echo "- pom version: ${POM_VERSION}"
             echo "- snapshot ahead of latest tag: ${SNAPSHOT_OK}"
-            echo "- snapshot published: ${SNAPSHOT_PUBLICATION}"
+            echo "- snapshot publication enforced: ${SNAPSHOT_PUBLICATION_ENFORCED}"
+            echo "- snapshot published: ${effective_snapshot_publication}"
             echo "- stale release PR count: ${STALE_COUNT}"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -416,6 +459,7 @@ jobs:
           path: |
             tag-resolution.txt
             snapshot-publication.json
+            snapshot-publication-policy.json
             release-health-audit.json
             notification-body.txt
           if-no-files-found: ignore

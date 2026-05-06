@@ -18,7 +18,7 @@ Preferred path (PR mode):
 3. Maintainer reviews and merges release PR into `master` using a **merge commit**.
 4. Publish release (`publish-release.yml`) validates metadata/ancestry, runs the release-candidate gate, validates the artifact manifest, tags, deploys to Maven Central, pushes tag, and explicitly dispatches snapshot publication.
 5. GitHub release (`github-release.yml`) runs on tag push.
-6. Release health (`release-health.yml`) audits drift, verifies the current snapshot version is published, and posts summary.
+6. Release health (`release-health.yml`) audits drift, verifies the current snapshot version is published once snapshot publication is authoritative, and posts summary.
 
 Emergency path (direct push mode):
 1. `prepare-release.yml` pushes both commits directly to `master` when `RELEASE_DIRECT_PUSH=true`.
@@ -93,7 +93,7 @@ Secrets and variables:
 
 5. Observe post-publish workflows
 - `github-release.yml` should run from tag push.
-- `release-health.yml` should run and report `OK`.
+- `release-health.yml` may first report snapshot publication as pending during the async handoff, then should report `OK` after `snapshot.yml` completes.
 
 ---
 
@@ -125,7 +125,7 @@ Expected behavior:
 | `release-scheduler.yml` | schedule, manual | decide whether/how to release | binary-impact gate, model catalog preflight, release dossier, semver safety, tag collision checks |
 | `prepare-release.yml` | manual (or scheduler dispatch) | generate release artifacts and release PR/direct-push commits | version validation, metadata validation, dry-run push capability probes |
 | `publish-release.yml` | merged release PR close, manual | release-candidate verification + tag + Maven Central deploy + snapshot dispatch + release summary | merge discipline + ancestry checks, artifact manifest checks, post-push tag integrity/reachability checks |
-| `release-health.yml` | push to `master`, publish workflow completion, schedule, manual | detect drift in release state | fails on tag reachability drift, snapshot version drift, missing snapshot publication, missing notes, stale release PRs |
+| `release-health.yml` | push to `master`, publish workflow completion, snapshot workflow completion, schedule, manual | detect drift in release state | fails on tag reachability drift, snapshot version drift, missing snapshot publication once snapshot publication is authoritative, missing notes, stale release PRs |
 | `github-release.yml` | semver-like tag push, manual | GitHub release publication | semver tag validation, exact artifact manifest |
 | `snapshot.yml` | push to `master`, publish workflow dispatch, manual | publish snapshots | build/test/deploy prechecks and source-release audit fields |
 
@@ -146,7 +146,7 @@ Tag metrics used by release automation:
 5. GitHub release exists with expected notes/artifacts.
 6. The chained `snapshot.yml` run succeeded for the next `-SNAPSHOT` version.
 7. `master` is on next `-SNAPSHOT` version.
-8. `release-health.yml` reports no drift and confirms the current snapshot version is published.
+8. `release-health.yml` reports no drift and confirms the current snapshot version is published after `snapshot.yml` completes.
 
 Quick checks:
 ```bash
@@ -171,7 +171,7 @@ What should fail earlier now?
 
 Why health can still fail afterward:
 - `pom.xml` snapshot not ahead of latest tag.
-- current snapshot version is missing from the Maven snapshot repository.
+- current snapshot version is missing from the Maven snapshot repository after snapshot publication becomes authoritative.
 - missing `release/<version>.md` for latest tag.
 - stale release PRs.
 - existing repository drift not introduced by this publish run.

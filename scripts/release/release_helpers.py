@@ -13,6 +13,7 @@ import subprocess
 import sys
 import textwrap
 import urllib.request
+from urllib.parse import urlparse
 import xml.etree.ElementTree as ET
 from typing import Any
 
@@ -38,6 +39,7 @@ EXPECTED_RELEASE_ARTIFACTS = (
 
 JAVADOC_PATH_PATTERN = re.compile(r"^.*?(ta4j-(?:core|examples)/src/.+)$")
 SNAPSHOT_METADATA_URL = "https://central.sonatype.com/repository/maven-snapshots/org/ta4j/ta4j-parent/maven-metadata.xml"
+SNAPSHOT_WORKFLOW_NAME = "Publish Snapshot to Maven Central"
 
 
 def redact(value: str) -> str:
@@ -704,21 +706,52 @@ def emit_snapshot_publication_outputs(result: dict[str, Any], github_output: str
     append_output("snapshot_publication_error", str(result["error"]), github_output)
 
 
+def snapshot_publication_policy_result(
+    *,
+    event_name: str,
+    workflow_name: str,
+    enforce: bool,
+    pending_reason: str,
+) -> dict[str, Any]:
+    """Describe when release-health should treat snapshot metadata as authoritative."""
+    return {
+        "eventName": event_name,
+        "workflowName": workflow_name,
+        "enforce": enforce,
+        "pendingReason": pending_reason,
+    }
+
+
+def emit_snapshot_publication_policy_outputs(result: dict[str, Any], github_output: str | None) -> None:
+    """Expose snapshot-publication policy fields through the GitHub Actions output contract."""
+    append_output("snapshot_publication_enforced", "true" if result["enforce"] else "false", github_output)
+    append_output("snapshot_publication_pending_reason", str(result["pendingReason"]), github_output)
+
+
+def validate_snapshot_metadata_url(metadata_url: str) -> str:
+    """Reject non-HTTPS metadata URLs; local fixtures must use --metadata-file instead."""
+    parsed = urlparse(metadata_url.strip())
+    if parsed.scheme.lower() != "https" or not parsed.netloc:
+        raise ValueError("--metadata-url must use https")
+    return metadata_url
+
+
 def load_snapshot_metadata(args: argparse.Namespace) -> tuple[str, str]:
     """Load snapshot metadata XML from a local fixture or the live snapshot repository."""
     if args.metadata_file:
         source = args.metadata_file.resolve().as_uri()
         return args.metadata_file.read_text(encoding="utf-8"), source
 
+    metadata_url = validate_snapshot_metadata_url(args.metadata_url)
     request = urllib.request.Request(
-        args.metadata_url,
+        metadata_url,
         headers={
             "Accept": "application/xml",
             "User-Agent": "ta4j-release-automation",
         },
     )
     with urllib.request.urlopen(request, timeout=args.timeout_seconds) as response:
-        return response.read().decode("utf-8"), args.metadata_url
+        return response.read().decode("utf-8"), metadata_url
 
 
 def parse_snapshot_metadata(metadata_text: str) -> tuple[str, str, list[str]]:
@@ -764,7 +797,7 @@ def command_snapshot_publication(args: argparse.Namespace) -> int:
     try:
         metadata_text, source = load_snapshot_metadata(args)
         latest, last_updated, versions = parse_snapshot_metadata(metadata_text)
-    except Exception as exc:
+    except (ET.ParseError, OSError, UnicodeDecodeError, ValueError) as exc:
         result = snapshot_publication_result(
             version=version,
             published="unknown",
@@ -794,6 +827,34 @@ def command_snapshot_publication(args: argparse.Namespace) -> int:
         "audit:snapshot_publication "
         f"version={version} published={published} latest={latest or 'unknown'} "
         f"last_updated={last_updated or 'unknown'} output={args.output}"
+    )
+    return 0
+
+
+def command_snapshot_publication_policy(args: argparse.Namespace) -> int:
+    """Decide whether snapshot-publication failures should count as release-health drift."""
+    event_name = args.event_name.strip()
+    workflow_name = args.workflow_name.strip()
+    enforce = event_name in {"schedule", "workflow_dispatch"} or (
+        event_name == "workflow_run" and workflow_name == SNAPSHOT_WORKFLOW_NAME
+    )
+    pending_reason = (
+        ""
+        if enforce
+        else "awaiting snapshot workflow completion before treating snapshot metadata drift as authoritative"
+    )
+    result = snapshot_publication_policy_result(
+        event_name=event_name,
+        workflow_name=workflow_name,
+        enforce=enforce,
+        pending_reason=pending_reason,
+    )
+    write_json(args.output, result)
+    emit_snapshot_publication_policy_outputs(result, args.github_output)
+    print(
+        "audit:snapshot_publication_policy "
+        f"event={event_name or 'unknown'} workflow={workflow_name or 'none'} "
+        f"enforced={'true' if enforce else 'false'} output={args.output}"
     )
     return 0
 
@@ -856,6 +917,13 @@ def build_parser() -> argparse.ArgumentParser:
     snapshot.add_argument("--output", type=pathlib.Path, default=pathlib.Path("snapshot-publication.json"))
     snapshot.add_argument("--github-output")
     snapshot.set_defaults(func=command_snapshot_publication)
+
+    snapshot_policy = subparsers.add_parser("snapshot-publication-policy")
+    snapshot_policy.add_argument("--event-name", required=True)
+    snapshot_policy.add_argument("--workflow-name", default="")
+    snapshot_policy.add_argument("--output", type=pathlib.Path, default=pathlib.Path("snapshot-publication-policy.json"))
+    snapshot_policy.add_argument("--github-output")
+    snapshot_policy.set_defaults(func=command_snapshot_publication_policy)
     return parser
 
 

@@ -907,7 +907,7 @@ https://central.sonatype.com/repository/maven-snapshots/
 
 ### Stable releases
 
-Releases are automated via GitHub workflows. The scheduler builds a release dossier, validates the configured GitHub Models entry, and asks for a SemVer recommendation before dispatching the prepare workflow. The normal production path stays PR-based: merge the generated `release/<version>` PR with a merge commit, then `publish-release.yml` runs release-candidate verification, validates the artifact manifest, deploys to Maven Central, tags the release, creates the GitHub Release, and explicitly dispatches the next snapshot publication. `release-health.yml` then verifies both repo-state drift and that the current `-SNAPSHOT` version is actually visible in the Maven snapshot repository.
+Releases are automated via GitHub workflows. The scheduler builds a release dossier, validates the configured GitHub Models entry, and asks for a SemVer recommendation before dispatching the prepare workflow. The normal production path stays PR-based: merge the generated `release/<version>` PR with a merge commit, then `publish-release.yml` runs release-candidate verification, validates the artifact manifest, deploys to Maven Central, tags the release, creates the GitHub Release, and explicitly dispatches the next snapshot publication. `release-health.yml` then verifies repo-state drift on `master` pushes and release handoffs, and it treats snapshot publication as authoritative once `snapshot.yml` has finished so a healthy release does not fail during the async publish-to-snapshot handoff.
 
 For operator details, recovery mode, required variables/secrets, and audit artifacts, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
 
