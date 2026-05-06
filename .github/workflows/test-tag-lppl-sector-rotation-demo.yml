@@ -1,0 +1,118 @@
+name: Run LPPL Sector Rotation Demo Tagged Tests
+
+permissions:
+  contents: write
+  pull-requests: write
+
+on:
+  schedule:
+    - cron: "37 7 * * *"
+    - cron: "47 7 * * 1"
+    - cron: "57 7 1 * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test-lppl-sector-rotation-demo:
+    name: Build and Test (lppl-sector-rotation-demo tag)
+    runs-on: ubuntu-latest
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        (
+          github.event_name == 'schedule' &&
+          (
+            (
+              github.event.schedule == '47 7 * * 1' &&
+              vars.TA4J_TAGGED_TEST_LPPL_SECTOR_ROTATION_DEMO_SCHEDULE_ENABLED != 'false' &&
+              (vars.TA4J_TAGGED_TEST_LPPL_SECTOR_ROTATION_DEMO_SCHEDULE_SLOT == '' ||
+               vars.TA4J_TAGGED_TEST_LPPL_SECTOR_ROTATION_DEMO_SCHEDULE_SLOT == 'weekly')
+            ) ||
+            (
+              vars.TA4J_TAGGED_TEST_LPPL_SECTOR_ROTATION_DEMO_SCHEDULE_ENABLED == 'true' &&
+              (
+                (vars.TA4J_TAGGED_TEST_LPPL_SECTOR_ROTATION_DEMO_SCHEDULE_SLOT == 'daily' && github.event.schedule == '37 7 * * *') ||
+                (vars.TA4J_TAGGED_TEST_LPPL_SECTOR_ROTATION_DEMO_SCHEDULE_SLOT == 'monthly' && github.event.schedule == '57 7 1 * *')
+              )
+            )
+          )
+        )
+      }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+
+      - name: Build and run LPPL sector rotation demo tagged tests with Maven
+        run: >
+          xvfb-run mvn -B test
+          -Dgroups=lppl-sector-rotation-demo
+          -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay
+          -Dta4j.lpplDemoOutputDir=target/analysis-demos/lppl-sector-rotation
+          -Dta4j.lpplReferenceDataDir=ta4j-examples/src/main/resources
+          -Dta4j.lpplUpdateReferenceData=true
+
+      - name: Detect LPPL reference data changes
+        id: lppl_reference_data
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- 'ta4j-examples/src/main/resources/YahooFinance-X*.json'; then
+            echo "changed=false" >> "${GITHUB_OUTPUT}"
+          else
+            echo "changed=true" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Create or update LPPL reference data pull request
+        if: steps.lppl_reference_data.outputs.changed == 'true' && github.ref == 'refs/heads/master'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          branch="automation/lppl-spdr-reference-data"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin "${branch}:refs/remotes/origin/${branch}" || true
+          git switch -c "${branch}"
+          git add 'ta4j-examples/src/main/resources/YahooFinance-X*.json'
+          git commit -m "Update SPDR LPPL reference data"
+          git push --force-with-lease origin "HEAD:${branch}"
+
+          body_file="$(mktemp)"
+          cat > "${body_file}" <<'PR_BODY'
+          Updates the adjusted daily SPDR sector ETF reference data used by the LPPL sector rotation demo.
+
+          This PR was opened by the `lppl-sector-rotation-demo` workflow after an incremental Yahoo Finance refresh.
+          PR_BODY
+
+          existing_pr="$(gh pr list --state open --head "${branch}" --json number --jq '.[0].number // empty')"
+          if [ -n "${existing_pr}" ]; then
+            gh pr edit "${existing_pr}" --title "Update SPDR LPPL reference data" --body-file "${body_file}"
+          else
+            gh pr create --base master --head "${branch}" --title "Update SPDR LPPL reference data" --body-file "${body_file}"
+          fi
+
+      - name: Upload LPPL sector rotation demo artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lppl-sector-rotation-demo-reports
+          path: target/analysis-demos/lppl-sector-rotation/**
+          if-no-files-found: warn

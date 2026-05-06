@@ -51,4 +51,4 @@ jobs:
           cache: maven
 
       - name: Build and run integration tagged tests with Maven
-        run: xvfb-run mvn -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay
+        run: xvfb-run mvn -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,lppl-sector-rotation-demo,elliott-macro-cycle-replay

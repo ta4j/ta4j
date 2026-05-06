@@ -39,4 +39,4 @@ jobs:
           xvfb-run mvn -B test
           -Dgroups=elliott-macro-cycle-replay
           -Dta4j.excludedTestTags=
-          -Dtest=ElliottWaveMacroCycleDetectorTest
+          -Dtest=ElliottWaveMacroCycleDetectorTest,ElliottWaveBtcMacroCycleDemoTest

@@ -66,7 +66,7 @@
         <!-- Build -->
         <maven.compiler.release>25</maven.compiler.release>
         <maven.surefire.version>3.5.4</maven.surefire.version>
-        <ta4j.excludedTestTags>integration,analysis-demo,elliott-macro-cycle-replay</ta4j.excludedTestTags>
+        <ta4j.excludedTestTags>integration,analysis-demo,lppl-sector-rotation-demo,elliott-macro-cycle-replay</ta4j.excludedTestTags>
         <spotbugs.version>4.9.8.0</spotbugs.version>
         <jacoco.version>0.8.13</jacoco.version>
         <ta4j.jacoco.line.minimum>0.80</ta4j.jacoco.line.minimum>
@@ -173,7 +173,7 @@
         <profile>
             <id>analysis-demo</id>
             <properties>
-                <ta4j.excludedTestTags>elliott-macro-cycle-replay</ta4j.excludedTestTags>
+                <ta4j.excludedTestTags>lppl-sector-rotation-demo,elliott-macro-cycle-replay</ta4j.excludedTestTags>
             </properties>
             <build>
                 <plugins>

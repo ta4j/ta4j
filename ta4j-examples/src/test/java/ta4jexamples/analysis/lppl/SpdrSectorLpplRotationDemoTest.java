@@ -156,8 +156,8 @@ class SpdrSectorLpplRotationDemoTest {
     }
 
     @Test
-    @Tag("analysis-demo")
-    void analysisDemoFunnelRefreshesReferencesAndWritesArtifacts() throws IOException {
+    @Tag("lppl-sector-rotation-demo")
+    void lpplSectorRotationDemoFunnelRefreshesReferencesAndWritesArtifacts() throws IOException {
         LpplCalibrationProfile fastProfile = new LpplCalibrationProfile(new int[] { 200 }, 0.1, 0.9, 2, 6.0, 13.0, 2,
                 10, 30, 10, 10, 30, 25, 0.5);
         SpdrSectorReferenceDataUpdater.Settings settings = SpdrSectorReferenceDataUpdater.Settings
