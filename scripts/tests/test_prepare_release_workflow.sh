@@ -64,8 +64,8 @@ test_deprecation_scan_uses_java_scanner() {
   echo "Running test_deprecation_scan_uses_java_scanner"
 
   expect_file_contains "$WORKFLOW" "exec:java" "deprecation scan should run through Maven exec"
-  expect_file_contains "$WORKFLOW" "-pl ta4j-examples -am compile" \
-    "deprecation scan should compile the Java tool before execution"
+  expect_file_contains "$WORKFLOW" "-pl ta4j-examples -am -DskipTests install" \
+    "deprecation scan should install reactor dependencies before execution"
   expect_file_contains "$WORKFLOW" "-pl ta4j-examples exec:java" \
     "deprecation scan should run exec:java only on ta4j-examples"
   expect_file_contains "$WORKFLOW" "ta4jexamples.doc.RemovalReadyDeprecationScanner" \

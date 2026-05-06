@@ -471,7 +471,7 @@ jobs:
           REPORT_MD: ${{ runner.temp }}/release-ready-deprecations.md
         run: |
           echo "::group::Gate release-ready deprecations"
-          mvn -B -q -pl ta4j-examples -am compile
+          mvn -B -q -pl ta4j-examples -am -DskipTests install
 
           set +e
           mvn -B -q -pl ta4j-examples exec:java \
@@ -534,7 +534,7 @@ jobs:
         run: |
           echo "::group::Scan removal-ready deprecations"
           NEXT_REMOVAL_VERSION="${NEXT_VERSION%-SNAPSHOT}"
-          mvn -B -q -pl ta4j-examples -am compile
+          mvn -B -q -pl ta4j-examples -am -DskipTests install
           mvn -B -q -pl ta4j-examples exec:java \
             -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner \
             "-Dexec.args=--repo-root ${GITHUB_WORKSPACE} --pom-file pom.xml --target-removal-version ${NEXT_REMOVAL_VERSION} --output-json ${REPORT_JSON} --output-md ${REPORT_MD}"
