@@ -156,6 +156,17 @@ jobs:
           echo "release_notes_present=$notes_present" >> $GITHUB_OUTPUT
           echo "::endgroup::"
 
+      - name: Resolve snapshot publication state
+        id: snapshot_publication
+        env:
+          POM_VERSION: ${{ steps.state.outputs.pom_version }}
+        run: |
+          set -euo pipefail
+          python3 scripts/release/release_helpers.py snapshot-publication \
+            --version "${POM_VERSION}" \
+            --output snapshot-publication.json \
+            --github-output "$GITHUB_OUTPUT"
+
       - name: Check for stale release PRs
         id: stale_prs
         uses: actions/github-script@v8
@@ -214,6 +225,10 @@ jobs:
           POM_BASE: ${{ steps.state.outputs.pom_base }}
           POM_SNAPSHOT: ${{ steps.state.outputs.pom_snapshot }}
           SNAPSHOT_OK: ${{ steps.state.outputs.snapshot_ok }}
+          SNAPSHOT_PUBLICATION: ${{ steps.snapshot_publication.outputs.snapshot_publication }}
+          SNAPSHOT_PUBLICATION_LATEST: ${{ steps.snapshot_publication.outputs.snapshot_publication_latest }}
+          SNAPSHOT_PUBLICATION_LAST_UPDATED: ${{ steps.snapshot_publication.outputs.snapshot_publication_last_updated }}
+          SNAPSHOT_PUBLICATION_SOURCE: ${{ steps.snapshot_publication.outputs.snapshot_publication_source }}
           NOTES_PRESENT: ${{ steps.state.outputs.release_notes_present }}
           STALE_DAYS: ${{ steps.stale_prs.outputs.stale_days }}
           STALE_COUNT: ${{ steps.stale_prs.outputs.stale_count }}
@@ -249,6 +264,18 @@ jobs:
           if [ -z "${SNAPSHOT_OK:-}" ]; then
             SNAPSHOT_OK="(unknown)"
           fi
+          if [ -z "${SNAPSHOT_PUBLICATION:-}" ]; then
+            SNAPSHOT_PUBLICATION="unknown"
+          fi
+          if [ -z "${SNAPSHOT_PUBLICATION_LATEST:-}" ]; then
+            SNAPSHOT_PUBLICATION_LATEST="(unknown)"
+          fi
+          if [ -z "${SNAPSHOT_PUBLICATION_LAST_UPDATED:-}" ]; then
+            SNAPSHOT_PUBLICATION_LAST_UPDATED="(unknown)"
+          fi
+          if [ -z "${SNAPSHOT_PUBLICATION_SOURCE:-}" ]; then
+            SNAPSHOT_PUBLICATION_SOURCE="(unknown)"
+          fi
           if [ -z "${NOTES_PRESENT:-}" ]; then
             NOTES_PRESENT="(unknown)"
           fi
@@ -273,6 +300,16 @@ jobs:
           if [ "$SNAPSHOT_OK" = "false" ]; then
             drift=true
             reasons+=("pom.xml snapshot version not ahead of latest tag")
+          fi
+
+          if [ "$SNAPSHOT_PUBLICATION" = "false" ]; then
+            drift=true
+            reasons+=("current snapshot version not published to Maven snapshot repository")
+          fi
+
+          if [ "$SNAPSHOT_PUBLICATION" = "unknown" ]; then
+            drift=true
+            reasons+=("snapshot publication state could not be verified")
           fi
 
           if [ "$NOTES_PRESENT" = "false" ]; then
@@ -322,6 +359,9 @@ jobs:
           - pom.xml base: ${POM_BASE}
           - pom.xml snapshot: ${POM_SNAPSHOT}
           - snapshot ahead of latest tag: ${SNAPSHOT_OK}
+          - snapshot published: ${SNAPSHOT_PUBLICATION}
+          - snapshot metadata latest: ${SNAPSHOT_PUBLICATION_LATEST}
+          - snapshot metadata last updated: ${SNAPSHOT_PUBLICATION_LAST_UPDATED}
 
           Stale Release PRs (>${STALE_DAYS} days):
           - count: ${STALE_COUNT}
@@ -345,6 +385,10 @@ jobs:
             "pomBase": "${POM_BASE}",
             "pomSnapshot": "${POM_SNAPSHOT}",
             "snapshotOk": "${SNAPSHOT_OK}",
+            "snapshotPublished": "${SNAPSHOT_PUBLICATION}",
+            "snapshotMetadataLatest": "${SNAPSHOT_PUBLICATION_LATEST}",
+            "snapshotMetadataLastUpdated": "${SNAPSHOT_PUBLICATION_LAST_UPDATED}",
+            "snapshotMetadataSource": "${SNAPSHOT_PUBLICATION_SOURCE}",
             "releaseNotesPresent": "${NOTES_PRESENT}",
             "staleReleasePrCount": "${STALE_COUNT}",
             "runUrl": "${run_url}"
@@ -360,6 +404,7 @@ jobs:
             echo "- latest tag reachable: ${LATEST_TAG_REACHABLE}"
             echo "- pom version: ${POM_VERSION}"
             echo "- snapshot ahead of latest tag: ${SNAPSHOT_OK}"
+            echo "- snapshot published: ${SNAPSHOT_PUBLICATION}"
             echo "- stale release PR count: ${STALE_COUNT}"
           } >> "$GITHUB_STEP_SUMMARY"
 
@@ -370,6 +415,7 @@ jobs:
           name: release-health-audit-${{ github.run_id }}
           path: |
             tag-resolution.txt
+            snapshot-publication.json
             release-health-audit.json
             notification-body.txt
           if-no-files-found: ignore

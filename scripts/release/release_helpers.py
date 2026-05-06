@@ -13,6 +13,7 @@ import subprocess
 import sys
 import textwrap
 import urllib.request
+import xml.etree.ElementTree as ET
 from typing import Any
 
 
@@ -36,6 +37,7 @@ EXPECTED_RELEASE_ARTIFACTS = (
 )
 
 JAVADOC_PATH_PATTERN = re.compile(r"^.*?(ta4j-(?:core|examples)/src/.+)$")
+SNAPSHOT_METADATA_URL = "https://central.sonatype.com/repository/maven-snapshots/org/ta4j/ta4j-parent/maven-metadata.xml"
 
 
 def redact(value: str) -> str:
@@ -671,6 +673,126 @@ def command_artifact_manifest(args: argparse.Namespace) -> int:
     return 0
 
 
+def snapshot_publication_result(
+    *,
+    version: str,
+    published: str,
+    latest: str,
+    last_updated: str,
+    source: str,
+    error: str = "",
+    versions: list[str] | None = None,
+) -> dict[str, Any]:
+    return {
+        "version": version,
+        "published": published,
+        "latest": latest,
+        "lastUpdated": last_updated,
+        "source": source,
+        "error": error,
+        "versions": versions or [],
+    }
+
+
+def emit_snapshot_publication_outputs(result: dict[str, Any], github_output: str | None) -> None:
+    append_output("snapshot_publication", str(result["published"]), github_output)
+    append_output("snapshot_publication_latest", str(result["latest"]), github_output)
+    append_output("snapshot_publication_last_updated", str(result["lastUpdated"]), github_output)
+    append_output("snapshot_publication_source", str(result["source"]), github_output)
+    append_output("snapshot_publication_error", str(result["error"]), github_output)
+
+
+def load_snapshot_metadata(args: argparse.Namespace) -> tuple[str, str]:
+    if args.metadata_file:
+        source = args.metadata_file.resolve().as_uri()
+        return args.metadata_file.read_text(encoding="utf-8"), source
+
+    request = urllib.request.Request(
+        args.metadata_url,
+        headers={
+            "Accept": "application/xml",
+            "User-Agent": "ta4j-release-automation",
+        },
+    )
+    with urllib.request.urlopen(request, timeout=args.timeout_seconds) as response:
+        return response.read().decode("utf-8"), args.metadata_url
+
+
+def parse_snapshot_metadata(metadata_text: str) -> tuple[str, str, list[str]]:
+    root = ET.fromstring(metadata_text)
+    versioning = root.find("versioning")
+    if versioning is None:
+        raise ValueError("snapshot metadata is missing the <versioning> section")
+
+    latest = (versioning.findtext("latest") or "").strip()
+    last_updated = (versioning.findtext("lastUpdated") or "").strip()
+    versions_parent = versioning.find("versions")
+    versions = []
+    if versions_parent is not None:
+        versions = [
+            (node.text or "").strip()
+            for node in versions_parent.findall("version")
+            if (node.text or "").strip()
+        ]
+    return latest, last_updated, versions
+
+
+def command_snapshot_publication(args: argparse.Namespace) -> int:
+    version = args.version.strip()
+    if not version:
+        print("::error::--version is required", file=sys.stderr)
+        return 1
+
+    if not version.endswith("-SNAPSHOT"):
+        result = snapshot_publication_result(
+            version=version,
+            published="n/a",
+            latest="",
+            last_updated="",
+            source=args.metadata_file.resolve().as_uri() if args.metadata_file else args.metadata_url,
+        )
+        write_json(args.output, result)
+        emit_snapshot_publication_outputs(result, args.github_output)
+        print(f"audit:snapshot_publication version={version} published=n/a output={args.output}")
+        return 0
+
+    try:
+        metadata_text, source = load_snapshot_metadata(args)
+        latest, last_updated, versions = parse_snapshot_metadata(metadata_text)
+    except Exception as exc:
+        result = snapshot_publication_result(
+            version=version,
+            published="unknown",
+            latest="",
+            last_updated="",
+            source=args.metadata_file.resolve().as_uri() if args.metadata_file else args.metadata_url,
+            error=str(exc),
+        )
+        write_json(args.output, result)
+        emit_snapshot_publication_outputs(result, args.github_output)
+        print(f"::warning::Unable to verify snapshot publication for {version}: {exc}")
+        print(f"audit:snapshot_publication version={version} published=unknown output={args.output}")
+        return 0
+
+    published = "true" if version in set(versions) else "false"
+    result = snapshot_publication_result(
+        version=version,
+        published=published,
+        latest=latest,
+        last_updated=last_updated,
+        source=source,
+        versions=versions,
+    )
+    write_json(args.output, result)
+    emit_snapshot_publication_outputs(result, args.github_output)
+    print(
+        "audit:snapshot_publication "
+        f"version={version} published={published} latest={latest or 'unknown'} "
+        f"last_updated={last_updated or 'unknown'} output={args.output}"
+    )
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -720,6 +842,15 @@ def build_parser() -> argparse.ArgumentParser:
     manifest.add_argument("--github-output")
     manifest.add_argument("--strict", action="store_true")
     manifest.set_defaults(func=command_artifact_manifest)
+
+    snapshot = subparsers.add_parser("snapshot-publication")
+    snapshot.add_argument("--version", required=True)
+    snapshot.add_argument("--metadata-url", default=SNAPSHOT_METADATA_URL)
+    snapshot.add_argument("--metadata-file", type=pathlib.Path)
+    snapshot.add_argument("--timeout-seconds", type=int, default=30)
+    snapshot.add_argument("--output", type=pathlib.Path, default=pathlib.Path("snapshot-publication.json"))
+    snapshot.add_argument("--github-output")
+    snapshot.set_defaults(func=command_snapshot_publication)
     return parser
 
 
