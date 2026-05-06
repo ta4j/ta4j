@@ -16,6 +16,11 @@ on:
         description: "Optional release commit SHA that requested this snapshot publication."
         required: false
         type: string
+      dryRun:
+        description: "Run snapshot workflow in dry-run mode (build/test only; no deploy)."
+        required: false
+        default: true
+        type: boolean
 
 concurrency:
   group: snapshot-${{ github.repository }}
@@ -30,6 +35,61 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v5
 
+      - name: Normalize dry run input
+        id: dry_run
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            raw="${{ github.event.inputs.dryRun }}"
+            if [ -z "$raw" ]; then
+              raw=true
+            fi
+            normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+
+            if [ "$normalized" = "false" ] || [ "$normalized" = "0" ] || [ "$normalized" = "no" ]; then
+              dry_run=false
+            else
+              dry_run=true
+            fi
+          else
+            raw=""
+            dry_run=false
+          fi
+
+          echo "audit:dry_run_input_raw='${raw}'"
+          echo "audit:dry_run_normalized=$dry_run"
+          echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
+
+      - name: Read snapshot version
+        id: version
+        run: |
+          set -euo pipefail
+          snapshot_version=$(python3 - <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          def find_version(path):
+              tree = ET.parse(path)
+              root = tree.getroot()
+              def find_first(elem):
+                  if elem is None:
+                      return None
+                  for child in elem:
+                      if child.tag.endswith("version"):
+                          text = (child.text or "").strip()
+                          if text:
+                              return text
+                  return None
+              return find_first(root) or find_first(root.find("./{*}parent"))
+
+          ver = find_version("pom.xml")
+          if not ver:
+              sys.exit(1)
+          print(ver)
+          PY
+          ) || { echo "Could not read pom.xml version" >&2; exit 1; }
+          echo "audit:snapshot_version=${snapshot_version}"
+          echo "snapshotVersion=${snapshot_version}" >> "$GITHUB_OUTPUT"
+
       - name: Cache Maven packages
         uses: actions/cache@v4
         with:
@@ -38,7 +98,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Set up Java
+      - name: Set up JDK 25 (dry-run without publishing secrets)
+        if: steps.dry_run.outputs.dryRun == 'true'
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+
+      - name: Set up JDK 25 with publishing secrets
+        if: steps.dry_run.outputs.dryRun != 'true'
         uses: actions/setup-java@v5
         with:
           distribution: temurin
@@ -51,6 +120,7 @@ jobs:
           gpg-passphrase: ${{ secrets.GPG_PASSPHRASE }}
 
       - name: Write Maven settings
+        if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           echo "::group::Write Maven settings"
           mkdir -p ~/.m2
@@ -68,6 +138,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Write Maven security settings
+        if: steps.dry_run.outputs.dryRun != 'true'
         shell: bash
         env:
           MAVEN_SECURITY_MASTER: ${{ secrets.MAVEN_MASTER_PASSPHRASE }}
@@ -87,6 +158,7 @@ jobs:
           echo "settings-security.xml created"
 
       - name: Configure GPG for signing
+        if: steps.dry_run.outputs.dryRun != 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -101,6 +173,11 @@ jobs:
           gpgconf --launch gpg-agent 2>/dev/null || true
           echo "gpg.conf and gpg-agent.conf created"
 
+      - name: Dry-run mode notice
+        if: steps.dry_run.outputs.dryRun == 'true'
+        run: |
+          echo "DRY RUN ENABLED: running snapshot build/test only; Maven Central deployment is skipped."
+
       - name: Build and Test
         run: |
           set -euo pipefail
@@ -109,6 +186,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Deploy Snapshot
+        if: steps.dry_run.outputs.dryRun != 'true'
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
@@ -121,14 +199,27 @@ jobs:
       - name: Snapshot publication summary
         if: always()
         env:
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          SNAPSHOT_VERSION: ${{ steps.version.outputs.snapshotVersion }}
           SOURCE_RELEASE_VERSION: ${{ github.event.inputs.sourceReleaseVersion }}
           SOURCE_RELEASE_COMMIT: ${{ github.event.inputs.sourceReleaseCommit }}
         run: |
+          if [ "${DRY_RUN:-false}" = "true" ]; then
+            mutation_plan="would configure publishing secrets and deploy the snapshot to Maven Central"
+            rerun_guidance="rerun snapshot.yml with dryRun=false, or let the master push/publish handoff path run"
+          else
+            mutation_plan="completed snapshot deployment"
+            rerun_guidance="not needed for this non-dry-run snapshot run"
+          fi
           cat > snapshot-audit.json <<EOF
           {
             "event": "${GITHUB_EVENT_NAME}",
+            "dryRun": "${DRY_RUN:-}",
+            "snapshotVersion": "${SNAPSHOT_VERSION:-}",
             "sourceReleaseVersion": "${SOURCE_RELEASE_VERSION:-}",
             "sourceReleaseCommit": "${SOURCE_RELEASE_COMMIT:-}",
+            "mutationPlan": "${mutation_plan}",
+            "rerunGuidance": "${rerun_guidance}",
             "runUrl": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           }
           EOF
@@ -136,8 +227,12 @@ jobs:
             echo "## Snapshot Publication"
             echo ""
             echo "- event: ${GITHUB_EVENT_NAME}"
+            echo "- dry run: ${DRY_RUN:-unknown}"
+            echo "- snapshot version: ${SNAPSHOT_VERSION:-unknown}"
             echo "- source release version: ${SOURCE_RELEASE_VERSION:-none}"
             echo "- source release commit: ${SOURCE_RELEASE_COMMIT:-none}"
+            echo "- mutation plan: ${mutation_plan}"
+            echo "- rerun guidance: ${rerun_guidance}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload snapshot audit artifacts

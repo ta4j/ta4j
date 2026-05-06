@@ -13,9 +13,9 @@ on:
         description: "OPTIONAL: Next snapshot version (e.g. 0.20.1-SNAPSHOT). Leave blank to auto-generate."
         required: false
       dryRun:
-        description: "Run prepare workflow in dry-run mode (no push or PR creation)."
+        description: "Run prepare workflow in dry-run mode (no issue sync, push, or PR creation)."
         required: false
-        default: false
+        default: true
         type: boolean
 
 permissions:
@@ -38,12 +38,15 @@ jobs:
         run: |
           echo "::group::Normalize prepare-release dry-run input"
           raw="${{ github.event.inputs.dryRun }}"
+          if [ -z "$raw" ]; then
+            raw=true
+          fi
           normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
 
-          if [ "$normalized" = "true" ] || [ "$raw" = "true" ] || [ "$raw" = true ] || [ "$raw" = "1" ]; then
-            dry_run=true
-          else
+          if [ "$normalized" = "false" ] || [ "$normalized" = "0" ] || [ "$normalized" = "no" ]; then
             dry_run=false
+          else
+            dry_run=true
           fi
 
           echo "audit:dry_run_input_raw='${raw}'"
@@ -958,6 +961,13 @@ jobs:
           echo "summary: removalIssuesUpdated=${REMOVAL_UPDATED_COUNT:-0}"
           echo "summary: removalIssuesReopened=${REMOVAL_REOPENED_COUNT:-0}"
           echo "summary: removalIssuesClosedStale=${REMOVAL_CLOSED_STALE_COUNT:-0}"
+          if [ "${DRY_RUN:-false}" = "true" ]; then
+            mutation_plan="would create/update release artifacts, sync deprecation issues, push the release branch, and create/update the release PR"
+            rerun_guidance="rerun prepare-release.yml with dryRun=false after inspecting these computed values and artifacts"
+          else
+            mutation_plan="completed non-dry-run prepare-release mutations for the selected mode"
+            rerun_guidance="not needed for this non-dry-run prepare run"
+          fi
           cat > release-audit.json <<EOF
           {
             "dryRun": "${DRY_RUN:-}",
@@ -966,6 +976,8 @@ jobs:
             "current": "${CURRENT:-}",
             "next": "${NEXT:-}",
             "releaseCommit": "${RELEASE_COMMIT:-}",
+            "mutationPlan": "${mutation_plan}",
+            "rerunGuidance": "${rerun_guidance}",
             "removalIssuePlans": "${REMOVAL_PLAN_COUNT:-0}",
             "removalIssuesCreated": "${REMOVAL_CREATED_COUNT:-0}",
             "removalIssuesUpdated": "${REMOVAL_UPDATED_COUNT:-0}",
@@ -988,6 +1000,8 @@ jobs:
             echo "- removal-ready issues updated: ${REMOVAL_UPDATED_COUNT:-0}"
             echo "- removal-ready issues reopened: ${REMOVAL_REOPENED_COUNT:-0}"
             echo "- removal-ready stale issues closed: ${REMOVAL_CLOSED_STALE_COUNT:-0}"
+            echo "- mutation plan: ${mutation_plan}"
+            echo "- rerun guidance: ${rerun_guidance}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload prepare-release audit artifacts
