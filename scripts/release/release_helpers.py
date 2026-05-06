@@ -683,6 +683,7 @@ def snapshot_publication_result(
     error: str = "",
     versions: list[str] | None = None,
 ) -> dict[str, Any]:
+    """Return a stable snapshot-publication payload for workflow consumers."""
     return {
         "version": version,
         "published": published,
@@ -695,6 +696,7 @@ def snapshot_publication_result(
 
 
 def emit_snapshot_publication_outputs(result: dict[str, Any], github_output: str | None) -> None:
+    """Expose snapshot-publication fields through the GitHub Actions output contract."""
     append_output("snapshot_publication", str(result["published"]), github_output)
     append_output("snapshot_publication_latest", str(result["latest"]), github_output)
     append_output("snapshot_publication_last_updated", str(result["lastUpdated"]), github_output)
@@ -703,6 +705,7 @@ def emit_snapshot_publication_outputs(result: dict[str, Any], github_output: str
 
 
 def load_snapshot_metadata(args: argparse.Namespace) -> tuple[str, str]:
+    """Load snapshot metadata XML from a local fixture or the live snapshot repository."""
     if args.metadata_file:
         source = args.metadata_file.resolve().as_uri()
         return args.metadata_file.read_text(encoding="utf-8"), source
@@ -719,6 +722,7 @@ def load_snapshot_metadata(args: argparse.Namespace) -> tuple[str, str]:
 
 
 def parse_snapshot_metadata(metadata_text: str) -> tuple[str, str, list[str]]:
+    """Extract latest version, timestamp, and published versions from metadata XML."""
     root = ET.fromstring(metadata_text)
     versioning = root.find("versioning")
     if versioning is None:
@@ -738,6 +742,7 @@ def parse_snapshot_metadata(metadata_text: str) -> tuple[str, str, list[str]]:
 
 
 def command_snapshot_publication(args: argparse.Namespace) -> int:
+    """Resolve whether the requested ta4j snapshot version is currently published."""
     version = args.version.strip()
     if not version:
         print("::error::--version is required", file=sys.stderr)
