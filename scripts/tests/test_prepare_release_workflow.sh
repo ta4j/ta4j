@@ -98,6 +98,47 @@ test_release_gate_runs_before_next_snapshot() {
   pass "test_release_gate_runs_before_next_snapshot"
 }
 
+test_next_snapshot_issue_sync_runs_after_snapshot_commit() {
+  echo "Running test_next_snapshot_issue_sync_runs_after_snapshot_commit"
+
+  local snapshot_commit_line
+  local scan_line
+  local sync_line
+  local push_line
+  snapshot_commit_line="$(line_of "Commit next snapshot version")"
+  scan_line="$(line_of "Scan removal-ready deprecations")"
+  sync_line="$(line_of "Create or update removal-ready deprecation issues")"
+  push_line="$(line_of "Push release branch")"
+  if (( scan_line <= snapshot_commit_line )); then
+    fail "next-snapshot deprecation scan should run after the next snapshot commit"
+  fi
+  if (( sync_line <= scan_line )); then
+    fail "deprecation issue sync should run after the next-snapshot scan"
+  fi
+  if (( sync_line >= push_line )); then
+    fail "deprecation issue sync should finish before the release branch is pushed"
+  fi
+
+  pass "test_next_snapshot_issue_sync_runs_after_snapshot_commit"
+}
+
+test_release_audit_includes_deprecation_counts() {
+  echo "Running test_release_audit_includes_deprecation_counts"
+
+  expect_file_contains "$WORKFLOW" "\"removalIssuePlans\"" \
+    "release audit JSON should include removal issue plan counts"
+  expect_file_contains "$WORKFLOW" "\"removalIssuesCreated\"" \
+    "release audit JSON should include created removal issue counts"
+  expect_file_contains "$WORKFLOW" "\"removalIssuesClosedStale\"" \
+    "release audit JSON should include stale issue closure counts"
+  expect_file_contains "$WORKFLOW" "removal-ready deprecation issue plans" \
+    "workflow summary should include removal-ready deprecation plan counts"
+  expect_file_contains "$WORKFLOW" "prepare-release-audit-\${{ github.run_id }}" \
+    "prepare-release audit artifact should still be uploaded"
+
+  pass "test_release_audit_includes_deprecation_counts"
+}
+
 test_issue_sync_reconciles_stale_managed_issues() {
   echo "Running test_issue_sync_reconciles_stale_managed_issues"
 
@@ -113,16 +154,19 @@ test_issue_sync_reconciles_stale_managed_issues() {
   pass "test_issue_sync_reconciles_stale_managed_issues"
 }
 
-test_deprecation_issue_sync_does_not_label_cleanup_issues() {
-  echo "Running test_deprecation_issue_sync_does_not_label_cleanup_issues"
+test_deprecation_issue_sync_does_not_add_metadata_to_cleanup_issues() {
+  echo "Running test_deprecation_issue_sync_does_not_add_metadata_to_cleanup_issues"
 
   local sync_section
   sync_section="$(workflow_section "Create or update removal-ready deprecation issues" "Upload removal-ready deprecation report")"
   if grep -Fq "labels:" <<<"$sync_section"; then
     fail "generated deprecation cleanup issues should not receive labels"
   fi
+  if grep -Fq "assignees:" <<<"$sync_section"; then
+    fail "generated deprecation cleanup issues should not receive assignees"
+  fi
 
-  pass "test_deprecation_issue_sync_does_not_label_cleanup_issues"
+  pass "test_deprecation_issue_sync_does_not_add_metadata_to_cleanup_issues"
 }
 
 test_deprecation_automation_skips_dry_run_mutations() {
@@ -146,6 +190,8 @@ test_issue_permissions_declared
 test_issue_sync_uses_targeted_search
 test_deprecation_scan_uses_java_scanner
 test_release_gate_runs_before_next_snapshot
+test_next_snapshot_issue_sync_runs_after_snapshot_commit
+test_release_audit_includes_deprecation_counts
 test_issue_sync_reconciles_stale_managed_issues
-test_deprecation_issue_sync_does_not_label_cleanup_issues
+test_deprecation_issue_sync_does_not_add_metadata_to_cleanup_issues
 test_deprecation_automation_skips_dry_run_mutations

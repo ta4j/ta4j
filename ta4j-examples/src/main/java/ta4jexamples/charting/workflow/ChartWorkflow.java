@@ -12,6 +12,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.num.Num;
 
+import java.awt.Dimension;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -54,18 +55,30 @@ import ta4jexamples.charting.storage.FileSystemChartStorage;
 public class ChartWorkflow {
 
     /**
-     * Default chart image width.
+     * Default saved chart image width.
+     *
+     * <p>
+     * Saved/exported charts default to 4K so persisted artifacts retain detail even
+     * when the on-screen display uses a smaller, screen-aware size. The constant
+     * itself has existed since 0.19; the default export size was raised from
+     * 1920x1080 to 3840x2160 in 0.22.7.
+     * </p>
      *
      * @since 0.19
      */
-    static final int DEFAULT_CHART_IMAGE_WIDTH = 1920;
+    static final int DEFAULT_CHART_IMAGE_WIDTH = 3840;
 
     /**
-     * Default chart image height.
+     * Default saved chart image height.
+     *
+     * <p>
+     * Paired with {@link #DEFAULT_CHART_IMAGE_WIDTH}, the default export size was
+     * raised to 3840x2160 in 0.22.7 while keeping the same constant in place.
+     * </p>
      *
      * @since 0.19
      */
-    static final int DEFAULT_CHART_IMAGE_HEIGHT = 1080;
+    static final int DEFAULT_CHART_IMAGE_HEIGHT = 2160;
 
     private static final Logger LOG = LogManager.getLogger(ChartWorkflow.class);
 
@@ -94,6 +107,20 @@ public class ChartWorkflow {
                 new FileSystemChartStorage(resolveSaveDirectory(chartImageSaveDirectory)));
     }
 
+    /**
+     * Creates a {@link ChartWorkflow} with explicit collaborators.
+     *
+     * <p>
+     * This constructor is the dependency-injection entry point for tests and
+     * callers that want to swap rendering, display, or persistence behavior without
+     * subclassing the workflow facade.
+     * </p>
+     *
+     * @param chartFactory   factory responsible for composing charts
+     * @param chartDisplayer display strategy used for on-screen rendering
+     * @param chartStorage   persistence strategy used for saved chart artifacts
+     * @since 0.22.7
+     */
     public ChartWorkflow(TradingChartFactory chartFactory, ChartDisplayer chartDisplayer, ChartStorage chartStorage) {
         this.chartFactory = Objects.requireNonNull(chartFactory, "Chart factory cannot be null");
         this.chartDisplayer = Objects.requireNonNull(chartDisplayer, "Chart displayer cannot be null");
@@ -158,6 +185,24 @@ public class ChartWorkflow {
     }
 
     /**
+     * Displays the chart described by the provided plan with a custom window title
+     * and preferred display size.
+     *
+     * @param plan          the chart plan
+     * @param windowTitle   custom window title
+     * @param preferredSize preferred display size for the on-screen window
+     * @since 0.22.7
+     */
+    public void display(ChartPlan plan, String windowTitle, Dimension preferredSize) {
+        Objects.requireNonNull(plan, "Chart plan cannot be null");
+        String effectiveWindowTitle = windowTitle;
+        if (effectiveWindowTitle == null || effectiveWindowTitle.trim().isEmpty()) {
+            effectiveWindowTitle = plan.metadata().title();
+        }
+        displayChart(render(plan), effectiveWindowTitle, preferredSize);
+    }
+
+    /**
      * Saves the chart described by the provided plan using the default storage
      * strategy.
      *
@@ -166,6 +211,20 @@ public class ChartWorkflow {
      */
     public Optional<Path> save(ChartPlan plan) {
         return saveChartImage(render(plan), plan.primarySeries());
+    }
+
+    /**
+     * Saves the chart described by the provided plan using an explicit export
+     * resolution.
+     *
+     * @param plan        the chart plan
+     * @param imageWidth  exported image width
+     * @param imageHeight exported image height
+     * @return the optional path to the saved chart
+     * @since 0.22.7
+     */
+    public Optional<Path> save(ChartPlan plan, int imageWidth, int imageHeight) {
+        return saveChartImage(render(plan), plan.primarySeries(), imageWidth, imageHeight);
     }
 
     /**
@@ -180,6 +239,21 @@ public class ChartWorkflow {
     }
 
     /**
+     * Saves the chart described by the provided plan with a custom filename and an
+     * explicit export resolution.
+     *
+     * @param plan        the chart plan
+     * @param filename    desired filename
+     * @param imageWidth  exported image width
+     * @param imageHeight exported image height
+     * @return the optional path to the saved chart
+     * @since 0.22.7
+     */
+    public Optional<Path> save(ChartPlan plan, String filename, int imageWidth, int imageHeight) {
+        return saveChartImage(render(plan), plan.primarySeries(), filename, imageWidth, imageHeight);
+    }
+
+    /**
      * Saves the chart described by the provided plan to the supplied directory.
      *
      * @param plan      the chart plan
@@ -188,6 +262,21 @@ public class ChartWorkflow {
      */
     public Optional<Path> save(ChartPlan plan, Path directory) {
         return saveChartImage(render(plan), plan.primarySeries(), directory);
+    }
+
+    /**
+     * Saves the chart described by the provided plan to the supplied directory
+     * using an explicit export resolution.
+     *
+     * @param plan        the chart plan
+     * @param directory   target directory
+     * @param imageWidth  exported image width
+     * @param imageHeight exported image height
+     * @return optional saved path
+     * @since 0.22.7
+     */
+    public Optional<Path> save(ChartPlan plan, Path directory, int imageWidth, int imageHeight) {
+        return saveChartImage(render(plan), plan.primarySeries(), directory, imageWidth, imageHeight);
     }
 
     /**
@@ -204,6 +293,22 @@ public class ChartWorkflow {
     }
 
     /**
+     * Saves the chart described by the provided plan using string directory and
+     * filename inputs plus an explicit export resolution.
+     *
+     * @param plan        the chart plan
+     * @param directory   directory expressed as a string
+     * @param filename    optional filename
+     * @param imageWidth  exported image width
+     * @param imageHeight exported image height
+     * @return optional saved path
+     * @since 0.22.7
+     */
+    public Optional<Path> save(ChartPlan plan, String directory, String filename, int imageWidth, int imageHeight) {
+        return saveChartImage(render(plan), plan.primarySeries(), filename, directory, imageWidth, imageHeight);
+    }
+
+    /**
      * Saves the chart described by the provided plan to the supplied directory with
      * a custom filename.
      *
@@ -215,6 +320,23 @@ public class ChartWorkflow {
     public Optional<Path> save(ChartPlan plan, Path directory, String filename) {
         Objects.requireNonNull(directory, "Directory cannot be null");
         return save(plan, directory.toString(), filename);
+    }
+
+    /**
+     * Saves the chart described by the provided plan to the supplied directory with
+     * a custom filename and export resolution.
+     *
+     * @param plan        the chart plan
+     * @param directory   target directory
+     * @param filename    desired filename
+     * @param imageWidth  exported image width
+     * @param imageHeight exported image height
+     * @return optional saved path
+     * @since 0.22.7
+     */
+    public Optional<Path> save(ChartPlan plan, Path directory, String filename, int imageWidth, int imageHeight) {
+        Objects.requireNonNull(directory, "Directory cannot be null");
+        return save(plan, directory.toString(), filename, imageWidth, imageHeight);
     }
 
     /**
@@ -618,7 +740,7 @@ public class ChartWorkflow {
      * @since 0.19
      */
     public void displayChart(JFreeChart chart) {
-        displayChart(chart, null);
+        displayChart(chart, null, null);
     }
 
     /**
@@ -631,11 +753,27 @@ public class ChartWorkflow {
      * @since 0.19
      */
     public void displayChart(JFreeChart chart, String windowTitle) {
+        displayChart(chart, windowTitle, null);
+    }
+
+    /**
+     * Displays a caller-provided chart using the configured displayer with a custom
+     * window title and preferred display size.
+     *
+     * @param chart         the chart to display
+     * @param windowTitle   the title for the window/frame (optional, uses default
+     *                      if null)
+     * @param preferredSize preferred display size for the on-screen window
+     * @since 0.22.7
+     */
+    public void displayChart(JFreeChart chart, String windowTitle, Dimension preferredSize) {
         if (chart == null) {
             throw new IllegalArgumentException("Chart cannot be null");
         }
         if (windowTitle != null && !windowTitle.trim().isEmpty()) {
-            chartDisplayer.display(chart, windowTitle);
+            chartDisplayer.display(chart, windowTitle, preferredSize);
+        } else if (preferredSize != null) {
+            chartDisplayer.display(chart, null, preferredSize);
         } else {
             chartDisplayer.display(chart);
         }
@@ -649,23 +787,39 @@ public class ChartWorkflow {
      * @since 0.19
      */
     public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, String chartFileName) {
+        return saveChartImage(chart, series, chartFileName, DEFAULT_CHART_IMAGE_WIDTH, DEFAULT_CHART_IMAGE_HEIGHT);
+    }
+
+    /**
+     * Persists the supplied chart. Uses the default save directory if configured
+     * via constructor, otherwise saves to the current directory.
+     *
+     * @param chart         the chart to persist
+     * @param series        the originating bar series
+     * @param chartFileName the filename for the chart (optional)
+     * @param imageWidth    exported image width
+     * @param imageHeight   exported image height
+     * @return an optional path to the stored chart
+     * @since 0.22.7
+     */
+    public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, String chartFileName, int imageWidth,
+            int imageHeight) {
         if (chart == null) {
             throw new IllegalArgumentException("Chart cannot be null");
         }
         validateSeries(series);
+        validateImageSize(imageWidth, imageHeight);
         String effectiveFileName = (chartFileName != null && !chartFileName.trim().isEmpty()) ? chartFileName
                 : (chart.getTitle() != null ? chart.getTitle().getText()
                         : chartFactory.buildChartTitle(series.getName(), ""));
 
         // Try using constructor storage first, if it returns empty (no-op), use current
         // directory
-        Optional<Path> result = chartStorage.save(chart, series, effectiveFileName, DEFAULT_CHART_IMAGE_WIDTH,
-                DEFAULT_CHART_IMAGE_HEIGHT);
+        Optional<Path> result = chartStorage.save(chart, series, effectiveFileName, imageWidth, imageHeight);
         if (result.isEmpty()) {
             // Constructor storage is no-op, use current directory
             ChartStorage currentDirStorage = new FileSystemChartStorage(Paths.get("."));
-            return currentDirStorage.save(chart, series, effectiveFileName, DEFAULT_CHART_IMAGE_WIDTH,
-                    DEFAULT_CHART_IMAGE_HEIGHT);
+            return currentDirStorage.save(chart, series, effectiveFileName, imageWidth, imageHeight);
         }
         return result;
     }
@@ -685,6 +839,23 @@ public class ChartWorkflow {
     }
 
     /**
+     * Saves a chart image to a file path using an explicit export resolution. Uses
+     * the default save directory if configured via constructor, otherwise saves to
+     * the current directory.
+     *
+     * @param chart       the JFreeChart object to be saved as an image
+     * @param series      the BarSeries object containing chart data
+     * @param imageWidth  exported image width
+     * @param imageHeight exported image height
+     * @return an Optional containing the Path where the chart image was saved, or
+     *         empty if saving failed
+     * @since 0.22.7
+     */
+    public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, int imageWidth, int imageHeight) {
+        return saveChartImage(chart, series, (String) null, imageWidth, imageHeight);
+    }
+
+    /**
      * Persists the supplied chart to the specified directory.
      *
      * @param chart                   the chart to persist
@@ -694,13 +865,31 @@ public class ChartWorkflow {
      * @since 0.19
      */
     public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, Path chartImageSaveDirectory) {
+        return saveChartImage(chart, series, chartImageSaveDirectory, DEFAULT_CHART_IMAGE_WIDTH,
+                DEFAULT_CHART_IMAGE_HEIGHT);
+    }
+
+    /**
+     * Persists the supplied chart to the specified directory using an explicit
+     * export resolution.
+     *
+     * @param chart                   the chart to persist
+     * @param series                  the originating bar series
+     * @param chartImageSaveDirectory the directory to save the chart image to
+     * @param imageWidth              exported image width
+     * @param imageHeight             exported image height
+     * @return an optional path to the stored chart
+     * @since 0.22.7
+     */
+    public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, Path chartImageSaveDirectory,
+            int imageWidth, int imageHeight) {
         if (chart == null) {
             throw new IllegalArgumentException("Chart cannot be null");
         }
         if (chartImageSaveDirectory == null) {
             throw new IllegalArgumentException("Chart image save directory cannot be null");
         }
-        return saveChartImage(chart, series, null, chartImageSaveDirectory.toString());
+        return saveChartImage(chart, series, null, chartImageSaveDirectory.toString(), imageWidth, imageHeight);
     }
 
     /**
@@ -716,6 +905,26 @@ public class ChartWorkflow {
      */
     public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, String chartFileName,
             String chartImageSaveDirectory) {
+        return saveChartImage(chart, series, chartFileName, chartImageSaveDirectory, DEFAULT_CHART_IMAGE_WIDTH,
+                DEFAULT_CHART_IMAGE_HEIGHT);
+    }
+
+    /**
+     * Persists the supplied chart to the specified directory using an explicit
+     * export resolution.
+     *
+     * @param chart                   the chart to persist
+     * @param series                  the originating bar series
+     * @param chartFileName           the filename for the chart (optional, can be
+     *                                null)
+     * @param chartImageSaveDirectory the directory to save the chart image to
+     * @param imageWidth              exported image width
+     * @param imageHeight             exported image height
+     * @return an optional path to the stored chart
+     * @since 0.22.7
+     */
+    public Optional<Path> saveChartImage(JFreeChart chart, BarSeries series, String chartFileName,
+            String chartImageSaveDirectory, int imageWidth, int imageHeight) {
         if (chart == null) {
             throw new IllegalArgumentException("Chart cannot be null");
         }
@@ -723,12 +932,12 @@ public class ChartWorkflow {
         if (chartImageSaveDirectory == null || chartImageSaveDirectory.trim().isEmpty()) {
             throw new IllegalArgumentException("Chart image save directory cannot be null or empty");
         }
+        validateImageSize(imageWidth, imageHeight);
         String effectiveFileName = (chartFileName != null && !chartFileName.trim().isEmpty()) ? chartFileName
                 : (chart.getTitle() != null ? chart.getTitle().getText()
                         : chartFactory.buildChartTitle(series.getName(), ""));
         ChartStorage customStorage = new FileSystemChartStorage(resolveSaveDirectory(chartImageSaveDirectory));
-        return customStorage.save(chart, series, effectiveFileName, DEFAULT_CHART_IMAGE_WIDTH,
-                DEFAULT_CHART_IMAGE_HEIGHT);
+        return customStorage.save(chart, series, effectiveFileName, imageWidth, imageHeight);
     }
 
     /**
@@ -737,13 +946,27 @@ public class ChartWorkflow {
      * @since 0.19
      */
     public byte[] getChartAsByteArray(JFreeChart chart) {
+        return getChartAsByteArray(chart, DEFAULT_CHART_IMAGE_WIDTH, DEFAULT_CHART_IMAGE_HEIGHT);
+    }
+
+    /**
+     * Converts a chart into PNG bytes using an explicit export resolution.
+     *
+     * @param chart       the chart to encode
+     * @param imageWidth  exported image width
+     * @param imageHeight exported image height
+     * @return the encoded PNG bytes
+     * @since 0.22.7
+     */
+    public byte[] getChartAsByteArray(JFreeChart chart, int imageWidth, int imageHeight) {
         if (chart == null) {
             throw new IllegalArgumentException("Chart cannot be null");
         }
+        validateImageSize(imageWidth, imageHeight);
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
-            ChartUtils.writeChartAsPNG(out, chart, DEFAULT_CHART_IMAGE_WIDTH, DEFAULT_CHART_IMAGE_HEIGHT);
+            ChartUtils.writeChartAsPNG(out, chart, imageWidth, imageHeight);
         } catch (IOException ex) {
             LOG.error("Failed to write chart to byte array", ex);
         }
@@ -815,6 +1038,15 @@ public class ChartWorkflow {
 
     private void validateTimeAxisMode(TimeAxisMode timeAxisMode) {
         Objects.requireNonNull(timeAxisMode, "Time axis mode cannot be null");
+    }
+
+    private void validateImageSize(int imageWidth, int imageHeight) {
+        if (imageWidth <= 0) {
+            throw new IllegalArgumentException("Image width must be positive");
+        }
+        if (imageHeight <= 0) {
+            throw new IllegalArgumentException("Image height must be positive");
+        }
     }
 
     private void validateSeries(BarSeries series) {

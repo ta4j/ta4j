@@ -58,15 +58,30 @@ public class RemovalReadyDeprecationScannerTest {
                 """);
 
         JsonObject report = runScanner();
+        assertEquals(1, report.get("schemaVersion").getAsInt());
+        assertEquals("ta4j:deprecation-removal", report.get("automationNamespace").getAsString());
         assertEquals("0.24.0-SNAPSHOT", report.get("snapshotVersion").getAsString());
         assertEquals(2, report.get("findingCount").getAsInt());
         assertEquals(1, report.get("issuePlanCount").getAsInt());
 
         JsonObject plan = report.getAsJsonArray("issuePlans").get(0).getAsJsonObject();
+        assertEquals("grouped-file-removal", plan.get("planKind").getAsString());
         assertEquals("ta4j-core", plan.get("module").getAsString());
         assertEquals("ta4j-core/src/main/java/org/ta4j/core/legacy/LegacyBridge.java",
                 plan.get("filePath").getAsString());
         assertEquals("Remove 0.24.0-ready deprecations in LegacyBridge.java", plan.get("issueTitle").getAsString());
+        assertFalse(plan.get("issueBody").getAsString().contains(":symbol:v1"));
+        JsonArray symbols = plan.getAsJsonArray("symbols");
+        assertEquals(
+                "ta4j:deprecation-removal:symbol:v1|0.24.0|ta4j-core|"
+                        + "ta4j-core/src/main/java/org/ta4j/core/legacy/LegacyBridge.java|class|LegacyBridge",
+                symbols.get(0).getAsJsonObject().get("trackingKey").getAsString());
+        assertEquals("LegacyBridge", symbols.get(0).getAsJsonObject().get("signature").getAsString());
+        assertEquals(
+                "ta4j:deprecation-removal:symbol:v1|0.24.0|ta4j-core|"
+                        + "ta4j-core/src/main/java/org/ta4j/core/legacy/LegacyBridge.java|method|bridge()",
+                symbols.get(1).getAsJsonObject().get("trackingKey").getAsString());
+        assertEquals("bridge()", symbols.get(1).getAsJsonObject().get("signature").getAsString());
         assertSymbolNames(plan.getAsJsonArray("symbols"), "LegacyBridge", "bridge");
         assertTrue(Files.readString(tempDir.resolve("report.md")).contains("LegacyBridge"));
     }
@@ -316,8 +331,10 @@ public class RemovalReadyDeprecationScannerTest {
 
         assertEquals(2, exitCode);
         String summaryText = stdout.toString(StandardCharsets.UTF_8);
-        assertTrue(summaryText.startsWith("{\"snapshotVersion\""));
+        assertTrue(summaryText.startsWith("{\"schemaVersion\""));
         JsonObject summary = JsonParser.parseString(summaryText).getAsJsonObject();
+        assertEquals(1, summary.get("schemaVersion").getAsInt());
+        assertEquals("ta4j:deprecation-removal", summary.get("automationNamespace").getAsString());
         assertEquals(1, summary.get("findingCount").getAsInt());
         assertEquals(1, summary.get("dueFindingCount").getAsInt());
         assertEquals(1, summary.get("futureFindingCount").getAsInt());
@@ -341,6 +358,10 @@ public class RemovalReadyDeprecationScannerTest {
         JsonObject report = runScanner();
         assertEquals(0, report.get("issuePlanCount").getAsInt());
         assertEquals(1, report.get("unscheduledFindingCount").getAsInt());
+        assertEquals(
+                "ta4j:deprecation-removal:symbol:v1|unscheduled|ta4j-core|"
+                        + "ta4j-core/src/main/java/org/ta4j/core/legacy/UnscheduledBridge.java|class|UnscheduledBridge",
+                report.getAsJsonArray("unscheduledSymbols").get(0).getAsJsonObject().get("trackingKey").getAsString());
         assertSymbolNames(report.getAsJsonArray("unscheduledSymbols"), "UnscheduledBridge");
     }
 

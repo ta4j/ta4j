@@ -12,6 +12,11 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
 import org.ta4j.core.BarSeries;
@@ -38,6 +43,8 @@ public final class WalkForwardEngine<C, P, O> {
     private final List<WalkForwardMetric<P, O>> metrics;
     private final Consumer<Integer> progressCallback;
     private final Consumer<WalkForwardRunResult.LeakageAudit> leakageAuditHook;
+    private final int maxParallelFolds;
+    private final Object progressCallbackLock = new Object();
 
     /**
      * Creates an engine with no-op progress and audit hooks.
@@ -52,7 +59,34 @@ public final class WalkForwardEngine<C, P, O> {
             OutcomeLabeler<P, O> outcomeLabeler, List<WalkForwardMetric<P, O>> metrics) {
         this(splitter, predictionProvider, outcomeLabeler, metrics, ProgressCompletion.noOp(), record -> {
             // no-op
-        });
+        }, 1);
+    }
+
+    /**
+     * Creates an engine with bounded fold-level parallelism and no-op progress and
+     * audit hooks.
+     *
+     * @param splitter           split strategy
+     * @param predictionProvider prediction provider
+     * @param outcomeLabeler     outcome labeler
+     * @param metrics            metrics to compute
+     * @param maxParallelFolds   maximum number of folds to evaluate concurrently.
+     *                           When {@code maxParallelFolds > 1},
+     *                           {@link WalkForwardEngine} invokes the shared
+     *                           {@code predictionProvider} from
+     *                           {@link #executeFold(BarSeries, Object, WalkForwardConfig, WalkForwardSplit, int, int, AtomicInteger)}
+     *                           on multiple worker threads while reusing the same
+     *                           {@code context} instance, so the provider and any
+     *                           mutable state reachable from the context must be
+     *                           stateless, thread-safe, or otherwise
+     *                           thread-confined by the caller
+     * @since 0.22.4
+     */
+    public WalkForwardEngine(WalkForwardSplitter splitter, PredictionProvider<C, P> predictionProvider,
+            OutcomeLabeler<P, O> outcomeLabeler, List<WalkForwardMetric<P, O>> metrics, int maxParallelFolds) {
+        this(splitter, predictionProvider, outcomeLabeler, metrics, ProgressCompletion.noOp(), record -> {
+            // no-op
+        }, maxParallelFolds);
     }
 
     /**
@@ -69,6 +103,35 @@ public final class WalkForwardEngine<C, P, O> {
     public WalkForwardEngine(WalkForwardSplitter splitter, PredictionProvider<C, P> predictionProvider,
             OutcomeLabeler<P, O> outcomeLabeler, List<WalkForwardMetric<P, O>> metrics,
             Consumer<Integer> progressCallback, Consumer<WalkForwardRunResult.LeakageAudit> leakageAuditHook) {
+        this(splitter, predictionProvider, outcomeLabeler, metrics, progressCallback, leakageAuditHook, 1);
+    }
+
+    /**
+     * Creates an engine with explicit progress and audit hooks plus bounded
+     * fold-level parallelism.
+     *
+     * @param splitter           split strategy
+     * @param predictionProvider prediction provider
+     * @param outcomeLabeler     outcome labeler
+     * @param metrics            metrics to compute
+     * @param progressCallback   callback invoked after each decision index
+     * @param leakageAuditHook   callback invoked for each audit record
+     * @param maxParallelFolds   maximum number of folds to evaluate concurrently.
+     *                           When {@code maxParallelFolds > 1},
+     *                           {@link WalkForwardEngine} invokes the shared
+     *                           {@code predictionProvider} from
+     *                           {@link #executeFold(BarSeries, Object, WalkForwardConfig, WalkForwardSplit, int, int, AtomicInteger)}
+     *                           on multiple worker threads while reusing the same
+     *                           {@code context} instance, so the provider and any
+     *                           mutable state reachable from the context must be
+     *                           stateless, thread-safe, or otherwise
+     *                           thread-confined by the caller
+     * @since 0.22.4
+     */
+    public WalkForwardEngine(WalkForwardSplitter splitter, PredictionProvider<C, P> predictionProvider,
+            OutcomeLabeler<P, O> outcomeLabeler, List<WalkForwardMetric<P, O>> metrics,
+            Consumer<Integer> progressCallback, Consumer<WalkForwardRunResult.LeakageAudit> leakageAuditHook,
+            int maxParallelFolds) {
         this.splitter = Objects.requireNonNull(splitter, "splitter");
         this.predictionProvider = Objects.requireNonNull(predictionProvider, "predictionProvider");
         this.outcomeLabeler = Objects.requireNonNull(outcomeLabeler, "outcomeLabeler");
@@ -77,6 +140,10 @@ public final class WalkForwardEngine<C, P, O> {
         this.leakageAuditHook = leakageAuditHook == null ? record -> {
             // no-op
         } : leakageAuditHook;
+        if (maxParallelFolds <= 0) {
+            throw new IllegalArgumentException("maxParallelFolds must be > 0");
+        }
+        this.maxParallelFolds = maxParallelFolds;
     }
 
     /**
@@ -130,60 +197,25 @@ public final class WalkForwardEngine<C, P, O> {
         }
 
         List<WalkForwardRuntimeReport.FoldRuntime> foldRuntimes = new ArrayList<>();
-        int progressCount = 0;
+        AtomicInteger progressCounter = new AtomicInteger();
         int maxPredictions = config.allTopKs().stream().max(Integer::compareTo).orElse(config.optimizationTopK());
 
-        for (WalkForwardSplit split : splits) {
-            long foldStart = System.nanoTime();
-            int foldSnapshots = 0;
-
-            for (int decisionIndex = split.testStart(); decisionIndex <= split.testEnd(); decisionIndex++) {
-                List<RankedPrediction<P>> rawPredictions = predictionProvider.predict(series, decisionIndex, context);
-                List<RankedPrediction<P>> predictions = normalizePredictions(rawPredictions, maxPredictions);
-
-                Map<String, String> metadata = Map.of("visibleStartIndex", String.valueOf(series.getBeginIndex()),
-                        "visibleEndIndex", String.valueOf(decisionIndex), "holdout", String.valueOf(split.holdout()));
-                PredictionSnapshot<P> snapshot = new PredictionSnapshot<>(split.foldId(), decisionIndex, predictions,
-                        metadata);
-                snapshots.add(snapshot);
-                foldSnapshots++;
-
-                for (int horizon : config.allHorizons()) {
-                    int labelStart = decisionIndex + 1;
-                    int labelEnd = decisionIndex + horizon;
-                    boolean withinFoldBounds = labelEnd <= split.testEnd() && labelEnd <= series.getEndIndex();
-                    String note = withinFoldBounds ? "label window bounded to test fold"
-                            : "skipped: label window exceeds fold bounds";
-
-                    WalkForwardRunResult.LeakageAudit audit = new WalkForwardRunResult.LeakageAudit(split.foldId(),
-                            decisionIndex, series.getBeginIndex(), decisionIndex, labelStart, labelEnd, horizon,
-                            withinFoldBounds, split.holdout(), note);
-                    leakageAudit.add(audit);
-                    leakageAuditHook.accept(audit);
-
-                    if (!withinFoldBounds) {
-                        continue;
-                    }
-
-                    List<WalkForwardObservation<P, O>> globalRows = observationsByHorizon.get(horizon);
-                    List<WalkForwardObservation<P, O>> foldRows = foldObservationsByHorizon.get(horizon)
-                            .computeIfAbsent(split.foldId(), unused -> new ArrayList<>());
-
-                    for (RankedPrediction<P> prediction : predictions) {
-                        O outcome = outcomeLabeler.label(series, decisionIndex, horizon, prediction);
-                        WalkForwardObservation<P, O> row = new WalkForwardObservation<>(snapshot, prediction, outcome,
-                                horizon);
-                        globalRows.add(row);
-                        foldRows.add(row);
-                    }
-                }
-
-                progressCount++;
-                progressCallback.accept(progressCount);
+        List<FoldExecution<P, O>> foldExecutions = executeFolds(series, context, config, splits, maxPredictions,
+                progressCounter);
+        for (FoldExecution<P, O> foldExecution : foldExecutions) {
+            snapshots.addAll(foldExecution.snapshots());
+            for (Map.Entry<Integer, List<WalkForwardObservation<P, O>>> horizonEntry : foldExecution
+                    .observationsByHorizon()
+                    .entrySet()) {
+                observationsByHorizon.get(horizonEntry.getKey()).addAll(horizonEntry.getValue());
+                foldObservationsByHorizon.get(horizonEntry.getKey())
+                        .put(foldExecution.split().foldId(), new ArrayList<>(horizonEntry.getValue()));
             }
-
-            Duration foldRuntime = Duration.ofNanos(System.nanoTime() - foldStart);
-            foldRuntimes.add(new WalkForwardRuntimeReport.FoldRuntime(split.foldId(), foldRuntime, foldSnapshots));
+            for (WalkForwardRunResult.LeakageAudit audit : foldExecution.leakageAudit()) {
+                leakageAudit.add(audit);
+                leakageAuditHook.accept(audit);
+            }
+            foldRuntimes.add(foldExecution.foldRuntime());
         }
 
         Map<Integer, Map<String, Num>> globalMetricsByHorizon = computeGlobalMetrics(observationsByHorizon);
@@ -212,6 +244,121 @@ public final class WalkForwardEngine<C, P, O> {
             sorted = new ArrayList<>(sorted.subList(0, maxPredictions));
         }
         return List.copyOf(sorted);
+    }
+
+    private List<FoldExecution<P, O>> executeFolds(BarSeries series, C context, WalkForwardConfig config,
+            List<WalkForwardSplit> splits, int maxPredictions, AtomicInteger progressCounter) {
+        if (splits.isEmpty()) {
+            return List.of();
+        }
+        if (maxParallelFolds == 1 || splits.size() == 1) {
+            List<FoldExecution<P, O>> executions = new ArrayList<>(splits.size());
+            for (int splitIndex = 0; splitIndex < splits.size(); splitIndex++) {
+                executions.add(executeFold(series, context, config, splits.get(splitIndex), splitIndex, maxPredictions,
+                        progressCounter));
+            }
+            return executions;
+        }
+
+        int parallelism = Math.min(maxParallelFolds, splits.size());
+        ExecutorService executor = Executors.newFixedThreadPool(parallelism);
+        try {
+            List<Future<FoldExecution<P, O>>> futures = new ArrayList<>(splits.size());
+            for (int splitIndex = 0; splitIndex < splits.size(); splitIndex++) {
+                WalkForwardSplit split = splits.get(splitIndex);
+                int foldOrder = splitIndex;
+                futures.add(executor.submit(
+                        () -> executeFold(series, context, config, split, foldOrder, maxPredictions, progressCounter)));
+            }
+
+            List<FoldExecution<P, O>> executions = new ArrayList<>(splits.size());
+            for (Future<FoldExecution<P, O>> future : futures) {
+                try {
+                    executions.add(future.get());
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new IllegalStateException("Interrupted while executing walk-forward folds", e);
+                } catch (ExecutionException e) {
+                    rethrowParallelFailure(e.getCause());
+                }
+            }
+            executions.sort(Comparator.comparingInt(FoldExecution::foldOrder));
+            return executions;
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    private static void rethrowParallelFailure(Throwable cause) {
+        if (cause instanceof Error error) {
+            throw error;
+        }
+        if (cause instanceof RuntimeException runtimeException) {
+            throw runtimeException;
+        }
+        throw new IllegalStateException("Walk-forward fold execution failed", cause);
+    }
+
+    private FoldExecution<P, O> executeFold(BarSeries series, C context, WalkForwardConfig config,
+            WalkForwardSplit split, int foldOrder, int maxPredictions, AtomicInteger progressCounter) {
+        long foldStart = System.nanoTime();
+        List<PredictionSnapshot<P>> snapshots = new ArrayList<>();
+        List<WalkForwardRunResult.LeakageAudit> leakageAudit = new ArrayList<>();
+        Map<Integer, List<WalkForwardObservation<P, O>>> observationsByHorizon = new LinkedHashMap<>();
+        for (int horizon : config.allHorizons()) {
+            observationsByHorizon.put(horizon, new ArrayList<>());
+        }
+        List<WalkForwardRuntimeReport.SnapshotRuntime> snapshotRuntimes = new ArrayList<>();
+
+        for (int decisionIndex = split.testStart(); decisionIndex <= split.testEnd(); decisionIndex++) {
+            long snapshotStart = System.nanoTime();
+            List<RankedPrediction<P>> rawPredictions = predictionProvider.predict(series, decisionIndex, context);
+            List<RankedPrediction<P>> predictions = normalizePredictions(rawPredictions, maxPredictions);
+
+            Map<String, String> metadata = Map.of("visibleStartIndex", String.valueOf(series.getBeginIndex()),
+                    "visibleEndIndex", String.valueOf(decisionIndex), "holdout", String.valueOf(split.holdout()));
+            PredictionSnapshot<P> snapshot = new PredictionSnapshot<>(split.foldId(), decisionIndex, predictions,
+                    metadata);
+            snapshots.add(snapshot);
+
+            for (int horizon : config.allHorizons()) {
+                int labelStart = decisionIndex + 1;
+                int labelEnd = decisionIndex + horizon;
+                boolean withinFoldBounds = labelEnd <= split.testEnd() && labelEnd <= series.getEndIndex();
+                String note = withinFoldBounds ? "label window bounded to test fold"
+                        : "skipped: label window exceeds fold bounds";
+
+                WalkForwardRunResult.LeakageAudit audit = new WalkForwardRunResult.LeakageAudit(split.foldId(),
+                        decisionIndex, series.getBeginIndex(), decisionIndex, labelStart, labelEnd, horizon,
+                        withinFoldBounds, split.holdout(), note);
+                leakageAudit.add(audit);
+
+                if (!withinFoldBounds) {
+                    continue;
+                }
+
+                List<WalkForwardObservation<P, O>> rows = observationsByHorizon.get(horizon);
+                for (RankedPrediction<P> prediction : predictions) {
+                    O outcome = outcomeLabeler.label(series, decisionIndex, horizon, prediction);
+                    rows.add(new WalkForwardObservation<>(snapshot, prediction, outcome, horizon));
+                }
+            }
+
+            snapshotRuntimes.add(new WalkForwardRuntimeReport.SnapshotRuntime(decisionIndex,
+                    Duration.ofNanos(System.nanoTime() - snapshotStart), predictions.size()));
+            emitProgress(progressCounter);
+        }
+
+        Duration foldRuntime = Duration.ofNanos(System.nanoTime() - foldStart);
+        return new FoldExecution<>(foldOrder, split, List.copyOf(snapshots), List.copyOf(leakageAudit),
+                immutableObservationMap(observationsByHorizon),
+                buildFoldRuntime(split.foldId(), foldRuntime, snapshotRuntimes));
+    }
+
+    private void emitProgress(AtomicInteger progressCounter) {
+        synchronized (progressCallbackLock) {
+            progressCallback.accept(progressCounter.incrementAndGet());
+        }
     }
 
     private Map<Integer, Map<String, Num>> computeGlobalMetrics(
@@ -255,10 +402,26 @@ public final class WalkForwardEngine<C, P, O> {
         for (WalkForwardRuntimeReport.FoldRuntime foldRuntime : foldRuntimes) {
             durations.add(foldRuntime.runtime());
         }
+        DurationSummary summary = summarizeDurations(durations);
+        return new WalkForwardRuntimeReport(overallRuntime, summary.min(), summary.max(), summary.average(),
+                summary.median(), foldRuntimes);
+    }
 
+    private WalkForwardRuntimeReport.FoldRuntime buildFoldRuntime(String foldId, Duration foldRuntime,
+            List<WalkForwardRuntimeReport.SnapshotRuntime> snapshotRuntimes) {
+        List<WalkForwardRuntimeReport.SnapshotRuntime> immutableSnapshots = List.copyOf(snapshotRuntimes);
+        DurationSummary summary = summarizeDurations(
+                immutableSnapshots.stream().map(WalkForwardRuntimeReport.SnapshotRuntime::runtime).toList());
+        return new WalkForwardRuntimeReport.FoldRuntime(foldId, foldRuntime, immutableSnapshots.size(), summary.min(),
+                summary.max(), summary.average(), summary.median(), immutableSnapshots);
+    }
+
+    private DurationSummary summarizeDurations(List<Duration> durations) {
+        if (durations == null || durations.isEmpty()) {
+            return new DurationSummary(Duration.ZERO, Duration.ZERO, Duration.ZERO, Duration.ZERO);
+        }
         Duration min = Collections.min(durations);
         Duration max = Collections.max(durations);
-
         long totalNanos = 0L;
         for (Duration duration : durations) {
             totalNanos += duration.toNanos();
@@ -275,8 +438,10 @@ public final class WalkForwardEngine<C, P, O> {
         } else {
             median = sorted.get(middle);
         }
+        return new DurationSummary(min, max, average, median);
+    }
 
-        return new WalkForwardRuntimeReport(overallRuntime, min, max, average, median, foldRuntimes);
+    private record DurationSummary(Duration min, Duration max, Duration average, Duration median) {
     }
 
     private static <P, O> Map<Integer, List<WalkForwardObservation<P, O>>> immutableObservationMap(
@@ -307,5 +472,11 @@ public final class WalkForwardEngine<C, P, O> {
             immutable.put(horizonEntry.getKey(), Map.copyOf(perFold));
         }
         return Map.copyOf(immutable);
+    }
+
+    private record FoldExecution<P, O>(int foldOrder, WalkForwardSplit split, List<PredictionSnapshot<P>> snapshots,
+            List<WalkForwardRunResult.LeakageAudit> leakageAudit,
+            Map<Integer, List<WalkForwardObservation<P, O>>> observationsByHorizon,
+            WalkForwardRuntimeReport.FoldRuntime foldRuntime) {
     }
 }

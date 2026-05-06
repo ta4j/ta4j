@@ -62,6 +62,10 @@ import javax.tools.ToolProvider;
  */
 public final class RemovalReadyDeprecationScanner {
 
+    private static final int SCHEMA_VERSION = 1;
+    private static final String AUTOMATION_NAMESPACE = "ta4j:deprecation-removal";
+    private static final String SYMBOL_TRACKING_NAMESPACE = AUTOMATION_NAMESPACE + ":symbol:v1";
+    private static final String GROUPED_FILE_PLAN_KIND = "grouped-file-removal";
     private static final Gson PRETTY_GSON = new GsonBuilder().disableHtmlEscaping().setPrettyPrinting().create();
     private static final Gson COMPACT_GSON = new GsonBuilder().disableHtmlEscaping().create();
     private static final Pattern VERSION_RE = Pattern.compile("<version>\\s*([^<]+?)\\s*</version>");
@@ -119,6 +123,8 @@ public final class RemovalReadyDeprecationScanner {
 
     private static Map<String, Object> summaryJson(DeprecationReport report) {
         Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("schemaVersion", report.schemaVersion());
+        summary.put("automationNamespace", report.automationNamespace());
         summary.put("snapshotVersion", report.snapshotVersion());
         summary.put("removalVersion", report.removalVersion());
         summary.put("issuePlanCount", report.issuePlanCount());
@@ -188,12 +194,12 @@ public final class RemovalReadyDeprecationScanner {
                     first.module(), symbols));
         }
 
-        DeprecationReport partialReport = new DeprecationReport(OffsetDateTime.now(ZoneOffset.UTC).toString(),
-                options.repoRoot().toString(), projectVersion.version(), targetRemovalVersion,
-                options.targetRemovalVersion() == null ? "snapshot" : "target", options.includeOverdue(),
-                options.failOnDue(), allFindings.size(), selectedFindingCount, dueCount, overdueCount, futureCount,
-                unscheduledCount, dueCount + overdueCount, issuePlans.size(), List.copyOf(issuePlans),
-                List.copyOf(unscheduledSymbols), "");
+        DeprecationReport partialReport = new DeprecationReport(SCHEMA_VERSION, AUTOMATION_NAMESPACE,
+                OffsetDateTime.now(ZoneOffset.UTC).toString(), options.repoRoot().toString(), projectVersion.version(),
+                targetRemovalVersion, options.targetRemovalVersion() == null ? "snapshot" : "target",
+                options.includeOverdue(), options.failOnDue(), allFindings.size(), selectedFindingCount, dueCount,
+                overdueCount, futureCount, unscheduledCount, dueCount + overdueCount, issuePlans.size(),
+                List.copyOf(issuePlans), List.copyOf(unscheduledSymbols), "");
         return partialReport.withSummaryMarkdown(renderMarkdown(partialReport));
     }
 
@@ -456,8 +462,8 @@ public final class RemovalReadyDeprecationScanner {
                 "", "Symbols:", symbolLines, "", "Acceptance checks:",
                 "- remove or migrate the compatibility symbols scheduled for removal in `" + removalVersion + "`",
                 "- update callers, tests, and documentation as needed", "- keep the full build green", "", issueMarker);
-        return new IssuePlan(dedupeKey, issueMarker, issueTitle, issueBody, removalVersion, module, relativePath,
-                symbolCount, List.copyOf(symbols));
+        return new IssuePlan(dedupeKey, GROUPED_FILE_PLAN_KIND, issueMarker, issueTitle, issueBody, removalVersion,
+                module, relativePath, symbolCount, List.copyOf(symbols));
     }
 
     private static String status(String removalVersion, String targetRemovalVersion) {
@@ -544,7 +550,7 @@ public final class RemovalReadyDeprecationScanner {
         public Void visitClass(ClassTree tree, Void unused) {
             TreePath path = getCurrentPath();
             CandidateDetails details = candidateDetails(path, tree.getModifiers(), tree, className(tree),
-                    kind(tree.getKind()), false);
+                    className(tree), kind(tree.getKind()), false);
             Set<String> inheritedVersions = details.forRemoval() ? details.effectiveVersions() : inheritedVersions();
             typeContexts.push(new TypeContext(className(tree), inheritedVersions));
             try {
@@ -562,7 +568,8 @@ public final class RemovalReadyDeprecationScanner {
             TreePath path = getCurrentPath();
             String name = tree.getReturnType() == null ? currentTypeName() : tree.getName().toString();
             String kind = tree.getReturnType() == null ? "constructor" : "method";
-            CandidateDetails details = candidateDetails(path, tree.getModifiers(), tree, name, kind, true);
+            CandidateDetails details = candidateDetails(path, tree.getModifiers(), tree, name,
+                    methodSignature(tree, name), kind, true);
             if (details.forRemoval()) {
                 findings.add(details.toFinding(filePath, module));
             }
@@ -580,7 +587,7 @@ public final class RemovalReadyDeprecationScanner {
             TreePath path = getCurrentPath();
             if (methodDepth == 0 && isField(path)) {
                 CandidateDetails details = candidateDetails(path, tree.getModifiers(), tree, tree.getName().toString(),
-                        "field", true);
+                        tree.getName().toString(), "field", true);
                 if (details.forRemoval()) {
                     findings.add(details.toFinding(filePath, module));
                 }
@@ -589,7 +596,7 @@ public final class RemovalReadyDeprecationScanner {
         }
 
         private CandidateDetails candidateDetails(TreePath path, ModifiersTree modifiers, Tree tree, String name,
-                String kind, boolean inheritMissingRemovalVersion) {
+                String signature, String kind, boolean inheritMissingRemovalVersion) {
             boolean forRemoval = isDeprecatedForRemoval(modifiers);
             String context = context(path, tree);
             Set<String> explicitVersions = removalVersions(context);
@@ -599,8 +606,16 @@ public final class RemovalReadyDeprecationScanner {
             String removalVersion = effectiveVersions.stream().findFirst().orElse(null);
             String findingStatus = removalVersion == null ? "unscheduled" : "scheduled";
             int line = declarationLine(tree, name);
-            return new CandidateDetails(forRemoval, name, kind, line, removalVersion, findingStatus,
+            return new CandidateDetails(forRemoval, name, signature, kind, line, removalVersion, findingStatus,
                     replacement(context), Set.copyOf(effectiveVersions));
+        }
+
+        private String methodSignature(MethodTree tree, String name) {
+            List<String> parameterTypes = new ArrayList<>();
+            for (VariableTree parameter : tree.getParameters()) {
+                parameterTypes.add(parameter.getType().toString());
+            }
+            return name + "(" + String.join(", ", parameterTypes) + ")";
         }
 
         private String context(TreePath path, Tree tree) {
@@ -695,45 +710,52 @@ public final class RemovalReadyDeprecationScanner {
     private record TypeContext(String name, Set<String> inheritedRemovalVersions) {
     }
 
-    private record CandidateDetails(boolean forRemoval, String name, String kind, int line, String removalVersion,
-            String status, String replacement, Set<String> effectiveVersions) {
+    private record CandidateDetails(boolean forRemoval, String name, String signature, String kind, int line,
+            String removalVersion, String status, String replacement, Set<String> effectiveVersions) {
 
         private SourceFinding toFinding(String filePath, String module) {
-            return new SourceFinding(name, kind, line, removalVersion, status, replacement, module, filePath);
+            return new SourceFinding(name, signature, kind, line, removalVersion, status, replacement, module,
+                    filePath);
         }
     }
 
-    private record SourceFinding(String name, String kind, int line, String removalVersion, String status,
-            String replacement, String module, String filePath) {
+    private record SourceFinding(String name, String signature, String kind, int line, String removalVersion,
+            String status, String replacement, String module, String filePath) {
 
         private SymbolFinding toSymbolFinding() {
             return toSymbolFinding(status);
         }
 
         private SymbolFinding toSymbolFinding(String status) {
-            return new SymbolFinding(name, kind, line, removalVersion, status, replacement, module, filePath);
+            return new SymbolFinding(trackingKey(), name, signature, kind, line, removalVersion, status, replacement,
+                    module, filePath);
+        }
+
+        private String trackingKey() {
+            return String.join("|", SYMBOL_TRACKING_NAMESPACE, removalVersion == null ? "unscheduled" : removalVersion,
+                    module, filePath, kind, signature);
         }
     }
 
-    private record SymbolFinding(String name, String kind, int line, String removalVersion, String status,
-            String replacement, String module, String filePath) {
+    private record SymbolFinding(String trackingKey, String name, String signature, String kind, int line,
+            String removalVersion, String status, String replacement, String module, String filePath) {
     }
 
-    private record IssuePlan(String dedupeKey, String issueMarker, String issueTitle, String issueBody,
+    private record IssuePlan(String dedupeKey, String planKind, String issueMarker, String issueTitle, String issueBody,
             String removalVersion, String module, String filePath, int symbolCount, List<SymbolFinding> symbols) {
     }
 
-    private record DeprecationReport(String generatedAt, String repoRoot, String snapshotVersion, String removalVersion,
-            String scanMode, boolean includeOverdue, boolean failOnDue, int totalForRemovalCount, int findingCount,
-            int dueFindingCount, int overdueFindingCount, int futureFindingCount, int unscheduledFindingCount,
-            int blockingFindingCount, int issuePlanCount, List<IssuePlan> issuePlans,
-            List<SymbolFinding> unscheduledSymbols, String summaryMarkdown) {
+    private record DeprecationReport(int schemaVersion, String automationNamespace, String generatedAt, String repoRoot,
+            String snapshotVersion, String removalVersion, String scanMode, boolean includeOverdue, boolean failOnDue,
+            int totalForRemovalCount, int findingCount, int dueFindingCount, int overdueFindingCount,
+            int futureFindingCount, int unscheduledFindingCount, int blockingFindingCount, int issuePlanCount,
+            List<IssuePlan> issuePlans, List<SymbolFinding> unscheduledSymbols, String summaryMarkdown) {
 
         private DeprecationReport withSummaryMarkdown(String summaryMarkdown) {
-            return new DeprecationReport(generatedAt, repoRoot, snapshotVersion, removalVersion, scanMode,
-                    includeOverdue, failOnDue, totalForRemovalCount, findingCount, dueFindingCount, overdueFindingCount,
-                    futureFindingCount, unscheduledFindingCount, blockingFindingCount, issuePlanCount, issuePlans,
-                    unscheduledSymbols, summaryMarkdown);
+            return new DeprecationReport(schemaVersion, automationNamespace, generatedAt, repoRoot, snapshotVersion,
+                    removalVersion, scanMode, includeOverdue, failOnDue, totalForRemovalCount, findingCount,
+                    dueFindingCount, overdueFindingCount, futureFindingCount, unscheduledFindingCount,
+                    blockingFindingCount, issuePlanCount, issuePlans, unscheduledSymbols, summaryMarkdown);
         }
     }
 }

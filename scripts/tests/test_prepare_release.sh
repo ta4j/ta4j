@@ -18,6 +18,7 @@ cleanup() {
   if [[ -n "${TMP:-}" && -d "$TMP" ]]; then
     rm -rf "$TMP"
   fi
+  return 0
 }
 trap cleanup EXIT
 

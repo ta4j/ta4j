@@ -7,6 +7,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.time.Duration;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -91,16 +92,53 @@ class WalkForwardModelRecordsTest {
     }
 
     @Test
+    void manifestMetadataKeepsDeterministicKeyOrder() {
+        LinkedHashMap<String, String> metadata = new LinkedHashMap<>();
+        metadata.put("scenarioSwingWindow", "0");
+        metadata.put("profile", "baseline");
+        metadata.put("degree", "MINUTE");
+
+        WalkForwardExperimentManifest manifest = new WalkForwardExperimentManifest("dataset", "candidate", "abc123",
+                42L, metadata);
+
+        assertThat(manifest.metadata().keySet()).containsExactly("degree", "profile", "scenarioSwingWindow");
+    }
+
+    @Test
     void runtimeReportSupportsEmptyAndFoldValidation() {
         WalkForwardRuntimeReport empty = WalkForwardRuntimeReport.empty();
         assertThat(empty.overallRuntime()).isEqualTo(Duration.ZERO);
         assertThat(empty.foldRuntimes()).isEmpty();
 
+        WalkForwardRuntimeReport.SnapshotRuntime snapshotRuntime = new WalkForwardRuntimeReport.SnapshotRuntime(12,
+                Duration.ofMillis(4), 2);
         WalkForwardRuntimeReport.FoldRuntime foldRuntime = new WalkForwardRuntimeReport.FoldRuntime("fold-1",
-                Duration.ofMillis(12), 3);
-        assertThat(foldRuntime.snapshotCount()).isEqualTo(3);
+                Duration.ofMillis(12), 1, Duration.ofMillis(4), Duration.ofMillis(4), Duration.ofMillis(4),
+                Duration.ofMillis(4), List.of(snapshotRuntime));
+        assertThat(foldRuntime.snapshotCount()).isEqualTo(1);
+        assertThat(foldRuntime.snapshotRuntimes()).containsExactly(snapshotRuntime);
+        assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.SnapshotRuntime(-1, Duration.ofMillis(1), 1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.SnapshotRuntime(12, Duration.ofMillis(-1), 1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.SnapshotRuntime(12, Duration.ofMillis(1), -1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofMillis(-1), 0));
         assertThrows(IllegalArgumentException.class,
                 () -> new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofMillis(1), -1));
+        assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofMillis(1), 2, Duration.ZERO,
+                        Duration.ZERO, Duration.ZERO, Duration.ZERO, List.of(snapshotRuntime)));
+        assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofMillis(1), 1, Duration.ofMillis(5),
+                        Duration.ofMillis(4), Duration.ofMillis(4), Duration.ofMillis(4), List.of(snapshotRuntime)));
+        assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofMillis(1), 1, Duration.ofMillis(4),
+                        Duration.ofMillis(5), Duration.ofMillis(6), Duration.ofMillis(4), List.of(snapshotRuntime)));
+        assertThrows(IllegalArgumentException.class,
+                () -> new WalkForwardRuntimeReport.FoldRuntime("fold-1", Duration.ofMillis(1), 1, Duration.ofMillis(4),
+                        Duration.ofMillis(5), Duration.ofMillis(3), Duration.ofMillis(4), List.of(snapshotRuntime)));
     }
 
     @Test
