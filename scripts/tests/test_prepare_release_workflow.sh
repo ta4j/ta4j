@@ -77,6 +77,34 @@ test_deprecation_scan_uses_java_scanner() {
   pass "test_deprecation_scan_uses_java_scanner"
 }
 
+test_prepare_release_sets_up_jdk25_before_maven() {
+  echo "Running test_prepare_release_sets_up_jdk25_before_maven"
+
+  local setup_line
+  local read_version_line
+  local gate_line
+  setup_line="$(line_of "Set up JDK 25")"
+  read_version_line="$(line_of "Read current version from POM")"
+  gate_line="$(line_of "Gate release-ready deprecations")"
+  if (( setup_line >= read_version_line )); then
+    fail "prepare-release should configure JDK 25 before reading the Maven project version"
+  fi
+  if (( setup_line >= gate_line )); then
+    fail "prepare-release should configure JDK 25 before the deprecation release gate"
+  fi
+
+  expect_file_contains "$WORKFLOW" "uses: actions/setup-java@v5" \
+    "prepare-release should use the standard setup-java action"
+  expect_file_contains "$WORKFLOW" "distribution: temurin" \
+    "prepare-release should use the same Temurin distribution as other workflows"
+  expect_file_contains "$WORKFLOW" "java-version: 25" \
+    "prepare-release should satisfy the Maven enforcer Java version"
+  expect_file_contains "$WORKFLOW" "cache: maven" \
+    "prepare-release should enable Maven cache for Java setup"
+
+  pass "test_prepare_release_sets_up_jdk25_before_maven"
+}
+
 test_release_gate_runs_before_next_snapshot() {
   echo "Running test_release_gate_runs_before_next_snapshot"
 
@@ -202,6 +230,7 @@ test_deprecation_scans_run_during_dry_runs() {
 test_issue_permissions_declared
 test_issue_sync_uses_targeted_search
 test_deprecation_scan_uses_java_scanner
+test_prepare_release_sets_up_jdk25_before_maven
 test_release_gate_runs_before_next_snapshot
 test_next_snapshot_issue_sync_runs_after_snapshot_commit
 test_release_audit_includes_deprecation_counts
