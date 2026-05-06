@@ -457,8 +457,8 @@ jobs:
 
       - name: Gate release-ready deprecations
         id: deprecation_release_gate
-        if: steps.dry_run.outputs.dryRun != 'true'
         env:
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
           RELEASE_VERSION: ${{ steps.versions.outputs.release }}
           REPORT_JSON: ${{ runner.temp }}/release-ready-deprecations.json
           REPORT_MD: ${{ runner.temp }}/release-ready-deprecations.md
@@ -474,6 +474,7 @@ jobs:
           set -e
           echo "::endgroup::"
 
+          echo "scan_status=$scan_status" >> $GITHUB_OUTPUT
           echo "report_json=$REPORT_JSON" >> $GITHUB_OUTPUT
           echo "report_md=$REPORT_MD" >> $GITHUB_OUTPUT
 
@@ -481,6 +482,10 @@ jobs:
             echo ""
             cat "$REPORT_MD"
           } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$DRY_RUN" == "true" ]]; then
+            exit 0
+          fi
 
           exit "$scan_status"
 
@@ -515,16 +520,17 @@ jobs:
 
       - name: Scan removal-ready deprecations
         id: deprecation_scan
-        if: steps.dry_run.outputs.dryRun != 'true'
         env:
+          NEXT_VERSION: ${{ steps.versions.outputs.next }}
           REPORT_JSON: ${{ runner.temp }}/removal-ready-deprecations.json
           REPORT_MD: ${{ runner.temp }}/removal-ready-deprecations.md
         run: |
           echo "::group::Scan removal-ready deprecations"
+          NEXT_REMOVAL_VERSION="${NEXT_VERSION%-SNAPSHOT}"
           mvn -B -q -pl ta4j-examples -am compile
           mvn -B -q -pl ta4j-examples exec:java \
             -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner \
-            "-Dexec.args=--repo-root ${GITHUB_WORKSPACE} --pom-file pom.xml --output-json ${REPORT_JSON} --output-md ${REPORT_MD}"
+            "-Dexec.args=--repo-root ${GITHUB_WORKSPACE} --pom-file pom.xml --target-removal-version ${NEXT_REMOVAL_VERSION} --output-json ${REPORT_JSON} --output-md ${REPORT_MD}"
           echo "::endgroup::"
 
           echo "report_json=$REPORT_JSON" >> $GITHUB_OUTPUT
@@ -723,6 +729,14 @@ jobs:
             ${{ steps.deprecation_scan.outputs.report_md }}
             ${{ steps.deprecation_issues.outputs.report_json }}
             ${{ steps.deprecation_issues.outputs.report_md }}
+
+      - name: Fail dry-run on release-ready deprecations
+        if: steps.dry_run.outputs.dryRun == 'true' && steps.deprecation_release_gate.outputs.scan_status != '0'
+        env:
+          SCAN_STATUS: ${{ steps.deprecation_release_gate.outputs.scan_status }}
+        run: |
+          echo "Dry-run deprecation gate found release-blocking findings. See the release-ready deprecation report artifact."
+          exit "$SCAN_STATUS"
 
       # -----------------------
       # Push or PR

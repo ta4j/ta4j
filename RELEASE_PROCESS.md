@@ -26,7 +26,8 @@ Emergency path (direct push mode):
 
 Validation path (dry run):
 1. Run prepare and/or publish with `dryRun=true`.
-2. Checks run, but no tag push and no Maven Central deploy.
+2. Prepare dry-runs still run the read-only release-ready and next-cycle deprecation scans and upload their reports.
+3. No release commits, managed cleanup issue mutations, tag push, or Maven Central deploy occur.
 
 ---
 
@@ -71,9 +72,9 @@ Secrets and variables:
 - Inputs: `releaseVersion` (optional if auto-detected), `nextVersion` (optional), `dryRun=false`.
 - If `nextVersion` is omitted and `releaseVersion` is a plain `X.Y.Z`, it is auto-generated as `<major>.<minor>.<patch+1>-SNAPSHOT` (for example `0.22.2` -> `0.22.3-SNAPSHOT`).
 - For RC/non-plain release versions, provide `nextVersion` explicitly.
-- Before the workflow commits the next snapshot version, it runs the Java-based `ta4jexamples.doc.RemovalReadyDeprecationScanner` against the release version and fails if any `@Deprecated(forRemoval = true)` symbols are due or overdue for removal.
-- After the workflow commits the next snapshot version, it scans sources scheduled for that new snapshot and syncs deduplicated GitHub cleanup issues, including reopening still-valid managed issues and closing stale managed issues for the same removal version.
-- The workflow uploads release-gate and next-snapshot removal-ready deprecation report artifacts with grouped findings, symbols, lifecycle status, replacement hints when available, and synced issue links.
+- Before the workflow commits the next snapshot version, it runs the Java-based `ta4jexamples.doc.RemovalReadyDeprecationScanner` against the release version and fails if any `@Deprecated(forRemoval = true)` symbols are due or overdue for removal. This read-only scan also runs in dry-run mode.
+- After the next snapshot version is known, it scans sources scheduled for that planned snapshot. Non-dry-run runs then sync deduplicated GitHub cleanup issues, including reopening still-valid managed issues and closing stale managed issues for the same removal version; dry-runs only upload the scan report.
+- The workflow uploads release-gate and next-snapshot removal-ready deprecation report artifacts with grouped findings, symbols, lifecycle status, replacement hints when available, and synced issue links when issue sync runs.
 - The scanner JSON is the stable handoff contract for future automation: it includes `schemaVersion`, `automationNamespace`, grouped issue `planKind`, and per-symbol `trackingKey` fields so a later AI-driven planner can split work into one issue per deprecated item while remaining restart-safe by searching managed markers before mutation.
 - The workflow auto-labels the PR with `release`, assigns it to `TheCookieLab`, and requests review from `TheCookieLab`.
 - Opening a release PR automatically triggers freeze notices on other open PRs.
@@ -105,7 +106,7 @@ Secrets and variables:
 
 Prepare dry-run:
 1. Run `prepare-release.yml` with `dryRun=true`.
-2. Validate version calculations, notes generation, and preflight checks.
+2. Validate version calculations, notes generation, preflight checks, and deprecation scan reports.
 
 Publish dry-run:
 1. Run `publish-release.yml` with `dryRun=true`.
@@ -116,6 +117,7 @@ Expected behavior:
 - dry-run can warn about missing deploy secrets/resources.
 - no tag push and no Maven Central deployment.
 - prepare dry-runs still run push capability probes with `git push --dry-run`.
+- prepare dry-runs run deprecation scans and upload report artifacts, but skip managed GitHub cleanup issue sync. If the release-ready gate finds due or overdue removals, the dry-run fails after the reports are available.
 - publish dry-runs run the same metadata, ancestry, release-candidate, and artifact manifest checks without deploying.
 - release-candidate checks use the repository default `integration,slow` test-tag exclusions and log that policy in the workflow output.
 - workflows upload audit artifacts such as release dossiers, decisions, manifests, logs, and tag-resolution files so failures can be diagnosed from the exact phase that produced them.

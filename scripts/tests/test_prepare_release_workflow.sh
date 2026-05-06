@@ -118,6 +118,10 @@ test_next_snapshot_issue_sync_runs_after_snapshot_commit() {
   if (( sync_line >= push_line )); then
     fail "deprecation issue sync should finish before the release branch is pushed"
   fi
+  expect_file_contains "$WORKFLOW" "NEXT_REMOVAL_VERSION=\"\${NEXT_VERSION%-SNAPSHOT}\"" \
+    "next-snapshot scan should derive the planned removal target from nextVersion"
+  expect_file_contains "$WORKFLOW" "--target-removal-version \${NEXT_REMOVAL_VERSION}" \
+    "next-snapshot scan should not rely on a dry-run POM mutation"
 
   pass "test_next_snapshot_issue_sync_runs_after_snapshot_commit"
 }
@@ -169,21 +173,30 @@ test_deprecation_issue_sync_does_not_add_metadata_to_cleanup_issues() {
   pass "test_deprecation_issue_sync_does_not_add_metadata_to_cleanup_issues"
 }
 
-test_deprecation_automation_skips_dry_run_mutations() {
-  echo "Running test_deprecation_automation_skips_dry_run_mutations"
+test_deprecation_scans_run_during_dry_runs() {
+  echo "Running test_deprecation_scans_run_during_dry_runs"
 
   local gate_section
+  local scan_section
   local issue_section
   gate_section="$(workflow_section "Gate release-ready deprecations" "Upload release-ready deprecation gate report")"
+  scan_section="$(workflow_section "Scan removal-ready deprecations" "Create or update removal-ready deprecation issues")"
   issue_section="$(workflow_section "Create or update removal-ready deprecation issues" "Upload removal-ready deprecation report")"
-  if ! grep -Fq "if: steps.dry_run.outputs.dryRun != 'true'" <<<"$gate_section"; then
-    fail "release deprecation gate should skip dry-run mutations"
+  if grep -Fq "if: steps.dry_run.outputs.dryRun != 'true'" <<<"$gate_section"; then
+    fail "release deprecation gate should run during dry-run"
   fi
+  if grep -Fq "if: steps.dry_run.outputs.dryRun != 'true'" <<<"$scan_section"; then
+    fail "next-snapshot deprecation scan should run during dry-run"
+  fi
+  expect_file_contains "$WORKFLOW" "scan_status=\$scan_status" \
+    "release gate should expose scan status for delayed dry-run failure"
+  expect_file_contains "$WORKFLOW" "if: steps.dry_run.outputs.dryRun == 'true' && steps.deprecation_release_gate.outputs.scan_status != '0'" \
+    "dry-run should fail after report uploads when release-ready deprecations are found"
   if ! grep -Fq "if: steps.dry_run.outputs.dryRun != 'true'" <<<"$issue_section"; then
     fail "deprecation issue sync should skip dry-run mutations"
   fi
 
-  pass "test_deprecation_automation_skips_dry_run_mutations"
+  pass "test_deprecation_scans_run_during_dry_runs"
 }
 
 test_issue_permissions_declared
@@ -194,4 +207,4 @@ test_next_snapshot_issue_sync_runs_after_snapshot_commit
 test_release_audit_includes_deprecation_counts
 test_issue_sync_reconciles_stale_managed_issues
 test_deprecation_issue_sync_does_not_add_metadata_to_cleanup_issues
-test_deprecation_automation_skips_dry_run_mutations
+test_deprecation_scans_run_during_dry_runs
