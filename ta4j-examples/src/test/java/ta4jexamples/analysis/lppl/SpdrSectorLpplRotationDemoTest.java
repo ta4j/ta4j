@@ -156,6 +156,31 @@ class SpdrSectorLpplRotationDemoTest {
     }
 
     @Test
+    void systemPropertySettingsResolveRelativePathsFromRepositoryRoot() {
+        String previousOutputDirectory = System.getProperty(SpdrSectorReferenceDataUpdater.DEMO_OUTPUT_DIR_PROPERTY);
+        String previousReferenceDataDirectory = System
+                .getProperty(SpdrSectorReferenceDataUpdater.REFERENCE_DATA_DIR_PROPERTY);
+        try {
+            System.setProperty(SpdrSectorReferenceDataUpdater.DEMO_OUTPUT_DIR_PROPERTY,
+                    "target/analysis-demos/lppl-sector-rotation");
+            System.setProperty(SpdrSectorReferenceDataUpdater.REFERENCE_DATA_DIR_PROPERTY,
+                    "ta4j-examples/src/main/resources");
+
+            SpdrSectorReferenceDataUpdater.Settings settings = SpdrSectorReferenceDataUpdater.Settings
+                    .fromSystemProperties();
+            Path repositoryRoot = repositoryRoot();
+
+            assertEquals(repositoryRoot.resolve("target/analysis-demos/lppl-sector-rotation").normalize(),
+                    settings.outputDirectory());
+            assertEquals(repositoryRoot.resolve("ta4j-examples/src/main/resources").normalize(),
+                    settings.referenceDataDirectory());
+        } finally {
+            restoreProperty(SpdrSectorReferenceDataUpdater.DEMO_OUTPUT_DIR_PROPERTY, previousOutputDirectory);
+            restoreProperty(SpdrSectorReferenceDataUpdater.REFERENCE_DATA_DIR_PROPERTY, previousReferenceDataDirectory);
+        }
+    }
+
+    @Test
     @Tag("lppl-sector-rotation-demo")
     void lpplSectorRotationDemoFunnelRefreshesReferencesAndWritesArtifacts() throws IOException {
         LpplCalibrationProfile fastProfile = new LpplCalibrationProfile(new int[] { 200 }, 0.1, 0.9, 2, 6.0, 13.0, 2,
@@ -179,6 +204,25 @@ class SpdrSectorLpplRotationDemoTest {
                 assertNotNull(stream, definition.resource());
                 Files.copy(stream, referenceDataDirectory.resolve(definition.resource()));
             }
+        }
+    }
+
+    private Path repositoryRoot() {
+        Path directory = Path.of("").toAbsolutePath().normalize();
+        while (directory != null) {
+            if (Files.exists(directory.resolve("pom.xml")) && Files.isDirectory(directory.resolve("ta4j-examples"))) {
+                return directory;
+            }
+            directory = directory.getParent();
+        }
+        throw new IllegalStateException("Unable to locate repository root");
+    }
+
+    private void restoreProperty(String name, String value) {
+        if (value == null) {
+            System.clearProperty(name);
+        } else {
+            System.setProperty(name, value);
         }
     }
 

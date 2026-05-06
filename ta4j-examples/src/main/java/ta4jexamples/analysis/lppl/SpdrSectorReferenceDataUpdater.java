@@ -230,14 +230,42 @@ final class SpdrSectorReferenceDataUpdater {
         }
 
         static Settings fromSystemProperties() {
-            Path outputDirectory = Path
-                    .of(System.getProperty(DEMO_OUTPUT_DIR_PROPERTY, "target/analysis-demos/lppl-sector-rotation"));
-            Path referenceDataDirectory = Path
-                    .of(System.getProperty(REFERENCE_DATA_DIR_PROPERTY, "ta4j-examples/src/main/resources"));
+            Path outputDirectory = configuredPath(DEMO_OUTPUT_DIR_PROPERTY,
+                    "target/analysis-demos/lppl-sector-rotation");
+            Path referenceDataDirectory = configuredPath(REFERENCE_DATA_DIR_PROPERTY,
+                    "ta4j-examples/src/main/resources");
             boolean updateReferenceData = Boolean.getBoolean(UPDATE_REFERENCE_DATA_PROPERTY);
             int overlapDays = Integer.getInteger(OVERLAP_DAYS_PROPERTY, DEFAULT_OVERLAP_DAYS);
             return new Settings(referenceDataDirectory, outputDirectory, outputDirectory.resolve("responses"),
                     updateReferenceData, overlapDays, Instant.now());
+        }
+
+        private static Path configuredPath(String propertyName, String defaultValue) {
+            Path configuredPath = Path.of(System.getProperty(propertyName, defaultValue));
+            if (configuredPath.isAbsolute()) {
+                return configuredPath;
+            }
+            return repositoryRoot().resolve(configuredPath);
+        }
+
+        private static Path repositoryRoot() {
+            String mavenRoot = System.getProperty("maven.multiModuleProjectDirectory");
+            if (mavenRoot != null && !mavenRoot.isBlank()) {
+                Path root = Path.of(mavenRoot).toAbsolutePath().normalize();
+                if (Files.exists(root.resolve("pom.xml"))) {
+                    return root;
+                }
+            }
+
+            Path directory = Path.of("").toAbsolutePath().normalize();
+            while (directory != null) {
+                if (Files.exists(directory.resolve("pom.xml"))
+                        && Files.isDirectory(directory.resolve("ta4j-examples"))) {
+                    return directory;
+                }
+                directory = directory.getParent();
+            }
+            return Path.of("").toAbsolutePath().normalize();
         }
 
         Path outputDataDirectory() {
