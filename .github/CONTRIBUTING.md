@@ -118,19 +118,6 @@ This development process is similar to [github flow](https://docs.github.com/en/
 * **Only the content of the master branch is going to become a release.**
 * **There is no release branch nor a mandatory develop branch**
 
-### Snapshots
-
-A SNAPSHOT is the latest version of the **next** release. Use the current snapshot version from the root `pom.xml` (currently `0.22.7-SNAPSHOT`). You can use the current SNAPSHOT version by adding the following dependency to your `pom.xml` file:
-```xml
-<dependency>
-  <groupId>org.ta4j</groupId>
-  <artifactId>ta4j-core</artifactId>
-  <version>0.22.7-SNAPSHOT</version>
-</dependency>
-```
-
-The SNAPSHOT version contains all fixes, enhancements and new features that have been added to the master build so far and that will be part of the next release.
-
 ### Release Process
 
 For maintainers, the release process is fully automated using GitHub Actions workflows. The process includes:
