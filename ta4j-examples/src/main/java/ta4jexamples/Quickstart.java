@@ -34,7 +34,6 @@ import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
 /**
  * Quickstart example for ta4j.
  *
- * <p>
  * This class demonstrates how to:
  * <ul>
  * <li>Load a {@link BarSeries} from a CSV file.</li>
@@ -44,7 +43,6 @@ import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
  * <li>Analyze the resulting {@link TradingRecord} with various criteria.</li>
  * <li>Display the results in a generated chart.</li>
  * </ul>
- * </p>
  */
 public class Quickstart {
 

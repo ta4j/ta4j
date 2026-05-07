@@ -21,6 +21,7 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
+import org.ta4j.core.backtest.BacktestExecutor;
 import org.ta4j.core.backtest.BarSeriesManager;
 import org.ta4j.core.backtest.SlippageExecutionModel;
 import org.ta4j.core.backtest.TradeExecutionModel;
@@ -33,7 +34,6 @@ import org.ta4j.core.rules.FixedRule;
  * Example demonstrating execution engine parity across different execution
  * models.
  *
- * <p>
  * This backtest asserts that strategies yield identical results when run
  * through:
  * <ul>
@@ -43,7 +43,6 @@ import org.ta4j.core.rules.FixedRule;
  * </ul>
  * It ensures the default {@link BaseTradingRecord} acts as a unified record
  * model.
- * </p>
  */
 public class TradingRecordParityBacktest {
 

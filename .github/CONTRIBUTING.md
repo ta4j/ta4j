@@ -74,12 +74,12 @@ This development process is similar to [github flow](https://docs.github.com/en/
 
 ### Snapshots
 
-A SNAPSHOT is the latest version of the **next** release. For instance a 0.22.0-SNAPSHOT is the current build that should become the next 0.22.0 release. You can use the current SNAPSHOT version by adding the following dependency to your `pom.xml` file:
+A SNAPSHOT is the latest version of the **next** release. Use the current snapshot version from the root `pom.xml` (currently `0.22.7-SNAPSHOT`). You can use the current SNAPSHOT version by adding the following dependency to your `pom.xml` file:
 ```xml
 <dependency>
   <groupId>org.ta4j</groupId>
   <artifactId>ta4j-core</artifactId>
-  <version>0.22.0-SNAPSHOT</version>
+  <version>0.22.7-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -94,7 +94,7 @@ For maintainers, the release process is fully automated using GitHub Actions wor
 - **Release health monitoring**: Automated checks for tag reachability, version drift, and stale release PRs
 - **GitHub Release automation**: Automatic creation of GitHub Releases with artifacts and release notes
 
-For detailed information about the release process, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md) in the main repository.
+For detailed information about the release process, see [RELEASE_PROCESS.md](../RELEASE_PROCESS.md) in the main repository.
 
 ## Quick tips
 

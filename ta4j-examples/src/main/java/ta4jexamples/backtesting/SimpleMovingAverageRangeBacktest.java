@@ -30,7 +30,6 @@ import java.util.Objects;
  * Example demonstrating how to use {@link BacktestExecutor} for parallel
  * strategy evaluation.
  *
- * <p>
  * This example:
  * <ul>
  * <li>Creates multiple variations of a Simple Moving Average (SMA)
@@ -40,7 +39,6 @@ import java.util.Objects;
  * <li>Ranks the strategies based on a composite {@link WeightedCriterion}.</li>
  * <li>Prints a performance report for the best strategies.</li>
  * </ul>
- * </p>
  */
 public class SimpleMovingAverageRangeBacktest {
 

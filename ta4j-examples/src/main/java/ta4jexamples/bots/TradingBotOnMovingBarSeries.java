@@ -29,7 +29,6 @@ import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
 /**
  * Example of a trading bot running on a live, moving {@link BarSeries}.
  *
- * <p>
  * This example simulates a real-time trading environment:
  * <ul>
  * <li>A strategy is evaluated on the latest bar on each tick/iteration.</li>
@@ -38,7 +37,6 @@ import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
  * <li>The series is continuously fed with new simulated ticks, mimicking a live
  * feed.</li>
  * </ul>
- * </p>
  */
 public class TradingBotOnMovingBarSeries {
 
