@@ -64,8 +64,7 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
-    @Tag("integration")
-    @Tag("slow")
+    @Tag("analysis-demo")
     void ossifiedDatasetProducesImpulseAndCorrection() {
         BarSeries series = loadOssifiedSeries();
         ElliottSwingIndicator swingIndicator = ElliottSwingIndicator.zigZag(series, ElliottDegree.PRIMARY);
@@ -83,8 +82,7 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
-    @Tag("integration")
-    @Tag("slow")
+    @Tag("analysis-demo")
     void rendersWaveLabelsOnChart() {
         Assume.assumeFalse("Headless environment", GraphicsEnvironment.isHeadless());
         BarSeries series = loadOssifiedSeries();
@@ -361,8 +359,7 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
-    @Tag("integration")
-    @Tag("slow")
+    @Tag("analysis-demo")
     void analyze_withValidSeries_completesSuccessfully() {
         // Test that analyze() completes successfully and generates wave labels
         // This tests buildWaveLabelsFromScenario and placementForPivot indirectly
@@ -376,8 +373,7 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
-    @Tag("integration")
-    @Tag("slow")
+    @Tag("analysis-demo")
     void analyze_withDifferentScenarioTypes_generatesAppropriateLabels() {
         // Test that analyze() handles different scenario types
         // This indirectly tests buildWaveLabelsFromScenario with different types
@@ -393,8 +389,7 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
-    @Tag("integration")
-    @Tag("slow")
+    @Tag("analysis-demo")
     void analyze_withDifferentDegrees_completesSuccessfully() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -404,8 +399,7 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
-    @Tag("integration")
-    @Tag("slow")
+    @Tag("analysis-demo")
     void analyze_withDifferentFibTolerances_completesSuccessfully() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -415,8 +409,7 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
-    @Tag("integration")
-    @Tag("slow")
+    @Tag("analysis-demo")
     void analyze_returnsAnalysisResult() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -450,8 +443,7 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
-    @Tag("integration")
-    @Tag("slow")
+    @Tag("analysis-demo")
     void analyze_withBaseCaseScenario_createsBaseCaseChartPlan() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -465,8 +457,7 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
-    @Tag("integration")
-    @Tag("slow")
+    @Tag("analysis-demo")
     void analyze_createsChartPlansForAllScenarios() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -486,8 +477,7 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
-    @Tag("integration")
-    @Tag("slow")
+    @Tag("analysis-demo")
     void visualizeAnalysisResult_withValidResult_completesSuccessfully() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -509,8 +499,7 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
-    @Tag("integration")
-    @Tag("slow")
+    @Tag("analysis-demo")
     void visualizeAnalysisResult_withDifferentDegrees_formatsWindowTitlesCorrectly() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -552,8 +541,7 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
-    @Tag("integration")
-    @Tag("slow")
+    @Tag("analysis-demo")
     void visualizeAnalysisResult_withAlternativeScenarios_formatsWindowTitlesCorrectly() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
@@ -596,8 +584,7 @@ class ElliottWaveAnalysisTest {
     }
 
     @Test
-    @Tag("integration")
-    @Tag("slow")
+    @Tag("analysis-demo")
     void analyze_separatesAnalysisFromVisualization() {
         BarSeries series = loadOssifiedSeries();
         ElliottWaveIndicatorSuiteDemo analysis = new ElliottWaveIndicatorSuiteDemo();
