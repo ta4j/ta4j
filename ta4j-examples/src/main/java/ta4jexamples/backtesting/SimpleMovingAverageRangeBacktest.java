@@ -27,14 +27,19 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * Runs a simple moving-average parameter sweep and then highlights the best
- * candidates with weighted, normalized strategy ranking.
+ * Example demonstrating how to use {@link BacktestExecutor} for parallel
+ * strategy evaluation.
  *
  * <p>
- * The example keeps the strategy definitions intentionally simple, then uses a
- * composite score that favors net profit while still rewarding smoother equity
- * curves through return-over-max-drawdown. That makes the shortlist more
- * realistic than sorting on a single raw metric alone.
+ * This example:
+ * <ul>
+ * <li>Creates multiple variations of a Simple Moving Average (SMA)
+ * strategy.</li>
+ * <li>Uses {@code BacktestExecutor} to run them in parallel over the data
+ * series.</li>
+ * <li>Ranks the strategies based on a composite {@link WeightedCriterion}.</li>
+ * <li>Prints a performance report for the best strategies.</li>
+ * </ul>
  * </p>
  */
 public class SimpleMovingAverageRangeBacktest {

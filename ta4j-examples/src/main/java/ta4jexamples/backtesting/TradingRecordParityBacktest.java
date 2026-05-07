@@ -30,9 +30,20 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.rules.FixedRule;
 
 /**
- * Demonstrates how {@link TradeExecutionModel trade execution models} change
- * fills, and how those fills stay consistent across the default, provided, and
- * factory-configured {@link TradingRecord} flows.
+ * Example demonstrating execution engine parity across different execution
+ * models.
+ *
+ * <p>
+ * This backtest asserts that strategies yield identical results when run
+ * through:
+ * <ul>
+ * <li>{@link BarSeriesManager} (standard simulation)</li>
+ * <li>{@link BacktestExecutor} (batch/parallel simulation)</li>
+ * <li>Manual iterative loops (mimicking live/paper trading)</li>
+ * </ul>
+ * It ensures the default {@link BaseTradingRecord} acts as a unified record
+ * model.
+ * </p>
  */
 public class TradingRecordParityBacktest {
 
