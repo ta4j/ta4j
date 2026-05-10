@@ -27,8 +27,16 @@ import org.ta4j.core.rules.UnderIndicatorRule;
 import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
 
 /**
- * This class is an example of a dummy trading bot using ta4j.
- * <p/>
+ * Example of a trading bot running on a live, moving {@link BarSeries}.
+ *
+ * This example simulates a real-time trading environment:
+ * <ul>
+ * <li>A strategy is evaluated on the latest bar on each tick/iteration.</li>
+ * <li>The bot maintains a {@link BaseTradingRecord} and updates it using
+ * {@link Trade.TradeType} entry/exit signals.</li>
+ * <li>The series is continuously fed with new simulated ticks, mimicking a live
+ * feed.</li>
+ * </ul>
  */
 public class TradingBotOnMovingBarSeries {
 

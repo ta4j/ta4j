@@ -22,6 +22,12 @@ import org.ta4j.core.num.NumFactory;
  * backtesting cases)
  * <li>limited to a fixed number of bars (e.g. for actual trading)
  * </ul>
+ *
+ * <p>
+ * The bar series is the core underlying dataset in ta4j. It represents a
+ * timeline of financial data (OHLCV) and acts as the source of truth for
+ * indicators, backtesting runs, and live trading operations.
+ * </p>
  */
 public interface BarSeries extends Serializable {
 
