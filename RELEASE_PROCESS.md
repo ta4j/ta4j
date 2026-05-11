@@ -46,6 +46,7 @@ Code and docs:
 1. Update `CHANGELOG.md` under `Unreleased`.
 2. Keep README version references current.
 3. Run `scripts/docs-integrity-check.sh` and resolve failures before preparing a release.
+   - This gate verifies canonical docs presence, link validity, command references, and TODO-free user-facing entry docs.
 4. Ensure release notes can be generated cleanly (`release/<version>.md`).
 5. Confirm release PRs are visible to release owner:
    - release PR must be labeled `release`.
@@ -79,6 +80,7 @@ Secrets and variables:
 - Confirm release commit + next snapshot commit are present.
 - Confirm release notes file exists (`release/<version>.md`).
 - Confirm docs delta is complete for changed APIs/examples (README/wiki/examples index/changelog consistency).
+- Confirm canonical documentation artifacts are present and linked (`Home`, `Getting-started`, journey/runbook/checklist/troubleshooting, decision matrix, migration map, expected outputs, performance characterization).
 - If a release PR is open, wait for it to merge before merging any non-release PRs to `master`.
 
 3. Merge release PR to `master`

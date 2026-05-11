@@ -70,9 +70,23 @@ If chart windows do not appear, you are likely in a headless environment; switch
 5. `ta4jexamples.backtesting.YahooFinanceBacktest` or `ta4jexamples.backtesting.CoinbaseBacktest`
 6. `ta4jexamples.bots.TradingBotOnMovingBarSeries`
 
+## Canonical onboarding lane alignment
+
+Use this with the main docs in order:
+
+1. Wiki install and building blocks: https://ta4j.github.io/ta4j-wiki/Getting-started.html
+2. Run this module's progression (section above)
+3. Validate assumptions: https://ta4j.github.io/ta4j-wiki/Backtesting.html
+4. Prepare live operations: https://ta4j.github.io/ta4j-wiki/Live-trading.html
+5. Apply readiness and incident controls:
+   https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html and
+   https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html
+
 ## Troubleshooting and companion guides
 
 - Troubleshooting: https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html
 - Backtesting realism gate: https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html
 - Live operations runbook: https://ta4j.github.io/ta4j-wiki/Live-Trading-Runbook.html
 - Canonical end-to-end path: https://ta4j.github.io/ta4j-wiki/Canonical-User-Journey.html
+- Expected example output signatures: https://ta4j.github.io/ta4j-wiki/Examples-Expected-Outputs.html
+- API migration compatibility map: https://ta4j.github.io/ta4j-wiki/Migration-and-Version-Compatibility.html

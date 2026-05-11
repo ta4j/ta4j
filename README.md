@@ -870,6 +870,7 @@ For performance tuning guidance, start with:
 - [Backtesting guide](https://ta4j.github.io/ta4j-wiki/Backtesting.html) for execution-model and batch-run tradeoffs
 - [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html) for precision-vs-speed decisions (`DecimalNum` vs `DoubleNum`)
 - [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java) for reproducible tuning runs
+- [Performance Characterization](https://ta4j.github.io/ta4j-wiki/Performance-Characterization.html) for methodology and interpretation
 
 ## Community & Support
 
@@ -893,6 +894,20 @@ Use this map when deciding where to read next:
 - Validation discipline: [Backtesting Realism Checklist](https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html)
 - Incident debugging: [Troubleshooting Hub](https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html)
 - Governance and freshness policy: [Documentation Governance](https://ta4j.github.io/ta4j-wiki/Documentation-Governance.html)
+- API migration and compatibility guidance: [Migration and Version Compatibility](https://ta4j.github.io/ta4j-wiki/Migration-and-Version-Compatibility.html)
+
+### Canonical onboarding lane (first 60 minutes)
+
+Follow this sequence if you are onboarding for production use:
+
+1. Install and first strategy: [Getting Started](https://ta4j.github.io/ta4j-wiki/Getting-started.html)
+2. Run maintained examples: [`ta4j-examples/README.md`](ta4j-examples/README.md)
+3. Choose execution model and validation flow: [Backtesting](https://ta4j.github.io/ta4j-wiki/Backtesting.html)
+4. Learn live integration boundaries: [Live Trading](https://ta4j.github.io/ta4j-wiki/Live-trading.html)
+5. Apply promotion and incident controls:
+   [Backtesting Realism Checklist](https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html),
+   [Live Trading Runbook](https://ta4j.github.io/ta4j-wiki/Live-Trading-Runbook.html),
+   [Troubleshooting Hub](https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html)
 
 ## What's next?
 

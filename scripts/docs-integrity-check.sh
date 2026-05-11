@@ -23,7 +23,13 @@ docs_for_command_checks = [
     root / "ta4j-examples" / "README.md",
 ]
 if wiki_available:
-    docs_for_command_checks.append(wiki_root / "Usage-examples.md")
+    docs_for_command_checks.extend(
+        [
+            wiki_root / "Usage-examples.md",
+            wiki_root / "Examples-Expected-Outputs.md",
+            wiki_root / "Performance-Characterization.md",
+        ]
+    )
 
 todo_forbidden_docs = [
     root / "README.md",
@@ -36,6 +42,32 @@ if wiki_available:
             wiki_root / "Getting-started.md",
             wiki_root / "Backtesting.md",
             wiki_root / "Live-trading.md",
+            wiki_root / "Canonical-User-Journey.md",
+            wiki_root / "Execution-Decision-Matrix.md",
+            wiki_root / "Migration-and-Version-Compatibility.md",
+            wiki_root / "Examples-Expected-Outputs.md",
+            wiki_root / "Performance-Characterization.md",
+        ]
+    )
+
+required_canonical_docs = [
+    root / "README.md",
+    root / "ta4j-examples" / "README.md",
+    root / "ta4j-core" / "README.md",
+]
+if wiki_available:
+    required_canonical_docs.extend(
+        [
+            wiki_root / "Home.md",
+            wiki_root / "Getting-started.md",
+            wiki_root / "Canonical-User-Journey.md",
+            wiki_root / "Backtesting-Realism-Checklist.md",
+            wiki_root / "Live-Trading-Runbook.md",
+            wiki_root / "Troubleshooting-Hub.md",
+            wiki_root / "Execution-Decision-Matrix.md",
+            wiki_root / "Migration-and-Version-Compatibility.md",
+            wiki_root / "Examples-Expected-Outputs.md",
+            wiki_root / "Performance-Characterization.md",
         ]
     )
 
@@ -112,6 +144,10 @@ for doc_path in docs_for_command_checks:
 
 for doc_path in todo_forbidden_docs:
     check_for_todo_markers(doc_path)
+
+for doc_path in required_canonical_docs:
+    if not doc_path.exists():
+        errors.append(f"Missing canonical documentation artifact: {doc_path}")
 
 if errors:
     print("docs-integrity:fail")
