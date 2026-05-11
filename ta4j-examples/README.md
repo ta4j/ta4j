@@ -3,6 +3,12 @@
 `ta4j-examples` is the runnable companion module for `ta4j-core`.
 It is organized as progressive learning tracks so production-minded Java developers can move from first run to robust execution workflows.
 
+## Prerequisites
+
+- JDK 21+
+- Maven 3.9+
+- Build from the repository root where `ta4j-core` and `ta4j-examples` are both available
+
 ## Run an example
 
 From the repository root:
@@ -12,6 +18,16 @@ mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart
 ```
 
 Replace `ta4jexamples.Quickstart` with any class listed below.
+
+## Verify your run succeeded
+
+Use these quick checks before moving to the next track:
+
+- `ta4jexamples.Quickstart`: prints step-by-step run stages and trade/return metrics
+- `ta4jexamples.backtesting.TradingRecordParityBacktest`: logs execution-model comparison and parity check success
+- `ta4jexamples.backtesting.TradeFillRecordingExample`: logs streamed-vs-grouped fill handling and lot-matching outcomes
+
+If chart windows do not appear, you are likely in a headless environment; switch to chart file output or run on a GUI-enabled machine.
 
 ## Learning tracks
 
@@ -53,3 +69,10 @@ Replace `ta4jexamples.Quickstart` with any class listed below.
 4. `ta4jexamples.backtesting.SimpleMovingAverageRangeBacktest`
 5. `ta4jexamples.backtesting.YahooFinanceBacktest` or `ta4jexamples.backtesting.CoinbaseBacktest`
 6. `ta4jexamples.bots.TradingBotOnMovingBarSeries`
+
+## Troubleshooting and companion guides
+
+- Troubleshooting: https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html
+- Backtesting realism gate: https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html
+- Live operations runbook: https://ta4j.github.io/ta4j-wiki/Live-Trading-Runbook.html
+- Canonical end-to-end path: https://ta4j.github.io/ta4j-wiki/Canonical-User-Journey.html

@@ -662,6 +662,12 @@ while (true) {
 - **Deterministic**: Same inputs always produce same outputs - critical for testing and debugging
 - **Type-safe**: Compile-time checks catch errors before they cost money
 
+**Execution path references:**
+- Single strategy backtests: [`BarSeriesManager`](https://javadoc.io/doc/org.ta4j/ta4j-core/latest/org/ta4j/core/backtest/BarSeriesManager.html)
+- Large batch runs and ranking: [`BacktestExecutor`](https://javadoc.io/doc/org.ta4j/ta4j-core/latest/org/ta4j/core/backtest/BacktestExecutor.html)
+- Fill timing/slippage/stop-limit behavior: [`TradeExecutionModel`](https://javadoc.io/doc/org.ta4j/ta4j-core/latest/org/ta4j/core/backtest/TradeExecutionModel.html)
+- Fill-aware position state: [`BaseTradingRecord`](https://javadoc.io/doc/org.ta4j/ta4j-core/latest/org/ta4j/core/BaseTradingRecord.html)
+
 ### Migration note: Trade and TradingRecord surfaces
 
 Treat `Trade` and `TradingRecord` as the primary APIs. Stream single fills directly with
@@ -745,6 +751,16 @@ Notes:
 - See `TradeFillRecordingExample` in `ta4j-examples` for a runnable live-style walkthrough that streams fills with
   `TradingRecord.operate(fill)`, contrasts that with grouped `Trade.fromFills(...)` recording, and shows how
   `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` change partial-exit matching.
+
+## Production readiness checklist
+
+Before promoting a strategy from research to live execution, verify:
+
+- Your execution assumptions match reality: [Backtesting](https://ta4j.github.io/ta4j-wiki/Backtesting.html)
+- You pass a realism gate: [Backtesting Realism Checklist](https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html)
+- You have startup/recovery/reconciliation procedures: [Live Trading Runbook](https://ta4j.github.io/ta4j-wiki/Live-Trading-Runbook.html)
+- You have symptom-first debug paths for incidents: [Troubleshooting Hub](https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html)
+- Your example and command links are valid in CI: [`scripts/docs-integrity-check.sh`](scripts/docs-integrity-check.sh)
 
 ## Streaming trade ingestion (gap handling)
 
@@ -864,6 +880,19 @@ Get help, share ideas, and connect with other Ta4j users:
 - **📚 [Javadoc API Reference](https://ta4j.github.io/ta4j/)** - Complete API documentation with examples
 - **🐛 [GitHub Issues](https://github.com/ta4j/ta4j/issues)** - Report bugs, request features, or ask questions
 - **💡 [Usage Examples](https://github.com/ta4j/ta4j/blob/master/ta4j-examples/README.md)** - Follow curated learning tracks and runnable commands
+
+## Canonical doc map
+
+Use this map when deciding where to read next:
+
+- Entry and quick orientation: this `README.md`
+- Core API decision entrypoints: [`ta4j-core/README.md`](ta4j-core/README.md)
+- Runnable progression and commands: [`ta4j-examples/README.md`](ta4j-examples/README.md)
+- End-to-end path from data to operations: [Canonical User Journey](https://ta4j.github.io/ta4j-wiki/Canonical-User-Journey.html)
+- Production operations: [Live Trading Runbook](https://ta4j.github.io/ta4j-wiki/Live-Trading-Runbook.html)
+- Validation discipline: [Backtesting Realism Checklist](https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html)
+- Incident debugging: [Troubleshooting Hub](https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html)
+- Governance and freshness policy: [Documentation Governance](https://ta4j.github.io/ta4j-wiki/Documentation-Governance.html)
 
 ## What's next?
 

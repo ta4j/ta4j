@@ -26,6 +26,12 @@ import java.util.List;
  * cases.
  *
  * <p>
+ * Choose this type only when ingestion and evaluation can overlap on different
+ * threads. For single-threaded backtests and deterministic replay pipelines,
+ * {@link BaseBarSeries} is usually simpler.
+ * </p>
+ *
+ * <p>
  * For real-time data feeds, prefer {@link #ingestTrade(Instant, Num, Num)} and
  * {@link #ingestTrade(Instant, Number, Number)} to let the configured
  * {@link BarBuilder} handle bar rollovers. Direct bar mutations remain
