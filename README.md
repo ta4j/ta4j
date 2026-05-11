@@ -798,6 +798,8 @@ See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/El
 
 The `ta4j-examples` module includes runnable examples demonstrating common patterns and strategies:
 
+- **[Examples index and learning tracks](ta4j-examples/README.md)** - Recommended progression from first strategy to live-style workflows
+
 ### Strategy Examples
 - **[RSI2Strategy](ta4j-examples/src/main/java/ta4jexamples/strategies/RSI2Strategy.java)** - Mean reversion strategy using RSI with entry/exit rules
 - **[ADXStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/ADXStrategy.java)** - Trend-following strategy using ADX and DI indicators
@@ -826,7 +828,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[ElliottWaveTrendBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveTrendBacktest.java)** - Evaluates trend-bias directionality over backtest and walk-forward windows.
 - **[HighRewardElliottWaveBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/HighRewardElliottWaveBacktest.java)** - Backtests the high-reward Elliott Wave strategy presets.
 - **[WyckoffCycleIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleIndicatorSuiteDemo.java)** - Demonstrates the Wyckoff cycle entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`) and prints phase transitions on an ossified bar series dataset
-- **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
+- **[SimpleMovingAverageRangeBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/SimpleMovingAverageRangeBacktest.java)** - Compare and rank strategy parameter combinations with weighted criteria
 - **[TradeFillRecordingExample](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java)** - Walk through a live-style partial-fill workflow with `TradingRecord.operate(fill)`, inspect `getOpenPositions()` versus `getCurrentPosition()`, and compare `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` partial-exit matching.
 - **[TradingRecordParityBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java)** - Compare next-open, current-close, and slippage execution models side by side, then verify the same fills across default, provided, and factory-configured `BaseTradingRecord` runs.
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
@@ -840,15 +842,6 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 
 ## Performance
 
-<!-- TODO: Add performance benchmarks and metrics -->
-<!-- Consider including:
-- Backtesting performance (strategies/second, bars/second)
-- Memory usage patterns
-- Comparison with other technical analysis libraries
-- Num type performance characteristics (DecimalNum vs DoubleNum)
-- Real-world usage statistics if available
--->
-
 Ta4j is designed for performance and scalability:
 
 - **Efficient calculations** - Optimized indicator implementations with minimal overhead
@@ -856,7 +849,11 @@ Ta4j is designed for performance and scalability:
 - **Memory-efficient** - Support for moving windows and sub-series to minimize memory footprint
 - **Parallel-friendly** - Strategies can be backtested independently for easy parallelization
 
-For detailed performance characteristics and benchmarks, see the [wiki's performance guide](https://ta4j.github.io/ta4j-wiki/) (TODO: add link when available).
+For performance tuning guidance, start with:
+
+- [Backtesting guide](https://ta4j.github.io/ta4j-wiki/Backtesting.html) for execution-model and batch-run tradeoffs
+- [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html) for precision-vs-speed decisions (`DecimalNum` vs `DoubleNum`)
+- [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java) for reproducible tuning runs
 
 ## Community & Support
 
@@ -866,26 +863,29 @@ Get help, share ideas, and connect with other Ta4j users:
 - **📖 [Documentation Wiki](https://ta4j.github.io/ta4j-wiki/)** - Comprehensive guides covering indicators, strategies, backtesting, and more
 - **📚 [Javadoc API Reference](https://ta4j.github.io/ta4j/)** - Complete API documentation with examples
 - **🐛 [GitHub Issues](https://github.com/ta4j/ta4j/issues)** - Report bugs, request features, or ask questions
-- **💡 [Usage Examples](https://github.com/ta4j/ta4j/tree/master/ta4j-examples/src/main/java/ta4jexamples)** - Browse runnable code examples in the repository
+- **💡 [Usage Examples](https://github.com/ta4j/ta4j/blob/master/ta4j-examples/README.md)** - Follow curated learning tracks and runnable commands
 
 ## What's next?
 
 **New to technical analysis?**
-- Start with the [wiki's Getting Started guide](https://ta4j.github.io/ta4j-wiki/) to learn core concepts
+- Start with the [wiki's Getting Started guide](https://ta4j.github.io/ta4j-wiki/Getting-started.html) to learn core concepts
 - Explore the [`ta4j-examples`](ta4j-examples) module - each example is runnable and well-commented
 - Try modifying the quick start example above: change indicator parameters, add new rules, or test different exit conditions
 
 **Ready to go deeper?**
-- Browse [strategy recipes](https://ta4j.github.io/ta4j-wiki/) for Renko bricks, Ichimoku clouds, breakout strategies, and more
-- Learn about [portfolio metrics](https://ta4j.github.io/ta4j-wiki/) for multi-asset strategies
-- Check out [advanced backtesting patterns](https://ta4j.github.io/ta4j-wiki/) like walk-forward analysis
+- Browse [strategy recipes](https://ta4j.github.io/ta4j-wiki/Trading-strategies.html) for richer rule composition patterns
+- Learn about [portfolio metrics and risk criteria](https://ta4j.github.io/ta4j-wiki/Analysis-Criteria-and-Risk-Metrics.html)
+- Check out [advanced backtesting patterns](https://ta4j.github.io/ta4j-wiki/Walk-Forward-Research.html) like walk-forward analysis
+- Use the [backtesting realism checklist](https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html) before promoting strategies
+- Follow the [live trading runbook](https://ta4j.github.io/ta4j-wiki/Live-Trading-Runbook.html) for startup/recovery/reconciliation guidance
+- Troubleshoot with the [symptom-driven hub](https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html)
 
 **Need help?**
 - See the [Community & Support](#community--support) section above for all available resources
 
 ## Contributing
 
-- Scan the [roadmap](https://ta4j.github.io/ta4j-wiki/Roadmap-and-Tasks.html) and [how-to-contribute guide](https://ta4j.github.io/ta4j-wiki/How-to-contribute).
+- Scan the [roadmap](https://ta4j.github.io/ta4j-wiki/Roadmap-and-Tasks.html) and [how-to-contribute guide](https://github.com/ta4j/ta4j/blob/master/.github/CONTRIBUTING.md).
 - [Fork the repo](http://help.github.com/forking/), open pull requests, and join code discussions on Discord.
 - See the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
 - Run `mvn verify` before opening or updating a pull request. It matches CI and includes advisory SpotBugs and JaCoCo reporting alongside the test suite.
