@@ -150,6 +150,8 @@ test_next_snapshot_issue_sync_runs_after_snapshot_commit() {
     "next-snapshot scan should derive the planned removal target from nextVersion"
   expect_file_contains "$WORKFLOW" "--target-removal-version \${NEXT_REMOVAL_VERSION}" \
     "next-snapshot scan should not rely on a dry-run POM mutation"
+  expect_file_contains "$WORKFLOW" "--target-removal-version \${NEXT_REMOVAL_VERSION} --include-overdue" \
+    "next-snapshot scan should include overdue removal versions when release versions jump"
 
   pass "test_next_snapshot_issue_sync_runs_after_snapshot_commit"
 }

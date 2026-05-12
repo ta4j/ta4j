@@ -76,7 +76,7 @@ Secrets and variables:
 - If `nextVersion` is omitted and `releaseVersion` is a plain `X.Y.Z`, it is auto-generated as `<major>.<minor>.<patch+1>-SNAPSHOT` (for example `0.22.2` -> `0.22.3-SNAPSHOT`).
 - For RC/non-plain release versions, provide `nextVersion` explicitly.
 - Before the workflow commits the next snapshot version, it runs the Java-based `ta4jexamples.doc.RemovalReadyDeprecationScanner` against the release version and fails if any `@Deprecated(forRemoval = true)` symbols are due or overdue for removal. This read-only scan also runs in dry-run mode.
-- After the next snapshot version is known, it scans sources scheduled for that planned snapshot. Non-dry-run runs then sync deduplicated GitHub cleanup issues, including reopening still-valid managed issues and closing stale managed issues for the same removal version; dry-runs only upload the scan report.
+- After the next snapshot version is known, it scans sources scheduled for that planned snapshot or any earlier removal version because ta4j versions may jump across major, minor, or patch positions. Non-dry-run runs then sync deduplicated GitHub cleanup issues, including reopening still-valid managed issues and closing stale managed issues for the same removal version; dry-runs only upload the scan report.
 - The workflow uploads release-gate and next-snapshot removal-ready deprecation report artifacts with grouped findings, symbols, lifecycle status, replacement hints when available, and synced issue links when issue sync runs.
 - The scanner JSON is the stable handoff contract for future automation: it includes `schemaVersion`, `automationNamespace`, grouped issue `planKind`, and per-symbol `trackingKey` fields so a later AI-driven planner can split work into one issue per deprecated item while remaining restart-safe by searching managed markers before mutation.
 - The workflow auto-labels the PR with `release`, assigns it to `TheCookieLab`, and requests review from `TheCookieLab`.
@@ -155,7 +155,7 @@ Tag metrics used by release automation:
 4. Maven Central artifacts are visible (allow propagation time).
 5. GitHub release exists with expected notes/artifacts.
 6. Release-ready deprecation gate report exists for the released version and did not find due or overdue removals.
-7. Removal-ready deprecation report artifact exists for the new snapshot version, and any matching cleanup issues were created, refreshed, reopened, or closed as stale successfully.
+7. Removal-ready deprecation report artifact exists for the new snapshot version, due or overdue removal versions were included, and any matching cleanup issues were created, refreshed, reopened, or closed as stale successfully.
 8. The chained `snapshot.yml` run succeeded for the next `-SNAPSHOT` version.
 9. `master` is on next `-SNAPSHOT` version.
 10. `release-health.yml` reports no drift and confirms the current snapshot version is published after `snapshot.yml` completes.

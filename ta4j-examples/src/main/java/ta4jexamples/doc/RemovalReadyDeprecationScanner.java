@@ -58,6 +58,13 @@ import javax.tools.ToolProvider;
  * {@code mvn -pl ta4j-examples -am compile exec:java -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner -Dexec.args="--output-json build/report.json --output-md build/report.md"}
  * </p>
  *
+ * <p>
+ * Pass {@code --include-overdue} when a workflow target version should include
+ * every removal version less than or equal to that target. That keeps removal
+ * tracking correct when release numbers jump across major, minor, or patch
+ * positions.
+ * </p>
+ *
  * @since 0.22.7
  */
 public final class RemovalReadyDeprecationScanner {

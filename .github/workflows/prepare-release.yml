@@ -540,7 +540,7 @@ jobs:
           mvn -B -q -pl ta4j-examples -am -DskipTests install
           mvn -B -q -pl ta4j-examples exec:java \
             -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner \
-            "-Dexec.args=--repo-root ${GITHUB_WORKSPACE} --pom-file pom.xml --target-removal-version ${NEXT_REMOVAL_VERSION} --output-json ${REPORT_JSON} --output-md ${REPORT_MD}"
+            "-Dexec.args=--repo-root ${GITHUB_WORKSPACE} --pom-file pom.xml --target-removal-version ${NEXT_REMOVAL_VERSION} --include-overdue --output-json ${REPORT_JSON} --output-md ${REPORT_MD}"
           echo "::endgroup::"
 
           echo "report_json=$REPORT_JSON" >> $GITHUB_OUTPUT

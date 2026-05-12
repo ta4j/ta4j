@@ -13,6 +13,7 @@ import java.io.PrintStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -251,6 +252,66 @@ public class RemovalReadyDeprecationScannerTest {
 
         JsonObject symbol = firstPlan(report).getAsJsonArray("symbols").get(0).getAsJsonObject();
         assertEquals("overdue", symbol.get("status").getAsString());
+    }
+
+    @Test
+    public void testTargetVersionIncludesOverdueFindingsAcrossSemanticVersionJumps() throws IOException {
+        writePom("<version>1.2.0-SNAPSHOT</version>");
+        writeJava("ta4j-core/src/main/java/org/ta4j/core/legacy/MajorJumpBridge.java", """
+                package org.ta4j.core.legacy;
+
+                /**
+                 * @deprecated Scheduled for removal in 0.99.9.
+                 */
+                @Deprecated(since = "0.20.0", forRemoval = true)
+                public class MajorJumpBridge {
+                }
+                """);
+        writeJava("ta4j-core/src/main/java/org/ta4j/core/legacy/MinorJumpBridge.java", """
+                package org.ta4j.core.legacy;
+
+                /**
+                 * @deprecated Scheduled for removal in 1.1.5.
+                 */
+                @Deprecated(since = "0.20.0", forRemoval = true)
+                public class MinorJumpBridge {
+                }
+                """);
+        writeJava("ta4j-core/src/main/java/org/ta4j/core/legacy/CurrentBridge.java", """
+                package org.ta4j.core.legacy;
+
+                /**
+                 * @deprecated Scheduled for removal in 1.2.0.
+                 */
+                @Deprecated(since = "0.20.0", forRemoval = true)
+                public class CurrentBridge {
+                }
+                """);
+        writeJava("ta4j-core/src/main/java/org/ta4j/core/legacy/FutureBridge.java", """
+                package org.ta4j.core.legacy;
+
+                /**
+                 * @deprecated Scheduled for removal in 2.0.0.
+                 */
+                @Deprecated(since = "0.20.0", forRemoval = true)
+                public class FutureBridge {
+                }
+                """);
+
+        JsonObject report = runScanner("--target-removal-version", "1.2.0", "--include-overdue");
+        assertEquals(3, report.get("findingCount").getAsInt());
+        assertEquals(1, report.get("dueFindingCount").getAsInt());
+        assertEquals(2, report.get("overdueFindingCount").getAsInt());
+        assertEquals(1, report.get("futureFindingCount").getAsInt());
+        assertEquals(3, report.get("issuePlanCount").getAsInt());
+
+        List<String> statuses = report.getAsJsonArray("issuePlans")
+                .asList()
+                .stream()
+                .flatMap(plan -> plan.getAsJsonObject().getAsJsonArray("symbols").asList().stream())
+                .map(symbol -> symbol.getAsJsonObject().get("status").getAsString())
+                .toList();
+        assertEquals(List.of("due", "overdue", "overdue"), statuses);
     }
 
     @Test
