@@ -19,7 +19,7 @@ on:
       dryRun:
         description: "Run publish workflow in dry-run mode (no tag/push/deploy)."
         required: false
-        default: false
+        default: true
         type: boolean
       recoveryMode:
         description: "Require release-recovery environment approval before allowing an explicit releaseCommit that is not reachable from the default branch."
@@ -77,12 +77,15 @@ jobs:
             dry_run=false
           else
             raw="${{ github.event.inputs.dryRun }}"
+            if [ -z "$raw" ]; then
+              raw=true
+            fi
             normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
 
-            if [ "$normalized" = "true" ] || [ "$raw" = "true" ] || [ "$raw" = true ] || [ "$raw" = "1" ]; then
-              dry_run=true
-            else
+            if [ "$normalized" = "false" ] || [ "$normalized" = "0" ] || [ "$normalized" = "no" ]; then
               dry_run=false
+            else
+              dry_run=true
             fi
           fi
 
@@ -841,7 +844,8 @@ jobs:
               ref,
               inputs: {
                 sourceReleaseVersion: releaseVersion,
-                sourceReleaseCommit: releaseCommit
+                sourceReleaseCommit: releaseCommit,
+                dryRun: "false"
               }
             });
             core.endGroup();
@@ -873,6 +877,13 @@ jobs:
           echo "summary: javadocWarnings=${JAVADOC_WARNING_COUNT:-unknown}"
           echo "summary: javadocWarningBaseline=${JAVADOC_WARNING_BASELINE_COUNT:-unknown}"
           echo "summary: newJavadocWarnings=${JAVADOC_WARNING_NEW_COUNT:-unknown}"
+          if [ "${DRY_RUN:-false}" = "true" ]; then
+            mutation_plan="would create the release tag, deploy to Maven Central, push the tag, dispatch snapshot.yml, and post the release discussion summary"
+            rerun_guidance="rerun publish-release.yml with dryRun=false after inspecting these computed values and artifacts"
+          else
+            mutation_plan="completed non-dry-run publish-release mutations"
+            rerun_guidance="not needed for this non-dry-run publish run"
+          fi
           cat > release-audit.json <<EOF
           {
             "dryRun": "${DRY_RUN:-}",
@@ -882,6 +893,8 @@ jobs:
             "releaseCommit": "${RELEASE_COMMIT:-}",
             "mergeCommit": "${MERGE_COMMIT:-}",
             "releasePR": "${PR_NUMBER:-}",
+            "mutationPlan": "${mutation_plan}",
+            "rerunGuidance": "${rerun_guidance}",
             "javadocWarnings": "${JAVADOC_WARNING_COUNT:-}",
             "javadocWarningBaseline": "${JAVADOC_WARNING_BASELINE_COUNT:-}",
             "newJavadocWarnings": "${JAVADOC_WARNING_NEW_COUNT:-}",
@@ -900,6 +913,8 @@ jobs:
             echo "- release PR: ${PR_NUMBER:-none}"
             echo "- Javadoc warnings: ${JAVADOC_WARNING_COUNT:-unknown} current / ${JAVADOC_WARNING_BASELINE_COUNT:-unknown} baseline / ${JAVADOC_WARNING_NEW_COUNT:-unknown} new"
             echo "- snapshot dispatch: $([ "${DRY_RUN:-false}" = "true" ] && echo "skipped in dry run" || echo "requested after tag verification")"
+            echo "- mutation plan: ${mutation_plan}"
+            echo "- rerun guidance: ${rerun_guidance}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload publish-release audit artifacts
@@ -1010,7 +1025,7 @@ jobs:
           EOF
 
       - name: Post to Maven Central Releases discussion
-        if: always()
+        if: always() && steps.dry_run.outputs.dryRun != 'true'
         uses: actions/github-script@v9
         env:
           RELEASE_DISCUSSION_NUMBER: ${{ vars.RELEASE_DISCUSSION_NUMBER }}

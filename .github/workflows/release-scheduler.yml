@@ -21,7 +21,7 @@ on:
       dryRun:
         description: "Simulate only; trigger prepare-release.yml with dryRun=true"
         required: false
-        default: false
+        default: true
         type: boolean
 
 permissions:
@@ -103,12 +103,17 @@ jobs:
           DRY_RUN_INPUT: ${{ github.event.inputs.dryRun }}
         run: |
           event="${EVENT_NAME:-}"
-          raw="${DRY_RUN_INPUT:-}"
-          normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+          if [ "$event" = "workflow_dispatch" ]; then
+            raw="${DRY_RUN_INPUT:-true}"
+            normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
 
-          if [ "$normalized" = "true" ] || [ "$raw" = "true" ] || [ "$raw" = true ] || [ "$raw" = "1" ]; then
-            dry_run=true
+            if [ "$normalized" = "false" ] || [ "$normalized" = "0" ] || [ "$normalized" = "no" ]; then
+              dry_run=false
+            else
+              dry_run=true
+            fi
           else
+            raw="${DRY_RUN_INPUT:-}"
             dry_run=false
           fi
 
@@ -601,6 +606,22 @@ jobs:
           POM_BASE: ${{ steps.pom_version.outputs.base }}
           LAST_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
         run: |
+          if [ "${DRY_RUN:-false}" = "true" ]; then
+            mutation_plan="would dispatch prepare-release.yml with dryRun=true; no discussion post is created"
+            rerun_guidance="rerun release-scheduler.yml with dryRun=false, or wait for the scheduled release path"
+          else
+            mutation_plan="dispatches prepare-release.yml with dryRun=false when the scheduler decides to release"
+            rerun_guidance="not needed for scheduled production runs"
+          fi
+
+          cat > release-scheduler-mutation-plan.txt <<EOF
+          dryRun=${DRY_RUN:-}
+          computedVersion=${VERSION:-}
+          bump=${BUMP:-}
+          mutationPlan=${mutation_plan}
+          rerunGuidance=${rerun_guidance}
+          EOF
+
           echo "decision:event_name=${EVENT_NAME:-}"
           echo "decision:dry_run_input='${DRY_RUN_INPUT:-}' normalized=${DRY_RUN:-}"
           echo "decision:gate_proceed=${PROCEED:-}"
@@ -633,6 +654,8 @@ jobs:
             echo "- computed version: ${VERSION:-none}"
             echo "- last reachable tag: ${LAST_TAG:-unknown}"
             echo "- reason: ${REASON:-none}"
+            echo "- mutation plan: ${mutation_plan}"
+            echo "- rerun guidance: ${rerun_guidance}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload release scheduler audit artifacts
@@ -648,6 +671,7 @@ jobs:
             response.json
             ai-content.txt
             release-decision.json
+            release-scheduler-mutation-plan.txt
           if-no-files-found: ignore
           retention-days: 14
 
@@ -730,7 +754,7 @@ jobs:
               }
             })
 
-  # Dry-run convenience job to show recommendation without dispatching (only when triggered via workflow_dispatch with dryRun=true)
+  # Dry-run convenience job to show the recommendation alongside the dry-run prepare dispatch.
   dry_run_output:
     name: Dry-run output
     runs-on: ubuntu-latest
@@ -747,6 +771,14 @@ jobs:
           echo "  version: ${{ needs.analyze.outputs.version }}"
           echo ""
           echo "(Dry run enabled - propagating dryRun=true to prepare-release.yml)"
+          {
+            echo "## Release Scheduler Dry Run"
+            echo ""
+            echo "- recommended bump: ${{ needs.analyze.outputs.bump }}"
+            echo "- computed version: ${{ needs.analyze.outputs.version }}"
+            echo "- mutation plan: would dispatch prepare-release.yml with dryRun=true"
+            echo "- rerun to mutate: rerun release-scheduler.yml with dryRun=false, or wait for the scheduled release path"
+          } >> "$GITHUB_STEP_SUMMARY"
 
   notify:
     name: Notify release-scheduler outcome
@@ -921,13 +953,9 @@ jobs:
           EOF
 
       - name: Post to Release Scheduler discussion
-        if: always()
+        if: always() && needs.analyze.outputs.dryRun != 'true'
         uses: actions/github-script@v9
         env:
-          DRY_RUN: ${{ needs.analyze.outputs.dryRun }}
-          LAST_TAG: ${{ needs.analyze.outputs.last_tag }}
-          POM_VERSION: ${{ needs.analyze.outputs.pom_version }}
-          POM_BASE: ${{ needs.analyze.outputs.pom_base }}
           RELEASE_SCHEDULER_DISCUSSION_NUMBER: ${{ vars.RELEASE_SCHEDULER_DISCUSSION_NUMBER }}
         with:
           github-token: ${{ github.token }}
@@ -947,136 +975,15 @@ jobs:
                 repository(owner: $owner, name: $repo) {
                   discussion(number: $number) {
                     id
-                    comments(first: 50) {
-                      nodes {
-                        id
-                        body
-                      }
-                      pageInfo {
-                        hasNextPage
-                        endCursor
-                      }
-                    }
                   }
                 }
               }
             `;
-            const isDryRun = process.env.DRY_RUN === "true";
-            const currentLastTag = (process.env.LAST_TAG || "(none)").trim() || "(none)";
-            const currentPomVersion = (process.env.POM_VERSION || "(unknown)").trim() || "(unknown)";
-            const currentPomBase = (process.env.POM_BASE || "(unknown)").trim() || "(unknown)";
             const queryResult = await github.graphql(query, { owner, repo, number });
             const discussion = queryResult?.repository?.discussion;
             const discussionId = discussion?.id;
             if (!discussionId) {
               throw new Error(`Discussion ${number} not found in ${owner}/${repo}`);
-            }
-
-            if (isDryRun) {
-              const markerRegex = /<!--\s*ta4j:post-type=release-scheduler;([^>]*)-->/i;
-              const parseMarker = (text) => {
-                const match = text.match(markerRegex);
-                if (!match) {
-                  return null;
-                }
-                const fields = {};
-                for (const part of match[1].split(";")) {
-                  if (!part.trim()) {
-                    continue;
-                  }
-                  const idx = part.indexOf("=");
-                  if (idx === -1) {
-                    continue;
-                  }
-                  const key = part.slice(0, idx).trim();
-                  const value = part.slice(idx + 1).trim();
-                  if (key) {
-                    fields[key] = value;
-                  }
-                }
-                return fields;
-              };
-              const parseLegacyFields = (text) => {
-                const lastTagMatch = text.match(/- (?:last tag|last reachable tag):\s*(.+)\s*$/im);
-                const pomVersionMatch = text.match(/- pom version:\s*(.+)\s*$/im);
-                const pomBaseMatch = text.match(/- pom base:\s*(.+)\s*$/im);
-                if (!lastTagMatch || !pomVersionMatch || !pomBaseMatch) {
-                  return null;
-                }
-                return {
-                  lastTag: lastTagMatch[1].trim(),
-                  pomVersion: pomVersionMatch[1].trim(),
-                  pomBase: pomBaseMatch[1].trim()
-                };
-              };
-              const matchesCurrentVersions = (fields) => {
-                if (!fields?.lastTag || !fields?.pomVersion || !fields?.pomBase) {
-                  return false;
-                }
-                return (
-                  fields.lastTag === currentLastTag &&
-                  fields.pomVersion === currentPomVersion &&
-                  fields.pomBase === currentPomBase
-                );
-              };
-              const toDelete = [];
-
-              let page = discussion.comments;
-              while (page) {
-                for (const node of page.nodes || []) {
-                  const text = node?.body || "";
-                  const fields = parseMarker(text);
-                  const isDryRunPost = fields ? fields.run === "dry-run" : /- dryRun:\s*true/i.test(text);
-                  if (!isDryRunPost) {
-                    continue;
-                  }
-                  const versionFields =
-                    fields && fields.lastTag && fields.pomVersion && fields.pomBase
-                      ? fields
-                      : parseLegacyFields(text);
-                  if (matchesCurrentVersions(versionFields)) {
-                    toDelete.push(node.id);
-                  }
-                }
-                if (!page.pageInfo?.hasNextPage) {
-                  break;
-                }
-                const next = await github.graphql(
-                  `
-                    query($owner: String!, $repo: String!, $number: Int!, $cursor: String!) {
-                      repository(owner: $owner, name: $repo) {
-                        discussion(number: $number) {
-                          comments(first: 50, after: $cursor) {
-                            nodes {
-                              id
-                              body
-                            }
-                            pageInfo {
-                              hasNextPage
-                              endCursor
-                            }
-                          }
-                        }
-                      }
-                    }
-                  `,
-                  { owner, repo, number, cursor: page.pageInfo.endCursor }
-                );
-                page = next?.repository?.discussion?.comments;
-              }
-
-              for (const commentId of toDelete) {
-                await github.graphql(
-                  `
-                    mutation($commentId: ID!) {
-                      deleteDiscussionComment(input: { id: $commentId }) {
-                        clientMutationId
-                      }
-                    }
-                  `,
-                  { commentId }
-                );
-              }
             }
 
             const mutation = `
