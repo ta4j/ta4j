@@ -137,8 +137,33 @@ public class InSlopeRule extends AbstractRule {
         final boolean isNaN = minSlope.isNaN() && maxSlope.isNaN();
 
         final boolean satisfied = minSlopeSatisfied && maxSlopeSatisfied && !isNaN;
-        traceIsSatisfied(index, satisfied);
+        if (isTraceEnabled()) {
+            int previousIndex = index - nthPrevious;
+            Num currentValue = reference.getValue(index);
+            Num previousValue = previousIndex < 0 ? NaN : reference.getValue(previousIndex);
+            traceIsSatisfied(index, satisfied,
+                    traceContext("currentValue", currentValue, "previousIndex", previousIndex, "previousValue",
+                            previousValue, "slope", val, "minSlope", minSlope, "maxSlope", maxSlope, "nthPrevious",
+                            nthPrevious, "reason", reason(satisfied, isNaN, minSlopeSatisfied, maxSlopeSatisfied)));
+        }
         return satisfied;
+    }
+
+    private static String reason(boolean satisfied, boolean isNaN, boolean minSlopeSatisfied,
+            boolean maxSlopeSatisfied) {
+        if (isNaN) {
+            return "noSlopeBounds";
+        }
+        if (satisfied) {
+            return "withinSlopeRange";
+        }
+        if (!minSlopeSatisfied) {
+            return "belowMinSlope";
+        }
+        if (!maxSlopeSatisfied) {
+            return "aboveMaxSlope";
+        }
+        return "outsideSlopeRange";
     }
 
     private static Num parseSlope(Indicator<Num> ref, String slope) {

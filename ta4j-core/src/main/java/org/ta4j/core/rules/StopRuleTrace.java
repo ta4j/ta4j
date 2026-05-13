@@ -3,9 +3,6 @@
  */
 package org.ta4j.core.rules;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 import org.ta4j.core.num.Num;
 
 /**
@@ -24,9 +21,7 @@ final class StopRuleTrace {
         if (!rule.isTraceEnabled()) {
             return;
         }
-        Map<String, String> context = new LinkedHashMap<>();
-        context.put("reason", reason);
-        rule.traceIsSatisfied(index, false, context);
+        rule.traceIsSatisfied(index, false, AbstractRule.traceContext("reason", reason));
     }
 
     static void traceDecision(AbstractRule rule, int index, boolean satisfied, boolean buy, Num currentPrice,
@@ -34,16 +29,9 @@ final class StopRuleTrace {
         if (!rule.isTraceEnabled()) {
             return;
         }
-        Map<String, String> context = new LinkedHashMap<>();
-        context.put("currentPrice", value(currentPrice));
-        context.put("entryPrice", value(entryPrice));
-        context.put("stopPrice", value(stopPrice));
-        context.put("side", side(buy));
-        context.put(amountField, value(amount));
-        if (reason != null && !reason.isBlank()) {
-            context.put("reason", reason);
-        }
-        rule.traceIsSatisfied(index, satisfied, context);
+        rule.traceIsSatisfied(index, satisfied,
+                AbstractRule.traceContext("currentPrice", currentPrice, "entryPrice", entryPrice, "stopPrice",
+                        stopPrice, "side", side(buy), amountField, amount, "reason", optionalReason(reason)));
     }
 
     static void traceTrailingDecision(AbstractRule rule, int index, boolean satisfied, boolean buy, Num currentPrice,
@@ -52,18 +40,10 @@ final class StopRuleTrace {
         if (!rule.isTraceEnabled()) {
             return;
         }
-        Map<String, String> context = new LinkedHashMap<>();
-        context.put("currentPrice", value(currentPrice));
-        context.put("entryPrice", value(entryPrice));
-        context.put("stopPrice", value(stopPrice));
-        context.put("side", side(buy));
-        context.put(extremeField, value(extremePrice));
-        context.put("lookback", Integer.toString(lookback));
-        context.put(amountField, value(amount));
-        if (reason != null && !reason.isBlank()) {
-            context.put("reason", reason);
-        }
-        rule.traceIsSatisfied(index, satisfied, context);
+        rule.traceIsSatisfied(index, satisfied,
+                AbstractRule.traceContext("currentPrice", currentPrice, "entryPrice", entryPrice, "stopPrice",
+                        stopPrice, "side", side(buy), extremeField, extremePrice, "lookback", lookback, amountField,
+                        amount, "reason", optionalReason(reason)));
     }
 
     static void traceTrailingGainDecision(AbstractRule rule, int index, boolean satisfied, boolean buy,
@@ -72,26 +52,17 @@ final class StopRuleTrace {
         if (!rule.isTraceEnabled()) {
             return;
         }
-        Map<String, String> context = new LinkedHashMap<>();
-        context.put("currentPrice", value(currentPrice));
-        context.put("entryPrice", value(entryPrice));
-        context.put("stopPrice", value(stopPrice));
-        context.put("side", side(buy));
-        context.put(extremeField, value(extremePrice));
-        context.put("activationPrice", value(activationPrice));
-        context.put("lookback", Integer.toString(lookback));
-        context.put(amountField, value(amount));
-        if (reason != null && !reason.isBlank()) {
-            context.put("reason", reason);
-        }
-        rule.traceIsSatisfied(index, satisfied, context);
+        rule.traceIsSatisfied(index, satisfied,
+                AbstractRule.traceContext("currentPrice", currentPrice, "entryPrice", entryPrice, "stopPrice",
+                        stopPrice, "side", side(buy), extremeField, extremePrice, "activationPrice", activationPrice,
+                        "lookback", lookback, amountField, amount, "reason", optionalReason(reason)));
     }
 
     private static String side(boolean buy) {
         return buy ? "BUY" : "SELL";
     }
 
-    private static String value(Num value) {
-        return String.valueOf(value);
+    private static String optionalReason(String reason) {
+        return reason == null || reason.isBlank() ? null : reason;
     }
 }

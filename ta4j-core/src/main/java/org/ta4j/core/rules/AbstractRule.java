@@ -3,12 +3,15 @@
  */
 package org.ta4j.core.rules;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
+import org.ta4j.core.num.Num;
 
 /**
  * An abstract trading {@link Rule rule}.
@@ -164,5 +167,89 @@ public abstract class AbstractRule implements Rule {
         String parentRuleName = frame == null ? null : frame.parentRuleName();
         return new RuleTraceEvent(index, className, getTraceDisplayName(), RuleTraceContext.activeMode(), isSatisfied,
                 path, depth, parentRuleName, context);
+    }
+
+    /**
+     * Builds deterministic trace context fields from alternating key/value pairs.
+     * Null keys and values are omitted so callers can pass optional diagnostics
+     * without creating partial or noisy log fields.
+     *
+     * @param keyValues alternating keys and values
+     * @return insertion-ordered trace context
+     */
+    static Map<String, String> traceContext(Object... keyValues) {
+        if (keyValues.length % 2 != 0) {
+            throw new IllegalArgumentException("Trace context requires key/value pairs");
+        }
+        Map<String, String> context = new LinkedHashMap<>();
+        for (int i = 0; i < keyValues.length; i += 2) {
+            Object key = keyValues[i];
+            if (key == null) {
+                continue;
+            }
+            Object value = keyValues[i + 1];
+            if (value != null) {
+                context.put(String.valueOf(key), String.valueOf(value));
+            }
+        }
+        return context;
+    }
+
+    /**
+     * Builds the value context needed to explain one cross-rule decision.
+     *
+     * @param first     the indicator expected to cross
+     * @param second    the reference indicator
+     * @param index     the evaluated bar index
+     * @param satisfied true when the cross happened
+     * @param crossedUp true for upward crosses, false for downward crosses
+     * @return trace context with current, previous, and prior unequal values
+     */
+    static Map<String, String> traceCrossContext(Indicator<Num> first, Indicator<Num> second, int index,
+            boolean satisfied, boolean crossedUp) {
+        int unstableBoundary = Math.max(first.getCountOfUnstableBars(), second.getCountOfUnstableBars());
+        int priorIndex = priorUnequalIndex(first, second, index, unstableBoundary);
+        int previousIndex = Math.max(0, index - 1);
+        Num firstValue = first.getValue(index);
+        Num secondValue = second.getValue(index);
+        Num priorFirstValue = first.getValue(priorIndex);
+        Num priorSecondValue = second.getValue(priorIndex);
+        return traceContext("firstValue", firstValue, "secondValue", secondValue, "previousIndex", previousIndex,
+                "previousFirstValue", first.getValue(previousIndex), "previousSecondValue",
+                second.getValue(previousIndex), "priorIndex", priorIndex, "priorFirstValue", priorFirstValue,
+                "priorSecondValue", priorSecondValue, "unstableBoundary", unstableBoundary, "reason",
+                crossReason(index, unstableBoundary, satisfied, crossedUp, firstValue, secondValue, priorFirstValue,
+                        priorSecondValue));
+    }
+
+    private static int priorUnequalIndex(Indicator<Num> first, Indicator<Num> second, int index, int unstableBoundary) {
+        int priorIndex = index;
+        if (priorIndex <= unstableBoundary) {
+            return priorIndex;
+        }
+        do {
+            priorIndex--;
+        } while (priorIndex > unstableBoundary && first.getValue(priorIndex).isEqual(second.getValue(priorIndex)));
+        return priorIndex;
+    }
+
+    private static String crossReason(int index, int unstableBoundary, boolean satisfied, boolean crossedUp,
+            Num firstValue, Num secondValue, Num priorFirstValue, Num priorSecondValue) {
+        if (index <= unstableBoundary) {
+            return "unstable";
+        }
+        if (satisfied) {
+            return crossedUp ? "crossedUp" : "crossedDown";
+        }
+        if (crossedUp && !firstValue.isGreaterThan(secondValue)) {
+            return "firstAtOrBelowSecond";
+        }
+        if (!crossedUp && !firstValue.isLessThan(secondValue)) {
+            return "firstAtOrAboveSecond";
+        }
+        if (crossedUp) {
+            return priorSecondValue.isGreaterThan(priorFirstValue) ? "crossedUp" : "alreadyAboveSecond";
+        }
+        return priorFirstValue.isGreaterThan(priorSecondValue) ? "crossedDown" : "alreadyBelowSecond";
     }
 }
