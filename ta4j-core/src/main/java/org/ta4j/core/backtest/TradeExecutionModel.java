@@ -17,10 +17,14 @@ import org.ta4j.core.num.Num;
  * Selection guidance:
  * </p>
  * <ul>
- * <li>Use {@link TradeOnNextOpenModel} for conservative signal-at-close, fill-next-open simulation.</li>
- * <li>Use {@link TradeOnCurrentCloseModel} when your strategy intentionally fills on bar close.</li>
- * <li>Use {@link SlippageExecutionModel} when you need directional price-impact assumptions.</li>
- * <li>Use {@link StopLimitExecutionModel} when pending-order lifecycle and partial fills matter.</li>
+ * <li>Use {@link TradeOnNextOpenModel} for conservative signal-at-close,
+ * fill-next-open simulation.</li>
+ * <li>Use {@link TradeOnCurrentCloseModel} when your strategy intentionally
+ * fills on bar close.</li>
+ * <li>Use {@link SlippageExecutionModel} when you need directional price-impact
+ * assumptions.</li>
+ * <li>Use {@link StopLimitExecutionModel} when pending-order lifecycle and
+ * partial fills matter.</li>
  * </ul>
  */
 public interface TradeExecutionModel {

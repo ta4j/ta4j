@@ -24,9 +24,9 @@ import org.ta4j.core.serialization.StrategySerialization;
  * <p>
  * Live-evaluation reminder: ta4j evaluates whatever bar state you provide at
  * {@code index}. If your integration replaces the last bar as new ticks arrive,
- * strategy decisions are evaluated against that still-forming bar (live candle).
- * If your integration evaluates only after appending a finished bar, decisions
- * are based on closed candles.
+ * strategy decisions are evaluated against that still-forming bar (live
+ * candle). If your integration evaluates only after appending a finished bar,
+ * decisions are based on closed candles.
  * </p>
  */
 public interface Strategy {
