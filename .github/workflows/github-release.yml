@@ -13,7 +13,7 @@ on:
       dryRun:
         description: "Run in dry-run mode to preview release creation without publishing."
         required: false
-        default: false
+        default: true
         type: boolean
 
 concurrency:
@@ -64,12 +64,20 @@ jobs:
       - name: Normalize dry run input
         id: dry_run
         run: |
-          raw="${{ github.event.inputs.dryRun }}"
-          normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            raw="${{ github.event.inputs.dryRun }}"
+            if [ -z "$raw" ]; then
+              raw=true
+            fi
+            normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
 
-          if [ "$normalized" = "true" ] || [ "$raw" = "true" ] || [ "$raw" = true ] || [ "$raw" = "1" ]; then
-            dry_run=true
+            if [ "$normalized" = "false" ] || [ "$normalized" = "0" ] || [ "$normalized" = "no" ]; then
+              dry_run=false
+            else
+              dry_run=true
+            fi
           else
+            raw=""
             dry_run=false
           fi
 
@@ -265,6 +273,24 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
           NOTES_FILE: ${{ steps.version.outputs.notes_file }}
         run: |
+          if [ "${DRY_RUN:-false}" = "true" ]; then
+            mutation_plan="would create/update the GitHub Release and upload artifacts for ${TAG:-unknown}"
+            rerun_guidance="rerun github-release.yml with dryRun=false for this tag, or let the tag push path run"
+          else
+            mutation_plan="completed GitHub Release publication"
+            rerun_guidance="not needed for this non-dry-run GitHub Release run"
+          fi
+          cat > github-release-audit.json <<EOF
+          {
+            "dryRun": "${DRY_RUN:-}",
+            "tag": "${TAG:-}",
+            "notesFile": "${NOTES_FILE:-}",
+            "artifactManifest": "artifact-manifest.txt",
+            "mutationPlan": "${mutation_plan}",
+            "rerunGuidance": "${rerun_guidance}",
+            "runUrl": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          }
+          EOF
           {
             echo "## GitHub Release"
             echo ""
@@ -272,6 +298,8 @@ jobs:
             echo "- tag: ${TAG:-unknown}"
             echo "- notes file: ${NOTES_FILE:-unknown}"
             echo "- artifact manifest: artifact-manifest.txt"
+            echo "- mutation plan: ${mutation_plan}"
+            echo "- rerun guidance: ${rerun_guidance}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload GitHub Release audit artifacts
@@ -280,6 +308,7 @@ jobs:
         with:
           name: github-release-audit-${{ github.run_id }}
           path: |
+            github-release-audit.json
             artifact-manifest.txt
             release-artifact-build.log
           if-no-files-found: ignore
