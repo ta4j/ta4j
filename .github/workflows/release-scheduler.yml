@@ -60,7 +60,7 @@ jobs:
       # Setup and Discovery
       # -----------------------
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -637,7 +637,7 @@ jobs:
 
       - name: Upload release scheduler audit artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-scheduler-audit-${{ github.run_id }}
           path: |

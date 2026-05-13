@@ -63,7 +63,7 @@ jobs:
       # Setup and Metadata
       # -----------------------
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: true
@@ -573,7 +573,7 @@ jobs:
           echo "audit:all_required_secrets_present=true"
 
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -904,7 +904,7 @@ jobs:
 
       - name: Upload publish-release audit artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: publish-release-audit-${{ github.run_id }}
           path: |
