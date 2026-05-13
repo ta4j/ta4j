@@ -640,6 +640,7 @@ BarSeries liveSeries = new BaseBarSeriesBuilder()
 Strategy strategy = buildStrategy(liveSeries);
 TradingRecord tradingRecord = new BaseTradingRecord(strategy.getStartingType());
 int lastEntryBarIndex = -1;
+int lastExitBarIndex = -1;
 
 // Main trading loop: check for signals on each new bar
 while (true) {
@@ -653,12 +654,23 @@ while (true) {
     if (strategy.shouldEnter(endIndex, tradingRecord) && lastEntryBarIndex != endIndex) {
         placeBuyOrder();  // Place order with your exchange adapter
         // After broker confirmation/fill:
-        tradingRecord.enter(endIndex, latest.getClosePrice(), liveSeries.numFactory().one());
-        lastEntryBarIndex = endIndex;
-    } else if (strategy.shouldExit(endIndex, tradingRecord)) {
+        boolean entered = tradingRecord.enter(endIndex, latest.getClosePrice(), liveSeries.numFactory().one());
+        if (entered) {
+            lastEntryBarIndex = endIndex;
+        } else {
+            // Handle state divergence: broker fill succeeded but record update failed.
+            handleRecordSyncFailure("enter", endIndex);
+        }
+    } else if (strategy.shouldExit(endIndex, tradingRecord) && lastExitBarIndex != endIndex) {
         placeSellOrder(); // Your order execution logic
         // After broker confirmation/fill:
-        tradingRecord.exit(endIndex, latest.getClosePrice(), liveSeries.numFactory().one());
+        boolean exited = tradingRecord.exit(endIndex, latest.getClosePrice(), liveSeries.numFactory().one());
+        if (exited) {
+            lastExitBarIndex = endIndex;
+        } else {
+            // Handle state divergence: broker fill succeeded but record update failed.
+            handleRecordSyncFailure("exit", endIndex);
+        }
     }
     
     Thread.sleep(60000); // Wait 1 minute (or your bar interval)
@@ -666,6 +678,8 @@ while (true) {
 ```
 Notes:
 - `shouldEnter(index, tradingRecord)` and `shouldExit(index, tradingRecord)` are the recommended live overloads.
+- Check the return values of `tradingRecord.enter(...)` and `tradingRecord.exit(...)`; a `false` means your record did not accept the transition and requires reconciliation.
+- Use symmetric deduplication guards for both entry and exit paths (`lastEntryBarIndex` / `lastExitBarIndex`) to avoid duplicate orders on repeated signals.
 - ta4j evaluates whatever bar you provide at `index`: replacing the last bar means live-candle evaluation; evaluating only after appending a finished bar means closed-candle evaluation.
 - Keep `tradingRecord` synchronized with confirmed fills (or use `TradingRecord.operate(fill)` for partial fills) so ta4j does not repeatedly signal entry while it still believes no position is open.
 - See the wiki deep-dive: [Live Candle vs Closed Candle Evaluation](https://ta4j.github.io/ta4j-wiki/Live-Candle-vs-Closed-Candle-Evaluation.html).
