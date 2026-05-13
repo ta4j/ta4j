@@ -25,8 +25,11 @@ Emergency path (direct push mode):
 2. It then dispatches `publish-release.yml`.
 
 Validation path (dry run):
-1. Run prepare and/or publish with `dryRun=true`.
-2. Checks run, but no tag push and no Maven Central deploy.
+1. Manually run any mutating release workflow and keep its default `dryRun=true`.
+2. Inspect the computed release/tag/snapshot values, workflow summary, and audit artifacts.
+3. Rerun manually with `dryRun=false` only when intentionally mutating, or let the scheduled/push/merge release path run with its explicit `dryRun=false`.
+4. Prepare dry-runs still run the read-only release-ready and next-cycle deprecation scans and upload their reports.
+5. No release commits, managed cleanup issue mutations, branch/tag push, Maven Central deploy, GitHub Release creation, snapshot deploy, or discussion/comment mutation occur.
 
 ---
 
@@ -36,7 +39,7 @@ Validation path (dry run):
 |---|---|---|---|---|
 | PR mode (default) | scheduler or manual prepare | release branch + merged PR | yes | normal production releases |
 | Direct push | manual prepare + `RELEASE_DIRECT_PUSH=true` | commits land directly on `master` | yes | emergency/unblocked maintenance |
-| Dry run | manual prepare/publish + `dryRun=true` | none | no | preflight validation |
+| Dry run | manual mutating release workflow, default `dryRun=true` | none | no | inspection-first preflight validation |
 
 ---
 
@@ -70,9 +73,14 @@ Secrets and variables:
 
 1. Trigger **Prepare Release**
 - Via scheduler or manual `workflow_dispatch`.
-- Inputs: `releaseVersion` (optional if auto-detected), `nextVersion` (optional), `dryRun=false`.
+- Inputs: `releaseVersion` (optional if auto-detected), `nextVersion` (optional), `dryRun`.
+- Manual runs default `dryRun=true`. Set `dryRun=false` only for an intentional mutating run after reviewing a dry-run. Scheduled release automation dispatches prepare with explicit `dryRun=false`.
 - If `nextVersion` is omitted and `releaseVersion` is a plain `X.Y.Z`, it is auto-generated as `<major>.<minor>.<patch+1>-SNAPSHOT` (for example `0.22.2` -> `0.22.3-SNAPSHOT`).
 - For RC/non-plain release versions, provide `nextVersion` explicitly.
+- Before the workflow commits the next snapshot version, it runs the Java-based `ta4jexamples.doc.RemovalReadyDeprecationScanner` against the release version and fails if any `@Deprecated(forRemoval = true)` symbols are due or overdue for removal. This read-only scan also runs in dry-run mode.
+- After the next snapshot version is known, it scans sources scheduled for that planned snapshot or any earlier removal version because ta4j versions may jump across major, minor, or patch positions. Non-dry-run runs then sync deduplicated GitHub cleanup issues, including reopening still-valid managed issues and closing stale managed issues for the same removal version; dry-runs only upload the scan report.
+- The workflow uploads release-gate and next-snapshot removal-ready deprecation report artifacts with grouped findings, symbols, lifecycle status, replacement hints when available, and synced issue links when issue sync runs.
+- The scanner JSON is the stable handoff contract for future automation: it includes `schemaVersion`, `automationNamespace`, grouped issue `planKind`, and per-symbol `trackingKey` fields so a later AI-driven planner can split work into one issue per deprecated item while remaining restart-safe by searching managed markers before mutation.
 - The workflow auto-labels the PR with `release`, assigns it to `TheCookieLab`, and requests review from `TheCookieLab`.
 - Opening a release PR automatically triggers freeze notices on other open PRs.
 
@@ -103,19 +111,21 @@ Secrets and variables:
 
 ## 5. Dry-Run Runbook
 
-Prepare dry-run:
-1. Run `prepare-release.yml` with `dryRun=true`.
-2. Validate version calculations, notes generation, and preflight checks.
+Manual release workflows are inspection-first. `release-scheduler.yml`, `prepare-release.yml`, `publish-release.yml`, `github-release.yml`, `snapshot.yml`, and `release-health.yml` all default manual `workflow_dispatch` runs to `dryRun=true`.
 
-Publish dry-run:
-1. Run `publish-release.yml` with `dryRun=true`.
-2. Pass `releaseVersion`.
-3. `releaseCommit` is optional for dispatch and can be auto-detected.
+Operator flow:
+1. Run the workflow manually and leave `dryRun=true`.
+2. Inspect the computed values in the workflow summary and audit artifacts: release version, next snapshot, tag, publish target, snapshot version, and planned mutation steps.
+3. If the computed values are correct and mutation is intended, rerun the same workflow with `dryRun=false`.
+4. If no manual mutation is needed, let the official scheduled, push, merge, or workflow-run trigger continue; those paths normalize to `dryRun=false`.
+
+Prepare dry-runs may leave `releaseVersion` and `nextVersion` blank where auto-detection is supported. Publish dry-runs require `releaseVersion`; `releaseCommit` remains optional and can be auto-detected.
 
 Expected behavior:
 - dry-run can warn about missing deploy secrets/resources.
-- no tag push and no Maven Central deployment.
+- no managed cleanup issue sync, release PR creation, branch push, tag push, Maven Central deployment, GitHub Release creation, snapshot deployment, or discussion/comment mutation.
 - prepare dry-runs still run push capability probes with `git push --dry-run`.
+- prepare dry-runs run deprecation scans and upload report artifacts, but skip managed GitHub cleanup issue sync. If the release-ready gate finds due or overdue removals, the dry-run fails after the reports are available.
 - publish dry-runs run the same metadata, ancestry, release-candidate, and artifact manifest checks without deploying.
 - release-candidate checks use the repository default `integration,slow` test-tag exclusions and log that policy in the workflow output.
 - workflows upload audit artifacts such as release dossiers, decisions, manifests, logs, and tag-resolution files so failures can be diagnosed from the exact phase that produced them.
@@ -126,12 +136,12 @@ Expected behavior:
 
 | Workflow | Trigger(s) | Primary responsibility | Critical guardrails |
 |---|---|---|---|
-| `release-scheduler.yml` | schedule, manual | decide whether/how to release | binary-impact gate, model catalog preflight, release dossier, semver safety, tag collision checks |
-| `prepare-release.yml` | manual (or scheduler dispatch) | generate release artifacts and release PR/direct-push commits | docs-integrity checks, version validation, metadata validation, dry-run push capability probes |
-| `publish-release.yml` | merged release PR close, manual | release-candidate verification + tag + Maven Central deploy + snapshot dispatch + release summary | merge discipline + ancestry checks, artifact manifest checks, post-push tag integrity/reachability checks |
-| `release-health.yml` | push to `master`, publish workflow completion, snapshot workflow completion, schedule, manual | detect drift in release state | fails on tag reachability drift, snapshot version drift, missing snapshot publication once snapshot publication is authoritative, missing notes, stale release PRs |
-| `github-release.yml` | semver-like tag push, manual | GitHub release publication | semver tag validation, exact artifact manifest |
-| `snapshot.yml` | push to `master`, publish workflow dispatch, manual | publish snapshots | build/test/deploy prechecks and source-release audit fields |
+| `release-scheduler.yml` | schedule, manual | decide whether/how to release | manual runs default dry-run; schedule normalizes to production; binary-impact gate, model catalog preflight, release dossier, semver safety, tag collision checks |
+| `prepare-release.yml` | manual (or scheduler dispatch) | generate release artifacts and release PR/direct-push commits | manual runs default dry-run; scheduler passes `dryRun`; docs-integrity checks, version validation, metadata validation, dry-run push capability probes |
+| `publish-release.yml` | merged release PR close, manual | release-candidate verification + tag + Maven Central deploy + snapshot dispatch + release summary | manual runs default dry-run; merged release PRs normalize to production; merge discipline + ancestry checks, artifact manifest checks, post-push tag integrity/reachability checks |
+| `release-health.yml` | push to `master`, publish workflow completion, snapshot workflow completion, schedule, manual | detect drift in release state | manual runs default dry-run; non-manual triggers normalize to production; fails on tag reachability drift, snapshot version drift, missing snapshot publication once snapshot publication is authoritative, missing notes, stale release PRs |
+| `github-release.yml` | semver-like tag push, manual | GitHub release publication | manual runs default dry-run; tag pushes normalize to production; semver tag validation, exact artifact manifest |
+| `snapshot.yml` | push to `master`, publish workflow dispatch, manual | publish snapshots | manual runs default dry-run; master pushes and publish handoff normalize to production; build/test/deploy prechecks and source-release audit fields |
 
 Tag metrics used by release automation:
 - `latest tag`: newest release tag by tag creation date, preferring bare numeric tags before `v`-prefixed tags.
@@ -148,9 +158,11 @@ Tag metrics used by release automation:
 3. Tag reachability from `master` is true.
 4. Maven Central artifacts are visible (allow propagation time).
 5. GitHub release exists with expected notes/artifacts.
-6. The chained `snapshot.yml` run succeeded for the next `-SNAPSHOT` version.
-7. `master` is on next `-SNAPSHOT` version.
-8. `release-health.yml` reports no drift and confirms the current snapshot version is published after `snapshot.yml` completes.
+6. Release-ready deprecation gate report exists for the released version and did not find due or overdue removals.
+7. Removal-ready deprecation report artifact exists for the new snapshot version, due or overdue removal versions were included, and any matching cleanup issues were created, refreshed, reopened, or closed as stale successfully.
+8. The chained `snapshot.yml` run succeeded for the next `-SNAPSHOT` version.
+9. `master` is on next `-SNAPSHOT` version.
+10. `release-health.yml` reports no drift and confirms the current snapshot version is published after `snapshot.yml` completes.
 
 Quick checks:
 ```bash
@@ -239,7 +251,7 @@ If a grouped section fails, inspect the matching artifact before rerunning. Avoi
 
 ## 9. Discussion Posts (Markers and Cleanup)
 
-Release-related workflows post to GitHub Discussions with machine-readable markers:
+Non-dry-run release-related workflows post to GitHub Discussions with machine-readable markers:
 
 ```html
 <!-- ta4j:post-type=<type>;run=<real|dry-run> -->
@@ -251,9 +263,10 @@ Post types:
 - `release-health`
 
 Cleanup rules:
-- `release-health`: removes prior real health posts before posting latest.
-- `release-scheduler`: on dry-run, removes prior matching dry-run summaries for same release context.
-- `publish-release`: keeps historical posts (audit trail).
+- manual dry-runs do not create, update, or delete discussion comments; their dry-run details remain in workflow summaries and audit artifacts.
+- `release-health`: removes prior real health posts before posting the latest real summary.
+- `release-scheduler`: posts real scheduler summaries only.
+- `publish-release`: posts real publish summaries and keeps historical posts as an audit trail.
 
 Do not key automation off author/body heuristics; key off marker metadata.
 
@@ -319,7 +332,7 @@ Do not key automation off author/body heuristics; key off marker metadata.
 | set release version + next snapshot | no | yes |
 | create/push release tag | no | yes (non-dry-run) |
 | deploy to Maven Central | no | yes (non-dry-run) |
-| publish GitHub release | no | yes |
+| publish GitHub release | no | yes (non-dry-run) |
 | release drift auditing | no | yes |
 
 ---
