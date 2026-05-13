@@ -22,6 +22,12 @@ import org.ta4j.core.num.NumFactory;
  * backtesting cases)
  * <li>limited to a fixed number of bars (e.g. for actual trading)
  * </ul>
+ *
+ * <p>
+ * The bar series is the core underlying dataset in ta4j. It represents a
+ * timeline of financial data (OHLCV) and acts as the source of truth for
+ * indicators, backtesting runs, and live trading operations.
+ * </p>
  */
 public interface BarSeries extends Serializable {
 
@@ -188,7 +194,9 @@ public interface BarSeries extends Serializable {
      * @param bar     the bar to be added
      * @param replace true to replace the latest bar. Some exchanges continuously
      *                provide new bar data in the respective period, e.g. 1 second
-     *                in 1 minute duration.
+     *                in 1 minute duration. Strategy checks run after a replace
+     *                therefore evaluate an in-progress bar ("live candle"), not a
+     *                closed candle.
      * @see BarSeries#setMaximumBarCount(int)
      */
     void addBar(Bar bar, boolean replace);

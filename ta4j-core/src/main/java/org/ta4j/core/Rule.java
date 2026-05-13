@@ -16,6 +16,14 @@ import org.ta4j.core.serialization.RuleSerialization;
 /**
  * A rule (also called "trading rule") used to build a {@link Strategy trading
  * strategy}. A trading rule can consist of a combination of other rules.
+ *
+ * <p>
+ * Rules encapsulate the logic for trading decisions (e.g., crossing indicators,
+ * stop-loss thresholds, or boolean conditions). They are evaluated per bar
+ * index using {@link #isSatisfied(int, TradingRecord)}. Complex logic is built
+ * by composing primitive rules with logical operators like {@link #and(Rule)},
+ * {@link #or(Rule)}, or {@link #negation()}.
+ * </p>
  */
 public interface Rule {
 

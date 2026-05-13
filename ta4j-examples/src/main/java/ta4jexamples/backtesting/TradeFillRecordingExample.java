@@ -23,20 +23,13 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * Demonstrates the core live-style trading-record workflow: streaming fills
- * directly into a record, grouping fills into one logical trade, and inspecting
- * how partial exits are matched under different {@link ExecutionMatchPolicy
- * execution match policies}.
+ * Example demonstrating partial trade fills and custom trading records.
  *
  * <p>
- * The example first streams each {@link TradeFill} directly into a
- * {@link TradingRecord} with {@link TradingRecord#operate(TradeFill)}, then
- * shows the equivalent grouped-order path with
- * {@link Trade#fromFills(TradeType, List)}. Both paths end on the same
- * analytics surface: positions, fees, open-lot snapshots, and closed profit are
- * read from the resulting {@link TradingRecord}. It then replays the same
- * partial exit under FIFO, LIFO, average-cost, and specific-id matching so the
- * resulting closed/open positions are easy to compare.
+ * This example shows how to use {@link org.ta4j.core.TradeFill} events directly
+ * on a {@link org.ta4j.core.TradingRecord}. This is useful when connecting ta4j
+ * to broker APIs that confirm orders asynchronously or execute orders in
+ * multiple parts.
  * </p>
  */
 public class TradeFillRecordingExample {

@@ -29,6 +29,12 @@ import org.ta4j.core.walkforward.WalkForwardConfig;
  * unchanged by default ({@link BaseTradingRecord}), while callers can inject a
  * custom record implementation for unified backtest/live execution paths.
  * </p>
+ *
+ * <p>
+ * Use this class as the default backtest entrypoint when you are evaluating one
+ * strategy over one series. For large strategy batches with ranking and runtime
+ * telemetry, switch to {@link BacktestExecutor}.
+ * </p>
  */
 public class BarSeriesManager {
 
@@ -189,10 +195,10 @@ public class BarSeriesManager {
      *
      * Opens the position with the strategy {@link TradeType starting type}.
      *
-     * @param strategy    the trading strategy
+     * @param strategy    the trading strategy to execute (read-only)
      * @param startIndex  the start index for the run (included)
      * @param finishIndex the finish index for the run (included)
-     * @return the trading record coming from the run
+     * @return a new trading record populated with the run's trades
      */
     public TradingRecord run(Strategy strategy, int startIndex, int finishIndex) {
         return run(strategy, strategy.getStartingType(), barSeries.numFactory().one(), startIndex, finishIndex);
@@ -203,9 +209,9 @@ public class BarSeriesManager {
      *
      * Opens the position with a trade of {@link TradeType tradeType}.
      *
-     * @param strategy  the trading strategy
+     * @param strategy  the trading strategy to execute (read-only)
      * @param tradeType the {@link TradeType} used to open the position
-     * @return the trading record coming from the run
+     * @return a new trading record populated with the run's trades
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType) {
         return run(strategy, tradeType, barSeries.numFactory().one());
