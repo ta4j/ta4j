@@ -26,6 +26,12 @@ import java.util.stream.IntStream;
 /**
  * Allows backtesting multiple strategies and comparing them to find out which
  * is the best.
+ *
+ * <p>
+ * Prefer this class when running many candidate strategies, parameter sweeps,
+ * or weighted ranking workflows. For one strategy over one series, use
+ * {@link BarSeriesManager} for lower setup overhead.
+ * </p>
  */
 public class BacktestExecutor {
 

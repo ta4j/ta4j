@@ -18,6 +18,12 @@ import java.util.Objects;
 
 /**
  * Base implementation of a {@link BarSeries}.
+ *
+ * <p>
+ * This is the default choice for single-threaded backtests and deterministic
+ * replay workflows. If your pipeline ingests bars/trades concurrently with
+ * strategy evaluation, prefer {@link ConcurrentBarSeries}.
+ * </p>
  */
 public class BaseBarSeries implements BarSeries {
 
