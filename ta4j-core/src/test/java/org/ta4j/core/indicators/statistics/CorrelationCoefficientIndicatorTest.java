@@ -7,10 +7,9 @@ import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.Instant;
-
 import org.junit.Before;
 import org.junit.Test;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.serialization.ComponentDescriptor;
@@ -18,7 +17,7 @@ import org.ta4j.core.serialization.IndicatorSerialization;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.VolumeIndicator;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -33,31 +32,9 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
 
     @Before
     public void setUp() {
-        int i = 20;
-        Instant now = Instant.now();
-        series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
-
-        // close, volume
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(6).volume(100).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(7).volume(105).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(9).volume(130).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(12).volume(160).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(11).volume(150).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(10).volume(130).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(11).volume(95).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(13).volume(120).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(15).volume(180).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(12).volume(160).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(8).volume(150).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(4).volume(200).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(3).volume(150).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(4).volume(85).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(3).volume(70).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(5).volume(90).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(8).volume(100).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(9).volume(95).add();
-        series.barBuilder().endTime(now.minusSeconds(i--)).closePrice(11).volume(110).add();
-        series.barBuilder().endTime(now.minusSeconds(i)).closePrice(10).volume(95).add();
+        series = seriesWithCloseAndVolume(new double[][] { { 6, 100 }, { 7, 105 }, { 9, 130 }, { 12, 160 }, { 11, 150 },
+                { 10, 130 }, { 11, 95 }, { 13, 120 }, { 15, 180 }, { 12, 160 }, { 8, 150 }, { 4, 200 }, { 3, 150 },
+                { 4, 85 }, { 3, 70 }, { 5, 90 }, { 8, 100 }, { 9, 95 }, { 11, 110 }, { 10, 95 } });
 
         close = new ClosePriceIndicator(series);
         volume = new VolumeIndicator(series, 2);
@@ -139,5 +116,34 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
         for (int index = 0; index <= series.getEndIndex(); index++) {
             assertThat(fromJson.getValue(index)).isEqualTo(sample.getValue(index));
         }
+    }
+
+    @Test
+    public void rollingSeriesCorrelationMatchesVisibleWindowOnly() {
+        double[][] values = { { 6, 100 }, { 7, 105 }, { 9, 130 }, { 12, 160 }, { 11, 150 }, { 10, 90 }, { 14, 180 },
+                { 9, 95 } };
+        BarSeries rollingSeries = seriesWithCloseAndVolume(values);
+        rollingSeries.setMaximumBarCount(7);
+        BarSeries visibleSeries = seriesWithCloseAndVolume(new double[][] { { 7, 105 }, { 9, 130 }, { 12, 160 },
+                { 11, 150 }, { 10, 90 }, { 14, 180 }, { 9, 95 } });
+        CorrelationCoefficientIndicator rollingCorrelation = CorrelationCoefficientIndicator
+                .ofPopulation(new ClosePriceIndicator(rollingSeries), new VolumeIndicator(rollingSeries), 5);
+        CorrelationCoefficientIndicator visibleCorrelation = CorrelationCoefficientIndicator
+                .ofPopulation(new ClosePriceIndicator(visibleSeries), new VolumeIndicator(visibleSeries), 5);
+
+        for (int index = rollingSeries.getBeginIndex(); index <= rollingSeries.getEndIndex(); index++) {
+            assertNumEquals(visibleCorrelation.getValue(index - rollingSeries.getBeginIndex()),
+                    rollingCorrelation.getValue(index), 1.0e-12);
+        }
+    }
+
+    private BarSeries seriesWithCloseAndVolume(double[][] values) {
+        BarSeries barSeries = new BaseBarSeriesBuilder().withNumFactory(numFactory)
+                .withBarBuilderFactory(new MockBarBuilderFactory())
+                .build();
+        for (double[] value : values) {
+            barSeries.barBuilder().closePrice(value[0]).volume(value[1]).add();
+        }
+        return barSeries;
     }
 }

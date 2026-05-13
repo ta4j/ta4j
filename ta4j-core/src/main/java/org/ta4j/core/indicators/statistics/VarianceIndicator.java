@@ -7,8 +7,8 @@ import java.util.Objects;
 
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
-import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Variance indicator.
@@ -23,7 +23,6 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     private final Indicator<Num> indicator;
     private final int barCount;
-    private final SMAIndicator sma;
     private final SampleType sampleType;
 
     /**
@@ -50,7 +49,6 @@ public class VarianceIndicator extends CachedIndicator<Num> {
         this.indicator = Objects.requireNonNull(indicator, "indicator must not be null");
         this.barCount = Math.max(barCount, 1);
         this.sampleType = Objects.requireNonNull(sampleType, "sampleType must not be null");
-        this.sma = new SMAIndicator(indicator, this.barCount);
     }
 
     /**
@@ -79,11 +77,11 @@ public class VarianceIndicator extends CachedIndicator<Num> {
 
     @Override
     protected Num calculate(int index) {
-        final int startIndex = Math.max(0, index - barCount + 1);
+        final int startIndex = Math.max(Math.max(0, getBarSeries().getBeginIndex()), index - barCount + 1);
         final int numberOfObservations = index - startIndex + 1;
-        final var numFactory = getBarSeries().numFactory();
+        final NumFactory numFactory = getBarSeries().numFactory();
         Num variance = numFactory.zero();
-        Num average = sma.getValue(index);
+        Num average = averageValue(startIndex, index);
         for (int i = startIndex; i <= index; i++) {
             Num pow = indicator.getValue(i).minus(average).pow(2);
             variance = variance.plus(pow);
@@ -93,6 +91,14 @@ public class VarianceIndicator extends CachedIndicator<Num> {
             return numFactory.zero();
         }
         return variance.dividedBy(numFactory.numOf(divisor));
+    }
+
+    private Num averageValue(int startIndex, int endIndex) {
+        Num sum = getBarSeries().numFactory().zero();
+        for (int i = startIndex; i <= endIndex; i++) {
+            sum = sum.plus(indicator.getValue(i));
+        }
+        return sum.dividedBy(getBarSeries().numFactory().numOf(endIndex - startIndex + 1));
     }
 
     @Override

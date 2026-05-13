@@ -95,7 +95,7 @@ public class CorrelationCoefficientIndicator extends CachedIndicator<Num> {
     protected Num calculate(int index) {
         Num cov = covariance.getValue(index);
         if (sampleType.isSample()) {
-            final int startIndex = Math.max(0, index - barCount + 1);
+            final int startIndex = Math.max(Math.max(0, getBarSeries().getBeginIndex()), index - barCount + 1);
             final int numberOfObservations = index - startIndex + 1;
             if (numberOfObservations > 1) {
                 final NumFactory numFactory = getBarSeries().numFactory();

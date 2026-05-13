@@ -25,6 +25,7 @@
 
 ### Fixed
 - **PR validation stays fast while the Elliott replay suite remains runnable**: GitHub build CI now keeps `integration`, `analysis-demo`, and `elliott-macro-cycle-replay` excluded by default instead of running every tagged test on each PR, and contributors can still rerun the BTC macro-cycle replay suite through its dedicated tag when they need full validation.
+- **Rolling-window statistics now respect the retained series window**: `VarianceIndicator`, `CovarianceIndicator`, `CorrelationCoefficientIndicator`, and `IndicatorFamilyManager` no longer double-count the first retained bar after older bars have been evicted, so constrained `BarSeries` analysis and indicator-family similarity scores stay aligned with the visible data.
 
 ## 0.22.6 (2026-04-01)
 

@@ -81,13 +81,14 @@ public final class IndicatorFamilyManager {
         List<IndicatorFamilyResult.PairSimilarity> pairSimilarities = new ArrayList<>(
                 Math.max(0, (indicatorValues.size() * (indicatorValues.size() - 1)) / 2));
 
-        int stableIndex = maximumUnstableBars(indicatorValues);
+        int stableIndex = Math.max(barSeries.getBeginIndex(), maximumUnstableBars(indicatorValues));
         for (int left = 0; left < indicatorValues.size(); left++) {
             for (int right = left + 1; right < indicatorValues.size(); right++) {
                 CorrelationCoefficientIndicator correlation = new CorrelationCoefficientIndicator(
                         indicatorValues.get(left), indicatorValues.get(right), DEFAULT_CORRELATION_WINDOW,
                         SampleType.POPULATION);
-                stableIndex = Math.max(stableIndex, correlation.getCountOfUnstableBars());
+                stableIndex = Math.max(stableIndex,
+                        Math.max(correlation.getBarSeries().getBeginIndex(), correlation.getCountOfUnstableBars()));
 
                 double similarity = estimatePairSimilarity(correlation);
                 String leftName = indicatorNames.get(left);
@@ -142,7 +143,8 @@ public final class IndicatorFamilyManager {
     }
 
     private static double estimatePairSimilarity(CorrelationCoefficientIndicator correlation) {
-        int startIndex = correlation.getCountOfUnstableBars();
+        int startIndex = Math.max(Math.max(0, correlation.getBarSeries().getBeginIndex()),
+                correlation.getCountOfUnstableBars());
         int endIndex = correlation.getBarSeries().getEndIndex();
         double total = 0.0;
         int samples = 0;

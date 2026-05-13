@@ -12,12 +12,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
+import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.numeric.BinaryOperationIndicator;
-import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.mocks.MockBarBuilderFactory;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -26,7 +27,7 @@ public class IndicatorFamilyManagerTest {
 
     @Test
     public void analyzesNamedIndicatorsInCallerOrder() {
-        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5, 6, 7, 8, 9, 10).build();
+        BarSeries series = seriesOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         SMAIndicator smoothed = new SMAIndicator(close, 3);
         Indicator<Num> closeInverse = BinaryOperationIndicator.product(close, -1);
@@ -82,8 +83,24 @@ public class IndicatorFamilyManagerTest {
     }
 
     @Test
+    public void clampsStableIndexToRollingSeriesBeginIndex() {
+        BarSeries series = increasingSeries(180);
+        series.setMaximumBarCount(30);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        Indicator<Num> inverse = BinaryOperationIndicator.product(close, -1);
+
+        IndicatorFamilyResult result = new IndicatorFamilyManager(series)
+                .analyze(namedIndicators(testIndicator("close", close), testIndicator("inverse", inverse)), 0.99);
+
+        assertThat(series.getBeginIndex()).isEqualTo(150);
+        assertThat(result.stableIndex()).isEqualTo(series.getBeginIndex());
+        assertThat(result.families()).hasSize(1);
+        assertThat(result.pairSimilarities().get(0).similarity()).isEqualTo(1.0);
+    }
+
+    @Test
     public void returnsZeroSimilarityWhenNoStableSamplesExist() {
-        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3).build();
+        BarSeries series = seriesOf(1, 2, 3);
         ClosePriceIndicator close = new ClosePriceIndicator(series);
         Indicator<Num> inverse = BinaryOperationIndicator.product(close, -1);
 
@@ -120,8 +137,8 @@ public class IndicatorFamilyManagerTest {
         IndicatorFamilyManager manager = new IndicatorFamilyManager(series);
 
         assertThrows(NullPointerException.class, () -> new IndicatorFamilyManager(null));
-        assertThrows(IllegalArgumentException.class,
-                () -> new IndicatorFamilyManager(new MockBarSeriesBuilder().withData().build()));
+        assertThrows(IllegalArgumentException.class, () -> new IndicatorFamilyManager(
+                new BaseBarSeriesBuilder().withBarBuilderFactory(new MockBarBuilderFactory()).build()));
         assertThrows(IllegalArgumentException.class, () -> manager.analyze(Map.of()));
         assertThrows(IllegalArgumentException.class,
                 () -> manager.analyze(namedIndicators(testIndicator("base", base)), Double.NaN));
@@ -142,11 +159,11 @@ public class IndicatorFamilyManagerTest {
     }
 
     private static BarSeries increasingSeries(int barCount) {
-        List<Double> values = new ArrayList<>(barCount);
+        BarSeries series = new BaseBarSeriesBuilder().withBarBuilderFactory(new MockBarBuilderFactory()).build();
         for (int index = 0; index < barCount; index++) {
-            values.add((double) index);
+            series.barBuilder().closePrice(index).add();
         }
-        return new MockBarSeriesBuilder().withData(values).build();
+        return series;
     }
 
     private static Indicator<Num> mockIndicator(BarSeries series, ValueFactory valueFactory) {
@@ -156,6 +173,14 @@ public class IndicatorFamilyManagerTest {
             values.add(numFactory.numOf(valueFactory.valueAt(index)));
         }
         return new MockIndicator(series, values);
+    }
+
+    private static BarSeries seriesOf(double... values) {
+        BarSeries series = new BaseBarSeriesBuilder().withBarBuilderFactory(new MockBarBuilderFactory()).build();
+        for (double value : values) {
+            series.barBuilder().closePrice(value).add();
+        }
+        return series;
     }
 
     private static Map<String, Indicator<Num>> namedIndicators(TestIndicator... entries) {
