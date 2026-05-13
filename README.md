@@ -638,6 +638,9 @@ BarSeries liveSeries = new BaseBarSeriesBuilder()
 
 // Build your strategy (same code as backtesting!)
 Strategy strategy = buildStrategy(liveSeries);
+TradingRecord tradingRecord = new BaseTradingRecord(strategy.getStartingType());
+int lastEntryBarIndex = -1;
+int lastExitBarIndex = -1;
 
 // Main trading loop: check for signals on each new bar
 while (true) {
@@ -648,15 +651,39 @@ while (true) {
     int endIndex = liveSeries.getEndIndex();
     
     // Check entry/exit signals (same API as backtesting)
-    if (strategy.shouldEnter(endIndex)) {
-        placeBuyOrder();  // Your order execution logic
-    } else if (strategy.shouldExit(endIndex)) {
+    if (strategy.shouldEnter(endIndex, tradingRecord) && lastEntryBarIndex != endIndex) {
+        placeBuyOrder();  // Place order with your exchange adapter
+        // After broker confirmation/fill:
+        boolean entered = tradingRecord.enter(endIndex, latest.getClosePrice(), liveSeries.numFactory().one());
+        if (entered) {
+            lastEntryBarIndex = endIndex;
+        } else {
+            // Handle state divergence: broker fill succeeded but record update failed.
+            handleRecordSyncFailure("enter", endIndex);
+        }
+    } else if (strategy.shouldExit(endIndex, tradingRecord) && lastExitBarIndex != endIndex) {
         placeSellOrder(); // Your order execution logic
+        // After broker confirmation/fill:
+        boolean exited = tradingRecord.exit(endIndex, latest.getClosePrice(), liveSeries.numFactory().one());
+        if (exited) {
+            lastExitBarIndex = endIndex;
+        } else {
+            // Handle state divergence: broker fill succeeded but record update failed.
+            handleRecordSyncFailure("exit", endIndex);
+        }
     }
     
     Thread.sleep(60000); // Wait 1 minute (or your bar interval)
 }
 ```
+Notes:
+- `shouldEnter(index, tradingRecord)` and `shouldExit(index, tradingRecord)` are the recommended live overloads.
+- Check the return values of `tradingRecord.enter(...)` and `tradingRecord.exit(...)`; a `false` means your record did not accept the transition and requires reconciliation.
+- Use symmetric deduplication guards for both entry and exit paths (`lastEntryBarIndex` / `lastExitBarIndex`) to avoid duplicate orders on repeated signals.
+- ta4j evaluates whatever bar you provide at `index`: replacing the last bar means live-candle evaluation; evaluating only after appending a finished bar means closed-candle evaluation.
+- Keep `tradingRecord` synchronized with confirmed fills (or use `TradingRecord.operate(fill)` for partial fills) so ta4j does not repeatedly signal entry while it still believes no position is open.
+- See the wiki deep-dive: [Live Candle vs Closed Candle Evaluation](https://ta4j.github.io/ta4j-wiki/Live-Candle-vs-Closed-Candle-Evaluation.html).
+
 **Why this works:**
 - **Same code, different data**: Your strategy logic is identical for backtests and live trading
 - **Deterministic**: Same inputs always produce same outputs - critical for testing and debugging
@@ -898,16 +925,10 @@ Use this map when deciding where to read next:
 
 ### Canonical onboarding lane (first 60 minutes)
 
-Follow this sequence if you are onboarding for production use:
+For the curated onboarding path, use:
 
-1. Install and first strategy: [Getting Started](https://ta4j.github.io/ta4j-wiki/Getting-started.html)
-2. Run maintained examples: [`ta4j-examples/README.md`](ta4j-examples/README.md)
-3. Choose execution model and validation flow: [Backtesting](https://ta4j.github.io/ta4j-wiki/Backtesting.html)
-4. Learn live integration boundaries: [Live Trading](https://ta4j.github.io/ta4j-wiki/Live-trading.html)
-5. Apply promotion and incident controls:
-   [Backtesting Realism Checklist](https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html),
-   [Live Trading Runbook](https://ta4j.github.io/ta4j-wiki/Live-Trading-Runbook.html),
-   [Troubleshooting Hub](https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html)
+- [Canonical User Journey](https://ta4j.github.io/ta4j-wiki/Canonical-User-Journey.html)
+- [`ta4j-examples/README.md`](ta4j-examples/README.md) for runnable progression
 
 ## What's next?
 

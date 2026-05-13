@@ -194,7 +194,9 @@ public interface BarSeries extends Serializable {
      * @param bar     the bar to be added
      * @param replace true to replace the latest bar. Some exchanges continuously
      *                provide new bar data in the respective period, e.g. 1 second
-     *                in 1 minute duration.
+     *                in 1 minute duration. Strategy checks run after a replace
+     *                therefore evaluate an in-progress bar ("live candle"), not a
+     *                closed candle.
      * @see BarSeries#setMaximumBarCount(int)
      */
     void addBar(Bar bar, boolean replace);
