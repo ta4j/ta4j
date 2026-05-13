@@ -3,11 +3,9 @@
  */
 package org.ta4j.core;
 
-import org.slf4j.LoggerFactory;
 import org.ta4j.core.rules.AndRule;
 import org.ta4j.core.rules.NotRule;
 import org.ta4j.core.rules.OrRule;
-import org.ta4j.core.rules.RuleTraceContext;
 import org.ta4j.core.rules.XorRule;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.ComponentSerialization;
@@ -30,16 +28,19 @@ public interface Rule {
     /**
      * Controls trace logging behavior for rule evaluation.
      *
+     * <p>
+     * SLF4J TRACE logging is the off switch. This selector only changes the amount
+     * of detail emitted during an evaluation where the relevant logger is already
+     * TRACE-enabled.
+     *
      * @since 0.22.7
      */
     enum TraceMode {
-        /** Do not emit trace logs. */
-        OFF,
         /**
-         * Emit trace logs only for this rule while evaluating children in a scoped
-         * {@link #OFF} context without mutating child rule instances.
+         * Emit one trace event for the evaluated rule while suppressing child-rule
+         * trace events inside the same scoped evaluation.
          */
-        ROLLUP,
+        SUMMARY,
         /** Emit trace logs for this rule and all children in an evaluation scope. */
         VERBOSE
     }
@@ -119,12 +120,13 @@ public interface Rule {
     boolean isSatisfied(int index, TradingRecord tradingRecord);
 
     /**
-     * Evaluates this rule once with the supplied trace mode without changing the
-     * rule's configured trace mode.
+     * Evaluates this rule once with the supplied trace detail. Implementations that
+     * do not support scoped tracing may ignore {@code traceMode} and delegate to
+     * {@link #isSatisfied(int, TradingRecord)}.
      *
      * @param index     the bar index
-     * @param traceMode trace mode for this evaluation only; {@code null} keeps the
-     *                  rule's configured mode
+     * @param traceMode trace detail for this evaluation only; {@code null} uses
+     *                  {@link TraceMode#VERBOSE}
      * @return true if this rule is satisfied for the provided index, false
      *         otherwise
      * @since 0.22.7
@@ -134,44 +136,20 @@ public interface Rule {
     }
 
     /**
-     * Evaluates this rule once with the supplied trace mode without changing the
-     * rule's configured trace mode.
+     * Evaluates this rule once with the supplied trace detail. Implementations that
+     * do not support scoped tracing may ignore {@code traceMode} and delegate to
+     * {@link #isSatisfied(int, TradingRecord)}.
      *
      * @param index         the bar index
      * @param tradingRecord the potentially needed trading history
-     * @param traceMode     trace mode for this evaluation only; {@code null} keeps
-     *                      the rule's configured mode
+     * @param traceMode     trace detail for this evaluation only; {@code null} uses
+     *                      {@link TraceMode#VERBOSE}
      * @return true if this rule is satisfied for the provided index, false
      *         otherwise
      * @since 0.22.7
      */
     default boolean isSatisfiedWithTraceMode(int index, TradingRecord tradingRecord, TraceMode traceMode) {
-        if (traceMode == null || traceMode == TraceMode.OFF || !LoggerFactory.getLogger(getClass()).isTraceEnabled()) {
-            return isSatisfied(index, tradingRecord);
-        }
-        return RuleTraceContext.evaluate(traceMode, "root", null, () -> isSatisfied(index, tradingRecord));
-    }
-
-    /**
-     * Configures trace logging for this rule.
-     *
-     * @param traceMode OFF, ROLLUP, or VERBOSE. A {@code null} value is treated as
-     *                  OFF.
-     * @since 0.22.7
-     */
-    default void setTraceMode(TraceMode traceMode) {
-        // no-op by default to preserve compatibility for custom Rule implementations
-        // that do not support trace mode yet
-    }
-
-    /**
-     * Returns the current trace mode for this rule.
-     *
-     * @return the active trace mode, defaults to {@link TraceMode#OFF}
-     * @since 0.22.7
-     */
-    default TraceMode getTraceMode() {
-        return TraceMode.OFF;
+        return isSatisfied(index, tradingRecord);
     }
 
     /**

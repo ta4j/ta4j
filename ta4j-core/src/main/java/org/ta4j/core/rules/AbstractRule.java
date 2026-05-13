@@ -24,9 +24,6 @@ public abstract class AbstractRule implements Rule {
     /** Configurable display name */
     private volatile String name;
 
-    /** The trace logging mode. */
-    private volatile TraceMode traceMode = TraceMode.OFF;
-
     /**
      * Returns the display name to use in trace logs. Uses the configured name if
      * set, otherwise falls back to the class name.
@@ -66,7 +63,7 @@ public abstract class AbstractRule implements Rule {
      * @return true if trace logging is enabled for this rule
      */
     protected boolean isTraceEnabled() {
-        return log.isTraceEnabled() && RuleTraceContext.activeMode(this) != TraceMode.OFF;
+        return log.isTraceEnabled() && RuleTraceContext.activeMode() != null;
     }
 
     /**
@@ -83,7 +80,7 @@ public abstract class AbstractRule implements Rule {
         if (RuleTraceContext.currentFrame() == null && !log.isTraceEnabled()) {
             return childRule.isSatisfied(index, tradingRecord);
         }
-        try (var ignored = RuleTraceContext.openChild(getTraceDisplayName(), this, childRule, relation)) {
+        try (RuleTraceContext.Scope ignored = RuleTraceContext.openChild(getTraceDisplayName(), relation)) {
             return childRule.isSatisfied(index, tradingRecord);
         }
     }
@@ -95,30 +92,10 @@ public abstract class AbstractRule implements Rule {
      */
     @Override
     public boolean isSatisfiedWithTraceMode(int index, TradingRecord tradingRecord, TraceMode traceMode) {
-        if (traceMode == null || traceMode == TraceMode.OFF || !log.isTraceEnabled()) {
+        if (!log.isTraceEnabled()) {
             return isSatisfied(index, tradingRecord);
         }
         return RuleTraceContext.evaluate(traceMode, "root", null, () -> isSatisfied(index, tradingRecord));
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @since 0.22.7
-     */
-    @Override
-    public void setTraceMode(TraceMode traceMode) {
-        this.traceMode = traceMode == null ? TraceMode.OFF : traceMode;
-    }
-
-    /**
-     * {@inheritDoc}
-     *
-     * @since 0.22.7
-     */
-    @Override
-    public TraceMode getTraceMode() {
-        return traceMode;
     }
 
     @Override
@@ -181,11 +158,11 @@ public abstract class AbstractRule implements Rule {
     }
 
     private RuleTraceEvent createTraceEvent(int index, boolean isSatisfied, Map<String, String> context) {
-        var frame = RuleTraceContext.currentFrame();
-        var path = frame == null ? "root" : frame.path();
-        var depth = frame == null ? 0 : frame.depth();
-        var parentRuleName = frame == null ? null : frame.parentRuleName();
-        return new RuleTraceEvent(index, className, getTraceDisplayName(), RuleTraceContext.activeMode(this),
-                isSatisfied, path, depth, parentRuleName, context);
+        RuleTraceContext.Frame frame = RuleTraceContext.currentFrame();
+        String path = frame == null ? "root" : frame.path();
+        int depth = frame == null ? 0 : frame.depth();
+        String parentRuleName = frame == null ? null : frame.parentRuleName();
+        return new RuleTraceEvent(index, className, getTraceDisplayName(), RuleTraceContext.activeMode(), isSatisfied,
+                path, depth, parentRuleName, context);
     }
 }

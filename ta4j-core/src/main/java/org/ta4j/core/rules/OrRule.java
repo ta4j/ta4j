@@ -3,7 +3,7 @@
  */
 package org.ta4j.core.rules;
 
-import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.Objects;
 
 import org.ta4j.core.Rule;
@@ -49,8 +49,14 @@ public class OrRule extends AbstractRule {
             satisfied = evaluateChildRule(rule2, "rule2", index, tradingRecord);
             secondEvaluated = true;
         }
-        traceIsSatisfied(index, satisfied, Map.of("rule1", Boolean.toString(firstSatisfied), "rule2Evaluated",
-                Boolean.toString(secondEvaluated), "rule2", secondEvaluated ? Boolean.toString(satisfied) : "skipped"));
+        LinkedHashMap<String, String> context = new LinkedHashMap<>();
+        context.put("rule1", Boolean.toString(firstSatisfied));
+        context.put("rule2Evaluated", Boolean.toString(secondEvaluated));
+        context.put("rule2", secondEvaluated ? Boolean.toString(satisfied) : "skipped");
+        if (!secondEvaluated) {
+            context.put("reason", "rule1True");
+        }
+        traceIsSatisfied(index, satisfied, context);
         return satisfied;
     }
 

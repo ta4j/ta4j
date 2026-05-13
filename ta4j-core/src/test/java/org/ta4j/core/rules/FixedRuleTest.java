@@ -3,8 +3,11 @@
  */
 package org.ta4j.core.rules;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+
+import java.util.Arrays;
 
 import org.apache.logging.log4j.Level;
 import org.junit.After;
@@ -12,16 +15,17 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class FixedRuleTest {
 
-    private RuleTraceTestLogger ruleTraceTestLogger;
+    private TraceTestLogger ruleTraceTestLogger;
 
     @Before
     public void setUpLogger() {
-        ruleTraceTestLogger = new RuleTraceTestLogger();
+        ruleTraceTestLogger = new TraceTestLogger();
         ruleTraceTestLogger.open();
     }
 
@@ -53,9 +57,27 @@ public class FixedRuleTest {
     }
 
     @Test
+    public void traceModePublicContractHasOnlySummaryAndVerbose() {
+        String[] modeNames = Arrays.stream(Rule.TraceMode.values()).map(Enum::name).toArray(String[]::new);
+        assertArrayEquals(new String[] { "SUMMARY", "VERBOSE" }, modeNames);
+    }
+
+    @Test
+    public void traceLoggingFollowsLoggerTraceByDefault() {
+        FixedRule rule = new FixedRule(1);
+        ruleTraceTestLogger.clear();
+
+        rule.isSatisfied(1);
+
+        String logContent = ruleTraceTestLogger.getLogOutput();
+        assertTrue("TRACE logging should be enough to emit a default verbose rule trace",
+                logContent.contains("FixedRule#isSatisfied"));
+        assertTrue("Default rule traces should use verbose mode", logContent.contains("mode=VERBOSE"));
+    }
+
+    @Test
     public void traceLoggingUsesClassNameWhenNoCustomNameSet() {
         FixedRule rule = new FixedRule(1);
-        rule.setTraceMode(Rule.TraceMode.VERBOSE);
         ruleTraceTestLogger.clear();
 
         rule.isSatisfied(0);
@@ -69,7 +91,6 @@ public class FixedRuleTest {
     public void traceLoggingUsesCustomNameWhenSet() {
         FixedRule rule = new FixedRule(1);
         rule.setName("My Custom Entry Rule");
-        rule.setTraceMode(Rule.TraceMode.VERBOSE);
         ruleTraceTestLogger.clear();
 
         rule.isSatisfied(0);
@@ -86,7 +107,6 @@ public class FixedRuleTest {
         FixedRule rule = new FixedRule(1);
         rule.setName("My Custom Rule");
         rule.setName(null);
-        rule.setTraceMode(Rule.TraceMode.VERBOSE);
         ruleTraceTestLogger.clear();
 
         rule.isSatisfied(0);
@@ -102,11 +122,9 @@ public class FixedRuleTest {
     public void traceLoggingWorksForDifferentCustomNames() {
         FixedRule rule1 = new FixedRule(1);
         rule1.setName("Entry Rule 5min");
-        rule1.setTraceMode(Rule.TraceMode.VERBOSE);
 
         FixedRule rule2 = new FixedRule(2);
         rule2.setName("Exit Rule 15min");
-        rule2.setTraceMode(Rule.TraceMode.VERBOSE);
 
         ruleTraceTestLogger.clear();
         rule1.isSatisfied(1);
@@ -120,31 +138,20 @@ public class FixedRuleTest {
     }
 
     @Test
-    public void traceLoggingCanBeDisabledForRule() {
+    public void traceLoggingCanBeDisabledByLoggerLevel() {
         FixedRule rule = new FixedRule(1);
-        rule.setTraceMode(Rule.TraceMode.OFF);
-        ruleTraceTestLogger.clear();
-
-        rule.isSatisfied(0);
-
-        String logContent = ruleTraceTestLogger.getLogOutput();
-        assertFalse("Trace log should be empty when trace mode is OFF", logContent.contains("FixedRule#isSatisfied"));
-    }
-
-    @Test
-    public void traceLoggingIsOffByDefault() {
-        FixedRule rule = new FixedRule(1);
+        ruleTraceTestLogger.setLoggerLevel(FixedRule.class, Level.INFO);
         ruleTraceTestLogger.clear();
 
         rule.isSatisfied(1);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertFalse("Trace log should be empty unless trace mode is explicitly enabled",
+        assertFalse("Trace log should be empty when the rule logger is not TRACE",
                 logContent.contains("FixedRule#isSatisfied"));
     }
 
     @Test
-    public void traceLoggingCanBeEnabledForSingleEvaluationWithoutMutatingRuleMode() {
+    public void traceLoggingCanBeScopedToSingleEvaluation() {
         FixedRule rule = new FixedRule(1);
         ruleTraceTestLogger.clear();
 
@@ -152,10 +159,13 @@ public class FixedRuleTest {
 
         String logContent = ruleTraceTestLogger.getLogOutput();
         assertTrue("Scoped verbose evaluation should emit trace output", logContent.contains("FixedRule#isSatisfied"));
-        assertTrue("Scoped verbose evaluation should mark verbose mode", logContent.contains("traceMode=VERBOSE"));
+        assertTrue("Scoped verbose evaluation should mark verbose mode", logContent.contains("mode=VERBOSE"));
         assertTrue("Scoped verbose evaluation should keep root path", logContent.contains("path=root"));
-        assertTrue("Scoped verbose evaluation should not mutate the configured rule mode",
-                rule.getTraceMode() == Rule.TraceMode.OFF);
+
+        ruleTraceTestLogger.clear();
+        assertTrue(rule.isSatisfied(1));
+        assertTrue("A scoped evaluation should not suppress later default TRACE behavior",
+                ruleTraceTestLogger.getLogOutput().contains("mode=VERBOSE"));
     }
 
     @Test

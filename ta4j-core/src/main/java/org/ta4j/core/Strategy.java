@@ -3,9 +3,7 @@
  */
 package org.ta4j.core;
 
-import org.slf4j.LoggerFactory;
 import org.ta4j.core.Trade.TradeType;
-import org.ta4j.core.rules.RuleTraceContext;
 import org.ta4j.core.serialization.ComponentDescriptor;
 import org.ta4j.core.serialization.StrategySerialization;
 
@@ -62,28 +60,6 @@ public interface Strategy {
      * @return the exit rule
      */
     Rule getExitRule();
-
-    /**
-     * Configures runtime trace logging for this strategy.
-     *
-     * @param traceMode OFF, ROLLUP, or VERBOSE. A {@code null} value is treated as
-     *                  OFF.
-     * @since 0.22.7
-     */
-    default void setTraceMode(Rule.TraceMode traceMode) {
-        // no-op by default to preserve compatibility for custom Strategy
-        // implementations that do not support trace mode yet
-    }
-
-    /**
-     * Returns the current trace mode for this strategy.
-     *
-     * @return the active trace mode, defaults to {@link Rule.TraceMode#OFF}
-     * @since 0.22.7
-     */
-    default Rule.TraceMode getTraceMode() {
-        return Rule.TraceMode.OFF;
-    }
 
     /**
      * @param strategy the other strategy
@@ -181,12 +157,13 @@ public interface Strategy {
     }
 
     /**
-     * Evaluates the entry rule once with the supplied trace mode without changing
-     * the strategy's configured trace mode.
+     * Evaluates the entry rule once with the supplied trace detail. Implementations
+     * that do not support scoped tracing may ignore {@code traceMode} and delegate
+     * to {@link #shouldEnter(int, TradingRecord)}.
      *
      * @param index     the bar index
-     * @param traceMode trace mode for this evaluation only; {@code null} keeps the
-     *                  strategy's configured mode
+     * @param traceMode trace detail for this evaluation only; {@code null} uses
+     *                  {@link Rule.TraceMode#VERBOSE}
      * @return true to recommend to enter, false otherwise
      * @since 0.22.7
      */
@@ -195,22 +172,19 @@ public interface Strategy {
     }
 
     /**
-     * Evaluates the entry rule once with the supplied trace mode without changing
-     * the strategy's configured trace mode.
+     * Evaluates the entry rule once with the supplied trace detail. Implementations
+     * that do not support scoped tracing may ignore {@code traceMode} and delegate
+     * to {@link #shouldEnter(int, TradingRecord)}.
      *
      * @param index         the bar index
      * @param tradingRecord the potentially needed trading history
-     * @param traceMode     trace mode for this evaluation only; {@code null} keeps
-     *                      the strategy's configured mode
+     * @param traceMode     trace detail for this evaluation only; {@code null} uses
+     *                      {@link Rule.TraceMode#VERBOSE}
      * @return true to recommend to enter, false otherwise
      * @since 0.22.7
      */
     default boolean shouldEnterWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
-        if (traceMode == null || traceMode == Rule.TraceMode.OFF
-                || !LoggerFactory.getLogger(getClass()).isTraceEnabled()) {
-            return shouldEnter(index, tradingRecord);
-        }
-        return RuleTraceContext.evaluate(traceMode, "entryRule", getName(), () -> shouldEnter(index, tradingRecord));
+        return shouldEnter(index, tradingRecord);
     }
 
     /**
@@ -234,12 +208,13 @@ public interface Strategy {
     }
 
     /**
-     * Evaluates the exit rule once with the supplied trace mode without changing
-     * the strategy's configured trace mode.
+     * Evaluates the exit rule once with the supplied trace detail. Implementations
+     * that do not support scoped tracing may ignore {@code traceMode} and delegate
+     * to {@link #shouldExit(int, TradingRecord)}.
      *
      * @param index     the bar index
-     * @param traceMode trace mode for this evaluation only; {@code null} keeps the
-     *                  strategy's configured mode
+     * @param traceMode trace detail for this evaluation only; {@code null} uses
+     *                  {@link Rule.TraceMode#VERBOSE}
      * @return true to recommend to exit, false otherwise
      * @since 0.22.7
      */
@@ -248,22 +223,19 @@ public interface Strategy {
     }
 
     /**
-     * Evaluates the exit rule once with the supplied trace mode without changing
-     * the strategy's configured trace mode.
+     * Evaluates the exit rule once with the supplied trace detail. Implementations
+     * that do not support scoped tracing may ignore {@code traceMode} and delegate
+     * to {@link #shouldExit(int, TradingRecord)}.
      *
      * @param index         the bar index
      * @param tradingRecord the potentially needed trading history
-     * @param traceMode     trace mode for this evaluation only; {@code null} keeps
-     *                      the strategy's configured mode
+     * @param traceMode     trace detail for this evaluation only; {@code null} uses
+     *                      {@link Rule.TraceMode#VERBOSE}
      * @return true to recommend to exit, false otherwise
      * @since 0.22.7
      */
     default boolean shouldExitWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
-        if (traceMode == null || traceMode == Rule.TraceMode.OFF
-                || !LoggerFactory.getLogger(getClass()).isTraceEnabled()) {
-            return shouldExit(index, tradingRecord);
-        }
-        return RuleTraceContext.evaluate(traceMode, "exitRule", getName(), () -> shouldExit(index, tradingRecord));
+        return shouldExit(index, tradingRecord);
     }
 
     /**

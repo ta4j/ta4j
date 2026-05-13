@@ -23,7 +23,7 @@ import org.ta4j.core.Rule;
  * @param context        deterministic context fields for state-heavy rules
  * @since 0.22.7
  */
-public record RuleTraceEvent(int index, String ruleType, String ruleName, Rule.TraceMode traceMode, boolean satisfied,
+record RuleTraceEvent(int index, String ruleType, String ruleName, Rule.TraceMode traceMode, boolean satisfied,
         String path, int depth, String parentRuleName, Map<String, String> context) {
 
     /**
@@ -43,12 +43,12 @@ public record RuleTraceEvent(int index, String ruleType, String ruleName, Rule.T
      * @since 0.22.7
      */
     public String formatMessage() {
-        var builder = new StringBuilder().append(ruleName)
+        StringBuilder builder = new StringBuilder().append(ruleName)
                 .append("#isSatisfied(")
                 .append(index)
                 .append("): ")
                 .append(satisfied)
-                .append(" traceMode=")
+                .append(" mode=")
                 .append(traceMode)
                 .append(" ruleType=")
                 .append(ruleType)
@@ -60,8 +60,8 @@ public record RuleTraceEvent(int index, String ruleType, String ruleName, Rule.T
         if (parentRuleName != null && !parentRuleName.isBlank()) {
             builder.append(" parent=").append(parentRuleName);
         }
-        if (!context.isEmpty()) {
-            builder.append(" context=").append(context);
+        for (Map.Entry<String, String> entry : context.entrySet()) {
+            builder.append(' ').append(entry.getKey()).append('=').append(entry.getValue());
         }
 
         return builder.toString();

@@ -12,6 +12,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class OrRuleTest {
@@ -19,11 +20,11 @@ public class OrRuleTest {
     private Rule satisfiedRule;
     private Rule unsatisfiedRule;
     private BarSeries series;
-    private RuleTraceTestLogger ruleTraceTestLogger;
+    private TraceTestLogger ruleTraceTestLogger;
 
     @Before
     public void setUp() {
-        ruleTraceTestLogger = new RuleTraceTestLogger();
+        ruleTraceTestLogger = new TraceTestLogger();
         ruleTraceTestLogger.open();
 
         satisfiedRule = new BooleanRule(true);
@@ -50,30 +51,23 @@ public class OrRuleTest {
     }
 
     @Test
-    public void traceLoggingRollupModeSuppressesChildRuleLogs() {
+    public void traceLoggingSummaryModeSuppressesChildRuleLogs() {
         Rule rule1 = new FixedRule(2);
         rule1.setName("First Rule");
-        rule1.setTraceMode(Rule.TraceMode.VERBOSE);
         Rule rule2 = new FixedRule(1);
         rule2.setName("Second Rule");
-        rule2.setTraceMode(Rule.TraceMode.VERBOSE);
 
         OrRule orRule = new OrRule(rule1, rule2);
         orRule.setName("FirstOrSecond");
-        orRule.setTraceMode(Rule.TraceMode.ROLLUP);
 
         ruleTraceTestLogger.clear();
-        orRule.isSatisfied(1);
+        orRule.isSatisfiedWithTraceMode(1, null, Rule.TraceMode.SUMMARY);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
-        assertTrue("Rollup mode should still log the parent composite rule",
+        assertTrue("Summary mode should still log the parent composite rule",
                 logContent.contains("FirstOrSecond#isSatisfied"));
-        assertFalse("Rollup mode should suppress child rule logs", logContent.contains("First Rule#isSatisfied"));
-        assertFalse("Rollup mode should suppress child rule logs", logContent.contains("Second Rule#isSatisfied"));
-        assertEquals("Rollup mode should not mutate first child trace mode", Rule.TraceMode.VERBOSE,
-                rule1.getTraceMode());
-        assertEquals("Rollup mode should not mutate second child trace mode", Rule.TraceMode.VERBOSE,
-                rule2.getTraceMode());
+        assertFalse("Summary mode should suppress child rule logs", logContent.contains("First Rule#isSatisfied"));
+        assertFalse("Summary mode should suppress child rule logs", logContent.contains("Second Rule#isSatisfied"));
     }
 
     @Test
@@ -85,7 +79,6 @@ public class OrRuleTest {
 
         OrRule orRule = new OrRule(rule1, rule2);
         orRule.setName("FirstOrSecond");
-        orRule.setTraceMode(Rule.TraceMode.VERBOSE);
 
         ruleTraceTestLogger.clear();
         orRule.isSatisfied(1);

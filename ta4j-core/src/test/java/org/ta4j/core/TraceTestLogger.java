@@ -1,7 +1,7 @@
 /*
  * SPDX-License-Identifier: MIT
  */
-package org.ta4j.core.rules;
+package org.ta4j.core;
 
 import java.io.StringWriter;
 import java.util.HashSet;
@@ -17,23 +17,22 @@ import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.apache.logging.log4j.core.layout.PatternLayout;
 
 /**
- * Shared support for capturing rule trace logs across rule tests.
+ * Shared support for capturing trace logs in black-box tests.
  */
-final class RuleTraceTestLogger {
+public final class TraceTestLogger {
 
+    private final Set<String> configuredLoggerNames = new HashSet<>();
     private LoggerContext loggerContext;
     private StringWriter logOutput;
     private Appender appender;
     private Appender consoleAppender;
     private Level originalLevel;
     private LoggerConfig rootLoggerConfig;
-    private final Set<String> configuredLoggerNames = new HashSet<>();
 
-    void open() {
+    public void open() {
         loggerContext = (LoggerContext) LogManager.getContext(false);
         Configuration config = loggerContext.getConfiguration();
         rootLoggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
-
         originalLevel = rootLoggerConfig.getLevel();
 
         consoleAppender = rootLoggerConfig.getAppenders().get("Console");
@@ -52,7 +51,7 @@ final class RuleTraceTestLogger {
         loggerContext.updateLoggers();
     }
 
-    void close() {
+    public void close() {
         if (loggerContext == null) {
             return;
         }
@@ -77,11 +76,11 @@ final class RuleTraceTestLogger {
         if (originalLevel != null) {
             LoggerConfig loggerConfig = config.getLoggerConfig(LogManager.ROOT_LOGGER_NAME);
             loggerConfig.setLevel(originalLevel);
-            loggerContext.updateLoggers();
         }
+        loggerContext.updateLoggers();
     }
 
-    void setLoggerLevel(Class<?> loggerClass, Level level) {
+    public void setLoggerLevel(Class<?> loggerClass, Level level) {
         String loggerName = loggerClass.getName();
         Configuration config = loggerContext.getConfiguration();
         config.removeLogger(loggerName);
@@ -90,11 +89,19 @@ final class RuleTraceTestLogger {
         loggerContext.updateLoggers();
     }
 
-    void clear() {
+    public void clearLoggerLevel(Class<?> loggerClass) {
+        String loggerName = loggerClass.getName();
+        Configuration config = loggerContext.getConfiguration();
+        config.removeLogger(loggerName);
+        configuredLoggerNames.remove(loggerName);
+        loggerContext.updateLoggers();
+    }
+
+    public void clear() {
         logOutput.getBuffer().setLength(0);
     }
 
-    String getLogOutput() {
+    public String getLogOutput() {
         return logOutput.toString();
     }
 }

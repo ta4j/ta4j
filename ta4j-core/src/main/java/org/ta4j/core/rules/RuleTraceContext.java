@@ -20,7 +20,7 @@ import org.ta4j.core.Rule;
  *
  * @since 0.22.7
  */
-public final class RuleTraceContext {
+final class RuleTraceContext {
 
     private static final ThreadLocal<Deque<Frame>> FRAMES = ThreadLocal.withInitial(ArrayDeque::new);
 
@@ -37,8 +37,7 @@ public final class RuleTraceContext {
      * @return the callback result
      * @since 0.22.7
      */
-    public static boolean evaluate(Rule.TraceMode traceMode, String path, String parentRuleName,
-            BooleanSupplier supplier) {
+    static boolean evaluate(Rule.TraceMode traceMode, String path, String parentRuleName, BooleanSupplier supplier) {
         Objects.requireNonNull(supplier, "supplier");
         push(new Frame(normalize(traceMode), normalizePath(path), 0, parentRuleName));
         try {
@@ -48,29 +47,25 @@ public final class RuleTraceContext {
         }
     }
 
-    static Rule.TraceMode activeMode(Rule rule) {
-        var frame = currentFrame();
+    static Rule.TraceMode activeMode() {
+        Frame frame = currentFrame();
         if (frame != null) {
             return frame.traceMode();
         }
-        return normalize(rule.getTraceMode());
+        return Rule.TraceMode.VERBOSE;
     }
 
     static Frame currentFrame() {
         return FRAMES.get().peek();
     }
 
-    static Scope openChild(String parentRuleName, Rule parentRule, Rule childRule, String relation) {
-        var currentFrame = currentFrame();
-        var parentMode = activeMode(parentRule);
-        var childMode = switch (parentMode) {
-        case VERBOSE -> Rule.TraceMode.VERBOSE;
-        case ROLLUP -> Rule.TraceMode.OFF;
-        case OFF -> currentFrame == null ? normalize(childRule.getTraceMode()) : Rule.TraceMode.OFF;
-        };
-        var childDepth = currentFrame == null ? 1 : currentFrame.depth() + 1;
-        var parentPath = currentFrame == null ? "root" : currentFrame.path();
-        var childPath = parentPath + "." + normalizePath(relation);
+    static Scope openChild(String parentRuleName, String relation) {
+        Frame currentFrame = currentFrame();
+        Rule.TraceMode parentMode = activeMode();
+        Rule.TraceMode childMode = parentMode == Rule.TraceMode.VERBOSE ? Rule.TraceMode.VERBOSE : null;
+        int childDepth = currentFrame == null ? 1 : currentFrame.depth() + 1;
+        String parentPath = currentFrame == null ? "root" : currentFrame.path();
+        String childPath = parentPath + "." + normalizePath(relation);
 
         push(new Frame(childMode, childPath, childDepth, parentRuleName));
         return RuleTraceContext::pop;
@@ -81,7 +76,7 @@ public final class RuleTraceContext {
     }
 
     private static void pop() {
-        var frames = FRAMES.get();
+        Deque<Frame> frames = FRAMES.get();
         frames.pop();
         if (frames.isEmpty()) {
             FRAMES.remove();
@@ -89,7 +84,7 @@ public final class RuleTraceContext {
     }
 
     private static Rule.TraceMode normalize(Rule.TraceMode traceMode) {
-        return traceMode == null ? Rule.TraceMode.OFF : traceMode;
+        return traceMode == null ? Rule.TraceMode.VERBOSE : traceMode;
     }
 
     private static String normalizePath(String path) {

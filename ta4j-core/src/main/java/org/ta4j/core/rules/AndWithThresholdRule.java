@@ -4,7 +4,6 @@
 package org.ta4j.core.rules;
 
 import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Objects;
 
 import org.ta4j.core.Rule;
@@ -56,8 +55,12 @@ public class AndWithThresholdRule extends AbstractRule {
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         if (index - this.threshold + 1 < 0) {
-            traceIsSatisfied(index, false,
-                    Map.of("threshold", Integer.toString(threshold), "reason", "insufficientBars"));
+            LinkedHashMap<String, String> context = new LinkedHashMap<>();
+            context.put("threshold", Integer.toString(threshold));
+            context.put("windowStart", "0");
+            context.put("windowEnd", Integer.toString(index));
+            context.put("reason", "insufficientBars");
+            traceIsSatisfied(index, false, context);
             return false;
         }
 
@@ -76,10 +79,15 @@ public class AndWithThresholdRule extends AbstractRule {
             }
         }
         final boolean satisfied = isFirstSatisfied && isSecondSatisfied;
-        var context = new LinkedHashMap<String, String>();
+        LinkedHashMap<String, String> context = new LinkedHashMap<>();
         context.put("threshold", Integer.toString(threshold));
+        context.put("windowStart", Integer.toString(index - this.threshold + 1));
+        context.put("windowEnd", Integer.toString(index));
         context.put("rule1", Boolean.toString(isFirstSatisfied));
         context.put("rule2", Boolean.toString(isSecondSatisfied));
+        if (!satisfied) {
+            context.put("reason", isFirstSatisfied ? "rule2False" : "rule1False");
+        }
         traceIsSatisfied(index, satisfied, context);
         return satisfied;
     }

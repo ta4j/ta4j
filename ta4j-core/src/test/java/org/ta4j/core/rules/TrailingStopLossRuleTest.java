@@ -33,6 +33,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.Trade.TradeType;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -44,11 +45,11 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         super(numFactory);
     }
 
-    private RuleTraceTestLogger ruleTraceTestLogger;
+    private TraceTestLogger ruleTraceTestLogger;
 
     @Before
     public void setUpLogger() {
-        ruleTraceTestLogger = new RuleTraceTestLogger();
+        ruleTraceTestLogger = new TraceTestLogger();
         ruleTraceTestLogger.open();
     }
 
@@ -90,7 +91,6 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
                 new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130, 117.00).build());
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
         rule.setName("5min Trailing Stop");
-        rule.setTraceMode(org.ta4j.core.Rule.TraceMode.VERBOSE);
         ruleTraceTestLogger.clear();
 
         BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
@@ -109,7 +109,6 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         ClosePriceIndicator closePrice = new ClosePriceIndicator(
                 new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130, 117.00).build());
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
-        rule.setTraceMode(org.ta4j.core.Rule.TraceMode.VERBOSE);
         ruleTraceTestLogger.clear();
 
         BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
@@ -127,7 +126,6 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
                 new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120, 130, 117.00).build());
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
         rule.setName("Custom Stop Loss");
-        rule.setTraceMode(org.ta4j.core.Rule.TraceMode.VERBOSE);
         ruleTraceTestLogger.clear();
 
         BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
@@ -137,14 +135,20 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         String logContent = ruleTraceTestLogger.getLogOutput();
         assertTrue("TrailingStopLossRule trace log should include custom name",
                 logContent.contains("Custom Stop Loss#isSatisfied"));
-        assertTrue("TrailingStopLossRule trace log should include structured current price context",
-                logContent.contains("context={currentPrice="));
+        assertTrue("TrailingStopLossRule trace log should include current price",
+                logContent.contains("currentPrice=117"));
+        assertTrue("TrailingStopLossRule trace log should include stop price", logContent.contains("stopPrice=117"));
+        assertTrue("TrailingStopLossRule trace log should include trade side", logContent.contains("side=BUY"));
+        assertTrue("TrailingStopLossRule trace log should include trailing high",
+                logContent.contains("highestPrice=130"));
+        assertTrue("TrailingStopLossRule trace log should include configured percentage",
+                logContent.contains("lossPercentage=10"));
         assertFalse("TrailingStopLossRule trace log should keep structured key=value formatting without legacy suffix",
                 logContent.contains("Current price:"));
         assertTrue("TrailingStopLossRule trace log should include rule type",
                 logContent.contains("ruleType=TrailingStopLossRule"));
         assertTrue("TrailingStopLossRule trace log should include active trace mode",
-                logContent.contains("traceMode=VERBOSE"));
+                logContent.contains("mode=VERBOSE"));
         assertTrue("TrailingStopLossRule trace log should include root path", logContent.contains("path=root"));
         assertTrue("TrailingStopLossRule trace log should include root depth", logContent.contains("depth=0"));
     }

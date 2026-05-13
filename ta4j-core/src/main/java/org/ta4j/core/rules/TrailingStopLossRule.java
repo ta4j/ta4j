@@ -3,8 +3,6 @@
  */
 package org.ta4j.core.rules;
 
-import java.util.Map;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
@@ -59,39 +57,41 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        // No trading history or no position opened, no loss
-        if (tradingRecord != null) {
-            Position currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition.isOpened()) {
-                Num currentPrice = priceIndicator.getValue(index);
-                int positionIndex = currentPosition.getEntry().getIndex();
-
-                if (currentPosition.getEntry().isBuy()) {
-                    satisfied = isBuySatisfied(currentPrice, index, positionIndex);
-                } else {
-                    satisfied = isSellSatisfied(currentPrice, index, positionIndex);
-                }
-            }
+        if (tradingRecord == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noTradingRecord");
+            return false;
         }
-        traceIsSatisfied(index, satisfied);
+
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        if (!currentPosition.isOpened()) {
+            StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
+            return false;
+        }
+
+        Num entryPrice = currentPosition.getEntry().getNetPrice();
+        Num currentPrice = priceIndicator.getValue(index);
+        int positionIndex = currentPosition.getEntry().getIndex();
+        int lookback = getValueIndicatorBarCount(index, positionIndex);
+        boolean buy = currentPosition.getEntry().isBuy();
+        Num extremePrice;
+        Num stopPrice;
+        boolean satisfied;
+        String extremeField;
+        if (buy) {
+            extremePrice = new HighestValueIndicator(priceIndicator, lookback).getValue(index);
+            stopPrice = StopLossRule.stopLossPrice(extremePrice, lossPercentage, true);
+            satisfied = currentPrice.isLessThanOrEqual(stopPrice);
+            extremeField = "highestPrice";
+        } else {
+            extremePrice = new LowestValueIndicator(priceIndicator, lookback).getValue(index);
+            stopPrice = StopLossRule.stopLossPrice(extremePrice, lossPercentage, false);
+            satisfied = currentPrice.isGreaterThanOrEqual(stopPrice);
+            extremeField = "lowestPrice";
+        }
+        String reason = satisfied ? "stopReached" : buy ? "priceAboveStop" : "priceBelowStop";
+        StopRuleTrace.traceTrailingDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice,
+                extremeField, extremePrice, lookback, "lossPercentage", lossPercentage, reason);
         return satisfied;
-    }
-
-    private boolean isBuySatisfied(Num currentPrice, int index, int positionIndex) {
-        HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, positionIndex));
-        Num highestCloseNum = highest.getValue(index);
-        Num currentStopLossLimitActivation = StopLossRule.stopLossPrice(highestCloseNum, lossPercentage, true);
-        return currentPrice.isLessThanOrEqual(currentStopLossLimitActivation);
-    }
-
-    private boolean isSellSatisfied(Num currentPrice, int index, int positionIndex) {
-        LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, positionIndex));
-        Num lowestCloseNum = lowest.getValue(index);
-        Num currentStopLossLimitActivation = StopLossRule.stopLossPrice(lowestCloseNum, lossPercentage, false);
-        return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
     }
 
     /**
@@ -123,8 +123,4 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
         return Math.min(index - positionIndex + 1, this.barCount);
     }
 
-    @Override
-    protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        traceIsSatisfied(index, isSatisfied, Map.of("currentPrice", priceIndicator.getValue(index).toString()));
-    }
 }

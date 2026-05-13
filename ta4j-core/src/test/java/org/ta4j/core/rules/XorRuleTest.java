@@ -11,6 +11,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class XorRuleTest {
@@ -18,11 +19,11 @@ public class XorRuleTest {
     private Rule satisfiedRule;
     private Rule unsatisfiedRule;
     private BarSeries series;
-    private RuleTraceTestLogger ruleTraceTestLogger;
+    private TraceTestLogger ruleTraceTestLogger;
 
     @Before
     public void setUp() {
-        ruleTraceTestLogger = new RuleTraceTestLogger();
+        ruleTraceTestLogger = new TraceTestLogger();
         ruleTraceTestLogger.open();
 
         satisfiedRule = new BooleanRule(true);
@@ -63,7 +64,6 @@ public class XorRuleTest {
         rule2.setName("Xor Rule 2");
         XorRule xorRule = new XorRule(rule1, rule2);
         xorRule.setName("Xor Pair");
-        xorRule.setTraceMode(Rule.TraceMode.VERBOSE);
 
         ruleTraceTestLogger.clear();
         xorRule.isSatisfied(1);

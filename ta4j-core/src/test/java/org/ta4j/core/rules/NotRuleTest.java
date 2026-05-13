@@ -11,6 +11,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class NotRuleTest {
@@ -18,11 +19,11 @@ public class NotRuleTest {
     private Rule satisfiedRule;
     private Rule unsatisfiedRule;
     private BarSeries series;
-    private RuleTraceTestLogger ruleTraceTestLogger;
+    private TraceTestLogger ruleTraceTestLogger;
 
     @Before
     public void setUp() {
-        ruleTraceTestLogger = new RuleTraceTestLogger();
+        ruleTraceTestLogger = new TraceTestLogger();
         ruleTraceTestLogger.open();
 
         satisfiedRule = new BooleanRule(true);
@@ -56,7 +57,6 @@ public class NotRuleTest {
         ruleToNegate.setName("Negated Rule");
         NotRule notRule = new NotRule(ruleToNegate);
         notRule.setName("Not Wrapper");
-        notRule.setTraceMode(Rule.TraceMode.VERBOSE);
 
         ruleTraceTestLogger.clear();
         notRule.isSatisfied(1);
