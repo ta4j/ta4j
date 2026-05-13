@@ -54,19 +54,19 @@ jobs:
             exit 1
           fi
 
+      - name: Checkout full history
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ steps.checkout_ref.outputs.ref }}
+          token: ${{ env.GH_TA4J_REPO_TOKEN }}
+
       - name: Checkout workflow support files
         uses: actions/checkout@v6
         with:
           fetch-depth: 1
           ref: ${{ github.sha }}
           path: workflow-support
-          token: ${{ env.GH_TA4J_REPO_TOKEN }}
-
-      - name: Checkout full history
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          ref: ${{ steps.checkout_ref.outputs.ref }}
           token: ${{ env.GH_TA4J_REPO_TOKEN }}
 
       - name: Normalize dry run input
