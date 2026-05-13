@@ -20,6 +20,14 @@ import org.ta4j.core.serialization.StrategySerialization;
  * and trading record. Strategies can be composed using logical operators like
  * {@link #and(Strategy)} or {@link #or(Strategy)}.
  * </p>
+ *
+ * <p>
+ * Live-evaluation reminder: ta4j evaluates whatever bar state you provide at
+ * {@code index}. If your integration replaces the last bar as new ticks arrive,
+ * strategy decisions are evaluated against that still-forming bar (live candle).
+ * If your integration evaluates only after appending a finished bar, decisions
+ * are based on closed candles.
+ * </p>
  */
 public interface Strategy {
 
@@ -125,6 +133,11 @@ public interface Strategy {
     /**
      * @param index the bar index
      * @return true to recommend to enter, false otherwise
+     *
+     * @implNote This overload ignores trading state. In live execution, prefer
+     *           {@link #shouldEnter(int, TradingRecord)} so rules can see open
+     *           positions and avoid repeated entry signals while a position is
+     *           already open.
      */
     default boolean shouldEnter(int index) {
         return shouldEnter(index, null);
@@ -134,6 +147,10 @@ public interface Strategy {
      * @param index         the bar index
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend to enter, false otherwise
+     *
+     * @implNote Use this overload for live systems so entry decisions include the
+     *           current position state. After broker-confirmed fills, keep
+     *           {@code tradingRecord} synchronized with executed fills.
      */
     default boolean shouldEnter(int index, TradingRecord tradingRecord) {
         return !isUnstableAt(index) && getEntryRule().isSatisfied(index, tradingRecord);
@@ -142,6 +159,9 @@ public interface Strategy {
     /**
      * @param index the bar index
      * @return true to recommend to exit, false otherwise
+     *
+     * @implNote This overload ignores trading state. In live execution, prefer
+     *           {@link #shouldExit(int, TradingRecord)}.
      */
     default boolean shouldExit(int index) {
         return shouldExit(index, null);
