@@ -39,6 +39,17 @@ import org.ta4j.core.num.NumFactory;
  * simulated and live execution behavior.
  * </p>
  *
+ * <p>
+ * Usage guidance:
+ * </p>
+ * <ul>
+ * <li>Backtests with synthetic fills: use index/price/amount operations through
+ * strategy runners.</li>
+ * <li>Broker-confirmed fills: use {@link #operate(TradeFill)} or
+ * {@link #operate(Trade)}.</li>
+ * <li>Lot matching behavior is controlled by {@link ExecutionMatchPolicy}.</li>
+ * </ul>
+ *
  * @since 0.22.2
  */
 public class BaseTradingRecord implements TradingRecord {

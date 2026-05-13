@@ -224,6 +224,13 @@ jobs:
           persist-credentials: true
           token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
 
+      - name: Validate documentation integrity
+        run: |
+          echo "::group::Validate documentation links and example references"
+          chmod +x scripts/docs-integrity-check.sh
+          scripts/docs-integrity-check.sh
+          echo "::endgroup::"
+
       - name: Set up JDK 25
         uses: actions/setup-java@v5
         with:

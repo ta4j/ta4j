@@ -29,6 +29,12 @@ import org.ta4j.core.walkforward.WalkForwardConfig;
  * unchanged by default ({@link BaseTradingRecord}), while callers can inject a
  * custom record implementation for unified backtest/live execution paths.
  * </p>
+ *
+ * <p>
+ * Use this class as the default backtest entrypoint when you are evaluating one
+ * strategy over one series. For large strategy batches with ranking and runtime
+ * telemetry, switch to {@link BacktestExecutor}.
+ * </p>
  */
 public class BarSeriesManager {
 

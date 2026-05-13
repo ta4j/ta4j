@@ -1,5 +1,8 @@
 ## Unreleased
 
+### Breaking
+- Updated project Java JDK from 21 to 25
+
 ### Added
 - **Anchor-aware Elliott tuning harness**: You can now run `ElliottWaveAnchorCalibrationHarness` with the versioned `BTC-anchor-registry-v1.json` registry to replay major BTC tops and bottoms, compare the locked baseline against coarse challenger profiles on top-1/top-3 anchor hits plus `ECE`/`Brier`/`LogLoss`, and get a deterministic promote-or-retain bundle that also sanity-checks the selected profile on ETH/USD and S&P 500 data.
 - **Release automation audit artifacts**: Release workflows now emit structured release dossiers, model catalog preflight data, normalized AI decisions, exact artifact manifests, tag-resolution snapshots, full-build logs, and workflow summaries so release failures can be diagnosed from the exact step that produced them.
@@ -17,6 +20,7 @@
 - **Release publishing now gates on candidate verification and exact artifacts**: `publish-release.yml` now runs the official release-candidate build gate with the repository’s standard release test-tag exclusions before deploy, validates the expected release jars, fails on new Javadoc warnings relative to the tracked baseline, requires explicit recovery mode for manual unreachable commits, and dispatches snapshot publication after a successful tag verification. `github-release.yml` now validates bare SemVer tags and uploads only the expected release artifacts.
 - **Documentation surfaces are now aligned across code and wiki workflows**: Core strategy/rule/indicator/bar-series API docs were clarified, key runnable examples were documented at class level, and contribution/release guidance was consolidated so documentation mirrors the current codebase and maintainer process.
 - **Tagged tests use explicit execution lanes**: `benchmark`, `integration`, `analysis-demo`, and `elliott-macro-cycle-replay` JUnit tags now have dedicated GitHub Actions workflows or documented local commands, so long-running suites stay out of push CI without becoming hard to exercise.
+- **Documentation surface area is now consolidated around canonical owners**: Overlapping execution-choice guidance was reduced to a single decision-matrix source, wiki navigation duplicates were removed, maintainer architecture index duplication was cleaned up, and onboarding/live/backtesting docs now route through clearer ownership boundaries while preserving deprecation-safe link compatibility.
 
 ### Fixed
 - **PR validation stays fast while the Elliott replay suite remains runnable**: GitHub build CI now keeps `integration`, `analysis-demo`, and `elliott-macro-cycle-replay` excluded by default instead of running every tagged test on each PR, and contributors can still rerun the BTC macro-cycle replay suite through its dedicated tag when they need full validation.

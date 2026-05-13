@@ -48,13 +48,15 @@ Validation path (dry run):
 Code and docs:
 1. Update `CHANGELOG.md` under `Unreleased`.
 2. Keep README version references current.
-3. Ensure release notes can be generated cleanly (`release/<version>.md`).
-4. Confirm release PRs are visible to release owner:
+3. Run `scripts/docs-integrity-check.sh` and resolve failures before preparing a release.
+   - This gate verifies canonical docs presence, link validity, command references, and TODO-free user-facing entry docs.
+4. Ensure release notes can be generated cleanly (`release/<version>.md`).
+5. Confirm release PRs are visible to release owner:
    - release PR must be labeled `release`.
    - release PR is auto-assigned to `TheCookieLab`.
    - `TheCookieLab` is auto-requested as reviewer.
-5. While any labeled release PR is open, only that release PR can be merged.
-6. Open PRs will receive an automatic release-freeze notice comment while the freeze is active. The workflow removes that notice once no release PR remains open.
+6. While any labeled release PR is open, only that release PR can be merged.
+7. Open PRs will receive an automatic release-freeze notice comment while the freeze is active. The workflow removes that notice once no release PR remains open.
 
 Repository settings:
 1. Actions workflow permissions must allow write operations (dispatch, PR updates, tag push).
@@ -85,6 +87,8 @@ Secrets and variables:
 2. Review generated release PR
 - Confirm release commit + next snapshot commit are present.
 - Confirm release notes file exists (`release/<version>.md`).
+- Confirm docs delta is complete for changed APIs/examples (README/wiki/examples index/changelog consistency).
+- Confirm canonical documentation artifacts are present and linked (`Home`, `Getting-started`, journey/runbook/checklist/troubleshooting, decision matrix, migration map, expected outputs, performance characterization).
 - If a release PR is open, wait for it to merge before merging any non-release PRs to `master`.
 
 3. Merge release PR to `master`
@@ -133,7 +137,7 @@ Expected behavior:
 | Workflow | Trigger(s) | Primary responsibility | Critical guardrails |
 |---|---|---|---|
 | `release-scheduler.yml` | schedule, manual | decide whether/how to release | manual runs default dry-run; schedule normalizes to production; binary-impact gate, model catalog preflight, release dossier, semver safety, tag collision checks |
-| `prepare-release.yml` | manual (or scheduler dispatch) | generate release artifacts and release PR/direct-push commits | manual runs default dry-run; scheduler passes `dryRun`; version validation, metadata validation, dry-run push capability probes |
+| `prepare-release.yml` | manual (or scheduler dispatch) | generate release artifacts and release PR/direct-push commits | manual runs default dry-run; scheduler passes `dryRun`; docs-integrity checks, version validation, metadata validation, dry-run push capability probes |
 | `publish-release.yml` | merged release PR close, manual | release-candidate verification + tag + Maven Central deploy + snapshot dispatch + release summary | manual runs default dry-run; merged release PRs normalize to production; merge discipline + ancestry checks, artifact manifest checks, post-push tag integrity/reachability checks |
 | `release-health.yml` | push to `master`, publish workflow completion, snapshot workflow completion, schedule, manual | detect drift in release state | manual runs default dry-run; non-manual triggers normalize to production; fails on tag reachability drift, snapshot version drift, missing snapshot publication once snapshot publication is authoritative, missing notes, stale release PRs |
 | `github-release.yml` | semver-like tag push, manual | GitHub release publication | manual runs default dry-run; tag pushes normalize to production; semver tag validation, exact artifact manifest |
