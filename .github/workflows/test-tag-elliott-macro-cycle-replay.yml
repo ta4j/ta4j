@@ -1,0 +1,42 @@
+name: Run Elliott Macro Cycle Replay Tagged Tests
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test-elliott-macro-cycle-replay:
+    name: Build and Test (elliott-macro-cycle-replay tag)
+    runs-on: [self-hosted, ta4j-macro-cycle-replay]
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+
+      - name: Build and run Elliott macro-cycle replay tagged tests with Maven
+        run: >
+          xvfb-run mvn -B test
+          -Dgroups=elliott-macro-cycle-replay
+          -Dta4j.excludedTestTags=
+          -Dtest=ElliottWaveMacroCycleDetectorTest

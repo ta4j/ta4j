@@ -4,6 +4,8 @@
 package ta4jexamples.analysis.elliottwave;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -41,5 +43,17 @@ class ElliottWavePresetDemoTest {
         assertEquals("PRIMARY", args[3], "Unexpected degree");
         assertEquals(Long.toString(EXPECTED_START_TIME.getEpochSecond()), args[4], "Unexpected start epoch");
         assertEquals(Long.toString(FIXED_END_TIME.getEpochSecond()), args[5], "Unexpected end epoch");
+    }
+
+    @Test
+    void shouldUseBtcMacroPresetForDailyBitcoin() {
+        assertTrue(ElliottWavePresetDemo.shouldUseBtcMacroPreset("BTC-USD", "PT1D"));
+        assertTrue(ElliottWavePresetDemo.shouldUseBtcMacroPreset("btc-usd", "PT24H"));
+    }
+
+    @Test
+    void shouldNotUseBtcMacroPresetForOtherAssetsOrIntervals() {
+        assertFalse(ElliottWavePresetDemo.shouldUseBtcMacroPreset("ETH-USD", "PT1D"));
+        assertFalse(ElliottWavePresetDemo.shouldUseBtcMacroPreset("BTC-USD", "PT4H"));
     }
 }

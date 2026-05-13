@@ -1,0 +1,5 @@
+{
+  "registryId": "test-registry-missing-anchors",
+  "datasetResource": "test-dataset.csv",
+  "provenance": "unit test fixture"
+}

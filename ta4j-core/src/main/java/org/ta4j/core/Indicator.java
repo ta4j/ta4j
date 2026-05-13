@@ -17,6 +17,12 @@ import java.util.stream.Stream;
  * <p>
  * Returns a value of type <b>T</b> for each index of the bar series.
  *
+ * <p>
+ * Indicators transform price/volume data (or other indicators) into new data
+ * series (e.g., Moving Averages, RSI). They calculate values lazily or eagerly
+ * and are the fundamental building blocks for {@link Rule rules}. Values are
+ * retrieved per-index via {@link #getValue(int)}.
+ *
  * @param <T> the type of the returned value (Double, Boolean, etc.)
  */
 public interface Indicator<T> {

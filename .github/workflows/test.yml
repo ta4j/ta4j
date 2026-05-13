@@ -1,4 +1,4 @@
-name: Run Unit Tests
+name: Run Verify
 
 permissions:
   contents: read
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   test:
-    name: Build and Test
+    name: Build and Verify
     runs-on: ubuntu-latest
 
     steps:
@@ -36,8 +36,34 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
           cache: maven
 
-      - name: Build and run tests with Maven
-        run: xvfb-run mvn -B test
+      - name: Build and run verify with Maven
+        run: xvfb-run mvn -B verify
+
+  test-all-tags:
+    name: Build and Verify (All Non-Demo Tags)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set up Java
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+
+      - name: Build and run verify with demo tags excluded
+        run: xvfb-run mvn -B verify -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay

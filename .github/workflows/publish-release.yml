@@ -21,19 +21,42 @@ on:
         required: false
         default: false
         type: boolean
+      recoveryMode:
+        description: "Require release-recovery environment approval before allowing an explicit releaseCommit that is not reachable from the default branch."
+        required: false
+        default: false
+        type: boolean
 
 permissions:
+  actions: write
   contents: write
   discussions: write
 
 jobs:
+  recovery_approval:
+    name: Release recovery approval
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.recoveryMode == true }}
+    environment:
+      name: release-recovery
+    steps:
+      - name: Approve release recovery mode
+        run: |
+          echo "Recovery mode was explicitly requested for publish-release.yml."
+          echo "Environment approval gates manual publishing of a release commit that may not be reachable from the default branch."
+
   publish:
     name: Publish Release to Maven Central
     runs-on: ubuntu-latest
+    needs: recovery_approval
     if: |
+      always() &&
+      (
       github.event_name == 'workflow_dispatch' ||
       (github.event.pull_request.merged == true &&
        contains(github.event.pull_request.labels.*.name, 'release'))
+      ) &&
+      (needs.recovery_approval.result == 'success' || needs.recovery_approval.result == 'skipped')
 
     steps:
       # -----------------------
@@ -49,6 +72,7 @@ jobs:
       - name: Normalize dry run input
         id: dry_run
         run: |
+          echo "::group::Normalize publish-release inputs"
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             dry_run=false
           else
@@ -64,6 +88,8 @@ jobs:
 
           echo "audit:dry_run_normalized=$dry_run"
           echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
+          echo "audit:recovery_mode=${{ github.event.inputs.recoveryMode }}"
+          echo "::endgroup::"
 
       - name: Preflight GH_TA4J_REPO_TOKEN permissions
         id: token_preflight
@@ -337,8 +363,10 @@ jobs:
           MERGE_COMMIT: ${{ steps.meta.outputs.merge_commit }}
           DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
           EVENT_NAME: ${{ github.event_name }}
+          RECOVERY_MODE: ${{ github.event.inputs.recoveryMode }}
         run: |
           set -euo pipefail
+          echo "::group::Verify release commit ancestry"
 
           if [ -z "${RELEASE_VERSION:-}" ] || [ -z "${RELEASE_COMMIT:-}" ]; then
             echo "Missing release metadata; cannot proceed." >&2
@@ -389,10 +417,17 @@ jobs:
               echo "Merge commit ${MERGE_COMMIT} has ${parents:-0} parent(s); accepting release commit from PR metadata."
             fi
           elif ! git merge-base --is-ancestor "${RELEASE_COMMIT}" "origin/${DEFAULT_BRANCH}"; then
-            echo "::warning::Release commit ${RELEASE_COMMIT} is not on origin/${DEFAULT_BRANCH}; continuing because workflow_dispatch provided an explicit commit."
+            recovery_mode=$(printf '%s' "${RECOVERY_MODE:-false}" | tr '[:upper:]' '[:lower:]')
+            if [ "$recovery_mode" != "true" ]; then
+              echo "::error::Release commit ${RELEASE_COMMIT} is not on origin/${DEFAULT_BRANCH}."
+              echo "::error::Re-run workflow_dispatch with recoveryMode=true to require release-recovery environment approval."
+              exit 1
+            fi
+            echo "::warning::Release commit ${RELEASE_COMMIT} is not on origin/${DEFAULT_BRANCH}; continuing only because workflow_dispatch recoveryMode=true passed environment approval."
           else
             echo "Release commit ${RELEASE_COMMIT} is on origin/${DEFAULT_BRANCH}."
           fi
+          echo "::endgroup::"
 
       - name: Check if tag already exists
         id: check_tag
@@ -550,7 +585,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
           cache: maven
 
       - name: Set up Java with publishing secrets
@@ -558,7 +593,7 @@ jobs:
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: 21
+          java-version: 25
           cache: maven
           server-id: central
           server-username: ${{ secrets.MAVEN_CENTRAL_TOKEN_USER }}
@@ -643,23 +678,64 @@ jobs:
           echo "gpg.conf and gpg-agent.conf created"
 
       - name: Check out release commit
-        if: steps.dry_run.outputs.dryRun != 'true'
         env:
           RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
         run: |
+          echo "::group::Check out release commit"
           git checkout --detach "${RELEASE_COMMIT}"
+          echo "::endgroup::"
 
       - name: Validate release commit version
-        if: steps.dry_run.outputs.dryRun != 'true'
         env:
           RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
         run: |
           set -euo pipefail
+          echo "::group::Validate release commit version"
           current_version="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version | tr -d '\r')"
           if [ "${current_version}" != "${RELEASE_VERSION}" ]; then
             echo "Release commit version mismatch: expected ${RELEASE_VERSION}, got ${current_version}." >&2
             exit 1
           fi
+          echo "audit:release_commit_version=${current_version}"
+          echo "::endgroup::"
+
+      - name: Release candidate full verification
+        env:
+          QUIET_BUILD_TIMEOUT_SECONDS: 1800
+          RELEASE_TEST_TAG_EXCLUSIONS: integration,slow
+        run: |
+          set -euo pipefail
+          echo "::group::Release candidate full build gate"
+          echo "audit:release_test_tag_exclusions=${RELEASE_TEST_TAG_EXCLUSIONS}"
+          scripts/run-full-build-quiet.sh
+          echo "::endgroup::"
+
+      - name: Verify release candidate tree is clean
+        run: |
+          set -euo pipefail
+          echo "::group::Verify release candidate worktree cleanliness"
+          if ! git diff --exit-code -- . ':!target' >/tmp/release-candidate.diff; then
+            echo "::error::Release candidate verification changed tracked files. Fix formatter/license drift before publishing."
+            cat /tmp/release-candidate.diff
+            exit 1
+          fi
+          echo "audit:release_candidate_tree_clean=true"
+          echo "::endgroup::"
+
+      - name: Build and validate release artifact manifest
+        id: artifacts
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+        run: |
+          set -euo pipefail
+          echo "::group::Build release artifacts for manifest validation"
+          mvn -B -DskipTests -Dgpg.skip=true -Pproduction-release package 2>&1 | tee release-artifact-build.log
+          python3 scripts/release/release_helpers.py artifact-manifest \
+            --version "${RELEASE_VERSION}" \
+            --output artifact-manifest.txt \
+            --github-output "$GITHUB_OUTPUT" \
+            --strict
+          echo "::endgroup::"
 
       - name: Create release tag
         if: steps.dry_run.outputs.dryRun != 'true'
@@ -676,7 +752,29 @@ jobs:
         env:
           MAVEN_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
-        run: mvn -B -Pproduction-release deploy
+        run: |
+          set -euo pipefail
+          echo "::group::Deploy release to Maven Central"
+          mvn -B -Pproduction-release deploy 2>&1 | tee release-deploy.log
+          echo "::endgroup::"
+
+      - name: Validate Javadoc warning baseline
+        id: javadoc_warnings
+        if: always()
+        run: |
+          set -euo pipefail
+          echo "::group::Validate Javadoc warnings"
+          set +e
+          python3 scripts/release/release_helpers.py javadoc-warnings \
+            --baseline scripts/release/javadoc-warning-baseline.txt \
+            --output javadoc-warnings.txt \
+            --github-output "$GITHUB_OUTPUT" \
+            --fail-on-new \
+            release-artifact-build.log release-deploy.log
+          status=$?
+          set -e
+          echo "::endgroup::"
+          exit "$status"
 
       - name: Push release tag
         if: steps.dry_run.outputs.dryRun != 'true'
@@ -718,6 +816,36 @@ jobs:
             exit 1
           fi
 
+      - name: Dispatch snapshot publication
+        if: steps.dry_run.outputs.dryRun != 'true'
+        uses: actions/github-script@v8
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+          RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        with:
+          github-token: ${{ secrets.GH_TA4J_REPO_TOKEN || github.token }}
+          script: |
+            const releaseVersion = process.env.RELEASE_VERSION;
+            const releaseCommit = process.env.RELEASE_COMMIT;
+            const ref = process.env.DEFAULT_BRANCH;
+            if (!releaseVersion || !releaseCommit || !ref) {
+              throw new Error("Missing release metadata for snapshot dispatch.");
+            }
+            core.startGroup("Dispatch snapshot workflow");
+            core.info(`Dispatching snapshot.yml on ${ref} after release ${releaseVersion} (${releaseCommit}).`);
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "snapshot.yml",
+              ref,
+              inputs: {
+                sourceReleaseVersion: releaseVersion,
+                sourceReleaseCommit: releaseCommit
+              }
+            });
+            core.endGroup();
+
       # -----------------------
       # Summary
       # -----------------------
@@ -730,6 +858,10 @@ jobs:
           RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
           MERGE_COMMIT: ${{ steps.meta.outputs.merge_commit }}
           PR_NUMBER: ${{ steps.meta.outputs.pr_number }}
+          RECOVERY_MODE: ${{ github.event.inputs.recoveryMode }}
+          JAVADOC_WARNING_COUNT: ${{ steps.javadoc_warnings.outputs.javadoc_warning_count }}
+          JAVADOC_WARNING_BASELINE_COUNT: ${{ steps.javadoc_warnings.outputs.javadoc_warning_baseline_count }}
+          JAVADOC_WARNING_NEW_COUNT: ${{ steps.javadoc_warnings.outputs.javadoc_warning_new_count }}
         run: |
           echo "summary: dryRun=${DRY_RUN:-}"
           echo "summary: release=${RELEASE:-}"
@@ -737,6 +869,53 @@ jobs:
           echo "summary: releaseCommit=${RELEASE_COMMIT:-}"
           echo "summary: mergeCommit=${MERGE_COMMIT:-}"
           echo "summary: releasePR=${PR_NUMBER:-}"
+          echo "summary: recoveryMode=${RECOVERY_MODE:-false}"
+          echo "summary: javadocWarnings=${JAVADOC_WARNING_COUNT:-unknown}"
+          echo "summary: javadocWarningBaseline=${JAVADOC_WARNING_BASELINE_COUNT:-unknown}"
+          echo "summary: newJavadocWarnings=${JAVADOC_WARNING_NEW_COUNT:-unknown}"
+          cat > release-audit.json <<EOF
+          {
+            "dryRun": "${DRY_RUN:-}",
+            "recoveryMode": "${RECOVERY_MODE:-false}",
+            "release": "${RELEASE:-}",
+            "next": "${NEXT:-}",
+            "releaseCommit": "${RELEASE_COMMIT:-}",
+            "mergeCommit": "${MERGE_COMMIT:-}",
+            "releasePR": "${PR_NUMBER:-}",
+            "javadocWarnings": "${JAVADOC_WARNING_COUNT:-}",
+            "javadocWarningBaseline": "${JAVADOC_WARNING_BASELINE_COUNT:-}",
+            "newJavadocWarnings": "${JAVADOC_WARNING_NEW_COUNT:-}",
+            "runUrl": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          }
+          EOF
+          {
+            echo "## Publish Release"
+            echo ""
+            echo "- dry run: ${DRY_RUN:-unknown}"
+            echo "- recovery mode: ${RECOVERY_MODE:-false}"
+            echo "- release: ${RELEASE:-unknown}"
+            echo "- next snapshot: ${NEXT:-unknown}"
+            echo "- release commit: ${RELEASE_COMMIT:-unknown}"
+            echo "- merge commit: ${MERGE_COMMIT:-none}"
+            echo "- release PR: ${PR_NUMBER:-none}"
+            echo "- Javadoc warnings: ${JAVADOC_WARNING_COUNT:-unknown} current / ${JAVADOC_WARNING_BASELINE_COUNT:-unknown} baseline / ${JAVADOC_WARNING_NEW_COUNT:-unknown} new"
+            echo "- snapshot dispatch: $([ "${DRY_RUN:-false}" = "true" ] && echo "skipped in dry run" || echo "requested after tag verification")"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload publish-release audit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: publish-release-audit-${{ github.run_id }}
+          path: |
+            release-audit.json
+            artifact-manifest.txt
+            release-artifact-build.log
+            release-deploy.log
+            javadoc-warnings.txt
+            .agents/logs/full-build-*.log
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Build discussion comment
         id: notify_summary
