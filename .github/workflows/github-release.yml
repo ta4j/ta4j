@@ -250,7 +250,7 @@ jobs:
       # ------------------------------------------------------------
       - name: Create GitHub Release
         if: steps.dry_run.outputs.dryRun != 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           body_path: ${{ steps.version.outputs.notes_file }}

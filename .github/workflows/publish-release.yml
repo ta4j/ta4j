@@ -171,7 +171,7 @@ jobs:
 
       - name: Extract release metadata
         id: meta
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ github.token }}
           script: |
@@ -818,7 +818,7 @@ jobs:
 
       - name: Dispatch snapshot publication
         if: steps.dry_run.outputs.dryRun != 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
           RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
@@ -1011,7 +1011,7 @@ jobs:
 
       - name: Post to Maven Central Releases discussion
         if: always()
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           RELEASE_DISCUSSION_NUMBER: ${{ vars.RELEASE_DISCUSSION_NUMBER }}
         with:

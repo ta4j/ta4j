@@ -675,7 +675,7 @@ jobs:
     if: needs.analyze.outputs.should_release == 'true' && needs.analyze.outputs.bump != 'major'
     steps:
       - name: Trigger publish workflow
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ github.token }}
           script: |
@@ -706,7 +706,7 @@ jobs:
     if: needs.analyze.outputs.should_release == 'true' && needs.analyze.outputs.bump == 'major' && needs.approval.result == 'success'
     steps:
       - name: Trigger publish workflow
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ github.token }}
           script: |
@@ -922,7 +922,7 @@ jobs:
 
       - name: Post to Release Scheduler discussion
         if: always()
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           DRY_RUN: ${{ needs.analyze.outputs.dryRun }}
           LAST_TAG: ${{ needs.analyze.outputs.last_tag }}

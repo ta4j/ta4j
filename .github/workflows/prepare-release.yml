@@ -505,7 +505,7 @@ jobs:
 
       - name: Dispatch publish-release workflow (direct push)
         if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           RELEASE_VERSION: ${{ steps.versions.outputs.release }}
           RELEASE_COMMIT: ${{ steps.release_commit.outputs.release_commit }}
@@ -548,7 +548,7 @@ jobs:
 
       - name: Create or update release PR
         if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           RELEASE_VERSION: ${{ steps.versions.outputs.release }}
           NEXT_VERSION: ${{ steps.versions.outputs.next }}
