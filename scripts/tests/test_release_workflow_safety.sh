@@ -20,7 +20,8 @@ line_of() {
   local file="$1"
   local needle="$2"
   local line
-  line="$(grep -nF -- "$needle" "$file" | head -n1 | cut -d: -f1)"
+  line="$(grep -nFm1 -- "$needle" "$file" || true)"
+  line="${line%%:*}"
   if [[ -z "$line" ]]; then
     fail "missing expected workflow line '$needle' in ${file#$ROOT/}"
   fi
@@ -242,6 +243,26 @@ test_snapshot_and_health_manual_dry_runs_do_not_mutate() {
   pass "test_snapshot_and_health_manual_dry_runs_do_not_mutate"
 }
 
+test_line_of_reports_missing_needles_cleanly() {
+  echo "Running test_line_of_reports_missing_needles_cleanly"
+
+  local tmp
+  local output
+  tmp="$(mktemp "${TMPDIR:-/tmp}/release-workflow-safety.XXXXXX")"
+  printf 'present\n' > "$tmp"
+
+  if output="$( (line_of "$tmp" "missing") 2>&1 )"; then
+    rm -f "$tmp"
+    fail "line_of should fail when the workflow line is missing"
+  fi
+
+  rm -f "$tmp"
+  expect_section_contains "$output" "missing expected workflow line 'missing'" \
+    "line_of should surface the explicit missing-line failure message"
+
+  pass "test_line_of_reports_missing_needles_cleanly"
+}
+
 test_publish_release_existing_tag_only_fails_real_runs() {
   echo "Running test_publish_release_existing_tag_only_fails_real_runs"
 
@@ -285,5 +306,6 @@ test_downstream_dispatches_explicitly_pass_dry_run
 test_mutating_steps_remain_dry_run_gated
 test_dry_run_summaries_and_audits_show_rerun_guidance
 test_snapshot_and_health_manual_dry_runs_do_not_mutate
+test_line_of_reports_missing_needles_cleanly
 test_publish_release_existing_tag_only_fails_real_runs
 test_github_release_preserves_workflow_support_checkout
