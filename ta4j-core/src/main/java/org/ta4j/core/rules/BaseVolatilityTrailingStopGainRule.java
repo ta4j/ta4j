@@ -76,6 +76,11 @@ abstract class BaseVolatilityTrailingStopGainRule extends AbstractRule implement
             StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
             return false;
         }
+        int entryIndex = position.getEntry().getIndex();
+        if (index < entryIndex) {
+            StopRuleTrace.traceUnavailable(this, index, "indexBeforeEntry");
+            return false;
+        }
 
         Num entryPrice = position.getEntry().getNetPrice();
         Num currentPrice = referencePrice.getValue(index);
@@ -85,7 +90,7 @@ abstract class BaseVolatilityTrailingStopGainRule extends AbstractRule implement
             return false;
         }
 
-        int barsSinceEntry = index - position.getEntry().getIndex() + 1;
+        int barsSinceEntry = index - entryIndex + 1;
         int lookback = Math.min(barsSinceEntry, barCount);
         boolean buy = position.getEntry().isBuy();
         Num extremePrice;

@@ -59,7 +59,7 @@ public class NotRuleTest {
         notRule.setName("Not Wrapper");
 
         ruleTraceTestLogger.clear();
-        notRule.isSatisfied(1);
+        notRule.isSatisfiedWithTraceMode(1, Rule.TraceMode.VERBOSE);
 
         String logContent = ruleTraceTestLogger.getLogOutput();
         assertTrue("Verbose mode should log the negated child", logContent.contains("Negated Rule#isSatisfied"));

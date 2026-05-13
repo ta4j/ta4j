@@ -4,7 +4,6 @@
 package org.ta4j.core.rules;
 
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 
@@ -78,11 +77,10 @@ public class VoteRule extends AbstractRule {
         }
 
         final boolean satisfied = count >= requiredVotes;
-        var context = new LinkedHashMap<String, String>();
-        context.put("votes", Integer.toString(count));
-        context.put("requiredVotes", Integer.toString(requiredVotes));
-        context.put("evaluatedRules", Integer.toString(evaluatedRules));
-        traceIsSatisfied(index, satisfied, context);
+        if (isTraceEnabled()) {
+            traceIsSatisfied(index, satisfied,
+                    traceContext("votes", count, "requiredVotes", requiredVotes, "evaluatedRules", evaluatedRules));
+        }
         return satisfied;
     }
 

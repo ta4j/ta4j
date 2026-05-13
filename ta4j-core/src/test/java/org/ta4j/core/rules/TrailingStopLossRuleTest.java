@@ -154,6 +154,21 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
     }
 
     @Test
+    public void returnsFalseForIndexBeforeEntry() {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(
+                new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120).build());
+        TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+        tradingRecord.enter(2, numOf(114), numFactory.one());
+
+        ruleTraceTestLogger.clear();
+        assertFalse(rule.isSatisfied(1, tradingRecord));
+
+        assertTrue("Pre-entry evaluation should be traced with a clear reason",
+                ruleTraceTestLogger.getLogOutput().contains("reason=indexBeforeEntry"));
+    }
+
+    @Test
     public void isSatisfiedForBuyForBarCount() {
         BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)

@@ -9,10 +9,11 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.logging.log4j.Level;
 import org.junit.After;
@@ -106,9 +107,9 @@ public class AndRuleTest {
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
-            var verboseEvaluation = executor
+            Future<Boolean> verboseEvaluation = executor
                     .submit(() -> verboseParent.isSatisfiedWithTraceMode(1, null, Rule.TraceMode.VERBOSE));
-            var summaryEvaluation = executor
+            Future<Boolean> summaryEvaluation = executor
                     .submit(() -> summaryParent.isSatisfiedWithTraceMode(1, null, Rule.TraceMode.SUMMARY));
 
             assertTrue("Both parent evaluations should reach the shared child",

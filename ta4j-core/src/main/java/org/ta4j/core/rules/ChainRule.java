@@ -4,9 +4,7 @@
 package org.ta4j.core.rules;
 
 import java.util.Arrays;
-import java.util.LinkedHashMap;
 import java.util.LinkedList;
-import java.util.Map;
 
 import org.ta4j.core.Rule;
 import org.ta4j.core.TradingRecord;
@@ -40,7 +38,9 @@ public class ChainRule extends AbstractRule {
         int startIndex = index;
 
         if (!evaluateChildRule(initialRule, "initialRule", index, tradingRecord)) {
-            traceIsSatisfied(index, false, Map.of("initialRule", "false"));
+            if (isTraceEnabled()) {
+                traceIsSatisfied(index, false, traceContext("initialRule", false));
+            }
             return false;
         }
 
@@ -67,18 +67,18 @@ public class ChainRule extends AbstractRule {
             }
 
             if (!satisfiedWithinThreshold) {
-                var context = new LinkedHashMap<String, String>();
-                context.put("initialRule", "true");
-                context.put("failedChainRule", Integer.toString(linkIndex));
-                context.put("threshold", Integer.toString(link.getThreshold()));
-                traceIsSatisfied(index, false, context);
+                if (isTraceEnabled()) {
+                    traceIsSatisfied(index, false, traceContext("initialRule", true, "failedChainRule", linkIndex,
+                            "threshold", link.getThreshold()));
+                }
                 return false;
             }
             linkIndex++;
         }
 
-        traceIsSatisfied(index, true,
-                Map.of("initialRule", "true", "chainRules", Integer.toString(rulesInChain.size())));
+        if (isTraceEnabled()) {
+            traceIsSatisfied(index, true, traceContext("initialRule", true, "chainRules", rulesInChain.size()));
+        }
         return true;
     }
 }

@@ -72,6 +72,10 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
         Num currentPrice = priceIndicator.getValue(index);
         int positionIndex = currentPosition.getEntry().getIndex();
         int lookback = getValueIndicatorBarCount(index, positionIndex);
+        if (lookback <= 0) {
+            StopRuleTrace.traceUnavailable(this, index, "indexBeforeEntry");
+            return false;
+        }
         boolean buy = currentPosition.getEntry().isBuy();
         Num extremePrice;
         Num stopPrice;

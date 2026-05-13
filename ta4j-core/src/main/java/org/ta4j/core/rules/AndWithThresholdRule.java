@@ -3,7 +3,6 @@
  */
 package org.ta4j.core.rules;
 
-import java.util.LinkedHashMap;
 import java.util.Objects;
 
 import org.ta4j.core.Rule;
@@ -55,12 +54,10 @@ public class AndWithThresholdRule extends AbstractRule {
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         if (index - this.threshold + 1 < 0) {
-            LinkedHashMap<String, String> context = new LinkedHashMap<>();
-            context.put("threshold", Integer.toString(threshold));
-            context.put("windowStart", "0");
-            context.put("windowEnd", Integer.toString(index));
-            context.put("reason", "insufficientBars");
-            traceIsSatisfied(index, false, context);
+            if (isTraceEnabled()) {
+                traceIsSatisfied(index, false, traceContext("threshold", threshold, "windowStart", 0, "windowEnd",
+                        index, "reason", "insufficientBars"));
+            }
             return false;
         }
 
@@ -79,16 +76,12 @@ public class AndWithThresholdRule extends AbstractRule {
             }
         }
         final boolean satisfied = isFirstSatisfied && isSecondSatisfied;
-        LinkedHashMap<String, String> context = new LinkedHashMap<>();
-        context.put("threshold", Integer.toString(threshold));
-        context.put("windowStart", Integer.toString(index - this.threshold + 1));
-        context.put("windowEnd", Integer.toString(index));
-        context.put("rule1", Boolean.toString(isFirstSatisfied));
-        context.put("rule2", Boolean.toString(isSecondSatisfied));
-        if (!satisfied) {
-            context.put("reason", isFirstSatisfied ? "rule2False" : "rule1False");
+        if (isTraceEnabled()) {
+            traceIsSatisfied(index, satisfied,
+                    traceContext("threshold", threshold, "windowStart", index - this.threshold + 1, "windowEnd", index,
+                            "rule1", isFirstSatisfied, "rule2", isSecondSatisfied, "reason",
+                            satisfied ? null : isFirstSatisfied ? "rule2False" : "rule1False"));
         }
-        traceIsSatisfied(index, satisfied, context);
         return satisfied;
     }
 
