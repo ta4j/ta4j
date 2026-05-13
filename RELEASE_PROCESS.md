@@ -126,7 +126,8 @@ Expected behavior:
 - no managed cleanup issue sync, release PR creation, branch push, tag push, Maven Central deployment, GitHub Release creation, snapshot deployment, or discussion/comment mutation.
 - prepare dry-runs still run push capability probes with `git push --dry-run`.
 - prepare dry-runs run deprecation scans and upload report artifacts, but skip managed GitHub cleanup issue sync. If the release-ready gate finds due or overdue removals, the dry-run fails after the reports are available.
-- publish dry-runs run the same metadata, ancestry, release-candidate, and artifact manifest checks without deploying.
+- publish dry-runs run the same metadata, ancestry, release-candidate, and artifact manifest checks without deploying. If the release tag already exists, the dry-run records a warning and continues so historical release validation remains possible.
+- GitHub Release dry-runs build and validate the exact release artifact manifest from the selected tag while using workflow support files from the workflow commit.
 - release-candidate checks use the repository default `integration,slow` test-tag exclusions and log that policy in the workflow output.
 - workflows upload audit artifacts such as release dossiers, decisions, manifests, logs, and tag-resolution files so failures can be diagnosed from the exact phase that produced them.
 
@@ -140,7 +141,7 @@ Expected behavior:
 | `prepare-release.yml` | manual (or scheduler dispatch) | generate release artifacts and release PR/direct-push commits | manual runs default dry-run; scheduler passes `dryRun`; docs-integrity checks, version validation, metadata validation, dry-run push capability probes |
 | `publish-release.yml` | merged release PR close, manual | release-candidate verification + tag + Maven Central deploy + snapshot dispatch + release summary | manual runs default dry-run; merged release PRs normalize to production; merge discipline + ancestry checks, artifact manifest checks, post-push tag integrity/reachability checks |
 | `release-health.yml` | push to `master`, publish workflow completion, snapshot workflow completion, schedule, manual | detect drift in release state | manual runs default dry-run; non-manual triggers normalize to production; fails on tag reachability drift, snapshot version drift, missing snapshot publication once snapshot publication is authoritative, missing notes, stale release PRs |
-| `github-release.yml` | semver-like tag push, manual | GitHub release publication | manual runs default dry-run; tag pushes normalize to production; semver tag validation, exact artifact manifest |
+| `github-release.yml` | semver-like tag push, manual | GitHub release publication | manual runs default dry-run; tag pushes normalize to production; semver tag validation, exact artifact manifest using current workflow support files |
 | `snapshot.yml` | push to `master`, publish workflow dispatch, manual | publish snapshots | manual runs default dry-run; master pushes and publish handoff normalize to production; build/test/deploy prechecks and source-release audit fields |
 
 Tag metrics used by release automation:

@@ -452,7 +452,7 @@ jobs:
           echo "existing_tag=$found" >> $GITHUB_OUTPUT
 
       - name: Fail if tag exists
-        if: steps.check_tag.outputs.exists == 'true'
+        if: steps.check_tag.outputs.exists == 'true' && steps.dry_run.outputs.dryRun != 'true'
         env:
           RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
           EXISTING_TAG: ${{ steps.check_tag.outputs.existing_tag }}
@@ -460,6 +460,16 @@ jobs:
           tag="${EXISTING_TAG:-$RELEASE_VERSION}"
           echo "Error: tag '$tag' already exists (checked '$RELEASE_VERSION' and 'v$RELEASE_VERSION'). Aborting."
           exit 1
+
+      - name: Report existing tag in dry-run mode
+        if: steps.check_tag.outputs.exists == 'true' && steps.dry_run.outputs.dryRun == 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+          EXISTING_TAG: ${{ steps.check_tag.outputs.existing_tag }}
+        run: |
+          tag="${EXISTING_TAG:-$RELEASE_VERSION}"
+          echo "::warning::Tag '$tag' already exists (checked '$RELEASE_VERSION' and 'v$RELEASE_VERSION'); dry-run validation will continue without tag mutation."
+          echo "audit:existing_tag_dry_run=${tag}"
 
       # -----------------------
       # Secrets and Environment

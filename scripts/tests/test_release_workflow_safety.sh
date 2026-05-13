@@ -16,6 +16,17 @@ expect_file_contains() {
   fi
 }
 
+line_of() {
+  local file="$1"
+  local needle="$2"
+  local line
+  line="$(grep -nF -- "$needle" "$file" | head -n1 | cut -d: -f1)"
+  if [[ -z "$line" ]]; then
+    fail "missing expected workflow line '$needle' in ${file#$ROOT/}"
+  fi
+  printf '%s\n' "$line"
+}
+
 input_section() {
   local file="$1"
   local input="$2"
@@ -231,6 +242,42 @@ test_snapshot_and_health_manual_dry_runs_do_not_mutate() {
   pass "test_snapshot_and_health_manual_dry_runs_do_not_mutate"
 }
 
+test_publish_release_existing_tag_only_fails_real_runs() {
+  echo "Running test_publish_release_existing_tag_only_fails_real_runs"
+
+  expect_file_contains "$WORKFLOWS/publish-release.yml" \
+    "if: steps.check_tag.outputs.exists == 'true' && steps.dry_run.outputs.dryRun != 'true'" \
+    "publish-release should fail existing tags only during real runs"
+  expect_file_contains "$WORKFLOWS/publish-release.yml" "Report existing tag in dry-run mode" \
+    "publish-release should keep a dry-run audit path for existing tags"
+  expect_file_contains "$WORKFLOWS/publish-release.yml" "audit:existing_tag_dry_run" \
+    "publish-release dry-run tag detection should emit an audit line"
+
+  pass "test_publish_release_existing_tag_only_fails_real_runs"
+}
+
+test_github_release_preserves_workflow_support_checkout() {
+  echo "Running test_github_release_preserves_workflow_support_checkout"
+
+  local full_checkout_line
+  local support_checkout_line
+  local manifest_line
+  full_checkout_line="$(line_of "$WORKFLOWS/github-release.yml" "Checkout full history")"
+  support_checkout_line="$(line_of "$WORKFLOWS/github-release.yml" "Checkout workflow support files")"
+  manifest_line="$(line_of "$WORKFLOWS/github-release.yml" "workflow-support/scripts/release/release_helpers.py artifact-manifest")"
+
+  if (( support_checkout_line <= full_checkout_line )); then
+    fail "github-release should checkout workflow support after the release tag checkout"
+  fi
+  if (( manifest_line <= support_checkout_line )); then
+    fail "github-release should validate artifacts after workflow support checkout"
+  fi
+  expect_file_contains "$WORKFLOWS/github-release.yml" "path: workflow-support" \
+    "github-release should keep support helpers outside the release tag checkout"
+
+  pass "test_github_release_preserves_workflow_support_checkout"
+}
+
 test_maven_workflow_jobs_setup_jdk25_before_maven
 test_mutating_manual_workflows_default_to_dry_run
 test_official_triggers_normalize_to_non_dry_run
@@ -238,3 +285,5 @@ test_downstream_dispatches_explicitly_pass_dry_run
 test_mutating_steps_remain_dry_run_gated
 test_dry_run_summaries_and_audits_show_rerun_guidance
 test_snapshot_and_health_manual_dry_runs_do_not_mutate
+test_publish_release_existing_tag_only_fails_real_runs
+test_github_release_preserves_workflow_support_checkout
