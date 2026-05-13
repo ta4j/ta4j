@@ -54,6 +54,14 @@ jobs:
             exit 1
           fi
 
+      - name: Checkout workflow support files
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+          path: workflow-support
+          token: ${{ env.GH_TA4J_REPO_TOKEN }}
+
       - name: Checkout full history
         uses: actions/checkout@v6
         with:
@@ -221,7 +229,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::Validate exact GitHub Release artifact manifest"
-          python3 scripts/release/release_helpers.py artifact-manifest \
+          python3 workflow-support/scripts/release/release_helpers.py artifact-manifest \
             --version "${{ steps.version.outputs.tag }}" \
             --output artifact-manifest.txt \
             --github-output "$GITHUB_OUTPUT" \
