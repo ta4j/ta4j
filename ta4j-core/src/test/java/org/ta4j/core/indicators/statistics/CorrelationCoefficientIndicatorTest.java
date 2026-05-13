@@ -34,7 +34,7 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
     @Before
     public void setUp() {
         int i = 20;
-        var now = Instant.now();
+        Instant now = Instant.now();
         series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
 
         // close, volume
@@ -65,7 +65,7 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
 
     @Test
     public void usingBarCount5UsingClosePriceAndVolume() {
-        var coef = new CorrelationCoefficientIndicator(close, volume, 5);
+        CorrelationCoefficientIndicator coef = new CorrelationCoefficientIndicator(close, volume, 5);
 
         assertTrue(coef.getValue(0).isNaN());
 
@@ -92,8 +92,8 @@ public class CorrelationCoefficientIndicatorTest extends AbstractIndicatorTest<I
 
     @Test
     public void sampleAndPopulationCorrelationMatchWhenCovarianceIsScaledConsistently() {
-        var population = CorrelationCoefficientIndicator.ofPopulation(close, volume, 5);
-        var sample = CorrelationCoefficientIndicator.ofSample(close, volume, 5);
+        CorrelationCoefficientIndicator population = CorrelationCoefficientIndicator.ofPopulation(close, volume, 5);
+        CorrelationCoefficientIndicator sample = CorrelationCoefficientIndicator.ofSample(close, volume, 5);
 
         assertTrue(population.getValue(0).isNaN());
         assertTrue(sample.getValue(0).isNaN());

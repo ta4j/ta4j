@@ -3,6 +3,8 @@
 ## Purpose
 
 `IndicatorFamilyAnalysisEngine` groups indicators by behavior similarity so confluence selection can avoid redundant indicators.
+It does not rank whether an indicator is useful by itself; pass in a ranked candidate list from a separate signal or
+strategy study, then use the family catalog to avoid counting duplicate evidence twice.
 
 This guide is for both users and agents running the workflow manually.
 
@@ -38,19 +40,18 @@ IndicatorFamilyCatalog catalog = IndicatorFamilyAnalysisEngine.runSingleConfig(s
 
 - `IndicatorFamilyCatalog` per config
 - `catalogId` = deterministic `manifestId|manifestHash|configId`
-- `stableIndex` based on manifest indicator warm-up boundary
+- `stableIndex` based on the pairwise correlation warm-up boundary used for scoring
 - `familyByIndicator` mapping and ordered `families`
 - `pairSimilarity` map and deterministic `pairwiseFingerprint`
 - Optional cross-config drifts in `IndicatorFamilyAnalysisResult.drifts()`
 
 ## Selection Workflow
 
-Use ranked indicator candidates with `FamilyAwareIndicatorSelector`:
+Use ranked indicator candidates with the catalog that produced the families:
 
 ```java
-List<String> selected = FamilyAwareIndicatorSelector.select(
+List<String> selected = catalog.select(
     rankedIndicatorIds,
-    catalog,
     3,
     true
 );
@@ -71,7 +72,7 @@ Run these focused tests while iterating:
 
 ```bash
 mvn -pl ta4j-core test \
-  -Dtest=IndicatorSerializationTest,IndicatorFamilyAnalysisEngineTest,IndicatorFamilyManifestTest,FamilyAwareIndicatorSelectorTest,CorrelationCoefficientIndicatorTest \
+  -Dtest=IndicatorSerializationTest,IndicatorFamilyAnalysisEngineTest,IndicatorFamilyManifestTest,IndicatorFamilyCatalogTest,CorrelationCoefficientIndicatorTest \
   -Dspotless.apply=none
 ```
 

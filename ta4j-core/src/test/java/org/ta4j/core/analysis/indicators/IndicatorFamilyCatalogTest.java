@@ -12,55 +12,61 @@ import java.util.Map;
 
 import org.junit.Test;
 
-public class FamilyAwareIndicatorSelectorTest {
+public class IndicatorFamilyCatalogTest {
 
     @Test
-    public void deduplicatesFamiliesWhenEnabled() {
+    public void selectDeduplicatesFamiliesWhenEnabled() {
         IndicatorFamilyCatalog catalog = catalog();
 
-        List<String> selected = FamilyAwareIndicatorSelector
-                .select(List.of("ema", "sma", "smaInverse", "emaFast", "close"), catalog, 3, true);
+        List<String> selected = catalog.select(List.of("ema", "sma", "smaInverse", "emaFast", "close"), 3, true);
+
         assertThat(selected).containsExactly("ema", "smaInverse", "emaFast");
     }
 
     @Test
-    public void keepsOriginalOrderWhenDisabled() {
+    public void selectKeepsOriginalOrderWhenFamilyLimitIsDisabled() {
         IndicatorFamilyCatalog catalog = catalog();
 
-        List<String> selected = FamilyAwareIndicatorSelector.select(List.of("ema", "sma", "emaFast", "close"), catalog,
-                3);
+        List<String> selected = catalog.select(List.of("ema", "sma", "emaFast", "close"), 3);
+
         assertThat(selected).containsExactly("ema", "sma", "emaFast");
     }
 
     @Test
-    public void rejectsDuplicateCandidateIds() {
+    public void selectIgnoresDuplicateCandidateIds() {
         IndicatorFamilyCatalog catalog = catalog();
 
-        List<String> selected = FamilyAwareIndicatorSelector.select(List.of("ema", "sma", "ema", "smaInverse"), catalog,
-                3, true);
+        List<String> selected = catalog.select(List.of("ema", "sma", "ema", "smaInverse"), 3, true);
+
         assertThat(selected).containsExactly("ema", "smaInverse");
     }
 
     @Test
-    public void validatesMaxCount() {
+    public void selectValidatesMaxCount() {
         IndicatorFamilyCatalog catalog = catalog();
 
-        assertThrows(IllegalArgumentException.class,
-                () -> FamilyAwareIndicatorSelector.select(List.of("ema", "sma"), catalog, -1, true));
+        assertThrows(IllegalArgumentException.class, () -> catalog.select(List.of("ema", "sma"), -1, true));
     }
 
     @Test
-    public void validatesCandidateIds() {
+    public void selectValidatesCandidateIds() {
         IndicatorFamilyCatalog catalog = catalog();
         List<String> rankedWithNull = new ArrayList<>();
         rankedWithNull.add("ema");
         rankedWithNull.add(null);
         rankedWithNull.add("sma");
 
+        assertThrows(IllegalArgumentException.class, () -> catalog.select(rankedWithNull, 3, true));
+        assertThrows(IllegalArgumentException.class, () -> catalog.select(List.of("ema", " ", "sma"), 3, true));
+    }
+
+    @Test
+    public void familyDriftChangedCountMustMatchChanges() {
+        IndicatorFamilyCatalog.FamilyTransition transition = new IndicatorFamilyCatalog.FamilyTransition("ema",
+                "family-001", "family-002");
+
         assertThrows(IllegalArgumentException.class,
-                () -> FamilyAwareIndicatorSelector.select(rankedWithNull, catalog, 3, true));
-        assertThrows(IllegalArgumentException.class,
-                () -> FamilyAwareIndicatorSelector.select(List.of("ema", " ", "sma"), catalog, 3, true));
+                () -> new IndicatorFamilyCatalog.FamilyDrift("absolute", "signed", 2, List.of(transition)));
     }
 
     private static IndicatorFamilyCatalog catalog() {

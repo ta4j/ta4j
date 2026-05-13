@@ -15,8 +15,8 @@ import org.ta4j.core.num.Num;
  * Typical usage in backtests is to set period/time plus OHLCV fields and call
  * {@link #add()}. For real-time trade ingestion, prefer series-level ingestion
  * APIs such as
- * {@link ConcurrentBarSeries#ingestTrade(java.time.Instant, Number, Number)}
- * so rollover logic stays consistent.
+ * {@link ConcurrentBarSeries#ingestTrade(java.time.Instant, Number, Number)} so
+ * rollover logic stays consistent.
  * </p>
  */
 public interface BarBuilder {

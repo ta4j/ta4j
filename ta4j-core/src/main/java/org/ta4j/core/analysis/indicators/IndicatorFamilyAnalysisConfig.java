@@ -14,11 +14,11 @@ import java.util.Objects;
  *                            scoring
  * @param similarityThreshold minimum score to consider two indicators in the
  *                            same family
- * @param scoringMode         similarity scoring policy
+ * @param similarityMode      similarity scoring policy
  * @since 0.22.7
  */
 public record IndicatorFamilyAnalysisConfig(String configId, int correlationWindow, double similarityThreshold,
-        SimilarityMode scoringMode) {
+        SimilarityMode similarityMode) {
 
     private static final int DEFAULT_CORRELATION_WINDOW = 120;
     private static final double DEFAULT_SIMILARITY_THRESHOLD = 0.93;
@@ -37,7 +37,7 @@ public record IndicatorFamilyAnalysisConfig(String configId, int correlationWind
         if (similarityThreshold < 0.0 || similarityThreshold > 1.0) {
             throw new IllegalArgumentException("similarityThreshold must be between 0.0 and 1.0");
         }
-        Objects.requireNonNull(scoringMode, "scoringMode");
+        Objects.requireNonNull(similarityMode, "similarityMode");
     }
 
     /**
@@ -74,7 +74,7 @@ public record IndicatorFamilyAnalysisConfig(String configId, int correlationWind
      */
     public String signature() {
         return String.format(Locale.ROOT, "%s|%d|%.4f|%s", configId, correlationWindow, similarityThreshold,
-                scoringMode.id());
+                similarityMode.id());
     }
 
     /**
@@ -86,16 +86,14 @@ public record IndicatorFamilyAnalysisConfig(String configId, int correlationWind
         /** Uses absolute correlation to group anti-correlated indicators together. */
         ABSOLUTE("absolute") {
             @Override
-            public double score(double correlation, int overlapBars, int correlationWindow) {
-                validateScoringInputs(overlapBars, correlationWindow);
+            public double score(double correlation) {
                 return clamp(Math.abs(correlation));
             }
         },
         /** Preserves correlation sign for directional clustering. */
         SIGNED("signed") {
             @Override
-            public double score(double correlation, int overlapBars, int correlationWindow) {
-                validateScoringInputs(overlapBars, correlationWindow);
+            public double score(double correlation) {
                 return clamp(correlation);
             }
         };
@@ -110,13 +108,11 @@ public record IndicatorFamilyAnalysisConfig(String configId, int correlationWind
          * Scores a pair of indicators as a family compatibility value in
          * {@code [-1,1]}.
          *
-         * @param correlation       raw correlation in {@code [-1,1]}
-         * @param overlapBars       overlapping stable bars used for the score
-         * @param correlationWindow reference correlation window
+         * @param correlation raw correlation in {@code [-1,1]}
          * @return scored correlation
          * @since 0.22.7
          */
-        public abstract double score(double correlation, int overlapBars, int correlationWindow);
+        public abstract double score(double correlation);
 
         /**
          * @return stable mode id
@@ -124,15 +120,6 @@ public record IndicatorFamilyAnalysisConfig(String configId, int correlationWind
          */
         public String id() {
             return id;
-        }
-
-        private static void validateScoringInputs(int overlapBars, int correlationWindow) {
-            if (correlationWindow <= 0) {
-                throw new IllegalArgumentException("correlationWindow must be > 0");
-            }
-            if (overlapBars < 0) {
-                throw new IllegalArgumentException("overlapBars must be >= 0");
-            }
         }
 
         private static double clamp(double value) {

@@ -7,14 +7,15 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.HexFormat;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.StringJoiner;
+import java.util.TreeMap;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -35,6 +36,7 @@ public record IndicatorFamilyManifest(String manifestId, String schemaVersion, S
         List<IndicatorManifestItem> indicators, Map<String, String> metadata) {
 
     public static final String DEFAULT_SCHEMA_VERSION = "v1";
+    private static final String PAIR_KEY_SEPARATOR = "/";
 
     /**
      * Creates a validated manifest.
@@ -116,32 +118,38 @@ public record IndicatorFamilyManifest(String manifestId, String schemaVersion, S
     }
 
     private String canonicalDefinition() {
-        StringJoiner joiner = new StringJoiner("|");
-        joiner.add(manifestId).add(schemaVersion).add(datasetId).add(String.valueOf(indicators.size()));
+        StringBuilder builder = new StringBuilder();
+        appendCanonical(builder, manifestId);
+        appendCanonical(builder, schemaVersion);
+        appendCanonical(builder, datasetId);
+        appendCanonical(builder, String.valueOf(indicators.size()));
         for (IndicatorManifestItem item : indicators) {
-            joiner.add(item.indicatorId());
-            joiner.add(item.indicatorDescriptor());
-            joiner.add(normalizedMetadata(item.metadata()));
+            appendCanonical(builder, item.indicatorId());
+            appendCanonical(builder, item.indicatorDescriptor());
+            appendCanonical(builder, normalizedMetadata(item.metadata()));
         }
         for (String key : metadata.keySet().stream().sorted().toList()) {
-            joiner.add(key).add(metadata.get(key));
+            appendCanonical(builder, key);
+            appendCanonical(builder, metadata.get(key));
         }
-        return joiner.toString();
+        return builder.toString();
     }
 
-    private String normalizedMetadata(Map<String, String> metadata) {
+    private static String normalizedMetadata(Map<String, String> metadata) {
         if (metadata.isEmpty()) {
-            return "{}";
+            return "0";
         }
 
         List<String> keys = new ArrayList<>(metadata.keySet());
         keys.sort(Comparator.naturalOrder());
 
-        StringJoiner joiner = new StringJoiner(",", "{", "}");
+        StringBuilder builder = new StringBuilder();
+        appendCanonical(builder, String.valueOf(keys.size()));
         for (String key : keys) {
-            joiner.add(key + ":" + metadata.get(key));
+            appendCanonical(builder, key);
+            appendCanonical(builder, metadata.get(key));
         }
-        return joiner.toString();
+        return builder.toString();
     }
 
     private static Map<String, String> canonicalizeMetadata(Map<String, String> metadata) {
@@ -149,7 +157,7 @@ public record IndicatorFamilyManifest(String manifestId, String schemaVersion, S
             return Map.of();
         }
 
-        Map<String, String> canonicalMetadata = new HashMap<>();
+        Map<String, String> sortedMetadata = new TreeMap<>();
         for (Map.Entry<String, String> entry : metadata.entrySet()) {
             if (entry.getKey() == null || entry.getKey().isBlank()) {
                 throw new IllegalArgumentException("metadata keys must not be blank");
@@ -157,9 +165,22 @@ public record IndicatorFamilyManifest(String manifestId, String schemaVersion, S
             if (entry.getValue() == null) {
                 throw new IllegalArgumentException("metadata values must not be null");
             }
-            canonicalMetadata.put(entry.getKey(), entry.getValue());
+            sortedMetadata.put(entry.getKey(), entry.getValue());
         }
-        return Map.copyOf(canonicalMetadata);
+        return Collections.unmodifiableMap(new LinkedHashMap<>(sortedMetadata));
+    }
+
+    private static void validateIndicatorId(String indicatorId) {
+        if (indicatorId.isBlank()) {
+            throw new IllegalArgumentException("indicatorId must not be blank");
+        }
+        if (indicatorId.contains(PAIR_KEY_SEPARATOR)) {
+            throw new IllegalArgumentException("indicatorId must not contain '" + PAIR_KEY_SEPARATOR + "'");
+        }
+    }
+
+    private static void appendCanonical(StringBuilder builder, String value) {
+        builder.append(value.length()).append(':').append(value).append('|');
     }
 
     private static String sha256Hex(String value) {
@@ -185,9 +206,7 @@ public record IndicatorFamilyManifest(String manifestId, String schemaVersion, S
         public IndicatorManifestItem {
             Objects.requireNonNull(indicatorId, "indicatorId");
             Objects.requireNonNull(indicatorDescriptor, "indicatorDescriptor");
-            if (indicatorId.isBlank()) {
-                throw new IllegalArgumentException("indicatorId must not be blank");
-            }
+            validateIndicatorId(indicatorId);
             if (indicatorDescriptor.isBlank()) {
                 throw new IllegalArgumentException("indicatorDescriptor must not be blank");
             }

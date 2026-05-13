@@ -47,11 +47,11 @@ public class IndicatorFamilyAnalysisEngineTest {
                 IndicatorFamilyAnalysisConfig.SimilarityMode.SIGNED);
         IndicatorFamilyCatalog signedCatalog = IndicatorFamilyAnalysisEngine.runSingleConfig(series, manifest, signed);
 
-        assertThat(absoluteCatalog.stableIndex()).isEqualTo(2);
+        assertThat(absoluteCatalog.stableIndex()).isEqualTo(6);
         assertThat(absoluteCatalog.familyCount()).isEqualTo(1);
         assertThat(absoluteCatalog.familyByIndicator().values()).containsOnly("family-001");
 
-        assertThat(signedCatalog.stableIndex()).isEqualTo(2);
+        assertThat(signedCatalog.stableIndex()).isEqualTo(6);
         assertThat(signedCatalog.familyCount()).isEqualTo(2);
         assertThat(signedCatalog.familyByIndicator().get("close")).isEqualTo("family-001");
         assertThat(signedCatalog.familyByIndicator().get("sma")).isEqualTo("family-001");
@@ -105,12 +105,9 @@ public class IndicatorFamilyAnalysisEngineTest {
     }
 
     @Test
-    public void similarityModesValidateScoringInputs() {
-        assertThatThrownBy(() -> IndicatorFamilyAnalysisConfig.SimilarityMode.ABSOLUTE.score(0.5, 1, 0))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("correlationWindow");
-        assertThatThrownBy(() -> IndicatorFamilyAnalysisConfig.SimilarityMode.SIGNED.score(0.5, -1, 5))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("overlapBars");
+    public void similarityModesClampRawCorrelation() {
+        assertThat(IndicatorFamilyAnalysisConfig.SimilarityMode.ABSOLUTE.score(-1.2)).isEqualTo(1.0);
+        assertThat(IndicatorFamilyAnalysisConfig.SimilarityMode.SIGNED.score(1.2)).isEqualTo(1.0);
+        assertThat(IndicatorFamilyAnalysisConfig.SimilarityMode.SIGNED.score(-1.2)).isEqualTo(-1.0);
     }
 }

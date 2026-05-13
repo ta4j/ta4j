@@ -54,6 +54,18 @@ public class IndicatorFamilyManifestTest {
     }
 
     @Test
+    public void configHashDistinguishesSeparatorAmbiguousFields() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        List<IndicatorFamilyManifest.IndicatorManifestItem> items = List
+                .of(new IndicatorFamilyManifest.IndicatorManifestItem("close", closePrice.toJson(), Map.of()));
+        IndicatorFamilyManifest manifestA = new IndicatorFamilyManifest("a|b", "v1", "dataset", items, Map.of());
+        IndicatorFamilyManifest manifestB = new IndicatorFamilyManifest("a", "b|v1", "dataset", items, Map.of());
+
+        assertThat(manifestA.configHash()).isNotEqualTo(manifestB.configHash());
+    }
+
+    @Test
     public void rejectsNullIndicatorItems() {
         BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
         ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
@@ -64,6 +76,17 @@ public class IndicatorFamilyManifestTest {
         assertThatThrownBy(() -> new IndicatorFamilyManifest("manifest", "v1", "dataset", items, Map.of()))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("indicators[1]");
+    }
+
+    @Test
+    public void rejectsIndicatorIdsThatCannotProduceUnambiguousPairKeys() {
+        BarSeries series = new MockBarSeriesBuilder().withData(1, 2, 3, 4, 5).build();
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+
+        assertThatThrownBy(
+                () -> new IndicatorFamilyManifest.IndicatorManifestItem("close/fast", closePrice.toJson(), Map.of()))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("indicatorId");
     }
 
     private static IndicatorFamilyManifest manifest(ClosePriceIndicator closePrice, Map<String, String> metadata) {

@@ -109,6 +109,7 @@ public final class IndicatorFamilyAnalysisEngine {
                 Indicator<Num> rightIndicator = indicators.get(right);
                 CorrelationCoefficientIndicator correlation = new CorrelationCoefficientIndicator(leftIndicator,
                         rightIndicator, config.correlationWindow(), SampleType.POPULATION);
+                stableIndex = Math.max(stableIndex, correlation.getCountOfUnstableBars());
 
                 double similarity = estimatePairSimilarity(correlation, config);
                 String pairKey = buildPairKey(indicatorIds.get(left), indicatorIds.get(right));
@@ -143,9 +144,7 @@ public final class IndicatorFamilyAnalysisEngine {
             if (rawCorrelation == null || rawCorrelation.isNaN()) {
                 continue;
             }
-            int overlapBars = Math.min(config.correlationWindow(), index - start + 1);
-            double score = config.scoringMode()
-                    .score(rawCorrelation.doubleValue(), overlapBars, config.correlationWindow());
+            double score = config.similarityMode().score(rawCorrelation.doubleValue());
             if (Double.isFinite(score)) {
                 total += score;
                 samples++;

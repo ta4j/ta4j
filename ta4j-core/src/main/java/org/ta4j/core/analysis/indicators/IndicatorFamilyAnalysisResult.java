@@ -30,7 +30,10 @@ public record IndicatorFamilyAnalysisResult(String manifestId, String manifestHa
         if (manifestHash.isBlank()) {
             throw new IllegalArgumentException("manifestHash must not be blank");
         }
-        catalogs = catalogs == null ? List.of() : List.copyOf(catalogs);
+        if (catalogs == null || catalogs.isEmpty()) {
+            throw new IllegalArgumentException("catalogs must not be empty");
+        }
+        catalogs = List.copyOf(catalogs);
         drifts = drifts == null ? List.of() : List.copyOf(drifts);
     }
 }
