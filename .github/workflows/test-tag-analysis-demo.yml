@@ -28,6 +28,7 @@ jobs:
       ${{
         github.event_name == 'workflow_dispatch' ||
         (
+          github.event_name == 'schedule' &&
           vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_ENABLED == 'true' &&
           (
             (vars.TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_SLOT == 'daily' && github.event.schedule == '7 7 * * *') ||
@@ -94,7 +95,7 @@ jobs:
         run: >
           xvfb-run mvn -B test
           -Dgroups=analysis-demo
-          -Dta4j.excludedTestTags=elliott-macro-cycle-replay
+          -Dta4j.excludedTestTags=lppl-sector-rotation-demo,elliott-macro-cycle-replay
           -Dta4j.analysisDemoInstrument="${TA4J_ANALYSIS_DEMO_INSTRUMENT}"
           -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave
 
@@ -103,5 +104,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: analysis-demo-elliott-wave
-          path: target/analysis-demos/**
+          path: target/analysis-demos/elliott-wave/**
           if-no-files-found: warn
