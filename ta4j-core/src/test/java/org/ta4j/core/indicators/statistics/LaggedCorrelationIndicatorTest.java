@@ -81,6 +81,15 @@ public class LaggedCorrelationIndicatorTest extends AbstractIndicatorTest<Indica
         assertThrows(IllegalArgumentException.class, () -> new LaggedCorrelationIndicator(indicator, indicator, 1, 0));
     }
 
+    @Test
+    public void rejectsLagThatCannotBeIndexedSafely() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2).build();
+        Indicator<Num> indicator = indicator(series, 1, 2);
+
+        assertThrows(IllegalArgumentException.class,
+                () -> new LaggedCorrelationIndicator(indicator, indicator, 2, Integer.MIN_VALUE));
+    }
+
     private Indicator<Num> indicator(BarSeries series, Number... values) {
         List<Num> nums = java.util.Arrays.stream(values).map(numFactory::numOf).toList();
         return new MockIndicator(series, nums);

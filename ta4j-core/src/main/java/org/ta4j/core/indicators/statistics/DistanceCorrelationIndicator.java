@@ -83,14 +83,14 @@ public class DistanceCorrelationIndicator extends CachedIndicator<Num> {
 
     private static double[][] centeredDistances(double[] values) {
         int size = values.length;
-        double[][] distances = new double[size][size];
+        double[][] centered = new double[size][size];
         double[] rowMeans = new double[size];
         double grandTotal = 0.0;
         for (int row = 0; row < size; row++) {
             double rowTotal = 0.0;
             for (int column = 0; column < size; column++) {
                 double distance = Math.abs(values[row] - values[column]);
-                distances[row][column] = distance;
+                centered[row][column] = distance;
                 rowTotal += distance;
             }
             rowMeans[row] = rowTotal / size;
@@ -98,10 +98,9 @@ public class DistanceCorrelationIndicator extends CachedIndicator<Num> {
         }
 
         double grandMean = grandTotal / (size * size);
-        double[][] centered = new double[size][size];
         for (int row = 0; row < size; row++) {
             for (int column = 0; column < size; column++) {
-                centered[row][column] = distances[row][column] - rowMeans[row] - rowMeans[column] + grandMean;
+                centered[row][column] = centered[row][column] - rowMeans[row] - rowMeans[column] + grandMean;
             }
         }
         return centered;

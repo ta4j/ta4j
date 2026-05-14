@@ -20,6 +20,14 @@ import org.ta4j.core.num.Num;
  * uncertainty to reduce.
  * </p>
  *
+ * <p>
+ * <b>Binning note:</b> Equal-width bins are intentionally fixed for this
+ * initial API. Skewed or heavy-tailed financial series can place most samples
+ * in only a few bins, so interpret the output as discretized mutual information
+ * for the configured bins rather than as a continuous mutual-information
+ * estimator.
+ * </p>
+ *
  * @since 0.22.7
  */
 public class MutualInformationIndicator extends CachedIndicator<Num> {
@@ -35,7 +43,9 @@ public class MutualInformationIndicator extends CachedIndicator<Num> {
      * @param first    first numeric indicator
      * @param second   second numeric indicator
      * @param barCount rolling window length, must be at least 2
-     * @param binCount number of equal-width bins, must be at least 2
+     * @param binCount number of equal-width bins, must be at least 2; larger values
+     *                 increase resolution but can produce sparse bins on small or
+     *                 skewed windows
      * @throws IllegalArgumentException if {@code barCount < 2},
      *                                  {@code binCount < 2}, or indicators use
      *                                  different series

@@ -68,12 +68,25 @@ public class RegimeSegmentedCorrelationIndicatorTest extends AbstractIndicatorTe
     }
 
     @Test
-    public void returnsNaNWhenActiveRegimeSampleIsNaN() {
+    public void skipsNonFiniteActiveRegimeSamples() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
         Indicator<Num> first = new MockIndicator(series,
                 List.of(numFactory.one(), numFactory.two(), NaN.NaN, numFactory.numOf(4), numFactory.numOf(5)));
         Indicator<Num> second = indicator(series, 2, 4, 6, 8, 10);
         Indicator<Boolean> regime = new FixedBooleanIndicator(series, false, false, true, true, true);
+        RegimeSegmentedCorrelationIndicator correlation = new RegimeSegmentedCorrelationIndicator(first, second, regime,
+                5);
+
+        assertNumEquals(1, correlation.getValue(4));
+    }
+
+    @Test
+    public void returnsNaNWhenNonFiniteSamplesLeaveTooFewActivePairs() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        Indicator<Num> first = new MockIndicator(series,
+                List.of(numFactory.one(), numFactory.two(), NaN.NaN, numFactory.numOf(4), numFactory.numOf(5)));
+        Indicator<Num> second = indicator(series, 2, 4, 6, 8, 10);
+        Indicator<Boolean> regime = new FixedBooleanIndicator(series, false, false, true, false, true);
         RegimeSegmentedCorrelationIndicator correlation = new RegimeSegmentedCorrelationIndicator(first, second, regime,
                 5);
 

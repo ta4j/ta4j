@@ -32,6 +32,14 @@ final class CorrelationWindowSupport {
         return binCount;
     }
 
+    static int validateLag(int lag, int barCount) {
+        long absoluteLag = Math.abs((long) lag);
+        if (absoluteLag > Integer.MAX_VALUE - (long) barCount) {
+            throw new IllegalArgumentException("absolute lag is too large for barCount");
+        }
+        return lag;
+    }
+
     static int unstableBars(int barCount, Indicator<?> first, Indicator<?> second) {
         int baseUnstableBars = Math.max(first.getCountOfUnstableBars(), second.getCountOfUnstableBars());
         return baseUnstableBars + barCount - 1;
@@ -44,16 +52,18 @@ final class CorrelationWindowSupport {
     }
 
     static int laggedUnstableBars(int barCount, int lag, Indicator<?> first, Indicator<?> second) {
-        int firstOffset = Math.max(lag, 0);
-        int secondOffset = Math.max(-lag, 0);
-        int firstUnstable = first.getCountOfUnstableBars() + firstOffset;
-        int secondUnstable = second.getCountOfUnstableBars() + secondOffset;
-        return Math.max(firstUnstable, secondUnstable) + barCount - 1;
+        long firstOffset = Math.max((long) lag, 0L);
+        long secondOffset = Math.max(-(long) lag, 0L);
+        long firstUnstable = (long) first.getCountOfUnstableBars() + firstOffset;
+        long secondUnstable = (long) second.getCountOfUnstableBars() + secondOffset;
+        long unstableBars = Math.max(firstUnstable, secondUnstable) + (long) barCount - 1L;
+        return unstableBars > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) unstableBars;
     }
 
     static double[][] pairedWindow(Indicator<Num> first, Indicator<Num> second, int index, int barCount) {
         int startIndex = index - barCount + 1;
-        if (!windowIsAvailable(first.getBarSeries(), startIndex, index)) {
+        if (!windowIsAvailable(first.getBarSeries(), startIndex, index)
+                || !windowIsAvailable(second.getBarSeries(), startIndex, index)) {
             return null;
         }
         double[] firstValues = values(first, startIndex, barCount);
@@ -65,13 +75,21 @@ final class CorrelationWindowSupport {
     }
 
     static double[][] laggedWindow(Indicator<Num> first, Indicator<Num> second, int index, int barCount, int lag) {
-        int secondEndIndex = lag >= 0 ? index : index + lag;
-        int secondStartIndex = secondEndIndex - barCount + 1;
-        int firstStartIndex = secondStartIndex - lag;
-        int firstEndIndex = secondEndIndex - lag;
-        BarSeries series = first.getBarSeries();
-        if (!windowIsAvailable(series, secondStartIndex, secondEndIndex)
-                || !windowIsAvailable(series, firstStartIndex, firstEndIndex)) {
+        long secondEndIndexValue = lag >= 0 ? index : (long) index + lag;
+        long secondStartIndexValue = secondEndIndexValue - (long) barCount + 1L;
+        long firstStartIndexValue = secondStartIndexValue - lag;
+        long firstEndIndexValue = secondEndIndexValue - lag;
+        if (!isIntegerIndex(secondStartIndexValue) || !isIntegerIndex(secondEndIndexValue)
+                || !isIntegerIndex(firstStartIndexValue) || !isIntegerIndex(firstEndIndexValue)) {
+            return null;
+        }
+
+        int secondEndIndex = (int) secondEndIndexValue;
+        int secondStartIndex = (int) secondStartIndexValue;
+        int firstStartIndex = (int) firstStartIndexValue;
+        int firstEndIndex = (int) firstEndIndexValue;
+        if (!windowIsAvailable(first.getBarSeries(), firstStartIndex, firstEndIndex)
+                || !windowIsAvailable(second.getBarSeries(), secondStartIndex, secondEndIndex)) {
             return null;
         }
 
@@ -92,7 +110,9 @@ final class CorrelationWindowSupport {
     static double[][] activeRegimeWindow(Indicator<Num> first, Indicator<Num> second, Indicator<Boolean> regime,
             int index, int barCount) {
         int startIndex = index - barCount + 1;
-        if (!windowIsAvailable(first.getBarSeries(), startIndex, index)) {
+        if (!windowIsAvailable(first.getBarSeries(), startIndex, index)
+                || !windowIsAvailable(second.getBarSeries(), startIndex, index)
+                || !windowIsAvailable(regime.getBarSeries(), startIndex, index)) {
             return null;
         }
 
@@ -106,7 +126,7 @@ final class CorrelationWindowSupport {
             Num firstValue = first.getValue(i);
             Num secondValue = second.getValue(i);
             if (!isFinite(firstValue) || !isFinite(secondValue)) {
-                return null;
+                continue;
             }
             firstValues.add(firstValue.doubleValue());
             secondValues.add(secondValue.doubleValue());
@@ -180,6 +200,10 @@ final class CorrelationWindowSupport {
 
     private static boolean windowIsAvailable(BarSeries series, int startIndex, int endIndex) {
         return startIndex >= series.getBeginIndex() && endIndex <= series.getEndIndex() && startIndex <= endIndex;
+    }
+
+    private static boolean isIntegerIndex(long index) {
+        return index >= Integer.MIN_VALUE && index <= Integer.MAX_VALUE;
     }
 
     private static double[] values(Indicator<Num> indicator, int startIndex, int barCount) {

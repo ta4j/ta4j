@@ -131,44 +131,43 @@ public interface Strategy {
     }
 
     /**
+     * <p>
+     * <b>Implementation note:</b> This overload ignores trading state. In live
+     * execution, prefer {@link #shouldEnter(int, TradingRecord)} so rules can see
+     * open positions and avoid repeated entry signals while a position is already
+     * open.
+     * </p>
+     *
      * @param index the bar index
      * @return true to recommend to enter, false otherwise
-     *
-     *         <p>
-     *         <b>Implementation note:</b> This overload ignores trading state. In
-     *         live execution, prefer {@link #shouldEnter(int, TradingRecord)} so
-     *         rules can see open positions and avoid repeated entry signals while a
-     *         position is already open.
-     *         </p>
      */
     default boolean shouldEnter(int index) {
         return shouldEnter(index, null);
     }
 
     /**
+     * <p>
+     * <b>Implementation note:</b> Use this overload for live systems so entry
+     * decisions include the current position state. After broker-confirmed fills,
+     * keep {@code tradingRecord} synchronized with executed fills.
+     * </p>
+     *
      * @param index         the bar index
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend to enter, false otherwise
-     *
-     *         <p>
-     *         <b>Implementation note:</b> Use this overload for live systems so
-     *         entry decisions include the current position state. After
-     *         broker-confirmed fills, keep {@code tradingRecord} synchronized with
-     *         executed fills.
-     *         </p>
      */
     default boolean shouldEnter(int index, TradingRecord tradingRecord) {
         return !isUnstableAt(index) && getEntryRule().isSatisfied(index, tradingRecord);
     }
 
     /**
+     * <p>
+     * <b>Implementation note:</b> This overload ignores trading state. In live
+     * execution, prefer {@link #shouldExit(int, TradingRecord)}.
+     * </p>
+     *
      * @param index the bar index
      * @return true to recommend to exit, false otherwise
-     *
-     *         <p>
-     *         <b>Implementation note:</b> This overload ignores trading state. In
-     *         live execution, prefer {@link #shouldExit(int, TradingRecord)}.
-     *         </p>
      */
     default boolean shouldExit(int index) {
         return shouldExit(index, null);

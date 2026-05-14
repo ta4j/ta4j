@@ -15,10 +15,12 @@ import org.ta4j.core.num.Num;
  *
  * <p>
  * Only bars where the supplied regime indicator returns {@code true} contribute
- * samples to the correlation. This is useful when the same signal pair should
- * be evaluated separately in trend, range, volatility, or any caller-defined
- * state. Numeric regimes can be converted to Boolean regimes with
- * {@link BooleanTransformIndicator}.
+ * samples to the correlation. Active bars with non-finite numeric values are
+ * ignored; the indicator returns {@code NaN} when fewer than two finite active
+ * samples remain or when Pearson correlation is otherwise undefined. This is
+ * useful when the same signal pair should be evaluated separately in trend,
+ * range, volatility, or any caller-defined state. Numeric regimes can be
+ * converted to Boolean regimes with {@link BooleanTransformIndicator}.
  * </p>
  *
  * @since 0.22.7

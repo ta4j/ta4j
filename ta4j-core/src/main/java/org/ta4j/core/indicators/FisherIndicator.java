@@ -16,7 +16,7 @@ import org.ta4j.core.num.Num;
  * The Fisher Indicator.
  *
  * <p>
- * <b>API note:</b> Minimal deviations in last {@link Num} places are possible.
+ * <b>API note:</b> Minimal deviations in the last decimal places are possible.
  * During calculations this indicator converts {@link Num} to {@link Double
  * double}.
  * </p>

@@ -19,7 +19,9 @@ import org.ta4j.core.num.Num;
  * {@code first[t - lag]} with {@code second[t]}. Negative lag means the first
  * indicator trails the second. Calculations never read beyond the current
  * index; negative lags move the second series' latest sample back far enough to
- * keep both sides historical.
+ * keep both sides historical. Lags with an absolute value greater than or equal
+ * to {@code barCount} are valid; they compare non-overlapping windows and
+ * require more historical data before the indicator becomes stable.
  * </p>
  *
  * @since 0.22.7
@@ -39,7 +41,8 @@ public class LaggedCorrelationIndicator extends CachedIndicator<Num> {
      * @param barCount rolling window length, must be at least 2
      * @param lag      bars by which the first indicator leads ({@code > 0}) or
      *                 trails ({@code < 0}) the second indicator
-     * @throws IllegalArgumentException if {@code barCount < 2} or indicators use
+     * @throws IllegalArgumentException if {@code barCount < 2}, the absolute lag is
+     *                                  too large to index safely, or indicators use
      *                                  different series
      * @throws NullPointerException     if an indicator is null
      * @since 0.22.7
@@ -50,7 +53,7 @@ public class LaggedCorrelationIndicator extends CachedIndicator<Num> {
         this.first = first;
         this.second = second;
         this.barCount = CorrelationWindowSupport.validateBarCount(barCount);
-        this.lag = lag;
+        this.lag = CorrelationWindowSupport.validateLag(lag, this.barCount);
     }
 
     @Override
