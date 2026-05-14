@@ -174,7 +174,7 @@ public final class ElliottScenarioSet {
     }
 
     /**
-     * @return count of scenarios with low confidence (< 0.3)
+     * @return count of scenarios with low confidence ({@code < 0.3})
      * @since 0.22.0
      */
     public int lowConfidenceCount() {

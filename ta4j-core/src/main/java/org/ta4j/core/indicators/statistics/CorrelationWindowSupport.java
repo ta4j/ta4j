@@ -89,11 +89,11 @@ final class CorrelationWindowSupport {
         return new double[][] { firstValues, secondValues };
     }
 
-    static List<double[]> activeRegimeWindow(Indicator<Num> first, Indicator<Num> second, Indicator<Boolean> regime,
+    static double[][] activeRegimeWindow(Indicator<Num> first, Indicator<Num> second, Indicator<Boolean> regime,
             int index, int barCount) {
         int startIndex = index - barCount + 1;
         if (!windowIsAvailable(first.getBarSeries(), startIndex, index)) {
-            return List.of();
+            return null;
         }
 
         List<Double> firstValues = new ArrayList<>();
@@ -106,7 +106,7 @@ final class CorrelationWindowSupport {
             Num firstValue = first.getValue(i);
             Num secondValue = second.getValue(i);
             if (!isFinite(firstValue) || !isFinite(secondValue)) {
-                return List.of();
+                return null;
             }
             firstValues.add(firstValue.doubleValue());
             secondValues.add(secondValue.doubleValue());
@@ -118,7 +118,7 @@ final class CorrelationWindowSupport {
             firstArray[i] = firstValues.get(i);
             secondArray[i] = secondValues.get(i);
         }
-        return List.of(firstArray, secondArray);
+        return new double[][] { firstArray, secondArray };
     }
 
     static Num pearson(NumFactory numFactory, double[] firstValues, double[] secondValues) {

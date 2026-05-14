@@ -3,8 +3,6 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import java.util.List;
-
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
@@ -59,12 +57,11 @@ public class RegimeSegmentedCorrelationIndicator extends CachedIndicator<Num> {
         if (index < getCountOfUnstableBars()) {
             return NaN.NaN;
         }
-        List<double[]> activeValues = CorrelationWindowSupport.activeRegimeWindow(first, second, regime, index,
-                barCount);
-        if (activeValues.size() < 2 || activeValues.get(0).length < 2) {
+        double[][] activeValues = CorrelationWindowSupport.activeRegimeWindow(first, second, regime, index, barCount);
+        if (activeValues == null || activeValues[0].length < 2) {
             return NaN.NaN;
         }
-        return CorrelationWindowSupport.pearson(getBarSeries().numFactory(), activeValues.get(0), activeValues.get(1));
+        return CorrelationWindowSupport.pearson(getBarSeries().numFactory(), activeValues[0], activeValues[1]);
     }
 
     @Override

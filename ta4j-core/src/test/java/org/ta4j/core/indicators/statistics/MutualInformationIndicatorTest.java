@@ -14,6 +14,8 @@ import org.junit.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
+import org.ta4j.core.indicators.averages.SMAIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
 import org.ta4j.core.num.Num;
@@ -55,6 +57,20 @@ public class MutualInformationIndicatorTest extends AbstractIndicatorTest<Indica
         MutualInformationIndicator mutualInformation = new MutualInformationIndicator(constant, changing, 4, 2);
 
         assertNumEquals(0, mutualInformation.getValue(3));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    public void serializesAndRestoresFromJson() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        SMAIndicator average = new SMAIndicator(close, 2);
+        MutualInformationIndicator mutualInformation = new MutualInformationIndicator(close, average, 4, 3);
+
+        Indicator<Num> restored = (Indicator<Num>) Indicator.fromJson(series, mutualInformation.toJson());
+
+        assertTrue(restored instanceof MutualInformationIndicator);
+        assertNumEquals(mutualInformation.getValue(4), restored.getValue(4), 1.0e-12);
     }
 
     @Test
