@@ -22,7 +22,10 @@ import org.ta4j.core.num.Num;
  * Callers provide already-instantiated indicators and stable display names. The
  * manager compares each pair with an absolute population correlation score and
  * places indicators whose average similarity is at or above the requested
- * threshold into the same family.
+ * threshold into the same family. The default constructor uses a 120-bar
+ * rolling correlation window; use
+ * {@link #IndicatorFamilyManager(BarSeries, int)} when shorter or longer
+ * windows better match the analysis horizon.
  *
  * @since 0.22.7
  */
@@ -33,9 +36,10 @@ public final class IndicatorFamilyManager {
     private static final String FAMILY_ID_PREFIX = "family-";
 
     private final BarSeries barSeries;
+    private final int correlationWindow;
 
     /**
-     * Constructor.
+     * Constructor using the default rolling correlation window.
      *
      * @param barSeries bar series shared by every indicator passed to
      *                  {@link #analyze(Map)}
@@ -44,10 +48,31 @@ public final class IndicatorFamilyManager {
      * @since 0.22.7
      */
     public IndicatorFamilyManager(BarSeries barSeries) {
+        this(barSeries, DEFAULT_CORRELATION_WINDOW);
+    }
+
+    /**
+     * Constructor.
+     *
+     * @param barSeries         bar series shared by every indicator passed to
+     *                          {@link #analyze(Map)}
+     * @param correlationWindow number of bars used for each rolling pairwise
+     *                          correlation; must be at least {@code 2}
+     * @throws IllegalArgumentException if {@code barSeries} is empty or
+     *                                  {@code correlationWindow} is less than
+     *                                  {@code 2}
+     * @throws NullPointerException     if {@code barSeries} is {@code null}
+     * @since 0.22.7
+     */
+    public IndicatorFamilyManager(BarSeries barSeries, int correlationWindow) {
         this.barSeries = Objects.requireNonNull(barSeries, "barSeries");
         if (barSeries.isEmpty()) {
             throw new IllegalArgumentException("barSeries must not be empty");
         }
+        if (correlationWindow < 2) {
+            throw new IllegalArgumentException("correlationWindow must be at least 2");
+        }
+        this.correlationWindow = correlationWindow;
     }
 
     /**
@@ -85,7 +110,7 @@ public final class IndicatorFamilyManager {
         for (int left = 0; left < indicatorValues.size(); left++) {
             for (int right = left + 1; right < indicatorValues.size(); right++) {
                 CorrelationCoefficientIndicator correlation = new CorrelationCoefficientIndicator(
-                        indicatorValues.get(left), indicatorValues.get(right), DEFAULT_CORRELATION_WINDOW,
+                        indicatorValues.get(left), indicatorValues.get(right), correlationWindow,
                         SampleType.POPULATION);
                 stableIndex = Math.max(stableIndex,
                         Math.max(correlation.getBarSeries().getBeginIndex(), correlation.getCountOfUnstableBars()));

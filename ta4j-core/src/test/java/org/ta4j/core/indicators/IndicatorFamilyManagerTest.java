@@ -114,6 +114,21 @@ public class IndicatorFamilyManagerTest {
     }
 
     @Test
+    public void customCorrelationWindowControlsStableSamples() {
+        BarSeries series = seriesOf(1, 2, 3);
+        ClosePriceIndicator close = new ClosePriceIndicator(series);
+        Indicator<Num> inverse = BinaryOperationIndicator.product(close, -1);
+
+        IndicatorFamilyResult result = new IndicatorFamilyManager(series, 3)
+                .analyze(namedIndicators(testIndicator("close", close), testIndicator("inverse", inverse)), 0.99);
+
+        assertThat(result.pairSimilarities()).hasSize(1);
+        assertThat(result.pairSimilarities().get(0).similarity()).isEqualTo(1.0);
+        assertThat(result.families()).hasSize(1);
+        assertThat(result.stableIndex()).isEqualTo(2);
+    }
+
+    @Test
     public void resultCollectionsAreImmutable() {
         BarSeries series = increasingSeries(180);
         Indicator<Num> base = mockIndicator(series, index -> index);
@@ -139,6 +154,8 @@ public class IndicatorFamilyManagerTest {
         assertThrows(NullPointerException.class, () -> new IndicatorFamilyManager(null));
         assertThrows(IllegalArgumentException.class, () -> new IndicatorFamilyManager(
                 new BaseBarSeriesBuilder().withBarBuilderFactory(new MockBarBuilderFactory()).build()));
+        assertThrows(IllegalArgumentException.class, () -> new IndicatorFamilyManager(series, 1));
+        assertThrows(IllegalArgumentException.class, () -> new IndicatorFamilyManager(series, 0));
         assertThrows(IllegalArgumentException.class, () -> manager.analyze(Map.of()));
         assertThrows(IllegalArgumentException.class,
                 () -> manager.analyze(namedIndicators(testIndicator("base", base)), Double.NaN));
