@@ -638,6 +638,9 @@ BarSeries liveSeries = new BaseBarSeriesBuilder()
 
 // Build your strategy (same code as backtesting!)
 Strategy strategy = buildStrategy(liveSeries);
+TradingRecord tradingRecord = new BaseTradingRecord(strategy.getStartingType());
+int lastEntryBarIndex = -1;
+int lastExitBarIndex = -1;
 
 // Main trading loop: check for signals on each new bar
 while (true) {
@@ -648,19 +651,49 @@ while (true) {
     int endIndex = liveSeries.getEndIndex();
     
     // Check entry/exit signals (same API as backtesting)
-    if (strategy.shouldEnter(endIndex)) {
-        placeBuyOrder();  // Your order execution logic
-    } else if (strategy.shouldExit(endIndex)) {
+    if (strategy.shouldEnter(endIndex, tradingRecord) && lastEntryBarIndex != endIndex) {
+        placeBuyOrder();  // Place order with your exchange adapter
+        // After broker confirmation/fill:
+        boolean entered = tradingRecord.enter(endIndex, latest.getClosePrice(), liveSeries.numFactory().one());
+        if (entered) {
+            lastEntryBarIndex = endIndex;
+        } else {
+            // Handle state divergence: broker fill succeeded but record update failed.
+            handleRecordSyncFailure("enter", endIndex);
+        }
+    } else if (strategy.shouldExit(endIndex, tradingRecord) && lastExitBarIndex != endIndex) {
         placeSellOrder(); // Your order execution logic
+        // After broker confirmation/fill:
+        boolean exited = tradingRecord.exit(endIndex, latest.getClosePrice(), liveSeries.numFactory().one());
+        if (exited) {
+            lastExitBarIndex = endIndex;
+        } else {
+            // Handle state divergence: broker fill succeeded but record update failed.
+            handleRecordSyncFailure("exit", endIndex);
+        }
     }
     
     Thread.sleep(60000); // Wait 1 minute (or your bar interval)
 }
 ```
+Notes:
+- `shouldEnter(index, tradingRecord)` and `shouldExit(index, tradingRecord)` are the recommended live overloads.
+- Check the return values of `tradingRecord.enter(...)` and `tradingRecord.exit(...)`; a `false` means your record did not accept the transition and requires reconciliation.
+- Use symmetric deduplication guards for both entry and exit paths (`lastEntryBarIndex` / `lastExitBarIndex`) to avoid duplicate orders on repeated signals.
+- ta4j evaluates whatever bar you provide at `index`: replacing the last bar means live-candle evaluation; evaluating only after appending a finished bar means closed-candle evaluation.
+- Keep `tradingRecord` synchronized with confirmed fills (or use `TradingRecord.operate(fill)` for partial fills) so ta4j does not repeatedly signal entry while it still believes no position is open.
+- See the wiki deep-dive: [Live Candle vs Closed Candle Evaluation](https://ta4j.github.io/ta4j-wiki/Live-Candle-vs-Closed-Candle-Evaluation.html).
+
 **Why this works:**
 - **Same code, different data**: Your strategy logic is identical for backtests and live trading
 - **Deterministic**: Same inputs always produce same outputs - critical for testing and debugging
 - **Type-safe**: Compile-time checks catch errors before they cost money
+
+**Execution path references:**
+- Single strategy backtests: [`BarSeriesManager`](https://javadoc.io/doc/org.ta4j/ta4j-core/latest/org/ta4j/core/backtest/BarSeriesManager.html)
+- Large batch runs and ranking: [`BacktestExecutor`](https://javadoc.io/doc/org.ta4j/ta4j-core/latest/org/ta4j/core/backtest/BacktestExecutor.html)
+- Fill timing/slippage/stop-limit behavior: [`TradeExecutionModel`](https://javadoc.io/doc/org.ta4j/ta4j-core/latest/org/ta4j/core/backtest/TradeExecutionModel.html)
+- Fill-aware position state: [`BaseTradingRecord`](https://javadoc.io/doc/org.ta4j/ta4j-core/latest/org/ta4j/core/BaseTradingRecord.html)
 
 ### Migration note: Trade and TradingRecord surfaces
 
@@ -746,6 +779,16 @@ Notes:
   `TradingRecord.operate(fill)`, contrasts that with grouped `Trade.fromFills(...)` recording, and shows how
   `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` change partial-exit matching.
 
+## Production readiness checklist
+
+Before promoting a strategy from research to live execution, verify:
+
+- Your execution assumptions match reality: [Backtesting](https://ta4j.github.io/ta4j-wiki/Backtesting.html)
+- You pass a realism gate: [Backtesting Realism Checklist](https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html)
+- You have startup/recovery/reconciliation procedures: [Live Trading Runbook](https://ta4j.github.io/ta4j-wiki/Live-Trading-Runbook.html)
+- You have symptom-first debug paths for incidents: [Troubleshooting Hub](https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html)
+- Your example and command links are valid in CI: [`scripts/docs-integrity-check.sh`](scripts/docs-integrity-check.sh)
+
 ## Streaming trade ingestion (gap handling)
 
 When you need to aggregate raw trades into time bars, use `ConcurrentBarSeries` with a `TimeBarBuilderFactory`:
@@ -817,6 +860,8 @@ The `ta4j-examples` module includes `SpdrSectorLpplRotationDemo`, a State Street
 
 The `ta4j-examples` module includes runnable examples demonstrating common patterns and strategies:
 
+- **[Examples index and learning tracks](ta4j-examples/README.md)** - Recommended progression from first strategy to live-style workflows
+
 ### Strategy Examples
 - **[RSI2Strategy](ta4j-examples/src/main/java/ta4jexamples/strategies/RSI2Strategy.java)** - Mean reversion strategy using RSI with entry/exit rules
 - **[ADXStrategy](ta4j-examples/src/main/java/ta4jexamples/strategies/ADXStrategy.java)** - Trend-following strategy using ADX and DI indicators
@@ -846,7 +891,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[HighRewardElliottWaveBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/HighRewardElliottWaveBacktest.java)** - Backtests the high-reward Elliott Wave strategy presets.
 - **[SpdrSectorLpplRotationDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/lppl/SpdrSectorLpplRotationDemo.java)** - Runs LPPL crash/bubble exhaustion scoring across the closed State Street SPDR sector ETF universe using adjusted daily resources, incremental Yahoo refresh copies, and deterministic sector report artifacts.
 - **[WyckoffCycleIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleIndicatorSuiteDemo.java)** - Demonstrates the Wyckoff cycle entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`) and prints phase transitions on an ossified bar series dataset
-- **[MultiStrategyBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/MultiStrategyBacktest.java)** - Compare multiple strategies side-by-side
+- **[SimpleMovingAverageRangeBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/SimpleMovingAverageRangeBacktest.java)** - Compare and rank strategy parameter combinations with weighted criteria
 - **[TradeFillRecordingExample](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java)** - Walk through a live-style partial-fill workflow with `TradingRecord.operate(fill)`, inspect `getOpenPositions()` versus `getCurrentPosition()`, and compare `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` partial-exit matching.
 - **[TradingRecordParityBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradingRecordParityBacktest.java)** - Compare next-open, current-close, and slippage execution models side by side, then verify the same fills across default, provided, and factory-configured `BaseTradingRecord` runs.
 - **[BacktestPerformanceTuningHarness](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java)** - Tune backtest performance (strategy count, bar count, cache window hints, heap sweeps)
@@ -860,15 +905,6 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 
 ## Performance
 
-<!-- TODO: Add performance benchmarks and metrics -->
-<!-- Consider including:
-- Backtesting performance (strategies/second, bars/second)
-- Memory usage patterns
-- Comparison with other technical analysis libraries
-- Num type performance characteristics (DecimalNum vs DoubleNum)
-- Real-world usage statistics if available
--->
-
 Ta4j is designed for performance and scalability:
 
 - **Efficient calculations** - Optimized indicator implementations with minimal overhead
@@ -876,7 +912,12 @@ Ta4j is designed for performance and scalability:
 - **Memory-efficient** - Support for moving windows and sub-series to minimize memory footprint
 - **Parallel-friendly** - Strategies can be backtested independently for easy parallelization
 
-For detailed performance characteristics and benchmarks, see the [wiki's performance guide](https://ta4j.github.io/ta4j-wiki/) (TODO: add link when available).
+For performance tuning guidance, start with:
+
+- [Backtesting guide](https://ta4j.github.io/ta4j-wiki/Backtesting.html) for execution-model and batch-run tradeoffs
+- [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html) for precision-vs-speed decisions (`DecimalNum` vs `DoubleNum`)
+- [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java) for reproducible tuning runs
+- [Performance Characterization](https://ta4j.github.io/ta4j-wiki/Performance-Characterization.html) for methodology and interpretation
 
 ## Community & Support
 
@@ -886,26 +927,50 @@ Get help, share ideas, and connect with other Ta4j users:
 - **📖 [Documentation Wiki](https://ta4j.github.io/ta4j-wiki/)** - Comprehensive guides covering indicators, strategies, backtesting, and more
 - **📚 [Javadoc API Reference](https://ta4j.github.io/ta4j/)** - Complete API documentation with examples
 - **🐛 [GitHub Issues](https://github.com/ta4j/ta4j/issues)** - Report bugs, request features, or ask questions
-- **💡 [Usage Examples](https://github.com/ta4j/ta4j/tree/master/ta4j-examples/src/main/java/ta4jexamples)** - Browse runnable code examples in the repository
+- **💡 [Usage Examples](https://github.com/ta4j/ta4j/blob/master/ta4j-examples/README.md)** - Follow curated learning tracks and runnable commands
+
+## Canonical doc map
+
+Use this map when deciding where to read next:
+
+- Entry and quick orientation: this `README.md`
+- Core API decision entrypoints: [`ta4j-core/README.md`](ta4j-core/README.md)
+- Runnable progression and commands: [`ta4j-examples/README.md`](ta4j-examples/README.md)
+- End-to-end path from data to operations: [Canonical User Journey](https://ta4j.github.io/ta4j-wiki/Canonical-User-Journey.html)
+- Production operations: [Live Trading Runbook](https://ta4j.github.io/ta4j-wiki/Live-Trading-Runbook.html)
+- Validation discipline: [Backtesting Realism Checklist](https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html)
+- Incident debugging: [Troubleshooting Hub](https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html)
+- Governance and freshness policy: [Documentation Governance](https://ta4j.github.io/ta4j-wiki/Documentation-Governance.html)
+- API migration and compatibility guidance: [Migration and Version Compatibility](https://ta4j.github.io/ta4j-wiki/Migration-and-Version-Compatibility.html)
+
+### Canonical onboarding lane (first 60 minutes)
+
+For the curated onboarding path, use:
+
+- [Canonical User Journey](https://ta4j.github.io/ta4j-wiki/Canonical-User-Journey.html)
+- [`ta4j-examples/README.md`](ta4j-examples/README.md) for runnable progression
 
 ## What's next?
 
 **New to technical analysis?**
-- Start with the [wiki's Getting Started guide](https://ta4j.github.io/ta4j-wiki/) to learn core concepts
+- Start with the [wiki's Getting Started guide](https://ta4j.github.io/ta4j-wiki/Getting-started.html) to learn core concepts
 - Explore the [`ta4j-examples`](ta4j-examples) module - each example is runnable and well-commented
 - Try modifying the quick start example above: change indicator parameters, add new rules, or test different exit conditions
 
 **Ready to go deeper?**
-- Browse [strategy recipes](https://ta4j.github.io/ta4j-wiki/) for Renko bricks, Ichimoku clouds, breakout strategies, and more
-- Learn about [portfolio metrics](https://ta4j.github.io/ta4j-wiki/) for multi-asset strategies
-- Check out [advanced backtesting patterns](https://ta4j.github.io/ta4j-wiki/) like walk-forward analysis
+- Browse [strategy recipes](https://ta4j.github.io/ta4j-wiki/Trading-strategies.html) for richer rule composition patterns
+- Learn about [portfolio metrics and risk criteria](https://ta4j.github.io/ta4j-wiki/Analysis-Criteria-and-Risk-Metrics.html)
+- Check out [advanced backtesting patterns](https://ta4j.github.io/ta4j-wiki/Walk-Forward-Research.html) like walk-forward analysis
+- Use the [backtesting realism checklist](https://ta4j.github.io/ta4j-wiki/Backtesting-Realism-Checklist.html) before promoting strategies
+- Follow the [live trading runbook](https://ta4j.github.io/ta4j-wiki/Live-Trading-Runbook.html) for startup/recovery/reconciliation guidance
+- Troubleshoot with the [symptom-driven hub](https://ta4j.github.io/ta4j-wiki/Troubleshooting-Hub.html)
 
 **Need help?**
 - See the [Community & Support](#community--support) section above for all available resources
 
 ## Contributing
 
-- Scan the [roadmap](https://ta4j.github.io/ta4j-wiki/Roadmap-and-Tasks.html) and [how-to-contribute guide](https://ta4j.github.io/ta4j-wiki/How-to-contribute).
+- Scan the [roadmap](https://ta4j.github.io/ta4j-wiki/Roadmap-and-Tasks.html) and [how-to-contribute guide](https://github.com/ta4j/ta4j/blob/master/.github/CONTRIBUTING.md).
 - [Fork the repo](http://help.github.com/forking/), open pull requests, and join code discussions on Discord.
 - See the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
 - Run `mvn verify` before opening or updating a pull request. It matches CI and includes advisory SpotBugs and JaCoCo reporting alongside the test suite.
@@ -928,6 +993,8 @@ https://central.sonatype.com/repository/maven-snapshots/
 ### Stable releases
 
 Releases are automated via GitHub workflows. The scheduler builds a release dossier, validates the configured GitHub Models entry, and asks for a SemVer recommendation before dispatching the prepare workflow. The normal production path stays PR-based: merge the generated `release/<version>` PR with a merge commit, then `publish-release.yml` runs release-candidate verification, validates the artifact manifest, deploys to Maven Central, tags the release, creates the GitHub Release, and explicitly dispatches the next snapshot publication. `release-health.yml` then verifies repo-state drift on `master` pushes and release handoffs, and it treats snapshot publication as authoritative once `snapshot.yml` has finished so a healthy release does not fail during the async publish-to-snapshot handoff.
+
+The prepare-release workflow also runs a Java-based removal-ready deprecation scanner: first as a release gate for due or overdue removals, then against the new snapshot version to sync managed GitHub cleanup issues with an attached report artifact.
 
 For operator details, recovery mode, required variables/secrets, and audit artifacts, see [RELEASE_PROCESS.md](RELEASE_PROCESS.md).
 

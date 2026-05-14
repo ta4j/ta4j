@@ -53,7 +53,7 @@ expect_file_matches() {
 }
 
 run_test() {
-  TMP="$(mktemp -d)"
+  TMP="$(mktemp -d "${TMPDIR:-/tmp}/prepare-release-test.XXXXXX")"
   mkdir -p "$TMP/scripts"
   cp "$SCRIPT" "$TMP/scripts/prepare-release.sh"
   chmod +x "$TMP/scripts/prepare-release.sh"

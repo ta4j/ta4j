@@ -13,14 +13,15 @@ on:
         description: "OPTIONAL: Next snapshot version (e.g. 0.20.1-SNAPSHOT). Leave blank to auto-generate."
         required: false
       dryRun:
-        description: "Run prepare workflow in dry-run mode (no push or PR creation)."
+        description: "Run prepare workflow in dry-run mode (no issue sync, push, or PR creation)."
         required: false
-        default: false
+        default: true
         type: boolean
 
 permissions:
   actions: write
   contents: write
+  issues: write
   pull-requests: write
 
 jobs:
@@ -37,12 +38,15 @@ jobs:
         run: |
           echo "::group::Normalize prepare-release dry-run input"
           raw="${{ github.event.inputs.dryRun }}"
+          if [ -z "$raw" ]; then
+            raw=true
+          fi
           normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
 
-          if [ "$normalized" = "true" ] || [ "$raw" = "true" ] || [ "$raw" = true ] || [ "$raw" = "1" ]; then
-            dry_run=true
-          else
+          if [ "$normalized" = "false" ] || [ "$normalized" = "0" ] || [ "$normalized" = "no" ]; then
             dry_run=false
+          else
+            dry_run=true
           fi
 
           echo "audit:dry_run_input_raw='${raw}'"
@@ -219,6 +223,20 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
           token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
+
+      - name: Validate documentation integrity
+        run: |
+          echo "::group::Validate documentation links and example references"
+          chmod +x scripts/docs-integrity-check.sh
+          scripts/docs-integrity-check.sh
+          echo "::endgroup::"
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
 
       # -----------------------
       # Version Detection
@@ -454,6 +472,49 @@ jobs:
           sha=$(git rev-parse HEAD)
           echo "release_commit=$sha" >> $GITHUB_OUTPUT
 
+      - name: Gate release-ready deprecations
+        id: deprecation_release_gate
+        env:
+          DRY_RUN: ${{ steps.dry_run.outputs.dryRun }}
+          RELEASE_VERSION: ${{ steps.versions.outputs.release }}
+          REPORT_JSON: ${{ runner.temp }}/release-ready-deprecations.json
+          REPORT_MD: ${{ runner.temp }}/release-ready-deprecations.md
+        run: |
+          echo "::group::Gate release-ready deprecations"
+          mvn -B -q -pl ta4j-examples -am -DskipTests install
+
+          set +e
+          mvn -B -q -pl ta4j-examples exec:java \
+            -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner \
+            "-Dexec.args=--repo-root ${GITHUB_WORKSPACE} --pom-file pom.xml --target-removal-version ${RELEASE_VERSION} --include-overdue --fail-on-due --output-json ${REPORT_JSON} --output-md ${REPORT_MD}"
+          scan_status=$?
+          set -e
+          echo "::endgroup::"
+
+          echo "scan_status=$scan_status" >> $GITHUB_OUTPUT
+          echo "report_json=$REPORT_JSON" >> $GITHUB_OUTPUT
+          echo "report_md=$REPORT_MD" >> $GITHUB_OUTPUT
+
+          {
+            echo ""
+            cat "$REPORT_MD"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$DRY_RUN" == "true" ]]; then
+            exit 0
+          fi
+
+          exit "$scan_status"
+
+      - name: Upload release-ready deprecation gate report
+        if: always() && steps.deprecation_release_gate.outputs.report_json != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-ready-deprecations-${{ steps.versions.outputs.release }}
+          path: |
+            ${{ steps.deprecation_release_gate.outputs.report_json }}
+            ${{ steps.deprecation_release_gate.outputs.report_md }}
+
       # -----------------------
       # Apply Next Snapshot Version
       # -----------------------
@@ -473,6 +534,226 @@ jobs:
         if: steps.dry_run.outputs.dryRun != 'true'
         run: |
           git commit -am "Start ${{ steps.versions.outputs.next }}"
+
+      - name: Scan removal-ready deprecations
+        id: deprecation_scan
+        env:
+          NEXT_VERSION: ${{ steps.versions.outputs.next }}
+          REPORT_JSON: ${{ runner.temp }}/removal-ready-deprecations.json
+          REPORT_MD: ${{ runner.temp }}/removal-ready-deprecations.md
+        run: |
+          echo "::group::Scan removal-ready deprecations"
+          NEXT_REMOVAL_VERSION="${NEXT_VERSION%-SNAPSHOT}"
+          mvn -B -q -pl ta4j-examples -am -DskipTests install
+          mvn -B -q -pl ta4j-examples exec:java \
+            -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner \
+            "-Dexec.args=--repo-root ${GITHUB_WORKSPACE} --pom-file pom.xml --target-removal-version ${NEXT_REMOVAL_VERSION} --include-overdue --output-json ${REPORT_JSON} --output-md ${REPORT_MD}"
+          echo "::endgroup::"
+
+          echo "report_json=$REPORT_JSON" >> $GITHUB_OUTPUT
+          echo "report_md=$REPORT_MD" >> $GITHUB_OUTPUT
+
+          {
+            echo ""
+            cat "$REPORT_MD"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Create or update removal-ready deprecation issues
+        id: deprecation_issues
+        if: steps.dry_run.outputs.dryRun != 'true'
+        uses: actions/github-script@v8
+        env:
+          REPORT_JSON: ${{ steps.deprecation_scan.outputs.report_json }}
+          REPORT_WITH_ISSUES_JSON: ${{ runner.temp }}/removal-ready-deprecations-with-issues.json
+          REPORT_WITH_ISSUES_MD: ${{ runner.temp }}/removal-ready-deprecations-with-issues.md
+        with:
+          github-token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
+          script: |
+            const core = require("@actions/core");
+            const fs = require("fs");
+
+            const reportPath = process.env.REPORT_JSON;
+            const outputJsonPath = process.env.REPORT_WITH_ISSUES_JSON;
+            const outputMarkdownPath = process.env.REPORT_WITH_ISSUES_MD;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const syncedIssuesByMarker = new Map();
+
+            if (!reportPath) {
+              throw new Error("Missing REPORT_JSON for deprecation issue sync.");
+            }
+
+            const report = JSON.parse(fs.readFileSync(reportPath, "utf8"));
+            const issuePlans = Array.isArray(report.issuePlans) ? report.issuePlans : [];
+            const removalVersion = report.removalVersion;
+            const activeMarkers = new Set(issuePlans.map((plan) => plan.issueMarker).filter(Boolean));
+
+            function escapeSearchPhrase(value) {
+              return `"${value.replace(/["\\\\]/g, "\\\\$&")}"`;
+            }
+
+            async function findExistingIssue(marker) {
+              if (syncedIssuesByMarker.has(marker)) {
+                return syncedIssuesByMarker.get(marker);
+              }
+
+              const issues = await github.paginate(github.rest.search.issuesAndPullRequests, {
+                q: `repo:${owner}/${repo} is:issue in:body ${escapeSearchPhrase(marker)}`,
+                per_page: 10
+              });
+              const existingIssue = issues.find((issue) => !issue.pull_request && (issue.body || "").includes(marker)) || null;
+              syncedIssuesByMarker.set(marker, existingIssue);
+              return existingIssue;
+            }
+
+            async function findManagedIssuesForVersion() {
+              if (!removalVersion) {
+                return [];
+              }
+
+              const markerSearch = `ta4j:deprecation-removal version=${removalVersion}`;
+              const issues = await github.paginate(github.rest.search.issuesAndPullRequests, {
+                q: `repo:${owner}/${repo} is:issue in:body ${escapeSearchPhrase(markerSearch)}`,
+                per_page: 100
+              });
+              return issues.filter((issue) => !issue.pull_request && (issue.body || "").includes(markerSearch));
+            }
+
+            let createdCount = 0;
+            let updatedCount = 0;
+            let reopenedCount = 0;
+            let closedStaleCount = 0;
+
+            for (const plan of issuePlans) {
+              const marker = plan.issueMarker;
+              if (!marker) {
+                throw new Error(`Missing issue marker for dedupe key ${plan.dedupeKey}`);
+              }
+
+              let existingIssue = await findExistingIssue(marker);
+
+              if (existingIssue) {
+                if (existingIssue.title !== plan.issueTitle || (existingIssue.body || "") !== plan.issueBody) {
+                  existingIssue = (await github.rest.issues.update({
+                    owner,
+                    repo,
+                    issue_number: existingIssue.number,
+                    title: plan.issueTitle,
+                    body: plan.issueBody
+                  })).data;
+                  updatedCount += 1;
+                }
+
+                if (existingIssue.state !== "open") {
+                  existingIssue = (await github.rest.issues.update({
+                    owner,
+                    repo,
+                    issue_number: existingIssue.number,
+                    state: "open"
+                  })).data;
+                  reopenedCount += 1;
+                }
+              } else {
+                existingIssue = (await github.rest.issues.create({
+                  owner,
+                  repo,
+                  title: plan.issueTitle,
+                  body: plan.issueBody
+                })).data;
+                createdCount += 1;
+              }
+
+              syncedIssuesByMarker.set(marker, existingIssue);
+
+              plan.githubIssue = {
+                number: existingIssue.number,
+                state: existingIssue.state,
+                url: existingIssue.html_url
+              };
+            }
+
+            for (const issue of await findManagedIssuesForVersion()) {
+              const body = issue.body || "";
+              const stillPlanned = [...activeMarkers].some((marker) => body.includes(marker));
+              if (!stillPlanned && issue.state === "open") {
+                await github.rest.issues.update({
+                  owner,
+                  repo,
+                  issue_number: issue.number,
+                  state: "closed",
+                  state_reason: "completed"
+                });
+                closedStaleCount += 1;
+              }
+            }
+
+            report.githubIssueSummary = {
+              createdCount,
+              updatedCount,
+              reopenedCount,
+              closedStaleCount,
+              planCount: issuePlans.length
+            };
+
+            const markdownLines = [
+              `# Removal-ready deprecation issue sync for ${report.snapshotVersion}`,
+              "",
+              `- Planned issues: ${issuePlans.length}`,
+              `- Created: ${createdCount}`,
+              `- Updated: ${updatedCount}`,
+              `- Reopened: ${reopenedCount}`,
+              `- Closed stale: ${closedStaleCount}`,
+              ""
+            ];
+
+            if (issuePlans.length === 0) {
+              markdownLines.push("No removal-ready deprecations matched the current snapshot version.");
+            } else {
+              for (const plan of issuePlans) {
+                const issueUrl = plan.githubIssue?.url || "(missing issue url)";
+                const issueNumber = plan.githubIssue?.number || "n/a";
+                markdownLines.push(`## ${plan.issueTitle}`);
+                markdownLines.push("");
+                markdownLines.push(`- Module: \`${plan.module}\``);
+                markdownLines.push(`- File: \`${plan.filePath}\``);
+                markdownLines.push(`- GitHub issue: #${issueNumber} (${issueUrl})`);
+                markdownLines.push("- Symbols:");
+                for (const symbol of plan.symbols || []) {
+                  markdownLines.push(`  - \`${symbol.name}\` (${symbol.kind}, line ${symbol.line})`);
+                }
+                markdownLines.push("");
+              }
+            }
+
+            fs.writeFileSync(outputJsonPath, JSON.stringify(report, null, 2));
+            fs.writeFileSync(outputMarkdownPath, markdownLines.join("\n"));
+
+            core.setOutput("report_json", outputJsonPath);
+            core.setOutput("report_md", outputMarkdownPath);
+            core.setOutput("plan_count", String(issuePlans.length));
+            core.setOutput("created_count", String(createdCount));
+            core.setOutput("updated_count", String(updatedCount));
+            core.setOutput("reopened_count", String(reopenedCount));
+            core.setOutput("closed_stale_count", String(closedStaleCount));
+
+      - name: Upload removal-ready deprecation report
+        if: always() && steps.deprecation_scan.outputs.report_json != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: removal-ready-deprecations-${{ steps.versions.outputs.next }}
+          path: |
+            ${{ steps.deprecation_scan.outputs.report_json }}
+            ${{ steps.deprecation_scan.outputs.report_md }}
+            ${{ steps.deprecation_issues.outputs.report_json }}
+            ${{ steps.deprecation_issues.outputs.report_md }}
+
+      - name: Fail dry-run on release-ready deprecations
+        if: steps.dry_run.outputs.dryRun == 'true' && steps.deprecation_release_gate.outputs.scan_status != '0'
+        env:
+          SCAN_STATUS: ${{ steps.deprecation_release_gate.outputs.scan_status }}
+        run: |
+          echo "Dry-run deprecation gate found release-blocking findings. See the release-ready deprecation report artifact."
+          exit "$SCAN_STATUS"
 
       # -----------------------
       # Push or PR
@@ -549,6 +830,11 @@ jobs:
           RELEASE_BRANCH: release/${{ steps.versions.outputs.release }}
           TARGET_BRANCH: ${{ github.event.repository.default_branch }}
           RELEASE_OWNER: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
+          REMOVAL_PLAN_COUNT: ${{ steps.deprecation_issues.outputs.plan_count }}
+          REMOVAL_CREATED_COUNT: ${{ steps.deprecation_issues.outputs.created_count }}
+          REMOVAL_UPDATED_COUNT: ${{ steps.deprecation_issues.outputs.updated_count }}
+          REMOVAL_REOPENED_COUNT: ${{ steps.deprecation_issues.outputs.reopened_count }}
+          REMOVAL_CLOSED_STALE_COUNT: ${{ steps.deprecation_issues.outputs.closed_stale_count }}
         with:
           github-token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
           script: |
@@ -557,6 +843,11 @@ jobs:
             const releaseCommit = process.env.RELEASE_COMMIT;
             const releaseBranch = process.env.RELEASE_BRANCH;
             const baseBranch = process.env.TARGET_BRANCH;
+            const removalPlanCount = process.env.REMOVAL_PLAN_COUNT || "0";
+            const removalCreatedCount = process.env.REMOVAL_CREATED_COUNT || "0";
+            const removalUpdatedCount = process.env.REMOVAL_UPDATED_COUNT || "0";
+            const removalReopenedCount = process.env.REMOVAL_REOPENED_COUNT || "0";
+            const removalClosedStaleCount = process.env.REMOVAL_CLOSED_STALE_COUNT || "0";
 
             if (!releaseVersion || !nextVersion || !releaseCommit || !releaseBranch || !baseBranch) {
               throw new Error("Missing required release metadata for PR creation.");
@@ -573,6 +864,7 @@ jobs:
               `- Set version to ${releaseVersion}`,
               `- Generated release notes: release/${releaseVersion}.md`,
               `- Bump to next snapshot: ${nextVersion}`,
+              `- Synced removal-ready deprecation issues: ${removalPlanCount} plan(s), ${removalCreatedCount} created, ${removalUpdatedCount} updated, ${removalReopenedCount} reopened, ${removalClosedStaleCount} stale closed`,
               "",
               "<!-- release-meta",
               `releaseVersion: ${releaseVersion}`,
@@ -659,6 +951,11 @@ jobs:
           NEXT: ${{ steps.versions.outputs.next }}
           CURRENT: ${{ steps.versions.outputs.current }}
           RELEASE_COMMIT: ${{ steps.release_commit.outputs.release_commit }}
+          REMOVAL_PLAN_COUNT: ${{ steps.deprecation_issues.outputs.plan_count }}
+          REMOVAL_CREATED_COUNT: ${{ steps.deprecation_issues.outputs.created_count }}
+          REMOVAL_UPDATED_COUNT: ${{ steps.deprecation_issues.outputs.updated_count }}
+          REMOVAL_REOPENED_COUNT: ${{ steps.deprecation_issues.outputs.reopened_count }}
+          REMOVAL_CLOSED_STALE_COUNT: ${{ steps.deprecation_issues.outputs.closed_stale_count }}
         run: |
           echo "summary: dryRun=${DRY_RUN:-}"
           echo "summary: directPush=${DIRECT_PUSH:-}"
@@ -666,6 +963,18 @@ jobs:
           echo "summary: current=${CURRENT:-}"
           echo "summary: next=${NEXT:-}"
           echo "summary: releaseCommit=${RELEASE_COMMIT:-}"
+          echo "summary: removalIssuePlans=${REMOVAL_PLAN_COUNT:-0}"
+          echo "summary: removalIssuesCreated=${REMOVAL_CREATED_COUNT:-0}"
+          echo "summary: removalIssuesUpdated=${REMOVAL_UPDATED_COUNT:-0}"
+          echo "summary: removalIssuesReopened=${REMOVAL_REOPENED_COUNT:-0}"
+          echo "summary: removalIssuesClosedStale=${REMOVAL_CLOSED_STALE_COUNT:-0}"
+          if [ "${DRY_RUN:-false}" = "true" ]; then
+            mutation_plan="would create/update release artifacts, sync deprecation issues, push the release branch, and create/update the release PR"
+            rerun_guidance="rerun prepare-release.yml with dryRun=false after inspecting these computed values and artifacts"
+          else
+            mutation_plan="completed non-dry-run prepare-release mutations for the selected mode"
+            rerun_guidance="not needed for this non-dry-run prepare run"
+          fi
           cat > release-audit.json <<EOF
           {
             "dryRun": "${DRY_RUN:-}",
@@ -674,6 +983,13 @@ jobs:
             "current": "${CURRENT:-}",
             "next": "${NEXT:-}",
             "releaseCommit": "${RELEASE_COMMIT:-}",
+            "mutationPlan": "${mutation_plan}",
+            "rerunGuidance": "${rerun_guidance}",
+            "removalIssuePlans": "${REMOVAL_PLAN_COUNT:-0}",
+            "removalIssuesCreated": "${REMOVAL_CREATED_COUNT:-0}",
+            "removalIssuesUpdated": "${REMOVAL_UPDATED_COUNT:-0}",
+            "removalIssuesReopened": "${REMOVAL_REOPENED_COUNT:-0}",
+            "removalIssuesClosedStale": "${REMOVAL_CLOSED_STALE_COUNT:-0}",
             "runUrl": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           }
           EOF
@@ -686,6 +1002,13 @@ jobs:
             echo "- release: ${RELEASE:-unknown}"
             echo "- next snapshot: ${NEXT:-unknown}"
             echo "- release commit: ${RELEASE_COMMIT:-none}"
+            echo "- removal-ready deprecation issue plans: ${REMOVAL_PLAN_COUNT:-0}"
+            echo "- removal-ready issues created: ${REMOVAL_CREATED_COUNT:-0}"
+            echo "- removal-ready issues updated: ${REMOVAL_UPDATED_COUNT:-0}"
+            echo "- removal-ready issues reopened: ${REMOVAL_REOPENED_COUNT:-0}"
+            echo "- removal-ready stale issues closed: ${REMOVAL_CLOSED_STALE_COUNT:-0}"
+            echo "- mutation plan: ${mutation_plan}"
+            echo "- rerun guidance: ${rerun_guidance}"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload prepare-release audit artifacts
