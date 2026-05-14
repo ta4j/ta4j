@@ -184,10 +184,12 @@ public final class IndicatorFamilyAnalysisDemo {
     private static String topPairs(List<IndicatorFamilyResult.PairSimilarity> pairSimilarities) {
         StringJoiner joiner = new StringJoiner("; ");
         pairSimilarities.stream()
-                .sorted(Comparator.comparingDouble(IndicatorFamilyResult.PairSimilarity::similarity).reversed())
+                .sorted(Comparator
+                        .comparingDouble((IndicatorFamilyResult.PairSimilarity pair) -> pair.similarity().doubleValue())
+                        .reversed())
                 .limit(TOP_PAIR_COUNT)
                 .forEach(pair -> joiner.add(pair.firstIndicatorName() + "/" + pair.secondIndicatorName() + "="
-                        + String.format(Locale.ROOT, "%.3f", pair.similarity())));
+                        + String.format(Locale.ROOT, "%.3f", pair.similarity().doubleValue())));
         return joiner.toString();
     }
 

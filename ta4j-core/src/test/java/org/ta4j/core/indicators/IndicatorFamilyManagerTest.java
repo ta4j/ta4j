@@ -36,7 +36,8 @@ public class IndicatorFamilyManagerTest {
                 .analyze(namedIndicators(testIndicator("close", close), testIndicator("sma", smoothed),
                         testIndicator("closeInverse", closeInverse)), 0.93);
 
-        assertThat(result.similarityThreshold()).isEqualTo(0.93);
+        assertThat(result.similarityThreshold()).isEqualByComparingTo(series.numFactory().numOf("0.93"));
+        assertThat(series.numFactory().produces(result.similarityThreshold())).isTrue();
         assertThat(result.stableIndex()).isEqualTo(121);
         assertThat(result.families()).extracting(IndicatorFamilyResult.Family::indicatorNames)
                 .containsExactly(List.of("close"), List.of("sma"), List.of("closeInverse"));
@@ -79,7 +80,7 @@ public class IndicatorFamilyManagerTest {
 
         assertThat(result.families()).hasSize(1);
         assertThat(result.familyByIndicator().values()).containsOnly("family-001");
-        assertThat(result.pairSimilarities().get(0).similarity()).isEqualTo(1.0);
+        assertThat(result.pairSimilarities().get(0).similarity()).isEqualByComparingTo(series.numFactory().one());
     }
 
     @Test
@@ -95,7 +96,7 @@ public class IndicatorFamilyManagerTest {
         assertThat(series.getBeginIndex()).isEqualTo(150);
         assertThat(result.stableIndex()).isEqualTo(series.getBeginIndex());
         assertThat(result.families()).hasSize(1);
-        assertThat(result.pairSimilarities().get(0).similarity()).isEqualTo(1.0);
+        assertThat(result.pairSimilarities().get(0).similarity()).isEqualByComparingTo(series.numFactory().one());
     }
 
     @Test
@@ -108,7 +109,7 @@ public class IndicatorFamilyManagerTest {
                 .analyze(namedIndicators(testIndicator("close", close), testIndicator("inverse", inverse)), 0.01);
 
         assertThat(result.pairSimilarities()).hasSize(1);
-        assertThat(result.pairSimilarities().get(0).similarity()).isEqualTo(0.0);
+        assertThat(result.pairSimilarities().get(0).similarity()).isEqualByComparingTo(series.numFactory().zero());
         assertThat(result.families()).hasSize(2);
         assertThat(result.stableIndex()).isEqualTo(119);
     }
@@ -123,7 +124,7 @@ public class IndicatorFamilyManagerTest {
                 .analyze(namedIndicators(testIndicator("close", close), testIndicator("inverse", inverse)), 0.99);
 
         assertThat(result.pairSimilarities()).hasSize(1);
-        assertThat(result.pairSimilarities().get(0).similarity()).isEqualTo(1.0);
+        assertThat(result.pairSimilarities().get(0).similarity()).isEqualByComparingTo(series.numFactory().one());
         assertThat(result.families()).hasSize(1);
         assertThat(result.stableIndex()).isEqualTo(2);
     }
@@ -139,8 +140,8 @@ public class IndicatorFamilyManagerTest {
         assertThrows(UnsupportedOperationException.class,
                 () -> result.families().add(new IndicatorFamilyResult.Family("family-999", List.of("other"))));
         assertThrows(UnsupportedOperationException.class, () -> result.families().get(0).indicatorNames().add("other"));
-        assertThrows(UnsupportedOperationException.class,
-                () -> result.pairSimilarities().add(new IndicatorFamilyResult.PairSimilarity("a", "b", 0.5)));
+        assertThrows(UnsupportedOperationException.class, () -> result.pairSimilarities()
+                .add(new IndicatorFamilyResult.PairSimilarity("a", "b", series.numFactory().numOf("0.5"))));
     }
 
     @Test

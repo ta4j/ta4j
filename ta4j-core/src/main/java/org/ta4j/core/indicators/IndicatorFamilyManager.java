@@ -15,6 +15,7 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.statistics.CorrelationCoefficientIndicator;
 import org.ta4j.core.indicators.statistics.SampleType;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Groups indicators by similarity over a single {@link BarSeries}.
@@ -32,7 +33,7 @@ import org.ta4j.core.num.Num;
 public final class IndicatorFamilyManager {
 
     private static final int DEFAULT_CORRELATION_WINDOW = 120;
-    private static final double DEFAULT_SIMILARITY_THRESHOLD = 0.93;
+    private static final Number DEFAULT_SIMILARITY_THRESHOLD = 0.93;
     private static final String FAMILY_ID_PREFIX = "family-";
 
     private final BarSeries barSeries;
@@ -91,12 +92,14 @@ public final class IndicatorFamilyManager {
      *
      * @param indicators          named indicators in deterministic iteration order
      * @param similarityThreshold minimum absolute average correlation required to
-     *                            merge two indicators into the same family
+     *                            merge two indicators into the same family;
+     *                            converted with this manager's {@link BarSeries}
+     *                            number factory
      * @return family analysis result
      * @since 0.22.7
      */
-    public IndicatorFamilyResult analyze(Map<String, Indicator<Num>> indicators, double similarityThreshold) {
-        validateSimilarityThreshold(similarityThreshold);
+    public IndicatorFamilyResult analyze(Map<String, Indicator<Num>> indicators, Number similarityThreshold) {
+        Num threshold = requireSimilarityThreshold(similarityThreshold);
         LinkedHashMap<String, Indicator<Num>> orderedIndicators = validateIndicators(indicators);
 
         List<String> indicatorNames = new ArrayList<>(orderedIndicators.keySet());
@@ -115,7 +118,7 @@ public final class IndicatorFamilyManager {
                 stableIndex = Math.max(stableIndex,
                         Math.max(correlation.getBarSeries().getBeginIndex(), correlation.getCountOfUnstableBars()));
 
-                double similarity = estimatePairSimilarity(correlation);
+                Num similarity = estimatePairSimilarity(correlation);
                 String leftName = indicatorNames.get(left);
                 String rightName = indicatorNames.get(right);
                 indexedPairSimilarities.add(new PairSimilarityWithIndexes(left, right, similarity));
@@ -124,10 +127,9 @@ public final class IndicatorFamilyManager {
         }
 
         List<IndicatorFamilyResult.Family> families = clusterIntoFamilies(indicatorNames, indexedPairSimilarities,
-                similarityThreshold);
+                threshold);
         Map<String, String> familyByIndicator = mapIndicatorToFamily(families);
-        return new IndicatorFamilyResult(similarityThreshold, stableIndex, familyByIndicator, families,
-                pairSimilarities);
+        return new IndicatorFamilyResult(threshold, stableIndex, familyByIndicator, families, pairSimilarities);
     }
 
     private LinkedHashMap<String, Indicator<Num>> validateIndicators(Map<String, Indicator<Num>> indicators) {
@@ -153,10 +155,19 @@ public final class IndicatorFamilyManager {
         return orderedIndicators;
     }
 
-    private static void validateSimilarityThreshold(double similarityThreshold) {
-        if (!Double.isFinite(similarityThreshold) || similarityThreshold < 0.0 || similarityThreshold > 1.0) {
+    private Num requireSimilarityThreshold(Number similarityThreshold) {
+        Objects.requireNonNull(similarityThreshold, "similarityThreshold");
+        Num threshold;
+        try {
+            threshold = barSeries.numFactory().numOf(similarityThreshold);
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("similarityThreshold must be between 0.0 and 1.0", exception);
+        }
+        if (IndicatorUtils.isInvalid(threshold) || threshold.isNegative()
+                || threshold.isGreaterThan(barSeries.numFactory().one())) {
             throw new IllegalArgumentException("similarityThreshold must be between 0.0 and 1.0");
         }
+        return threshold;
     }
 
     private static int maximumUnstableBars(List<Indicator<Num>> indicators) {
@@ -167,11 +178,12 @@ public final class IndicatorFamilyManager {
         return unstableBars;
     }
 
-    private static double estimatePairSimilarity(CorrelationCoefficientIndicator correlation) {
+    private static Num estimatePairSimilarity(CorrelationCoefficientIndicator correlation) {
         int startIndex = Math.max(Math.max(0, correlation.getBarSeries().getBeginIndex()),
                 correlation.getCountOfUnstableBars());
         int endIndex = correlation.getBarSeries().getEndIndex();
-        double total = 0.0;
+        NumFactory numFactory = correlation.getBarSeries().numFactory();
+        Num total = numFactory.zero();
         int samples = 0;
         for (int index = startIndex; index <= endIndex; index++) {
             Num value = correlation.getValue(index);
@@ -179,23 +191,20 @@ public final class IndicatorFamilyManager {
                 continue;
             }
 
-            double similarity = Math.abs(value.doubleValue());
-            if (Double.isFinite(similarity)) {
-                total += similarity;
-                samples++;
-            }
+            total = total.plus(value.abs());
+            samples++;
         }
         if (samples == 0) {
-            return 0.0;
+            return numFactory.zero();
         }
-        return clamp(total / samples);
+        return clamp(total.dividedBy(numFactory.numOf(samples)), numFactory);
     }
 
     private static List<IndicatorFamilyResult.Family> clusterIntoFamilies(List<String> indicatorNames,
-            List<PairSimilarityWithIndexes> pairSimilarities, double similarityThreshold) {
+            List<PairSimilarityWithIndexes> pairSimilarities, Num similarityThreshold) {
         UnionFind unionFind = new UnionFind(indicatorNames.size());
         for (PairSimilarityWithIndexes pair : pairSimilarities) {
-            if (pair.similarity() >= similarityThreshold) {
+            if (pair.similarity().isGreaterThanOrEqual(similarityThreshold)) {
                 unionFind.union(pair.leftIndex(), pair.rightIndex());
             }
         }
@@ -223,11 +232,11 @@ public final class IndicatorFamilyManager {
         return familyByIndicator;
     }
 
-    private static double clamp(double value) {
-        return Math.max(0.0, Math.min(1.0, value));
+    private static Num clamp(Num value, NumFactory numFactory) {
+        return value.max(numFactory.zero()).min(numFactory.one());
     }
 
-    private record PairSimilarityWithIndexes(int leftIndex, int rightIndex, double similarity) {
+    private record PairSimilarityWithIndexes(int leftIndex, int rightIndex, Num similarity) {
     }
 
     private static final class UnionFind {

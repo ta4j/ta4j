@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import org.ta4j.core.num.Num;
+
 /**
  * Immutable output from {@link IndicatorFamilyManager}.
  *
@@ -21,7 +23,7 @@ import java.util.Objects;
  *                            deterministic order
  * @since 0.22.7
  */
-public record IndicatorFamilyResult(double similarityThreshold, int stableIndex, Map<String, String> familyByIndicator,
+public record IndicatorFamilyResult(Num similarityThreshold, int stableIndex, Map<String, String> familyByIndicator,
         List<Family> families, List<PairSimilarity> pairSimilarities) {
 
     /**
@@ -30,9 +32,7 @@ public record IndicatorFamilyResult(double similarityThreshold, int stableIndex,
      * @since 0.22.7
      */
     public IndicatorFamilyResult {
-        if (!Double.isFinite(similarityThreshold) || similarityThreshold < 0.0 || similarityThreshold > 1.0) {
-            throw new IllegalArgumentException("similarityThreshold must be between 0.0 and 1.0");
-        }
+        similarityThreshold = requireUnitInterval(similarityThreshold, "similarityThreshold");
         if (stableIndex < 0) {
             throw new IllegalArgumentException("stableIndex must be >= 0");
         }
@@ -54,6 +54,16 @@ public record IndicatorFamilyResult(double similarityThreshold, int stableIndex,
                     Objects.requireNonNull(entry.getValue(), "map values must not be null"));
         }
         return Collections.unmodifiableMap(ordered);
+    }
+
+    private static Num requireUnitInterval(Num value, String argumentName) {
+        Objects.requireNonNull(value, argumentName);
+        Num zero = value.getNumFactory().zero();
+        Num one = value.getNumFactory().one();
+        if (IndicatorUtils.isInvalid(value) || value.isLessThan(zero) || value.isGreaterThan(one)) {
+            throw new IllegalArgumentException(argumentName + " must be between 0.0 and 1.0");
+        }
+        return value;
     }
 
     /**
@@ -96,7 +106,7 @@ public record IndicatorFamilyResult(double similarityThreshold, int stableIndex,
      *                            {@code [0, 1]}
      * @since 0.22.7
      */
-    public record PairSimilarity(String firstIndicatorName, String secondIndicatorName, double similarity) {
+    public record PairSimilarity(String firstIndicatorName, String secondIndicatorName, Num similarity) {
 
         /**
          * Creates a validated pair-similarity record.
@@ -109,9 +119,7 @@ public record IndicatorFamilyResult(double similarityThreshold, int stableIndex,
             if (firstIndicatorName.isBlank() || secondIndicatorName.isBlank()) {
                 throw new IllegalArgumentException("indicator names must not be blank");
             }
-            if (!Double.isFinite(similarity) || similarity < 0.0 || similarity > 1.0) {
-                throw new IllegalArgumentException("similarity must be between 0.0 and 1.0");
-            }
+            similarity = requireUnitInterval(similarity, "similarity");
         }
     }
 }
