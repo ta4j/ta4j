@@ -8,7 +8,7 @@
 - **Release automation audit artifacts**: Release workflows now emit structured release dossiers, model catalog preflight data, normalized AI decisions, exact artifact manifests, tag-resolution snapshots, full-build logs, and workflow summaries so release failures can be diagnosed from the exact step that produced them.
 - **Report-producing analysis demos can run on demand or on schedule**: The new standalone `analysis-demo` JUnit tag starts with a live Elliott Wave BTC/USD macro report backed by Coinbase daily candles, plus a dedicated GitHub Actions workflow that can be manually run for provider-qualified instruments like `coinbase:BTC-USD` and uploads the resulting JSON, chart, and cached data artifacts.
 - **Elliott macro-cycle replay has a dedicated runner path**: The BTC macro-cycle replay regression now uses the explicit `elliott-macro-cycle-replay` JUnit tag and a manual-only self-hosted GitHub Actions workflow, keeping the multi-hour replay out of hosted PR verification and report-producing analysis-demo runs.
-- **PULL_REQUESTS.md** new AI agent facing rules on handling pull requests
+- **PULL_REQUESTS.md guidance for AI agents**: New rules were added for handling pull requests.
 
 ### Changed
 - **GitHub workflow action pins now stay on the current supported lines**: Maintainers can rerun CI, release, snapshot, and release-freeze automation without tripping over deprecated hosted-action runtimes because the workflow set now consistently uses the current official `actions/*` majors (`checkout@v6`, `cache@v5`, `setup-java@v5`, `github-script@v9`, and `upload-artifact@v7`) plus the current release-publishing and linting actions (`softprops/action-gh-release@v3`, `rhysd/actionlint@v1.7.12`) across fast feedback and release lanes (`CF-160`).
