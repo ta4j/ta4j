@@ -14,6 +14,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Stream;
 
 import org.junit.jupiter.api.Test;
@@ -79,6 +80,16 @@ public class ReadmeContentManagerTest {
         String pom = readString(repositoryRoot.resolve("pom.xml"));
         String readme = readString(repositoryRoot.resolve("README.md"));
         String contributing = readString(repositoryRoot.resolve(".github").resolve("CONTRIBUTING.md"));
+        Map<String, String> expectedActionPins = Map.ofEntries(
+                Map.entry("actions/setup-java@", "actions/setup-java@v5"),
+                Map.entry("actions/checkout@", "actions/checkout@v6"), Map.entry("actions/cache@", "actions/cache@v5"),
+                Map.entry("actions/upload-artifact@", "actions/upload-artifact@v7"),
+                Map.entry("actions/github-script@", "actions/github-script@v9"),
+                Map.entry("softprops/action-gh-release@", "softprops/action-gh-release@v3"),
+                Map.entry("rhysd/actionlint@", "rhysd/actionlint@v1.7.12"));
+        List<String> forbiddenActionPins = List.of("actions/checkout@v5", "actions/cache@v4",
+                "actions/upload-artifact@v4", "actions/github-script@v8", "softprops/action-gh-release@v2",
+                "rhysd/actionlint@v1.7.9");
         List<Path> setupJavaWorkflows = new ArrayList<>();
 
         assertTrue(pom.contains("<maven.compiler.release>25</maven.compiler.release>"));
@@ -97,6 +108,19 @@ public class ReadmeContentManagerTest {
                     setupJavaWorkflows.add(path);
                     assertTrue(workflow.contains("java-version: 25"), path + " should set up Java 25");
                     assertFalse(workflow.contains("java-version: 21"), path + " should not set up Java 21");
+                }
+                expectedActionPins.forEach((actionPrefix, expectedPin) -> {
+                    if (workflow.contains(actionPrefix)) {
+                        assertTrue(workflow.contains(expectedPin), path + " should use " + expectedPin);
+                    }
+                });
+                forbiddenActionPins.forEach((forbiddenPin) -> assertFalse(workflow.contains(forbiddenPin),
+                        path + " should not pin " + forbiddenPin));
+                if (path.getFileName().toString().equals("github-release.yml")) {
+                    assertTrue(workflow.contains("path: workflow-support"),
+                            path + " should stage workflow support files separately from the release tag checkout");
+                    assertTrue(workflow.contains("workflow-support/scripts/release/release_helpers.py"), path
+                            + " should validate artifacts with workflow support files, not the checked-out tag tree");
                 }
             });
         }

@@ -43,7 +43,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -211,7 +211,7 @@ jobs:
 
       - name: Check for stale release PRs
         id: stale_prs
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           INPUT_STALE_DAYS: ${{ github.event.inputs.staleDays }}
           VAR_STALE_DAYS: ${{ vars.RELEASE_PR_STALE_DAYS }}
@@ -506,7 +506,7 @@ jobs:
 
       - name: Upload release health audit artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-health-audit-${{ github.run_id }}
           path: |
@@ -520,7 +520,7 @@ jobs:
 
       - name: Post to Release Scheduler discussion
         if: always() && steps.dry_run.outputs.dryRun != 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           RELEASE_SCHEDULER_DISCUSSION_NUMBER: ${{ vars.RELEASE_SCHEDULER_DISCUSSION_NUMBER }}
           RELEASE_NOTIFY_USER: ${{ vars.RELEASE_NOTIFY_USER }}
