@@ -60,7 +60,7 @@ jobs:
       # Setup and Discovery
       # -----------------------
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -660,7 +660,7 @@ jobs:
 
       - name: Upload release scheduler audit artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-scheduler-audit-${{ github.run_id }}
           path: |
@@ -699,7 +699,7 @@ jobs:
     if: needs.analyze.outputs.should_release == 'true' && needs.analyze.outputs.bump != 'major'
     steps:
       - name: Trigger publish workflow
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ github.token }}
           script: |
@@ -730,7 +730,7 @@ jobs:
     if: needs.analyze.outputs.should_release == 'true' && needs.analyze.outputs.bump == 'major' && needs.approval.result == 'success'
     steps:
       - name: Trigger publish workflow
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ github.token }}
           script: |
@@ -954,7 +954,7 @@ jobs:
 
       - name: Post to Release Scheduler discussion
         if: always() && needs.analyze.outputs.dryRun != 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           RELEASE_SCHEDULER_DISCUSSION_NUMBER: ${{ vars.RELEASE_SCHEDULER_DISCUSSION_NUMBER }}
         with:

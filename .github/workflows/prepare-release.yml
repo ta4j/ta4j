@@ -218,7 +218,7 @@ jobs:
           PY
 
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: true
@@ -508,7 +508,7 @@ jobs:
 
       - name: Upload release-ready deprecation gate report
         if: always() && steps.deprecation_release_gate.outputs.report_json != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-ready-deprecations-${{ steps.versions.outputs.release }}
           path: |
@@ -561,7 +561,7 @@ jobs:
       - name: Create or update removal-ready deprecation issues
         id: deprecation_issues
         if: steps.dry_run.outputs.dryRun != 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           REPORT_JSON: ${{ steps.deprecation_scan.outputs.report_json }}
           REPORT_WITH_ISSUES_JSON: ${{ runner.temp }}/removal-ready-deprecations-with-issues.json
@@ -738,7 +738,7 @@ jobs:
 
       - name: Upload removal-ready deprecation report
         if: always() && steps.deprecation_scan.outputs.report_json != ''
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: removal-ready-deprecations-${{ steps.versions.outputs.next }}
           path: |
@@ -779,7 +779,7 @@ jobs:
 
       - name: Dispatch publish-release workflow (direct push)
         if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled == 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           RELEASE_VERSION: ${{ steps.versions.outputs.release }}
           RELEASE_COMMIT: ${{ steps.release_commit.outputs.release_commit }}
@@ -822,7 +822,7 @@ jobs:
 
       - name: Create or update release PR
         if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           RELEASE_VERSION: ${{ steps.versions.outputs.release }}
           NEXT_VERSION: ${{ steps.versions.outputs.next }}
@@ -1013,7 +1013,7 @@ jobs:
 
       - name: Upload prepare-release audit artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: prepare-release-audit-${{ github.run_id }}
           path: |
