@@ -88,6 +88,18 @@ public class VolatilityTrailingStopLossRuleTest extends AbstractIndicatorTest<Ba
     }
 
     @Test
+    public void returnsFalseForIndexBeforeEntry() {
+        BarSeries series = StopRuleTestSupport.series(numFactory, 100, 120, 130);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        ConstantIndicator<Num> volatility = new ConstantIndicator<>(series, numFactory.numOf(5));
+        VolatilityTrailingStopLossRule rule = new VolatilityTrailingStopLossRule(closePrice, volatility, 1);
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+        tradingRecord.enter(2, numFactory.hundred(), numFactory.one());
+
+        assertFalse(rule.isSatisfied(1, tradingRecord));
+    }
+
+    @Test
     public void serializeAndDeserialize() {
         var series = StopRuleTestSupport.series(numFactory, 100, 90, 80, 86);
         var closePrice = new ClosePriceIndicator(series);

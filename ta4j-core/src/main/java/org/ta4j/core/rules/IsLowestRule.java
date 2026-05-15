@@ -41,7 +41,19 @@ public class IsLowestRule extends AbstractRule {
         Num refVal = ref.getValue(index);
 
         final boolean satisfied = !refVal.isNaN() && !lowestVal.isNaN() && refVal.equals(lowestVal);
-        traceIsSatisfied(index, satisfied);
+        if (isTraceEnabled()) {
+            traceIsSatisfied(index, satisfied,
+                    traceContext("currentValue", refVal, "lowestValue", lowestVal, "barCount", barCount, "windowStart",
+                            Math.max(0, index - barCount + 1), "windowEnd", index, "reason",
+                            lowestReason(refVal, lowestVal, satisfied)));
+        }
         return satisfied;
+    }
+
+    private static String lowestReason(Num refVal, Num lowestVal, boolean satisfied) {
+        if (refVal.isNaN() || lowestVal.isNaN()) {
+            return "valueNaN";
+        }
+        return satisfied ? "currentIsLowest" : "currentAboveLowest";
     }
 }

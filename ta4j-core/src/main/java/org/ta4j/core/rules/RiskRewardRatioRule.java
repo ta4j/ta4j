@@ -68,7 +68,7 @@ public class RiskRewardRatioRule extends AbstractRule {
         Num stop = stopIndicator.getValue(index);
         Num target = targetIndicator.getValue(index);
         if (Num.isNaNOrNull(price) || Num.isNaNOrNull(stop) || Num.isNaNOrNull(target)) {
-            traceIsSatisfied(index, false);
+            traceDecision(index, false, price, stop, target, null, null, null, "nanInput");
             return false;
         }
 
@@ -76,14 +76,16 @@ public class RiskRewardRatioRule extends AbstractRule {
         Num reward;
         if (bullish) {
             if (!price.isGreaterThan(stop) || !target.isGreaterThan(price)) {
-                traceIsSatisfied(index, false);
+                String reason = !price.isGreaterThan(stop) ? "priceAtOrBelowStop" : "targetAtOrBelowPrice";
+                traceDecision(index, false, price, stop, target, null, null, null, reason);
                 return false;
             }
             risk = price.minus(stop);
             reward = target.minus(price);
         } else {
             if (!stop.isGreaterThan(price) || !price.isGreaterThan(target)) {
-                traceIsSatisfied(index, false);
+                String reason = !stop.isGreaterThan(price) ? "stopAtOrBelowPrice" : "targetAtOrAbovePrice";
+                traceDecision(index, false, price, stop, target, null, null, null, reason);
                 return false;
             }
             risk = stop.minus(price);
@@ -91,13 +93,28 @@ public class RiskRewardRatioRule extends AbstractRule {
         }
 
         if (risk.isLessThanOrEqual(price.getNumFactory().zero())) {
-            traceIsSatisfied(index, false);
+            traceDecision(index, false, price, stop, target, risk, reward, null, "nonPositiveRisk");
             return false;
         }
 
         Num rr = reward.dividedBy(risk);
         boolean satisfied = rr.isGreaterThanOrEqual(minRiskReward);
-        traceIsSatisfied(index, satisfied);
+        traceDecision(index, satisfied, price, stop, target, risk, reward, rr,
+                satisfied ? "riskRewardMet" : "riskRewardBelowMinimum");
         return satisfied;
+    }
+
+    private void traceDecision(int index, boolean satisfied, Num price, Num stop, Num target, Num risk, Num reward,
+            Num riskReward, String reason) {
+        if (isTraceEnabled()) {
+            traceIsSatisfied(index, satisfied,
+                    traceContext("currentPrice", price, "stopPrice", stop, "targetPrice", target, "side", side(),
+                            "risk", risk, "reward", reward, "riskReward", riskReward, "minRiskReward", minRiskReward,
+                            "reason", reason));
+        }
+    }
+
+    private String side() {
+        return bullish ? "BUY" : "SELL";
     }
 }

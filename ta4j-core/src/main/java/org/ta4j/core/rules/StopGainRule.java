@@ -63,8 +63,8 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
         if (gainPercentage == null) {
             throw new IllegalArgumentException("gainPercentage must not be null");
         }
-        var hundred = entryPrice.getNumFactory().hundred();
-        var gainRatioThreshold = isBuy ? hundred.plus(gainPercentage).dividedBy(hundred)
+        Num hundred = entryPrice.getNumFactory().hundred();
+        Num gainRatioThreshold = isBuy ? hundred.plus(gainPercentage).dividedBy(hundred)
                 : hundred.minus(gainPercentage).dividedBy(hundred);
         return entryPrice.multipliedBy(gainRatioThreshold);
     }
@@ -107,8 +107,8 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
         if (retracementPercentage == null) {
             throw new IllegalArgumentException("retracementPercentage must not be null");
         }
-        var hundred = favorablePrice.getNumFactory().hundred();
-        var retracementRatioThreshold = isBuy ? hundred.minus(retracementPercentage).dividedBy(hundred)
+        Num hundred = favorablePrice.getNumFactory().hundred();
+        Num retracementRatioThreshold = isBuy ? hundred.minus(retracementPercentage).dividedBy(hundred)
                 : hundred.plus(retracementPercentage).dividedBy(hundred);
         return favorablePrice.multipliedBy(retracementRatioThreshold);
     }
@@ -156,33 +156,26 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        var satisfied = false;
-        // No trading history or no position opened, no loss
-        if (tradingRecord != null) {
-            Position currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition.isOpened()) {
-
-                var entryPrice = currentPosition.getEntry().getNetPrice();
-                var currentPrice = priceIndicator.getValue(index);
-
-                if (currentPosition.getEntry().isBuy()) {
-                    satisfied = isBuyGainSatisfied(entryPrice, currentPrice);
-                } else {
-                    satisfied = isSellGainSatisfied(entryPrice, currentPrice);
-                }
-            }
+        if (tradingRecord == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noTradingRecord");
+            return false;
         }
-        traceIsSatisfied(index, satisfied);
+
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        if (!currentPosition.isOpened()) {
+            StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
+            return false;
+        }
+
+        Num entryPrice = currentPosition.getEntry().getNetPrice();
+        Num currentPrice = priceIndicator.getValue(index);
+        boolean buy = currentPosition.getEntry().isBuy();
+        Num stopPrice = stopGainPrice(entryPrice, gainPercentage, buy);
+        boolean satisfied = buy ? currentPrice.isGreaterThanOrEqual(stopPrice)
+                : currentPrice.isLessThanOrEqual(stopPrice);
+        String reason = satisfied ? "stopReached" : buy ? "priceBelowStop" : "priceAboveStop";
+        StopRuleTrace.traceDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice, "gainPercentage",
+                gainPercentage, reason);
         return satisfied;
-    }
-
-    private boolean isBuyGainSatisfied(Num entryPrice, Num currentPrice) {
-        var threshold = stopGainPrice(entryPrice, gainPercentage, true);
-        return currentPrice.isGreaterThanOrEqual(threshold);
-    }
-
-    private boolean isSellGainSatisfied(Num entryPrice, Num currentPrice) {
-        var threshold = stopGainPrice(entryPrice, gainPercentage, false);
-        return currentPrice.isLessThanOrEqual(threshold);
     }
 }

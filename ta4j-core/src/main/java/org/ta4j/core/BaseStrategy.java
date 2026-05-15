@@ -189,15 +189,59 @@ public class BaseStrategy implements Strategy {
 
     @Override
     public boolean shouldEnter(int index, TradingRecord tradingRecord) {
-        boolean enter = Strategy.super.shouldEnter(index, tradingRecord);
-        traceShouldEnter(index, enter);
+        return evaluateShouldEnter(index, tradingRecord, Rule.TraceMode.VERBOSE);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.7
+     */
+    @Override
+    public boolean shouldEnterWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
+        return evaluateShouldEnter(index, tradingRecord, traceMode);
+    }
+
+    private boolean evaluateShouldEnter(int index, TradingRecord tradingRecord, Rule.TraceMode requestedTraceMode) {
+        Rule.TraceMode activeTraceMode = requestedTraceMode == null ? Rule.TraceMode.VERBOSE : requestedTraceMode;
+        boolean traceLoggingEnabled = log.isTraceEnabled();
+        if (isUnstableAt(index)) {
+            traceShouldEnter(index, false, traceLoggingEnabled, activeTraceMode, "unstable");
+            return false;
+        }
+        boolean enter = traceLoggingEnabled
+                ? getEntryRule().isSatisfiedWithTraceMode(index, tradingRecord, activeTraceMode)
+                : getEntryRule().isSatisfied(index, tradingRecord);
+        traceShouldEnter(index, enter, traceLoggingEnabled, activeTraceMode, enter ? null : "entryRule");
         return enter;
     }
 
     @Override
     public boolean shouldExit(int index, TradingRecord tradingRecord) {
-        boolean exit = Strategy.super.shouldExit(index, tradingRecord);
-        traceShouldExit(index, exit);
+        return evaluateShouldExit(index, tradingRecord, Rule.TraceMode.VERBOSE);
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @since 0.22.7
+     */
+    @Override
+    public boolean shouldExitWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
+        return evaluateShouldExit(index, tradingRecord, traceMode);
+    }
+
+    private boolean evaluateShouldExit(int index, TradingRecord tradingRecord, Rule.TraceMode requestedTraceMode) {
+        Rule.TraceMode activeTraceMode = requestedTraceMode == null ? Rule.TraceMode.VERBOSE : requestedTraceMode;
+        boolean traceLoggingEnabled = log.isTraceEnabled();
+        if (isUnstableAt(index)) {
+            traceShouldExit(index, false, traceLoggingEnabled, activeTraceMode, "unstable");
+            return false;
+        }
+        boolean exit = traceLoggingEnabled
+                ? getExitRule().isSatisfiedWithTraceMode(index, tradingRecord, activeTraceMode)
+                : getExitRule().isSatisfied(index, tradingRecord);
+        traceShouldExit(index, exit, traceLoggingEnabled, activeTraceMode, exit ? null : "exitRule");
         return exit;
     }
 
@@ -249,8 +293,14 @@ public class BaseStrategy implements Strategy {
      * @param enter true if the strategy should enter, false otherwise
      */
     protected void traceShouldEnter(int index, boolean enter) {
-        if (log.isTraceEnabled()) {
-            log.trace(">>> {}#shouldEnter({}): {}", getTraceDisplayName(), index, enter);
+        traceShouldEnter(index, enter, log.isTraceEnabled(), Rule.TraceMode.VERBOSE, enter ? null : "entryRule");
+    }
+
+    private void traceShouldEnter(int index, boolean enter, boolean traceLoggingEnabled, Rule.TraceMode activeTraceMode,
+            String reason) {
+        if (traceLoggingEnabled) {
+            log.trace(">>> {}#shouldEnter({}): {} mode={}{}", getTraceDisplayName(), index, enter, activeTraceMode,
+                    strategyTraceContext(reason));
         }
     }
 
@@ -261,8 +311,24 @@ public class BaseStrategy implements Strategy {
      * @param exit  true if the strategy should exit, false otherwise
      */
     protected void traceShouldExit(int index, boolean exit) {
-        if (log.isTraceEnabled()) {
-            log.trace(">>> {}#shouldExit({}): {}", getTraceDisplayName(), index, exit);
+        traceShouldExit(index, exit, log.isTraceEnabled(), Rule.TraceMode.VERBOSE, exit ? null : "exitRule");
+    }
+
+    private void traceShouldExit(int index, boolean exit, boolean traceLoggingEnabled, Rule.TraceMode activeTraceMode,
+            String reason) {
+        if (traceLoggingEnabled) {
+            log.trace(">>> {}#shouldExit({}): {} mode={}{}", getTraceDisplayName(), index, exit, activeTraceMode,
+                    strategyTraceContext(reason));
         }
+    }
+
+    private String strategyTraceContext(String reason) {
+        if (reason == null) {
+            return "";
+        }
+        if ("unstable".equals(reason)) {
+            return " reason=unstable unstableBars=" + unstableBars;
+        }
+        return " reason=" + reason;
     }
 }

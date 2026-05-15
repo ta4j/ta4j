@@ -63,8 +63,8 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
         if (lossPercentage == null) {
             throw new IllegalArgumentException("lossPercentage must not be null");
         }
-        var hundred = entryPrice.getNumFactory().hundred();
-        var lossRatioThreshold = isBuy ? hundred.minus(lossPercentage).dividedBy(hundred)
+        Num hundred = entryPrice.getNumFactory().hundred();
+        Num lossRatioThreshold = isBuy ? hundred.minus(lossPercentage).dividedBy(hundred)
                 : hundred.plus(lossPercentage).dividedBy(hundred);
         return entryPrice.multipliedBy(lossRatioThreshold);
     }
@@ -113,47 +113,26 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        // No trading history or no position opened, no loss
-        if (tradingRecord != null) {
-            var currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition.isOpened()) {
-
-                var entryPrice = currentPosition.getEntry().getNetPrice();
-                var currentPrice = priceIndicator.getValue(index);
-
-                if (currentPosition.getEntry().isBuy()) {
-                    satisfied = isBuyStopSatisfied(entryPrice, currentPrice);
-                } else {
-                    satisfied = isSellStopSatisfied(entryPrice, currentPrice);
-                }
-            }
+        if (tradingRecord == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noTradingRecord");
+            return false;
         }
-        traceIsSatisfied(index, satisfied);
+
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        if (!currentPosition.isOpened()) {
+            StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
+            return false;
+        }
+
+        Num entryPrice = currentPosition.getEntry().getNetPrice();
+        Num currentPrice = priceIndicator.getValue(index);
+        boolean buy = currentPosition.getEntry().isBuy();
+        Num stopPrice = stopLossPrice(entryPrice, lossPercentage, buy);
+        boolean satisfied = buy ? currentPrice.isLessThanOrEqual(stopPrice)
+                : currentPrice.isGreaterThanOrEqual(stopPrice);
+        String reason = satisfied ? "stopReached" : buy ? "priceAboveStop" : "priceBelowStop";
+        StopRuleTrace.traceDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice, "lossPercentage",
+                lossPercentage, reason);
         return satisfied;
-    }
-
-    /**
-     * Checks stop-loss trigger condition for a long position.
-     *
-     * @param entryPrice   entry price
-     * @param currentPrice current price
-     * @return {@code true} when current price reaches long stop-loss threshold
-     */
-    private boolean isBuyStopSatisfied(Num entryPrice, Num currentPrice) {
-        var threshold = stopLossPrice(entryPrice, lossPercentage, true);
-        return currentPrice.isLessThanOrEqual(threshold);
-    }
-
-    /**
-     * Checks stop-loss trigger condition for a short position.
-     *
-     * @param entryPrice   entry price
-     * @param currentPrice current price
-     * @return {@code true} when current price reaches short stop-loss threshold
-     */
-    private boolean isSellStopSatisfied(Num entryPrice, Num currentPrice) {
-        var threshold = stopLossPrice(entryPrice, lossPercentage, false);
-        return currentPrice.isGreaterThanOrEqual(threshold);
     }
 }

@@ -52,6 +52,10 @@ public class OrWithThresholdRule extends AbstractRule {
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         if (index - this.threshold + 1 < 0) {
+            if (isTraceEnabled()) {
+                traceIsSatisfied(index, false, traceContext("threshold", threshold, "windowStart", 0, "windowEnd",
+                        index, "reason", "insufficientBars"));
+            }
             return false;
         }
 
@@ -59,10 +63,10 @@ public class OrWithThresholdRule extends AbstractRule {
         boolean isSecondSatisfied = false;
         for (int i = index - this.threshold + 1; i <= index; i++) {
             if (!isFirstSatisfied) {
-                isFirstSatisfied = rule1.isSatisfied(i, tradingRecord);
+                isFirstSatisfied = evaluateChildRule(rule1, "rule1", i, tradingRecord);
             }
             if (!isSecondSatisfied) {
-                isSecondSatisfied = rule2.isSatisfied(i, tradingRecord);
+                isSecondSatisfied = evaluateChildRule(rule2, "rule2", i, tradingRecord);
             }
 
             if (isFirstSatisfied || isSecondSatisfied) {
@@ -70,7 +74,12 @@ public class OrWithThresholdRule extends AbstractRule {
             }
         }
         final boolean satisfied = isFirstSatisfied || isSecondSatisfied;
-        traceIsSatisfied(index, satisfied);
+        if (isTraceEnabled()) {
+            traceIsSatisfied(index, satisfied,
+                    traceContext("threshold", threshold, "windowStart", index - this.threshold + 1, "windowEnd", index,
+                            "rule1", isFirstSatisfied, "rule2", isSecondSatisfied, "reason",
+                            satisfied ? null : "allRulesFalse"));
+        }
         return satisfied;
     }
 

@@ -62,6 +62,18 @@ public class TrailingFixedAmountStopLossRuleTest extends AbstractIndicatorTest<O
     }
 
     @Test
+    public void returnsFalseForIndexBeforeEntry() {
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(
+                new MockBarSeriesBuilder().withNumFactory(numFactory).withData(100, 110, 120).build());
+
+        TrailingFixedAmountStopLossRule rule = new TrailingFixedAmountStopLossRule(closePrice, numOf(10));
+        tradingRecord.enter(2, numOf(114), numFactory.one());
+
+        assertFalse(rule.isSatisfied(1, tradingRecord));
+    }
+
+    @Test
     public void isSatisfiedForSell() {
         BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.SELL);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)

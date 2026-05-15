@@ -94,63 +94,51 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        if (tradingRecord != null) {
-            Position currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition.isOpened()) {
-                Num entryPrice = currentPosition.getEntry().getNetPrice();
-                Num currentPrice = priceIndicator.getValue(index);
-                int positionIndex = currentPosition.getEntry().getIndex();
-
-                if (currentPosition.getEntry().isBuy()) {
-                    satisfied = isBuySatisfied(entryPrice, currentPrice, index, positionIndex);
-                } else {
-                    satisfied = isSellSatisfied(entryPrice, currentPrice, index, positionIndex);
-                }
-            }
+        if (tradingRecord == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noTradingRecord");
+            return false;
         }
-        traceIsSatisfied(index, satisfied);
+
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        if (!currentPosition.isOpened()) {
+            StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
+            return false;
+        }
+
+        Num entryPrice = currentPosition.getEntry().getNetPrice();
+        Num currentPrice = priceIndicator.getValue(index);
+        int positionIndex = currentPosition.getEntry().getIndex();
+        int lookback = getValueIndicatorBarCount(index, positionIndex);
+        if (lookback <= 0) {
+            StopRuleTrace.traceUnavailable(this, index, "indexBeforeEntry");
+            return false;
+        }
+        boolean buy = currentPosition.getEntry().isBuy();
+        Num extremePrice;
+        Num activationPrice;
+        Num stopPrice;
+        boolean activationReached;
+        boolean satisfied;
+        String extremeField;
+        if (buy) {
+            extremePrice = highestClosePrice(index, lookback);
+            activationPrice = StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, true);
+            activationReached = !extremePrice.isLessThan(activationPrice);
+            stopPrice = StopGainRule.trailingStopGainPriceFromDistance(extremePrice, gainAmount, true);
+            satisfied = activationReached && currentPrice.isLessThanOrEqual(stopPrice);
+            extremeField = "highestPrice";
+        } else {
+            extremePrice = lowestClosePrice(index, lookback);
+            activationPrice = StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, false);
+            activationReached = !extremePrice.isGreaterThan(activationPrice);
+            stopPrice = StopGainRule.trailingStopGainPriceFromDistance(extremePrice, gainAmount, false);
+            satisfied = activationReached && currentPrice.isGreaterThanOrEqual(stopPrice);
+            extremeField = "lowestPrice";
+        }
+        String reason = traceReason(satisfied, activationReached, buy);
+        StopRuleTrace.traceTrailingGainDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice,
+                extremeField, extremePrice, activationPrice, lookback, "gainAmount", gainAmount, reason);
         return satisfied;
-    }
-
-    /**
-     * Evaluates trailing stop-gain condition for a long position.
-     *
-     * @param entryPrice    position entry price
-     * @param currentPrice  current reference price
-     * @param index         current bar index
-     * @param positionIndex entry bar index
-     * @return {@code true} when trailing stop-gain condition is satisfied
-     */
-    private boolean isBuySatisfied(Num entryPrice, Num currentPrice, int index, int positionIndex) {
-        Num highestCloseNum = highestClosePrice(index, getValueIndicatorBarCount(index, positionIndex));
-        Num gainActivationThreshold = StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, true);
-        if (highestCloseNum.isLessThan(gainActivationThreshold)) {
-            return false;
-        }
-        Num currentStopGainLimitActivation = StopGainRule.trailingStopGainPriceFromDistance(highestCloseNum, gainAmount,
-                true);
-        return currentPrice.isLessThanOrEqual(currentStopGainLimitActivation);
-    }
-
-    /**
-     * Evaluates trailing stop-gain condition for a short position.
-     *
-     * @param entryPrice    position entry price
-     * @param currentPrice  current reference price
-     * @param index         current bar index
-     * @param positionIndex entry bar index
-     * @return {@code true} when trailing stop-gain condition is satisfied
-     */
-    private boolean isSellSatisfied(Num entryPrice, Num currentPrice, int index, int positionIndex) {
-        Num lowestCloseNum = lowestClosePrice(index, getValueIndicatorBarCount(index, positionIndex));
-        Num gainActivationThreshold = StopGainRule.stopGainPriceFromDistance(entryPrice, gainAmount, false);
-        if (lowestCloseNum.isGreaterThan(gainActivationThreshold)) {
-            return false;
-        }
-        Num currentStopGainLimitActivation = StopGainRule.trailingStopGainPriceFromDistance(lowestCloseNum, gainAmount,
-                false);
-        return currentPrice.isGreaterThanOrEqual(currentStopGainLimitActivation);
     }
 
     /**
@@ -224,11 +212,13 @@ public class TrailingFixedAmountStopGainRule extends AbstractRule implements Sto
         return Math.min(index - positionIndex + 1, this.barCount);
     }
 
-    @Override
-    protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}. Current price: {}", getTraceDisplayName(), index, isSatisfied,
-                    priceIndicator.getValue(index));
+    private static String traceReason(boolean satisfied, boolean activationReached, boolean buy) {
+        if (satisfied) {
+            return "stopReached";
         }
+        if (!activationReached) {
+            return "activationNotReached";
+        }
+        return buy ? "priceAboveStop" : "priceBelowStop";
     }
 }

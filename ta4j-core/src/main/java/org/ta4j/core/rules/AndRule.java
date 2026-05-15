@@ -37,8 +37,21 @@ public class AndRule extends AbstractRule {
 
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        final boolean satisfied = rule1.isSatisfied(index, tradingRecord) && rule2.isSatisfied(index, tradingRecord);
-        traceIsSatisfied(index, satisfied);
+        final boolean firstSatisfied = evaluateChildRule(rule1, "rule1", index, tradingRecord);
+        final boolean satisfied;
+        final boolean secondEvaluated;
+
+        if (!firstSatisfied) {
+            satisfied = false;
+            secondEvaluated = false;
+        } else {
+            satisfied = evaluateChildRule(rule2, "rule2", index, tradingRecord);
+            secondEvaluated = true;
+        }
+        if (isTraceEnabled()) {
+            traceIsSatisfied(index, satisfied, traceContext("rule1", firstSatisfied, "rule2Evaluated", secondEvaluated,
+                    "rule2", secondEvaluated ? satisfied : "skipped", "reason", secondEvaluated ? null : "rule1False"));
+        }
         return satisfied;
     }
 

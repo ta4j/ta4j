@@ -63,18 +63,24 @@ public class VoteRule extends AbstractRule {
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
         int count = 0;
-        for (Rule rule : rules) {
-            if (rule.isSatisfied(index, tradingRecord)) {
+        int evaluatedRules = 0;
+        for (int i = 0; i < rules.size(); i++) {
+            if (evaluateChildRule(rules.get(i), "rule" + i, index, tradingRecord)) {
                 count++;
                 // Early termination if we already have enough votes
                 if (count >= requiredVotes) {
+                    evaluatedRules = i + 1;
                     break;
                 }
             }
+            evaluatedRules = i + 1;
         }
 
         final boolean satisfied = count >= requiredVotes;
-        traceIsSatisfied(index, satisfied);
+        if (isTraceEnabled()) {
+            traceIsSatisfied(index, satisfied,
+                    traceContext("votes", count, "requiredVotes", requiredVotes, "evaluatedRules", evaluatedRules));
+        }
         return satisfied;
     }
 

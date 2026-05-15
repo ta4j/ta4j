@@ -62,7 +62,13 @@ public class IsRisingRule extends AbstractRule {
         double ratio = count / (double) barCount;
 
         final boolean satisfied = ratio >= minStrength;
-        traceIsSatisfied(index, satisfied);
+        if (isTraceEnabled()) {
+            traceIsSatisfied(index, satisfied,
+                    traceContext("currentValue", ref.getValue(index), "previousValue",
+                            ref.getValue(Math.max(0, index - 1)), "risingCount", count, "barCount", barCount, "ratio",
+                            ratio, "minStrength", minStrength, "windowStart", Math.max(0, index - barCount + 1),
+                            "windowEnd", index, "reason", satisfied ? "risingStrengthMet" : "risingStrengthTooWeak"));
+        }
         return satisfied;
     }
 }

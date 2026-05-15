@@ -140,7 +140,7 @@ public interface Strategy {
      *           already open.
      */
     default boolean shouldEnter(int index) {
-        return shouldEnter(index, null);
+        return shouldEnter(index, (TradingRecord) null);
     }
 
     /**
@@ -157,6 +157,37 @@ public interface Strategy {
     }
 
     /**
+     * Evaluates the entry rule once with the supplied trace detail. Implementations
+     * that do not support scoped tracing may ignore {@code traceMode} and delegate
+     * to {@link #shouldEnter(int, TradingRecord)}.
+     *
+     * @param index     the bar index
+     * @param traceMode trace detail for this evaluation only; {@code null} uses
+     *                  {@link Rule.TraceMode#VERBOSE}
+     * @return true to recommend to enter, false otherwise
+     * @since 0.22.7
+     */
+    default boolean shouldEnterWithTraceMode(int index, Rule.TraceMode traceMode) {
+        return shouldEnterWithTraceMode(index, null, traceMode);
+    }
+
+    /**
+     * Evaluates the entry rule once with the supplied trace detail. Implementations
+     * that do not support scoped tracing may ignore {@code traceMode} and delegate
+     * to {@link #shouldEnter(int, TradingRecord)}.
+     *
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
+     * @param traceMode     trace detail for this evaluation only; {@code null} uses
+     *                      {@link Rule.TraceMode#VERBOSE}
+     * @return true to recommend to enter, false otherwise
+     * @since 0.22.7
+     */
+    default boolean shouldEnterWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
+        return shouldEnter(index, tradingRecord);
+    }
+
+    /**
      * @param index the bar index
      * @return true to recommend to exit, false otherwise
      *
@@ -164,7 +195,7 @@ public interface Strategy {
      *           {@link #shouldExit(int, TradingRecord)}.
      */
     default boolean shouldExit(int index) {
-        return shouldExit(index, null);
+        return shouldExit(index, (TradingRecord) null);
     }
 
     /**
@@ -174,6 +205,37 @@ public interface Strategy {
      */
     default boolean shouldExit(int index, TradingRecord tradingRecord) {
         return !isUnstableAt(index) && getExitRule().isSatisfied(index, tradingRecord);
+    }
+
+    /**
+     * Evaluates the exit rule once with the supplied trace detail. Implementations
+     * that do not support scoped tracing may ignore {@code traceMode} and delegate
+     * to {@link #shouldExit(int, TradingRecord)}.
+     *
+     * @param index     the bar index
+     * @param traceMode trace detail for this evaluation only; {@code null} uses
+     *                  {@link Rule.TraceMode#VERBOSE}
+     * @return true to recommend to exit, false otherwise
+     * @since 0.22.7
+     */
+    default boolean shouldExitWithTraceMode(int index, Rule.TraceMode traceMode) {
+        return shouldExitWithTraceMode(index, null, traceMode);
+    }
+
+    /**
+     * Evaluates the exit rule once with the supplied trace detail. Implementations
+     * that do not support scoped tracing may ignore {@code traceMode} and delegate
+     * to {@link #shouldExit(int, TradingRecord)}.
+     *
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
+     * @param traceMode     trace detail for this evaluation only; {@code null} uses
+     *                      {@link Rule.TraceMode#VERBOSE}
+     * @return true to recommend to exit, false otherwise
+     * @since 0.22.7
+     */
+    default boolean shouldExitWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
+        return shouldExit(index, tradingRecord);
     }
 
     /**
