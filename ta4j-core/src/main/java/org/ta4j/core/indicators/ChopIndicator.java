@@ -25,12 +25,14 @@ import org.ta4j.core.num.Num;
  * by the 'scaleTo' arg of the constructor
  * </pre>
  *
+ * <p>
+ * <b>API note:</b> Minimal deviations in last decimal places are possible.
+ * During calculations this indicator converts {@link Num Decimal /BigDecimal}
+ * to {@link Double double}.
+ * </p>
+ *
  * @see <a href=
  *      "https://www.tradingview.com/wiki/Choppiness_Index_(CHOP)">https://www.tradingview.com/wiki/Choppiness_Index_(CHOP)</a>
- *
- * @apiNote Minimal deviations in last decimal places possible. During the
- *          calculations this indicator converts {@link Num Decimal /BigDecimal}
- *          to to {@link Double double}
  */
 public class ChopIndicator extends CachedIndicator<Num> {
 

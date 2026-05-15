@@ -53,7 +53,7 @@ import java.util.Arrays;
  * </ul>
  * See each ratio-producing criterion's javadoc for specific examples.
  *
- * @see Returns
+ * @see org.ta4j.core.analysis.Returns
  * @see ReturnRepresentationPolicy
  * @see VersusEnterAndHoldCriterion
  * @since 0.20
@@ -138,7 +138,7 @@ public enum ReturnRepresentation {
      * <p>
      * Use this method when you have an arithmetic rate of return that excludes the
      * base (e.g., {@code 0.12} for a +12% gain). This is the format used by
-     * {@link Returns} for raw arithmetic returns.
+     * {@link org.ta4j.core.analysis.Returns} for raw arithmetic returns.
      * <p>
      * Example: Converting {@code 0.12} (rate of return) to PERCENTAGE yields
      * {@code 12.0}.

@@ -34,6 +34,22 @@
 - Precision-first workflows: `DecimalNum`
 - Throughput-first workflows with accepted floating-point tradeoffs: `DoubleNum`
 
+## Choose the right correlation metric
+
+All rolling correlation indicators live under
+`org.ta4j.core.indicators.statistics` and return `NaN` when the requested
+window is not ready or the statistic is undefined.
+
+| Question | Indicator | Notes |
+| --- | --- | --- |
+| Are two continuous signals linearly related in the same window? | `CorrelationCoefficientIndicator` | Pearson-style baseline for dense, simultaneous numeric series |
+| Is the relationship monotonic but not necessarily linear? | `SpearmanRankCorrelationIndicator` | Uses average ranks for ties before applying Pearson correlation |
+| Do ordered samples agree when ties matter? | `KendallTauIndicator` | Rolling Kendall tau-b with tie correction |
+| Does one signal lead or trail another by a fixed number of bars? | `LaggedCorrelationIndicator` | Positive lag means the first indicator leads the second |
+| Do two signals share non-linear structure? | `DistanceCorrelationIndicator` | Builds centered pairwise distance matrices; `O(window^2)` per calculated index |
+| Does knowing one discretized state reduce uncertainty about another? | `MutualInformationIndicator` | Equal-width bins for v1; reports natural-log mutual information in nats |
+| Does correlation only matter inside a trend, volatility, or custom state? | `RegimeSegmentedCorrelationIndicator` | Filters each rolling window with an `Indicator<Boolean>` regime selector |
+
 ## Companion user guides
 
 - Backtesting: https://ta4j.github.io/ta4j-wiki/Backtesting.html

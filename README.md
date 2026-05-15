@@ -387,6 +387,43 @@ Want a runnable side-by-side demo? `ta4j-examples` now includes
 slippage fills on the same strategy and then shows the same setup with provided
 and factory-configured `BaseTradingRecord` flows.
 
+### Analyze indicator relationships
+
+For sparse event studies, start with a windowed event-synchronization score:
+compare events such as Net Momentum zero crossings against newly confirmed
+ZigZag swing highs or lows inside a tolerance window. After the event timing is
+credible, use rolling statistics to inspect continuous, lagged, non-linear, or
+regime-conditioned relationships.
+
+```java
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.NetMomentumIndicator;
+import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.indicators.helpers.BooleanTransformIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.statistics.LaggedCorrelationIndicator;
+import org.ta4j.core.indicators.statistics.MutualInformationIndicator;
+import org.ta4j.core.indicators.statistics.RegimeSegmentedCorrelationIndicator;
+import org.ta4j.core.indicators.statistics.SpearmanRankCorrelationIndicator;
+import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
+
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+RSIIndicator rsi = new RSIIndicator(close, 14);
+NetMomentumIndicator momentum = NetMomentumIndicator.forRsiWithDecay(rsi, 20, 0.85);
+RecentZigZagSwingHighIndicator swingHigh = new RecentZigZagSwingHighIndicator(series);
+
+Indicator<Boolean> positiveMomentum = BooleanTransformIndicator.isPositive(momentum);
+Indicator<Boolean> confirmedSwingHigh = new BooleanTransformIndicator<>(swingHigh, value -> !value.isNaN());
+
+LaggedCorrelationIndicator momentumLeadsPrice = new LaggedCorrelationIndicator(momentum, close, 50, 3);
+SpearmanRankCorrelationIndicator monotonicMomentumPrice = new SpearmanRankCorrelationIndicator(momentum, close, 50);
+RegimeSegmentedCorrelationIndicator bullishRegimeCorrelation =
+        new RegimeSegmentedCorrelationIndicator(momentum, close, positiveMomentum, 50);
+MutualInformationIndicator swingStateInformation = new MutualInformationIndicator(momentum, swingHigh, 80, 6);
+RegimeSegmentedCorrelationIndicator confirmedSwingCorrelation =
+        new RegimeSegmentedCorrelationIndicator(momentum, close, confirmedSwingHigh, 80);
+```
+
 ### Backtest hundreds or even thousands of strategies
 
 Want to find the top performers? Generate strategies with varying parameters and compare them:
