@@ -5,10 +5,12 @@ package org.ta4j.core.indicators.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.lang.reflect.Field;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
 
 /**
  * Tests for {@link ElliottWaveFacade}.
@@ -103,6 +105,63 @@ class ElliottWaveFacadeTest {
         // Phase indicator should use custom validator with custom tolerance
         assertThat(suite.phase()).isNotNull();
         assertThat(suite.phase().getValue(series.getEndIndex())).isNotNull();
+    }
+
+    /**
+     * Regression test: a custom {@code fibTolerance} configured on the facade must
+     * also reach {@link ElliottWaveFacade#scenarios()}, not only {@code phase()}.
+     * Previously {@code scenarios()} always built a default-tolerance validator,
+     * silently discarding the configured tolerance.
+     */
+    @Test
+    void customFibToleranceShouldBeUsedByScenarios() throws Exception {
+        var series = new MockBarSeriesBuilder().build();
+        double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
+        for (double close : closes) {
+            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
+        }
+
+        var customTolerance = series.numFactory().numOf(0.25);
+        var suite = ElliottWaveFacade.fractal(series, 1, ElliottDegree.MINOR, Optional.of(customTolerance),
+                Optional.empty());
+
+        assertThat(scenarioValidatorTolerance(suite.scenarios())).isEqualByComparingTo(customTolerance);
+    }
+
+    /**
+     * Sanity counterpart: with no custom tolerance, {@code scenarios()} keeps the
+     * default {@code 0.05} validator tolerance. This pins the expected default and
+     * confirms the reflective accessor reads the right field.
+     */
+    @Test
+    void defaultFibToleranceIsUsedByScenariosWhenNoneConfigured() throws Exception {
+        var series = new MockBarSeriesBuilder().build();
+        double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
+        for (double close : closes) {
+            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
+        }
+
+        var suite = ElliottWaveFacade.fractal(series, 1, ElliottDegree.MINOR);
+
+        assertThat(scenarioValidatorTolerance(suite.scenarios())).isEqualByComparingTo(series.numFactory().numOf(0.05));
+    }
+
+    /**
+     * Reads the Fibonacci tolerance actually used by a scenario indicator's
+     * generator. No public accessor exists, so the regression must be observed
+     * reflectively: {@code ElliottScenarioIndicator.generator ->
+     * ElliottScenarioGenerator.fibValidator -> ElliottFibonacciValidator.tolerance}.
+     */
+    private static Num scenarioValidatorTolerance(ElliottScenarioIndicator indicator) throws Exception {
+        Object generator = readField(indicator, ElliottScenarioIndicator.class, "generator");
+        Object validator = readField(generator, ElliottScenarioGenerator.class, "fibValidator");
+        return (Num) readField(validator, ElliottFibonacciValidator.class, "tolerance");
+    }
+
+    private static Object readField(Object target, Class<?> declaringClass, String fieldName) throws Exception {
+        Field field = declaringClass.getDeclaredField(fieldName);
+        field.setAccessible(true);
+        return field.get(target);
     }
 
     @Test
