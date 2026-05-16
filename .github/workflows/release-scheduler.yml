@@ -953,7 +953,7 @@ jobs:
           EOF
 
       - name: Post to Release Scheduler discussion
-        if: always() && needs.analyze.outputs.dryRun != 'true'
+        if: always() && needs.analyze.result != 'skipped' && needs.analyze.outputs.dryRun != 'true'
         uses: actions/github-script@v9
         env:
           RELEASE_SCHEDULER_DISCUSSION_NUMBER: ${{ vars.RELEASE_SCHEDULER_DISCUSSION_NUMBER }}
