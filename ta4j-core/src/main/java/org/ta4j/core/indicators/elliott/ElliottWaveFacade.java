@@ -11,7 +11,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Facade class that creates and coordinates a complete set of Elliott Wave
@@ -297,15 +296,20 @@ public final class ElliottWaveFacade {
     public ElliottPhaseIndicator phase() {
         if (phaseIndicator == null) {
             if (fibTolerance.isPresent()) {
-                final NumFactory numFactory = series.numFactory();
-                final ElliottFibonacciValidator validator = new ElliottFibonacciValidator(numFactory,
-                        fibTolerance.get());
-                phaseIndicator = new ElliottPhaseIndicator(swingIndicator, validator);
+                phaseIndicator = new ElliottPhaseIndicator(swingIndicator, customFibValidator());
             } else {
                 phaseIndicator = new ElliottPhaseIndicator(swingIndicator);
             }
         }
         return phaseIndicator;
+    }
+
+    /**
+     * @return a Fibonacci validator carrying the configured custom tolerance; only
+     *         valid to call when {@code fibTolerance} is present
+     */
+    private ElliottFibonacciValidator customFibValidator() {
+        return new ElliottFibonacciValidator(series.numFactory(), fibTolerance.get());
     }
 
     /**
@@ -398,7 +402,13 @@ public final class ElliottWaveFacade {
      */
     public ElliottScenarioIndicator scenarios() {
         if (scenarioIndicator == null) {
-            scenarioIndicator = new ElliottScenarioIndicator(swingIndicator, channel());
+            if (fibTolerance.isPresent()) {
+                final ElliottScenarioGenerator generator = new ElliottScenarioGenerator(series.numFactory(),
+                        customFibValidator());
+                scenarioIndicator = new ElliottScenarioIndicator(swingIndicator, channel(), generator);
+            } else {
+                scenarioIndicator = new ElliottScenarioIndicator(swingIndicator, channel());
+            }
         }
         return scenarioIndicator;
     }

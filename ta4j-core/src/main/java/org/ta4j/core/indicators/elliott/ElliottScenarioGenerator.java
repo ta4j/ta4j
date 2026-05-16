@@ -68,6 +68,19 @@ public final class ElliottScenarioGenerator {
     }
 
     /**
+     * Creates a generator with default settings but a caller-supplied Fibonacci
+     * validator (typically carrying a custom tolerance).
+     *
+     * @param numFactory   factory for creating numeric values
+     * @param fibValidator Fibonacci validator (typically with a custom tolerance)
+     * @since 0.22.7
+     */
+    public ElliottScenarioGenerator(final NumFactory numFactory, final ElliottFibonacciValidator fibValidator) {
+        this(numFactory, DEFAULT_MIN_CONFIDENCE, DEFAULT_MAX_SCENARIOS, ConfidenceProfiles.defaultModel(numFactory),
+                PatternSet.all(), fibValidator);
+    }
+
+    /**
      * Creates a generator with custom pruning thresholds.
      *
      * @param numFactory    factory for creating numeric values
@@ -91,8 +104,28 @@ public final class ElliottScenarioGenerator {
      */
     public ElliottScenarioGenerator(final NumFactory numFactory, final double minConfidence, final int maxScenarios,
             final ConfidenceModel confidenceModel, final PatternSet patternSet) {
+        this(numFactory, minConfidence, maxScenarios, confidenceModel, patternSet,
+                new ElliottFibonacciValidator(numFactory));
+    }
+
+    /**
+     * Creates a generator with custom pruning thresholds, scoring model, and
+     * Fibonacci validator.
+     *
+     * @param numFactory      factory for creating numeric values
+     * @param minConfidence   minimum confidence to retain a scenario (0.0 - 1.0)
+     * @param maxScenarios    maximum number of scenarios to return
+     * @param confidenceModel confidence model used to score scenarios
+     * @param patternSet      enabled pattern set
+     * @param fibValidator    Fibonacci validator (typically with a custom
+     *                        tolerance)
+     * @since 0.22.7
+     */
+    public ElliottScenarioGenerator(final NumFactory numFactory, final double minConfidence, final int maxScenarios,
+            final ConfidenceModel confidenceModel, final PatternSet patternSet,
+            final ElliottFibonacciValidator fibValidator) {
         this.numFactory = Objects.requireNonNull(numFactory, "numFactory");
-        this.fibValidator = new ElliottFibonacciValidator(numFactory);
+        this.fibValidator = Objects.requireNonNull(fibValidator, "fibValidator");
         this.confidenceModel = Objects.requireNonNull(confidenceModel, "confidenceModel");
         this.patternSet = Objects.requireNonNull(patternSet, "patternSet");
         this.minConfidence = minConfidence;

@@ -25,6 +25,7 @@
 - **Documentation surface area is now consolidated around canonical owners**: Overlapping execution-choice guidance was reduced to a single decision-matrix source, wiki navigation duplicates were removed, maintainer architecture index duplication was cleaned up, and onboarding/live/backtesting docs now route through clearer ownership boundaries while preserving deprecation-safe link compatibility.
 
 ### Fixed
+- **Custom Fibonacci tolerance now reaches Elliott scenario generation**: `ElliottWaveFacade` previously honored a configured `fibTolerance` for `phase()` but silently discarded it in `scenarios()`, so the two indicators in the same facade validated Fibonacci relationships at different tolerances. `scenarios()` now forwards the configured tolerance to the scenario generator (`#1527`).
 - **PR validation stays fast while the Elliott replay suite remains runnable**: GitHub build CI now keeps `integration`, `analysis-demo`, and `elliott-macro-cycle-replay` excluded by default instead of running every tagged test on each PR, and contributors can still rerun the BTC macro-cycle replay suite through its dedicated tag when they need full validation.
 - **Scheduled release automation now stays on the production path**: `release-scheduler.yml` cron runs continue to dispatch `prepare-release.yml` with `dryRun=false`, skipped scheduled runs no longer post production summaries, and the prepare workflow no longer fails removal-ready issue sync by redeclaring GitHub Script's injected bindings.
 
