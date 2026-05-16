@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.rules;
 
+import java.util.Objects;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
@@ -13,7 +15,9 @@ import org.ta4j.core.num.Num;
  * A stop-gain rule.
  *
  * <p>
- * Satisfied when the close price reaches the gain threshold.
+ * Satisfied when the configured price indicator touches or moves beyond the
+ * gain threshold. Long positions trigger at or above the target price; short
+ * positions trigger at or below it.
  *
  * <p>
  * This rule uses the {@code tradingRecord}.
@@ -33,7 +37,7 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      * @param gainPercentage the gain percentage
      */
     public StopGainRule(Indicator<Num> priceIndicator, Number gainPercentage) {
-        this(priceIndicator, priceIndicator.getBarSeries().numFactory().numOf(gainPercentage));
+        this(priceIndicator, numOf(priceIndicator, gainPercentage, "gainPercentage"));
     }
 
     /**
@@ -43,7 +47,10 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      * @param gainPercentage the gain percentage
      */
     public StopGainRule(Indicator<Num> priceIndicator, Num gainPercentage) {
-        this.priceIndicator = priceIndicator;
+        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
+        if (Num.isNaNOrNull(gainPercentage) || gainPercentage.isNegative()) {
+            throw new IllegalArgumentException("gainPercentage must be >= 0");
+        }
         this.gainPercentage = gainPercentage;
     }
 
@@ -57,14 +64,14 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      * @since 0.22.3
      */
     public static Num stopGainPrice(Num entryPrice, Num gainPercentage, boolean isBuy) {
-        if (entryPrice == null) {
+        if (Num.isNaNOrNull(entryPrice)) {
             throw new IllegalArgumentException("entryPrice must not be null");
         }
-        if (gainPercentage == null) {
-            throw new IllegalArgumentException("gainPercentage must not be null");
+        if (Num.isNaNOrNull(gainPercentage) || gainPercentage.isNegative()) {
+            throw new IllegalArgumentException("gainPercentage must be >= 0");
         }
-        var hundred = entryPrice.getNumFactory().hundred();
-        var gainRatioThreshold = isBuy ? hundred.plus(gainPercentage).dividedBy(hundred)
+        Num hundred = entryPrice.getNumFactory().hundred();
+        Num gainRatioThreshold = isBuy ? hundred.plus(gainPercentage).dividedBy(hundred)
                 : hundred.minus(gainPercentage).dividedBy(hundred);
         return entryPrice.multipliedBy(gainRatioThreshold);
     }
@@ -80,11 +87,11 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      * @since 0.22.3
      */
     public static Num stopGainPriceFromDistance(Num entryPrice, Num gainDistance, boolean isBuy) {
-        if (entryPrice == null) {
+        if (Num.isNaNOrNull(entryPrice)) {
             throw new IllegalArgumentException("entryPrice must not be null");
         }
-        if (gainDistance == null) {
-            throw new IllegalArgumentException("gainDistance must not be null");
+        if (Num.isNaNOrNull(gainDistance) || gainDistance.isNegative()) {
+            throw new IllegalArgumentException("gainDistance must be >= 0");
         }
         return isBuy ? entryPrice.plus(gainDistance) : entryPrice.minus(gainDistance);
     }
@@ -101,14 +108,14 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      * @since 0.22.3
      */
     public static Num trailingStopGainPrice(Num favorablePrice, Num retracementPercentage, boolean isBuy) {
-        if (favorablePrice == null) {
+        if (Num.isNaNOrNull(favorablePrice)) {
             throw new IllegalArgumentException("favorablePrice must not be null");
         }
-        if (retracementPercentage == null) {
-            throw new IllegalArgumentException("retracementPercentage must not be null");
+        if (Num.isNaNOrNull(retracementPercentage) || retracementPercentage.isNegative()) {
+            throw new IllegalArgumentException("retracementPercentage must be >= 0");
         }
-        var hundred = favorablePrice.getNumFactory().hundred();
-        var retracementRatioThreshold = isBuy ? hundred.minus(retracementPercentage).dividedBy(hundred)
+        Num hundred = favorablePrice.getNumFactory().hundred();
+        Num retracementRatioThreshold = isBuy ? hundred.minus(retracementPercentage).dividedBy(hundred)
                 : hundred.plus(retracementPercentage).dividedBy(hundred);
         return favorablePrice.multipliedBy(retracementRatioThreshold);
     }
@@ -124,11 +131,11 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      * @since 0.22.3
      */
     public static Num trailingStopGainPriceFromDistance(Num favorablePrice, Num retracementDistance, boolean isBuy) {
-        if (favorablePrice == null) {
+        if (Num.isNaNOrNull(favorablePrice)) {
             throw new IllegalArgumentException("favorablePrice must not be null");
         }
-        if (retracementDistance == null) {
-            throw new IllegalArgumentException("retracementDistance must not be null");
+        if (Num.isNaNOrNull(retracementDistance) || retracementDistance.isNegative()) {
+            throw new IllegalArgumentException("retracementDistance must be >= 0");
         }
         return isBuy ? favorablePrice.minus(retracementDistance) : favorablePrice.plus(retracementDistance);
     }
@@ -156,18 +163,19 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        var satisfied = false;
+        boolean satisfied = false;
         // No trading history or no position opened, no loss
         if (tradingRecord != null) {
             Position currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition.isOpened()) {
+            if (currentPosition != null && currentPosition.isOpened() && currentPosition.getEntry() != null) {
 
-                var entryPrice = currentPosition.getEntry().getNetPrice();
-                var currentPrice = priceIndicator.getValue(index);
+                Num entryPrice = currentPosition.getEntry().getNetPrice();
+                Num currentPrice = priceIndicator.getValue(index);
 
-                if (currentPosition.getEntry().isBuy()) {
+                if (!Num.isNaNOrNull(entryPrice) && !Num.isNaNOrNull(currentPrice)
+                        && currentPosition.getEntry().isBuy()) {
                     satisfied = isBuyGainSatisfied(entryPrice, currentPrice);
-                } else {
+                } else if (!Num.isNaNOrNull(entryPrice) && !Num.isNaNOrNull(currentPrice)) {
                     satisfied = isSellGainSatisfied(entryPrice, currentPrice);
                 }
             }
@@ -177,12 +185,18 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
     }
 
     private boolean isBuyGainSatisfied(Num entryPrice, Num currentPrice) {
-        var threshold = stopGainPrice(entryPrice, gainPercentage, true);
+        Num threshold = stopGainPrice(entryPrice, gainPercentage, true);
         return currentPrice.isGreaterThanOrEqual(threshold);
     }
 
     private boolean isSellGainSatisfied(Num entryPrice, Num currentPrice) {
-        var threshold = stopGainPrice(entryPrice, gainPercentage, false);
+        Num threshold = stopGainPrice(entryPrice, gainPercentage, false);
         return currentPrice.isLessThanOrEqual(threshold);
+    }
+
+    private static Num numOf(Indicator<Num> priceIndicator, Number value, String parameterName) {
+        Objects.requireNonNull(priceIndicator, "priceIndicator");
+        Objects.requireNonNull(value, parameterName);
+        return priceIndicator.getBarSeries().numFactory().numOf(value);
     }
 }

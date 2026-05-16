@@ -56,6 +56,32 @@ public class TrailingStopGainRuleTest extends AbstractIndicatorTest<Object, Obje
     }
 
     @Test
+    public void isSatisfiedForBuyForBarCount() {
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+        ClosePriceIndicator closePrice = StopRuleTestSupport.closePrice(numFactory, 100, 110, 120, 130, 120, 117, 117);
+
+        TrailingStopGainRule rule = new TrailingStopGainRule(closePrice, numOf(10), 3);
+        tradingRecord.enter(2, numOf(114), numOf(1));
+
+        assertFalse(rule.isSatisfied(2, tradingRecord));
+        assertFalse(rule.isSatisfied(3, tradingRecord));
+        assertFalse(rule.isSatisfied(4, tradingRecord));
+        assertTrue(rule.isSatisfied(5, tradingRecord));
+        assertFalse(rule.isSatisfied(6, tradingRecord));
+    }
+
+    @Test
+    public void isNotSatisfiedBeforeEntryIndex() {
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+        ClosePriceIndicator closePrice = StopRuleTestSupport.closePrice(numFactory, 100, 110, 120);
+        TrailingStopGainRule rule = new TrailingStopGainRule(closePrice, numOf(10));
+
+        tradingRecord.enter(2, numOf(120), numOf(1));
+
+        assertFalse(rule.isSatisfied(1, tradingRecord));
+    }
+
+    @Test
     public void isSatisfiedForSell() {
         BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.SELL);
         ClosePriceIndicator closePrice = StopRuleTestSupport.closePrice(numFactory, 100, 90, 80, 70, 77.00, 120,

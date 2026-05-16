@@ -7,8 +7,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.HighestValueIndicator;
-import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -72,10 +70,15 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
         boolean satisfied = false;
         if (tradingRecord != null) {
             Position currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition.isOpened()) {
+            if (currentPosition != null && currentPosition.isOpened() && currentPosition.getEntry() != null) {
                 Num entryPrice = currentPosition.getEntry().getNetPrice();
                 Num currentPrice = priceIndicator.getValue(index);
                 int positionIndex = currentPosition.getEntry().getIndex();
+
+                if (index < positionIndex || Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice)) {
+                    traceIsSatisfied(index, false);
+                    return false;
+                }
 
                 if (currentPosition.getEntry().isBuy()) {
                     satisfied = isBuySatisfied(entryPrice, currentPrice, index, positionIndex);
@@ -89,9 +92,7 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
     }
 
     private boolean isBuySatisfied(Num entryPrice, Num currentPrice, int index, int positionIndex) {
-        HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, positionIndex));
-        Num highestCloseNum = highest.getValue(index);
+        Num highestCloseNum = highestValue(windowStartIndex(index, positionIndex), index);
         Num gainActivationThreshold = StopGainRule.stopGainPrice(entryPrice, gainPercentage, true);
         if (highestCloseNum.isLessThan(gainActivationThreshold)) {
             return false;
@@ -101,9 +102,7 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
     }
 
     private boolean isSellSatisfied(Num entryPrice, Num currentPrice, int index, int positionIndex) {
-        LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, positionIndex));
-        Num lowestCloseNum = lowest.getValue(index);
+        Num lowestCloseNum = lowestValue(windowStartIndex(index, positionIndex), index);
         Num gainActivationThreshold = StopGainRule.stopGainPrice(entryPrice, gainPercentage, false);
         if (lowestCloseNum.isGreaterThan(gainActivationThreshold)) {
             return false;
@@ -127,19 +126,45 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
         }
         int entryIndex = position.getEntry().getIndex();
         // stopPrice models the initial trailing stop at entry time.
-        int lookback = 1;
         if (position.getEntry().isBuy()) {
-            HighestValueIndicator highest = new HighestValueIndicator(priceIndicator, lookback);
-            Num highestCloseNum = highest.getValue(entryIndex);
+            Num highestCloseNum = priceIndicator.getValue(entryIndex);
+            if (Num.isNaNOrNull(highestCloseNum)) {
+                return null;
+            }
             return StopGainRule.trailingStopGainPrice(highestCloseNum, gainPercentage, true);
         }
-        LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator, lookback);
-        Num lowestCloseNum = lowest.getValue(entryIndex);
+        Num lowestCloseNum = priceIndicator.getValue(entryIndex);
+        if (Num.isNaNOrNull(lowestCloseNum)) {
+            return null;
+        }
         return StopGainRule.trailingStopGainPrice(lowestCloseNum, gainPercentage, false);
     }
 
-    private int getValueIndicatorBarCount(int index, int positionIndex) {
-        return Math.min(index - positionIndex + 1, this.barCount);
+    private int windowStartIndex(int index, int positionIndex) {
+        int activeBarCount = Math.min(index - positionIndex + 1, barCount);
+        return index - activeBarCount + 1;
+    }
+
+    private Num highestValue(int startIndex, int endIndex) {
+        Num highest = priceIndicator.getValue(startIndex);
+        for (int index = startIndex + 1; index <= endIndex; index++) {
+            Num candidate = priceIndicator.getValue(index);
+            if (!Num.isNaNOrNull(candidate) && (Num.isNaNOrNull(highest) || candidate.isGreaterThan(highest))) {
+                highest = candidate;
+            }
+        }
+        return highest;
+    }
+
+    private Num lowestValue(int startIndex, int endIndex) {
+        Num lowest = priceIndicator.getValue(startIndex);
+        for (int index = startIndex + 1; index <= endIndex; index++) {
+            Num candidate = priceIndicator.getValue(index);
+            if (!Num.isNaNOrNull(candidate) && (Num.isNaNOrNull(lowest) || candidate.isLessThan(lowest))) {
+                lowest = candidate;
+            }
+        }
+        return lowest;
     }
 
     @Override

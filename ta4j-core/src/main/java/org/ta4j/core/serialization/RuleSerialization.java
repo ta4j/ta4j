@@ -871,7 +871,10 @@ public final class RuleSerialization {
             // Handle arrays
             if (paramType.isArray()) {
                 Class<?> componentType = paramType.getComponentType();
-                if (Number.class.isAssignableFrom(componentType) || componentType.isPrimitive()) {
+                if (componentType.equals(boolean.class) || componentType.equals(Boolean.class)) {
+                    return context.resolveBooleanArray(paramName, paramType);
+                } else if (Number.class.isAssignableFrom(componentType)
+                        || (componentType.isPrimitive() && !componentType.equals(boolean.class))) {
                     return context.resolveNumberArray(paramName, paramType);
                 } else if (componentType.isEnum()) {
                     String enumTypeKey = "__enumType_" + paramName;
@@ -1037,6 +1040,20 @@ public final class RuleSerialization {
             for (int i = 0; i < list.size(); i++) {
                 Object element = list.get(i);
                 Object converted = convertNumber(element, componentType);
+                Array.set(array, i, converted);
+            }
+            return array;
+        }
+
+        private Object resolveBooleanArray(String name, Class<?> targetType) {
+            Object raw = descriptor.getParameters().get(name);
+            if (!(raw instanceof List<?> list)) {
+                throw new IllegalArgumentException("Missing boolean array parameter: " + name);
+            }
+            Class<?> componentType = targetType.getComponentType();
+            Object array = Array.newInstance(componentType, list.size());
+            for (int i = 0; i < list.size(); i++) {
+                Object converted = convertBoolean(list.get(i));
                 Array.set(array, i, converted);
             }
             return array;
@@ -1341,6 +1358,10 @@ public final class RuleSerialization {
                         return Optional.empty();
                     }
                     Class<?> componentType = type.getComponentType();
+                    if (componentType.equals(boolean.class) || componentType.equals(Boolean.class)) {
+                        arguments.add(Argument.boolArray(name, type, match.value));
+                        continue;
+                    }
                     if (componentType.isEnum()) {
                         arguments.add(Argument.enumArray(name, type, match.value));
                         continue;
@@ -1566,7 +1587,7 @@ public final class RuleSerialization {
 
     private enum ArgumentKind {
         SERIES, RULE, RULE_ARRAY, INDICATOR, NUM, NUMBER, INT, LONG, DOUBLE, BOOLEAN, STRING, ENUM, NUMBER_ARRAY,
-        INT_ARRAY, LONG_ARRAY, DOUBLE_ARRAY, ENUM_ARRAY, CHAIN_LINKS
+        INT_ARRAY, LONG_ARRAY, DOUBLE_ARRAY, BOOLEAN_ARRAY, ENUM_ARRAY, CHAIN_LINKS
     }
 
     private static final class Argument {
@@ -1619,6 +1640,10 @@ public final class RuleSerialization {
 
         private static Argument bool(String name, Class<?> targetType, Boolean value) {
             return new Argument(ArgumentKind.BOOLEAN, name, targetType, value, name);
+        }
+
+        private static Argument boolArray(String name, Class<?> targetType, Object value) {
+            return new Argument(ArgumentKind.BOOLEAN_ARRAY, name, targetType, value, name);
         }
 
         private static Argument number(String name, Class<?> targetType, Object value) {
@@ -1710,6 +1735,9 @@ public final class RuleSerialization {
             case BOOLEAN:
                 context.parameters.put(name, value);
                 break;
+            case BOOLEAN_ARRAY:
+                context.parameters.put(name, serializeBooleanArray(value));
+                break;
             case NUMBER:
             case INT:
             case LONG:
@@ -1753,6 +1781,15 @@ public final class RuleSerialization {
             for (int i = 0; i < length; i++) {
                 Object element = Array.get(array, i);
                 serialized.add(serializeNumber(element));
+            }
+            return serialized;
+        }
+
+        private static List<Object> serializeBooleanArray(Object array) {
+            int length = Array.getLength(array);
+            List<Object> serialized = new ArrayList<>(length);
+            for (int i = 0; i < length; i++) {
+                serialized.add(Array.get(array, i));
             }
             return serialized;
         }
