@@ -213,6 +213,34 @@ System.out.println("Number of trades: " + record.getTradeCount());
 System.out.println("Number of positions: " + record.getPositionCount());
 ```
 
+### Staged exit rules
+
+When an exit needs a thesis invalidation, a profit target, and a timeout, compose
+the always-active exits with `TriggeredRule` stages. This keeps the immediate
+stop and timeout live while a profit target can arm a second rule, such as a
+trailing stop, instead of exiting immediately.
+
+```java
+Rule invalidation = new StopLossRule(close, 10.0);              // touch at -10%
+Rule timeout = new OpenedPositionMinimumBarCountRule(5);        // 5 bars after entry
+Rule targetReached = new StopGainRule(close, 10.0);             // touch at +10%
+Rule trailingExit = new TrailingStopLossRule(close, series.numFactory().numOf(5));
+
+Rule exit = new TriggeredRule(
+        invalidation.or(timeout),
+        new TriggeredRule.Stage(
+                targetReached,
+                trailingExit,
+                TriggeredRule.UNBOUNDED_WINDOW,
+                false,
+                TriggeredRule.ResetPolicy.ON_POSITION_CHANGE));
+```
+
+Use `StopGainRule`, `StopLossRule`, `OverOrEqualIndicatorRule`, and
+`UnderOrEqualIndicatorRule` when a touch or beyond the boundary is enough. Use
+`CrossedUpIndicatorRule` or `CrossedDownIndicatorRule` when the signal must be a
+fresh cross from the previous bar.
+
 ## Sourcing market data
 
 **New to trading and not sure where to get historical price data?** You're not alone! Ta4j makes it easy to get started with real market data using the unified `BarSeriesDataSource` interface. All data sources work with the same domain-driven API using business concepts like ticker symbols, intervals, and date ranges.

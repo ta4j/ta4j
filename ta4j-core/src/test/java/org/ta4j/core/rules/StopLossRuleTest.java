@@ -4,6 +4,7 @@
 package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -72,6 +73,20 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void touchBoundaryTriggersForBuyAndSell() {
+        ClosePriceIndicator boundaryPrices = StopRuleTestSupport.closePrice(numFactory, 100, 95, 105);
+        StopLossRule rule = new StopLossRule(boundaryPrices, numOf(5));
+        BaseTradingRecord buyRecord = new BaseTradingRecord(Trade.TradeType.BUY);
+        BaseTradingRecord sellRecord = new BaseTradingRecord(Trade.TradeType.SELL);
+
+        buyRecord.enter(0, numOf(100), numOf(1));
+        sellRecord.enter(0, numOf(100), numOf(1));
+
+        assertTrue(rule.isSatisfied(1, buyRecord));
+        assertTrue(rule.isSatisfied(2, sellRecord));
+    }
+
+    @Test
     public void isSatisfiedWorksForSell() {
         final var tradingRecord = new BaseTradingRecord(Trade.TradeType.SELL);
         final Num tradedAmount = numOf(1);
@@ -121,5 +136,12 @@ public class StopLossRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
         var rule = new StopLossRule(closePrice, numOf(8));
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(closePrice.getBarSeries(), rule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(closePrice.getBarSeries(), rule);
+    }
+
+    @Test
+    public void constructorValidation() {
+        assertThrows(NullPointerException.class, () -> new StopLossRule(null, numOf(5)));
+        assertThrows(NullPointerException.class, () -> new StopLossRule(closePrice, (Number) null));
+        assertThrows(IllegalArgumentException.class, () -> new StopLossRule(closePrice, numFactory.minusOne()));
     }
 }

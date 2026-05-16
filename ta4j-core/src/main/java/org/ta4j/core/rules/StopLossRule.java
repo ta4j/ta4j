@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.rules;
 
+import java.util.Objects;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
@@ -13,7 +15,9 @@ import org.ta4j.core.num.Num;
  * A stop-loss rule.
  *
  * <p>
- * Satisfied when the close price reaches the loss threshold.
+ * Satisfied when the configured price indicator touches or moves beyond the
+ * loss threshold. Long positions trigger at or below the stop price; short
+ * positions trigger at or above it.
  *
  * <p>
  * This rule uses the {@code tradingRecord}.
@@ -33,7 +37,7 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      * @param lossPercentage the loss percentage
      */
     public StopLossRule(Indicator<Num> priceIndicator, Number lossPercentage) {
-        this(priceIndicator, priceIndicator.getBarSeries().numFactory().numOf(lossPercentage));
+        this(priceIndicator, numOf(priceIndicator, lossPercentage, "lossPercentage"));
     }
 
     /**
@@ -43,7 +47,10 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      * @param lossPercentage the loss percentage
      */
     public StopLossRule(Indicator<Num> priceIndicator, Num lossPercentage) {
-        this.priceIndicator = priceIndicator;
+        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
+        if (Num.isNaNOrNull(lossPercentage) || lossPercentage.isNegative()) {
+            throw new IllegalArgumentException("lossPercentage must be >= 0");
+        }
         this.lossPercentage = lossPercentage;
     }
 
@@ -57,14 +64,14 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      * @since 0.22.3
      */
     public static Num stopLossPrice(Num entryPrice, Num lossPercentage, boolean isBuy) {
-        if (entryPrice == null) {
+        if (Num.isNaNOrNull(entryPrice)) {
             throw new IllegalArgumentException("entryPrice must not be null");
         }
-        if (lossPercentage == null) {
-            throw new IllegalArgumentException("lossPercentage must not be null");
+        if (Num.isNaNOrNull(lossPercentage) || lossPercentage.isNegative()) {
+            throw new IllegalArgumentException("lossPercentage must be >= 0");
         }
-        var hundred = entryPrice.getNumFactory().hundred();
-        var lossRatioThreshold = isBuy ? hundred.minus(lossPercentage).dividedBy(hundred)
+        Num hundred = entryPrice.getNumFactory().hundred();
+        Num lossRatioThreshold = isBuy ? hundred.minus(lossPercentage).dividedBy(hundred)
                 : hundred.plus(lossPercentage).dividedBy(hundred);
         return entryPrice.multipliedBy(lossRatioThreshold);
     }
@@ -80,11 +87,11 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      * @since 0.22.3
      */
     public static Num stopLossPriceFromDistance(Num entryPrice, Num lossDistance, boolean isBuy) {
-        if (entryPrice == null) {
+        if (Num.isNaNOrNull(entryPrice)) {
             throw new IllegalArgumentException("entryPrice must not be null");
         }
-        if (lossDistance == null) {
-            throw new IllegalArgumentException("lossDistance must not be null");
+        if (Num.isNaNOrNull(lossDistance) || lossDistance.isNegative()) {
+            throw new IllegalArgumentException("lossDistance must be >= 0");
         }
         return isBuy ? entryPrice.minus(lossDistance) : entryPrice.plus(lossDistance);
     }
@@ -116,15 +123,16 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
         boolean satisfied = false;
         // No trading history or no position opened, no loss
         if (tradingRecord != null) {
-            var currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition.isOpened()) {
+            Position currentPosition = tradingRecord.getCurrentPosition();
+            if (currentPosition != null && currentPosition.isOpened() && currentPosition.getEntry() != null) {
 
-                var entryPrice = currentPosition.getEntry().getNetPrice();
-                var currentPrice = priceIndicator.getValue(index);
+                Num entryPrice = currentPosition.getEntry().getNetPrice();
+                Num currentPrice = priceIndicator.getValue(index);
 
-                if (currentPosition.getEntry().isBuy()) {
+                if (!Num.isNaNOrNull(entryPrice) && !Num.isNaNOrNull(currentPrice)
+                        && currentPosition.getEntry().isBuy()) {
                     satisfied = isBuyStopSatisfied(entryPrice, currentPrice);
-                } else {
+                } else if (!Num.isNaNOrNull(entryPrice) && !Num.isNaNOrNull(currentPrice)) {
                     satisfied = isSellStopSatisfied(entryPrice, currentPrice);
                 }
             }
@@ -141,7 +149,7 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      * @return {@code true} when current price reaches long stop-loss threshold
      */
     private boolean isBuyStopSatisfied(Num entryPrice, Num currentPrice) {
-        var threshold = stopLossPrice(entryPrice, lossPercentage, true);
+        Num threshold = stopLossPrice(entryPrice, lossPercentage, true);
         return currentPrice.isLessThanOrEqual(threshold);
     }
 
@@ -153,7 +161,13 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      * @return {@code true} when current price reaches short stop-loss threshold
      */
     private boolean isSellStopSatisfied(Num entryPrice, Num currentPrice) {
-        var threshold = stopLossPrice(entryPrice, lossPercentage, false);
+        Num threshold = stopLossPrice(entryPrice, lossPercentage, false);
         return currentPrice.isGreaterThanOrEqual(threshold);
+    }
+
+    private static Num numOf(Indicator<Num> priceIndicator, Number value, String parameterName) {
+        Objects.requireNonNull(priceIndicator, "priceIndicator");
+        Objects.requireNonNull(value, parameterName);
+        return priceIndicator.getBarSeries().numFactory().numOf(value);
     }
 }
