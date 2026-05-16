@@ -26,6 +26,7 @@
 
 ### Fixed
 - **PR validation stays fast while the Elliott replay suite remains runnable**: GitHub build CI now keeps `integration`, `analysis-demo`, and `elliott-macro-cycle-replay` excluded by default instead of running every tagged test on each PR, and contributors can still rerun the BTC macro-cycle replay suite through its dedicated tag when they need full validation.
+- **Scheduled release automation now stays on the production path**: `release-scheduler.yml` cron runs continue to dispatch `prepare-release.yml` with `dryRun=false`, skipped scheduled runs no longer post production summaries, and the prepare workflow no longer fails removal-ready issue sync by redeclaring GitHub Script's injected bindings.
 
 ## 0.22.6 (2026-04-01)
 
