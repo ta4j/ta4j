@@ -92,6 +92,9 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
 
     private boolean isBuySatisfied(Num entryPrice, Num currentPrice, int index, int positionIndex) {
         Num highestCloseNum = highestValue(windowStartIndex(index, positionIndex), index);
+        if (Num.isNaNOrNull(highestCloseNum)) {
+            return false;
+        }
         Num gainActivationThreshold = StopGainRule.stopGainPrice(entryPrice, gainPercentage, true);
         if (highestCloseNum.isLessThan(gainActivationThreshold)) {
             return false;
@@ -102,6 +105,9 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
 
     private boolean isSellSatisfied(Num entryPrice, Num currentPrice, int index, int positionIndex) {
         Num lowestCloseNum = lowestValue(windowStartIndex(index, positionIndex), index);
+        if (Num.isNaNOrNull(lowestCloseNum)) {
+            return false;
+        }
         Num gainActivationThreshold = StopGainRule.stopGainPrice(entryPrice, gainPercentage, false);
         if (lowestCloseNum.isGreaterThan(gainActivationThreshold)) {
             return false;
@@ -123,8 +129,9 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
         if (position == null || position.getEntry() == null) {
             return null;
         }
+        // If the entry bar was evicted by max-bar-count retention, use the first
+        // retained bar as the anchor.
         int entryIndex = retainedStartIndex(position.getEntry().getIndex());
-        // stopPrice models the initial trailing stop at entry time.
         if (position.getEntry().isBuy()) {
             Num highestCloseNum = priceIndicator.getValue(entryIndex);
             if (Num.isNaNOrNull(highestCloseNum)) {
@@ -149,10 +156,10 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
     }
 
     private Num highestValue(int startIndex, int endIndex) {
-        Num highest = priceIndicator.getValue(startIndex);
-        for (int index = startIndex + 1; index <= endIndex; index++) {
+        Num highest = null;
+        for (int index = startIndex; index <= endIndex; index++) {
             Num candidate = priceIndicator.getValue(index);
-            if (!Num.isNaNOrNull(candidate) && (Num.isNaNOrNull(highest) || candidate.isGreaterThan(highest))) {
+            if (!Num.isNaNOrNull(candidate) && (highest == null || candidate.isGreaterThan(highest))) {
                 highest = candidate;
             }
         }
@@ -160,10 +167,10 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
     }
 
     private Num lowestValue(int startIndex, int endIndex) {
-        Num lowest = priceIndicator.getValue(startIndex);
-        for (int index = startIndex + 1; index <= endIndex; index++) {
+        Num lowest = null;
+        for (int index = startIndex; index <= endIndex; index++) {
             Num candidate = priceIndicator.getValue(index);
-            if (!Num.isNaNOrNull(candidate) && (Num.isNaNOrNull(lowest) || candidate.isLessThan(lowest))) {
+            if (!Num.isNaNOrNull(candidate) && (lowest == null || candidate.isLessThan(lowest))) {
                 lowest = candidate;
             }
         }

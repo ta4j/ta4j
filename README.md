@@ -221,6 +221,9 @@ stop and timeout live while a profit target can arm a second rule, such as a
 trailing stop, instead of exiting immediately.
 
 ```java
+BarSeries series = ...;
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+
 Rule invalidation = new StopLossRule(close, 10.0);              // touches 10% loss threshold
 Rule timeout = new OpenedPositionMinimumBarCountRule(5);        // 5 bars after entry
 Rule targetReached = new StopGainRule(close, 10.0);             // touch at +10%

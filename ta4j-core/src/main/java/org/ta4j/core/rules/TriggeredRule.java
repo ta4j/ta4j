@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.rules;
 
+import java.lang.ref.WeakReference;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Objects;
@@ -24,10 +25,10 @@ import org.ta4j.core.TradingRecord;
  * </p>
  *
  * <p>
- * Triggered state is tied to one sequential rule evaluation pass. Reusing the
- * same rule with a different {@link TradingRecord}, or evaluating an earlier
- * bar index after a later one, resets all armed stages to avoid leaking staged
- * state across backtest runs.
+ * Triggered state is tied to one sequential rule evaluation pass. Any change of
+ * {@link TradingRecord} instance (including {@code null} ↔ non-{@code null}
+ * transitions), or evaluating an earlier bar index after a later one, resets
+ * all armed stages to avoid leaking staged state across backtest runs.
  * </p>
  *
  * <p>
@@ -138,7 +139,7 @@ public class TriggeredRule extends AbstractRule {
     private final transient StageState[] stageStates;
 
     private transient PositionSnapshot lastPositionSnapshot;
-    private transient TradingRecord lastTradingRecord;
+    private transient WeakReference<TradingRecord> lastTradingRecordRef;
     private transient int lastEvaluatedIndex = Integer.MIN_VALUE;
     private transient boolean evaluationStarted;
 
@@ -298,12 +299,13 @@ public class TriggeredRule extends AbstractRule {
     }
 
     private void resetStagesOnEvaluationRestart(int index, TradingRecord tradingRecord) {
+        TradingRecord lastTradingRecord = lastTradingRecordRef == null ? null : lastTradingRecordRef.get();
         if (evaluationStarted && (tradingRecord != lastTradingRecord || index < lastEvaluatedIndex)) {
             resetAllStages();
             lastPositionSnapshot = null;
         }
         evaluationStarted = true;
-        lastTradingRecord = tradingRecord;
+        lastTradingRecordRef = tradingRecord == null ? null : new WeakReference<>(tradingRecord);
         lastEvaluatedIndex = index;
     }
 

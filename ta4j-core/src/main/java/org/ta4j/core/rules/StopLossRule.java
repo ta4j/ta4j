@@ -128,11 +128,14 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
 
                 Num entryPrice = currentPosition.getEntry().getNetPrice();
                 Num currentPrice = priceIndicator.getValue(index);
+                if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice)) {
+                    traceIsSatisfied(index, false);
+                    return false;
+                }
 
-                if (!Num.isNaNOrNull(entryPrice) && !Num.isNaNOrNull(currentPrice)
-                        && currentPosition.getEntry().isBuy()) {
+                if (currentPosition.getEntry().isBuy()) {
                     satisfied = isBuyStopSatisfied(entryPrice, currentPrice);
-                } else if (!Num.isNaNOrNull(entryPrice) && !Num.isNaNOrNull(currentPrice)) {
+                } else {
                     satisfied = isSellStopSatisfied(entryPrice, currentPrice);
                 }
             }

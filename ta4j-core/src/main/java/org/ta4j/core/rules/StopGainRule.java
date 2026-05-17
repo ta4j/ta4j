@@ -171,11 +171,14 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
 
                 Num entryPrice = currentPosition.getEntry().getNetPrice();
                 Num currentPrice = priceIndicator.getValue(index);
+                if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice)) {
+                    traceIsSatisfied(index, false);
+                    return false;
+                }
 
-                if (!Num.isNaNOrNull(entryPrice) && !Num.isNaNOrNull(currentPrice)
-                        && currentPosition.getEntry().isBuy()) {
+                if (currentPosition.getEntry().isBuy()) {
                     satisfied = isBuyGainSatisfied(entryPrice, currentPrice);
-                } else if (!Num.isNaNOrNull(entryPrice) && !Num.isNaNOrNull(currentPrice)) {
+                } else {
                     satisfied = isSellGainSatisfied(entryPrice, currentPrice);
                 }
             }
