@@ -3,12 +3,12 @@
  */
 package org.ta4j.core.rules;
 
+import java.util.Objects;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.indicators.helpers.HighestValueIndicator;
-import org.ta4j.core.indicators.helpers.LowestValueIndicator;
 import org.ta4j.core.num.Num;
 
 /**
@@ -39,7 +39,13 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
      * @param barCount       the number of bars to look back for the calculation
      */
     public TrailingStopLossRule(Indicator<Num> indicator, Num lossPercentage, int barCount) {
-        this.priceIndicator = indicator;
+        this.priceIndicator = Objects.requireNonNull(indicator, "priceIndicator");
+        if (Num.isNaNOrNull(lossPercentage) || lossPercentage.isNegative()) {
+            throw new IllegalArgumentException("lossPercentage must be >= 0");
+        }
+        if (barCount <= 0) {
+            throw new IllegalArgumentException("barCount must be positive");
+        }
         this.barCount = barCount;
         this.lossPercentage = lossPercentage;
     }
@@ -61,9 +67,14 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
         // No trading history or no position opened, no loss
         if (tradingRecord != null) {
             Position currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition.isOpened()) {
+            if (currentPosition != null && currentPosition.isOpened() && currentPosition.getEntry() != null) {
                 Num currentPrice = priceIndicator.getValue(index);
                 int positionIndex = currentPosition.getEntry().getIndex();
+
+                if (index < positionIndex || Num.isNaNOrNull(currentPrice)) {
+                    traceIsSatisfied(index, false);
+                    return false;
+                }
 
                 if (currentPosition.getEntry().isBuy()) {
                     satisfied = isBuySatisfied(currentPrice, index, positionIndex);
@@ -77,17 +88,19 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
     }
 
     private boolean isBuySatisfied(Num currentPrice, int index, int positionIndex) {
-        HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, positionIndex));
-        Num highestCloseNum = highest.getValue(index);
+        Num highestCloseNum = highestValue(windowStartIndex(index, positionIndex), index);
+        if (Num.isNaNOrNull(highestCloseNum)) {
+            return false;
+        }
         Num currentStopLossLimitActivation = StopLossRule.stopLossPrice(highestCloseNum, lossPercentage, true);
         return currentPrice.isLessThanOrEqual(currentStopLossLimitActivation);
     }
 
     private boolean isSellSatisfied(Num currentPrice, int index, int positionIndex) {
-        LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, positionIndex));
-        Num lowestCloseNum = lowest.getValue(index);
+        Num lowestCloseNum = lowestValue(windowStartIndex(index, positionIndex), index);
+        if (Num.isNaNOrNull(lowestCloseNum)) {
+            return false;
+        }
         Num currentStopLossLimitActivation = StopLossRule.stopLossPrice(lowestCloseNum, lossPercentage, false);
         return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
     }
@@ -105,20 +118,52 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
         if (position == null || position.getEntry() == null) {
             return null;
         }
-        int entryIndex = position.getEntry().getIndex();
-        int barCount = getValueIndicatorBarCount(entryIndex, entryIndex);
+        // If the entry bar was evicted by max-bar-count retention, fall back to
+        // the first retained bar as the anchor (an approximation of entry-time stop).
+        int entryIndex = retainedStartIndex(position.getEntry().getIndex());
         if (position.getEntry().isBuy()) {
-            HighestValueIndicator highest = new HighestValueIndicator(priceIndicator, barCount);
-            Num highestCloseNum = highest.getValue(entryIndex);
+            Num highestCloseNum = priceIndicator.getValue(entryIndex);
+            if (Num.isNaNOrNull(highestCloseNum)) {
+                return null;
+            }
             return StopLossRule.stopLossPrice(highestCloseNum, lossPercentage, true);
         }
-        LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator, barCount);
-        Num lowestCloseNum = lowest.getValue(entryIndex);
+        Num lowestCloseNum = priceIndicator.getValue(entryIndex);
+        if (Num.isNaNOrNull(lowestCloseNum)) {
+            return null;
+        }
         return StopLossRule.stopLossPrice(lowestCloseNum, lossPercentage, false);
     }
 
-    private int getValueIndicatorBarCount(int index, int positionIndex) {
-        return Math.min(index - positionIndex + 1, this.barCount);
+    private int windowStartIndex(int index, int positionIndex) {
+        int activeBarCount = Math.min(index - positionIndex + 1, barCount);
+        return retainedStartIndex(index - activeBarCount + 1);
+    }
+
+    private int retainedStartIndex(int requestedStartIndex) {
+        return Math.max(requestedStartIndex, priceIndicator.getBarSeries().getBeginIndex());
+    }
+
+    private Num highestValue(int startIndex, int endIndex) {
+        Num highest = null;
+        for (int index = startIndex; index <= endIndex; index++) {
+            Num candidate = priceIndicator.getValue(index);
+            if (!Num.isNaNOrNull(candidate) && (highest == null || candidate.isGreaterThan(highest))) {
+                highest = candidate;
+            }
+        }
+        return highest;
+    }
+
+    private Num lowestValue(int startIndex, int endIndex) {
+        Num lowest = null;
+        for (int index = startIndex; index <= endIndex; index++) {
+            Num candidate = priceIndicator.getValue(index);
+            if (!Num.isNaNOrNull(candidate) && (lowest == null || candidate.isLessThan(lowest))) {
+                lowest = candidate;
+            }
+        }
+        return lowest;
     }
 
     @Override
