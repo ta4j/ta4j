@@ -36,7 +36,7 @@ public class JsonBarsSerializer {
     @Deprecated(since = "0.19", forRemoval = true)
     public static void persistSeries(BarSeries series, String filename) {
         warnDeprecatedUse();
-        GsonBarSeries exportableSeries = GsonBarSeries.from(series);
+        LegacyJsonBarSeriesPayload exportableSeries = LegacyJsonBarSeriesPayload.from(series);
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
         FileWriter writer = null;
         try {
@@ -65,7 +65,7 @@ public class JsonBarsSerializer {
         BarSeries result = null;
         try {
             reader = new FileReader(filename);
-            GsonBarSeries loadedSeries = gson.fromJson(reader, GsonBarSeries.class);
+            LegacyJsonBarSeriesPayload loadedSeries = gson.fromJson(reader, LegacyJsonBarSeriesPayload.class);
 
             result = loadedSeries.toBarSeries();
             LOG.debug("Bar series '" + result.getName() + "' successfully loaded. #Entries: " + result.getBarCount());
@@ -111,7 +111,7 @@ public class JsonBarsSerializer {
         BarSeries result = null;
         try {
             reader = new InputStreamReader(inputStream);
-            GsonBarSeries loadedSeries = gson.fromJson(reader, GsonBarSeries.class);
+            LegacyJsonBarSeriesPayload loadedSeries = gson.fromJson(reader, LegacyJsonBarSeriesPayload.class);
 
             if (loadedSeries == null) {
                 LOG.warn("Failed to parse JSON, loadedSeries is null");
