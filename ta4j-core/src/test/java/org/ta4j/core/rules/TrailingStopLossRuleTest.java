@@ -26,17 +26,20 @@
 package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BaseTradingRecord;
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.NumFactory;
 
 public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Object> {
@@ -198,6 +201,33 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
     }
 
     @Test
+    public void isNotSatisfiedBeforeEntryIndex() {
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+        ClosePriceIndicator closePrice = StopRuleTestSupport.closePrice(numFactory, 100, 110, 120);
+        TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
+
+        tradingRecord.enter(2, numOf(120), numOf(1));
+
+        assertFalse(rule.isSatisfied(1, tradingRecord));
+    }
+
+    @Test
+    public void clampsTrailingWindowToRetainedBarsForBuy() {
+        MockBarSeriesBuilder builder = new MockBarSeriesBuilder().withNumFactory(numFactory)
+                .withData(100, 110, 120, 130, 117, 116);
+        builder.withMaxBarCount(3);
+        BarSeries series = builder.build();
+        ClosePriceIndicator closePrice = StopRuleTestSupport.strictClosePrice(series);
+        BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.BUY);
+        TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(10));
+
+        tradingRecord.enter(0, numOf(100), numOf(1));
+
+        assertTrue(rule.isSatisfied(5, tradingRecord));
+        assertTrue(rule.stopPrice(series, tradingRecord.getCurrentPosition()).isEqual(numOf(117)));
+    }
+
+    @Test
     public void isSatisfiedForSell() {
         BaseTradingRecord tradingRecord = new BaseTradingRecord(TradeType.SELL);
         ClosePriceIndicator closePrice = new ClosePriceIndicator(new MockBarSeriesBuilder().withNumFactory(numFactory)
@@ -261,5 +291,17 @@ public class TrailingStopLossRuleTest extends AbstractIndicatorTest<Object, Obje
         TrailingStopLossRule rule = new TrailingStopLossRule(closePrice, numOf(7), 2);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(closePrice.getBarSeries(), rule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(closePrice.getBarSeries(), rule);
+    }
+
+    @Test
+    public void constructorValidation() {
+        ClosePriceIndicator closePrice = StopRuleTestSupport.closePrice(numFactory, 100, 101);
+        assertThrows(NullPointerException.class, () -> new TrailingStopLossRule(null, numFactory.numOf(10), 2));
+        new TrailingStopLossRule(closePrice, numFactory.zero(), 2);
+        assertThrows(IllegalArgumentException.class, () -> new TrailingStopLossRule(closePrice, NaN.NaN, 2));
+        assertThrows(IllegalArgumentException.class,
+                () -> new TrailingStopLossRule(closePrice, numFactory.minusOne(), 2));
+        assertThrows(IllegalArgumentException.class,
+                () -> new TrailingStopLossRule(closePrice, numFactory.numOf(10), 0));
     }
 }

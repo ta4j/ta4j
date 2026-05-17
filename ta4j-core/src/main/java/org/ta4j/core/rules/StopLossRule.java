@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.rules;
 
+import java.util.Objects;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
@@ -13,7 +15,9 @@ import org.ta4j.core.num.Num;
  * A stop-loss rule.
  *
  * <p>
- * Satisfied when the close price reaches the loss threshold.
+ * Satisfied when the configured price indicator touches or moves beyond the
+ * loss threshold. Long positions trigger at or below the stop price; short
+ * positions trigger at or above it.
  *
  * <p>
  * This rule uses the {@code tradingRecord}.
@@ -33,7 +37,7 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      * @param lossPercentage the loss percentage
      */
     public StopLossRule(Indicator<Num> priceIndicator, Number lossPercentage) {
-        this(priceIndicator, priceIndicator.getBarSeries().numFactory().numOf(lossPercentage));
+        this(priceIndicator, numOf(priceIndicator, lossPercentage, "lossPercentage"));
     }
 
     /**
@@ -43,7 +47,10 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      * @param lossPercentage the loss percentage
      */
     public StopLossRule(Indicator<Num> priceIndicator, Num lossPercentage) {
-        this.priceIndicator = priceIndicator;
+        this.priceIndicator = Objects.requireNonNull(priceIndicator, "priceIndicator");
+        if (Num.isNaNOrNull(lossPercentage) || lossPercentage.isNegative()) {
+            throw new IllegalArgumentException("lossPercentage must be >= 0");
+        }
         this.lossPercentage = lossPercentage;
     }
 
@@ -57,11 +64,11 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      * @since 0.22.3
      */
     public static Num stopLossPrice(Num entryPrice, Num lossPercentage, boolean isBuy) {
-        if (entryPrice == null) {
-            throw new IllegalArgumentException("entryPrice must not be null");
+        if (Num.isNaNOrNull(entryPrice)) {
+            throw new IllegalArgumentException("entryPrice must not be null or NaN");
         }
-        if (lossPercentage == null) {
-            throw new IllegalArgumentException("lossPercentage must not be null");
+        if (Num.isNaNOrNull(lossPercentage) || lossPercentage.isNegative()) {
+            throw new IllegalArgumentException("lossPercentage must be >= 0");
         }
         Num hundred = entryPrice.getNumFactory().hundred();
         Num lossRatioThreshold = isBuy ? hundred.minus(lossPercentage).dividedBy(hundred)
@@ -80,11 +87,11 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      * @since 0.22.3
      */
     public static Num stopLossPriceFromDistance(Num entryPrice, Num lossDistance, boolean isBuy) {
-        if (entryPrice == null) {
-            throw new IllegalArgumentException("entryPrice must not be null");
+        if (Num.isNaNOrNull(entryPrice)) {
+            throw new IllegalArgumentException("entryPrice must not be null or NaN");
         }
-        if (lossDistance == null) {
-            throw new IllegalArgumentException("lossDistance must not be null");
+        if (Num.isNaNOrNull(lossDistance) || lossDistance.isNegative()) {
+            throw new IllegalArgumentException("lossDistance must be >= 0");
         }
         return isBuy ? entryPrice.minus(lossDistance) : entryPrice.plus(lossDistance);
     }
@@ -119,7 +126,7 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
         }
 
         Position currentPosition = tradingRecord.getCurrentPosition();
-        if (!currentPosition.isOpened()) {
+        if (currentPosition == null || !currentPosition.isOpened() || currentPosition.getEntry() == null) {
             StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
             return false;
         }
@@ -127,6 +134,12 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
         Num entryPrice = currentPosition.getEntry().getNetPrice();
         Num currentPrice = priceIndicator.getValue(index);
         boolean buy = currentPosition.getEntry().isBuy();
+        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice)) {
+            StopRuleTrace.traceDecision(this, index, false, buy, currentPrice, entryPrice, null, "lossPercentage",
+                    lossPercentage, "priceUnavailable");
+            return false;
+        }
+
         Num stopPrice = stopLossPrice(entryPrice, lossPercentage, buy);
         boolean satisfied = buy ? currentPrice.isLessThanOrEqual(stopPrice)
                 : currentPrice.isGreaterThanOrEqual(stopPrice);
@@ -134,5 +147,11 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
         StopRuleTrace.traceDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice, "lossPercentage",
                 lossPercentage, reason);
         return satisfied;
+    }
+
+    private static Num numOf(Indicator<Num> priceIndicator, Number value, String parameterName) {
+        Objects.requireNonNull(priceIndicator, "priceIndicator");
+        Objects.requireNonNull(value, parameterName);
+        return priceIndicator.getBarSeries().numFactory().numOf(value);
     }
 }
