@@ -75,6 +75,7 @@ Secrets and variables:
 - Via scheduler or manual `workflow_dispatch`.
 - Inputs: `releaseVersion` (optional if auto-detected), `nextVersion` (optional), `dryRun`.
 - Manual runs default `dryRun=true`. Set `dryRun=false` only for an intentional mutating run after reviewing a dry-run. Scheduled release automation dispatches prepare with explicit `dryRun=false`.
+- For scheduled production runs, confirm `release-scheduler.yml` logs `audit:dry_run_normalized=false` and `audit:dispatch_workflow workflow=prepare-release.yml ... dryRun=false`, then confirm `prepare-release.yml` logs `audit:dry_run_input_raw='false'` and `audit:dry_run_normalized=false`.
 - If `nextVersion` is omitted and `releaseVersion` is a plain `X.Y.Z`, it is auto-generated as `<major>.<minor>.<patch+1>-SNAPSHOT` (for example `0.22.2` -> `0.22.3-SNAPSHOT`).
 - For RC/non-plain release versions, provide `nextVersion` explicitly.
 - Before the workflow commits the next snapshot version, it runs the Java-based `ta4jexamples.doc.RemovalReadyDeprecationScanner` against the release version and fails if any `@Deprecated(forRemoval = true)` symbols are due or overdue for removal. This read-only scan also runs in dry-run mode.
@@ -82,6 +83,7 @@ Secrets and variables:
 - The workflow uploads release-gate and next-snapshot removal-ready deprecation report artifacts with grouped findings, symbols, lifecycle status, replacement hints when available, and synced issue links when issue sync runs.
 - The scanner JSON is the stable handoff contract for future automation: it includes `schemaVersion`, `automationNamespace`, grouped issue `planKind`, and per-symbol `trackingKey` fields so a later AI-driven planner can split work into one issue per deprecated item while remaining restart-safe by searching managed markers before mutation.
 - The workflow auto-labels the PR with `release`, assigns it to `TheCookieLab`, and requests review from `TheCookieLab`.
+- In PR mode, the successful handoff is the release branch push plus release PR creation. In direct-push mode, the successful handoff is `prepare-release.yml` dispatching `publish-release.yml` with `dryRun=false`.
 - Opening a release PR automatically triggers freeze notices on other open PRs.
 
 2. Review generated release PR
@@ -117,7 +119,7 @@ Operator flow:
 1. Run the workflow manually and leave `dryRun=true`.
 2. Inspect the computed values in the workflow summary and audit artifacts: release version, next snapshot, tag, publish target, snapshot version, and planned mutation steps.
 3. If the computed values are correct and mutation is intended, rerun the same workflow with `dryRun=false`.
-4. If no manual mutation is needed, let the official scheduled, push, merge, or workflow-run trigger continue; those paths normalize to `dryRun=false`.
+4. If no manual mutation is needed, let the official scheduled, push, merge, tag-push, or workflow-run trigger continue; those paths normalize to `dryRun=false`.
 
 Prepare dry-runs may leave `releaseVersion` and `nextVersion` blank where auto-detection is supported. Publish dry-runs require `releaseVersion`; `releaseCommit` remains optional and can be auto-detected.
 

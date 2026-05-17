@@ -8,6 +8,7 @@
 - **Release automation audit artifacts**: Release workflows now emit structured release dossiers, model catalog preflight data, normalized AI decisions, exact artifact manifests, tag-resolution snapshots, full-build logs, and workflow summaries so release failures can be diagnosed from the exact step that produced them.
 - **Report-producing analysis demos can run on demand or on schedule**: The new standalone `analysis-demo` JUnit tag starts with a live Elliott Wave BTC/USD macro report backed by Coinbase daily candles, plus a dedicated GitHub Actions workflow that can be manually run for provider-qualified instruments like `coinbase:BTC-USD` and uploads the resulting JSON, chart, and cached data artifacts.
 - **Elliott macro-cycle replay has a dedicated runner path**: The BTC macro-cycle replay regression now uses the explicit `elliott-macro-cycle-replay` JUnit tag and a manual-only self-hosted GitHub Actions workflow, keeping the multi-hour replay out of hosted PR verification and report-producing analysis-demo runs.
+- **PULL_REQUESTS.md guidance for AI agents**: New rules were added for handling pull requests.
 
 ### Changed
 - **Rule trace diagnostics are now explicit and safer for shared strategies**: enabling SLF4J `TRACE` on a rule or strategy logger now emits default verbose diagnostics without mutating shared instances, one-shot `SUMMARY` / `VERBOSE` calls scope noisy child logs, and output uses stable flat `key=value` fields for path/depth, compared values, cross/slope windows, risk/reward math, short-circuit reasons, unstable strategy decisions, and stop-rule prices.
@@ -26,6 +27,7 @@
 
 ### Fixed
 - **PR validation stays fast while the Elliott replay suite remains runnable**: GitHub build CI now keeps `integration`, `analysis-demo`, and `elliott-macro-cycle-replay` excluded by default instead of running every tagged test on each PR, and contributors can still rerun the BTC macro-cycle replay suite through its dedicated tag when they need full validation.
+- **Scheduled release automation now stays on the production path**: `release-scheduler.yml` cron runs continue to dispatch `prepare-release.yml` with `dryRun=false`, skipped scheduled runs no longer post production summaries, and the prepare workflow no longer fails removal-ready issue sync by redeclaring GitHub Script's injected bindings.
 
 ## 0.22.6 (2026-04-01)
 
