@@ -129,8 +129,8 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
         if (position == null || position.getEntry() == null) {
             return null;
         }
-        // If the entry bar was evicted by max-bar-count retention, use the first
-        // retained bar as the anchor.
+        // If the entry bar was evicted by max-bar-count retention, fall back to
+        // the first retained bar as the anchor (an approximation of entry-time stop).
         int entryIndex = retainedStartIndex(position.getEntry().getIndex());
         if (position.getEntry().isBuy()) {
             Num highestCloseNum = priceIndicator.getValue(entryIndex);

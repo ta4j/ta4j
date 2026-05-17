@@ -34,6 +34,9 @@ import org.ta4j.core.TradingRecord;
  * <p>
  * This rule is stateful and not thread-safe. Use a fresh instance for each
  * independent strategy, backtest run, or evaluation thread.
+ * TradingRecord identity is tracked weakly, so if a caller drops its own strong
+ * reference and the record is garbage-collected between evaluations, stage state
+ * may be reset on the next call.
  * </p>
  *
  * @since 0.22.7

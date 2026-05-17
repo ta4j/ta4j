@@ -873,8 +873,7 @@ public final class RuleSerialization {
                 Class<?> componentType = paramType.getComponentType();
                 if (componentType.equals(boolean.class) || componentType.equals(Boolean.class)) {
                     return context.resolveBooleanArray(paramName, paramType);
-                } else if (Number.class.isAssignableFrom(componentType)
-                        || componentType.isPrimitive()) {
+                } else if (Number.class.isAssignableFrom(componentType) || componentType.isPrimitive()) {
                     return context.resolveNumberArray(paramName, paramType);
                 } else if (componentType.isEnum()) {
                     String enumTypeKey = "__enumType_" + paramName;
