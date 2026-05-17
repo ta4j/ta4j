@@ -14,6 +14,10 @@ Defaults:
 The script runs BacktestPerformanceTuningHarness throughput-control mode in
 temporary worktrees for both refs, then compares matrix_performance.json
 cells/min and hypotheses/min.
+
+Both refs must already contain throughput-control support. The intended
+candidate-flow comparison is HEAD^ vs HEAD after adding the harness, telemetry,
+and optimization commits.
 USAGE
 }
 
@@ -39,14 +43,17 @@ if [[ "${1:-}" != "" && "${1:-}" != "--" ]]; then
   output_dir="$1"
   shift
 fi
+if [[ "$output_dir" != /* ]]; then
+  output_dir="$repo_root/$output_dir"
+fi
 if [[ "${1:-}" == "--" ]]; then
   shift
 fi
 
 default_harness_args=(
   --throughputControl
-  --matrixStrategyCounts 250,500,1000
-  --matrixBarCounts 500,1000
+  --matrixStrategyCounts "250,500,1000"
+  --matrixBarCounts "500,1000"
   --matrixMaxBarCountHints 0
   --executionMode topK
   --topK 10

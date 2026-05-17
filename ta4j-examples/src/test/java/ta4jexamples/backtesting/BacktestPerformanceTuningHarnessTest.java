@@ -23,9 +23,13 @@ import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.indicators.NetMomentumIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.rules.CrossedDownIndicatorRule;
+import org.ta4j.core.rules.CrossedUpIndicatorRule;
 
 class BacktestPerformanceTuningHarnessTest {
 
@@ -86,6 +90,19 @@ class BacktestPerformanceTuningHarnessTest {
     }
 
     @Test
+    void createStrategiesReusesEquivalentNetMomentumIndicatorGraphs() {
+        BarSeries series = buildSeries(500);
+
+        List<Strategy> strategies = BacktestPerformanceTuningHarness.createStrategies(series, 64);
+
+        NetMomentumIndicator firstIndicator = entryIndicator(strategies.get(0));
+        assertSame(firstIndicator, exitIndicator(strategies.get(0)),
+                "Entry and exit thresholds should share one momentum graph within each strategy");
+        assertTrue(strategies.stream().skip(1).anyMatch(strategy -> entryIndicator(strategy) == firstIndicator),
+                "Strategies with the same RSI/timeframe/decay inputs should reuse cached indicator work");
+    }
+
+    @Test
     void isNonLinearReturnsFalseForRoughlyLinearScaling() {
         Thresholds thresholds = new Thresholds(0.25d, 1.25d);
 
@@ -132,16 +149,9 @@ class BacktestPerformanceTuningHarnessTest {
 
     @Test
     void throughputPlanBuildsDeterministicMatrixCellsAndAcceptsFullBarCount() {
-        HarnessCli cli = HarnessCli.parse(new String[] {
-            "--throughputControl",
-            "--throughputOutputDir", tempDir.resolve("matrix").toString(),
-            "--matrixStrategyCounts", "2,3",
-            "--matrixBarCounts", "5,full",
-            "--matrixMaxBarCountHints", "0,4",
-            "--executionMode", "topK",
-            "--topK", "1",
-            "--parallelism", "auto"
-        });
+        HarnessCli cli = HarnessCli.parse(new String[] { "--throughputControl", "--throughputOutputDir",
+                tempDir.resolve("matrix").toString(), "--matrixStrategyCounts", "2,3", "--matrixBarCounts", "5,full",
+                "--matrixMaxBarCountHints", "0,4", "--executionMode", "topK", "--topK", "1", "--parallelism", "auto" });
 
         ThroughputControlPlan plan = ThroughputControlPlan.fromCli(cli, 10);
 
@@ -171,8 +181,7 @@ class BacktestPerformanceTuningHarnessTest {
         HarnessCli withProgress = HarnessCli.parse(new String[] { "--throughputControl", "--matrixStrategyCounts", "2",
                 "--matrixBarCounts", "5", "--matrixMaxBarCountHints", "0", "--parallelism", "1", "--progress" });
         HarnessCli withoutGc = HarnessCli.parse(new String[] { "--throughputControl", "--matrixStrategyCounts", "2",
-                "--matrixBarCounts", "5", "--matrixMaxBarCountHints", "0", "--parallelism", "1",
-                "--noGcBetweenRuns" });
+                "--matrixBarCounts", "5", "--matrixMaxBarCountHints", "0", "--parallelism", "1", "--noGcBetweenRuns" });
 
         ThroughputControlPlan basePlan = ThroughputControlPlan.fromCli(base, 10);
 
@@ -195,7 +204,8 @@ class BacktestPerformanceTuningHarnessTest {
         ThroughputMatrixCell second = new ThroughputMatrixCell("second", 3, 10, 0, ExecutionMode.FULL_RESULT, 1);
         tracker.record(new ThroughputCellResult(first, sampleRun(2, 20L, Duration.ofMillis(10), Duration.ZERO), 10L));
         tracker.record(new ThroughputCellResult(second, sampleRun(3, 30L, Duration.ofMillis(20), Duration.ZERO), 20L));
-        HarnessCli cli = HarnessCli.parse(new String[] {"--throughputOutputDir", tempDir.resolve("matrix").toString()});
+        HarnessCli cli = HarnessCli
+                .parse(new String[] { "--throughputOutputDir", tempDir.resolve("matrix").toString() });
         ThroughputControlPlan plan = ThroughputControlPlan.fromCli(cli, 10);
 
         JsonObject telemetry = tracker.toJson(30_000L, plan, HostTelemetry.capture());
@@ -215,21 +225,16 @@ class BacktestPerformanceTuningHarnessTest {
 
     @Test
     void throughputControlWritesManifestCellsAndMatrixPerformance() throws Exception {
-        HarnessCli cli = HarnessCli.parse(new String[] {
-            "--throughputControl",
-            "--throughputOutputDir", tempDir.resolve("output").toString(),
-            "--matrixStrategyCounts", "2",
-            "--matrixBarCounts", "10",
-            "--matrixMaxBarCountHints", "0",
-            "--executionMode", "topK",
-            "--topK", "1",
-            "--parallelism", "1"
-        });
+        HarnessCli cli = HarnessCli.parse(new String[] { "--throughputControl", "--throughputOutputDir",
+                tempDir.resolve("output").toString(), "--matrixStrategyCounts", "2", "--matrixBarCounts", "10",
+                "--matrixMaxBarCountHints", "0", "--executionMode", "topK", "--topK", "1", "--parallelism", "1" });
 
         BacktestPerformanceTuningHarness.runThroughputControl(buildSeries(30), cli);
 
-        Path performancePath = tempDir.resolve("output").resolve(BacktestPerformanceTuningHarness.MATRIX_PERFORMANCE_FILE);
-        Path manifestPath = tempDir.resolve("output").resolve(BacktestPerformanceTuningHarness.THROUGHPUT_MANIFEST_FILE);
+        Path performancePath = tempDir.resolve("output")
+                .resolve(BacktestPerformanceTuningHarness.MATRIX_PERFORMANCE_FILE);
+        Path manifestPath = tempDir.resolve("output")
+                .resolve(BacktestPerformanceTuningHarness.THROUGHPUT_MANIFEST_FILE);
         Path cellsPath = tempDir.resolve("output").resolve(BacktestPerformanceTuningHarness.MATRIX_CELLS_FILE);
         assertTrue(Files.isRegularFile(performancePath));
         assertTrue(Files.isRegularFile(manifestPath));
@@ -262,5 +267,17 @@ class BacktestPerformanceTuningHarnessTest {
             data[i] = i + 1d;
         }
         return new MockBarSeriesBuilder().withData(data).build();
+    }
+
+    private NetMomentumIndicator entryIndicator(Strategy strategy) {
+        CrossedUpIndicatorRule rule = (CrossedUpIndicatorRule) strategy.getEntryRule();
+        Indicator<Num> indicator = rule.getLow();
+        return (NetMomentumIndicator) indicator;
+    }
+
+    private NetMomentumIndicator exitIndicator(Strategy strategy) {
+        CrossedDownIndicatorRule rule = (CrossedDownIndicatorRule) strategy.getExitRule();
+        Indicator<Num> indicator = rule.getUp();
+        return (NetMomentumIndicator) indicator;
     }
 }

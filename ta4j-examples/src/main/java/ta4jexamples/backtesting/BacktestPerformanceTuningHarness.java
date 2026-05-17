@@ -46,8 +46,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.StringJoiner;
 import java.util.concurrent.ExecutionException;
@@ -264,10 +266,10 @@ import java.util.function.Consumer;
  * non-linear detection (default: 1.25)</li>
  * <li>{@code --tuneHeaps <csv>}: Heap sizes to test (e.g., 4g,8g,16g)</li>
  * <li>{@code --throughputControl}: Write fixed-matrix throughput artifacts</li>
- * <li>{@code --throughputOutputDir <dir>}: Artifact directory for throughput
- * control mode</li>
- * <li>{@code --matrixStrategyCounts <csv>}: Strategy-count cells for
- * throughput mode</li>
+ * <li>{@code --throughputOutputDir}: Artifact directory for throughput control
+ * mode</li>
+ * <li>{@code --matrixStrategyCounts <csv>}: Strategy-count cells for throughput
+ * mode</li>
  * <li>{@code --matrixBarCounts <csv>}: Bar-count cells for throughput mode;
  * accepts {@code full}</li>
  * <li>{@code --matrixMaxBarCountHints <csv>}: Maximum-bar-count hint cells for
@@ -362,8 +364,7 @@ public class BacktestPerformanceTuningHarness {
     static final String THROUGHPUT_RESULT_PREFIX = "THROUGHPUT_RESULT: ";
 
     static final Gson GSON = new GsonBuilder().registerTypeAdapter(Duration.class, new DurationTypeAdapter()).create();
-    static final Gson PRETTY_GSON = new GsonBuilder()
-            .registerTypeAdapter(Duration.class, new DurationTypeAdapter())
+    static final Gson PRETTY_GSON = new GsonBuilder().registerTypeAdapter(Duration.class, new DurationTypeAdapter())
             .setPrettyPrinting()
             .create();
 
@@ -970,6 +971,11 @@ public class BacktestPerformanceTuningHarness {
      * <li>Exit rule: CrossedDownIndicatorRule when NetMomentumIndicator crosses
      * below overbought threshold</li>
      * </ul>
+     * <p>
+     * Strategies that share the same RSI, Net Momentum timeframe, and decay factor
+     * reuse the same indicator graph. The underlying cached indicators are
+     * thread-safe, and sharing them keeps this benchmark focused on rule thresholds
+     * instead of repeatedly recomputing identical momentum series.
      *
      * @param series                 The bar series to use for indicator
      *                               calculations
@@ -993,6 +999,9 @@ public class BacktestPerformanceTuningHarness {
         }
 
         List<Strategy> strategies = new ArrayList<>(requestedStrategyCount > 0 ? requestedStrategyCount : 10_416);
+        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
+        Map<Integer, RSIIndicator> rsiIndicators = new LinkedHashMap<>();
+        Map<String, NetMomentumIndicator> netMomentumIndicators = new LinkedHashMap<>();
         int created = 0;
 
         int repetition = 0;
@@ -1009,8 +1018,22 @@ public class BacktestPerformanceTuningHarness {
                             }
                             for (double decayFactor = DECAY_FACTOR_MIN; decayFactor <= DECAY_FACTOR_MAX; decayFactor += DECAY_FACTOR_INCREMENT) {
                                 try {
-                                    Strategy strategy = createStrategy(series, rsiBarCount, timeFrame,
-                                            oversoldThreshold, overboughtThreshold, decayFactor, repetition);
+                                    int currentRsiBarCount = rsiBarCount;
+                                    int currentTimeFrame = timeFrame;
+                                    double currentDecayFactor = decayFactor;
+                                    NetMomentumIndicator netMomentumIndicator = netMomentumIndicators
+                                            .computeIfAbsent(
+                                                    netMomentumKey(currentRsiBarCount, currentTimeFrame,
+                                                            currentDecayFactor),
+                                                    ignored -> NetMomentumIndicator
+                                                            .forRsiWithDecay(
+                                                                    rsiIndicators.computeIfAbsent(currentRsiBarCount,
+                                                                            key -> new RSIIndicator(closePriceIndicator,
+                                                                                    key)),
+                                                                    currentTimeFrame, currentDecayFactor));
+                                    Strategy strategy = createStrategy(netMomentumIndicator, currentRsiBarCount,
+                                            currentTimeFrame, oversoldThreshold, overboughtThreshold,
+                                            currentDecayFactor, repetition);
                                     strategies.add(strategy);
                                     created++;
                                     addedAny = true;
@@ -1039,6 +1062,10 @@ public class BacktestPerformanceTuningHarness {
         }
 
         return strategies;
+    }
+
+    private static String netMomentumKey(int rsiBarCount, int timeFrame, double decayFactor) {
+        return rsiBarCount + "|" + timeFrame + "|" + String.format(Locale.ROOT, "%.8f", decayFactor);
     }
 
     /**
@@ -1079,6 +1106,18 @@ public class BacktestPerformanceTuningHarness {
             int overboughtThreshold, double decayFactor, int repetition) {
         Objects.requireNonNull(series, "series cannot be null");
 
+        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
+        RSIIndicator rsiIndicator = new RSIIndicator(closePriceIndicator, rsiBarCount);
+        NetMomentumIndicator netMomentumIndicator = NetMomentumIndicator.forRsiWithDecay(rsiIndicator, timeFrame,
+                decayFactor);
+        return createStrategy(netMomentumIndicator, rsiBarCount, timeFrame, oversoldThreshold, overboughtThreshold,
+                decayFactor, repetition);
+    }
+
+    private static Strategy createStrategy(NetMomentumIndicator netMomentumIndicator, int rsiBarCount, int timeFrame,
+            int oversoldThreshold, int overboughtThreshold, double decayFactor, int repetition) {
+        Objects.requireNonNull(netMomentumIndicator, "netMomentumIndicator cannot be null");
+
         if (rsiBarCount <= 0) {
             throw new IllegalArgumentException("rsiBarCount should be positive");
         }
@@ -1086,11 +1125,8 @@ public class BacktestPerformanceTuningHarness {
             throw new IllegalArgumentException("timeFrame should be positive");
         }
 
-        ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
-        NetMomentumIndicator rsiM = NetMomentumIndicator
-                .forRsiWithDecay(new RSIIndicator(closePriceIndicator, rsiBarCount), timeFrame, decayFactor);
-        Rule entryRule = new CrossedUpIndicatorRule(rsiM, oversoldThreshold);
-        Rule exitRule = new CrossedDownIndicatorRule(rsiM, overboughtThreshold);
+        Rule entryRule = new CrossedUpIndicatorRule(netMomentumIndicator, oversoldThreshold);
+        Rule exitRule = new CrossedDownIndicatorRule(netMomentumIndicator, overboughtThreshold);
 
         String suffix = repetition > 0 ? " (rep=" + repetition + ")" : "";
         String strategyName = "Entry Crossed Up: {rsiBarCount=" + rsiBarCount + ", timeFrame=" + timeFrame
@@ -1310,7 +1346,8 @@ record HostTelemetry(String hostId, String osName, String osArch, String osVersi
 
     private static String detectHostId() {
         String hostname = detectHostname();
-        return "unknown".equals(hostname) ? hostname : "sha256:" + BacktestPerformanceTuningHarness.shortSha256(hostname);
+        return "unknown".equals(hostname) ? hostname
+                : "sha256:" + BacktestPerformanceTuningHarness.shortSha256(hostname);
     }
 
     private static String detectHostname() {
@@ -1363,10 +1400,8 @@ record ThroughputControlPlan(String dataset, Path outputDir, List<ThroughputMatr
                 .add(Boolean.toString(cli.progress))
                 .add(Boolean.toString(cli.gcBetweenRuns));
         cells.forEach(cell -> fingerprintSource.add(cell.toString()));
-        Path outputDir = cli.throughputOutputDir == null
-                ? Path.of(".agents", "benchmarks", "backtest-throughput",
-                        "matrix-" + Instant.now().toString().replace(':', '-'))
-                : cli.throughputOutputDir;
+        Path outputDir = cli.throughputOutputDir == null ? Path.of(".agents", "benchmarks", "backtest-throughput",
+                "matrix-" + Instant.now().toString().replace(':', '-')) : cli.throughputOutputDir;
         return new ThroughputControlPlan(cli.ohlcResourceFile, outputDir.toAbsolutePath().normalize(), cells,
                 cli.parallelism, resolvedParallelism, cli.executionMode, cli.topK, cli.progress, cli.gcBetweenRuns,
                 BacktestPerformanceTuningHarness.shortSha256(fingerprintSource.toString()));
@@ -1727,7 +1762,7 @@ final class HarnessCli {
             case "--tuneStrategyStart" -> cli.tuneStrategyStart = Integer.parseInt(requireValue(args, ++i, arg));
             case "--tuneStrategyStep" -> cli.tuneStrategyStep = Integer.parseInt(requireValue(args, ++i, arg));
             case "--tuneStrategyMax" -> cli.tuneStrategyMax = Integer.parseInt(requireValue(args, ++i, arg));
-            case "--tuneBarCounts" -> cli.tuneBarCounts = parseCsvBarCounts(requireValue(args, ++i, arg));
+            case "--tuneBarCounts" -> cli.tuneBarCounts = parseCsvBarCounts(requireValue(args, ++i, arg), arg);
             case "--tuneMaxBarCountHints" ->
                 cli.tuneMaxBarCountHints = parseCsvNonNegativeInts(requireValue(args, ++i, arg), arg);
             case "--nonlinearGcOverhead" ->
@@ -1829,8 +1864,7 @@ final class HarnessCli {
                 ? BacktestPerformanceTuningHarness.DEFAULT_MATRIX_STRATEGY_COUNTS
                 : matrixStrategyCounts;
         strategyCounts = dedupeIntegers(strategyCounts);
-        List<Integer> barCounts = matrixBarCounts.isEmpty()
-                ? BacktestPerformanceTuningHarness.DEFAULT_MATRIX_BAR_COUNTS
+        List<Integer> barCounts = matrixBarCounts.isEmpty() ? BacktestPerformanceTuningHarness.DEFAULT_MATRIX_BAR_COUNTS
                 : matrixBarCounts;
         barCounts = dedupeIntegers(barCounts);
         List<Integer> maximumBarCountHints = matrixMaxBarCountHints.isEmpty()
@@ -1843,8 +1877,8 @@ final class HarnessCli {
             for (int rawBarCount : barCounts) {
                 int barCount = rawBarCount <= 0 ? 0 : Math.min(rawBarCount, fullBarCount);
                 for (int maximumBarCountHint : maximumBarCountHints) {
-                    String cellId = "s" + strategyCount + "-b" + (barCount <= 0 ? "full" : barCount)
-                            + "-m" + maximumBarCountHint;
+                    String cellId = "s" + strategyCount + "-b" + (barCount <= 0 ? "full" : barCount) + "-m"
+                            + maximumBarCountHint;
                     cells.add(new ThroughputMatrixCell(cellId, strategyCount, barCount, maximumBarCountHint,
                             executionMode, topK));
                 }
@@ -1916,10 +1950,6 @@ final class HarnessCli {
         return Integer.toString(parsed);
     }
 
-    private static List<Integer> parseCsvBarCounts(String value) {
-        return parseCsvBarCounts(value, null);
-    }
-
     private static List<Integer> parseCsvBarCounts(String value, String flag) {
         if (value == null || value.isBlank()) {
             return List.of();
@@ -1927,16 +1957,21 @@ final class HarnessCli {
         List<Integer> values = Arrays.stream(value.split(","))
                 .map(String::trim)
                 .filter(part -> !part.isEmpty())
-                .map(part -> "full".equalsIgnoreCase(part) ? 0 : Integer.parseInt(part))
+                .map(part -> parseBarCount(part, flag))
                 .toList();
-        if (flag != null) {
-            for (int parsed : values) {
-                if (parsed < 0) {
-                    throw new IllegalArgumentException(flag + " values must be >= 0 or full");
-                }
-            }
-        }
         return values;
+    }
+
+    private static int parseBarCount(String value, String flag) {
+        if ("full".equalsIgnoreCase(value)) {
+            return 0;
+        }
+        int parsed = Integer.parseInt(value);
+        if (parsed < 0) {
+            String source = flag == null ? "bar count" : flag;
+            throw new IllegalArgumentException(source + " values must be >= 0 or full");
+        }
+        return parsed;
     }
 
     private static List<Integer> parseCsvPositiveInts(String value, String flag) {
