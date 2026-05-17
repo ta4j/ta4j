@@ -897,6 +897,7 @@ For performance tuning guidance, start with:
 - [Backtesting guide](https://ta4j.github.io/ta4j-wiki/Backtesting.html) for execution-model and batch-run tradeoffs
 - [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html) for precision-vs-speed decisions (`DecimalNum` vs `DoubleNum`)
 - [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java) for reproducible tuning runs
+- `scripts/benchmark-backtest-throughput.sh` for controlled `HEAD^` vs `HEAD` comparisons using `matrix_performance.json` cells/min and hypotheses/min
 - [Performance Characterization](https://ta4j.github.io/ta4j-wiki/Performance-Characterization.html) for methodology and interpretation
 
 ## Community & Support
