@@ -9,8 +9,10 @@
 - **Release automation audit artifacts**: Release workflows now emit structured release dossiers, model catalog preflight data, normalized AI decisions, exact artifact manifests, tag-resolution snapshots, full-build logs, and workflow summaries so release failures can be diagnosed from the exact step that produced them.
 - **Report-producing analysis demos can run on demand or on schedule**: The new standalone `analysis-demo` JUnit tag starts with a live Elliott Wave BTC/USD macro report backed by Coinbase daily candles, plus a dedicated GitHub Actions workflow that can be manually run for provider-qualified instruments like `coinbase:BTC-USD` and uploads the resulting JSON, chart, and cached data artifacts.
 - **Elliott macro-cycle replay has a dedicated runner path**: The BTC macro-cycle replay regression now uses the explicit `elliott-macro-cycle-replay` JUnit tag and a manual-only self-hosted GitHub Actions workflow, keeping the multi-hour replay out of hosted PR verification and report-producing analysis-demo runs.
+- **PULL_REQUESTS.md guidance for AI agents**: New rules were added for handling pull requests.
 
 ### Changed
+- **GitHub workflow action pins now stay on the current supported lines**: Maintainers can rerun CI, release, snapshot, and release-freeze automation without tripping over deprecated hosted-action runtimes because the workflow set now consistently uses the current official `actions/*` majors (`checkout@v6`, `cache@v5`, `setup-java@v5`, `github-script@v9`, and `upload-artifact@v7`) plus the current release-publishing and linting actions (`softprops/action-gh-release@v3`, `rhysd/actionlint@v1.7.12`) across fast feedback and release lanes (`CF-160`).
 - **Contributor verify and example runs now line up with the repo’s real commands**: You can now run `mvn verify` to mirror CI’s advisory SpotBugs and JaCoCo feedback for `ta4j-core` and `ta4j-examples`, then launch examples straight from repo root with `mvn -pl ta4j-examples exec:java` for `Quickstart` or `-Dexec.mainClass=...` for a specific demo (`CF-119`).
 - **Release health now proves the snapshot really shipped without false handoff alarms**: `release-health.yml` now checks the live Maven snapshot metadata for the current `-SNAPSHOT` version, but only treats a missing snapshot as drift once `snapshot.yml` has had a chance to finish, so maintainers can see whether the post-release snapshot publication actually landed instead of only inferring it from `pom.xml` drift (`CF-118`).
 - **Agent guidance stays accurate across repo and personal workflows**: `scripts/agents_for_target.sh` guidance now clearly describes path-scoped `AGENTS.md` discovery from the current repo/workspace root, so contributors can use it for file-targeted lookup without assuming it also covers personal PR/comment workflow guidance.
@@ -25,6 +27,7 @@
 
 ### Fixed
 - **PR validation stays fast while the Elliott replay suite remains runnable**: GitHub build CI now keeps `integration`, `analysis-demo`, and `elliott-macro-cycle-replay` excluded by default instead of running every tagged test on each PR, and contributors can still rerun the BTC macro-cycle replay suite through its dedicated tag when they need full validation.
+- **Scheduled release automation now stays on the production path**: `release-scheduler.yml` cron runs continue to dispatch `prepare-release.yml` with `dryRun=false`, skipped scheduled runs no longer post production summaries, and the prepare workflow no longer fails removal-ready issue sync by redeclaring GitHub Script's injected bindings.
 
 ## 0.22.6 (2026-04-01)
 

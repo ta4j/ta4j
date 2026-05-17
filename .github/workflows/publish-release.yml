@@ -63,7 +63,7 @@ jobs:
       # Setup and Metadata
       # -----------------------
       - name: Checkout repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           persist-credentials: true
@@ -174,7 +174,7 @@ jobs:
 
       - name: Extract release metadata
         id: meta
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           github-token: ${{ github.token }}
           script: |
@@ -452,7 +452,7 @@ jobs:
           echo "existing_tag=$found" >> $GITHUB_OUTPUT
 
       - name: Fail if tag exists
-        if: steps.check_tag.outputs.exists == 'true'
+        if: steps.check_tag.outputs.exists == 'true' && steps.dry_run.outputs.dryRun != 'true'
         env:
           RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
           EXISTING_TAG: ${{ steps.check_tag.outputs.existing_tag }}
@@ -460,6 +460,16 @@ jobs:
           tag="${EXISTING_TAG:-$RELEASE_VERSION}"
           echo "Error: tag '$tag' already exists (checked '$RELEASE_VERSION' and 'v$RELEASE_VERSION'). Aborting."
           exit 1
+
+      - name: Report existing tag in dry-run mode
+        if: steps.check_tag.outputs.exists == 'true' && steps.dry_run.outputs.dryRun == 'true'
+        env:
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+          EXISTING_TAG: ${{ steps.check_tag.outputs.existing_tag }}
+        run: |
+          tag="${EXISTING_TAG:-$RELEASE_VERSION}"
+          echo "::warning::Tag '$tag' already exists (checked '$RELEASE_VERSION' and 'v$RELEASE_VERSION'); dry-run validation will continue without tag mutation."
+          echo "audit:existing_tag_dry_run=${tag}"
 
       # -----------------------
       # Secrets and Environment
@@ -576,7 +586,7 @@ jobs:
           echo "audit:all_required_secrets_present=true"
 
       - name: Cache Maven packages
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -821,7 +831,7 @@ jobs:
 
       - name: Dispatch snapshot publication
         if: steps.dry_run.outputs.dryRun != 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
           RELEASE_COMMIT: ${{ steps.meta.outputs.release_commit }}
@@ -919,7 +929,7 @@ jobs:
 
       - name: Upload publish-release audit artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: publish-release-audit-${{ github.run_id }}
           path: |
@@ -1026,7 +1036,7 @@ jobs:
 
       - name: Post to Maven Central Releases discussion
         if: always() && steps.dry_run.outputs.dryRun != 'true'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           RELEASE_DISCUSSION_NUMBER: ${{ vars.RELEASE_DISCUSSION_NUMBER }}
         with:

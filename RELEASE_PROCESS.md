@@ -75,6 +75,7 @@ Secrets and variables:
 - Via scheduler or manual `workflow_dispatch`.
 - Inputs: `releaseVersion` (optional if auto-detected), `nextVersion` (optional), `dryRun`.
 - Manual runs default `dryRun=true`. Set `dryRun=false` only for an intentional mutating run after reviewing a dry-run. Scheduled release automation dispatches prepare with explicit `dryRun=false`.
+- For scheduled production runs, confirm `release-scheduler.yml` logs `audit:dry_run_normalized=false` and `audit:dispatch_workflow workflow=prepare-release.yml ... dryRun=false`, then confirm `prepare-release.yml` logs `audit:dry_run_input_raw='false'` and `audit:dry_run_normalized=false`.
 - If `nextVersion` is omitted and `releaseVersion` is a plain `X.Y.Z`, it is auto-generated as `<major>.<minor>.<patch+1>-SNAPSHOT` (for example `0.22.2` -> `0.22.3-SNAPSHOT`).
 - For RC/non-plain release versions, provide `nextVersion` explicitly.
 - Before the workflow commits the next snapshot version, it runs the Java-based `ta4jexamples.doc.RemovalReadyDeprecationScanner` against the release version and fails if any `@Deprecated(forRemoval = true)` symbols are due or overdue for removal. This read-only scan also runs in dry-run mode.
@@ -82,6 +83,7 @@ Secrets and variables:
 - The workflow uploads release-gate and next-snapshot removal-ready deprecation report artifacts with grouped findings, symbols, lifecycle status, replacement hints when available, and synced issue links when issue sync runs.
 - The scanner JSON is the stable handoff contract for future automation: it includes `schemaVersion`, `automationNamespace`, grouped issue `planKind`, and per-symbol `trackingKey` fields so a later AI-driven planner can split work into one issue per deprecated item while remaining restart-safe by searching managed markers before mutation.
 - The workflow auto-labels the PR with `release`, assigns it to `TheCookieLab`, and requests review from `TheCookieLab`.
+- In PR mode, the successful handoff is the release branch push plus release PR creation. In direct-push mode, the successful handoff is `prepare-release.yml` dispatching `publish-release.yml` with `dryRun=false`.
 - Opening a release PR automatically triggers freeze notices on other open PRs.
 
 2. Review generated release PR
@@ -117,7 +119,7 @@ Operator flow:
 1. Run the workflow manually and leave `dryRun=true`.
 2. Inspect the computed values in the workflow summary and audit artifacts: release version, next snapshot, tag, publish target, snapshot version, and planned mutation steps.
 3. If the computed values are correct and mutation is intended, rerun the same workflow with `dryRun=false`.
-4. If no manual mutation is needed, let the official scheduled, push, merge, or workflow-run trigger continue; those paths normalize to `dryRun=false`.
+4. If no manual mutation is needed, let the official scheduled, push, merge, tag-push, or workflow-run trigger continue; those paths normalize to `dryRun=false`.
 
 Prepare dry-runs may leave `releaseVersion` and `nextVersion` blank where auto-detection is supported. Publish dry-runs require `releaseVersion`; `releaseCommit` remains optional and can be auto-detected.
 
@@ -126,7 +128,8 @@ Expected behavior:
 - no managed cleanup issue sync, release PR creation, branch push, tag push, Maven Central deployment, GitHub Release creation, snapshot deployment, or discussion/comment mutation.
 - prepare dry-runs still run push capability probes with `git push --dry-run`.
 - prepare dry-runs run deprecation scans and upload report artifacts, but skip managed GitHub cleanup issue sync. If the release-ready gate finds due or overdue removals, the dry-run fails after the reports are available.
-- publish dry-runs run the same metadata, ancestry, release-candidate, and artifact manifest checks without deploying.
+- publish dry-runs run the same metadata, ancestry, release-candidate, and artifact manifest checks without deploying. If the release tag already exists, the dry-run records a warning and continues so historical release validation remains possible.
+- GitHub Release dry-runs build and validate the exact release artifact manifest from the selected tag while using workflow support files from the workflow commit.
 - release-candidate checks use the repository default `integration,slow` test-tag exclusions and log that policy in the workflow output.
 - workflows upload audit artifacts such as release dossiers, decisions, manifests, logs, and tag-resolution files so failures can be diagnosed from the exact phase that produced them.
 
@@ -140,7 +143,7 @@ Expected behavior:
 | `prepare-release.yml` | manual (or scheduler dispatch) | generate release artifacts and release PR/direct-push commits | manual runs default dry-run; scheduler passes `dryRun`; docs-integrity checks, version validation, metadata validation, dry-run push capability probes |
 | `publish-release.yml` | merged release PR close, manual | release-candidate verification + tag + Maven Central deploy + snapshot dispatch + release summary | manual runs default dry-run; merged release PRs normalize to production; merge discipline + ancestry checks, artifact manifest checks, post-push tag integrity/reachability checks |
 | `release-health.yml` | push to `master`, publish workflow completion, snapshot workflow completion, schedule, manual | detect drift in release state | manual runs default dry-run; non-manual triggers normalize to production; fails on tag reachability drift, snapshot version drift, missing snapshot publication once snapshot publication is authoritative, missing notes, stale release PRs |
-| `github-release.yml` | semver-like tag push, manual | GitHub release publication | manual runs default dry-run; tag pushes normalize to production; semver tag validation, exact artifact manifest |
+| `github-release.yml` | semver-like tag push, manual | GitHub release publication | manual runs default dry-run; tag pushes normalize to production; semver tag validation, exact artifact manifest using current workflow support files |
 | `snapshot.yml` | push to `master`, publish workflow dispatch, manual | publish snapshots | manual runs default dry-run; master pushes and publish handoff normalize to production; build/test/deploy prechecks and source-release audit fields |
 
 Tag metrics used by release automation:
