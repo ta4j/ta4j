@@ -50,6 +50,26 @@ If chart windows do not appear, you are likely in a headless environment; switch
 - `ta4jexamples.backtesting.SimpleMovingAverageRangeBacktest`
 - `ta4jexamples.backtesting.BacktestPerformanceTuningHarness`
 
+Run a fixed throughput matrix and write `matrix_performance.json`:
+
+```bash
+mvn -pl ta4j-examples -am compile
+mvn -pl ta4j-examples exec:java \
+  -Dexec.mainClass=ta4jexamples.backtesting.BacktestPerformanceTuningHarness \
+  -Dexec.args="--throughputControl --throughputOutputDir .agents/benchmarks/backtest-throughput/current --matrixStrategyCounts 250,500,1000 --matrixBarCounts 500,1000 --matrixMaxBarCountHints 0 --executionMode topK --topK 10 --parallelism 1"
+```
+
+Compare two refs on the same host/spec/dataset:
+
+```bash
+scripts/benchmark-backtest-throughput.sh HEAD^ HEAD
+```
+
+Both refs must include throughput-control support; use `HEAD^` vs `HEAD` after
+the harness and optimization commits are in place. The JSON artifacts include a
+hashed `hostId` plus JVM/OS metadata so reports can be shared without exposing a
+raw machine hostname.
+
 ### 4) Live-style workflows
 
 - `ta4jexamples.bots.TradingBotOnMovingBarSeries`
