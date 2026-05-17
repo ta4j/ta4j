@@ -163,38 +163,33 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        // No trading history or no position opened, no loss
-        if (tradingRecord != null) {
-            Position currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition != null && currentPosition.isOpened() && currentPosition.getEntry() != null) {
-
-                Num entryPrice = currentPosition.getEntry().getNetPrice();
-                Num currentPrice = priceIndicator.getValue(index);
-                if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice)) {
-                    traceIsSatisfied(index, false);
-                    return false;
-                }
-
-                if (currentPosition.getEntry().isBuy()) {
-                    satisfied = isBuyGainSatisfied(entryPrice, currentPrice);
-                } else {
-                    satisfied = isSellGainSatisfied(entryPrice, currentPrice);
-                }
-            }
+        if (tradingRecord == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noTradingRecord");
+            return false;
         }
-        traceIsSatisfied(index, satisfied);
+
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        if (currentPosition == null || !currentPosition.isOpened() || currentPosition.getEntry() == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
+            return false;
+        }
+
+        Num entryPrice = currentPosition.getEntry().getNetPrice();
+        Num currentPrice = priceIndicator.getValue(index);
+        boolean buy = currentPosition.getEntry().isBuy();
+        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice)) {
+            StopRuleTrace.traceDecision(this, index, false, buy, currentPrice, entryPrice, null, "gainPercentage",
+                    gainPercentage, "priceUnavailable");
+            return false;
+        }
+
+        Num stopPrice = stopGainPrice(entryPrice, gainPercentage, buy);
+        boolean satisfied = buy ? currentPrice.isGreaterThanOrEqual(stopPrice)
+                : currentPrice.isLessThanOrEqual(stopPrice);
+        String reason = satisfied ? "stopReached" : buy ? "priceBelowStop" : "priceAboveStop";
+        StopRuleTrace.traceDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice, "gainPercentage",
+                gainPercentage, reason);
         return satisfied;
-    }
-
-    private boolean isBuyGainSatisfied(Num entryPrice, Num currentPrice) {
-        Num threshold = stopGainPrice(entryPrice, gainPercentage, true);
-        return currentPrice.isGreaterThanOrEqual(threshold);
-    }
-
-    private boolean isSellGainSatisfied(Num entryPrice, Num currentPrice) {
-        Num threshold = stopGainPrice(entryPrice, gainPercentage, false);
-        return currentPrice.isLessThanOrEqual(threshold);
     }
 
     private static Num numOf(Indicator<Num> priceIndicator, Number value, String parameterName) {

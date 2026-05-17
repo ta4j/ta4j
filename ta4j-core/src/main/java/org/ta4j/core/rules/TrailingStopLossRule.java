@@ -63,46 +63,62 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        // No trading history or no position opened, no loss
-        if (tradingRecord != null) {
-            Position currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition != null && currentPosition.isOpened() && currentPosition.getEntry() != null) {
-                Num currentPrice = priceIndicator.getValue(index);
-                int positionIndex = currentPosition.getEntry().getIndex();
+        if (tradingRecord == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noTradingRecord");
+            return false;
+        }
 
-                if (index < positionIndex || Num.isNaNOrNull(currentPrice)) {
-                    traceIsSatisfied(index, false);
-                    return false;
-                }
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        if (currentPosition == null || !currentPosition.isOpened() || currentPosition.getEntry() == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
+            return false;
+        }
 
-                if (currentPosition.getEntry().isBuy()) {
-                    satisfied = isBuySatisfied(currentPrice, index, positionIndex);
-                } else {
-                    satisfied = isSellSatisfied(currentPrice, index, positionIndex);
-                }
+        Num entryPrice = currentPosition.getEntry().getNetPrice();
+        Num currentPrice = priceIndicator.getValue(index);
+        int positionIndex = currentPosition.getEntry().getIndex();
+        if (index < positionIndex) {
+            StopRuleTrace.traceUnavailable(this, index, "indexBeforeEntry");
+            return false;
+        }
+        boolean buy = currentPosition.getEntry().isBuy();
+        int windowStartIndex = windowStartIndex(index, positionIndex);
+        int lookback = index - windowStartIndex + 1;
+        String extremeField = buy ? "highestPrice" : "lowestPrice";
+        if (Num.isNaNOrNull(currentPrice)) {
+            StopRuleTrace.traceTrailingDecision(this, index, false, buy, currentPrice, entryPrice, null, extremeField,
+                    null, lookback, "lossPercentage", lossPercentage, "priceUnavailable");
+            return false;
+        }
+
+        Num extremePrice;
+        Num stopPrice;
+        boolean satisfied;
+        if (buy) {
+            extremePrice = highestValue(windowStartIndex, index);
+            if (Num.isNaNOrNull(extremePrice)) {
+                StopRuleTrace.traceTrailingDecision(this, index, false, true, currentPrice, entryPrice, null,
+                        extremeField, extremePrice, lookback, "lossPercentage", lossPercentage,
+                        "extremePriceUnavailable");
+                return false;
             }
+            stopPrice = StopLossRule.stopLossPrice(extremePrice, lossPercentage, true);
+            satisfied = currentPrice.isLessThanOrEqual(stopPrice);
+        } else {
+            extremePrice = lowestValue(windowStartIndex, index);
+            if (Num.isNaNOrNull(extremePrice)) {
+                StopRuleTrace.traceTrailingDecision(this, index, false, false, currentPrice, entryPrice, null,
+                        extremeField, extremePrice, lookback, "lossPercentage", lossPercentage,
+                        "extremePriceUnavailable");
+                return false;
+            }
+            stopPrice = StopLossRule.stopLossPrice(extremePrice, lossPercentage, false);
+            satisfied = currentPrice.isGreaterThanOrEqual(stopPrice);
         }
-        traceIsSatisfied(index, satisfied);
+        String reason = satisfied ? "stopReached" : buy ? "priceAboveStop" : "priceBelowStop";
+        StopRuleTrace.traceTrailingDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice,
+                extremeField, extremePrice, lookback, "lossPercentage", lossPercentage, reason);
         return satisfied;
-    }
-
-    private boolean isBuySatisfied(Num currentPrice, int index, int positionIndex) {
-        Num highestCloseNum = highestValue(windowStartIndex(index, positionIndex), index);
-        if (Num.isNaNOrNull(highestCloseNum)) {
-            return false;
-        }
-        Num currentStopLossLimitActivation = StopLossRule.stopLossPrice(highestCloseNum, lossPercentage, true);
-        return currentPrice.isLessThanOrEqual(currentStopLossLimitActivation);
-    }
-
-    private boolean isSellSatisfied(Num currentPrice, int index, int positionIndex) {
-        Num lowestCloseNum = lowestValue(windowStartIndex(index, positionIndex), index);
-        if (Num.isNaNOrNull(lowestCloseNum)) {
-            return false;
-        }
-        Num currentStopLossLimitActivation = StopLossRule.stopLossPrice(lowestCloseNum, lossPercentage, false);
-        return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
     }
 
     /**
@@ -166,11 +182,4 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
         return lowest;
     }
 
-    @Override
-    protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}. Current price: {}", getTraceDisplayName(), index, isSatisfied,
-                    priceIndicator.getValue(index));
-        }
-    }
 }
