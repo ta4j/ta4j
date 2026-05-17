@@ -4,6 +4,7 @@
 package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
@@ -18,6 +19,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -49,6 +51,23 @@ public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertNumEquals(105, StopGainRule.trailingStopGainPrice(entryPrice, gainPercent, false));
         assertNumEquals(95, StopGainRule.trailingStopGainPriceFromDistance(entryPrice, numFactory.numOf(5), true));
         assertNumEquals(105, StopGainRule.trailingStopGainPriceFromDistance(entryPrice, numFactory.numOf(5), false));
+    }
+
+    @Test
+    public void stopGainPriceValidationDescribesNaNInputs() {
+        IllegalArgumentException gainException = assertThrows(IllegalArgumentException.class,
+                () -> StopGainRule.stopGainPrice(NaN.NaN, numFactory.one(), true));
+        IllegalArgumentException distanceException = assertThrows(IllegalArgumentException.class,
+                () -> StopGainRule.stopGainPriceFromDistance(NaN.NaN, numFactory.one(), true));
+        IllegalArgumentException trailingException = assertThrows(IllegalArgumentException.class,
+                () -> StopGainRule.trailingStopGainPrice(NaN.NaN, numFactory.one(), true));
+        IllegalArgumentException trailingDistanceException = assertThrows(IllegalArgumentException.class,
+                () -> StopGainRule.trailingStopGainPriceFromDistance(NaN.NaN, numFactory.one(), true));
+
+        assertEquals("entryPrice must not be null or NaN", gainException.getMessage());
+        assertEquals("entryPrice must not be null or NaN", distanceException.getMessage());
+        assertEquals("favorablePrice must not be null or NaN", trailingException.getMessage());
+        assertEquals("favorablePrice must not be null or NaN", trailingDistanceException.getMessage());
     }
 
     @Test

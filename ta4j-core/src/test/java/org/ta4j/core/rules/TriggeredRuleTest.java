@@ -117,6 +117,23 @@ public class TriggeredRuleTest {
     }
 
     @Test
+    public void resetAllStagesOnSatisfactionShortCircuitsLaterStages() {
+        CountingRule firstDelegate = new CountingRule(index -> true);
+        CountingRule secondTrigger = new CountingRule(index -> true);
+        CountingRule secondDelegate = new CountingRule(index -> true);
+        TriggeredRule rule = new TriggeredRule(BooleanRule.FALSE, null, true,
+                new Stage(new IndexRule(1), firstDelegate, TriggeredRule.UNBOUNDED_WINDOW, false,
+                        ResetPolicy.ON_POSITION_CHANGE),
+                new Stage(secondTrigger, secondDelegate, TriggeredRule.UNBOUNDED_WINDOW, false,
+                        ResetPolicy.ON_POSITION_CHANGE));
+
+        assertTrue(rule.isSatisfied(1, null));
+        assertEquals(1, firstDelegate.evaluations);
+        assertEquals(0, secondTrigger.evaluations);
+        assertEquals(0, secondDelegate.evaluations);
+    }
+
+    @Test
     public void evaluationRestartAtEarlierIndexClearsArmedStages() {
         TradingRecord tradingRecord = new BaseTradingRecord();
         TriggeredRule rule = new TriggeredRule(BooleanRule.FALSE, new Stage(new IndexRule(1), new IndexRule(2),

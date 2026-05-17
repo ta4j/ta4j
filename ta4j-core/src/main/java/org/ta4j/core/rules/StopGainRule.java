@@ -65,7 +65,7 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      */
     public static Num stopGainPrice(Num entryPrice, Num gainPercentage, boolean isBuy) {
         if (Num.isNaNOrNull(entryPrice)) {
-            throw new IllegalArgumentException("entryPrice must not be null");
+            throw new IllegalArgumentException("entryPrice must not be null or NaN");
         }
         if (Num.isNaNOrNull(gainPercentage) || gainPercentage.isNegative()) {
             throw new IllegalArgumentException("gainPercentage must be >= 0");
@@ -88,7 +88,7 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      */
     public static Num stopGainPriceFromDistance(Num entryPrice, Num gainDistance, boolean isBuy) {
         if (Num.isNaNOrNull(entryPrice)) {
-            throw new IllegalArgumentException("entryPrice must not be null");
+            throw new IllegalArgumentException("entryPrice must not be null or NaN");
         }
         if (Num.isNaNOrNull(gainDistance) || gainDistance.isNegative()) {
             throw new IllegalArgumentException("gainDistance must be >= 0");
@@ -109,7 +109,7 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      */
     public static Num trailingStopGainPrice(Num favorablePrice, Num retracementPercentage, boolean isBuy) {
         if (Num.isNaNOrNull(favorablePrice)) {
-            throw new IllegalArgumentException("favorablePrice must not be null");
+            throw new IllegalArgumentException("favorablePrice must not be null or NaN");
         }
         if (Num.isNaNOrNull(retracementPercentage) || retracementPercentage.isNegative()) {
             throw new IllegalArgumentException("retracementPercentage must be >= 0");
@@ -132,7 +132,7 @@ public class StopGainRule extends AbstractRule implements StopGainPriceModel {
      */
     public static Num trailingStopGainPriceFromDistance(Num favorablePrice, Num retracementDistance, boolean isBuy) {
         if (Num.isNaNOrNull(favorablePrice)) {
-            throw new IllegalArgumentException("favorablePrice must not be null");
+            throw new IllegalArgumentException("favorablePrice must not be null or NaN");
         }
         if (Num.isNaNOrNull(retracementDistance) || retracementDistance.isNegative()) {
             throw new IllegalArgumentException("retracementDistance must be >= 0");

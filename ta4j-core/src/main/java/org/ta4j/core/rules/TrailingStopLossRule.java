@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.rules;
 
+import java.util.Objects;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
@@ -37,16 +39,13 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
      * @param barCount       the number of bars to look back for the calculation
      */
     public TrailingStopLossRule(Indicator<Num> indicator, Num lossPercentage, int barCount) {
-        if (indicator == null) {
-            throw new IllegalArgumentException("indicator must not be null");
-        }
-        if (Num.isNaNOrNull(lossPercentage) || lossPercentage.isZero() || lossPercentage.isNegative()) {
-            throw new IllegalArgumentException("lossPercentage must be positive");
+        this.priceIndicator = Objects.requireNonNull(indicator, "priceIndicator");
+        if (Num.isNaNOrNull(lossPercentage) || lossPercentage.isNegative()) {
+            throw new IllegalArgumentException("lossPercentage must be >= 0");
         }
         if (barCount <= 0) {
             throw new IllegalArgumentException("barCount must be positive");
         }
-        this.priceIndicator = indicator;
         this.barCount = barCount;
         this.lossPercentage = lossPercentage;
     }
@@ -113,7 +112,7 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
         if (position == null || position.getEntry() == null) {
             return null;
         }
-        int entryIndex = position.getEntry().getIndex();
+        int entryIndex = retainedStartIndex(position.getEntry().getIndex());
         if (position.getEntry().isBuy()) {
             Num highestCloseNum = priceIndicator.getValue(entryIndex);
             if (Num.isNaNOrNull(highestCloseNum)) {
@@ -130,7 +129,11 @@ public class TrailingStopLossRule extends AbstractRule implements StopLossPriceM
 
     private int windowStartIndex(int index, int positionIndex) {
         int activeBarCount = Math.min(index - positionIndex + 1, barCount);
-        return index - activeBarCount + 1;
+        return retainedStartIndex(index - activeBarCount + 1);
+    }
+
+    private int retainedStartIndex(int requestedStartIndex) {
+        return Math.max(requestedStartIndex, priceIndicator.getBarSeries().getBeginIndex());
     }
 
     private Num highestValue(int startIndex, int endIndex) {

@@ -65,7 +65,7 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      */
     public static Num stopLossPrice(Num entryPrice, Num lossPercentage, boolean isBuy) {
         if (Num.isNaNOrNull(entryPrice)) {
-            throw new IllegalArgumentException("entryPrice must not be null");
+            throw new IllegalArgumentException("entryPrice must not be null or NaN");
         }
         if (Num.isNaNOrNull(lossPercentage) || lossPercentage.isNegative()) {
             throw new IllegalArgumentException("lossPercentage must be >= 0");
@@ -88,7 +88,7 @@ public class StopLossRule extends AbstractRule implements StopLossPriceModel {
      */
     public static Num stopLossPriceFromDistance(Num entryPrice, Num lossDistance, boolean isBuy) {
         if (Num.isNaNOrNull(entryPrice)) {
-            throw new IllegalArgumentException("entryPrice must not be null");
+            throw new IllegalArgumentException("entryPrice must not be null or NaN");
         }
         if (Num.isNaNOrNull(lossDistance) || lossDistance.isNegative()) {
             throw new IllegalArgumentException("lossDistance must be >= 0");

@@ -30,6 +30,11 @@ import org.ta4j.core.TradingRecord;
  * state across backtest runs.
  * </p>
  *
+ * <p>
+ * This rule is stateful and not thread-safe. Use a fresh instance for each
+ * independent strategy, backtest run, or evaluation thread.
+ * </p>
+ *
  * @since 0.22.7
  */
 public class TriggeredRule extends AbstractRule {
@@ -325,14 +330,14 @@ public class TriggeredRule extends AbstractRule {
 
             if (delegateRules[stageIndex].isSatisfied(index, tradingRecord)) {
                 satisfied = true;
-                if (!resetAllStagesOnSatisfaction && resetPolicies[stageIndex] == ResetPolicy.ON_SATISFACTION) {
+                if (resetAllStagesOnSatisfaction) {
+                    resetAllStages();
+                    break;
+                }
+                if (resetPolicies[stageIndex] == ResetPolicy.ON_SATISFACTION) {
                     state.reset();
                 }
             }
-        }
-
-        if (satisfied && resetAllStagesOnSatisfaction) {
-            resetAllStages();
         }
         return satisfied;
     }
