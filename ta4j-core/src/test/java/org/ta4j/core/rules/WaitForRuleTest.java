@@ -4,6 +4,7 @@
 package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
@@ -86,5 +87,11 @@ public class WaitForRuleTest {
         rule = new WaitForRule(Trade.TradeType.BUY, 2);
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(series, rule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(series, rule);
+    }
+
+    @Test
+    public void constructorValidation() {
+        assertThrows(NullPointerException.class, () -> new WaitForRule(null, 1));
+        assertThrows(IllegalArgumentException.class, () -> new WaitForRule(Trade.TradeType.BUY, -1));
     }
 }

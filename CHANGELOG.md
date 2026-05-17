@@ -4,6 +4,7 @@
 - Updated project Java JDK from 21 to 25
 
 ### Added
+- **Staged rule composition for thesis-based exits**: Added `TriggeredRule` so strategies can keep invalidation and timeout rules active while trigger/delegate stages arm follow-on exits such as trailing stops. Stages support finite or unbounded activation windows, delegate priming, explicit reset rules, and position-change resets for reusable target, timeout, and risk-management workflows.
 - **Anchor-aware Elliott tuning harness**: You can now run `ElliottWaveAnchorCalibrationHarness` with the versioned `BTC-anchor-registry-v1.json` registry to replay major BTC tops and bottoms, compare the locked baseline against coarse challenger profiles on top-1/top-3 anchor hits plus `ECE`/`Brier`/`LogLoss`, and get a deterministic promote-or-retain bundle that also sanity-checks the selected profile on ETH/USD and S&P 500 data.
 - **Backtesting throughput comparisons are now reproducible**: `BacktestPerformanceTuningHarness` can write fixed-matrix `matrix_performance.json` artifacts with cells/min, hypotheses/min, hashed host telemetry, and per-cell timings, while `scripts/benchmark-backtest-throughput.sh` compares `HEAD^` and `HEAD` on the same dataset/spec/host for focused tuning work (`CF-170`).
 - **Release automation audit artifacts**: Release workflows now emit structured release dossiers, model catalog preflight data, normalized AI decisions, exact artifact manifests, tag-resolution snapshots, full-build logs, and workflow summaries so release failures can be diagnosed from the exact step that produced them.
@@ -26,6 +27,7 @@
 - **Documentation surface area is now consolidated around canonical owners**: Overlapping execution-choice guidance was reduced to a single decision-matrix source, wiki navigation duplicates were removed, maintainer architecture index duplication was cleaned up, and onboarding/live/backtesting docs now route through clearer ownership boundaries while preserving deprecation-safe link compatibility.
 
 ### Fixed
+- **Stop and timeout rules are safer to compose**: Stop-loss, stop-gain, trailing stop, open-position timeout, and wait-for rules now validate invalid configuration up front, preserve touch-or-beyond boundary behavior, avoid pre-entry trailing-stop signals, and remove repeated trailing-stop helper allocation from hot exit paths.
 - **PR validation stays fast while the Elliott replay suite remains runnable**: GitHub build CI now keeps `integration`, `analysis-demo`, and `elliott-macro-cycle-replay` excluded by default instead of running every tagged test on each PR, and contributors can still rerun the BTC macro-cycle replay suite through its dedicated tag when they need full validation.
 - **Scheduled release automation now stays on the production path**: `release-scheduler.yml` cron runs continue to dispatch `prepare-release.yml` with `dryRun=false`, skipped scheduled runs no longer post production summaries, and the prepare workflow no longer fails removal-ready issue sync by redeclaring GitHub Script's injected bindings.
 
