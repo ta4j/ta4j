@@ -128,7 +128,7 @@ Ta4j requires Java 25+ and Maven 3.9+. Use system Maven from the repository root
 
 - **Standard build command:** Use `mvn ...`
 - **Contributor quality path:** Use `mvn verify` to match CI and get advisory SpotBugs and JaCoCo feedback alongside the test suite
-- **SpotBugs-only local gate:** Use `mvn -pl ta4j-core -am spotbugs:check` to fail fast on module-scoped findings before rerunning the full build
+- **SpotBugs-only local gate:** Use `mvn -pl ta4j-core -am clean compile spotbugs:check` to compile from a clean module output and fail fast on module-scoped findings before rerunning the full build
 - **JaCoCo-only local gate:** Use `mvn -pl ta4j-core -am test jacoco:report jacoco:check` to run tests, generate coverage output, and enforce the module threshold locally
 - **Focused coverage report:** Use `mvn -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report` when you want a quick report without enforcing the bundle threshold yet
 
@@ -212,6 +212,37 @@ TradingRecord record = manager.run(strategy);
 System.out.println("Number of trades: " + record.getTradeCount());
 System.out.println("Number of positions: " + record.getPositionCount());
 ```
+
+### Staged exit rules
+
+When an exit needs a thesis invalidation, a profit target, and a timeout, compose
+the always-active exits with `TriggeredRule` stages. This keeps the immediate
+stop and timeout live while a profit target can arm a second rule, such as a
+trailing stop, instead of exiting immediately.
+
+```java
+BarSeries series = ...;
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+
+Rule invalidation = new StopLossRule(close, 10.0);              // touches 10% loss threshold
+Rule timeout = new OpenedPositionMinimumBarCountRule(5);        // 5 bars after entry
+Rule targetReached = new StopGainRule(close, 10.0);             // touch at +10%
+Rule trailingExit = new TrailingStopLossRule(close, series.numFactory().numOf(5));
+
+Rule exit = new TriggeredRule(
+        invalidation.or(timeout),
+        new TriggeredRule.Stage(
+                targetReached,
+                trailingExit,
+                TriggeredRule.UNBOUNDED_WINDOW,
+                false,
+                TriggeredRule.ResetPolicy.ON_POSITION_CHANGE));
+```
+
+Use `StopGainRule`, `StopLossRule`, `OverOrEqualIndicatorRule`, and
+`UnderOrEqualIndicatorRule` when a touch or beyond the boundary is enough. Use
+`CrossedUpIndicatorRule` or `CrossedDownIndicatorRule` when the signal must be a
+fresh cross from the previous bar.
 
 ## Sourcing market data
 
@@ -386,6 +417,43 @@ Want a runnable side-by-side demo? `ta4j-examples` now includes
 `TradingRecordParityBacktest`, which compares next-open, current-close, and
 slippage fills on the same strategy and then shows the same setup with provided
 and factory-configured `BaseTradingRecord` flows.
+
+### Analyze indicator relationships
+
+For sparse event studies, start with a windowed event-synchronization score:
+compare events such as Net Momentum zero crossings against newly confirmed
+ZigZag swing highs or lows inside a tolerance window. After the event timing is
+credible, use rolling statistics to inspect continuous, lagged, non-linear, or
+regime-conditioned relationships.
+
+```java
+import org.ta4j.core.Indicator;
+import org.ta4j.core.indicators.NetMomentumIndicator;
+import org.ta4j.core.indicators.RSIIndicator;
+import org.ta4j.core.indicators.helpers.BooleanTransformIndicator;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
+import org.ta4j.core.indicators.statistics.LaggedCorrelationIndicator;
+import org.ta4j.core.indicators.statistics.MutualInformationIndicator;
+import org.ta4j.core.indicators.statistics.RegimeSegmentedCorrelationIndicator;
+import org.ta4j.core.indicators.statistics.SpearmanRankCorrelationIndicator;
+import org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator;
+
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+RSIIndicator rsi = new RSIIndicator(close, 14);
+NetMomentumIndicator momentum = NetMomentumIndicator.forRsiWithDecay(rsi, 20, 0.85);
+RecentZigZagSwingHighIndicator swingHigh = new RecentZigZagSwingHighIndicator(series);
+
+Indicator<Boolean> positiveMomentum = BooleanTransformIndicator.isPositive(momentum);
+Indicator<Boolean> confirmedSwingHigh = new BooleanTransformIndicator<>(swingHigh, value -> !value.isNaN());
+
+LaggedCorrelationIndicator momentumLeadsPrice = new LaggedCorrelationIndicator(momentum, close, 50, 3);
+SpearmanRankCorrelationIndicator monotonicMomentumPrice = new SpearmanRankCorrelationIndicator(momentum, close, 50);
+RegimeSegmentedCorrelationIndicator bullishRegimeCorrelation =
+        new RegimeSegmentedCorrelationIndicator(momentum, close, positiveMomentum, 50);
+MutualInformationIndicator swingStateInformation = new MutualInformationIndicator(momentum, swingHigh, 80, 6);
+RegimeSegmentedCorrelationIndicator confirmedSwingCorrelation =
+        new RegimeSegmentedCorrelationIndicator(momentum, close, confirmedSwingHigh, 80);
+```
 
 ### Backtest hundreds or even thousands of strategies
 
@@ -917,6 +985,7 @@ For performance tuning guidance, start with:
 - [Backtesting guide](https://ta4j.github.io/ta4j-wiki/Backtesting.html) for execution-model and batch-run tradeoffs
 - [Num guide](https://ta4j.github.io/ta4j-wiki/Num.html) for precision-vs-speed decisions (`DecimalNum` vs `DoubleNum`)
 - [`BacktestPerformanceTuningHarness`](ta4j-examples/src/main/java/ta4jexamples/backtesting/BacktestPerformanceTuningHarness.java) for reproducible tuning runs
+- `scripts/benchmark-backtest-throughput.sh` for controlled `HEAD^` vs `HEAD` comparisons using `matrix_performance.json` cells/min and hypotheses/min
 - [Performance Characterization](https://ta4j.github.io/ta4j-wiki/Performance-Characterization.html) for methodology and interpretation
 
 ## Community & Support
@@ -974,7 +1043,7 @@ For the curated onboarding path, use:
 - [Fork the repo](http://help.github.com/forking/), open pull requests, and join code discussions on Discord.
 - See the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
 - Run `mvn verify` before opening or updating a pull request. It matches CI and includes advisory SpotBugs and JaCoCo reporting alongside the test suite.
-- For faster local quality loops, use `mvn -pl ta4j-core -am spotbugs:check` or `mvn -pl ta4j-core -am test jacoco:report jacoco:check` before rerunning the full `mvn verify`.
+- For faster local quality loops, use `mvn -pl ta4j-core -am clean compile spotbugs:check` or `mvn -pl ta4j-core -am test jacoco:report jacoco:check` before rerunning the full `mvn verify`.
 
 ## Release & snapshot publishing
 

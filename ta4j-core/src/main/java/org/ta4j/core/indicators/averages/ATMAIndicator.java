@@ -31,13 +31,14 @@ public class ATMAIndicator extends CachedIndicator<Num> {
      * Constructor.
      *
      * @param indicator an indicator
-     * @param barCount  the Simple Moving Average time frame
+     * @param barCount  the Simple Moving Average time frame. Odd time frames use
+     *                  the rounded-up half as the fast smoothing length.
      */
     public ATMAIndicator(Indicator<Num> indicator, int barCount) {
         super(indicator.getBarSeries());
         this.barCount = barCount;
-        this.fast = (int) (Math.ceil(barCount / 2));
-        this.slow = (int) (Math.floor(barCount / 2) + 1);
+        this.fast = Math.ceilDiv(barCount, 2);
+        this.slow = (barCount / 2) + 1;
         this.sma = new SMAIndicator(indicator, slow);
         this.smaSma = new SMAIndicator(sma, fast);
     }

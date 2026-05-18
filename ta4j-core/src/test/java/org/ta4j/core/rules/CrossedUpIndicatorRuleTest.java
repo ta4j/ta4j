@@ -6,19 +6,30 @@ package org.ta4j.core.rules;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.ta4j.core.BarSeries;
+import org.ta4j.core.Rule;
+import org.ta4j.core.TraceTestLogger;
 import org.ta4j.core.indicators.helpers.FixedNumIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 public class CrossedUpIndicatorRuleTest {
 
     private BarSeries series;
+    private TraceTestLogger traceTestLogger;
 
     @Before
     public void setUp() {
         series = new MockBarSeriesBuilder().build();
+        traceTestLogger = new TraceTestLogger();
+        traceTestLogger.open();
+    }
+
+    @After
+    public void tearDown() {
+        traceTestLogger.close();
     }
 
     @Test
@@ -34,6 +45,23 @@ public class CrossedUpIndicatorRuleTest {
         assertTrue(rule.isSatisfied(5));
         assertFalse(rule.isSatisfied(6));
         assertFalse(rule.isSatisfied(7));
+    }
+
+    @Test
+    public void traceIncludesCurrentAndPriorCrossValues() {
+        var evaluatedIndicator = new FixedNumIndicator(series, 8, 9, 10, 12);
+        var rule = new CrossedUpIndicatorRule(evaluatedIndicator, 10);
+
+        assertTrue(rule.isSatisfiedWithTraceMode(3, Rule.TraceMode.VERBOSE));
+
+        String logContent = traceTestLogger.getLogOutput();
+        assertTrue("Trace should include the current evaluated value", logContent.contains("firstValue=12"));
+        assertTrue("Trace should include the current threshold value", logContent.contains("secondValue=10"));
+        assertTrue("Trace should include the previous evaluated value", logContent.contains("previousFirstValue=10"));
+        assertTrue("Trace should include the previous threshold value", logContent.contains("previousSecondValue=10"));
+        assertTrue("Trace should include the cross-base evaluated value", logContent.contains("priorFirstValue=9"));
+        assertTrue("Trace should include the cross-base threshold value", logContent.contains("priorSecondValue=10"));
+        assertTrue("Trace should explain the cross result", logContent.contains("reason=crossedUp"));
     }
 
     @Test

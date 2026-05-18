@@ -55,10 +55,18 @@ jobs:
           fi
 
       - name: Checkout full history
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           ref: ${{ steps.checkout_ref.outputs.ref }}
+          token: ${{ env.GH_TA4J_REPO_TOKEN }}
+
+      - name: Checkout workflow support files
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          ref: ${{ github.sha }}
+          path: workflow-support
           token: ${{ env.GH_TA4J_REPO_TOKEN }}
 
       - name: Normalize dry run input
@@ -229,7 +237,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::Validate exact GitHub Release artifact manifest"
-          python3 scripts/release/release_helpers.py artifact-manifest \
+          python3 workflow-support/scripts/release/release_helpers.py artifact-manifest \
             --version "${{ steps.version.outputs.tag }}" \
             --output artifact-manifest.txt \
             --github-output "$GITHUB_OUTPUT" \
@@ -258,7 +266,7 @@ jobs:
       # ------------------------------------------------------------
       - name: Create GitHub Release
         if: steps.dry_run.outputs.dryRun != 'true'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ steps.version.outputs.tag }}
           body_path: ${{ steps.version.outputs.notes_file }}
@@ -304,7 +312,7 @@ jobs:
 
       - name: Upload GitHub Release audit artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: github-release-audit-${{ github.run_id }}
           path: |

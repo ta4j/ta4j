@@ -11,8 +11,8 @@ ta4j has been around for years and serves a large, diverse user base. Contributi
 - **Run this before opening or updating a PR:** `mvn -B verify`
   This matches the main CI path and keeps SpotBugs and JaCoCo advisory in the full contributor flow.
 
-- **Use focused local quality loops when iterating:** `mvn -pl ta4j-core -am spotbugs:check` and `mvn -pl ta4j-core -am test jacoco:report jacoco:check`
-  These are intentionally strict for the module you are changing, so you can tighten one tool at a time before rerunning the full `mvn -B verify`.
+- **Use focused local quality loops when iterating:** `mvn -pl ta4j-core -am clean compile spotbugs:check` and `mvn -pl ta4j-core -am test jacoco:report jacoco:check`
+  These are intentionally strict for the module you are changing; the SpotBugs loop compiles clean module output before scanning so you can tighten one tool at a time before rerunning the full `mvn -B verify`.
 
 - **Fix formatting and license headers when needed:** `mvn -B license:format formatter:format`
   First-time contributors almost always hit this; run the formatter command locally before your final `mvn -B verify`.

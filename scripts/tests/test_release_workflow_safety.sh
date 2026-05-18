@@ -12,8 +12,20 @@ expect_file_contains() {
   local needle="$2"
   local msg="$3"
   if ! grep -Fq -- "$needle" "$file"; then
-    fail "$msg (missing: '$needle' in ${file#$ROOT/})"
+    fail "$msg (missing: '$needle' in ${file#"$ROOT"/})"
   fi
+}
+
+line_of() {
+  local file="$1"
+  local needle="$2"
+  local line
+  line="$(grep -nFm1 -- "$needle" "$file" || true)"
+  line="${line%%:*}"
+  if [[ -z "$line" ]]; then
+    fail "missing expected workflow line '$needle' in ${file#"$ROOT"/}"
+  fi
+  printf '%s\n' "$line"
 }
 
 input_section() {
@@ -46,6 +58,29 @@ expect_section_contains() {
   fi
 }
 
+assert_no_github_script_injected_binding_redeclarations() {
+  local workflow="$1"
+  awk -v file="${workflow#"$ROOT"/}" '
+    /uses: actions\/github-script@/ {
+      pending_script = 1
+      in_script = 0
+      next
+    }
+    pending_script && /^[[:space:]]*script: \|/ {
+      in_script = 1
+      next
+    }
+    in_script && /^[[:space:]]{6}- name:/ {
+      pending_script = 0
+      in_script = 0
+    }
+    in_script && /^[[:space:]]*(const|let|var)[[:space:]]+(core|github|context|glob|io|exec)[[:space:]]*=/ {
+      printf("[FAIL] %s redeclares actions/github-script injected binding at line %d: %s\n", file, NR, $0) > "/dev/stderr"
+      exit 1
+    }
+  ' "$workflow"
+}
+
 test_maven_workflow_jobs_setup_jdk25_before_maven() {
   echo "Running test_maven_workflow_jobs_setup_jdk25_before_maven"
 
@@ -55,7 +90,7 @@ test_maven_workflow_jobs_setup_jdk25_before_maven() {
       continue
     fi
 
-    awk -v file="${workflow#$ROOT/}" '
+    awk -v file="${workflow#"$ROOT"/}" '
       /^jobs:/ { in_jobs = 1; next }
       in_jobs && /^  [A-Za-z0-9_-]+:$/ {
         job = $1
@@ -155,8 +190,8 @@ test_downstream_dispatches_explicitly_pass_dry_run() {
 test_mutating_steps_remain_dry_run_gated() {
   echo "Running test_mutating_steps_remain_dry_run_gated"
 
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "if: always() && needs.analyze.outputs.dryRun != 'true'" \
-    "release scheduler discussion mutation should skip dry-run"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "if: always() && needs.analyze.result != 'skipped' && needs.analyze.outputs.dryRun != 'true'" \
+    "release scheduler discussion mutation should skip dry-run and skipped scheduled runs"
 
   expect_file_contains "$WORKFLOWS/prepare-release.yml" "if: steps.dry_run.outputs.dryRun != 'true'" \
     "prepare-release mutations should be dry-run gated"
@@ -231,6 +266,103 @@ test_snapshot_and_health_manual_dry_runs_do_not_mutate() {
   pass "test_snapshot_and_health_manual_dry_runs_do_not_mutate"
 }
 
+test_line_of_reports_missing_needles_cleanly() {
+  echo "Running test_line_of_reports_missing_needles_cleanly"
+
+  local tmp
+  local output
+  tmp="$(mktemp "${TMPDIR:-/tmp}/release-workflow-safety.XXXXXX")"
+  printf 'present\n' > "$tmp"
+
+  if output="$( (line_of "$tmp" "missing") 2>&1 )"; then
+    rm -f "$tmp"
+    fail "line_of should fail when the workflow line is missing"
+  fi
+
+  rm -f "$tmp"
+  expect_section_contains "$output" "missing expected workflow line 'missing'" \
+    "line_of should surface the explicit missing-line failure message"
+
+  pass "test_line_of_reports_missing_needles_cleanly"
+}
+
+test_publish_release_existing_tag_only_fails_real_runs() {
+  echo "Running test_publish_release_existing_tag_only_fails_real_runs"
+
+  expect_file_contains "$WORKFLOWS/publish-release.yml" \
+    "if: steps.check_tag.outputs.exists == 'true' && steps.dry_run.outputs.dryRun != 'true'" \
+    "publish-release should fail existing tags only during real runs"
+  expect_file_contains "$WORKFLOWS/publish-release.yml" "Report existing tag in dry-run mode" \
+    "publish-release should keep a dry-run audit path for existing tags"
+  expect_file_contains "$WORKFLOWS/publish-release.yml" "audit:existing_tag_dry_run" \
+    "publish-release dry-run tag detection should emit an audit line"
+
+  pass "test_publish_release_existing_tag_only_fails_real_runs"
+}
+
+test_github_release_preserves_workflow_support_checkout() {
+  echo "Running test_github_release_preserves_workflow_support_checkout"
+
+  local full_checkout_line
+  local support_checkout_line
+  local manifest_line
+  full_checkout_line="$(line_of "$WORKFLOWS/github-release.yml" "Checkout full history")"
+  support_checkout_line="$(line_of "$WORKFLOWS/github-release.yml" "Checkout workflow support files")"
+  manifest_line="$(line_of "$WORKFLOWS/github-release.yml" "workflow-support/scripts/release/release_helpers.py artifact-manifest")"
+
+  if (( support_checkout_line <= full_checkout_line )); then
+    fail "github-release should checkout workflow support after the release tag checkout"
+  fi
+  if (( manifest_line <= support_checkout_line )); then
+    fail "github-release should validate artifacts after workflow support checkout"
+  fi
+  expect_file_contains "$WORKFLOWS/github-release.yml" "path: workflow-support" \
+    "github-release should keep support helpers outside the release tag checkout"
+
+  pass "test_github_release_preserves_workflow_support_checkout"
+}
+
+test_github_script_blocks_do_not_redeclare_injected_bindings() {
+  echo "Running test_github_script_blocks_do_not_redeclare_injected_bindings"
+
+  local workflow
+  for workflow in "$WORKFLOWS"/*.yml; do
+    assert_no_github_script_injected_binding_redeclarations "$workflow"
+  done
+
+  pass "test_github_script_blocks_do_not_redeclare_injected_bindings"
+}
+
+test_github_script_binding_scan_rejects_bad_fixture() {
+  echo "Running test_github_script_binding_scan_rejects_bad_fixture"
+
+  local tmp
+  local output
+  tmp="$(mktemp "${TMPDIR:-/tmp}/release-workflow-safety.XXXXXX")"
+  cat > "$tmp" <<'YAML'
+name: Bad fixture
+jobs:
+  bad:
+    steps:
+      - name: Bad GitHub Script
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const core = require("@actions/core");
+YAML
+
+  if output="$(assert_no_github_script_injected_binding_redeclarations "$tmp" 2>&1)"; then
+    rm -f "$tmp"
+    fail "github-script injected binding scan should fail on a core redeclaration"
+  fi
+
+  rm -f "$tmp"
+  expect_section_contains "$output" "redeclares actions/github-script injected binding" \
+    "github-script injected binding scan should report the redeclaration"
+
+  pass "test_github_script_binding_scan_rejects_bad_fixture"
+}
+
 test_maven_workflow_jobs_setup_jdk25_before_maven
 test_mutating_manual_workflows_default_to_dry_run
 test_official_triggers_normalize_to_non_dry_run
@@ -238,3 +370,8 @@ test_downstream_dispatches_explicitly_pass_dry_run
 test_mutating_steps_remain_dry_run_gated
 test_dry_run_summaries_and_audits_show_rerun_guidance
 test_snapshot_and_health_manual_dry_runs_do_not_mutate
+test_line_of_reports_missing_needles_cleanly
+test_publish_release_existing_tag_only_fails_real_runs
+test_github_release_preserves_workflow_support_checkout
+test_github_script_blocks_do_not_redeclare_injected_bindings
+test_github_script_binding_scan_rejects_bad_fixture
