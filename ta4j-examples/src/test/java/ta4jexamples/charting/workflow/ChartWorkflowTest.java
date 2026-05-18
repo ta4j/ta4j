@@ -330,6 +330,18 @@ public class ChartWorkflowTest {
     }
 
     @Test
+    public void testRecordingByteExportWorkflowInterceptsExplicitDimensions() {
+        RecordingByteExportChartWorkflow workflow = new RecordingByteExportChartWorkflow();
+        JFreeChart chart = chartWorkflow.createTradingRecordChart(barSeries, "Test Strategy", tradingRecord);
+
+        byte[] chartBytes = workflow.getChartAsByteArray(chart, 640, 360);
+
+        assertArrayEquals(RECORDED_CHART_BYTES, chartBytes, "Explicit dimension export should return recorded bytes");
+        assertEquals(1, workflow.byteExportCount, "Explicit dimension export should encode exactly one chart");
+        assertSame(chart, workflow.lastChart, "Explicit dimension export should record the chart");
+    }
+
+    @Test
     public void testGenerateChartAsBytesWithNullChart() {
         assertThrows(IllegalArgumentException.class, () -> chartWorkflow.getChartAsByteArray(null));
     }
@@ -1378,6 +1390,12 @@ public class ChartWorkflowTest {
 
         @Override
         public byte[] getChartAsByteArray(JFreeChart chart) {
+            return getChartAsByteArray(chart, ChartWorkflow.DEFAULT_CHART_IMAGE_WIDTH,
+                    ChartWorkflow.DEFAULT_CHART_IMAGE_HEIGHT);
+        }
+
+        @Override
+        public byte[] getChartAsByteArray(JFreeChart chart, int imageWidth, int imageHeight) {
             byteExportCount++;
             lastChart = chart;
             return RECORDED_CHART_BYTES;
