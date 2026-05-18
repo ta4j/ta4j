@@ -266,7 +266,7 @@ ta4j-core/src/main/java/org/ta4j/core/Foo.java: warning: no @param for value
 EOF
   cat > release.log <<'EOF'
 [WARNING] /home/runner/work/ta4j/ta4j/ta4j-core/src/main/java/org/ta4j/core/Foo.java: warning: no @param for value
-[WARNING] /home/runner/work/ta4j/ta4j/ta4j-core/src/test/java/org/ta4j/core/BaseTradingRecordTest.java:[61,15] recordFill(org.ta4j.core.Trade) has been deprecated
+[WARNING] /home/runner/work/ta4j/ta4j/ta4j-core/src/test/java/org/ta4j/core/FooTest.java: uses unchecked or unsafe operations.
 EOF
 
   "$PYTHON" "$SCRIPT" javadoc-warnings \
