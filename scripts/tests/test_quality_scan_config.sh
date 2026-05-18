@@ -123,16 +123,18 @@ test_docs_point_to_real_maven_commands() {
   echo "Running test_docs_point_to_real_maven_commands"
 
   expect_file_contains "$ROOT/README.md" "Run \`mvn verify\` before opening or updating a pull request." "README should point contributors at the real verify command"
-  expect_file_contains "$ROOT/README.md" "mvn -pl ta4j-core -am spotbugs:check" "README should document the standalone SpotBugs loop"
+  expect_file_contains "$ROOT/README.md" "mvn -pl ta4j-core -am clean compile spotbugs:check" "README should document the standalone SpotBugs loop with clean compilation"
   expect_file_contains "$ROOT/README.md" "mvn -pl ta4j-core -am test jacoco:report jacoco:check" "README should document the standalone JaCoCo gate"
   expect_file_contains "$ROOT/README.md" "mvn -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report" "README should document a focused JaCoCo report-only loop"
   expect_file_contains "$ROOT/README.md" "- [Build commands: Maven](#build-commands-maven)" "README table of contents should link to the renamed build section"
   expect_file_contains "$ROOT/README.md" "mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest" "README should demonstrate overriding exec:java with a non-default example"
   expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "**Run this before opening or updating a PR:** \`mvn -B verify\`" "contributing guide should use verify as the canonical PR command"
-  expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "mvn -pl ta4j-core -am spotbugs:check" "contributing guide should document the standalone SpotBugs loop"
+  expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "mvn -pl ta4j-core -am clean compile spotbugs:check" "contributing guide should document the standalone SpotBugs loop with clean compilation"
   expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "mvn -pl ta4j-core -am test jacoco:report jacoco:check" "contributing guide should document the standalone JaCoCo gate"
   expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "mvn -B license:format formatter:format" "contributing guide should keep the formatter and license fix command"
   expect_file_not_contains "$ROOT/README.md" "./mvnw" "README should not advertise a missing Maven Wrapper"
+  expect_file_not_contains "$ROOT/README.md" "mvn -pl ta4j-core -am spotbugs:check" "README should not preserve the stale no-compile SpotBugs loop"
+  expect_file_not_contains "$ROOT/.github/CONTRIBUTING.md" "mvn -pl ta4j-core -am spotbugs:check" "contributing guide should not preserve the stale no-compile SpotBugs loop"
 
   pass "test_docs_point_to_real_maven_commands"
 }
