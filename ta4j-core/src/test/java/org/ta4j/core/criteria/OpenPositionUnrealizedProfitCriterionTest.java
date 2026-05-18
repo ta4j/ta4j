@@ -32,8 +32,8 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
         var record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
-        record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
-                numFactory.two(), numFactory.numOf(0.5), ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(), numFactory.two(),
+                numFactory.numOf(0.5), ExecutionSide.BUY, null, null));
 
         Num expected = numFactory.numOf(110)
                 .multipliedBy(numFactory.two())
@@ -51,8 +51,8 @@ public class OpenPositionUnrealizedProfitCriterionTest extends AbstractCriterion
         var record = new BaseTradingRecord(TradeType.SELL, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
-        record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
-                numFactory.one(), numFactory.numOf(0.2), ExecutionSide.SELL, null, null));
+        record.operate(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(), numFactory.one(),
+                numFactory.numOf(0.2), ExecutionSide.SELL, null, null));
 
         Num expected = numFactory.hundred().minus(numFactory.numOf(90)).minus(numFactory.numOf(0.2));
 
