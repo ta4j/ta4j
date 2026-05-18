@@ -134,6 +134,14 @@ public final class ElliottScenarioGenerator {
     }
 
     /**
+     * @return the Fibonacci validator used to gate generated scenarios
+     * @since 0.22.7
+     */
+    public ElliottFibonacciValidator getFibValidator() {
+        return fibValidator;
+    }
+
+    /**
      * Generates all valid scenarios for the given swing sequence.
      *
      * @param swings  the swing sequence to analyze
