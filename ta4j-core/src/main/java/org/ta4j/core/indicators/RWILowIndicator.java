@@ -17,6 +17,8 @@ import org.ta4j.core.num.Num;
 public class RWILowIndicator extends CachedIndicator<Num> {
 
     private final int barCount;
+    private final transient ATRIndicator[] atrIndicators;
+    private final transient Num[] sqrtValues;
 
     /**
      * Constructor.
@@ -27,33 +29,45 @@ public class RWILowIndicator extends CachedIndicator<Num> {
     public RWILowIndicator(BarSeries series, int barCount) {
         super(series);
         this.barCount = barCount;
+        int helperCount = Math.max(0, barCount + 1);
+        this.atrIndicators = new ATRIndicator[helperCount];
+        this.sqrtValues = new Num[helperCount];
+        for (int n = 2; n <= barCount; n++) {
+            atrIndicators[n] = new ATRIndicator(series, n);
+            sqrtValues[n] = series.numFactory().numOf(n).sqrt();
+        }
     }
 
     @Override
     protected Num calculate(int index) {
-        if (index - barCount + 1 < getBarSeries().getBeginIndex()) {
+        if (index < getCountOfUnstableBars() || index - barCount + 1 < getBarSeries().getBeginIndex()) {
             return NaN.NaN;
         }
 
-        Num minRWIL = getBarSeries().numFactory().zero();
+        Num maxRWIL = getBarSeries().numFactory().zero();
+        boolean hasDefinedValue = false;
         for (int n = 2; n <= barCount; n++) {
-            minRWIL = minRWIL.max(calcRWIHFor(index, n));
+            Num rwiLow = calcRWILFor(index, n);
+            if (!IndicatorUtils.isInvalid(rwiLow)) {
+                maxRWIL = hasDefinedValue ? maxRWIL.max(rwiLow) : rwiLow;
+                hasDefinedValue = true;
+            }
         }
 
-        return minRWIL;
+        return hasDefinedValue ? maxRWIL : NaN.NaN;
     }
 
     @Override
     public int getCountOfUnstableBars() {
-        return barCount;
+        return Math.max(0, barCount);
     }
 
-    private Num calcRWIHFor(final int index, final int n) {
+    private Num calcRWILFor(final int index, final int n) {
         BarSeries series = getBarSeries();
         Num low = series.getBar(index).getLowPrice();
         Num highN = series.getBar(index + 1 - n).getHighPrice();
-        Num atrN = new ATRIndicator(series, n).getValue(index);
-        Num sqrtN = series.numFactory().numOf(n).sqrt();
+        Num atrN = atrIndicators[n].getValue(index);
+        Num sqrtN = sqrtValues[n];
 
         return highN.minus(low).dividedBy(atrN.multipliedBy(sqrtN));
     }

@@ -788,13 +788,14 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         // indefinitely. After the timeout, other threads should compute independently.
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
         int endIndex = barSeries.getEndIndex();
+        long lastBarWaitTimeoutMs = 50;
 
         // Create an indicator that blocks forever in its first last-bar calculation
         CountDownLatch firstComputationStarted = new CountDownLatch(1);
         CountDownLatch blockForever = new CountDownLatch(1); // Never counted down
 
         NeverFinishingIndicator indicator = new NeverFinishingIndicator(barSeries, endIndex, firstComputationStarted,
-                blockForever);
+                blockForever, lastBarWaitTimeoutMs);
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
@@ -810,9 +811,6 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             // Wait for first computation to start
             assertTrue("First computation should start", firstComputationStarted.await(30, TimeUnit.SECONDS));
 
-            // Give some time for the computation to be "in progress"
-            Thread.sleep(100);
-
             // Start second thread that should timeout waiting and compute independently
             Future<Num> secondFuture = executor.submit(() -> indicator.getValue(endIndex));
 
@@ -820,7 +818,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
             // computation)
             // even though the first thread is blocked forever
             try {
-                Num result = secondFuture.get(15, TimeUnit.SECONDS);
+                Num result = secondFuture.get(1, TimeUnit.SECONDS);
                 // Either gets a computed value or times out waiting - both are acceptable
                 // The key is that it doesn't block forever
                 assertNotNull("Second thread should get a result after timeout", result);
@@ -1328,8 +1326,8 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         private final AtomicBoolean firstCall = new AtomicBoolean(true);
 
         private NeverFinishingIndicator(BarSeries series, int targetIndex, CountDownLatch computationStarted,
-                CountDownLatch blockLatch) {
-            super(series);
+                CountDownLatch blockLatch, long lastBarWaitTimeoutMs) {
+            super(series, lastBarWaitTimeoutMs);
             this.targetIndex = targetIndex;
             this.computationStarted = computationStarted;
             this.blockLatch = blockLatch;
