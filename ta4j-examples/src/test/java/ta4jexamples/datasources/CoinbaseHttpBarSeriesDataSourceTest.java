@@ -136,6 +136,15 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         return sourceName.isEmpty() ? "" : sourceName + "-";
     }
 
+    private CoinbaseHttpBarSeriesDataSource newNoDelayDataSource(HttpClientWrapper httpClient) {
+        return new CoinbaseHttpBarSeriesDataSource(httpClient) {
+            @Override
+            void pauseBetweenPaginatedRequests() {
+                // Keep mocked pagination tests deterministic and fast.
+            }
+        };
+    }
+
     @Test
     public void testConstructorWithNullHttpClientWrapper() {
         assertThrows(IllegalArgumentException.class, () -> {
@@ -503,7 +512,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
                 .thenReturn(mockResponse2)
                 .thenReturn(mockResponse2); // In case there are more calls
 
-        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = newNoDelayDataSource(mockClient);
         // Request 351 days of daily data (exceeds 350 candle limit)
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-12-18T00:00:00Z"); // ~351 days
@@ -574,7 +583,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse1)
                 .thenReturn(mockResponse2);
 
-        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = newNoDelayDataSource(mockClient);
         // Request range that would trigger pagination
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-12-18T00:00:00Z"); // Exceeds 350 candles
@@ -617,7 +626,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse1)
                 .thenReturn(mockResponse2);
 
-        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = newNoDelayDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-12-18T00:00:00Z"); // Exceeds 350 candles
 
@@ -639,7 +648,7 @@ public class CoinbaseHttpBarSeriesDataSourceTest {
 
         when(mockClient.send(any(HttpRequest.class), any(HttpResponse.BodyHandler.class))).thenReturn(mockResponse);
 
-        CoinbaseHttpBarSeriesDataSource dataSource = new CoinbaseHttpBarSeriesDataSource(mockClient);
+        CoinbaseHttpBarSeriesDataSource dataSource = newNoDelayDataSource(mockClient);
         Instant start = Instant.parse("2021-01-01T00:00:00Z");
         Instant end = Instant.parse("2021-12-18T00:00:00Z"); // Exceeds 350 candles
 
