@@ -40,13 +40,15 @@ final class CorrelationWindowSupport {
 
     static int unstableBars(int barCount, Indicator<?> first, Indicator<?> second) {
         int baseUnstableBars = Math.max(first.getCountOfUnstableBars(), second.getCountOfUnstableBars());
-        return baseUnstableBars + barCount - 1;
+        long unstableBars = (long) baseUnstableBars + (long) barCount - 1L;
+        return clampUnstableBars(unstableBars);
     }
 
     static int unstableBars(int barCount, Indicator<?> first, Indicator<?> second, Indicator<?> third) {
         int baseUnstableBars = Math.max(first.getCountOfUnstableBars(), second.getCountOfUnstableBars());
         baseUnstableBars = Math.max(baseUnstableBars, third.getCountOfUnstableBars());
-        return baseUnstableBars + barCount - 1;
+        long unstableBars = (long) baseUnstableBars + (long) barCount - 1L;
+        return clampUnstableBars(unstableBars);
     }
 
     static int laggedUnstableBars(int barCount, int lag, Indicator<?> first, Indicator<?> second) {
@@ -55,7 +57,17 @@ final class CorrelationWindowSupport {
         long firstUnstable = (long) first.getCountOfUnstableBars() + firstOffset;
         long secondUnstable = (long) second.getCountOfUnstableBars() + secondOffset;
         long unstableBars = Math.max(firstUnstable, secondUnstable) + (long) barCount - 1L;
-        return unstableBars > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) unstableBars;
+        return clampUnstableBars(unstableBars);
+    }
+
+    private static int clampUnstableBars(long unstableBars) {
+        if (unstableBars > Integer.MAX_VALUE) {
+            return Integer.MAX_VALUE;
+        }
+        if (unstableBars < 0L) {
+            return 0;
+        }
+        return (int) unstableBars;
     }
 
     static NumericWindow pairedWindow(Indicator<Num> first, Indicator<Num> second, int index, int barCount) {
