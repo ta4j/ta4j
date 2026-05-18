@@ -2,6 +2,9 @@
 
 These repo-local instructions override the user-level PR defaults for ta4j. Apply only the ID-targeted directives below; unscoped prose is additive.
 
+Override PR.RULE.PUSH_POLICY:
+ta4j is public. Existing non-default upstream branches may be pushed without asking, but the first push of a new remote branch requires explicit approval. Any push to `master` or the default branch also requires explicit approval.
+
 Disable PDL.TASK.PR_MERGE:
 Terminal condition is a ready, non-draft PR with green local verification, acceptable CI, a clean final PR sweep, no unresolved conversations, and explicit human merge handoff. Do not merge into `master` automatically.
 
