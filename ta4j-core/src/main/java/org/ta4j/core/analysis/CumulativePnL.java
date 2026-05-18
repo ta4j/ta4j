@@ -13,9 +13,9 @@ import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
 /**
- * An {@link org.ta4j.core.PerformanceIndicator} implementation that computes
- * the cumulative profit and loss (PnL) series of one or more trading positions
- * over a given {@link BarSeries}.
+ * A {@link PerformanceIndicator} implementation that computes the cumulative
+ * profit and loss (PnL) series of one or more trading positions over a given
+ * {@link BarSeries}.
  * <p>
  * The cumulative PnL is calculated incrementally from the start of the
  * {@code BarSeries}, taking into account realized and unrealized gains/losses,
