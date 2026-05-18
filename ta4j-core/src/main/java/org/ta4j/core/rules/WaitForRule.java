@@ -3,6 +3,8 @@
  */
 package org.ta4j.core.rules;
 
+import java.util.Objects;
+
 import org.ta4j.core.Bar;
 import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
@@ -33,7 +35,10 @@ public class WaitForRule extends AbstractRule {
      * @param numberOfBars the number of bars to wait for
      */
     public WaitForRule(TradeType tradeType, int numberOfBars) {
-        this.tradeType = tradeType;
+        if (numberOfBars < 0) {
+            throw new IllegalArgumentException("numberOfBars must be >= 0");
+        }
+        this.tradeType = Objects.requireNonNull(tradeType, "tradeType");
         this.numberOfBars = numberOfBars;
     }
 

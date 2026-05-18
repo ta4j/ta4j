@@ -42,7 +42,12 @@ public class IsHighestRule extends AbstractRule {
         Num refVal = ref.getValue(index);
 
         final boolean satisfied = !refVal.isNaN() && !highestVal.isNaN() && refVal.equals(highestVal);
-        traceIsSatisfied(index, satisfied);
+        if (isTraceEnabled()) {
+            traceIsSatisfied(index, satisfied,
+                    traceContext("currentValue", refVal, "highestValue", highestVal, "barCount", barCount,
+                            "windowStart", Math.max(0, index - barCount + 1), "windowEnd", index, "reason",
+                            satisfied ? "currentIsHighest" : "currentBelowHighest"));
+        }
         return satisfied;
     }
 }
