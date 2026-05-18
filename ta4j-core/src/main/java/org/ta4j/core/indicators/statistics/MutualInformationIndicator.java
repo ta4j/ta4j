@@ -8,6 +8,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Rolling mutual information indicator.
@@ -66,44 +67,46 @@ public class MutualInformationIndicator extends CachedIndicator<Num> {
         if (index < getCountOfUnstableBars()) {
             return NaN.NaN;
         }
-        double[][] window = CorrelationWindowSupport.pairedWindow(first, second, index, barCount);
+        CorrelationWindowSupport.NumericWindow window = CorrelationWindowSupport.pairedWindow(first, second, index,
+                barCount);
         if (window == null) {
             return NaN.NaN;
         }
 
-        BinMapper firstMapper = BinMapper.from(window[0], binCount);
-        BinMapper secondMapper = BinMapper.from(window[1], binCount);
+        NumFactory numFactory = getBarSeries().numFactory();
+        BinMapper firstMapper = BinMapper.from(window.firstValues(), window.sampleCount(), binCount);
+        BinMapper secondMapper = BinMapper.from(window.secondValues(), window.sampleCount(), binCount);
         if (firstMapper.constant || secondMapper.constant) {
-            return getBarSeries().numFactory().zero();
+            return numFactory.zero();
         }
 
-        int[][] jointCounts = new int[binCount][binCount];
+        int[] jointCounts = new int[binCount * binCount];
         int[] firstCounts = new int[binCount];
         int[] secondCounts = new int[binCount];
-        for (int i = 0; i < barCount; i++) {
-            int firstBin = firstMapper.bin(window[0][i]);
-            int secondBin = secondMapper.bin(window[1][i]);
-            jointCounts[firstBin][secondBin]++;
+        for (int i = 0; i < window.sampleCount(); i++) {
+            int firstBin = firstMapper.bin(window.firstValues()[i]);
+            int secondBin = secondMapper.bin(window.secondValues()[i]);
+            jointCounts[(firstBin * binCount) + secondBin]++;
             firstCounts[firstBin]++;
             secondCounts[secondBin]++;
         }
 
-        double sampleCount = barCount;
-        double mutualInformation = 0.0;
+        Num sampleCount = numFactory.numOf(window.sampleCount());
+        Num mutualInformation = numFactory.zero();
         for (int firstBin = 0; firstBin < binCount; firstBin++) {
             for (int secondBin = 0; secondBin < binCount; secondBin++) {
-                int jointCount = jointCounts[firstBin][secondBin];
+                int jointCount = jointCounts[(firstBin * binCount) + secondBin];
                 if (jointCount == 0) {
                     continue;
                 }
-                double jointProbability = jointCount / sampleCount;
-                double firstProbability = firstCounts[firstBin] / sampleCount;
-                double secondProbability = secondCounts[secondBin] / sampleCount;
-                mutualInformation += jointProbability
-                        * Math.log(jointProbability / (firstProbability * secondProbability));
+                Num jointProbability = numFactory.numOf(jointCount).dividedBy(sampleCount);
+                Num firstProbability = numFactory.numOf(firstCounts[firstBin]).dividedBy(sampleCount);
+                Num secondProbability = numFactory.numOf(secondCounts[secondBin]).dividedBy(sampleCount);
+                Num ratio = jointProbability.dividedBy(firstProbability.multipliedBy(secondProbability));
+                mutualInformation = mutualInformation.plus(jointProbability.multipliedBy(ratio.log()));
             }
         }
-        return getBarSeries().numFactory().numOf(mutualInformation);
+        return CorrelationWindowSupport.isFinite(mutualInformation) ? mutualInformation : NaN.NaN;
     }
 
     @Override
@@ -113,33 +116,34 @@ public class MutualInformationIndicator extends CachedIndicator<Num> {
 
     private static final class BinMapper {
 
-        private final double minimum;
-        private final double width;
+        private final Num minimum;
+        private final Num width;
         private final int binCount;
         private final boolean constant;
 
-        private BinMapper(double minimum, double width, int binCount, boolean constant) {
+        private BinMapper(Num minimum, Num width, int binCount, boolean constant) {
             this.minimum = minimum;
             this.width = width;
             this.binCount = binCount;
             this.constant = constant;
         }
 
-        static BinMapper from(double[] values, int binCount) {
-            double minimum = values[0];
-            double maximum = values[0];
-            for (double value : values) {
-                minimum = Math.min(minimum, value);
-                maximum = Math.max(maximum, value);
+        static BinMapper from(Num[] values, int sampleCount, int binCount) {
+            Num minimum = values[0];
+            Num maximum = values[0];
+            for (int i = 1; i < sampleCount; i++) {
+                minimum = minimum.min(values[i]);
+                maximum = maximum.max(values[i]);
             }
-            if (Double.compare(minimum, maximum) == 0) {
-                return new BinMapper(minimum, 0.0, binCount, true);
+            if (minimum.compareTo(maximum) == 0) {
+                return new BinMapper(minimum, minimum.getNumFactory().zero(), binCount, true);
             }
-            return new BinMapper(minimum, (maximum - minimum) / binCount, binCount, false);
+            return new BinMapper(minimum, maximum.minus(minimum).dividedBy(minimum.getNumFactory().numOf(binCount)),
+                    binCount, false);
         }
 
-        int bin(double value) {
-            int bin = (int) ((value - minimum) / width);
+        int bin(Num value) {
+            int bin = value.minus(minimum).dividedBy(width).intValue();
             if (bin < 0) {
                 return 0;
             }

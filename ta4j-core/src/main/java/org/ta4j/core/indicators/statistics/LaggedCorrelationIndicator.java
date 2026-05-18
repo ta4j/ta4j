@@ -61,11 +61,12 @@ public class LaggedCorrelationIndicator extends CachedIndicator<Num> {
         if (index < getCountOfUnstableBars()) {
             return NaN.NaN;
         }
-        double[][] window = CorrelationWindowSupport.laggedWindow(first, second, index, barCount, lag);
+        CorrelationWindowSupport.NumericWindow window = CorrelationWindowSupport.laggedWindow(first, second, index,
+                barCount, lag);
         if (window == null) {
             return NaN.NaN;
         }
-        return CorrelationWindowSupport.pearson(getBarSeries().numFactory(), window[0], window[1]);
+        return CorrelationWindowSupport.pearson(getBarSeries().numFactory(), window);
     }
 
     @Override

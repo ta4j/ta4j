@@ -8,6 +8,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Rolling Kendall tau-b correlation indicator.
@@ -51,19 +52,20 @@ public class KendallTauIndicator extends CachedIndicator<Num> {
         if (index < getCountOfUnstableBars()) {
             return NaN.NaN;
         }
-        double[][] window = CorrelationWindowSupport.pairedWindow(first, second, index, barCount);
+        CorrelationWindowSupport.NumericWindow window = CorrelationWindowSupport.pairedWindow(first, second, index,
+                barCount);
         if (window == null) {
             return NaN.NaN;
         }
 
-        int concordant = 0;
-        int discordant = 0;
-        int firstTies = 0;
-        int secondTies = 0;
-        for (int i = 0; i < barCount - 1; i++) {
-            for (int j = i + 1; j < barCount; j++) {
-                int firstComparison = Double.compare(window[0][i], window[0][j]);
-                int secondComparison = Double.compare(window[1][i], window[1][j]);
+        long concordant = 0L;
+        long discordant = 0L;
+        long firstTies = 0L;
+        long secondTies = 0L;
+        for (int i = 0; i < window.sampleCount() - 1; i++) {
+            for (int j = i + 1; j < window.sampleCount(); j++) {
+                int firstComparison = window.firstValues()[i].compareTo(window.firstValues()[j]);
+                int secondComparison = window.secondValues()[i].compareTo(window.secondValues()[j]);
                 if (firstComparison == 0 && secondComparison == 0) {
                     continue;
                 }
@@ -79,14 +81,24 @@ public class KendallTauIndicator extends CachedIndicator<Num> {
             }
         }
 
-        double numerator = (double) concordant - (double) discordant;
-        double firstDenominator = (double) concordant + (double) discordant + (double) firstTies;
-        double secondDenominator = (double) concordant + (double) discordant + (double) secondTies;
-        double denominator = Math.sqrt(firstDenominator * secondDenominator);
-        if (denominator <= 0.0 || Double.isNaN(denominator) || Double.isInfinite(denominator)) {
+        NumFactory numFactory = getBarSeries().numFactory();
+        Num numerator = numFactory.numOf(concordant).minus(numFactory.numOf(discordant));
+        Num firstDenominator = numFactory.numOf(concordant)
+                .plus(numFactory.numOf(discordant))
+                .plus(numFactory.numOf(firstTies));
+        Num secondDenominator = numFactory.numOf(concordant)
+                .plus(numFactory.numOf(discordant))
+                .plus(numFactory.numOf(secondTies));
+        Num denominatorSquared = firstDenominator.multipliedBy(secondDenominator);
+        if (!CorrelationWindowSupport.isFinite(denominatorSquared) || !denominatorSquared.isPositive()) {
             return NaN.NaN;
         }
-        return getBarSeries().numFactory().numOf(numerator / denominator);
+        Num denominator = denominatorSquared.sqrt();
+        if (!CorrelationWindowSupport.isFinite(denominator) || denominator.isZero()) {
+            return NaN.NaN;
+        }
+        Num result = numerator.dividedBy(denominator);
+        return CorrelationWindowSupport.isFinite(result) ? result : NaN.NaN;
     }
 
     @Override

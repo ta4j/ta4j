@@ -8,6 +8,7 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.indicators.IndicatorUtils;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Rolling distance correlation indicator.
@@ -57,23 +58,48 @@ public class DistanceCorrelationIndicator extends CachedIndicator<Num> {
         if (index < getCountOfUnstableBars()) {
             return NaN.NaN;
         }
-        double[][] window = CorrelationWindowSupport.pairedWindow(first, second, index, barCount);
+        CorrelationWindowSupport.NumericWindow window = CorrelationWindowSupport.pairedWindow(first, second, index,
+                barCount);
         if (window == null) {
             return NaN.NaN;
         }
 
-        double[][] firstDistances = centeredDistances(window[0]);
-        double[][] secondDistances = centeredDistances(window[1]);
-        double distanceCovariance = meanProduct(firstDistances, secondDistances);
-        double firstDistanceVariance = meanProduct(firstDistances, firstDistances);
-        double secondDistanceVariance = meanProduct(secondDistances, secondDistances);
+        NumFactory numFactory = getBarSeries().numFactory();
+        CenteringStats firstStats = centeringStats(numFactory, window.firstValues(), window.sampleCount());
+        CenteringStats secondStats = centeringStats(numFactory, window.secondValues(), window.sampleCount());
+        Num totalsDivisor = numFactory.numOf(window.sampleCount()).multipliedBy(numFactory.numOf(window.sampleCount()));
+        Num distanceCovariance = numFactory.zero();
+        Num firstDistanceVariance = numFactory.zero();
+        Num secondDistanceVariance = numFactory.zero();
+        for (int row = 0; row < window.sampleCount(); row++) {
+            for (int column = 0; column < window.sampleCount(); column++) {
+                Num firstCentered = centeredDistance(window.firstValues(), firstStats, row, column);
+                Num secondCentered = centeredDistance(window.secondValues(), secondStats, row, column);
+                distanceCovariance = distanceCovariance.plus(firstCentered.multipliedBy(secondCentered));
+                firstDistanceVariance = firstDistanceVariance.plus(firstCentered.multipliedBy(firstCentered));
+                secondDistanceVariance = secondDistanceVariance.plus(secondCentered.multipliedBy(secondCentered));
+            }
+        }
+        distanceCovariance = distanceCovariance.dividedBy(totalsDivisor);
+        firstDistanceVariance = firstDistanceVariance.dividedBy(totalsDivisor);
+        secondDistanceVariance = secondDistanceVariance.dividedBy(totalsDivisor);
 
-        double denominator = Math.sqrt(firstDistanceVariance * secondDistanceVariance);
-        if (denominator <= 0.0 || Double.isNaN(denominator) || Double.isInfinite(denominator)) {
+        Num denominatorSquared = firstDistanceVariance.multipliedBy(secondDistanceVariance);
+        if (!CorrelationWindowSupport.isFinite(denominatorSquared) || !denominatorSquared.isPositive()) {
             return NaN.NaN;
         }
-        double squaredCorrelation = Math.max(0.0, distanceCovariance / denominator);
-        return getBarSeries().numFactory().numOf(Math.sqrt(squaredCorrelation));
+        Num denominator = denominatorSquared.sqrt();
+        if (!CorrelationWindowSupport.isFinite(denominator) || denominator.isZero()) {
+            return NaN.NaN;
+        }
+        Num squaredCorrelation = distanceCovariance.dividedBy(denominator);
+        if (!CorrelationWindowSupport.isFinite(squaredCorrelation)) {
+            return NaN.NaN;
+        }
+        if (squaredCorrelation.isNegative()) {
+            squaredCorrelation = numFactory.zero();
+        }
+        return squaredCorrelation.sqrt();
     }
 
     @Override
@@ -81,39 +107,29 @@ public class DistanceCorrelationIndicator extends CachedIndicator<Num> {
         return CorrelationWindowSupport.unstableBars(barCount, first, second);
     }
 
-    private static double[][] centeredDistances(double[] values) {
-        int size = values.length;
-        double[][] centered = new double[size][size];
-        double[] rowMeans = new double[size];
-        double grandTotal = 0.0;
+    private static CenteringStats centeringStats(NumFactory numFactory, Num[] values, int size) {
+        Num[] rowMeans = new Num[size];
+        Num grandTotal = numFactory.zero();
+        Num sampleCount = numFactory.numOf(size);
         for (int row = 0; row < size; row++) {
-            double rowTotal = 0.0;
+            Num rowTotal = numFactory.zero();
             for (int column = 0; column < size; column++) {
-                double distance = Math.abs(values[row] - values[column]);
-                centered[row][column] = distance;
-                rowTotal += distance;
+                rowTotal = rowTotal.plus(values[row].minus(values[column]).abs());
             }
-            rowMeans[row] = rowTotal / size;
-            grandTotal += rowTotal;
+            rowMeans[row] = rowTotal.dividedBy(sampleCount);
+            grandTotal = grandTotal.plus(rowTotal);
         }
-
-        double grandMean = grandTotal / (size * size);
-        for (int row = 0; row < size; row++) {
-            for (int column = 0; column < size; column++) {
-                centered[row][column] = centered[row][column] - rowMeans[row] - rowMeans[column] + grandMean;
-            }
-        }
-        return centered;
+        return new CenteringStats(rowMeans, grandTotal.dividedBy(sampleCount.multipliedBy(sampleCount)));
     }
 
-    private static double meanProduct(double[][] firstMatrix, double[][] secondMatrix) {
-        int size = firstMatrix.length;
-        double total = 0.0;
-        for (int row = 0; row < size; row++) {
-            for (int column = 0; column < size; column++) {
-                total += firstMatrix[row][column] * secondMatrix[row][column];
-            }
-        }
-        return total / (size * size);
+    private static Num centeredDistance(Num[] values, CenteringStats stats, int row, int column) {
+        return values[row].minus(values[column])
+                .abs()
+                .minus(stats.rowMeans()[row])
+                .minus(stats.rowMeans()[column])
+                .plus(stats.grandMean());
+    }
+
+    private record CenteringStats(Num[] rowMeans, Num grandMean) {
     }
 }

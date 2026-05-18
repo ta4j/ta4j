@@ -59,11 +59,12 @@ public class RegimeSegmentedCorrelationIndicator extends CachedIndicator<Num> {
         if (index < getCountOfUnstableBars()) {
             return NaN.NaN;
         }
-        double[][] activeValues = CorrelationWindowSupport.activeRegimeWindow(first, second, regime, index, barCount);
-        if (activeValues == null || activeValues[0].length < 2) {
+        CorrelationWindowSupport.NumericWindow activeValues = CorrelationWindowSupport.activeRegimeWindow(first, second,
+                regime, index, barCount);
+        if (activeValues == null || activeValues.sampleCount() < 2) {
             return NaN.NaN;
         }
-        return CorrelationWindowSupport.pearson(getBarSeries().numFactory(), activeValues[0], activeValues[1]);
+        return CorrelationWindowSupport.pearson(getBarSeries().numFactory(), activeValues);
     }
 
     @Override

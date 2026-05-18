@@ -18,6 +18,7 @@ import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -60,6 +61,18 @@ public class MutualInformationIndicatorTest extends AbstractIndicatorTest<Indica
     }
 
     @Test
+    public void preservesDecimalBinBoundariesBelowDoubleResolution() {
+        NumFactory decimalFactory = DecimalNumFactory.getInstance(40);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(decimalFactory).withData(1, 2, 3, 4).build();
+        Indicator<Num> first = indicator(decimalFactory, series, "1.00000000000000000001", "1.00000000000000000001",
+                "1.00000000000000000004", "1.00000000000000000004");
+        Indicator<Num> second = indicator(decimalFactory, series, "0", "0", "1", "1");
+        MutualInformationIndicator mutualInformation = new MutualInformationIndicator(first, second, 4, 2);
+
+        assertNumEquals(decimalFactory.two().log(), mutualInformation.getValue(3), 1.0e-12);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void serializesAndRestoresFromJson() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
@@ -84,6 +97,11 @@ public class MutualInformationIndicatorTest extends AbstractIndicatorTest<Indica
 
     private Indicator<Num> indicator(BarSeries series, Number... values) {
         List<Num> nums = java.util.Arrays.stream(values).map(numFactory::numOf).toList();
+        return new MockIndicator(series, nums);
+    }
+
+    private Indicator<Num> indicator(NumFactory factory, BarSeries series, String... values) {
+        List<Num> nums = java.util.Arrays.stream(values).map(factory::numOf).toList();
         return new MockIndicator(series, nums);
     }
 }

@@ -51,13 +51,17 @@ public class SpearmanRankCorrelationIndicator extends CachedIndicator<Num> {
         if (index < getCountOfUnstableBars()) {
             return NaN.NaN;
         }
-        double[][] window = CorrelationWindowSupport.pairedWindow(first, second, index, barCount);
+        CorrelationWindowSupport.NumericWindow window = CorrelationWindowSupport.pairedWindow(first, second, index,
+                barCount);
         if (window == null) {
             return NaN.NaN;
         }
-        double[] firstRanks = CorrelationWindowSupport.averageRanks(window[0]);
-        double[] secondRanks = CorrelationWindowSupport.averageRanks(window[1]);
-        return CorrelationWindowSupport.pearson(getBarSeries().numFactory(), firstRanks, secondRanks);
+        Num[] firstRanks = CorrelationWindowSupport.averageRanks(getBarSeries().numFactory(), window.firstValues(),
+                window.sampleCount());
+        Num[] secondRanks = CorrelationWindowSupport.averageRanks(getBarSeries().numFactory(), window.secondValues(),
+                window.sampleCount());
+        return CorrelationWindowSupport.pearson(getBarSeries().numFactory(), firstRanks, secondRanks,
+                window.sampleCount());
     }
 
     @Override

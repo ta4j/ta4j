@@ -3,9 +3,7 @@
  */
 package org.ta4j.core.indicators.statistics;
 
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
@@ -60,21 +58,21 @@ final class CorrelationWindowSupport {
         return unstableBars > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) unstableBars;
     }
 
-    static double[][] pairedWindow(Indicator<Num> first, Indicator<Num> second, int index, int barCount) {
+    static NumericWindow pairedWindow(Indicator<Num> first, Indicator<Num> second, int index, int barCount) {
         int startIndex = index - barCount + 1;
         if (!windowIsAvailable(first.getBarSeries(), startIndex, index)
                 || !windowIsAvailable(second.getBarSeries(), startIndex, index)) {
             return null;
         }
-        double[] firstValues = values(first, startIndex, barCount);
-        double[] secondValues = values(second, startIndex, barCount);
+        Num[] firstValues = values(first, startIndex, barCount);
+        Num[] secondValues = values(second, startIndex, barCount);
         if (firstValues == null || secondValues == null) {
             return null;
         }
-        return new double[][] { firstValues, secondValues };
+        return new NumericWindow(firstValues, secondValues, barCount);
     }
 
-    static double[][] laggedWindow(Indicator<Num> first, Indicator<Num> second, int index, int barCount, int lag) {
+    static NumericWindow laggedWindow(Indicator<Num> first, Indicator<Num> second, int index, int barCount, int lag) {
         long secondEndIndexValue = lag >= 0 ? index : (long) index + lag;
         long secondStartIndexValue = secondEndIndexValue - (long) barCount + 1L;
         long firstStartIndexValue = secondStartIndexValue - lag;
@@ -93,21 +91,21 @@ final class CorrelationWindowSupport {
             return null;
         }
 
-        double[] firstValues = new double[barCount];
-        double[] secondValues = new double[barCount];
+        Num[] firstValues = new Num[barCount];
+        Num[] secondValues = new Num[barCount];
         for (int i = 0; i < barCount; i++) {
             Num firstValue = first.getValue(firstStartIndex + i);
             Num secondValue = second.getValue(secondStartIndex + i);
             if (!isFinite(firstValue) || !isFinite(secondValue)) {
                 return null;
             }
-            firstValues[i] = firstValue.doubleValue();
-            secondValues[i] = secondValue.doubleValue();
+            firstValues[i] = firstValue;
+            secondValues[i] = secondValue;
         }
-        return new double[][] { firstValues, secondValues };
+        return new NumericWindow(firstValues, secondValues, barCount);
     }
 
-    static double[][] activeRegimeWindow(Indicator<Num> first, Indicator<Num> second, Indicator<Boolean> regime,
+    static NumericWindow activeRegimeWindow(Indicator<Num> first, Indicator<Num> second, Indicator<Boolean> regime,
             int index, int barCount) {
         int startIndex = index - barCount + 1;
         if (!windowIsAvailable(first.getBarSeries(), startIndex, index)
@@ -116,8 +114,9 @@ final class CorrelationWindowSupport {
             return null;
         }
 
-        List<Double> firstValues = new ArrayList<>();
-        List<Double> secondValues = new ArrayList<>();
+        Num[] firstValues = new Num[barCount];
+        Num[] secondValues = new Num[barCount];
+        int sampleCount = 0;
         for (int i = startIndex; i <= index; i++) {
             Boolean active = regime.getValue(i);
             if (!Boolean.TRUE.equals(active)) {
@@ -128,60 +127,63 @@ final class CorrelationWindowSupport {
             if (!isFinite(firstValue) || !isFinite(secondValue)) {
                 continue;
             }
-            firstValues.add(firstValue.doubleValue());
-            secondValues.add(secondValue.doubleValue());
+            firstValues[sampleCount] = firstValue;
+            secondValues[sampleCount] = secondValue;
+            sampleCount++;
         }
-
-        double[] firstArray = new double[firstValues.size()];
-        double[] secondArray = new double[secondValues.size()];
-        for (int i = 0; i < firstValues.size(); i++) {
-            firstArray[i] = firstValues.get(i);
-            secondArray[i] = secondValues.get(i);
-        }
-        return new double[][] { firstArray, secondArray };
+        return new NumericWindow(firstValues, secondValues, sampleCount);
     }
 
-    static Num pearson(NumFactory numFactory, double[] firstValues, double[] secondValues) {
-        if (firstValues.length != secondValues.length || firstValues.length < 2) {
+    static Num pearson(NumFactory numFactory, NumericWindow window) {
+        return pearson(numFactory, window.firstValues(), window.secondValues(), window.sampleCount());
+    }
+
+    static Num pearson(NumFactory numFactory, Num[] firstValues, Num[] secondValues, int sampleCount) {
+        if (firstValues.length != secondValues.length || sampleCount < 2) {
             return NaN.NaN;
         }
 
-        double firstAverage = average(firstValues);
-        double secondAverage = average(secondValues);
-        double covariance = 0.0;
-        double firstVariance = 0.0;
-        double secondVariance = 0.0;
-        for (int i = 0; i < firstValues.length; i++) {
-            double firstDelta = firstValues[i] - firstAverage;
-            double secondDelta = secondValues[i] - secondAverage;
-            covariance += firstDelta * secondDelta;
-            firstVariance += firstDelta * firstDelta;
-            secondVariance += secondDelta * secondDelta;
+        Num firstAverage = average(numFactory, firstValues, sampleCount);
+        Num secondAverage = average(numFactory, secondValues, sampleCount);
+        Num covariance = numFactory.zero();
+        Num firstVariance = numFactory.zero();
+        Num secondVariance = numFactory.zero();
+        for (int i = 0; i < sampleCount; i++) {
+            Num firstDelta = firstValues[i].minus(firstAverage);
+            Num secondDelta = secondValues[i].minus(secondAverage);
+            covariance = covariance.plus(firstDelta.multipliedBy(secondDelta));
+            firstVariance = firstVariance.plus(firstDelta.multipliedBy(firstDelta));
+            secondVariance = secondVariance.plus(secondDelta.multipliedBy(secondDelta));
         }
 
-        double denominator = Math.sqrt(firstVariance * secondVariance);
-        if (denominator <= 0.0 || Double.isNaN(denominator) || Double.isInfinite(denominator)) {
+        Num denominatorSquared = firstVariance.multipliedBy(secondVariance);
+        if (!isFinite(denominatorSquared) || !denominatorSquared.isPositive()) {
             return NaN.NaN;
         }
-        return numFactory.numOf(covariance / denominator);
+        Num denominator = denominatorSquared.sqrt();
+        if (!isFinite(denominator) || denominator.isZero()) {
+            return NaN.NaN;
+        }
+        Num result = covariance.dividedBy(denominator);
+        return isFinite(result) ? result : NaN.NaN;
     }
 
-    static double[] averageRanks(double[] values) {
-        Integer[] indexes = new Integer[values.length];
-        for (int i = 0; i < values.length; i++) {
+    static Num[] averageRanks(NumFactory numFactory, Num[] values, int sampleCount) {
+        Integer[] indexes = new Integer[sampleCount];
+        for (int i = 0; i < sampleCount; i++) {
             indexes[i] = i;
         }
-        Arrays.sort(indexes, (left, right) -> Double.compare(values[left], values[right]));
+        Arrays.sort(indexes, (left, right) -> values[left].compareTo(values[right]));
 
-        double[] ranks = new double[values.length];
+        Num[] ranks = new Num[sampleCount];
         int orderedIndex = 0;
         while (orderedIndex < indexes.length) {
             int tieEnd = orderedIndex;
             while (tieEnd + 1 < indexes.length
-                    && Double.compare(values[indexes[orderedIndex]], values[indexes[tieEnd + 1]]) == 0) {
+                    && values[indexes[orderedIndex]].compareTo(values[indexes[tieEnd + 1]]) == 0) {
                 tieEnd++;
             }
-            double averageRank = ((double) orderedIndex + (double) tieEnd + 2.0) / 2.0;
+            Num averageRank = numFactory.numOf(orderedIndex + tieEnd + 2).dividedBy(numFactory.two());
             for (int i = orderedIndex; i <= tieEnd; i++) {
                 ranks[indexes[i]] = averageRank;
             }
@@ -191,11 +193,20 @@ final class CorrelationWindowSupport {
     }
 
     static boolean isFinite(Num value) {
-        if (Num.isNaNOrNull(value)) {
+        if (value == null || value.isNaN()) {
             return false;
         }
-        double primitive = value.doubleValue();
-        return !Double.isNaN(primitive) && !Double.isInfinite(primitive);
+        Number delegate = value.getDelegate();
+        if (delegate instanceof Double primitive) {
+            return Double.isFinite(primitive);
+        }
+        if (delegate instanceof Float primitive) {
+            return Float.isFinite(primitive);
+        }
+        return true;
+    }
+
+    record NumericWindow(Num[] firstValues, Num[] secondValues, int sampleCount) {
     }
 
     private static boolean windowIsAvailable(BarSeries series, int startIndex, int endIndex) {
@@ -206,23 +217,23 @@ final class CorrelationWindowSupport {
         return index >= Integer.MIN_VALUE && index <= Integer.MAX_VALUE;
     }
 
-    private static double[] values(Indicator<Num> indicator, int startIndex, int barCount) {
-        double[] values = new double[barCount];
+    private static Num[] values(Indicator<Num> indicator, int startIndex, int barCount) {
+        Num[] values = new Num[barCount];
         for (int i = 0; i < barCount; i++) {
             Num value = indicator.getValue(startIndex + i);
             if (!isFinite(value)) {
                 return null;
             }
-            values[i] = value.doubleValue();
+            values[i] = value;
         }
         return values;
     }
 
-    private static double average(double[] values) {
-        double sum = 0.0;
-        for (double value : values) {
-            sum += value;
+    private static Num average(NumFactory numFactory, Num[] values, int sampleCount) {
+        Num sum = numFactory.zero();
+        for (int i = 0; i < sampleCount; i++) {
+            sum = sum.plus(values[i]);
         }
-        return sum / values.length;
+        return sum.dividedBy(numFactory.numOf(sampleCount));
     }
 }

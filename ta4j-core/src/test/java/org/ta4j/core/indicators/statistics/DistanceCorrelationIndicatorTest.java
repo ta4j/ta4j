@@ -50,6 +50,16 @@ public class DistanceCorrelationIndicatorTest extends AbstractIndicatorTest<Indi
     }
 
     @Test
+    public void matchesNonlinearFixture() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4).build();
+        Indicator<Num> first = indicator(series, 1, 2, 3, 4);
+        Indicator<Num> second = indicator(series, 1, 4, 9, 16);
+        DistanceCorrelationIndicator correlation = new DistanceCorrelationIndicator(first, second, 4);
+
+        assertNumEquals(numOf(0.9880575600825113), correlation.getValue(3), 1.0e-12);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void serializesAndRestoresFromJson() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();

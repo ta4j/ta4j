@@ -18,6 +18,8 @@ import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.mocks.MockIndicator;
+import org.ta4j.core.num.DecimalNumFactory;
+import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -72,6 +74,41 @@ public class SpearmanRankCorrelationIndicatorTest extends AbstractIndicatorTest<
     }
 
     @Test
+    public void returnsNaNWhenDoubleNumWindowContainsInfinity() {
+        NumFactory doubleFactory = DoubleNumFactory.getInstance();
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleFactory).withData(1, 2, 3, 4).build();
+        Indicator<Num> first = new MockIndicator(series, List.of(doubleFactory.one(), doubleFactory.two(),
+                doubleFactory.numOf(Double.POSITIVE_INFINITY), doubleFactory.numOf(4)));
+        Indicator<Num> second = indicator(doubleFactory, series, "1", "2", "3", "4");
+        SpearmanRankCorrelationIndicator correlation = new SpearmanRankCorrelationIndicator(first, second, 4);
+
+        assertTrue(correlation.getValue(3).isNaN());
+    }
+
+    @Test
+    public void preservesDecimalRanksBelowDoubleResolution() {
+        NumFactory decimalFactory = DecimalNumFactory.getInstance(40);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(decimalFactory).withData(1, 2, 3, 4).build();
+        Indicator<Num> first = indicator(decimalFactory, series, "1.00000000000000000001", "1.00000000000000000002",
+                "1.00000000000000000003", "1.00000000000000000004");
+        Indicator<Num> second = indicator(decimalFactory, series, "1", "2", "3", "4");
+        SpearmanRankCorrelationIndicator correlation = new SpearmanRankCorrelationIndicator(first, second, 4);
+
+        assertNumEquals(decimalFactory.one(), correlation.getValue(3));
+    }
+
+    @Test
+    public void treatsLargeFiniteDecimalValuesAsValidSamples() {
+        NumFactory decimalFactory = DecimalNumFactory.getInstance(40);
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(decimalFactory).withData(1, 2, 3, 4).build();
+        Indicator<Num> first = indicator(decimalFactory, series, "1E400", "2E400", "3E400", "4E400");
+        Indicator<Num> second = indicator(decimalFactory, series, "1", "2", "3", "4");
+        SpearmanRankCorrelationIndicator correlation = new SpearmanRankCorrelationIndicator(first, second, 4);
+
+        assertNumEquals(decimalFactory.one(), correlation.getValue(3));
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void serializesAndRestoresFromJson() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1, 2, 3, 4, 5).build();
@@ -96,6 +133,11 @@ public class SpearmanRankCorrelationIndicatorTest extends AbstractIndicatorTest<
 
     private Indicator<Num> indicator(BarSeries series, Number... values) {
         List<Num> nums = java.util.Arrays.stream(values).map(numFactory::numOf).toList();
+        return new MockIndicator(series, nums);
+    }
+
+    private Indicator<Num> indicator(NumFactory factory, BarSeries series, String... values) {
+        List<Num> nums = java.util.Arrays.stream(values).map(factory::numOf).toList();
         return new MockIndicator(series, nums);
     }
 }
