@@ -4,6 +4,7 @@
 package ta4jexamples.datasources.json;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -39,5 +40,39 @@ class LegacyJsonBarSeriesPayloadTest {
         assertEquals(series.getBarCount(), restoredSeries.getBarCount());
         assertEquals(series.getFirstBar().getClosePrice(), restoredSeries.getFirstBar().getClosePrice());
         assertEquals(series.getFirstBar().getEndTime(), restoredSeries.getFirstBar().getEndTime());
+    }
+
+    @Test
+    void nullPayloadConvertsToNullBarSeries() {
+        Gson gson = new Gson();
+        LegacyJsonBarSeriesPayload payload = gson.fromJson("null", LegacyJsonBarSeriesPayload.class);
+
+        assertNull(LegacyJsonBarSeriesPayload.toBarSeriesOrNull(payload));
+    }
+
+    @Test
+    void nullOhlcPayloadConvertsToEmptyBarSeries() {
+        Gson gson = new Gson();
+        LegacyJsonBarSeriesPayload payload = gson.fromJson("{\"name\":\"empty-series\",\"ohlc\":null}",
+                LegacyJsonBarSeriesPayload.class);
+
+        BarSeries restoredSeries = payload.toBarSeries();
+
+        assertEquals("empty-series", restoredSeries.getName());
+        assertEquals(0, restoredSeries.getBarCount());
+    }
+
+    @Test
+    void copyFromTreatsNullOhlcAsEmptyPayload() {
+        Gson gson = new Gson();
+        LegacyJsonBarSeriesPayload source = gson.fromJson("{\"name\":\"empty-copy\",\"ohlc\":null}",
+                LegacyJsonBarSeriesPayload.class);
+        LegacyJsonBarSeriesPayload copy = new LegacyJsonBarSeriesPayload();
+
+        copy.copyFrom(source);
+        BarSeries copiedSeries = copy.toBarSeries();
+
+        assertEquals("empty-copy", copiedSeries.getName());
+        assertEquals(0, copiedSeries.getBarCount());
     }
 }

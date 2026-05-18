@@ -67,7 +67,11 @@ public class JsonBarsSerializer {
             reader = new FileReader(filename);
             LegacyJsonBarSeriesPayload loadedSeries = gson.fromJson(reader, LegacyJsonBarSeriesPayload.class);
 
-            result = loadedSeries.toBarSeries();
+            result = LegacyJsonBarSeriesPayload.toBarSeriesOrNull(loadedSeries);
+            if (result == null) {
+                LOG.warn("Failed to parse JSON, loadedSeries is null");
+                return null;
+            }
             LOG.debug("Bar series '" + result.getName() + "' successfully loaded. #Entries: " + result.getBarCount());
         } catch (FileNotFoundException e) {
             LOG.error("Unable to load bars from JSON", e);
@@ -113,12 +117,12 @@ public class JsonBarsSerializer {
             reader = new InputStreamReader(inputStream);
             LegacyJsonBarSeriesPayload loadedSeries = gson.fromJson(reader, LegacyJsonBarSeriesPayload.class);
 
-            if (loadedSeries == null) {
+            result = LegacyJsonBarSeriesPayload.toBarSeriesOrNull(loadedSeries);
+            if (result == null) {
                 LOG.warn("Failed to parse JSON, loadedSeries is null");
                 return null;
             }
 
-            result = loadedSeries.toBarSeries();
             LOG.debug("Bar series '" + result.getName() + "' successfully loaded. #Entries: " + result.getBarCount());
         } catch (Exception e) {
             LOG.error("Unable to load bars from JSON", e);

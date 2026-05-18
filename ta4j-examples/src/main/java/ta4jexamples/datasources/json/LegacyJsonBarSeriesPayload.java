@@ -28,8 +28,15 @@ class LegacyJsonBarSeriesPayload {
         return result;
     }
 
+    static BarSeries toBarSeriesOrNull(LegacyJsonBarSeriesPayload payload) {
+        return payload == null ? null : payload.toBarSeries();
+    }
+
     BarSeries toBarSeries() {
         BaseBarSeries result = new BaseBarSeriesBuilder().withName(name).build();
+        if (ohlc == null) {
+            return result;
+        }
         for (LegacyJsonBarDataPayload data : ohlc) {
             data.addTo(result);
         }
@@ -38,7 +45,7 @@ class LegacyJsonBarSeriesPayload {
 
     void copyFrom(LegacyJsonBarSeriesPayload source) {
         this.name = source.name;
-        this.ohlc = new LinkedList<>(source.ohlc);
+        this.ohlc = source.ohlc == null ? new LinkedList<>() : new LinkedList<>(source.ohlc);
     }
 
     static final class LegacyJsonBarDataPayload {
