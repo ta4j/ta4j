@@ -46,25 +46,36 @@ abstract class BaseVolatilityStopLossRule extends AbstractRule implements StopLo
      */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        if (tradingRecord != null && !tradingRecord.isClosed()) {
-            Position position = tradingRecord.getCurrentPosition();
-            if (position.isOpened()) {
-                Num entryPrice = position.getEntry().getNetPrice();
-                Num currentPrice = referencePrice.getValue(index);
-                Num threshold = stopLossThreshold.getValue(index);
-                if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(threshold)) {
-                    return false;
-                }
-
-                if (position.getEntry().isBuy()) {
-                    return currentPrice
-                            .isLessThanOrEqual(StopLossRule.stopLossPriceFromDistance(entryPrice, threshold, true));
-                }
-                return currentPrice
-                        .isGreaterThanOrEqual(StopLossRule.stopLossPriceFromDistance(entryPrice, threshold, false));
-            }
+        if (tradingRecord == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noTradingRecord");
+            return false;
         }
-        return false;
+        if (tradingRecord.isClosed()) {
+            StopRuleTrace.traceUnavailable(this, index, "closedTradingRecord");
+            return false;
+        }
+        Position position = tradingRecord.getCurrentPosition();
+        if (!position.isOpened()) {
+            StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
+            return false;
+        }
+
+        Num entryPrice = position.getEntry().getNetPrice();
+        Num currentPrice = referencePrice.getValue(index);
+        Num threshold = stopLossThreshold.getValue(index);
+        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice) || Num.isNaNOrNull(threshold)) {
+            StopRuleTrace.traceUnavailable(this, index, "nanInput");
+            return false;
+        }
+
+        boolean buy = position.getEntry().isBuy();
+        Num stopPrice = StopLossRule.stopLossPriceFromDistance(entryPrice, threshold, buy);
+        boolean satisfied = buy ? currentPrice.isLessThanOrEqual(stopPrice)
+                : currentPrice.isGreaterThanOrEqual(stopPrice);
+        String reason = satisfied ? "stopReached" : buy ? "priceAboveStop" : "priceBelowStop";
+        StopRuleTrace.traceDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice, "lossAmount",
+                threshold, reason);
+        return satisfied;
     }
 
     /**
