@@ -66,54 +66,68 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        if (tradingRecord != null) {
-            Position currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition != null && currentPosition.isOpened() && currentPosition.getEntry() != null) {
-                Num entryPrice = currentPosition.getEntry().getNetPrice();
-                Num currentPrice = priceIndicator.getValue(index);
-                int positionIndex = currentPosition.getEntry().getIndex();
+        if (tradingRecord == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noTradingRecord");
+            return false;
+        }
 
-                if (index < positionIndex || Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice)) {
-                    traceIsSatisfied(index, false);
-                    return false;
-                }
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        if (currentPosition == null || !currentPosition.isOpened() || currentPosition.getEntry() == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
+            return false;
+        }
 
-                if (currentPosition.getEntry().isBuy()) {
-                    satisfied = isBuySatisfied(entryPrice, currentPrice, index, positionIndex);
-                } else {
-                    satisfied = isSellSatisfied(entryPrice, currentPrice, index, positionIndex);
-                }
+        Num entryPrice = currentPosition.getEntry().getNetPrice();
+        Num currentPrice = priceIndicator.getValue(index);
+        int positionIndex = currentPosition.getEntry().getIndex();
+        if (index < positionIndex) {
+            StopRuleTrace.traceUnavailable(this, index, "indexBeforeEntry");
+            return false;
+        }
+        boolean buy = currentPosition.getEntry().isBuy();
+        int windowStartIndex = windowStartIndex(index, positionIndex);
+        int lookback = index - windowStartIndex + 1;
+        String extremeField = buy ? "highestPrice" : "lowestPrice";
+        if (Num.isNaNOrNull(entryPrice) || Num.isNaNOrNull(currentPrice)) {
+            StopRuleTrace.traceTrailingGainDecision(this, index, false, buy, currentPrice, entryPrice, null,
+                    extremeField, null, null, lookback, "gainPercentage", gainPercentage, "priceUnavailable");
+            return false;
+        }
+
+        Num extremePrice;
+        Num activationPrice;
+        Num stopPrice;
+        boolean activationReached;
+        boolean satisfied;
+        if (buy) {
+            extremePrice = highestValue(windowStartIndex, index);
+            if (Num.isNaNOrNull(extremePrice)) {
+                StopRuleTrace.traceTrailingGainDecision(this, index, false, true, currentPrice, entryPrice, null,
+                        extremeField, extremePrice, null, lookback, "gainPercentage", gainPercentage,
+                        "extremePriceUnavailable");
+                return false;
             }
+            activationPrice = StopGainRule.stopGainPrice(entryPrice, gainPercentage, true);
+            activationReached = !extremePrice.isLessThan(activationPrice);
+            stopPrice = StopGainRule.trailingStopGainPrice(extremePrice, gainPercentage, true);
+            satisfied = activationReached && currentPrice.isLessThanOrEqual(stopPrice);
+        } else {
+            extremePrice = lowestValue(windowStartIndex, index);
+            if (Num.isNaNOrNull(extremePrice)) {
+                StopRuleTrace.traceTrailingGainDecision(this, index, false, false, currentPrice, entryPrice, null,
+                        extremeField, extremePrice, null, lookback, "gainPercentage", gainPercentage,
+                        "extremePriceUnavailable");
+                return false;
+            }
+            activationPrice = StopGainRule.stopGainPrice(entryPrice, gainPercentage, false);
+            activationReached = !extremePrice.isGreaterThan(activationPrice);
+            stopPrice = StopGainRule.trailingStopGainPrice(extremePrice, gainPercentage, false);
+            satisfied = activationReached && currentPrice.isGreaterThanOrEqual(stopPrice);
         }
-        traceIsSatisfied(index, satisfied);
+        String reason = traceReason(satisfied, activationReached, buy);
+        StopRuleTrace.traceTrailingGainDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice,
+                extremeField, extremePrice, activationPrice, lookback, "gainPercentage", gainPercentage, reason);
         return satisfied;
-    }
-
-    private boolean isBuySatisfied(Num entryPrice, Num currentPrice, int index, int positionIndex) {
-        Num highestCloseNum = highestValue(windowStartIndex(index, positionIndex), index);
-        if (Num.isNaNOrNull(highestCloseNum)) {
-            return false;
-        }
-        Num gainActivationThreshold = StopGainRule.stopGainPrice(entryPrice, gainPercentage, true);
-        if (highestCloseNum.isLessThan(gainActivationThreshold)) {
-            return false;
-        }
-        Num currentStopGainLimitActivation = StopGainRule.trailingStopGainPrice(highestCloseNum, gainPercentage, true);
-        return currentPrice.isLessThanOrEqual(currentStopGainLimitActivation);
-    }
-
-    private boolean isSellSatisfied(Num entryPrice, Num currentPrice, int index, int positionIndex) {
-        Num lowestCloseNum = lowestValue(windowStartIndex(index, positionIndex), index);
-        if (Num.isNaNOrNull(lowestCloseNum)) {
-            return false;
-        }
-        Num gainActivationThreshold = StopGainRule.stopGainPrice(entryPrice, gainPercentage, false);
-        if (lowestCloseNum.isGreaterThan(gainActivationThreshold)) {
-            return false;
-        }
-        Num currentStopGainLimitActivation = StopGainRule.trailingStopGainPrice(lowestCloseNum, gainPercentage, false);
-        return currentPrice.isGreaterThanOrEqual(currentStopGainLimitActivation);
     }
 
     /**
@@ -177,11 +191,13 @@ public class TrailingStopGainRule extends AbstractRule implements StopGainPriceM
         return lowest;
     }
 
-    @Override
-    protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}. Current price: {}", getTraceDisplayName(), index, isSatisfied,
-                    priceIndicator.getValue(index));
+    private static String traceReason(boolean satisfied, boolean activationReached, boolean buy) {
+        if (satisfied) {
+            return "stopReached";
         }
+        if (!activationReached) {
+            return "activationNotReached";
+        }
+        return buy ? "priceAboveStop" : "priceBelowStop";
     }
 }
