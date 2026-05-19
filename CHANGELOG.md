@@ -2,6 +2,7 @@
 
 ### Added
 
+- **Seeded genetic strategy tuning foundations**: Added explicit parameter domains, reusable strategy chromosome and codec types, deterministic `GeneticStrategyTuner`, and a runnable `GeneticStrategySearchExample` for searching numeric, enum-like, and constrained boolean SMA parameters.
 - **Experimental Elliott topology analysis (`CF-525`)**: Added package-private pivot history, confirmation tracking, and grammar analysis under `org.ta4j.core.analysis.elliott` for `MOTIVE_5`, `CORRECTIVE_3`, and `CYCLE_5_3`. Outcomes distinguish insufficient history, no match, forming, complete, ambiguous, and invalidated candidates; four selectable relationship rules emit structured evidence. Deterministic internal study tooling includes `StudyRunner`, `StudyReport`, and `DetectorRobustnessMatrix`.
 - **Runtime-reported backtests**: Added `BacktestExecutor.executeWithRuntimeReport` overloads for fixed amounts and `PositionSizer` entries. A platform-worker cap avoids nested parallel streams for constrained ForkJoin callers.
 - **Fluent numeric powers**: `NumericIndicator.pow(Number)` raises any composed indicator to a constant exponent, so chains such as `NumericIndicator.of(relativeVolume).max(0.25).min(4).pow(0.5)` no longer need to drop out to `UnaryOperationIndicator.pow`.

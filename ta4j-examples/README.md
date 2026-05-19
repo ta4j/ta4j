@@ -53,6 +53,7 @@ If chart windows do not appear, you are likely in a headless environment; switch
 - `ta4jexamples.backtesting.TradingRecordParityBacktest`
 - `ta4jexamples.backtesting.TradeFillRecordingExample`
 - `ta4jexamples.backtesting.SimpleMovingAverageRangeBacktest`
+- `ta4jexamples.backtesting.GeneticStrategySearchExample`
 - `ta4jexamples.research.RelationshipObjectiveSearchExample`
 - `ta4jexamples.backtesting.BacktestPerformanceTuningHarness`
 
