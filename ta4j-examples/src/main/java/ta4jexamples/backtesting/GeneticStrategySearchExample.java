@@ -4,12 +4,14 @@
 package ta4jexamples.backtesting;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Indicator;
 import org.ta4j.core.Rule;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.Trade;
@@ -21,10 +23,12 @@ import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.optimization.ga.GeneticStrategyTuner;
+import org.ta4j.core.optimization.ga.CandidateCodec;
+import org.ta4j.core.optimization.ga.CandidateFitnessEvaluator;
+import org.ta4j.core.optimization.ga.GeneticCandidateSearch;
+import org.ta4j.core.optimization.ga.IndicatorCandidate;
+import org.ta4j.core.optimization.ga.IndicatorCandidateSpec;
 import org.ta4j.core.optimization.ga.ParameterDomain;
-import org.ta4j.core.optimization.ga.StrategyChromosomeCodec;
-import org.ta4j.core.optimization.ga.StrategyFitnessEvaluator;
 import org.ta4j.core.reports.TradingStatement;
 import org.ta4j.core.rules.OverIndicatorRule;
 import org.ta4j.core.rules.StopLossRule;
@@ -33,16 +37,20 @@ import org.ta4j.core.rules.UnderIndicatorRule;
 import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
 
 /**
- * Example demonstrating seeded genetic search over an explicit SMA strategy
- * factory.
+ * Example demonstrating seeded genetic search over explicit SMA indicator
+ * candidates.
  *
  * <p>
  * The search space stays intentionally small and reviewable:
  * <ul>
- * <li>numeric genes: short SMA window and long-window gap</li>
+ * <li>numeric genes: short SMA indicator window and long-window gap</li>
  * <li>enum-like gene: trend-following vs mean-reversion SMA interpretation</li>
  * <li>constrained boolean gene: optional stop-loss protection</li>
  * </ul>
+ *
+ * <p>
+ * The indicators are decoded phenotypes. Fitness remains external to the
+ * indicators and is calculated by building a strategy around each candidate.
  *
  * @since 0.22.7
  */
@@ -50,8 +58,8 @@ public class GeneticStrategySearchExample {
 
     private static final Logger LOG = LogManager.getLogger(GeneticStrategySearchExample.class);
     private static final int DEFAULT_TOP_CANDIDATES = 3;
-    private static final GeneticStrategyTuner.Settings DEFAULT_SETTINGS = new GeneticStrategyTuner.Settings(14, 10, 5,
-            2, 0.7, 0.35, 2, 7L);
+    private static final GeneticCandidateSearch.Settings DEFAULT_SETTINGS = new GeneticCandidateSearch.Settings(14, 10,
+            5, 2, 0.7, 0.35, 2, 7L);
 
     public static void main(String[] args) {
         BarSeries series = CsvFileBarSeriesDataSource.loadSeriesFromFile();
@@ -63,12 +71,13 @@ public class GeneticStrategySearchExample {
         Objects.requireNonNull(series, "series");
 
         BacktestExecutor executor = new BacktestExecutor(series);
-        StrategyChromosomeCodec<SmaSearchCandidate> codec = createCodec();
-        StrategyFitnessEvaluator<SmaSearchCandidate> evaluator = candidate -> scoreCandidate(series, executor,
+        CandidateCodec<SmaSearchCandidate> codec = createCodec(series);
+        CandidateFitnessEvaluator<SmaSearchCandidate> evaluator = candidate -> scoreCandidate(series, executor,
                 candidate);
-        GeneticStrategyTuner<SmaSearchCandidate> tuner = new GeneticStrategyTuner<>(codec, evaluator, DEFAULT_SETTINGS);
+        GeneticCandidateSearch<SmaSearchCandidate> search = new GeneticCandidateSearch<>(codec, evaluator,
+                DEFAULT_SETTINGS);
 
-        GeneticStrategyTuner.SearchResult<SmaSearchCandidate> searchResult = tuner.tune();
+        GeneticCandidateSearch.SearchResult<SmaSearchCandidate> searchResult = search.search();
         List<Strategy> strategies = searchResult.topCandidates()
                 .stream()
                 .map(candidate -> createStrategy(series, candidate.context()))
@@ -87,17 +96,31 @@ public class GeneticStrategySearchExample {
                 WeightedCriterion.of(new ReturnOverMaxDrawdownCriterion(), 3.0));
     }
 
-    private static StrategyChromosomeCodec<SmaSearchCandidate> createCodec() {
-        return new StrategyChromosomeCodec<>(List.of(ParameterDomain.integerRange("shortBarCount", 5, 20, 5),
+    private static CandidateCodec<SmaSearchCandidate> createCodec(BarSeries series) {
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+        IndicatorCandidateSpec<Num> smaSpec = smaCandidateSpec();
+        return new CandidateCodec<>(List.of(ParameterDomain.integerRange("shortBarCount", 5, 20, 5),
                 ParameterDomain.integerRange("longBarGap", 10, 30, 5),
                 ParameterDomain.ofValues("signalMode",
                         List.of(SmaSignalMode.TREND_FOLLOWING, SmaSignalMode.MEAN_REVERSION)),
                 ParameterDomain.constrainedBoolean("stopLossEnabled", false, true)), values -> {
                     int shortBarCount = values.get("shortBarCount", Integer.class);
                     int longBarGap = values.get("longBarGap", Integer.class);
-                    return new SmaSearchCandidate(shortBarCount, shortBarCount + longBarGap,
-                            values.get("signalMode", SmaSignalMode.class),
+                    IndicatorCandidate<Num> shortSma = smaSpec.createCandidate(series, List.of(closePrice),
+                            Map.of("barCount", shortBarCount));
+                    IndicatorCandidate<Num> longSma = smaSpec.createCandidate(series, List.of(closePrice),
+                            Map.of("barCount", shortBarCount + longBarGap));
+                    return new SmaSearchCandidate(shortSma, longSma, values.get("signalMode", SmaSignalMode.class),
                             values.get("stopLossEnabled", Boolean.class));
+                });
+    }
+
+    private static IndicatorCandidateSpec<Num> smaCandidateSpec() {
+        return new IndicatorCandidateSpec<>("SMA", List.of(ParameterDomain.integerRange("barCount", 5, 50, 5)),
+                (series, sourceIndicators, parameters) -> {
+                    @SuppressWarnings("unchecked")
+                    Indicator<Num> source = (Indicator<Num>) sourceIndicators.get(0);
+                    return new SMAIndicator(source, parameters.get("barCount", Integer.class));
                 });
     }
 
@@ -110,9 +133,8 @@ public class GeneticStrategySearchExample {
     }
 
     private static Strategy createStrategy(BarSeries series, SmaSearchCandidate candidate) {
-        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
-        SMAIndicator shortSma = new SMAIndicator(closePrice, candidate.shortBarCount());
-        SMAIndicator longSma = new SMAIndicator(closePrice, candidate.longBarCount());
+        Indicator<Num> shortSma = candidate.shortSma().indicator();
+        Indicator<Num> longSma = candidate.longSma().indicator();
 
         Rule entryRule;
         Rule exitRule;
@@ -124,6 +146,7 @@ public class GeneticStrategySearchExample {
             exitRule = new OverIndicatorRule(shortSma, longSma);
         }
         if (candidate.stopLossEnabled()) {
+            ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
             exitRule = exitRule.or(new StopLossRule(closePrice, 3.0));
         }
         return new BaseStrategy(candidate.strategyName(), entryRule, exitRule);
@@ -132,7 +155,7 @@ public class GeneticStrategySearchExample {
     private static String renderReport(SearchRun run) {
         StringBuilder builder = new StringBuilder();
         builder.append(System.lineSeparator())
-                .append("######### Genetic strategy search #########")
+                .append("######### Genetic candidate search #########")
                 .append(System.lineSeparator())
                 .append("evaluated unique candidates: ")
                 .append(run.searchResult().uniqueCandidateCount())
@@ -140,7 +163,8 @@ public class GeneticStrategySearchExample {
                 .append("top GA candidates:")
                 .append(System.lineSeparator());
 
-        for (GeneticStrategyTuner.CandidateResult<SmaSearchCandidate> candidate : run.searchResult().topCandidates()) {
+        for (GeneticCandidateSearch.CandidateResult<SmaSearchCandidate> candidate : run.searchResult()
+                .topCandidates()) {
             builder.append("- ")
                     .append(candidate.context().strategyName())
                     .append(" fitness=")
@@ -161,15 +185,16 @@ public class GeneticStrategySearchExample {
         TREND_FOLLOWING, MEAN_REVERSION
     }
 
-    record SmaSearchCandidate(int shortBarCount, int longBarCount, SmaSignalMode signalMode, boolean stopLossEnabled) {
+    record SmaSearchCandidate(IndicatorCandidate<Num> shortSma, IndicatorCandidate<Num> longSma,
+            SmaSignalMode signalMode, boolean stopLossEnabled) {
 
         String strategyName() {
-            return "GA SMA [" + signalMode + ", short=" + shortBarCount + ", long=" + longBarCount + ", stopLoss="
-                    + stopLossEnabled + "]";
+            return "GA SMA [" + signalMode + ", short=" + shortSma.displayName() + ", long=" + longSma.displayName()
+                    + ", stopLoss=" + stopLossEnabled + "]";
         }
     }
 
-    record SearchRun(GeneticStrategyTuner.SearchResult<SmaSearchCandidate> searchResult,
+    record SearchRun(GeneticCandidateSearch.SearchResult<SmaSearchCandidate> searchResult,
             List<TradingStatement> topStatements) {
     }
 }

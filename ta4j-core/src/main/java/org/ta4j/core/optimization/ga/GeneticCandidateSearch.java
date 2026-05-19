@@ -20,27 +20,26 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.ta4j.core.num.Num;
 
 /**
- * Seeded genetic tuner for parameterized ta4j strategy candidates.
+ * Seeded genetic search for parameterized ta4j candidates.
  *
  * @param <C> decoded candidate context type
  * @since 0.22.7
  */
-public final class GeneticStrategyTuner<C> {
+public final class GeneticCandidateSearch<C> {
 
-    private final StrategyChromosomeCodec<C> codec;
-    private final StrategyFitnessEvaluator<C> evaluator;
+    private final CandidateCodec<C> codec;
+    private final CandidateFitnessEvaluator<C> evaluator;
     private final Settings settings;
 
     /**
-     * Creates a configured tuner.
+     * Creates a configured search.
      *
      * @param codec     chromosome decoder
      * @param evaluator candidate fitness evaluator
      * @param settings  GA configuration
      * @since 0.22.7
      */
-    public GeneticStrategyTuner(StrategyChromosomeCodec<C> codec, StrategyFitnessEvaluator<C> evaluator,
-            Settings settings) {
+    public GeneticCandidateSearch(CandidateCodec<C> codec, CandidateFitnessEvaluator<C> evaluator, Settings settings) {
         this.codec = Objects.requireNonNull(codec, "codec");
         this.evaluator = Objects.requireNonNull(evaluator, "evaluator");
         this.settings = Objects.requireNonNull(settings, "settings");
@@ -52,18 +51,19 @@ public final class GeneticStrategyTuner<C> {
      * @return immutable result bundle containing the top retained candidates
      * @since 0.22.7
      */
-    public SearchResult<C> tune() {
+    public SearchResult<C> search() {
         RandomGenerator previousRandom = GeneticAlgorithm.getRandomGenerator();
         JDKRandomGenerator seededRandom = new JDKRandomGenerator();
         seededRandom.setSeed(settings.randomSeed());
         GeneticAlgorithm.setRandomGenerator(seededRandom);
         try {
-            StrategyChromosome.EvaluationContext<C> evaluationContext = new StrategyChromosome.EvaluationContext<>(
+            CandidateChromosome.EvaluationContext<C> evaluationContext = new CandidateChromosome.EvaluationContext<>(
                     codec, evaluator);
             Population population = buildInitialPopulation(evaluationContext, seededRandom);
             evaluatePopulation(population);
 
-            GeneticAlgorithm algorithm = new GeneticAlgorithm(new OnePointCrossover<>(), settings.crossoverRate(),
+            double crossoverRate = codec.domains().size() > 1 ? settings.crossoverRate() : 0.0;
+            GeneticAlgorithm algorithm = new GeneticAlgorithm(new OnePointCrossover<>(), crossoverRate,
                     new DomainMutationPolicy<>(codec, evaluationContext), settings.mutationRate(),
                     new TournamentSelection(settings.tournamentArity()));
 
@@ -75,8 +75,8 @@ public final class GeneticStrategyTuner<C> {
             List<CandidateResult<C>> topCandidates = evaluationContext.results()
                     .stream()
                     .sorted(Comparator
-                            .comparing(StrategyChromosome.EvaluationRecord<C>::fitnessScore,
-                                    StrategyChromosome::compareScores)
+                            .comparing(CandidateChromosome.EvaluationRecord<C>::fitnessScore,
+                                    CandidateChromosome::compareScores)
                             .reversed()
                             .thenComparing(record -> record.decodedCandidate().id()))
                     .limit(settings.keepTopK())
@@ -91,11 +91,11 @@ public final class GeneticStrategyTuner<C> {
         }
     }
 
-    private Population buildInitialPopulation(StrategyChromosome.EvaluationContext<C> evaluationContext,
+    private Population buildInitialPopulation(CandidateChromosome.EvaluationContext<C> evaluationContext,
             RandomGenerator random) {
         List<Chromosome> chromosomes = new ArrayList<>(settings.populationSize());
         for (int index = 0; index < settings.populationSize(); index++) {
-            chromosomes.add(new StrategyChromosome<>(codec.randomRepresentation(random), codec, evaluationContext));
+            chromosomes.add(new CandidateChromosome<>(codec.randomRepresentation(random), codec, evaluationContext));
         }
         double elitismRate = (double) settings.eliteCount() / settings.populationSize();
         return new ElitisticListPopulation(chromosomes, settings.populationSize(), elitismRate);
@@ -163,7 +163,7 @@ public final class GeneticStrategyTuner<C> {
      * @param <C>          candidate context type
      * @since 0.22.7
      */
-    public record CandidateResult<C>(String id, C context, StrategyChromosomeCodec.ParameterValues parameters,
+    public record CandidateResult<C>(String id, C context, CandidateCodec.ParameterValues parameters,
             Num fitnessScore) {
 
         /**
@@ -213,11 +213,11 @@ public final class GeneticStrategyTuner<C> {
 
     private static final class DomainMutationPolicy<C> implements MutationPolicy {
 
-        private final StrategyChromosomeCodec<C> codec;
-        private final StrategyChromosome.EvaluationContext<C> evaluationContext;
+        private final CandidateCodec<C> codec;
+        private final CandidateChromosome.EvaluationContext<C> evaluationContext;
 
-        private DomainMutationPolicy(StrategyChromosomeCodec<C> codec,
-                StrategyChromosome.EvaluationContext<C> evaluationContext) {
+        private DomainMutationPolicy(CandidateCodec<C> codec,
+                CandidateChromosome.EvaluationContext<C> evaluationContext) {
             this.codec = Objects.requireNonNull(codec, "codec");
             this.evaluationContext = Objects.requireNonNull(evaluationContext, "evaluationContext");
         }
@@ -225,11 +225,11 @@ public final class GeneticStrategyTuner<C> {
         @Override
         @SuppressWarnings("unchecked")
         public Chromosome mutate(Chromosome original) {
-            if (!(original instanceof StrategyChromosome<?> rawChromosome)) {
-                throw new IllegalArgumentException("mutation requires StrategyChromosome");
+            if (!(original instanceof CandidateChromosome<?> rawChromosome)) {
+                throw new IllegalArgumentException("mutation requires CandidateChromosome");
             }
 
-            StrategyChromosome<C> chromosome = (StrategyChromosome<C>) rawChromosome;
+            CandidateChromosome<C> chromosome = (CandidateChromosome<C>) rawChromosome;
             List<Integer> representation = chromosome.representationCopy();
             List<Integer> mutableGeneIndexes = new ArrayList<>();
             for (int index = 0; index < codec.domains().size(); index++) {
@@ -246,7 +246,7 @@ public final class GeneticStrategyTuner<C> {
             ParameterDomain<?> domain = codec.domains().get(geneIndex);
             int currentAllele = representation.get(geneIndex);
             representation.set(geneIndex, domain.mutateIndex(currentAllele, random));
-            return new StrategyChromosome<>(representation, codec, evaluationContext);
+            return new CandidateChromosome<>(representation, codec, evaluationContext);
         }
     }
 }

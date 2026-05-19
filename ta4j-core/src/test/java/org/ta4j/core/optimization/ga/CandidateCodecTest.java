@@ -10,7 +10,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
-class StrategyChromosomeCodecTest {
+class CandidateCodecTest {
 
     private enum SearchMode {
         FAST, SAFE
@@ -21,14 +21,14 @@ class StrategyChromosomeCodecTest {
 
     @Test
     void decodeBuildsStableCandidateIdAndTypedValues() {
-        StrategyChromosomeCodec<Candidate> codec = new StrategyChromosomeCodec<>(
+        CandidateCodec<Candidate> codec = new CandidateCodec<>(
                 List.of(ParameterDomain.integerRange("period", 5, 15, 5),
                         ParameterDomain.ofValues("mode", List.of(SearchMode.FAST, SearchMode.SAFE)),
                         ParameterDomain.constrainedBoolean("enabled", false, true)),
                 values -> new Candidate(values.get("period", Integer.class), values.get("mode", SearchMode.class),
                         values.get("enabled", Boolean.class)));
 
-        StrategyChromosomeCodec.DecodedCandidate<Candidate> decoded = codec.decode(List.of(1, 0, 1));
+        CandidateCodec.DecodedCandidate<Candidate> decoded = codec.decode(List.of(1, 0, 1));
 
         assertThat(decoded.id()).isEqualTo("period=10, mode=FAST, enabled=true");
         assertThat(decoded.context()).isEqualTo(new Candidate(10, SearchMode.FAST, true));
@@ -38,12 +38,23 @@ class StrategyChromosomeCodecTest {
     }
 
     @Test
+    void decodeCanUseCustomStableCandidateIds() {
+        CandidateCodec<Candidate> codec = new CandidateCodec<>(
+                List.of(ParameterDomain.integerRange("period", 5, 15, 5)),
+                values -> new Candidate(values.get("period", Integer.class), SearchMode.FAST, true),
+                values -> "SMA [" + values.toStableId() + "]");
+
+        CandidateCodec.DecodedCandidate<Candidate> decoded = codec.decode(List.of(2));
+
+        assertThat(decoded.id()).isEqualTo("SMA [period=15]");
+    }
+
+    @Test
     void parameterValueTypeChecksAreExplicit() {
-        StrategyChromosomeCodec<Candidate> codec = new StrategyChromosomeCodec<>(
-                List.of(ParameterDomain.integerRange("period", 5, 5, 1)),
+        CandidateCodec<Candidate> codec = new CandidateCodec<>(List.of(ParameterDomain.integerRange("period", 5, 5, 1)),
                 values -> new Candidate(values.get("period", Integer.class), SearchMode.FAST, true));
 
-        StrategyChromosomeCodec.ParameterValues parameters = codec.decode(List.of(0)).parameters();
+        CandidateCodec.ParameterValues parameters = codec.decode(List.of(0)).parameters();
 
         assertThatThrownBy(() -> parameters.get("period", String.class)).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("period");
@@ -51,7 +62,7 @@ class StrategyChromosomeCodecTest {
 
     @Test
     void invalidRepresentationsAreRejected() {
-        StrategyChromosomeCodec<Candidate> codec = new StrategyChromosomeCodec<>(
+        CandidateCodec<Candidate> codec = new CandidateCodec<>(
                 List.of(ParameterDomain.integerRange("period", 5, 10, 5)),
                 values -> new Candidate(values.get("period", Integer.class), SearchMode.FAST, true));
 

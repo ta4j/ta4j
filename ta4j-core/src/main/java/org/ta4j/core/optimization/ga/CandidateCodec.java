@@ -16,15 +16,16 @@ import java.util.function.Function;
 import org.apache.commons.math3.random.RandomGenerator;
 
 /**
- * Encodes and decodes fixed-length parameter vectors for strategy search.
+ * Encodes and decodes fixed-length parameter vectors for candidate search.
  *
  * @param <C> decoded candidate context type
  * @since 0.22.7
  */
-public final class StrategyChromosomeCodec<C> {
+public final class CandidateCodec<C> {
 
     private final List<ParameterDomain<?>> domains;
     private final Function<ParameterValues, C> contextFactory;
+    private final Function<ParameterValues, String> idFactory;
 
     /**
      * Creates a codec from ordered parameter domains and a context factory.
@@ -33,9 +34,24 @@ public final class StrategyChromosomeCodec<C> {
      * @param contextFactory builds the decoded candidate context
      * @since 0.22.7
      */
-    public StrategyChromosomeCodec(List<ParameterDomain<?>> domains, Function<ParameterValues, C> contextFactory) {
+    public CandidateCodec(List<ParameterDomain<?>> domains, Function<ParameterValues, C> contextFactory) {
+        this(domains, contextFactory, ParameterValues::toStableId);
+    }
+
+    /**
+     * Creates a codec from ordered parameter domains, a context factory, and a
+     * stable candidate identifier factory.
+     *
+     * @param domains        ordered parameter domains
+     * @param contextFactory builds the decoded candidate context
+     * @param idFactory      builds a stable identifier from decoded parameters
+     * @since 0.22.7
+     */
+    public CandidateCodec(List<ParameterDomain<?>> domains, Function<ParameterValues, C> contextFactory,
+            Function<ParameterValues, String> idFactory) {
         Objects.requireNonNull(domains, "domains");
         this.contextFactory = Objects.requireNonNull(contextFactory, "contextFactory");
+        this.idFactory = Objects.requireNonNull(idFactory, "idFactory");
         if (domains.isEmpty()) {
             throw new IllegalArgumentException("domains must not be empty");
         }
@@ -71,7 +87,8 @@ public final class StrategyChromosomeCodec<C> {
         LinkedHashMap<String, Object> decodedValues = decodeValues(representation);
         ParameterValues parameters = new ParameterValues(decodedValues);
         C context = Objects.requireNonNull(contextFactory.apply(parameters), "contextFactory must not return null");
-        return new DecodedCandidate<>(parameters.toStableId(), context, parameters);
+        String id = Objects.requireNonNull(idFactory.apply(parameters), "idFactory must not return null");
+        return new DecodedCandidate<>(id, context, parameters);
     }
 
     /**
@@ -120,7 +137,7 @@ public final class StrategyChromosomeCodec<C> {
 
         private final Map<String, Object> values;
 
-        private ParameterValues(Map<String, Object> values) {
+        ParameterValues(Map<String, ?> values) {
             this.values = Collections.unmodifiableMap(new LinkedHashMap<>(values));
         }
 
@@ -190,7 +207,7 @@ public final class StrategyChromosomeCodec<C> {
     }
 
     /**
-     * One decoded chromosome result.
+     * One decoded candidate result.
      *
      * @param id         stable candidate identifier
      * @param context    decoded candidate context

@@ -6,7 +6,7 @@ package org.ta4j.core.optimization.ga;
 import org.ta4j.core.num.Num;
 
 /**
- * Scores one decoded strategy-search candidate.
+ * Scores one decoded candidate.
  *
  * <p>
  * Evaluators should stay deterministic for the same candidate and inputs so GA
@@ -16,7 +16,7 @@ import org.ta4j.core.num.Num;
  * @since 0.22.7
  */
 @FunctionalInterface
-public interface StrategyFitnessEvaluator<C> {
+public interface CandidateFitnessEvaluator<C> {
 
     /**
      * Computes the fitness score for one decoded candidate.

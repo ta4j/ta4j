@@ -14,14 +14,14 @@ import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 
 /**
- * Commons Math chromosome wrapper for a decoded ta4j strategy candidate.
+ * Commons Math chromosome wrapper for a decoded ta4j candidate.
  *
  * @param <C> decoded candidate context type
  * @since 0.22.7
  */
-public class StrategyChromosome<C> extends AbstractListChromosome<Integer> {
+public class CandidateChromosome<C> extends AbstractListChromosome<Integer> {
 
-    private final StrategyChromosomeCodec<C> codec;
+    private final CandidateCodec<C> codec;
     private final EvaluationContext<C> evaluationContext;
 
     /**
@@ -32,17 +32,16 @@ public class StrategyChromosome<C> extends AbstractListChromosome<Integer> {
      * @param evaluator      fitness evaluator
      * @since 0.22.7
      */
-    public StrategyChromosome(List<Integer> representation, StrategyChromosomeCodec<C> codec,
-            StrategyFitnessEvaluator<C> evaluator) {
+    public CandidateChromosome(List<Integer> representation, CandidateCodec<C> codec,
+            CandidateFitnessEvaluator<C> evaluator) {
         this(representation, codec, new EvaluationContext<>(codec, evaluator));
     }
 
-    StrategyChromosome(List<Integer> representation, StrategyChromosomeCodec<C> codec,
-            EvaluationContext<C> evaluationContext) {
-        super(representation, false);
+    CandidateChromosome(List<Integer> representation, CandidateCodec<C> codec, EvaluationContext<C> evaluationContext) {
+        super(List.copyOf(Objects.requireNonNull(representation, "representation")), false);
         this.codec = Objects.requireNonNull(codec, "codec");
         this.evaluationContext = Objects.requireNonNull(evaluationContext, "evaluationContext");
-        this.codec.validateRepresentation(representation);
+        this.codec.validateRepresentation(getRepresentation());
     }
 
     @Override
@@ -70,7 +69,7 @@ public class StrategyChromosome<C> extends AbstractListChromosome<Integer> {
      * @return decoded parameter values
      * @since 0.22.7
      */
-    public StrategyChromosomeCodec.ParameterValues parameterValues() {
+    public CandidateCodec.ParameterValues parameterValues() {
         return evaluated().decodedCandidate().parameters();
     }
 
@@ -86,13 +85,13 @@ public class StrategyChromosome<C> extends AbstractListChromosome<Integer> {
      * @return decoded candidate bundle
      * @since 0.22.7
      */
-    public StrategyChromosomeCodec.DecodedCandidate<C> decodedCandidate() {
+    public CandidateCodec.DecodedCandidate<C> decodedCandidate() {
         return evaluated().decodedCandidate();
     }
 
     @Override
-    public StrategyChromosome<C> newFixedLengthChromosome(List<Integer> representation) {
-        return new StrategyChromosome<>(representation, codec, evaluationContext);
+    public CandidateChromosome<C> newFixedLengthChromosome(List<Integer> representation) {
+        return new CandidateChromosome<>(representation, codec, evaluationContext);
     }
 
     @Override
@@ -124,17 +123,17 @@ public class StrategyChromosome<C> extends AbstractListChromosome<Integer> {
 
     static final class EvaluationContext<C> {
 
-        private final StrategyChromosomeCodec<C> codec;
-        private final StrategyFitnessEvaluator<C> evaluator;
+        private final CandidateCodec<C> codec;
+        private final CandidateFitnessEvaluator<C> evaluator;
         private final Map<String, EvaluationRecord<C>> resultsById = new LinkedHashMap<>();
 
-        EvaluationContext(StrategyChromosomeCodec<C> codec, StrategyFitnessEvaluator<C> evaluator) {
+        EvaluationContext(CandidateCodec<C> codec, CandidateFitnessEvaluator<C> evaluator) {
             this.codec = Objects.requireNonNull(codec, "codec");
             this.evaluator = Objects.requireNonNull(evaluator, "evaluator");
         }
 
         synchronized EvaluationRecord<C> evaluate(List<Integer> representation) {
-            StrategyChromosomeCodec.DecodedCandidate<C> decoded = codec.decode(representation);
+            CandidateCodec.DecodedCandidate<C> decoded = codec.decode(representation);
             EvaluationRecord<C> cached = resultsById.get(decoded.id());
             if (cached != null) {
                 return cached;
@@ -153,7 +152,7 @@ public class StrategyChromosome<C> extends AbstractListChromosome<Integer> {
         }
     }
 
-    static record EvaluationRecord<C>(StrategyChromosomeCodec.DecodedCandidate<C> decodedCandidate, Num fitnessScore,
+    static record EvaluationRecord<C>(CandidateCodec.DecodedCandidate<C> decodedCandidate, Num fitnessScore,
             double fitnessDouble) {
 
         EvaluationRecord {
