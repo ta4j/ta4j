@@ -10,7 +10,6 @@ import java.util.Map;
 
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
-import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.KalmanFilterIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DoubleNumFactory;
@@ -186,36 +185,6 @@ final class KalmanFilterPerformanceExperiment implements PerformanceExperiment {
     }
 
     private record ScenarioInput(BarSeries series, CountingIndicator source, KalmanFilterIndicator indicator) {
-    }
-
-    private static final class CountingIndicator implements Indicator<Num> {
-
-        private final Indicator<Num> delegate;
-        private long readCount;
-
-        private CountingIndicator(Indicator<Num> delegate) {
-            this.delegate = delegate;
-        }
-
-        @Override
-        public Num getValue(int index) {
-            readCount++;
-            return delegate.getValue(index);
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return delegate.getCountOfUnstableBars();
-        }
-
-        @Override
-        public BarSeries getBarSeries() {
-            return delegate.getBarSeries();
-        }
-
-        private long readCount() {
-            return readCount;
-        }
     }
 
     private static BarSeries buildSeries(int barCount) {
