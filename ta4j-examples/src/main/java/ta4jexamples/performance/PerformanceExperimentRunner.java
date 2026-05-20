@@ -40,8 +40,8 @@ import org.apache.logging.log4j.Logger;
  *
  * <p>
  * The runner executes named scenarios for a registered experiment, writes
- * machine-readable JSON, and emits a short Markdown summary that can be compared
- * across git refs by {@link PerformanceComparison}.
+ * machine-readable JSON, and emits a short Markdown summary that can be
+ * compared across git refs by {@link PerformanceComparison}.
  *
  * @since 0.22.7
  */
@@ -81,7 +81,10 @@ public final class PerformanceExperimentRunner {
 
         PerformanceExperiment experiment = experiment(cli.experimentId());
         List<PerformanceScenario> scenarios = selectScenarios(experiment, cli.scenarioIds());
-        Path outputDir = cli.outputDir().orElseGet(() -> defaultOutputDir(experiment.id())).toAbsolutePath().normalize();
+        Path outputDir = cli.outputDir()
+                .orElseGet(() -> defaultOutputDir(experiment.id()))
+                .toAbsolutePath()
+                .normalize();
         Files.createDirectories(outputDir);
 
         Instant startedAt = Instant.now();
@@ -198,29 +201,44 @@ public final class PerformanceExperimentRunner {
     private static String summary(JsonObject root) {
         StringBuilder builder = new StringBuilder();
         builder.append("# Performance Experiment").append(System.lineSeparator()).append(System.lineSeparator());
-        builder.append("- Experiment: `").append(root.get("experimentId").getAsString()).append("`")
+        builder.append("- Experiment: `")
+                .append(root.get("experimentId").getAsString())
+                .append("`")
                 .append(System.lineSeparator());
-        builder.append("- Git ref: `").append(root.get("gitRef").getAsString()).append("`")
+        builder.append("- Git ref: `")
+                .append(root.get("gitRef").getAsString())
+                .append("`")
                 .append(System.lineSeparator());
-        builder.append("- Repetitions: `").append(root.get("repetitions").getAsInt()).append("`")
+        builder.append("- Repetitions: `")
+                .append(root.get("repetitions").getAsInt())
+                .append("`")
                 .append(System.lineSeparator());
-        builder.append("- Warmups: `").append(root.get("warmups").getAsInt()).append("`")
+        builder.append("- Warmups: `")
+                .append(root.get("warmups").getAsInt())
+                .append("`")
                 .append(System.lineSeparator());
         builder.append(System.lineSeparator());
-        builder.append("| Scenario | Bars | Median ms | p90 ms | Ops/s | Checksum |")
-                .append(System.lineSeparator());
+        builder.append("| Scenario | Bars | Median ms | p90 ms | Ops/s | Checksum |").append(System.lineSeparator());
         builder.append("| --- | ---: | ---: | ---: | ---: | ---: |").append(System.lineSeparator());
 
         JsonArray results = root.getAsJsonArray("results");
         for (int i = 0; i < results.size(); i++) {
             JsonObject result = results.get(i).getAsJsonObject();
             JsonObject stats = result.getAsJsonObject("stats");
-            builder.append("| `").append(result.get("scenarioId").getAsString()).append("` | ")
-                    .append(INTEGER_FORMAT.format(result.get("barCount").getAsInt())).append(" | ")
-                    .append(formatMillis(stats.get("medianNanos").getAsLong())).append(" | ")
-                    .append(formatMillis(stats.get("p90Nanos").getAsLong())).append(" | ")
-                    .append(DECIMAL_FORMAT.format(stats.get("operationsPerSecond").getAsDouble())).append(" | ")
-                    .append(result.get("checksum").getAsLong()).append(" |").append(System.lineSeparator());
+            builder.append("| `")
+                    .append(result.get("scenarioId").getAsString())
+                    .append("` | ")
+                    .append(INTEGER_FORMAT.format(result.get("barCount").getAsInt()))
+                    .append(" | ")
+                    .append(formatMillis(stats.get("medianNanos").getAsLong()))
+                    .append(" | ")
+                    .append(formatMillis(stats.get("p90Nanos").getAsLong()))
+                    .append(" | ")
+                    .append(DECIMAL_FORMAT.format(stats.get("operationsPerSecond").getAsDouble()))
+                    .append(" | ")
+                    .append(result.get("checksum").getAsLong())
+                    .append(" |")
+                    .append(System.lineSeparator());
         }
         return builder.toString();
     }
@@ -272,8 +290,8 @@ public final class PerformanceExperimentRunner {
                 switch (arg) {
                 case "-h", "--help" -> help = true;
                 case "--experiment" -> experimentId = requireValue(args, ++i, arg);
-                case "--barCounts", "--bar-counts" -> barCounts = parsePositiveInts(requireValue(args, ++i, arg),
-                        "--barCounts");
+                case "--barCounts", "--bar-counts" ->
+                    barCounts = parsePositiveInts(requireValue(args, ++i, arg), "--barCounts");
                 case "--scenarios" -> scenarioIds = parseCsv(requireValue(args, ++i, arg));
                 case "--repetitions" -> repetitions = parsePositiveInt(requireValue(args, ++i, arg), "--repetitions");
                 case "--warmups" -> warmups = parseNonNegativeInt(requireValue(args, ++i, arg), "--warmups");
@@ -338,10 +356,7 @@ public final class PerformanceExperimentRunner {
         }
 
         private static List<String> parseCsv(String value) {
-            return Arrays.stream(value.split(","))
-                    .map(String::trim)
-                    .filter(token -> !token.isEmpty())
-                    .toList();
+            return Arrays.stream(value.split(",")).map(String::trim).filter(token -> !token.isEmpty()).toList();
         }
     }
 
@@ -377,7 +392,8 @@ public final class PerformanceExperimentRunner {
                 measurementJson.addProperty("durationNanos", measurement.durationNanos());
                 measurementJson.addProperty("checksum", measurement.checksum());
                 JsonObject countersJson = new JsonObject();
-                measurement.counters().entrySet()
+                measurement.counters()
+                        .entrySet()
                         .stream()
                         .sorted(Map.Entry.comparingByKey())
                         .forEach(entry -> countersJson.addProperty(entry.getKey(), entry.getValue()));
@@ -403,8 +419,8 @@ public final class PerformanceExperimentRunner {
             long median = durations.get(durations.size() / 2);
             int p90Index = Math.min(durations.size() - 1, (int) Math.ceil(durations.size() * 0.9d) - 1);
             double operationsPerSecond = totalDuration == 0 ? 0d : totalOperations / (totalDuration / 1_000_000_000d);
-            return new ScenarioStats(durations.getFirst(), durations.getLast(), average, median, durations.get(p90Index),
-                    totalOperations, totalDuration, operationsPerSecond);
+            return new ScenarioStats(durations.getFirst(), durations.getLast(), average, median,
+                    durations.get(p90Index), totalOperations, totalDuration, operationsPerSecond);
         }
 
         JsonObject toJson() {
@@ -427,8 +443,8 @@ public final class PerformanceExperimentRunner {
         static HostTelemetry capture() {
             return new HostTelemetry(hashedHostId(), System.getProperty("os.name", "unknown"),
                     System.getProperty("os.arch", "unknown"), System.getProperty("os.version", "unknown"),
-                    System.getProperty("java.version", "unknown"),
-                    ManagementFactory.getRuntimeMXBean().getVmName(), Runtime.getRuntime().availableProcessors());
+                    System.getProperty("java.version", "unknown"), ManagementFactory.getRuntimeMXBean().getVmName(),
+                    Runtime.getRuntime().availableProcessors());
         }
 
         JsonObject toJson() {
@@ -469,8 +485,6 @@ interface PerformanceExperiment {
     List<PerformanceScenario> scenarios();
 
     default List<String> defaultScenarioIds() {
-        return scenarios().stream()
-                .map(PerformanceScenario::id)
-                .toList();
+        return scenarios().stream().map(PerformanceScenario::id).toList();
     }
 }

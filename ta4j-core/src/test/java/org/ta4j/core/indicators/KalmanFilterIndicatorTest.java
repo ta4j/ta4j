@@ -125,4 +125,54 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
         Assert.assertEquals(78.53347, kalmanFilterIndicator.getValue(8).doubleValue(), 1e-5);
         Assert.assertEquals(81.72161, kalmanFilterIndicator.getValue(9).doubleValue(), 1e-5);
     }
+
+    @Test
+    public void highWatermarkThenReverseAccessDoesNotReplaySourceHistory() {
+        int barCount = 256;
+        double[] data = new double[barCount];
+        for (int i = 0; i < barCount; i++) {
+            data[i] = 100 + i;
+        }
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
+        CountingIndicator source = new CountingIndicator(new ClosePriceIndicator(series));
+        KalmanFilterIndicator kalmanFilterIndicator = new KalmanFilterIndicator(source);
+
+        kalmanFilterIndicator.getValue(barCount - 1);
+        for (int i = barCount - 2; i >= 0; i--) {
+            kalmanFilterIndicator.getValue(i);
+        }
+
+        Assert.assertTrue("High-watermark then reverse reads should reuse cached Kalman state",
+                source.readCount() <= barCount + 2L);
+    }
+
+    private static final class CountingIndicator implements Indicator<Num> {
+
+        private final Indicator<Num> delegate;
+        private long readCount;
+
+        private CountingIndicator(Indicator<Num> delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Num getValue(int index) {
+            readCount++;
+            return delegate.getValue(index);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return delegate.getCountOfUnstableBars();
+        }
+
+        @Override
+        public BarSeries getBarSeries() {
+            return delegate.getBarSeries();
+        }
+
+        private long readCount() {
+            return readCount;
+        }
+    }
 }

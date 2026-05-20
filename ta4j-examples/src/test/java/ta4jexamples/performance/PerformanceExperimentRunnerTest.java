@@ -57,11 +57,8 @@ class PerformanceExperimentRunnerTest {
         assertEquals("kalman-filter", json.get("experimentId").getAsString());
         assertEquals(2, json.get("repetitions").getAsInt());
         assertEquals(0, json.get("warmups").getAsInt());
-        assertEquals(List.of("endOnly"), json.getAsJsonArray("scenarioIds")
-                .asList()
-                .stream()
-                .map(element -> element.getAsString())
-                .toList());
+        assertEquals(List.of("endOnly"),
+                json.getAsJsonArray("scenarioIds").asList().stream().map(element -> element.getAsString()).toList());
         assertTrue(json.getAsJsonObject("host").has("hostId"));
         assertFalse(json.getAsJsonObject("host").has("hostname"),
                 "Shared benchmark artifacts should not expose raw hostnames");
@@ -105,11 +102,8 @@ class PerformanceExperimentRunnerTest {
         assertTrue(Files.exists(outputDir.resolve(PerformanceComparison.COMPARISON_FILE)));
         assertTrue(Files.exists(outputDir.resolve(PerformanceComparison.SUMMARY_FILE)));
         assertTrue(comparison.get("checksumMatch").getAsBoolean());
-        assertEquals(-50d, comparison.getAsJsonArray("cells")
-                .get(0)
-                .getAsJsonObject()
-                .get("medianDeltaPct")
-                .getAsDouble());
+        assertEquals(-50d,
+                comparison.getAsJsonArray("cells").get(0).getAsJsonObject().get("medianDeltaPct").getAsDouble());
     }
 
     @Test

@@ -119,7 +119,7 @@ run_ref() {
   exec_args="$(join_exec_args "${runner_args[@]}" --outputDir "$run_output")"
   (
     cd "$worktree"
-    mvn -q -pl ta4j-examples -am compile
+    mvn -q -pl ta4j-examples -am install -DskipTests
     mvn -q -pl ta4j-examples exec:java \
       -Dexec.mainClass=ta4jexamples.performance.PerformanceExperimentRunner \
       -Dexec.args="$exec_args"

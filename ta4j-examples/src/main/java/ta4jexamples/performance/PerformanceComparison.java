@@ -64,7 +64,9 @@ public final class PerformanceComparison {
         JsonObject candidate = readPerformanceJson(candidateDir);
         Files.createDirectories(outputDir);
 
-        boolean metadataMatch = base.get("experimentId").getAsString().equals(candidate.get("experimentId").getAsString())
+        boolean metadataMatch = base.get("experimentId")
+                .getAsString()
+                .equals(candidate.get("experimentId").getAsString())
                 && base.get("repetitions").getAsInt() == candidate.get("repetitions").getAsInt()
                 && base.get("warmups").getAsInt() == candidate.get("warmups").getAsInt()
                 && base.get("barCounts").equals(candidate.get("barCounts"))
@@ -138,8 +140,10 @@ public final class PerformanceComparison {
     }
 
     private static JsonObject readPerformanceJson(Path dir) throws IOException {
-        return JsonParser.parseString(Files.readString(dir.resolve(PerformanceExperimentRunner.PERFORMANCE_FILE),
-                StandardCharsets.UTF_8)).getAsJsonObject();
+        return JsonParser
+                .parseString(Files.readString(dir.resolve(PerformanceExperimentRunner.PERFORMANCE_FILE),
+                        StandardCharsets.UTF_8))
+                .getAsJsonObject();
     }
 
     private static Map<String, JsonObject> resultMap(JsonObject root) {
@@ -163,16 +167,27 @@ public final class PerformanceComparison {
     private static String summary(JsonObject comparison) {
         StringBuilder builder = new StringBuilder();
         builder.append("# Performance Comparison").append(System.lineSeparator()).append(System.lineSeparator());
-        builder.append("- Experiment: `").append(comparison.get("experimentId").getAsString()).append("`")
+        builder.append("- Experiment: `")
+                .append(comparison.get("experimentId").getAsString())
+                .append("`")
                 .append(System.lineSeparator());
-        builder.append("- Base: `").append(comparison.get("baseRef").getAsString()).append("`")
+        builder.append("- Base: `")
+                .append(comparison.get("baseRef").getAsString())
+                .append("`")
                 .append(System.lineSeparator());
-        builder.append("- Candidate: `").append(comparison.get("candidateRef").getAsString()).append("`")
+        builder.append("- Candidate: `")
+                .append(comparison.get("candidateRef").getAsString())
+                .append("`")
                 .append(System.lineSeparator());
-        builder.append("- Checksum match: `").append(comparison.get("checksumMatch").getAsBoolean()).append("`")
+        builder.append("- Checksum match: `")
+                .append(comparison.get("checksumMatch").getAsBoolean())
+                .append("`")
                 .append(System.lineSeparator());
-        builder.append("- Regression threshold: `").append(comparison.get("maxRegressionPct").getAsDouble())
-                .append("%`").append(System.lineSeparator()).append(System.lineSeparator());
+        builder.append("- Regression threshold: `")
+                .append(comparison.get("maxRegressionPct").getAsDouble())
+                .append("%`")
+                .append(System.lineSeparator())
+                .append(System.lineSeparator());
         builder.append("| Scenario | Bars | Base median ms | Candidate median ms | Delta % |")
                 .append(System.lineSeparator());
         builder.append("| --- | ---: | ---: | ---: | ---: |").append(System.lineSeparator());
@@ -180,11 +195,17 @@ public final class PerformanceComparison {
         JsonArray cells = comparison.getAsJsonArray("cells");
         for (int i = 0; i < cells.size(); i++) {
             JsonObject cell = cells.get(i).getAsJsonObject();
-            builder.append("| `").append(cell.get("scenarioId").getAsString()).append("` | ")
-                    .append(cell.get("barCount").getAsInt()).append(" | ")
-                    .append(formatMillis(cell.get("baseMedianNanos").getAsLong())).append(" | ")
-                    .append(formatMillis(cell.get("candidateMedianNanos").getAsLong())).append(" | ")
-                    .append(DECIMAL_FORMAT.format(cell.get("medianDeltaPct").getAsDouble())).append(" |")
+            builder.append("| `")
+                    .append(cell.get("scenarioId").getAsString())
+                    .append("` | ")
+                    .append(cell.get("barCount").getAsInt())
+                    .append(" | ")
+                    .append(formatMillis(cell.get("baseMedianNanos").getAsLong()))
+                    .append(" | ")
+                    .append(formatMillis(cell.get("candidateMedianNanos").getAsLong()))
+                    .append(" | ")
+                    .append(DECIMAL_FORMAT.format(cell.get("medianDeltaPct").getAsDouble()))
+                    .append(" |")
                     .append(System.lineSeparator());
         }
         return builder.toString();

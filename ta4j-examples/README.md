@@ -75,7 +75,7 @@ Run a reusable performance experiment and write `performance.json` plus
 `summary.md`:
 
 ```bash
-mvn -pl ta4j-examples -am compile
+mvn -pl ta4j-examples -am install -DskipTests
 mvn -pl ta4j-examples exec:java \
   -Dexec.mainClass=ta4jexamples.performance.PerformanceExperimentRunner \
   -Dexec.args="--experiment kalman-filter --barCounts 1000,5000,10000 --scenarios sequential,endOnly,endThenReverse,sparseAfterHighWatermark --repetitions 5 --outputDir .agents/benchmarks/performance/kalman-filter/current"
