@@ -33,10 +33,10 @@ public class OpenPositionCostBasisCriterionTest extends AbstractCriterionTest {
         var record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
-        record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(),
-                numFactory.one(), numFactory.numOf(0.1), ExecutionSide.BUY, null, null));
-        record.recordFill(new BaseTrade(0, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110),
-                numFactory.one(), numFactory.numOf(0.2), ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(0, Instant.parse("2025-01-01T00:00:00Z"), numFactory.hundred(), numFactory.one(),
+                numFactory.numOf(0.1), ExecutionSide.BUY, null, null));
+        record.operate(new BaseTrade(0, Instant.parse("2025-01-01T00:00:01Z"), numFactory.numOf(110), numFactory.one(),
+                numFactory.numOf(0.2), ExecutionSide.BUY, null, null));
 
         Num expected = numFactory.hundred()
                 .plus(numFactory.numOf(110))

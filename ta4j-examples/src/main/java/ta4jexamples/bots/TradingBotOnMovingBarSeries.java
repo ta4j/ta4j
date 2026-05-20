@@ -124,6 +124,16 @@ public class TradingBotOnMovingBarSeries {
     }
 
     public static void main(String[] args) throws InterruptedException {
+        runSimulation(50, Duration.ofMillis(30));
+    }
+
+    static void runSimulation(int iterationCount, Duration tickDelay) throws InterruptedException {
+        if (iterationCount < 0) {
+            throw new IllegalArgumentException("Iteration count cannot be negative");
+        }
+        if (tickDelay == null || tickDelay.isNegative()) {
+            throw new IllegalArgumentException("Tick delay cannot be null or negative");
+        }
 
         LOG.debug("********************** Initialization **********************");
         // Getting the bar series
@@ -137,12 +147,14 @@ public class TradingBotOnMovingBarSeries {
         LOG.debug("************************************************************");
 
         /*
-         * We run the strategy for the 50 next bars.
+         * We run the strategy for the configured next bars.
          */
-        for (int i = 0; i < 50; i++) {
+        for (int i = 0; i < iterationCount; i++) {
 
             // New bar
-            Thread.sleep(30); // I know...
+            if (!tickDelay.isZero()) {
+                Thread.sleep(tickDelay.toMillis());
+            }
             Bar newBar = generateRandomBar();
             LOG.debug("------------------------------------------------------\nBar {} added, close price = {}", i,
                     newBar.getClosePrice().doubleValue());
