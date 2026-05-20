@@ -26,6 +26,12 @@ import java.util.stream.IntStream;
 /**
  * Allows backtesting multiple strategies and comparing them to find out which
  * is the best.
+ *
+ * <p>
+ * Prefer this class when running many candidate strategies, parameter sweeps,
+ * or weighted ranking workflows. For one strategy over one series, use
+ * {@link BarSeriesManager} for lower setup overhead.
+ * </p>
  */
 public class BacktestExecutor {
 
@@ -187,9 +193,10 @@ public class BacktestExecutor {
      * Executes strategies while collecting runtime measurements and trading
      * statements.
      *
-     * @param strategies the strategies
+     * @param strategies the strategies to execute (read-only)
      * @param amount     the amount used to open/close the position
-     * @return execution result with trading statements and runtime report
+     * @return execution result containing immutable trading statements and a
+     *         runtime report
      *
      * @since 0.19
      */
@@ -201,10 +208,11 @@ public class BacktestExecutor {
      * Executes strategies while collecting runtime measurements and trading
      * statements.
      *
-     * @param strategies the strategies
+     * @param strategies the list of strategies to execute (read-only)
      * @param amount     the amount used to open/close the position
      * @param tradeType  the {@link Trade.TradeType} used to open the position
-     * @return execution result with trading statements and runtime report
+     * @return execution result containing immutable trading statements and a
+     *         runtime report
      *
      * @since 0.19
      */

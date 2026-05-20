@@ -4,6 +4,8 @@
 package org.ta4j.core.rules;
 
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -17,6 +19,7 @@ import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.indicators.helpers.HighPriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -51,6 +54,23 @@ public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
     }
 
     @Test
+    public void stopGainPriceValidationDescribesNaNInputs() {
+        IllegalArgumentException gainException = assertThrows(IllegalArgumentException.class,
+                () -> StopGainRule.stopGainPrice(NaN.NaN, numFactory.one(), true));
+        IllegalArgumentException distanceException = assertThrows(IllegalArgumentException.class,
+                () -> StopGainRule.stopGainPriceFromDistance(NaN.NaN, numFactory.one(), true));
+        IllegalArgumentException trailingException = assertThrows(IllegalArgumentException.class,
+                () -> StopGainRule.trailingStopGainPrice(NaN.NaN, numFactory.one(), true));
+        IllegalArgumentException trailingDistanceException = assertThrows(IllegalArgumentException.class,
+                () -> StopGainRule.trailingStopGainPriceFromDistance(NaN.NaN, numFactory.one(), true));
+
+        assertEquals("entryPrice must not be null or NaN", gainException.getMessage());
+        assertEquals("entryPrice must not be null or NaN", distanceException.getMessage());
+        assertEquals("favorablePrice must not be null or NaN", trailingException.getMessage());
+        assertEquals("favorablePrice must not be null or NaN", trailingDistanceException.getMessage());
+    }
+
+    @Test
     public void isSatisfiedWorksForBuy() {
         final var tradingRecord = new BaseTradingRecord(Trade.TradeType.BUY);
         final Num tradedAmount = numOf(1);
@@ -74,6 +94,20 @@ public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
         assertFalse(rule.isSatisfied(5, tradingRecord));
         assertTrue(rule.isSatisfied(6, tradingRecord));
         assertTrue(rule.isSatisfied(7, tradingRecord));
+    }
+
+    @Test
+    public void touchBoundaryTriggersForBuyAndSell() {
+        ClosePriceIndicator boundaryPrices = StopRuleTestSupport.closePrice(numFactory, 100, 105, 95);
+        StopGainRule rule = new StopGainRule(boundaryPrices, numOf(5));
+        BaseTradingRecord buyRecord = new BaseTradingRecord(Trade.TradeType.BUY);
+        BaseTradingRecord sellRecord = new BaseTradingRecord(Trade.TradeType.SELL);
+
+        buyRecord.enter(0, numOf(100), numOf(1));
+        sellRecord.enter(0, numOf(100), numOf(1));
+
+        assertTrue(rule.isSatisfied(1, buyRecord));
+        assertTrue(rule.isSatisfied(2, sellRecord));
     }
 
     @Test
@@ -126,5 +160,12 @@ public class StopGainRuleTest extends AbstractIndicatorTest<BarSeries, Num> {
         var rule = new StopGainRule(closePrice, numOf(15));
         RuleSerializationRoundTripTestSupport.assertRuleRoundTrips(closePrice.getBarSeries(), rule);
         RuleSerializationRoundTripTestSupport.assertRuleJsonRoundTrips(closePrice.getBarSeries(), rule);
+    }
+
+    @Test
+    public void constructorValidation() {
+        assertThrows(NullPointerException.class, () -> new StopGainRule(null, numOf(5)));
+        assertThrows(NullPointerException.class, () -> new StopGainRule(closePrice, (Number) null));
+        assertThrows(IllegalArgumentException.class, () -> new StopGainRule(closePrice, numFactory.minusOne()));
     }
 }

@@ -1,0 +1,15 @@
+# Known Javadoc warnings accepted during release publishing.
+# Keep this file empty unless a warning is intentionally carried as release debt.
+ta4j-core/src/main/java/org/ta4j/core/indicators/ChopIndicator.java: warning: unknown tag. Unregistered custom tag?
+ta4j-core/src/main/java/org/ta4j/core/analysis/CumulativePnL.java: warning: reference not found: org.ta4j.core.PerformanceIndicator
+ta4j-core/src/main/java/org/ta4j/core/num/DoubleNum.java: warning: unknown tag. Unregistered custom tag?
+ta4j-core/src/main/java/org/ta4j/core/indicators/elliott/ElliottScenarioSet.java: warning: invalid input: '<'
+ta4j-core/src/main/java/org/ta4j/core/indicators/FisherIndicator.java: warning: unknown tag. Unregistered custom tag?
+ta4j-core/src/main/java/org/ta4j/core/criteria/drawdown/ReturnOverMaxDrawdownCriterion.java: warning: reference not found: NetReturnCriterion
+ta4j-core/src/main/java/org/ta4j/core/criteria/drawdown/ReturnOverMaxDrawdownCriterion.java: warning: reference not found: ReturnRepresentationPolicy
+ta4j-core/src/main/java/org/ta4j/core/criteria/ReturnRepresentation.java: warning: reference not found: Returns
+ta4j-examples/src/main/java/ta4jexamples/backtesting/CoinbaseBacktest.java: warning: invalid input: '&'
+ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWaveAnalysisReport.java: warning: reference not found: ElliottWaveIndicatorSuiteDemo#logBaseCaseScenario(ElliottScenario)
+ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/ElliottWaveAnalysisReport.java: warning: reference not found: ElliottWaveIndicatorSuiteDemo#logAlternativeScenarios(List)
+ta4j-examples/src/main/java/ta4jexamples/datasources/json/JsonBarsSerializer.java: warning: reference not found: JsonFileBarSeriesDataSource
+ta4j-examples/src/main/java/ta4jexamples/datasources/json/JsonBarsSerializer.java: warning: reference not found: JsonFileBarSeriesDataSource#loadSeries(String)
