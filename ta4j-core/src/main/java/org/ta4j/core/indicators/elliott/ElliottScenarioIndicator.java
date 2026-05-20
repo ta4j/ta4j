@@ -194,12 +194,4 @@ public class ElliottScenarioIndicator extends CachedIndicator<ElliottScenarioSet
     public ElliottChannelIndicator getChannelIndicator() {
         return channelIndicator;
     }
-
-    /**
-     * @return the underlying scenario generator
-     * @since 0.22.7
-     */
-    public ElliottScenarioGenerator getScenarioGenerator() {
-        return generator;
-    }
 }

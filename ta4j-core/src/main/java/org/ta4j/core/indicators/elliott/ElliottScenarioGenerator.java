@@ -12,8 +12,10 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceModel;
+import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfile;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
+import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceContext;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -75,9 +77,9 @@ public final class ElliottScenarioGenerator {
      * @param fibValidator Fibonacci validator (typically with a custom tolerance)
      * @since 0.22.7
      */
-    public ElliottScenarioGenerator(final NumFactory numFactory, final ElliottFibonacciValidator fibValidator) {
-        this(numFactory, DEFAULT_MIN_CONFIDENCE, DEFAULT_MAX_SCENARIOS, ConfidenceProfiles.defaultModel(numFactory),
-                PatternSet.all(), fibValidator);
+    ElliottScenarioGenerator(final NumFactory numFactory, final ElliottFibonacciValidator fibValidator) {
+        this(numFactory, DEFAULT_MIN_CONFIDENCE, DEFAULT_MAX_SCENARIOS,
+                defaultConfidenceModel(numFactory, fibValidator), PatternSet.all(), fibValidator);
     }
 
     /**
@@ -121,7 +123,7 @@ public final class ElliottScenarioGenerator {
      *                        tolerance)
      * @since 0.22.7
      */
-    public ElliottScenarioGenerator(final NumFactory numFactory, final double minConfidence, final int maxScenarios,
+    private ElliottScenarioGenerator(final NumFactory numFactory, final double minConfidence, final int maxScenarios,
             final ConfidenceModel confidenceModel, final PatternSet patternSet,
             final ElliottFibonacciValidator fibValidator) {
         this.numFactory = Objects.requireNonNull(numFactory, "numFactory");
@@ -133,12 +135,18 @@ public final class ElliottScenarioGenerator {
         this.maxScenarios = maxScenarios;
     }
 
-    /**
-     * @return the Fibonacci validator used to gate generated scenarios
-     * @since 0.22.7
-     */
-    public ElliottFibonacciValidator getFibValidator() {
-        return fibValidator;
+    private static ConfidenceModel defaultConfidenceModel(final NumFactory numFactory,
+            final ElliottFibonacciValidator fibValidator) {
+        final NumFactory checkedFactory = Objects.requireNonNull(numFactory, "numFactory");
+        final ElliottFibonacciValidator checkedValidator = Objects.requireNonNull(fibValidator, "fibValidator");
+        final ConfidenceProfile profile = ConfidenceProfiles.defaultProfile(checkedFactory);
+        return (swings, phase, channel, scenarioType) -> {
+            final List<ElliottSwing> safeSwings = swings == null ? List.of() : swings;
+            final ElliottPhase safePhase = phase == null ? ElliottPhase.NONE : phase;
+            final ElliottConfidenceContext context = new ElliottConfidenceContext(safeSwings, safePhase, channel,
+                    checkedValidator, checkedFactory);
+            return profile.score(context);
+        };
     }
 
     /**

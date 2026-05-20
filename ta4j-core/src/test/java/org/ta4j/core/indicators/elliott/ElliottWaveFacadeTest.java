@@ -5,10 +5,15 @@ package org.ta4j.core.indicators.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
+import org.ta4j.core.num.Num;
+import org.ta4j.core.num.NumFactory;
 
 /**
  * Tests for {@link ElliottWaveFacade}.
@@ -113,36 +118,36 @@ class ElliottWaveFacadeTest {
      */
     @Test
     void customFibToleranceShouldBeUsedByScenarios() {
-        var series = new MockBarSeriesBuilder().build();
-        double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
-        for (double close : closes) {
-            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
-        }
+        BarSeries series = borderlineWaveTwoSeries();
+        NumFactory numFactory = series.numFactory();
+        List<ElliottSwing> swings = borderlineWaveTwoSwings(numFactory);
+        ElliottWaveFacade suite = facadeWithSwings(series, swings, Optional.of(numFactory.numOf(0.25)));
 
-        var customTolerance = series.numFactory().numOf(0.25);
-        var suite = ElliottWaveFacade.fractal(series, 1, ElliottDegree.MINOR, Optional.of(customTolerance),
-                Optional.empty());
+        ElliottScenarioSet scenarioSet = suite.scenarios().getValue(series.getEndIndex());
 
-        assertThat(suite.scenarios().getScenarioGenerator().getFibValidator().getTolerance())
-                .isEqualByComparingTo(customTolerance);
+        List<ElliottScenario> waveTwoScenarios = waveTwoImpulseScenarios(scenarioSet);
+        assertThat(waveTwoScenarios).hasSize(1);
+        ElliottScenario waveTwoScenario = waveTwoScenarios.getFirst();
+        assertThat(waveTwoScenario.confidence().fibonacciScore()).isGreaterThan(numFactory.zero());
     }
 
     /**
-     * Sanity counterpart: with no custom tolerance, {@code scenarios()} keeps the
-     * default {@code 0.05} validator tolerance. This pins the expected default.
+     * Sanity counterpart: with no custom tolerance, the same borderline wave-two
+     * retracement keeps zero Fibonacci confidence under the default {@code 0.05}
+     * tolerance.
      */
     @Test
-    void defaultFibToleranceIsUsedByScenariosWhenNoneConfigured() {
-        var series = new MockBarSeriesBuilder().build();
-        double[] closes = { 10, 12, 9, 13, 8, 14, 7, 15, 6 };
-        for (double close : closes) {
-            series.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(0).add();
-        }
+    void defaultFibToleranceGivesZeroFibonacciConfidenceForBorderlineScenario() {
+        BarSeries series = borderlineWaveTwoSeries();
+        List<ElliottSwing> swings = borderlineWaveTwoSwings(series.numFactory());
+        ElliottWaveFacade suite = facadeWithSwings(series, swings, Optional.empty());
 
-        var suite = ElliottWaveFacade.fractal(series, 1, ElliottDegree.MINOR);
+        ElliottScenarioSet scenarioSet = suite.scenarios().getValue(series.getEndIndex());
 
-        assertThat(suite.scenarios().getScenarioGenerator().getFibValidator().getTolerance())
-                .isEqualByComparingTo(series.numFactory().numOf(0.05));
+        List<ElliottScenario> waveTwoScenarios = waveTwoImpulseScenarios(scenarioSet);
+        assertThat(waveTwoScenarios).hasSize(1);
+        assertThat(waveTwoScenarios.getFirst().confidence().fibonacciScore())
+                .isEqualByComparingTo(series.numFactory().zero());
     }
 
     @Test
@@ -184,5 +189,29 @@ class ElliottWaveFacadeTest {
         assertThat(suite.phase()).isNotNull();
         assertThat(suite.filteredWaveCount()).isNotNull();
         assertThat(suite.waveCount()).isNotNull();
+    }
+
+    private static ElliottWaveFacade facadeWithSwings(final BarSeries series, final List<ElliottSwing> swings,
+            final Optional<Num> fibTolerance) {
+        final List<List<ElliottSwing>> swingsByIndex = List.of(swings, swings, swings);
+        final ElliottSwingIndicator swingIndicator = new StubSwingIndicator(series, swingsByIndex, ElliottDegree.MINOR);
+        return ElliottWaveFacade.from(swingIndicator, new ClosePriceIndicator(series), fibTolerance, Optional.empty());
+    }
+
+    private static BarSeries borderlineWaveTwoSeries() {
+        return new MockBarSeriesBuilder().withData(100, 110, 107.5).build();
+    }
+
+    private static List<ElliottSwing> borderlineWaveTwoSwings(final NumFactory numFactory) {
+        return List.of(new ElliottSwing(0, 1, numFactory.numOf(100), numFactory.numOf(110), ElliottDegree.MINOR),
+                new ElliottSwing(1, 2, numFactory.numOf(110), numFactory.numOf(107.5), ElliottDegree.MINOR));
+    }
+
+    private static List<ElliottScenario> waveTwoImpulseScenarios(final ElliottScenarioSet scenarioSet) {
+        return scenarioSet.all()
+                .stream()
+                .filter(scenario -> scenario.type() == ScenarioType.IMPULSE
+                        && scenario.currentPhase() == ElliottPhase.WAVE2 && scenario.startIndex() == 0)
+                .toList();
     }
 }

@@ -4,6 +4,7 @@
 package org.ta4j.core.indicators.elliott;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.List;
 
@@ -403,6 +404,34 @@ class ElliottScenarioGeneratorTest {
     }
 
     @Test
+    void customValidatorFeedsDefaultConfidenceModel() {
+        ElliottFibonacciValidator customValidator = new ElliottFibonacciValidator(numFactory, numFactory.numOf(0.25));
+        ElliottScenarioGenerator customGenerator = new ElliottScenarioGenerator(numFactory, customValidator);
+
+        ElliottScenarioSet set = customGenerator.generate(createBorderlineWaveTwoSwings(), ElliottDegree.MINOR, null,
+                2);
+
+        List<ElliottScenario> waveTwoScenarios = waveTwoImpulseScenarios(set);
+        assertThat(waveTwoScenarios).hasSize(1);
+        assertThat(waveTwoScenarios.getFirst().confidence().fibonacciScore()).isGreaterThan(numFactory.zero());
+    }
+
+    @Test
+    void defaultValidatorGivesZeroFibonacciConfidenceForBorderlineWaveTwoRetracement() {
+        ElliottScenarioSet set = generator.generate(createBorderlineWaveTwoSwings(), ElliottDegree.MINOR, null, 2);
+
+        List<ElliottScenario> waveTwoScenarios = waveTwoImpulseScenarios(set);
+        assertThat(waveTwoScenarios).hasSize(1);
+        assertThat(waveTwoScenarios.getFirst().confidence().fibonacciScore()).isEqualByComparingTo(numFactory.zero());
+    }
+
+    @Test
+    void customValidatorConstructorRejectsNullValidator() {
+        assertThatThrownBy(() -> new ElliottScenarioGenerator(numFactory, null))
+                .isInstanceOf(NullPointerException.class);
+    }
+
+    @Test
     void structureScoreSoftensImpulseRuleBreachesInsteadOfHardRejectingThem() {
         ElliottScenarioGenerator permissiveGenerator = new ElliottScenarioGenerator(numFactory, 0.0, 10);
         List<ElliottSwing> mildlyInvalid = List.of(
@@ -534,6 +563,19 @@ class ElliottScenarioGeneratorTest {
                 new ElliottSwing(10, 15, numFactory.numOf(110), numFactory.numOf(140), ElliottDegree.MINOR),
                 new ElliottSwing(15, 20, numFactory.numOf(140), numFactory.numOf(125), ElliottDegree.MINOR),
                 new ElliottSwing(20, 25, numFactory.numOf(125), numFactory.numOf(160), ElliottDegree.MINOR));
+    }
+
+    private List<ElliottSwing> createBorderlineWaveTwoSwings() {
+        return List.of(new ElliottSwing(0, 1, numFactory.numOf(100), numFactory.numOf(110), ElliottDegree.MINOR),
+                new ElliottSwing(1, 2, numFactory.numOf(110), numFactory.numOf(107.5), ElliottDegree.MINOR));
+    }
+
+    private List<ElliottScenario> waveTwoImpulseScenarios(final ElliottScenarioSet scenarioSet) {
+        return scenarioSet.all()
+                .stream()
+                .filter(scenario -> scenario.type() == ScenarioType.IMPULSE
+                        && scenario.currentPhase() == ElliottPhase.WAVE2 && scenario.startIndex() == 0)
+                .toList();
     }
 
     private int naiveImpulseDecompositionBranchCount(int swingCount) {

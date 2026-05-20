@@ -116,10 +116,11 @@ public final class ElliottWaveFacade {
      * @param series       source bar series
      * @param window       number of bars to inspect before and after a pivot
      * @param degree       swing degree metadata
-     * @param fibTolerance optional custom Fibonacci tolerance for phase validation
-     *                     (default: 0.05). When provided, the phase indicator will
-     *                     use a custom {@link ElliottFibonacciValidator} with this
-     *                     tolerance instead of the default validator.
+     * @param fibTolerance optional custom Fibonacci tolerance for phase and
+     *                     scenario validation (default: 0.05). When provided, phase
+     *                     and scenario indicators will use a custom
+     *                     {@link ElliottFibonacciValidator} with this tolerance
+     *                     instead of the default validator.
      * @param compressor   optional swing compressor for filtered wave counting.
      *                     When provided, {@link #filteredWaveCount()} will use this
      *                     compressor to filter swings before counting. If empty,
@@ -161,9 +162,9 @@ public final class ElliottWaveFacade {
      * @param lookbackLength    bars inspected before a pivot candidate
      * @param lookforwardLength bars inspected after a pivot candidate
      * @param degree            swing degree metadata
-     * @param fibTolerance      optional custom Fibonacci tolerance for phase
-     *                          validation (default: 0.05). When provided, the phase
-     *                          indicator will use a custom
+     * @param fibTolerance      optional custom Fibonacci tolerance for phase and
+     *                          scenario validation (default: 0.05). When provided,
+     *                          phase and scenario indicators will use a custom
      *                          {@link ElliottFibonacciValidator} with this
      *                          tolerance instead of the default validator.
      * @param compressor        optional swing compressor for filtered wave
@@ -205,10 +206,11 @@ public final class ElliottWaveFacade {
      *
      * @param series       source bar series
      * @param degree       swing degree metadata
-     * @param fibTolerance optional custom Fibonacci tolerance for phase validation
-     *                     (default: 0.05). When provided, the phase indicator will
-     *                     use a custom {@link ElliottFibonacciValidator} with this
-     *                     tolerance instead of the default validator.
+     * @param fibTolerance optional custom Fibonacci tolerance for phase and
+     *                     scenario validation (default: 0.05). When provided, phase
+     *                     and scenario indicators will use a custom
+     *                     {@link ElliottFibonacciValidator} with this tolerance
+     *                     instead of the default validator.
      * @param compressor   optional swing compressor for filtered wave counting.
      *                     When provided, {@link #filteredWaveCount()} will use this
      *                     compressor to filter swings before counting. If empty,
@@ -245,9 +247,9 @@ public final class ElliottWaveFacade {
      *
      * @param swingIndicator custom swing indicator
      * @param priceIndicator price reference for confluence analysis
-     * @param fibTolerance   optional custom Fibonacci tolerance for phase
-     *                       validation (default: 0.05). When provided, the phase
-     *                       indicator will use a custom
+     * @param fibTolerance   optional custom Fibonacci tolerance for phase and
+     *                       scenario validation (default: 0.05). When provided,
+     *                       phase and scenario indicators will use a custom
      *                       {@link ElliottFibonacciValidator} with this tolerance
      *                       instead of the default validator.
      * @param compressor     optional swing compressor for filtered wave counting.
