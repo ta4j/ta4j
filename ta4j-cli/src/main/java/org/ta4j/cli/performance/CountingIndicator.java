@@ -10,6 +10,8 @@ import org.ta4j.core.num.Num;
 /**
  * Internal indicator wrapper that records source reads for performance
  * experiment diagnostics.
+ *
+ * @since 0.22.7
  */
 final class CountingIndicator implements Indicator<Num> {
 

@@ -518,14 +518,43 @@ public final class PerformanceExperimentRunner {
     }
 }
 
+/**
+ * Describes one reusable performance experiment and the scenarios it supports.
+ *
+ * @since 0.22.7
+ */
 interface PerformanceExperiment {
 
+    /**
+     * Stable experiment identifier used by CLI arguments and benchmark artifacts.
+     *
+     * @return experiment identifier
+     * @since 0.22.7
+     */
     String id();
 
+    /**
+     * Human-readable experiment description.
+     *
+     * @return experiment description
+     * @since 0.22.7
+     */
     String description();
 
+    /**
+     * Scenarios that can be run for this experiment.
+     *
+     * @return supported scenarios
+     * @since 0.22.7
+     */
     List<PerformanceScenario> scenarios();
 
+    /**
+     * Default scenario identifiers used when the CLI omits {@code --scenarios}.
+     *
+     * @return default scenario identifiers
+     * @since 0.22.7
+     */
     default List<String> defaultScenarioIds() {
         return scenarios().stream().map(PerformanceScenario::id).toList();
     }

@@ -15,6 +15,12 @@ import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
+/**
+ * Performance experiment covering Kalman filter access patterns that previously
+ * exposed recursive replay costs.
+ *
+ * @since 0.22.7
+ */
 final class KalmanFilterPerformanceExperiment implements PerformanceExperiment {
 
     static final String ID = "kalman-filter";
