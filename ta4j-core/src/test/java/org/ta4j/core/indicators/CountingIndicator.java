@@ -10,6 +10,11 @@ import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
 
+/**
+ * Test indicator that counts read and calculation requests.
+ *
+ * @since 0.22.7
+ */
 final class CountingIndicator extends CachedIndicator<Num> {
 
     private final AtomicInteger calculations = new AtomicInteger();
