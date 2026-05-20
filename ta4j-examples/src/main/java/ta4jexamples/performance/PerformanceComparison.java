@@ -14,6 +14,8 @@ import java.util.Map;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -84,9 +86,14 @@ public final class PerformanceComparison {
         JsonArray cells = new JsonArray();
         boolean checksumMatch = true;
         boolean regressionWithinThreshold = true;
+        Map<String, Long> previousBaseMedianByScenario = new LinkedHashMap<>();
+        Map<String, Long> previousCandidateMedianByScenario = new LinkedHashMap<>();
+        Map<String, Integer> previousBarCountByScenario = new LinkedHashMap<>();
         for (Map.Entry<String, JsonObject> entry : baseResults.entrySet()) {
             JsonObject baseResult = entry.getValue();
             JsonObject candidateResult = candidateResults.get(entry.getKey());
+            String scenarioId = baseResult.get("scenarioId").getAsString();
+            int barCount = baseResult.get("barCount").getAsInt();
             long baseChecksum = baseResult.get("checksum").getAsLong();
             long candidateChecksum = candidateResult.get("checksum").getAsLong();
             boolean cellChecksumMatch = baseChecksum == candidateChecksum
@@ -104,8 +111,8 @@ public final class PerformanceComparison {
             }
 
             JsonObject cell = new JsonObject();
-            cell.addProperty("scenarioId", baseResult.get("scenarioId").getAsString());
-            cell.addProperty("barCount", baseResult.get("barCount").getAsInt());
+            cell.addProperty("scenarioId", scenarioId);
+            cell.addProperty("barCount", barCount);
             cell.addProperty("checksumMatch", cellChecksumMatch);
             cell.addProperty("baseChecksum", baseChecksum);
             cell.addProperty("candidateChecksum", candidateChecksum);
@@ -114,7 +121,14 @@ public final class PerformanceComparison {
             cell.addProperty("medianDeltaPct", medianDeltaPct);
             cell.addProperty("baseOperationsPerSecond", baseStats.get("operationsPerSecond").getAsDouble());
             cell.addProperty("candidateOperationsPerSecond", candidateStats.get("operationsPerSecond").getAsDouble());
+            cell.add("scaling",
+                    scalingShape(previousBarCountByScenario.get(scenarioId),
+                            previousBaseMedianByScenario.get(scenarioId),
+                            previousCandidateMedianByScenario.get(scenarioId), barCount, baseMedian, candidateMedian));
             cells.add(cell);
+            previousBarCountByScenario.put(scenarioId, barCount);
+            previousBaseMedianByScenario.put(scenarioId, baseMedian);
+            previousCandidateMedianByScenario.put(scenarioId, candidateMedian);
         }
 
         if (!checksumMatch) {
@@ -135,6 +149,9 @@ public final class PerformanceComparison {
         Files.writeString(outputDir.resolve(COMPARISON_FILE), GSON.toJson(comparison) + System.lineSeparator(),
                 StandardCharsets.UTF_8);
         Files.writeString(outputDir.resolve(SUMMARY_FILE), summary(comparison), StandardCharsets.UTF_8);
+        if (!regressionWithinThreshold) {
+            throw new IllegalStateException("Performance regression exceeded threshold");
+        }
         LOG.info("Performance comparison artifacts written to {}", outputDir);
         return comparison;
     }
@@ -164,6 +181,28 @@ public final class PerformanceComparison {
         return (candidate - base) * 100d / base;
     }
 
+    private static JsonObject scalingShape(Integer previousBarCount, Long previousBaseMedian,
+            Long previousCandidateMedian, int barCount, long baseMedian, long candidateMedian) {
+        JsonObject scaling = new JsonObject();
+        if (previousBarCount == null || previousBaseMedian == null || previousCandidateMedian == null) {
+            scaling.add("barCountScale", JsonNull.INSTANCE);
+            scaling.add("baseMedianScale", JsonNull.INSTANCE);
+            scaling.add("candidateMedianScale", JsonNull.INSTANCE);
+            return scaling;
+        }
+        scaling.addProperty("barCountScale", ratio(previousBarCount, barCount));
+        scaling.addProperty("baseMedianScale", ratio(previousBaseMedian, baseMedian));
+        scaling.addProperty("candidateMedianScale", ratio(previousCandidateMedian, candidateMedian));
+        return scaling;
+    }
+
+    private static double ratio(long previous, long current) {
+        if (previous == 0L) {
+            return 0d;
+        }
+        return current / (double) previous;
+    }
+
     private static String summary(JsonObject comparison) {
         StringBuilder builder = new StringBuilder();
         builder.append("# Performance Comparison").append(System.lineSeparator()).append(System.lineSeparator());
@@ -186,11 +225,15 @@ public final class PerformanceComparison {
         builder.append("- Regression threshold: `")
                 .append(comparison.get("maxRegressionPct").getAsDouble())
                 .append("%`")
+                .append(System.lineSeparator());
+        builder.append("- Regression within threshold: `")
+                .append(comparison.get("regressionWithinThreshold").getAsBoolean())
+                .append("`")
                 .append(System.lineSeparator())
                 .append(System.lineSeparator());
-        builder.append("| Scenario | Bars | Base median ms | Candidate median ms | Delta % |")
+        builder.append("| Scenario | Bars | Base median ms | Candidate median ms | Delta % | Candidate scale |")
                 .append(System.lineSeparator());
-        builder.append("| --- | ---: | ---: | ---: | ---: |").append(System.lineSeparator());
+        builder.append("| --- | ---: | ---: | ---: | ---: | ---: |").append(System.lineSeparator());
 
         JsonArray cells = comparison.getAsJsonArray("cells");
         for (int i = 0; i < cells.size(); i++) {
@@ -205,6 +248,8 @@ public final class PerformanceComparison {
                     .append(formatMillis(cell.get("candidateMedianNanos").getAsLong()))
                     .append(" | ")
                     .append(DECIMAL_FORMAT.format(cell.get("medianDeltaPct").getAsDouble()))
+                    .append(" | ")
+                    .append(formatScale(cell.getAsJsonObject("scaling").get("candidateMedianScale")))
                     .append(" |")
                     .append(System.lineSeparator());
         }
@@ -213,6 +258,13 @@ public final class PerformanceComparison {
 
     private static String formatMillis(long nanos) {
         return DECIMAL_FORMAT.format(nanos / 1_000_000d);
+    }
+
+    private static String formatScale(JsonElement scale) {
+        if (scale == null || scale.isJsonNull()) {
+            return "-";
+        }
+        return DECIMAL_FORMAT.format(scale.getAsDouble());
     }
 
     private record ComparisonCli(Path baseDir, Path candidateDir, Path outputDir, double maxRegressionPct,
