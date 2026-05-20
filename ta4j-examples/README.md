@@ -49,7 +49,6 @@ If chart windows do not appear, you are likely in a headless environment; switch
 - `ta4jexamples.backtesting.TradeFillRecordingExample`
 - `ta4jexamples.backtesting.SimpleMovingAverageRangeBacktest`
 - `ta4jexamples.backtesting.BacktestPerformanceTuningHarness`
-- `ta4jexamples.performance.PerformanceExperimentRunner`
 
 Run a fixed throughput matrix and write `matrix_performance.json`:
 
@@ -70,26 +69,6 @@ Both refs must include throughput-control support; use `HEAD^` vs `HEAD` after
 the harness and optimization commits are in place. The JSON artifacts include a
 hashed `hostId` plus JVM/OS metadata so reports can be shared without exposing a
 raw machine hostname.
-
-Run a reusable performance experiment and write `performance.json` plus
-`summary.md`:
-
-```bash
-mvn -pl ta4j-examples -am install -DskipTests
-mvn -pl ta4j-examples exec:java \
-  -Dexec.mainClass=ta4jexamples.performance.PerformanceExperimentRunner \
-  -Dexec.args="--experiment kalman-filter --barCounts 1000,5000,10000 --scenarios sequential,endOnly,endThenReverse,sparseAfterHighWatermark --repetitions 5 --outputDir .agents/benchmarks/performance/kalman-filter/current"
-```
-
-Compare the same experiment across two refs:
-
-```bash
-scripts/benchmark-performance-experiment.sh HEAD^ HEAD -- \
-  --experiment kalman-filter \
-  --barCounts 1000,5000,10000 \
-  --scenarios sequential,endOnly,endThenReverse,sparseAfterHighWatermark \
-  --repetitions 5
-```
 
 ### 4) Live-style workflows
 

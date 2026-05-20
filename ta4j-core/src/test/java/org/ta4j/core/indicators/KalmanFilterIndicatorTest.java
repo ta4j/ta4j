@@ -134,7 +134,7 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
             data[i] = 100 + i;
         }
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(data).build();
-        CountingIndicator source = new CountingIndicator(new ClosePriceIndicator(series));
+        CountingIndicator source = CountingIndicator.delegate(new ClosePriceIndicator(series));
         KalmanFilterIndicator kalmanFilterIndicator = new KalmanFilterIndicator(source);
 
         kalmanFilterIndicator.getValue(barCount - 1);
@@ -146,33 +146,4 @@ public class KalmanFilterIndicatorTest extends AbstractIndicatorTest<Indicator<N
                 source.readCount() <= barCount + 2L);
     }
 
-    private static final class CountingIndicator implements Indicator<Num> {
-
-        private final Indicator<Num> delegate;
-        private long readCount;
-
-        private CountingIndicator(Indicator<Num> delegate) {
-            this.delegate = delegate;
-        }
-
-        @Override
-        public Num getValue(int index) {
-            readCount++;
-            return delegate.getValue(index);
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return delegate.getCountOfUnstableBars();
-        }
-
-        @Override
-        public BarSeries getBarSeries() {
-            return delegate.getBarSeries();
-        }
-
-        private long readCount() {
-            return readCount;
-        }
-    }
 }
