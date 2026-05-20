@@ -9,6 +9,8 @@
 - `sweep`: ranks a bounded SMA crossover parameter grid on one dataset and returns the top candidates. Use it when you are tuning fast/slow crossover windows rather than evaluating already-defined strategy labels or serialized strategies.
 - `indicator-test`: turns one serialized numeric indicator plus optional thresholds into a lightweight exploratory strategy. Use it when you want to sanity-check an indicator idea before investing in a `NamedIndicator`, a `NamedRule`, or a full strategy definition.
 - `rule-test`: builds a temporary strategy from one entry rule and one exit rule, then emits both a plain backtest and a walk-forward report. Use it when you are iterating on entry/exit logic via `NamedRule` labels or serialized rule payloads before folding that logic into a reusable strategy.
+- `performance-experiment`: runs a named optimization experiment and writes `performance.json` plus `summary.md` artifacts. Use it when you need a baseline profile, hypothesis, measured candidate result, checksum, and host/JVM metadata.
+- `performance-compare`: compares two experiment artifact directories and reports deltas, scaling shape, checksum parity, and threshold pass/fail status.
 
 ## Build
 
@@ -120,6 +122,19 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   - `--exit-rule-json-file`: path to one serialized rule payload.
   - `--min-train-bars`, `--test-bars`, `--step-bars`, `--purge-bars`, `--embargo-bars`, `--holdout-bars`, `--primary-horizon-bars`, `--optimization-top-k`, `--seed`: the same walk-forward controls used by `walk-forward`.
   - rule inputs are self-contained, so `rule-test` does not accept `--param`.
+- `performance-experiment`
+  - `--experiment`: experiment id, currently `kalman-filter`.
+  - `--barCounts`: comma-separated positive bar counts, for example `1000,5000,10000`.
+  - `--scenarios`: comma-separated scenario ids, or omit for experiment defaults.
+  - `--repetitions`: measured repetitions per scenario/bar-count cell.
+  - `--warmups`: warmup repetitions per scenario/bar-count cell.
+  - `--outputDir`: artifact directory for `performance.json` and `summary.md`.
+  - `--profile`: include profiler hint metadata in `performance.json`.
+- `performance-compare`
+  - `--baseDir`: baseline experiment artifact directory.
+  - `--candidateDir`: candidate experiment artifact directory.
+  - `--outputDir`: comparison artifact directory for `comparison.json` and `summary.md`.
+  - `--maxRegressionPct`: non-negative allowed median runtime regression percentage.
 
 ## Parameter Coverage Examples
 
@@ -319,6 +334,36 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
   --output /tmp/backtest-mixed-inputs.json
 ```
 
+### Reusable Performance Experiment
+
+```bash
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
+  performance-experiment \
+  --experiment kalman-filter \
+  --barCounts 1000,5000,10000 \
+  --scenarios sequential,endOnly,endThenReverse,sparseAfterHighWatermark \
+  --repetitions 5 \
+  --outputDir .agents/benchmarks/performance/kalman-filter/current
+```
+
+```bash
+java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
+  performance-compare \
+  --baseDir .agents/benchmarks/performance/kalman-filter/base \
+  --candidateDir .agents/benchmarks/performance/kalman-filter/candidate \
+  --outputDir .agents/benchmarks/performance/kalman-filter/comparison
+```
+
+To compare two git refs in temporary worktrees, run:
+
+```bash
+ta4j-cli/scripts/benchmark-performance-experiment.sh HEAD^ HEAD -- \
+  --experiment kalman-filter \
+  --barCounts 1000,5000,10000 \
+  --scenarios sequential,endOnly,endThenReverse,sparseAfterHighWatermark \
+  --repetitions 5
+```
+
 ## Common Use Cases
 
 These recipes are shorter than the coverage examples and focus on the workflows most users are likely to repeat.
@@ -421,6 +466,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 - `indicator-test` accepts serialized numeric indicators, either inline or from disk. If you omit threshold options, it defaults to close-price crossovers around the indicator.
 - `rule-test` accepts one entry rule and one exit rule, returns both a plain backtest and a walk-forward report, and shares the same walk-forward controls as `walk-forward`.
 - `sweep` ranks bounded SMA crossover candidates deterministically and keeps only the requested top-K output set.
+- `performance-experiment` and `performance-compare` write shareable artifacts under caller-selected paths; `.agents/benchmarks/` is the preferred local scratch location.
 - `NamedStrategy` labels follow the compact format `<SimpleClassName>_<param1>_<param2>...`, for example `HourOfDayStrategy_9_17` or `DayOfWeekStrategy_MONDAY_FRIDAY`.
 - `NamedRule` labels follow the same compact format, for example `RsiThresholdRule_BELOW_14_30` or `ClosePriceCrossedMovingAverageRule_UP_SMA_20`.
 - If every supplied strategy input is invalid, the command fails fast with a descriptive error and a non-zero exit code instead of producing an empty result artifact.

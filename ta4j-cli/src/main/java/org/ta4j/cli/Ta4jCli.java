@@ -3,6 +3,8 @@
  */
 package org.ta4j.cli;
 
+import org.ta4j.cli.performance.PerformanceComparison;
+import org.ta4j.cli.performance.PerformanceExperimentRunner;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Strategy;
 import org.ta4j.core.backtest.BacktestExecutionResult;
@@ -17,6 +19,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +56,12 @@ public final class Ta4jCli {
     static int run(String[] args, PrintWriter out, PrintWriter err) {
         try {
             CliArguments arguments = CliArguments.parse(args);
+            if ("performance-experiment".equals(arguments.command())) {
+                return executePerformanceExperiment(args, out);
+            }
+            if ("performance-compare".equals(arguments.command())) {
+                return executePerformanceCompare(args, out);
+            }
             if ("help".equalsIgnoreCase(arguments.command()) || arguments.flag("help")) {
                 out.println(usage());
                 out.flush();
@@ -65,9 +74,10 @@ public final class Ta4jCli {
             case "indicator-test" -> executeIndicatorTest(arguments, out, err);
             case "rule-test" -> executeRuleTest(arguments, out, err);
             default -> throw new IllegalArgumentException("Unknown command '" + arguments.command()
-                    + "'. Supported commands are backtest, walk-forward, sweep, indicator-test, rule-test.");
+                    + "'. Supported commands are backtest, walk-forward, sweep, indicator-test, rule-test, "
+                    + "performance-experiment, performance-compare.");
             };
-        } catch (IllegalArgumentException ex) {
+        } catch (IllegalArgumentException | IllegalStateException ex) {
             err.println(ex.getMessage());
             err.println();
             err.println(usage());
@@ -390,6 +400,30 @@ public final class Ta4jCli {
         return 0;
     }
 
+    private static int executePerformanceExperiment(String[] args, PrintWriter out) throws IOException {
+        String[] runnerArgs = Arrays.copyOfRange(args, 1, args.length);
+        if (PerformanceExperimentRunner.hasHelp(runnerArgs)) {
+            out.println(PerformanceExperimentRunner.usage());
+        } else {
+            PerformanceExperimentRunner.RunArtifacts artifacts = PerformanceExperimentRunner.run(runnerArgs);
+            out.println("Performance experiment artifacts written to " + artifacts.outputDir());
+        }
+        out.flush();
+        return 0;
+    }
+
+    private static int executePerformanceCompare(String[] args, PrintWriter out) throws IOException {
+        String[] comparisonArgs = Arrays.copyOfRange(args, 1, args.length);
+        if (PerformanceComparison.hasHelp(comparisonArgs)) {
+            out.println(PerformanceComparison.usage());
+        } else {
+            PerformanceComparison.ComparisonArtifacts artifacts = PerformanceComparison.run(comparisonArgs);
+            out.println("Performance comparison written to " + artifacts.outputDir());
+        }
+        out.flush();
+        return 0;
+    }
+
     private static String usage() {
         return """
                 Usage:
@@ -398,6 +432,8 @@ public final class Ta4jCli {
                   ta4j-cli sweep --data-file <path> --param-grid fast=5,10 --param-grid slow=20,50 [options]
                   ta4j-cli indicator-test --data-file <path> (--indicator <json> | --indicator-json-file <path>) [options]
                   ta4j-cli rule-test --data-file <path> <entry-rule-input> <exit-rule-input> [options]
+                  ta4j-cli performance-experiment --experiment <id> [options]
+                  ta4j-cli performance-compare --baseDir <dir> --candidateDir <dir> --outputDir <dir> [options]
 
                 Common options:
                   --timeframe 1m|5m|15m|1h|4h|1d|PT...
@@ -439,6 +475,10 @@ public final class Ta4jCli {
                   --exit-rule <named-rule-label> | --exit-rule-json-file <path>
                   --min-train-bars, --test-bars, --step-bars, --purge-bars, --embargo-bars, --holdout-bars
                   --primary-horizon-bars, --optimization-top-k, --seed
+
+                Performance options:
+                  performance-experiment: --experiment, --barCounts, --scenarios, --repetitions, --warmups, --outputDir, --profile
+                  performance-compare: --baseDir, --candidateDir, --outputDir, --maxRegressionPct
                 """;
     }
 

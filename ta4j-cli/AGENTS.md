@@ -4,7 +4,7 @@ Use `ta4j-cli` when a task needs a deterministic local command surface for ta4j 
 
 ## Workflow
 
-- Prefer the bounded commands: `backtest`, `walk-forward`, `sweep`, `indicator-test`, and `rule-test`.
+- Prefer the bounded commands: `backtest`, `walk-forward`, `sweep`, `indicator-test`, `rule-test`, `performance-experiment`, and `performance-compare`.
 - Prefer `--output` JSON artifacts for automation and review.
 - Generate charts only when a file artifact is needed, and keep chart flows headless-safe.
 

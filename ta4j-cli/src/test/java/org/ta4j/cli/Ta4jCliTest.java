@@ -130,6 +130,40 @@ class Ta4jCliTest {
     }
 
     @Test
+    void performanceExperimentWritesArtifacts() throws Exception {
+        Path outputDir = tempDir.resolve("performance-experiment");
+
+        int exitCode = runCli("performance-experiment", "--experiment", "kalman-filter", "--barCounts", "16",
+                "--scenarios", "endOnly", "--repetitions", "1", "--warmups", "0", "--outputDir", outputDir.toString());
+
+        assertThat(exitCode).isZero();
+        JsonObject payload = readJson(outputDir.resolve("performance.json"));
+        assertThat(payload.get("experimentId").getAsString()).isEqualTo("kalman-filter");
+        assertThat(payload.getAsJsonArray("results")).hasSize(1);
+        assertThat(outputDir.resolve("summary.md")).exists();
+    }
+
+    @Test
+    void performanceCompareWritesArtifacts() throws Exception {
+        Path baseDir = tempDir.resolve("performance-base");
+        Path candidateDir = tempDir.resolve("performance-candidate");
+        Path comparisonDir = tempDir.resolve("performance-comparison");
+        runCli("performance-experiment", "--experiment", "kalman-filter", "--barCounts", "16", "--scenarios", "endOnly",
+                "--repetitions", "1", "--warmups", "0", "--outputDir", baseDir.toString());
+        runCli("performance-experiment", "--experiment", "kalman-filter", "--barCounts", "16", "--scenarios", "endOnly",
+                "--repetitions", "1", "--warmups", "0", "--outputDir", candidateDir.toString());
+
+        int exitCode = runCli("performance-compare", "--baseDir", baseDir.toString(), "--candidateDir",
+                candidateDir.toString(), "--outputDir", comparisonDir.toString(), "--maxRegressionPct", "100000");
+
+        assertThat(exitCode).isZero();
+        JsonObject payload = readJson(comparisonDir.resolve("comparison.json"));
+        assertThat(payload.get("experimentId").getAsString()).isEqualTo("kalman-filter");
+        assertThat(payload.get("checksumMatch").getAsBoolean()).isTrue();
+        assertThat(comparisonDir.resolve("summary.md")).exists();
+    }
+
+    @Test
     void backtestAcceptsNamedStrategyLabels() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         Path outputFile = tempDir.resolve("named-strategy-backtest.json");

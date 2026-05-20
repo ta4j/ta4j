@@ -1,7 +1,7 @@
 ## Unreleased
 
 ### Added
-- **Script ta4j workflows without writing throwaway Java mains**: added the new `ta4j-cli` module with bounded `backtest`, `walk-forward`, `sweep`, and `indicator-test` commands for local OHLCV datasets, stable criterion aliases, deterministic JSON output, and optional headless chart export.
+- **Script ta4j workflows without writing throwaway Java mains**: added the new `ta4j-cli` module with bounded `backtest`, `walk-forward`, `sweep`, `indicator-test`, `rule-test`, `performance-experiment`, and `performance-compare` commands for local OHLCV datasets, reusable optimization experiments, deterministic JSON output, and optional headless chart export.
 
 ### Changed
 - **CSV loaders now work with real local files as well as bundled examples**: `CsvFileBarSeriesDataSource` can load filesystem paths directly, so CLI flows and example-driven tooling can point at local OHLCV files without first copying them onto the classpath.
