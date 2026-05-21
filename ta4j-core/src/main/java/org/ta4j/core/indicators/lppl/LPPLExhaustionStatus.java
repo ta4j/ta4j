@@ -4,11 +4,12 @@
 package org.ta4j.core.indicators.lppl;
 
 /**
- * Status of an LPPL exhaustion calculation or fit attempt.
+ * Status of a Log-Periodic Power Law (LPPL) exhaustion calculation or fit
+ * attempt.
  *
  * @since 0.22.7
  */
-public enum LpplExhaustionStatus {
+public enum LPPLExhaustionStatus {
 
     /**
      * The fit or aggregate signal is usable.

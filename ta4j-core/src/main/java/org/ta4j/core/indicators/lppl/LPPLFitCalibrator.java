@@ -19,30 +19,30 @@ import org.apache.commons.math3.linear.RealMatrix;
 import org.apache.commons.math3.linear.RealVector;
 import org.apache.commons.math3.util.Pair;
 
-final class LpplFitCalibrator {
+final class LPPLFitCalibrator {
 
     private static final double SINGULARITY_THRESHOLD = 1e-9;
 
-    private final LpplCalibrationProfile profile;
+    private final LPPLCalibrationProfile profile;
 
-    LpplFitCalibrator(LpplCalibrationProfile profile) {
+    LPPLFitCalibrator(LPPLCalibrationProfile profile) {
         this.profile = profile;
     }
 
-    LpplFit fit(double[] logPrices) {
+    LPPLFit fit(double[] logPrices) {
         int window = logPrices.length;
         if (window < 5) {
-            return LpplFit.invalid(window, LpplExhaustionStatus.INSUFFICIENT_DATA);
+            return LPPLFit.invalid(window, LPPLExhaustionStatus.INSUFFICIENT_DATA);
         }
         for (double logPrice : logPrices) {
             if (!Double.isFinite(logPrice)) {
-                return LpplFit.invalid(window, LpplExhaustionStatus.INVALID_INPUT);
+                return LPPLFit.invalid(window, LPPLExhaustionStatus.INVALID_INPUT);
             }
         }
 
         NonlinearFit seed = gridSearch(logPrices);
         if (seed == null || !seed.isFinite()) {
-            return LpplFit.invalid(window, LpplExhaustionStatus.OPTIMIZER_FAILED);
+            return LPPLFit.invalid(window, LPPLExhaustionStatus.OPTIMIZER_FAILED);
         }
 
         try {
@@ -50,11 +50,11 @@ final class LpplFitCalibrator {
             double[] point = optimum.getPoint().toArray();
             NonlinearFit finalFit = solveLinear(logPrices, point[0], point[1], point[2], optimum.getEvaluations());
             if (finalFit == null || !finalFit.isFinite()) {
-                return LpplFit.invalid(window, LpplExhaustionStatus.OPTIMIZER_FAILED);
+                return LPPLFit.invalid(window, LPPLExhaustionStatus.OPTIMIZER_FAILED);
             }
-            return finalFit.toFit(LpplExhaustionStatus.VALID);
+            return finalFit.toFit(LPPLExhaustionStatus.VALID);
         } catch (MathIllegalStateException | IllegalArgumentException e) {
-            return LpplFit.invalid(window, LpplExhaustionStatus.OPTIMIZER_FAILED);
+            return LPPLFit.invalid(window, LPPLExhaustionStatus.OPTIMIZER_FAILED);
         }
     }
 
@@ -228,8 +228,8 @@ final class LpplFitCalibrator {
                     && Double.isFinite(rss) && Double.isFinite(rms) && Double.isFinite(rSquared);
         }
 
-        LpplFit toFit(LpplExhaustionStatus status) {
-            return new LpplFit(window, status, a, b, c1, c2, criticalTime, m, omega, rss, rms, rSquared, criticalOffset,
+        LPPLFit toFit(LPPLExhaustionStatus status) {
+            return new LPPLFit(window, status, a, b, c1, c2, criticalTime, m, omega, rss, rms, rSquared, criticalOffset,
                     evaluations);
         }
     }

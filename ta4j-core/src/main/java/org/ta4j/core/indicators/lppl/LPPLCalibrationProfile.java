@@ -6,7 +6,7 @@ package org.ta4j.core.indicators.lppl;
 import java.util.Arrays;
 
 /**
- * Calibration profile for LPPL exhaustion indicators.
+ * Calibration profile for Log-Periodic Power Law (LPPL) exhaustion indicators.
  *
  * <p>
  * The default profile uses the common LPPL empirical ranges for {@code m} and
@@ -35,7 +35,7 @@ import java.util.Arrays;
  * @param minRSquared             minimum fit quality for an actionable signal
  * @since 0.22.7
  */
-public record LpplCalibrationProfile(int[] windows, double minM, double maxM, int mSteps, double minOmega,
+public record LPPLCalibrationProfile(int[] windows, double minM, double maxM, int mSteps, double minOmega,
         double maxOmega, int omegaSteps, int minCriticalOffset, int maxCriticalOffset, int criticalOffsetStep,
         int activeMinCriticalOffset, int activeMaxCriticalOffset, int maxEvaluations, double minRSquared) {
 
@@ -44,7 +44,7 @@ public record LpplCalibrationProfile(int[] windows, double minM, double maxM, in
      *
      * @since 0.22.7
      */
-    public LpplCalibrationProfile {
+    public LPPLCalibrationProfile {
         if (windows == null || windows.length == 0) {
             throw new IllegalArgumentException("windows must contain at least one value");
         }
@@ -88,8 +88,8 @@ public record LpplCalibrationProfile(int[] windows, double minM, double maxM, in
      * @return daily-equity defaults suitable for first-pass LPPL exhaustion scans
      * @since 0.22.7
      */
-    public static LpplCalibrationProfile defaults() {
-        return new LpplCalibrationProfile(new int[] { 200, 300, 400, 500 }, 0.1, 0.9, 5, 6.0, 13.0, 8, 1, 60, 5, 10, 30,
+    public static LPPLCalibrationProfile defaults() {
+        return new LPPLCalibrationProfile(new int[] { 200, 300, 400, 500 }, 0.1, 0.9, 5, 6.0, 13.0, 8, 1, 60, 5, 10, 30,
                 120, 0.75);
     }
 
@@ -112,7 +112,7 @@ public record LpplCalibrationProfile(int[] windows, double minM, double maxM, in
         if (this == object) {
             return true;
         }
-        if (!(object instanceof LpplCalibrationProfile other)) {
+        if (!(object instanceof LPPLCalibrationProfile other)) {
             return false;
         }
         return Arrays.equals(windows, other.windows) && Double.compare(minM, other.minM) == 0
@@ -155,7 +155,7 @@ public record LpplCalibrationProfile(int[] windows, double minM, double maxM, in
      */
     @Override
     public String toString() {
-        return "LpplCalibrationProfile[windows=" + Arrays.toString(windows) + ", minM=" + minM + ", maxM=" + maxM
+        return "LPPLCalibrationProfile[windows=" + Arrays.toString(windows) + ", minM=" + minM + ", maxM=" + maxM
                 + ", mSteps=" + mSteps + ", minOmega=" + minOmega + ", maxOmega=" + maxOmega + ", omegaSteps="
                 + omegaSteps + ", minCriticalOffset=" + minCriticalOffset + ", maxCriticalOffset=" + maxCriticalOffset
                 + ", criticalOffsetStep=" + criticalOffsetStep + ", activeMinCriticalOffset=" + activeMinCriticalOffset

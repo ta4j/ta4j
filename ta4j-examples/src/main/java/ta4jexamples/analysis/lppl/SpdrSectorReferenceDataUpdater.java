@@ -59,7 +59,7 @@ final class SpdrSectorReferenceDataUpdater {
         this.fetcher = fetcher;
     }
 
-    RefreshSummary refresh(List<SpdrSectorLpplRotationDemo.SectorDefinition> universe, Settings settings)
+    RefreshSummary refresh(List<SpdrSectorLPPLRotationDemo.SectorDefinition> universe, Settings settings)
             throws IOException {
         if (universe == null || universe.isEmpty()) {
             return new RefreshSummary(List.of(), settings.outputDataDirectory(), settings.responseCacheDirectory());
@@ -70,13 +70,13 @@ final class SpdrSectorReferenceDataUpdater {
         YahooDailyBarFetcher effectiveFetcher = fetcher != null ? fetcher
                 : new YahooFinanceAdjustedDailyBarFetcher(settings.responseCacheDirectory());
         List<TickerRefresh> refreshes = new ArrayList<>(universe.size());
-        for (SpdrSectorLpplRotationDemo.SectorDefinition definition : universe) {
+        for (SpdrSectorLPPLRotationDemo.SectorDefinition definition : universe) {
             refreshes.add(refreshTicker(definition, settings, effectiveFetcher));
         }
         return new RefreshSummary(refreshes, settings.outputDataDirectory(), settings.responseCacheDirectory());
     }
 
-    private TickerRefresh refreshTicker(SpdrSectorLpplRotationDemo.SectorDefinition definition, Settings settings,
+    private TickerRefresh refreshTicker(SpdrSectorLPPLRotationDemo.SectorDefinition definition, Settings settings,
             YahooDailyBarFetcher effectiveFetcher) throws IOException {
         Path sourcePath = settings.referenceDataDirectory().resolve(definition.resource());
         List<ReferenceBar> existingBars = readReferenceBars(sourcePath, definition.resource());
@@ -283,7 +283,7 @@ final class SpdrSectorReferenceDataUpdater {
             tickers = tickers == null ? List.of() : List.copyOf(tickers);
         }
 
-        String sourceFor(SpdrSectorLpplRotationDemo.SectorDefinition definition) {
+        String sourceFor(SpdrSectorLPPLRotationDemo.SectorDefinition definition) {
             return tickers.stream()
                     .filter(refresh -> refresh.ticker().equals(definition.ticker()))
                     .map(refresh -> refresh.outputPath().toString())

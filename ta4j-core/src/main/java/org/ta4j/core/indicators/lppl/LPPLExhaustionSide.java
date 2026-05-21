@@ -4,7 +4,7 @@
 package org.ta4j.core.indicators.lppl;
 
 /**
- * Direction of an LPPL exhaustion signal.
+ * Direction of a Log-Periodic Power Law (LPPL) exhaustion signal.
  *
  * <p>
  * The sign convention matches capital-rotation dashboards: positive values
@@ -13,7 +13,7 @@ package org.ta4j.core.indicators.lppl;
  *
  * @since 0.22.7
  */
-public enum LpplExhaustionSide {
+public enum LPPLExhaustionSide {
 
     /**
      * No dominant LPPL exhaustion side was detected.
@@ -32,7 +32,7 @@ public enum LpplExhaustionSide {
 
     private final int scoreSign;
 
-    LpplExhaustionSide(int scoreSign) {
+    LPPLExhaustionSide(int scoreSign) {
         this.scoreSign = scoreSign;
     }
 

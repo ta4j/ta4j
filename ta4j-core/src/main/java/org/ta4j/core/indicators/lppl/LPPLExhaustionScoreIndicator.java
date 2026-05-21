@@ -13,7 +13,8 @@ import org.ta4j.core.indicators.CachedIndicator;
 import org.ta4j.core.num.Num;
 
 /**
- * Numeric LPPL exhaustion score in the range {@code [-1, 1]}.
+ * Numeric Log-Periodic Power Law (LPPL) exhaustion score in the range
+ * {@code [-1, 1]}.
  *
  * <p>
  * Positive values represent crash exhaustion. Negative values represent bubble
@@ -21,9 +22,9 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.22.7
  */
-public class LpplExhaustionScoreIndicator extends CachedIndicator<Num> {
+public class LPPLExhaustionScoreIndicator extends CachedIndicator<Num> {
 
-    private final LpplExhaustionIndicator exhaustionIndicator;
+    private final LPPLExhaustionIndicator exhaustionIndicator;
 
     /**
      * Creates a score indicator over close prices using default calibration
@@ -32,8 +33,8 @@ public class LpplExhaustionScoreIndicator extends CachedIndicator<Num> {
      * @param series underlying bar series
      * @since 0.22.7
      */
-    public LpplExhaustionScoreIndicator(BarSeries series) {
-        this(new LpplExhaustionIndicator(series));
+    public LPPLExhaustionScoreIndicator(BarSeries series) {
+        this(new LPPLExhaustionIndicator(series));
     }
 
     /**
@@ -44,8 +45,8 @@ public class LpplExhaustionScoreIndicator extends CachedIndicator<Num> {
      * @param profile calibration profile
      * @since 0.22.7
      */
-    public LpplExhaustionScoreIndicator(BarSeries series, LpplCalibrationProfile profile) {
-        this(new LpplExhaustionIndicator(series, profile));
+    public LPPLExhaustionScoreIndicator(BarSeries series, LPPLCalibrationProfile profile) {
+        this(new LPPLExhaustionIndicator(series, profile));
     }
 
     /**
@@ -55,8 +56,8 @@ public class LpplExhaustionScoreIndicator extends CachedIndicator<Num> {
      * @param priceIndicator price source to model
      * @since 0.22.7
      */
-    public LpplExhaustionScoreIndicator(Indicator<Num> priceIndicator) {
-        this(new LpplExhaustionIndicator(priceIndicator));
+    public LPPLExhaustionScoreIndicator(Indicator<Num> priceIndicator) {
+        this(new LPPLExhaustionIndicator(priceIndicator));
     }
 
     /**
@@ -67,8 +68,8 @@ public class LpplExhaustionScoreIndicator extends CachedIndicator<Num> {
      * @param profile        calibration profile
      * @since 0.22.7
      */
-    public LpplExhaustionScoreIndicator(Indicator<Num> priceIndicator, LpplCalibrationProfile profile) {
-        this(new LpplExhaustionIndicator(priceIndicator, profile));
+    public LPPLExhaustionScoreIndicator(Indicator<Num> priceIndicator, LPPLCalibrationProfile profile) {
+        this(new LPPLExhaustionIndicator(priceIndicator, profile));
     }
 
     /**
@@ -77,7 +78,7 @@ public class LpplExhaustionScoreIndicator extends CachedIndicator<Num> {
      * @param exhaustionIndicator rich LPPL exhaustion source
      * @since 0.22.7
      */
-    public LpplExhaustionScoreIndicator(LpplExhaustionIndicator exhaustionIndicator) {
+    public LPPLExhaustionScoreIndicator(LPPLExhaustionIndicator exhaustionIndicator) {
         super(Objects.requireNonNull(exhaustionIndicator, "exhaustionIndicator"));
         this.exhaustionIndicator = exhaustionIndicator;
     }
@@ -103,7 +104,7 @@ public class LpplExhaustionScoreIndicator extends CachedIndicator<Num> {
      * @return rich LPPL exhaustion indicator used by this numeric projection
      * @since 0.22.7
      */
-    public LpplExhaustionIndicator getExhaustionIndicator() {
+    public LPPLExhaustionIndicator getExhaustionIndicator() {
         return exhaustionIndicator;
     }
 }

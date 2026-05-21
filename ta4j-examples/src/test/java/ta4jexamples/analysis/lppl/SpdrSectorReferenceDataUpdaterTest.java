@@ -147,8 +147,8 @@ class SpdrSectorReferenceDataUpdaterTest {
                 tempDirectory.resolve("analysis").resolve("responses"), updateReferenceData, 7, now);
     }
 
-    private List<SpdrSectorLpplRotationDemo.SectorDefinition> universe() {
-        return List.of(new SpdrSectorLpplRotationDemo.SectorDefinition("XLI", "Industrials", RESOURCE));
+    private List<SpdrSectorLPPLRotationDemo.SectorDefinition> universe() {
+        return List.of(new SpdrSectorLPPLRotationDemo.SectorDefinition("XLI", "Industrials", RESOURCE));
     }
 
     private static String bars(SpdrSectorReferenceDataUpdater.ReferenceBar... bars) throws IOException {

@@ -4,7 +4,8 @@
 package org.ta4j.core.indicators.lppl;
 
 /**
- * Result of one LPPLS fit over a single rolling window.
+ * Result of one Log-Periodic Power Law Singularity (LPPLS) fit over a single
+ * rolling window.
  *
  * <p>
  * The model form is:
@@ -36,7 +37,7 @@ package org.ta4j.core.indicators.lppl;
  *                       failures
  * @since 0.22.7
  */
-public record LpplFit(int window, LpplExhaustionStatus status, double a, double b, double c1, double c2,
+public record LPPLFit(int window, LPPLExhaustionStatus status, double a, double b, double c1, double c2,
         double criticalTime, double m, double omega, double rss, double rms, double rSquared, int criticalOffset,
         int evaluations) {
 
@@ -45,14 +46,14 @@ public record LpplFit(int window, LpplExhaustionStatus status, double a, double 
      *
      * @since 0.22.7
      */
-    public LpplFit {
+    public LPPLFit {
         if (window < 0) {
             throw new IllegalArgumentException("window must be non-negative");
         }
         if (status == null) {
             throw new IllegalArgumentException("status must not be null");
         }
-        if (status == LpplExhaustionStatus.VALID
+        if (status == LPPLExhaustionStatus.VALID
                 && (!Double.isFinite(a) || !Double.isFinite(b) || !Double.isFinite(c1) || !Double.isFinite(c2)
                         || !Double.isFinite(criticalTime) || !Double.isFinite(m) || !Double.isFinite(omega)
                         || !Double.isFinite(rss) || !Double.isFinite(rms) || !Double.isFinite(rSquared))) {
@@ -65,7 +66,7 @@ public record LpplFit(int window, LpplExhaustionStatus status, double a, double 
      * @since 0.22.7
      */
     public boolean isConverged() {
-        return status == LpplExhaustionStatus.VALID && Double.isFinite(a) && Double.isFinite(b) && Double.isFinite(c1)
+        return status == LPPLExhaustionStatus.VALID && Double.isFinite(a) && Double.isFinite(b) && Double.isFinite(c1)
                 && Double.isFinite(c2) && Double.isFinite(criticalTime) && Double.isFinite(m) && Double.isFinite(omega)
                 && Double.isFinite(rss) && Double.isFinite(rms) && Double.isFinite(rSquared);
     }
@@ -76,26 +77,26 @@ public record LpplFit(int window, LpplExhaustionStatus status, double a, double 
      *         horizon constraints
      * @since 0.22.7
      */
-    public boolean isActionable(LpplCalibrationProfile profile) {
+    public boolean isActionable(LPPLCalibrationProfile profile) {
         return isConverged() && rSquared >= profile.minRSquared() && m >= profile.minM() && m <= profile.maxM()
                 && omega >= profile.minOmega() && omega <= profile.maxOmega()
                 && criticalOffset >= profile.activeMinCriticalOffset()
-                && criticalOffset <= profile.activeMaxCriticalOffset() && side() != LpplExhaustionSide.NONE;
+                && criticalOffset <= profile.activeMaxCriticalOffset() && side() != LPPLExhaustionSide.NONE;
     }
 
     /**
      * @return LPPL exhaustion side implied by {@code B}
      * @since 0.22.7
      */
-    public LpplExhaustionSide side() {
+    public LPPLExhaustionSide side() {
         if (!Double.isFinite(b) || b == 0.0) {
-            return LpplExhaustionSide.NONE;
+            return LPPLExhaustionSide.NONE;
         }
-        return b > 0 ? LpplExhaustionSide.CRASH_EXHAUSTION : LpplExhaustionSide.BUBBLE_EXHAUSTION;
+        return b > 0 ? LPPLExhaustionSide.CRASH_EXHAUSTION : LPPLExhaustionSide.BUBBLE_EXHAUSTION;
     }
 
-    static LpplFit invalid(int window, LpplExhaustionStatus status) {
-        return new LpplFit(window, status, Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN,
+    static LPPLFit invalid(int window, LPPLExhaustionStatus status) {
+        return new LPPLFit(window, status, Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN, Double.NaN,
                 Double.NaN, Double.NaN, Double.NaN, Double.NaN, -1, 0);
     }
 }

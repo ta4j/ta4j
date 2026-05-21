@@ -8,7 +8,8 @@ import java.util.List;
 import org.ta4j.core.num.Num;
 
 /**
- * Rich LPPL exhaustion result returned by {@link LpplExhaustionIndicator}.
+ * Rich Log-Periodic Power Law (LPPL) exhaustion result returned by
+ * {@link LPPLExhaustionIndicator}.
  *
  * @param status        aggregate status
  * @param side          dominant exhaustion side
@@ -25,15 +26,15 @@ import org.ta4j.core.num.Num;
  * @param bubbleFits    actionable bubble-exhaustion fits
  * @since 0.22.7
  */
-public record LpplExhaustion(LpplExhaustionStatus status, LpplExhaustionSide side, Num score, Num fitQuality,
-        LpplFit dominantFit, List<LpplFit> fits, int attemptedFits, int validFits, int crashFits, int bubbleFits) {
+public record LPPLExhaustion(LPPLExhaustionStatus status, LPPLExhaustionSide side, Num score, Num fitQuality,
+        LPPLFit dominantFit, List<LPPLFit> fits, int attemptedFits, int validFits, int crashFits, int bubbleFits) {
 
     /**
      * Creates a validated immutable exhaustion result.
      *
      * @since 0.22.7
      */
-    public LpplExhaustion {
+    public LPPLExhaustion {
         if (status == null) {
             throw new IllegalArgumentException("status must not be null");
         }
@@ -67,6 +68,6 @@ public record LpplExhaustion(LpplExhaustionStatus status, LpplExhaustionSide sid
      * @since 0.22.7
      */
     public boolean isValid() {
-        return status == LpplExhaustionStatus.VALID && side != LpplExhaustionSide.NONE && validFits > 0;
+        return status == LPPLExhaustionStatus.VALID && side != LPPLExhaustionSide.NONE && validFits > 0;
     }
 }
