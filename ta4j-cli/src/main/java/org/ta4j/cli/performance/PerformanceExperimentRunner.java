@@ -117,10 +117,7 @@ public final class PerformanceExperimentRunner {
     }
 
     private static PerformanceExperiment experiment(String id) {
-        if (KalmanFilterPerformanceExperiment.ID.equals(id)) {
-            return new KalmanFilterPerformanceExperiment();
-        }
-        throw new IllegalArgumentException("Unknown experiment: " + id);
+        return PerformanceExperiments.get(id);
     }
 
     private static List<PerformanceScenario> selectScenarios(PerformanceExperiment experiment, List<String> ids) {

@@ -16,29 +16,54 @@ import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 
 /**
- * Performance experiment covering Kalman filter access patterns that previously
- * exposed recursive replay costs.
+ * Registry for built-in CLI performance experiments.
+ *
+ * <p>
+ * Concrete workloads stay private to this registry so the reusable runner keeps
+ * a generic production surface even when the first bundled experiment targets a
+ * specific indicator.
+ * </p>
  *
  * @since 0.22.7
  */
-final class KalmanFilterPerformanceExperiment implements PerformanceExperiment {
+final class PerformanceExperiments {
 
-    static final String ID = "kalman-filter";
+    private static final String KALMAN_FILTER_ID = "kalman-filter";
 
-    @Override
-    public String id() {
-        return ID;
+    private PerformanceExperiments() {
     }
 
-    @Override
-    public String description() {
-        return "KalmanFilterIndicator access-pattern performance";
+    /**
+     * Resolves a built-in experiment by id.
+     *
+     * @param id experiment id
+     * @return built-in experiment
+     * @since 0.22.7
+     */
+    static PerformanceExperiment get(String id) {
+        if (KALMAN_FILTER_ID.equals(id)) {
+            return new KalmanFilterExperiment();
+        }
+        throw new IllegalArgumentException("Unknown experiment: " + id);
     }
 
-    @Override
-    public List<PerformanceScenario> scenarios() {
-        return List.of(new SequentialScenario(), new EndOnlyScenario(), new EndThenReverseScenario(),
-                new SparseAfterHighWatermarkScenario());
+    private static final class KalmanFilterExperiment implements PerformanceExperiment {
+
+        @Override
+        public String id() {
+            return KALMAN_FILTER_ID;
+        }
+
+        @Override
+        public String description() {
+            return "KalmanFilterIndicator access-pattern performance";
+        }
+
+        @Override
+        public List<PerformanceScenario> scenarios() {
+            return List.of(new SequentialScenario(), new EndOnlyScenario(), new EndThenReverseScenario(),
+                    new SparseAfterHighWatermarkScenario());
+        }
     }
 
     private abstract static class KalmanScenario implements PerformanceScenario {
