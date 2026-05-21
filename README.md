@@ -259,7 +259,7 @@ CompressionIndicator compression = new CompressionIndicator(series, 20, 40);
 TrendScoreIndicator trendScore = new TrendScoreIndicator(series, 12, 26, 9, 14, 40);
 TrendConclusionIndicator trendConclusion = new TrendConclusionIndicator(series, 20, 12, 26, 9, 14, 20, 40);
 
-Rule cooledOffAfterLoss = new LossTriggeredCooldownRule(close, 3);
+Rule cooledOffAfterLoss = new LossTriggeredCooldownRule(series, 3);
 
 Rule entry = new UnderIndicatorRule(stretch, -1.5)
         .and(new OverIndicatorRule(compression, 70))

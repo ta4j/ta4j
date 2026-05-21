@@ -3,8 +3,6 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.Objects;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.adx.ADXIndicator;
@@ -77,7 +75,7 @@ public class TrendScoreIndicator extends CachedIndicator<Num> {
      */
     public TrendScoreIndicator(Indicator<Num> emaAlignmentIndicator, Indicator<Num> macdHistogramIndicator,
             Indicator<Num> adxIndicator, int normalizationBarCount) {
-        super(requireSameSeries(emaAlignmentIndicator, macdHistogramIndicator, adxIndicator));
+        super(IndicatorUtils.requireSameSeries(emaAlignmentIndicator, macdHistogramIndicator, adxIndicator));
         if (normalizationBarCount < 1) {
             throw new IllegalArgumentException("normalizationBarCount must be greater than zero");
         }
@@ -177,7 +175,7 @@ public class TrendScoreIndicator extends CachedIndicator<Num> {
 
     private static Indicator<Num> signedMagnitude(Indicator<Num> magnitudeIndicator,
             Indicator<Num> directionIndicator) {
-        return new CachedIndicator<>(requireSameSeries(magnitudeIndicator, directionIndicator)) {
+        return new CachedIndicator<>(IndicatorUtils.requireSameSeries(magnitudeIndicator, directionIndicator)) {
             @Override
             protected Num calculate(int index) {
                 Num magnitude = magnitudeIndicator.getValue(index);
@@ -197,15 +195,4 @@ public class TrendScoreIndicator extends CachedIndicator<Num> {
         };
     }
 
-    private static BarSeries requireSameSeries(Indicator<Num>... indicators) {
-        Indicator<Num> first = Objects.requireNonNull(indicators[0], "indicators[0]");
-        BarSeries series = Objects.requireNonNull(first.getBarSeries(), "indicator must reference a bar series");
-        for (Indicator<Num> indicator : indicators) {
-            Indicator<Num> resolved = Objects.requireNonNull(indicator, "indicator");
-            if (!Objects.equals(series, resolved.getBarSeries())) {
-                throw new IllegalArgumentException("Indicators must share the same bar series");
-            }
-        }
-        return series;
-    }
 }

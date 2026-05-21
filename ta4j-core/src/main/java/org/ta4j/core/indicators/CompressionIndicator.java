@@ -3,8 +3,6 @@
  */
 package org.ta4j.core.indicators;
 
-import java.util.Objects;
-
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.bollinger.BollingerBandFacade;
@@ -77,7 +75,7 @@ public class CompressionIndicator extends CachedIndicator<Num> {
      */
     public CompressionIndicator(Indicator<Num> atrPercentIndicator, Indicator<Num> bollingerWidthIndicator,
             Indicator<Num> donchianWidthIndicator, int barCount, int percentileBarCount) {
-        super(requireSameSeries(atrPercentIndicator, bollingerWidthIndicator, donchianWidthIndicator));
+        super(IndicatorUtils.requireSameSeries(atrPercentIndicator, bollingerWidthIndicator, donchianWidthIndicator));
         if (barCount < 1) {
             throw new IllegalArgumentException("barCount must be greater than zero");
         }
@@ -169,17 +167,5 @@ public class CompressionIndicator extends CachedIndicator<Num> {
 
     private static Indicator<Num> invertedPercentRank(Indicator<Num> indicator, int percentileBarCount) {
         return NumericIndicator.of(new PercentRankIndicator(indicator, percentileBarCount)).multipliedBy(-1).plus(100);
-    }
-
-    private static BarSeries requireSameSeries(Indicator<Num>... indicators) {
-        Indicator<Num> first = Objects.requireNonNull(indicators[0], "indicators[0]");
-        BarSeries series = Objects.requireNonNull(first.getBarSeries(), "indicator must reference a bar series");
-        for (Indicator<Num> indicator : indicators) {
-            Indicator<Num> resolved = Objects.requireNonNull(indicator, "indicator");
-            if (!Objects.equals(series, resolved.getBarSeries())) {
-                throw new IllegalArgumentException("Indicators must share the same bar series");
-            }
-        }
-        return series;
     }
 }

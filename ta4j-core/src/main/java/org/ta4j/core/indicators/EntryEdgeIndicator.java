@@ -69,7 +69,7 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
      */
     public EntryEdgeIndicator(Indicator<Boolean> signalIndicator, Indicator<Num> priceIndicator, TradeType tradeType,
             int horizonBars, int lookbackSignals) {
-        super(requireSameSeries(signalIndicator, priceIndicator));
+        super(IndicatorUtils.requireSameSeries(signalIndicator, priceIndicator));
         if (horizonBars < 1) {
             throw new IllegalArgumentException("horizonBars must be greater than zero");
         }
@@ -227,14 +227,4 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
                 getBarSeries().getBeginIndex() + signalIndicator.getCountOfUnstableBars());
     }
 
-    private static BarSeries requireSameSeries(Indicator<Boolean> signalIndicator, Indicator<Num> priceIndicator) {
-        Indicator<Boolean> resolvedSignal = Objects.requireNonNull(signalIndicator, "signalIndicator");
-        Indicator<Num> resolvedPrice = Objects.requireNonNull(priceIndicator, "priceIndicator");
-        BarSeries series = Objects.requireNonNull(resolvedSignal.getBarSeries(),
-                "signalIndicator must reference a bar series");
-        if (!Objects.equals(series, resolvedPrice.getBarSeries())) {
-            throw new IllegalArgumentException("Indicators must share the same bar series");
-        }
-        return series;
-    }
 }

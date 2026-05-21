@@ -76,7 +76,7 @@ public class StretchZScoreIndicator extends CachedIndicator<Num> {
      * @since 0.22.7
      */
     public StretchZScoreIndicator(Indicator<Num> sourceIndicator, Indicator<Num> referenceIndicator, int barCount) {
-        super(requireSameSeries(sourceIndicator, referenceIndicator));
+        super(IndicatorUtils.requireSameSeries(sourceIndicator, referenceIndicator));
         if (barCount < 1) {
             throw new IllegalArgumentException("barCount must be greater than zero");
         }
@@ -158,14 +158,4 @@ public class StretchZScoreIndicator extends CachedIndicator<Num> {
         return getClass().getSimpleName() + " barCount: " + barCount;
     }
 
-    private static BarSeries requireSameSeries(Indicator<Num> sourceIndicator, Indicator<Num> referenceIndicator) {
-        Indicator<Num> resolvedSource = Objects.requireNonNull(sourceIndicator, "sourceIndicator");
-        Indicator<Num> resolvedReference = Objects.requireNonNull(referenceIndicator, "referenceIndicator");
-        BarSeries series = Objects.requireNonNull(resolvedSource.getBarSeries(),
-                "sourceIndicator must reference a bar series");
-        if (!Objects.equals(series, resolvedReference.getBarSeries())) {
-            throw new IllegalArgumentException("Indicators must share the same bar series");
-        }
-        return series;
-    }
 }

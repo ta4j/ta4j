@@ -12,7 +12,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseTradingRecord;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.helpers.ConstantIndicator;
-import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.Num;
 
@@ -35,7 +34,7 @@ public class LossTriggeredCooldownRuleTest {
         record.enter(0, series.numFactory().numOf(100), series.numFactory().one());
         record.exit(2, series.numFactory().numOf(90), series.numFactory().one());
 
-        LossTriggeredCooldownRule subject = new LossTriggeredCooldownRule(new ClosePriceIndicator(series), 3);
+        LossTriggeredCooldownRule subject = new LossTriggeredCooldownRule(series, 3);
 
         assertFalse(subject.isSatisfied(4, record));
         assertTrue(subject.isSatisfied(5, record));
@@ -61,7 +60,7 @@ public class LossTriggeredCooldownRuleTest {
         record.enter(3, series.numFactory().numOf(90), series.numFactory().one());
         record.exit(4, series.numFactory().numOf(110), series.numFactory().one());
 
-        LossTriggeredCooldownRule subject = new LossTriggeredCooldownRule(new ClosePriceIndicator(series), 10);
+        LossTriggeredCooldownRule subject = new LossTriggeredCooldownRule(series, 10);
 
         assertTrue(subject.isSatisfied(5, record));
     }

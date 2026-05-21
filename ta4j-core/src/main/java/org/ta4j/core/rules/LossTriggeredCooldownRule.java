@@ -6,6 +6,7 @@ package org.ta4j.core.rules;
 import java.util.List;
 import java.util.Objects;
 
+import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.Position;
 import org.ta4j.core.Rule;
@@ -35,26 +36,26 @@ public class LossTriggeredCooldownRule extends AbstractRule {
     /**
      * Creates a cooldown rule that applies to any entry side.
      *
-     * @param indicator    indicator used only to resolve the bar series
+     * @param series       the bar series
      * @param cooldownBars cooldown length in bars
      * @since 0.22.7
      */
-    public LossTriggeredCooldownRule(Indicator<?> indicator, Number cooldownBars) {
-        this(indicator, cooldownBars, null, null);
+    public LossTriggeredCooldownRule(BarSeries series, Number cooldownBars) {
+        this(series, cooldownBars, null, null);
     }
 
     /**
      * Creates a cooldown rule with an optional reset rule and side filter.
      *
-     * @param indicator    indicator used only to resolve the bar series
+     * @param series       the bar series
      * @param cooldownBars cooldown length in bars
      * @param resetRule    optional rule that can clear the cooldown early
      * @param tradeType    optional entry-side filter
      * @since 0.22.7
      */
-    public LossTriggeredCooldownRule(Indicator<?> indicator, Number cooldownBars, Rule resetRule, TradeType tradeType) {
-        this(new ConstantIndicator<>(Objects.requireNonNull(indicator, "indicator").getBarSeries(),
-                indicator.getBarSeries().numFactory().numOf(cooldownBars)), resetRule, tradeType);
+    public LossTriggeredCooldownRule(BarSeries series, Number cooldownBars, Rule resetRule, TradeType tradeType) {
+        this(new ConstantIndicator<>(Objects.requireNonNull(series, "series"), series.numFactory().numOf(cooldownBars)),
+                resetRule, tradeType);
     }
 
     /**
