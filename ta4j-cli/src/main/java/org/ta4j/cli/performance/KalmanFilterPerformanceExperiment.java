@@ -50,7 +50,7 @@ final class KalmanFilterPerformanceExperiment implements PerformanceExperiment {
 
         protected final ScenarioInput input(int barCount) {
             BarSeries series = buildSeries(barCount);
-            CountingIndicator source = new CountingIndicator(new ClosePriceIndicator(series));
+            ReadCountingIndicator source = new ReadCountingIndicator(new ClosePriceIndicator(series));
             KalmanFilterIndicator indicator = new KalmanFilterIndicator(source);
             return new ScenarioInput(series, source, indicator);
         }
@@ -62,7 +62,7 @@ final class KalmanFilterPerformanceExperiment implements PerformanceExperiment {
         }
 
         protected final PerformanceScenario.Measurement measurement(long operations, long durationNanos, long checksum,
-                CountingIndicator source) {
+                ReadCountingIndicator source) {
             return new PerformanceScenario.Measurement(operations, durationNanos, checksum,
                     Map.of("sourceReads", source.readCount()));
         }
@@ -190,7 +190,7 @@ final class KalmanFilterPerformanceExperiment implements PerformanceExperiment {
         }
     }
 
-    private record ScenarioInput(BarSeries series, CountingIndicator source, KalmanFilterIndicator indicator) {
+    private record ScenarioInput(BarSeries series, ReadCountingIndicator source, KalmanFilterIndicator indicator) {
     }
 
     private static BarSeries buildSeries(int barCount) {

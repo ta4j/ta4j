@@ -13,12 +13,12 @@ import org.ta4j.core.num.Num;
  *
  * @since 0.22.7
  */
-final class CountingIndicator implements Indicator<Num> {
+final class ReadCountingIndicator implements Indicator<Num> {
 
     private final Indicator<Num> delegate;
     private long readCount;
 
-    CountingIndicator(Indicator<Num> delegate) {
+    ReadCountingIndicator(Indicator<Num> delegate) {
         this.delegate = delegate;
     }
 

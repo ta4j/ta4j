@@ -11,14 +11,14 @@ Defaults:
   candidate-ref: HEAD
   output-dir:    .agents/benchmarks/performance/comparisons/<timestamp>
 
-The script runs ta4j-cli performance-experiment in
+The script runs ta4j-cli performance run in
 temporary worktrees for both refs, then compares performance.json artifacts with
-ta4j-cli performance-compare.
+ta4j-cli performance compare.
 
 Example:
   ta4j-cli/scripts/benchmark-performance-experiment.sh HEAD^ HEAD -- \
     --experiment kalman-filter \
-    --barCounts 1000,5000,10000 \
+    --bar-counts 1000,5000,10000 \
     --scenarios sequential,endOnly,endThenReverse,sparseAfterHighWatermark \
     --repetitions 5
 USAGE
@@ -56,7 +56,7 @@ fi
 
 default_runner_args=(
   --experiment kalman-filter
-  --barCounts 1000,5000,10000
+  --bar-counts 1000,5000,10000
   --scenarios sequential,endOnly,endThenReverse,sparseAfterHighWatermark
   --repetitions 5
 )
@@ -116,25 +116,25 @@ run_ref() {
   local run_output="$2"
   mkdir -p "$run_output"
   local exec_args
-  exec_args="$(join_exec_args "${runner_args[@]}" --outputDir "$run_output")"
+  exec_args="$(join_exec_args "${runner_args[@]}" --output-dir "$run_output")"
   (
     cd "$worktree"
     mvn -q -pl ta4j-cli -am install -DskipTests
     mvn -q -pl ta4j-cli exec:java \
       -Dexec.mainClass=org.ta4j.cli.Ta4jCli \
-      -Dexec.args="performance-experiment $exec_args"
+      -Dexec.args="performance run $exec_args"
   )
 }
 
 run_ref "$base_worktree" "$base_output"
 run_ref "$candidate_worktree" "$candidate_output"
 
-comparison_args="$(join_exec_args --baseDir "$base_output" --candidateDir "$candidate_output" --outputDir "$comparison_output")"
+comparison_args="$(join_exec_args --base-dir "$base_output" --candidate-dir "$candidate_output" --output-dir "$comparison_output")"
 (
   cd "$candidate_worktree"
   mvn -q -pl ta4j-cli exec:java \
     -Dexec.mainClass=org.ta4j.cli.Ta4jCli \
-    -Dexec.args="performance-compare $comparison_args"
+    -Dexec.args="performance compare $comparison_args"
 )
 
 printf 'Performance comparison written to %s\n' "$comparison_output"

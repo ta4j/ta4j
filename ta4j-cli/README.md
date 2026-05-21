@@ -4,13 +4,15 @@
 
 ## Supported Commands
 
-- `backtest`: runs one or more concrete strategies against one local dataset and emits bounded JSON performance reports. Use it when you already know which strategy definitions you want to replay and want a fast deterministic answer on one dataset.
-- `walk-forward`: runs rolling train/test evaluation for one or more concrete strategies and records both the in-sample backtest and fold-by-fold out-of-sample results. Use it when a plain backtest looks promising and you want a robustness check before promoting the strategy.
-- `sweep`: ranks a bounded SMA crossover parameter grid on one dataset and returns the top candidates. Use it when you are tuning fast/slow crossover windows rather than evaluating already-defined strategy labels or serialized strategies.
-- `indicator-test`: turns one serialized numeric indicator plus optional thresholds into a lightweight exploratory strategy. Use it when you want to sanity-check an indicator idea before investing in a `NamedIndicator`, a `NamedRule`, or a full strategy definition.
-- `rule-test`: builds a temporary strategy from one entry rule and one exit rule, then emits both a plain backtest and a walk-forward report. Use it when you are iterating on entry/exit logic via `NamedRule` labels or serialized rule payloads before folding that logic into a reusable strategy.
-- `performance-experiment`: runs a named optimization experiment and writes `performance.json` plus `summary.md` artifacts. Use it when you need a baseline profile, hypothesis, measured candidate result, checksum, and host/JVM metadata.
-- `performance-compare`: compares two experiment artifact directories and reports deltas, scaling shape, checksum parity, and threshold pass/fail status.
+Root help exposes four command groups: `strategy`, `indicator`, `rule`, and `performance`. Each group then reveals its focused actions and options.
+
+- `strategy backtest`: runs one or more concrete strategies against one local dataset and emits bounded JSON performance reports. Use it when you already know which strategy definitions you want to replay and want a fast deterministic answer on one dataset.
+- `strategy walk-forward`: runs rolling train/test evaluation for one or more concrete strategies and records both the in-sample backtest and fold-by-fold out-of-sample results. Use it when a plain backtest looks promising and you want a robustness check before promoting the strategy.
+- `strategy sweep`: ranks a bounded SMA crossover parameter grid on one dataset and returns the top candidates. Use it when you are tuning fast/slow crossover windows rather than evaluating already-defined strategy labels or serialized strategies.
+- `indicator test`: turns one serialized numeric indicator plus optional thresholds into a lightweight exploratory strategy. Use it when you want to sanity-check an indicator idea before investing in a `NamedIndicator`, a `NamedRule`, or a full strategy definition.
+- `rule test`: builds a temporary strategy from one entry rule and one exit rule, then emits both a plain backtest and a walk-forward report. Use it when you are iterating on entry/exit logic via `NamedRule` labels or serialized rule payloads before folding that logic into a reusable strategy.
+- `performance run`: runs a named optimization experiment and writes `performance.json` plus `summary.md` artifacts. Use it when you need a baseline profile, hypothesis, measured candidate result, checksum, and host/JVM metadata.
+- `performance compare`: compares two experiment artifact directories and reports deltas, scaling shape, checksum parity, and threshold pass/fail status.
 
 ## Build
 
@@ -37,7 +39,7 @@ JSON input may use the existing ta4j example bar-series formats already supporte
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  backtest \
+  strategy backtest \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --strategy DayOfWeekStrategy_MONDAY_FRIDAY \
   --criteria org.ta4j.core.criteria.pnl.NetProfitCriterion,org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion \
@@ -46,7 +48,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  walk-forward \
+  strategy walk-forward \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --strategy-json-file /absolute/path/exported-strategy.json \
   --criteria org.ta4j.core.criteria.pnl.GrossReturnCriterion \
@@ -55,7 +57,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  rule-test \
+  rule test \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --entry-rule RsiThresholdRule_BELOW_14_30 \
   --exit-rule RsiThresholdRule_ABOVE_14_70 \
@@ -77,7 +79,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ## Command Surface
 
-### Shared Options
+### Shared Strategy, Indicator, And Rule Options
 
 - `--data-file`: local CSV or JSON file to load.
 - `--timeframe`: resample the loaded series to `1m`, `5m`, `15m`, `1h`, `4h`, `1d`, or an ISO-8601 duration such as `PT5M`.
@@ -95,46 +97,46 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ### Command-Specific Options
 
-- `backtest`
+- `strategy backtest`
   - `--strategy`: one `NamedStrategy` label such as `DayOfWeekStrategy_MONDAY_FRIDAY`.
   - `--strategies`: one or more `NamedStrategy` labels. You may repeat the flag or pass a comma-separated list such as `HourOfDayStrategy_9_17,DayOfWeekStrategy_MONDAY_FRIDAY`.
   - `--strategy-json-file`: path to one serialized ta4j strategy payload.
   - `--strategies-json-file`: path to a JSON file containing an array of one or more serialized ta4j strategy objects.
-  - strategy inputs are self-contained, so `backtest` does not accept `--param`.
-- `walk-forward`
-  - `--strategy`, `--strategies`, `--strategy-json-file`, `--strategies-json-file`: the same strategy input shapes supported by `backtest`.
+  - strategy inputs are self-contained, so `strategy backtest` does not accept `--param`.
+- `strategy walk-forward`
+  - `--strategy`, `--strategies`, `--strategy-json-file`, `--strategies-json-file`: the same strategy input shapes supported by `strategy backtest`.
   - `--min-train-bars`, `--test-bars`, `--step-bars`, `--purge-bars`, `--embargo-bars`, `--holdout-bars`, `--primary-horizon-bars`, `--optimization-top-k`, `--seed`: walk-forward splitter and ranking controls.
-  - strategy inputs are self-contained, so `walk-forward` does not accept `--param`.
-- `sweep`
+  - strategy inputs are self-contained, so `strategy walk-forward` does not accept `--param`.
+- `strategy sweep`
   - always evaluates the bounded `sma-crossover` template.
   - `--param key=value`: fixed parameter applied to every candidate.
   - `--param-grid key=v1,v2,...`: candidate grid dimensions.
   - `--top-k`: number of ranked candidates to keep in the output.
-- `indicator-test`
+- `indicator test`
   - `--indicator`: one serialized numeric indicator payload produced by `Indicator.toJson()`.
   - `--indicator-json-file`: path to one serialized indicator payload.
   - `--entry-below`, `--entry-above`, `--exit-below`, `--exit-above`: optional threshold rules. If none are supplied, the command defaults to close-price crossovers around the selected indicator.
-  - indicator inputs are self-contained, so `indicator-test` does not accept `--param`.
-- `rule-test`
+  - indicator inputs are self-contained, so `indicator test` does not accept `--param`.
+- `rule test`
   - `--entry-rule`: one `NamedRule` label such as `RsiThresholdRule_BELOW_14_30`.
   - `--entry-rule-json-file`: path to one serialized rule payload.
   - `--exit-rule`: one `NamedRule` label such as `RsiThresholdRule_ABOVE_14_70`.
   - `--exit-rule-json-file`: path to one serialized rule payload.
-  - `--min-train-bars`, `--test-bars`, `--step-bars`, `--purge-bars`, `--embargo-bars`, `--holdout-bars`, `--primary-horizon-bars`, `--optimization-top-k`, `--seed`: the same walk-forward controls used by `walk-forward`.
-  - rule inputs are self-contained, so `rule-test` does not accept `--param`.
-- `performance-experiment`
+  - `--min-train-bars`, `--test-bars`, `--step-bars`, `--purge-bars`, `--embargo-bars`, `--holdout-bars`, `--primary-horizon-bars`, `--optimization-top-k`, `--seed`: the same walk-forward controls used by `strategy walk-forward`.
+  - rule inputs are self-contained, so `rule test` does not accept `--param`.
+- `performance run`
   - `--experiment`: experiment id, currently `kalman-filter`.
-  - `--barCounts`: comma-separated positive bar counts, for example `1000,5000,10000`.
+  - `--bar-counts`: comma-separated positive bar counts, for example `1000,5000,10000`.
   - `--scenarios`: comma-separated scenario ids, or omit for experiment defaults.
   - `--repetitions`: measured repetitions per scenario/bar-count cell.
   - `--warmups`: warmup repetitions per scenario/bar-count cell.
-  - `--outputDir`: artifact directory for `performance.json` and `summary.md`.
+  - `--output-dir`: artifact directory for `performance.json` and `summary.md`.
   - `--profile`: include profiler hint metadata in `performance.json`.
-- `performance-compare`
-  - `--baseDir`: baseline experiment artifact directory.
-  - `--candidateDir`: candidate experiment artifact directory.
-  - `--outputDir`: comparison artifact directory for `comparison.json` and `summary.md`.
-  - `--maxRegressionPct`: non-negative allowed median runtime regression percentage.
+- `performance compare`
+  - `--base-dir`: baseline experiment artifact directory.
+  - `--candidate-dir`: candidate experiment artifact directory.
+  - `--output-dir`: comparison artifact directory for `comparison.json` and `summary.md`.
+  - `--max-regression-pct`: non-negative allowed median runtime regression percentage.
 
 ## Parameter Coverage Examples
 
@@ -146,7 +148,7 @@ This example covers the shared execution flags with one concrete `NamedStrategy`
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  backtest \
+  strategy backtest \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --strategy DayOfWeekStrategy_MONDAY_FRIDAY \
   --timeframe 1d \
@@ -170,7 +172,7 @@ Use this when you already have a serialized ta4j strategy payload and want to re
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  backtest \
+  strategy backtest \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --strategy-json-file /absolute/path/exported-strategy.json \
   --criteria org.ta4j.core.criteria.pnl.NetProfitCriterion \
@@ -183,7 +185,7 @@ Use `--strategies` when you want to evaluate several `NamedStrategy` labels in o
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  backtest \
+  strategy backtest \
   --data-file /absolute/path/Binance-ETH-USD-PT5M-20230313_20230315.json \
   --strategies HourOfDayStrategy_9_17,DayOfWeekStrategy_MONDAY_FRIDAY \
   --criteria org.ta4j.core.criteria.pnl.NetProfitCriterion,org.ta4j.core.criteria.SharpeRatioCriterion \
@@ -196,7 +198,7 @@ Use `--strategies-json-file` when you already have several serialized strategies
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  backtest \
+  strategy backtest \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --strategies-json-file /absolute/path/exported-strategies.json \
   --criteria org.ta4j.core.criteria.pnl.NetProfitCriterion \
@@ -209,7 +211,7 @@ This example exercises every walk-forward-specific configuration flag in one run
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  walk-forward \
+  strategy walk-forward \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --strategy DayOfWeekStrategy_MONDAY_FRIDAY \
   --timeframe 1d \
@@ -238,11 +240,11 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ### Sweep With Fixed And Grid Parameters
 
-`sweep` combines shared execution flags with both fixed params and candidate grids.
+`strategy sweep` combines shared execution flags with both fixed params and candidate grids.
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  sweep \
+  strategy sweep \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --param slow=50 \
   --param-grid fast=3,5,8 \
@@ -258,7 +260,7 @@ This example demonstrates `--indicator`, `--entry-below`, and `--exit-above` usi
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  indicator-test \
+  indicator test \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --indicator '{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}' \
   --entry-below 30 \
@@ -273,7 +275,7 @@ This companion example demonstrates `--indicator-json-file`, `--entry-above`, an
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  indicator-test \
+  indicator test \
   --data-file /absolute/path/Binance-ETH-USD-PT5M-20230313_20230315.json \
   --indicator-json-file /absolute/path/exported-indicator.json \
   --entry-above 1800 \
@@ -284,11 +286,11 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ### Rule Test With NamedRule Labels
 
-Use `rule-test` when you want to explore entry and exit rules directly without first wrapping them in a reusable strategy type.
+Use `rule test` when you want to explore entry and exit rules directly without first wrapping them in a reusable strategy type.
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  rule-test \
+  rule test \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --entry-rule RsiThresholdRule_BELOW_14_30 \
   --exit-rule ClosePriceCrossedMovingAverageRule_DOWN_SMA_20 \
@@ -298,11 +300,11 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ### Rule Test From Serialized Rule JSON Files
 
-This example exercises the serialized rule file inputs and the shared walk-forward controls on `rule-test`.
+This example exercises the serialized rule file inputs and the shared walk-forward controls on `rule test`.
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  rule-test \
+  rule test \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --entry-rule-json-file /absolute/path/entry-rule.json \
   --exit-rule-json-file /absolute/path/exit-rule.json \
@@ -325,7 +327,7 @@ You may combine the strategy input methods. When at least one strategy is valid,
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  backtest \
+  strategy backtest \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --strategy DayOfWeekStrategy_MONDAY_FRIDAY \
   --strategies HourOfDayStrategy_9_17,MissingStrategy_VALUE \
@@ -338,20 +340,20 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  performance-experiment \
+  performance run \
   --experiment kalman-filter \
-  --barCounts 1000,5000,10000 \
+  --bar-counts 1000,5000,10000 \
   --scenarios sequential,endOnly,endThenReverse,sparseAfterHighWatermark \
   --repetitions 5 \
-  --outputDir .agents/benchmarks/performance/kalman-filter/current
+  --output-dir .agents/benchmarks/performance/kalman-filter/current
 ```
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  performance-compare \
-  --baseDir .agents/benchmarks/performance/kalman-filter/base \
-  --candidateDir .agents/benchmarks/performance/kalman-filter/candidate \
-  --outputDir .agents/benchmarks/performance/kalman-filter/comparison
+  performance compare \
+  --base-dir .agents/benchmarks/performance/kalman-filter/base \
+  --candidate-dir .agents/benchmarks/performance/kalman-filter/candidate \
+  --output-dir .agents/benchmarks/performance/kalman-filter/comparison
 ```
 
 To compare two git refs in temporary worktrees, run:
@@ -359,7 +361,7 @@ To compare two git refs in temporary worktrees, run:
 ```bash
 ta4j-cli/scripts/benchmark-performance-experiment.sh HEAD^ HEAD -- \
   --experiment kalman-filter \
-  --barCounts 1000,5000,10000 \
+  --bar-counts 1000,5000,10000 \
   --scenarios sequential,endOnly,endThenReverse,sparseAfterHighWatermark \
   --repetitions 5
 ```
@@ -372,7 +374,7 @@ These recipes are shorter than the coverage examples and focus on the workflows 
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  backtest \
+  strategy backtest \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --strategy DayOfWeekStrategy_MONDAY_FRIDAY \
   --criteria org.ta4j.core.criteria.pnl.NetProfitCriterion,org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion \
@@ -384,7 +386,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  walk-forward \
+  strategy walk-forward \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --strategy-json-file /absolute/path/exported-strategy.json \
   --min-train-bars 120 \
@@ -399,7 +401,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  walk-forward \
+  strategy walk-forward \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --strategies-json-file /absolute/path/exported-strategies.json \
   --min-train-bars 120 \
@@ -414,7 +416,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  backtest \
+  strategy backtest \
   --data-file /absolute/path/Binance-ETH-USD-PT5M-20230313_20230315.json \
   --strategy HourOfDayStrategy_9_17 \
   --output /tmp/hour-of-day-backtest.json
@@ -424,7 +426,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  sweep \
+  strategy sweep \
   --data-file /absolute/path/AAPL-PT1D-20130102_20131231.csv \
   --param-grid fast=3,5 \
   --param-grid slow=20,30 \
@@ -437,7 +439,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  indicator-test \
+  indicator test \
   --data-file /absolute/path/Binance-ETH-USD-PT5M-20230313_20230315.json \
   --indicator '{"type":"RSIIndicator","parameters":{"barCount":14},"components":[{"type":"ClosePriceIndicator"}]}' \
   --entry-below 35 \
@@ -450,7 +452,7 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 ```bash
 java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
-  rule-test \
+  rule test \
   --data-file /absolute/path/Binance-ETH-USD-PT5M-20230313_20230315.json \
   --entry-rule ClosePriceCrossedMovingAverageRule_UP_SMA_20 \
   --exit-rule RsiThresholdRule_ABOVE_14_70 \
@@ -462,11 +464,11 @@ java -jar ta4j-cli/target/ta4j-cli-*-jar-with-dependencies.jar \
 
 - Criteria are resolved from fully qualified `AnalysisCriterion` class names. Aliases are intentionally retired.
 - Charts are opt-in via `--chart <jpeg-path>` and save directly to disk without opening a window.
-- `backtest` and `walk-forward` share the same concrete strategy-input contract: one label, many labels, one serialized strategy file, or one serialized strategy-array file.
-- `indicator-test` accepts serialized numeric indicators, either inline or from disk. If you omit threshold options, it defaults to close-price crossovers around the indicator.
-- `rule-test` accepts one entry rule and one exit rule, returns both a plain backtest and a walk-forward report, and shares the same walk-forward controls as `walk-forward`.
-- `sweep` ranks bounded SMA crossover candidates deterministically and keeps only the requested top-K output set.
-- `performance-experiment` and `performance-compare` write shareable artifacts under caller-selected paths; `.agents/benchmarks/` is the preferred local scratch location.
+- `strategy backtest` and `strategy walk-forward` share the same concrete strategy-input contract: one label, many labels, one serialized strategy file, or one serialized strategy-array file.
+- `indicator test` accepts serialized numeric indicators, either inline or from disk. If you omit threshold options, it defaults to close-price crossovers around the indicator.
+- `rule test` accepts one entry rule and one exit rule, returns both a plain backtest and a walk-forward report, and shares the same walk-forward controls as `strategy walk-forward`.
+- `strategy sweep` ranks bounded SMA crossover candidates deterministically and keeps only the requested top-K output set.
+- `performance run` and `performance compare` write shareable artifacts under caller-selected paths; `.agents/benchmarks/` is the preferred local scratch location.
 - `NamedStrategy` labels follow the compact format `<SimpleClassName>_<param1>_<param2>...`, for example `HourOfDayStrategy_9_17` or `DayOfWeekStrategy_MONDAY_FRIDAY`.
 - `NamedRule` labels follow the same compact format, for example `RsiThresholdRule_BELOW_14_30` or `ClosePriceCrossedMovingAverageRule_UP_SMA_20`.
 - If every supplied strategy input is invalid, the command fails fast with a descriptive error and a non-zero exit code instead of producing an empty result artifact.

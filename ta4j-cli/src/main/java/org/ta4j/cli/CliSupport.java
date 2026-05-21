@@ -371,25 +371,21 @@ final class CliSupport {
         return strategy;
     }
 
-    static WalkForwardConfig buildWalkForwardConfig(BarSeries series, CliArguments arguments) {
+    static WalkForwardConfig buildWalkForwardConfig(BarSeries series, String minTrainBarsToken, String testBarsToken,
+            String stepBarsToken, String purgeBarsToken, String embargoBarsToken, String holdoutBarsToken,
+            String primaryHorizonBarsToken, String optimizationTopKToken, String seedToken) {
         WalkForwardConfig defaultConfig = WalkForwardConfig.defaultConfig(series);
-        int minTrainBars = parseOptionalInt(arguments.optional("min-train-bars").orElse(null),
-                defaultConfig.minTrainBars(), "min-train-bars");
-        int testBars = parseOptionalInt(arguments.optional("test-bars").orElse(null), defaultConfig.testBars(),
-                "test-bars");
-        int stepBars = parseOptionalInt(arguments.optional("step-bars").orElse(null), defaultConfig.stepBars(),
-                "step-bars");
-        int purgeBars = parseOptionalInt(arguments.optional("purge-bars").orElse(null), defaultConfig.purgeBars(),
-                "purge-bars");
-        int embargoBars = parseOptionalInt(arguments.optional("embargo-bars").orElse(null), defaultConfig.embargoBars(),
-                "embargo-bars");
-        int holdoutBars = parseOptionalInt(arguments.optional("holdout-bars").orElse(null), defaultConfig.holdoutBars(),
-                "holdout-bars");
-        int primaryHorizonBars = parseOptionalInt(arguments.optional("primary-horizon-bars").orElse(null),
-                defaultConfig.primaryHorizonBars(), "primary-horizon-bars");
-        int optimizationTopK = parseOptionalInt(arguments.optional("optimization-top-k").orElse(null),
-                defaultConfig.optimizationTopK(), "optimization-top-k");
-        long seed = parseOptionalLong(arguments.optional("seed").orElse(null), defaultConfig.seed(), "seed");
+        int minTrainBars = parseOptionalInt(minTrainBarsToken, defaultConfig.minTrainBars(), "min-train-bars");
+        int testBars = parseOptionalInt(testBarsToken, defaultConfig.testBars(), "test-bars");
+        int stepBars = parseOptionalInt(stepBarsToken, defaultConfig.stepBars(), "step-bars");
+        int purgeBars = parseOptionalInt(purgeBarsToken, defaultConfig.purgeBars(), "purge-bars");
+        int embargoBars = parseOptionalInt(embargoBarsToken, defaultConfig.embargoBars(), "embargo-bars");
+        int holdoutBars = parseOptionalInt(holdoutBarsToken, defaultConfig.holdoutBars(), "holdout-bars");
+        int primaryHorizonBars = parseOptionalInt(primaryHorizonBarsToken, defaultConfig.primaryHorizonBars(),
+                "primary-horizon-bars");
+        int optimizationTopK = parseOptionalInt(optimizationTopKToken, defaultConfig.optimizationTopK(),
+                "optimization-top-k");
+        long seed = parseOptionalLong(seedToken, defaultConfig.seed(), "seed");
 
         return new WalkForwardConfig(minTrainBars, testBars, stepBars, purgeBars, embargoBars, holdoutBars,
                 primaryHorizonBars, defaultConfig.reportingHorizons(), optimizationTopK, defaultConfig.reportingTopKs(),

@@ -369,11 +369,8 @@ class CliSupportTest {
     void buildWalkForwardConfigAndOptionalIntegerParsersApplyOverrides() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
         BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
-        CliArguments arguments = CliArguments.parse(new String[] { "walk-forward", "--min-train-bars", "120",
-                "--test-bars", "40", "--step-bars", "20", "--purge-bars", "3", "--embargo-bars", "2", "--holdout-bars",
-                "10", "--primary-horizon-bars", "5", "--optimization-top-k", "4", "--seed", "99" });
-
-        WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series, arguments);
+        WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series, "120", "40", "20", "3", "2", "10", "5",
+                "4", "99");
 
         assertThat(config.minTrainBars()).isEqualTo(120);
         assertThat(config.testBars()).isEqualTo(40);
@@ -461,9 +458,8 @@ class CliSupportTest {
         BacktestExecutionResult backtest = executor.executeWithRuntimeReport(List.of(strategy), amount,
                 strategy.getStartingType());
         TradingStatement statement = backtest.tradingStatements().getFirst();
-        WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series,
-                CliArguments.parse(new String[] { "walk-forward", "--min-train-bars", "120", "--test-bars", "40",
-                        "--step-bars", "20", "--holdout-bars", "20" }));
+        WalkForwardConfig config = CliSupport.buildWalkForwardConfig(series, "120", "40", "20", null, null, "20", null,
+                null, null);
         StrategyWalkForwardExecutionResult walkForward = executor.executeWalkForward(strategy, amount, config);
         Path outputPath = CliSupport.resolveOutputPath(tempDir.resolve("artifacts/backtest.json").toString());
         Path chartPath = CliSupport.saveChart(tempDir.resolve("charts/backtest.jpg").toString(), series, statement);

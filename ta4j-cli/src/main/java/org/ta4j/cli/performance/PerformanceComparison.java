@@ -19,9 +19,6 @@ import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-
 /**
  * Compares two {@link PerformanceExperimentRunner} artifact directories.
  *
@@ -37,47 +34,10 @@ public final class PerformanceComparison {
     static final String COMPARISON_FILE = "comparison.json";
     static final String SUMMARY_FILE = "summary.md";
 
-    private static final Logger LOG = LogManager.getLogger(PerformanceComparison.class);
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("0.00");
 
     private PerformanceComparison() {
-    }
-
-    /**
-     * CLI entrypoint.
-     *
-     * @param args command-line arguments
-     * @throws Exception when comparison validation fails or artifacts cannot be
-     *                   written
-     * @since 0.22.7
-     */
-    public static void main(String[] args) throws Exception {
-        if (hasHelp(args)) {
-            System.out.println(usage());
-            return;
-        }
-        ComparisonArtifacts artifacts = run(args);
-        LOG.info("Performance comparison artifacts written to {}", artifacts.outputDir());
-        System.out.println("Performance comparison written to " + artifacts.outputDir());
-    }
-
-    /**
-     * Runs a performance comparison from command-line arguments.
-     *
-     * @param args comparison command-line arguments
-     * @return comparison artifacts
-     * @throws IOException when artifacts cannot be read or written
-     * @since 0.22.7
-     */
-    public static ComparisonArtifacts run(String[] args) throws IOException {
-        ComparisonCli cli = ComparisonCli.parse(args);
-        if (cli.help()) {
-            LOG.info(ComparisonCli.usage());
-            return new ComparisonArtifacts(Path.of("."), new JsonObject());
-        }
-        JsonObject comparison = compare(cli.baseDir(), cli.candidateDir(), cli.outputDir(), cli.maxRegressionPct());
-        return new ComparisonArtifacts(cli.outputDir(), comparison);
     }
 
     /**
@@ -182,34 +142,7 @@ public final class PerformanceComparison {
         if (!regressionWithinThreshold) {
             throw new IllegalStateException("Performance regression exceeded threshold");
         }
-        LOG.info("Performance comparison artifacts written to {}", outputDir);
         return comparison;
-    }
-
-    /**
-     * Returns command usage text.
-     *
-     * @return usage text
-     * @since 0.22.7
-     */
-    public static String usage() {
-        return ComparisonCli.usage();
-    }
-
-    /**
-     * Detects whether help was requested before invoking the comparison parser.
-     *
-     * @param args command-line arguments
-     * @return true when help was requested
-     * @since 0.22.7
-     */
-    public static boolean hasHelp(String[] args) {
-        for (String arg : args) {
-            if ("-h".equals(arg) || "--help".equals(arg)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private static JsonObject readPerformanceJson(Path dir) throws IOException {
@@ -331,58 +264,5 @@ public final class PerformanceComparison {
      * @since 0.22.7
      */
     public record ComparisonArtifacts(Path outputDir, JsonObject comparisonJson) {
-    }
-
-    private record ComparisonCli(Path baseDir, Path candidateDir, Path outputDir, double maxRegressionPct,
-            boolean help) {
-
-        static ComparisonCli parse(String[] args) {
-            Path baseDir = null;
-            Path candidateDir = null;
-            Path outputDir = null;
-            double maxRegressionPct = 5d;
-            boolean help = false;
-            for (int i = 0; i < args.length; i++) {
-                String arg = args[i];
-                switch (arg) {
-                case "-h", "--help" -> help = true;
-                case "--baseDir", "--base-dir" -> baseDir = Path.of(requireValue(args, ++i, arg));
-                case "--candidateDir", "--candidate-dir" -> candidateDir = Path.of(requireValue(args, ++i, arg));
-                case "--outputDir", "--output-dir" -> outputDir = Path.of(requireValue(args, ++i, arg));
-                case "--maxRegressionPct", "--max-regression-pct" ->
-                    maxRegressionPct = Double.parseDouble(requireValue(args, ++i, arg));
-                default -> throw new IllegalArgumentException("Unknown argument: " + arg);
-                }
-            }
-            if (help) {
-                return new ComparisonCli(Path.of("."), Path.of("."), Path.of("."), maxRegressionPct, true);
-            }
-            if (baseDir == null || candidateDir == null || outputDir == null) {
-                throw new IllegalArgumentException("--baseDir, --candidateDir, and --outputDir are required");
-            }
-            if (maxRegressionPct < 0d) {
-                throw new IllegalArgumentException("--maxRegressionPct must be non-negative");
-            }
-            return new ComparisonCli(baseDir, candidateDir, outputDir, maxRegressionPct, false);
-        }
-
-        private static String usage() {
-            return """
-                    PerformanceComparison
-
-                    Options:
-                      --baseDir <dir>           Baseline artifact directory
-                      --candidateDir <dir>      Candidate artifact directory
-                      --outputDir <dir>         Comparison artifact directory
-                      --maxRegressionPct <pct>  Median runtime regression threshold (default 5)
-                    """;
-        }
-
-        private static String requireValue(String[] args, int index, String argument) {
-            if (index >= args.length) {
-                throw new IllegalArgumentException(argument + " requires a value");
-            }
-            return args[index];
-        }
     }
 }

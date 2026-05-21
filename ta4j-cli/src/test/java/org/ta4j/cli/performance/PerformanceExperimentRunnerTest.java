@@ -13,6 +13,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -35,17 +36,17 @@ class PerformanceExperimentRunnerTest {
     @Test
     void cliRejectsInvalidBarCounts() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> PerformanceExperimentRunner.RunnerCli
-                        .parse(new String[] { "--experiment", "kalman-filter", "--barCounts", "0" }));
+                () -> new PerformanceExperimentRunner.RunRequest("kalman-filter", List.of(0), List.of(), 1, 0,
+                        Optional.empty(), false));
 
-        assertEquals("--barCounts values must be positive", exception.getMessage());
+        assertEquals("barCounts values must be positive", exception.getMessage());
     }
 
     @Test
     void runnerRejectsUnknownScenarios() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
-                () -> PerformanceExperimentRunner.run(new String[] { "--experiment", "kalman-filter", "--barCounts",
-                        "16", "--scenarios", "missing", "--outputDir", tempDir.resolve("unknown").toString() }));
+                () -> PerformanceExperimentRunner.run(new PerformanceExperimentRunner.RunRequest("kalman-filter",
+                        List.of(16), List.of("missing"), 5, 1, Optional.of(tempDir.resolve("unknown")), false)));
 
         assertEquals("Unknown scenario for kalman-filter: missing", exception.getMessage());
     }
@@ -55,8 +56,8 @@ class PerformanceExperimentRunnerTest {
         Path outputDir = tempDir.resolve("kalman");
 
         PerformanceExperimentRunner.RunArtifacts artifacts = PerformanceExperimentRunner
-                .run(new String[] { "--experiment", "kalman-filter", "--barCounts", "16", "--scenarios", "endOnly",
-                        "--repetitions", "2", "--warmups", "0", "--outputDir", outputDir.toString(), "--profile" });
+                .run(new PerformanceExperimentRunner.RunRequest("kalman-filter", List.of(16), List.of("endOnly"), 2, 0,
+                        Optional.of(outputDir), true));
 
         assertEquals(outputDir.toAbsolutePath().normalize(), artifacts.outputDir());
         assertTrue(Files.exists(outputDir.resolve(PerformanceExperimentRunner.PERFORMANCE_FILE)));
@@ -165,9 +166,8 @@ class PerformanceExperimentRunnerTest {
     @Tag("benchmark")
     @EnabledIfSystemProperty(named = BENCHMARK_PROPERTY, matches = "true")
     void benchmarkRunnerExecutesWhenExplicitlyEnabled() throws Exception {
-        PerformanceExperimentRunner.main(new String[] { "--experiment", "kalman-filter", "--barCounts", "64",
-                "--scenarios", "sequential,endOnly", "--repetitions", "1", "--warmups", "0", "--outputDir",
-                tempDir.resolve("benchmark").toString() });
+        PerformanceExperimentRunner.run(new PerformanceExperimentRunner.RunRequest("kalman-filter", List.of(64),
+                List.of("sequential", "endOnly"), 1, 0, Optional.of(tempDir.resolve("benchmark")), false));
     }
 
     private void writePerformanceJson(Path outputDir, long checksum, long medianNanos) throws IOException {

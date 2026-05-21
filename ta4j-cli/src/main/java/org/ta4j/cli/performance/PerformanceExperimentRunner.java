@@ -15,8 +15,6 @@ import java.text.DecimalFormat;
 import java.text.NumberFormat;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -24,16 +22,12 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 /**
  * Generic performance experiment runner for CLI-hosted optimization work.
@@ -50,52 +44,25 @@ public final class PerformanceExperimentRunner {
     static final String PERFORMANCE_FILE = "performance.json";
     static final String SUMMARY_FILE = "summary.md";
 
-    private static final Logger LOG = LogManager.getLogger(PerformanceExperimentRunner.class);
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final NumberFormat INTEGER_FORMAT = NumberFormat.getIntegerInstance(Locale.US);
     private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("0.00");
-    private static final int DEFAULT_REPETITIONS = 5;
-    private static final int DEFAULT_WARMUPS = 1;
 
     private PerformanceExperimentRunner() {
     }
 
     /**
-     * CLI entrypoint.
-     *
-     * @param args command-line arguments
-     * @throws Exception when the experiment cannot be run or artifacts cannot be
-     *                   written
-     * @since 0.22.7
-     */
-    public static void main(String[] args) throws Exception {
-        if (hasHelp(args)) {
-            System.out.println(usage());
-            return;
-        }
-        RunArtifacts artifacts = run(args);
-        LOG.info("Performance experiment artifacts written to {}", artifacts.outputDir());
-        System.out.println("Performance experiment artifacts written to " + artifacts.outputDir());
-    }
-
-    /**
      * Runs the requested experiment and writes benchmark artifacts.
      *
-     * @param args experiment command-line arguments
+     * @param request typed experiment request
      * @return run artifacts
      * @throws IOException when artifacts cannot be written
      * @since 0.22.7
      */
-    public static RunArtifacts run(String[] args) throws IOException {
-        RunnerCli cli = RunnerCli.parse(args);
-        if (cli.help()) {
-            LOG.info(RunnerCli.usage());
-            return new RunArtifacts(Path.of("."), new JsonObject());
-        }
-
-        PerformanceExperiment experiment = experiment(cli.experimentId());
-        List<PerformanceScenario> scenarios = selectScenarios(experiment, cli.scenarioIds());
-        Path outputDir = cli.outputDir()
+    public static RunArtifacts run(RunRequest request) throws IOException {
+        PerformanceExperiment experiment = experiment(request.experimentId());
+        List<PerformanceScenario> scenarios = selectScenarios(experiment, request.scenarioIds());
+        Path outputDir = request.outputDir()
                 .orElseGet(() -> defaultOutputDir(experiment.id()))
                 .toAbsolutePath()
                 .normalize();
@@ -104,13 +71,10 @@ public final class PerformanceExperimentRunner {
         Instant startedAt = Instant.now();
         JsonArray results = new JsonArray();
         for (PerformanceScenario scenario : scenarios) {
-            for (Integer barCount : cli.barCounts()) {
-                ScenarioAggregation aggregation = runScenario(scenario, barCount, cli.warmups(), cli.repetitions(),
-                        cli.profile());
+            for (Integer barCount : request.barCounts()) {
+                ScenarioAggregation aggregation = runScenario(scenario, barCount, request.warmups(),
+                        request.repetitions(), request.profile());
                 results.add(aggregation.toJson());
-                LOG.info("{} bars={} median={} ms ops/s={}", scenario.id(), INTEGER_FORMAT.format(barCount),
-                        formatMillis(aggregation.stats().medianNanos()),
-                        DECIMAL_FORMAT.format(aggregation.stats().operationsPerSecond()));
             }
         }
         Instant completedAt = Instant.now();
@@ -122,13 +86,13 @@ public final class PerformanceExperimentRunner {
         root.addProperty("gitRef", gitRef());
         root.addProperty("startedAt", startedAt.toString());
         root.addProperty("completedAt", completedAt.toString());
-        root.addProperty("repetitions", cli.repetitions());
-        root.addProperty("warmups", cli.warmups());
-        root.addProperty("profile", cli.profile());
-        root.add("barCounts", intArray(cli.barCounts()));
+        root.addProperty("repetitions", request.repetitions());
+        root.addProperty("warmups", request.warmups());
+        root.addProperty("profile", request.profile());
+        root.add("barCounts", intArray(request.barCounts()));
         root.add("scenarioIds", stringArray(scenarios.stream().map(PerformanceScenario::id).toList()));
         root.add("host", HostTelemetry.capture().toJson());
-        if (cli.profile()) {
+        if (request.profile()) {
             root.add("profileHints", profileHints(scenarios, outputDir));
         }
         root.add("results", results);
@@ -137,27 +101,6 @@ public final class PerformanceExperimentRunner {
                 StandardCharsets.UTF_8);
         Files.writeString(outputDir.resolve(SUMMARY_FILE), summary(root), StandardCharsets.UTF_8);
         return new RunArtifacts(outputDir, root);
-    }
-
-    /**
-     * Returns command usage text.
-     *
-     * @return usage text
-     * @since 0.22.7
-     */
-    public static String usage() {
-        return RunnerCli.usage();
-    }
-
-    /**
-     * Detects whether help was requested before invoking the runner parser.
-     *
-     * @param args command-line arguments
-     * @return true when help was requested
-     * @since 0.22.7
-     */
-    public static boolean hasHelp(String[] args) {
-        return Arrays.stream(args).anyMatch(arg -> "-h".equals(arg) || "--help".equals(arg));
     }
 
     private static ScenarioAggregation runScenario(PerformanceScenario scenario, int barCount, int warmups,
@@ -314,91 +257,41 @@ public final class PerformanceExperimentRunner {
     public record RunArtifacts(Path outputDir, JsonObject performanceJson) {
     }
 
-    record RunnerCli(String experimentId, List<Integer> barCounts, List<String> scenarioIds, int repetitions,
-            int warmups, Optional<Path> outputDir, boolean profile, boolean help) {
-
-        static RunnerCli parse(String[] args) {
-            String experimentId = KalmanFilterPerformanceExperiment.ID;
-            List<Integer> barCounts = List.of(1_000, 5_000, 10_000, 50_000);
-            List<String> scenarioIds = List.of();
-            int repetitions = DEFAULT_REPETITIONS;
-            int warmups = DEFAULT_WARMUPS;
-            Optional<Path> outputDir = Optional.empty();
-            boolean profile = false;
-            boolean help = false;
-
-            for (int i = 0; i < args.length; i++) {
-                String arg = args[i];
-                switch (arg) {
-                case "-h", "--help" -> help = true;
-                case "--experiment" -> experimentId = requireValue(args, ++i, arg);
-                case "--barCounts", "--bar-counts" ->
-                    barCounts = parsePositiveInts(requireValue(args, ++i, arg), "--barCounts");
-                case "--scenarios" -> scenarioIds = parseCsv(requireValue(args, ++i, arg));
-                case "--repetitions" -> repetitions = parsePositiveInt(requireValue(args, ++i, arg), "--repetitions");
-                case "--warmups" -> warmups = parseNonNegativeInt(requireValue(args, ++i, arg), "--warmups");
-                case "--outputDir", "--output-dir" -> outputDir = Optional.of(Path.of(requireValue(args, ++i, arg)));
-                case "--profile" -> profile = true;
-                default -> throw new IllegalArgumentException("Unknown argument: " + arg);
+    /**
+     * Typed request for one performance experiment run.
+     *
+     * @param experimentId stable experiment identifier
+     * @param barCounts    positive bar counts to run
+     * @param scenarioIds  selected scenario identifiers, or empty for defaults
+     * @param repetitions  measured repetitions per cell
+     * @param warmups      warmup repetitions per cell
+     * @param outputDir    optional artifact directory
+     * @param profile      whether profiler hints should be emitted
+     * @since 0.22.7
+     */
+    public record RunRequest(String experimentId, List<Integer> barCounts, List<String> scenarioIds, int repetitions,
+            int warmups, Optional<Path> outputDir, boolean profile) {
+        public RunRequest {
+            if (experimentId == null || experimentId.isBlank()) {
+                throw new IllegalArgumentException("experimentId must not be blank");
+            }
+            if (barCounts == null || barCounts.isEmpty()) {
+                throw new IllegalArgumentException("barCounts must not be empty");
+            }
+            for (Integer barCount : barCounts) {
+                if (barCount == null || barCount <= 0) {
+                    throw new IllegalArgumentException("barCounts values must be positive");
                 }
             }
-
-            return new RunnerCli(experimentId, barCounts, scenarioIds, repetitions, warmups, outputDir, profile, help);
-        }
-
-        private static String usage() {
-            return """
-                    PerformanceExperimentRunner
-
-                    Options:
-                      --experiment <id>       Experiment id, for example kalman-filter
-                      --barCounts <csv>       Positive bar counts, for example 1000,5000,10000
-                      --scenarios <csv>       Scenario ids, or omitted for experiment defaults
-                      --repetitions <n>       Measured repetitions per cell (default 5)
-                      --warmups <n>           Warmup repetitions per cell (default 1)
-                      --outputDir <dir>       Artifact directory
-                      --profile               Emit profiler hints in performance.json
-                    """;
-        }
-
-        private static String requireValue(String[] args, int index, String argument) {
-            if (index >= args.length) {
-                throw new IllegalArgumentException(argument + " requires a value");
+            if (repetitions <= 0) {
+                throw new IllegalArgumentException("repetitions must be positive");
             }
-            return args[index];
-        }
-
-        private static List<Integer> parsePositiveInts(String value, String argument) {
-            List<String> tokens = parseCsv(value);
-            if (tokens.isEmpty()) {
-                throw new IllegalArgumentException(argument + " must not be empty");
+            if (warmups < 0) {
+                throw new IllegalArgumentException("warmups must be non-negative");
             }
-            List<Integer> values = new ArrayList<>(tokens.size());
-            for (String token : tokens) {
-                values.add(parsePositiveInt(token, argument));
-            }
-            Set<Integer> deduplicated = new LinkedHashSet<>(values);
-            return List.copyOf(deduplicated);
-        }
-
-        private static int parsePositiveInt(String value, String argument) {
-            int parsed = Integer.parseInt(value);
-            if (parsed <= 0) {
-                throw new IllegalArgumentException(argument + " values must be positive");
-            }
-            return parsed;
-        }
-
-        private static int parseNonNegativeInt(String value, String argument) {
-            int parsed = Integer.parseInt(value);
-            if (parsed < 0) {
-                throw new IllegalArgumentException(argument + " values must be non-negative");
-            }
-            return parsed;
-        }
-
-        private static List<String> parseCsv(String value) {
-            return Arrays.stream(value.split(",")).map(String::trim).filter(token -> !token.isEmpty()).toList();
+            barCounts = List.copyOf(new LinkedHashSet<>(barCounts));
+            scenarioIds = scenarioIds == null ? List.of() : List.copyOf(scenarioIds);
+            outputDir = outputDir == null ? Optional.empty() : outputDir;
         }
     }
 
