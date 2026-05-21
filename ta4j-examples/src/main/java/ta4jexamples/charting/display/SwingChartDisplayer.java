@@ -42,12 +42,13 @@ import javax.swing.event.AncestorListener;
  *
  * <p>
  * This implementation displays charts in a Swing window with zoom and pan
- * capabilities. The display size can be configured via the
- * {@link #DISPLAY_SCALE_PROPERTY system property}. Each window closes
- * independently using {@link JFrame#DISPOSE_ON_CLOSE} to prevent closing one
- * window from affecting others. When all chart windows are closed, the program
- * automatically exits. Windows are also configured as non-focusable so chart
- * rendering in automated runs does not steal desktop focus.
+ * capabilities. By default it auto-sizes the chart to 80% of the available
+ * display bounds, while still allowing callers to supply an explicit preferred
+ * size for display-specific use cases. Each window closes independently using
+ * {@link JFrame#DISPOSE_ON_CLOSE} to prevent closing one window from affecting
+ * others. When all chart windows are closed, the program automatically exits.
+ * Windows are also configured as non-focusable so chart rendering in automated
+ * runs does not steal desktop focus.
  * </p>
  *
  * @since 0.19
@@ -82,7 +83,7 @@ public final class SwingChartDisplayer implements ChartDisplayer {
      *
      * @since 0.19
      */
-    static final double DEFAULT_DISPLAY_SCALE = 0.85;
+    static final double DEFAULT_DISPLAY_SCALE = 0.80;
     private static final int DEFAULT_DISPLAY_WIDTH = 1920;
     private static final int DEFAULT_DISPLAY_HEIGHT = 1200;
     private static final int MIN_DISPLAY_WIDTH = 800;
@@ -117,11 +118,16 @@ public final class SwingChartDisplayer implements ChartDisplayer {
 
     @Override
     public void display(JFreeChart chart) {
-        display(chart, "Ta4j-examples");
+        display(chart, "Ta4j-examples", null);
     }
 
     @Override
     public void display(JFreeChart chart, String windowTitle) {
+        display(chart, windowTitle, null);
+    }
+
+    @Override
+    public void display(JFreeChart chart, String windowTitle, Dimension preferredSize) {
         // Validate input parameter
         if (chart == null) {
             throw new IllegalArgumentException("Chart cannot be null");
@@ -152,7 +158,7 @@ public final class SwingChartDisplayer implements ChartDisplayer {
         panel.setMouseWheelEnabled(true);
         panel.setDomainZoomable(true);
         panel.setDisplayToolTips(false);
-        panel.setPreferredSize(determineDisplaySize());
+        panel.setPreferredSize(resolveDisplaySize(preferredSize));
 
         // Create info panel for mouseover data
         JLabel infoLabel = new JLabel(" ");
@@ -275,6 +281,17 @@ public final class SwingChartDisplayer implements ChartDisplayer {
     }
 
     Dimension determineDisplaySize() {
+        return resolveDisplaySize(null);
+    }
+
+    Dimension resolveDisplaySize(Dimension preferredSize) {
+        if (preferredSize != null) {
+            if (preferredSize.width <= 0 || preferredSize.height <= 0) {
+                throw new IllegalArgumentException("Preferred display size must be positive");
+            }
+            return new Dimension(preferredSize);
+        }
+
         double displayScale = resolveDisplayScale();
 
         try {

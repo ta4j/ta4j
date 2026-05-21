@@ -5,6 +5,7 @@ package ta4jexamples.charting.annotation;
 
 import static org.ta4j.core.num.NaN.NaN;
 
+import java.awt.Color;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -30,7 +31,16 @@ public class BarSeriesLabelIndicator extends CachedIndicator<Num> {
         ABOVE, BELOW, CENTER
     }
 
-    public record BarLabel(int barIndex, Num yValue, String text, LabelPlacement placement) {
+    public record BarLabel(int barIndex, Num yValue, String text, LabelPlacement placement, Color color,
+            double fontScale) {
+
+        public BarLabel(int barIndex, Num yValue, String text, LabelPlacement placement) {
+            this(barIndex, yValue, text, placement, null, 1.0);
+        }
+
+        public BarLabel(int barIndex, Num yValue, String text, LabelPlacement placement, Color color) {
+            this(barIndex, yValue, text, placement, color, 1.0);
+        }
 
         public BarLabel {
             if (barIndex < 0) {
@@ -39,6 +49,9 @@ public class BarSeriesLabelIndicator extends CachedIndicator<Num> {
             Objects.requireNonNull(yValue, "yValue");
             Objects.requireNonNull(text, "text");
             Objects.requireNonNull(placement, "placement");
+            if (!Double.isFinite(fontScale) || fontScale <= 0.0) {
+                throw new IllegalArgumentException("fontScale must be positive and finite");
+            }
         }
     }
 

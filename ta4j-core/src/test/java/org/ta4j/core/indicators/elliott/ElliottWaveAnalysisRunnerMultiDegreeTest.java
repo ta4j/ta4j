@@ -74,6 +74,46 @@ class ElliottWaveAnalysisRunnerMultiDegreeTest {
     }
 
     @Test
+    void favorsBroaderCompletedStructuresWhenConfidenceIsClose() {
+        BarSeries series = buildDailySeries(220);
+        NumFactory factory = series.numFactory();
+
+        ElliottScenario recentFragment = scenario(factory, "recent-fragment", ElliottDegree.PRIMARY, ElliottPhase.WAVE3,
+                0.90,
+                List.of(new ElliottSwing(120, 150, factory.numOf(160), factory.numOf(210), ElliottDegree.PRIMARY),
+                        new ElliottSwing(150, 175, factory.numOf(210), factory.numOf(190), ElliottDegree.PRIMARY),
+                        new ElliottSwing(175, 210, factory.numOf(190), factory.numOf(250), ElliottDegree.PRIMARY)),
+                factory.numOf(150));
+        ElliottScenario broaderCompletion = scenario(factory, "broader-completion", ElliottDegree.PRIMARY,
+                ElliottPhase.WAVE5, 0.87,
+                List.of(new ElliottSwing(0, 35, factory.hundred(), factory.numOf(150), ElliottDegree.PRIMARY),
+                        new ElliottSwing(35, 70, factory.numOf(150), factory.numOf(125), ElliottDegree.PRIMARY),
+                        new ElliottSwing(70, 115, factory.numOf(125), factory.numOf(210), ElliottDegree.PRIMARY),
+                        new ElliottSwing(115, 155, factory.numOf(210), factory.numOf(175), ElliottDegree.PRIMARY),
+                        new ElliottSwing(155, 210, factory.numOf(175), factory.numOf(260), ElliottDegree.PRIMARY)),
+                factory.numOf(175));
+
+        ElliottScenarioSet primaryScenarios = ElliottScenarioSet.of(List.of(recentFragment, broaderCompletion),
+                series.getEndIndex());
+        AnalysisRunner<ElliottDegree, ElliottAnalysisResult> runner = (selected, degree) -> switch (degree) {
+        case PRIMARY -> analysis(degree, selected, primaryScenarios);
+        default -> analysis(degree, selected, ElliottScenarioSet.empty(selected.getEndIndex()));
+        };
+
+        ElliottWaveAnalysisRunner analyzer = ElliottWaveAnalysisRunner.builder()
+                .degree(ElliottDegree.PRIMARY)
+                .higherDegrees(0)
+                .lowerDegrees(0)
+                .analysisRunner(runner)
+                .build();
+
+        ElliottWaveAnalysisResult result = analyzer.analyze(series);
+
+        assertThat(result.recommendedBaseScenario()).isPresent();
+        assertThat(result.recommendedBaseScenario().orElseThrow().id()).isEqualTo("broader-completion");
+    }
+
+    @Test
     void builderRequiresDegree() {
         IllegalStateException exception = assertThrows(IllegalStateException.class,
                 () -> ElliottWaveAnalysisRunner.builder().build());
@@ -99,13 +139,18 @@ class ElliottWaveAnalysisRunnerMultiDegreeTest {
         List<ElliottSwing> swings = bullish
                 ? List.of(new ElliottSwing(0, 5, factory.hundred(), factory.numOf(120), degree))
                 : List.of(new ElliottSwing(0, 5, factory.numOf(120), factory.hundred(), degree));
+        return scenario(factory, id, degree, ElliottPhase.WAVE3, confidence, swings, invalidationPrice);
+    }
 
+    private static ElliottScenario scenario(final NumFactory factory, final String id, final ElliottDegree degree,
+            final ElliottPhase phase, final double confidence, final List<ElliottSwing> swings,
+            final Num invalidationPrice) {
         Num score = factory.numOf(confidence);
         ElliottConfidence confidenceRecord = new ElliottConfidence(score, score, score, score, score, score, "test");
 
         return ElliottScenario.builder()
                 .id(id)
-                .currentPhase(ElliottPhase.WAVE3)
+                .currentPhase(phase)
                 .swings(swings)
                 .confidence(confidenceRecord)
                 .degree(degree)

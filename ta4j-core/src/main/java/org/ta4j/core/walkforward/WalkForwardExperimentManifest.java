@@ -3,8 +3,10 @@
  */
 package org.ta4j.core.walkforward;
 
+import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
+import java.util.TreeMap;
 
 /**
  * Stable experiment manifest for reproducible walk-forward runs.
@@ -35,6 +37,7 @@ public record WalkForwardExperimentManifest(String datasetId, String candidateId
         if (configHash.isBlank()) {
             throw new IllegalArgumentException("configHash must not be blank");
         }
-        metadata = metadata == null ? Map.of() : Map.copyOf(metadata);
+        metadata = metadata == null || metadata.isEmpty() ? Map.of()
+                : Collections.unmodifiableMap(new TreeMap<>(metadata));
     }
 }
