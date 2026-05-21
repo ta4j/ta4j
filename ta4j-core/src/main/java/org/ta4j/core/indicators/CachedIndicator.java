@@ -53,6 +53,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
 
     /** The ring-buffer backed cache. */
     private final CachedBuffer<T> cache;
+    private final long lastBarWaitTimeoutMs;
 
     private final IntFunction<T> calculator = this::calculate;
     private final IntConsumer computedIndexRecorder = this::updateHighestResultIndex;
@@ -95,9 +96,17 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
      * @param series the bar series
      */
     protected CachedIndicator(BarSeries series) {
+        this(series, LAST_BAR_WAIT_TIMEOUT_MS);
+    }
+
+    CachedIndicator(BarSeries series, long lastBarWaitTimeoutMs) {
         super(series);
+        if (lastBarWaitTimeoutMs <= 0) {
+            throw new IllegalArgumentException("Last-bar wait timeout must be positive");
+        }
         int limit = series.getMaximumBarCount();
         this.cache = new CachedBuffer<>(limit);
+        this.lastBarWaitTimeoutMs = lastBarWaitTimeoutMs;
     }
 
     /**
@@ -317,7 +326,7 @@ public abstract class CachedIndicator<T> extends AbstractIndicator<T> {
                     // Wait with timeout to prevent indefinite hangs if the owning thread
                     // dies or encounters an unexpected issue. After timeout, we compute
                     // independently rather than blocking forever.
-                    lastBarLock.wait(LAST_BAR_WAIT_TIMEOUT_MS);
+                    lastBarLock.wait(lastBarWaitTimeoutMs);
                     // Only mark as timed out if the computation is still in progress.
                     // If notifyAll() woke us because computation finished, we should
                     // loop back and re-check for a cache hit (or become the new owner).

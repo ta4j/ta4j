@@ -12,6 +12,22 @@ import org.ta4j.core.serialization.StrategySerialization;
  * complementary (entry and exit) {@link Rule rules}. It may recommend to enter
  * or to exit. Recommendations are based respectively on the entry rule or on
  * the exit rule.
+ *
+ * <p>
+ * In ta4j, a strategy is evaluated bar by bar during a backtest (via
+ * {@code BarSeriesManager} or {@code BacktestExecutor}) or in real-time. It
+ * signals {@code shouldEnter} or {@code shouldExit} based on the current index
+ * and trading record. Strategies can be composed using logical operators like
+ * {@link #and(Strategy)} or {@link #or(Strategy)}.
+ * </p>
+ *
+ * <p>
+ * Live-evaluation reminder: ta4j evaluates whatever bar state you provide at
+ * {@code index}. If your integration replaces the last bar as new ticks arrive,
+ * strategy decisions are evaluated against that still-forming bar (live
+ * candle). If your integration evaluates only after appending a finished bar,
+ * decisions are based on closed candles.
+ * </p>
  */
 public interface Strategy {
 
@@ -115,14 +131,27 @@ public interface Strategy {
     }
 
     /**
+     * <p>
+     * <b>Implementation note:</b> This overload ignores trading state. In live
+     * execution, prefer {@link #shouldEnter(int, TradingRecord)} so rules can see
+     * open positions and avoid repeated entry signals while a position is already
+     * open.
+     * </p>
+     *
      * @param index the bar index
      * @return true to recommend to enter, false otherwise
      */
     default boolean shouldEnter(int index) {
-        return shouldEnter(index, null);
+        return shouldEnter(index, (TradingRecord) null);
     }
 
     /**
+     * <p>
+     * <b>Implementation note:</b> Use this overload for live systems so entry
+     * decisions include the current position state. After broker-confirmed fills,
+     * keep {@code tradingRecord} synchronized with executed fills.
+     * </p>
+     *
      * @param index         the bar index
      * @param tradingRecord the potentially needed trading history
      * @return true to recommend to enter, false otherwise
@@ -132,11 +161,42 @@ public interface Strategy {
     }
 
     /**
+     * Evaluates the entry rule once with the supplied trace detail. Implementations
+     * that do not support scoped tracing may ignore {@code traceMode} and delegate
+     * to {@link #shouldEnter(int, TradingRecord)}.
+     *
+     * @param index     the bar index
+     * @param traceMode trace detail for this evaluation only; {@code null} uses
+     *                  {@link Rule.TraceMode#VERBOSE}
+     * @return true to recommend to enter, false otherwise
+     * @since 0.22.7
+     */
+    default boolean shouldEnterWithTraceMode(int index, Rule.TraceMode traceMode) {
+        return shouldEnterWithTraceMode(index, null, traceMode);
+    }
+
+    /**
+     * Evaluates the entry rule once with the supplied trace detail. Implementations
+     * that do not support scoped tracing may ignore {@code traceMode} and delegate
+     * to {@link #shouldEnter(int, TradingRecord)}.
+     *
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
+     * @param traceMode     trace detail for this evaluation only; {@code null} uses
+     *                      {@link Rule.TraceMode#VERBOSE}
+     * @return true to recommend to enter, false otherwise
+     * @since 0.22.7
+     */
+    default boolean shouldEnterWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
+        return shouldEnter(index, tradingRecord);
+    }
+
+    /**
      * @param index the bar index
      * @return true to recommend to exit, false otherwise
      */
     default boolean shouldExit(int index) {
-        return shouldExit(index, null);
+        return shouldExit(index, (TradingRecord) null);
     }
 
     /**
@@ -146,6 +206,37 @@ public interface Strategy {
      */
     default boolean shouldExit(int index, TradingRecord tradingRecord) {
         return !isUnstableAt(index) && getExitRule().isSatisfied(index, tradingRecord);
+    }
+
+    /**
+     * Evaluates the exit rule once with the supplied trace detail. Implementations
+     * that do not support scoped tracing may ignore {@code traceMode} and delegate
+     * to {@link #shouldExit(int, TradingRecord)}.
+     *
+     * @param index     the bar index
+     * @param traceMode trace detail for this evaluation only; {@code null} uses
+     *                  {@link Rule.TraceMode#VERBOSE}
+     * @return true to recommend to exit, false otherwise
+     * @since 0.22.7
+     */
+    default boolean shouldExitWithTraceMode(int index, Rule.TraceMode traceMode) {
+        return shouldExitWithTraceMode(index, null, traceMode);
+    }
+
+    /**
+     * Evaluates the exit rule once with the supplied trace detail. Implementations
+     * that do not support scoped tracing may ignore {@code traceMode} and delegate
+     * to {@link #shouldExit(int, TradingRecord)}.
+     *
+     * @param index         the bar index
+     * @param tradingRecord the potentially needed trading history
+     * @param traceMode     trace detail for this evaluation only; {@code null} uses
+     *                      {@link Rule.TraceMode#VERBOSE}
+     * @return true to recommend to exit, false otherwise
+     * @since 0.22.7
+     */
+    default boolean shouldExitWithTraceMode(int index, TradingRecord tradingRecord, Rule.TraceMode traceMode) {
+        return shouldExit(index, tradingRecord);
     }
 
     /**

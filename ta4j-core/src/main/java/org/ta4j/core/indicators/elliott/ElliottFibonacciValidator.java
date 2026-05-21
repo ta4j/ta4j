@@ -75,6 +75,14 @@ public class ElliottFibonacciValidator {
     }
 
     /**
+     * @return the symmetric tolerance applied to each Fibonacci band
+     * @since 0.22.7
+     */
+    public Num getTolerance() {
+        return tolerance;
+    }
+
+    /**
      * @param wave1 first impulse swing
      * @param wave2 second impulse swing retracement
      * @return {@code true} when wave two retraces the first swing within the

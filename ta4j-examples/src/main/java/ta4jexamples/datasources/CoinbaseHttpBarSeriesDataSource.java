@@ -535,6 +535,10 @@ public class CoinbaseHttpBarSeriesDataSource extends AbstractHttpBarSeriesDataSo
         throw new IllegalArgumentException("Unknown interval API value: " + apiValue);
     }
 
+    void pauseBetweenPaginatedRequests() throws InterruptedException {
+        Thread.sleep(100);
+    }
+
     /**
      * Instance method that performs the actual loading logic. This method uses the
      * instance's HttpClient (which can be injected for testing).
@@ -755,7 +759,7 @@ public class CoinbaseHttpBarSeriesDataSource extends AbstractHttpBarSeriesDataSo
 
             // Add a small delay between requests to avoid rate limiting
             try {
-                Thread.sleep(100); // 100ms delay between requests
+                pauseBetweenPaginatedRequests();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 LOG.warn("Interrupted during pagination delay");

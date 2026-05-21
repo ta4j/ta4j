@@ -78,6 +78,14 @@ public class OpenedPositionMinimumBarCountRuleTest {
     }
 
     @Test
+    public void testAtLeastBarCountRuleForNullTradingRecordShouldAlwaysReturnsFalse() {
+        final var rule = new OpenedPositionMinimumBarCountRule(1);
+
+        assertFalse(rule.isSatisfied(0, null));
+        assertFalse(rule.isSatisfied(1, null));
+    }
+
+    @Test
     public void serializeAndDeserialize() {
         final var series = new MockBarSeriesBuilder().withNumFactory(DecimalNumFactory.getInstance())
                 .withData(1, 2, 3)

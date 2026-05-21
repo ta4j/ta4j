@@ -27,8 +27,16 @@ import org.ta4j.core.rules.UnderIndicatorRule;
 import ta4jexamples.datasources.BitStampCsvTradesFileBarSeriesDataSource;
 
 /**
- * This class is an example of a dummy trading bot using ta4j.
- * <p/>
+ * Example of a trading bot running on a live, moving {@link BarSeries}.
+ *
+ * This example simulates a real-time trading environment:
+ * <ul>
+ * <li>A strategy is evaluated on the latest bar on each tick/iteration.</li>
+ * <li>The bot maintains a {@link BaseTradingRecord} and updates it using
+ * {@link Trade.TradeType} entry/exit signals.</li>
+ * <li>The series is continuously fed with new simulated ticks, mimicking a live
+ * feed.</li>
+ * </ul>
  */
 public class TradingBotOnMovingBarSeries {
 
@@ -116,6 +124,16 @@ public class TradingBotOnMovingBarSeries {
     }
 
     public static void main(String[] args) throws InterruptedException {
+        runSimulation(50, Duration.ofMillis(30));
+    }
+
+    static void runSimulation(int iterationCount, Duration tickDelay) throws InterruptedException {
+        if (iterationCount < 0) {
+            throw new IllegalArgumentException("Iteration count cannot be negative");
+        }
+        if (tickDelay == null || tickDelay.isNegative()) {
+            throw new IllegalArgumentException("Tick delay cannot be null or negative");
+        }
 
         LOG.debug("********************** Initialization **********************");
         // Getting the bar series
@@ -129,12 +147,14 @@ public class TradingBotOnMovingBarSeries {
         LOG.debug("************************************************************");
 
         /*
-         * We run the strategy for the 50 next bars.
+         * We run the strategy for the configured next bars.
          */
-        for (int i = 0; i < 50; i++) {
+        for (int i = 0; i < iterationCount; i++) {
 
             // New bar
-            Thread.sleep(30); // I know...
+            if (!tickDelay.isZero()) {
+                Thread.sleep(tickDelay.toMillis());
+            }
             Bar newBar = generateRandomBar();
             LOG.debug("------------------------------------------------------\nBar {} added, close price = {}", i,
                     newBar.getClosePrice().doubleValue());

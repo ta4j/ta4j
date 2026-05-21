@@ -3,6 +3,11 @@
  */
 package org.ta4j.core.indicators;
 
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.ExternalIndicatorTest;
 import org.ta4j.core.Indicator;
@@ -16,6 +21,7 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
     private final String fileName;
     private final int column;
     private BarSeries cachedSeries = null;
+    private final Map<List<Object>, Indicator<Num>> cachedIndicators = new HashMap<>();
     private final NumFactory numFactory;
 
     /**
@@ -55,7 +61,14 @@ public class XLSIndicatorTest implements ExternalIndicatorTest {
      */
     @Override
     public Indicator<Num> getIndicator(Object... params) throws Exception {
-        return XlsTestsUtils.getIndicator(clazz, fileName, column, getSeries().numFactory(), params);
+        List<Object> cacheKey = Arrays.asList(Arrays.copyOf(params, params.length));
+        Indicator<Num> cachedIndicator = cachedIndicators.get(cacheKey);
+        if (cachedIndicator == null) {
+            BarSeries series = getSeries();
+            cachedIndicator = XlsTestsUtils.getIndicator(series, clazz, fileName, column, series.numFactory(), params);
+            cachedIndicators.put(cacheKey, cachedIndicator);
+        }
+        return cachedIndicator;
     }
 
 }

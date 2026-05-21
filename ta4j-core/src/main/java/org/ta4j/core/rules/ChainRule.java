@@ -37,12 +37,14 @@ public class ChainRule extends AbstractRule {
         int lastRuleWasSatisfiedAfterBars = 0;
         int startIndex = index;
 
-        if (!initialRule.isSatisfied(index, tradingRecord)) {
-            traceIsSatisfied(index, false);
+        if (!evaluateChildRule(initialRule, "initialRule", index, tradingRecord)) {
+            if (isTraceEnabled()) {
+                traceIsSatisfied(index, false, traceContext("initialRule", false));
+            }
             return false;
         }
-        traceIsSatisfied(index, true);
 
+        int linkIndex = 0;
         for (ChainLink link : rulesInChain) {
             boolean satisfiedWithinThreshold = false;
             startIndex = startIndex - lastRuleWasSatisfiedAfterBars;
@@ -54,7 +56,8 @@ public class ChainRule extends AbstractRule {
                     break;
                 }
 
-                satisfiedWithinThreshold = link.getRule().isSatisfied(resultingIndex, tradingRecord);
+                satisfiedWithinThreshold = evaluateChildRule(link.getRule(), "chainRule" + linkIndex, resultingIndex,
+                        tradingRecord);
 
                 if (satisfiedWithinThreshold) {
                     break;
@@ -64,12 +67,18 @@ public class ChainRule extends AbstractRule {
             }
 
             if (!satisfiedWithinThreshold) {
-                traceIsSatisfied(index, false);
+                if (isTraceEnabled()) {
+                    traceIsSatisfied(index, false, traceContext("initialRule", true, "failedChainRule", linkIndex,
+                            "threshold", link.getThreshold()));
+                }
                 return false;
             }
+            linkIndex++;
         }
 
-        traceIsSatisfied(index, true);
+        if (isTraceEnabled()) {
+            traceIsSatisfied(index, true, traceContext("initialRule", true, "chainRules", rulesInChain.size()));
+        }
         return true;
     }
 }
