@@ -150,7 +150,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     @Test
     public void prunedIndexCacheInvalidatesWhenRemovedBarsCountChanges() {
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
-        ClosePriceCountingIndicator indicator = new ClosePriceCountingIndicator(barSeries);
+        CountingIndicator indicator = CountingIndicator.closePrice(barSeries);
 
         assertNumEquals(1, indicator.getValue(0));
         assertEquals(1, indicator.getCalculationCount());
@@ -316,7 +316,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
                 .build(), tradesReadStarted, allowTradesRead);
         barSeries.addBar(blockingBar);
 
-        ClosePriceCountingIndicator indicator = new ClosePriceCountingIndicator(barSeries);
+        CountingIndicator indicator = CountingIndicator.closePrice(barSeries);
         int endIndex = barSeries.getEndIndex();
 
         assertNumEquals(1, indicator.getValue(endIndex));
@@ -714,7 +714,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
     @Test
     public void lastBarCacheInvalidatesOnReplace() {
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(1d, 2d, 3d).build();
-        ClosePriceCountingIndicator indicator = new ClosePriceCountingIndicator(barSeries);
+        CountingIndicator indicator = CountingIndicator.closePrice(barSeries);
         int endIndex = barSeries.getEndIndex();
 
         assertNumEquals(3, indicator.getValue(endIndex));
@@ -889,7 +889,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         BarSeries barSeries = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(1d, 2d, 3d, 4d, 5d)
                 .build();
-        ClosePriceCountingIndicator indicator = new ClosePriceCountingIndicator(barSeries);
+        CountingIndicator indicator = CountingIndicator.closePrice(barSeries);
         int endIndex = barSeries.getEndIndex();
 
         int readers = 8;
@@ -948,58 +948,6 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         // Each mutation should trigger a recomputation
         assertTrue("Should have recomputed after mutations", indicator.getCalculationCount() > 1);
-    }
-
-    private final static class CountingIndicator extends CachedIndicator<Num> {
-
-        private final AtomicInteger calculations = new AtomicInteger();
-
-        private CountingIndicator(BarSeries series) {
-            super(series);
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            calculations.incrementAndGet();
-            return getBarSeries().numFactory().numOf(index);
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return 0;
-        }
-
-        private int getCalculationCount() {
-            return calculations.get();
-        }
-
-        private void resetCalculationCount() {
-            calculations.set(0);
-        }
-    }
-
-    private final static class ClosePriceCountingIndicator extends CachedIndicator<Num> {
-
-        private final AtomicInteger calculations = new AtomicInteger();
-
-        private ClosePriceCountingIndicator(BarSeries series) {
-            super(series);
-        }
-
-        @Override
-        protected Num calculate(int index) {
-            calculations.incrementAndGet();
-            return getBarSeries().getBar(index).getClosePrice();
-        }
-
-        @Override
-        public int getCountOfUnstableBars() {
-            return 0;
-        }
-
-        private int getCalculationCount() {
-            return calculations.get();
-        }
     }
 
     private final static class FailingIndicator extends CachedIndicator<Num> {

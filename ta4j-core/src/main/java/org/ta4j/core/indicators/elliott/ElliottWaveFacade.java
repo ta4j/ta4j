@@ -11,7 +11,6 @@ import org.ta4j.core.BarSeries;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.num.Num;
-import org.ta4j.core.num.NumFactory;
 
 /**
  * Facade class that creates and coordinates a complete set of Elliott Wave
@@ -117,10 +116,11 @@ public final class ElliottWaveFacade {
      * @param series       source bar series
      * @param window       number of bars to inspect before and after a pivot
      * @param degree       swing degree metadata
-     * @param fibTolerance optional custom Fibonacci tolerance for phase validation
-     *                     (default: 0.05). When provided, the phase indicator will
-     *                     use a custom {@link ElliottFibonacciValidator} with this
-     *                     tolerance instead of the default validator.
+     * @param fibTolerance optional custom Fibonacci tolerance for phase and
+     *                     scenario validation (default: 0.05). When provided, phase
+     *                     and scenario indicators will use a custom
+     *                     {@link ElliottFibonacciValidator} with this tolerance
+     *                     instead of the default validator.
      * @param compressor   optional swing compressor for filtered wave counting.
      *                     When provided, {@link #filteredWaveCount()} will use this
      *                     compressor to filter swings before counting. If empty,
@@ -162,9 +162,9 @@ public final class ElliottWaveFacade {
      * @param lookbackLength    bars inspected before a pivot candidate
      * @param lookforwardLength bars inspected after a pivot candidate
      * @param degree            swing degree metadata
-     * @param fibTolerance      optional custom Fibonacci tolerance for phase
-     *                          validation (default: 0.05). When provided, the phase
-     *                          indicator will use a custom
+     * @param fibTolerance      optional custom Fibonacci tolerance for phase and
+     *                          scenario validation (default: 0.05). When provided,
+     *                          phase and scenario indicators will use a custom
      *                          {@link ElliottFibonacciValidator} with this
      *                          tolerance instead of the default validator.
      * @param compressor        optional swing compressor for filtered wave
@@ -206,10 +206,11 @@ public final class ElliottWaveFacade {
      *
      * @param series       source bar series
      * @param degree       swing degree metadata
-     * @param fibTolerance optional custom Fibonacci tolerance for phase validation
-     *                     (default: 0.05). When provided, the phase indicator will
-     *                     use a custom {@link ElliottFibonacciValidator} with this
-     *                     tolerance instead of the default validator.
+     * @param fibTolerance optional custom Fibonacci tolerance for phase and
+     *                     scenario validation (default: 0.05). When provided, phase
+     *                     and scenario indicators will use a custom
+     *                     {@link ElliottFibonacciValidator} with this tolerance
+     *                     instead of the default validator.
      * @param compressor   optional swing compressor for filtered wave counting.
      *                     When provided, {@link #filteredWaveCount()} will use this
      *                     compressor to filter swings before counting. If empty,
@@ -246,9 +247,9 @@ public final class ElliottWaveFacade {
      *
      * @param swingIndicator custom swing indicator
      * @param priceIndicator price reference for confluence analysis
-     * @param fibTolerance   optional custom Fibonacci tolerance for phase
-     *                       validation (default: 0.05). When provided, the phase
-     *                       indicator will use a custom
+     * @param fibTolerance   optional custom Fibonacci tolerance for phase and
+     *                       scenario validation (default: 0.05). When provided,
+     *                       phase and scenario indicators will use a custom
      *                       {@link ElliottFibonacciValidator} with this tolerance
      *                       instead of the default validator.
      * @param compressor     optional swing compressor for filtered wave counting.
@@ -297,15 +298,20 @@ public final class ElliottWaveFacade {
     public ElliottPhaseIndicator phase() {
         if (phaseIndicator == null) {
             if (fibTolerance.isPresent()) {
-                final NumFactory numFactory = series.numFactory();
-                final ElliottFibonacciValidator validator = new ElliottFibonacciValidator(numFactory,
-                        fibTolerance.get());
-                phaseIndicator = new ElliottPhaseIndicator(swingIndicator, validator);
+                phaseIndicator = new ElliottPhaseIndicator(swingIndicator, customFibValidator());
             } else {
                 phaseIndicator = new ElliottPhaseIndicator(swingIndicator);
             }
         }
         return phaseIndicator;
+    }
+
+    /**
+     * @return a Fibonacci validator carrying the configured custom tolerance; only
+     *         valid to call when {@code fibTolerance} is present
+     */
+    private ElliottFibonacciValidator customFibValidator() {
+        return new ElliottFibonacciValidator(series.numFactory(), fibTolerance.get());
     }
 
     /**
@@ -398,7 +404,13 @@ public final class ElliottWaveFacade {
      */
     public ElliottScenarioIndicator scenarios() {
         if (scenarioIndicator == null) {
-            scenarioIndicator = new ElliottScenarioIndicator(swingIndicator, channel());
+            if (fibTolerance.isPresent()) {
+                final ElliottScenarioGenerator generator = new ElliottScenarioGenerator(series.numFactory(),
+                        customFibValidator());
+                scenarioIndicator = new ElliottScenarioIndicator(swingIndicator, channel(), generator);
+            } else {
+                scenarioIndicator = new ElliottScenarioIndicator(swingIndicator, channel());
+            }
         }
         return scenarioIndicator;
     }
