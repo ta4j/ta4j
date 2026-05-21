@@ -50,7 +50,9 @@ public class EdgeHealthyRule extends AbstractRule {
      * @param edgeIndicator         the edge indicator to evaluate
      * @param minimumEdgeIndicator  indicator providing the minimum acceptable edge
      * @param edgeSlopeIndicator    optional edge slope indicator
-     * @param minimumSlopeIndicator optional minimum acceptable slope
+     * @param minimumSlopeIndicator optional minimum acceptable slope; defaults to
+     *                              zero when omitted and a slope indicator is
+     *                              provided
      * @since 0.22.7
      */
     public EdgeHealthyRule(Indicator<Num> edgeIndicator, Indicator<Num> minimumEdgeIndicator,
@@ -76,8 +78,13 @@ public class EdgeHealthyRule extends AbstractRule {
         }
         if (edgeSlopeIndicator != null) {
             Num slope = edgeSlopeIndicator.getValue(index);
-            Num minimumSlope = minimumSlopeIndicator == null ? null : minimumSlopeIndicator.getValue(index);
-            if (Num.isNaNOrNull(slope) || Num.isNaNOrNull(minimumSlope) || slope.isLessThan(minimumSlope)) {
+            if (Num.isNaNOrNull(slope)) {
+                traceIsSatisfied(index, false);
+                return false;
+            }
+            Num minimumSlope = minimumSlopeIndicator == null ? slope.getNumFactory().zero()
+                    : minimumSlopeIndicator.getValue(index);
+            if (Num.isNaNOrNull(minimumSlope) || slope.isLessThan(minimumSlope)) {
                 traceIsSatisfied(index, false);
                 return false;
             }

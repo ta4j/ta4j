@@ -34,12 +34,14 @@ import org.ta4j.core.num.Num;
 public class EntryEdgeIndicator extends CachedIndicator<Num> {
 
     private static final double BASIS_POINTS = 10_000.0d;
+    private static final int NO_SIGNAL_INDEX = -1;
 
     private final Indicator<Boolean> signalIndicator;
     private final Indicator<Num> priceIndicator;
     private final TradeType tradeType;
     private final int horizonBars;
     private final int lookbackSignals;
+    private final Indicator<Integer> latestMaturedSignalIndexIndicator;
 
     /**
      * Creates a long-side edge indicator using close price as the return source.
@@ -79,6 +81,7 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
         this.tradeType = Objects.requireNonNull(tradeType, "tradeType");
         this.horizonBars = horizonBars;
         this.lookbackSignals = lookbackSignals;
+        this.latestMaturedSignalIndexIndicator = createLatestMaturedSignalIndexIndicator();
     }
 
     /**
@@ -88,25 +91,27 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
      */
     @Override
     protected Num calculate(int index) {
-        int lastEligibleIndex = index - horizonBars;
-        if (lastEligibleIndex < getBarSeries().getBeginIndex()) {
+        if (index < getCountOfUnstableBars()) {
             return NaN.NaN;
         }
-        int beginIndex = Math.max(getBarSeries().getBeginIndex(),
-                getBarSeries().getBeginIndex() + signalIndicator.getCountOfUnstableBars());
+        int lastEligibleIndex = index - horizonBars;
+        int beginIndex = firstEligibleSignalIndex();
+        if (lastEligibleIndex < beginIndex) {
+            return NaN.NaN;
+        }
         double signalTotal = 0.0d;
         int signalCount = 0;
-        for (int cursor = lastEligibleIndex; cursor >= beginIndex && signalCount < lookbackSignals; cursor--) {
-            Boolean signal = signalIndicator.getValue(cursor);
-            if (!Boolean.TRUE.equals(signal)) {
-                continue;
-            }
-            double forwardReturn = signedForwardReturn(cursor);
+        int signalIndex = latestMaturedSignalIndexIndicator.getValue(lastEligibleIndex);
+        while (signalIndex >= beginIndex && signalCount < lookbackSignals) {
+            double forwardReturn = signedForwardReturn(signalIndex);
             if (!Double.isFinite(forwardReturn)) {
-                continue;
+                return NaN.NaN;
             }
             signalTotal += forwardReturn;
             signalCount++;
+            int previousIndex = signalIndex - 1;
+            signalIndex = previousIndex >= beginIndex ? latestMaturedSignalIndexIndicator.getValue(previousIndex)
+                    : NO_SIGNAL_INDEX;
         }
         if (signalCount == 0) {
             return NaN.NaN;
@@ -192,6 +197,34 @@ public class EntryEdgeIndicator extends CachedIndicator<Num> {
         Num basisPoints = entryPrice.getNumFactory().numOf(BASIS_POINTS);
         double rawReturn = exitPrice.minus(entryPrice).dividedBy(entryPrice).multipliedBy(basisPoints).doubleValue();
         return tradeType == TradeType.SELL ? -rawReturn : rawReturn;
+    }
+
+    private Indicator<Integer> createLatestMaturedSignalIndexIndicator() {
+        return new RecursiveCachedIndicator<>(getBarSeries()) {
+            @Override
+            protected Integer calculate(int index) {
+                int beginIndex = firstEligibleSignalIndex();
+                if (index < beginIndex) {
+                    return NO_SIGNAL_INDEX;
+                }
+                if (Boolean.TRUE.equals(signalIndicator.getValue(index))
+                        && Double.isFinite(signedForwardReturn(index))) {
+                    return index;
+                }
+                int previousIndex = index - 1;
+                return previousIndex >= beginIndex ? getValue(previousIndex) : NO_SIGNAL_INDEX;
+            }
+
+            @Override
+            public int getCountOfUnstableBars() {
+                return EntryEdgeIndicator.this.getCountOfUnstableBars();
+            }
+        };
+    }
+
+    private int firstEligibleSignalIndex() {
+        return Math.max(getBarSeries().getBeginIndex(),
+                getBarSeries().getBeginIndex() + signalIndicator.getCountOfUnstableBars());
     }
 
     private static BarSeries requireSameSeries(Indicator<Boolean> signalIndicator, Indicator<Num> priceIndicator) {

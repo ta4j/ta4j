@@ -58,6 +58,24 @@ public class EntryEdgeIndicatorTest {
         assertThat(subject.getValue(7).isPositive()).isFalse();
     }
 
+    @Test
+    public void shouldNotRescanSparseSignalGapsForEachIndex() {
+        BarSeries longSeries = new MockBarSeriesBuilder().build();
+        for (int index = 0; index < 80; index++) {
+            double close = 100 + index;
+            longSeries.barBuilder().openPrice(close).highPrice(close).lowPrice(close).closePrice(close).volume(1).add();
+        }
+        CountingSignalIndicator signals = new CountingSignalIndicator(longSeries, 0);
+        EntryEdgeIndicator subject = new EntryEdgeIndicator(signals, new ClosePriceIndicator(longSeries), TradeType.BUY,
+                1, 1);
+
+        for (int index = 1; index <= longSeries.getEndIndex(); index++) {
+            subject.getValue(index);
+        }
+
+        assertThat(signals.getReads()).isLessThan(200);
+    }
+
     private Indicator<Boolean> fixedSignals(int... indexes) {
         return new CachedIndicator<>(series) {
             @Override
@@ -75,5 +93,31 @@ public class EntryEdgeIndicatorTest {
                 return 0;
             }
         };
+    }
+
+    private static final class CountingSignalIndicator extends AbstractIndicator<Boolean> {
+
+        private final int signalIndex;
+        private int reads;
+
+        private CountingSignalIndicator(BarSeries series, int signalIndex) {
+            super(series);
+            this.signalIndex = signalIndex;
+        }
+
+        @Override
+        public Boolean getValue(int index) {
+            reads++;
+            return index == signalIndex;
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return 0;
+        }
+
+        private int getReads() {
+            return reads;
+        }
     }
 }

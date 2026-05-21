@@ -41,4 +41,14 @@ public class EdgeHealthyRuleTest {
 
         assertFalse(subject.isSatisfied(0, null));
     }
+
+    @Test
+    public void shouldUseZeroSlopeThresholdWhenMinimumSlopeIsOmitted() {
+        ConstantIndicator<Num> edge = new ConstantIndicator<>(series, series.numFactory().numOf(15));
+        ConstantIndicator<Num> minimum = new ConstantIndicator<>(series, series.numFactory().numOf(10));
+        ConstantIndicator<Num> improvingSlope = new ConstantIndicator<>(series, series.numFactory().one());
+        EdgeHealthyRule subject = new EdgeHealthyRule(edge, minimum, improvingSlope, null);
+
+        assertTrue(subject.isSatisfied(0, null));
+    }
 }
