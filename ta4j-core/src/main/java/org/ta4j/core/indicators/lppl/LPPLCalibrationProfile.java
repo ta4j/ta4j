@@ -84,6 +84,11 @@ public record LPPLCalibrationProfile(int[] windows, double minM, double maxM, in
         }
     }
 
+    @Override
+    public int[] windows() {
+        return Arrays.copyOf(windows, windows.length);
+    }
+
     /**
      * @return daily-equity defaults suitable for first-pass LPPL exhaustion scans
      * @since 0.22.7
