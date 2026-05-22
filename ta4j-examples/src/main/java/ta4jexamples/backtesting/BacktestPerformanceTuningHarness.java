@@ -1013,9 +1013,6 @@ public class BacktestPerformanceTuningHarness {
                 for (int timeFrame = MOMENTUM_TIMEFRAME_MIN; timeFrame <= MOMENTUM_TIMEFRAME_MAX; timeFrame += MOMENTUM_TIMEFRAME_INCREMENT) {
                     for (int reboundEntryThreshold = REBOUND_ENTRY_THRESHOLD_MIN; reboundEntryThreshold <= REBOUND_ENTRY_THRESHOLD_MAX; reboundEntryThreshold += REBOUND_ENTRY_THRESHOLD_INCREMENT) {
                         for (int exhaustionExitThreshold = EXHAUSTION_EXIT_THRESHOLD_MIN; exhaustionExitThreshold <= EXHAUSTION_EXIT_THRESHOLD_MAX; exhaustionExitThreshold += EXHAUSTION_EXIT_THRESHOLD_INCREMENT) {
-                            if (exhaustionExitThreshold > reboundEntryThreshold) {
-                                continue;
-                            }
                             for (double decayFactor = DECAY_FACTOR_MIN; decayFactor <= DECAY_FACTOR_MAX; decayFactor += DECAY_FACTOR_INCREMENT) {
                                 try {
                                     int currentRsiBarCount = rsiBarCount;
