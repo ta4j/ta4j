@@ -42,7 +42,11 @@ Applies to this package unless a deeper `AGENTS.md` overrides it.
 
 ## NetMomentumIndicator specifics
 
-- Preserve decay semantics: `decay = 1` keeps legacy running-total behavior; values below `1` apply exponential fade.
+- Preserve battery semantics: below-pivot oscillator pressure contributes positive rebound energy,
+  above-pivot pressure contributes negative depletion, and distance from the pivot is convex-weighted.
+- Preserve decay semantics: `decay = 1` keeps the undecayed windowed battery sum; values below `1`
+  apply exponential fade.
 - Keep the recursive weighted-sum formulation intact (do not reintroduce `RunningTotalIndicator`).
-- For deterministic expectations, use the steady-state reference formula `delta * (1 - decay^window) / (1 - decay)`.
+- For deterministic expectations, use the steady-state reference formula
+  `contribution * (1 - decay^window) / (1 - decay)`.
 - Prefer `NetMomentumIndicator.forRsi(...)` and `NetMomentumIndicator.forRsiWithDecay(...)` in tests/examples to avoid constructor ambiguity.

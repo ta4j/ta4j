@@ -227,8 +227,8 @@ import java.util.function.Consumer;
  * <ul>
  * <li>RSI bar count: 7 to 49 (increment: 7)</li>
  * <li>Momentum timeframe: 100 to 400 (increment: 100)</li>
- * <li>Oversold threshold: -2000 to 0 (increment: 250)</li>
- * <li>Overbought threshold: 0 to 1500 (increment: 250)</li>
+ * <li>Rebound entry threshold: 0 to 1500 (increment: 250)</li>
+ * <li>Exhaustion exit threshold: -2000 to 0 (increment: 250)</li>
  * <li>Decay factor: 0.9 to 1.0 (increment: 0.02)</li>
  * </ul>
  * This generates approximately 10,416 unique strategy combinations. When fewer
@@ -312,7 +312,7 @@ import java.util.function.Consumer;
  */
 public class BacktestPerformanceTuningHarness {
 
-    // PERFORMANCE NOTE: The current ranges generate ~10,000+ strategies.
+    // PERFORMANCE NOTE: The current ranges generate ~10,500+ strategies.
     // BacktestExecutor automatically uses batch processing for large strategy
     // counts (>1000)
     // to prevent memory exhaustion. If execution is still too slow, consider:
@@ -328,13 +328,13 @@ public class BacktestPerformanceTuningHarness {
     private static final int MOMENTUM_TIMEFRAME_MIN = 100;
     private static final int MOMENTUM_TIMEFRAME_MAX = 400;
 
-    private static final int OVERBOUGHT_THRESHOLD_INCREMENT = 250;
-    private static final int OVERBOUGHT_THRESHOLD_MIN = 0;
-    private static final int OVERBOUGHT_THRESHOLD_MAX = 1500;
+    private static final int REBOUND_ENTRY_THRESHOLD_INCREMENT = 250;
+    private static final int REBOUND_ENTRY_THRESHOLD_MIN = 0;
+    private static final int REBOUND_ENTRY_THRESHOLD_MAX = 1500;
 
-    private static final int OVERSOLD_THRESHOLD_INCREMENT = 250;
-    private static final int OVERSOLD_THRESHOLD_MIN = -2000;
-    private static final int OVERSOLD_THRESHOLD_MAX = 0;
+    private static final int EXHAUSTION_EXIT_THRESHOLD_INCREMENT = 250;
+    private static final int EXHAUSTION_EXIT_THRESHOLD_MIN = -2000;
+    private static final int EXHAUSTION_EXIT_THRESHOLD_MAX = 0;
 
     private static final double DECAY_FACTOR_INCREMENT = 0.02;
     private static final double DECAY_FACTOR_MIN = 0.9;
@@ -955,8 +955,8 @@ public class BacktestPerformanceTuningHarness {
      * <ul>
      * <li>RSI bar count: 7 to 49 (increment: 7)</li>
      * <li>Momentum timeframe: 100 to 400 (increment: 100)</li>
-     * <li>Oversold threshold: -2000 to 0 (increment: 250)</li>
-     * <li>Overbought threshold: 0 to 1500 (increment: 250)</li>
+     * <li>Rebound entry threshold: 0 to 1500 (increment: 250)</li>
+     * <li>Exhaustion exit threshold: -2000 to 0 (increment: 250)</li>
      * <li>Decay factor: 0.9 to 1.0 (increment: 0.02)</li>
      * </ul>
      * <p>
@@ -967,9 +967,9 @@ public class BacktestPerformanceTuningHarness {
      * Strategies use:
      * <ul>
      * <li>Entry rule: CrossedUpIndicatorRule when NetMomentumIndicator crosses
-     * above oversold threshold</li>
+     * above the rebound entry threshold</li>
      * <li>Exit rule: CrossedDownIndicatorRule when NetMomentumIndicator crosses
-     * below overbought threshold</li>
+     * below the exhaustion exit threshold</li>
      * </ul>
      * <p>
      * Strategies that share the same RSI, Net Momentum timeframe, and decay factor
@@ -998,7 +998,7 @@ public class BacktestPerformanceTuningHarness {
             effectiveTarget = requestedStrategyCount;
         }
 
-        List<Strategy> strategies = new ArrayList<>(requestedStrategyCount > 0 ? requestedStrategyCount : 10_416);
+        List<Strategy> strategies = new ArrayList<>(requestedStrategyCount > 0 ? requestedStrategyCount : 10_584);
         ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
         Map<Integer, RSIIndicator> rsiIndicators = new LinkedHashMap<>();
         Map<String, NetMomentumIndicator> netMomentumIndicators = new LinkedHashMap<>();
@@ -1011,11 +1011,8 @@ public class BacktestPerformanceTuningHarness {
 
             for (int rsiBarCount = RSI_BARCOUNT_MIN; rsiBarCount <= RSI_BARCOUNT_MAX; rsiBarCount += RSI_BARCOUNT_INCREMENT) {
                 for (int timeFrame = MOMENTUM_TIMEFRAME_MIN; timeFrame <= MOMENTUM_TIMEFRAME_MAX; timeFrame += MOMENTUM_TIMEFRAME_INCREMENT) {
-                    for (int oversoldThreshold = OVERSOLD_THRESHOLD_MIN; oversoldThreshold <= OVERSOLD_THRESHOLD_MAX; oversoldThreshold += OVERSOLD_THRESHOLD_INCREMENT) {
-                        for (int overboughtThreshold = OVERBOUGHT_THRESHOLD_MIN; overboughtThreshold <= OVERBOUGHT_THRESHOLD_MAX; overboughtThreshold += OVERBOUGHT_THRESHOLD_INCREMENT) {
-                            if (oversoldThreshold >= overboughtThreshold) {
-                                continue;
-                            }
+                    for (int reboundEntryThreshold = REBOUND_ENTRY_THRESHOLD_MIN; reboundEntryThreshold <= REBOUND_ENTRY_THRESHOLD_MAX; reboundEntryThreshold += REBOUND_ENTRY_THRESHOLD_INCREMENT) {
+                        for (int exhaustionExitThreshold = EXHAUSTION_EXIT_THRESHOLD_MIN; exhaustionExitThreshold <= EXHAUSTION_EXIT_THRESHOLD_MAX; exhaustionExitThreshold += EXHAUSTION_EXIT_THRESHOLD_INCREMENT) {
                             for (double decayFactor = DECAY_FACTOR_MIN; decayFactor <= DECAY_FACTOR_MAX; decayFactor += DECAY_FACTOR_INCREMENT) {
                                 try {
                                     int currentRsiBarCount = rsiBarCount;
@@ -1032,7 +1029,7 @@ public class BacktestPerformanceTuningHarness {
                                                                                     key)),
                                                                     currentTimeFrame, currentDecayFactor));
                                     Strategy strategy = createStrategy(netMomentumIndicator, currentRsiBarCount,
-                                            currentTimeFrame, oversoldThreshold, overboughtThreshold,
+                                            currentTimeFrame, reboundEntryThreshold, exhaustionExitThreshold,
                                             currentDecayFactor, repetition);
                                     strategies.add(strategy);
                                     created++;
@@ -1041,10 +1038,10 @@ public class BacktestPerformanceTuningHarness {
                                         return strategies;
                                     }
                                 } catch (Exception e) {
-                                    LOG.debug(
-                                            "Skipping invalid strategy combination: rsiBarCount={}, timeFrame={}, oversoldThreshold={}, overboughtThreshold={}, decayFactor={}: {}",
-                                            rsiBarCount, timeFrame, oversoldThreshold, overboughtThreshold, decayFactor,
-                                            e.getMessage());
+                                    LOG.debug("Skipping invalid strategy combination: rsiBarCount={}, timeFrame={}, "
+                                            + "reboundEntryThreshold={}, exhaustionExitThreshold={}, decayFactor={}: {}",
+                                            rsiBarCount, timeFrame, reboundEntryThreshold, exhaustionExitThreshold,
+                                            decayFactor, e.getMessage());
                                 }
                             }
                         }
@@ -1077,45 +1074,46 @@ public class BacktestPerformanceTuningHarness {
      * <li>RSI indicator with the specified bar count</li>
      * <li>NetMomentumIndicator wrapping the RSI with the specified timeframe and
      * decay factor</li>
-     * <li>Entry rule: Buy when NetMomentumIndicator crosses above the oversold
+     * <li>Entry rule: Buy when NetMomentumIndicator crosses above the rebound entry
      * threshold</li>
-     * <li>Exit rule: Sell when NetMomentumIndicator crosses below the overbought
-     * threshold</li>
+     * <li>Exit rule: Sell when NetMomentumIndicator crosses below the exhaustion
+     * exit threshold</li>
      * </ul>
      * <p>
      * The repetition parameter is used to create multiple strategies with the same
      * parameters when more strategies are requested than the grid can provide. It's
      * included in the strategy name for identification.
      *
-     * @param series              The bar series to use for indicator calculations
-     * @param rsiBarCount         The number of bars to use for RSI calculation
-     *                            (must be positive)
-     * @param timeFrame           The timeframe for NetMomentumIndicator (must be
-     *                            positive)
-     * @param oversoldThreshold   The oversold threshold for entry signals
-     * @param overboughtThreshold The overbought threshold for exit signals
-     * @param decayFactor         The decay factor for NetMomentumIndicator
-     *                            (typically 0.9 to 1.0)
-     * @param repetition          The repetition number (0 for first occurrence,
-     *                            incremented for repeats)
+     * @param series                  The bar series to use for indicator
+     *                                calculations
+     * @param rsiBarCount             The number of bars to use for RSI calculation
+     *                                (must be positive)
+     * @param timeFrame               The timeframe for NetMomentumIndicator (must
+     *                                be positive)
+     * @param reboundEntryThreshold   The rebound threshold for entry signals
+     * @param exhaustionExitThreshold The exhaustion threshold for exit signals
+     * @param decayFactor             The decay factor for NetMomentumIndicator
+     *                                (typically 0.9 to 1.0)
+     * @param repetition              The repetition number (0 for first occurrence,
+     *                                incremented for repeats)
      * @return A new strategy with the specified parameters
      * @throws NullPointerException     If series is null
      * @throws IllegalArgumentException If rsiBarCount or timeFrame is not positive
      */
-    static Strategy createStrategy(BarSeries series, int rsiBarCount, int timeFrame, int oversoldThreshold,
-            int overboughtThreshold, double decayFactor, int repetition) {
+    static Strategy createStrategy(BarSeries series, int rsiBarCount, int timeFrame, int reboundEntryThreshold,
+            int exhaustionExitThreshold, double decayFactor, int repetition) {
         Objects.requireNonNull(series, "series cannot be null");
 
         ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
         RSIIndicator rsiIndicator = new RSIIndicator(closePriceIndicator, rsiBarCount);
         NetMomentumIndicator netMomentumIndicator = NetMomentumIndicator.forRsiWithDecay(rsiIndicator, timeFrame,
                 decayFactor);
-        return createStrategy(netMomentumIndicator, rsiBarCount, timeFrame, oversoldThreshold, overboughtThreshold,
-                decayFactor, repetition);
+        return createStrategy(netMomentumIndicator, rsiBarCount, timeFrame, reboundEntryThreshold,
+                exhaustionExitThreshold, decayFactor, repetition);
     }
 
     private static Strategy createStrategy(NetMomentumIndicator netMomentumIndicator, int rsiBarCount, int timeFrame,
-            int oversoldThreshold, int overboughtThreshold, double decayFactor, int repetition) {
+            int reboundEntryThreshold, int exhaustionExitThreshold, double decayFactor, int repetition) {
         Objects.requireNonNull(netMomentumIndicator, "netMomentumIndicator cannot be null");
 
         if (rsiBarCount <= 0) {
@@ -1125,14 +1123,14 @@ public class BacktestPerformanceTuningHarness {
             throw new IllegalArgumentException("timeFrame should be positive");
         }
 
-        Rule entryRule = new CrossedUpIndicatorRule(netMomentumIndicator, oversoldThreshold);
-        Rule exitRule = new CrossedDownIndicatorRule(netMomentumIndicator, overboughtThreshold);
+        Rule entryRule = new CrossedUpIndicatorRule(netMomentumIndicator, reboundEntryThreshold);
+        Rule exitRule = new CrossedDownIndicatorRule(netMomentumIndicator, exhaustionExitThreshold);
 
         String suffix = repetition > 0 ? " (rep=" + repetition + ")" : "";
         String strategyName = "Entry Crossed Up: {rsiBarCount=" + rsiBarCount + ", timeFrame=" + timeFrame
-                + ", oversoldThreshold=" + oversoldThreshold + "}, Exit Crossed Down: {rsiBarCount=" + rsiBarCount
-                + ", timeFrame=" + timeFrame + ", overboughtThreshold=" + overboughtThreshold + ", decayFactor="
-                + decayFactor + "}" + suffix;
+                + ", reboundEntryThreshold=" + reboundEntryThreshold + "}, Exit Crossed Down: {rsiBarCount="
+                + rsiBarCount + ", timeFrame=" + timeFrame + ", exhaustionExitThreshold=" + exhaustionExitThreshold
+                + ", decayFactor=" + decayFactor + "}" + suffix;
 
         return new BaseStrategy(strategyName, entryRule, exitRule);
     }
