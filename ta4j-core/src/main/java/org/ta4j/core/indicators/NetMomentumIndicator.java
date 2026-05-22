@@ -104,6 +104,9 @@ import static org.ta4j.core.num.NaN.NaN;
  * NetMomentumIndicator netMomentum = NetMomentumIndicator.forRsiWithDecay(rsi, 20, 0.85);
  * }</pre>
  *
+ * <p>
+ * Battery-model adaptation by TheCookieLab.
+ *
  * @see RSIIndicator
  * @see KalmanFilterIndicator
  *
@@ -166,11 +169,6 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
         Objects.requireNonNull(neutralPivotValue, "Neutral pivot value must not be null");
         Objects.requireNonNull(decayFactor, "Decay factor must not be null");
 
-        double rawPivot = neutralPivotValue.doubleValue();
-        if (Double.isNaN(rawPivot) || Double.isInfinite(rawPivot)) {
-            throw new IllegalArgumentException("Neutral pivot value must be finite (not NaN or infinite)");
-        }
-
         if (timeFrame <= 0) {
             throw new IllegalArgumentException("Time frame must be greater than 0");
         }
@@ -186,9 +184,13 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
         }
 
         NumFactory numFactory = oscillatingIndicator.getBarSeries().numFactory();
+        Num neutralPivot = numFactory.numOf(neutralPivotValue);
+        if (Num.isNaNOrNull(neutralPivot) || neutralPivot.decimalValue() == null) {
+            throw new IllegalArgumentException("Neutral pivot value must be finite (not NaN or infinite)");
+        }
         this.decayFactor = numFactory.numOf(decayFactor);
         this.decayFactorAtWindowLimit = this.decayFactor.pow(timeFrame);
-        this.convexityScale = numFactory.numOf(Math.max(Math.abs(rawPivot), 1.0d));
+        this.convexityScale = neutralPivot.abs().max(numFactory.one());
         this.zero = numFactory.zero();
         int smoothingUnstable = Math.max(oscillatingIndicator.getCountOfUnstableBars(),
                 smoothedIndicator.getCountOfUnstableBars());

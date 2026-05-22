@@ -312,7 +312,7 @@ import java.util.function.Consumer;
  */
 public class BacktestPerformanceTuningHarness {
 
-    // PERFORMANCE NOTE: The current ranges generate ~10,000+ strategies.
+    // PERFORMANCE NOTE: The current ranges generate ~10,500+ strategies.
     // BacktestExecutor automatically uses batch processing for large strategy
     // counts (>1000)
     // to prevent memory exhaustion. If execution is still too slow, consider:
@@ -998,7 +998,7 @@ public class BacktestPerformanceTuningHarness {
             effectiveTarget = requestedStrategyCount;
         }
 
-        List<Strategy> strategies = new ArrayList<>(requestedStrategyCount > 0 ? requestedStrategyCount : 10_416);
+        List<Strategy> strategies = new ArrayList<>(requestedStrategyCount > 0 ? requestedStrategyCount : 10_584);
         ClosePriceIndicator closePriceIndicator = new ClosePriceIndicator(series);
         Map<Integer, RSIIndicator> rsiIndicators = new LinkedHashMap<>();
         Map<String, NetMomentumIndicator> netMomentumIndicators = new LinkedHashMap<>();
@@ -1013,7 +1013,7 @@ public class BacktestPerformanceTuningHarness {
                 for (int timeFrame = MOMENTUM_TIMEFRAME_MIN; timeFrame <= MOMENTUM_TIMEFRAME_MAX; timeFrame += MOMENTUM_TIMEFRAME_INCREMENT) {
                     for (int reboundEntryThreshold = REBOUND_ENTRY_THRESHOLD_MIN; reboundEntryThreshold <= REBOUND_ENTRY_THRESHOLD_MAX; reboundEntryThreshold += REBOUND_ENTRY_THRESHOLD_INCREMENT) {
                         for (int exhaustionExitThreshold = EXHAUSTION_EXIT_THRESHOLD_MIN; exhaustionExitThreshold <= EXHAUSTION_EXIT_THRESHOLD_MAX; exhaustionExitThreshold += EXHAUSTION_EXIT_THRESHOLD_INCREMENT) {
-                            if (exhaustionExitThreshold >= reboundEntryThreshold) {
+                            if (exhaustionExitThreshold > reboundEntryThreshold) {
                                 continue;
                             }
                             for (double decayFactor = DECAY_FACTOR_MIN; decayFactor <= DECAY_FACTOR_MAX; decayFactor += DECAY_FACTOR_INCREMENT) {
