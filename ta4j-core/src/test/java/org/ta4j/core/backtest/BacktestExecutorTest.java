@@ -5,7 +5,6 @@ package org.ta4j.core.backtest;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
@@ -89,25 +88,6 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertEquals(1, result.tradingStatements().size());
         assertEquals(numFactory.one(), position.getEntry().getAmount());
         assertEquals(numFactory.one(), position.getExit().getAmount());
-    }
-
-    @Test
-    public void executeWithRuntimeReportRejectsInvalidPositionSizer() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
-        Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
-        BacktestExecutor executor = new BacktestExecutor(series);
-
-        PositionSizer nullPositionSizer = context -> null;
-        assertThrows(IllegalArgumentException.class,
-                () -> executor.executeWithRuntimeReport(List.of(strategy), nullPositionSizer, Trade.TradeType.BUY));
-
-        PositionSizer nonPositivePositionSizer = context -> numFactory.zero();
-        assertThrows(IllegalArgumentException.class, () -> executor.executeWithRuntimeReport(List.of(strategy),
-                nonPositivePositionSizer, Trade.TradeType.BUY));
-
-        PositionSizer nanPositionSizer = context -> numFactory.numOf(Double.NaN);
-        assertThrows(IllegalArgumentException.class,
-                () -> executor.executeWithRuntimeReport(List.of(strategy), nanPositionSizer, Trade.TradeType.BUY));
     }
 
     @Test

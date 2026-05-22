@@ -31,7 +31,6 @@ import org.ta4j.core.analysis.cost.LinearTransactionCostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
-import org.ta4j.core.num.DecimalNumFactory;
 import org.ta4j.core.num.DoubleNumFactory;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
@@ -161,46 +160,6 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
-    public void runWithPositionSizerRejectsInvalidAmount() {
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40).build();
-        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
-        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
-
-        PositionSizer nullPositionSizer = context -> null;
-        assertThrows(IllegalArgumentException.class,
-                () -> localManager.run(oneTradeStrategy, TradeType.BUY, nullPositionSizer));
-
-        PositionSizer nonPositivePositionSizer = context -> numFactory.zero();
-        assertThrows(IllegalArgumentException.class,
-                () -> localManager.run(oneTradeStrategy, TradeType.BUY, nonPositivePositionSizer));
-
-        PositionSizer nanPositionSizer = context -> numFactory.numOf(Double.NaN);
-        assertThrows(IllegalArgumentException.class,
-                () -> localManager.run(oneTradeStrategy, TradeType.BUY, nanPositionSizer));
-
-        PositionSizer mismatchedNumSizer = context -> {
-            if (numFactory instanceof DoubleNumFactory) {
-                return DecimalNumFactory.getInstance().one();
-            }
-            return DoubleNumFactory.getInstance().one();
-        };
-        assertThrows(IllegalArgumentException.class,
-                () -> localManager.run(oneTradeStrategy, TradeType.BUY, mismatchedNumSizer));
-    }
-
-    @Test
-    public void runWithPositionSizerRejectsInfiniteAmount() {
-        NumFactory doubleNumFactory = DoubleNumFactory.getInstance();
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(doubleNumFactory).withData(10, 20, 30, 40).build();
-        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
-        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
-        PositionSizer infinitePositionSizer = context -> doubleNumFactory.numOf(Double.POSITIVE_INFINITY);
-
-        assertThrows(IllegalArgumentException.class,
-                () -> localManager.run(oneTradeStrategy, TradeType.BUY, infinitePositionSizer));
-    }
-
-    @Test
     public void positionSizerFixedFactoriesUseDefaultAndCustomAmounts() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30).build();
         BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
@@ -214,6 +173,17 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertEquals(numFactory.one(), unitRecord.getPositions().getFirst().getEntry().getAmount());
         assertEquals(numFactory.numOf(3), numberRecord.getPositions().getFirst().getEntry().getAmount());
         assertEquals(numFactory.two(), numRecord.getPositions().getFirst().getEntry().getAmount());
+    }
+
+    @Test
+    public void positionSizerFixedFactoriesRejectInvalidInputs() {
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.fixed(0));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.fixed(-1));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.fixed(Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.fixed(Double.POSITIVE_INFINITY));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.fixed(numFactory.zero()));
+        assertThrows(IllegalArgumentException.class,
+                () -> PositionSizer.fixed(DoubleNumFactory.getInstance().numOf(Double.POSITIVE_INFINITY)));
     }
 
     @Test
@@ -239,6 +209,15 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
 
         assertEquals(numFactory.numOf(10), positions.get(0).getEntry().getAmount());
         assertEquals(numFactory.numOf(5), positions.get(1).getEntry().getAmount());
+    }
+
+    @Test
+    public void positionSizerBalanceRejectsInvalidInputs() {
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.balance(0));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.balance(-1));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.balance(Double.NaN));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.balance(Double.POSITIVE_INFINITY));
+        assertThrows(NullPointerException.class, () -> PositionSizer.balance(100, null));
     }
 
     @Test
@@ -273,13 +252,7 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertThrows(IllegalArgumentException.class, () -> PositionSizer.kelly(1000, 0.6, 0));
         assertThrows(IllegalArgumentException.class, () -> PositionSizer.kelly(1000, 0.6, 2, 0));
         assertThrows(IllegalArgumentException.class, () -> PositionSizer.kelly(1000, Double.NaN, 2));
-
-        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20).build();
-        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
-        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
-
-        assertThrows(IllegalArgumentException.class,
-                () -> localManager.run(oneTradeStrategy, TradeType.BUY, PositionSizer.kelly(1000, 0.4, 1)));
+        assertThrows(IllegalArgumentException.class, () -> PositionSizer.kelly(1000, 0.4, 1));
     }
 
     @Test

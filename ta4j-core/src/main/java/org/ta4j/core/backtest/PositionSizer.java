@@ -35,6 +35,13 @@ public interface PositionSizer {
     /**
      * Returns the amount used to open a new position.
      *
+     * <p>
+     * Implementations must return a positive, finite {@link Num} compatible with
+     * {@link Context#numFactory()}. Factory-created sizers validate their
+     * constructor inputs eagerly; custom implementations are responsible for
+     * honoring this contract when they are called.
+     * </p>
+     *
      * @param context entry sizing context
      * @return amount used for entry execution
      * @since 0.22.7
@@ -139,6 +146,7 @@ public interface PositionSizer {
         validateProbability(winProbability, "winProbability");
         validatePositiveNumber(payoffRatio, "payoffRatio");
         validatePositiveNumber(coefficient, "coefficient");
+        validatePositiveKellyFraction(winProbability, payoffRatio, coefficient);
         return context -> {
             Num one = context.numFactory().one();
             Num probability = context.numOf(winProbability);
@@ -146,9 +154,6 @@ public interface PositionSizer {
             Num ratio = context.numOf(payoffRatio);
             Num multiplier = context.numOf(coefficient);
             Num kellyFraction = probability.minus(lossProbability.dividedBy(ratio)).multipliedBy(multiplier);
-            if (!kellyFraction.isPositive()) {
-                throw new IllegalArgumentException("Kelly fraction must be positive");
-            }
             Num budget = context.currentBalance(principal).multipliedBy(kellyFraction);
             return context.maxAffordableAmount(budget);
         };
@@ -167,6 +172,16 @@ public interface PositionSizer {
         double doubleValue = value.doubleValue();
         if (!Double.isFinite(doubleValue) || doubleValue <= 0 || doubleValue >= 1) {
             throw new IllegalArgumentException(name + " must be finite and in (0, 1)");
+        }
+    }
+
+    private static void validatePositiveKellyFraction(Number winProbability, Number payoffRatio, Number coefficient) {
+        double probability = winProbability.doubleValue();
+        double ratio = payoffRatio.doubleValue();
+        double multiplier = coefficient.doubleValue();
+        double kellyFraction = (probability - ((1 - probability) / ratio)) * multiplier;
+        if (kellyFraction <= 0) {
+            throw new IllegalArgumentException("Kelly fraction must be positive");
         }
     }
 

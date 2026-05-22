@@ -598,14 +598,7 @@ public class BarSeriesManager {
 
     private Num amountForIndex(PositionSizer positionSizer, int index, Strategy strategy, TradingRecord tradingRecord,
             TradeType tradeType) {
-        Num amount = positionSizer.amount(positionSizerContext(index, strategy, tradingRecord, tradeType));
-        if (!Num.isValid(amount) || !Double.isFinite(amount.doubleValue()) || !amount.isPositive()) {
-            throw new IllegalArgumentException("Position sizer returned invalid amount");
-        }
-        if (!barSeries.numFactory().produces(amount)) {
-            throw new IllegalArgumentException("Position sizer returned incompatible Num implementation");
-        }
-        return amount;
+        return positionSizer.amount(positionSizerContext(index, strategy, tradingRecord, tradeType));
     }
 
     private Num amountForNextOperation(PositionSizer positionSizer, int index, Strategy strategy,
@@ -613,11 +606,7 @@ public class BarSeriesManager {
         if (tradingRecord.isClosed()) {
             return amountForIndex(positionSizer, index, strategy, tradingRecord, tradeType);
         }
-        Num amount = tradingRecord.getCurrentPosition().amount();
-        if (Num.isNaNOrNull(amount) || !Double.isFinite(amount.doubleValue()) || !amount.isPositive()) {
-            throw new IllegalStateException("Current position amount must be positive");
-        }
-        return amount;
+        return tradingRecord.getCurrentPosition().amount();
     }
 
     private PositionSizer.Context positionSizerContext(int index, Strategy strategy, TradingRecord tradingRecord,
