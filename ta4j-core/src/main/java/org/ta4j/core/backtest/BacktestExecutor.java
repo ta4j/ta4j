@@ -173,15 +173,15 @@ public class BacktestExecutor {
 
     /**
      * Executes given strategies and returns trading statements using a dynamic
-     * entry amount provider.
+     * entry position sizer.
      *
-     * @param strategies     the strategies
-     * @param amountProvider dynamic entry amount provider
+     * @param strategies    the strategies
+     * @param positionSizer dynamic entry position sizer
      * @return a list of TradingStatements
      * @since 0.22.7
      */
-    public List<TradingStatement> execute(List<Strategy> strategies, BarSeriesManager.AmountProvider amountProvider) {
-        return execute(strategies, amountProvider, Trade.TradeType.BUY);
+    public List<TradingStatement> execute(List<Strategy> strategies, PositionSizer positionSizer) {
+        return execute(strategies, positionSizer, Trade.TradeType.BUY);
     }
 
     /**
@@ -201,15 +201,15 @@ public class BacktestExecutor {
      * Executes given strategies with specified trade type to open the position and
      * return the trading statements.
      *
-     * @param strategies     the strategies
-     * @param amountProvider dynamic entry amount provider
-     * @param tradeType      the {@link Trade.TradeType} used to open the position
+     * @param strategies    the strategies
+     * @param positionSizer dynamic entry position sizer
+     * @param tradeType     the {@link Trade.TradeType} used to open the position
      * @return a list of TradingStatements
      * @since 0.22.7
      */
-    public List<TradingStatement> execute(List<Strategy> strategies, BarSeriesManager.AmountProvider amountProvider,
+    public List<TradingStatement> execute(List<Strategy> strategies, PositionSizer positionSizer,
             Trade.TradeType tradeType) {
-        return executeWithRuntimeReport(strategies, amountProvider, tradeType).tradingStatements();
+        return executeWithRuntimeReport(strategies, positionSizer, tradeType).tradingStatements();
     }
 
     /**
@@ -228,16 +228,15 @@ public class BacktestExecutor {
 
     /**
      * Executes strategies while collecting runtime measurements and trading
-     * statements using a dynamic entry amount provider.
+     * statements using a dynamic entry position sizer.
      *
-     * @param strategies     the strategies
-     * @param amountProvider dynamic entry amount provider
+     * @param strategies    the strategies
+     * @param positionSizer dynamic entry position sizer
      * @return execution result with trading statements and runtime report
      * @since 0.22.7
      */
-    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies,
-            BarSeriesManager.AmountProvider amountProvider) {
-        return executeWithRuntimeReport(strategies, amountProvider, Trade.TradeType.BUY);
+    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, PositionSizer positionSizer) {
+        return executeWithRuntimeReport(strategies, positionSizer, Trade.TradeType.BUY);
     }
 
     /**
@@ -258,17 +257,17 @@ public class BacktestExecutor {
 
     /**
      * Executes strategies while collecting runtime measurements and trading
-     * statements using a dynamic entry amount provider.
+     * statements using a dynamic entry position sizer.
      *
-     * @param strategies     the strategies
-     * @param amountProvider dynamic entry amount provider
-     * @param tradeType      the {@link Trade.TradeType} used to open the position
+     * @param strategies    the strategies
+     * @param positionSizer dynamic entry position sizer
+     * @param tradeType     the {@link Trade.TradeType} used to open the position
      * @return execution result with trading statements and runtime report
      * @since 0.22.7
      */
-    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies,
-            BarSeriesManager.AmountProvider amountProvider, Trade.TradeType tradeType) {
-        return executeWithRuntimeReport(strategies, amountProvider, tradeType, null);
+    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, PositionSizer positionSizer,
+            Trade.TradeType tradeType) {
+        return executeWithRuntimeReport(strategies, positionSizer, tradeType, null);
     }
 
     /**
@@ -304,11 +303,11 @@ public class BacktestExecutor {
 
     /**
      * Executes strategies while collecting runtime measurements and trading
-     * statements, with optional progress reporting, using a dynamic entry amount
-     * provider.
+     * statements, with optional progress reporting, using a dynamic entry position
+     * sizer.
      *
      * @param strategies       the strategies
-     * @param amountProvider   dynamic entry amount provider
+     * @param positionSizer    dynamic entry position sizer
      * @param tradeType        the {@link Trade.TradeType} used to open the position
      * @param progressCallback optional callback for progress updates (receives
      *                         completed count). May be null, in which case
@@ -316,10 +315,9 @@ public class BacktestExecutor {
      * @return execution result with trading statements and runtime report
      * @since 0.22.7
      */
-    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies,
-            BarSeriesManager.AmountProvider amountProvider, Trade.TradeType tradeType,
-            Consumer<Integer> progressCallback) {
-        return executeWithRuntimeReport(strategies, amountProvider, tradeType, progressCallback, DEFAULT_BATCH_SIZE);
+    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, PositionSizer positionSizer,
+            Trade.TradeType tradeType, Consumer<Integer> progressCallback) {
+        return executeWithRuntimeReport(strategies, positionSizer, tradeType, progressCallback, DEFAULT_BATCH_SIZE);
     }
 
     /**
@@ -354,10 +352,10 @@ public class BacktestExecutor {
     /**
      * Executes strategies while collecting runtime measurements and trading
      * statements, with configurable batch size and optional progress reporting,
-     * using a dynamic entry amount provider.
+     * using a dynamic entry position sizer.
      *
      * @param strategies       the strategies
-     * @param amountProvider   dynamic entry amount provider
+     * @param positionSizer    dynamic entry position sizer
      * @param tradeType        the {@link Trade.TradeType} used to open the position
      * @param progressCallback optional callback for progress updates (receives
      *                         completed count). May be null.
@@ -367,12 +365,11 @@ public class BacktestExecutor {
      * @return execution result with trading statements and runtime report
      * @since 0.22.7
      */
-    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies,
-            BarSeriesManager.AmountProvider amountProvider, Trade.TradeType tradeType,
-            Consumer<Integer> progressCallback, int batchSize) {
-        Objects.requireNonNull(amountProvider, "amountProvider must not be null");
+    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, PositionSizer positionSizer,
+            Trade.TradeType tradeType, Consumer<Integer> progressCallback, int batchSize) {
+        Objects.requireNonNull(positionSizer, "positionSizer must not be null");
         return executeWithRuntimeReport(strategies, tradeType, progressCallback, batchSize,
-                strategy -> seriesManager.run(strategy, tradeType, amountProvider));
+                strategy -> seriesManager.run(strategy, tradeType, positionSizer));
     }
 
     private BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, Trade.TradeType tradeType,
@@ -504,32 +501,32 @@ public class BacktestExecutor {
      * Executes walk-forward testing for one strategy with a dynamic entry amount
      * provider and strategy starting trade type.
      *
-     * @param strategy       strategy to execute
-     * @param amountProvider dynamic entry amount provider
-     * @param config         walk-forward configuration
+     * @param strategy      strategy to execute
+     * @param positionSizer dynamic entry position sizer
+     * @param config        walk-forward configuration
      * @return walk-forward execution result
      * @since 0.22.7
      */
-    public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy,
-            BarSeriesManager.AmountProvider amountProvider, WalkForwardConfig config) {
+    public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy, PositionSizer positionSizer,
+            WalkForwardConfig config) {
         Objects.requireNonNull(strategy, "strategy");
-        return executeWalkForward(strategy, amountProvider, strategy.getStartingType(), config, null);
+        return executeWalkForward(strategy, positionSizer, strategy.getStartingType(), config, null);
     }
 
     /**
      * Executes walk-forward testing for one strategy with dynamic entry amount
      * provider and explicit trade type.
      *
-     * @param strategy       strategy to execute
-     * @param amountProvider dynamic entry amount provider
-     * @param tradeType      trade type used to open positions
-     * @param config         walk-forward configuration
+     * @param strategy      strategy to execute
+     * @param positionSizer dynamic entry position sizer
+     * @param tradeType     trade type used to open positions
+     * @param config        walk-forward configuration
      * @return walk-forward execution result
      * @since 0.22.7
      */
-    public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy,
-            BarSeriesManager.AmountProvider amountProvider, Trade.TradeType tradeType, WalkForwardConfig config) {
-        return executeWalkForward(strategy, amountProvider, tradeType, config, null);
+    public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy, PositionSizer positionSizer,
+            Trade.TradeType tradeType, WalkForwardConfig config) {
+        return executeWalkForward(strategy, positionSizer, tradeType, config, null);
     }
 
     /**
@@ -537,23 +534,22 @@ public class BacktestExecutor {
      * provider and optional per-fold progress callback.
      *
      * @param strategy         strategy to execute
-     * @param amountProvider   dynamic entry amount provider
+     * @param positionSizer    dynamic entry position sizer
      * @param tradeType        trade type used to open positions
      * @param config           walk-forward configuration
      * @param progressCallback optional callback receiving completed fold count
      * @return walk-forward execution result
      * @since 0.22.7
      */
-    public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy,
-            BarSeriesManager.AmountProvider amountProvider, Trade.TradeType tradeType, WalkForwardConfig config,
-            Consumer<Integer> progressCallback) {
+    public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy, PositionSizer positionSizer,
+            Trade.TradeType tradeType, WalkForwardConfig config, Consumer<Integer> progressCallback) {
         Objects.requireNonNull(strategy, "strategy");
-        Objects.requireNonNull(amountProvider, "amountProvider");
+        Objects.requireNonNull(positionSizer, "positionSizer");
         Objects.requireNonNull(tradeType, "tradeType");
         Objects.requireNonNull(config, "config");
         StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(seriesManager, tradingStatementGenerator,
                 new AnchoredExpandingWalkForwardSplitter());
-        return executor.execute(strategy, tradeType, amountProvider, config, progressCallback);
+        return executor.execute(strategy, tradeType, positionSizer, config, progressCallback);
     }
 
     /**
@@ -611,39 +607,39 @@ public class BacktestExecutor {
 
     /**
      * Runs both standard backtest and walk-forward evaluation for one strategy with
-     * a dynamic entry amount provider.
+     * a dynamic entry position sizer.
      *
-     * @param strategy       strategy to execute
-     * @param amountProvider dynamic entry amount provider
-     * @param config         walk-forward configuration
+     * @param strategy      strategy to execute
+     * @param positionSizer dynamic entry position sizer
+     * @param config        walk-forward configuration
      * @return combined backtest and walk-forward result
      * @since 0.22.7
      */
-    public BacktestAndWalkForwardResult executeWithWalkForward(Strategy strategy,
-            BarSeriesManager.AmountProvider amountProvider, WalkForwardConfig config) {
+    public BacktestAndWalkForwardResult executeWithWalkForward(Strategy strategy, PositionSizer positionSizer,
+            WalkForwardConfig config) {
         Objects.requireNonNull(strategy, "strategy");
-        return executeWithWalkForward(strategy, amountProvider, strategy.getStartingType(), config);
+        return executeWithWalkForward(strategy, positionSizer, strategy.getStartingType(), config);
     }
 
     /**
      * Runs both standard backtest and walk-forward evaluation for one strategy.
      *
-     * @param strategy       strategy to execute
-     * @param amountProvider dynamic entry amount provider
-     * @param tradeType      trade type used to open positions
-     * @param config         walk-forward configuration
+     * @param strategy      strategy to execute
+     * @param positionSizer dynamic entry position sizer
+     * @param tradeType     trade type used to open positions
+     * @param config        walk-forward configuration
      * @return combined backtest and walk-forward result
      * @since 0.22.7
      */
-    public BacktestAndWalkForwardResult executeWithWalkForward(Strategy strategy,
-            BarSeriesManager.AmountProvider amountProvider, Trade.TradeType tradeType, WalkForwardConfig config) {
+    public BacktestAndWalkForwardResult executeWithWalkForward(Strategy strategy, PositionSizer positionSizer,
+            Trade.TradeType tradeType, WalkForwardConfig config) {
         Objects.requireNonNull(strategy, "strategy");
-        Objects.requireNonNull(amountProvider, "amountProvider");
+        Objects.requireNonNull(positionSizer, "positionSizer");
         Objects.requireNonNull(tradeType, "tradeType");
         Objects.requireNonNull(config, "config");
 
-        BacktestExecutionResult backtestResult = executeWithRuntimeReport(List.of(strategy), amountProvider, tradeType);
-        StrategyWalkForwardExecutionResult walkForwardResult = executeWalkForward(strategy, amountProvider, tradeType,
+        BacktestExecutionResult backtestResult = executeWithRuntimeReport(List.of(strategy), positionSizer, tradeType);
+        StrategyWalkForwardExecutionResult walkForwardResult = executeWalkForward(strategy, positionSizer, tradeType,
                 config);
         return new BacktestAndWalkForwardResult(backtestResult, walkForwardResult);
     }
@@ -685,10 +681,10 @@ public class BacktestExecutor {
 
     /**
      * Executes strategies and returns only the top K results based on a criterion,
-     * using a streaming approach and dynamic entry amount provider.
+     * using a streaming approach and dynamic entry position sizer.
      *
      * @param strategies       the strategies to evaluate
-     * @param amountProvider   dynamic entry amount provider
+     * @param positionSizer    dynamic entry position sizer
      * @param tradeType        the {@link Trade.TradeType} used to open the position
      * @param criterion        the criterion used to rank strategies (higher is
      *                         better)
@@ -699,13 +695,12 @@ public class BacktestExecutor {
      *         report
      * @since 0.22.7
      */
-    public BacktestExecutionResult executeAndKeepTopK(List<Strategy> strategies,
-            BarSeriesManager.AmountProvider amountProvider, Trade.TradeType tradeType, AnalysisCriterion criterion,
-            int topK, Consumer<Integer> progressCallback) {
-        Objects.requireNonNull(amountProvider, "amountProvider must not be null");
+    public BacktestExecutionResult executeAndKeepTopK(List<Strategy> strategies, PositionSizer positionSizer,
+            Trade.TradeType tradeType, AnalysisCriterion criterion, int topK, Consumer<Integer> progressCallback) {
+        Objects.requireNonNull(positionSizer, "positionSizer must not be null");
         Objects.requireNonNull(tradeType, "tradeType must not be null");
         return executeAndKeepTopK(strategies, criterion, topK, progressCallback,
-                strategy -> seriesManager.run(strategy, tradeType, amountProvider));
+                strategy -> seriesManager.run(strategy, tradeType, positionSizer));
     }
 
     private BacktestExecutionResult executeAndKeepTopK(List<Strategy> strategies, AnalysisCriterion criterion, int topK,

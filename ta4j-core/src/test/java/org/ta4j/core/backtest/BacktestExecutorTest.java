@@ -75,14 +75,13 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
-    public void executeWithRuntimeReportAcceptsAmountProvider() {
+    public void executeWithRuntimeReportAcceptsPositionSizer() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13, 14).build();
         Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
         BacktestExecutor executor = new BacktestExecutor(series);
-        BarSeriesManager.AmountProvider amountProvider = (index, currentStrategy, barSeries, tradeType) -> numFactory
-                .numOf(index + 1);
+        PositionSizer positionSizer = context -> numFactory.numOf(context.signalIndex() + 1);
 
-        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), amountProvider,
+        BacktestExecutionResult result = executor.executeWithRuntimeReport(List.of(strategy), positionSizer,
                 Trade.TradeType.BUY);
         TradingRecord tradingRecord = result.tradingStatements().getFirst().getTradingRecord();
         Position position = tradingRecord.getPositions().getFirst();
@@ -93,24 +92,22 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
-    public void executeWithRuntimeReportRejectsInvalidAmountProvider() {
+    public void executeWithRuntimeReportRejectsInvalidPositionSizer() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12).build();
         Strategy strategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
         BacktestExecutor executor = new BacktestExecutor(series);
 
-        BarSeriesManager.AmountProvider nullAmountProvider = (index, currentStrategy, barSeries, tradeType) -> null;
+        PositionSizer nullPositionSizer = context -> null;
         assertThrows(IllegalArgumentException.class,
-                () -> executor.executeWithRuntimeReport(List.of(strategy), nullAmountProvider, Trade.TradeType.BUY));
+                () -> executor.executeWithRuntimeReport(List.of(strategy), nullPositionSizer, Trade.TradeType.BUY));
 
-        BarSeriesManager.AmountProvider nonPositiveAmountProvider = (index, currentStrategy, barSeries,
-                tradeType) -> numFactory.zero();
+        PositionSizer nonPositivePositionSizer = context -> numFactory.zero();
         assertThrows(IllegalArgumentException.class, () -> executor.executeWithRuntimeReport(List.of(strategy),
-                nonPositiveAmountProvider, Trade.TradeType.BUY));
+                nonPositivePositionSizer, Trade.TradeType.BUY));
 
-        BarSeriesManager.AmountProvider nanAmountProvider = (index, currentStrategy, barSeries, tradeType) -> numFactory
-                .numOf(Double.NaN);
+        PositionSizer nanPositionSizer = context -> numFactory.numOf(Double.NaN);
         assertThrows(IllegalArgumentException.class,
-                () -> executor.executeWithRuntimeReport(List.of(strategy), nanAmountProvider, Trade.TradeType.BUY));
+                () -> executor.executeWithRuntimeReport(List.of(strategy), nanPositionSizer, Trade.TradeType.BUY));
     }
 
     @Test
@@ -460,18 +457,17 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
-    public void executeAndKeepTopKAcceptsAmountProvider() {
+    public void executeAndKeepTopKAcceptsPositionSizer() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 11, 12, 13).build();
         Strategy smallestEntry = new BaseStrategy(new FixedRule(0), new FixedRule(3));
         Strategy middleEntry = new BaseStrategy(new FixedRule(1), new FixedRule(3));
         Strategy largestEntry = new BaseStrategy(new FixedRule(2), new FixedRule(3));
         List<Strategy> strategies = List.of(largestEntry, middleEntry, smallestEntry);
-        BarSeriesManager.AmountProvider amountProvider = (index, currentStrategy, barSeries, tradeType) -> numFactory
-                .numOf(index + 1);
+        PositionSizer positionSizer = context -> numFactory.numOf(context.signalIndex() + 1);
         BacktestExecutor executor = new BacktestExecutor(series, new LinearTransactionCostModel(0.01),
                 new ZeroCostModel(), new TradeOnCurrentCloseModel());
 
-        BacktestExecutionResult result = executor.executeAndKeepTopK(strategies, amountProvider, Trade.TradeType.BUY,
+        BacktestExecutionResult result = executor.executeAndKeepTopK(strategies, positionSizer, Trade.TradeType.BUY,
                 new CommissionsCriterion(), 1, null);
         TradingRecord tradingRecord = result.tradingStatements().getFirst().getTradingRecord();
         Position position = tradingRecord.getPositions().getFirst();
@@ -501,18 +497,17 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
-    public void executeWalkForwardAcceptsAmountProvider() {
+    public void executeWalkForwardAcceptsPositionSizer() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25)
                 .build();
         Strategy strategy = new BaseStrategy(new FixedRule(4, 8, 12), new FixedRule(5, 9, 13));
         WalkForwardConfig config = new WalkForwardConfig(4, 4, 4, 0, 0, 4, 2, List.of(1), 1, List.of(1), 3L);
-        BarSeriesManager.AmountProvider amountProvider = (index, currentStrategy, barSeries, tradeType) -> numFactory
-                .numOf(index + 1);
+        PositionSizer positionSizer = context -> numFactory.numOf(context.entryIndex());
         BacktestExecutor executor = new BacktestExecutor(series, new ZeroCostModel(), new ZeroCostModel(),
                 new TradeOnCurrentCloseModel());
 
-        StrategyWalkForwardExecutionResult result = executor.executeWalkForward(strategy, amountProvider,
+        StrategyWalkForwardExecutionResult result = executor.executeWalkForward(strategy, positionSizer,
                 Trade.TradeType.BUY, config);
 
         assertFalse(result.folds().isEmpty());
@@ -520,18 +515,17 @@ public class BacktestExecutorTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
-    public void executeWithWalkForwardAcceptsAmountProvider() {
+    public void executeWithWalkForwardAcceptsPositionSizer() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory)
                 .withData(10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25)
                 .build();
         Strategy strategy = new BaseStrategy(new FixedRule(4, 8, 12), new FixedRule(5, 9, 13));
         WalkForwardConfig config = new WalkForwardConfig(4, 4, 4, 0, 0, 4, 2, List.of(1), 1, List.of(1), 3L);
-        BarSeriesManager.AmountProvider amountProvider = (index, currentStrategy, barSeries, tradeType) -> numFactory
-                .numOf(index + 1);
+        PositionSizer positionSizer = context -> numFactory.numOf(context.entryIndex());
         BacktestExecutor executor = new BacktestExecutor(series, new ZeroCostModel(), new ZeroCostModel(),
                 new TradeOnCurrentCloseModel());
 
-        BacktestExecutor.BacktestAndWalkForwardResult result = executor.executeWithWalkForward(strategy, amountProvider,
+        BacktestExecutor.BacktestAndWalkForwardResult result = executor.executeWithWalkForward(strategy, positionSizer,
                 Trade.TradeType.BUY, config);
 
         assertEquals(1, result.backtest().tradingStatements().size());

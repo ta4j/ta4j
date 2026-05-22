@@ -55,15 +55,14 @@ public class StrategyWalkForwardExecutorTest extends AbstractIndicatorTest<BarSe
     }
 
     @Test
-    public void executeWithAmountProviderUsesDynamicAmount() {
+    public void executeWithPositionSizerUsesDynamicAmount() {
         BarSeries series = buildSeries(48);
         Strategy strategy = new BaseStrategy(BooleanRule.TRUE, BooleanRule.TRUE);
         WalkForwardConfig config = walkForwardConfig();
         StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(series);
-        BarSeriesManager.AmountProvider amountProvider = (index, currentStrategy, barSeries, tradeType) -> numFactory
-                .numOf(index + 1);
+        PositionSizer positionSizer = context -> numFactory.numOf(context.entryIndex());
 
-        StrategyWalkForwardExecutionResult result = executor.execute(strategy, Trade.TradeType.BUY, amountProvider,
+        StrategyWalkForwardExecutionResult result = executor.execute(strategy, Trade.TradeType.BUY, positionSizer,
                 config);
 
         assertEquals(new AnchoredExpandingWalkForwardSplitter().split(series, config).size(), result.folds().size());

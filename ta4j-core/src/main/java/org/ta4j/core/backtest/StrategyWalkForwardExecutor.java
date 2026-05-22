@@ -145,34 +145,34 @@ public class StrategyWalkForwardExecutor {
 
     /**
      * Executes walk-forward testing with explicit entry trade type and dynamic
-     * entry amount provider.
+     * entry position sizer.
      *
-     * @param strategy       strategy to execute
-     * @param tradeType      trade type used to open positions
-     * @param amountProvider dynamic entry amount provider
-     * @param config         walk-forward configuration
+     * @param strategy      strategy to execute
+     * @param tradeType     trade type used to open positions
+     * @param positionSizer dynamic entry position sizer
+     * @param config        walk-forward configuration
      * @return execution result
      * @since 0.22.7
      */
     public StrategyWalkForwardExecutionResult execute(Strategy strategy, Trade.TradeType tradeType,
-            BarSeriesManager.AmountProvider amountProvider, WalkForwardConfig config) {
-        return execute(strategy, tradeType, amountProvider, config, null);
+            PositionSizer positionSizer, WalkForwardConfig config) {
+        return execute(strategy, tradeType, positionSizer, config, null);
     }
 
     /**
-     * Executes walk-forward testing with dynamic entry amount provider using
+     * Executes walk-forward testing with dynamic entry position sizer using
      * strategy starting trade type.
      *
-     * @param strategy       strategy to execute
-     * @param amountProvider dynamic entry amount provider
-     * @param config         walk-forward configuration
+     * @param strategy      strategy to execute
+     * @param positionSizer dynamic entry position sizer
+     * @param config        walk-forward configuration
      * @return execution result
      * @since 0.22.7
      */
-    public StrategyWalkForwardExecutionResult execute(Strategy strategy, BarSeriesManager.AmountProvider amountProvider,
+    public StrategyWalkForwardExecutionResult execute(Strategy strategy, PositionSizer positionSizer,
             WalkForwardConfig config) {
         Objects.requireNonNull(strategy, "strategy");
-        return execute(strategy, strategy.getStartingType(), amountProvider, config, null);
+        return execute(strategy, strategy.getStartingType(), positionSizer, config, null);
     }
 
     /**
@@ -198,25 +198,24 @@ public class StrategyWalkForwardExecutor {
 
     /**
      * Executes walk-forward testing with optional per-fold progress callback and
-     * dynamic entry amount provider.
+     * dynamic entry position sizer.
      *
      * @param strategy         strategy to execute
      * @param tradeType        trade type used to open positions
-     * @param amountProvider   dynamic entry amount provider
+     * @param positionSizer    dynamic entry position sizer
      * @param config           walk-forward configuration
      * @param progressCallback optional callback receiving completed fold count
      * @return execution result
      * @since 0.22.7
      */
     public StrategyWalkForwardExecutionResult execute(Strategy strategy, Trade.TradeType tradeType,
-            BarSeriesManager.AmountProvider amountProvider, WalkForwardConfig config,
-            Consumer<Integer> progressCallback) {
+            PositionSizer positionSizer, WalkForwardConfig config, Consumer<Integer> progressCallback) {
         Objects.requireNonNull(strategy, "strategy");
         Objects.requireNonNull(tradeType, "tradeType");
-        Objects.requireNonNull(amountProvider, "amountProvider");
+        Objects.requireNonNull(positionSizer, "positionSizer");
         Objects.requireNonNull(config, "config");
         return execute(strategy, config, progressCallback,
-                split -> seriesManager.run(strategy, tradeType, amountProvider, split.testStart(), split.testEnd()));
+                split -> seriesManager.run(strategy, tradeType, positionSizer, split.testStart(), split.testEnd()));
     }
 
     private StrategyWalkForwardExecutionResult execute(Strategy strategy, WalkForwardConfig config,
