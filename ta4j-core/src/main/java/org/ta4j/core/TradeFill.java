@@ -13,6 +13,12 @@ import org.ta4j.core.num.Num;
  * Immutable execution fill used to represent partial trade executions.
  *
  * <p>
+ * This is the preferred fill primitive for new integrations that need
+ * broker-confirmed execution recording through
+ * {@link TradingRecord#operate(TradeFill)}.
+ * </p>
+ *
+ * <p>
  * Metadata fields ({@code time}, {@code side}, IDs) are optional and may be
  * {@code null}. {@code fee} defaults to zero when omitted.
  * </p>

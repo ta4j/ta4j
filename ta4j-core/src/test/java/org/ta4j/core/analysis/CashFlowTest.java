@@ -513,9 +513,9 @@ public class CashFlowTest extends AbstractIndicatorTest<Indicator<Num>, Num> {
         var record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
 
-        record.recordFill(0, new BaseTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
+        record.operate(new BaseTrade(0, Instant.EPOCH, series.getBar(0).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.BUY, null, null));
-        record.recordFill(1, new BaseTrade(1, Instant.EPOCH, series.getBar(1).getClosePrice(), numFactory.one(), null,
+        record.operate(new BaseTrade(1, Instant.EPOCH, series.getBar(1).getClosePrice(), numFactory.one(), null,
                 ExecutionSide.BUY, null, null));
 
         var cashFlow = new CashFlow(series, record, EquityCurveMode.MARK_TO_MARKET,

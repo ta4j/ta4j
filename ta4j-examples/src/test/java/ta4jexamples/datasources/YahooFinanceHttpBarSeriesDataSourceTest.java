@@ -454,6 +454,11 @@ public class YahooFinanceHttpBarSeriesDataSourceTest {
         protected Duration getConservativeLimit(YahooFinanceInterval interval) {
             return testConservativeLimit;
         }
+
+        @Override
+        void pauseBetweenPaginatedRequests() {
+            // Keep mocked pagination tests deterministic and fast.
+        }
     }
 
     @Test

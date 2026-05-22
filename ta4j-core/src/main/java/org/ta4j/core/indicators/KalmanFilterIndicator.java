@@ -3,13 +3,6 @@
  */
 package org.ta4j.core.indicators;
 
-import org.apache.commons.math3.filter.DefaultMeasurementModel;
-import org.apache.commons.math3.filter.DefaultProcessModel;
-import org.apache.commons.math3.filter.KalmanFilter;
-import org.apache.commons.math3.linear.Array2DRowRealMatrix;
-import org.apache.commons.math3.linear.ArrayRealVector;
-import org.apache.commons.math3.linear.RealMatrix;
-import org.apache.commons.math3.linear.RealVector;
 import org.ta4j.core.Indicator;
 import org.ta4j.core.num.NaN;
 import org.ta4j.core.num.Num;
@@ -30,8 +23,7 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
     private final Indicator<Num> indicator;
     private final double processNoise;
     private final double measurementNoise;
-    private transient KalmanFilter filter;
-    private transient int lastProcessedIndex;
+    private transient volatile StateIndicator stateIndicator;
 
     /**
      * Constructs a KalmanFilterIndicator with the given indicator and default noise
@@ -59,7 +51,6 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
         this.indicator = indicator;
         this.processNoise = processNoise;
         this.measurementNoise = measurementNoise;
-        this.lastProcessedIndex = -1;
     }
 
     /**
@@ -76,36 +67,12 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
             return NaN.NaN;
         }
 
-        if (filter == null || index < lastProcessedIndex) {
-            initializeFilter();
-        }
-
-        final var numFactory = getBarSeries().numFactory();
-
-        // Check if the current value is NaN - if so, return NaN immediately
-        double currentMeasurement = this.indicator.getValue(index).doubleValue();
-        if (Double.isNaN(currentMeasurement) || Double.isInfinite(currentMeasurement)) {
+        KalmanState state = stateIndicator().getValue(index);
+        if (!state.validMeasurement() || Double.isNaN(state.estimate())) {
             return NaN.NaN;
         }
 
-        for (int i = Math.max(0, lastProcessedIndex + 1); i <= index; i++) {
-            double measurement = this.indicator.getValue(i).doubleValue();
-
-            // Skip NaN or infinite values - only process valid measurements
-            if (!Double.isNaN(measurement) && !Double.isInfinite(measurement)) {
-                filter.predict();
-                filter.correct(new double[] { measurement });
-            }
-
-            lastProcessedIndex = i;
-        }
-
-        Double value = filter.getStateEstimation()[0];
-        if (value.isNaN()) {
-            return NaN.NaN;
-        }
-
-        return numFactory.numOf(value);
+        return getBarSeries().numFactory().numOf(state.estimate());
     }
 
     /**
@@ -120,24 +87,71 @@ public class KalmanFilterIndicator extends CachedIndicator<Num> {
         return indicator.getCountOfUnstableBars();
     }
 
-    private void initializeFilter() {
-        double initialEstimate = 0.0;
-        if (indicator.getBarSeries().getBarCount() > 0) {
-            initialEstimate = indicator.getValue(0).doubleValue();
-            if (Double.isNaN(initialEstimate) || Double.isInfinite(initialEstimate)) {
-                initialEstimate = 0.0;
+    private StateIndicator stateIndicator() {
+        StateIndicator current = stateIndicator;
+        if (current == null) {
+            synchronized (this) {
+                current = stateIndicator;
+                if (current == null) {
+                    current = new StateIndicator();
+                    stateIndicator = current;
+                }
             }
         }
+        return current;
+    }
 
-        RealMatrix A = new Array2DRowRealMatrix(new double[] { 1 });
-        RealMatrix B = new Array2DRowRealMatrix(new double[] { 0 });
-        RealMatrix H = new Array2DRowRealMatrix(new double[] { 1 });
-        RealVector x = new ArrayRealVector(new double[] { initialEstimate });
-        RealMatrix Q = new Array2DRowRealMatrix(new double[] { processNoise });
-        RealMatrix P = new Array2DRowRealMatrix(new double[] { 1 });
-        RealMatrix R = new Array2DRowRealMatrix(new double[] { measurementNoise });
+    private boolean isInvalidMeasurement(Num measurement, double primitiveMeasurement) {
+        // Kalman filtering is intentionally primitive-backed to preserve the previous
+        // Commons Math based behavior and avoid Num precision changes in this
+        // performance-only optimization.
+        return measurement == null || measurement.isNaN() || Double.isNaN(primitiveMeasurement)
+                || Double.isInfinite(primitiveMeasurement);
+    }
 
-        this.filter = new KalmanFilter(new DefaultProcessModel(A, B, Q, x, P), new DefaultMeasurementModel(H, R));
-        lastProcessedIndex = -1;
+    private KalmanState initialState(double measurement, boolean validMeasurement) {
+        double estimate = validMeasurement ? measurement : 0.0;
+        return new KalmanState(estimate, 1.0, validMeasurement);
+    }
+
+    private KalmanState correct(KalmanState previous, double measurement) {
+        double predictedErrorCovariance = previous.errorCovariance() + processNoise;
+        double kalmanGain = predictedErrorCovariance / (predictedErrorCovariance + measurementNoise);
+        double estimate = previous.estimate() + kalmanGain * (measurement - previous.estimate());
+        double errorCovariance = (1.0 - kalmanGain) * predictedErrorCovariance;
+        return new KalmanState(estimate, errorCovariance, true);
+    }
+
+    private final class StateIndicator extends RecursiveCachedIndicator<KalmanState> {
+
+        private StateIndicator() {
+            super(KalmanFilterIndicator.this.indicator);
+        }
+
+        @Override
+        protected KalmanState calculate(int index) {
+            Num current = KalmanFilterIndicator.this.indicator.getValue(index);
+            double measurement = current == null ? Double.NaN : current.doubleValue();
+            boolean validMeasurement = !isInvalidMeasurement(current, measurement);
+            int beginIndex = getBarSeries().getBeginIndex();
+            if (index <= beginIndex) {
+                KalmanState initial = initialState(measurement, validMeasurement);
+                return validMeasurement ? correct(initial, measurement) : initial;
+            }
+
+            KalmanState previous = getValue(index - 1);
+            if (!validMeasurement) {
+                return new KalmanState(previous.estimate(), previous.errorCovariance(), false);
+            }
+            return correct(previous, measurement);
+        }
+
+        @Override
+        public int getCountOfUnstableBars() {
+            return KalmanFilterIndicator.this.getCountOfUnstableBars();
+        }
+    }
+
+    private record KalmanState(double estimate, double errorCovariance, boolean validMeasurement) {
     }
 }

@@ -12,8 +12,10 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceModel;
+import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfile;
 import org.ta4j.core.indicators.elliott.confidence.ConfidenceProfiles;
 import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceBreakdown;
+import org.ta4j.core.indicators.elliott.confidence.ElliottConfidenceContext;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 
@@ -68,6 +70,19 @@ public final class ElliottScenarioGenerator {
     }
 
     /**
+     * Creates a generator with default settings but a caller-supplied Fibonacci
+     * validator (typically carrying a custom tolerance).
+     *
+     * @param numFactory   factory for creating numeric values
+     * @param fibValidator Fibonacci validator (typically with a custom tolerance)
+     * @since 0.22.7
+     */
+    ElliottScenarioGenerator(final NumFactory numFactory, final ElliottFibonacciValidator fibValidator) {
+        this(numFactory, DEFAULT_MIN_CONFIDENCE, DEFAULT_MAX_SCENARIOS,
+                defaultConfidenceModel(numFactory, fibValidator), PatternSet.all(), fibValidator);
+    }
+
+    /**
      * Creates a generator with custom pruning thresholds.
      *
      * @param numFactory    factory for creating numeric values
@@ -91,13 +106,47 @@ public final class ElliottScenarioGenerator {
      */
     public ElliottScenarioGenerator(final NumFactory numFactory, final double minConfidence, final int maxScenarios,
             final ConfidenceModel confidenceModel, final PatternSet patternSet) {
+        this(numFactory, minConfidence, maxScenarios, confidenceModel, patternSet,
+                new ElliottFibonacciValidator(numFactory));
+    }
+
+    /**
+     * Creates a generator with custom pruning thresholds, scoring model, and
+     * Fibonacci validator.
+     *
+     * @param numFactory      factory for creating numeric values
+     * @param minConfidence   minimum confidence to retain a scenario (0.0 - 1.0)
+     * @param maxScenarios    maximum number of scenarios to return
+     * @param confidenceModel confidence model used to score scenarios
+     * @param patternSet      enabled pattern set
+     * @param fibValidator    Fibonacci validator (typically with a custom
+     *                        tolerance)
+     * @since 0.22.7
+     */
+    private ElliottScenarioGenerator(final NumFactory numFactory, final double minConfidence, final int maxScenarios,
+            final ConfidenceModel confidenceModel, final PatternSet patternSet,
+            final ElliottFibonacciValidator fibValidator) {
         this.numFactory = Objects.requireNonNull(numFactory, "numFactory");
-        this.fibValidator = new ElliottFibonacciValidator(numFactory);
+        this.fibValidator = Objects.requireNonNull(fibValidator, "fibValidator");
         this.confidenceModel = Objects.requireNonNull(confidenceModel, "confidenceModel");
         this.patternSet = Objects.requireNonNull(patternSet, "patternSet");
         this.minConfidence = minConfidence;
         this.minConfidenceNum = numFactory.numOf(minConfidence);
         this.maxScenarios = maxScenarios;
+    }
+
+    private static ConfidenceModel defaultConfidenceModel(final NumFactory numFactory,
+            final ElliottFibonacciValidator fibValidator) {
+        final NumFactory checkedFactory = Objects.requireNonNull(numFactory, "numFactory");
+        final ElliottFibonacciValidator checkedValidator = Objects.requireNonNull(fibValidator, "fibValidator");
+        final ConfidenceProfile profile = ConfidenceProfiles.defaultProfile(checkedFactory);
+        return (swings, phase, channel, scenarioType) -> {
+            final List<ElliottSwing> safeSwings = swings == null ? List.of() : swings;
+            final ElliottPhase safePhase = phase == null ? ElliottPhase.NONE : phase;
+            final ElliottConfidenceContext context = new ElliottConfidenceContext(safeSwings, safePhase, channel,
+                    checkedValidator, checkedFactory);
+            return profile.score(context);
+        };
     }
 
     /**

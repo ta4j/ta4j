@@ -48,8 +48,7 @@ import org.ta4j.core.indicators.elliott.ScenarioType;
 import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 
-@Tag("integration")
-@Tag("slow")
+@Tag("analysis-demo")
 class ElliottWaveBtcMacroCycleDemoTest {
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class);

@@ -166,6 +166,7 @@ public class IndicatorSerializationTest {
         // Verify that transient stateful fields are NOT serialized
         assertThat(descriptor.getParameters()).doesNotContainKey("lastProcessedIndex");
         assertThat(descriptor.getParameters()).doesNotContainKey("filter");
+        assertThat(descriptor.getParameters()).doesNotContainKey("stateIndicator");
 
         // Verify only the expected parameters are present
         assertThat(descriptor.getParameters()).hasSize(2);
