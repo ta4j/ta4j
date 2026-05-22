@@ -185,7 +185,8 @@ public class NetMomentumIndicator extends RecursiveCachedIndicator<Num> {
 
         NumFactory numFactory = oscillatingIndicator.getBarSeries().numFactory();
         Num neutralPivot = numFactory.numOf(neutralPivotValue);
-        if (Num.isNaNOrNull(neutralPivot) || neutralPivot.decimalValue() == null) {
+        double rawPivot = neutralPivot.doubleValue();
+        if (Num.isNaNOrNull(neutralPivot) || Double.isInfinite(rawPivot)) {
             throw new IllegalArgumentException("Neutral pivot value must be finite (not NaN or infinite)");
         }
         this.decayFactor = numFactory.numOf(decayFactor);
