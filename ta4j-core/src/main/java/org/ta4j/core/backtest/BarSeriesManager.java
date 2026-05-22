@@ -599,21 +599,11 @@ public class BarSeriesManager {
     private Num amountForIndex(PositionSizer positionSizer, int index, Strategy strategy, TradingRecord tradingRecord,
             TradeType tradeType) {
         Num amount = positionSizer.amount(positionSizerContext(index, strategy, tradingRecord, tradeType));
-        if (amount == null) {
-            throw new IllegalArgumentException("Position sizer returned null");
+        if (!Num.isValid(amount) || !Double.isFinite(amount.doubleValue()) || !amount.isPositive()) {
+            throw new IllegalArgumentException("Position sizer returned invalid amount");
         }
-        if (amount.isNaN()) {
-            throw new IllegalArgumentException("Position sizer returned NaN");
-        }
-        if (!Double.isFinite(amount.doubleValue())) {
-            throw new IllegalArgumentException("Position sizer returned non-finite amount");
-        }
-        Class<?> expectedAmountType = barSeries.numFactory().one().getClass();
-        if (!expectedAmountType.isInstance(amount)) {
+        if (!barSeries.numFactory().produces(amount)) {
             throw new IllegalArgumentException("Position sizer returned incompatible Num implementation");
-        }
-        if (!amount.isPositive()) {
-            throw new IllegalArgumentException("Position sizer returned non-positive amount");
         }
         return amount;
     }
@@ -624,7 +614,7 @@ public class BarSeriesManager {
             return amountForIndex(positionSizer, index, strategy, tradingRecord, tradeType);
         }
         Num amount = tradingRecord.getCurrentPosition().amount();
-        if (amount == null || amount.isNaN() || !Double.isFinite(amount.doubleValue()) || !amount.isPositive()) {
+        if (Num.isNaNOrNull(amount) || !Double.isFinite(amount.doubleValue()) || !amount.isPositive()) {
             throw new IllegalStateException("Current position amount must be positive");
         }
         return amount;
