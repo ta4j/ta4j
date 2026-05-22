@@ -2,6 +2,10 @@
 
 ### Breaking
 - Updated project Java JDK from 21 to 25
+- **NetMomentum now models oscillator battery exhaustion**: `NetMomentumIndicator` inverts RSI-style
+  distance from the neutral pivot so below-pivot pressure charges rebound energy and above-pivot
+  pressure depletes it. Distance is now convex-weighted, so extreme oscillator readings count more
+  than repeated mild deviations.
 
 ### Added
 - **Rolling advanced correlation indicators**: Added Spearman rank correlation, Kendall tau-b, lag-aware cross-correlation, distance correlation, mutual information, and regime-segmented correlation indicators under `org.ta4j.core.indicators.statistics`, with NaN handling for undefined windows and documentation for choosing the right metric.
