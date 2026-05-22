@@ -47,11 +47,12 @@ public class ClosePriceCrossedMovingAverageRule extends NamedRule {
      */
     public ClosePriceCrossedMovingAverageRule(ClosePriceIndicator closePriceIndicator, int period,
             AverageType averageType, CrossDirection direction) {
-        super(buildLabel(direction, averageType, period));
+        super(buildLabel(Objects.requireNonNull(direction, "direction"),
+                Objects.requireNonNull(averageType, "averageType"), validatePeriod(period)));
         this.closePriceIndicator = Objects.requireNonNull(closePriceIndicator, "closePriceIndicator");
         this.period = validatePeriod(period);
-        this.averageType = Objects.requireNonNull(averageType, "averageType");
-        this.direction = Objects.requireNonNull(direction, "direction");
+        this.averageType = averageType;
+        this.direction = direction;
     }
 
     /**

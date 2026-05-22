@@ -36,6 +36,7 @@ public final class PerformanceComparison {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final DecimalFormat DECIMAL_FORMAT = new DecimalFormat("0.00");
+    private static final double UNBOUNDED_DELTA_PCT = Double.MAX_VALUE;
 
     private PerformanceComparison() {
     }
@@ -158,14 +159,17 @@ public final class PerformanceComparison {
         for (int i = 0; i < results.size(); i++) {
             JsonObject result = results.get(i).getAsJsonObject();
             String key = result.get("scenarioId").getAsString() + ":" + result.get("barCount").getAsInt();
-            byCell.put(key, result);
+            JsonObject previous = byCell.putIfAbsent(key, result);
+            if (previous != null) {
+                throw new IllegalStateException("Duplicate result cell: " + key);
+            }
         }
         return byCell;
     }
 
     private static double percentDelta(long base, long candidate) {
         if (base == 0L) {
-            return 0d;
+            return candidate == 0L ? 0d : UNBOUNDED_DELTA_PCT;
         }
         return (candidate - base) * 100d / base;
     }
@@ -236,7 +240,7 @@ public final class PerformanceComparison {
                     .append(" | ")
                     .append(formatMillis(cell.get("candidateMedianNanos").getAsLong()))
                     .append(" | ")
-                    .append(DECIMAL_FORMAT.format(cell.get("medianDeltaPct").getAsDouble()))
+                    .append(formatPercent(cell.get("medianDeltaPct").getAsDouble()))
                     .append(" | ")
                     .append(formatScale(cell.getAsJsonObject("scaling").get("candidateMedianScale")))
                     .append(" |")
@@ -247,6 +251,13 @@ public final class PerformanceComparison {
 
     private static String formatMillis(long nanos) {
         return DECIMAL_FORMAT.format(nanos / 1_000_000d);
+    }
+
+    private static String formatPercent(double percent) {
+        if (percent == UNBOUNDED_DELTA_PCT) {
+            return "Infinity";
+        }
+        return DECIMAL_FORMAT.format(percent);
     }
 
     private static String formatScale(JsonElement scale) {

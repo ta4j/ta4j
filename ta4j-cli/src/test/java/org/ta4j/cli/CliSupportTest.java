@@ -153,6 +153,22 @@ class CliSupportTest {
     }
 
     @Test
+    void resolveAmountRejectsInvalidSingleCapitalAndStakeValues() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+        BarSeries series = CliSupport.loadSeries(dataFile.toString(), null, null, null);
+
+        assertThatThrownBy(() -> CliSupport.resolveAmount(series, "0", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("--capital must be greater than zero.");
+        assertThatThrownBy(() -> CliSupport.resolveAmount(series, null, "0"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("--stake-amount must be greater than zero.");
+        assertThatThrownBy(() -> CliSupport.resolveAmount(series, "abc", null))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Invalid numeric value for --capital: abc.");
+    }
+
+    @Test
     void resolveCriteriaUsesDefaultsDeduplicatesClassNamesAndRejectsAliases() {
         List<CliSupport.CriterionSpec> defaults = CliSupport.resolveCriteria(List.of(),
                 CliSupport.DEFAULT_BACKTEST_CRITERIA);

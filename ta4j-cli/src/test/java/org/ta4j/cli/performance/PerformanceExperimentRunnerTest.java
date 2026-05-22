@@ -19,6 +19,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -116,6 +117,19 @@ class PerformanceExperimentRunnerTest {
     }
 
     @Test
+    void comparisonRejectsDuplicateResultCells() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        writePerformanceJson(baseDir, 10L, List.of(new ResultFixture(16, 1_000L), new ResultFixture(16, 900L)));
+        writePerformanceJson(candidateDir, 10L, List.of(new ResultFixture(16, 1_000L), new ResultFixture(16, 900L)));
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> PerformanceComparison.compare(baseDir, candidateDir, tempDir.resolve("comparison"), 5d));
+
+        assertEquals("Duplicate result cell: endOnly:16", exception.getMessage());
+    }
+
+    @Test
     void comparisonWritesDeltasForMatchingArtifacts() throws Exception {
         Path baseDir = tempDir.resolve("base");
         Path candidateDir = tempDir.resolve("candidate");
@@ -160,6 +174,28 @@ class PerformanceExperimentRunnerTest {
         assertEquals("Performance regression exceeded threshold", exception.getMessage());
         assertTrue(Files.exists(outputDir.resolve(PerformanceComparison.COMPARISON_FILE)));
         assertTrue(Files.exists(outputDir.resolve(PerformanceComparison.SUMMARY_FILE)));
+    }
+
+    @Test
+    void comparisonFailsWhenZeroBaselineBecomesNonZero() throws Exception {
+        Path baseDir = tempDir.resolve("base");
+        Path candidateDir = tempDir.resolve("candidate");
+        Path outputDir = tempDir.resolve("comparison");
+        writePerformanceJson(baseDir, 10L, 0L);
+        writePerformanceJson(candidateDir, 10L, 1L);
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> PerformanceComparison.compare(baseDir, candidateDir, outputDir, 5d));
+
+        assertEquals("Performance regression exceeded threshold", exception.getMessage());
+        JsonObject comparison = JsonParser
+                .parseString(Files.readString(outputDir.resolve(PerformanceComparison.COMPARISON_FILE)))
+                .getAsJsonObject();
+        assertTrue(comparison.getAsJsonArray("cells")
+                .get(0)
+                .getAsJsonObject()
+                .get("medianDeltaPct")
+                .getAsDouble() > 1e300d);
     }
 
     @Test

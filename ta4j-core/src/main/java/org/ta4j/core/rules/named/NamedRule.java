@@ -122,8 +122,7 @@ public abstract class NamedRule extends AbstractRule {
     public static boolean unregisterImplementation(Class<? extends NamedRule> type) {
         Objects.requireNonNull(type, "type");
         String key = type.getSimpleName();
-        Class<? extends NamedRule> removed = REGISTRY.remove(key);
-        return removed != null && removed == type;
+        return REGISTRY.remove(key, type);
     }
 
     /**

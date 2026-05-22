@@ -298,6 +298,17 @@ class Ta4jCliTest {
     }
 
     @Test
+    void sweepRejectsNonPositiveTopKValue() throws Exception {
+        Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
+
+        CliRunResult result = runCliAllowingError("strategy", "sweep", "--data-file", dataFile.toString(),
+                "--param-grid", "fast=3,5", "--param-grid", "slow=20,30", "--top-k", "0");
+
+        assertThat(result.exitCode()).isEqualTo(2);
+        assertThat(result.stderr()).contains("--top-k must be greater than zero.");
+    }
+
+    @Test
     void backtestRejectsParamOptions() throws Exception {
         Path dataFile = copyResource("AAPL-PT1D-20130102_20131231.csv");
 

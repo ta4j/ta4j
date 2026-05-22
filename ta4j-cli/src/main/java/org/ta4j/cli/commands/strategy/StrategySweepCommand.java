@@ -13,5 +13,5 @@ import picocli.CommandLine.Command;
  * @since 0.22.7
  */
 @Command(name = "sweep", description = "Rank bounded SMA crossover strategy candidates.", mixinStandardHelpOptions = true)
-public final class StrategySweepCommand extends CliCommands.StrategySweepCommand {
+public final class StrategySweepCommand extends CliCommands.StrategySweepWorkflow {
 }

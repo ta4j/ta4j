@@ -13,5 +13,5 @@ import picocli.CommandLine.Command;
  * @since 0.22.7
  */
 @Command(name = "backtest", description = "Run strategies against one dataset.", mixinStandardHelpOptions = true)
-public final class StrategyBacktestCommand extends CliCommands.StrategyBacktestCommand {
+public final class StrategyBacktestCommand extends CliCommands.StrategyBacktestWorkflow {
 }

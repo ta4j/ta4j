@@ -6,11 +6,13 @@ package ta4jexamples.rules;
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Rule;
+import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ClosePriceCrossedMovingAverageRuleTest {
@@ -30,5 +32,26 @@ class ClosePriceCrossedMovingAverageRuleTest {
         assertTrue(originalSatisfied);
         assertEquals(original.getName(), restored.getName());
         assertTrue(restoredSatisfied);
+    }
+
+    @Test
+    void stronglyTypedConstructorRejectsNullInputsWithNamedMessages() {
+        BarSeries series = new MockBarSeriesBuilder().withData(12d, 11d, 10d, 9d, 8d).build();
+        ClosePriceIndicator closePrice = new ClosePriceIndicator(series);
+
+        NullPointerException missingAverageType = assertThrows(NullPointerException.class,
+                () -> new ClosePriceCrossedMovingAverageRule(closePrice, 3, null,
+                        ClosePriceCrossedMovingAverageRule.CrossDirection.UP));
+        NullPointerException missingDirection = assertThrows(NullPointerException.class,
+                () -> new ClosePriceCrossedMovingAverageRule(closePrice, 3,
+                        ClosePriceCrossedMovingAverageRule.AverageType.SMA, null));
+        NullPointerException missingClosePrice = assertThrows(NullPointerException.class,
+                () -> new ClosePriceCrossedMovingAverageRule(null, 3,
+                        ClosePriceCrossedMovingAverageRule.AverageType.SMA,
+                        ClosePriceCrossedMovingAverageRule.CrossDirection.UP));
+
+        assertEquals("averageType", missingAverageType.getMessage());
+        assertEquals("direction", missingDirection.getMessage());
+        assertEquals("closePriceIndicator", missingClosePrice.getMessage());
     }
 }

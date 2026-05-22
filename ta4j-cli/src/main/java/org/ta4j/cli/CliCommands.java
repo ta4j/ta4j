@@ -32,9 +32,9 @@ import picocli.CommandLine.Spec;
  * Shared picocli command implementations for the grouped ta4j CLI command tree.
  *
  * <p>
- * Public nested classes are intentionally thin command adapters. They keep
- * parsing, help, and option ownership close to picocli while delegating ta4j
- * execution and artifact shaping to the package-local support layer.
+ * Nested workflow classes keep parsing, help, and option ownership close to
+ * picocli while delegating ta4j execution and artifact shaping to the
+ * package-local support layer.
  * </p>
  *
  * @since 0.22.7
@@ -213,7 +213,7 @@ public final class CliCommands {
      * @since 0.22.7
      */
     @Command
-    public abstract static class StrategyBacktestCommand extends WorkflowCommand {
+    public abstract static class StrategyBacktestWorkflow extends WorkflowCommand {
 
         @Mixin
         DataOptions data = new DataOptions();
@@ -290,7 +290,7 @@ public final class CliCommands {
      * @since 0.22.7
      */
     @Command
-    public abstract static class StrategyWalkForwardCommand extends WorkflowCommand {
+    public abstract static class StrategyWalkForwardWorkflow extends WorkflowCommand {
 
         @Mixin
         DataOptions data = new DataOptions();
@@ -388,7 +388,7 @@ public final class CliCommands {
      * @since 0.22.7
      */
     @Command
-    public abstract static class StrategySweepCommand extends WorkflowCommand {
+    public abstract static class StrategySweepWorkflow extends WorkflowCommand {
 
         @Mixin
         DataOptions data = new DataOptions();
@@ -418,6 +418,9 @@ public final class CliCommands {
         public final Integer call() throws IOException {
             Integer parsedUnstableBars = CliSupport.parseOptionalInteger(unstableBars, "unstable-bars");
             Integer parsedTopK = CliSupport.parseOptionalInteger(topKToken, "top-k");
+            if (parsedTopK != null && parsedTopK <= 0) {
+                throw new IllegalArgumentException("--top-k must be greater than zero.");
+            }
             int topK = parsedTopK == null ? 5 : parsedTopK;
             List<CliSupport.CriterionSpec> resolvedCriteria = CliSupport.resolveCriteria(criteria.criteria,
                     CliSupport.DEFAULT_SWEEP_CRITERIA);
@@ -460,7 +463,7 @@ public final class CliCommands {
      * @since 0.22.7
      */
     @Command
-    public abstract static class IndicatorTestCommand extends WorkflowCommand {
+    public abstract static class IndicatorTestWorkflow extends WorkflowCommand {
 
         @Mixin
         DataOptions data = new DataOptions();
@@ -539,7 +542,7 @@ public final class CliCommands {
      * @since 0.22.7
      */
     @Command
-    public abstract static class RuleTestCommand extends WorkflowCommand {
+    public abstract static class RuleTestWorkflow extends WorkflowCommand {
 
         @Mixin
         DataOptions data = new DataOptions();

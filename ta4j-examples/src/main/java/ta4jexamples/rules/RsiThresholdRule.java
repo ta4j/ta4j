@@ -42,12 +42,13 @@ public class RsiThresholdRule extends NamedRule {
      */
     public RsiThresholdRule(ClosePriceIndicator closePriceIndicator, int period, Num threshold,
             ThresholdDirection direction) {
-        super(buildLabel(direction, period, threshold));
-        this.closePriceIndicator = closePriceIndicator;
+        super(buildLabel(Objects.requireNonNull(direction, "direction"), validatePeriod(period),
+                validateThreshold(threshold)));
+        this.closePriceIndicator = Objects.requireNonNull(closePriceIndicator, "closePriceIndicator");
         this.period = validatePeriod(period);
         this.threshold = validateThreshold(threshold);
-        this.direction = Objects.requireNonNull(direction, "direction");
-        this.rsiIndicator = new RSIIndicator(closePriceIndicator, period);
+        this.direction = direction;
+        this.rsiIndicator = new RSIIndicator(this.closePriceIndicator, this.period);
     }
 
     /**

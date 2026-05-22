@@ -56,8 +56,8 @@ fi
 
 default_runner_args=(
   --experiment kalman-filter
-  --bar-counts 1000,5000,10000
-  --scenarios sequential,endOnly,endThenReverse,sparseAfterHighWatermark
+  --bar-counts "1000,5000,10000"
+  --scenarios "sequential,endOnly,endThenReverse,sparseAfterHighWatermark"
   --repetitions 5
 )
 

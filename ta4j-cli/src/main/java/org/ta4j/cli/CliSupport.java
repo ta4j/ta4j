@@ -160,6 +160,15 @@ final class CliSupport {
     }
 
     static Num resolveAmount(BarSeries series, String capitalToken, String stakeAmountToken) {
+        Double capital = null;
+        if (capitalToken != null && !capitalToken.isBlank()) {
+            capital = parsePositiveDouble(capitalToken, "capital");
+        }
+        Double stake = null;
+        if (stakeAmountToken != null && !stakeAmountToken.isBlank()) {
+            stake = parsePositiveDouble(stakeAmountToken, "stake-amount");
+        }
+
         String resolved = stakeAmountToken;
         if (resolved == null || resolved.isBlank()) {
             resolved = capitalToken;
@@ -167,9 +176,7 @@ final class CliSupport {
         if (resolved == null || resolved.isBlank()) {
             resolved = "1";
         }
-        if (capitalToken != null && stakeAmountToken != null) {
-            double capital = parsePositiveDouble(capitalToken, "capital");
-            double stake = parsePositiveDouble(stakeAmountToken, "stake-amount");
+        if (capital != null && stake != null) {
             if (stake > capital) {
                 throw new IllegalArgumentException("--stake-amount must not exceed --capital.");
             }
@@ -644,6 +651,9 @@ final class CliSupport {
     private static double parseNonNegativeDouble(String token, String optionName) {
         try {
             double parsed = Double.parseDouble(token);
+            if (!Double.isFinite(parsed)) {
+                throw new IllegalArgumentException("Invalid numeric value for --" + optionName + ": " + token + ".");
+            }
             if (parsed < 0.0d) {
                 throw new IllegalArgumentException("--" + optionName + " must be >= 0.");
             }

@@ -13,5 +13,5 @@ import picocli.CommandLine.Command;
  * @since 0.22.7
  */
 @Command(name = "test", description = "Backtest and walk-forward entry/exit rules.", mixinStandardHelpOptions = true)
-public final class RuleTestCommand extends CliCommands.RuleTestCommand {
+public final class RuleTestCommand extends CliCommands.RuleTestWorkflow {
 }

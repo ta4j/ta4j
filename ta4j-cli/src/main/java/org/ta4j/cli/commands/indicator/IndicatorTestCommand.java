@@ -14,5 +14,5 @@ import picocli.CommandLine.Command;
  * @since 0.22.7
  */
 @Command(name = "test", description = "Backtest a serialized indicator idea.", mixinStandardHelpOptions = true)
-public final class IndicatorTestCommand extends CliCommands.IndicatorTestCommand {
+public final class IndicatorTestCommand extends CliCommands.IndicatorTestWorkflow {
 }

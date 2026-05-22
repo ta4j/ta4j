@@ -20,6 +20,8 @@ class NamedRuleTest {
     @AfterEach
     void tearDown() {
         NamedRule.unregisterImplementation(TestUnregisterRule.class);
+        NamedRule.unregisterImplementation(FirstRuleHolder.DuplicateRule.class);
+        NamedRule.unregisterImplementation(SecondRuleHolder.DuplicateRule.class);
     }
 
     @Test
@@ -65,6 +67,15 @@ class NamedRuleTest {
     }
 
     @Test
+    void unregisterDoesNotRemoveDifferentImplementationWithSameSimpleName() {
+        NamedRule.registerImplementation(FirstRuleHolder.DuplicateRule.class);
+
+        assertThat(NamedRule.unregisterImplementation(SecondRuleHolder.DuplicateRule.class)).isFalse();
+
+        assertThat(NamedRule.lookup("DuplicateRule")).contains(FirstRuleHolder.DuplicateRule.class);
+    }
+
+    @Test
     void requireRegisteredRejectsUnknownRules() {
         assertThatThrownBy(() -> NamedRule.requireRegistered("MissingRule"))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -95,7 +106,7 @@ class NamedRuleTest {
             this.closePredicate = closePredicate;
         }
 
-        public TestUnregisterRule(BarSeries series, String... parameters) {
+        public TestUnregisterRule(String... parameters) {
             this(ClosePredicate.valueOf(parameters[0]));
         }
 
@@ -106,6 +117,26 @@ class NamedRuleTest {
 
         private enum ClosePredicate {
             ALWAYS
+        }
+    }
+
+    private static final class FirstRuleHolder {
+
+        private abstract static class DuplicateRule extends NamedRule {
+
+            private DuplicateRule() {
+                super(NamedRule.buildLabel(DuplicateRule.class));
+            }
+        }
+    }
+
+    private static final class SecondRuleHolder {
+
+        private abstract static class DuplicateRule extends NamedRule {
+
+            private DuplicateRule() {
+                super(NamedRule.buildLabel(DuplicateRule.class));
+            }
         }
     }
 }
