@@ -15,6 +15,9 @@ import ta4jexamples.datasources.file.AbstractFileBarSeriesDataSource;
 
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
@@ -186,18 +189,32 @@ public class CsvFileBarSeriesDataSource extends AbstractFileBarSeriesDataSource 
      *         file, or null if the file is not found or empty
      */
     public static BarSeries loadCsvSeries(String filename) {
-
-        var stream = CsvFileBarSeriesDataSource.class.getClassLoader().getResourceAsStream(filename);
+        InputStream stream = null;
+        String seriesName = filename;
+        Path localPath = Path.of(filename);
+        if (Files.isRegularFile(localPath)) {
+            try {
+                stream = Files.newInputStream(localPath);
+                seriesName = localPath.getFileName().toString();
+            } catch (IOException e) {
+                LOG.debug("Unable to open CSV file from filesystem: {}", filename, e);
+                return null;
+            }
+        } else {
+            stream = CsvFileBarSeriesDataSource.class.getClassLoader().getResourceAsStream(filename);
+        }
 
         if (stream == null) {
-            LOG.debug("CSV file not found in classpath: {}", filename);
+            LOG.debug("CSV file not found in filesystem or classpath: {}", filename);
             return null;
         }
 
-        var series = new BaseBarSeriesBuilder().withName(filename).build();
+        BaseBarSeriesBuilder seriesBuilder = new BaseBarSeriesBuilder().withName(seriesName);
+        BarSeries series = seriesBuilder.build();
 
-        try (stream) {
-            try (InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8)) {
+        InputStream resolvedStream = stream;
+        try (resolvedStream) {
+            try (InputStreamReader reader = new InputStreamReader(resolvedStream, StandardCharsets.UTF_8)) {
                 try (CSVReader csvReader = new CSVReaderBuilder(reader)
                         .withCSVParser(new CSVParserBuilder().withSeparator(',').build())
                         .withSkipLines(1)

@@ -56,6 +56,7 @@
     <modules>
         <module>ta4j-core</module>
         <module>ta4j-examples</module>
+        <module>ta4j-cli</module>
     </modules>
 
     <properties>
@@ -68,7 +69,7 @@
         <maven.surefire.version>3.5.4</maven.surefire.version>
         <ta4j.excludedTestTags>integration,analysis-demo,elliott-macro-cycle-replay</ta4j.excludedTestTags>
         <spotbugs.version>4.9.8.0</spotbugs.version>
-        <jacoco.version>0.8.13</jacoco.version>
+        <jacoco.version>0.8.14</jacoco.version>
         <ta4j.jacoco.line.minimum>0.80</ta4j.jacoco.line.minimum>
         <ta4j.jacoco.branch.minimum>0.80</ta4j.jacoco.branch.minimum>
 
@@ -81,12 +82,23 @@
         <log4j2.version>2.25.4</log4j2.version>
         <mockito.version>5.21.0</mockito.version>
         <opencsv.version>5.12.0</opencsv.version>
+        <picocli.version>4.7.7</picocli.version>
         <poi.version>5.5.1</poi.version>
         <slf4j.version>2.0.17</slf4j.version>
     </properties>
 
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>org.ta4j</groupId>
+                <artifactId>ta4j-core</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.ta4j</groupId>
+                <artifactId>ta4j-examples</artifactId>
+                <version>${project.version}</version>
+            </dependency>
             <dependency>
                 <groupId>org.apache.logging.log4j</groupId>
                 <artifactId>log4j-slf4j2-impl</artifactId>
@@ -163,6 +175,16 @@
                 <groupId>com.google.code.gson</groupId>
                 <artifactId>gson</artifactId>
                 <version>${gson.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>info.picocli</groupId>
+                <artifactId>picocli</artifactId>
+                <version>${picocli.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>info.picocli</groupId>
+                <artifactId>picocli-codegen</artifactId>
+                <version>${picocli.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -416,6 +438,10 @@
                         -Xshare:off
                         -Djdk.instrument.traceUsage=false
                     </argLine>
+                    <systemPropertyVariables>
+                        <java.awt.headless>true</java.awt.headless>
+                        <ta4j.chart.disableDisplay>true</ta4j.chart.disableDisplay>
+                    </systemPropertyVariables>
                 </configuration>
             </plugin>
             <!-- Package sources -->
@@ -441,7 +467,7 @@
                 <configuration>
                     <licenseSets>
                         <licenseSet>
-                            <header>${project.basedir}/license-header.txt</header>
+                            <header>${maven.multiModuleProjectDirectory}/license-header.txt</header>
                             <includes>
                                 <include>**/*.java</include>
                             </includes>
@@ -456,7 +482,7 @@
                 <artifactId>formatter-maven-plugin</artifactId>
                 <version>2.29.0</version>
                 <configuration>
-                    <configFile>${project.basedir}/code-formatter.xml</configFile>
+                    <configFile>${maven.multiModuleProjectDirectory}/code-formatter.xml</configFile>
                 </configuration>
             </plugin>
             <plugin>
