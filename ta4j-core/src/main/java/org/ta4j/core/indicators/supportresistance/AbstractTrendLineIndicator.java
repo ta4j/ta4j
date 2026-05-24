@@ -61,7 +61,7 @@ public abstract class AbstractTrendLineIndicator extends CachedIndicator<Num> {
     private final int maxSwingPointsForTrendline;
     private final int maxCandidatePairs;
 
-    private transient TrendLineCandidate cachedSegment;
+    private transient volatile TrendLineCandidate cachedSegment;
     private transient int cachedEndIndex = Integer.MIN_VALUE;
     private transient int cachedWindowStart = Integer.MIN_VALUE;
     private transient int cachedRemovedBars = Integer.MIN_VALUE;

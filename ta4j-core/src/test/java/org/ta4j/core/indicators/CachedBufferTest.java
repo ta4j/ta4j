@@ -64,6 +64,23 @@ public class CachedBufferTest {
     }
 
     @Test
+    public void testPrefillUntilReleasesWriteLockAndRestoresEvenStampWhenCalculatorThrows() {
+        CachedBuffer<Integer> buffer = new CachedBuffer<>(10);
+
+        assertThrows(IllegalStateException.class, () -> buffer.prefillUntil(0, 2, i -> {
+            if (i == 1) {
+                throw new IllegalStateException("boom");
+            }
+            return i;
+        }));
+
+        assertFalse("write lock should be released after exception", buffer.isWriteLockedByCurrentThread());
+        assertEquals("writeStamp should return to an even value after exception", 0L, buffer.getWriteStamp() & 1L);
+        assertEquals("successful values before the exception should remain cached", Integer.valueOf(0), buffer.get(0));
+        assertNull("failed index should not be cached", buffer.get(1));
+    }
+
+    @Test
     public void testRingBufferEvictionWithSmallCapacity() {
         // Test with small maximumBarCount (3) and >10 bars to verify wraparound
         CachedBuffer<Integer> buffer = new CachedBuffer<>(3);
