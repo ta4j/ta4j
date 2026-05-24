@@ -527,7 +527,13 @@ public final class IndicatorSerialization {
             return null;
         }
         if (targetType == boolean.class || targetType == Boolean.class) {
-            return convertBooleanValue(value);
+            if (value instanceof Boolean bool) {
+                return bool;
+            }
+            if (value instanceof String string) {
+                return Boolean.parseBoolean(string);
+            }
+            return null;
         }
         if (targetType.isArray()) {
             return convertNumericArrayValue(value, targetType, series);
@@ -618,16 +624,6 @@ public final class IndicatorSerialization {
         } catch (NumberFormatException ex) {
             return null;
         }
-    }
-
-    private static Boolean convertBooleanValue(Object value) {
-        if (value instanceof Boolean bool) {
-            return bool;
-        }
-        if (value instanceof String string) {
-            return Boolean.parseBoolean(string);
-        }
-        return null;
     }
 
     private static Map<String, Object> extractNumericParameters(Indicator<?> indicator) {

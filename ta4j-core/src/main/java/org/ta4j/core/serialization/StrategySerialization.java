@@ -221,10 +221,6 @@ public final class StrategySerialization {
         }
     }
 
-    private static Rule instantiateRule(BarSeries series, ComponentDescriptor descriptor) {
-        return instantiateRule(series, descriptor, null);
-    }
-
     private static Rule instantiateRule(BarSeries series, ComponentDescriptor descriptor,
             RuleSerialization.ReconstructionContext parentContext) {
         if (descriptor == null) {
