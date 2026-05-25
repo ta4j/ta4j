@@ -2,6 +2,10 @@
 
 ### Breaking
 - Updated project Java JDK from 21 to 25
+- **NetMomentum now models oscillator battery exhaustion**: `NetMomentumIndicator` inverts RSI-style
+  distance from the neutral pivot so below-pivot pressure charges rebound energy and above-pivot
+  pressure depletes it. Distance is now convex-weighted, so extreme oscillator readings count more
+  than repeated mild deviations.
 
 ### Added
 - **Composable regime and edge primitives**: Added `StretchZScoreIndicator`, `CompressionIndicator`, `TrendScoreIndicator`, `TrendConclusionIndicator`, `EntryEdgeIndicator`, `EdgeDecaySlopeIndicator`, `LossTriggeredCooldownRule`, and `EdgeHealthyRule` so strategies can model stretch, compression, trend state, realized entry edge, edge decay, and post-loss cooldowns with reusable ta4j-native building blocks (`CF-86`).
@@ -31,6 +35,7 @@
 - **Documentation surface area is now consolidated around canonical owners**: Overlapping execution-choice guidance was reduced to a single decision-matrix source, wiki navigation duplicates were removed, maintainer architecture index duplication was cleaned up, and onboarding/live/backtesting docs now route through clearer ownership boundaries while preserving deprecation-safe link compatibility.
 
 ### Fixed
+- **Kalman filter historical reads no longer replay recursively**: `KalmanFilterIndicator` now caches its one-dimensional filter state per index, preserving existing smoothing results while avoiding reset-and-replay behavior when callers request a late bar before reading earlier values.
 - **RWI indicators now honor the full warm-up window**: `RWIHighIndicator` and `RWILowIndicator` keep the configured period unstable until the longest ATR candidate is available, avoiding a one-bar-early value from incomplete range-width inputs.
 - **Strict local SpotBugs scans now compile before analysis**: Contributor docs now use `mvn -pl ta4j-core -am clean compile spotbugs:check`, so the standalone SpotBugs loop runs against fresh bytecode instead of succeeding as a no-op on an uncompiled module. The ATMA indicator also now uses the intended rounded-up fast smoothing length for odd windows, removing a SpotBugs-detected integer-division truncation (`CF-157`).
 - **Full-build deprecation cleanup**: Repo-owned tests, examples, and release-helper fixtures no longer exercise APIs already marked for removal, so the standard full build closes without removal-deprecation compiler warnings.
