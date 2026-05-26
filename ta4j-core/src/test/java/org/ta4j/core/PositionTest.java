@@ -94,10 +94,10 @@ public class PositionTest {
         assertTrue(newPosition.isClosed());
     }
 
-    @Test(expected = IllegalStateException.class)
+    @Test
     public void whenExitIndexIsLessThanEntryIndexShouldThrowException() {
         newPosition.operate(3);
-        newPosition.operate(1);
+        assertThrows(IllegalStateException.class, () -> newPosition.operate(1));
     }
 
     @Test
@@ -161,14 +161,15 @@ public class PositionTest {
         assertThrows(IllegalArgumentException.class, () -> position.operate(entry));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void shouldThrowIllegalArgumentExceptionWhenOrderTypeIsNull() {
-        new Position(null);
+        assertThrows(IllegalArgumentException.class, () -> new Position((TradeType) null));
     }
 
-    @Test(expected = IllegalArgumentException.class)
+    @Test
     public void shouldThrowIllegalArgumentExceptionWhenOrdersHaveSameType() {
-        new Position(Trade.buyAt(0, NaN, NaN), Trade.buyAt(1, NaN, NaN));
+        assertThrows(IllegalArgumentException.class,
+                () -> new Position(Trade.buyAt(0, NaN, NaN), Trade.buyAt(1, NaN, NaN)));
     }
 
     @Test
