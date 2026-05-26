@@ -244,6 +244,33 @@ Use `StopGainRule`, `StopLossRule`, `OverOrEqualIndicatorRule`, and
 `CrossedUpIndicatorRule` or `CrossedDownIndicatorRule` when the signal must be a
 fresh cross from the previous bar.
 
+### Regime and edge primitives
+
+Ta4j also includes reusable building blocks for regime-aware and edge-aware
+strategy construction, so you can model stretch, compression, trend state, and
+post-loss gating without burying that logic inside one custom strategy class:
+
+```java
+ClosePriceIndicator close = new ClosePriceIndicator(series);
+EMAIndicator mediumEma = new EMAIndicator(close, 20);
+
+StretchZScoreIndicator stretch = new StretchZScoreIndicator(close, mediumEma, 20);
+CompressionIndicator compression = new CompressionIndicator(series, 20, 40);
+TrendScoreIndicator trendScore = new TrendScoreIndicator(series, 12, 26, 9, 14, 40);
+TrendConclusionIndicator trendConclusion = new TrendConclusionIndicator(series, 20, 12, 26, 9, 14, 20, 40);
+
+Rule cooledOffAfterLoss = new LossTriggeredCooldownRule(series, 3);
+
+Rule entry = new UnderIndicatorRule(stretch, -1.5)
+        .and(new OverIndicatorRule(compression, 70))
+        .and(new OverIndicatorRule(trendScore, 15))
+        .and(cooledOffAfterLoss);
+```
+
+If you already have a boolean signal source, `EntryEdgeIndicator`,
+`EdgeDecaySlopeIndicator`, and `EdgeHealthyRule` let you score that signal's
+realized edge over a rolling horizon and turn it into a reusable entry gate.
+
 ## Sourcing market data
 
 **New to trading and not sure where to get historical price data?** You're not alone! Ta4j makes it easy to get started with real market data using the unified `BarSeriesDataSource` interface. All data sources work with the same domain-driven API using business concepts like ticker symbols, intervals, and date ranges.

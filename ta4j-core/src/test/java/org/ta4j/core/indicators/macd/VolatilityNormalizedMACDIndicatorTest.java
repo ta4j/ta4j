@@ -58,6 +58,9 @@ public class VolatilityNormalizedMACDIndicatorTest extends AbstractIndicatorTest
                 () -> new VolatilityNormalizedMACDIndicator(closePrice, 12, 26, 0));
         assertThrows(IllegalArgumentException.class,
                 () -> new VolatilityNormalizedMACDIndicator(closePrice, 12, 26, 26, 9, 0));
+        assertThrows(IllegalArgumentException.class,
+                () -> new VolatilityNormalizedMACDIndicator(closePrice, 12, 26, 26, 9, null));
+        assertThrows(NullPointerException.class, () -> new VolatilityNormalizedMACDIndicator((Indicator<Num>) null));
     }
 
     @Test
