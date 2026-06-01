@@ -58,9 +58,8 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
      * Constructor for buy-and-hold strategy with an {@link #amount} of {@code 1}.
      *
      * @param criterion the {@link AnalysisCriterion criterion} to calculate
-     * @throws IllegalArgumentException if {@code criterion} is an instance of
-     *                                  {@code EnterAndHoldCriterion} or another
-     *                                  enter-and-hold relative criterion
+     * @throws IllegalArgumentException if {@code criterion} is itself an
+     *                                  enter-and-hold or relative-return criterion
      */
     public EnterAndHoldCriterion(AnalysisCriterion criterion) {
         this(TradeType.BUY, criterion);
@@ -71,9 +70,8 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
      *
      * @param tradeType the {@link TradeType} used to open the position
      * @param criterion the {@link AnalysisCriterion criterion} to calculate
-     * @throws IllegalArgumentException if {@code criterion} is an instance of
-     *                                  {@code EnterAndHoldCriterion} or another
-     *                                  enter-and-hold relative criterion
+     * @throws IllegalArgumentException if {@code criterion} is itself an
+     *                                  enter-and-hold or relative-return criterion
      */
     public EnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion) {
         this(tradeType, criterion, BigDecimal.ONE);
@@ -85,9 +83,8 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
      * @param tradeType the {@link TradeType} used to open the position
      * @param criterion the {@link AnalysisCriterion criterion} to calculate
      * @param amount    the amount to be used to hold the entry position
-     * @throws IllegalArgumentException if {@code criterion} is an instance of
-     *                                  {@code EnterAndHoldCriterion} or another
-     *                                  enter-and-hold relative criterion
+     * @throws IllegalArgumentException if {@code criterion} is itself an
+     *                                  enter-and-hold or relative-return criterion
      * @throws NullPointerException     if {@code amount} is {@code null}
      */
     public EnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion, BigDecimal amount) {
