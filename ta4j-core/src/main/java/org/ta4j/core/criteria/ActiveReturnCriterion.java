@@ -34,9 +34,23 @@ import java.util.Optional;
  * negative value means underperformance.
  *
  * <p>
- * This criterion measures percentage-point active return. It does not divide by
- * the benchmark return magnitude. Use {@link VersusEnterAndHoldCriterion} for
- * the existing normalized enter-and-hold comparison.
+ * <b>When to use:</b> Use this criterion when the question is "how many return
+ * percentage points did the primary criterion add or lose versus the
+ * benchmark?" This is the common active-return interpretation used for
+ * benchmark-relative performance reporting: a strategy return of {@code 15%}
+ * versus a benchmark return of {@code 10%} produces {@code +5} percentage
+ * points of active return. It is also useful when the benchmark can be any
+ * return criterion, not only an enter-and-hold benchmark.
+ *
+ * <p>
+ * This differs from {@link VersusEnterAndHoldCriterion}, which answers "how
+ * large is the outperformance relative to the absolute enter-and-hold return?"
+ * by dividing the return difference by the benchmark return magnitude. That
+ * normalized ratio can be useful when you specifically want a multiple of the
+ * enter-and-hold return, but it can become large or hard to interpret when the
+ * benchmark return is small, zero, or negative. Use this criterion when you
+ * want the additive return spread; use {@link VersusEnterAndHoldCriterion} when
+ * you want the existing normalized enter-and-hold comparison.
  *
  * @see ActiveReturnVersusEnterAndHoldCriterion
  * @see ReturnCriterion
