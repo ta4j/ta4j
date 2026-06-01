@@ -59,8 +59,8 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
      *
      * @param criterion the {@link AnalysisCriterion criterion} to calculate
      * @throws IllegalArgumentException if {@code criterion} is an instance of
-     *                                  {@code EnterAndHoldCriterion} or
-     *                                  {@code VersusEnterAndHoldCriterion}
+     *                                  {@code EnterAndHoldCriterion} or another
+     *                                  enter-and-hold relative criterion
      */
     public EnterAndHoldCriterion(AnalysisCriterion criterion) {
         this(TradeType.BUY, criterion);
@@ -72,8 +72,8 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
      * @param tradeType the {@link TradeType} used to open the position
      * @param criterion the {@link AnalysisCriterion criterion} to calculate
      * @throws IllegalArgumentException if {@code criterion} is an instance of
-     *                                  {@code EnterAndHoldCriterion} or
-     *                                  {@code VersusEnterAndHoldCriterion}
+     *                                  {@code EnterAndHoldCriterion} or another
+     *                                  enter-and-hold relative criterion
      */
     public EnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion) {
         this(tradeType, criterion, BigDecimal.ONE);
@@ -86,13 +86,20 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
      * @param criterion the {@link AnalysisCriterion criterion} to calculate
      * @param amount    the amount to be used to hold the entry position
      * @throws IllegalArgumentException if {@code criterion} is an instance of
-     *                                  {@code EnterAndHoldCriterion} or
-     *                                  {@code VersusEnterAndHoldCriterion}
+     *                                  {@code EnterAndHoldCriterion} or another
+     *                                  enter-and-hold relative criterion
      * @throws NullPointerException     if {@code amount} is {@code null}
      */
     public EnterAndHoldCriterion(TradeType tradeType, AnalysisCriterion criterion, BigDecimal amount) {
         if (criterion instanceof EnterAndHoldCriterion) {
             throw new IllegalArgumentException("Criterion cannot be an instance of EnterAndHoldCriterion.");
+        }
+        if (criterion instanceof ActiveReturnCriterion) {
+            throw new IllegalArgumentException("Criterion cannot be an instance of ActiveReturnCriterion.");
+        }
+        if (criterion instanceof ActiveReturnVersusEnterAndHoldCriterion) {
+            throw new IllegalArgumentException(
+                    "Criterion cannot be an instance of ActiveReturnVersusEnterAndHoldCriterion.");
         }
         if (criterion instanceof VersusEnterAndHoldCriterion) {
             throw new IllegalArgumentException("Criterion cannot be an instance of VersusEnterAndHoldCriterion.");
@@ -128,6 +135,10 @@ public class EnterAndHoldCriterion extends AbstractAnalysisCriterion {
             return ((AbstractAnalysisCriterion) criterion).getReturnRepresentation();
         }
         return Optional.empty();
+    }
+
+    AnalysisCriterion getCriterion() {
+        return criterion;
     }
 
     private Position createEnterAndHoldTrade(BarSeries series, int beginIndex, int endIndex) {
