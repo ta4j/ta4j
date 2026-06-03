@@ -3,98 +3,76 @@
  */
 package ta4jexamples.backtesting;
 
+import java.util.List;
+import java.util.Objects;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.ta4j.core.*;
-import org.ta4j.core.backtest.BacktestExecutionResult;
-import org.ta4j.core.backtest.BacktestExecutor;
+import org.ta4j.core.BarSeries;
+import org.ta4j.core.BaseStrategy;
+import org.ta4j.core.Indicator;
+import org.ta4j.core.Rule;
+import org.ta4j.core.Strategy;
 import org.ta4j.core.backtest.TradingStatementExecutionResult.RankingProfile;
 import org.ta4j.core.backtest.TradingStatementExecutionResult.WeightedCriterion;
 import org.ta4j.core.criteria.drawdown.ReturnOverMaxDrawdownCriterion;
 import org.ta4j.core.criteria.pnl.NetProfitCriterion;
 import org.ta4j.core.indicators.averages.SMAIndicator;
 import org.ta4j.core.indicators.helpers.ClosePriceIndicator;
-import org.ta4j.core.num.DecimalNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.research.ParameterResearch;
+import org.ta4j.core.research.ParameterResearch.CandidateScore;
 import org.ta4j.core.research.ParameterResearch.ParameterDomain;
 import org.ta4j.core.research.ParameterResearch.ParameterResearchReport;
 import org.ta4j.core.research.ParameterResearch.ParameterSet;
 import org.ta4j.core.research.ParameterResearch.PruningPolicy;
 import org.ta4j.core.research.ParameterResearch.ResearchConfig;
-import org.ta4j.core.reports.BasePerformanceReport;
-import org.ta4j.core.reports.PositionStatsReport;
-import org.ta4j.core.reports.TradingStatement;
-import org.ta4j.core.rules.OverIndicatorRule;
-import org.ta4j.core.rules.UnderIndicatorRule;
+import org.ta4j.core.rules.CrossedDownIndicatorRule;
+import org.ta4j.core.rules.CrossedUpIndicatorRule;
+import org.ta4j.core.rules.StopLossRule;
+
 import ta4jexamples.datasources.CsvFileBarSeriesDataSource;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 /**
- * Example demonstrating how to use {@link BacktestExecutor} for parallel
- * strategy evaluation.
+ * Example parameter research workflow for a simple SMA trend strategy.
  *
- * This example:
- * <ul>
- * <li>Creates multiple variations of a Simple Moving Average (SMA)
- * strategy.</li>
- * <li>Uses {@code BacktestExecutor} to run them in parallel over the data
- * series.</li>
- * <li>Ranks the strategies based on a composite {@link WeightedCriterion}.</li>
- * <li>Prints a performance report for the best strategies.</li>
- * </ul>
+ * <p>
+ * The example searches fast/slow SMA periods plus stop-loss percentages,
+ * rejects invalid fast/slow combinations, prunes exact duplicate trading
+ * records, ranks representatives by a weighted objective, and checks whether
+ * the selected training candidates survive a holdout window.
+ * </p>
  */
 public class SimpleMovingAverageRangeBacktest {
 
     private static final Logger LOG = LogManager.getLogger(SimpleMovingAverageRangeBacktest.class);
+    private static final String FAST_BAR_COUNT = "fastBarCount";
+    private static final String SLOW_BAR_COUNT = "slowBarCount";
+    private static final String STOP_LOSS_PERCENTAGE = "stopLossPercentage";
     private static final int DEFAULT_TOP_STRATEGIES = 3;
-    private static final int DEFAULT_START = 3;
-    private static final int DEFAULT_STOP = 50;
-    private static final int DEFAULT_STEP = 5;
     private static final int DEFAULT_VALIDATION_BARS = 63;
+    private static final int DEFAULT_REPORT_ROWS = 5;
 
     public static void main(String[] args) {
         BarSeries series = CsvFileBarSeriesDataSource.loadSeriesFromFile();
+        ParameterResearchReport report = runSmaResearch(series, DEFAULT_VALIDATION_BARS);
 
-        ParameterResearchReport baselineReport = runSmaResearch(series, PruningPolicy.NONE, DEFAULT_VALIDATION_BARS);
-        ParameterResearchReport prunedReport = runSmaResearch(series, PruningPolicy.EXACT_TRADING_RECORD,
-                DEFAULT_VALIDATION_BARS);
-
-        LOG.debug("Baseline SMA parameter research{}", System.lineSeparator() + baselineReport.formatSummary());
-        LOG.debug("Exact-record pruned SMA parameter research{}",
-                System.lineSeparator() + prunedReport.formatSummary());
-
-        final List<Strategy> strategies = smaBarCounts().stream()
-                .map(barCount -> createSmaStrategy(series, barCount))
-                .toList();
-        BacktestExecutor backtestExecutor = new BacktestExecutor(series);
-        BacktestExecutionResult result = backtestExecutor.executeWithRuntimeReport(strategies, DecimalNum.valueOf(50),
-                Trade.TradeType.BUY);
-        List<TradingStatement> tradingStatements = selectTopStrategies(result, DEFAULT_TOP_STRATEGIES);
-
-        LOG.debug("Top {} weighted SMA strategies (7 parts net profit, 3 parts return over max drawdown)",
-                tradingStatements.size());
-        LOG.debug(printReport(tradingStatements));
+        LOG.info(System.lineSeparator() + formatResearchNarrative(report, DEFAULT_REPORT_ROWS));
     }
 
     /**
-     * Selects the top strategies for this example using weighted, normalized
-     * ranking.
+     * Runs the default SMA trend parameter research workflow.
      *
-     * @param result full backtest result for the SMA parameter sweep
-     * @param limit  maximum number of strategies to keep
-     * @return top strategies ordered by the example weighted criteria
+     * @param series         full series
+     * @param validationBars final bars held out for validation
+     * @return structured research report
      */
-    static List<TradingStatement> selectTopStrategies(BacktestExecutionResult result, int limit) {
-        Objects.requireNonNull(result, "result cannot be null");
-        return result.getTopStrategiesWeighted(limit, weightedRankingProfile());
+    static ParameterResearchReport runSmaResearch(BarSeries series, int validationBars) {
+        return runSmaResearch(series, PruningPolicy.EXACT_TRADING_RECORD, validationBars);
     }
 
     /**
-     * Runs the SMA parameter research workflow.
+     * Runs the SMA trend parameter research workflow with a custom pruning policy.
      *
      * @param series         full series
      * @param pruningPolicy  pruning policy for representative selection
@@ -104,35 +82,50 @@ public class SimpleMovingAverageRangeBacktest {
     static ParameterResearchReport runSmaResearch(BarSeries series, PruningPolicy pruningPolicy, int validationBars) {
         Objects.requireNonNull(series, "series cannot be null");
         ResearchConfig config = ResearchConfig
-                .holdout(0, validationBars, weightedRankingProfile(), series.numFactory().numOf(50),
+                .holdout(validationBars, weightedRankingProfile(), series.numFactory().numOf(50),
                         DEFAULT_TOP_STRATEGIES)
                 .withPruningPolicy(pruningPolicy);
-        return ParameterResearch.run(series, smaBarCountDomain(), ParameterResearch.CandidateValidator.acceptAll(),
+        return ParameterResearch.run(series, smaParameterDomains(),
+                SimpleMovingAverageRangeBacktest::validateParameters,
                 SimpleMovingAverageRangeBacktest::createSmaStrategy, config);
     }
 
     /**
-     * Materializes an SMA strategy from a parameter research candidate.
+     * Materializes an SMA trend strategy from a parameter research candidate.
      *
      * @param series     bar series used by the strategy
      * @param parameters normalized parameter set
-     * @return SMA strategy with unstable bars set from its bar count
+     * @return SMA trend strategy with unstable bars set from the slower SMA
      */
     static Strategy createSmaStrategy(BarSeries series, ParameterSet parameters) {
-        return createSmaStrategy(series, parameters.intValue("barCount"));
+        return createSmaStrategy(series, parameters.intValue(FAST_BAR_COUNT), parameters.intValue(SLOW_BAR_COUNT),
+                parameters.intValue(STOP_LOSS_PERCENTAGE));
     }
 
-    private static List<ParameterDomain> smaBarCountDomain() {
-        return List.of(ParameterDomain.integerRange("barCount", DEFAULT_START, DEFAULT_STOP, DEFAULT_STEP, 1,
-                Integer.MAX_VALUE, true));
+    static String formatResearchNarrative(ParameterResearchReport report, int maxRows) {
+        Objects.requireNonNull(report, "report cannot be null");
+        StringBuilder builder = new StringBuilder();
+        builder.append("SMA trend parameter research")
+                .append(System.lineSeparator())
+                .append(report.formatSummary(maxRows))
+                .append(System.lineSeparator())
+                .append("Takeaway: ")
+                .append(holdoutTakeaway(report));
+        return builder.toString();
     }
 
-    private static List<Integer> smaBarCounts() {
-        List<Integer> barCounts = new ArrayList<>();
-        for (int value = DEFAULT_START; value <= DEFAULT_STOP; value += DEFAULT_STEP) {
-            barCounts.add(value);
+    private static List<ParameterDomain> smaParameterDomains() {
+        return List.of(ParameterDomain.periodRange(FAST_BAR_COUNT, 5, 35, 10),
+                ParameterDomain.periodRange(SLOW_BAR_COUNT, 10, 50, 10),
+                ParameterDomain.values(STOP_LOSS_PERCENTAGE, List.of(3, 6, 9)));
+    }
+
+    private static void validateParameters(ParameterSet parameters) {
+        int fastBarCount = parameters.intValue(FAST_BAR_COUNT);
+        int slowBarCount = parameters.intValue(SLOW_BAR_COUNT);
+        if (fastBarCount >= slowBarCount) {
+            throw new IllegalArgumentException(FAST_BAR_COUNT + " must be lower than " + SLOW_BAR_COUNT);
         }
-        return barCounts;
     }
 
     private static RankingProfile weightedRankingProfile() {
@@ -140,87 +133,58 @@ public class SimpleMovingAverageRangeBacktest {
                 WeightedCriterion.of(new ReturnOverMaxDrawdownCriterion(), 3.0));
     }
 
-    private static Strategy createSmaStrategy(BarSeries series, int barCount) {
+    private static Strategy createSmaStrategy(BarSeries series, int fastBarCount, int slowBarCount,
+            int stopLossPercentage) {
         Objects.requireNonNull(series, "series cannot be null");
-        if (barCount <= 0) {
-            throw new IllegalArgumentException("barCount must be positive");
+        if (fastBarCount <= 0 || slowBarCount <= 0) {
+            throw new IllegalArgumentException("SMA periods must be positive");
         }
-        int unstableBars = barCount - 1;
-        return new BaseStrategy("Sma(" + barCount + ")", createEntryRule(series, barCount),
-                createExitRule(series, barCount), unstableBars);
-    }
-
-    private static Rule createEntryRule(BarSeries series, int barCount) {
-        Indicator<Num> closePrice = new ClosePriceIndicator(series);
-        SMAIndicator sma = new SMAIndicator(closePrice, barCount);
-        return new UnderIndicatorRule(sma, closePrice);
-    }
-
-    private static Rule createExitRule(BarSeries series, int barCount) {
-        Indicator<Num> closePrice = new ClosePriceIndicator(series);
-        SMAIndicator sma = new SMAIndicator(closePrice, barCount);
-        return new OverIndicatorRule(sma, closePrice);
-    }
-
-    private static String printReport(List<TradingStatement> tradingStatements) {
-        StringBuilder resultBuilder = new StringBuilder();
-        resultBuilder.append(System.lineSeparator());
-        for (TradingStatement statement : tradingStatements) {
-            resultBuilder.append(printStatementReport(statement));
-            resultBuilder.append(System.lineSeparator());
+        if (fastBarCount >= slowBarCount) {
+            throw new IllegalArgumentException(FAST_BAR_COUNT + " must be lower than " + SLOW_BAR_COUNT);
+        }
+        if (stopLossPercentage < 0) {
+            throw new IllegalArgumentException(STOP_LOSS_PERCENTAGE + " must be >= 0");
         }
 
-        return resultBuilder.toString();
+        Indicator<Num> closePrice = new ClosePriceIndicator(series);
+        SMAIndicator fastSma = new SMAIndicator(closePrice, fastBarCount);
+        SMAIndicator slowSma = new SMAIndicator(closePrice, slowBarCount);
+        Rule entryRule = new CrossedUpIndicatorRule(fastSma, slowSma);
+        Rule exitRule = new CrossedDownIndicatorRule(fastSma, slowSma)
+                .or(new StopLossRule(closePrice, stopLossPercentage));
+        int unstableBars = Math.max(fastSma.getCountOfUnstableBars(), slowSma.getCountOfUnstableBars());
+
+        return new BaseStrategy(
+                "SmaTrend(fast=" + fastBarCount + ",slow=" + slowBarCount + ",stop=" + stopLossPercentage + "%)",
+                entryRule, exitRule, unstableBars);
     }
 
-    private static StringBuilder printStatementReport(TradingStatement statement) {
-        StringBuilder resultBuilder = new StringBuilder();
-        resultBuilder.append("######### ")
-                .append(statement.getStrategy().getName())
-                .append(" #########")
-                .append(System.lineSeparator())
-                .append(printPerformanceReport(statement.getPerformanceReport()))
-                .append(System.lineSeparator())
-                .append(printPositionStats(statement.getPositionStatsReport()))
-                .append(System.lineSeparator())
-                .append("###########################");
-        return resultBuilder;
+    private static String holdoutTakeaway(ParameterResearchReport report) {
+        if (report.validationScores().isEmpty()) {
+            return "No holdout scores were produced; increase validationBarCount before trusting the selection.";
+        }
+
+        CandidateScore validationWinner = report.validationScores().getFirst();
+        CandidateScore selectedValidation = scoreFor(report.validationScores(), report.selectedTopCandidateId());
+        if (selectedValidation == null) {
+            return "The selected training candidate did not evaluate on the holdout; inspect invalid candidates before "
+                    + "promoting a parameter set.";
+        }
+        if (validationWinner.candidateId().equals(report.selectedTopCandidateId())) {
+            return "The selected training candidate also led the holdout window (" + validationWinner.candidateId()
+                    + "), so this run shows stable in-sample and out-of-sample ranking.";
+        }
+        return "The selected training candidate ranked #" + selectedValidation.rank() + " on holdout; the holdout "
+                + "winner was " + validationWinner.candidateId()
+                + ". Treat the training winner as a candidate for more validation, not a finished strategy.";
     }
 
-    private static StringBuilder printPerformanceReport(BasePerformanceReport report) {
-        StringBuilder resultBuilder = new StringBuilder();
-        resultBuilder.append("--------- performance report ---------")
-                .append(System.lineSeparator())
-                .append("total loss: ")
-                .append(report.totalLoss)
-                .append(System.lineSeparator())
-                .append("total profit: ")
-                .append(report.totalProfit)
-                .append(System.lineSeparator())
-                .append("total profit loss: ")
-                .append(report.totalProfitLoss)
-                .append(System.lineSeparator())
-                .append("total profit loss percentage: ")
-                .append(report.totalProfitLossPercentage)
-                .append(System.lineSeparator())
-                .append("---------------------------");
-        return resultBuilder;
-    }
-
-    private static StringBuilder printPositionStats(PositionStatsReport report) {
-        StringBuilder resultBuilder = new StringBuilder();
-        resultBuilder.append("--------- trade statistics report ---------")
-                .append(System.lineSeparator())
-                .append("loss trade count: ")
-                .append(report.getLossCount())
-                .append(System.lineSeparator())
-                .append("profit trade count: ")
-                .append(report.getProfitCount())
-                .append(System.lineSeparator())
-                .append("break even trade count: ")
-                .append(report.getBreakEvenCount())
-                .append(System.lineSeparator())
-                .append("---------------------------");
-        return resultBuilder;
+    private static CandidateScore scoreFor(List<CandidateScore> scores, String candidateId) {
+        for (CandidateScore score : scores) {
+            if (score.candidateId().equals(candidateId)) {
+                return score;
+            }
+        }
+        return null;
     }
 }

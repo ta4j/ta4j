@@ -50,6 +50,17 @@ class ParameterResearchTest {
     }
 
     @Test
+    void periodRangeCapsValuesToTrainingSeriesLength() {
+        BarSeries series = buildSeries(5);
+        ParameterDomain domain = ParameterDomain.periodRange("barCount", 1, 11, 10);
+
+        CandidateGenerationResult result = ParameterResearch.generateCandidateSpace(series, List.of(domain));
+
+        assertThat(result.candidates()).extracting(ParameterResearch.StrategyCandidate::id)
+                .containsExactly("barCount=1", "barCount=5");
+    }
+
+    @Test
     void candidateGenerationRejectsNullLiteralValues() {
         IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
                 () -> ParameterDomain.values("barCount", Arrays.asList(1, null)));
@@ -104,7 +115,7 @@ class ParameterResearchTest {
     @Test
     void researchGeneratesCandidateSpaceFromTrainingWindowToAvoidHoldoutLengthLeakage() {
         BarSeries series = buildSeries(12);
-        ParameterDomain periodDomain = ParameterDomain.integerRange("barCount", 1, 11, 10, 1, Integer.MAX_VALUE, true);
+        ParameterDomain periodDomain = ParameterDomain.periodRange("barCount", 1, 11, 10);
         ResearchConfig config = defaultConfig(series, 5, 7).withPruningPolicy(PruningPolicy.NONE);
 
         ParameterResearchReport report = ParameterResearch.run(series, List.of(periodDomain),
@@ -116,6 +127,38 @@ class ParameterResearchTest {
                 .containsOnly("barCount=1", "barCount=5");
         assertThat(report.trainingScores()).extracting(ParameterResearch.CandidateScore::candidateId)
                 .doesNotContain("barCount=11");
+    }
+
+    @Test
+    void noValidatorRunOverloadUsesAcceptAllValidator() {
+        BarSeries series = buildSeries(8);
+        ParameterDomain domain = ParameterDomain.values("barCount", List.of(1, 2));
+        ResearchConfig config = defaultConfig(series, 6, 2).withPruningPolicy(PruningPolicy.NONE);
+
+        ParameterResearchReport report = ParameterResearch.run(series, List.of(domain),
+                ParameterResearchTest::fixedByBarCount, config);
+
+        assertThat(report.invalidCandidateCount()).isZero();
+        assertThat(report.trainingScores()).extracting(ParameterResearch.CandidateScore::candidateId)
+                .containsExactly("barCount=1", "barCount=2");
+    }
+
+    @Test
+    void holdoutShortcutUsesAllPreHoldoutBarsForTraining() {
+        BarSeries series = buildSeries(10);
+        ParameterDomain domain = ParameterDomain.values("barCount", List.of(1));
+        ResearchConfig config = ResearchConfig
+                .holdout(4, RankingProfile.weighted(WeightedCriterion.of(new NetProfitCriterion(), 1.0)),
+                        series.numFactory().one(), 1)
+                .withPruningPolicy(PruningPolicy.NONE);
+
+        ParameterResearchReport report = ParameterResearch.run(series, List.of(domain),
+                ParameterResearchTest::fixedByBarCount, config);
+
+        assertThat(report.window().trainingStartIndex()).isEqualTo(0);
+        assertThat(report.window().trainingEndIndex()).isEqualTo(5);
+        assertThat(report.window().validationStartIndex()).isEqualTo(6);
+        assertThat(report.window().validationEndIndex()).isEqualTo(9);
     }
 
     @Test
@@ -213,6 +256,24 @@ class ParameterResearchTest {
 
         assertThat(report.warnings()).anyMatch(warning -> warning.contains("validationBarCount was reduced"));
         assertThat(report.warnings()).anyMatch(warning -> warning.contains("trainingBarCount was reduced"));
+    }
+
+    @Test
+    void reportSummaryIsBoundedAndIncludesMetricLabels() {
+        BarSeries series = buildSeries(8);
+        ParameterDomain domain = ParameterDomain.values("cycles", List.of(1, 2, 3));
+        ResearchConfig config = defaultConfig(series, 6, 2).withPruningPolicy(PruningPolicy.NONE);
+
+        ParameterResearchReport report = ParameterResearch.run(series, List.of(domain),
+                ParameterResearchTest::fixedCycleStrategy, config);
+
+        String summary = report.formatSummary(1);
+
+        assertThat(summary).contains("Candidate space:");
+        assertThat(summary).contains("Training top candidates:");
+        assertThat(summary).contains("Validation top candidates:");
+        assertThat(summary).contains("NetProfitCriterion=");
+        assertThat(summary).contains("... 2 more");
     }
 
     @Test

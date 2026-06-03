@@ -462,7 +462,6 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
-                <inherited>false</inherited>
                 <configuration>
                     <skip>true</skip>
                 </configuration>
