@@ -154,6 +154,23 @@ public final class ParameterResearch {
      *
      * @param series          full series
      * @param domains         ordered parameter domains
+     * @param strategyFactory strategy factory
+     * @param config          research configuration
+     * @return structured research report
+     * @since 0.22.7
+     */
+    public static ParameterResearchReport run(BarSeries series, List<ParameterDomain> domains,
+            StrategyFactory strategyFactory, ResearchConfig config) {
+        return run(series, domains, CandidateValidator.acceptAll(), strategyFactory, config);
+    }
+
+    /**
+     * Runs parameter research by generating candidates from the training window,
+     * selecting on training data, and validating selected representatives on a
+     * holdout window.
+     *
+     * @param series          full series
+     * @param domains         ordered parameter domains
      * @param validator       optional cross-parameter validator
      * @param strategyFactory strategy factory
      * @param config          research configuration
@@ -840,6 +857,25 @@ public final class ParameterResearch {
         }
 
         /**
+         * Creates an inclusive integer range for lookback/period-like parameters.
+         *
+         * <p>
+         * Values are normalized to the available training series length so generated
+         * strategies cannot request more bars than the selection window contains.
+         * </p>
+         *
+         * @param name  parameter name
+         * @param start first value
+         * @param stop  last value
+         * @param step  positive increment
+         * @return period range domain capped to {@code [1, series.getBarCount()]}
+         * @since 0.22.7
+         */
+        public static ParameterDomain periodRange(String name, int start, int stop, int step) {
+            return integerRange(name, start, stop, step, 1, Integer.MAX_VALUE, true);
+        }
+
+        /**
          * Creates an inclusive integer range domain with natural bounds.
          *
          * @param name              parameter name
@@ -1198,6 +1234,22 @@ public final class ParameterResearch {
         }
 
         /**
+         * Creates a holdout research config using all pre-holdout bars for training and
+         * exact trading-record pruning.
+         *
+         * @param validationBarCount final bars held out for validation
+         * @param rankingProfile     weighted ranking profile
+         * @param amount             trade amount
+         * @param topK               number of selected candidates to validate
+         * @return research config
+         * @since 0.22.7
+         */
+        public static ResearchConfig holdout(int validationBarCount, RankingProfile rankingProfile, Num amount,
+                int topK) {
+            return holdout(0, validationBarCount, rankingProfile, amount, topK);
+        }
+
+        /**
          * Returns a copy with a different pruning policy.
          *
          * @param policy pruning policy
@@ -1444,12 +1496,26 @@ public final class ParameterResearch {
          * @since 0.22.7
          */
         public String formatSummary() {
+            return formatSummary(5);
+        }
+
+        /**
+         * Formats a concise human-readable report summary.
+         *
+         * @param maxRows maximum number of score rows to include for each section
+         * @return summary text
+         * @since 0.22.7
+         */
+        public String formatSummary(int maxRows) {
+            if (maxRows < 0) {
+                throw new IllegalArgumentException("maxRows must be >= 0");
+            }
             StringBuilder builder = new StringBuilder();
             builder.append("Parameter research '")
                     .append(datasetId)
-                    .append("': bars=")
-                    .append(barCount)
-                    .append(", hash=")
+                    .append("'")
+                    .append(System.lineSeparator())
+                    .append("Candidate space: hash=")
                     .append(candidateSpaceHash)
                     .append(", generated=")
                     .append(generatedCandidateCount)
@@ -1464,7 +1530,9 @@ public final class ParameterResearch {
                     .append(", policy=")
                     .append(pruningPolicy);
             builder.append(System.lineSeparator())
-                    .append("train=")
+                    .append("Windows: bars=")
+                    .append(barCount)
+                    .append(", training=")
                     .append(window.trainingStartIndex())
                     .append('-')
                     .append(window.trainingEndIndex());
@@ -1477,29 +1545,53 @@ public final class ParameterResearch {
                 builder.append(", validation=none");
             }
             builder.append(System.lineSeparator())
-                    .append("baselineTop=")
+                    .append("Selection: baselineTop=")
                     .append(baselineTopCandidateId)
                     .append(", selectedTop=")
                     .append(selectedTopCandidateId);
-            appendScores(builder, "training", trainingScores);
-            appendScores(builder, "validation", validationScores);
+            appendScores(builder, "Training top candidates", trainingScores, maxRows);
+            appendScores(builder, "Validation top candidates", validationScores, maxRows);
             if (!warnings.isEmpty()) {
-                builder.append(System.lineSeparator()).append("warnings=").append(warnings);
+                builder.append(System.lineSeparator()).append("Warnings:");
+                for (String warning : warnings) {
+                    builder.append(System.lineSeparator()).append("- ").append(warning);
+                }
             }
             return builder.toString();
         }
 
-        private static void appendScores(StringBuilder builder, String label, List<CandidateScore> scores) {
-            builder.append(System.lineSeparator()).append(label).append("Scores=");
+        private static void appendScores(StringBuilder builder, String label, List<CandidateScore> scores,
+                int maxRows) {
+            builder.append(System.lineSeparator()).append(label).append(":");
             if (scores.isEmpty()) {
-                builder.append("[]");
+                builder.append(" none");
                 return;
             }
-            List<String> rows = new ArrayList<>();
-            for (CandidateScore score : scores) {
-                rows.add("#" + score.rank() + " " + score.candidateId() + " score=" + score.compositeScore());
+            int limit = Math.min(maxRows, scores.size());
+            for (int i = 0; i < limit; i++) {
+                CandidateScore score = scores.get(i);
+                builder.append(System.lineSeparator())
+                        .append("- #")
+                        .append(score.rank())
+                        .append(' ')
+                        .append(score.candidateId())
+                        .append(" score=")
+                        .append(score.compositeScore());
+                if (!score.metricValues().isEmpty()) {
+                    builder.append(" metrics=").append(formatMetrics(score.metricValues()));
+                }
             }
-            builder.append(rows);
+            if (scores.size() > limit) {
+                builder.append(System.lineSeparator()).append("- ... ").append(scores.size() - limit).append(" more");
+            }
+        }
+
+        private static String formatMetrics(Map<String, Num> metricValues) {
+            StringJoiner joiner = new StringJoiner(", ", "{", "}");
+            for (Map.Entry<String, Num> entry : metricValues.entrySet()) {
+                joiner.add(entry.getKey() + "=" + entry.getValue());
+            }
+            return joiner.toString();
         }
     }
 
