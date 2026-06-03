@@ -8,6 +8,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import org.junit.jupiter.api.Test;
 import org.ta4j.core.BarSeries;
@@ -82,6 +83,18 @@ class ParameterResearchTest {
         assertThat(result.invalidCandidates().getFirst().reason()).contains("barCount")
                 .contains("oops")
                 .contains("integer");
+    }
+
+    @Test
+    void parameterSetIntValueReportsMalformedValuesWithParameterContext() {
+        ParameterSet parameters = new ParameterSet(
+                List.of(new ParameterResearch.ParameterValue("barCount", "oops", "oops", false, "")));
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> parameters.intValue("barCount"));
+
+        assertThat(exception).hasMessageContaining("barCount").hasMessageContaining("oops");
+        assertThat(exception).hasCauseInstanceOf(NumberFormatException.class);
     }
 
     @Test
@@ -226,6 +239,48 @@ class ParameterResearchTest {
         assertThat(report.pruningPolicy()).isEqualTo(PruningPolicy.INDICATOR_DISTANCE);
         assertThat(report.pruningGroups().getFirst().discardedIds()).containsExactly("offset=1");
         assertThat(report.warnings()).anyMatch(warning -> warning.contains("INDICATOR_DISTANCE"));
+    }
+
+    @Test
+    void indicatorDistanceUsesBestRankedCandidateAsRepresentative() {
+        BarSeries series = buildSeries(8);
+        ParameterDomain domain = ParameterDomain.values("cycles", List.of(1, 2));
+        ResearchConfig config = ResearchConfig
+                .holdout(6, 2,
+                        RankingProfile.weighted(WeightedCriterion.of(new NumberOfPositionsCriterion(false), 1.0)),
+                        series.numFactory().one(), 2)
+                .withIndicatorDistance(0.0, (targetSeries, parameters) -> new ClosePriceIndicator(targetSeries));
+
+        ParameterResearchReport report = ParameterResearch.run(series, List.of(domain),
+                ParameterResearch.CandidateValidator.acceptAll(), ParameterResearchTest::fixedCycleStrategy, config);
+
+        assertThat(report.pruningGroups()).hasSize(1);
+        assertThat(report.pruningGroups().getFirst().representativeId()).isEqualTo("cycles=2");
+        assertThat(report.pruningGroups().getFirst().discardedIds()).containsExactly("cycles=1");
+    }
+
+    @Test
+    void indicatorDistanceReportsBadIndicatorCandidatesWithoutAbortingResearch() {
+        BarSeries series = buildSeries(8);
+        ParameterDomain domain = ParameterDomain.values("offset", List.of(0, 1));
+        ResearchConfig config = defaultConfig(series, 6, 2).withIndicatorDistance(0.0, (targetSeries, parameters) -> {
+            int offset = parameters.intValue("offset");
+            if (offset == 1) {
+                throw new IllegalArgumentException("offset cannot be 1");
+            }
+            return new OffsetCloseIndicator(targetSeries, offset);
+        });
+
+        ParameterResearchReport report = ParameterResearch.run(series, List.of(domain),
+                ParameterResearch.CandidateValidator.acceptAll(), ParameterResearchTest::offsetStrategy, config);
+
+        assertThat(report.pruningGroups()).hasSize(1);
+        assertThat(report.pruningGroups().getFirst().representativeId()).isEqualTo("offset=0");
+        assertThat(report.invalidCandidates()).anySatisfy(candidate -> {
+            assertThat(candidate.candidateId()).isEqualTo("offset=1");
+            assertThat(candidate.stage()).isEqualTo(CandidateFailureStage.PRUNING_INDICATOR);
+            assertThat(candidate.reason()).contains("offset cannot be 1");
+        });
     }
 
     @Test
@@ -380,18 +435,30 @@ class ParameterResearchTest {
 
         private FixtureNamedStrategy(BarSeries series, int entryIndex, int exitIndex) {
             super(NamedStrategy.buildLabel(FixtureNamedStrategy.class, String.valueOf(entryIndex),
-                    String.valueOf(exitIndex)), entryRule(entryIndex), exitRule(exitIndex));
+                    String.valueOf(exitIndex)), entryRule(series, entryIndex), exitRule(series, exitIndex));
         }
 
         private FixtureNamedStrategy(BarSeries series, String... params) {
-            this(series, Integer.parseInt(params[0]), Integer.parseInt(params[1]));
+            this(series, parseStrategyParameter("entryIndex", params[0]),
+                    parseStrategyParameter("exitIndex", params[1]));
         }
 
-        private static Rule entryRule(int entryIndex) {
+        private static int parseStrategyParameter(String name, String rawValue) {
+            try {
+                return Integer.parseInt(rawValue);
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("Strategy parameter " + name + " must be an integer: " + rawValue,
+                        ex);
+            }
+        }
+
+        private static Rule entryRule(BarSeries series, int entryIndex) {
+            Objects.requireNonNull(series, "series");
             return new FixedRule(entryIndex);
         }
 
-        private static Rule exitRule(int exitIndex) {
+        private static Rule exitRule(BarSeries series, int exitIndex) {
+            Objects.requireNonNull(series, "series");
             return new FixedRule(exitIndex);
         }
     }

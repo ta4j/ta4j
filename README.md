@@ -990,7 +990,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[CandlestickChart](ta4j-examples/src/main/java/ta4jexamples/indicators/CandlestickChart.java)** - Basic candlestick chart with trading signals
 - **[CashFlowToChart](ta4j-examples/src/main/java/ta4jexamples/analysis/CashFlowToChart.java)** - Visualize cash flow and equity curves
 
-**💡 Tip**: Run any example with `mvn -pl ta4j-examples -am compile exec:java -Dexec.mainClass=ta4jexamples.Quickstart` (replace `Quickstart` with the class name).
+**💡 Tip**: Run any example with `mvn -pl ta4j-examples -am compile exec:java -Dexec.mainClass=ta4jexamples.Quickstart` (replace `ta4jexamples.Quickstart` with the fully qualified main class).
 
 ## Performance
 

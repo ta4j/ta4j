@@ -250,8 +250,8 @@ public final class ParameterResearch {
 
         BacktestExecutionResult trainingResult = trainingExecution.result();
         List<RankedTradingStatement> baselineRanking = trainingResult.rankTradingStatements(config.rankingProfile());
-        List<PruningGroup> pruningGroups = buildPruningGroups(config, trainingSeries, trainingExecution,
-                baselineRanking);
+        PruningResult pruningResult = buildPruningGroups(config, trainingSeries, trainingExecution, baselineRanking);
+        List<PruningGroup> pruningGroups = pruningResult.groups();
         Set<String> representativeIds = representativeIds(pruningGroups);
         List<CandidateScore> baselineScores = toScores(baselineRanking, trainingExecution.candidates(),
                 representativeIds);
@@ -275,6 +275,7 @@ public final class ParameterResearch {
         List<InvalidCandidate> invalidCandidates = new ArrayList<>();
         invalidCandidates.addAll(candidateSpace.invalidCandidates());
         invalidCandidates.addAll(trainingExecution.invalidCandidates());
+        invalidCandidates.addAll(pruningResult.invalidCandidates());
         invalidCandidates.addAll(validationBundle.invalidCandidates());
 
         List<String> warnings = new ArrayList<>(initialWarnings);
@@ -336,19 +337,24 @@ public final class ParameterResearch {
                 execution.invalidCandidates());
     }
 
-    private static List<PruningGroup> buildPruningGroups(ResearchConfig config, BarSeries trainingSeries,
+    private static PruningResult buildPruningGroups(ResearchConfig config, BarSeries trainingSeries,
             ExecutionBundle execution, List<RankedTradingStatement> baselineRanking) {
         return switch (config.pruningPolicy()) {
-        case NONE -> noneGroups(execution.candidates());
-        case EXACT_SIGNAL -> exactSignatureGroups(execution,
-                candidateIndex -> signalSignature(trainingSeries, execution.strategies().get(candidateIndex)),
-                "exact signal sequence", NO_DISTANCE);
-        case EXACT_TRADING_RECORD -> exactSignatureGroups(execution,
+        case NONE -> new PruningResult(noneGroups(execution.candidates()), List.of());
+        case EXACT_SIGNAL ->
+            new PruningResult(
+                    exactSignatureGroups(execution,
+                            candidateIndex -> signalSignature(trainingSeries,
+                                    execution.strategies().get(candidateIndex)),
+                            "exact signal sequence", NO_DISTANCE),
+                    List.of());
+        case EXACT_TRADING_RECORD -> new PruningResult(exactSignatureGroups(execution,
                 candidateIndex -> tradingRecordSignature(
                         execution.result().tradingStatements().get(candidateIndex).getTradingRecord()),
-                "exact trading record", NO_DISTANCE);
-        case INDICATOR_DISTANCE -> indicatorDistanceGroups(config, trainingSeries, execution);
-        case OBJECTIVE_DISTANCE -> objectiveDistanceGroups(config, execution, baselineRanking);
+                "exact trading record", NO_DISTANCE), List.of());
+        case INDICATOR_DISTANCE -> indicatorDistanceGroups(config, trainingSeries, execution, baselineRanking);
+        case OBJECTIVE_DISTANCE ->
+            new PruningResult(objectiveDistanceGroups(config, execution, baselineRanking), List.of());
         };
     }
 
@@ -373,42 +379,64 @@ public final class ParameterResearch {
         return groupsBySignature.values().stream().map(PruningGroupBuilder::build).toList();
     }
 
-    private static List<PruningGroup> indicatorDistanceGroups(ResearchConfig config, BarSeries trainingSeries,
-            ExecutionBundle execution) {
+    private static PruningResult indicatorDistanceGroups(ResearchConfig config, BarSeries trainingSeries,
+            ExecutionBundle execution, List<RankedTradingStatement> baselineRanking) {
         if (config.indicatorFactory() == null) {
             throw new IllegalArgumentException("indicatorFactory is required for INDICATOR_DISTANCE pruning");
         }
 
-        List<double[]> signatures = new ArrayList<>(execution.candidates().size());
+        Map<String, double[]> signaturesByCandidateId = new LinkedHashMap<>();
+        List<InvalidCandidate> invalidCandidates = new ArrayList<>();
         for (StrategyCandidate candidate : execution.candidates()) {
-            Indicator<Num> indicator = Objects.requireNonNull(
-                    config.indicatorFactory().create(trainingSeries, candidate.parameters()),
-                    "indicatorFactory returned null");
-            signatures.add(captureIndicatorSignature(trainingSeries, indicator));
+            try {
+                Indicator<Num> indicator = Objects.requireNonNull(
+                        config.indicatorFactory().create(trainingSeries, candidate.parameters()),
+                        "indicatorFactory returned null");
+                signaturesByCandidateId.put(candidate.id(), captureIndicatorSignature(trainingSeries, indicator));
+            } catch (RuntimeException ex) {
+                invalidCandidates.add(new InvalidCandidate(candidate.id(), candidate.parameters().asMap(),
+                        CandidateFailureStage.PRUNING_INDICATOR, ex.getMessage()));
+            }
         }
 
         List<PruningGroupBuilder> builders = new ArrayList<>();
         List<double[]> representativeSignatures = new ArrayList<>();
-        for (int i = 0; i < execution.candidates().size(); i++) {
-            StrategyCandidate candidate = execution.candidates().get(i);
-            double[] signature = signatures.get(i);
-            boolean matched = false;
-            for (int groupIndex = 0; groupIndex < representativeSignatures.size(); groupIndex++) {
-                double distance = rmsDistance(representativeSignatures.get(groupIndex), signature);
-                if (distance <= config.distanceTolerance()) {
-                    builders.get(groupIndex).add(candidate.id(), distance);
-                    matched = true;
-                    break;
-                }
-            }
-            if (!matched) {
-                PruningGroupBuilder builder = new PruningGroupBuilder(candidate.id(), "indicator RMS distance");
-                builder.add(candidate.id(), NO_DISTANCE);
-                builders.add(builder);
-                representativeSignatures.add(signature);
+        Set<Integer> groupedIndexes = new LinkedHashSet<>();
+        for (RankedTradingStatement ranked : baselineRanking) {
+            groupedIndexes.add(ranked.originalIndex());
+            StrategyCandidate candidate = execution.candidates().get(ranked.originalIndex());
+            double[] signature = signaturesByCandidateId.get(candidate.id());
+            if (signature != null) {
+                addIndicatorDistanceGroup(config, builders, representativeSignatures, candidate, signature);
             }
         }
-        return builders.stream().map(PruningGroupBuilder::build).toList();
+        for (int i = 0; i < execution.candidates().size(); i++) {
+            if (groupedIndexes.contains(i)) {
+                continue;
+            }
+            StrategyCandidate candidate = execution.candidates().get(i);
+            double[] signature = signaturesByCandidateId.get(candidate.id());
+            if (signature != null) {
+                addIndicatorDistanceGroup(config, builders, representativeSignatures, candidate, signature);
+            }
+        }
+        return new PruningResult(builders.stream().map(PruningGroupBuilder::build).toList(),
+                List.copyOf(invalidCandidates));
+    }
+
+    private static void addIndicatorDistanceGroup(ResearchConfig config, List<PruningGroupBuilder> builders,
+            List<double[]> representativeSignatures, StrategyCandidate candidate, double[] signature) {
+        for (int groupIndex = 0; groupIndex < representativeSignatures.size(); groupIndex++) {
+            double distance = rmsDistance(representativeSignatures.get(groupIndex), signature);
+            if (distance <= config.distanceTolerance()) {
+                builders.get(groupIndex).add(candidate.id(), distance);
+                return;
+            }
+        }
+        PruningGroupBuilder builder = new PruningGroupBuilder(candidate.id(), "indicator RMS distance");
+        builder.add(candidate.id(), NO_DISTANCE);
+        builders.add(builder);
+        representativeSignatures.add(signature);
     }
 
     private static List<PruningGroup> objectiveDistanceGroups(ResearchConfig config, ExecutionBundle execution,
@@ -1003,7 +1031,12 @@ public final class ParameterResearch {
          * @since 0.22.7
          */
         public int intValue(String name) {
-            return Integer.parseInt(value(name));
+            String rawValue = value(name);
+            try {
+                return Integer.parseInt(rawValue);
+            } catch (NumberFormatException ex) {
+                throw new IllegalArgumentException("Parameter " + name + " is not a valid integer: " + rawValue, ex);
+            }
         }
 
         /**
@@ -1128,7 +1161,9 @@ public final class ParameterResearch {
         /** Strategy construction failed during training evaluation. */
         STRATEGY_BUILD,
         /** Strategy construction failed during validation evaluation. */
-        VALIDATION_STRATEGY_BUILD
+        VALIDATION_STRATEGY_BUILD,
+        /** Indicator-distance signature construction failed during pruning. */
+        PRUNING_INDICATOR
     }
 
     /**
@@ -1607,6 +1642,9 @@ public final class ParameterResearch {
 
     private record ValidationBundle(List<CandidateScore> validationScores, BacktestRuntimeReport runtimeReport,
             List<InvalidCandidate> invalidCandidates) {
+    }
+
+    private record PruningResult(List<PruningGroup> groups, List<InvalidCandidate> invalidCandidates) {
     }
 
     @FunctionalInterface
