@@ -904,7 +904,13 @@ public final class ParameterResearch {
                 values.add(String.valueOf(value));
             }
             return new ParameterDomain(name, values, (series, parameterName, rawValue) -> {
-                int rawInteger = Integer.parseInt(rawValue);
+                int rawInteger;
+                try {
+                    rawInteger = Integer.parseInt(rawValue);
+                } catch (NumberFormatException ex) {
+                    throw new IllegalArgumentException(
+                            "Parameter " + parameterName + " must be an integer, but was '" + rawValue + "'", ex);
+                }
                 int effectiveMaximum = capAtSeriesLength ? Math.max(minimum, Math.min(maximum, series.getBarCount()))
                         : maximum;
                 int normalizedInteger = Math.max(minimum, Math.min(effectiveMaximum, rawInteger));

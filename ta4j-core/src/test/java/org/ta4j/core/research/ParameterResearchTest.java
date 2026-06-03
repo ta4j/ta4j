@@ -69,6 +69,22 @@ class ParameterResearchTest {
     }
 
     @Test
+    void integerRangeNormalizerReportsMalformedRawValuesWithParameterContext() {
+        BarSeries series = buildSeries(5);
+        ParameterDomain integerRange = ParameterDomain.integerRange("barCount", 1, 1, 1);
+        ParameterDomain malformed = new ParameterDomain("barCount", List.of("oops", "1"), integerRange.normalizer());
+
+        CandidateGenerationResult result = ParameterResearch.generateCandidateSpace(series, List.of(malformed));
+
+        assertThat(result.candidates()).extracting(ParameterResearch.StrategyCandidate::id)
+                .containsExactly("barCount=1");
+        assertThat(result.invalidCandidates()).hasSize(1);
+        assertThat(result.invalidCandidates().getFirst().reason()).contains("barCount")
+                .contains("oops")
+                .contains("integer");
+    }
+
+    @Test
     void candidateGenerationReportsNormalizerNameMismatch() {
         BarSeries series = buildSeries(5);
         ParameterDomain domain = new ParameterDomain("barCount", List.of("bad", "3"), (targetSeries, name, raw) -> {
