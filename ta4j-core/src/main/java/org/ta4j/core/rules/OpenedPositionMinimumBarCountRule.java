@@ -3,6 +3,7 @@
  */
 package org.ta4j.core.rules;
 
+import org.ta4j.core.Position;
 import org.ta4j.core.TradingRecord;
 
 /**
@@ -13,7 +14,6 @@ import org.ta4j.core.TradingRecord;
  * Using this rule only makes sense for exit rules. For entry rules,
  * {@link OpenedPositionMinimumBarCountRule#isSatisfied(int, TradingRecord)}
  * always returns {@code false}.
- *
  *
  * <p>
  * This rule uses the {@code tradingRecord}.
@@ -46,12 +46,17 @@ public class OpenedPositionMinimumBarCountRule extends AbstractRule {
      */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        if (tradingRecord.getCurrentPosition().isOpened()) {
-            final int entryIndex = tradingRecord.getLastEntry().getIndex();
-            final int currentBarCount = index - entryIndex;
-            return currentBarCount >= barCount;
+        boolean satisfied = false;
+        if (tradingRecord != null) {
+            Position currentPosition = tradingRecord.getCurrentPosition();
+            if (currentPosition != null && currentPosition.isOpened() && currentPosition.getEntry() != null) {
+                int entryIndex = currentPosition.getEntry().getIndex();
+                int currentBarCount = index - entryIndex;
+                satisfied = currentBarCount >= barCount;
+            }
         }
-        return false;
+        traceIsSatisfied(index, satisfied);
+        return satisfied;
     }
 
     /** @return the {@link #barCount} */

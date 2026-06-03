@@ -49,6 +49,9 @@ final class SwingDetectorSupport {
         for (int i = 1; i < pivots.size(); i++) {
             final SwingPivot previous = pivots.get(i - 1);
             final SwingPivot current = pivots.get(i);
+            if (previous.index() == current.index()) {
+                continue;
+            }
             swings.add(new ElliottSwing(previous.index(), current.index(), previous.price(), current.price(), degree));
         }
         return List.copyOf(swings);
@@ -64,8 +67,21 @@ final class SwingDetectorSupport {
             return List.of();
         }
 
-        final List<SwingPivot> normalized = new ArrayList<>(sorted.size());
-        for (final SwingPivot pivot : sorted) {
+        final List<SwingPivot> byIndex = new ArrayList<>(sorted.size());
+        int position = 0;
+        while (position < sorted.size()) {
+            final int currentIndex = sorted.get(position).index();
+            SwingPivot resolved = sorted.get(position);
+            position++;
+            while (position < sorted.size() && sorted.get(position).index() == currentIndex) {
+                resolved = chooseSharedIndexPivot(byIndex, resolved, sorted.get(position));
+                position++;
+            }
+            byIndex.add(resolved);
+        }
+
+        final List<SwingPivot> normalized = new ArrayList<>(byIndex.size());
+        for (final SwingPivot pivot : byIndex) {
             if (normalized.isEmpty()) {
                 normalized.add(pivot);
                 continue;
@@ -78,6 +94,60 @@ final class SwingDetectorSupport {
             }
         }
         return List.copyOf(normalized);
+    }
+
+    private static SwingPivot chooseSharedIndexPivot(final List<SwingPivot> priorPivots, final SwingPivot existing,
+            final SwingPivot candidate) {
+        if (existing == null) {
+            return candidate;
+        }
+        if (candidate == null) {
+            return existing;
+        }
+        if (existing.type() == candidate.type()) {
+            return chooseMoreExtreme(existing, candidate);
+        }
+        final Num existingPrice = existing.price();
+        final Num candidatePrice = candidate.price();
+        if (Num.isNaNOrNull(existingPrice)) {
+            return Num.isNaNOrNull(candidatePrice) ? deterministicSharedIndexTieBreak(existing, candidate) : candidate;
+        }
+        if (Num.isNaNOrNull(candidatePrice)) {
+            return existing;
+        }
+
+        if (priorPivots.size() >= 2) {
+            final Num anchor = priorPivots.get(priorPivots.size() - 2).price();
+            if (!Num.isNaNOrNull(anchor)) {
+                final Num existingDistance = existingPrice.minus(anchor).abs();
+                final Num candidateDistance = candidatePrice.minus(anchor).abs();
+                if (candidateDistance.isGreaterThan(existingDistance)) {
+                    return candidate;
+                }
+                if (existingDistance.isGreaterThan(candidateDistance)) {
+                    return existing;
+                }
+            }
+        }
+
+        if (existingPrice.isGreaterThan(candidatePrice)) {
+            return existing.type() == SwingPivotType.HIGH ? existing
+                    : (candidate.type() == SwingPivotType.HIGH ? candidate
+                            : deterministicSharedIndexTieBreak(existing, candidate));
+        }
+        if (candidatePrice.isGreaterThan(existingPrice)) {
+            return candidate.type() == SwingPivotType.HIGH ? candidate
+                    : (existing.type() == SwingPivotType.HIGH ? existing
+                            : deterministicSharedIndexTieBreak(existing, candidate));
+        }
+        return deterministicSharedIndexTieBreak(existing, candidate);
+    }
+
+    private static SwingPivot deterministicSharedIndexTieBreak(final SwingPivot existing, final SwingPivot candidate) {
+        if (existing.type() != candidate.type()) {
+            return existing.type() == SwingPivotType.HIGH ? existing : candidate;
+        }
+        return chooseMoreExtreme(existing, candidate);
     }
 
     private static SwingPivot chooseMoreExtreme(final SwingPivot first, final SwingPivot second) {

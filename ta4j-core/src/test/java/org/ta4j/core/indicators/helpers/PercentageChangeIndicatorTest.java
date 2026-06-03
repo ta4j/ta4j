@@ -185,9 +185,7 @@ public class PercentageChangeIndicatorTest extends AbstractIndicatorTest<Indicat
     }
 
     @Test
-    public void indicatorShouldMatchDifferencePercentageIndicatorBehavior() {
-        // Test that PercentageChangeIndicator with threshold=0 matches
-        // DifferencePercentageIndicator with threshold=0
+    public void indicatorShouldUsePreviousValueWhenThresholdIsZero() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withDefaultData().build();
         FixedIndicator<Num> mockIndicator = new FixedIndicator<>(series, numOf(100), numOf(101), numOf(98.98),
                 numOf(102.186952), numOf(91.9682568), numOf(100.5213046824), numOf(101.526517729224));

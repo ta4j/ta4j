@@ -14,7 +14,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 SCRIPT="$ROOT/scripts/prepare-release.sh"
 
-cleanup() { [[ -d "$TMP" ]] && rm -rf "$TMP"; }
+cleanup() {
+  if [[ -n "${TMP:-}" && -d "$TMP" ]]; then
+    rm -rf "$TMP"
+  fi
+  return 0
+}
 trap cleanup EXIT
 
 fail() { echo "[FAIL] $1" >&2; exit 1; }
@@ -48,7 +53,7 @@ expect_file_matches() {
 }
 
 run_test() {
-  TMP="$(mktemp -d)"
+  TMP="$(mktemp -d "${TMPDIR:-/tmp}/prepare-release-test.XXXXXX")"
   mkdir -p "$TMP/scripts"
   cp "$SCRIPT" "$TMP/scripts/prepare-release.sh"
   chmod +x "$TMP/scripts/prepare-release.sh"

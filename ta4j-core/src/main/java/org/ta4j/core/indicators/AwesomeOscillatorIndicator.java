@@ -13,8 +13,8 @@ import org.ta4j.core.num.Num;
  * Awesome oscillator (AO) indicator.
  *
  * @see <a href=
- *      "https://www.tradingview.com/wiki/Awesome_Oscillator_(AO)">Awesome
- *      Oscillator</a>
+ *      "https://www.tradingview.com/wiki/Awesome_Oscillator_(AO)">TradingView:
+ *      Awesome Oscillator</a>
  */
 public class AwesomeOscillatorIndicator extends CachedIndicator<Num> {
 

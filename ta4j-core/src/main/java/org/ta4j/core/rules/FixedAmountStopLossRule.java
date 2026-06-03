@@ -64,23 +64,26 @@ public class FixedAmountStopLossRule extends AbstractRule implements StopLossPri
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        if (tradingRecord != null) {
-            var currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition.isOpened()) {
-                Num entryPrice = currentPosition.getEntry().getNetPrice();
-                Num currentPrice = priceIndicator.getValue(index);
-
-                if (currentPosition.getEntry().isBuy()) {
-                    satisfied = currentPrice
-                            .isLessThanOrEqual(StopLossRule.stopLossPriceFromDistance(entryPrice, lossAmount, true));
-                } else {
-                    satisfied = currentPrice.isGreaterThanOrEqual(
-                            StopLossRule.stopLossPriceFromDistance(entryPrice, lossAmount, false));
-                }
-            }
+        if (tradingRecord == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noTradingRecord");
+            return false;
         }
-        traceIsSatisfied(index, satisfied);
+
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        if (!currentPosition.isOpened()) {
+            StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
+            return false;
+        }
+
+        Num entryPrice = currentPosition.getEntry().getNetPrice();
+        Num currentPrice = priceIndicator.getValue(index);
+        boolean buy = currentPosition.getEntry().isBuy();
+        Num stopPrice = StopLossRule.stopLossPriceFromDistance(entryPrice, lossAmount, buy);
+        boolean satisfied = buy ? currentPrice.isLessThanOrEqual(stopPrice)
+                : currentPrice.isGreaterThanOrEqual(stopPrice);
+        String reason = satisfied ? "stopReached" : buy ? "priceAboveStop" : "priceBelowStop";
+        StopRuleTrace.traceDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice, "lossAmount",
+                lossAmount, reason);
         return satisfied;
     }
 
@@ -102,14 +105,6 @@ public class FixedAmountStopLossRule extends AbstractRule implements StopLossPri
             return null;
         }
         return StopLossRule.stopLossPriceFromDistance(entryPrice, lossAmount, position.getEntry().isBuy());
-    }
-
-    @Override
-    protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}. Current price: {}", getTraceDisplayName(), index, isSatisfied,
-                    priceIndicator.getValue(index));
-        }
     }
 
     private static Num toNumLossAmount(Indicator<Num> priceIndicator, Number lossAmount) {

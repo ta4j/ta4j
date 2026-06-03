@@ -89,38 +89,45 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
     /** This rule uses the {@code tradingRecord}. */
     @Override
     public boolean isSatisfied(int index, TradingRecord tradingRecord) {
-        boolean satisfied = false;
-        if (tradingRecord != null) {
-            Position currentPosition = tradingRecord.getCurrentPosition();
-            if (currentPosition.isOpened()) {
-                Num currentPrice = priceIndicator.getValue(index);
-                int positionIndex = currentPosition.getEntry().getIndex();
-
-                if (currentPosition.getEntry().isBuy()) {
-                    satisfied = isBuySatisfied(currentPrice, index, positionIndex);
-                } else {
-                    satisfied = isSellSatisfied(currentPrice, index, positionIndex);
-                }
-            }
+        if (tradingRecord == null) {
+            StopRuleTrace.traceUnavailable(this, index, "noTradingRecord");
+            return false;
         }
-        traceIsSatisfied(index, satisfied);
+
+        Position currentPosition = tradingRecord.getCurrentPosition();
+        if (!currentPosition.isOpened()) {
+            StopRuleTrace.traceUnavailable(this, index, "noOpenPosition");
+            return false;
+        }
+
+        Num entryPrice = currentPosition.getEntry().getNetPrice();
+        Num currentPrice = priceIndicator.getValue(index);
+        int positionIndex = currentPosition.getEntry().getIndex();
+        int lookback = getValueIndicatorBarCount(index, positionIndex);
+        if (lookback <= 0) {
+            StopRuleTrace.traceUnavailable(this, index, "indexBeforeEntry");
+            return false;
+        }
+        boolean buy = currentPosition.getEntry().isBuy();
+        Num extremePrice;
+        Num stopPrice;
+        boolean satisfied;
+        String extremeField;
+        if (buy) {
+            extremePrice = new HighestValueIndicator(priceIndicator, lookback).getValue(index);
+            stopPrice = StopLossRule.stopLossPriceFromDistance(extremePrice, lossAmount, true);
+            satisfied = currentPrice.isLessThanOrEqual(stopPrice);
+            extremeField = "highestPrice";
+        } else {
+            extremePrice = new LowestValueIndicator(priceIndicator, lookback).getValue(index);
+            stopPrice = StopLossRule.stopLossPriceFromDistance(extremePrice, lossAmount, false);
+            satisfied = currentPrice.isGreaterThanOrEqual(stopPrice);
+            extremeField = "lowestPrice";
+        }
+        String reason = satisfied ? "stopReached" : buy ? "priceAboveStop" : "priceBelowStop";
+        StopRuleTrace.traceTrailingDecision(this, index, satisfied, buy, currentPrice, entryPrice, stopPrice,
+                extremeField, extremePrice, lookback, "lossAmount", lossAmount, reason);
         return satisfied;
-    }
-
-    private boolean isBuySatisfied(Num currentPrice, int index, int positionIndex) {
-        HighestValueIndicator highest = new HighestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, positionIndex));
-        Num highestCloseNum = highest.getValue(index);
-        Num currentStopLossLimitActivation = StopLossRule.stopLossPriceFromDistance(highestCloseNum, lossAmount, true);
-        return currentPrice.isLessThanOrEqual(currentStopLossLimitActivation);
-    }
-
-    private boolean isSellSatisfied(Num currentPrice, int index, int positionIndex) {
-        LowestValueIndicator lowest = new LowestValueIndicator(priceIndicator,
-                getValueIndicatorBarCount(index, positionIndex));
-        Num lowestCloseNum = lowest.getValue(index);
-        Num currentStopLossLimitActivation = StopLossRule.stopLossPriceFromDistance(lowestCloseNum, lossAmount, false);
-        return currentPrice.isGreaterThanOrEqual(currentStopLossLimitActivation);
     }
 
     /**
@@ -153,11 +160,4 @@ public class TrailingFixedAmountStopLossRule extends AbstractRule implements Sto
         return Math.min(index - positionIndex + 1, this.barCount);
     }
 
-    @Override
-    protected void traceIsSatisfied(int index, boolean isSatisfied) {
-        if (log.isTraceEnabled()) {
-            log.trace("{}#isSatisfied({}): {}. Current price: {}", getTraceDisplayName(), index, isSatisfied,
-                    priceIndicator.getValue(index));
-        }
-    }
 }

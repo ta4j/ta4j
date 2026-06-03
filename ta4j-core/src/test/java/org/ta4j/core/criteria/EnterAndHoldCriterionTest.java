@@ -21,6 +21,7 @@ import java.math.BigDecimal;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.ta4j.core.TestUtils.assertNumEquals;
 
@@ -360,6 +361,17 @@ public class EnterAndHoldCriterionTest extends AbstractCriterionTest {
 
         EnterAndHoldCriterion criterionWithoutRepresentation = new EnterAndHoldCriterion(new NumberOfBarsCriterion());
         assertFalse(criterionWithoutRepresentation.getReturnRepresentation().isPresent());
+    }
+
+    @Test
+    public void rejectsRelativeActiveReturnCriteria() {
+        var returnCriterion = new GrossReturnCriterion(ReturnRepresentation.DECIMAL);
+        var activeReturn = new ActiveReturnCriterion(returnCriterion, returnCriterion);
+        var activeReturnVersusEnterAndHold = new ActiveReturnVersusEnterAndHoldCriterion(TradeType.BUY, returnCriterion,
+                BigDecimal.ONE, ReturnRepresentation.DECIMAL);
+
+        assertThrows(IllegalArgumentException.class, () -> new EnterAndHoldCriterion(activeReturn));
+        assertThrows(IllegalArgumentException.class, () -> new EnterAndHoldCriterion(activeReturnVersusEnterAndHold));
     }
 
 }

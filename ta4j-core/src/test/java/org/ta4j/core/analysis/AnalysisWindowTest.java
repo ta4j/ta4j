@@ -294,9 +294,9 @@ public class AnalysisWindowTest {
         BarSeries series = buildSeries(10);
         BaseTradingRecord record = new BaseTradingRecord(TradeType.BUY, ExecutionMatchPolicy.FIFO, new ZeroCostModel(),
                 new ZeroCostModel(), null, null);
-        record.recordFill(6, new BaseTrade(6, series.getBar(6).getEndTime(), series.getBar(6).getClosePrice(),
+        record.operate(new BaseTrade(6, series.getBar(6).getEndTime(), series.getBar(6).getClosePrice(),
                 series.numFactory().one(), null, ExecutionSide.BUY, null, null));
-        record.recordFill(7, new BaseTrade(7, series.getBar(7).getEndTime(), series.getBar(7).getClosePrice(),
+        record.operate(new BaseTrade(7, series.getBar(7).getEndTime(), series.getBar(7).getClosePrice(),
                 series.numFactory().one(), null, ExecutionSide.BUY, null, null));
         NetProfitLossCriterion criterion = new NetProfitLossCriterion();
         AnalysisContext context = AnalysisContext.defaults()

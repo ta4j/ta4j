@@ -16,9 +16,10 @@ import org.ta4j.core.num.Num;
  * The Fisher Indicator.
  *
  * <p>
- * API note: minimal deviations in last {@link Num} places are possible. During
- * the calculations this indicator converts {@link Num} values to
- * {@code double}.
+ * <b>API note:</b> Minimal deviations in the last decimal places are possible.
+ * During calculations this indicator converts {@link Num} to {@link Double
+ * double}.
+ * </p>
  *
  * @see <a href=
  *      "http://www.tradingsystemlab.com/files/The%20Fisher%20Transform.pdf">
