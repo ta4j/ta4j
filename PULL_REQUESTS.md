@@ -17,6 +17,9 @@ Unless a human merge happens in the same run, move the source issue/document to 
 Extend PDL.TASK.HANDOFF_REPORT:
 Report that ta4j is public and the PR is intentionally left open for public viewing and human merge. Before final handoff, delete temporary ignored PRD/checklist files under `.agents/plans/` unless the user explicitly asks to retain them. If one is intentionally retained, call out the path and reason in the handoff.
 
+Require QAS.TASK.PR_HANDOFF:
+Immediately after opening a ta4j PR, post `@coderabbitai full review` as a PR comment. Do not substitute the incremental `@coderabbitai review` command. Treat the PR as not ready for terminal handoff until CodeRabbit finishes the full review or explicitly reports that it cannot review the PR.
+
 Override QAS.TASK.MERGE_POLICY:
 ta4j requires a human viewing opportunity before `master` changes. Automation prepares, verifies, monitors, fixes feedback, resolves conversations, and hands off the ready PR.
 
