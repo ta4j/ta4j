@@ -702,6 +702,12 @@ Indicator<?> restoredIndicator = Indicator.fromJson(series, rsiJson);
 Strategy restoredStrategy = Strategy.fromJson(series, strategyJson);
 ```
 
+Indicator round-tripping depends on each indicator descriptor preserving the
+constructor inputs needed to rebuild that indicator. Indicators that create
+helper indicators internally should keep their constructor arguments in
+serializable fields and treat rebuilt helper graphs as transient implementation
+state; round-trip coverage is being expanded across indicator tests.
+
 Bar series serialization (Java):
 - Bar data, the `NumFactory`, and the `BarBuilderFactory` configuration are preserved across the round-trip.
 - `ConcurrentBarSeries` reinitializes its locks after deserialization and recreates the trade bar builder lazily.
