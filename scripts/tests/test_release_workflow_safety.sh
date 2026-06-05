@@ -58,6 +58,15 @@ expect_section_contains() {
   fi
 }
 
+expect_section_not_contains() {
+  local section="$1"
+  local needle="$2"
+  local msg="$3"
+  if grep -Fq -- "$needle" <<<"$section"; then
+    fail "$msg (unexpected: '$needle')"
+  fi
+}
+
 assert_no_github_script_injected_binding_redeclarations() {
   local workflow="$1"
   awk -v file="${workflow#"$ROOT"/}" '
@@ -250,6 +259,104 @@ test_dry_run_summaries_and_audits_show_rerun_guidance() {
   pass "test_dry_run_summaries_and_audits_show_rerun_guidance"
 }
 
+test_release_scheduler_ai_modes_protect_manual_debug_budget() {
+  echo "Running test_release_scheduler_ai_modes_protect_manual_debug_budget"
+
+  local input_section
+  input_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "aiMode:" "permissions:")"
+  expect_section_contains "$input_section" "default: probe" \
+    "release scheduler manual AI mode should default to probe"
+  expect_section_contains "$input_section" "type: choice" \
+    "release scheduler AI mode should be a choice input"
+  expect_section_contains "$input_section" "- probe" \
+    "release scheduler AI mode should support probe"
+  expect_section_contains "$input_section" "- full" \
+    "release scheduler AI mode should support full"
+  expect_section_contains "$input_section" "- skip" \
+    "release scheduler AI mode should support skip"
+
+  local mode_section
+  mode_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Resolve AI execution mode" "Read version from pom.xml")"
+  expect_section_contains "$mode_section" 'raw="${AI_MODE_INPUT:-probe}"' \
+    "manual release scheduler runs should default AI mode to probe"
+  expect_section_contains "$mode_section" 'raw="full"' \
+    "scheduled release scheduler runs should keep full AI analysis"
+  expect_section_contains "$mode_section" 'full|probe|skip)' \
+    "release scheduler should validate supported AI modes"
+
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "No release - AI execution skipped" \
+    "release scheduler should expose an explicit no-model-call skip path"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "Resolve AI model" \
+    "release scheduler should resolve the configured model without a remote catalog call"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip'" \
+    "release scheduler model token checks should skip aiMode=skip"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode == 'full'" \
+    "release scheduler should only run full-analysis setup in full AI mode"
+
+  local request_section
+  request_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Build and validate AI request JSON" "Call AI API with retry")"
+  expect_section_contains "$request_section" "audit:ai_probe_request" \
+    "release scheduler probe mode should build a tiny probe request"
+  expect_section_contains "$request_section" "max_tokens: 64" \
+    "release scheduler probe request should cap response size"
+
+  local call_section
+  call_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Call AI API with retry" "Handle AI API failure")"
+  expect_section_not_contains "$call_section" "--retry" \
+    "release scheduler should avoid nested curl retries that multiply model calls"
+  expect_section_contains "$call_section" 'attempts=2' \
+    "release scheduler full AI mode should keep a small bounded retry"
+  expect_section_contains "$call_section" 'attempts=1' \
+    "release scheduler probe mode should make only one model call"
+
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "decision:ai_mode=" \
+    "release scheduler summaries should include AI mode"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "- ai mode: \${ai_mode}" \
+    "release scheduler notification should include AI mode"
+
+  pass "test_release_scheduler_ai_modes_protect_manual_debug_budget"
+}
+
+test_release_scheduler_ai_failures_remain_diagnostic_and_red() {
+  echo "Running test_release_scheduler_ai_failures_remain_diagnostic_and_red"
+
+  local catalog_section
+  catalog_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Preflight GitHub Models catalog" "Build release dossier")"
+  expect_section_contains "$catalog_section" "audit:model_catalog_retry" \
+    "release scheduler catalog preflight should retry transient GitHub Models failures"
+
+  local ai_call_section
+  ai_call_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Call AI API with retry" "Handle AI API failure")"
+  expect_section_contains "$ai_call_section" "curl-error.log" \
+    "release scheduler should retain curl diagnostics for AI calls"
+  expect_section_contains "$ai_call_section" "--show-error" \
+    "release scheduler curl invocation should preserve transport errors"
+  expect_section_contains "$ai_call_section" "--http1.1" \
+    "release scheduler should avoid GitHub Models HTTP/2 stream cancellations"
+  expect_section_contains "$ai_call_section" "curl_exit_code=\$?" \
+    "release scheduler should capture curl exit status"
+  expect_section_contains "$ai_call_section" "audit:ai_request_retry attempt=\$attempt status=\$response_status curl_exit=\$curl_exit_code response_bytes=\$response_bytes" \
+    "release scheduler AI retry audit should include status, curl exit, and response bytes"
+
+  local ai_failure_section
+  ai_failure_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Handle AI API failure" "Extract AI response content")"
+  expect_section_contains "$ai_failure_section" "curl diagnostics (last 20 lines)" \
+    "release scheduler failure path should print bounded curl diagnostics"
+  expect_section_contains "$ai_failure_section" 'error_annotation="${err_msg//' \
+    "release scheduler should escape AI failure messages before creating workflow annotations"
+  expect_section_contains "$ai_failure_section" 'echo "::error::$error_annotation"' \
+    "release scheduler should surface escaped AI failure text as a GitHub Actions error"
+  expect_section_contains "$ai_failure_section" "exit 1" \
+    "release scheduler should fail when required AI inference does not answer"
+
+  local artifact_section
+  artifact_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Upload release scheduler audit artifacts" "retention-days")"
+  expect_section_contains "$artifact_section" "curl-error.log" \
+    "release scheduler audit artifact should include curl diagnostics"
+
+  pass "test_release_scheduler_ai_failures_remain_diagnostic_and_red"
+}
+
 test_snapshot_and_health_manual_dry_runs_do_not_mutate() {
   echo "Running test_snapshot_and_health_manual_dry_runs_do_not_mutate"
 
@@ -369,6 +476,8 @@ test_official_triggers_normalize_to_non_dry_run
 test_downstream_dispatches_explicitly_pass_dry_run
 test_mutating_steps_remain_dry_run_gated
 test_dry_run_summaries_and_audits_show_rerun_guidance
+test_release_scheduler_ai_modes_protect_manual_debug_budget
+test_release_scheduler_ai_failures_remain_diagnostic_and_red
 test_snapshot_and_health_manual_dry_runs_do_not_mutate
 test_line_of_reports_missing_needles_cleanly
 test_publish_release_existing_tag_only_fails_real_runs
