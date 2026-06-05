@@ -264,6 +264,8 @@ test_release_scheduler_ai_failures_remain_diagnostic_and_red() {
     "release scheduler should retain curl diagnostics for AI calls"
   expect_section_contains "$ai_call_section" "--show-error" \
     "release scheduler curl invocation should preserve transport errors"
+  expect_section_contains "$ai_call_section" "--http1.1" \
+    "release scheduler should avoid GitHub Models HTTP/2 stream cancellations"
   expect_section_contains "$ai_call_section" "curl_exit_code=\$?" \
     "release scheduler should capture curl exit status"
   expect_section_contains "$ai_call_section" "audit:ai_request_retry attempt=\$attempt status=\$response_status curl_exit=\$curl_exit_code response_bytes=\$response_bytes" \

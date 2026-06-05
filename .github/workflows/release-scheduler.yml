@@ -399,7 +399,7 @@ jobs:
           for attempt in $(seq 1 "$attempts"); do
             attempt_error="curl-error-attempt-${attempt}.log"
             : > "$attempt_error"
-            if response_status=$(curl --silent --show-error --location \
+            if response_status=$(curl --silent --show-error --location --http1.1 \
               --connect-timeout 10 --max-time 120 \
               --retry 2 --retry-delay 2 --retry-max-time 120 --retry-all-errors \
               -o response.json -w '%{http_code}' \
