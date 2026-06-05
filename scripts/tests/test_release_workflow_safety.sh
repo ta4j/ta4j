@@ -342,8 +342,10 @@ test_release_scheduler_ai_failures_remain_diagnostic_and_red() {
   ai_failure_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Handle AI API failure" "Extract AI response content")"
   expect_section_contains "$ai_failure_section" "curl diagnostics (last 20 lines)" \
     "release scheduler failure path should print bounded curl diagnostics"
-  expect_section_contains "$ai_failure_section" 'echo "::error::$err_msg"' \
-    "release scheduler should surface AI failure as a GitHub Actions error"
+  expect_section_contains "$ai_failure_section" 'error_annotation="${err_msg//' \
+    "release scheduler should escape AI failure messages before creating workflow annotations"
+  expect_section_contains "$ai_failure_section" 'echo "::error::$error_annotation"' \
+    "release scheduler should surface escaped AI failure text as a GitHub Actions error"
   expect_section_contains "$ai_failure_section" "exit 1" \
     "release scheduler should fail when required AI inference does not answer"
 

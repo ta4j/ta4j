@@ -558,7 +558,10 @@ jobs:
             printf '%s\n' "$fallback"
             echo "$delim"
           } >> $GITHUB_OUTPUT
-          echo "::error::$err_msg"
+          error_annotation="${err_msg//'%'/'%25'}"
+          error_annotation="${error_annotation//$'\r'/'%0D'}"
+          error_annotation="${error_annotation//$'\n'/'%0A'}"
+          echo "::error::$error_annotation"
           exit 1
 
       - name: Extract AI response content
