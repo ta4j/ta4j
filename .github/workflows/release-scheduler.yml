@@ -318,10 +318,27 @@ jobs:
           set -euo pipefail
           model="${RELEASE_AI_MODEL:-openai/gpt-4.1}"
           echo "::group::GitHub Models catalog preflight"
-          python3 scripts/release/release_helpers.py catalog-preflight \
-            --model "$model" \
-            --output release-ai-model.json
+          attempts=3
+          backoff=5
+          status=1
+          for attempt in $(seq 1 "$attempts"); do
+            if python3 scripts/release/release_helpers.py catalog-preflight \
+              --model "$model" \
+              --output release-ai-model.json; then
+              status=0
+              break
+            else
+              status=$?
+            fi
+
+            echo "audit:model_catalog_retry attempt=$attempt exit_code=$status backoff=${backoff}s" >&2
+            if [ "$attempt" -lt "$attempts" ]; then
+              sleep "$backoff"
+              backoff=$((backoff * 2))
+            fi
+          done
           echo "::endgroup::"
+          exit "$status"
 
       - name: Build release dossier
         id: dossier
@@ -373,27 +390,45 @@ jobs:
           echo "audit:external_call target=models.github.ai payload=request.json sanitized=true"
 
           attempts=3
-          backoff=2
-          response_status=0
+          backoff=5
+          response_status=000
+          curl_exit_code=0
           : > response.json
+          : > curl-error.log
 
           for attempt in $(seq 1 "$attempts"); do
-            if response_status=$(curl -s -o response.json -w '%{http_code}' \
-              -X POST --max-time 30 \
+            attempt_error="curl-error-attempt-${attempt}.log"
+            : > "$attempt_error"
+            if response_status=$(curl --silent --show-error --location \
+              --connect-timeout 10 --max-time 120 \
+              --retry 2 --retry-delay 2 --retry-max-time 120 --retry-all-errors \
+              -o response.json -w '%{http_code}' \
+              -X POST \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $GH_MODELS_TOKEN" \
               https://models.github.ai/inference/chat/completions \
-              --data-binary @request.json); then
-              :
+              --data-binary @request.json 2>"$attempt_error"); then
+              curl_exit_code=0
             else
+              curl_exit_code=$?
               response_status="000"
             fi
 
-            if [ "$response_status" -eq 200 ]; then
+            {
+              echo "attempt=$attempt curl_exit_code=$curl_exit_code response_status=$response_status"
+              if [ -s "$attempt_error" ]; then
+                cat "$attempt_error"
+              else
+                echo "stderr=<empty>"
+              fi
+            } >> curl-error.log
+            response_bytes=$(wc -c < response.json | tr -d ' ')
+
+            if [ "$curl_exit_code" -eq 0 ] && [ "$response_status" = "200" ]; then
               break
             fi
 
-            echo "audit:ai_request_retry attempt=$attempt status=$response_status backoff=${backoff}s" >&2
+            echo "audit:ai_request_retry attempt=$attempt status=$response_status curl_exit=$curl_exit_code response_bytes=$response_bytes backoff=${backoff}s" >&2
             if [ "$attempt" -lt "$attempts" ]; then
               sleep "$backoff"
               backoff=$((backoff * 2))
@@ -401,6 +436,7 @@ jobs:
           done
 
           echo "response_status=$response_status" >> $GITHUB_OUTPUT
+          echo "curl_exit_code=$curl_exit_code" >> $GITHUB_OUTPUT
           echo "::endgroup::"
 
       - name: Handle AI API failure
@@ -408,13 +444,20 @@ jobs:
         if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true' && steps.ai_call.outputs.response_status != '200'
         env:
           RESPONSE_STATUS: ${{ steps.ai_call.outputs.response_status }}
+          CURL_EXIT_CODE: ${{ steps.ai_call.outputs.curl_exit_code }}
           ATTEMPTS: 3
         run: |
           err_msg=$(jq -r '.error.message // empty' response.json 2>/dev/null || true)
+          if [ -z "$err_msg" ] && [ "${RESPONSE_STATUS:-}" = "000" ]; then
+            err_msg="AI call failed before an HTTP response (curl exit ${CURL_EXIT_CODE:-unknown})"
+          fi
           err_msg=${err_msg:-"AI call failed (http ${RESPONSE_STATUS})"}
-          echo "audit:ai_request_failed attempts=$ATTEMPTS status=$RESPONSE_STATUS" >&2
+          echo "audit:ai_request_failed attempts=$ATTEMPTS status=$RESPONSE_STATUS curl_exit=${CURL_EXIT_CODE:-unknown}" >&2
           echo "response (truncated to 500 chars):"
           head -c 500 response.json || true
+          echo ""
+          echo "curl diagnostics (last 20 lines):"
+          tail -n 20 curl-error.log || true
           fallback=$(jq -n --arg msg "$err_msg" --arg status "$RESPONSE_STATUS" \
             '{should_release:false,bump:"patch",warning:$msg,reason:$msg}')
           printf '%s\n' "$fallback" > ai-content.txt
@@ -424,6 +467,8 @@ jobs:
             printf '%s\n' "$fallback"
             echo "$delim"
           } >> $GITHUB_OUTPUT
+          echo "::error::$err_msg"
+          exit 1
 
       - name: Extract AI response content
         id: ai
@@ -669,6 +714,7 @@ jobs:
             release-audit.json
             request.json
             response.json
+            curl-error.log
             ai-content.txt
             release-decision.json
             release-scheduler-mutation-plan.txt

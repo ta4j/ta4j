@@ -250,6 +250,42 @@ test_dry_run_summaries_and_audits_show_rerun_guidance() {
   pass "test_dry_run_summaries_and_audits_show_rerun_guidance"
 }
 
+test_release_scheduler_ai_failures_remain_diagnostic_and_red() {
+  echo "Running test_release_scheduler_ai_failures_remain_diagnostic_and_red"
+
+  local catalog_section
+  catalog_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Preflight GitHub Models catalog" "Build release dossier")"
+  expect_section_contains "$catalog_section" "audit:model_catalog_retry" \
+    "release scheduler catalog preflight should retry transient GitHub Models failures"
+
+  local ai_call_section
+  ai_call_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Call AI API with retry" "Handle AI API failure")"
+  expect_section_contains "$ai_call_section" "curl-error.log" \
+    "release scheduler should retain curl diagnostics for AI calls"
+  expect_section_contains "$ai_call_section" "--show-error" \
+    "release scheduler curl invocation should preserve transport errors"
+  expect_section_contains "$ai_call_section" "curl_exit_code=\$?" \
+    "release scheduler should capture curl exit status"
+  expect_section_contains "$ai_call_section" "audit:ai_request_retry attempt=\$attempt status=\$response_status curl_exit=\$curl_exit_code response_bytes=\$response_bytes" \
+    "release scheduler AI retry audit should include status, curl exit, and response bytes"
+
+  local ai_failure_section
+  ai_failure_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Handle AI API failure" "Extract AI response content")"
+  expect_section_contains "$ai_failure_section" "curl diagnostics (last 20 lines)" \
+    "release scheduler failure path should print bounded curl diagnostics"
+  expect_section_contains "$ai_failure_section" 'echo "::error::$err_msg"' \
+    "release scheduler should surface AI failure as a GitHub Actions error"
+  expect_section_contains "$ai_failure_section" "exit 1" \
+    "release scheduler should fail when required AI inference does not answer"
+
+  local artifact_section
+  artifact_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Upload release scheduler audit artifacts" "retention-days")"
+  expect_section_contains "$artifact_section" "curl-error.log" \
+    "release scheduler audit artifact should include curl diagnostics"
+
+  pass "test_release_scheduler_ai_failures_remain_diagnostic_and_red"
+}
+
 test_snapshot_and_health_manual_dry_runs_do_not_mutate() {
   echo "Running test_snapshot_and_health_manual_dry_runs_do_not_mutate"
 
@@ -369,6 +405,7 @@ test_official_triggers_normalize_to_non_dry_run
 test_downstream_dispatches_explicitly_pass_dry_run
 test_mutating_steps_remain_dry_run_gated
 test_dry_run_summaries_and_audits_show_rerun_guidance
+test_release_scheduler_ai_failures_remain_diagnostic_and_red
 test_snapshot_and_health_manual_dry_runs_do_not_mutate
 test_line_of_reports_missing_needles_cleanly
 test_publish_release_existing_tag_only_fails_real_runs
