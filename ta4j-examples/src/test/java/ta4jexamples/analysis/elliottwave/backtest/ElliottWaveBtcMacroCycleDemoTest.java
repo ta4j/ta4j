@@ -921,6 +921,9 @@ class ElliottWaveBtcMacroCycleDemoTest {
         assertFalse(row.get("direction").getAsString().isBlank());
         assertTrue(row.get("confidence").getAsDouble() >= 0.0);
         assertTrue(row.get("probability").getAsDouble() >= 0.0);
+        assertFalse(row.get("invalidation").getAsString().isBlank());
+        assertFalse(row.has("phaseInvalidation"));
+        assertFalse(row.has("structuralInvalidation"));
         assertFalse(row.get("target").getAsString().isBlank());
         assertFalse(row.get("primaryReason").getAsString().isBlank());
         assertFalse(row.get("weakestFactor").getAsString().isBlank());

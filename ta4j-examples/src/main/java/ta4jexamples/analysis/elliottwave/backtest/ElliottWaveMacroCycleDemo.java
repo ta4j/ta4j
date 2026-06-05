@@ -234,10 +234,10 @@ public final class ElliottWaveMacroCycleDemo {
     }
 
     record ScenarioOutlookSummary(String label, String phase, String type, String countLabel, String direction,
-            double confidence, double probability, String invalidation, String phaseInvalidation,
-            String structuralInvalidation, String target, String chartPath, String primaryReason, String weakestFactor,
-            double fibonacciScore, double timeProportionScore, double alternationScore, double channelScore,
-            double completenessScore, double totalScore, String rationale) {
+            double confidence, double probability, String invalidation, String target, String chartPath,
+            String primaryReason, String weakestFactor, double fibonacciScore, double timeProportionScore,
+            double alternationScore, double channelScore, double completenessScore, double totalScore,
+            String rationale) {
 
         ScenarioOutlookSummary {
             Objects.requireNonNull(label, "label");
@@ -246,8 +246,6 @@ public final class ElliottWaveMacroCycleDemo {
             Objects.requireNonNull(countLabel, "countLabel");
             Objects.requireNonNull(direction, "direction");
             Objects.requireNonNull(invalidation, "invalidation");
-            Objects.requireNonNull(phaseInvalidation, "phaseInvalidation");
-            Objects.requireNonNull(structuralInvalidation, "structuralInvalidation");
             Objects.requireNonNull(target, "target");
             Objects.requireNonNull(chartPath, "chartPath");
             Objects.requireNonNull(primaryReason, "primaryReason");
@@ -999,6 +997,19 @@ public final class ElliottWaveMacroCycleDemo {
         return "= " + formatNum(value);
     }
 
+    private static String formatScenarioInvalidation(final String phaseInvalidation,
+            final String structuralInvalidation) {
+        final String phase = safeText(phaseInvalidation);
+        final String structural = safeText(structuralInvalidation);
+        if (phase.isBlank()) {
+            return structural;
+        }
+        if (structural.isBlank() || structural.equals(phase)) {
+            return phase;
+        }
+        return "phase " + phase + "; structural " + structural;
+    }
+
     private static String orthodoxWaveFiveTargetRange(final ElliottWaveAnalysisResult.CurrentPhaseAssessment primary) {
         if (primary == null || primary.currentPhase() != ElliottPhase.WAVE4) {
             return "";
@@ -1109,9 +1120,10 @@ public final class ElliottWaveMacroCycleDemo {
                     .toString();
             summaries.add(new ScenarioOutlookSummary(scenarioView.label(), scenario.currentPhase().name(),
                     scenario.type().name(), fit.countLabel(), scenarioDirection(scenario),
-                    safePercentage(confidence.asPercentage()), scenarioView.probability() * 100.0, phaseInvalidation,
-                    phaseInvalidation, structuralInvalidation, formatNum(scenario.primaryTarget()), chartPath,
-                    safeText(confidence.primaryReason()), safeText(confidence.weakestFactor()),
+                    safePercentage(confidence.asPercentage()), scenarioView.probability() * 100.0,
+                    formatScenarioInvalidation(phaseInvalidation, structuralInvalidation),
+                    formatNum(scenario.primaryTarget()), chartPath, safeText(confidence.primaryReason()),
+                    safeText(confidence.weakestFactor()),
                     safeConfidenceScore(confidence.fibonacciScore()) * 100.0,
                     safeConfidenceScore(confidence.timeProportionScore()) * 100.0,
                     safeConfidenceScore(confidence.alternationScore()) * 100.0,
