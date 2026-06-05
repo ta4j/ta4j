@@ -23,6 +23,15 @@ on:
         required: false
         default: true
         type: boolean
+      aiMode:
+        description: "AI execution mode: probe sends a tiny request; full sends the release dossier; skip avoids GitHub Models"
+        required: false
+        default: probe
+        type: choice
+        options:
+          - probe
+          - full
+          - skip
 
 permissions:
   contents: write
@@ -41,13 +50,14 @@ jobs:
       reason: ${{ steps.parsed.outputs.reason }}
       warning: ${{ steps.parsed.outputs.warning }}
       dryRun: ${{ steps.run_meta.outputs.dryRun }}
+      ai_mode: ${{ steps.ai_mode.outputs.mode }}
       binary_lines: ${{ steps.diff.outputs.lines }}
       binary_changes: ${{ steps.diff.outputs.binary_changes }}
       changelog_len: ${{ steps.changelog.outputs.length }}
       gate_proceed: ${{ steps.gate.outputs.proceed }}
       token_present: ${{ steps.model_token.outputs.present }}
       token_gate: ${{ steps.token_gate.outputs.proceed }}
-      model: ${{ steps.model_catalog.outputs.model_id }}
+      model: ${{ steps.model_config.outputs.model_id }}
       model_max_input_tokens: ${{ steps.model_catalog.outputs.model_max_input_tokens }}
       model_max_output_tokens: ${{ steps.model_catalog.outputs.model_max_output_tokens }}
       dossier_chars: ${{ steps.build_request.outputs.dossier_chars }}
@@ -121,6 +131,48 @@ jobs:
           echo "audit:dry_run_input_raw='${raw}'"
           echo "audit:dry_run_normalized=$dry_run"
           echo "dryRun=$dry_run" >> $GITHUB_OUTPUT
+
+      - name: Resolve AI execution mode
+        id: ai_mode
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          AI_MODE_INPUT: ${{ github.event.inputs.aiMode }}
+        run: |
+          set -euo pipefail
+          event="${EVENT_NAME:-}"
+          if [ "$event" = "workflow_dispatch" ]; then
+            raw="${AI_MODE_INPUT:-probe}"
+          else
+            raw="full"
+          fi
+
+          normalized=$(printf '%s' "$raw" | tr '[:upper:]' '[:lower:]')
+          case "$normalized" in
+            full|probe|skip) mode="$normalized" ;;
+            "") mode="probe" ;;
+            *)
+              echo "Unsupported aiMode '$raw'. Expected one of: full, probe, skip." >&2
+              exit 1
+              ;;
+          esac
+
+          echo "audit:ai_mode_input_raw='${raw}'"
+          echo "audit:ai_mode_normalized=$mode"
+          echo "mode=$mode" >> $GITHUB_OUTPUT
+
+      - name: Resolve AI model
+        id: model_config
+        env:
+          RELEASE_AI_MODEL: ${{ vars.RELEASE_AI_MODEL }}
+        run: |
+          set -euo pipefail
+          model="${RELEASE_AI_MODEL:-openai/gpt-4.1}"
+          if [ -z "$model" ]; then
+            echo "RELEASE_AI_MODEL resolved to an empty value." >&2
+            exit 1
+          fi
+          echo "audit:model_config model=$model"
+          echo "model_id=$model" >> $GITHUB_OUTPUT
 
       - name: Read version from pom.xml
         id: pom_version
@@ -270,9 +322,13 @@ jobs:
         if: steps.gate.outputs.proceed != 'true'
         run: echo "No release recommended (no binary-impacting changes)."
 
+      - name: No release - AI execution skipped
+        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode == 'skip'
+        run: echo "No release recommended (AI execution skipped by aiMode=skip)."
+
       - name: Check for GH_MODELS_TOKEN
         id: model_token
-        if: steps.gate.outputs.proceed == 'true'
+        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip'
         env:
           GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
         run: |
@@ -289,7 +345,7 @@ jobs:
 
       - name: Check token gate
         id: token_gate
-        if: steps.gate.outputs.proceed == 'true'
+        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip'
         run: |
           present="${{ steps.model_token.outputs.present }}"
           present=${present:-false}
@@ -303,7 +359,7 @@ jobs:
           fi
 
       - name: No release - missing GH_MODELS_TOKEN
-        if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed != 'true'
+        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed != 'true'
         run: echo "GH_MODELS_TOKEN not provided; skipping release."
 
       # -----------------------
@@ -311,12 +367,12 @@ jobs:
       # -----------------------
       - name: Preflight GitHub Models catalog
         id: model_catalog
-        if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true'
+        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode == 'full' && steps.token_gate.outputs.proceed == 'true'
         env:
           RELEASE_AI_MODEL: ${{ vars.RELEASE_AI_MODEL }}
         run: |
           set -euo pipefail
-          model="${RELEASE_AI_MODEL:-openai/gpt-4.1}"
+          model="${{ steps.model_config.outputs.model_id }}"
           echo "::group::GitHub Models catalog preflight"
           attempts=3
           backoff=5
@@ -342,7 +398,7 @@ jobs:
 
       - name: Build release dossier
         id: dossier
-        if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true'
+        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode == 'full' && steps.token_gate.outputs.proceed == 'true'
         run: |
           set -euo pipefail
           echo "::group::Build release dossier"
@@ -357,15 +413,43 @@ jobs:
 
       - name: Build and validate AI request JSON
         id: build_request
-        if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true'
+        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true'
+        env:
+          AI_MODE: ${{ steps.ai_mode.outputs.mode }}
         run: |
           set -euo pipefail
           echo "::group::Build AI request"
-          python3 scripts/release/release_helpers.py build-ai-request \
-            --model "${{ steps.model_catalog.outputs.model_id }}" \
-            --dossier release-dossier.md \
-            --semver-rules .github/workflows/semver-rules-override.txt \
-            --output request.json
+          if [ "${AI_MODE:-full}" = "probe" ]; then
+            jq -n --arg model "${{ steps.model_config.outputs.model_id }}" \
+              '{
+                model: $model,
+                temperature: 0,
+                max_tokens: 64,
+                messages: [
+                  {
+                    role: "system",
+                    content: "You are a GitHub Models connectivity probe. Return JSON only."
+                  },
+                  {
+                    role: "user",
+                    content: "Return exactly this JSON object: {\"should_release\":false,\"bump\":\"patch\",\"confidence\":1.0,\"reason\":\"AI probe succeeded; full release analysis was not requested\",\"evidence\":[],\"risks\":[],\"missing\":[]}"
+                  }
+                ]
+              }' > request.json
+            request_size=$(wc -c < request.json | tr -d ' ')
+            echo "audit:ai_probe_request file=request.json model=${{ steps.model_config.outputs.model_id }} request_json_size_bytes=$request_size"
+            echo "request_json_size_bytes=$request_size" >> $GITHUB_OUTPUT
+            echo "dossier_chars=0" >> $GITHUB_OUTPUT
+          elif [ "${AI_MODE:-full}" = "full" ]; then
+            python3 scripts/release/release_helpers.py build-ai-request \
+              --model "${{ steps.model_config.outputs.model_id }}" \
+              --dossier release-dossier.md \
+              --semver-rules .github/workflows/semver-rules-override.txt \
+              --output request.json
+          else
+            echo "Unsupported aiMode '${AI_MODE:-}' for AI request build." >&2
+            exit 1
+          fi
           if ! jq -e '.model and .messages and (.messages | length > 0)' request.json > /dev/null; then
             echo "audit:request_json_valid=false" >&2
             exit 1
@@ -376,20 +460,26 @@ jobs:
 
       - name: Call AI API with retry
         id: ai_call
-        if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true'
+        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true'
         env:
+          AI_MODE: ${{ steps.ai_mode.outputs.mode }}
           GH_MODELS_TOKEN: ${{ secrets.GH_MODELS_TOKEN }}
         run: |
           set -uo pipefail
           echo "::group::Call GitHub Models inference"
+          echo "audit:ai_mode=${AI_MODE:-full}"
           echo "audit:request_json_size_bytes=$(wc -c < request.json | tr -d ' ')"
           echo "audit:dossier_chars=${{ steps.build_request.outputs.dossier_chars }}"
-          echo "audit:model=${{ steps.model_catalog.outputs.model_id }}"
+          echo "audit:model=${{ steps.model_config.outputs.model_id }}"
           echo "audit:model_max_input_tokens=${{ steps.model_catalog.outputs.model_max_input_tokens }}"
           echo "audit:model_max_output_tokens=${{ steps.model_catalog.outputs.model_max_output_tokens }}"
           echo "audit:external_call target=models.github.ai payload=request.json sanitized=true"
 
-          attempts=3
+          if [ "${AI_MODE:-full}" = "full" ]; then
+            attempts=2
+          else
+            attempts=1
+          fi
           backoff=5
           response_status=000
           curl_exit_code=0
@@ -401,7 +491,6 @@ jobs:
             : > "$attempt_error"
             if response_status=$(curl --silent --show-error --location --http1.1 \
               --connect-timeout 10 --max-time 120 \
-              --retry 2 --retry-delay 2 --retry-max-time 120 --retry-all-errors \
               -o response.json -w '%{http_code}' \
               -X POST \
               -H "Content-Type: application/json" \
@@ -437,22 +526,24 @@ jobs:
 
           echo "response_status=$response_status" >> $GITHUB_OUTPUT
           echo "curl_exit_code=$curl_exit_code" >> $GITHUB_OUTPUT
+          echo "attempts=$attempts" >> $GITHUB_OUTPUT
           echo "::endgroup::"
 
       - name: Handle AI API failure
         id: ai_failure
-        if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true' && steps.ai_call.outputs.response_status != '200'
+        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true' && steps.ai_call.outputs.response_status != '200'
         env:
+          AI_MODE: ${{ steps.ai_mode.outputs.mode }}
           RESPONSE_STATUS: ${{ steps.ai_call.outputs.response_status }}
           CURL_EXIT_CODE: ${{ steps.ai_call.outputs.curl_exit_code }}
-          ATTEMPTS: 3
+          ATTEMPTS: ${{ steps.ai_call.outputs.attempts }}
         run: |
           err_msg=$(jq -r '.error.message // empty' response.json 2>/dev/null || true)
           if [ -z "$err_msg" ] && [ "${RESPONSE_STATUS:-}" = "000" ]; then
             err_msg="AI call failed before an HTTP response (curl exit ${CURL_EXIT_CODE:-unknown})"
           fi
           err_msg=${err_msg:-"AI call failed (http ${RESPONSE_STATUS})"}
-          echo "audit:ai_request_failed attempts=$ATTEMPTS status=$RESPONSE_STATUS curl_exit=${CURL_EXIT_CODE:-unknown}" >&2
+          echo "audit:ai_request_failed mode=${AI_MODE:-unknown} attempts=${ATTEMPTS:-unknown} status=$RESPONSE_STATUS curl_exit=${CURL_EXIT_CODE:-unknown}" >&2
           echo "response (truncated to 500 chars):"
           head -c 500 response.json || true
           echo ""
@@ -472,7 +563,7 @@ jobs:
 
       - name: Extract AI response content
         id: ai
-        if: steps.gate.outputs.proceed == 'true' && steps.token_gate.outputs.proceed == 'true' && steps.ai_call.outputs.response_status == '200'
+        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true' && steps.ai_call.outputs.response_status == '200'
         run: |
           resp_size=$(wc -c < response.json | tr -d ' ')
           echo "audit:ai_response_bytes=$resp_size saved_to=response.json"
@@ -501,6 +592,7 @@ jobs:
         id: parsed
         if: always()
         env:
+          AI_MODE: ${{ steps.ai_mode.outputs.mode }}
           GATE_PROCEED: ${{ steps.gate.outputs.proceed }}
           MODEL_TOKEN_PRESENT: ${{ steps.model_token.outputs.present }}
         run: |
@@ -509,8 +601,11 @@ jobs:
           if [ "$gate_proceed" != "true" ]; then
             echo '{"should_release":false,"bump":"patch","confidence":1.0,"warning":"No binary changes","reason":"No binary-impacting changes detected"}' > ai-content.txt
           else
+            ai_mode="${AI_MODE:-full}"
             model_token_present="${MODEL_TOKEN_PRESENT:-false}"
-            if [ "$model_token_present" != "true" ]; then
+            if [ "$ai_mode" = "skip" ]; then
+              echo '{"should_release":false,"bump":"patch","confidence":1.0,"warning":"AI execution skipped","reason":"aiMode=skip was requested; GitHub Models was not called"}' > ai-content.txt
+            elif [ "$model_token_present" != "true" ]; then
               echo "AI call skipped because GH_MODELS_TOKEN is missing." >&2
               echo '{"should_release":false,"bump":"patch","confidence":1.0,"warning":"GH_MODELS_TOKEN missing","reason":"GH_MODELS_TOKEN secret missing; cannot call AI"}' > ai-content.txt
             elif [ ! -s ai-content.txt ]; then
@@ -634,10 +729,11 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           DRY_RUN_INPUT: ${{ github.event.inputs.dryRun }}
           DRY_RUN: ${{ steps.run_meta.outputs.dryRun }}
+          AI_MODE: ${{ steps.ai_mode.outputs.mode }}
           PROCEED: ${{ steps.gate.outputs.proceed }}
           TOKEN_PRESENT: ${{ steps.model_token.outputs.present }}
           TOKEN_GATE: ${{ steps.token_gate.outputs.proceed }}
-          MODEL: ${{ steps.model_catalog.outputs.model_id }}
+          MODEL: ${{ steps.model_config.outputs.model_id }}
           MODEL_MAX_INPUT_TOKENS: ${{ steps.model_catalog.outputs.model_max_input_tokens }}
           MODEL_MAX_OUTPUT_TOKENS: ${{ steps.model_catalog.outputs.model_max_output_tokens }}
           DOSSIER_CHARS: ${{ steps.build_request.outputs.dossier_chars }}
@@ -661,6 +757,7 @@ jobs:
 
           cat > release-scheduler-mutation-plan.txt <<EOF
           dryRun=${DRY_RUN:-}
+          aiMode=${AI_MODE:-}
           computedVersion=${VERSION:-}
           bump=${BUMP:-}
           mutationPlan=${mutation_plan}
@@ -669,6 +766,7 @@ jobs:
 
           echo "decision:event_name=${EVENT_NAME:-}"
           echo "decision:dry_run_input='${DRY_RUN_INPUT:-}' normalized=${DRY_RUN:-}"
+          echo "decision:ai_mode=${AI_MODE:-}"
           echo "decision:gate_proceed=${PROCEED:-}"
           echo "decision:token_present=${TOKEN_PRESENT:-}"
           echo "decision:token_gate_proceed=${TOKEN_GATE:-}"
@@ -689,6 +787,7 @@ jobs:
             echo "## Release Scheduler Decision"
             echo ""
             echo "- model: ${MODEL:-unknown}"
+            echo "- AI mode: ${AI_MODE:-unknown}"
             echo "- model max input tokens: ${MODEL_MAX_INPUT_TOKENS:-unknown}"
             echo "- model max output tokens: ${MODEL_MAX_OUTPUT_TOKENS:-unknown}"
             echo "- dossier chars: ${DOSSIER_CHARS:-0}"
@@ -848,6 +947,7 @@ jobs:
           REASON: ${{ needs.analyze.outputs.reason }}
           WARNING: ${{ needs.analyze.outputs.warning }}
           DRY_RUN: ${{ needs.analyze.outputs.dryRun }}
+          AI_MODE: ${{ needs.analyze.outputs.ai_mode }}
           BINARY_LINES: ${{ needs.analyze.outputs.binary_lines }}
           BINARY_CHANGES: ${{ needs.analyze.outputs.binary_changes }}
           CHANGELOG_LEN: ${{ needs.analyze.outputs.changelog_len }}
@@ -890,6 +990,7 @@ jobs:
           reason="${REASON:-}"
           warning="${WARNING:-}"
           dry_run="${DRY_RUN:-unknown}"
+          ai_mode="${AI_MODE:-unknown}"
           last_tag="${LAST_TAG:-}"
           last_first_parent_tag="${LAST_FIRST_PARENT_TAG:-}"
           pom_version="${POM_VERSION:-}"
@@ -977,6 +1078,7 @@ jobs:
           - reason: ${reason}
           - warning: ${warning}
           - dryRun: ${dry_run}
+          - ai mode: ${ai_mode}
           - last reachable tag: ${last_tag}
           - last first-parent tag: ${last_first_parent_tag}
           - pom version: ${pom_version}
