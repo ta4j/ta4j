@@ -507,6 +507,23 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
+    void genericRunLivePresetUsesObservedWindowAndBlankUnknownMetadataWhenNoMetadataIsSupplied() throws Exception {
+        BarSeries fullSeries = loadBitcoinSeries();
+        BarSeries liveWindow = renamedSeries(trailingWindow(fullSeries, 1825), "ETH-USD");
+        Path tempDir = newTempDirectory("eth-live-preset-fallback-metadata");
+
+        ElliottWaveMacroCycleDemo.runLivePreset(liveWindow, tempDir);
+
+        Path outlookPath = tempDir.resolve("elliott-wave-eth-usd-live-scenario-outlooks.json");
+        JsonObject outlook = JsonParser.parseString(Files.readString(outlookPath)).getAsJsonObject();
+        long expectedLookbackDays = Duration.between(liveWindow.getFirstBar().getBeginTime(),
+                liveWindow.getLastBar().getEndTime()).toDays();
+        assertEquals("", outlook.get("exchange").getAsString());
+        assertEquals("", outlook.get("normalizedInstrument").getAsString());
+        assertEquals(expectedLookbackDays, outlook.get("lookbackDays").getAsLong());
+    }
+
+    @Test
     void macroLogicProfilesStayNonPublicWhileSelectionSurfaceIsUnsettled() throws Exception {
         Method profilesMethod = ElliottWaveMacroCycleDemo.class.getDeclaredMethod("logicProfiles");
         Method defaultProfileMethod = ElliottWaveMacroCycleDemo.class.getDeclaredMethod("defaultLiveMacroProfile");

@@ -2462,28 +2462,55 @@ public final class ElliottWaveMacroCycleDemo {
         static LivePresetMetadata fromSeries(final BarSeries series) {
             Objects.requireNonNull(series, "series");
             return new LivePresetMetadata(inferExchange(series.getName()), inferInstrument(series.getName()),
-                    Math.max(1L, series.getBarCount()));
+                    observedLookbackDays(series));
         }
 
         private static String inferExchange(final String seriesName) {
-            if (seriesName == null) {
+            final int exchangeDelimiter = unambiguousSeriesNameDelimiter(seriesName);
+            if (exchangeDelimiter < 0) {
                 return "";
             }
-            final int exchangeDelimiter = seriesName.lastIndexOf('@');
-            if (exchangeDelimiter < 0 || exchangeDelimiter >= seriesName.length() - 1) {
-                return "";
-            }
-            return seriesName.substring(exchangeDelimiter + 1).trim();
+            final String exchange = seriesName.substring(exchangeDelimiter + 1).trim();
+            return exchange.matches("[A-Za-z][A-Za-z0-9-]*") ? exchange : "";
         }
 
         private static String inferInstrument(final String seriesName) {
-            if (seriesName == null || seriesName.trim().isEmpty()) {
-                return "series";
+            final int exchangeDelimiter = unambiguousSeriesNameDelimiter(seriesName);
+            if (exchangeDelimiter < 0) {
+                return "";
             }
-            final String withoutExchange = seriesName.split("@", 2)[0];
-            final String withoutInterval = withoutExchange.split("_", 2)[0];
-            final String normalized = withoutInterval.trim().replace('/', '-').toUpperCase(Locale.ROOT);
-            return normalized.isEmpty() ? "series" : normalized;
+            final String instrument = seriesName.substring(0, exchangeDelimiter).trim();
+            final String normalized = instrument.replace('/', '-').toUpperCase(Locale.ROOT);
+            return normalized.isEmpty() ? "" : normalized;
+        }
+
+        private static int unambiguousSeriesNameDelimiter(final String seriesName) {
+            if (seriesName == null || seriesName.trim().isEmpty()) {
+                return -1;
+            }
+            final int exchangeDelimiter = seriesName.indexOf('@');
+            if (exchangeDelimiter <= 0 || exchangeDelimiter != seriesName.lastIndexOf('@')
+                    || exchangeDelimiter >= seriesName.length() - 1) {
+                return -1;
+            }
+            final String instrument = seriesName.substring(0, exchangeDelimiter).trim();
+            if (instrument.isEmpty() || instrument.contains("_") || instrument.matches(".*\\s+.*")) {
+                return -1;
+            }
+            return exchangeDelimiter;
+        }
+
+        private static long observedLookbackDays(final BarSeries series) {
+            if (series.getBarCount() <= 0) {
+                return 1L;
+            }
+            final Instant startTime = series.getFirstBar().getBeginTime();
+            final Instant endTime = series.getLastBar().getEndTime();
+            final Duration observedSpan = Duration.between(startTime, endTime);
+            if (observedSpan.isZero() || observedSpan.isNegative()) {
+                return 1L;
+            }
+            return Math.max(1L, observedSpan.toDays());
         }
     }
 
