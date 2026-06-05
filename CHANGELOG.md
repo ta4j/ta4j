@@ -20,6 +20,7 @@
 - **PULL_REQUESTS.md guidance for AI agents**: New rules were added for handling pull requests.
 
 ### Changed
+- **AI release scheduling is safer to debug**: Manual `release-scheduler.yml` runs now default to a tiny GitHub Models probe, can explicitly skip AI calls, and keep full release-dossier analysis on the scheduled path, while failed required AI calls now preserve curl diagnostics and fail visibly instead of silently falling back.
 - **Agent PR handoff guidance is more explicit**: ta4j PR overrides now clarify when changelog entries are required, require `@coderabbitai full review` after opening a PR, and tell agents to delete temporary `.agents/plans/` PRD/checklist files before final handoff unless explicitly retained.
 - **Contributor full-build feedback is faster**: Slow cached-indicator, chart workflow, paginated data-source, streaming-bot, and XLS-backed indicator checks now avoid real waits and repeated fixture parsing while keeping their production paths and assertions covered.
 - **Rule trace diagnostics are now explicit and safer for shared strategies**: enabling SLF4J `TRACE` on a rule or strategy logger now emits default verbose diagnostics without mutating shared instances, one-shot `SUMMARY` / `VERBOSE` calls scope noisy child logs, and output uses stable flat `key=value` fields for path/depth, compared values, cross/slope windows, risk/reward math, short-circuit reasons, unstable strategy decisions, and stop-rule prices.
