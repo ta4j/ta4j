@@ -1063,9 +1063,9 @@ public final class ElliottWaveMacroCycleDemo {
                 ElliottWaveBtcMacroCycleDemo.DEFAULT_CHART_WIDTH, ElliottWaveBtcMacroCycleDemo.DEFAULT_CHART_HEIGHT);
     }
 
-    private static LivePresetLegacyView generateLivePresetLegacyView(final BarSeries series,
-            final String scenarioSeriesToken, final CurrentCycleAnalysis currentCycle, final LivePresetReport report,
-            final Path chartDirectory, final LivePresetMetadata metadata) {
+    static LivePresetLegacyView generateLivePresetLegacyView(final BarSeries series, final String scenarioSeriesToken,
+            final CurrentCycleAnalysis currentCycle, final LivePresetReport report, final Path chartDirectory,
+            final LivePresetMetadata metadata) {
         Objects.requireNonNull(series, "series");
         Objects.requireNonNull(scenarioSeriesToken, "scenarioSeriesToken");
         Objects.requireNonNull(currentCycle, "currentCycle");
@@ -2449,7 +2449,7 @@ public final class ElliottWaveMacroCycleDemo {
         }
     }
 
-    private record LivePresetMetadata(String exchange, String normalizedInstrument, long lookbackDays) {
+    record LivePresetMetadata(String exchange, String normalizedInstrument, long lookbackDays) {
 
         LivePresetMetadata {
             exchange = exchange == null ? "" : exchange.trim();
@@ -2514,7 +2514,7 @@ public final class ElliottWaveMacroCycleDemo {
         }
     }
 
-    private record LivePresetLegacyView(LivePresetReport report, String scenarioOutlookPath,
+    record LivePresetLegacyView(LivePresetReport report, String scenarioOutlookPath,
             List<LivePresetScenarioView> scenarioViews) {
 
         LivePresetLegacyView {
@@ -2524,7 +2524,7 @@ public final class ElliottWaveMacroCycleDemo {
         }
     }
 
-    private record LivePresetScenarioView(String label, String fileName, double probability,
+    record LivePresetScenarioView(String label, String fileName, double probability,
             ElliottWaveAnalysisResult.CurrentCycleCandidate candidate) {
 
         LivePresetScenarioView {

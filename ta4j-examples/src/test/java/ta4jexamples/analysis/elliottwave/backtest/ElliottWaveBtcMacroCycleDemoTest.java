@@ -475,18 +475,30 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
     @Test
     void genericRunLivePresetPersistsDynamicFiveScenarioOutlookForNonBtcSeries() throws Exception {
-        BarSeries fullSeries = loadBitcoinSeries();
-        BarSeries liveWindow = renamedSeries(trailingWindow(fullSeries, 1825), "ETH-USD");
+        BarSeries liveWindow = renamedSeries(chartSyntheticSeries(), "ETH-USD");
         Path tempDir = newTempDirectory("eth-live-preset-generic");
+        List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates = syntheticCurrentCycleCandidates(liveWindow);
+        ElliottWaveMacroCycleDemo.CurrentCycleSummary summary = new ElliottWaveMacroCycleDemo.CurrentCycleSummary(
+                liveWindow.getFirstBar().getEndTime().toString(), liveWindow.getLastBar().getEndTime().toString(), "H0",
+                "synthetic historical status", "Primary W5", "Alternative W5", "WAVE5", "<= 96.00", "<= 94.00",
+                "168.00 to 178.00", 0.91, 0.72,
+                tempDir.resolve("elliott-wave-eth-usd-live-macro-current-cycle-summary.json").toString());
+        ElliottWaveMacroCycleDemo.CurrentCycleAnalysis currentCycle = new ElliottWaveMacroCycleDemo.CurrentCycleAnalysis(
+                summary, candidates.getFirst().fit(), candidates.get(1).fit(), candidates, candidates);
+        ElliottWaveMacroCycleDemo.LivePresetReport report = new ElliottWaveMacroCycleDemo.LivePresetReport("ETH-USD",
+                summary.startTimeUtc(), summary.latestTimeUtc(), "H0", "H0",
+                tempDir.resolve("elliott-wave-analysis-eth-usd-cycle-current.jpg").toString(),
+                tempDir.resolve("elliott-wave-eth-usd-live-macro-current-cycle-summary.json").toString(),
+                "canonical-structure", summary);
 
-        ElliottWaveMacroCycleDemo.runLivePreset(liveWindow, tempDir, "YahooFinance", "ETH-USD", 1825L);
+        ElliottWaveMacroCycleDemo.generateLivePresetLegacyView(liveWindow, "eth-usd", currentCycle, report, tempDir,
+                new ElliottWaveMacroCycleDemo.LivePresetMetadata("YahooFinance", "ETH-USD", 1825L));
 
         assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-eth-usd-cycle-base-case.jpg")));
         assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-eth-usd-cycle-alternative-1.jpg")));
         assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-eth-usd-cycle-alternative-2.jpg")));
         assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-eth-usd-cycle-alternative-3.jpg")));
         assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-eth-usd-cycle-alternative-4.jpg")));
-        assertTrue(Files.exists(tempDir.resolve("elliott-wave-eth-usd-live-macro-current-cycle-summary.json")));
         Path outlookPath = tempDir.resolve("elliott-wave-eth-usd-live-scenario-outlooks.json");
         assertTrue(Files.exists(outlookPath));
 
@@ -507,21 +519,19 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
-    void genericRunLivePresetUsesObservedWindowAndBlankUnknownMetadataWhenNoMetadataIsSupplied() throws Exception {
-        BarSeries fullSeries = loadBitcoinSeries();
-        BarSeries liveWindow = renamedSeries(trailingWindow(fullSeries, 1825), "ETH-USD");
-        Path tempDir = newTempDirectory("eth-live-preset-fallback-metadata");
+    void livePresetMetadataUsesObservedWindowAndBlankUnknownMetadataWhenNoMetadataIsSupplied() {
+        BarSeries liveWindow = gappedMetadataSeries("ETH-USD");
 
-        ElliottWaveMacroCycleDemo.runLivePreset(liveWindow, tempDir);
+        ElliottWaveMacroCycleDemo.LivePresetMetadata metadata = ElliottWaveMacroCycleDemo.LivePresetMetadata
+                .fromSeries(liveWindow);
 
-        Path outlookPath = tempDir.resolve("elliott-wave-eth-usd-live-scenario-outlooks.json");
-        JsonObject outlook = JsonParser.parseString(Files.readString(outlookPath)).getAsJsonObject();
         long expectedLookbackDays = Duration
                 .between(liveWindow.getFirstBar().getBeginTime(), liveWindow.getLastBar().getEndTime())
                 .toDays();
-        assertEquals("", outlook.get("exchange").getAsString());
-        assertEquals("", outlook.get("normalizedInstrument").getAsString());
-        assertEquals(expectedLookbackDays, outlook.get("lookbackDays").getAsLong());
+        assertEquals("", metadata.exchange());
+        assertEquals("", metadata.normalizedInstrument());
+        assertEquals(expectedLookbackDays, metadata.lookbackDays());
+        assertTrue(expectedLookbackDays > liveWindow.getBarCount());
     }
 
     @Test
@@ -994,6 +1004,73 @@ class ElliottWaveBtcMacroCycleDemoTest {
                     .build());
         }
         return series;
+    }
+
+    private static BarSeries gappedMetadataSeries(String name) {
+        BarSeries series = new BaseBarSeriesBuilder().withName(name).build();
+        addMetadataBar(series, Instant.parse("2020-01-01T00:00:00Z"), 100.0);
+        addMetadataBar(series, Instant.parse("2020-01-10T00:00:00Z"), 110.0);
+        return series;
+    }
+
+    private static List<ElliottWaveAnalysisResult.CurrentCycleCandidate> syntheticCurrentCycleCandidates(
+            BarSeries series) {
+        List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates = new java.util.ArrayList<>();
+        for (int index = 0; index < 5; index++) {
+            candidates.add(syntheticCurrentCycleCandidate(series, index));
+        }
+        return List.copyOf(candidates);
+    }
+
+    private static ElliottWaveAnalysisResult.CurrentCycleCandidate syntheticCurrentCycleCandidate(BarSeries series,
+            int index) {
+        ElliottPhase phase = index == 1 ? ElliottPhase.WAVE4 : ElliottPhase.WAVE5;
+        ScenarioType type = index == 2 ? ScenarioType.CORRECTIVE_ZIGZAG : ScenarioType.IMPULSE;
+        double confidence = 0.82 - (index * 0.04);
+        ElliottScenario scenario = ElliottScenario.builder()
+                .id("synthetic-eth-scenario-" + index)
+                .currentPhase(phase)
+                .swings(List.of(
+                        new ElliottSwing(0, 1, series.numFactory().numOf(100), series.numFactory().numOf(126 + index),
+                                ElliottDegree.MINUTE),
+                        new ElliottSwing(1, 2, series.numFactory().numOf(126 + index),
+                                series.numFactory().numOf(114 + index), ElliottDegree.MINUTE),
+                        new ElliottSwing(2, 3, series.numFactory().numOf(114 + index),
+                                series.numFactory().numOf(150 + index), ElliottDegree.MINUTE),
+                        new ElliottSwing(3, 4, series.numFactory().numOf(150 + index),
+                                series.numFactory().numOf(136 + index), ElliottDegree.MINUTE),
+                        new ElliottSwing(4, 8, series.numFactory().numOf(136 + index),
+                                series.numFactory().numOf(168 + index), ElliottDegree.MINUTE)))
+                .confidence(new ElliottConfidence(series.numFactory().numOf(confidence),
+                        series.numFactory().numOf(confidence - 0.04), series.numFactory().numOf(confidence - 0.05),
+                        series.numFactory().numOf(confidence - 0.08), series.numFactory().numOf(confidence - 0.10),
+                        series.numFactory().numOf(confidence - 0.02), "Synthetic candidate " + index))
+                .degree(ElliottDegree.MINUTE)
+                .invalidationPrice(series.numFactory().numOf(92 + index))
+                .primaryTarget(series.numFactory().numOf(176 + index))
+                .type(type)
+                .bullishDirection(true)
+                .startIndex(0)
+                .build();
+        ElliottWaveAnalysisResult.CurrentPhaseAssessment fit = new ElliottWaveAnalysisResult.CurrentPhaseAssessment(
+                scenario, phase, confidence, series.numFactory().numOf(100), phase.name(),
+                series.numFactory().numOf(92 + index), series.numFactory().numOf(96 + index));
+        return new ElliottWaveAnalysisResult.CurrentCycleCandidate(0, series.numFactory().numOf(100), fit,
+                confidence - 0.10, confidence, "Synthetic display candidate " + index);
+    }
+
+    private static void addMetadataBar(BarSeries series, Instant endTime, double closePrice) {
+        series.addBar(series.barBuilder()
+                .timePeriod(Duration.ofDays(1))
+                .endTime(endTime)
+                .openPrice(closePrice)
+                .highPrice(closePrice + 1.0)
+                .lowPrice(closePrice - 1.0)
+                .closePrice(closePrice)
+                .volume(1.0)
+                .amount(closePrice)
+                .trades(1)
+                .build());
     }
 
     private static BarSeries studySyntheticSeries() {
