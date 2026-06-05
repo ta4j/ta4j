@@ -516,8 +516,9 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
         Path outlookPath = tempDir.resolve("elliott-wave-eth-usd-live-scenario-outlooks.json");
         JsonObject outlook = JsonParser.parseString(Files.readString(outlookPath)).getAsJsonObject();
-        long expectedLookbackDays = Duration.between(liveWindow.getFirstBar().getBeginTime(),
-                liveWindow.getLastBar().getEndTime()).toDays();
+        long expectedLookbackDays = Duration
+                .between(liveWindow.getFirstBar().getBeginTime(), liveWindow.getLastBar().getEndTime())
+                .toDays();
         assertEquals("", outlook.get("exchange").getAsString());
         assertEquals("", outlook.get("normalizedInstrument").getAsString());
         assertEquals(expectedLookbackDays, outlook.get("lookbackDays").getAsLong());

@@ -111,7 +111,8 @@ public class ReadmeContentManagerTest {
                 }
                 expectedActionPins.forEach((actionPrefix, expectedPin) -> {
                     if (workflow.contains(actionPrefix)) {
-                        assertTrue(workflow.contains(expectedPin), path + " should use " + expectedPin);
+                        assertTrue(workflow.contains(expectedPin) || containsFullShaActionPin(workflow, actionPrefix),
+                                path + " should use " + expectedPin + " or a full commit SHA");
                     }
                 });
                 forbiddenActionPins.forEach((forbiddenPin) -> assertFalse(workflow.contains(forbiddenPin),
@@ -126,6 +127,14 @@ public class ReadmeContentManagerTest {
         }
 
         assertFalse(setupJavaWorkflows.isEmpty());
+    }
+
+    private static boolean containsFullShaActionPin(String workflow, String actionPrefix) {
+        return workflow.lines()
+                .map(String::trim)
+                .filter(line -> line.startsWith("uses: " + actionPrefix))
+                .map(line -> line.substring(line.indexOf(actionPrefix) + actionPrefix.length()).trim())
+                .anyMatch(ref -> ref.matches("[0-9a-fA-F]{40}"));
     }
 
     private static String buildSourceSnippets(String lineSeparator) {
