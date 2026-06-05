@@ -82,13 +82,17 @@ The dedicated workflows are:
 - `Run Integration Tagged Tests` (`.github/workflows/test-tag-integration.yml`)
 - `Run Benchmark Tagged Tests` (`.github/workflows/test-tag-benchmark.yml`)
 - `Run Analysis Demo Tagged Tests` (`.github/workflows/test-tag-analysis-demo.yml`)
-- `Run Elliott Macro Cycle Replay Tagged Tests` (`.github/workflows/test-tag-elliott-macro-cycle-replay.yml`)
+- `EW Snapshot Analysis` (`.github/workflows/elliott-wave-snapshot-analysis.yml`)
 
 Scheduled runs are opt-in per tag. Set `TA4J_TAGGED_TEST_<TAG>_SCHEDULE_ENABLED=true`
 and `TA4J_TAGGED_TEST_<TAG>_SCHEDULE_SLOT=daily`, `weekly`, or `monthly`.
 Unset variables leave scheduled runs disabled, while manual workflow dispatches run
-regardless of the schedule variables. The `elliott-macro-cycle-replay` workflow
-is manual-only and requires a self-hosted runner labeled `ta4j-macro-cycle-replay`.
+regardless of the schedule variables. The `EW Snapshot Analysis` workflow is
+manual-only, runs on hosted Ubuntu, accepts `instrument`, `exchange`, and
+`lookbackDays` inputs, and uploads the live Elliott macro snapshot report,
+charts, scenario-outlook JSON, cached provider responses, and full demo log.
+The local `elliott-macro-cycle-replay` tag remains the long-form BTC regression
+lane when you need replay validation instead of a live monitoring snapshot.
 
 The `analysis-demo` tag is for examples that produce analysis reports and must
 be the only JUnit tag on each tagged test or class.

@@ -45,6 +45,10 @@ import org.ta4j.core.indicators.elliott.ElliottScenario;
 import org.ta4j.core.indicators.elliott.ElliottSwing;
 import org.ta4j.core.indicators.elliott.ScenarioType;
 
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
 import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 
@@ -470,19 +474,36 @@ class ElliottWaveBtcMacroCycleDemoTest {
     }
 
     @Test
-    void runLivePresetRestoresLegacyBaseCaseAndAlternativeCharts() throws Exception {
+    void genericRunLivePresetPersistsDynamicFiveScenarioOutlookForNonBtcSeries() throws Exception {
         BarSeries fullSeries = loadBitcoinSeries();
-        BarSeries liveWindow = trailingWindow(fullSeries, 1825);
-        Path tempDir = newTempDirectory("btc-live-preset-legacy");
+        BarSeries liveWindow = renamedSeries(trailingWindow(fullSeries, 1825), "ETH-USD");
+        Path tempDir = newTempDirectory("eth-live-preset-generic");
 
-        ElliottWaveBtcMacroCycleDemo.runLivePreset(liveWindow, tempDir);
+        ElliottWaveMacroCycleDemo.runLivePreset(liveWindow, tempDir, "YahooFinance", "ETH-USD", 1825L);
 
-        assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-btc-usd-cycle-base-case.jpg")));
-        assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-btc-usd-cycle-alternative-1.jpg")));
-        assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-btc-usd-cycle-alternative-2.jpg")));
-        assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-btc-usd-cycle-alternative-3.jpg")));
-        assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-btc-usd-cycle-alternative-4.jpg")));
-        assertTrue(Files.exists(tempDir.resolve(ElliottWaveBtcMacroCycleDemo.DEFAULT_LIVE_SUMMARY_FILE_NAME)));
+        assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-eth-usd-cycle-base-case.jpg")));
+        assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-eth-usd-cycle-alternative-1.jpg")));
+        assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-eth-usd-cycle-alternative-2.jpg")));
+        assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-eth-usd-cycle-alternative-3.jpg")));
+        assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-eth-usd-cycle-alternative-4.jpg")));
+        assertTrue(Files.exists(tempDir.resolve("elliott-wave-eth-usd-live-macro-current-cycle-summary.json")));
+        Path outlookPath = tempDir.resolve("elliott-wave-eth-usd-live-scenario-outlooks.json");
+        assertTrue(Files.exists(outlookPath));
+
+        JsonObject outlook = JsonParser.parseString(Files.readString(outlookPath)).getAsJsonObject();
+        assertEquals("ETH-USD", outlook.get("seriesName").getAsString());
+        assertEquals("YahooFinance", outlook.get("exchange").getAsString());
+        assertEquals("ETH-USD", outlook.get("normalizedInstrument").getAsString());
+        assertEquals(1825L, outlook.get("lookbackDays").getAsLong());
+        assertTrue(outlook.has("currentCycle"));
+        JsonArray scenarios = outlook.getAsJsonArray("scenarios");
+        assertEquals(5, scenarios.size());
+        assertScenarioOutlookRow(scenarios.get(0).getAsJsonObject(), "BASE CASE",
+                "elliott-wave-analysis-eth-usd-cycle-base-case.jpg");
+        for (int index = 1; index < scenarios.size(); index++) {
+            assertScenarioOutlookRow(scenarios.get(index).getAsJsonObject(), "ALTERNATIVE " + index,
+                    "elliott-wave-analysis-eth-usd-cycle-alternative-" + index + ".jpg");
+        }
     }
 
     @Test
@@ -892,12 +913,34 @@ class ElliottWaveBtcMacroCycleDemoTest {
             Instant windowEnd) {
     }
 
+    private static void assertScenarioOutlookRow(JsonObject row, String expectedLabel, String expectedChartFileName) {
+        assertEquals(expectedLabel, row.get("label").getAsString());
+        assertFalse(row.get("phase").getAsString().isBlank());
+        assertFalse(row.get("type").getAsString().isBlank());
+        assertFalse(row.get("countLabel").getAsString().isBlank());
+        assertFalse(row.get("direction").getAsString().isBlank());
+        assertTrue(row.get("confidence").getAsDouble() >= 0.0);
+        assertTrue(row.get("probability").getAsDouble() >= 0.0);
+        assertFalse(row.get("target").getAsString().isBlank());
+        assertFalse(row.get("primaryReason").getAsString().isBlank());
+        assertFalse(row.get("weakestFactor").getAsString().isBlank());
+        assertTrue(row.get("chartPath").getAsString().endsWith(expectedChartFileName));
+    }
+
     private static BarSeries loadBitcoinSeries() {
         BarSeries series = OssifiedElliottWaveSeriesLoader.loadSeries(ElliottWaveBtcMacroCycleDemo.class,
                 ElliottWaveAnchorCalibrationHarness.BTC_RESOURCE, ElliottWaveAnchorCalibrationHarness.BTC_SERIES_NAME,
                 LOG);
         assertNotNull(series);
         return series;
+    }
+
+    private static BarSeries renamedSeries(BarSeries source, String name) {
+        BarSeries renamed = new BaseBarSeriesBuilder().withName(name).build();
+        for (int index = source.getBeginIndex(); index <= source.getEndIndex(); index++) {
+            renamed.addBar(source.getBar(index));
+        }
+        return renamed;
     }
 
     private static BarSeries trailingWindow(BarSeries fullSeries, int lookbackBars) {
