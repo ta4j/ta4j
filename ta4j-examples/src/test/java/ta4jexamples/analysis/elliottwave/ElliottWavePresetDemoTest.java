@@ -46,14 +46,14 @@ class ElliottWavePresetDemoTest {
     }
 
     @Test
-    void shouldUseBtcMacroPresetForDailyBitcoin() {
-        assertTrue(ElliottWavePresetDemo.shouldUseBtcMacroPreset("BTC-USD", "PT1D"));
-        assertTrue(ElliottWavePresetDemo.shouldUseBtcMacroPreset("btc-usd", "PT24H"));
+    void shouldUseDailyMacroPresetForDailyIntervals() {
+        assertTrue(ElliottWavePresetDemo.shouldUseDailyMacroPreset("PT1D"));
+        assertTrue(ElliottWavePresetDemo.shouldUseDailyMacroPreset("PT24H"));
     }
 
     @Test
-    void shouldNotUseBtcMacroPresetForOtherAssetsOrIntervals() {
-        assertFalse(ElliottWavePresetDemo.shouldUseBtcMacroPreset("ETH-USD", "PT1D"));
-        assertFalse(ElliottWavePresetDemo.shouldUseBtcMacroPreset("BTC-USD", "PT4H"));
+    void shouldNotUseDailyMacroPresetForIntradayOrMissingIntervals() {
+        assertFalse(ElliottWavePresetDemo.shouldUseDailyMacroPreset("PT4H"));
+        assertFalse(ElliottWavePresetDemo.shouldUseDailyMacroPreset(null));
     }
 }

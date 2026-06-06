@@ -1,0 +1,349 @@
+name: EW Snapshot Analysis
+run-name: EW Snapshot ${{ inputs.instrument || 'BTC/USD' }} via ${{ inputs.exchange || 'Coinbase' }} (${{ inputs.lookbackDays || 1825 }} daily bars)
+
+permissions:
+  contents: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      instrument:
+        description: Instrument symbol, for example BTC/USD, ETH/USD, or AAPL
+        required: false
+        default: BTC/USD
+        type: string
+      exchange:
+        description: Live market data source
+        required: false
+        default: Coinbase
+        type: choice
+        options:
+          - Coinbase
+          - YahooFinance
+      lookbackDays:
+        description: Daily bars to request
+        required: false
+        default: 1825
+        type: number
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ew-snapshot-analysis:
+    name: EW Snapshot Analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        with:
+          persist-credentials: false
+
+      - name: Cache Maven packages
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set up Java
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+        with:
+          distribution: temurin
+          java-version: 25
+          cache: maven
+
+      - name: Resolve snapshot inputs
+        id: inputs
+        shell: bash
+        env:
+          DISPATCH_INSTRUMENT: ${{ inputs.instrument }}
+          DISPATCH_EXCHANGE: ${{ inputs.exchange }}
+          DISPATCH_LOOKBACK_DAYS: ${{ inputs.lookbackDays }}
+        run: |
+          set -euo pipefail
+
+          trim() {
+            sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+          }
+
+          slugify() {
+            tr '[:upper:]' '[:lower:]' \
+              | sed -e 's/[^a-z0-9]\+/-/g' -e 's/^-//' -e 's/-$//'
+          }
+
+          instrument="$(printf '%s' "${DISPATCH_INSTRUMENT:-BTC/USD}" | trim)"
+          exchange="$(printf '%s' "${DISPATCH_EXCHANGE:-Coinbase}" | trim)"
+          lookback_days="$(printf '%s' "${DISPATCH_LOOKBACK_DAYS:-1825}" | trim)"
+
+          if [[ -z "${instrument}" ]]; then
+            instrument="BTC/USD"
+          fi
+          if [[ -z "${exchange}" ]]; then
+            exchange="Coinbase"
+          fi
+          if [[ -z "${lookback_days}" ]]; then
+            lookback_days="1825"
+          fi
+
+          case "${exchange}" in
+            Coinbase|YahooFinance) ;;
+            *)
+              echo "::error::Unsupported exchange '${exchange}'. Expected Coinbase or YahooFinance."
+              exit 1
+              ;;
+          esac
+
+          if [[ ! "${lookback_days}" =~ ^[0-9]+$ ]] || (( lookback_days <= 0 )); then
+            echo "::error::lookbackDays must be a positive integer, got '${lookback_days}'."
+            exit 1
+          fi
+
+          ticker="${instrument//\//-}"
+          ticker="${ticker^^}"
+          instrument_slug="$(printf '%s' "${ticker}" | slugify)"
+          exchange_slug="$(printf '%s' "${exchange}" | slugify)"
+          if [[ -z "${instrument_slug}" ]]; then
+            echo "::error::Instrument '${instrument}' did not produce a safe artifact slug."
+            exit 1
+          fi
+
+          utc_date="$(date -u +%Y%m%d)"
+          report_title="${instrument} via ${exchange}, ${lookback_days} daily bars"
+          snapshot_dir="target/ew-snapshot/${exchange_slug}/${instrument_slug}"
+
+          {
+            echo "instrument=${instrument}"
+            echo "ticker=${ticker}"
+            echo "exchange=${exchange}"
+            echo "lookback_days=${lookback_days}"
+            echo "instrument_slug=${instrument_slug}"
+            echo "exchange_slug=${exchange_slug}"
+            echo "utc_date=${utc_date}"
+            echo "report_title=${report_title}"
+            echo "snapshot_dir=${snapshot_dir}"
+          } >> "${GITHUB_OUTPUT}"
+
+          {
+            echo "EW_INSTRUMENT=${instrument}"
+            echo "EW_TICKER=${ticker}"
+            echo "EW_EXCHANGE=${exchange}"
+            echo "EW_LOOKBACK_DAYS=${lookback_days}"
+            echo "EW_INSTRUMENT_SLUG=${instrument_slug}"
+            echo "EW_EXCHANGE_SLUG=${exchange_slug}"
+            echo "EW_REPORT_TITLE=${report_title}"
+            echo "SNAPSHOT_DIR=${snapshot_dir}"
+          } >> "${GITHUB_ENV}"
+
+      - name: Cache live market data responses
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        with:
+          path: ta4j-examples/temp/responses
+          key: ew-data-${{ runner.os }}-${{ steps.inputs.outputs.exchange_slug }}-${{ steps.inputs.outputs.instrument_slug }}-pt1d-${{ steps.inputs.outputs.lookback_days }}-${{ steps.inputs.outputs.utc_date }}
+          restore-keys: |
+            ew-data-${{ runner.os }}-${{ steps.inputs.outputs.exchange_slug }}-${{ steps.inputs.outputs.instrument_slug }}-pt1d-${{ steps.inputs.outputs.lookback_days }}-
+            ew-data-${{ runner.os }}-${{ steps.inputs.outputs.exchange_slug }}-${{ steps.inputs.outputs.instrument_slug }}-pt1d-
+
+      - name: Prepare snapshot directories
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf "${SNAPSHOT_DIR}" ta4j-examples/temp/charts
+          mkdir -p "${SNAPSHOT_DIR}" ta4j-examples/temp/charts ta4j-examples/temp/responses
+          find ta4j-examples/temp/responses -type f -mtime +45 -delete
+
+      - name: Build runtime artifacts
+        run: xvfb-run mvn -B -pl ta4j-examples -am -DskipTests install
+
+      - name: Run ElliottWavePresetDemo live snapshot
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${SNAPSHOT_DIR}"
+          pushd ta4j-examples
+          xvfb-run mvn -B exec:java \
+            -Dexec.mainClass=ta4jexamples.analysis.elliottwave.ElliottWavePresetDemo \
+            -Dexec.args="live ${EW_EXCHANGE} ${EW_TICKER} PT1D ${EW_LOOKBACK_DAYS}" \
+            -Djava.awt.headless=true \
+            2>&1 | tee "../${SNAPSHOT_DIR}/elliott-wave-preset-demo.log"
+          popd
+
+      - name: Collect and validate snapshot artifacts
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "${SNAPSHOT_DIR}/charts" "${SNAPSHOT_DIR}/responses"
+          if compgen -G "ta4j-examples/temp/charts/*" > /dev/null; then
+            cp -R ta4j-examples/temp/charts/. "${SNAPSHOT_DIR}/charts/"
+          fi
+
+          used_cache_list="${SNAPSHOT_DIR}/used-cache-files.txt"
+          : > "${used_cache_list}"
+          if [[ -f "${SNAPSHOT_DIR}/elliott-wave-preset-demo.log" ]]; then
+            grep -Eo '(Cache hit|Cached response): [^[:space:]]+\.json' "${SNAPSHOT_DIR}/elliott-wave-preset-demo.log" \
+              | sed -E 's/^(Cache hit|Cached response): //' \
+              | sort -u > "${used_cache_list}" || true
+          fi
+          if [[ -s "${used_cache_list}" ]]; then
+            while IFS= read -r cache_file; do
+              if [[ -f "ta4j-examples/temp/responses/${cache_file}" ]]; then
+                cp "ta4j-examples/temp/responses/${cache_file}" "${SNAPSHOT_DIR}/responses/"
+              else
+                echo "::warning::Expected cached response '${cache_file}' was referenced by the run log but not found."
+              fi
+            done < "${used_cache_list}"
+          elif [[ -d ta4j-examples/temp/responses ]]; then
+            echo "::warning::Unable to identify exact cached response files from the run log; uploading available response cache files."
+            cp -R ta4j-examples/temp/responses/. "${SNAPSHOT_DIR}/responses/"
+          fi
+
+          base_count="$(find "${SNAPSHOT_DIR}/charts" -type f -name '*cycle-base-case.jpg' | wc -l | tr -d ' ')"
+          alternative_count="$(find "${SNAPSHOT_DIR}/charts" -type f -name '*cycle-alternative-*.jpg' | wc -l | tr -d ' ')"
+          summary_count="$(find "${SNAPSHOT_DIR}/charts" -type f -name '*live-macro-current-cycle-summary.json' | wc -l | tr -d ' ')"
+          outlook_count="$(find "${SNAPSHOT_DIR}/charts" -type f -name '*live-scenario-outlooks.json' | wc -l | tr -d ' ')"
+          if (( base_count < 1 )); then
+            echo "::error::Missing base-case chart for ${EW_REPORT_TITLE}."
+            exit 1
+          fi
+          if (( alternative_count < 4 )); then
+            echo "::error::Expected four alternative charts for ${EW_REPORT_TITLE}, found ${alternative_count}."
+            exit 1
+          fi
+          if (( summary_count < 1 )); then
+            echo "::error::Missing live current-cycle summary JSON for ${EW_REPORT_TITLE}."
+            exit 1
+          fi
+          if (( outlook_count < 1 )); then
+            echo "::error::Missing scenario-outlook JSON for ${EW_REPORT_TITLE}."
+            exit 1
+          fi
+
+      - name: Build run summary and HTML report
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import base64
+          import html
+          import json
+          import os
+          from pathlib import Path
+
+          snapshot_dir = Path(os.environ["SNAPSHOT_DIR"])
+          charts_dir = snapshot_dir / "charts"
+          report_title = os.environ["EW_REPORT_TITLE"]
+          outlook_paths = sorted(charts_dir.glob("*live-scenario-outlooks.json"))
+          if not outlook_paths:
+              raise SystemExit("No scenario-outlook JSON found")
+          outlook_path = outlook_paths[0]
+          outlook = json.loads(outlook_path.read_text(encoding="utf-8"))
+          scenarios = outlook.get("scenarios", [])
+
+          def pct(value):
+              try:
+                  return f"{float(value):.1f}%"
+              except (TypeError, ValueError):
+                  return ""
+
+          markdown_lines = [
+              "# EW Snapshot Analysis",
+              "",
+              f"## {report_title}",
+              "",
+              f"- Generated: {outlook.get('generatedAtUtc', '')}",
+              f"- Series: {outlook.get('seriesName', '')}",
+              f"- Exchange: {outlook.get('exchange', '')}",
+              f"- Instrument: {outlook.get('normalizedInstrument', '')}",
+              f"- Lookback: {outlook.get('lookbackDays', '')} daily bars",
+              f"- Current-cycle summary: `{Path(outlook.get('summaryPath', '')).name}`",
+              f"- Scenario outlook JSON: `{outlook_path.name}`",
+              "",
+              "| Scenario | Phase | Type | Direction | Confidence | Probability | Invalidation | Target | Chart |",
+              "| --- | --- | --- | --- | ---: | ---: | --- | --- | --- |",
+          ]
+          for row in scenarios:
+              chart_name = Path(row.get("chartPath", "")).name
+              markdown_lines.append(
+                  "| {label} | {phase} | {type} | {direction} | {confidence} | {probability} | {invalidation} | {target} | `{chart}` |".format(
+                      label=row.get("label", ""),
+                      phase=row.get("phase", ""),
+                      type=row.get("type", ""),
+                      direction=row.get("direction", ""),
+                      confidence=pct(row.get("confidence")),
+                      probability=pct(row.get("probability")),
+                      invalidation=row.get("invalidation", ""),
+                      target=row.get("target", ""),
+                      chart=chart_name,
+                  )
+              )
+          markdown_lines.append("")
+          markdown = "\n".join(markdown_lines)
+          (snapshot_dir / "ew-snapshot-report.md").write_text(markdown, encoding="utf-8")
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
+              summary.write(markdown)
+              summary.write("\n")
+
+          html_parts = [
+              "<!doctype html>",
+              "<html lang=\"en\">",
+              "<head>",
+              "<meta charset=\"utf-8\">",
+              f"<title>{html.escape(report_title)} EW Snapshot</title>",
+              "<style>",
+              "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:24px;line-height:1.45;color:#17202a;background:#f8fafc}",
+              "h1,h2{margin:0 0 12px}",
+              "table{border-collapse:collapse;width:100%;background:#fff;margin:16px 0 28px}",
+              "th,td{border:1px solid #d8dee9;padding:8px;text-align:left;vertical-align:top}",
+              "th{background:#eef2f7}",
+              "figure{margin:0 0 28px;background:#fff;border:1px solid #d8dee9;padding:12px}",
+              "img{max-width:100%;height:auto;display:block}",
+              "code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}",
+              "</style>",
+              "</head>",
+              "<body>",
+              f"<h1>EW Snapshot Analysis</h1><h2>{html.escape(report_title)}</h2>",
+              "<table><thead><tr><th>Scenario</th><th>Phase</th><th>Type</th><th>Direction</th><th>Confidence</th><th>Probability</th><th>Invalidation</th><th>Target</th></tr></thead><tbody>",
+          ]
+          for row in scenarios:
+              html_parts.append(
+                  "<tr><td>{label}</td><td>{phase}</td><td>{type}</td><td>{direction}</td><td>{confidence}</td><td>{probability}</td><td>{invalidation}</td><td>{target}</td></tr>".format(
+                      label=html.escape(str(row.get("label", ""))),
+                      phase=html.escape(str(row.get("phase", ""))),
+                      type=html.escape(str(row.get("type", ""))),
+                      direction=html.escape(str(row.get("direction", ""))),
+                      confidence=html.escape(pct(row.get("confidence"))),
+                      probability=html.escape(pct(row.get("probability"))),
+                      invalidation=html.escape(str(row.get("invalidation", ""))),
+                      target=html.escape(str(row.get("target", ""))),
+                  )
+              )
+          html_parts.append("</tbody></table>")
+          for row in scenarios:
+              chart_path = charts_dir / Path(row.get("chartPath", "")).name
+              if not chart_path.exists():
+                  continue
+              encoded = base64.b64encode(chart_path.read_bytes()).decode("ascii")
+              html_parts.append(
+                  "<figure><figcaption><strong>{label}</strong> - {phase} ({type})</figcaption><img alt=\"{alt}\" src=\"data:image/jpeg;base64,{data}\"></figure>".format(
+                      label=html.escape(str(row.get("label", ""))),
+                      phase=html.escape(str(row.get("phase", ""))),
+                      type=html.escape(str(row.get("type", ""))),
+                      alt=html.escape(str(row.get("label", "scenario chart"))),
+                      data=encoded,
+                  )
+              )
+          html_parts.append("</body></html>")
+          (snapshot_dir / "ew-snapshot-report.html").write_text("\n".join(html_parts), encoding="utf-8")
+          PY
+
+      - name: Upload EW snapshot artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: ew-snapshot-${{ steps.inputs.outputs.exchange_slug }}-${{ steps.inputs.outputs.instrument_slug }}-${{ steps.inputs.outputs.lookback_days }}-${{ github.run_id }}
+          path: target/ew-snapshot/**
+          if-no-files-found: warn
