@@ -77,7 +77,7 @@
         <commons-math3.version>3.6.1</commons-math3.version>
         <gson.version>2.14.0</gson.version>
         <jfreechart.version>1.5.6</jfreechart.version>
-        <junit-jupiter.version>6.1.0</junit-jupiter.version>
+        <junit-jupiter.version>6.0.3</junit-jupiter.version>
         <log4j2.version>2.25.4</log4j2.version>
         <mockito.version>5.23.0</mockito.version>
         <opencsv.version>5.12.0</opencsv.version>

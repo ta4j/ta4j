@@ -544,7 +544,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
         BarSeries subSeries = series.getSubSeries(1, 4);
 
-        assertNotNull("SubSeries should be ConcurrentBarSeries", subSeries);
+        assertTrue("SubSeries should be ConcurrentBarSeries", subSeries instanceof ConcurrentBarSeries);
         assertEquals(3, subSeries.getBarCount());
         assertEquals(0, subSeries.getBeginIndex());
         assertEquals(2, subSeries.getEndIndex());
