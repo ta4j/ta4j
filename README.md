@@ -938,6 +938,25 @@ Num invalidation = facade.invalidationLevel().getValue(index);
 
 See the [Elliott Wave Indicators wiki guide](https://ta4j.github.io/ta4j-wiki/Elliott-Wave-Indicators.html) for the full quickstart and analyzer-based workflow.
 
+## LPPL exhaustion quickstart
+
+LPPL exhaustion indicators fit a Log-Periodic Power Law model to rolling log-price windows to surface late-stage bubble and crash setups. Use `LPPLExhaustionIndicator` when you need fit diagnostics and `LPPLExhaustionScoreIndicator` when rules or charts only need a bounded score.
+
+```java
+BarSeries series = ...;
+int index = series.getEndIndex();
+
+LPPLExhaustionIndicator exhaustion = new LPPLExhaustionIndicator(series);
+LPPLExhaustion snapshot = exhaustion.getValue(index);
+
+LPPLExhaustionScoreIndicator score = new LPPLExhaustionScoreIndicator(exhaustion);
+Num boundedScore = score.getValue(index); // positive = crash exhaustion, negative = bubble exhaustion
+```
+
+Use `new LPPLExhaustionIndicator(priceIndicator, profile)` or `new LPPLExhaustionScoreIndicator(priceIndicator, profile)` when you need injected prices or tighter calibration settings. LPPL fitting is sensitive to start date and split/distribution discontinuities, so equity examples should use adjusted prices.
+
+The `ta4j-examples` module includes `SpdrSectorLPPLRotationDemo`, a State Street SPDR sector ETF universe example that emits deterministic CSV/report artifacts with signed standalone LPPL scores, universe-relative rotation scores, qualitative crash/bubble exhaustion buckets, calibration metadata, fit-status diagnostics, and reference-data refresh metadata. By default the demo refreshes Yahoo Finance deltas into `target/analysis-demos/lppl-sector-rotation/reference-data`; set `ta4j.lpplUpdateReferenceData=true` only in the reviewable automation flow that updates committed adjusted resources.
+
 ## Real-world examples
 
 The `ta4j-examples` module includes runnable examples demonstrating common patterns and strategies:
@@ -971,6 +990,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[ElliottWaveAnchorCalibrationHarness](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveAnchorCalibrationHarness.java)** - Replays a versioned BTC cycle-anchor registry against the locked walk-forward baseline, promotes a challenger only when every holdout gate clears, and otherwise keeps the baseline while printing the failed-gate summary plus ETH/USD and S&P 500 portability checks.
 - **[ElliottWaveTrendBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/ElliottWaveTrendBacktest.java)** - Evaluates trend-bias directionality over backtest and walk-forward windows.
 - **[HighRewardElliottWaveBacktest](ta4j-examples/src/main/java/ta4jexamples/analysis/elliottwave/backtest/HighRewardElliottWaveBacktest.java)** - Backtests the high-reward Elliott Wave strategy presets.
+- **[SpdrSectorLPPLRotationDemo](ta4j-examples/src/main/java/ta4jexamples/analysis/lppl/SpdrSectorLPPLRotationDemo.java)** - Runs LPPL crash/bubble exhaustion scoring across the closed State Street SPDR sector ETF universe using adjusted daily resources, incremental Yahoo refresh copies, and deterministic sector report artifacts.
 - **[WyckoffCycleIndicatorSuiteDemo](ta4j-examples/src/main/java/ta4jexamples/wyckoff/WyckoffCycleIndicatorSuiteDemo.java)** - Demonstrates the Wyckoff cycle entry points (`WyckoffCycleFacade`, `WyckoffCycleAnalysis`) and prints phase transitions on an ossified bar series dataset
 - **[SimpleMovingAverageRangeBacktest](ta4j-examples/src/main/java/ta4jexamples/backtesting/SimpleMovingAverageRangeBacktest.java)** - Compare and rank strategy parameter combinations with weighted criteria
 - **[TradeFillRecordingExample](ta4j-examples/src/main/java/ta4jexamples/backtesting/TradeFillRecordingExample.java)** - Walk through a live-style partial-fill workflow with `TradingRecord.operate(fill)`, inspect `getOpenPositions()` versus `getCurrentPosition()`, and compare `FIFO`, `LIFO`, `AVG_COST`, and `SPECIFIC_ID` partial-exit matching.

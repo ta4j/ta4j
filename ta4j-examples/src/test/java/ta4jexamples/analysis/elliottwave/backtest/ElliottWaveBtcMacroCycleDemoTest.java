@@ -48,7 +48,7 @@ import org.ta4j.core.indicators.elliott.ScenarioType;
 import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader;
 import ta4jexamples.charting.annotation.BarSeriesLabelIndicator.BarLabel;
 
-@Tag("analysis-demo")
+@Tag("elliott-macro-cycle-replay")
 class ElliottWaveBtcMacroCycleDemoTest {
 
     private static final Logger LOG = LogManager.getLogger(ElliottWaveBtcMacroCycleDemoTest.class);

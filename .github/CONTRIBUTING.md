@@ -68,10 +68,11 @@ Open an issue to discuss the new indicator first. Every indicator must ship with
 Regular PR and push CI skips test tags configured by `ta4j.excludedTestTags`.
 Run tagged suites manually from GitHub Actions, or locally with:
 
-- `xvfb-run mvn -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay`
+- `xvfb-run mvn -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,lppl-sector-rotation-demo,elliott-macro-cycle-replay`
 - `xvfb-run mvn -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.runBenchmarks=true`
-- `xvfb-run mvn -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags=elliott-macro-cycle-replay -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
-- `xvfb-run mvn -B test -Dgroups=elliott-macro-cycle-replay -Dta4j.excludedTestTags= -Dtest=ElliottWaveMacroCycleDetectorTest`
+- `xvfb-run mvn -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags=lppl-sector-rotation-demo,elliott-macro-cycle-replay -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
+- `xvfb-run mvn -B test -Dgroups=lppl-sector-rotation-demo -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay -Dta4j.lpplDemoOutputDir=target/analysis-demos/lppl-sector-rotation -Dta4j.lpplReferenceDataDir=ta4j-examples/src/main/resources`
+- `xvfb-run mvn -B test -Dgroups=elliott-macro-cycle-replay -Dta4j.excludedTestTags= -Dtest=ElliottWaveMacroCycleDetectorTest,ElliottWaveBtcMacroCycleDemoTest`
 
 These examples match the Linux GitHub Actions runners. On macOS, use XQuartz or
 run the Maven command without `xvfb-run` when your local display can satisfy
@@ -82,24 +83,34 @@ The dedicated workflows are:
 - `Run Integration Tagged Tests` (`.github/workflows/test-tag-integration.yml`)
 - `Run Benchmark Tagged Tests` (`.github/workflows/test-tag-benchmark.yml`)
 - `Run Analysis Demo Tagged Tests` (`.github/workflows/test-tag-analysis-demo.yml`)
+- `Run LPPL Sector Rotation Demo Tagged Tests` (`.github/workflows/test-tag-lppl-sector-rotation-demo.yml`)
 - `Run Elliott Macro Cycle Replay Tagged Tests` (`.github/workflows/test-tag-elliott-macro-cycle-replay.yml`)
 
-Scheduled runs are opt-in per tag. Set `TA4J_TAGGED_TEST_<TAG>_SCHEDULE_ENABLED=true`
-and `TA4J_TAGGED_TEST_<TAG>_SCHEDULE_SLOT=daily`, `weekly`, or `monthly`.
-Unset variables leave scheduled runs disabled, while manual workflow dispatches run
-regardless of the schedule variables. The `elliott-macro-cycle-replay` workflow
-is manual-only and requires a self-hosted runner labeled `ta4j-macro-cycle-replay`.
+Scheduled runs are opt-in per tag except `lppl-sector-rotation-demo`, which runs
+weekly by default unless
+`TA4J_TAGGED_TEST_LPPL_SECTOR_ROTATION_DEMO_SCHEDULE_ENABLED=false`. For other
+tagged schedules, set `TA4J_TAGGED_TEST_<TAG>_SCHEDULE_ENABLED=true` and
+`TA4J_TAGGED_TEST_<TAG>_SCHEDULE_SLOT=daily`, `weekly`, or `monthly`. Daily and
+monthly LPPL runs also require the LPPL schedule variable to be enabled and the
+slot set to `daily` or `monthly`. Manual workflow dispatches run regardless of
+the schedule variables. The `elliott-macro-cycle-replay` workflow is manual-only
+and requires a self-hosted runner labeled `ta4j-macro-cycle-replay`.
 
-The `analysis-demo` tag is for examples that produce analysis reports and must
-be the only JUnit tag on each tagged test or class.
+The `analysis-demo` tag is for Elliott examples that produce analysis reports
+and must be the only JUnit tag on each tagged test or class.
 Its workflow defaults to `coinbase:BTC-USD`, accepts provider-qualified manual
 inputs such as `coinbase:ETH-USD` or `coinbase:ETH/USD`, and uploads generated
-JSON, charts, and cached provider responses from `target/analysis-demos/**`.
-Version 1 supports Coinbase instruments only. For scheduled analysis-demo runs,
-`weekly` is the intended slot; use
-`TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_ENABLED=true` with
-`TA4J_TAGGED_TEST_ANALYSIS_DEMO_SCHEDULE_SLOT=weekly`, and set
-`TA4J_ANALYSIS_DEMO_INSTRUMENT` to override the scheduled instrument.
+JSON, charts, and cached provider responses from
+`target/analysis-demos/elliott-wave/**`. Set `TA4J_ANALYSIS_DEMO_INSTRUMENT` to
+override the scheduled Elliott instrument.
+
+The `lppl-sector-rotation-demo` tag is for the SPDR LPPL sector rotation report.
+Its workflow writes LPPL reports, refreshed reference-data copies, and Yahoo
+response caches under `target/analysis-demos/lppl-sector-rotation/**`. Scheduled
+and manually dispatched LPPL workflow runs set `ta4j.lpplUpdateReferenceData=true`;
+when adjusted SPDR resource files change, the workflow opens or updates the
+`automation/lppl-spdr-reference-data` branch instead of pushing directly to
+`master`.
 
 ## API lifecycle and @since policy
 

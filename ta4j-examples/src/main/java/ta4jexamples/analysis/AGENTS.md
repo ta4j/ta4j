@@ -11,3 +11,5 @@
   4. Rename the consolidated file to the resource naming convention `{Source}-{TICKER}-{INTERVAL}-{START}_{END}.json` (example: `Coinbase-BTC-USD-PT1D-20230616_20231011.json`) and move it to `ta4j-examples/src/main/resources`.
      - Note: cached response filenames may use `PT24H` for daily candles; resources should use the `PT1D` / `PT4H` / `PT5M` style used by `ta4jexamples.datasources.file.AbstractFileBarSeriesDataSource`.
   5. Update the demo class to initialize its `BarSeries` from the resource JSON (via `ta4jexamples.datasources.JsonFileBarSeriesDataSource`).
+
+- For LPPL equity or ETF demos that span splits or distributions, stage split-adjusted/adjusted price resources and document that adjustment in the demo Javadoc. Raw split jumps can dominate LPPL fits and create false exhaustion signals.

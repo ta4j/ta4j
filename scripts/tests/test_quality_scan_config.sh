@@ -114,7 +114,7 @@ test_ci_runs_verify_for_both_jobs() {
   echo "Running test_ci_runs_verify_for_both_jobs"
 
   expect_file_contains "$WORKFLOW" "run: xvfb-run mvn -B verify" "default CI job should run verify"
-  expect_file_contains "$WORKFLOW" "run: xvfb-run mvn -B verify -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay" "non-demo CI job should run verify"
+  expect_file_contains "$WORKFLOW" "run: xvfb-run mvn -B verify -Dta4j.excludedTestTags=analysis-demo,lppl-sector-rotation-demo,elliott-macro-cycle-replay" "non-demo CI job should run verify"
 
   pass "test_ci_runs_verify_for_both_jobs"
 }
