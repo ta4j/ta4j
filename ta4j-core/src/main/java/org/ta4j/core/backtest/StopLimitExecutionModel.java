@@ -130,6 +130,19 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         return Optional.of(order.snapshot());
     }
 
+    ExecutionTarget estimatedEntryTarget(int signalIndex, BarSeries barSeries, TradeType tradeType) {
+        ExecutionTarget referenceTarget = ExecutionModelSupport.resolveExecutionTarget(signalIndex, barSeries,
+                priceSource);
+        if (referenceTarget == null) {
+            return null;
+        }
+        int activationIndex = resolveActivationIndex(referenceTarget.index());
+        if (activationIndex > barSeries.getEndIndex()) {
+            return null;
+        }
+        return new ExecutionTarget(activationIndex, toLimitPrice(referenceTarget.price(), tradeType));
+    }
+
     @Override
     public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
         Objects.requireNonNull(tradingRecord, "tradingRecord");

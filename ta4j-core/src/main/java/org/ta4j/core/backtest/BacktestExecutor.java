@@ -21,6 +21,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.IntStream;
 
 /**
@@ -177,6 +178,19 @@ public class BacktestExecutor {
     }
 
     /**
+     * Executes given strategies and returns trading statements using a dynamic
+     * entry position sizer.
+     *
+     * @param strategies    the strategies
+     * @param positionSizer dynamic entry position sizer
+     * @return a list of TradingStatements
+     * @since 0.22.7
+     */
+    public List<TradingStatement> execute(List<Strategy> strategies, PositionSizer positionSizer) {
+        return execute(strategies, positionSizer, Trade.TradeType.BUY);
+    }
+
+    /**
      * Executes given strategies with specified trade type to open the position and
      * return the trading statements.
      *
@@ -187,6 +201,21 @@ public class BacktestExecutor {
      */
     public List<TradingStatement> execute(List<Strategy> strategies, Num amount, Trade.TradeType tradeType) {
         return executeWithRuntimeReport(strategies, amount, tradeType).tradingStatements();
+    }
+
+    /**
+     * Executes given strategies with specified trade type to open the position and
+     * return the trading statements.
+     *
+     * @param strategies    the strategies
+     * @param positionSizer dynamic entry position sizer
+     * @param tradeType     the {@link Trade.TradeType} used to open the position
+     * @return a list of TradingStatements
+     * @since 0.22.7
+     */
+    public List<TradingStatement> execute(List<Strategy> strategies, PositionSizer positionSizer,
+            Trade.TradeType tradeType) {
+        return executeWithRuntimeReport(strategies, positionSizer, tradeType).tradingStatements();
     }
 
     /**
@@ -206,6 +235,19 @@ public class BacktestExecutor {
 
     /**
      * Executes strategies while collecting runtime measurements and trading
+     * statements using a dynamic entry position sizer.
+     *
+     * @param strategies    the strategies
+     * @param positionSizer dynamic entry position sizer
+     * @return execution result with trading statements and runtime report
+     * @since 0.22.7
+     */
+    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, PositionSizer positionSizer) {
+        return executeWithRuntimeReport(strategies, positionSizer, Trade.TradeType.BUY);
+    }
+
+    /**
+     * Executes strategies while collecting runtime measurements and trading
      * statements.
      *
      * @param strategies the list of strategies to execute (read-only)
@@ -219,6 +261,21 @@ public class BacktestExecutor {
     public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, Num amount,
             Trade.TradeType tradeType) {
         return executeWithRuntimeReport(strategies, amount, tradeType, null);
+    }
+
+    /**
+     * Executes strategies while collecting runtime measurements and trading
+     * statements using a dynamic entry position sizer.
+     *
+     * @param strategies    the strategies
+     * @param positionSizer dynamic entry position sizer
+     * @param tradeType     the {@link Trade.TradeType} used to open the position
+     * @return execution result with trading statements and runtime report
+     * @since 0.22.7
+     */
+    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, PositionSizer positionSizer,
+            Trade.TradeType tradeType) {
+        return executeWithRuntimeReport(strategies, positionSizer, tradeType, null);
     }
 
     /**
@@ -254,6 +311,25 @@ public class BacktestExecutor {
 
     /**
      * Executes strategies while collecting runtime measurements and trading
+     * statements, with optional progress reporting, using a dynamic entry position
+     * sizer.
+     *
+     * @param strategies       the strategies
+     * @param positionSizer    dynamic entry position sizer
+     * @param tradeType        the {@link Trade.TradeType} used to open the position
+     * @param progressCallback optional callback for progress updates (receives
+     *                         completed count). May be null, in which case
+     *                         {@link ProgressCompletion#noOp()} is used.
+     * @return execution result with trading statements and runtime report
+     * @since 0.22.7
+     */
+    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, PositionSizer positionSizer,
+            Trade.TradeType tradeType, Consumer<Integer> progressCallback) {
+        return executeWithRuntimeReport(strategies, positionSizer, tradeType, progressCallback, DEFAULT_BATCH_SIZE);
+    }
+
+    /**
+     * Executes strategies while collecting runtime measurements and trading
      * statements, with configurable batch size and optional progress reporting.
      * <p>
      * When the strategy count exceeds {@value #PARALLEL_THRESHOLD}, uses batched
@@ -276,9 +352,39 @@ public class BacktestExecutor {
      */
     public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, Num amount,
             Trade.TradeType tradeType, Consumer<Integer> progressCallback, int batchSize) {
-        Objects.requireNonNull(strategies, "strategies must not be null");
         Objects.requireNonNull(amount, "amount must not be null");
+        return executeWithRuntimeReport(strategies, tradeType, progressCallback, batchSize,
+                strategy -> seriesManager.run(strategy, tradeType, amount));
+    }
+
+    /**
+     * Executes strategies while collecting runtime measurements and trading
+     * statements, with configurable batch size and optional progress reporting,
+     * using a dynamic entry position sizer.
+     *
+     * @param strategies       the strategies
+     * @param positionSizer    dynamic entry position sizer
+     * @param tradeType        the {@link Trade.TradeType} used to open the position
+     * @param progressCallback optional callback for progress updates (receives
+     *                         completed count). May be null.
+     * @param batchSize        the maximum number of strategies to process in each
+     *                         batch. Ignored if strategy count {@literal <=}
+     *                         {@value #PARALLEL_THRESHOLD}.
+     * @return execution result with trading statements and runtime report
+     * @since 0.22.7
+     */
+    public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, PositionSizer positionSizer,
+            Trade.TradeType tradeType, Consumer<Integer> progressCallback, int batchSize) {
+        Objects.requireNonNull(positionSizer, "positionSizer must not be null");
+        return executeWithRuntimeReport(strategies, tradeType, progressCallback, batchSize,
+                strategy -> seriesManager.run(strategy, tradeType, positionSizer));
+    }
+
+    private BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, Trade.TradeType tradeType,
+            Consumer<Integer> progressCallback, int batchSize, Function<Strategy, TradingRecord> tradingRecordRunner) {
+        Objects.requireNonNull(strategies, "strategies must not be null");
         Objects.requireNonNull(tradeType, "tradeType must not be null");
+        Objects.requireNonNull(tradingRecordRunner, "tradingRecordRunner must not be null");
 
         if (batchSize <= 0) {
             throw new IllegalArgumentException("batchSize must be positive");
@@ -306,10 +412,10 @@ public class BacktestExecutor {
         if (strategyCount > PARALLEL_THRESHOLD) {
             int effectiveBatchSize = strategyCount > LARGE_COUNT_THRESHOLD ? Math.min(batchSize, SMALL_BATCH_SIZE)
                     : batchSize;
-            executeBatched(strategyArray, statements, durations, amount, tradeType, effectiveCallback,
+            executeBatched(strategyArray, statements, durations, tradingRecordRunner, effectiveCallback,
                     effectiveBatchSize);
         } else {
-            executeUnbounded(strategyArray, statements, durations, amount, tradeType, effectiveCallback);
+            executeUnbounded(strategyArray, statements, durations, tradingRecordRunner, effectiveCallback);
         }
 
         Duration overallRuntime = Duration.ofNanos(System.nanoTime() - overallStart);
@@ -400,6 +506,61 @@ public class BacktestExecutor {
     }
 
     /**
+     * Executes walk-forward testing for one strategy with a dynamic entry amount
+     * provider and strategy starting trade type.
+     *
+     * @param strategy      strategy to execute
+     * @param positionSizer dynamic entry position sizer
+     * @param config        walk-forward configuration
+     * @return walk-forward execution result
+     * @since 0.22.7
+     */
+    public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy, PositionSizer positionSizer,
+            WalkForwardConfig config) {
+        Objects.requireNonNull(strategy, "strategy");
+        return executeWalkForward(strategy, positionSizer, strategy.getStartingType(), config, null);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy with dynamic entry amount
+     * provider and explicit trade type.
+     *
+     * @param strategy      strategy to execute
+     * @param positionSizer dynamic entry position sizer
+     * @param tradeType     trade type used to open positions
+     * @param config        walk-forward configuration
+     * @return walk-forward execution result
+     * @since 0.22.7
+     */
+    public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy, PositionSizer positionSizer,
+            Trade.TradeType tradeType, WalkForwardConfig config) {
+        return executeWalkForward(strategy, positionSizer, tradeType, config, null);
+    }
+
+    /**
+     * Executes walk-forward testing for one strategy with dynamic entry amount
+     * provider and optional per-fold progress callback.
+     *
+     * @param strategy         strategy to execute
+     * @param positionSizer    dynamic entry position sizer
+     * @param tradeType        trade type used to open positions
+     * @param config           walk-forward configuration
+     * @param progressCallback optional callback receiving completed fold count
+     * @return walk-forward execution result
+     * @since 0.22.7
+     */
+    public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy, PositionSizer positionSizer,
+            Trade.TradeType tradeType, WalkForwardConfig config, Consumer<Integer> progressCallback) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(positionSizer, "positionSizer");
+        Objects.requireNonNull(tradeType, "tradeType");
+        Objects.requireNonNull(config, "config");
+        StrategyWalkForwardExecutor executor = new StrategyWalkForwardExecutor(seriesManager, tradingStatementGenerator,
+                new AnchoredExpandingWalkForwardSplitter());
+        return executor.execute(strategy, tradeType, positionSizer, config, progressCallback);
+    }
+
+    /**
      * Runs both standard backtest and walk-forward evaluation for one strategy
      * using strategy starting type and unit amount.
      *
@@ -453,6 +614,45 @@ public class BacktestExecutor {
     }
 
     /**
+     * Runs both standard backtest and walk-forward evaluation for one strategy with
+     * a dynamic entry position sizer.
+     *
+     * @param strategy      strategy to execute
+     * @param positionSizer dynamic entry position sizer
+     * @param config        walk-forward configuration
+     * @return combined backtest and walk-forward result
+     * @since 0.22.7
+     */
+    public BacktestAndWalkForwardResult executeWithWalkForward(Strategy strategy, PositionSizer positionSizer,
+            WalkForwardConfig config) {
+        Objects.requireNonNull(strategy, "strategy");
+        return executeWithWalkForward(strategy, positionSizer, strategy.getStartingType(), config);
+    }
+
+    /**
+     * Runs both standard backtest and walk-forward evaluation for one strategy.
+     *
+     * @param strategy      strategy to execute
+     * @param positionSizer dynamic entry position sizer
+     * @param tradeType     trade type used to open positions
+     * @param config        walk-forward configuration
+     * @return combined backtest and walk-forward result
+     * @since 0.22.7
+     */
+    public BacktestAndWalkForwardResult executeWithWalkForward(Strategy strategy, PositionSizer positionSizer,
+            Trade.TradeType tradeType, WalkForwardConfig config) {
+        Objects.requireNonNull(strategy, "strategy");
+        Objects.requireNonNull(positionSizer, "positionSizer");
+        Objects.requireNonNull(tradeType, "tradeType");
+        Objects.requireNonNull(config, "config");
+
+        BacktestExecutionResult backtestResult = executeWithRuntimeReport(List.of(strategy), positionSizer, tradeType);
+        StrategyWalkForwardExecutionResult walkForwardResult = executeWalkForward(strategy, positionSizer, tradeType,
+                config);
+        return new BacktestAndWalkForwardResult(backtestResult, walkForwardResult);
+    }
+
+    /**
      * Executes strategies and returns only the top K results based on a criterion,
      * using a streaming approach that minimizes memory usage.
      * <p>
@@ -481,10 +681,41 @@ public class BacktestExecutor {
      */
     public BacktestExecutionResult executeAndKeepTopK(List<Strategy> strategies, Num amount, Trade.TradeType tradeType,
             AnalysisCriterion criterion, int topK, Consumer<Integer> progressCallback) {
-        Objects.requireNonNull(strategies, "strategies must not be null");
         Objects.requireNonNull(amount, "amount must not be null");
         Objects.requireNonNull(tradeType, "tradeType must not be null");
+        return executeAndKeepTopK(strategies, criterion, topK, progressCallback,
+                strategy -> seriesManager.run(strategy, tradeType, amount));
+    }
+
+    /**
+     * Executes strategies and returns only the top K results based on a criterion,
+     * using a streaming approach and dynamic entry position sizer.
+     *
+     * @param strategies       the strategies to evaluate
+     * @param positionSizer    dynamic entry position sizer
+     * @param tradeType        the {@link Trade.TradeType} used to open the position
+     * @param criterion        the criterion used to rank strategies (higher is
+     *                         better)
+     * @param topK             the maximum number of top strategies to return
+     * @param progressCallback optional callback for progress updates (receives
+     *                         completed count). May be null.
+     * @return execution result containing only the top K strategies and runtime
+     *         report
+     * @since 0.22.7
+     */
+    public BacktestExecutionResult executeAndKeepTopK(List<Strategy> strategies, PositionSizer positionSizer,
+            Trade.TradeType tradeType, AnalysisCriterion criterion, int topK, Consumer<Integer> progressCallback) {
+        Objects.requireNonNull(positionSizer, "positionSizer must not be null");
+        Objects.requireNonNull(tradeType, "tradeType must not be null");
+        return executeAndKeepTopK(strategies, criterion, topK, progressCallback,
+                strategy -> seriesManager.run(strategy, tradeType, positionSizer));
+    }
+
+    private BacktestExecutionResult executeAndKeepTopK(List<Strategy> strategies, AnalysisCriterion criterion, int topK,
+            Consumer<Integer> progressCallback, Function<Strategy, TradingRecord> tradingRecordRunner) {
+        Objects.requireNonNull(strategies, "strategies must not be null");
         Objects.requireNonNull(criterion, "criterion must not be null");
+        Objects.requireNonNull(tradingRecordRunner, "tradingRecordRunner must not be null");
 
         if (topK <= 0) {
             throw new IllegalArgumentException("topK must be positive");
@@ -530,7 +761,7 @@ public class BacktestExecutor {
                 Strategy strategy = strategyArray[globalIndex];
 
                 long strategyStart = System.nanoTime();
-                TradingRecord tradingRecord = seriesManager.run(strategy, tradeType, amount);
+                TradingRecord tradingRecord = tradingRecordRunner.apply(strategy);
                 TradingStatement statement = tradingStatementGenerator.generate(strategy, tradingRecord,
                         seriesManager.getBarSeries());
                 long duration = System.nanoTime() - strategyStart;
@@ -675,8 +906,8 @@ public class BacktestExecutor {
     /**
      * Executes strategies using unbounded parallel execution (standard behavior).
      */
-    private void executeUnbounded(Strategy[] strategyArray, TradingStatement[] statements, long[] durations, Num amount,
-            Trade.TradeType tradeType, Consumer<Integer> progressCallback) {
+    private void executeUnbounded(Strategy[] strategyArray, TradingStatement[] statements, long[] durations,
+            Function<Strategy, TradingRecord> tradingRecordRunner, Consumer<Integer> progressCallback) {
         int strategyCount = strategyArray.length;
         ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
 
@@ -688,7 +919,7 @@ public class BacktestExecutor {
         indexStream.forEach(index -> {
             Strategy strategy = strategyArray[index];
             long strategyStart = System.nanoTime();
-            TradingRecord tradingRecord = seriesManager.run(strategy, tradeType, amount);
+            TradingRecord tradingRecord = tradingRecordRunner.apply(strategy);
             TradingStatement statement = tradingStatementGenerator.generate(strategy, tradingRecord,
                     seriesManager.getBarSeries());
             statements[index] = statement;
@@ -705,8 +936,8 @@ public class BacktestExecutor {
      * processed in parallel, but batches are executed sequentially with explicit GC
      * hints between batches.
      */
-    private void executeBatched(Strategy[] strategyArray, TradingStatement[] statements, long[] durations, Num amount,
-            Trade.TradeType tradeType, Consumer<Integer> progressCallback, int batchSize) {
+    private void executeBatched(Strategy[] strategyArray, TradingStatement[] statements, long[] durations,
+            Function<Strategy, TradingRecord> tradingRecordRunner, Consumer<Integer> progressCallback, int batchSize) {
         int strategyCount = strategyArray.length;
         ProgressTracker progressTracker = ProgressTracker.create(progressCallback);
 
@@ -718,7 +949,7 @@ public class BacktestExecutor {
                 int globalIndex = batchStartFinal + localIndex;
                 Strategy strategy = strategyArray[globalIndex];
                 long strategyStart = System.nanoTime();
-                TradingRecord tradingRecord = seriesManager.run(strategy, tradeType, amount);
+                TradingRecord tradingRecord = tradingRecordRunner.apply(strategy);
                 TradingStatement statement = tradingStatementGenerator.generate(strategy, tradingRecord,
                         seriesManager.getBarSeries());
                 statements[globalIndex] = statement;

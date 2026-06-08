@@ -506,6 +506,23 @@ BacktestExecutionResult result = new BacktestExecutor(series)
         Trade.TradeType.BUY,           // long positions (use Trade.TradeType.SELL for shorts)
         ProgressCompletion.loggingWithMemory()); // logs progress with memory stats
 
+// Or size each entry dynamically. PositionSizer.fixed() is the default unit
+// amount; balance(...) invests the current realized balance with entry-fee
+// awareness; and kelly(...) applies the Kelly fraction to that balance.
+PositionSizer unitAmount = PositionSizer.fixed();
+PositionSizer allInBalance = PositionSizer.balance(10_000);
+PositionSizer halfKelly = PositionSizer.kelly(10_000, 0.55, 1.8, 0.5);
+PositionSizer quarterBalance = PositionSizer.balance(10_000,
+    (context, balance) -> context.maxAffordableAmount(balance.multipliedBy(context.numOf(0.25))));
+
+BacktestExecutionResult dynamicallySizedResult = new BacktestExecutor(series)
+    .executeWithRuntimeReport(strategies, allInBalance, Trade.TradeType.BUY);
+
+// The same sizer works with top-K and walk-forward execution. It sizes
+// entries; exits close the currently open amount.
+// Reused PositionSizer instances should be stateless or thread-safe because
+// executor and top-K variants can evaluate strategies in parallel.
+
 // Weight net profit at 70% and return over max drawdown at 30%.
 // Weights are normalized internally, so 7/3 and 0.7/0.3 are equivalent.
 AnalysisCriterion netProfitCriterion = new NetProfitCriterion();
