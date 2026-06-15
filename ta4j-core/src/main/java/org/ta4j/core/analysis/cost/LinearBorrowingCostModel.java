@@ -9,21 +9,51 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.num.Num;
 
 /**
- * With this cost model, the trading costs for borrowing a position (i.e.
- * selling a position short) accrue linearly.
+ * With this cost model, the trading costs for borrowing a position accrue
+ * linearly.
+ *
+ * <p>
+ * By default borrowing costs apply to short positions only (the historical
+ * behavior). Use {@link #LinearBorrowingCostModel(double, Applicability)} to
+ * apply them to long positions, or to both sides.
  */
 public class LinearBorrowingCostModel implements CostModel {
+
+    /** Defines which position sides incur borrowing costs. */
+    public enum Applicability {
+        /** Borrowing costs apply to short positions only (default). */
+        SHORT_ONLY,
+        /** Borrowing costs apply to long positions only. */
+        LONG_ONLY,
+        /** Borrowing costs apply to both long and short positions. */
+        BOTH
+    }
 
     /** The slope of the linear model (fee per period). */
     private final double feePerPeriod;
 
+    /** Which position sides incur borrowing costs. */
+    private final Applicability applicability;
+
     /**
-     * Constructor with {@code feePerPeriod * nPeriod}.
+     * Constructor with {@code feePerPeriod * nPeriod}. Borrowing costs apply to
+     * short positions only (backward-compatible default).
      *
      * @param feePerPeriod the coefficient (e.g. 0.0001 for 1bp per period)
      */
     public LinearBorrowingCostModel(double feePerPeriod) {
+        this(feePerPeriod, Applicability.SHORT_ONLY);
+    }
+
+    /**
+     * Constructor with {@code feePerPeriod * nPeriod}.
+     *
+     * @param feePerPeriod  the coefficient (e.g. 0.0001 for 1bp per period)
+     * @param applicability which position sides incur borrowing costs
+     */
+    public LinearBorrowingCostModel(double feePerPeriod, Applicability applicability) {
         this.feePerPeriod = feePerPeriod;
+        this.applicability = applicability;
     }
 
     /**
@@ -56,8 +86,8 @@ public class LinearBorrowingCostModel implements CostModel {
         Trade exitTrade = position.getExit();
         Num borrowingCost = position.getEntry().getNetPrice().getNumFactory().zero();
 
-        // Borrowing costs only apply to short positions.
-        if (entryTrade != null && entryTrade.getType().equals(TradeType.SELL) && entryTrade.getAmount() != null) {
+        // Borrowing costs apply according to the configured applicability.
+        if (entryTrade != null && entryTrade.getAmount() != null && appliesTo(entryTrade.getType())) {
             int tradingPeriods = 0;
             if (position.isClosed()) {
                 tradingPeriods = exitTrade.getIndex() - entryTrade.getIndex();
@@ -67,6 +97,19 @@ public class LinearBorrowingCostModel implements CostModel {
             borrowingCost = getHoldingCostForPeriods(tradingPeriods, position.getEntry().getValue());
         }
         return borrowingCost;
+    }
+
+    /**
+     * @param type the entry {@link TradeType} of the position
+     * @return {@code true} if borrowing costs apply to a position entered with this
+     *         trade type
+     */
+    private boolean appliesTo(TradeType type) {
+        return switch (applicability) {
+        case BOTH -> true;
+        case LONG_ONLY -> type == TradeType.BUY;
+        case SHORT_ONLY -> type == TradeType.SELL;
+        };
     }
 
     /**
@@ -84,7 +127,8 @@ public class LinearBorrowingCostModel implements CostModel {
     public boolean equals(CostModel otherModel) {
         boolean equality = false;
         if (this.getClass().equals(otherModel.getClass())) {
-            equality = ((LinearBorrowingCostModel) otherModel).feePerPeriod == this.feePerPeriod;
+            LinearBorrowingCostModel other = (LinearBorrowingCostModel) otherModel;
+            equality = other.feePerPeriod == this.feePerPeriod && other.applicability == this.applicability;
         }
         return equality;
     }

@@ -18,6 +18,7 @@
 - **Report-producing analysis demos can run on demand or on schedule**: The new standalone `analysis-demo` JUnit tag starts with a live Elliott Wave BTC/USD macro report backed by Coinbase daily candles, plus a dedicated GitHub Actions workflow that can be manually run for provider-qualified instruments like `coinbase:BTC-USD` and uploads the resulting JSON, chart, and cached data artifacts.
 - **Elliott macro-cycle replay has a dedicated runner path**: The BTC macro-cycle replay regression now uses the explicit `elliott-macro-cycle-replay` JUnit tag and a manual-only self-hosted GitHub Actions workflow, keeping the multi-hour replay out of hosted PR verification and report-producing analysis-demo runs.
 - **PULL_REQUESTS.md guidance for AI agents**: New rules were added for handling pull requests.
+- **Configurable borrowing-cost applicability**: `LinearBorrowingCostModel` now accepts a `LinearBorrowingCostModel.Applicability` (`SHORT_ONLY`, `LONG_ONLY`, `BOTH`) so borrowing costs can apply to short, long, or both position sides. The existing single-argument constructor keeps the prior short-only behavior, so the change is backward compatible (`#1235`).
 
 ### Changed
 - **Build and test dependencies were refreshed**: The parent POM now pins SpotBugs `4.9.8.3`, JaCoCo `0.8.14`, Gson `2.14.0`, JUnit Jupiter `6.0.3`, Mockito `5.23.0`, and SLF4J `2.0.18`.

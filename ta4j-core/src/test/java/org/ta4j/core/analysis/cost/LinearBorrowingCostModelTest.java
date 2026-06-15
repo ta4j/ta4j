@@ -95,4 +95,43 @@ public class LinearBorrowingCostModelTest {
         assertFalse(inequality1);
         assertFalse(inequality2);
     }
+
+    @Test
+    public void buyPositionIncursCostWithBothApplicability() {
+        CostModel model = new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH);
+        int holdingPeriod = 2;
+        Trade entry = Trade.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        Trade exit = Trade.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
+        Position position = new Position(entry, exit, new ZeroCostModel(), model);
+        // 100 value * 2 periods * 0.01 fee = 2
+        assertNumEquals(DoubleNum.valueOf(2), model.calculate(position, holdingPeriod));
+    }
+
+    @Test
+    public void buyPositionIncursCostWithLongOnlyApplicability() {
+        CostModel model = new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.LONG_ONLY);
+        int holdingPeriod = 2;
+        Trade entry = Trade.buyAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        Trade exit = Trade.sellAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
+        Position position = new Position(entry, exit, new ZeroCostModel(), model);
+        assertNumEquals(DoubleNum.valueOf(2), model.calculate(position, holdingPeriod));
+    }
+
+    @Test
+    public void sellPositionHasNoCostWithLongOnlyApplicability() {
+        CostModel model = new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.LONG_ONLY);
+        int holdingPeriod = 2;
+        Trade entry = Trade.sellAt(0, DoubleNum.valueOf(100), DoubleNum.valueOf(1));
+        Trade exit = Trade.buyAt(holdingPeriod, DoubleNum.valueOf(110), DoubleNum.valueOf(1));
+        Position position = new Position(entry, exit, new ZeroCostModel(), model);
+        assertNumEquals(DoubleNum.valueOf(0), model.calculate(position, holdingPeriod));
+    }
+
+    @Test
+    public void equalsConsidersApplicability() {
+        CostModel shortOnly = new LinearBorrowingCostModel(0.01);
+        CostModel both = new LinearBorrowingCostModel(0.01, LinearBorrowingCostModel.Applicability.BOTH);
+        assertFalse(shortOnly.equals(both));
+        assertTrue(shortOnly.equals(new LinearBorrowingCostModel(0.01)));
+    }
 }
