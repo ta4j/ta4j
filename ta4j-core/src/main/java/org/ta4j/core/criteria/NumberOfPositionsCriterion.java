@@ -44,12 +44,13 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
     private final boolean lessIsBetter;
 
     private final PositionStatusFilter statusFilter;
+    private final boolean filterSinglePositions;
 
     /**
      * Constructor with {@link #lessIsBetter} = true.
      */
     public NumberOfPositionsCriterion() {
-        this(true, PositionStatusFilter.CLOSED);
+        this(true, PositionStatusFilter.CLOSED, false);
     }
 
     /**
@@ -58,7 +59,7 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
      * @param lessIsBetter the {@link #lessIsBetter}
      */
     public NumberOfPositionsCriterion(boolean lessIsBetter) {
-        this(lessIsBetter, PositionStatusFilter.CLOSED);
+        this(lessIsBetter, PositionStatusFilter.CLOSED, false);
     }
 
     /**
@@ -68,7 +69,7 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
      * @since 0.22.7
      */
     public NumberOfPositionsCriterion(PositionStatusFilter statusFilter) {
-        this(true, statusFilter);
+        this(true, statusFilter, true);
     }
 
     /**
@@ -79,16 +80,28 @@ public class NumberOfPositionsCriterion extends AbstractAnalysisCriterion {
      * @since 0.22.7
      */
     public NumberOfPositionsCriterion(boolean lessIsBetter, PositionStatusFilter statusFilter) {
+        this(lessIsBetter, statusFilter, true);
+    }
+
+    private NumberOfPositionsCriterion(boolean lessIsBetter, PositionStatusFilter statusFilter,
+            boolean filterSinglePositions) {
         this.lessIsBetter = lessIsBetter;
         this.statusFilter = Objects.requireNonNull(statusFilter, "statusFilter");
+        this.filterSinglePositions = filterSinglePositions;
     }
 
     @Override
     public Num calculate(BarSeries series, Position position) {
-        return switch (statusFilter) {
-        case CLOSED, ALL -> series.numFactory().one();
-        case OPEN -> position != null && position.isOpened() ? series.numFactory().one() : series.numFactory().zero();
+        if (!filterSinglePositions) {
+            return series.numFactory().one();
+        }
+
+        boolean countPosition = switch (statusFilter) {
+        case CLOSED -> position != null && position.isClosed();
+        case OPEN -> position != null && position.isOpened();
+        case ALL -> position != null && (position.isClosed() || position.isOpened());
         };
+        return countPosition ? series.numFactory().one() : series.numFactory().zero();
     }
 
     @Override
