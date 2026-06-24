@@ -34,9 +34,9 @@ jobs:
           java-version: 25
           cache: maven
 
-      - name: Build and run Elliott macro-cycle replay tagged tests with Maven
+      - name: Build and run Elliott macro-cycle replay tagged tests with Maven Wrapper
         run: >
-          xvfb-run mvn -B test
+          xvfb-run ./mvnw -B test
           -Dgroups=elliott-macro-cycle-replay
           -Dta4j.excludedTestTags=
           -Dtest=ElliottWaveMacroCycleDetectorTest

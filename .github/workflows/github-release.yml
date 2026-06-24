@@ -216,7 +216,7 @@ jobs:
 
           while true; do
             echo "audit:release_artifact_build attempt=${attempt}/${max_attempts}"
-            if mvn -B -DskipTests -Dgpg.skip=true -Pproduction-release package 2>&1 | tee release-artifact-build.log; then
+            if ./mvnw -B -DskipTests -Dgpg.skip=true -Pproduction-release package 2>&1 | tee release-artifact-build.log; then
               break
             fi
 

@@ -95,7 +95,7 @@ test_maven_workflow_jobs_setup_jdk25_before_maven() {
 
   local workflow
   for workflow in "$WORKFLOWS"/*.yml; do
-    if ! grep -Eq '(^|[[:space:]"({;])xvfb-run[[:space:]]+mvn[[:space:]-]|(^|[[:space:]"({;])mvn[[:space:]-]' "$workflow"; then
+    if ! grep -Eq '(^|[[:space:]"({;])xvfb-run[[:space:]]+(\./)?mvnw?([[:space:]-]|\.cmd)|(^|[[:space:]"({;])(\./)?mvnw?([[:space:]-]|\.cmd)' "$workflow"; then
       continue
     fi
 

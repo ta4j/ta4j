@@ -4,8 +4,10 @@ Use this guide when editing helper scripts or when orchestrating worktree/proces
 
 ## Build script contract
 
-- `run-full-build-quiet.sh` must enforce a default 3-minute timeout (`QUIET_BUILD_TIMEOUT_SECONDS` can override).
-- Preserve quiet-build behavior: full log under `.agents/logs/` and concise aggregated stdout.
+- `run-full-build-quiet.sh` and `run-full-build-quiet.ps1` default to Maven `verify`; use `--goals "goal..."` only when intentionally running a different Maven goal set.
+- `run-full-build-quiet.sh` must enforce a default 3-minute timeout (`QUIET_BUILD_TIMEOUT_SECONDS` can override). `QUIET_BUILD_HEARTBEAT_SECONDS` controls periodic still-running output.
+- Preserve quiet-build behavior: full log under `.agents/logs/` and concise aggregated stdout with command banner, heartbeat, unique warnings/errors, build result, aggregate test summary, and log path.
+- Keep Maven argument pass-through intact for focused modules, tagged tests, and quality-tool flags, for example `scripts/run-full-build-quiet.sh -- -pl ta4j-core` and `scripts/run-full-build-quiet.sh --goals test -- -Dgroups=integration`.
 - Use `mktemp` templates ending in `XXXXXX` for macOS portability.
 
 ## Scoped AGENTS discovery helper

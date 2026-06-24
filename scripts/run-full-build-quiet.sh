@@ -120,9 +120,62 @@ MAVEN_FLAGS=(
     -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=WARN
 )
 
+usage() {
+    cat <<'EOF'
+Usage: scripts/run-full-build-quiet.sh [--goals "goal..."] [--] [maven-args...]
+
+Runs Maven with filtered terminal output and writes the complete log to
+.agents/logs/full-build-*.log.
+
+Examples:
+  scripts/run-full-build-quiet.sh
+  scripts/run-full-build-quiet.sh -- -pl ta4j-core
+  scripts/run-full-build-quiet.sh --goals "test jacoco:report jacoco:check" -- -pl ta4j-core -am
+  scripts/run-full-build-quiet.sh --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay
+EOF
+}
+
+GOALS=(verify)
 EXTRA_MAVEN_ARGS=()
-if (($# > 0)); then
-    EXTRA_MAVEN_ARGS=("$@")
+while (($# > 0)); do
+    case "$1" in
+        -h|--help)
+            usage
+            exit 0
+            ;;
+        --goals)
+            shift
+            if (($# == 0)) || [[ -z "$1" ]]; then
+                echo "Missing value for --goals" >&2
+                exit 2
+            fi
+            read -r -a GOALS <<< "$1"
+            shift
+            ;;
+        --goals=*)
+            goal_value="${1#--goals=}"
+            if [[ -z "$goal_value" ]]; then
+                echo "Missing value for --goals" >&2
+                exit 2
+            fi
+            read -r -a GOALS <<< "$goal_value"
+            shift
+            ;;
+        --)
+            shift
+            EXTRA_MAVEN_ARGS+=("$@")
+            break
+            ;;
+        *)
+            EXTRA_MAVEN_ARGS+=("$1")
+            shift
+            ;;
+    esac
+done
+
+if ((${#GOALS[@]} == 0)); then
+    echo "At least one Maven goal is required" >&2
+    exit 2
 fi
 
 if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
@@ -133,7 +186,6 @@ if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
     printf '\n'
 fi
 
-GOALS=(clean license:format formatter:format test install)
 MAVEN_CMD_PREFIX=(mvn)
 if [[ -x "./mvnw" ]]; then
     MAVEN_CMD_PREFIX=("./mvnw")
@@ -151,7 +203,12 @@ if ((${#EXTRA_MAVEN_ARGS[@]} > 0)); then
 fi
 MVN_CMD+=("${GOALS[@]}")
 
-echo "Running ta4j full build quietly..."
+printf 'Maven goals:'
+for goal in "${GOALS[@]}"; do
+    printf ' %q' "$goal"
+done
+printf '\n'
+echo "Running ta4j Maven build quietly..."
 echo "Full log: $LOG_FILE_FOR_DISPLAY"
 echo
 
@@ -239,10 +296,14 @@ heartbeat_worker() {
     local start_time="$2"
     local heartbeat_interval="$3"
     while kill -0 "$build_pid" >/dev/null 2>&1; do
-        sleep "$heartbeat_interval"
-        if ! kill -0 "$build_pid" >/dev/null 2>&1; then
-            break
-        fi
+        local slept=0
+        while ((slept < heartbeat_interval)); do
+            sleep 1
+            if ! kill -0 "$build_pid" >/dev/null 2>&1; then
+                return 0
+            fi
+            slept=$((slept + 1))
+        done
         local now
         now="$(date +%s)"
         local last_visible="$start_time"
@@ -273,16 +334,18 @@ emit_suppressed_duplicates() {
     fi
     echo
     echo "[quiet-build] Suppressed duplicate warnings:"
-    local line
-    while IFS= read -r line || [[ -n "$line" ]]; do
-        if grep -Fqx -- "$line" "$SUPPRESSED_REPORTED_FILE"; then
-            continue
-        fi
-        local count
-        count=$(grep -Fxc -- "$line" "$SUPPRESSED_DUPLICATES_FILE" || true)
+    awk '
+        !seen[$0]++ { order[++n] = $0 }
+        { count[$0]++ }
+        END {
+            for (i = 1; i <= n; i++) {
+                line = order[i]
+                printf "%d\t%s\n", count[line], line
+            }
+        }
+    ' "$SUPPRESSED_DUPLICATES_FILE" | while IFS=$'\t' read -r count line; do
         echo "[quiet-build]   (${count} more) $(trim_whitespace "$line")"
-        printf '%s\n' "$line" >>"$SUPPRESSED_REPORTED_FILE"
-    done <"$SUPPRESSED_DUPLICATES_FILE"
+    done
 }
 
 extract_test_summary() {
@@ -296,10 +359,10 @@ extract_test_summary() {
     while IFS= read -r line || [[ -n "$line" ]]; do
         if [[ "$line" =~ ^\[(INFO|WARNING)\][[:space:]]+Tests\ run:\ ([0-9]+),\ Failures:\ ([0-9]+),\ Errors:\ ([0-9]+),\ Skipped:\ ([0-9]+)[[:space:]]*$ ]]; then
             has_aggregated="true"
-            total_run=$((total_run + ${BASH_REMATCH[2]}))
-            total_failures=$((total_failures + ${BASH_REMATCH[3]}))
-            total_errors=$((total_errors + ${BASH_REMATCH[4]}))
-            total_skipped=$((total_skipped + ${BASH_REMATCH[5]}))
+            total_run=$((total_run + BASH_REMATCH[2]))
+            total_failures=$((total_failures + BASH_REMATCH[3]))
+            total_errors=$((total_errors + BASH_REMATCH[4]))
+            total_skipped=$((total_skipped + BASH_REMATCH[5]))
         elif [[ "$line" =~ Tests\ run:\ ([0-9]+),\ Failures:\ ([0-9]+),\ Errors:\ ([0-9]+),\ Skipped:\ ([0-9]+) ]]; then
             fallback_summary="Tests run: ${BASH_REMATCH[1]}, Failures: ${BASH_REMATCH[2]}, Errors: ${BASH_REMATCH[3]}, Skipped: ${BASH_REMATCH[4]}"
         fi
@@ -325,13 +388,8 @@ TMP_FILES+=("$SEEN_VISIBLE_LINES_FILE")
 SUPPRESSED_DUPLICATES_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-suppressed-duplicates.XXXXXX")"
 TMP_FILES+=("$SUPPRESSED_DUPLICATES_FILE")
 
-SUPPRESSED_REPORTED_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-suppressed-reported.XXXXXX")"
-TMP_FILES+=("$SUPPRESSED_REPORTED_FILE")
-
-OUTPUT_FIFO="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-output.XXXXXX")"
-TMP_FILES+=("$OUTPUT_FIFO")
-rm -f "$OUTPUT_FIFO"
-mkfifo "$OUTPUT_FIFO"
+RAW_OUTPUT_FILE="$(mktemp "${TMPDIR:-/tmp}/ta4j-quiet-build-output.XXXXXX")"
+TMP_FILES+=("$RAW_OUTPUT_FILE")
 
 TIMEOUT_MARKER_FILE=""
 if ((BUILD_TIMEOUT_SECONDS > 0)); then
@@ -342,15 +400,19 @@ fi
 : >"$LOG_FILE"
 : >"$SEEN_VISIBLE_LINES_FILE"
 : >"$SUPPRESSED_DUPLICATES_FILE"
-: >"$SUPPRESSED_REPORTED_FILE"
-
 set +o pipefail
 set +e
-run_maven_build >"$OUTPUT_FIFO" 2>&1 &
+run_maven_build >"$RAW_OUTPUT_FILE" 2>&1 &
 build_runner_pid=$!
 
 heartbeat_worker "$build_runner_pid" "$BUILD_START_TIME" "$HEARTBEAT_INTERVAL_SECONDS" &
 heartbeat_pid=$!
+
+wait "$build_runner_pid"
+mvn_status=$?
+
+kill "$heartbeat_pid" >/dev/null 2>&1 || true
+wait "$heartbeat_pid" >/dev/null 2>&1 || true
 
 while IFS= read -r line || [[ -n "$line" ]]; do
     printf '%s\n' "$line" >>"$LOG_FILE"
@@ -367,16 +429,11 @@ while IFS= read -r line || [[ -n "$line" ]]; do
         printf '%s\n' "$line"
         update_last_visible
     fi
-done <"$OUTPUT_FIFO"
+done <"$RAW_OUTPUT_FILE"
 filter_status=$?
 
-wait "$build_runner_pid"
-mvn_status=$?
 set -e
 set -o pipefail
-
-kill "$heartbeat_pid" >/dev/null 2>&1 || true
-wait "$heartbeat_pid" >/dev/null 2>&1 || true
 
 emit_suppressed_duplicates
 

@@ -97,8 +97,8 @@ public class ReadmeContentManagerTest {
         assertTrue(pom.contains("<version>[25,)</version>"));
         assertTrue(readme.contains("JDK-25%2B"));
         assertTrue(readme.contains("Java 25+"));
-        assertFalse(readme.contains("./mvnw"));
-        assertFalse(readme.contains("mvnw.cmd"));
+        assertTrue(readme.contains("./mvnw -B verify"));
+        assertTrue(readme.contains("mvnw.cmd -B verify"));
         assertTrue(contributing.contains("Java 25+"));
 
         try (Stream<Path> workflowPaths = Files.list(repositoryRoot.resolve(".github").resolve("workflows"))) {

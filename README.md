@@ -124,15 +124,16 @@ Like living on the edge? Use the snapshot version of ta4j-examples for the lates
 
 ## Build commands: Maven
 
-Ta4j requires Java 25+ and Maven 3.9+. Use system Maven from the repository root.
+Ta4j requires Java 25+. The repository includes Maven Wrapper scripts pinned to Maven 3.9.16, so contributors do not need a separate Maven install.
 
-- **Standard build command:** Use `mvn ...`
-- **Contributor quality path:** Use `mvn verify` to match CI and get advisory SpotBugs and JaCoCo feedback alongside the test suite
-- **SpotBugs-only local gate:** Use `mvn -pl ta4j-core -am clean compile spotbugs:check` to compile from a clean module output and fail fast on module-scoped findings before rerunning the full build
-- **JaCoCo-only local gate:** Use `mvn -pl ta4j-core -am test jacoco:report jacoco:check` to run tests, generate coverage output, and enforce the module threshold locally
-- **Focused coverage report:** Use `mvn -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report` when you want a quick report without enforcing the bundle threshold yet
+- **Standard build command:** Use `./mvnw ...` on macOS/Linux, `mvnw.cmd ...` on Windows, or `mvn ...` when you intentionally use system Maven 3.9+
+- **Contributor quality path:** Use `./mvnw -B verify` (or `mvnw.cmd -B verify` / `mvn -B verify`) to match CI and get advisory SpotBugs and JaCoCo feedback alongside the test suite
+- **Quiet local/agent quality path:** Use `scripts/run-full-build-quiet.sh` on macOS/Linux/Git Bash/WSL or `scripts/run-full-build-quiet.ps1` on Windows PowerShell to run the same default `verify` goal with filtered terminal output and a full log under `.agents/logs/`
+- **SpotBugs-only local gate:** Use `./mvnw -pl ta4j-core -am clean compile spotbugs:check` to compile from a clean module output and fail fast on module-scoped findings before rerunning the full build
+- **JaCoCo-only local gate:** Use `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check` to run tests, generate coverage output, and enforce the module threshold locally
+- **Focused coverage report:** Use `./mvnw -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report` when you want a quick report without enforcing the bundle threshold yet
 
-Run `mvn verify` before opening or updating a pull request.
+Run `./mvnw -B verify`, `mvnw.cmd -B verify`, `mvn -B verify`, or the quiet build script before opening or updating a pull request.
 
 ## Try it now
 
@@ -147,12 +148,12 @@ cd ta4j
 mvn clean install -DskipTests
 
 # Run the Quickstart example (Quickstart is configured as the default)
-mvn -pl ta4j-examples exec:java
+./mvnw -pl ta4j-examples exec:java
 ```
 
 **Alternative:** To run a different example class:
 ```bash
-mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest
+./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest
 ```
 
 This will load historical Bitcoin data, run a complete trading strategy, display performance metrics, and show an interactive chart - all in one go!
@@ -167,7 +168,7 @@ Load price data, plug in indicators, and describe when to enter/exit. The API re
 
 **💡 Want to see this in action?** The [`Quickstart` example](https://github.com/ta4j/ta4j/blob/master/ta4j-examples/src/main/java/ta4jexamples/Quickstart.java) includes this same pattern plus performance metrics and charting. Run it with:
 ```bash
-mvn -pl ta4j-examples exec:java
+./mvnw -pl ta4j-examples exec:java
 ```
 
 **Key concepts:**
@@ -320,7 +321,7 @@ BarSeries series = YahooFinanceHttpBarSeriesDataSource.loadSeries("BTC-USD",
 
 **See it in action:** Run the complete example with:
 ```bash
-mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.YahooFinanceBacktest
+./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.YahooFinanceBacktest
 ```
 
 This example demonstrates loading data from Yahoo Finance, building an advanced multi-indicator strategy (Bollinger Bands, RSI, ATR stops), running a backtest, and visualizing results.
@@ -355,7 +356,7 @@ BarSeries series = dataSource.loadSeriesInstance("ETH-USD",
 
 **See it in action:** Run the complete example with:
 ```bash
-mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.CoinbaseBacktest
+./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.CoinbaseBacktest
 ```
 
 ### Other data sources
@@ -982,7 +983,7 @@ The `ta4j-examples` module includes runnable examples demonstrating common patte
 - **[CandlestickChart](ta4j-examples/src/main/java/ta4jexamples/indicators/CandlestickChart.java)** - Basic candlestick chart with trading signals
 - **[CashFlowToChart](ta4j-examples/src/main/java/ta4jexamples/analysis/CashFlowToChart.java)** - Visualize cash flow and equity curves
 
-**💡 Tip**: Run any example with `mvn -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart` (replace `Quickstart` with the class name).
+**💡 Tip**: Run any example with `./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.Quickstart` (replace `Quickstart` with the class name).
 
 ## Performance
 
@@ -1055,8 +1056,8 @@ For the curated onboarding path, use:
 - Scan the [roadmap](https://ta4j.github.io/ta4j-wiki/Roadmap-and-Tasks.html) and [how-to-contribute guide](https://github.com/ta4j/ta4j/blob/master/.github/CONTRIBUTING.md).
 - [Fork the repo](http://help.github.com/forking/), open pull requests, and join code discussions on Discord.
 - See the [contribution policy](.github/CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
-- Run `mvn verify` before opening or updating a pull request. It matches CI and includes advisory SpotBugs and JaCoCo reporting alongside the test suite.
-- For faster local quality loops, use `mvn -pl ta4j-core -am clean compile spotbugs:check` or `mvn -pl ta4j-core -am test jacoco:report jacoco:check` before rerunning the full `mvn verify`.
+- Run `./mvnw -B verify`, `mvnw.cmd -B verify`, `mvn -B verify`, or the quiet build script before opening or updating a pull request. It matches CI and includes advisory SpotBugs and JaCoCo reporting alongside the test suite.
+- For faster local quality loops, use `./mvnw -pl ta4j-core -am clean compile spotbugs:check` or `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check` before rerunning the full `verify` gate.
 
 ## Release & snapshot publishing
 
