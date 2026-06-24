@@ -9,7 +9,7 @@ ta4j has been around for years and serves a large, diverse user base. Contributi
 3. **Additive code beats churn.** New indicators, rules, serialization helpers, and documentation are great. Mechanical refactors (“just moved files around”) or stylistic changes with no behavioral impact rarely get merged.
 4. **Tests tell the story.** Every change—bug fix or feature—needs focused tests demonstrating the behavior and guarding against regressions.
 - **Run this before opening or updating a PR:** `./mvnw -B verify` on macOS/Linux, `mvnw.cmd -B verify` on Windows, or `mvn -B verify` with system Maven 3.9+
-  This matches the main CI path and keeps SpotBugs and JaCoCo advisory in the full contributor flow. Agents and contributors who want filtered terminal output can run `scripts/run-full-build-quiet.sh` or `scripts/run-full-build-quiet.ps1`, which default to the same `verify` goal.
+  This matches the main CI path and keeps SpotBugs and JaCoCo advisory in the full contributor flow. Agents and contributors who want filtered terminal output can run `scripts/run-full-build-quiet.sh` or `scripts/run-full-build-quiet.ps1`, which default to the same `verify` goal and summarize warnings, errors, exceptions, and unexpected output while preserving the full Maven log.
 
 - **Use focused local quality loops when iterating:** `./mvnw -pl ta4j-core -am clean compile spotbugs:check` and `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check`
   These are intentionally strict for the module you are changing; the SpotBugs loop compiles clean module output before scanning so you can tighten one tool at a time before rerunning the full `verify` gate.
@@ -31,7 +31,7 @@ ta4j has been around for years and serves a large, diverse user base. Contributi
    ```bash
    ./mvnw -B verify
    ```
-   On Windows, use `mvnw.cmd -B verify`; if you already manage Maven 3.9+ yourself, `mvn -B verify` is also supported. CI will fail if your changes are not formatted or lack the project license header. First-time contributors almost always hit this; run `./mvnw -B license:format formatter:format` or `mvn -B license:format formatter:format` locally when needed before your final verify run.
+   On Windows, use `mvnw.cmd -B verify`; if you already manage Maven 3.9+ yourself, `mvn -B verify` is also supported. The quiet scripts are optional filtered-output wrappers for the same gate and preserve full logs under `.agents/logs/`. CI will fail if your changes are not formatted or lack the project license header. First-time contributors almost always hit this; run `./mvnw -B license:format formatter:format` or `mvn -B license:format formatter:format` locally when needed before your final verify run.
    Update `CHANGELOG.md` when you add, fix, or change behavior.
 5. **Open the PR** against `ta4j/master`. Draft PRs are encouraged for early feedback. Prefer [well-formed commit messages](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
 

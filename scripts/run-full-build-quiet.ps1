@@ -38,16 +38,6 @@ function Split-Goals {
     return @($Value -split '\s+' | Where-Object { $_ -ne "" })
 }
 
-function Should-PrintLine {
-    param([string] $Text)
-    return $Text.Contains("[ERROR]") `
-        -or $Text.Contains("[WARNING]") `
-        -or $Text.Contains("BUILD SUCCESS") `
-        -or $Text.Contains("BUILD FAILURE") `
-        -or $Text.Contains("Failed to execute goal") `
-        -or $Text.Contains("Reactor Summary")
-}
-
 function Format-Elapsed {
     param([TimeSpan] $Elapsed)
     if ($Elapsed.TotalHours -ge 1) {
@@ -84,6 +74,227 @@ function Extract-TestSummary {
         return "Tests run: $totalRun, Failures: $totalFailures, Errors: $totalErrors, Skipped: $totalSkipped"
     }
     return $fallbackSummary
+}
+
+function Normalize-BuildLine {
+    param([string] $Line)
+    return ($Line -replace '^\[(INFO|WARNING|WARN|ERROR)\]\s*', '').Trim()
+}
+
+function Normalize-WarningLine {
+    param([string] $Line)
+    return ($Line -replace '^\[(WARNING|WARN)\]\s*', '').Trim()
+}
+
+function Test-WarningLine {
+    param([string] $Line)
+    return $Line -match '\[(WARNING|WARN)\]' `
+        -or $Line -match '(^|\s)WARN(\s|:|$)' `
+        -or $Line -match '(^|\s)WARNING:'
+}
+
+function Test-StackOrExceptionLine {
+    param([string] $Line)
+    return $Line -match '(Exception|exception|Throwable|Caused by:|Suppressed:|OutOfMemoryError|StackOverflowError)' `
+        -or $Line -match '^\s+at\s+\S+\([^)]*\)$' `
+        -or $Line -match '^\s*\.\.\. [0-9]+ more$'
+}
+
+function Test-UnexpectedLine {
+    param([string] $Line)
+    $lower = $Line.ToLowerInvariant()
+    return $Line -match '\[ERROR\]' `
+        -or $Line -match '(^|\s)ERROR(\s|:|$)' `
+        -or $lower.Contains("unexpected") `
+        -or $lower.Contains("fatal") `
+        -or $lower.Contains("timed out") `
+        -or $lower.Contains("permission denied") `
+        -or $lower.Contains("no such file") `
+        -or $Line.Contains("BUILD FAILURE") `
+        -or $Line.Contains("Failed to execute goal") `
+        -or $Line.Contains("There are test failures") `
+        -or $Line.Contains("failed tests") `
+        -or (Test-StackOrExceptionLine $Line)
+}
+
+function Add-UniqueValue {
+    param(
+        [System.Collections.Generic.List[string]] $List,
+        [string] $Value
+    )
+    if ([string]::IsNullOrWhiteSpace($Value) -or $Value -match '^-+$') {
+        return
+    }
+    if (-not $List.Contains($Value)) {
+        $List.Add($Value) | Out-Null
+    }
+}
+
+function Add-CountedValue {
+    param(
+        [System.Collections.Specialized.OrderedDictionary] $Entries,
+        [string] $Value
+    )
+    if ([string]::IsNullOrWhiteSpace($Value) -or $Value -match '^-+$') {
+        return
+    }
+    if ($Entries.Contains($Value)) {
+        $Entries[$Value] = [int]$Entries[$Value] + 1
+    } else {
+        $Entries[$Value] = 1
+    }
+}
+
+function Write-CountedSummary {
+    param(
+        [string] $Title,
+        [System.Collections.Specialized.OrderedDictionary] $Entries,
+        [int] $Limit,
+        [string] $OverflowLabel
+    )
+    if ($Entries.Count -eq 0) {
+        return
+    }
+    Write-Output $Title
+    $index = 0
+    foreach ($key in $Entries.Keys) {
+        if ($index -ge $Limit) {
+            Write-Output ("  ... {0} more {1}; see full log" -f ($Entries.Count - $Limit), $OverflowLabel)
+            break
+        }
+        $count = [int]$Entries[$key]
+        $suffix = if ($count -gt 1) { " (${count}x)" } else { "" }
+        Write-Output ("  {0}{1}" -f $key, $suffix)
+        $index++
+    }
+}
+
+function Write-BoundedRows {
+    param(
+        [string] $Title,
+        [System.Collections.Generic.List[string]] $Rows,
+        [int] $Limit
+    )
+    if ($Rows.Count -eq 0) {
+        return
+    }
+    Write-Output ("{0}:" -f $Title)
+    for ($i = 0; $i -lt $Rows.Count -and $i -lt $Limit; $i++) {
+        Write-Output ("  {0}" -f $Rows[$i])
+    }
+    if ($Rows.Count -gt $Limit) {
+        Write-Output ("  ... {0} more; see full log" -f ($Rows.Count - $Limit))
+    }
+}
+
+function Write-ReactorSummary {
+    param([string] $LogFile)
+    $rows = [System.Collections.Generic.List[string]]::new()
+    $capturing = $false
+    foreach ($line in Get-Content -LiteralPath $LogFile) {
+        if ($line.Contains("Reactor Summary")) {
+            $capturing = $true
+            continue
+        }
+        if ($capturing -and ($line.Contains("BUILD SUCCESS") -or $line.Contains("BUILD FAILURE"))) {
+            break
+        }
+        if ($capturing) {
+            Add-UniqueValue $rows (Normalize-BuildLine $line)
+        }
+    }
+    Write-BoundedRows "Reactor summary" $rows ([int]::MaxValue)
+}
+
+function Write-WarningSummary {
+    param(
+        [string] $LogFile,
+        [int] $Limit = 12
+    )
+    $warnings = [ordered]@{}
+    foreach ($line in Get-Content -LiteralPath $LogFile) {
+        if (Test-WarningLine $line) {
+            $text = Normalize-WarningLine $line
+            if ($text -notmatch 'Tests run:') {
+                Add-CountedValue $warnings $text
+            }
+        }
+    }
+    Write-CountedSummary "Warnings summary:" $warnings $Limit "unique warning(s)"
+}
+
+function Write-UnexpectedSummary {
+    param(
+        [string] $LogFile,
+        [int] $Limit = 12
+    )
+    $unexpected = [ordered]@{}
+    foreach ($line in Get-Content -LiteralPath $LogFile) {
+        if ((Test-UnexpectedLine $line) -and -not (Test-WarningLine $line)) {
+            $text = Normalize-BuildLine $line
+            if ($text -and $text -ne "BUILD SUCCESS") {
+                Add-CountedValue $unexpected $text
+            }
+        }
+    }
+    Write-CountedSummary "Unexpected output summary:" $unexpected $Limit "unique unexpected line(s)"
+}
+
+function Write-FailureDigest {
+    param([string] $LogFile)
+    $failedModules = [System.Collections.Generic.List[string]]::new()
+    $failedGoals = [System.Collections.Generic.List[string]]::new()
+    $testHints = [System.Collections.Generic.List[string]]::new()
+    $qualityHints = [System.Collections.Generic.List[string]]::new()
+    $exceptionHints = [System.Collections.Generic.List[string]]::new()
+    $errorTail = [System.Collections.Generic.List[string]]::new()
+    $capturingReactor = $false
+
+    foreach ($line in Get-Content -LiteralPath $LogFile) {
+        $text = Normalize-BuildLine $line
+        $lower = $line.ToLowerInvariant()
+        if ($line.Contains("Reactor Summary")) {
+            $capturingReactor = $true
+            continue
+        }
+        if ($capturingReactor -and ($line.Contains("BUILD SUCCESS") -or $line.Contains("BUILD FAILURE"))) {
+            $capturingReactor = $false
+        }
+        if ($capturingReactor -and $line.Contains(" FAILURE ")) {
+            Add-UniqueValue $failedModules $text
+        }
+        if ($line.Contains("Failed to execute goal")) {
+            Add-UniqueValue $failedGoals $text
+        }
+        if ($line -match 'Tests run:\s*[0-9]+,\s*Failures:\s*([1-9][0-9]*)' `
+            -or $line -match 'Tests run:\s*[0-9]+,\s*Failures:\s*[0-9]+,\s*Errors:\s*([1-9][0-9]*)' `
+            -or $lower -match 'surefire-reports|failsafe-reports|there are test failures|failed tests') {
+            Add-UniqueValue $testHints $text
+        }
+        if ($lower -match '(pmd|spotbugs|jacoco)' -and $lower -match '(fail|violat|coverage|error|check)') {
+            Add-UniqueValue $qualityHints $text
+        }
+        if (Test-StackOrExceptionLine $line) {
+            Add-UniqueValue $exceptionHints $text
+        }
+        if ($line.StartsWith("[ERROR]") -and -not [string]::IsNullOrWhiteSpace($text) -and $text -notmatch '^-+$') {
+            $errorTail.Add($text) | Out-Null
+        }
+    }
+
+    Write-Output "Failure digest:"
+    Write-BoundedRows "Failed modules" $failedModules 12
+    Write-BoundedRows "Failed goals" $failedGoals 8
+    Write-BoundedRows "Test/report hints" $testHints 12
+    Write-BoundedRows "Quality gate hints" $qualityHints 12
+    Write-BoundedRows "Exception/stack-trace hints" $exceptionHints 12
+    if ($errorTail.Count -gt 0) {
+        Write-Output "Maven error tail:"
+        $start = [Math]::Max(0, $errorTail.Count - 25)
+        for ($i = $start; $i -lt $errorTail.Count; $i++) {
+            Write-Output ("  {0}" -f $errorTail[$i])
+        }
+    }
 }
 
 $goals = @("verify")
@@ -198,53 +409,39 @@ try {
     $stderr = if (Test-Path -LiteralPath $stderrFile) { Get-Content -LiteralPath $stderrFile } else { @() }
     Set-Content -LiteralPath $logFile -Value @($stdout + $stderr)
 
-    $seen = @{}
-    $suppressed = @{}
     foreach ($line in Get-Content -LiteralPath $logFile) {
-        if (-not (Should-PrintLine $line)) {
-            continue
-        }
-        if ($line.Contains("Tests run:") -and $line.Contains("Time elapsed")) {
-            continue
-        }
-        if ($seen.ContainsKey($line)) {
-            if (-not $suppressed.ContainsKey($line)) {
-                $suppressed[$line] = 0
-            }
-            $suppressed[$line]++
-        } else {
-            $seen[$line] = $true
+        if ($line.Contains("BUILD SUCCESS") -or $line.Contains("BUILD FAILURE")) {
             Write-Output $line
-        }
-    }
-
-    if ($suppressed.Count -gt 0) {
-        Write-Output ""
-        Write-Output "[quiet-build] Suppressed duplicate warnings:"
-        foreach ($line in $suppressed.Keys) {
-            Write-Output ("[quiet-build]   ({0} more) {1}" -f $suppressed[$line], $line.Trim())
         }
     }
 
     if ($timedOut) {
         Write-Output ""
         Write-Output "Maven build timed out after ${timeoutSeconds}s. Inspect the full log at: $logFile"
-        exit 1
+        Write-Output "Full build log saved to: $logFile"
+        exit 124
     }
 
     if ($process.ExitCode -ne 0) {
         Write-Output ""
-        Write-Output "Maven build failed (mvn=$($process.ExitCode)). Inspect the full log at: $logFile"
-        exit 1
+        Write-Output "Maven build failed (mvn=$($process.ExitCode))."
+        Write-FailureDigest $logFile
+        Write-WarningSummary $logFile 12
+        Write-UnexpectedSummary $logFile 12
+        Write-Output "Full build log saved to: $logFile"
+        exit $process.ExitCode
     }
 
     $summary = Extract-TestSummary $logFile
     Write-Output ""
+    Write-ReactorSummary $logFile
     if ($summary) {
         Write-Output $summary
     } else {
         Write-Output "Tests run summary not found in log; see $logFile"
     }
+    Write-WarningSummary $logFile 12
+    Write-UnexpectedSummary $logFile 12
     Write-Output "Full build log saved to: $logFile"
 } finally {
     Remove-Item -LiteralPath $stdoutFile, $stderrFile -Force -ErrorAction SilentlyContinue
