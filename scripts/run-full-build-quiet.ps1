@@ -142,8 +142,8 @@ try {
     $heartbeatSeconds = Positive-Int-OrDefault $env:QUIET_BUILD_HEARTBEAT_SECONDS 60 1
 
     $mavenCommand = "mvn"
-    $isWindows = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
-    if ($isWindows -and (Test-Path -LiteralPath (Join-Path $repoRoot "mvnw.cmd"))) {
+    $isWindowsPlatform = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
+    if ($isWindowsPlatform -and (Test-Path -LiteralPath (Join-Path $repoRoot "mvnw.cmd"))) {
         $mavenCommand = Join-Path $repoRoot "mvnw.cmd"
         Write-Output "Using Maven Wrapper: mvnw.cmd"
     } elseif (Test-Path -LiteralPath (Join-Path $repoRoot "mvnw")) {

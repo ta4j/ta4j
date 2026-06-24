@@ -143,6 +143,7 @@ test_docs_point_to_real_maven_commands() {
   expect_file_contains "$ROOT/README.md" "./mvnw -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report" "README should document a focused JaCoCo report-only loop"
   expect_file_contains "$ROOT/README.md" "- [Build commands: Maven](#build-commands-maven)" "README table of contents should link to the renamed build section"
   expect_file_contains "$ROOT/README.md" "./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest" "README should demonstrate overriding exec:java with a non-default example"
+  # Contributor docs are wrapper-first, while still accepting system Maven as a public fallback.
   expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "**Run this before opening or updating a PR:** \`./mvnw -B verify\` on macOS/Linux, \`mvnw.cmd -B verify\` on Windows, or \`mvn -B verify\` with system Maven 3.9+" "contributing guide should use verify as the canonical PR command"
   expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "./mvnw -pl ta4j-core -am clean compile spotbugs:check" "contributing guide should document the standalone SpotBugs loop with clean compilation"
   expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "./mvnw -pl ta4j-core -am test jacoco:report jacoco:check" "contributing guide should document the standalone JaCoCo gate"
