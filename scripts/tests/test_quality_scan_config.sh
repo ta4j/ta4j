@@ -135,7 +135,7 @@ test_maven_wrapper_is_committed_and_pinned() {
 test_docs_point_to_real_maven_commands() {
   echo "Running test_docs_point_to_real_maven_commands"
 
-  expect_file_contains "$ROOT/README.md" "Run \`./mvnw -B verify\`, \`mvnw.cmd -B verify\`, \`mvn -B verify\`, or the quiet build script before opening or updating a pull request." "README should point contributors at the real verify command options"
+  expect_file_contains "$ROOT/README.md" "Run \`./mvnw -B verify\`, \`mvnw.cmd -B verify\`" "README should point contributors at wrapper-based verify command options"
   expect_file_contains "$ROOT/README.md" "scripts/run-full-build-quiet.sh" "README should document the quiet Bash verify wrapper"
   expect_file_contains "$ROOT/README.md" "scripts/run-full-build-quiet.ps1" "README should document the quiet PowerShell verify wrapper"
   expect_file_contains "$ROOT/README.md" "./mvnw -pl ta4j-core -am clean compile spotbugs:check" "README should document the standalone SpotBugs loop with clean compilation"
@@ -143,11 +143,10 @@ test_docs_point_to_real_maven_commands() {
   expect_file_contains "$ROOT/README.md" "./mvnw -pl ta4j-core -am -Dtest=BarSeriesManagerTest -Dsurefire.failIfNoSpecifiedTests=false test jacoco:report" "README should document a focused JaCoCo report-only loop"
   expect_file_contains "$ROOT/README.md" "- [Build commands: Maven](#build-commands-maven)" "README table of contents should link to the renamed build section"
   expect_file_contains "$ROOT/README.md" "./mvnw -pl ta4j-examples exec:java -Dexec.mainClass=ta4jexamples.backtesting.TradingRecordParityBacktest" "README should demonstrate overriding exec:java with a non-default example"
-  # Contributor docs are wrapper-first, while still accepting system Maven as a public fallback.
-  expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "**Run this before opening or updating a PR:** \`./mvnw -B verify\` on macOS/Linux, \`mvnw.cmd -B verify\` on Windows, or \`mvn -B verify\` with system Maven 3.9+" "contributing guide should use verify as the canonical PR command"
+  expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "**Run this before opening or updating a PR:** \`./mvnw -B verify\` on macOS/Linux, \`mvnw.cmd -B verify\` on Windows" "contributing guide should use wrapper verify as the canonical PR command"
   expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "./mvnw -pl ta4j-core -am clean compile spotbugs:check" "contributing guide should document the standalone SpotBugs loop with clean compilation"
   expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "./mvnw -pl ta4j-core -am test jacoco:report jacoco:check" "contributing guide should document the standalone JaCoCo gate"
-  expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "mvn -B license:format formatter:format" "contributing guide should keep the formatter and license fix command"
+  expect_file_contains "$ROOT/.github/CONTRIBUTING.md" "./mvnw -B license:format formatter:format" "contributing guide should keep the wrapper formatter and license fix command"
   expect_file_not_contains "$ROOT/README.md" "mvn -pl ta4j-core -am spotbugs:check" "README should not preserve the stale no-compile SpotBugs loop"
   expect_file_not_contains "$ROOT/.github/CONTRIBUTING.md" "mvn -pl ta4j-core -am spotbugs:check" "contributing guide should not preserve the stale no-compile SpotBugs loop"
 
