@@ -1,6 +1,7 @@
 ## Unreleased
 
-- _No changes yet._
+### Added
+- **Parameter research has lower first-run ceremony**: Added no-validator `ParameterResearch.run(...)`, `ResearchConfig.holdout(...)` for all-pre-holdout training, `ParameterDomain.periodRange(...)` for period-like domains, and bounded `ParameterResearchReport.formatSummary(...)` output so multi-parameter studies are easier to launch and read.
 
 ## 0.22.7 (2026-06-27)
 
@@ -32,7 +33,7 @@
 - **Contributor full-build feedback is faster**: Slow cached-indicator, chart workflow, paginated data-source, streaming-bot, and XLS-backed indicator checks now avoid real waits and repeated fixture parsing while keeping their production paths and assertions covered.
 - **Rule trace diagnostics are now explicit and safer for shared strategies**: enabling SLF4J `TRACE` on a rule or strategy logger now emits default verbose diagnostics without mutating shared instances, one-shot `SUMMARY` / `VERBOSE` calls scope noisy child logs, and output uses stable flat `key=value` fields for path/depth, compared values, cross/slope windows, risk/reward math, short-circuit reasons, unstable strategy decisions, and stop-rule prices.
 - **GitHub workflow action pins now stay on the current supported lines**: Maintainers can rerun CI, release, snapshot, and release-freeze automation without tripping over deprecated hosted-action runtimes because the workflow set now consistently uses the current official `actions/*` majors (`checkout@v6`, `cache@v5`, `setup-java@v5`, `github-script@v9`, and `upload-artifact@v7`) plus the current release-publishing and linting actions (`softprops/action-gh-release@v3`, `rhysd/actionlint@v1.7.12`) across fast feedback and release lanes (`CF-160`).
-- **Contributor verify and example runs now line up with the repo’s real commands**: You can now run `mvn verify` to mirror CI’s advisory SpotBugs and JaCoCo feedback for `ta4j-core` and `ta4j-examples`, then launch examples straight from repo root with `mvn -pl ta4j-examples exec:java` for `Quickstart` or `-Dexec.mainClass=...` for a specific demo (`CF-119`).
+- **Contributor verify and example runs now line up with the repo’s real commands**: You can now run `mvn verify` to mirror CI’s advisory SpotBugs and JaCoCo feedback for `ta4j-core` and `ta4j-examples`, then launch examples straight from repo root with `mvn -pl ta4j-examples -am compile exec:java` for `Quickstart` or `-Dexec.mainClass=...` for a specific demo (`CF-119`).
 - **Release health now proves the snapshot really shipped without false handoff alarms**: `release-health.yml` now checks the live Maven snapshot metadata for the current `-SNAPSHOT` version, but only treats a missing snapshot as drift once `snapshot.yml` has had a chance to finish, so maintainers can see whether the post-release snapshot publication actually landed instead of only inferring it from `pom.xml` drift (`CF-118`).
 - **Agent guidance stays accurate across repo and personal workflows**: `scripts/agents_for_target.sh` guidance now clearly describes path-scoped `AGENTS.md` discovery from the current repo/workspace root, so contributors can use it for file-targeted lookup without assuming it also covers personal PR/comment workflow guidance.
 - **Release prep now keeps removal-ready APIs on schedule**: `prepare-release.yml` now runs a Java-based removal-ready deprecation scanner before release commits to block due or overdue removals, then scans the next snapshot to create, refresh, reopen, or close stale cleanup issues for matching `@Deprecated(forRemoval = true)` symbols.

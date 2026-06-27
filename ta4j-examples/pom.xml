@@ -130,6 +130,7 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <configuration>
+                    <skip>false</skip>
                     <mainClass>${exec.mainClass}</mainClass>
                 </configuration>
             </plugin>
