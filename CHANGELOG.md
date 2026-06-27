@@ -1,6 +1,7 @@
 ## Unreleased
 
-- _No changes yet._
+### Added
+- **Parameter research has lower first-run ceremony**: Added no-validator `ParameterResearch.run(...)`, `ResearchConfig.holdout(...)` for all-pre-holdout training, `ParameterDomain.periodRange(...)` for period-like domains, and bounded `ParameterResearchReport.formatSummary(...)` output so multi-parameter studies are easier to launch and read.
 
 ## 0.22.7 (2026-06-27)
 
@@ -23,7 +24,6 @@
 - **Report-producing analysis demos can run on demand or on schedule**: The new standalone `analysis-demo` JUnit tag starts with a live Elliott Wave BTC/USD macro report backed by Coinbase daily candles, plus a dedicated GitHub Actions workflow that can be manually run for provider-qualified instruments like `coinbase:BTC-USD` and uploads the resulting JSON, chart, and cached data artifacts.
 - **Elliott macro-cycle replay has a dedicated runner path**: The BTC macro-cycle replay regression now uses the explicit `elliott-macro-cycle-replay` JUnit tag and a manual-only self-hosted GitHub Actions workflow, keeping the multi-hour replay out of hosted PR verification and report-producing analysis-demo runs.
 - **PULL_REQUESTS.md guidance for AI agents**: New rules were added for handling pull requests.
-- **Parameter research has lower first-run ceremony**: Added no-validator `ParameterResearch.run(...)`, `ResearchConfig.holdout(...)` for all-pre-holdout training, `ParameterDomain.periodRange(...)` for period-like domains, and bounded `ParameterResearchReport.formatSummary(...)` output so multi-parameter studies are easier to launch and read.
 
 ### Changed
 - **Build and test dependencies were refreshed**: The parent POM now pins SpotBugs `4.9.8.3`, JaCoCo `0.8.14`, Gson `2.14.0`, JUnit Jupiter `6.0.3`, Mockito `5.23.0`, and SLF4J `2.0.18`.
