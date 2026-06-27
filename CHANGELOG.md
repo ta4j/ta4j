@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.22.7 (2026-06-27)
+
 ### Breaking
 - Updated project Java JDK from 21 to 25
 - **NetMomentum now models oscillator battery exhaustion**: `NetMomentumIndicator` inverts RSI-style
