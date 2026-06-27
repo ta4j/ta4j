@@ -47,7 +47,7 @@ import org.ta4j.core.walkforward.WalkForwardCandidate;
  * selection metadata needed to reproduce a run.
  * </p>
  *
- * @since 0.22.7
+ * @since 0.22.8
  */
 public final class ParameterResearch {
 
@@ -63,7 +63,7 @@ public final class ParameterResearch {
      * @param series  series used by domain normalizers
      * @param domains ordered parameter domains
      * @return candidate generation result
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public static CandidateGenerationResult generateCandidateSpace(BarSeries series, List<ParameterDomain> domains) {
         return generateCandidateSpace(series, domains, CandidateValidator.acceptAll());
@@ -76,7 +76,7 @@ public final class ParameterResearch {
      * @param domains   ordered parameter domains
      * @param validator optional cross-parameter validator
      * @return candidate generation result
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public static CandidateGenerationResult generateCandidateSpace(BarSeries series, List<ParameterDomain> domains,
             CandidateValidator validator) {
@@ -157,7 +157,7 @@ public final class ParameterResearch {
      * @param strategyFactory strategy factory
      * @param config          research configuration
      * @return structured research report
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public static ParameterResearchReport run(BarSeries series, List<ParameterDomain> domains,
             StrategyFactory strategyFactory, ResearchConfig config) {
@@ -175,7 +175,7 @@ public final class ParameterResearch {
      * @param strategyFactory strategy factory
      * @param config          research configuration
      * @return structured research report
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public static ParameterResearchReport run(BarSeries series, List<ParameterDomain> domains,
             CandidateValidator validator, StrategyFactory strategyFactory, ResearchConfig config) {
@@ -205,7 +205,7 @@ public final class ParameterResearch {
      * @param strategyFactory strategy factory
      * @param config          research configuration
      * @return structured research report
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public static ParameterResearchReport run(BarSeries series, CandidateGenerationResult candidateSpace,
             StrategyFactory strategyFactory, ResearchConfig config) {
@@ -224,7 +224,7 @@ public final class ParameterResearch {
      *
      * @param candidateSpace generated candidate space
      * @return candidates suitable for {@code WalkForwardTuner}
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public static List<WalkForwardCandidate<ParameterSet>> toWalkForwardCandidates(
             CandidateGenerationResult candidateSpace) {
@@ -733,7 +733,7 @@ public final class ParameterResearch {
     /**
      * Strategy construction callback used by the research runner.
      *
-     * @since 0.22.7
+     * @since 0.22.8
      */
     @FunctionalInterface
     public interface StrategyFactory {
@@ -744,7 +744,7 @@ public final class ParameterResearch {
          * @param series     target series
          * @param parameters normalized parameter set
          * @return strategy to evaluate
-         * @since 0.22.7
+         * @since 0.22.8
          */
         Strategy create(BarSeries series, ParameterSet parameters);
     }
@@ -753,7 +753,7 @@ public final class ParameterResearch {
      * Indicator construction callback for explicit fuzzy indicator-distance
      * reports.
      *
-     * @since 0.22.7
+     * @since 0.22.8
      */
     @FunctionalInterface
     public interface IndicatorFactory {
@@ -764,7 +764,7 @@ public final class ParameterResearch {
          * @param series     target series
          * @param parameters normalized parameter set
          * @return indicator signature source
-         * @since 0.22.7
+         * @since 0.22.8
          */
         Indicator<Num> create(BarSeries series, ParameterSet parameters);
     }
@@ -772,7 +772,7 @@ public final class ParameterResearch {
     /**
      * Cross-parameter validation callback.
      *
-     * @since 0.22.7
+     * @since 0.22.8
      */
     @FunctionalInterface
     public interface CandidateValidator {
@@ -781,7 +781,7 @@ public final class ParameterResearch {
          * Accepts or rejects one parameter set.
          *
          * @param parameters normalized parameter set
-         * @since 0.22.7
+         * @since 0.22.8
          */
         void validate(ParameterSet parameters);
 
@@ -789,7 +789,7 @@ public final class ParameterResearch {
          * Returns a validator that accepts all parameter sets.
          *
          * @return no-op validator
-         * @since 0.22.7
+         * @since 0.22.8
          */
         static CandidateValidator acceptAll() {
             return parameters -> {
@@ -801,7 +801,7 @@ public final class ParameterResearch {
     /**
      * Normalizes one raw parameter value.
      *
-     * @since 0.22.7
+     * @since 0.22.8
      */
     @FunctionalInterface
     public interface ParameterNormalizer {
@@ -813,7 +813,7 @@ public final class ParameterResearch {
          * @param name     parameter name
          * @param rawValue raw value token
          * @return normalized parameter value
-         * @since 0.22.7
+         * @since 0.22.8
          */
         ParameterValue normalize(BarSeries series, String name, String rawValue);
     }
@@ -824,14 +824,14 @@ public final class ParameterResearch {
      * @param name       parameter name
      * @param rawValues  ordered raw values
      * @param normalizer value normalizer
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public record ParameterDomain(String name, List<String> rawValues, ParameterNormalizer normalizer) {
 
         /**
          * Creates a validated parameter domain.
          *
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public ParameterDomain {
             if (name == null || name.isBlank()) {
@@ -855,7 +855,7 @@ public final class ParameterResearch {
          * @param name   parameter name
          * @param values ordered values
          * @return parameter domain
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public static ParameterDomain values(String name, List<?> values) {
             Objects.requireNonNull(values, "values");
@@ -878,7 +878,7 @@ public final class ParameterResearch {
          * @param stop  last value
          * @param step  positive increment
          * @return integer range domain
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public static ParameterDomain integerRange(String name, int start, int stop, int step) {
             return integerRange(name, start, stop, step, Integer.MIN_VALUE, Integer.MAX_VALUE, false);
@@ -897,7 +897,7 @@ public final class ParameterResearch {
          * @param stop  last value
          * @param step  positive increment
          * @return period range domain capped to {@code [1, series.getBarCount()]}
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public static ParameterDomain periodRange(String name, int start, int stop, int step) {
             return integerRange(name, start, stop, step, 1, Integer.MAX_VALUE, true);
@@ -914,7 +914,7 @@ public final class ParameterResearch {
          * @param maximum           inclusive upper bound
          * @param capAtSeriesLength whether the maximum is capped at series length
          * @return integer range domain
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public static ParameterDomain integerRange(String name, int start, int stop, int step, int minimum, int maximum,
                 boolean capAtSeriesLength) {
@@ -957,14 +957,14 @@ public final class ParameterResearch {
      * @param value      normalized value
      * @param normalized whether the raw value changed
      * @param note       normalization note
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public record ParameterValue(String name, String rawValue, String value, boolean normalized, String note) {
 
         /**
          * Creates a validated parameter value.
          *
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public ParameterValue {
             if (name == null || name.isBlank()) {
@@ -984,14 +984,14 @@ public final class ParameterResearch {
      * Ordered normalized parameter set.
      *
      * @param values normalized values in domain order
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public record ParameterSet(List<ParameterValue> values) {
 
         /**
          * Creates a validated parameter set.
          *
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public ParameterSet {
             values = List.copyOf(Objects.requireNonNull(values, "values"));
@@ -1012,7 +1012,7 @@ public final class ParameterResearch {
          *
          * @param name parameter name
          * @return normalized value
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public String value(String name) {
             for (ParameterValue value : values) {
@@ -1028,7 +1028,7 @@ public final class ParameterResearch {
          *
          * @param name parameter name
          * @return integer value
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public int intValue(String name) {
             String rawValue = value(name);
@@ -1043,7 +1043,7 @@ public final class ParameterResearch {
          * Returns normalized values in domain order.
          *
          * @return ordered values
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public List<String> valuesInOrder() {
             return values.stream().map(ParameterValue::value).toList();
@@ -1053,7 +1053,7 @@ public final class ParameterResearch {
          * Returns normalized values as a string array.
          *
          * @return ordered value array
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public String[] asStringArray() {
             return valuesInOrder().toArray(String[]::new);
@@ -1063,7 +1063,7 @@ public final class ParameterResearch {
          * Returns normalized values keyed by parameter name.
          *
          * @return ordered parameter map
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public Map<String, String> asMap() {
             Map<String, String> map = new LinkedHashMap<>();
@@ -1077,7 +1077,7 @@ public final class ParameterResearch {
          * Returns a stable candidate identifier based on normalized values.
          *
          * @return stable id
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public String stableId() {
             StringJoiner joiner = new StringJoiner("|");
@@ -1093,14 +1093,14 @@ public final class ParameterResearch {
      *
      * @param id         stable candidate id
      * @param parameters normalized parameter set
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public record StrategyCandidate(String id, ParameterSet parameters) {
 
         /**
          * Creates a validated strategy candidate.
          *
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public StrategyCandidate {
             if (id == null || id.isBlank()) {
@@ -1116,7 +1116,7 @@ public final class ParameterResearch {
      * @param candidates         valid normalized candidates
      * @param invalidCandidates  rejected or duplicate candidates
      * @param candidateSpaceHash stable hash of valid candidate ids
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public record CandidateGenerationResult(List<StrategyCandidate> candidates,
             List<InvalidCandidate> invalidCandidates, String candidateSpaceHash) {
@@ -1124,7 +1124,7 @@ public final class ParameterResearch {
         /**
          * Creates a validated candidate generation result.
          *
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public CandidateGenerationResult {
             candidates = List.copyOf(Objects.requireNonNull(candidates, "candidates"));
@@ -1141,7 +1141,7 @@ public final class ParameterResearch {
          * Counts valid and rejected candidates.
          *
          * @return total generated count
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public int generatedCandidateCount() {
             return candidates.size() + invalidCandidates.size();
@@ -1151,7 +1151,7 @@ public final class ParameterResearch {
     /**
      * Candidate failure stage.
      *
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public enum CandidateFailureStage {
         /** Failure occurred while generating candidate values. */
@@ -1173,7 +1173,7 @@ public final class ParameterResearch {
      * @param parameters  candidate parameters when available
      * @param stage       failure stage
      * @param reason      failure reason
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public record InvalidCandidate(String candidateId, Map<String, String> parameters, CandidateFailureStage stage,
             String reason) {
@@ -1181,7 +1181,7 @@ public final class ParameterResearch {
         /**
          * Creates a validated invalid-candidate row.
          *
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public InvalidCandidate {
             if (candidateId == null || candidateId.isBlank()) {
@@ -1196,7 +1196,7 @@ public final class ParameterResearch {
     /**
      * Pruning policy for representative selection.
      *
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public enum PruningPolicy {
         /** Keep every valid candidate. */
@@ -1224,7 +1224,7 @@ public final class ParameterResearch {
      * @param distanceTolerance  fuzzy distance tolerance
      * @param indicatorFactory   optional indicator factory for indicator-distance
      *                           reports
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public record ResearchConfig(int trainingBarCount, int validationBarCount, PruningPolicy pruningPolicy,
             RankingProfile rankingProfile, int topK, Num amount, TradeType tradeType, double distanceTolerance,
@@ -1233,7 +1233,7 @@ public final class ParameterResearch {
         /**
          * Creates a validated research config.
          *
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public ResearchConfig {
             if (trainingBarCount < 0) {
@@ -1266,7 +1266,7 @@ public final class ParameterResearch {
          * @param amount             trade amount
          * @param topK               number of selected candidates to validate
          * @return research config
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public static ResearchConfig holdout(int trainingBarCount, int validationBarCount,
                 RankingProfile rankingProfile, Num amount, int topK) {
@@ -1283,7 +1283,7 @@ public final class ParameterResearch {
          * @param amount             trade amount
          * @param topK               number of selected candidates to validate
          * @return research config
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public static ResearchConfig holdout(int validationBarCount, RankingProfile rankingProfile, Num amount,
                 int topK) {
@@ -1295,7 +1295,7 @@ public final class ParameterResearch {
          *
          * @param policy pruning policy
          * @return updated config
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public ResearchConfig withPruningPolicy(PruningPolicy policy) {
             return new ResearchConfig(trainingBarCount, validationBarCount, policy, rankingProfile, topK, amount,
@@ -1308,7 +1308,7 @@ public final class ParameterResearch {
          * @param tolerance tolerance in indicator units
          * @param factory   indicator factory
          * @return updated config
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public ResearchConfig withIndicatorDistance(double tolerance, IndicatorFactory factory) {
             return new ResearchConfig(trainingBarCount, validationBarCount, PruningPolicy.INDICATOR_DISTANCE,
@@ -1320,7 +1320,7 @@ public final class ParameterResearch {
          *
          * @param tolerance normalized objective-score tolerance
          * @return updated config
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public ResearchConfig withObjectiveDistance(double tolerance) {
             return new ResearchConfig(trainingBarCount, validationBarCount, PruningPolicy.OBJECTIVE_DISTANCE,
@@ -1335,7 +1335,7 @@ public final class ParameterResearch {
      * @param trainingEndIndex     inclusive training end index
      * @param validationStartIndex inclusive validation start index, or {@code -1}
      * @param validationEndIndex   inclusive validation end index, or {@code -1}
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public record ResearchWindow(int trainingStartIndex, int trainingEndIndex, int validationStartIndex,
             int validationEndIndex) {
@@ -1343,7 +1343,7 @@ public final class ParameterResearch {
         /**
          * Creates a validated research window.
          *
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public ResearchWindow {
             if (trainingStartIndex < 0 || trainingEndIndex < trainingStartIndex) {
@@ -1364,7 +1364,7 @@ public final class ParameterResearch {
          * Returns whether the report includes a validation window.
          *
          * @return true when validation indexes are present
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public boolean hasValidationWindow() {
             return validationStartIndex != -1;
@@ -1378,14 +1378,14 @@ public final class ParameterResearch {
      * @param memberIds        representative plus discarded member ids
      * @param reason           grouping reason
      * @param maximumDistance  maximum distance observed inside the group
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public record PruningGroup(String representativeId, List<String> memberIds, String reason, double maximumDistance) {
 
         /**
          * Creates a validated pruning group.
          *
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public PruningGroup {
             if (representativeId == null || representativeId.isBlank()) {
@@ -1408,7 +1408,7 @@ public final class ParameterResearch {
          * Returns candidates represented by the first group member.
          *
          * @return discarded member ids
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public List<String> discardedIds() {
             return memberIds.stream().skip(1).toList();
@@ -1424,7 +1424,7 @@ public final class ParameterResearch {
      * @param compositeScore weighted normalized score
      * @param metricValues   raw metric values
      * @param representative whether this row is a representative candidate
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public record CandidateScore(String candidateId, String strategyName, int rank, Num compositeScore,
             Map<String, Num> metricValues, boolean representative) {
@@ -1432,7 +1432,7 @@ public final class ParameterResearch {
         /**
          * Creates a validated candidate score row.
          *
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public CandidateScore {
             if (candidateId == null || candidateId.isBlank()) {
@@ -1470,7 +1470,7 @@ public final class ParameterResearch {
      * @param warnings                report warnings
      * @param trainingRuntimeReport   training runtime report
      * @param validationRuntimeReport validation runtime report
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public record ParameterResearchReport(String datasetId, int barCount, ResearchWindow window,
             String candidateSpaceHash, PruningPolicy pruningPolicy, int generatedCandidateCount,
@@ -1483,7 +1483,7 @@ public final class ParameterResearch {
         /**
          * Creates a validated research report.
          *
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public ParameterResearchReport {
             datasetId = datasetId == null || datasetId.isBlank() ? "series" : datasetId;
@@ -1513,7 +1513,7 @@ public final class ParameterResearch {
          * Counts representative candidates after pruning.
          *
          * @return representative count
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public int representativeCount() {
             return pruningGroups.size();
@@ -1523,7 +1523,7 @@ public final class ParameterResearch {
          * Counts candidates removed by pruning.
          *
          * @return pruned candidate count
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public int prunedCandidateCount() {
             int members = pruningGroups.stream().mapToInt(group -> group.memberIds().size()).sum();
@@ -1534,7 +1534,7 @@ public final class ParameterResearch {
          * Formats a concise human-readable report summary.
          *
          * @return summary text
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public String formatSummary() {
             return formatSummary(5);
@@ -1545,7 +1545,7 @@ public final class ParameterResearch {
          *
          * @param maxRows maximum number of score rows to include for each section
          * @return summary text
-         * @since 0.22.7
+         * @since 0.22.8
          */
         public String formatSummary(int maxRows) {
             if (maxRows < 0) {
