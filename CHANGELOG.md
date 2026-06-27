@@ -1,6 +1,7 @@
 ## Unreleased
 
-- _No changes yet._
+### Changed
+- **AI release scheduler full runs are transport-resilient**: `release-scheduler.yml` now keeps full GitHub Models requests under a configurable transport budget, compacts oversized dossiers into artifact-backed prompts, captures response headers and curl metrics, and writes structured transport diagnostics so maintainers can recover from curl-level failures without blindly rerunning a billed full request.
 
 ## 0.22.7 (2026-06-27)
 

@@ -40,6 +40,9 @@ EXPECTED_RELEASE_ARTIFACTS = (
 JAVADOC_PATH_PATTERN = re.compile(r"^.*?(ta4j-(?:core|examples)/src/.+)$")
 SNAPSHOT_METADATA_URL = "https://central.sonatype.com/repository/maven-snapshots/org/ta4j/ta4j-parent/maven-metadata.xml"
 SNAPSHOT_WORKFLOW_NAME = "Publish Snapshot to Maven Central"
+AI_REQUEST_METADATA_SCHEMA_VERSION = 1
+AI_TRANSPORT_DIAGNOSTICS_SCHEMA_VERSION = 1
+DEFAULT_AI_REQUEST_MAX_BYTES = 600_000
 
 
 def redact(value: str) -> str:
@@ -75,6 +78,10 @@ def write_json(path: pathlib.Path, value: Any) -> None:
 def write_text(path: pathlib.Path, value: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(value, encoding="utf-8")
+
+
+def json_size_bytes(value: Any) -> int:
+    return len(json.dumps(value, indent=2, sort_keys=True).encode("utf-8")) + 1
 
 
 def append_output(name: str, value: str, output_path: str | None = None) -> None:
@@ -336,11 +343,7 @@ def command_build_dossier(args: argparse.Namespace) -> int:
     return 0
 
 
-def command_build_ai_request(args: argparse.Namespace) -> int:
-    dossier = args.dossier.read_text(encoding="utf-8")
-    if len(dossier) > args.max_dossier_chars:
-        dossier = dossier[: args.max_dossier_chars] + "\n\n[TRUNCATED: dossier exceeded request budget]\n"
-
+def load_semver_rules(args: argparse.Namespace) -> tuple[str, str]:
     if args.semver_rules.exists() and args.semver_rules.stat().st_size > 0:
         semver_rules = args.semver_rules.read_text(encoding="utf-8")
         rules_source = str(args.semver_rules)
@@ -358,9 +361,19 @@ def command_build_ai_request(args: argparse.Namespace) -> int:
             """
         ).strip()
         rules_source = "default"
+    return semver_rules, rules_source
 
+
+def build_ai_request_payload(model: str, semver_rules: str, dossier: str, prompt_profile: str) -> dict[str, Any]:
+    artifact_note = ""
+    if prompt_profile.startswith("compact"):
+        artifact_note = (
+            "\nThe full unabridged release dossier is preserved as release-dossier.md in the workflow audit "
+            "artifact. Base the decision on this compact, artifact-backed dossier summary and explicitly call "
+            "out uncertainty in missing or risks when the compact prompt omits detail."
+        )
     request = {
-        "model": args.model,
+        "model": model,
         "temperature": 0,
         "messages": [
             {
@@ -386,20 +399,341 @@ def command_build_ai_request(args: argparse.Namespace) -> int:
                     "\"evidence\": [\"specific dossier facts\"], "
                     "\"risks\": [\"release risks or empty array\"], "
                     "\"missing\": [\"missing changelog/javadoc/test evidence or empty array\"]"
-                    "}.\n\n"
+                    "}."
+                    f"{artifact_note}\n\n"
                     f"{dossier}"
                 ),
             },
         ],
     }
+    return request
+
+
+def extract_markdown_section(document: str, heading: str) -> str:
+    pattern = re.compile(rf"^##\s+{re.escape(heading)}\s*\n(.*?)(?=^##\s+|\Z)", re.MULTILINE | re.DOTALL)
+    match = pattern.search(document)
+    return match.group(1).strip() if match else ""
+
+
+def bounded_text(text: str, max_chars: int, label: str) -> str:
+    if max_chars <= 0:
+        return f"[OMITTED: {label} omitted to keep request under transport budget]"
+    if len(text) <= max_chars:
+        return text.strip()
+    return text[:max_chars].rstrip() + f"\n\n[TRUNCATED: {label} exceeded compact request budget]"
+
+
+def compact_changed_files(section: str, max_files_per_category: int) -> str:
+    lines = section.splitlines()
+    compacted: list[str] = []
+    omitted = 0
+    emitted_for_category = 0
+
+    def flush_omitted() -> None:
+        nonlocal omitted
+        if omitted:
+            compacted.append(f"- [TRUNCATED: {omitted} additional file path(s) omitted in this category]")
+            omitted = 0
+
+    for line in lines:
+        if line.startswith("### "):
+            flush_omitted()
+            compacted.append(line)
+            emitted_for_category = 0
+            continue
+        if line.startswith("- `"):
+            if emitted_for_category < max_files_per_category:
+                compacted.append(line)
+                emitted_for_category += 1
+            else:
+                omitted += 1
+            continue
+        if line.strip():
+            compacted.append(line)
+    flush_omitted()
+    return "\n".join(compacted).strip() or "- (none detected)"
+
+
+def compact_profiles(max_request_bytes: int) -> list[dict[str, int]]:
+    budget = max(1, max_request_bytes)
+    return [
+        {
+            "category_file_limit": 50,
+            "changelog_chars": min(40_000, budget // 6),
+            "signals_chars": min(30_000, budget // 8),
+            "diff_chars": max(0, budget // 2),
+        },
+        {
+            "category_file_limit": 25,
+            "changelog_chars": min(20_000, budget // 8),
+            "signals_chars": min(15_000, budget // 10),
+            "diff_chars": max(0, budget // 3),
+        },
+        {
+            "category_file_limit": 10,
+            "changelog_chars": min(8_000, budget // 12),
+            "signals_chars": min(8_000, budget // 12),
+            "diff_chars": max(0, budget // 5),
+        },
+        {
+            "category_file_limit": 5,
+            "changelog_chars": min(3_000, budget // 16),
+            "signals_chars": min(3_000, budget // 16),
+            "diff_chars": max(0, budget // 10),
+        },
+        {
+            "category_file_limit": 2,
+            "changelog_chars": min(1_000, budget // 24),
+            "signals_chars": min(1_000, budget // 24),
+            "diff_chars": 0,
+        },
+    ]
+
+
+def build_compact_dossier(full_dossier: str, profile: dict[str, int]) -> tuple[str, int]:
+    metadata = extract_markdown_section(full_dossier, "Metadata")
+    changed_files = extract_markdown_section(full_dossier, "Changed Files by Category")
+    changelog = extract_markdown_section(full_dossier, "Unreleased Changelog Context")
+    api_signals = extract_markdown_section(full_dossier, "Public API Signals")
+    javadoc_signals = extract_markdown_section(full_dossier, "Javadoc and @since Signals")
+    test_signals = extract_markdown_section(full_dossier, "Test File Signals")
+    selected_diff = extract_markdown_section(full_dossier, "Selected Diff")
+
+    diff_chars = profile["diff_chars"]
+    compact_diff = bounded_text(selected_diff, diff_chars, "selected diff")
+    sections = [
+        "# ta4j Release Dossier (compact transport-safe prompt)",
+        "",
+        "The full release-dossier.md is preserved in the scheduler audit artifact. This compact prompt keeps the "
+        "release decision resumable without sending the entire artifact inline.",
+        "",
+        "## Metadata",
+        "",
+        bounded_text(metadata, 4_000, "metadata"),
+        "",
+        "## Changed Files by Category",
+        "",
+        compact_changed_files(changed_files, profile["category_file_limit"]),
+        "",
+        "## Unreleased Changelog Context",
+        "",
+        bounded_text(changelog, profile["changelog_chars"], "unreleased changelog context"),
+        "",
+        "## Public API Signals",
+        "",
+        bounded_text(api_signals, profile["signals_chars"], "public API signals"),
+        "",
+        "## Javadoc and @since Signals",
+        "",
+        bounded_text(javadoc_signals, profile["signals_chars"], "Javadoc signals"),
+        "",
+        "## Test File Signals",
+        "",
+        bounded_text(test_signals, profile["signals_chars"], "test file signals"),
+        "",
+        "## Selected Diff Excerpt",
+        "",
+        compact_diff,
+        "",
+    ]
+    return "\n".join(sections), min(len(selected_diff), diff_chars)
+
+
+def command_build_ai_request(args: argparse.Namespace) -> int:
+    if args.max_request_bytes <= 0:
+        print("::error::--max-request-bytes must be positive.", file=sys.stderr)
+        return 1
+
+    full_dossier = args.dossier.read_text(encoding="utf-8")
+    prompt_dossier = full_dossier
+    full_dossier_truncated = False
+    if len(prompt_dossier) > args.max_dossier_chars:
+        prompt_dossier = prompt_dossier[: args.max_dossier_chars] + "\n\n[TRUNCATED: dossier exceeded request budget]\n"
+        full_dossier_truncated = True
+
+    semver_rules, rules_source = load_semver_rules(args)
+    prompt_profile = "full-inline"
+    request = build_ai_request_payload(args.model, semver_rules, prompt_dossier, prompt_profile)
+    full_request_size = json_size_bytes(request)
+    selected_diff_excerpt_chars = len(extract_markdown_section(prompt_dossier, "Selected Diff"))
+    compacted = False
+    compaction_level = 0
+
+    if full_request_size > args.max_request_bytes:
+        compacted = True
+        for compaction_level, profile in enumerate(compact_profiles(args.max_request_bytes), start=1):
+            candidate_dossier, selected_diff_excerpt_chars = build_compact_dossier(prompt_dossier, profile)
+            candidate_profile = f"compact-artifact-backed-v{compaction_level}"
+            candidate_request = build_ai_request_payload(args.model, semver_rules, candidate_dossier, candidate_profile)
+            if json_size_bytes(candidate_request) <= args.max_request_bytes:
+                prompt_dossier = candidate_dossier
+                request = candidate_request
+                prompt_profile = candidate_profile
+                break
+        else:
+            prompt_dossier, selected_diff_excerpt_chars = build_compact_dossier(
+                prompt_dossier,
+                {
+                    "category_file_limit": 1,
+                    "changelog_chars": 400,
+                    "signals_chars": 400,
+                    "diff_chars": 0,
+                },
+            )
+            request = build_ai_request_payload(args.model, semver_rules, prompt_dossier, "compact-artifact-backed-minimal")
+            prompt_profile = "compact-artifact-backed-minimal"
+
     write_json(args.output, request)
     request_size = args.output.stat().st_size
+    metadata = {
+        "schemaVersion": AI_REQUEST_METADATA_SCHEMA_VERSION,
+        "generatedAt": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
+        "model": args.model,
+        "semverRulesSource": rules_source,
+        "promptProfile": prompt_profile,
+        "artifactBackedContext": compacted,
+        "fullDossierPath": str(args.dossier),
+        "fullDossierChars": len(full_dossier),
+        "promptDossierChars": len(prompt_dossier),
+        "maxDossierChars": args.max_dossier_chars,
+        "fullDossierTruncatedForPrompt": full_dossier_truncated,
+        "fullRequestJsonSizeBytes": full_request_size,
+        "requestJsonSizeBytes": request_size,
+        "maxRequestBytes": args.max_request_bytes,
+        "requestWithinTransportBudget": request_size <= args.max_request_bytes,
+        "compactedBecause": "full request exceeded transport budget" if compacted else "",
+        "compactionLevel": compaction_level if compacted else 0,
+        "selectedDiffExcerptChars": selected_diff_excerpt_chars,
+        "auditArtifacts": ["release-dossier.md", "release-audit.json", str(args.metadata_output)],
+    }
+    write_json(args.metadata_output, metadata)
+    if request_size > args.max_request_bytes:
+        print(
+            f"::error::AI request JSON is {request_size} bytes, above transport budget {args.max_request_bytes} bytes.",
+            file=sys.stderr,
+        )
+        return 1
     print(
         "audit:ai_request "
-        f"file={args.output} model={args.model} semver_rules_source={rules_source} request_json_size_bytes={request_size}"
+        f"file={args.output} model={args.model} semver_rules_source={rules_source} "
+        f"prompt_profile={prompt_profile} request_json_size_bytes={request_size} "
+        f"max_request_bytes={args.max_request_bytes}"
     )
     append_output("request_json_size_bytes", str(request_size))
-    append_output("dossier_chars", str(len(dossier)))
+    append_output("request_max_bytes", str(args.max_request_bytes))
+    append_output("request_metadata_path", str(args.metadata_output))
+    append_output("prompt_profile", prompt_profile)
+    append_output("dossier_chars", str(len(full_dossier)))
+    append_output("prompt_dossier_chars", str(len(prompt_dossier)))
+    return 0
+
+
+def read_json_file(path: pathlib.Path) -> Any:
+    if not path.exists() or path.stat().st_size == 0:
+        return None
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return {"unparsed": bounded_text(path.read_text(encoding="utf-8"), 4_000, str(path))}
+
+
+def file_size(path: pathlib.Path) -> int:
+    return path.stat().st_size if path.exists() else 0
+
+
+def tail_file(path: pathlib.Path, max_lines: int = 80, max_chars: int = 12_000) -> str:
+    if not path.exists():
+        return ""
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()[-max_lines:]
+    return bounded_text(redact("\n".join(lines)), max_chars, str(path))
+
+
+def parse_key_value_log(path: pathlib.Path) -> list[dict[str, str]]:
+    if not path.exists():
+        return []
+    entries: list[dict[str, str]] = []
+    current: dict[str, str] = {}
+    for raw_line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.startswith("attempt=") and current:
+            entries.append(current)
+            current = {}
+        pairs = re.findall(r"([A-Za-z_][A-Za-z0-9_]*)=([^=]*?)(?=\s+[A-Za-z_][A-Za-z0-9_]*=|$)", line)
+        if pairs:
+            for key, value in pairs:
+                current[key.strip()] = redact(value.strip())
+        else:
+            current.setdefault("stderr", "")
+            current["stderr"] = (current["stderr"] + "\n" + redact(line)).strip()
+    if current:
+        entries.append(current)
+    return entries
+
+
+def command_ai_transport_diagnostics(args: argparse.Namespace) -> int:
+    response_status = args.response_status or "000"
+    curl_exit_code = args.curl_exit_code or "unknown"
+    response_bytes = file_size(args.response)
+    request_metadata = read_json_file(args.request_metadata)
+    release_audit = read_json_file(args.release_audit)
+
+    classification = "http_error"
+    connection_closed_during = "not_applicable"
+    if response_status == "000":
+        classification = "transport_failure_before_http_response"
+        connection_closed_during = "unknown_before_response"
+    if str(curl_exit_code) == "18":
+        classification = "curl_partial_file_transport_close"
+        connection_closed_during = "response_read"
+
+    reason = f"AI call failed before an HTTP response (curl exit {curl_exit_code})"
+    if response_status != "000":
+        reason = f"AI call failed with HTTP {response_status}"
+
+    diagnostics = {
+        "schemaVersion": AI_TRANSPORT_DIAGNOSTICS_SCHEMA_VERSION,
+        "generatedAt": dt.datetime.now(dt.timezone.utc).replace(microsecond=0).isoformat(),
+        "classification": classification,
+        "connectionClosedDuring": connection_closed_during,
+        "aiMode": args.ai_mode,
+        "model": args.model,
+        "attempts": args.attempts,
+        "responseStatus": response_status,
+        "curlExitCode": curl_exit_code,
+        "responseBytes": response_bytes,
+        "request": request_metadata,
+        "releaseAudit": release_audit,
+        "curlAttempts": parse_key_value_log(args.curl_error),
+        "curlMetrics": parse_key_value_log(args.curl_metrics),
+        "responseHeadersTail": tail_file(args.response_headers, max_lines=80, max_chars=8_000),
+        "responsePreview": tail_file(args.response, max_lines=20, max_chars=2_000),
+        "recovery": [
+            "Do not rerun billed aiMode=full blindly with the same request.",
+            "Inspect release-ai-request-metadata.json and release-ai-transport-diagnostics.json from the audit artifact.",
+            "Use aiMode=probe to validate GitHub Models connectivity without sending the full release dossier.",
+            "Retry aiMode=full only after request size, provider status, or scheduler compaction policy has been reviewed.",
+        ],
+    }
+    write_json(args.output, diagnostics)
+    fallback = {
+        "should_release": False,
+        "bump": "patch",
+        "confidence": 0.0,
+        "warning": f"{reason}; see {args.output}",
+        "reason": reason,
+        "evidence": [],
+        "risks": ["GitHub Models transport failed before a usable release decision was returned"],
+        "missing": [f"Review {args.output} before another billed full AI scheduler call"],
+    }
+    write_json(args.fallback_output, fallback)
+    print(
+        "audit:ai_transport_diagnostics "
+        f"classification={classification} status={response_status} curl_exit={curl_exit_code} "
+        f"response_bytes={response_bytes} output={args.output}"
+    )
+    append_output("transport_diagnostics_path", str(args.output))
     return 0
 
 
@@ -885,8 +1219,26 @@ def build_parser() -> argparse.ArgumentParser:
     request.add_argument("--dossier", type=pathlib.Path, default=pathlib.Path("release-dossier.md"))
     request.add_argument("--semver-rules", type=pathlib.Path, default=pathlib.Path(".github/workflows/semver-rules-override.txt"))
     request.add_argument("--max-dossier-chars", type=int, default=900_000)
+    request.add_argument("--max-request-bytes", type=int, default=DEFAULT_AI_REQUEST_MAX_BYTES)
     request.add_argument("--output", type=pathlib.Path, default=pathlib.Path("request.json"))
+    request.add_argument("--metadata-output", type=pathlib.Path, default=pathlib.Path("release-ai-request-metadata.json"))
     request.set_defaults(func=command_build_ai_request)
+
+    transport = subparsers.add_parser("ai-transport-diagnostics")
+    transport.add_argument("--ai-mode", default="full")
+    transport.add_argument("--model", default="")
+    transport.add_argument("--response-status", default="000")
+    transport.add_argument("--curl-exit-code", default="unknown")
+    transport.add_argument("--attempts", default="1")
+    transport.add_argument("--request-metadata", type=pathlib.Path, default=pathlib.Path("release-ai-request-metadata.json"))
+    transport.add_argument("--release-audit", type=pathlib.Path, default=pathlib.Path("release-audit.json"))
+    transport.add_argument("--curl-error", type=pathlib.Path, default=pathlib.Path("curl-error.log"))
+    transport.add_argument("--curl-metrics", type=pathlib.Path, default=pathlib.Path("curl-metrics.log"))
+    transport.add_argument("--response-headers", type=pathlib.Path, default=pathlib.Path("response-headers.txt"))
+    transport.add_argument("--response", type=pathlib.Path, default=pathlib.Path("response.json"))
+    transport.add_argument("--output", type=pathlib.Path, default=pathlib.Path("release-ai-transport-diagnostics.json"))
+    transport.add_argument("--fallback-output", type=pathlib.Path, default=pathlib.Path("ai-content.txt"))
+    transport.set_defaults(func=command_ai_transport_diagnostics)
 
     parse = subparsers.add_parser("parse-decision")
     parse.add_argument("--raw-file", type=pathlib.Path, default=pathlib.Path("ai-content.txt"))

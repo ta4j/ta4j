@@ -226,6 +226,128 @@ EOF
   pass "test_build_dossier_groups_and_truncates_diff"
 }
 
+test_build_ai_request_compacts_oversized_dossier() {
+  echo "Running test_build_ai_request_compacts_oversized_dossier"
+  run_test
+
+  {
+    echo "# ta4j Release Dossier"
+    echo
+    echo "## Metadata"
+    echo
+    echo "- generated_at: 2026-06-27T00:00:00+00:00"
+    echo "- current_version: 1.0.1-SNAPSHOT"
+    echo "- pom_base: 1.0.1"
+    echo "- last_reachable_tag: 1.0.0"
+    echo "- changed_file_count: 3"
+    echo
+    echo "## Changed Files by Category"
+    echo
+    echo "### production code (2)"
+    echo "- \`ta4j-core/src/main/java/org/ta4j/core/Foo.java\`"
+    echo "- \`ta4j-core/src/main/java/org/ta4j/core/Bar.java\`"
+    echo
+    echo "### tests (1)"
+    echo "- \`ta4j-core/src/test/java/org/ta4j/core/FooTest.java\`"
+    echo
+    echo "## Unreleased Changelog Context"
+    echo
+    echo "\`\`\`markdown"
+    echo "- Added a compact request test fixture."
+    echo "\`\`\`"
+    echo
+    echo "## Public API Signals"
+    echo
+    echo "- \`+ public class Foo\`"
+    echo
+    echo "## Javadoc and @since Signals"
+    echo
+    echo "- \`+ * @since 1.0.1\`"
+    echo
+    echo "## Test File Signals"
+    echo
+    echo "- \`ta4j-core/src/test/java/org/ta4j/core/FooTest.java\`"
+    echo
+    echo "## Selected Diff"
+    echo
+    echo "\`\`\`diff"
+    python3 - <<'PY'
+for index in range(500):
+    print(f"+ public String generated{index}() {{ return \"{index}\"; }}")
+PY
+    echo "\`\`\`"
+  } > release-dossier.md
+
+  "$PYTHON" "$SCRIPT" build-ai-request \
+    --model openai/gpt-4.1 \
+    --dossier release-dossier.md \
+    --max-request-bytes 12000 \
+    --output request.json \
+    --metadata-output release-ai-request-metadata.json
+
+  request_size="$(wc -c < request.json | tr -d ' ')"
+  if (( request_size > 12000 )); then
+    fail "compact request should stay under forced transport budget (got ${request_size})"
+  fi
+  expect_json_value release-ai-request-metadata.json artifactBackedContext true
+  expect_json_value release-ai-request-metadata.json requestWithinTransportBudget true
+  expect_file_contains release-ai-request-metadata.json "compact-artifact-backed" \
+    "metadata should record compact prompt profile"
+  expect_file_contains request.json "full release-dossier.md is preserved" \
+    "compact prompt should tell the model where the full dossier lives"
+
+  finish_test
+  pass "test_build_ai_request_compacts_oversized_dossier"
+}
+
+test_ai_transport_diagnostics_records_curl_exit_18() {
+  echo "Running test_ai_transport_diagnostics_records_curl_exit_18"
+  run_test
+
+  cat > release-ai-request-metadata.json <<'EOF'
+{"schemaVersion":1,"promptProfile":"compact-artifact-backed-v1","requestJsonSizeBytes":11900}
+EOF
+  cat > release-audit.json <<'EOF'
+{"changed_file_count":334,"selected_diff_truncated":true}
+EOF
+  cat > curl-error.log <<'EOF'
+attempt=1 curl_exit_code=18 response_status=000
+curl: (18) transfer closed with 1 bytes remaining to read
+EOF
+  cat > curl-metrics.log <<'EOF'
+attempt=1
+http_code=000
+time_total=2.389
+size_upload=11900
+size_download=196
+EOF
+  cat > response-headers.txt <<'EOF'
+attempt=1
+HTTP/1.1 200 Connection established
+EOF
+  printf '{"error":"partial"}' > response.json
+
+  "$PYTHON" "$SCRIPT" ai-transport-diagnostics \
+    --ai-mode full \
+    --model openai/gpt-4.1 \
+    --response-status 000 \
+    --curl-exit-code 18 \
+    --attempts 1 \
+    --output release-ai-transport-diagnostics.json \
+    --fallback-output ai-content.txt
+
+  expect_json_value release-ai-transport-diagnostics.json classification curl_partial_file_transport_close
+  expect_json_value release-ai-transport-diagnostics.json connectionClosedDuring response_read
+  expect_file_contains release-ai-transport-diagnostics.json "Do not rerun billed aiMode=full blindly" \
+    "diagnostics should include non-blind rerun guidance"
+  expect_json_value ai-content.txt should_release false
+  expect_file_contains ai-content.txt "release-ai-transport-diagnostics.json" \
+    "fallback decision should point at diagnostics artifact"
+
+  finish_test
+  pass "test_ai_transport_diagnostics_records_curl_exit_18"
+}
+
 test_artifact_manifest_validates_expected_release_jars() {
   echo "Running test_artifact_manifest_validates_expected_release_jars"
   run_test
@@ -298,6 +420,8 @@ test_catalog_preflight_accepts_configured_model
 test_catalog_preflight_rejects_missing_model
 test_parse_decision_normalizes_major_and_invalid_json
 test_build_dossier_groups_and_truncates_diff
+test_build_ai_request_compacts_oversized_dossier
+test_ai_transport_diagnostics_records_curl_exit_18
 test_artifact_manifest_validates_expected_release_jars
 test_javadoc_warning_baseline_rejects_new_warnings
 
