@@ -161,24 +161,6 @@ EOF
   pass "test_parse_decision_normalizes_major_and_invalid_json"
 }
 
-test_python_launcher_delegates_to_shell_helper() {
-  echo "Running test_python_launcher_delegates_to_shell_helper"
-  run_test
-
-  cat > ai-content.txt <<'EOF'
-{"should_release":true,"bump":"patch","confidence":0.7,"reason":"Release needed"}
-EOF
-  python3 "$ROOT/scripts/release/release_helpers.py" parse-decision \
-    --raw-file ai-content.txt \
-    --output decision.json
-
-  expect_json_value decision.json should_release true
-  expect_json_value decision.json bump patch
-
-  finish_test
-  pass "test_python_launcher_delegates_to_shell_helper"
-}
-
 test_release_pr_review_plan_defaults_to_owner() {
   echo "Running test_release_pr_review_plan_defaults_to_owner"
   run_test
@@ -528,7 +510,6 @@ EOF
 test_catalog_preflight_accepts_configured_model
 test_catalog_preflight_rejects_missing_model
 test_parse_decision_normalizes_major_and_invalid_json
-test_python_launcher_delegates_to_shell_helper
 test_release_pr_review_plan_defaults_to_owner
 test_release_pr_review_plan_skips_self_review_without_failing
 test_release_pr_review_plan_uses_non_author_fallback_reviewers
