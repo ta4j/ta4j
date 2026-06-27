@@ -8,8 +8,7 @@ set -euo pipefail
 # =============================================================================
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPT="$ROOT/scripts/release/release_helpers.py"
-PYTHON="${PYTHON:-python3}"
+SCRIPT="$ROOT/scripts/release/release_helpers.sh"
 
 cleanup() {
   if [[ -n "${TMP:-}" && -d "$TMP" ]]; then
@@ -46,22 +45,7 @@ expect_json_value() {
   local filter="$2"
   local expected="$3"
   local actual
-  actual="$($PYTHON - "$file" "$filter" <<'PY'
-import json
-import sys
-
-path, key = sys.argv[1:3]
-with open(path, encoding="utf-8") as handle:
-    data = json.load(handle)
-value = data
-for part in key.split("."):
-    value = value[part]
-if isinstance(value, bool):
-    print("true" if value else "false")
-else:
-    print(value)
-PY
-)"
+  actual="$(jq -r ".$filter" "$file")"
   if [[ "$actual" != "$expected" ]]; then
     fail "expected ${filter}=${expected}, got ${actual:-<missing>}"
   fi
@@ -91,7 +75,7 @@ test_catalog_preflight_accepts_configured_model() {
   run_test
   write_catalog_fixture
 
-  GITHUB_OUTPUT=outputs.txt "$PYTHON" "$SCRIPT" catalog-preflight \
+  GITHUB_OUTPUT=outputs.txt bash "$SCRIPT" catalog-preflight \
     --model openai/gpt-4.1 \
     --catalog-file catalog.json \
     --output release-ai-model.json
@@ -109,7 +93,7 @@ test_catalog_preflight_rejects_missing_model() {
   run_test
   write_catalog_fixture
 
-  if "$PYTHON" "$SCRIPT" catalog-preflight \
+  if bash "$SCRIPT" catalog-preflight \
     --model openai/missing \
     --catalog-file catalog.json \
     --output release-ai-model.json >preflight.log 2>&1; then
@@ -130,7 +114,7 @@ test_parse_decision_normalizes_major_and_invalid_json() {
 {"should_release":true,"bump":"major","confidence":0.91,"reason":"Breaking but pre-1.0 change","evidence":["public API changed"]}
 ```
 EOF
-  "$PYTHON" "$SCRIPT" parse-decision --raw-file ai-content.txt --output decision.json --github-output outputs.txt
+  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output decision.json --github-output outputs.txt
   expect_json_value decision.json should_release true
   expect_json_value decision.json bump minor
   expect_file_contains outputs.txt "bump=minor" "major bumps should be downgraded in outputs"
@@ -138,26 +122,26 @@ EOF
   cat > ai-content.txt <<'EOF'
 {"should_release":"false","bump":"minor","confidence":0.7,"reason":"No release needed"}
 EOF
-  "$PYTHON" "$SCRIPT" parse-decision --raw-file ai-content.txt --output string-false.json
+  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output string-false.json
   expect_json_value string-false.json should_release false
   expect_json_value string-false.json bump patch
 
   cat > ai-content.txt <<'EOF'
 {"should_release":"1","bump":"patch","confidence":0.7,"reason":"Release needed"}
 EOF
-  "$PYTHON" "$SCRIPT" parse-decision --raw-file ai-content.txt --output string-true.json
+  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output string-true.json
   expect_json_value string-true.json should_release true
 
   cat > ai-content.txt <<'EOF'
 {"should_release":"maybe","bump":"minor","confidence":0.7,"reason":"Ambiguous response"}
 EOF
-  "$PYTHON" "$SCRIPT" parse-decision --raw-file ai-content.txt --output invalid-flag.json
+  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output invalid-flag.json
   expect_json_value invalid-flag.json should_release false
   expect_json_value invalid-flag.json bump patch
   expect_file_contains invalid-flag.json "invalid should_release 'maybe'" "invalid flag should be called out"
 
   printf 'not-json' > ai-content.txt
-  "$PYTHON" "$SCRIPT" parse-decision --raw-file ai-content.txt --output invalid.json
+  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output invalid.json
   expect_json_value invalid.json should_release false
   expect_json_value invalid.json bump patch
   expect_json_value invalid.json warning "Invalid AI JSON"
@@ -209,7 +193,7 @@ EOF
   git add .
   git commit -q -m "Add fixture API"
 
-  "$PYTHON" "$SCRIPT" build-dossier \
+  bash "$SCRIPT" build-dossier \
     --last-tag 1.0.0 \
     --current-version 1.0.1-SNAPSHOT \
     --pom-base 1.0.1 \
@@ -271,14 +255,13 @@ test_build_ai_request_compacts_oversized_dossier() {
     echo "## Selected Diff"
     echo
     echo "\`\`\`diff"
-    python3 - <<'PY'
-for index in range(500):
-    print(f"+ public String generated{index}() {{ return \"{index}\"; }}")
-PY
+    for index in $(seq 0 499); do
+      echo "+ public String generated${index}() { return \"${index}\"; }"
+    done
     echo "\`\`\`"
   } > release-dossier.md
 
-  "$PYTHON" "$SCRIPT" build-ai-request \
+  bash "$SCRIPT" build-ai-request \
     --model openai/gpt-4.1 \
     --dossier release-dossier.md \
     --max-request-bytes 12000 \
@@ -327,7 +310,7 @@ HTTP/1.1 200 Connection established
 EOF
   printf '{"error":"partial"}' > response.json
 
-  "$PYTHON" "$SCRIPT" ai-transport-diagnostics \
+  bash "$SCRIPT" ai-transport-diagnostics \
     --ai-mode full \
     --model openai/gpt-4.1 \
     --response-status 200 \
@@ -368,12 +351,12 @@ test_artifact_manifest_validates_expected_release_jars() {
     : > "$file"
   done
 
-  "$PYTHON" "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --strict
+  bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --strict
   expect_file_contains artifact-manifest.txt "Missing release artifacts:" "manifest should include missing section"
   expect_file_contains artifact-manifest.txt "- (none)" "manifest should report no missing artifacts"
 
   : > "ta4j-core/target/unexpected.jar"
-  if "$PYTHON" "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --strict >manifest.log 2>&1; then
+  if bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --strict >manifest.log 2>&1; then
     fail "strict artifact manifest should reject unexpected jars"
   fi
   expect_file_contains manifest.log "Unexpected target jars" "strict failure should name unexpected jars"
@@ -394,7 +377,7 @@ EOF
 [WARNING] /home/runner/work/ta4j/ta4j/ta4j-core/src/test/java/org/ta4j/core/FooTest.java: uses unchecked or unsafe operations.
 EOF
 
-  "$PYTHON" "$SCRIPT" javadoc-warnings \
+  bash "$SCRIPT" javadoc-warnings \
     --baseline baseline.txt \
     --output javadoc-warnings.txt \
     --github-output outputs.txt \
@@ -406,7 +389,7 @@ EOF
   cat >> release.log <<'EOF'
 [WARNING] /home/runner/work/ta4j/ta4j/ta4j-examples/src/main/java/ta4jexamples/FooExample.java: warning: no @return
 EOF
-  if "$PYTHON" "$SCRIPT" javadoc-warnings \
+  if bash "$SCRIPT" javadoc-warnings \
     --baseline baseline.txt \
     --output javadoc-warnings.txt \
     --fail-on-new \

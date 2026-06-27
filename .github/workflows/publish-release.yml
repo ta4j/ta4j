@@ -743,7 +743,7 @@ jobs:
           set -euo pipefail
           echo "::group::Build release artifacts for manifest validation"
           mvn -B -DskipTests -Dgpg.skip=true -Pproduction-release package 2>&1 | tee release-artifact-build.log
-          python3 scripts/release/release_helpers.py artifact-manifest \
+          bash scripts/release/release_helpers.sh artifact-manifest \
             --version "${RELEASE_VERSION}" \
             --output artifact-manifest.txt \
             --github-output "$GITHUB_OUTPUT" \
@@ -778,7 +778,7 @@ jobs:
           set -euo pipefail
           echo "::group::Validate Javadoc warnings"
           set +e
-          python3 scripts/release/release_helpers.py javadoc-warnings \
+          bash scripts/release/release_helpers.sh javadoc-warnings \
             --baseline scripts/release/javadoc-warning-baseline.txt \
             --output javadoc-warnings.txt \
             --github-output "$GITHUB_OUTPUT" \

@@ -451,7 +451,7 @@ test_github_release_preserves_workflow_support_checkout() {
   local manifest_line
   full_checkout_line="$(line_of "$WORKFLOWS/github-release.yml" "Checkout full history")"
   support_checkout_line="$(line_of "$WORKFLOWS/github-release.yml" "Checkout workflow support files")"
-  manifest_line="$(line_of "$WORKFLOWS/github-release.yml" "workflow-support/scripts/release/release_helpers.py artifact-manifest")"
+  manifest_line="$(line_of "$WORKFLOWS/github-release.yml" "workflow-support/scripts/release/release_helpers.sh artifact-manifest")"
 
   if (( support_checkout_line <= full_checkout_line )); then
     fail "github-release should checkout workflow support after the release tag checkout"
