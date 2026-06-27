@@ -96,7 +96,7 @@ The harness resolves broad committed registry windows against the ossified BTC d
 Before shipping changes that touch the canonical macro-cycle flow, rerun both the focused BTC regression slice and the quiet full build:
 
 ```bash
-mvn -q -pl ta4j-examples -am -Dsurefire.failIfNoSpecifiedTests=false \
+./mvnw -q -pl ta4j-examples -am -Dsurefire.failIfNoSpecifiedTests=false \
   -Dtest=ElliottWaveBtcMacroCycleDemoTest,ElliottWaveMacroCycleTruthTargetScoringTest,ElliottWaveMacroCycleDetectorTest,ElliottWavePresetDemoTest \
   test
 

@@ -8,14 +8,14 @@ ta4j has been around for years and serves a large, diverse user base. Contributi
 2. **Opinionated implementations belong outside the core.** ta4j aims to be widely applicable. Highly subjective “feature bundles” (e.g., metric dashboards, bespoke reporting formats, hard-coded broker behaviors) are better published as separate modules or example projects. Keep contributions focused on reusable primitives.
 3. **Additive code beats churn.** New indicators, rules, serialization helpers, and documentation are great. Mechanical refactors (“just moved files around”) or stylistic changes with no behavioral impact rarely get merged.
 4. **Tests tell the story.** Every change—bug fix or feature—needs focused tests demonstrating the behavior and guarding against regressions.
-- **Run this before opening or updating a PR:** `mvn -B verify`
-  This matches the main CI path and keeps SpotBugs and JaCoCo advisory in the full contributor flow.
+- **Run this before opening or updating a PR:** `./mvnw -B verify` on macOS/Linux, `mvnw.cmd -B verify` on Windows, or `mvn -B verify` with system Maven 3.9+
+  This matches the main CI path and keeps SpotBugs and JaCoCo advisory in the full contributor flow. Agents and contributors who want filtered terminal output can run `scripts/run-full-build-quiet.sh` or `scripts/run-full-build-quiet.ps1`, which default to the same `verify` goal and summarize warnings, errors, exceptions, and unexpected output while preserving the full Maven log.
 
-- **Use focused local quality loops when iterating:** `mvn -pl ta4j-core -am clean compile spotbugs:check` and `mvn -pl ta4j-core -am test jacoco:report jacoco:check`
-  These are intentionally strict for the module you are changing; the SpotBugs loop compiles clean module output before scanning so you can tighten one tool at a time before rerunning the full `mvn -B verify`.
+- **Use focused local quality loops when iterating:** `./mvnw -pl ta4j-core -am clean compile spotbugs:check` and `./mvnw -pl ta4j-core -am test jacoco:report jacoco:check`
+  These are intentionally strict for the module you are changing; the SpotBugs loop compiles clean module output before scanning so you can tighten one tool at a time before rerunning the full `verify` gate.
 
-- **Fix formatting and license headers when needed:** `mvn -B license:format formatter:format`
-  First-time contributors almost always hit this; run the formatter command locally before your final `mvn -B verify`.
+- **Fix formatting and license headers when needed:** `./mvnw -B license:format formatter:format` or `mvn -B license:format formatter:format`
+  First-time contributors almost always hit this; run the formatter command locally before your final `verify` gate.
 
 ## Contribution checklist
 
@@ -29,9 +29,9 @@ ta4j has been around for years and serves a large, diverse user base. Contributi
    ```
 4. **Implement + test.** Run the full build before pushing:
    ```bash
-   mvn -B clean license:format formatter:format test install
+   ./mvnw -B verify
    ```
-   CI will fail if your changes are not formatted or lack the project license header. First-time contributors almost always hit this; run the command locally first.
+   On Windows, use `mvnw.cmd -B verify`; if you already manage Maven 3.9+ yourself, `mvn -B verify` is also supported. The quiet scripts are optional filtered-output wrappers for the same gate and preserve full logs under `.agents/logs/`. CI will fail if your changes are not formatted or lack the project license header. First-time contributors almost always hit this; run `./mvnw -B license:format formatter:format` or `mvn -B license:format formatter:format` locally when needed before your final verify run.
    Update `CHANGELOG.md` when you add, fix, or change behavior.
 5. **Open the PR** against `ta4j/master`. Draft PRs are encouraged for early feedback. Prefer [well-formed commit messages](http://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html).
 
@@ -68,10 +68,10 @@ Open an issue to discuss the new indicator first. Every indicator must ship with
 Regular PR and push CI skips test tags configured by `ta4j.excludedTestTags`.
 Run tagged suites manually from GitHub Actions, or locally with:
 
-- `xvfb-run mvn -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay`
-- `xvfb-run mvn -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.runBenchmarks=true`
-- `xvfb-run mvn -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags=elliott-macro-cycle-replay -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
-- `xvfb-run mvn -B test -Dgroups=elliott-macro-cycle-replay -Dta4j.excludedTestTags= -Dtest=ElliottWaveMacroCycleDetectorTest`
+- `xvfb-run ./mvnw -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay`
+- `xvfb-run ./mvnw -B test -Dgroups=benchmark -Dta4j.excludedTestTags= -Dta4j.runBenchmarks=true`
+- `xvfb-run ./mvnw -B test -Dgroups=analysis-demo -Dta4j.excludedTestTags=elliott-macro-cycle-replay -Dta4j.analysisDemoInstrument=coinbase:BTC-USD -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave`
+- `xvfb-run ./mvnw -B test -Dgroups=elliott-macro-cycle-replay -Dta4j.excludedTestTags= -Dtest=ElliottWaveMacroCycleDetectorTest`
 
 These examples match the Linux GitHub Actions runners. On macOS, use XQuartz or
 run the Maven command without `xvfb-run` when your local display can satisfy
