@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.22.7 (2026-06-27)
+
 ### Breaking
 - Updated project Java JDK from 21 to 25
 - **NetMomentum now models oscillator battery exhaustion**: `NetMomentumIndicator` inverts RSI-style
@@ -8,6 +12,7 @@
   than repeated mild deviations.
 
 ### Added
+- **Position-count criteria can include open positions**: `NumberOfPositionsCriterion` now accepts a `PositionStatusFilter` so callers can count closed positions, open positions, or both while preserving the existing closed-position default.
 - **Active return criteria for benchmark comparisons**: Added `ActiveReturnCriterion` and `ActiveReturnVersusEnterAndHoldCriterion` so return-like criteria can report benchmark-relative active return in decimal, percentage, multiplicative, or log form without changing the established normalized `VersusEnterAndHoldCriterion` behavior.
 - **Composable regime and edge primitives**: Added `StretchZScoreIndicator`, `CompressionIndicator`, `TrendScoreIndicator`, `TrendConclusionIndicator`, `EntryEdgeIndicator`, `EdgeDecaySlopeIndicator`, `LossTriggeredCooldownRule`, and `EdgeHealthyRule` so strategies can model stretch, compression, trend state, realized entry edge, edge decay, and post-loss cooldowns with reusable ta4j-native building blocks (`CF-86`).
 - **Rolling advanced correlation indicators**: Added Spearman rank correlation, Kendall tau-b, lag-aware cross-correlation, distance correlation, mutual information, and regime-segmented correlation indicators under `org.ta4j.core.indicators.statistics`, with NaN handling for undefined windows and documentation for choosing the right metric.
@@ -21,6 +26,9 @@
 - **Parameter research has lower first-run ceremony**: Added no-validator `ParameterResearch.run(...)`, `ResearchConfig.holdout(...)` for all-pre-holdout training, `ParameterDomain.periodRange(...)` for period-like domains, and bounded `ParameterResearchReport.formatSummary(...)` output so multi-parameter studies are easier to launch and read.
 
 ### Changed
+- **Build and test dependencies were refreshed**: The parent POM now pins SpotBugs `4.9.8.3`, JaCoCo `0.8.14`, Gson `2.14.0`, JUnit Jupiter `6.0.3`, Mockito `5.23.0`, and SLF4J `2.0.18`.
+- **Concurrent bar-series tests are easier to read in logs**: `ConcurrentBarSeriesTest` and `ConcurrentBarSeriesBuilderTest` now give every built series a descriptive name derived from its test method, concurrent harnesses log caught exceptions through Log4j 2 instead of printing stack traces, and `ta4j-core` test Log4j configuration suppresses intentional `TimeBarBuilder` missing-bar WARNs while keeping explicit gap-logging assertions in `TimeBarBuilderTest`.
+- **AI release scheduling is safer to debug**: Manual `release-scheduler.yml` runs now default to a tiny GitHub Models probe, can explicitly skip AI calls, and keep full release-dossier analysis on the scheduled path, while failed required AI calls now preserve curl diagnostics and fail visibly instead of silently falling back.
 - **Agent PR handoff guidance is more explicit**: ta4j PR overrides now clarify when changelog entries are required, require `@coderabbitai full review` after opening a PR, and tell agents to delete temporary `.agents/plans/` PRD/checklist files before final handoff unless explicitly retained.
 - **Contributor full-build feedback is faster**: Slow cached-indicator, chart workflow, paginated data-source, streaming-bot, and XLS-backed indicator checks now avoid real waits and repeated fixture parsing while keeping their production paths and assertions covered.
 - **Rule trace diagnostics are now explicit and safer for shared strategies**: enabling SLF4J `TRACE` on a rule or strategy logger now emits default verbose diagnostics without mutating shared instances, one-shot `SUMMARY` / `VERBOSE` calls scope noisy child logs, and output uses stable flat `key=value` fields for path/depth, compared values, cross/slope windows, risk/reward math, short-circuit reasons, unstable strategy decisions, and stop-rule prices.
