@@ -352,6 +352,8 @@ test_release_scheduler_ai_failures_remain_diagnostic_and_red() {
 
 	  local ai_failure_section
 	  ai_failure_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Handle AI API failure" "Extract AI response content")"
+	  expect_section_contains "$ai_failure_section" "steps.ai_call.outputs.curl_exit_code != '0'" \
+	    "release scheduler failure path should run when curl fails even if HTTP status is 200"
 	  expect_section_contains "$ai_failure_section" "curl diagnostics (last 20 lines)" \
 	    "release scheduler failure path should print bounded curl diagnostics"
 	  expect_section_contains "$ai_failure_section" "ai-transport-diagnostics" \
@@ -362,10 +364,15 @@ test_release_scheduler_ai_failures_remain_diagnostic_and_red() {
 	    "release scheduler should escape AI failure messages before creating workflow annotations"
   expect_section_contains "$ai_failure_section" 'echo "::error::$error_annotation"' \
     "release scheduler should surface escaped AI failure text as a GitHub Actions error"
-  expect_section_contains "$ai_failure_section" "exit 1" \
-    "release scheduler should fail when required AI inference does not answer"
+	  expect_section_contains "$ai_failure_section" "exit 1" \
+	    "release scheduler should fail when required AI inference does not answer"
 
-  local artifact_section
+	  local ai_extract_section
+	  ai_extract_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Extract AI response content" "Parse AI JSON")"
+	  expect_section_contains "$ai_extract_section" "steps.ai_call.outputs.curl_exit_code == '0'" \
+	    "release scheduler should parse AI content only when curl completed cleanly"
+
+	  local artifact_section
 	  artifact_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Upload release scheduler audit artifacts" "retention-days")"
 	  expect_section_contains "$artifact_section" "curl-error.log" \
 	    "release scheduler audit artifact should include curl diagnostics"

@@ -573,7 +573,7 @@ jobs:
 
       - name: Handle AI API failure
         id: ai_failure
-        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true' && steps.ai_call.outputs.response_status != '200'
+        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true' && (steps.ai_call.outputs.response_status != '200' || steps.ai_call.outputs.curl_exit_code != '0')
         env:
           AI_MODE: ${{ steps.ai_mode.outputs.mode }}
           MODEL: ${{ steps.model_config.outputs.model_id }}
@@ -625,7 +625,7 @@ jobs:
 
       - name: Extract AI response content
         id: ai
-        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true' && steps.ai_call.outputs.response_status == '200'
+        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true' && steps.ai_call.outputs.response_status == '200' && steps.ai_call.outputs.curl_exit_code == '0'
         run: |
           resp_size=$(wc -c < response.json | tr -d ' ')
           echo "audit:ai_response_bytes=$resp_size saved_to=response.json"

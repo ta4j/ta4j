@@ -311,12 +311,12 @@ EOF
 {"changed_file_count":334,"selected_diff_truncated":true}
 EOF
   cat > curl-error.log <<'EOF'
-attempt=1 curl_exit_code=18 response_status=000
+attempt=1 curl_exit_code=18 response_status=200
 curl: (18) transfer closed with 1 bytes remaining to read
 EOF
   cat > curl-metrics.log <<'EOF'
 attempt=1
-http_code=000
+http_code=200
 time_total=2.389
 size_upload=11900
 size_download=196
@@ -330,7 +330,7 @@ EOF
   "$PYTHON" "$SCRIPT" ai-transport-diagnostics \
     --ai-mode full \
     --model openai/gpt-4.1 \
-    --response-status 000 \
+    --response-status 200 \
     --curl-exit-code 18 \
     --attempts 1 \
     --output release-ai-transport-diagnostics.json \
@@ -338,9 +338,12 @@ EOF
 
   expect_json_value release-ai-transport-diagnostics.json classification curl_partial_file_transport_close
   expect_json_value release-ai-transport-diagnostics.json connectionClosedDuring response_read
+  expect_json_value release-ai-transport-diagnostics.json responseStatus 200
   expect_file_contains release-ai-transport-diagnostics.json "Do not rerun billed aiMode=full blindly" \
     "diagnostics should include non-blind rerun guidance"
   expect_json_value ai-content.txt should_release false
+  expect_file_contains ai-content.txt "curl exit 18, HTTP 200" \
+    "fallback decision should prefer curl exit details over the HTTP status"
   expect_file_contains ai-content.txt "release-ai-transport-diagnostics.json" \
     "fallback decision should point at diagnostics artifact"
 

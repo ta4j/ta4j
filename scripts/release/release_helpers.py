@@ -498,14 +498,17 @@ def build_compact_dossier(full_dossier: str, profile: dict[str, int]) -> tuple[s
     javadoc_signals = extract_markdown_section(full_dossier, "Javadoc and @since Signals")
     test_signals = extract_markdown_section(full_dossier, "Test File Signals")
     selected_diff = extract_markdown_section(full_dossier, "Selected Diff")
+    compact_intro = (
+        "The full release-dossier.md is preserved in the scheduler audit artifact. This compact prompt keeps the "
+        "release decision resumable without sending the entire artifact inline."
+    )
 
     diff_chars = profile["diff_chars"]
     compact_diff = bounded_text(selected_diff, diff_chars, "selected diff")
     sections = [
         "# ta4j Release Dossier (compact transport-safe prompt)",
         "",
-        "The full release-dossier.md is preserved in the scheduler audit artifact. This compact prompt keeps the "
-        "release decision resumable without sending the entire artifact inline.",
+        compact_intro,
         "",
         "## Metadata",
         "",
@@ -688,9 +691,14 @@ def command_ai_transport_diagnostics(args: argparse.Namespace) -> int:
         classification = "curl_partial_file_transport_close"
         connection_closed_during = "response_read"
 
-    reason = f"AI call failed before an HTTP response (curl exit {curl_exit_code})"
-    if response_status != "000":
+    if str(curl_exit_code) == "18":
+        reason = f"AI response transfer closed before completion (curl exit {curl_exit_code}, HTTP {response_status})"
+    elif str(curl_exit_code) not in ("0", "unknown"):
+        reason = f"AI transport failed with curl exit {curl_exit_code} (HTTP {response_status})"
+    elif response_status != "000":
         reason = f"AI call failed with HTTP {response_status}"
+    else:
+        reason = f"AI call failed before an HTTP response (curl exit {curl_exit_code})"
 
     diagnostics = {
         "schemaVersion": AI_TRANSPORT_DIAGNOSTICS_SCHEMA_VERSION,
