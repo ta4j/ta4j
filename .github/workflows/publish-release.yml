@@ -704,7 +704,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::Validate release commit version"
-          current_version="$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version | tr -d '\r')"
+          current_version="$(./mvnw -q -DforceStdout help:evaluate -Dexpression=project.version | tr -d '\r')"
           if [ "${current_version}" != "${RELEASE_VERSION}" ]; then
             echo "Release commit version mismatch: expected ${RELEASE_VERSION}, got ${current_version}." >&2
             exit 1
@@ -742,7 +742,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::Build release artifacts for manifest validation"
-          mvn -B -DskipTests -Dgpg.skip=true -Pproduction-release package 2>&1 | tee release-artifact-build.log
+          ./mvnw -B -DskipTests -Dgpg.skip=true -Pproduction-release package 2>&1 | tee release-artifact-build.log
           bash scripts/release/release_helpers.sh artifact-manifest \
             --version "${RELEASE_VERSION}" \
             --output artifact-manifest.txt \
@@ -768,7 +768,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::Deploy release to Maven Central"
-          mvn -B -Pproduction-release deploy 2>&1 | tee release-deploy.log
+          ./mvnw -B -Pproduction-release deploy 2>&1 | tee release-deploy.log
           echo "::endgroup::"
 
       - name: Validate Javadoc warning baseline

@@ -93,13 +93,14 @@ assert_no_github_script_injected_binding_redeclarations() {
 test_maven_workflow_jobs_setup_jdk25_before_maven() {
   echo "Running test_maven_workflow_jobs_setup_jdk25_before_maven"
 
+  local maven_run_regex='(^|[[:space:]"({;])xvfb-run[[:space:]]+(\./)?mvnw?([[:space:]-]|\.cmd)|(^|[[:space:]"({;])(\./)?mvnw?([[:space:]-]|\.cmd)'
   local workflow
   for workflow in "$WORKFLOWS"/*.yml; do
-    if ! grep -Eq '(^|[[:space:]"({;])xvfb-run[[:space:]]+mvn[[:space:]-]|(^|[[:space:]"({;])mvn[[:space:]-]' "$workflow"; then
+    if ! grep -Eq "$maven_run_regex" "$workflow"; then
       continue
     fi
 
-    awk -v file="${workflow#"$ROOT"/}" '
+    awk -v file="${workflow#"$ROOT"/}" -v maven_run_regex="$maven_run_regex" '
       /^jobs:/ { in_jobs = 1; next }
       in_jobs && /^  [A-Za-z0-9_-]+:$/ {
         job = $1
@@ -120,7 +121,7 @@ test_maven_workflow_jobs_setup_jdk25_before_maven() {
       setup && /distribution: temurin/ { temurin = 1 }
       setup && /java-version: 25/ { jdk25 = 1 }
       /^[[:space:]]*#/ { next }
-      /(^|[[:space:]"({;])xvfb-run[[:space:]]+mvn[[:space:]-]|(^|[[:space:]"({;])mvn[[:space:]-]/ {
+      $0 ~ maven_run_regex {
         if (!setup || !temurin || !jdk25) {
           printf("[FAIL] %s job %s runs Maven before Temurin JDK 25 setup at line %d\n", file, job ? job : "(unknown)", NR) > "/dev/stderr"
           exit 1
