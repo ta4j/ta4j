@@ -635,7 +635,7 @@ EOF
       candidate_dossier="$tmpdir/compact-${compaction_level}.md"
       candidate_request="$tmpdir/request-${compaction_level}.json"
       candidate_profile="compact-artifact-backed-v${compaction_level}"
-      build_compact_dossier "$prompt_dossier" "$candidate_dossier" "${limits[$i]}" "${changelog_limits[$i]}" "${signals_limits[$i]}" "${diff_limits[$i]}"
+      build_compact_dossier "$full_dossier" "$candidate_dossier" "${limits[$i]}" "${changelog_limits[$i]}" "${signals_limits[$i]}" "${diff_limits[$i]}"
       build_ai_request_payload "$model" "$semver_file" "$candidate_dossier" "$candidate_profile" > "$candidate_request"
       candidate_size="$(file_size_bytes "$candidate_request")"
       if (( candidate_size <= max_request_bytes )); then

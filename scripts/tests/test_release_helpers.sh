@@ -238,6 +238,9 @@ test_build_ai_request_compacts_oversized_dossier() {
     echo
     echo "\`\`\`markdown"
     echo "- Added a compact request test fixture."
+    for index in $(seq 0 399); do
+      echo "- Changelog padding ${index} keeps late dossier sections beyond the inline prefix budget."
+    done
     echo "\`\`\`"
     echo
     echo "## Public API Signals"
@@ -264,6 +267,7 @@ test_build_ai_request_compacts_oversized_dossier() {
   bash "$SCRIPT" build-ai-request \
     --model openai/gpt-4.1 \
     --dossier release-dossier.md \
+    --max-dossier-chars 12000 \
     --max-request-bytes 12000 \
     --output request.json \
     --metadata-output release-ai-request-metadata.json
@@ -273,11 +277,14 @@ test_build_ai_request_compacts_oversized_dossier() {
     fail "compact request should stay under forced transport budget (got ${request_size})"
   fi
   expect_json_value release-ai-request-metadata.json artifactBackedContext true
+  expect_json_value release-ai-request-metadata.json fullDossierTruncatedForPrompt true
   expect_json_value release-ai-request-metadata.json requestWithinTransportBudget true
   expect_file_contains release-ai-request-metadata.json "compact-artifact-backed" \
     "metadata should record compact prompt profile"
   expect_file_contains request.json "full release-dossier.md is preserved" \
     "compact prompt should tell the model where the full dossier lives"
+  expect_file_contains request.json "@since 1.0.1" \
+    "compact prompt should preserve late dossier signals from the full dossier"
 
   finish_test
   pass "test_build_ai_request_compacts_oversized_dossier"
