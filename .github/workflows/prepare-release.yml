@@ -245,7 +245,7 @@ jobs:
         id: read_current
         shell: bash
         run: |
-          CURRENT=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
+          CURRENT=$(./mvnw -q -DforceStdout help:evaluate -Dexpression=project.version)
           echo "Detected project.version: $CURRENT"
 
           if [[ -z "${CURRENT}" ]]; then
@@ -444,12 +444,12 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.versions.outputs.release }}
         run: |
-          mvn -B versions:set -DnewVersion=$RELEASE_VERSION
+          ./mvnw -B versions:set -DnewVersion=$RELEASE_VERSION
 
       - name: Commit Maven version change
         if: steps.dry_run.outputs.dryRun != 'true'
         run: |
-          mvn -B versions:commit
+          ./mvnw -B versions:commit
 
       - name: Validate Maven Central metadata
         run: |
@@ -481,10 +481,10 @@ jobs:
           REPORT_MD: ${{ runner.temp }}/release-ready-deprecations.md
         run: |
           echo "::group::Gate release-ready deprecations"
-          mvn -B -q -pl ta4j-examples -am -DskipTests install
+          ./mvnw -B -q -pl ta4j-examples -am -DskipTests install
 
           set +e
-          mvn -B -q -pl ta4j-examples exec:java \
+          ./mvnw -B -q -pl ta4j-examples exec:java \
             -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner \
             "-Dexec.args=--repo-root ${GITHUB_WORKSPACE} --pom-file pom.xml --target-removal-version ${RELEASE_VERSION} --include-overdue --fail-on-due --output-json ${REPORT_JSON} --output-md ${REPORT_MD}"
           scan_status=$?
@@ -523,12 +523,12 @@ jobs:
         env:
           NEXT_VERSION: ${{ steps.versions.outputs.next }}
         run: |
-          mvn -B versions:set -DnewVersion=$NEXT_VERSION
+          ./mvnw -B versions:set -DnewVersion=$NEXT_VERSION
 
       - name: Commit Maven version change for next
         if: steps.dry_run.outputs.dryRun != 'true'
         run: |
-          mvn -B versions:commit
+          ./mvnw -B versions:commit
 
       - name: Commit next snapshot version
         if: steps.dry_run.outputs.dryRun != 'true'
@@ -544,8 +544,8 @@ jobs:
         run: |
           echo "::group::Scan removal-ready deprecations"
           NEXT_REMOVAL_VERSION="${NEXT_VERSION%-SNAPSHOT}"
-          mvn -B -q -pl ta4j-examples -am -DskipTests install
-          mvn -B -q -pl ta4j-examples exec:java \
+          ./mvnw -B -q -pl ta4j-examples -am -DskipTests install
+          ./mvnw -B -q -pl ta4j-examples exec:java \
             -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner \
             "-Dexec.args=--repo-root ${GITHUB_WORKSPACE} --pom-file pom.xml --target-removal-version ${NEXT_REMOVAL_VERSION} --include-overdue --output-json ${REPORT_JSON} --output-md ${REPORT_MD}"
           echo "::endgroup::"
