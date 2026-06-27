@@ -702,7 +702,7 @@ public final class ElliottWaveMacroCycleDemo {
      * @param exchange             datasource name used to load the live series
      * @param normalizedInstrument instrument token used by the datasource
      * @param lookbackDays         requested daily lookback window
-     * @since 0.22.7
+     * @since 0.22.8
      */
     public static void runLivePreset(final BarSeries series, final Path chartDirectory, final String exchange,
             final String normalizedInstrument, final long lookbackDays) {

@@ -1,6 +1,10 @@
 ## Unreleased
 
-- _No changes yet._
+### Added
+- **EW snapshots can publish five-outlook live macro reports**: The manual `EW Snapshot Analysis` workflow now runs `ElliottWavePresetDemo` for configurable daily instruments and exchanges, writes dynamic run summaries plus embedded-chart HTML, and uploads charts, scenario-outlook JSON, cached provider responses, and the full demo log for public monitoring.
+
+### Changed
+- **Daily live Elliott preset runs now use the generic macro snapshot path**: `ElliottWavePresetDemo` routes any daily live instrument through the macro-cycle preset so non-BTC symbols receive the same base case plus four alternate outlooks with instrument-aware filenames and scenario-outlook JSON.
 
 ## 0.22.7 (2026-06-27)
 
@@ -21,8 +25,7 @@
 - **Backtesting throughput comparisons are now reproducible**: `BacktestPerformanceTuningHarness` can write fixed-matrix `matrix_performance.json` artifacts with cells/min, hypotheses/min, hashed host telemetry, and per-cell timings, while `scripts/benchmark-backtest-throughput.sh` compares `HEAD^` and `HEAD` on the same dataset/spec/host for focused tuning work (`CF-170`).
 - **Release automation audit artifacts**: Release workflows now emit structured release dossiers, model catalog preflight data, normalized AI decisions, exact artifact manifests, tag-resolution snapshots, full-build logs, and workflow summaries so release failures can be diagnosed from the exact step that produced them.
 - **Report-producing analysis demos can run on demand or on schedule**: The new standalone `analysis-demo` JUnit tag starts with a live Elliott Wave BTC/USD macro report backed by Coinbase daily candles, plus a dedicated GitHub Actions workflow that can be manually run for provider-qualified instruments like `coinbase:BTC-USD` and uploads the resulting JSON, chart, and cached data artifacts.
-- **EW snapshots can publish five-outlook live macro reports**: The manual `EW Snapshot Analysis` workflow now runs `ElliottWavePresetDemo` for configurable daily instruments and exchanges, writes dynamic run summaries plus embedded-chart HTML, and uploads charts, scenario-outlook JSON, cached provider responses, and the full demo log for public monitoring.
-- **Elliott macro-cycle replay has a documented runner path**: The BTC macro-cycle replay regression uses the explicit `elliott-macro-cycle-replay` JUnit tag and documented local command, keeping the multi-hour replay out of hosted PR verification and report-producing live snapshot runs.
+- **Elliott macro-cycle replay has a dedicated runner path**: The BTC macro-cycle replay regression now uses the explicit `elliott-macro-cycle-replay` JUnit tag and a manual-only self-hosted GitHub Actions workflow, keeping the multi-hour replay out of hosted PR verification and report-producing analysis-demo runs.
 - **PULL_REQUESTS.md guidance for AI agents**: New rules were added for handling pull requests.
 
 ### Changed
@@ -38,12 +41,11 @@
 - **Agent guidance stays accurate across repo and personal workflows**: `scripts/agents_for_target.sh` guidance now clearly describes path-scoped `AGENTS.md` discovery from the current repo/workspace root, so contributors can use it for file-targeted lookup without assuming it also covers personal PR/comment workflow guidance.
 - **Release prep now keeps removal-ready APIs on schedule**: `prepare-release.yml` now runs a Java-based removal-ready deprecation scanner before release commits to block due or overdue removals, then scans the next snapshot to create, refresh, reopen, or close stale cleanup issues for matching `@Deprecated(forRemoval = true)` symbols.
 - **BTC daily Elliott runs now share one macro-validated core path**: You can now run the historical BTC macro study and the live BTC preset through the same core-ranked Elliott engine, keep the locked `1-2-3-4-5` / `A-B-C` truth-set regression in place, and read the current-cycle invalidation directly as a condition like `<= 68997.75` instead of reverse-engineering a raw number from the demo output. The BTC wrapper is now primarily about loading ossified data, choosing the prevalidated profile, and rendering charts/reports.
-- **Daily live Elliott preset runs now use the generic macro snapshot path**: `ElliottWavePresetDemo` routes any daily live instrument through the macro-cycle preset so non-BTC symbols receive the same base case plus four alternate outlooks with instrument-aware filenames and scenario-outlook JSON.
 - **Tagged test suites are easier to run when you actually want them**: `benchmark` and `integration` JUnit tags now each have a dedicated GitHub Actions workflow with manual dispatch plus independently gated daily, weekly, or monthly schedule slots controlled by repository variables, so opt-in suites stay out of push CI without becoming hard to exercise.
 - **AI release scheduling now uses richer GitHub Models context**: `release-scheduler.yml` now defaults to the GitHub Models `openai/gpt-4.1` path, validates the configured catalog entry before inference, and sends a generated release dossier instead of the prior heavily truncated path summary.
 - **Release publishing now gates on candidate verification and exact artifacts**: `publish-release.yml` now runs the official release-candidate build gate with the repository’s standard release test-tag exclusions before deploy, validates the expected release jars, fails on new Javadoc warnings relative to the tracked baseline, requires explicit recovery mode for manual unreachable commits, and dispatches snapshot publication after a successful tag verification. `github-release.yml` now validates bare SemVer tags and uploads only the expected release artifacts.
 - **Documentation surfaces are now aligned across code and wiki workflows**: Core strategy/rule/indicator/bar-series API docs were clarified, key runnable examples were documented at class level, and contribution/release guidance was consolidated so documentation mirrors the current codebase and maintainer process.
-- **Tagged tests use explicit execution lanes**: `benchmark`, `integration`, and `analysis-demo` JUnit tags now have dedicated GitHub Actions workflows, while `elliott-macro-cycle-replay` keeps a documented local command, so long-running suites stay out of push CI without becoming hard to exercise.
+- **Tagged tests use explicit execution lanes**: `benchmark`, `integration`, `analysis-demo`, and `elliott-macro-cycle-replay` JUnit tags now have dedicated GitHub Actions workflows or documented local commands, so long-running suites stay out of push CI without becoming hard to exercise.
 - **Documentation surface area is now consolidated around canonical owners**: Overlapping execution-choice guidance was reduced to a single decision-matrix source, wiki navigation duplicates were removed, maintainer architecture index duplication was cleaned up, and onboarding/live/backtesting docs now route through clearer ownership boundaries while preserving deprecation-safe link compatibility.
 
 ### Fixed
