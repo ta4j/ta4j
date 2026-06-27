@@ -119,7 +119,7 @@ public class ReadmeContentManagerTest {
                 if (path.getFileName().toString().equals("github-release.yml")) {
                     assertTrue(workflow.contains("path: workflow-support"),
                             path + " should stage workflow support files separately from the release tag checkout");
-                    assertTrue(workflow.contains("workflow-support/scripts/release/release_helpers.py"), path
+                    assertTrue(workflow.contains("workflow-support/scripts/release/release_helpers.sh"), path
                             + " should validate artifacts with workflow support files, not the checked-out tag tree");
                 }
             });

@@ -132,6 +132,7 @@ Expected behavior:
 - GitHub Release dry-runs build and validate the exact release artifact manifest from the selected tag while using workflow support files from the workflow commit.
 - release-candidate checks use the repository default `integration,slow` test-tag exclusions and log that policy in the workflow output.
 - workflows upload audit artifacts such as release dossiers, decisions, manifests, logs, and tag-resolution files so failures can be diagnosed from the exact phase that produced them.
+- `release-scheduler.yml` full AI dry-runs compact oversized dossiers before calling GitHub Models, record the prompt profile and byte budget in `release-ai-request-metadata.json`, and capture `response-headers.txt`, `curl-metrics.log`, and `release-ai-transport-diagnostics.json` when a provider transport failure occurs.
 
 ---
 
@@ -241,7 +242,9 @@ Release workflows use grouped log sections and upload audit artifacts on every r
 
 Look for these files first:
 - `release-dossier.md`: scheduler context sent to the model.
+- `release-ai-request-metadata.json`: scheduler AI prompt profile, byte budget, request size, full/prompt dossier sizes, and whether the prompt was compacted against the full dossier artifact.
 - `release-decision.json`: normalized AI release decision.
+- `release-ai-transport-diagnostics.json`: structured scheduler diagnostics for curl/provider transport failures, including request metadata, curl status, response size, captured headers, metrics, and recovery guidance.
 - `release-audit.json`: workflow-local release metadata.
 - `tag-resolution.txt`: resolved latest/reachable/first-parent tag state.
 - `artifact-manifest.txt`: exact jars expected for publish/GitHub Release.
@@ -249,6 +252,15 @@ Look for these files first:
 - `.agents/logs/full-build-*.log`: release-candidate full build log.
 
 If a grouped section fails, inspect the matching artifact before rerunning. Avoid rerunning publish until tag state, artifact state, and Central deployment state are understood.
+
+### 8.8 Scheduler full AI transport failure
+
+If a manual `release-scheduler.yml` dry-run with `aiMode=full` fails before an HTTP response, do not rerun the same full request blindly. First inspect:
+- `release-ai-request-metadata.json` for prompt profile, full dossier size, prompt dossier size, request byte size, and configured transport budget.
+- `release-ai-transport-diagnostics.json` for curl exit code, HTTP status, captured headers, transfer metrics, response preview, and recovery guidance.
+- `curl-error.log`, `curl-metrics.log`, and `response-headers.txt` for low-level provider or gateway symptoms.
+
+Use `aiMode=probe` to validate GitHub Models connectivity without sending the full release dossier. Retry `aiMode=full` only after request size, provider status, or scheduler compaction policy has been reviewed from the artifacts above.
 
 ---
 
