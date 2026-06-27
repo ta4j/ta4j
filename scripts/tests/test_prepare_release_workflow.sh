@@ -290,10 +290,18 @@ test_release_pr_review_request_uses_review_plan() {
 
   expect_text_contains "$request_section" "steps.release_review_plan.outputs.has_review_targets == 'true'" \
     "review request should run only when targets exist"
-  expect_text_contains "$request_section" "JSON.parse(process.env.REVIEWERS_JSON" \
+  expect_text_not_contains "$request_section" "uses: actions/github-script@" \
+    "review request should not add another tag-pinned action"
+  expect_text_contains "$request_section" "GH_TOKEN:" \
+    "review request should authenticate gh with the selected workflow token"
+  expect_text_contains "$request_section" 'json.loads(sys.argv[2] or "[]")' \
     "review request should consume planned reviewer JSON"
-  expect_text_contains "$request_section" "request.team_reviewers = teamReviewers" \
+  expect_text_contains "$request_section" 'payload["team_reviewers"] = team_reviewers' \
     "review request should support team reviewers"
+  expect_text_contains "$request_section" "release-review-request.json" \
+    "review request should write a JSON API payload"
+  expect_text_contains "$request_section" '"repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers"' \
+    "review request should call the GitHub reviewers API"
 
   expect_text_contains "$warning_section" "::warning::\${warning}" \
     "prepare-release should emit a warning when no reviewer target remains"

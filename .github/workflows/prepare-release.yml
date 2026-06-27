@@ -953,42 +953,56 @@ jobs:
 
       - name: Request release PR review
         if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true' && steps.release_review_plan.outputs.has_review_targets == 'true'
-        uses: actions/github-script@v9
         env:
+          GH_TOKEN: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
           PR_NUMBER: ${{ steps.release_pr.outputs.pr_number }}
           REVIEWERS_JSON: ${{ steps.release_review_plan.outputs.reviewers_json }}
           TEAM_REVIEWERS_JSON: ${{ steps.release_review_plan.outputs.team_reviewers_json }}
-        with:
-          github-token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
-          script: |
-            const prNumber = Number.parseInt(process.env.PR_NUMBER || "", 10);
-            const reviewers = JSON.parse(process.env.REVIEWERS_JSON || "[]");
-            const teamReviewers = JSON.parse(process.env.TEAM_REVIEWERS_JSON || "[]");
-            if (!Number.isInteger(prNumber)) {
-              throw new Error("Missing release PR number for review request.");
-            }
-            if (reviewers.length === 0 && teamReviewers.length === 0) {
-              console.warn("No eligible release PR reviewers were planned.");
-              return;
-            }
+        run: |
+          python3 - "$PR_NUMBER" "$REVIEWERS_JSON" "$TEAM_REVIEWERS_JSON" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
 
-            try {
-              const request = {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: prNumber
-              };
-              if (reviewers.length > 0) {
-                request.reviewers = reviewers;
-              }
-              if (teamReviewers.length > 0) {
-                request.team_reviewers = teamReviewers;
-              }
-              await github.rest.pulls.requestReviewers(request);
-            } catch (error) {
-              const targets = [...reviewers, ...teamReviewers.map((team) => `team:${team}`)].join(", ");
-              throw new Error(`Failed to request release PR review from ${targets}: ${error.message}`);
-            }
+          pr_number = sys.argv[1].strip()
+          reviewers = json.loads(sys.argv[2] or "[]")
+          team_reviewers = json.loads(sys.argv[3] or "[]")
+          if not pr_number.isdigit():
+              raise SystemExit("Missing release PR number for review request.")
+          if not reviewers and not team_reviewers:
+              print("No eligible release PR reviewers were planned.")
+              Path("release-review-request-targets.txt").write_text("", encoding="utf-8")
+              raise SystemExit(0)
+
+          payload = {}
+          if reviewers:
+              payload["reviewers"] = reviewers
+          if team_reviewers:
+              payload["team_reviewers"] = team_reviewers
+
+          Path("release-review-request.json").write_text(
+              json.dumps(payload, separators=(",", ":")),
+              encoding="utf-8",
+          )
+          targets = [*reviewers, *[f"team:{team}" for team in team_reviewers]]
+          Path("release-review-request-targets.txt").write_text(
+              ", ".join(targets),
+              encoding="utf-8",
+          )
+          PY
+
+          if [ ! -s release-review-request-targets.txt ]; then
+            exit 0
+          fi
+
+          targets="$(cat release-review-request-targets.txt)"
+          if ! gh api \
+            --method POST \
+            "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
+            --input release-review-request.json >/dev/null; then
+            echo "::error::Failed to request release PR review from ${targets}" >&2
+            exit 1
+          fi
 
       - name: Report release PR review warning
         if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true' && steps.release_review_plan.outputs.has_review_targets != 'true'
