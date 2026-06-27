@@ -1,6 +1,8 @@
 ## Unreleased
 
-- _No changes yet._
+### Fixed
+
+- **Prepare-release no longer asks release PR authors to review themselves**: `prepare-release.yml` now filters the PR author out of release reviewer requests, supports fallback reviewer users or teams, and leaves a warning-only audit path when no eligible reviewer remains instead of failing PR creation.
 
 ## 0.22.7 (2026-06-27)
 

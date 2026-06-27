@@ -67,6 +67,29 @@ PY
   fi
 }
 
+expect_json_compact() {
+  local file="$1"
+  local filter="$2"
+  local expected="$3"
+  local actual
+  actual="$($PYTHON - "$file" "$filter" <<'PY'
+import json
+import sys
+
+path, key = sys.argv[1:3]
+with open(path, encoding="utf-8") as handle:
+    data = json.load(handle)
+value = data
+for part in key.split("."):
+    value = value[part]
+print(json.dumps(value, separators=(",", ":")))
+PY
+)"
+  if [[ "$actual" != "$expected" ]]; then
+    fail "expected ${filter}=${expected}, got ${actual:-<missing>}"
+  fi
+}
+
 write_catalog_fixture() {
   cat > catalog.json <<'EOF'
 [
@@ -164,6 +187,93 @@ EOF
 
   finish_test
   pass "test_parse_decision_normalizes_major_and_invalid_json"
+}
+
+test_release_pr_review_plan_defaults_to_owner() {
+  echo "Running test_release_pr_review_plan_defaults_to_owner"
+  run_test
+
+  "$PYTHON" "$SCRIPT" release-pr-review-plan \
+    --release-owner TheCookieLab \
+    --pr-author maintainer \
+    --output release-review-plan.json \
+    --github-output outputs.txt
+
+  expect_json_value release-review-plan.json hasReviewTargets true
+  expect_json_compact release-review-plan.json reviewers '["TheCookieLab"]'
+  expect_json_compact release-review-plan.json teamReviewers '[]'
+  expect_file_contains outputs.txt 'has_review_targets=true' "review plan should expose target availability"
+  expect_file_contains outputs.txt 'reviewers_json=["TheCookieLab"]' "review plan should expose reviewers JSON"
+
+  finish_test
+  pass "test_release_pr_review_plan_defaults_to_owner"
+}
+
+test_release_pr_review_plan_skips_self_review_without_failing() {
+  echo "Running test_release_pr_review_plan_skips_self_review_without_failing"
+  run_test
+
+  "$PYTHON" "$SCRIPT" release-pr-review-plan \
+    --release-owner TheCookieLab \
+    --pr-author thecookielab \
+    --output release-review-plan.json \
+    --github-output outputs.txt >review-plan.log
+
+  expect_json_value release-review-plan.json hasReviewTargets false
+  expect_json_compact release-review-plan.json reviewers '[]'
+  expect_json_compact release-review-plan.json skippedReviewers '[{"login":"TheCookieLab","reason":"matches PR author"}]'
+  expect_file_contains release-review-plan.json "No eligible release PR reviewers" \
+    "self-authored PR without fallback should include a warning"
+  expect_file_contains outputs.txt 'has_review_targets=false' "review plan should expose no target state"
+  expect_file_contains review-plan.log "::warning::No eligible release PR reviewers" \
+    "review plan should warn without failing"
+
+  finish_test
+  pass "test_release_pr_review_plan_skips_self_review_without_failing"
+}
+
+test_release_pr_review_plan_uses_non_author_fallback_reviewers() {
+  echo "Running test_release_pr_review_plan_uses_non_author_fallback_reviewers"
+  run_test
+
+  "$PYTHON" "$SCRIPT" release-pr-review-plan \
+    --release-owner TheCookieLab \
+    --pr-author TheCookieLab \
+    --reviewers $'TheCookieLab, maintainer\nMaintainer other maintainer' \
+    --output release-review-plan.json \
+    --github-output outputs.txt
+
+  expect_json_value release-review-plan.json hasReviewTargets true
+  expect_json_compact release-review-plan.json reviewers '["maintainer","other"]'
+  expect_json_compact release-review-plan.json skippedReviewers '[{"login":"TheCookieLab","reason":"matches PR author"}]'
+  expect_file_contains outputs.txt 'reviewers_json=["maintainer","other"]' \
+    "review plan should expose deduplicated fallback reviewers"
+
+  finish_test
+  pass "test_release_pr_review_plan_uses_non_author_fallback_reviewers"
+}
+
+test_release_pr_review_plan_preserves_team_reviewers() {
+  echo "Running test_release_pr_review_plan_preserves_team_reviewers"
+  run_test
+
+  "$PYTHON" "$SCRIPT" release-pr-review-plan \
+    --release-owner TheCookieLab \
+    --pr-author TheCookieLab \
+    --reviewers TheCookieLab \
+    --team-reviewers "release-managers release-owners,release-managers" \
+    --output release-review-plan.json \
+    --github-output outputs.txt
+
+  expect_json_value release-review-plan.json hasReviewTargets true
+  expect_json_compact release-review-plan.json reviewers '[]'
+  expect_json_compact release-review-plan.json teamReviewers '["release-managers","release-owners"]'
+  expect_json_value release-review-plan.json warning ""
+  expect_file_contains outputs.txt 'team_reviewers_json=["release-managers","release-owners"]' \
+    "review plan should expose deduplicated team reviewer JSON"
+
+  finish_test
+  pass "test_release_pr_review_plan_preserves_team_reviewers"
 }
 
 test_build_dossier_groups_and_truncates_diff() {
@@ -297,6 +407,10 @@ EOF
 test_catalog_preflight_accepts_configured_model
 test_catalog_preflight_rejects_missing_model
 test_parse_decision_normalizes_major_and_invalid_json
+test_release_pr_review_plan_defaults_to_owner
+test_release_pr_review_plan_skips_self_review_without_failing
+test_release_pr_review_plan_uses_non_author_fallback_reviewers
+test_release_pr_review_plan_preserves_team_reviewers
 test_build_dossier_groups_and_truncates_diff
 test_artifact_manifest_validates_expected_release_jars
 test_javadoc_warning_baseline_rejects_new_warnings

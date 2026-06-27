@@ -515,6 +515,95 @@ def command_parse_decision(args: argparse.Namespace) -> int:
     return 0
 
 
+def split_review_targets(value: str) -> list[str]:
+    """Split GitHub reviewer variables written as comma or whitespace lists."""
+    return [part.strip() for part in re.split(r"[\s,]+", value) if part.strip()]
+
+
+def release_pr_review_plan(
+    *,
+    release_owner: str,
+    pr_author: str,
+    reviewers_value: str,
+    team_reviewers_value: str,
+) -> dict[str, Any]:
+    """Plan release PR reviewers without requesting review from the PR author."""
+    owner = release_owner.strip()
+    author = pr_author.strip()
+    author_key = author.casefold()
+
+    reviewer_candidates = split_review_targets(reviewers_value)
+    if not reviewer_candidates and owner:
+        reviewer_candidates = [owner]
+
+    reviewers: list[str] = []
+    skipped_reviewers: list[dict[str, str]] = []
+    seen_reviewers: set[str] = set()
+    for candidate in reviewer_candidates:
+        candidate_key = candidate.casefold()
+        if candidate_key in seen_reviewers:
+            continue
+        seen_reviewers.add(candidate_key)
+        if author_key and candidate_key == author_key:
+            skipped_reviewers.append({"login": candidate, "reason": "matches PR author"})
+            continue
+        reviewers.append(candidate)
+
+    team_reviewers: list[str] = []
+    seen_teams: set[str] = set()
+    for candidate in split_review_targets(team_reviewers_value):
+        candidate_key = candidate.casefold()
+        if candidate_key in seen_teams:
+            continue
+        seen_teams.add(candidate_key)
+        team_reviewers.append(candidate)
+
+    warning = ""
+    if not reviewers and not team_reviewers:
+        warning = (
+            f"No eligible release PR reviewers remain after filtering PR author {author or 'unknown'}. "
+            "Configure RELEASE_REVIEWERS or RELEASE_REVIEW_TEAMS with a non-author reviewer/team "
+            "to avoid an admin or bypass merge."
+        )
+
+    return {
+        "releaseOwner": owner,
+        "prAuthor": author,
+        "reviewers": reviewers,
+        "teamReviewers": team_reviewers,
+        "skippedReviewers": skipped_reviewers,
+        "hasReviewTargets": bool(reviewers or team_reviewers),
+        "warning": warning,
+    }
+
+
+def command_release_pr_review_plan(args: argparse.Namespace) -> int:
+    plan = release_pr_review_plan(
+        release_owner=args.release_owner,
+        pr_author=args.pr_author,
+        reviewers_value=args.reviewers,
+        team_reviewers_value=args.team_reviewers,
+    )
+    write_json(args.output, plan)
+
+    reviewers_json = json.dumps(plan["reviewers"], separators=(",", ":"))
+    team_reviewers_json = json.dumps(plan["teamReviewers"], separators=(",", ":"))
+    has_review_targets = "true" if plan["hasReviewTargets"] else "false"
+    append_output("reviewers_json", reviewers_json, args.github_output)
+    append_output("team_reviewers_json", team_reviewers_json, args.github_output)
+    append_output("has_review_targets", has_review_targets, args.github_output)
+    append_output("warning", str(plan["warning"]), args.github_output)
+
+    print(
+        "audit:release_pr_review_plan "
+        f"reviewers={len(plan['reviewers'])} team_reviewers={len(plan['teamReviewers'])} "
+        f"skipped={len(plan['skippedReviewers'])} output={args.output}"
+    )
+    if plan["warning"]:
+        print(f"::warning::{plan['warning']}")
+    return 0
+
+
 def normalize_javadoc_warning(line: str) -> str | None:
     value = line.strip()
     if not value:
@@ -893,6 +982,15 @@ def build_parser() -> argparse.ArgumentParser:
     parse.add_argument("--output", type=pathlib.Path, default=pathlib.Path("release-decision.json"))
     parse.add_argument("--github-output")
     parse.set_defaults(func=command_parse_decision)
+
+    review_plan = subparsers.add_parser("release-pr-review-plan")
+    review_plan.add_argument("--release-owner", required=True)
+    review_plan.add_argument("--pr-author", required=True)
+    review_plan.add_argument("--reviewers", default="")
+    review_plan.add_argument("--team-reviewers", default="")
+    review_plan.add_argument("--output", type=pathlib.Path, default=pathlib.Path("release-review-plan.json"))
+    review_plan.add_argument("--github-output")
+    review_plan.set_defaults(func=command_release_pr_review_plan)
 
     javadoc = subparsers.add_parser("javadoc-warnings")
     javadoc.add_argument("--baseline", type=pathlib.Path, default=pathlib.Path("scripts/release/javadoc-warning-baseline.txt"))

@@ -36,6 +36,24 @@ workflow_section() {
   ' "$WORKFLOW"
 }
 
+expect_text_contains() {
+  local text="$1"
+  local needle="$2"
+  local msg="$3"
+  if ! grep -Fq -- "$needle" <<<"$text"; then
+    fail "$msg (missing: '$needle')"
+  fi
+}
+
+expect_text_not_contains() {
+  local text="$1"
+  local needle="$2"
+  local msg="$3"
+  if grep -Fq -- "$needle" <<<"$text"; then
+    fail "$msg (unexpected: '$needle')"
+  fi
+}
+
 test_issue_permissions_declared() {
   echo "Running test_issue_permissions_declared"
 
@@ -229,6 +247,62 @@ test_deprecation_scans_run_during_dry_runs() {
   pass "test_deprecation_scans_run_during_dry_runs"
 }
 
+test_release_pr_review_request_uses_review_plan() {
+  echo "Running test_release_pr_review_request_uses_review_plan"
+
+  local create_line
+  local plan_line
+  local request_line
+  local warning_line
+  create_line="$(line_of "Create or update release PR")"
+  plan_line="$(line_of "Plan release PR reviewers")"
+  request_line="$(line_of "Request release PR review")"
+  warning_line="$(line_of "Report release PR review warning")"
+
+  if (( create_line >= plan_line || plan_line >= request_line || request_line >= warning_line )); then
+    fail "release PR review planning should run after PR creation and before review request/warning"
+  fi
+
+  local create_section
+  local plan_section
+  local request_section
+  local warning_section
+  create_section="$(workflow_section "Create or update release PR" "Plan release PR reviewers")"
+  plan_section="$(workflow_section "Plan release PR reviewers" "Request release PR review")"
+  request_section="$(workflow_section "Request release PR review" "Report release PR review warning")"
+  warning_section="$(workflow_section "Report release PR review warning" "Prepare release summary")"
+
+  expect_text_contains "$create_section" 'core.setOutput("pr_number"' \
+    "release PR creation should expose the PR number"
+  expect_text_contains "$create_section" 'core.setOutput("pr_author"' \
+    "release PR creation should expose the PR author"
+  expect_text_not_contains "$create_section" "requestReviewers" \
+    "release PR creation should not request reviewers directly"
+
+  expect_text_contains "$plan_section" "release-pr-review-plan" \
+    "prepare-release should use the tested review-plan helper"
+  expect_text_contains "$plan_section" "RELEASE_REVIEWERS" \
+    "prepare-release should pass fallback reviewer users"
+  expect_text_contains "$plan_section" "RELEASE_REVIEW_TEAMS" \
+    "prepare-release should pass fallback reviewer teams"
+  expect_text_contains "$plan_section" "--pr-author" \
+    "review plan should receive the actual PR author"
+
+  expect_text_contains "$request_section" "steps.release_review_plan.outputs.has_review_targets == 'true'" \
+    "review request should run only when targets exist"
+  expect_text_contains "$request_section" "JSON.parse(process.env.REVIEWERS_JSON" \
+    "review request should consume planned reviewer JSON"
+  expect_text_contains "$request_section" "request.team_reviewers = teamReviewers" \
+    "review request should support team reviewers"
+
+  expect_text_contains "$warning_section" "::warning::\${warning}" \
+    "prepare-release should emit a warning when no reviewer target remains"
+  expect_file_contains "$WORKFLOW" '"releaseReviewWarning"' \
+    "prepare-release audit should include review warning state"
+
+  pass "test_release_pr_review_request_uses_review_plan"
+}
+
 test_issue_permissions_declared
 test_issue_sync_uses_targeted_search
 test_deprecation_scan_uses_java_scanner
@@ -239,3 +313,4 @@ test_release_audit_includes_deprecation_counts
 test_issue_sync_reconciles_stale_managed_issues
 test_deprecation_issue_sync_does_not_add_metadata_to_cleanup_issues
 test_deprecation_scans_run_during_dry_runs
+test_release_pr_review_request_uses_review_plan

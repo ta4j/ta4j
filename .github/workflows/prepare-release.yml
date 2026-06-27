@@ -820,6 +820,7 @@ jobs:
           git push --force-with-lease origin "HEAD:refs/heads/${RELEASE_BRANCH}"
 
       - name: Create or update release PR
+        id: release_pr
         if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true'
         uses: actions/github-script@v9
         env:
@@ -880,9 +881,11 @@ jobs:
             });
 
             let prNumber;
+            let prAuthor;
             if (existing.data.length > 0) {
               const pr = existing.data[0];
               prNumber = pr.number;
+              prAuthor = pr.user?.login || "";
               await github.rest.pulls.update({
                 owner,
                 repo,
@@ -901,6 +904,7 @@ jobs:
                 body
               });
               prNumber = created.data.number;
+              prAuthor = created.data.user?.login || "";
             }
 
             try {
@@ -927,16 +931,77 @@ jobs:
               throw new Error(`Failed to assign release owner ${releaseOwner}: ${error.message}`);
             }
 
-            try {
-              await github.rest.pulls.requestReviewers({
-                owner,
-                repo,
-                pull_number: prNumber,
-                reviewers: [releaseOwner]
-              });
-            } catch (error) {
-              throw new Error(`Failed to request review from ${releaseOwner}: ${error.message}`);
+            core.setOutput("pr_number", String(prNumber));
+            core.setOutput("pr_author", prAuthor);
+
+      - name: Plan release PR reviewers
+        id: release_review_plan
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true'
+        env:
+          RELEASE_OWNER: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
+          RELEASE_REVIEWERS: ${{ vars.RELEASE_REVIEWERS }}
+          RELEASE_REVIEW_TEAMS: ${{ vars.RELEASE_REVIEW_TEAMS }}
+          PR_AUTHOR: ${{ steps.release_pr.outputs.pr_author }}
+        run: |
+          python3 scripts/release/release_helpers.py release-pr-review-plan \
+            --release-owner "${RELEASE_OWNER}" \
+            --pr-author "${PR_AUTHOR}" \
+            --reviewers "${RELEASE_REVIEWERS:-}" \
+            --team-reviewers "${RELEASE_REVIEW_TEAMS:-}" \
+            --output release-review-plan.json \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Request release PR review
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true' && steps.release_review_plan.outputs.has_review_targets == 'true'
+        uses: actions/github-script@v9
+        env:
+          PR_NUMBER: ${{ steps.release_pr.outputs.pr_number }}
+          REVIEWERS_JSON: ${{ steps.release_review_plan.outputs.reviewers_json }}
+          TEAM_REVIEWERS_JSON: ${{ steps.release_review_plan.outputs.team_reviewers_json }}
+        with:
+          github-token: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
+          script: |
+            const prNumber = Number.parseInt(process.env.PR_NUMBER || "", 10);
+            const reviewers = JSON.parse(process.env.REVIEWERS_JSON || "[]");
+            const teamReviewers = JSON.parse(process.env.TEAM_REVIEWERS_JSON || "[]");
+            if (!Number.isInteger(prNumber)) {
+              throw new Error("Missing release PR number for review request.");
             }
+            if (reviewers.length === 0 && teamReviewers.length === 0) {
+              console.warn("No eligible release PR reviewers were planned.");
+              return;
+            }
+
+            try {
+              const request = {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: prNumber
+              };
+              if (reviewers.length > 0) {
+                request.reviewers = reviewers;
+              }
+              if (teamReviewers.length > 0) {
+                request.team_reviewers = teamReviewers;
+              }
+              await github.rest.pulls.requestReviewers(request);
+            } catch (error) {
+              const targets = [...reviewers, ...teamReviewers.map((team) => `team:${team}`)].join(", ");
+              throw new Error(`Failed to request release PR review from ${targets}: ${error.message}`);
+            }
+
+      - name: Report release PR review warning
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true' && steps.release_review_plan.outputs.has_review_targets != 'true'
+        env:
+          REVIEW_WARNING: ${{ steps.release_review_plan.outputs.warning }}
+        run: |
+          warning="${REVIEW_WARNING:-No eligible release PR reviewers were configured; release PR may require an admin or bypass merge.}"
+          echo "::warning::${warning}"
+          {
+            echo "### Release PR review"
+            echo ""
+            echo "- warning: ${warning}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # -----------------------
       # Summary
@@ -955,6 +1020,7 @@ jobs:
           REMOVAL_UPDATED_COUNT: ${{ steps.deprecation_issues.outputs.updated_count }}
           REMOVAL_REOPENED_COUNT: ${{ steps.deprecation_issues.outputs.reopened_count }}
           REMOVAL_CLOSED_STALE_COUNT: ${{ steps.deprecation_issues.outputs.closed_stale_count }}
+          RELEASE_REVIEW_WARNING: ${{ steps.release_review_plan.outputs.warning }}
         run: |
           echo "summary: dryRun=${DRY_RUN:-}"
           echo "summary: directPush=${DIRECT_PUSH:-}"
@@ -967,6 +1033,7 @@ jobs:
           echo "summary: removalIssuesUpdated=${REMOVAL_UPDATED_COUNT:-0}"
           echo "summary: removalIssuesReopened=${REMOVAL_REOPENED_COUNT:-0}"
           echo "summary: removalIssuesClosedStale=${REMOVAL_CLOSED_STALE_COUNT:-0}"
+          echo "summary: releaseReviewWarning=${RELEASE_REVIEW_WARNING:-}"
           if [ "${DRY_RUN:-false}" = "true" ]; then
             mutation_plan="would create/update release artifacts, sync deprecation issues, push the release branch, and create/update the release PR"
             rerun_guidance="rerun prepare-release.yml with dryRun=false after inspecting these computed values and artifacts"
@@ -989,6 +1056,7 @@ jobs:
             "removalIssuesUpdated": "${REMOVAL_UPDATED_COUNT:-0}",
             "removalIssuesReopened": "${REMOVAL_REOPENED_COUNT:-0}",
             "removalIssuesClosedStale": "${REMOVAL_CLOSED_STALE_COUNT:-0}",
+            "releaseReviewWarning": "${RELEASE_REVIEW_WARNING:-}",
             "runUrl": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           }
           EOF
@@ -1006,6 +1074,9 @@ jobs:
             echo "- removal-ready issues updated: ${REMOVAL_UPDATED_COUNT:-0}"
             echo "- removal-ready issues reopened: ${REMOVAL_REOPENED_COUNT:-0}"
             echo "- removal-ready stale issues closed: ${REMOVAL_CLOSED_STALE_COUNT:-0}"
+            if [ -n "${RELEASE_REVIEW_WARNING:-}" ]; then
+              echo "- release PR review warning: ${RELEASE_REVIEW_WARNING}"
+            fi
             echo "- mutation plan: ${mutation_plan}"
             echo "- rerun guidance: ${rerun_guidance}"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -1017,6 +1088,7 @@ jobs:
           name: prepare-release-audit-${{ github.run_id }}
           path: |
             release-audit.json
+            release-review-plan.json
             release/${{ steps.versions.outputs.release }}.md
           if-no-files-found: ignore
           retention-days: 14
