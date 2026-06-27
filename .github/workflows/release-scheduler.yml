@@ -378,7 +378,7 @@ jobs:
           backoff=5
           status=1
           for attempt in $(seq 1 "$attempts"); do
-            if python3 scripts/release/release_helpers.py catalog-preflight \
+            if bash scripts/release/release_helpers.sh catalog-preflight \
               --model "$model" \
               --output release-ai-model.json; then
               status=0
@@ -402,7 +402,7 @@ jobs:
         run: |
           set -euo pipefail
           echo "::group::Build release dossier"
-          python3 scripts/release/release_helpers.py build-dossier \
+          bash scripts/release/release_helpers.sh build-dossier \
             --last-tag "${{ steps.lasttag.outputs.last_reachable_tag }}" \
             --current-version "${{ steps.pom_version.outputs.version }}" \
             --pom-base "${{ steps.pom_version.outputs.base }}" \
@@ -441,7 +441,7 @@ jobs:
             echo "request_json_size_bytes=$request_size" >> $GITHUB_OUTPUT
             echo "dossier_chars=0" >> $GITHUB_OUTPUT
           elif [ "${AI_MODE:-full}" = "full" ]; then
-            python3 scripts/release/release_helpers.py build-ai-request \
+            bash scripts/release/release_helpers.sh build-ai-request \
               --model "${{ steps.model_config.outputs.model_id }}" \
               --dossier release-dossier.md \
               --semver-rules .github/workflows/semver-rules-override.txt \
@@ -617,7 +617,7 @@ jobs:
           fi
 
           echo "::group::Parse AI release decision"
-          python3 scripts/release/release_helpers.py parse-decision \
+          bash scripts/release/release_helpers.sh parse-decision \
             --raw-file ai-content.txt \
             --output release-decision.json \
             --github-output "$GITHUB_OUTPUT"

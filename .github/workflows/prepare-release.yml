@@ -943,7 +943,7 @@ jobs:
           RELEASE_REVIEW_TEAMS: ${{ vars.RELEASE_REVIEW_TEAMS }}
           PR_AUTHOR: ${{ steps.release_pr.outputs.pr_author }}
         run: |
-          python3 scripts/release/release_helpers.py release-pr-review-plan \
+          bash scripts/release/release_helpers.sh release-pr-review-plan \
             --release-owner "${RELEASE_OWNER}" \
             --pr-author "${PR_AUTHOR}" \
             --reviewers "${RELEASE_REVIEWERS:-}" \

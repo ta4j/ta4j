@@ -8,8 +8,7 @@ set -euo pipefail
 # =============================================================================
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPT="$ROOT/scripts/release/release_helpers.py"
-PYTHON="${PYTHON:-python3}"
+SCRIPT="$ROOT/scripts/release/release_helpers.sh"
 
 cleanup() {
   if [[ -n "${TMP:-}" && -d "$TMP" ]]; then
@@ -46,22 +45,7 @@ expect_json_value() {
   local filter="$2"
   local expected="$3"
   local actual
-  actual="$($PYTHON - "$file" "$filter" <<'PY'
-import json
-import sys
-
-path, key = sys.argv[1:3]
-with open(path, encoding="utf-8") as handle:
-    data = json.load(handle)
-value = data
-for part in key.split("."):
-    value = value[part]
-if isinstance(value, bool):
-    print("true" if value else "false")
-else:
-    print(value)
-PY
-)"
+  actual="$(jq -r ".$filter" "$file")"
   if [[ "$actual" != "$expected" ]]; then
     fail "expected ${filter}=${expected}, got ${actual:-<missing>}"
   fi
@@ -72,19 +56,7 @@ expect_json_compact() {
   local filter="$2"
   local expected="$3"
   local actual
-  actual="$($PYTHON - "$file" "$filter" <<'PY'
-import json
-import sys
-
-path, key = sys.argv[1:3]
-with open(path, encoding="utf-8") as handle:
-    data = json.load(handle)
-value = data
-for part in key.split("."):
-    value = value[part]
-print(json.dumps(value, separators=(",", ":")))
-PY
-)"
+  actual="$(jq -c ".$filter" "$file")"
   if [[ "$actual" != "$expected" ]]; then
     fail "expected ${filter}=${expected}, got ${actual:-<missing>}"
   fi
@@ -114,7 +86,7 @@ test_catalog_preflight_accepts_configured_model() {
   run_test
   write_catalog_fixture
 
-  GITHUB_OUTPUT=outputs.txt "$PYTHON" "$SCRIPT" catalog-preflight \
+  GITHUB_OUTPUT=outputs.txt bash "$SCRIPT" catalog-preflight \
     --model openai/gpt-4.1 \
     --catalog-file catalog.json \
     --output release-ai-model.json
@@ -132,7 +104,7 @@ test_catalog_preflight_rejects_missing_model() {
   run_test
   write_catalog_fixture
 
-  if "$PYTHON" "$SCRIPT" catalog-preflight \
+  if bash "$SCRIPT" catalog-preflight \
     --model openai/missing \
     --catalog-file catalog.json \
     --output release-ai-model.json >preflight.log 2>&1; then
@@ -153,7 +125,7 @@ test_parse_decision_normalizes_major_and_invalid_json() {
 {"should_release":true,"bump":"major","confidence":0.91,"reason":"Breaking but pre-1.0 change","evidence":["public API changed"]}
 ```
 EOF
-  "$PYTHON" "$SCRIPT" parse-decision --raw-file ai-content.txt --output decision.json --github-output outputs.txt
+  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output decision.json --github-output outputs.txt
   expect_json_value decision.json should_release true
   expect_json_value decision.json bump minor
   expect_file_contains outputs.txt "bump=minor" "major bumps should be downgraded in outputs"
@@ -161,26 +133,26 @@ EOF
   cat > ai-content.txt <<'EOF'
 {"should_release":"false","bump":"minor","confidence":0.7,"reason":"No release needed"}
 EOF
-  "$PYTHON" "$SCRIPT" parse-decision --raw-file ai-content.txt --output string-false.json
+  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output string-false.json
   expect_json_value string-false.json should_release false
   expect_json_value string-false.json bump patch
 
   cat > ai-content.txt <<'EOF'
 {"should_release":"1","bump":"patch","confidence":0.7,"reason":"Release needed"}
 EOF
-  "$PYTHON" "$SCRIPT" parse-decision --raw-file ai-content.txt --output string-true.json
+  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output string-true.json
   expect_json_value string-true.json should_release true
 
   cat > ai-content.txt <<'EOF'
 {"should_release":"maybe","bump":"minor","confidence":0.7,"reason":"Ambiguous response"}
 EOF
-  "$PYTHON" "$SCRIPT" parse-decision --raw-file ai-content.txt --output invalid-flag.json
+  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output invalid-flag.json
   expect_json_value invalid-flag.json should_release false
   expect_json_value invalid-flag.json bump patch
   expect_file_contains invalid-flag.json "invalid should_release 'maybe'" "invalid flag should be called out"
 
   printf 'not-json' > ai-content.txt
-  "$PYTHON" "$SCRIPT" parse-decision --raw-file ai-content.txt --output invalid.json
+  bash "$SCRIPT" parse-decision --raw-file ai-content.txt --output invalid.json
   expect_json_value invalid.json should_release false
   expect_json_value invalid.json bump patch
   expect_json_value invalid.json warning "Invalid AI JSON"
@@ -193,7 +165,7 @@ test_release_pr_review_plan_defaults_to_owner() {
   echo "Running test_release_pr_review_plan_defaults_to_owner"
   run_test
 
-  "$PYTHON" "$SCRIPT" release-pr-review-plan \
+  bash "$SCRIPT" release-pr-review-plan \
     --release-owner TheCookieLab \
     --pr-author maintainer \
     --output release-review-plan.json \
@@ -213,7 +185,7 @@ test_release_pr_review_plan_skips_self_review_without_failing() {
   echo "Running test_release_pr_review_plan_skips_self_review_without_failing"
   run_test
 
-  "$PYTHON" "$SCRIPT" release-pr-review-plan \
+  bash "$SCRIPT" release-pr-review-plan \
     --release-owner TheCookieLab \
     --pr-author thecookielab \
     --output release-review-plan.json \
@@ -236,7 +208,7 @@ test_release_pr_review_plan_uses_non_author_fallback_reviewers() {
   echo "Running test_release_pr_review_plan_uses_non_author_fallback_reviewers"
   run_test
 
-  "$PYTHON" "$SCRIPT" release-pr-review-plan \
+  bash "$SCRIPT" release-pr-review-plan \
     --release-owner TheCookieLab \
     --pr-author TheCookieLab \
     --reviewers $'TheCookieLab, maintainer\nMaintainer other maintainer' \
@@ -257,7 +229,7 @@ test_release_pr_review_plan_preserves_team_reviewers() {
   echo "Running test_release_pr_review_plan_preserves_team_reviewers"
   run_test
 
-  "$PYTHON" "$SCRIPT" release-pr-review-plan \
+  bash "$SCRIPT" release-pr-review-plan \
     --release-owner TheCookieLab \
     --pr-author TheCookieLab \
     --reviewers TheCookieLab \
@@ -319,7 +291,7 @@ EOF
   git add .
   git commit -q -m "Add fixture API"
 
-  "$PYTHON" "$SCRIPT" build-dossier \
+  bash "$SCRIPT" build-dossier \
     --last-tag 1.0.0 \
     --current-version 1.0.1-SNAPSHOT \
     --pom-base 1.0.1 \
@@ -334,6 +306,137 @@ EOF
 
   finish_test
   pass "test_build_dossier_groups_and_truncates_diff"
+}
+
+test_build_ai_request_compacts_oversized_dossier() {
+  echo "Running test_build_ai_request_compacts_oversized_dossier"
+  run_test
+
+  {
+    echo "# ta4j Release Dossier"
+    echo
+    echo "## Metadata"
+    echo
+    echo "- generated_at: 2026-06-27T00:00:00+00:00"
+    echo "- current_version: 1.0.1-SNAPSHOT"
+    echo "- pom_base: 1.0.1"
+    echo "- last_reachable_tag: 1.0.0"
+    echo "- changed_file_count: 3"
+    echo
+    echo "## Changed Files by Category"
+    echo
+    echo "### production code (2)"
+    echo "- \`ta4j-core/src/main/java/org/ta4j/core/Foo.java\`"
+    echo "- \`ta4j-core/src/main/java/org/ta4j/core/Bar.java\`"
+    echo
+    echo "### tests (1)"
+    echo "- \`ta4j-core/src/test/java/org/ta4j/core/FooTest.java\`"
+    echo
+    echo "## Unreleased Changelog Context"
+    echo
+    echo "\`\`\`markdown"
+    echo "- Added a compact request test fixture."
+    for index in $(seq 0 399); do
+      echo "- Changelog padding ${index} keeps late dossier sections beyond the inline prefix budget."
+    done
+    echo "\`\`\`"
+    echo
+    echo "## Public API Signals"
+    echo
+    echo "- \`+ public class Foo\`"
+    echo
+    echo "## Javadoc and @since Signals"
+    echo
+    echo "- \`+ * @since 1.0.1\`"
+    echo
+    echo "## Test File Signals"
+    echo
+    echo "- \`ta4j-core/src/test/java/org/ta4j/core/FooTest.java\`"
+    echo
+    echo "## Selected Diff"
+    echo
+    echo "\`\`\`diff"
+    for index in $(seq 0 499); do
+      echo "+ public String generated${index}() { return \"${index}\"; }"
+    done
+    echo "\`\`\`"
+  } > release-dossier.md
+
+  bash "$SCRIPT" build-ai-request \
+    --model openai/gpt-4.1 \
+    --dossier release-dossier.md \
+    --max-dossier-chars 12000 \
+    --max-request-bytes 12000 \
+    --output request.json \
+    --metadata-output release-ai-request-metadata.json
+
+  request_size="$(wc -c < request.json | tr -d ' ')"
+  if (( request_size > 12000 )); then
+    fail "compact request should stay under forced transport budget (got ${request_size})"
+  fi
+  expect_json_value release-ai-request-metadata.json artifactBackedContext true
+  expect_json_value release-ai-request-metadata.json fullDossierTruncatedForPrompt true
+  expect_json_value release-ai-request-metadata.json requestWithinTransportBudget true
+  expect_file_contains release-ai-request-metadata.json "compact-artifact-backed" \
+    "metadata should record compact prompt profile"
+  expect_file_contains request.json "full release-dossier.md is preserved" \
+    "compact prompt should tell the model where the full dossier lives"
+  expect_file_contains request.json "@since 1.0.1" \
+    "compact prompt should preserve late dossier signals from the full dossier"
+
+  finish_test
+  pass "test_build_ai_request_compacts_oversized_dossier"
+}
+
+test_ai_transport_diagnostics_records_curl_exit_18() {
+  echo "Running test_ai_transport_diagnostics_records_curl_exit_18"
+  run_test
+
+  cat > release-ai-request-metadata.json <<'EOF'
+{"schemaVersion":1,"promptProfile":"compact-artifact-backed-v1","requestJsonSizeBytes":11900}
+EOF
+  cat > release-audit.json <<'EOF'
+{"changed_file_count":334,"selected_diff_truncated":true}
+EOF
+  cat > curl-error.log <<'EOF'
+attempt=1 curl_exit_code=18 response_status=200
+curl: (18) transfer closed with 1 bytes remaining to read
+EOF
+  cat > curl-metrics.log <<'EOF'
+attempt=1
+http_code=200
+time_total=2.389
+size_upload=11900
+size_download=196
+EOF
+  cat > response-headers.txt <<'EOF'
+attempt=1
+HTTP/1.1 200 Connection established
+EOF
+  printf '{"error":"partial"}' > response.json
+
+  bash "$SCRIPT" ai-transport-diagnostics \
+    --ai-mode full \
+    --model openai/gpt-4.1 \
+    --response-status 200 \
+    --curl-exit-code 18 \
+    --attempts 1 \
+    --output release-ai-transport-diagnostics.json \
+    --fallback-output ai-content.txt
+
+  expect_json_value release-ai-transport-diagnostics.json classification curl_partial_file_transport_close
+  expect_json_value release-ai-transport-diagnostics.json connectionClosedDuring response_read
+  expect_json_value release-ai-transport-diagnostics.json responseStatus 200
+  expect_file_contains release-ai-transport-diagnostics.json "Do not rerun billed aiMode=full blindly" \
+    "diagnostics should include non-blind rerun guidance"
+  expect_json_value ai-content.txt should_release false
+  expect_file_contains ai-content.txt "curl exit 18, HTTP 200" \
+    "fallback decision should prefer curl exit details over the HTTP status"
+  expect_file_contains ai-content.txt "release-ai-transport-diagnostics.json" \
+    "fallback decision should point at diagnostics artifact"
+
+  finish_test
+  pass "test_ai_transport_diagnostics_records_curl_exit_18"
 }
 
 test_artifact_manifest_validates_expected_release_jars() {
@@ -353,12 +456,12 @@ test_artifact_manifest_validates_expected_release_jars() {
     : > "$file"
   done
 
-  "$PYTHON" "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --strict
+  bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --strict
   expect_file_contains artifact-manifest.txt "Missing release artifacts:" "manifest should include missing section"
   expect_file_contains artifact-manifest.txt "- (none)" "manifest should report no missing artifacts"
 
   : > "ta4j-core/target/unexpected.jar"
-  if "$PYTHON" "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --strict >manifest.log 2>&1; then
+  if bash "$SCRIPT" artifact-manifest --version "$version" --output artifact-manifest.txt --strict >manifest.log 2>&1; then
     fail "strict artifact manifest should reject unexpected jars"
   fi
   expect_file_contains manifest.log "Unexpected target jars" "strict failure should name unexpected jars"
@@ -379,7 +482,7 @@ EOF
 [WARNING] /home/runner/work/ta4j/ta4j/ta4j-core/src/test/java/org/ta4j/core/FooTest.java: uses unchecked or unsafe operations.
 EOF
 
-  "$PYTHON" "$SCRIPT" javadoc-warnings \
+  bash "$SCRIPT" javadoc-warnings \
     --baseline baseline.txt \
     --output javadoc-warnings.txt \
     --github-output outputs.txt \
@@ -391,7 +494,7 @@ EOF
   cat >> release.log <<'EOF'
 [WARNING] /home/runner/work/ta4j/ta4j/ta4j-examples/src/main/java/ta4jexamples/FooExample.java: warning: no @return
 EOF
-  if "$PYTHON" "$SCRIPT" javadoc-warnings \
+  if bash "$SCRIPT" javadoc-warnings \
     --baseline baseline.txt \
     --output javadoc-warnings.txt \
     --fail-on-new \
@@ -412,6 +515,8 @@ test_release_pr_review_plan_skips_self_review_without_failing
 test_release_pr_review_plan_uses_non_author_fallback_reviewers
 test_release_pr_review_plan_preserves_team_reviewers
 test_build_dossier_groups_and_truncates_diff
+test_build_ai_request_compacts_oversized_dossier
+test_ai_transport_diagnostics_records_curl_exit_18
 test_artifact_manifest_validates_expected_release_jars
 test_javadoc_warning_baseline_rejects_new_warnings
 
