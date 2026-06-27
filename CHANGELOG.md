@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.22.7 (2026-06-27)
+
 ### Breaking
 - Updated project Java JDK from 21 to 25
 - **NetMomentum now models oscillator battery exhaustion**: `NetMomentumIndicator` inverts RSI-style
@@ -8,6 +12,7 @@
   than repeated mild deviations.
 
 ### Added
+- **Position-count criteria can include open positions**: `NumberOfPositionsCriterion` now accepts a `PositionStatusFilter` so callers can count closed positions, open positions, or both while preserving the existing closed-position default.
 - **Active return criteria for benchmark comparisons**: Added `ActiveReturnCriterion` and `ActiveReturnVersusEnterAndHoldCriterion` so return-like criteria can report benchmark-relative active return in decimal, percentage, multiplicative, or log form without changing the established normalized `VersusEnterAndHoldCriterion` behavior.
 - **Composable regime and edge primitives**: Added `StretchZScoreIndicator`, `CompressionIndicator`, `TrendScoreIndicator`, `TrendConclusionIndicator`, `EntryEdgeIndicator`, `EdgeDecaySlopeIndicator`, `LossTriggeredCooldownRule`, and `EdgeHealthyRule` so strategies can model stretch, compression, trend state, realized entry edge, edge decay, and post-loss cooldowns with reusable ta4j-native building blocks (`CF-86`).
 - **Rolling advanced correlation indicators**: Added Spearman rank correlation, Kendall tau-b, lag-aware cross-correlation, distance correlation, mutual information, and regime-segmented correlation indicators under `org.ta4j.core.indicators.statistics`, with NaN handling for undefined windows and documentation for choosing the right metric.
