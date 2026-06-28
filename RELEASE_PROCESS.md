@@ -53,8 +53,9 @@ Code and docs:
 4. Ensure release notes can be generated cleanly (`release/<version>.md`).
 5. Confirm release PRs are visible to release owner:
    - release PR must be labeled `release`.
-   - release PR is auto-assigned to `TheCookieLab`.
-   - `TheCookieLab` is auto-requested as reviewer.
+   - release PR is auto-assigned to `RELEASE_OWNER` (default: `TheCookieLab`).
+   - a non-author user reviewer or team is requested when configured through `RELEASE_REVIEWERS` or `RELEASE_REVIEW_TEAMS`.
+   - if the release owner authored the PR and no fallback reviewer/team is configured, prepare-release emits a warning and the PR may require the documented admin or bypass merge path.
 6. While any labeled release PR is open, only that release PR can be merged.
 7. Open PRs will receive an automatic release-freeze notice comment while the freeze is active. The workflow removes that notice once no release PR remains open.
 
@@ -82,7 +83,8 @@ Secrets and variables:
 - After the next snapshot version is known, it scans sources scheduled for that planned snapshot or any earlier removal version because ta4j versions may jump across major, minor, or patch positions. Non-dry-run runs then sync deduplicated GitHub cleanup issues, including reopening still-valid managed issues and closing stale managed issues for the same removal version; dry-runs only upload the scan report.
 - The workflow uploads release-gate and next-snapshot removal-ready deprecation report artifacts with grouped findings, symbols, lifecycle status, replacement hints when available, and synced issue links when issue sync runs.
 - The scanner JSON is the stable handoff contract for future automation: it includes `schemaVersion`, `automationNamespace`, grouped issue `planKind`, and per-symbol `trackingKey` fields so a later AI-driven planner can split work into one issue per deprecated item while remaining restart-safe by searching managed markers before mutation.
-- The workflow auto-labels the PR with `release`, assigns it to `TheCookieLab`, and requests review from `TheCookieLab`.
+- The workflow auto-labels the PR with `release`, assigns it to `RELEASE_OWNER` (default: `TheCookieLab`), and requests review from eligible `RELEASE_REVIEWERS` / `RELEASE_REVIEW_TEAMS` targets. If no reviewer list is configured, `RELEASE_OWNER` remains the default reviewer candidate only when that user did not author the PR. The PR author is always filtered from user reviewer requests because GitHub rejects self-review requests.
+- A self-authored release PR with no eligible fallback reviewer/team leaves a warning in the logs, summary, and audit artifact instead of failing the review request. Normal branch protection still requires one approving review, so configure a non-author reviewer/team to merge without an admin or bypass path.
 - In PR mode, the successful handoff is the release branch push plus release PR creation. In direct-push mode, the successful handoff is `prepare-release.yml` dispatching `publish-release.yml` with `dryRun=false`.
 - Opening a release PR automatically triggers freeze notices on other open PRs.
 
@@ -216,6 +218,7 @@ Remediation playbook:
 - Ensure required checks pass.
 - Ensure required maintainer approval exists.
 - Merge with merge commit.
+- If the release owner authored the PR, confirm `RELEASE_REVIEWERS` or `RELEASE_REVIEW_TEAMS` names a non-author reviewer/team. Without one, branch protection can still require an admin or bypass merge even though `prepare-release.yml` no longer fails while requesting review.
 
 ### 8.3 Tag exists error
 
@@ -311,6 +314,9 @@ Do not key automation off author/body heuristics; key off marker metadata.
 | Variable | Used by | Purpose |
 |---|---|---|
 | `RELEASE_DIRECT_PUSH` | prepare | direct-push mode switch |
+| `RELEASE_OWNER` | prepare | release PR assignee and default reviewer candidate |
+| `RELEASE_REVIEWERS` | prepare | optional comma/whitespace/newline-separated fallback reviewer users; the PR author is filtered out |
+| `RELEASE_REVIEW_TEAMS` | prepare | optional comma/whitespace/newline-separated fallback team slugs for release PR review requests |
 | `RELEASE_NOTIFY_USER` | publish, scheduler, health | discussion mention target |
 | `RELEASE_DISCUSSION_NUMBER` | publish | publish summary discussion |
 | `RELEASE_SCHEDULER_DISCUSSION_NUMBER` | scheduler, health | scheduler/health discussion |

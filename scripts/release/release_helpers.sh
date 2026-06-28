@@ -40,6 +40,7 @@ Commands:
   build-ai-request
   ai-transport-diagnostics
   parse-decision
+  release-pr-review-plan
   javadoc-warnings
   artifact-manifest
   snapshot-publication
@@ -965,6 +966,128 @@ command_parse_decision() {
     "$(jq -r '.should_release' "$output")" "$(jq -r '.bump' "$output")" "$(jq -r '.confidence' "$output")" "$output"
 }
 
+trim_text() {
+  sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'
+}
+
+lower_text() {
+  tr '[:upper:]' '[:lower:]'
+}
+
+split_review_targets() {
+  local value="$1"
+  printf '%s' "$value" | tr ',[:space:]' '\n' | awk 'NF { print }'
+}
+
+json_array_from_lines() {
+  local input="$1"
+  jq -R -s 'split("\n") | map(select(length > 0))' "$input"
+}
+
+json_skipped_reviewers() {
+  local input="$1"
+  jq -R -s '
+    split("\n")
+    | map(select(length > 0))
+    | map(split("\t") | {login: .[0], reason: .[1]})
+  ' "$input"
+}
+
+command_release_pr_review_plan() {
+  local release_owner="" pr_author="" reviewers_value="" team_reviewers_value="" output="release-review-plan.json" github_output=""
+  while (($#)); do
+    case "$1" in
+      --release-owner) require_value "$1" "${2:-}"; release_owner="$2"; shift 2 ;;
+      --pr-author) require_value "$1" "${2:-}"; pr_author="$2"; shift 2 ;;
+      --reviewers) reviewers_value="${2-}"; shift 2 ;;
+      --team-reviewers) team_reviewers_value="${2-}"; shift 2 ;;
+      --output) require_value "$1" "${2:-}"; output="$2"; shift 2 ;;
+      --github-output) require_value "$1" "${2:-}"; github_output="$2"; shift 2 ;;
+      *) die "Unknown release-pr-review-plan option: $1" ;;
+    esac
+  done
+  [[ -n "$release_owner" ]] || die "--release-owner is required"
+  [[ -n "$pr_author" ]] || die "--pr-author is required"
+
+  local owner author author_key tmpdir candidates_file reviewers_file skipped_file team_candidates_file team_reviewers_file
+  owner="$(printf '%s' "$release_owner" | trim_text)"
+  author="$(printf '%s' "$pr_author" | trim_text)"
+  author_key="$(printf '%s' "$author" | lower_text)"
+  tmpdir="$(new_tmp_dir)"
+  candidates_file="$tmpdir/reviewer-candidates.txt"
+  reviewers_file="$tmpdir/reviewers.txt"
+  skipped_file="$tmpdir/skipped-reviewers.tsv"
+  team_candidates_file="$tmpdir/team-reviewer-candidates.txt"
+  team_reviewers_file="$tmpdir/team-reviewers.txt"
+  : > "$reviewers_file"
+  : > "$skipped_file"
+  : > "$team_reviewers_file"
+
+  split_review_targets "$reviewers_value" > "$candidates_file"
+  if [[ ! -s "$candidates_file" && -n "$owner" ]]; then
+    printf '%s\n' "$owner" > "$candidates_file"
+  fi
+  awk -v author_key="$author_key" -v skipped_file="$skipped_file" '
+    function lower(value) { return tolower(value) }
+    NF && !seen[lower($0)]++ {
+      if (author_key != "" && lower($0) == author_key) {
+        printf "%s\tmatches PR author\n", $0 >> skipped_file
+      } else {
+        print
+      }
+    }
+  ' "$candidates_file" > "$reviewers_file"
+
+  split_review_targets "$team_reviewers_value" > "$team_candidates_file"
+  awk '
+    function lower(value) { return tolower(value) }
+    NF && !seen[lower($0)]++ { print }
+  ' "$team_candidates_file" > "$team_reviewers_file"
+
+  local reviewers_json team_reviewers_json skipped_reviewers_json has_review_targets warning
+  reviewers_json="$(json_array_from_lines "$reviewers_file")"
+  team_reviewers_json="$(json_array_from_lines "$team_reviewers_file")"
+  skipped_reviewers_json="$(json_skipped_reviewers "$skipped_file")"
+  if [[ -s "$reviewers_file" || -s "$team_reviewers_file" ]]; then
+    has_review_targets=true
+    warning=""
+  else
+    has_review_targets=false
+    warning="No eligible release PR reviewers remain after filtering PR author ${author:-unknown}. Configure RELEASE_REVIEWERS or RELEASE_REVIEW_TEAMS with a non-author reviewer/team to avoid an admin or bypass merge."
+  fi
+
+  jq -S -n \
+    --arg releaseOwner "$owner" \
+    --arg prAuthor "$author" \
+    --arg warning "$warning" \
+    --argjson reviewers "$reviewers_json" \
+    --argjson teamReviewers "$team_reviewers_json" \
+    --argjson skippedReviewers "$skipped_reviewers_json" \
+    --argjson hasReviewTargets "$has_review_targets" \
+    '{
+      releaseOwner: $releaseOwner,
+      prAuthor: $prAuthor,
+      reviewers: $reviewers,
+      teamReviewers: $teamReviewers,
+      skippedReviewers: $skippedReviewers,
+      hasReviewTargets: $hasReviewTargets,
+      warning: $warning
+    }' | write_json "$output"
+
+  append_output "reviewers_json" "$(jq -c '.reviewers' "$output")" "$github_output"
+  append_output "team_reviewers_json" "$(jq -c '.teamReviewers' "$output")" "$github_output"
+  append_output "has_review_targets" "$(jq -r '.hasReviewTargets' "$output")" "$github_output"
+  append_output "warning" "$warning" "$github_output"
+  printf 'audit:release_pr_review_plan reviewers=%s team_reviewers=%s skipped=%s output=%s\n' \
+    "$(jq '.reviewers | length' "$output")" \
+    "$(jq '.teamReviewers | length' "$output")" \
+    "$(jq '.skippedReviewers | length' "$output")" \
+    "$output"
+  if [[ -n "$warning" ]]; then
+    printf '::warning::%s\n' "$warning"
+  fi
+}
+
 normalize_javadoc_warning_stream() {
   perl -ne '
     chomp;
@@ -1274,6 +1397,7 @@ main() {
     build-ai-request) command_build_ai_request "$@" ;;
     ai-transport-diagnostics) command_ai_transport_diagnostics "$@" ;;
     parse-decision) command_parse_decision "$@" ;;
+    release-pr-review-plan) command_release_pr_review_plan "$@" ;;
     javadoc-warnings) command_javadoc_warnings "$@" ;;
     artifact-manifest) command_artifact_manifest "$@" ;;
     snapshot-publication) command_snapshot_publication "$@" ;;
