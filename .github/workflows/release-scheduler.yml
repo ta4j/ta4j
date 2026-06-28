@@ -61,6 +61,10 @@ jobs:
       model_max_input_tokens: ${{ steps.model_catalog.outputs.model_max_input_tokens }}
       model_max_output_tokens: ${{ steps.model_catalog.outputs.model_max_output_tokens }}
       dossier_chars: ${{ steps.build_request.outputs.dossier_chars }}
+      prompt_dossier_chars: ${{ steps.build_request.outputs.prompt_dossier_chars }}
+      prompt_profile: ${{ steps.build_request.outputs.prompt_profile }}
+      request_json_size_bytes: ${{ steps.build_request.outputs.request_json_size_bytes }}
+      request_max_bytes: ${{ steps.build_request.outputs.request_max_bytes }}
       last_tag: ${{ steps.lasttag.outputs.last_reachable_tag }}
       last_first_parent_tag: ${{ steps.lasttag.outputs.last_first_parent_tag }}
       pom_version: ${{ steps.pom_version.outputs.version }}
@@ -416,9 +420,15 @@ jobs:
         if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true'
         env:
           AI_MODE: ${{ steps.ai_mode.outputs.mode }}
+          RELEASE_AI_MAX_REQUEST_BYTES: ${{ vars.RELEASE_AI_MAX_REQUEST_BYTES }}
         run: |
           set -euo pipefail
           echo "::group::Build AI request"
+          max_request_bytes="${RELEASE_AI_MAX_REQUEST_BYTES:-600000}"
+          if ! [[ "$max_request_bytes" =~ ^[0-9]+$ ]] || [ "$max_request_bytes" -le 0 ]; then
+            echo "::error::RELEASE_AI_MAX_REQUEST_BYTES must be a positive integer when set." >&2
+            exit 1
+          fi
           if [ "${AI_MODE:-full}" = "probe" ]; then
             jq -n --arg model "${{ steps.model_config.outputs.model_id }}" \
               '{
@@ -438,13 +448,34 @@ jobs:
               }' > request.json
             request_size=$(wc -c < request.json | tr -d ' ')
             echo "audit:ai_probe_request file=request.json model=${{ steps.model_config.outputs.model_id }} request_json_size_bytes=$request_size"
+            jq -n \
+              --arg model "${{ steps.model_config.outputs.model_id }}" \
+              --arg request_size "$request_size" \
+              --arg max_request_bytes "$max_request_bytes" \
+              '{
+                schemaVersion: 1,
+                model: $model,
+                promptProfile: "probe",
+                artifactBackedContext: false,
+                fullDossierChars: 0,
+                promptDossierChars: 0,
+                requestJsonSizeBytes: ($request_size | tonumber),
+                maxRequestBytes: ($max_request_bytes | tonumber),
+                requestWithinTransportBudget: true
+              }' > release-ai-request-metadata.json
             echo "request_json_size_bytes=$request_size" >> $GITHUB_OUTPUT
+            echo "request_max_bytes=$max_request_bytes" >> $GITHUB_OUTPUT
+            echo "request_metadata_path=release-ai-request-metadata.json" >> $GITHUB_OUTPUT
+            echo "prompt_profile=probe" >> $GITHUB_OUTPUT
             echo "dossier_chars=0" >> $GITHUB_OUTPUT
+            echo "prompt_dossier_chars=0" >> $GITHUB_OUTPUT
           elif [ "${AI_MODE:-full}" = "full" ]; then
             bash scripts/release/release_helpers.sh build-ai-request \
               --model "${{ steps.model_config.outputs.model_id }}" \
               --dossier release-dossier.md \
               --semver-rules .github/workflows/semver-rules-override.txt \
+              --max-request-bytes "$max_request_bytes" \
+              --metadata-output release-ai-request-metadata.json \
               --output request.json
           else
             echo "Unsupported aiMode '${AI_MODE:-}' for AI request build." >&2
@@ -473,35 +504,42 @@ jobs:
           echo "audit:model=${{ steps.model_config.outputs.model_id }}"
           echo "audit:model_max_input_tokens=${{ steps.model_catalog.outputs.model_max_input_tokens }}"
           echo "audit:model_max_output_tokens=${{ steps.model_catalog.outputs.model_max_output_tokens }}"
+          echo "audit:prompt_profile=${{ steps.build_request.outputs.prompt_profile }}"
+          echo "audit:prompt_dossier_chars=${{ steps.build_request.outputs.prompt_dossier_chars }}"
+          echo "audit:request_max_bytes=${{ steps.build_request.outputs.request_max_bytes }}"
           echo "audit:external_call target=models.github.ai payload=request.json sanitized=true"
 
-          if [ "${AI_MODE:-full}" = "full" ]; then
-            attempts=2
-          else
-            attempts=1
-          fi
-          backoff=5
+          attempts=1
           response_status=000
           curl_exit_code=0
           : > response.json
           : > curl-error.log
+          : > response-headers.txt
+          : > curl-metrics.log
 
           for attempt in $(seq 1 "$attempts"); do
             attempt_error="curl-error-attempt-${attempt}.log"
+            attempt_headers="response-headers-attempt-${attempt}.txt"
+            attempt_metrics="curl-metrics-attempt-${attempt}.log"
             : > "$attempt_error"
-            if response_status=$(curl --silent --show-error --location --http1.1 \
+            : > "$attempt_headers"
+            : > "$attempt_metrics"
+            if curl --silent --show-error --location --http1.1 \
               --connect-timeout 10 --max-time 120 \
-              -o response.json -w '%{http_code}' \
+              -D "$attempt_headers" \
+              -o response.json \
+              -w 'curl_json=%{json}\nhttp_code=%{http_code}\ntime_namelookup=%{time_namelookup}\ntime_connect=%{time_connect}\ntime_appconnect=%{time_appconnect}\ntime_starttransfer=%{time_starttransfer}\ntime_total=%{time_total}\nsize_upload=%{size_upload}\nsize_download=%{size_download}\nspeed_download=%{speed_download}\nnum_connects=%{num_connects}\nremote_ip=%{remote_ip}\nhttp_version=%{http_version}\n' \
               -X POST \
               -H "Content-Type: application/json" \
               -H "Authorization: Bearer $GH_MODELS_TOKEN" \
               https://models.github.ai/inference/chat/completions \
-              --data-binary @request.json 2>"$attempt_error"); then
+              --data-binary @request.json >"$attempt_metrics" 2>"$attempt_error"; then
               curl_exit_code=0
             else
               curl_exit_code=$?
-              response_status="000"
             fi
+            response_status=$(awk -F= '$1 == "http_code" { print $2; exit }' "$attempt_metrics" 2>/dev/null || true)
+            response_status=${response_status:-000}
 
             {
               echo "attempt=$attempt curl_exit_code=$curl_exit_code response_status=$response_status"
@@ -511,17 +549,21 @@ jobs:
                 echo "stderr=<empty>"
               fi
             } >> curl-error.log
+            {
+              echo "attempt=$attempt"
+              cat "$attempt_headers"
+            } >> response-headers.txt
+            {
+              echo "attempt=$attempt"
+              cat "$attempt_metrics"
+            } >> curl-metrics.log
             response_bytes=$(wc -c < response.json | tr -d ' ')
 
             if [ "$curl_exit_code" -eq 0 ] && [ "$response_status" = "200" ]; then
               break
             fi
 
-            echo "audit:ai_request_retry attempt=$attempt status=$response_status curl_exit=$curl_exit_code response_bytes=$response_bytes backoff=${backoff}s" >&2
-            if [ "$attempt" -lt "$attempts" ]; then
-              sleep "$backoff"
-              backoff=$((backoff * 2))
-            fi
+            echo "audit:ai_request_attempt attempt=$attempt status=$response_status curl_exit=$curl_exit_code response_bytes=$response_bytes billed_full_retry=false" >&2
           done
 
           echo "response_status=$response_status" >> $GITHUB_OUTPUT
@@ -531,9 +573,10 @@ jobs:
 
       - name: Handle AI API failure
         id: ai_failure
-        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true' && steps.ai_call.outputs.response_status != '200'
+        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true' && (steps.ai_call.outputs.response_status != '200' || steps.ai_call.outputs.curl_exit_code != '0')
         env:
           AI_MODE: ${{ steps.ai_mode.outputs.mode }}
+          MODEL: ${{ steps.model_config.outputs.model_id }}
           RESPONSE_STATUS: ${{ steps.ai_call.outputs.response_status }}
           CURL_EXIT_CODE: ${{ steps.ai_call.outputs.curl_exit_code }}
           ATTEMPTS: ${{ steps.ai_call.outputs.attempts }}
@@ -549,9 +592,25 @@ jobs:
           echo ""
           echo "curl diagnostics (last 20 lines):"
           tail -n 20 curl-error.log || true
-          fallback=$(jq -n --arg msg "$err_msg" --arg status "$RESPONSE_STATUS" \
-            '{should_release:false,bump:"patch",warning:$msg,reason:$msg}')
-          printf '%s\n' "$fallback" > ai-content.txt
+          echo "curl metrics (last 40 lines):"
+          tail -n 40 curl-metrics.log || true
+          bash scripts/release/release_helpers.sh ai-transport-diagnostics \
+            --ai-mode "${AI_MODE:-unknown}" \
+            --model "${MODEL:-unknown}" \
+            --response-status "${RESPONSE_STATUS:-000}" \
+            --curl-exit-code "${CURL_EXIT_CODE:-unknown}" \
+            --attempts "${ATTEMPTS:-unknown}" \
+            --request-metadata release-ai-request-metadata.json \
+            --release-audit release-audit.json \
+            --curl-error curl-error.log \
+            --curl-metrics curl-metrics.log \
+            --response-headers response-headers.txt \
+            --response response.json \
+            --output release-ai-transport-diagnostics.json \
+            --fallback-output ai-content.txt
+          fallback=$(cat ai-content.txt)
+          diagnostic_reason=$(jq -r '.reason // empty' ai-content.txt 2>/dev/null || true)
+          err_msg=${diagnostic_reason:-$err_msg}
           delim="AI_RESP_$(date +%s%N)"
           {
             echo "content<<$delim"
@@ -566,7 +625,7 @@ jobs:
 
       - name: Extract AI response content
         id: ai
-        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true' && steps.ai_call.outputs.response_status == '200'
+        if: steps.gate.outputs.proceed == 'true' && steps.ai_mode.outputs.mode != 'skip' && steps.token_gate.outputs.proceed == 'true' && steps.ai_call.outputs.response_status == '200' && steps.ai_call.outputs.curl_exit_code == '0'
         run: |
           resp_size=$(wc -c < response.json | tr -d ' ')
           echo "audit:ai_response_bytes=$resp_size saved_to=response.json"
@@ -740,7 +799,10 @@ jobs:
           MODEL_MAX_INPUT_TOKENS: ${{ steps.model_catalog.outputs.model_max_input_tokens }}
           MODEL_MAX_OUTPUT_TOKENS: ${{ steps.model_catalog.outputs.model_max_output_tokens }}
           DOSSIER_CHARS: ${{ steps.build_request.outputs.dossier_chars }}
+          PROMPT_DOSSIER_CHARS: ${{ steps.build_request.outputs.prompt_dossier_chars }}
+          PROMPT_PROFILE: ${{ steps.build_request.outputs.prompt_profile }}
           REQUEST_JSON_SIZE_BYTES: ${{ steps.build_request.outputs.request_json_size_bytes }}
+          REQUEST_MAX_BYTES: ${{ steps.build_request.outputs.request_max_bytes }}
           SHOULD_RELEASE: ${{ steps.parsed.outputs.should_release }}
           BUMP: ${{ steps.parsed.outputs.bump }}
           CONFIDENCE: ${{ steps.parsed.outputs.confidence }}
@@ -750,7 +812,10 @@ jobs:
           POM_BASE: ${{ steps.pom_version.outputs.base }}
           LAST_TAG: ${{ steps.lasttag.outputs.last_reachable_tag }}
         run: |
-          if [ "${DRY_RUN:-false}" = "true" ]; then
+          if [ -s release-ai-transport-diagnostics.json ]; then
+            mutation_plan="no release mutation; required AI inference failed before a durable HTTP response"
+            rerun_guidance="inspect release-ai-request-metadata.json and release-ai-transport-diagnostics.json, use aiMode=probe for non-billed connectivity validation, and do not rerun billed aiMode=full blindly with the same request"
+          elif [ "${DRY_RUN:-false}" = "true" ]; then
             mutation_plan="would dispatch prepare-release.yml with dryRun=true; no discussion post is created"
             rerun_guidance="rerun release-scheduler.yml with dryRun=false, or wait for the scheduled release path"
           else
@@ -761,6 +826,11 @@ jobs:
           cat > release-scheduler-mutation-plan.txt <<EOF
           dryRun=${DRY_RUN:-}
           aiMode=${AI_MODE:-}
+          promptProfile=${PROMPT_PROFILE:-}
+          fullDossierChars=${DOSSIER_CHARS:-}
+          promptDossierChars=${PROMPT_DOSSIER_CHARS:-}
+          requestJsonSizeBytes=${REQUEST_JSON_SIZE_BYTES:-}
+          requestMaxBytes=${REQUEST_MAX_BYTES:-}
           computedVersion=${VERSION:-}
           bump=${BUMP:-}
           mutationPlan=${mutation_plan}
@@ -777,7 +847,10 @@ jobs:
           echo "decision:model_max_input_tokens=${MODEL_MAX_INPUT_TOKENS:-}"
           echo "decision:model_max_output_tokens=${MODEL_MAX_OUTPUT_TOKENS:-}"
           echo "decision:dossier_chars=${DOSSIER_CHARS:-}"
+          echo "decision:prompt_dossier_chars=${PROMPT_DOSSIER_CHARS:-}"
+          echo "decision:prompt_profile=${PROMPT_PROFILE:-}"
           echo "decision:request_json_size_bytes=${REQUEST_JSON_SIZE_BYTES:-}"
+          echo "decision:request_max_bytes=${REQUEST_MAX_BYTES:-}"
           echo "decision:should_release=${SHOULD_RELEASE:-}"
           echo "decision:bump=${BUMP:-}"
           echo "decision:confidence=${CONFIDENCE:-}"
@@ -794,7 +867,10 @@ jobs:
             echo "- model max input tokens: ${MODEL_MAX_INPUT_TOKENS:-unknown}"
             echo "- model max output tokens: ${MODEL_MAX_OUTPUT_TOKENS:-unknown}"
             echo "- dossier chars: ${DOSSIER_CHARS:-0}"
+            echo "- prompt dossier chars: ${PROMPT_DOSSIER_CHARS:-0}"
+            echo "- prompt profile: ${PROMPT_PROFILE:-unknown}"
             echo "- request bytes: ${REQUEST_JSON_SIZE_BYTES:-0}"
+            echo "- request max bytes: ${REQUEST_MAX_BYTES:-0}"
             echo "- should release: ${SHOULD_RELEASE:-unknown}"
             echo "- bump: ${BUMP:-unknown}"
             echo "- confidence: ${CONFIDENCE:-unknown}"
@@ -814,11 +890,15 @@ jobs:
             release-ai-model.json
             release-dossier.md
             release-audit.json
+            release-ai-request-metadata.json
             request.json
             response.json
+            response-headers.txt
+            curl-metrics.log
             curl-error.log
             ai-content.txt
             release-decision.json
+            release-ai-transport-diagnostics.json
             release-scheduler-mutation-plan.txt
           if-no-files-found: ignore
           retention-days: 14
@@ -961,6 +1041,10 @@ jobs:
           MODEL_MAX_INPUT_TOKENS: ${{ needs.analyze.outputs.model_max_input_tokens }}
           MODEL_MAX_OUTPUT_TOKENS: ${{ needs.analyze.outputs.model_max_output_tokens }}
           DOSSIER_CHARS: ${{ needs.analyze.outputs.dossier_chars }}
+          PROMPT_DOSSIER_CHARS: ${{ needs.analyze.outputs.prompt_dossier_chars }}
+          PROMPT_PROFILE: ${{ needs.analyze.outputs.prompt_profile }}
+          REQUEST_JSON_SIZE_BYTES: ${{ needs.analyze.outputs.request_json_size_bytes }}
+          REQUEST_MAX_BYTES: ${{ needs.analyze.outputs.request_max_bytes }}
           LAST_TAG: ${{ needs.analyze.outputs.last_tag }}
           LAST_FIRST_PARENT_TAG: ${{ needs.analyze.outputs.last_first_parent_tag }}
           POM_VERSION: ${{ needs.analyze.outputs.pom_version }}
@@ -987,6 +1071,10 @@ jobs:
           model_max_input_tokens="${MODEL_MAX_INPUT_TOKENS:-}"
           model_max_output_tokens="${MODEL_MAX_OUTPUT_TOKENS:-}"
           dossier_chars="${DOSSIER_CHARS:-}"
+          prompt_dossier_chars="${PROMPT_DOSSIER_CHARS:-}"
+          prompt_profile="${PROMPT_PROFILE:-}"
+          request_json_size_bytes="${REQUEST_JSON_SIZE_BYTES:-}"
+          request_max_bytes="${REQUEST_MAX_BYTES:-}"
           should_release="${SHOULD_RELEASE:-unknown}"
           bump="${BUMP:-unknown}"
           version="${VERSION:-}"
@@ -1052,6 +1140,18 @@ jobs:
           if [ -z "$dossier_chars" ]; then
             dossier_chars="0"
           fi
+          if [ -z "$prompt_dossier_chars" ]; then
+            prompt_dossier_chars="0"
+          fi
+          if [ -z "$prompt_profile" ]; then
+            prompt_profile="(none)"
+          fi
+          if [ -z "$request_json_size_bytes" ]; then
+            request_json_size_bytes="0"
+          fi
+          if [ -z "$request_max_bytes" ]; then
+            request_max_bytes="0"
+          fi
 
           notify_user="${RELEASE_NOTIFY_USER:-TheCookieLab}"
 
@@ -1075,6 +1175,10 @@ jobs:
           - model max input tokens: ${model_max_input_tokens}
           - model max output tokens: ${model_max_output_tokens}
           - dossier chars: ${dossier_chars}
+          - prompt dossier chars: ${prompt_dossier_chars}
+          - prompt profile: ${prompt_profile}
+          - request bytes: ${request_json_size_bytes}
+          - request max bytes: ${request_max_bytes}
           - should release: ${should_release}
           - bump: ${bump}
           - computed version: ${version}

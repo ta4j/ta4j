@@ -1,6 +1,7 @@
 ## Unreleased
 
 ### Changed
+- **CF-250: AI release scheduler full runs are transport-resilient**: `release-scheduler.yml` now keeps full GitHub Models requests under a configurable transport budget, compacts oversized dossiers into artifact-backed prompts, captures response headers and curl metrics, and writes structured transport diagnostics so maintainers can recover from curl-level failures without blindly rerunning a billed full request.
 - **Quiet full-build verification now wraps Maven `verify`**: `scripts/run-full-build-quiet.sh` now defaults to the canonical `verify` goal, supports `--goals` overrides plus normal Maven argument pass-through for focused modules and tagged tests, and has a Windows PowerShell counterpart. The repository now commits Maven Wrapper scripts pinned to Maven `3.9.16`, so contributors can use `./mvnw -B verify`, `mvnw.cmd -B verify`, system Maven, or the quiet scripts for the same contributor gate. The quiet scripts keep the full Maven log under `.agents/logs/` while surfacing bounded warning, error, exception, stack-trace, and unexpected-output summaries in stdout.
 
 ### Fixed
