@@ -37,12 +37,12 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10
+        uses: actions/checkout@v6
         with:
           persist-credentials: false
 
       - name: Cache Maven packages
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        uses: actions/cache@v5
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -50,7 +50,7 @@ jobs:
             ${{ runner.os }}-maven-
 
       - name: Set up Java
-        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 25
@@ -139,7 +139,7 @@ jobs:
           } >> "${GITHUB_ENV}"
 
       - name: Cache live market data responses
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae
+        uses: actions/cache@v5
         with:
           path: ta4j-examples/temp/responses
           key: ew-data-${{ runner.os }}-${{ steps.inputs.outputs.exchange_slug }}-${{ steps.inputs.outputs.instrument_slug }}-pt1d-${{ steps.inputs.outputs.lookback_days }}-${{ steps.inputs.outputs.utc_date }}
@@ -156,7 +156,7 @@ jobs:
           find ta4j-examples/temp/responses -type f -mtime +45 -delete
 
       - name: Build runtime artifacts
-        run: xvfb-run mvn -B -pl ta4j-examples -am -DskipTests install
+        run: xvfb-run ./mvnw -B -pl ta4j-examples -am -DskipTests install
 
       - name: Run ElliottWavePresetDemo live snapshot
         shell: bash
@@ -164,7 +164,7 @@ jobs:
           set -euo pipefail
           mkdir -p "${SNAPSHOT_DIR}"
           pushd ta4j-examples
-          xvfb-run mvn -B exec:java \
+          xvfb-run ../mvnw -B exec:java \
             -Dexec.mainClass=ta4jexamples.analysis.elliottwave.ElliottWavePresetDemo \
             -Dexec.args="live ${EW_EXCHANGE} ${EW_TICKER} PT1D ${EW_LOOKBACK_DAYS}" \
             -Djava.awt.headless=true \
@@ -342,7 +342,7 @@ jobs:
 
       - name: Upload EW snapshot artifact
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        uses: actions/upload-artifact@v7
         with:
           name: ew-snapshot-${{ steps.inputs.outputs.exchange_slug }}-${{ steps.inputs.outputs.instrument_slug }}-${{ steps.inputs.outputs.lookback_days }}-${{ github.run_id }}
           path: target/ew-snapshot/**

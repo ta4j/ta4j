@@ -36,4 +36,4 @@ jobs:
           cache: maven
 
       - name: Validate source code formatting
-        run: xvfb-run mvn -B formatter:validate
+        run: xvfb-run ./mvnw -B formatter:validate

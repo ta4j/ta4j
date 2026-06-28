@@ -245,7 +245,7 @@ jobs:
         id: read_current
         shell: bash
         run: |
-          CURRENT=$(mvn -q -DforceStdout help:evaluate -Dexpression=project.version)
+          CURRENT=$(./mvnw -q -DforceStdout help:evaluate -Dexpression=project.version)
           echo "Detected project.version: $CURRENT"
 
           if [[ -z "${CURRENT}" ]]; then
@@ -444,12 +444,12 @@ jobs:
         env:
           RELEASE_VERSION: ${{ steps.versions.outputs.release }}
         run: |
-          mvn -B versions:set -DnewVersion=$RELEASE_VERSION
+          ./mvnw -B versions:set -DnewVersion=$RELEASE_VERSION
 
       - name: Commit Maven version change
         if: steps.dry_run.outputs.dryRun != 'true'
         run: |
-          mvn -B versions:commit
+          ./mvnw -B versions:commit
 
       - name: Validate Maven Central metadata
         run: |
@@ -481,10 +481,10 @@ jobs:
           REPORT_MD: ${{ runner.temp }}/release-ready-deprecations.md
         run: |
           echo "::group::Gate release-ready deprecations"
-          mvn -B -q -pl ta4j-examples -am -DskipTests install
+          ./mvnw -B -q -pl ta4j-examples -am -DskipTests install
 
           set +e
-          mvn -B -q -pl ta4j-examples exec:java \
+          ./mvnw -B -q -pl ta4j-examples exec:java \
             -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner \
             "-Dexec.args=--repo-root ${GITHUB_WORKSPACE} --pom-file pom.xml --target-removal-version ${RELEASE_VERSION} --include-overdue --fail-on-due --output-json ${REPORT_JSON} --output-md ${REPORT_MD}"
           scan_status=$?
@@ -523,12 +523,12 @@ jobs:
         env:
           NEXT_VERSION: ${{ steps.versions.outputs.next }}
         run: |
-          mvn -B versions:set -DnewVersion=$NEXT_VERSION
+          ./mvnw -B versions:set -DnewVersion=$NEXT_VERSION
 
       - name: Commit Maven version change for next
         if: steps.dry_run.outputs.dryRun != 'true'
         run: |
-          mvn -B versions:commit
+          ./mvnw -B versions:commit
 
       - name: Commit next snapshot version
         if: steps.dry_run.outputs.dryRun != 'true'
@@ -544,8 +544,8 @@ jobs:
         run: |
           echo "::group::Scan removal-ready deprecations"
           NEXT_REMOVAL_VERSION="${NEXT_VERSION%-SNAPSHOT}"
-          mvn -B -q -pl ta4j-examples -am -DskipTests install
-          mvn -B -q -pl ta4j-examples exec:java \
+          ./mvnw -B -q -pl ta4j-examples -am -DskipTests install
+          ./mvnw -B -q -pl ta4j-examples exec:java \
             -Dexec.mainClass=ta4jexamples.doc.RemovalReadyDeprecationScanner \
             "-Dexec.args=--repo-root ${GITHUB_WORKSPACE} --pom-file pom.xml --target-removal-version ${NEXT_REMOVAL_VERSION} --include-overdue --output-json ${REPORT_JSON} --output-md ${REPORT_MD}"
           echo "::endgroup::"
@@ -820,6 +820,7 @@ jobs:
           git push --force-with-lease origin "HEAD:refs/heads/${RELEASE_BRANCH}"
 
       - name: Create or update release PR
+        id: release_pr
         if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true'
         uses: actions/github-script@v9
         env:
@@ -880,9 +881,11 @@ jobs:
             });
 
             let prNumber;
+            let prAuthor;
             if (existing.data.length > 0) {
               const pr = existing.data[0];
               prNumber = pr.number;
+              prAuthor = pr.user?.login || "";
               await github.rest.pulls.update({
                 owner,
                 repo,
@@ -901,6 +904,7 @@ jobs:
                 body
               });
               prNumber = created.data.number;
+              prAuthor = created.data.user?.login || "";
             }
 
             try {
@@ -927,16 +931,91 @@ jobs:
               throw new Error(`Failed to assign release owner ${releaseOwner}: ${error.message}`);
             }
 
-            try {
-              await github.rest.pulls.requestReviewers({
-                owner,
-                repo,
-                pull_number: prNumber,
-                reviewers: [releaseOwner]
-              });
-            } catch (error) {
-              throw new Error(`Failed to request review from ${releaseOwner}: ${error.message}`);
-            }
+            core.setOutput("pr_number", String(prNumber));
+            core.setOutput("pr_author", prAuthor);
+
+      - name: Plan release PR reviewers
+        id: release_review_plan
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true'
+        env:
+          RELEASE_OWNER: ${{ vars.RELEASE_OWNER || 'TheCookieLab' }}
+          RELEASE_REVIEWERS: ${{ vars.RELEASE_REVIEWERS }}
+          RELEASE_REVIEW_TEAMS: ${{ vars.RELEASE_REVIEW_TEAMS }}
+          PR_AUTHOR: ${{ steps.release_pr.outputs.pr_author }}
+        run: |
+          bash scripts/release/release_helpers.sh release-pr-review-plan \
+            --release-owner "${RELEASE_OWNER}" \
+            --pr-author "${PR_AUTHOR}" \
+            --reviewers "${RELEASE_REVIEWERS:-}" \
+            --team-reviewers "${RELEASE_REVIEW_TEAMS:-}" \
+            --output release-review-plan.json \
+            --github-output "$GITHUB_OUTPUT"
+
+      - name: Request release PR review
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true' && steps.release_review_plan.outputs.has_review_targets == 'true'
+        env:
+          GH_TOKEN: ${{ steps.token_preflight.outputs.use_repo_token == 'true' && secrets.GH_TA4J_REPO_TOKEN || github.token }}
+          PR_NUMBER: ${{ steps.release_pr.outputs.pr_number }}
+          REVIEWERS_JSON: ${{ steps.release_review_plan.outputs.reviewers_json }}
+          TEAM_REVIEWERS_JSON: ${{ steps.release_review_plan.outputs.team_reviewers_json }}
+        run: |
+          python3 - "$PR_NUMBER" "$REVIEWERS_JSON" "$TEAM_REVIEWERS_JSON" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          pr_number = sys.argv[1].strip()
+          reviewers = json.loads(sys.argv[2] or "[]")
+          team_reviewers = json.loads(sys.argv[3] or "[]")
+          if not pr_number.isdigit():
+              raise SystemExit("Missing release PR number for review request.")
+          if not reviewers and not team_reviewers:
+              print("No eligible release PR reviewers were planned.")
+              Path("release-review-request-targets.txt").write_text("", encoding="utf-8")
+              raise SystemExit(0)
+
+          payload = {}
+          if reviewers:
+              payload["reviewers"] = reviewers
+          if team_reviewers:
+              payload["team_reviewers"] = team_reviewers
+
+          Path("release-review-request.json").write_text(
+              json.dumps(payload, separators=(",", ":")),
+              encoding="utf-8",
+          )
+          targets = [*reviewers, *[f"team:{team}" for team in team_reviewers]]
+          Path("release-review-request-targets.txt").write_text(
+              ", ".join(targets),
+              encoding="utf-8",
+          )
+          PY
+
+          if [ ! -s release-review-request-targets.txt ]; then
+            exit 0
+          fi
+
+          targets="$(cat release-review-request-targets.txt)"
+          if ! gh api \
+            --method POST \
+            "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/requested_reviewers" \
+            --input release-review-request.json >/dev/null; then
+            echo "::error::Failed to request release PR review from ${targets}" >&2
+            exit 1
+          fi
+
+      - name: Report release PR review warning
+        if: steps.dry_run.outputs.dryRun != 'true' && steps.direct_push.outputs.enabled != 'true' && steps.release_review_plan.outputs.has_review_targets != 'true'
+        env:
+          REVIEW_WARNING: ${{ steps.release_review_plan.outputs.warning }}
+        run: |
+          warning="${REVIEW_WARNING:-No eligible release PR reviewers were configured; release PR may require an admin or bypass merge.}"
+          echo "::warning::${warning}"
+          {
+            echo "### Release PR review"
+            echo ""
+            echo "- warning: ${warning}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       # -----------------------
       # Summary
@@ -955,6 +1034,7 @@ jobs:
           REMOVAL_UPDATED_COUNT: ${{ steps.deprecation_issues.outputs.updated_count }}
           REMOVAL_REOPENED_COUNT: ${{ steps.deprecation_issues.outputs.reopened_count }}
           REMOVAL_CLOSED_STALE_COUNT: ${{ steps.deprecation_issues.outputs.closed_stale_count }}
+          RELEASE_REVIEW_WARNING: ${{ steps.release_review_plan.outputs.warning }}
         run: |
           echo "summary: dryRun=${DRY_RUN:-}"
           echo "summary: directPush=${DIRECT_PUSH:-}"
@@ -967,6 +1047,7 @@ jobs:
           echo "summary: removalIssuesUpdated=${REMOVAL_UPDATED_COUNT:-0}"
           echo "summary: removalIssuesReopened=${REMOVAL_REOPENED_COUNT:-0}"
           echo "summary: removalIssuesClosedStale=${REMOVAL_CLOSED_STALE_COUNT:-0}"
+          echo "summary: releaseReviewWarning=${RELEASE_REVIEW_WARNING:-}"
           if [ "${DRY_RUN:-false}" = "true" ]; then
             mutation_plan="would create/update release artifacts, sync deprecation issues, push the release branch, and create/update the release PR"
             rerun_guidance="rerun prepare-release.yml with dryRun=false after inspecting these computed values and artifacts"
@@ -989,6 +1070,7 @@ jobs:
             "removalIssuesUpdated": "${REMOVAL_UPDATED_COUNT:-0}",
             "removalIssuesReopened": "${REMOVAL_REOPENED_COUNT:-0}",
             "removalIssuesClosedStale": "${REMOVAL_CLOSED_STALE_COUNT:-0}",
+            "releaseReviewWarning": "${RELEASE_REVIEW_WARNING:-}",
             "runUrl": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           }
           EOF
@@ -1006,6 +1088,9 @@ jobs:
             echo "- removal-ready issues updated: ${REMOVAL_UPDATED_COUNT:-0}"
             echo "- removal-ready issues reopened: ${REMOVAL_REOPENED_COUNT:-0}"
             echo "- removal-ready stale issues closed: ${REMOVAL_CLOSED_STALE_COUNT:-0}"
+            if [ -n "${RELEASE_REVIEW_WARNING:-}" ]; then
+              echo "- release PR review warning: ${RELEASE_REVIEW_WARNING}"
+            fi
             echo "- mutation plan: ${mutation_plan}"
             echo "- rerun guidance: ${rerun_guidance}"
           } >> "$GITHUB_STEP_SUMMARY"
@@ -1017,6 +1102,7 @@ jobs:
           name: prepare-release-audit-${{ github.run_id }}
           path: |
             release-audit.json
+            release-review-plan.json
             release/${{ steps.versions.outputs.release }}.md
           if-no-files-found: ignore
           retention-days: 14

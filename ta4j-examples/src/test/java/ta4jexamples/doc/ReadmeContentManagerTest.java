@@ -97,8 +97,8 @@ public class ReadmeContentManagerTest {
         assertTrue(pom.contains("<version>[25,)</version>"));
         assertTrue(readme.contains("JDK-25%2B"));
         assertTrue(readme.contains("Java 25+"));
-        assertFalse(readme.contains("./mvnw"));
-        assertFalse(readme.contains("mvnw.cmd"));
+        assertTrue(readme.contains("./mvnw -B verify"));
+        assertTrue(readme.contains("mvnw.cmd -B verify"));
         assertTrue(contributing.contains("Java 25+"));
 
         try (Stream<Path> workflowPaths = Files.list(repositoryRoot.resolve(".github").resolve("workflows"))) {
@@ -120,7 +120,7 @@ public class ReadmeContentManagerTest {
                 if (path.getFileName().toString().equals("github-release.yml")) {
                     assertTrue(workflow.contains("path: workflow-support"),
                             path + " should stage workflow support files separately from the release tag checkout");
-                    assertTrue(workflow.contains("workflow-support/scripts/release/release_helpers.py"), path
+                    assertTrue(workflow.contains("workflow-support/scripts/release/release_helpers.sh"), path
                             + " should validate artifacts with workflow support files, not the checked-out tag tree");
                 }
             });
