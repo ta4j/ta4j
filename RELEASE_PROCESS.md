@@ -135,6 +135,8 @@ Expected behavior:
 - release-candidate checks use the repository default `integration,slow` test-tag exclusions and log that policy in the workflow output.
 - workflows upload audit artifacts such as release dossiers, decisions, manifests, logs, and tag-resolution files so failures can be diagnosed from the exact phase that produced them.
 - `release-scheduler.yml` full AI dry-runs compact oversized dossiers before calling GitHub Models, record the prompt profile and byte budget in `release-ai-request-metadata.json`, and capture `response-headers.txt`, `curl-metrics.log`, and `release-ai-transport-diagnostics.json` when a provider transport failure occurs.
+- `release-scheduler.yml` uses a weekly Monday cron plus an internal 14-day cadence guard anchored at `2026-06-29`. Only due scheduled runs continue into GitHub Models setup, token checks, dossier/request generation, and the single inference call; off-cadence scheduled runs record `scheduler_due=false`, recommend no release, and skip scheduler discussion posts.
+- Required scheduler inference uses one curl attempt. The workflow intentionally avoids curl retries or workflow-level repeated model calls; failed full AI calls preserve diagnostics and must be reviewed before another billed `aiMode=full` run.
 
 ---
 
@@ -142,7 +144,7 @@ Expected behavior:
 
 | Workflow | Trigger(s) | Primary responsibility | Critical guardrails |
 |---|---|---|---|
-| `release-scheduler.yml` | schedule, manual | decide whether/how to release | manual runs default dry-run; schedule normalizes to production; binary-impact gate, model catalog preflight, release dossier, semver safety, tag collision checks |
+| `release-scheduler.yml` | schedule, manual | decide whether/how to release | manual runs default dry-run; schedule normalizes to production only on the `2026-06-29`-anchored biweekly cadence; binary-impact gate, one-call model inference, semver safety, tag collision checks |
 | `prepare-release.yml` | manual (or scheduler dispatch) | generate release artifacts and release PR/direct-push commits | manual runs default dry-run; scheduler passes `dryRun`; docs-integrity checks, version validation, metadata validation, dry-run push capability probes |
 | `publish-release.yml` | merged release PR close, manual | release-candidate verification + tag + Maven Central deploy + snapshot dispatch + release summary | manual runs default dry-run; merged release PRs normalize to production; merge discipline + ancestry checks, artifact manifest checks, post-push tag integrity/reachability checks |
 | `release-health.yml` | push to `master`, publish workflow completion, snapshot workflow completion, schedule, manual | detect drift in release state | manual runs default dry-run; non-manual triggers normalize to production; fails on tag reachability drift, snapshot version drift, missing snapshot publication once snapshot publication is authoritative, missing notes, stale release PRs |

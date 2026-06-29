@@ -5,6 +5,13 @@
 
 ### Changed
 - **Daily live Elliott preset runs now use the generic macro snapshot path**: `ElliottWavePresetDemo` routes any daily live instrument through the macro-cycle preset so non-BTC symbols receive the same base case plus four alternate outlooks with instrument-aware filenames and scenario-outlook JSON.
+- **Quiet Maven verify stays focused on failures**: `ta4j-core` test logging now keeps intentional `TimeBarBuilder` missing-bar warnings and invalid `ReturnRepresentation` parse warnings out of `mvn verify -q` output while preserving explicit log-capture assertions for those expected paths.
+- **Cached indicator stress coverage is less scheduler-sensitive**: `CachedIndicatorTest` now waits for a bounded minimum-read signal before ending the concurrent mutation phase, so the full-build gate continues to exercise cache invalidation under contention without failing because reader threads were scheduled late.
+
+## 0.22.8 (2026-06-29)
+
+### Changed
+- **AI release scheduling now uses an exact biweekly cadence**: `release-scheduler.yml` now runs a weekly Monday trigger through a 14-day guard anchored at June 29, 2026, so scheduled `aiMode=full` production checks happen every other Monday instead of on day-of-month slots that could double-bill across month boundaries. Off-cadence scheduled runs short-circuit before GitHub Models setup or inference and skip scheduler discussion posts, while due runs still dispatch PR-based release prep.
 - **CF-250: AI release scheduler full runs are transport-resilient**: `release-scheduler.yml` now keeps full GitHub Models requests under a configurable transport budget, compacts oversized dossiers into artifact-backed prompts, captures response headers and curl metrics, and writes structured transport diagnostics so maintainers can recover from curl-level failures without blindly rerunning a billed full request.
 - **Quiet full-build verification now wraps Maven `verify`**: `scripts/run-full-build-quiet.sh` now defaults to the canonical `verify` goal, supports `--goals` overrides plus normal Maven argument pass-through for focused modules and tagged tests, and has a Windows PowerShell counterpart. The repository now commits Maven Wrapper scripts pinned to Maven `3.9.16`, so contributors can use `./mvnw -B verify`, `mvnw.cmd -B verify`, system Maven, or the quiet scripts for the same contributor gate. The quiet scripts keep the full Maven log under `.agents/logs/` while surfacing bounded warning, error, exception, stack-trace, and unexpected-output summaries in stdout.
 

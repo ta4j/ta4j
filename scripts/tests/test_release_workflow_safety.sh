@@ -176,6 +176,53 @@ test_official_triggers_normalize_to_non_dry_run() {
   pass "test_official_triggers_normalize_to_non_dry_run"
 }
 
+test_release_scheduler_uses_true_biweekly_cadence_guard() {
+  echo "Running test_release_scheduler_uses_true_biweekly_cadence_guard"
+
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'cron: "0 9 * * 1"' \
+    "release scheduler should use a weekly cron for exact biweekly gating"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" 'anchor_date="2026-06-29"' \
+    "release scheduler cadence should be anchored to the intended first biweekly run"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "scheduler_due:" \
+    "release scheduler should expose scheduler_due as an analyze output"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "scheduler_reason:" \
+    "release scheduler should expose scheduler_reason as an analyze output"
+
+  local cadence_section
+  cadence_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Resolve scheduler cadence" "Resolve AI execution mode")"
+  expect_section_contains "$cadence_section" 'run_date="$(date -u +%F)"' \
+    "release scheduler cadence should evaluate the UTC run date"
+  expect_section_contains "$cadence_section" 'manual dispatch bypasses biweekly cadence guard' \
+    "manual release scheduler runs should bypass the cadence gate"
+  expect_section_contains "$cadence_section" 'delta_days=$(( (run_epoch - anchor_epoch) / 86400 ))' \
+    "release scheduler should compute date distance from the anchor"
+  expect_section_contains "$cadence_section" '$((delta_days % 14))' \
+    "release scheduler should allow only exact 14-day intervals"
+  expect_section_contains "$cadence_section" 'due=false' \
+    "release scheduler should mark off-cadence scheduled runs as not due"
+
+  local model_section
+  model_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Resolve AI model" "Read version from pom.xml")"
+  expect_section_contains "$model_section" "if: steps.scheduler_cadence.outputs.due == 'true'" \
+    "release scheduler should skip model setup before off-cadence scheduled runs"
+
+  local gate_section
+  gate_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Check if changes detected" "No release - AI execution skipped")"
+  expect_section_contains "$gate_section" 'SCHEDULER_DUE: ${{ steps.scheduler_cadence.outputs.due }}' \
+    "release scheduler gate should read the cadence output"
+  expect_section_contains "$gate_section" 'if [ "$scheduler_due" != "true" ]; then' \
+    "release scheduler gate should short-circuit off-cadence scheduled runs"
+  expect_section_contains "$gate_section" "No release - off biweekly cadence" \
+    "release scheduler should have an explicit off-cadence no-release path"
+
+  local post_section
+  post_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Post to Release Scheduler discussion" "with:")"
+  expect_section_contains "$post_section" "needs.analyze.outputs.scheduler_due != 'false'" \
+    "release scheduler should skip production discussion posts for off-cadence scheduled runs"
+
+  pass "test_release_scheduler_uses_true_biweekly_cadence_guard"
+}
+
 test_downstream_dispatches_explicitly_pass_dry_run() {
   echo "Running test_downstream_dispatches_explicitly_pass_dry_run"
 
@@ -200,8 +247,8 @@ test_downstream_dispatches_explicitly_pass_dry_run() {
 test_mutating_steps_remain_dry_run_gated() {
   echo "Running test_mutating_steps_remain_dry_run_gated"
 
-  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "if: always() && needs.analyze.result != 'skipped' && needs.analyze.outputs.dryRun != 'true'" \
-    "release scheduler discussion mutation should skip dry-run and skipped scheduled runs"
+  expect_file_contains "$WORKFLOWS/release-scheduler.yml" "if: always() && needs.analyze.result != 'skipped' && needs.analyze.outputs.dryRun != 'true' && needs.analyze.outputs.scheduler_due != 'false'" \
+    "release scheduler discussion mutation should skip dry-run, skipped, and off-cadence scheduled runs"
 
   expect_file_contains "$WORKFLOWS/prepare-release.yml" "if: steps.dry_run.outputs.dryRun != 'true'" \
     "prepare-release mutations should be dry-run gated"
@@ -295,7 +342,7 @@ test_release_scheduler_ai_modes_protect_manual_debug_budget() {
     "release scheduler should only run full-analysis setup in full AI mode"
 
   local request_section
-  request_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Build and validate AI request JSON" "Call AI API with retry")"
+  request_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Build and validate AI request JSON" "Call AI API once")"
 	  expect_section_contains "$request_section" "audit:ai_probe_request" \
 	    "release scheduler probe mode should build a tiny probe request"
 	  expect_section_contains "$request_section" "max_tokens: 64" \
@@ -306,7 +353,7 @@ test_release_scheduler_ai_modes_protect_manual_debug_budget() {
 	    "release scheduler should enforce a non-billed AI request transport budget before the model call"
 
 	  local call_section
-	  call_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Call AI API with retry" "Handle AI API failure")"
+	  call_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Call AI API once" "Handle AI API failure")"
 	  expect_section_not_contains "$call_section" "--retry" \
 	    "release scheduler should avoid nested curl retries that multiply model calls"
 	  expect_section_contains "$call_section" 'attempts=1' \
@@ -335,7 +382,7 @@ test_release_scheduler_ai_failures_remain_diagnostic_and_red() {
     "release scheduler catalog preflight should retry transient GitHub Models failures"
 
   local ai_call_section
-  ai_call_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Call AI API with retry" "Handle AI API failure")"
+  ai_call_section="$(workflow_section "$WORKFLOWS/release-scheduler.yml" "Call AI API once" "Handle AI API failure")"
 	  expect_section_contains "$ai_call_section" "curl-error.log" \
 	    "release scheduler should retain curl diagnostics for AI calls"
 	  expect_section_contains "$ai_call_section" "response-headers.txt" \
@@ -510,6 +557,7 @@ YAML
 test_maven_workflow_jobs_setup_jdk25_before_maven
 test_mutating_manual_workflows_default_to_dry_run
 test_official_triggers_normalize_to_non_dry_run
+test_release_scheduler_uses_true_biweekly_cadence_guard
 test_downstream_dispatches_explicitly_pass_dry_run
 test_mutating_steps_remain_dry_run_gated
 test_dry_run_summaries_and_audits_show_rerun_guidance
