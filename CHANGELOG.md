@@ -1,5 +1,9 @@
 ## Unreleased
 
+- _No changes yet._
+
+## 0.22.8 (2026-06-29)
+
 ### Changed
 - **AI release scheduling now uses an exact biweekly cadence**: `release-scheduler.yml` now runs a weekly Monday trigger through a 14-day guard anchored at June 29, 2026, so scheduled `aiMode=full` production checks happen every other Monday instead of on day-of-month slots that could double-bill across month boundaries. Off-cadence scheduled runs short-circuit before GitHub Models setup or inference and skip scheduler discussion posts, while due runs still dispatch PR-based release prep.
 - **CF-250: AI release scheduler full runs are transport-resilient**: `release-scheduler.yml` now keeps full GitHub Models requests under a configurable transport budget, compacts oversized dossiers into artifact-backed prompts, captures response headers and curl metrics, and writes structured transport diagnostics so maintainers can recover from curl-level failures without blindly rerunning a billed full request.
