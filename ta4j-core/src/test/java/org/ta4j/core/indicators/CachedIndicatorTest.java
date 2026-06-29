@@ -894,8 +894,10 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
 
         int readers = 8;
         int iterations = 50;
+        int minimumReads = 100;
         AtomicInteger totalReads = new AtomicInteger(0);
         AtomicBoolean mutationsDone = new AtomicBoolean(false);
+        CountDownLatch readsObserved = new CountDownLatch(minimumReads);
 
         ExecutorService executor = Executors.newFixedThreadPool(readers + 1);
         CountDownLatch ready = new CountDownLatch(readers + 1);
@@ -910,7 +912,10 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
                     start.await();
                     while (!mutationsDone.get()) {
                         indicator.getValue(endIndex);
-                        totalReads.incrementAndGet();
+                        int readCount = totalReads.incrementAndGet();
+                        if (readCount <= minimumReads) {
+                            readsObserved.countDown();
+                        }
                         Thread.yield();
                     }
                 } catch (InterruptedException e) {
@@ -930,6 +935,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
                     barSeries.getLastBar().addTrade(numOf(1), numOf(i + 10));
                     Thread.sleep(1);
                 }
+                readsObserved.await(5, TimeUnit.SECONDS);
                 mutationsDone.set(true);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -944,7 +950,7 @@ public class CachedIndicatorTest extends AbstractIndicatorTest<Indicator<Num>, N
         executor.shutdownNow();
 
         // Should have performed many reads
-        assertTrue("Should have performed many concurrent reads", totalReads.get() > 100);
+        assertTrue("Should have performed many concurrent reads", totalReads.get() >= minimumReads);
 
         // Each mutation should trigger a recomputation
         assertTrue("Should have recomputed after mutations", indicator.getCalculationCount() > 1);
