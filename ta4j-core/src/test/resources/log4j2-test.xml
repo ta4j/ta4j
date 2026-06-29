@@ -12,6 +12,8 @@
         </Root>
         <!-- Gap-fill tests intentionally trigger missing-bar WARNs; keep them off test output. -->
         <Logger name="org.ta4j.core.bars.TimeBarBuilder" level="error"/>
+        <!-- Parse tests intentionally trigger invalid-representation WARNs; keep them off test output. -->
+        <Logger name="org.ta4j.core.criteria.ReturnRepresentation" level="error"/>
         <Logger name="org.apache.poi" level="warn" additivity="false">
             <AppenderRef ref="Console"/>
         </Logger>
