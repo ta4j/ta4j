@@ -135,7 +135,7 @@ Examples:
 EOF
 }
 
-GOALS=(verify)
+GOALS=(clean license:format formatter:format verify install)
 EXTRA_MAVEN_ARGS=()
 while (($# > 0)); do
     case "$1" in

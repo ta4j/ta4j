@@ -13,6 +13,7 @@ import org.ta4j.core.BaseStrategy;
 import org.ta4j.core.ExecutionSide;
 import org.ta4j.core.Position;
 import org.ta4j.core.Strategy;
+import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
@@ -66,6 +67,30 @@ public class SlippageExecutionModelTest extends AbstractIndicatorTest<BarSeries,
 
         assertEquals(expectedEntryPrice, position.getEntry().getPricePerAsset());
         assertEquals(expectedExitPrice, position.getExit().getPricePerAsset());
+    }
+
+    @Test
+    public void estimatesEntryTargetWithBuySlippageAndNextOpen() {
+        BarSeries series = buildSeries();
+        SlippageExecutionModel model = new SlippageExecutionModel(numOf(0.10),
+                TradeExecutionModel.PriceSource.NEXT_OPEN);
+
+        TradeExecutionModel.ExecutionTarget target = model.estimateEntryTarget(0, series, TradeType.BUY);
+
+        assertEquals(1, target.index());
+        assertEquals(series.getBar(1).getOpenPrice().multipliedBy(numOf(1.10)), target.price());
+    }
+
+    @Test
+    public void estimatesEntryTargetWithSellSlippageAndCurrentClose() {
+        BarSeries series = buildSeries();
+        SlippageExecutionModel model = new SlippageExecutionModel(numOf(0.07),
+                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+
+        TradeExecutionModel.ExecutionTarget target = model.estimateEntryTarget(0, series, TradeType.SELL);
+
+        assertEquals(0, target.index());
+        assertEquals(series.getBar(0).getClosePrice().multipliedBy(numOf(0.93)), target.price());
     }
 
     @Test
