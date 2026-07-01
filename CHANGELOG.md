@@ -1,7 +1,11 @@
 ## Unreleased
 
-### Changed
+### Added
+- **EW snapshots can publish five-outlook live macro reports**: The manual `EW Snapshot Analysis` workflow now runs `ElliottWavePresetDemo` for configurable daily instruments and exchanges, writes dynamic run summaries plus embedded-chart HTML, and uploads charts, scenario-outlook JSON, cached provider responses, and the full demo log for public monitoring.
 
+### Changed
+- **Daily live Elliott preset runs now use the generic macro snapshot path**: `ElliottWavePresetDemo` routes any daily live instrument through the macro-cycle preset so non-BTC symbols receive the same base case plus four alternate outlooks with instrument-aware filenames and scenario-outlook JSON.
+- **EW snapshot outputs are easier to consume from automation**: `ElliottWavePresetDemo` now has help/status-code handling for invalid CLI usage, and live macro scenario JSON includes portable chart and report file names for artifact viewers that do not preserve absolute paths.
 - **Quiet Maven verify stays focused on failures**: `ta4j-core` test logging now keeps intentional `TimeBarBuilder` missing-bar warnings and invalid `ReturnRepresentation` parse warnings out of `mvn verify -q` output while preserving explicit log-capture assertions for those expected paths.
 - **Cached indicator stress coverage is less scheduler-sensitive**: `CachedIndicatorTest` now waits for a bounded minimum-read signal before ending the concurrent mutation phase, so the full-build gate continues to exercise cache invalidation under contention without failing because reader threads were scheduled late.
 
