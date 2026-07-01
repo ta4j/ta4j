@@ -15,7 +15,7 @@ import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
 import org.ta4j.core.analysis.cost.CostModel;
 import org.ta4j.core.analysis.cost.ZeroCostModel;
-import org.ta4j.core.backtest.ExecutionModelSupport.ExecutionTarget;
+import org.ta4j.core.backtest.TradeExecutionModel.ExecutionTarget;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.reports.TradingStatementGenerator;
 import org.ta4j.core.walkforward.AnchoredExpandingWalkForwardSplitter;
@@ -617,27 +617,26 @@ public class BarSeriesManager {
     }
 
     private ExecutionTarget estimateEntryTarget(int index, TradeType tradeType) {
-        ExecutionTarget target = knownExecutionTarget(index, tradeType);
+        ExecutionTarget target = tradeExecutionModel.estimateEntryTarget(index, barSeries, tradeType);
         if (target == null) {
-            throw new IllegalStateException("Dynamic position sizing requires an execution-target estimate for "
-                    + tradeExecutionModel.getClass().getName());
+            return fallbackSizingTarget(index);
         }
         return target;
     }
 
-    private ExecutionTarget knownExecutionTarget(int index, TradeType tradeType) {
-        if (tradeExecutionModel instanceof TradeOnCurrentCloseModel) {
-            return ExecutionModelSupport.resolveExecutionTarget(index, barSeries,
-                    TradeExecutionModel.PriceSource.CURRENT_CLOSE);
+    private ExecutionTarget fallbackSizingTarget(int index) {
+        int fallbackIndex = index;
+        if (barSeries.isEmpty()) {
+            return new ExecutionTarget(index, barSeries.numFactory().one());
         }
-        if (tradeExecutionModel instanceof TradeOnNextOpenModel) {
-            return ExecutionModelSupport.resolveExecutionTarget(index, barSeries,
-                    TradeExecutionModel.PriceSource.NEXT_OPEN);
+        int safeBegin = barSeries.getBeginIndex();
+        int safeEnd = barSeries.getEndIndex();
+        if (fallbackIndex < safeBegin) {
+            fallbackIndex = safeBegin;
+        } else if (fallbackIndex > safeEnd) {
+            fallbackIndex = safeEnd;
         }
-        if (tradeExecutionModel instanceof StopLimitExecutionModel stopLimitExecutionModel) {
-            return stopLimitExecutionModel.estimatedEntryTarget(index, barSeries, tradeType);
-        }
-        return null;
+        return new ExecutionTarget(fallbackIndex, barSeries.getBar(fallbackIndex).getClosePrice());
     }
 
 }

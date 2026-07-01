@@ -7,7 +7,7 @@ import java.util.Objects;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.backtest.ExecutionModelSupport.ExecutionTarget;
+import org.ta4j.core.backtest.TradeExecutionModel.ExecutionTarget;
 import org.ta4j.core.num.Num;
 
 /**
@@ -74,13 +74,22 @@ public class SlippageExecutionModel implements TradeExecutionModel {
 
     @Override
     public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
-        ExecutionTarget executionTarget = ExecutionModelSupport.resolveExecutionTarget(index, barSeries, priceSource);
+        TradeType tradeType = ExecutionModelSupport.nextTradeType(tradingRecord);
+        ExecutionTarget executionTarget = estimateEntryTarget(index, barSeries, tradeType);
         if (executionTarget == null) {
             return;
         }
-        TradeType tradeType = ExecutionModelSupport.nextTradeType(tradingRecord);
-        Num slippedPrice = applySlippage(executionTarget.price(), tradeType, slippageRatio);
-        tradingRecord.operate(executionTarget.index(), slippedPrice, amount);
+        tradingRecord.operate(executionTarget.index(), executionTarget.price(), amount);
+    }
+
+    @Override
+    public ExecutionTarget estimateEntryTarget(int signalIndex, BarSeries barSeries, TradeType tradeType) {
+        ExecutionTarget referenceTarget = ExecutionModelSupport.resolveExecutionTarget(signalIndex, barSeries, priceSource);
+        if (referenceTarget == null) {
+            return null;
+        }
+        Num slippedPrice = applySlippage(referenceTarget.price(), tradeType, slippageRatio);
+        return new ExecutionTarget(referenceTarget.index(), slippedPrice);
     }
 
     private static Num applySlippage(Num price, TradeType tradeType, Num slippageRatio) {

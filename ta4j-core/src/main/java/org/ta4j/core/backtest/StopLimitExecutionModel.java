@@ -17,7 +17,7 @@ import org.ta4j.core.Trade;
 import org.ta4j.core.Trade.TradeType;
 import org.ta4j.core.TradeFill;
 import org.ta4j.core.TradingRecord;
-import org.ta4j.core.backtest.ExecutionModelSupport.ExecutionTarget;
+import org.ta4j.core.backtest.TradeExecutionModel.ExecutionTarget;
 import org.ta4j.core.num.Num;
 
 /**
@@ -130,7 +130,8 @@ public class StopLimitExecutionModel implements TradeExecutionModel {
         return Optional.of(order.snapshot());
     }
 
-    ExecutionTarget estimatedEntryTarget(int signalIndex, BarSeries barSeries, TradeType tradeType) {
+    @Override
+    public ExecutionTarget estimateEntryTarget(int signalIndex, BarSeries barSeries, TradeType tradeType) {
         ExecutionTarget referenceTarget = ExecutionModelSupport.resolveExecutionTarget(signalIndex, barSeries,
                 priceSource);
         if (referenceTarget == null) {

@@ -139,6 +139,94 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
     }
 
     @Test
+    public void runWithPositionSizerAndCustomExecutionModelFallsBackToNextOpenEstimate() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d, 30d).build();
+        TradeExecutionModel model = new TradeExecutionModel() {
+
+            @Override
+            public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
+                tradingRecord.operate(index + 1, barSeries.getBar(index + 1).getOpenPrice(), amount);
+            }
+        };
+        BarSeriesManager localManager = new BarSeriesManager(series, model);
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(0), new FixedRule(1));
+
+        int[] contextEntryIndex = new int[] { -1 };
+        Num[] contextEntryPrice = new Num[] { null };
+        PositionSizer positionSizer = context -> {
+            contextEntryIndex[0] = context.entryIndex();
+            contextEntryPrice[0] = context.entryPrice();
+            return numFactory.one();
+        };
+
+        localManager.run(oneTradeStrategy, TradeType.BUY, positionSizer);
+
+        assertEquals(1, contextEntryIndex[0]);
+        assertEquals(series.getBar(1).getOpenPrice(), contextEntryPrice[0]);
+    }
+
+    @Test
+    public void runWithPositionSizerUsesCustomExecutionModelEstimate() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
+        series.barBuilder().openPrice(10d).closePrice(11d).volume(10d).add();
+        series.barBuilder().openPrice(20d).closePrice(21d).volume(10d).add();
+        series.barBuilder().openPrice(30d).closePrice(31d).volume(10d).add();
+        TradeExecutionModel model = new TradeExecutionModel() {
+            @Override
+            public TradeExecutionModel.ExecutionTarget estimateEntryTarget(int signalIndex, BarSeries barSeries, TradeType tradeType) {
+                return new TradeExecutionModel.ExecutionTarget(signalIndex,
+                        barSeries.getBar(signalIndex).getClosePrice().plus(numFactory.one()));
+            }
+
+            @Override
+            public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
+                // no-op
+            }
+        };
+        BarSeriesManager localManager = new BarSeriesManager(series, model);
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+
+        int[] contextEntryIndex = new int[] { -1 };
+        Num[] contextEntryPrice = new Num[] { null };
+        PositionSizer positionSizer = context -> {
+            contextEntryIndex[0] = context.entryIndex();
+            contextEntryPrice[0] = context.entryPrice();
+            return numFactory.one();
+        };
+
+        localManager.run(oneTradeStrategy, TradeType.BUY, positionSizer);
+
+        assertEquals(1, contextEntryIndex[0]);
+        assertEquals(series.getBar(1).getClosePrice().plus(numFactory.one()), contextEntryPrice[0]);
+    }
+
+    @Test
+    public void runWithPositionSizerUnresolvableTargetFallsBackSafely() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10d, 20d).build();
+        TradeExecutionModel model = new TradeExecutionModel() {
+            @Override
+            public void execute(int index, TradingRecord tradingRecord, BarSeries barSeries, Num amount) {
+                // no-op
+            }
+        };
+        BarSeriesManager localManager = new BarSeriesManager(series, model);
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+
+        int[] contextSignalIndex = new int[] { -1 };
+        int[] contextEntryIndex = new int[] { -1 };
+        PositionSizer positionSizer = context -> {
+            contextSignalIndex[0] = context.signalIndex();
+            contextEntryIndex[0] = context.entryIndex();
+            return numFactory.one();
+        };
+
+        localManager.run(oneTradeStrategy, TradeType.BUY, positionSizer);
+
+        assertEquals(1, contextSignalIndex[0]);
+        assertEquals(1, contextEntryIndex[0]);
+    }
+
+    @Test
     public void runWithPositionSizerContextEstimatesStopLimitEntry() {
         BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).build();
         series.barBuilder().openPrice(10d).highPrice(10d).lowPrice(10d).closePrice(10d).volume(10d).add();

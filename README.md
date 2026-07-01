@@ -510,6 +510,12 @@ BacktestExecutionResult result = new BacktestExecutor(series)
 // Or size each entry dynamically. PositionSizer.fixed() is the default unit
 // amount; balance(...) invests the current realized balance with entry-fee
 // awareness; and kelly(...) applies the Kelly fraction to that balance.
+// For custom TradeExecutionModel implementations, dynamic sizing uses:
+// (1) estimateEntryTarget(...) to estimate where/at what price the entry would fill
+// (2) a fallback to conservative next-open estimation when no custom override is provided
+//     for that model.
+// Custom models should override estimateEntryTarget(...) when execution timing or price
+// differs from next-open behavior.
 PositionSizer unitAmount = PositionSizer.fixed();
 PositionSizer allInBalance = PositionSizer.balance(10_000);
 PositionSizer halfKelly = PositionSizer.kelly(10_000, 0.55, 1.8, 0.5);
