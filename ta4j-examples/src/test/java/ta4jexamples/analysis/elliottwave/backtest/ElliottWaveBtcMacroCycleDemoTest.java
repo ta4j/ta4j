@@ -511,7 +511,8 @@ class ElliottWaveBtcMacroCycleDemoTest {
         assertEquals("elliott-wave-eth-usd-live-macro-current-cycle-summary.json", snapshotResult.summaryFileName());
         assertEquals(5, snapshotResult.scenarioCount());
         assertEquals(5, snapshotResult.scenarioChartFileNames().size());
-        assertTrue(snapshotResult.scenarioChartFileNames().contains("elliott-wave-analysis-eth-usd-cycle-base-case.jpg"));
+        assertTrue(
+                snapshotResult.scenarioChartFileNames().contains("elliott-wave-analysis-eth-usd-cycle-base-case.jpg"));
 
         JsonObject outlook = JsonParser.parseString(Files.readString(outlookPath)).getAsJsonObject();
         assertEquals("ETH-USD", outlook.get("seriesName").getAsString());

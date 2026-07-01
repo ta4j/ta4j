@@ -262,20 +262,20 @@ public final class ElliottWaveMacroCycleDemo {
     /**
      * Generated live snapshot artifact bundle.
      *
-     * @param seriesName              analyzed series name
-     * @param exchange                datasource name supplied for the live run
-     * @param normalizedInstrument    datasource-normalized instrument token
-     * @param lookbackDays            requested daily lookback window
-     * @param summaryPath             current-cycle summary JSON path
-     * @param summaryFileName         portable summary JSON file name
-     * @param scenarioOutlookPath     scenario-outlook JSON path
-     * @param scenarioOutlookFileName portable scenario-outlook JSON file name
-     * @param currentCycleChartPath   current-cycle chart path
+     * @param seriesName                analyzed series name
+     * @param exchange                  datasource name supplied for the live run
+     * @param normalizedInstrument      datasource-normalized instrument token
+     * @param lookbackDays              requested daily lookback window
+     * @param summaryPath               current-cycle summary JSON path
+     * @param summaryFileName           portable summary JSON file name
+     * @param scenarioOutlookPath       scenario-outlook JSON path
+     * @param scenarioOutlookFileName   portable scenario-outlook JSON file name
+     * @param currentCycleChartPath     current-cycle chart path
      * @param currentCycleChartFileName portable current-cycle chart file name
-     * @param scenarioChartPaths      scenario chart paths in report order
-     * @param scenarioChartFileNames  portable scenario chart file names in report
-     *                                order
-     * @param scenarioCount           number of scenario rows rendered
+     * @param scenarioChartPaths        scenario chart paths in report order
+     * @param scenarioChartFileNames    portable scenario chart file names in report
+     *                                  order
+     * @param scenarioCount             number of scenario rows rendered
      * @since 0.22.9
      */
     public static record LivePresetSnapshotResult(String seriesName, String exchange, String normalizedInstrument,
@@ -1175,8 +1175,8 @@ public final class ElliottWaveMacroCycleDemo {
                     safePercentage(confidence.asPercentage()), scenarioView.probability() * 100.0,
                     formatScenarioInvalidation(phaseInvalidation, structuralInvalidation),
                     formatNum(scenario.primaryTarget()), chartPath, scenarioView.chartFileName(),
-                    safeText(confidence.primaryReason()),
-                    safeText(confidence.weakestFactor()), safeConfidenceScore(confidence.fibonacciScore()) * 100.0,
+                    safeText(confidence.primaryReason()), safeText(confidence.weakestFactor()),
+                    safeConfidenceScore(confidence.fibonacciScore()) * 100.0,
                     safeConfidenceScore(confidence.timeProportionScore()) * 100.0,
                     safeConfidenceScore(confidence.alternationScore()) * 100.0,
                     safeConfidenceScore(confidence.channelScore()) * 100.0,
@@ -2600,8 +2600,8 @@ public final class ElliottWaveMacroCycleDemo {
             final List<String> chartFileNames = views.stream().map(LivePresetScenarioView::chartFileName).toList();
             final LivePresetSnapshotResult snapshotResult = new LivePresetSnapshotResult(report.seriesName(),
                     metadata.exchange(), metadata.normalizedInstrument(), metadata.lookbackDays(), report.summaryPath(),
-                    fileName(report.summaryPath()), scenarioOutlookPath, fileName(scenarioOutlookPath), report.chartPath(),
-                    fileName(report.chartPath()), chartPaths, chartFileNames, views.size());
+                    fileName(report.summaryPath()), scenarioOutlookPath, fileName(scenarioOutlookPath),
+                    report.chartPath(), fileName(report.chartPath()), chartPaths, chartFileNames, views.size());
             return new LivePresetLegacyView(report, scenarioOutlookPath, views, snapshotResult);
         }
     }

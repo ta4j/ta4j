@@ -206,7 +206,8 @@ public class ElliottWavePresetDemo {
         LOG.info("Daily live runs with PT1D or PT24H write a five-outlook macro snapshot package to {}.",
                 DEFAULT_MACRO_CHART_DIRECTORY);
         LOG.info("Example: live Coinbase BTC-USD PT1D 1825");
-        LOG.info("Non-daily live runs stay on the generic indicator-suite path and honor the optional degree argument.");
+        LOG.info(
+                "Non-daily live runs stay on the generic indicator-suite path and honor the optional degree argument.");
     }
 
     private static Duration parseBarDuration(String barDuration) {
