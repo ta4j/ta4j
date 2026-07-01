@@ -618,15 +618,12 @@ public class BarSeriesManager {
 
     private ExecutionTarget estimateEntryTarget(int index, TradeType tradeType) {
         ExecutionTarget target = knownExecutionTarget(index, tradeType);
-        if (target != null) {
-            return target;
+        if (target == null) {
+            throw new IllegalStateException(
+                    "Dynamic position sizing requires an execution-target estimate for "
+                            + tradeExecutionModel.getClass().getName());
         }
-        target = ExecutionModelSupport.resolveExecutionTarget(index, barSeries,
-                TradeExecutionModel.PriceSource.CURRENT_CLOSE);
-        if (target != null) {
-            return target;
-        }
-        throw new IllegalStateException("Unable to resolve entry price for position sizing");
+        return target;
     }
 
     private ExecutionTarget knownExecutionTarget(int index, TradeType tradeType) {

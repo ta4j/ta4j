@@ -66,8 +66,8 @@ public interface PositionSizer {
      * @since 0.22.9
      */
     static PositionSizer fixed(Number amount) {
-        validatePositiveNumber(amount, "amount");
-        return context -> context.numOf(amount);
+        Number fixedAmount = snapshotNumber(amount, "amount");
+        return context -> context.numOf(fixedAmount);
     }
 
     /**
@@ -104,10 +104,10 @@ public interface PositionSizer {
      * @since 0.22.9
      */
     static PositionSizer balance(Number principal, BalanceRule rule) {
-        validatePositiveNumber(principal, "principal");
+        Number fixedPrincipal = snapshotNumber(principal, "principal");
         Objects.requireNonNull(rule, "rule");
         return context -> {
-            Num balance = context.currentBalance(principal);
+            Num balance = context.currentBalance(fixedPrincipal);
             return rule.amount(context, balance);
         };
     }
@@ -142,19 +142,22 @@ public interface PositionSizer {
      * @since 0.22.9
      */
     static PositionSizer kelly(Number principal, Number winProbability, Number payoffRatio, Number coefficient) {
-        validatePositiveNumber(principal, "principal");
-        validateProbability(winProbability, "winProbability");
-        validatePositiveNumber(payoffRatio, "payoffRatio");
-        validatePositiveNumber(coefficient, "coefficient");
-        validatePositiveKellyFraction(winProbability, payoffRatio, coefficient);
+        Number fixedPrincipal = snapshotNumber(principal, "principal");
+        Number fixedWinProbability = snapshotNumber(winProbability, "winProbability");
+        Number fixedPayoffRatio = snapshotNumber(payoffRatio, "payoffRatio");
+        Number fixedCoefficient = snapshotNumber(coefficient, "coefficient");
+        validateProbability(fixedWinProbability, "winProbability");
+        validatePositiveNumber(fixedPayoffRatio, "payoffRatio");
+        validatePositiveNumber(fixedCoefficient, "coefficient");
+        validatePositiveKellyFraction(fixedWinProbability, fixedPayoffRatio, fixedCoefficient);
         return context -> {
             Num one = context.numFactory().one();
-            Num probability = context.numOf(winProbability);
+            Num probability = context.numOf(fixedWinProbability);
             Num lossProbability = one.minus(probability);
-            Num ratio = context.numOf(payoffRatio);
-            Num multiplier = context.numOf(coefficient);
+            Num ratio = context.numOf(fixedPayoffRatio);
+            Num multiplier = context.numOf(fixedCoefficient);
             Num kellyFraction = probability.minus(lossProbability.dividedBy(ratio)).multipliedBy(multiplier);
-            Num budget = context.currentBalance(principal).multipliedBy(kellyFraction);
+            Num budget = context.currentBalance(fixedPrincipal).multipliedBy(kellyFraction);
             return context.maxAffordableAmount(budget);
         };
     }
@@ -165,6 +168,11 @@ public interface PositionSizer {
         if (!Double.isFinite(doubleValue) || doubleValue <= 0) {
             throw new IllegalArgumentException(name + " must be positive and finite");
         }
+    }
+
+    private static Number snapshotNumber(Number value, String name) {
+        validatePositiveNumber(value, name);
+        return Double.valueOf(value.doubleValue());
     }
 
     private static void validateProbability(Number value, String name) {
