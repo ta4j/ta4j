@@ -619,9 +619,8 @@ public class BarSeriesManager {
     private ExecutionTarget estimateEntryTarget(int index, TradeType tradeType) {
         ExecutionTarget target = knownExecutionTarget(index, tradeType);
         if (target == null) {
-            throw new IllegalStateException(
-                    "Dynamic position sizing requires an execution-target estimate for "
-                            + tradeExecutionModel.getClass().getName());
+            throw new IllegalStateException("Dynamic position sizing requires an execution-target estimate for "
+                    + tradeExecutionModel.getClass().getName());
         }
         return target;
     }
