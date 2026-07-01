@@ -205,8 +205,9 @@ public final class ElliottWaveMacroCycleDemo {
 
     record ScenarioOutlookReport(String seriesName, String exchange, String normalizedInstrument, long lookbackDays,
             String generatedAtUtc, String startTimeUtc, String latestTimeUtc, String selectedProfileId,
-            String selectedHypothesisId, String chartPath, String summaryPath, String scenarioOutlookPath,
-            String structureSource, CurrentCycleSummary currentCycle, List<ScenarioOutlookSummary> scenarios) {
+            String selectedHypothesisId, String chartPath, String chartFileName, String summaryPath,
+            String summaryFileName, String scenarioOutlookPath, String scenarioOutlookFileName, String structureSource,
+            CurrentCycleSummary currentCycle, List<ScenarioOutlookSummary> scenarios) {
 
         ScenarioOutlookReport {
             Objects.requireNonNull(seriesName, "seriesName");
@@ -221,8 +222,11 @@ public final class ElliottWaveMacroCycleDemo {
             Objects.requireNonNull(selectedProfileId, "selectedProfileId");
             Objects.requireNonNull(selectedHypothesisId, "selectedHypothesisId");
             Objects.requireNonNull(chartPath, "chartPath");
+            Objects.requireNonNull(chartFileName, "chartFileName");
             Objects.requireNonNull(summaryPath, "summaryPath");
+            Objects.requireNonNull(summaryFileName, "summaryFileName");
             Objects.requireNonNull(scenarioOutlookPath, "scenarioOutlookPath");
+            Objects.requireNonNull(scenarioOutlookFileName, "scenarioOutlookFileName");
             Objects.requireNonNull(structureSource, "structureSource");
             Objects.requireNonNull(currentCycle, "currentCycle");
             scenarios = scenarios == null ? List.of() : List.copyOf(scenarios);
@@ -235,9 +239,9 @@ public final class ElliottWaveMacroCycleDemo {
 
     record ScenarioOutlookSummary(String label, String phase, String type, String countLabel, String direction,
             double confidence, double probability, String invalidation, String target, String chartPath,
-            String primaryReason, String weakestFactor, double fibonacciScore, double timeProportionScore,
-            double alternationScore, double channelScore, double completenessScore, double totalScore,
-            String rationale) {
+            String chartFileName, String primaryReason, String weakestFactor, double fibonacciScore,
+            double timeProportionScore, double alternationScore, double channelScore, double completenessScore,
+            double totalScore, String rationale) {
 
         ScenarioOutlookSummary {
             Objects.requireNonNull(label, "label");
@@ -248,9 +252,55 @@ public final class ElliottWaveMacroCycleDemo {
             Objects.requireNonNull(invalidation, "invalidation");
             Objects.requireNonNull(target, "target");
             Objects.requireNonNull(chartPath, "chartPath");
+            Objects.requireNonNull(chartFileName, "chartFileName");
             Objects.requireNonNull(primaryReason, "primaryReason");
             Objects.requireNonNull(weakestFactor, "weakestFactor");
             Objects.requireNonNull(rationale, "rationale");
+        }
+    }
+
+    /**
+     * Generated live snapshot artifact bundle.
+     *
+     * @param seriesName              analyzed series name
+     * @param exchange                datasource name supplied for the live run
+     * @param normalizedInstrument    datasource-normalized instrument token
+     * @param lookbackDays            requested daily lookback window
+     * @param summaryPath             current-cycle summary JSON path
+     * @param summaryFileName         portable summary JSON file name
+     * @param scenarioOutlookPath     scenario-outlook JSON path
+     * @param scenarioOutlookFileName portable scenario-outlook JSON file name
+     * @param currentCycleChartPath   current-cycle chart path
+     * @param currentCycleChartFileName portable current-cycle chart file name
+     * @param scenarioChartPaths      scenario chart paths in report order
+     * @param scenarioChartFileNames  portable scenario chart file names in report
+     *                                order
+     * @param scenarioCount           number of scenario rows rendered
+     * @since 0.22.9
+     */
+    public static record LivePresetSnapshotResult(String seriesName, String exchange, String normalizedInstrument,
+            long lookbackDays, String summaryPath, String summaryFileName, String scenarioOutlookPath,
+            String scenarioOutlookFileName, String currentCycleChartPath, String currentCycleChartFileName,
+            List<String> scenarioChartPaths, List<String> scenarioChartFileNames, int scenarioCount) {
+
+        public LivePresetSnapshotResult {
+            Objects.requireNonNull(seriesName, "seriesName");
+            Objects.requireNonNull(exchange, "exchange");
+            Objects.requireNonNull(normalizedInstrument, "normalizedInstrument");
+            if (lookbackDays <= 0) {
+                throw new IllegalArgumentException("lookbackDays must be > 0");
+            }
+            Objects.requireNonNull(summaryPath, "summaryPath");
+            Objects.requireNonNull(summaryFileName, "summaryFileName");
+            Objects.requireNonNull(scenarioOutlookPath, "scenarioOutlookPath");
+            Objects.requireNonNull(scenarioOutlookFileName, "scenarioOutlookFileName");
+            Objects.requireNonNull(currentCycleChartPath, "currentCycleChartPath");
+            Objects.requireNonNull(currentCycleChartFileName, "currentCycleChartFileName");
+            scenarioChartPaths = scenarioChartPaths == null ? List.of() : List.copyOf(scenarioChartPaths);
+            scenarioChartFileNames = scenarioChartFileNames == null ? List.of() : List.copyOf(scenarioChartFileNames);
+            if (scenarioCount < 0) {
+                throw new IllegalArgumentException("scenarioCount must be >= 0");
+            }
         }
     }
 
@@ -704,10 +754,10 @@ public final class ElliottWaveMacroCycleDemo {
      * @param lookbackDays         requested daily lookback window
      * @since 0.22.9
      */
-    public static void runLivePreset(final BarSeries series, final Path chartDirectory, final String exchange,
-            final String normalizedInstrument, final long lookbackDays) {
+    public static LivePresetSnapshotResult runLivePreset(final BarSeries series, final Path chartDirectory,
+            final String exchange, final String normalizedInstrument, final long lookbackDays) {
         final String seriesToken = scenarioSeriesName(series);
-        runLivePresetWithMetadata(series, chartDirectory, liveCurrentCycleChartFileName(seriesToken),
+        return runLivePresetWithMetadata(series, chartDirectory, liveCurrentCycleChartFileName(seriesToken),
                 liveSummaryFileName(seriesToken), seriesToken,
                 "Series-native current-cycle inference using the default orthodox macro profile",
                 new LivePresetMetadata(exchange, normalizedInstrument, lookbackDays));
@@ -750,7 +800,7 @@ public final class ElliottWaveMacroCycleDemo {
                 historicalStatus, LivePresetMetadata.fromSeries(series));
     }
 
-    private static void runLivePresetWithMetadata(final BarSeries series, final Path chartDirectory,
+    private static LivePresetSnapshotResult runLivePresetWithMetadata(final BarSeries series, final Path chartDirectory,
             final String chartFileName, final String summaryFileName, final String scenarioSeriesToken,
             final String historicalStatus, final LivePresetMetadata metadata) {
         final LivePresetExecution execution = analyzeLivePreset(series, chartDirectory, chartFileName, summaryFileName,
@@ -758,6 +808,7 @@ public final class ElliottWaveMacroCycleDemo {
         final LivePresetLegacyView legacyView = generateLivePresetLegacyView(series, scenarioSeriesToken,
                 execution.currentCycle(), execution.report(), chartDirectory, metadata);
         logLegacyCompatibleLivePreset(legacyView);
+        return legacyView.snapshotResult();
     }
 
     static LivePresetReport generateLivePresetReport(final BarSeries series, final Path chartDirectory,
@@ -1080,7 +1131,7 @@ public final class ElliottWaveMacroCycleDemo {
         saveLegacyCompatibleScenarioCharts(series, scenarioViews, chartDirectory, ElliottDegree.CYCLE);
         final Path scenarioOutlookPath = saveScenarioOutlookReport(metadata, currentCycle, report, scenarioViews,
                 chartDirectory, scenarioSeriesToken);
-        return new LivePresetLegacyView(report, scenarioOutlookPath.toString(), scenarioViews);
+        return LivePresetLegacyView.of(report, scenarioOutlookPath.toString(), scenarioViews, metadata, chartDirectory);
     }
 
     private static Path saveScenarioOutlookReport(final LivePresetMetadata metadata,
@@ -1093,7 +1144,8 @@ public final class ElliottWaveMacroCycleDemo {
         final ScenarioOutlookReport outlook = new ScenarioOutlookReport(report.seriesName(), metadata.exchange(),
                 metadata.normalizedInstrument(), metadata.lookbackDays(), Instant.now().toString(),
                 report.startTimeUtc(), report.latestTimeUtc(), report.selectedProfileId(),
-                report.selectedHypothesisId(), report.chartPath(), report.summaryPath(), scenarioOutlookPath.toString(),
+                report.selectedHypothesisId(), report.chartPath(), fileName(report.chartPath()), report.summaryPath(),
+                fileName(report.summaryPath()), scenarioOutlookPath.toString(), fileName(scenarioOutlookPath),
                 report.structureSource(), currentCycle.summary(),
                 buildScenarioOutlookSummaries(scenarioViews, chartDirectory));
         saveSummary(outlook.toJson(), scenarioOutlookPath, "live scenario outlook summary");
@@ -1122,7 +1174,8 @@ public final class ElliottWaveMacroCycleDemo {
                     scenario.type().name(), fit.countLabel(), scenarioDirection(scenario),
                     safePercentage(confidence.asPercentage()), scenarioView.probability() * 100.0,
                     formatScenarioInvalidation(phaseInvalidation, structuralInvalidation),
-                    formatNum(scenario.primaryTarget()), chartPath, safeText(confidence.primaryReason()),
+                    formatNum(scenario.primaryTarget()), chartPath, scenarioView.chartFileName(),
+                    safeText(confidence.primaryReason()),
                     safeText(confidence.weakestFactor()), safeConfidenceScore(confidence.fibonacciScore()) * 100.0,
                     safeConfidenceScore(confidence.timeProportionScore()) * 100.0,
                     safeConfidenceScore(confidence.alternationScore()) * 100.0,
@@ -1368,6 +1421,17 @@ public final class ElliottWaveMacroCycleDemo {
 
     private static String liveScenarioOutlookFileName(final String seriesToken) {
         return "elliott-wave-" + seriesToken + "-live-scenario-outlooks.json";
+    }
+
+    private static String fileName(final Path path) {
+        return path == null || path.getFileName() == null ? "" : path.getFileName().toString();
+    }
+
+    private static String fileName(final String path) {
+        if (path == null || path.isBlank()) {
+            return "";
+        }
+        return fileName(Path.of(path));
     }
 
     private static String scenarioSeriesName(final BarSeries series) {
@@ -2515,12 +2579,30 @@ public final class ElliottWaveMacroCycleDemo {
     }
 
     record LivePresetLegacyView(LivePresetReport report, String scenarioOutlookPath,
-            List<LivePresetScenarioView> scenarioViews) {
+            List<LivePresetScenarioView> scenarioViews, LivePresetSnapshotResult snapshotResult) {
 
         LivePresetLegacyView {
             Objects.requireNonNull(report, "report");
             Objects.requireNonNull(scenarioOutlookPath, "scenarioOutlookPath");
             scenarioViews = scenarioViews == null ? List.of() : List.copyOf(scenarioViews);
+            Objects.requireNonNull(snapshotResult, "snapshotResult");
+        }
+
+        static LivePresetLegacyView of(final LivePresetReport report, final String scenarioOutlookPath,
+                final List<LivePresetScenarioView> scenarioViews, final LivePresetMetadata metadata,
+                final Path chartDirectory) {
+            Objects.requireNonNull(metadata, "metadata");
+            Objects.requireNonNull(chartDirectory, "chartDirectory");
+            final List<LivePresetScenarioView> views = scenarioViews == null ? List.of() : List.copyOf(scenarioViews);
+            final List<String> chartPaths = views.stream()
+                    .map(view -> chartDirectory.resolve(view.chartFileName()).toAbsolutePath().normalize().toString())
+                    .toList();
+            final List<String> chartFileNames = views.stream().map(LivePresetScenarioView::chartFileName).toList();
+            final LivePresetSnapshotResult snapshotResult = new LivePresetSnapshotResult(report.seriesName(),
+                    metadata.exchange(), metadata.normalizedInstrument(), metadata.lookbackDays(), report.summaryPath(),
+                    fileName(report.summaryPath()), scenarioOutlookPath, fileName(scenarioOutlookPath), report.chartPath(),
+                    fileName(report.chartPath()), chartPaths, chartFileNames, views.size());
+            return new LivePresetLegacyView(report, scenarioOutlookPath, views, snapshotResult);
         }
     }
 
@@ -2531,6 +2613,10 @@ public final class ElliottWaveMacroCycleDemo {
             Objects.requireNonNull(label, "label");
             Objects.requireNonNull(fileName, "fileName");
             Objects.requireNonNull(candidate, "candidate");
+        }
+
+        String chartFileName() {
+            return fileName + ".jpg";
         }
     }
 }

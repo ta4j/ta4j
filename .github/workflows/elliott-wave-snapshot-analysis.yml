@@ -243,12 +243,30 @@ jobs:
           outlook = json.loads(outlook_path.read_text(encoding="utf-8"))
           scenarios = outlook.get("scenarios", [])
 
+          def text(value):
+              if value is None:
+                  return ""
+              return str(value)
+
+          def md(value):
+              return text(value).replace("\n", " ").replace("|", "\\|")
+
           def pct(value):
               try:
                   return f"{float(value):.1f}%"
               except (TypeError, ValueError):
                   return ""
 
+          def file_name(value, fallback=""):
+              candidate = text(value).strip()
+              if not candidate:
+                  return fallback
+              return Path(candidate).name or fallback
+
+          current_cycle = outlook.get("currentCycle", {}) or {}
+          summary_file = text(outlook.get("summaryFileName")) or file_name(outlook.get("summaryPath"), "current-cycle summary JSON")
+          outlook_file = text(outlook.get("scenarioOutlookFileName")) or outlook_path.name
+          current_chart_file = text(outlook.get("chartFileName")) or file_name(outlook.get("chartPath"), "current-cycle chart")
           markdown_lines = [
               "# EW Snapshot Analysis",
               "",
@@ -259,28 +277,51 @@ jobs:
               f"- Exchange: {outlook.get('exchange', '')}",
               f"- Instrument: {outlook.get('normalizedInstrument', '')}",
               f"- Lookback: {outlook.get('lookbackDays', '')} daily bars",
-              f"- Current-cycle summary: `{Path(outlook.get('summaryPath', '')).name}`",
-              f"- Scenario outlook JSON: `{outlook_path.name}`",
+              f"- Current-cycle summary: `{summary_file}`",
+              f"- Scenario outlook JSON: `{outlook_file}`",
+              f"- Current-cycle chart: `{current_chart_file}`",
               "",
-              "| Scenario | Phase | Type | Direction | Confidence | Probability | Invalidation | Target | Chart |",
-              "| --- | --- | --- | --- | ---: | ---: | --- | --- | --- |",
+              "### Current Cycle",
+              "",
+              f"- Primary count: {md(current_cycle.get('primaryCount'))}",
+              f"- Alternate count: {md(current_cycle.get('alternateCount'))}",
+              f"- Current wave: {md(current_cycle.get('currentWave'))}",
+              f"- Phase invalidation: {md(current_cycle.get('invalidationPrice'))}",
+              f"- Structural invalidation: {md(current_cycle.get('structuralInvalidationPrice'))}",
+              f"- Orthodox wave-five target: {md(current_cycle.get('orthodoxWaveFiveTargetRange'))}",
+              "",
+              "### Scenario Outlooks",
+              "",
+              "| Scenario | Count | Phase | Direction | Confidence | Probability | Invalidation | Target | Primary reason | Weakest factor | Chart |",
+              "| --- | --- | --- | --- | ---: | ---: | --- | --- | --- | --- | --- |",
           ]
           for row in scenarios:
-              chart_name = Path(row.get("chartPath", "")).name
+              chart_name = text(row.get("chartFileName")) or file_name(row.get("chartPath"))
               markdown_lines.append(
-                  "| {label} | {phase} | {type} | {direction} | {confidence} | {probability} | {invalidation} | {target} | `{chart}` |".format(
-                      label=row.get("label", ""),
-                      phase=row.get("phase", ""),
-                      type=row.get("type", ""),
-                      direction=row.get("direction", ""),
+                  "| {label} | {count} | {phase} | {direction} | {confidence} | {probability} | {invalidation} | {target} | {reason} | {weakest} | `{chart}` |".format(
+                      label=md(row.get("label")),
+                      count=md(row.get("countLabel")),
+                      phase=md(f"{text(row.get('phase'))} / {text(row.get('type'))}"),
+                      direction=md(row.get("direction")),
                       confidence=pct(row.get("confidence")),
                       probability=pct(row.get("probability")),
-                      invalidation=row.get("invalidation", ""),
-                      target=row.get("target", ""),
+                      invalidation=md(row.get("invalidation")),
+                      target=md(row.get("target")),
+                      reason=md(row.get("primaryReason")),
+                      weakest=md(row.get("weakestFactor")),
                       chart=chart_name,
                   )
               )
-          markdown_lines.append("")
+          markdown_lines.extend([
+              "",
+              "### Artifact Guide",
+              "",
+              "- Open `ew-snapshot-report.html` from the uploaded artifact for embedded chart images.",
+              "- Use `charts/` for the chart JPEGs and generated JSON reports.",
+              "- Use `responses/` plus `used-cache-files.txt` to reproduce the market data inputs.",
+              "- Use `elliott-wave-preset-demo.log` for the full CLI run log.",
+              "",
+          ])
           markdown = "\n".join(markdown_lines)
           (snapshot_dir / "ew-snapshot-report.md").write_text(markdown, encoding="utf-8")
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as summary:
@@ -306,25 +347,55 @@ jobs:
               "</head>",
               "<body>",
               f"<h1>EW Snapshot Analysis</h1><h2>{html.escape(report_title)}</h2>",
-              "<table><thead><tr><th>Scenario</th><th>Phase</th><th>Type</th><th>Direction</th><th>Confidence</th><th>Probability</th><th>Invalidation</th><th>Target</th></tr></thead><tbody>",
+              "<h3>Current Cycle</h3>",
+              "<table><tbody>",
+              f"<tr><th>Generated</th><td>{html.escape(text(outlook.get('generatedAtUtc')))}</td></tr>",
+              f"<tr><th>Series</th><td>{html.escape(text(outlook.get('seriesName')))}</td></tr>",
+              f"<tr><th>Exchange</th><td>{html.escape(text(outlook.get('exchange')))}</td></tr>",
+              f"<tr><th>Instrument</th><td>{html.escape(text(outlook.get('normalizedInstrument')))}</td></tr>",
+              f"<tr><th>Primary count</th><td>{html.escape(text(current_cycle.get('primaryCount')))}</td></tr>",
+              f"<tr><th>Alternate count</th><td>{html.escape(text(current_cycle.get('alternateCount')))}</td></tr>",
+              f"<tr><th>Current wave</th><td>{html.escape(text(current_cycle.get('currentWave')))}</td></tr>",
+              f"<tr><th>Phase invalidation</th><td>{html.escape(text(current_cycle.get('invalidationPrice')))}</td></tr>",
+              f"<tr><th>Structural invalidation</th><td>{html.escape(text(current_cycle.get('structuralInvalidationPrice')))}</td></tr>",
+              f"<tr><th>Orthodox wave-five target</th><td>{html.escape(text(current_cycle.get('orthodoxWaveFiveTargetRange')))}</td></tr>",
+              f"<tr><th>Summary JSON</th><td><code>{html.escape(summary_file)}</code></td></tr>",
+              f"<tr><th>Scenario JSON</th><td><code>{html.escape(outlook_file)}</code></td></tr>",
+              "</tbody></table>",
+              "<h3>Scenario Outlooks</h3>",
+              "<table><thead><tr><th>Scenario</th><th>Count</th><th>Phase</th><th>Direction</th><th>Confidence</th><th>Probability</th><th>Invalidation</th><th>Target</th><th>Primary reason</th><th>Weakest factor</th></tr></thead><tbody>",
           ]
           for row in scenarios:
               html_parts.append(
-                  "<tr><td>{label}</td><td>{phase}</td><td>{type}</td><td>{direction}</td><td>{confidence}</td><td>{probability}</td><td>{invalidation}</td><td>{target}</td></tr>".format(
+                  "<tr><td>{label}</td><td>{count}</td><td>{phase}</td><td>{direction}</td><td>{confidence}</td><td>{probability}</td><td>{invalidation}</td><td>{target}</td><td>{reason}</td><td>{weakest}</td></tr>".format(
                       label=html.escape(str(row.get("label", ""))),
-                      phase=html.escape(str(row.get("phase", ""))),
-                      type=html.escape(str(row.get("type", ""))),
+                      count=html.escape(str(row.get("countLabel", ""))),
+                      phase=html.escape(f"{text(row.get('phase'))} / {text(row.get('type'))}"),
                       direction=html.escape(str(row.get("direction", ""))),
                       confidence=html.escape(pct(row.get("confidence"))),
                       probability=html.escape(pct(row.get("probability"))),
                       invalidation=html.escape(str(row.get("invalidation", ""))),
                       target=html.escape(str(row.get("target", ""))),
+                      reason=html.escape(str(row.get("primaryReason", ""))),
+                      weakest=html.escape(str(row.get("weakestFactor", ""))),
                   )
               )
           html_parts.append("</tbody></table>")
+          html_parts.append("<h3>Charts</h3>")
+          current_chart_path = charts_dir / current_chart_file
+          if current_chart_file and current_chart_path.is_file():
+              encoded = base64.b64encode(current_chart_path.read_bytes()).decode("ascii")
+              html_parts.append(
+                  "<figure><figcaption><strong>Current Cycle</strong></figcaption><img alt=\"current cycle chart\" src=\"data:image/jpeg;base64,{data}\"></figure>".format(
+                      data=encoded,
+                  )
+              )
           for row in scenarios:
-              chart_path = charts_dir / Path(row.get("chartPath", "")).name
-              if not chart_path.exists():
+              chart_file = text(row.get("chartFileName")) or file_name(row.get("chartPath"))
+              if not chart_file:
+                  continue
+              chart_path = charts_dir / chart_file
+              if not chart_path.is_file():
                   continue
               encoded = base64.b64encode(chart_path.read_bytes()).decode("ascii")
               html_parts.append(

@@ -491,8 +491,10 @@ class ElliottWaveBtcMacroCycleDemoTest {
                 tempDir.resolve("elliott-wave-eth-usd-live-macro-current-cycle-summary.json").toString(),
                 "canonical-structure", summary);
 
-        ElliottWaveMacroCycleDemo.generateLivePresetLegacyView(liveWindow, "eth-usd", currentCycle, report, tempDir,
-                new ElliottWaveMacroCycleDemo.LivePresetMetadata("YahooFinance", "ETH-USD", 1825L));
+        ElliottWaveMacroCycleDemo.LivePresetLegacyView legacyView = ElliottWaveMacroCycleDemo
+                .generateLivePresetLegacyView(liveWindow, "eth-usd", currentCycle, report, tempDir,
+                        new ElliottWaveMacroCycleDemo.LivePresetMetadata("YahooFinance", "ETH-USD", 1825L));
+        ElliottWaveMacroCycleDemo.LivePresetSnapshotResult snapshotResult = legacyView.snapshotResult();
 
         assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-eth-usd-cycle-base-case.jpg")));
         assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-eth-usd-cycle-alternative-1.jpg")));
@@ -501,12 +503,26 @@ class ElliottWaveBtcMacroCycleDemoTest {
         assertTrue(Files.exists(tempDir.resolve("elliott-wave-analysis-eth-usd-cycle-alternative-4.jpg")));
         Path outlookPath = tempDir.resolve("elliott-wave-eth-usd-live-scenario-outlooks.json");
         assertTrue(Files.exists(outlookPath));
+        assertEquals("ETH-USD", snapshotResult.seriesName());
+        assertEquals("YahooFinance", snapshotResult.exchange());
+        assertEquals("ETH-USD", snapshotResult.normalizedInstrument());
+        assertEquals(1825L, snapshotResult.lookbackDays());
+        assertEquals("elliott-wave-eth-usd-live-scenario-outlooks.json", snapshotResult.scenarioOutlookFileName());
+        assertEquals("elliott-wave-eth-usd-live-macro-current-cycle-summary.json", snapshotResult.summaryFileName());
+        assertEquals(5, snapshotResult.scenarioCount());
+        assertEquals(5, snapshotResult.scenarioChartFileNames().size());
+        assertTrue(snapshotResult.scenarioChartFileNames().contains("elliott-wave-analysis-eth-usd-cycle-base-case.jpg"));
 
         JsonObject outlook = JsonParser.parseString(Files.readString(outlookPath)).getAsJsonObject();
         assertEquals("ETH-USD", outlook.get("seriesName").getAsString());
         assertEquals("YahooFinance", outlook.get("exchange").getAsString());
         assertEquals("ETH-USD", outlook.get("normalizedInstrument").getAsString());
         assertEquals(1825L, outlook.get("lookbackDays").getAsLong());
+        assertEquals("elliott-wave-analysis-eth-usd-cycle-current.jpg", outlook.get("chartFileName").getAsString());
+        assertEquals("elliott-wave-eth-usd-live-macro-current-cycle-summary.json",
+                outlook.get("summaryFileName").getAsString());
+        assertEquals("elliott-wave-eth-usd-live-scenario-outlooks.json",
+                outlook.get("scenarioOutlookFileName").getAsString());
         assertTrue(outlook.has("currentCycle"));
         JsonArray scenarios = outlook.getAsJsonArray("scenarios");
         assertEquals(5, scenarios.size());
@@ -956,6 +972,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
         assertFalse(row.get("primaryReason").getAsString().isBlank());
         assertFalse(row.get("weakestFactor").getAsString().isBlank());
         assertTrue(row.get("chartPath").getAsString().endsWith(expectedChartFileName));
+        assertEquals(expectedChartFileName, row.get("chartFileName").getAsString());
     }
 
     private static BarSeries loadBitcoinSeries() {

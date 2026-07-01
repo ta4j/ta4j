@@ -56,4 +56,18 @@ class ElliottWavePresetDemoTest {
         assertFalse(ElliottWavePresetDemo.shouldUseDailyMacroPreset("PT4H"));
         assertFalse(ElliottWavePresetDemo.shouldUseDailyMacroPreset(null));
     }
+
+    @Test
+    void runHelpReturnsSuccessWithoutLoadingData() {
+        assertEquals(0, ElliottWavePresetDemo.run(new String[] { "--help" }));
+        assertEquals(0, ElliottWavePresetDemo.run(new String[] { "help" }));
+    }
+
+    @Test
+    void runInvalidArgumentsReturnUsageStatus() {
+        assertEquals(2, ElliottWavePresetDemo.run(new String[] { "unknown" }));
+        assertEquals(2, ElliottWavePresetDemo.run(new String[] { "live", "Coinbase" }));
+        assertEquals(2, ElliottWavePresetDemo.run(new String[] { "live", "Coinbase", "BTC-USD", "PT1D", "zero" }));
+        assertEquals(2, ElliottWavePresetDemo.run(new String[] { "live", "Coinbase", "BTC-USD", "PT1D", "0" }));
+    }
 }
