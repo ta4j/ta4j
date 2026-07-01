@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.awt.Color;
+import java.awt.GraphicsEnvironment;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.lang.reflect.Method;
@@ -35,6 +36,7 @@ import org.jfree.data.xy.XYDataset;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.api.Assumptions;
 import org.ta4j.core.BarSeries;
 import org.ta4j.core.BaseBarSeriesBuilder;
 import org.ta4j.core.indicators.elliott.ElliottConfidence;
@@ -475,6 +477,7 @@ class ElliottWaveBtcMacroCycleDemoTest {
 
     @Test
     void genericRunLivePresetPersistsDynamicFiveScenarioOutlookForNonBtcSeries() throws Exception {
+        Assumptions.assumeFalse(GraphicsEnvironment.isHeadless(), "Headless environment");
         BarSeries liveWindow = renamedSeries(chartSyntheticSeries(), "ETH-USD");
         Path tempDir = newTempDirectory("eth-live-preset-generic");
         List<ElliottWaveAnalysisResult.CurrentCycleCandidate> candidates = syntheticCurrentCycleCandidates(liveWindow);
