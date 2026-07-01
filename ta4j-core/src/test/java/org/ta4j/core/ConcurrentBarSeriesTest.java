@@ -32,6 +32,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Supplier;
 
+import org.apache.logging.log4j.LogManager;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -180,8 +181,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    System.err.println("getName() operation failed: " + e.getMessage());
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("getName() operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -267,8 +268,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    System.err.println("numFactory() operation failed: " + e.getMessage());
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("numFactory() operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -303,8 +304,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    System.err.println("Combined getName()/numFactory() operation failed: " + e.getMessage());
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Combined getName()/numFactory() operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -321,7 +322,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testConcurrentReadOperations() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testConcurrentReadOperationsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -359,8 +361,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     // Log the exception but don't fail immediately
-                    System.err.println("Read operation failed: " + e.getMessage());
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Read operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -374,7 +376,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testConcurrentWriteOperations() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testConcurrentWriteOperationsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withMaxBarCount(1000)
                 .build();
@@ -413,8 +416,7 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                 }
                 successCount.incrementAndGet();
             } catch (Exception e) {
-                System.err.println("Write operation failed: " + e.getMessage());
-                e.printStackTrace();
+                LogManager.getLogger(ConcurrentBarSeriesTest.class).warn("Write operation failed: {}", e.getMessage());
             } finally {
                 endLatch.countDown();
             }
@@ -430,7 +432,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testConcurrentReadWriteOperations() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testConcurrentReadWriteOperationsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -457,8 +461,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     successCount.incrementAndGet();
                 } catch (Exception e) {
                     // Log the exception but don't fail immediately
-                    System.err.println("Read operation failed: " + e.getMessage());
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Read operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -474,7 +478,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetBarDataImmutability() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetBarDataImmutabilitySeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -501,7 +506,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetBarDataSnapshotConsistency() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetBarDataSnapshotConsistencySeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -528,7 +535,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSubSeriesReturnsConcurrentBarSeries() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSubSeriesReturnsConcurrentBarSeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -545,7 +554,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     @Test
     public void testGetSubSeriesPreservesMaxBarCountAndBarBuilderFactory() {
         BarBuilderFactory customFactory = new TimeBarBuilderFactory(false);
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSubSeriesPreservesMaxBarCountAndBarBuilderFactorySeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(customFactory)
                 .withMaxBarCount(3)
                 .withBars(new ArrayList<>(testBars))
@@ -568,7 +579,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSubSeriesWithConcurrentAccess() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSubSeriesWithConcurrentAccessSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -686,7 +699,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testReadWriteLockUpgrade() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testReadWriteLockUpgradeSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -765,7 +779,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void withReadLockSupportsRunnableAndSupplier() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("withReadLockSupportsRunnableAndSupplierSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -776,7 +791,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void withWriteLockSupportsRunnableAndSupplier() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("withWriteLockSupportsRunnableAndSupplierSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
         var period = Duration.ofSeconds(60);
@@ -793,7 +809,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testConcurrentExceptionHandling() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testConcurrentExceptionHandlingSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -852,7 +869,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testConcurrentBarDataConsistency() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testConcurrentBarDataConsistencySeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -911,7 +929,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testHighFrequencyReadWriteOperations() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testHighFrequencyReadWriteOperationsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -976,7 +996,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestStreamingBarAppendsBar() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestStreamingBarAppendsBarSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
         var period = Duration.ofSeconds(60);
@@ -996,7 +1017,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestStreamingBarReplacesLatestInterval() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestStreamingBarReplacesLatestIntervalSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1015,7 +1037,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestStreamingBarUpdatesOlderInterval() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestStreamingBarUpdatesOlderIntervalSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1036,7 +1059,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestStreamingBarsSortNewestFirstPayloads() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestStreamingBarsSortNewestFirstPayloadsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1060,7 +1084,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestStreamingBarReportsSeriesIndexAfterEviction() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder()
+                .withName("ingestStreamingBarReportsSeriesIndexAfterEvictionSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withMaxBarCount(2)
                 .build();
@@ -1081,7 +1107,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestStreamingBarRejectsMismatchedNumFactory() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestStreamingBarRejectsMismatchedNumFactorySeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1106,7 +1133,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeBuildsTimeBarFromTrades() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeBuildsTimeBarFromTradesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory())
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1134,7 +1162,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeRollsOverTimePeriods() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeRollsOverTimePeriodsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory())
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1158,7 +1187,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeCapturesSideAndLiquidity() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeCapturesSideAndLiquiditySeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory(true))
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1194,7 +1224,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeSupportsOptionalSideAndLiquidity() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeSupportsOptionalSideAndLiquiditySeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory(true))
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1224,7 +1255,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeResetsSideAndLiquidityAcrossBars() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeResetsSideAndLiquidityAcrossBarsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory(true))
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1252,7 +1284,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeRequiresTimePeriod() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeRequiresTimePeriodSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory())
                 .build();
         var start = Instant.parse("2024-01-01T00:00:00Z");
@@ -1262,7 +1295,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeRejectsMismatchedNumFactoryWithSide() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeRejectsMismatchedNumFactoryWithSideSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory(true))
                 .build();
         var start = Instant.parse("2024-01-01T00:00:00Z");
@@ -1278,7 +1312,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeRejectsNullArgumentsWithSide() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeRejectsNullArgumentsWithSideSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory(true))
                 .build();
         var start = Instant.parse("2024-01-01T00:00:00Z");
@@ -1293,7 +1328,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void ingestTradeRejectsOutOfOrderTimestamp() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("ingestTradeRejectsOutOfOrderTimestampSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory(true))
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1310,7 +1346,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void serializeAndDeserializeReinitializesLocksAndBuilders() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder()
+                .withName("serializeAndDeserializeReinitializesLocksAndBuildersSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory(true))
                 .build();
         var period = Duration.ofMinutes(1);
@@ -1333,7 +1371,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void serializeAndDeserializePreservesMaxBarCount() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("serializeAndDeserializePreservesMaxBarCountSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withMaxBarCount(10)
                 .withBars(new ArrayList<>(testBars))
@@ -1347,7 +1386,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void serializeAndDeserializeEmptySeries() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("serializeAndDeserializeEmptySeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1364,7 +1404,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetFirstBar() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetFirstBarSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1377,7 +1418,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetLastBar() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetLastBarSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1390,7 +1432,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetFirstBarWithEmptySeries() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetFirstBarWithEmptySeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1399,7 +1442,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetLastBarWithEmptySeries() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetLastBarWithEmptySeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1408,7 +1452,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetFirstBarConcurrentAccess() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetFirstBarConcurrentAccessSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1429,7 +1474,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Read operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -1445,7 +1491,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSeriesPeriodDescription() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetSeriesPeriodDescriptionSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1457,7 +1504,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSeriesPeriodDescriptionWithEmptySeries() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSeriesPeriodDescriptionWithEmptySeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1467,7 +1516,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSeriesPeriodDescriptionInSystemTimeZone() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSeriesPeriodDescriptionInSystemTimeZoneSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1479,7 +1530,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSeriesPeriodDescriptionInSystemTimeZoneWithEmptySeries() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSeriesPeriodDescriptionInSystemTimeZoneWithEmptySeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1489,7 +1542,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSeriesPeriodDescriptionConcurrentAccess() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSeriesPeriodDescriptionConcurrentAccessSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1511,7 +1566,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Read operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -1527,7 +1583,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testAddPrice() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testAddPriceSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1541,7 +1598,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testAddPriceWithEmptySeries() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testAddPriceWithEmptySeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1550,7 +1608,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testAddPriceConcurrentAccess() throws Exception {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testAddPriceConcurrentAccessSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1573,7 +1632,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Write operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -1589,7 +1649,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testAddBarWithReplace() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testAddBarWithReplaceSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1615,7 +1676,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testAddBarWithoutReplace() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testAddBarWithoutReplaceSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1668,7 +1730,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testIngestStreamingBarsWithNullCollection() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testIngestStreamingBarsWithNullCollectionSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1678,7 +1741,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testIngestStreamingBarsWithEmptyCollection() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testIngestStreamingBarsWithEmptyCollectionSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1689,7 +1753,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testIngestStreamingBarsFiltersNullBars() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testIngestStreamingBarsFiltersNullBarsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
         var period = Duration.ofSeconds(60);
@@ -1711,7 +1776,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSubSeriesWithEmptySeries() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withName("testGetSubSeriesWithEmptySeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1724,7 +1790,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSubSeriesWithStartIndexEqualsEndIndex() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSubSeriesWithStartIndexEqualsEndIndexSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1734,7 +1802,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSubSeriesWithStartIndexGreaterThanEndIndex() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSubSeriesWithStartIndexGreaterThanEndIndexSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1744,7 +1814,9 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetSubSeriesWithNegativeStartIndex() {
-        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        ConcurrentBarSeries series = new ConcurrentBarSeriesBuilder()
+                .withName("testGetSubSeriesWithNegativeStartIndexSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1755,7 +1827,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     @Test
     public void testGetSubSeriesInheritsConstrainedBehavior() {
         var bars = new ArrayList<>(testBars.subList(0, 2));
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testGetSubSeriesInheritsConstrainedBehaviorSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(bars)
                 .build();
@@ -1767,7 +1840,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
     @Test
     public void testGetSubSeriesInheritsMaxBarCountConfiguration() {
         var bars = new ArrayList<>(testBars.subList(0, 2));
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testGetSubSeriesInheritsMaxBarCountConfigurationSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(bars)
                 .withMaxBarCount(10)
@@ -1783,7 +1857,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testTradeBarBuilderLazyInitialization() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testTradeBarBuilderLazyInitializationSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1798,7 +1873,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testTradeBarBuilderConcurrentInitialization() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testTradeBarBuilderConcurrentInitializationSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1814,7 +1890,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     BarBuilder builder = series.tradeBarBuilder();
                     builders.add(builder);
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Write operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -1838,7 +1915,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testWithReadLockRejectsNullRunnable() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testWithReadLockRejectsNullRunnableSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1847,7 +1925,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testWithReadLockRejectsNullSupplier() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testWithReadLockRejectsNullSupplierSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1857,7 +1936,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testWithWriteLockRejectsNullRunnable() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testWithWriteLockRejectsNullRunnableSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1866,7 +1946,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testWithWriteLockRejectsNullSupplier() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testWithWriteLockRejectsNullSupplierSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .build();
 
@@ -1879,7 +1960,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testSetMaximumBarCountConcurrentAccess() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testSetMaximumBarCountConcurrentAccessSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .withMaxBarCount(1000)
@@ -1902,7 +1984,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Read operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -1918,7 +2001,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testBarBuilderConcurrentAccess() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testBarBuilderConcurrentAccessSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .build();
@@ -1938,7 +2022,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Read operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -1955,7 +2040,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testGetRemovedBarsCountConcurrentAccess() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testGetRemovedBarsCountConcurrentAccessSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(barBuilderFactory)
                 .withBars(new ArrayList<>(testBars))
                 .withMaxBarCount(3)
@@ -1982,7 +2068,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
                     }
                     successCount.incrementAndGet();
                 } catch (Exception e) {
-                    e.printStackTrace();
+                    LogManager.getLogger(ConcurrentBarSeriesTest.class)
+                            .warn("Read operation failed: {}", e.getMessage());
                 } finally {
                     endLatch.countDown();
                 }
@@ -1998,7 +2085,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testIngestTradeOmitsGaps() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testIngestTradeOmitsGapsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory())
                 .build();
         var period = Duration.ofMinutes(1);
@@ -2026,7 +2114,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void testIngestTradeHandlesLargeGaps() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("testIngestTradeHandlesLargeGapsSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new TimeBarBuilderFactory())
                 .build();
         var period = Duration.ofMinutes(1);
@@ -2053,7 +2142,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void getBarDataProvidesSnapshot() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("getBarDataProvidesSnapshotSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new MockBarBuilderFactory())
                 .build();
         var now = Instant.now();
@@ -2075,7 +2165,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void getSubSeriesReturnsConcurrentBarSeries() {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("getSubSeriesReturnsConcurrentBarSeriesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new MockBarBuilderFactory())
                 .build();
         var now = Instant.now();
@@ -2099,7 +2190,8 @@ public class ConcurrentBarSeriesTest extends AbstractIndicatorTest<BarSeries, Nu
 
     @Test
     public void supportsConcurrentReadsAndWrites() throws Exception {
-        var series = new ConcurrentBarSeriesBuilder().withNumFactory(numFactory)
+        var series = new ConcurrentBarSeriesBuilder().withName("supportsConcurrentReadsAndWritesSeries")
+                .withNumFactory(numFactory)
                 .withBarBuilderFactory(new MockBarBuilderFactory())
                 .build();
 

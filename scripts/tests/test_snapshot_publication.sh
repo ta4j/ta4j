@@ -2,8 +2,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-SCRIPT="$ROOT/scripts/release/release_helpers.py"
-PYTHON="${PYTHON:-python3}"
+SCRIPT="$ROOT/scripts/release/release_helpers.sh"
 
 cleanup() {
   if [[ -n "${TMP:-}" && -d "$TMP" ]]; then
@@ -72,7 +71,7 @@ test_snapshot_version_present() {
   local output_file="$TMP/snapshot-publication.json"
   write_metadata_fixture "$metadata_file" "0.22.7-SNAPSHOT" $'      <version>0.22.6-SNAPSHOT</version>\n      <version>0.22.7-SNAPSHOT</version>' "20260506001534"
 
-  "$PYTHON" "$SCRIPT" snapshot-publication \
+  bash "$SCRIPT" snapshot-publication \
     --version "0.22.7-SNAPSHOT" \
     --metadata-file "$metadata_file" \
     --output "$output_file" \
@@ -95,7 +94,7 @@ test_snapshot_version_missing() {
   local output_file="$TMP/snapshot-publication.json"
   write_metadata_fixture "$metadata_file" "0.22.7-SNAPSHOT" $'      <version>0.22.6-SNAPSHOT</version>\n      <version>0.22.7-SNAPSHOT</version>' "20260506001534"
 
-  "$PYTHON" "$SCRIPT" snapshot-publication \
+  bash "$SCRIPT" snapshot-publication \
     --version "0.22.8-SNAPSHOT" \
     --metadata-file "$metadata_file" \
     --output "$output_file" \
@@ -117,7 +116,7 @@ test_non_snapshot_version_returns_na() {
   local output_file="$TMP/snapshot-publication.json"
   write_metadata_fixture "$metadata_file" "0.22.7-SNAPSHOT" $'      <version>0.22.7-SNAPSHOT</version>' "20260506001534"
 
-  "$PYTHON" "$SCRIPT" snapshot-publication \
+  bash "$SCRIPT" snapshot-publication \
     --version "0.22.7" \
     --metadata-file "$metadata_file" \
     --output "$output_file" \
@@ -138,7 +137,7 @@ test_malformed_metadata_returns_unknown() {
   local output_file="$TMP/snapshot-publication.json"
   printf '%s\n' '<metadata><versioning>' > "$metadata_file"
 
-  "$PYTHON" "$SCRIPT" snapshot-publication \
+  bash "$SCRIPT" snapshot-publication \
     --version "0.22.7-SNAPSHOT" \
     --metadata-file "$metadata_file" \
     --output "$output_file" \
@@ -157,7 +156,7 @@ test_non_https_metadata_url_returns_unknown() {
   local github_output="$TMP/github-output.txt"
   local output_file="$TMP/snapshot-publication.json"
 
-  "$PYTHON" "$SCRIPT" snapshot-publication \
+  bash "$SCRIPT" snapshot-publication \
     --version "0.22.7-SNAPSHOT" \
     --metadata-url "file:///tmp/snapshot-publication.xml" \
     --output "$output_file" \
@@ -177,7 +176,7 @@ test_snapshot_publication_policy_defers_push_runs() {
   local github_output="$TMP/github-output.txt"
   local output_file="$TMP/snapshot-publication-policy.json"
 
-  "$PYTHON" "$SCRIPT" snapshot-publication-policy \
+  bash "$SCRIPT" snapshot-publication-policy \
     --event-name "push" \
     --workflow-name "" \
     --output "$output_file" \
@@ -197,7 +196,7 @@ test_snapshot_publication_policy_enforces_snapshot_workflow_runs() {
   local github_output="$TMP/github-output.txt"
   local output_file="$TMP/snapshot-publication-policy.json"
 
-  "$PYTHON" "$SCRIPT" snapshot-publication-policy \
+  bash "$SCRIPT" snapshot-publication-policy \
     --event-name "workflow_run" \
     --workflow-name "Publish Snapshot to Maven Central" \
     --output "$output_file" \

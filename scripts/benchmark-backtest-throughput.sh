@@ -113,8 +113,14 @@ run_ref() {
   done
   (
     cd "$worktree"
-    mvn -q -pl ta4j-examples -am compile
-    mvn -q -pl ta4j-examples exec:java \
+    local -a maven_cmd=(mvn)
+    if [[ -x "./mvnw" ]]; then
+      maven_cmd=("./mvnw")
+    elif [[ -f "./mvnw" ]]; then
+      maven_cmd=(sh "./mvnw")
+    fi
+    "${maven_cmd[@]}" -q -pl ta4j-examples -am compile
+    "${maven_cmd[@]}" -q -pl ta4j-examples exec:java \
       -Dexec.mainClass=ta4jexamples.backtesting.BacktestPerformanceTuningHarness \
       -Dexec.args="$exec_args"
   )

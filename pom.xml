@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.ta4j</groupId>
     <artifactId>ta4j-parent</artifactId>
-    <version>0.22.7-SNAPSHOT</version>
+    <version>0.22.9-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>Ta4j Parent</name>
@@ -67,22 +67,22 @@
         <maven.compiler.release>25</maven.compiler.release>
         <maven.surefire.version>3.5.4</maven.surefire.version>
         <ta4j.excludedTestTags>integration,analysis-demo,elliott-macro-cycle-replay</ta4j.excludedTestTags>
-        <spotbugs.version>4.9.8.0</spotbugs.version>
-        <jacoco.version>0.8.13</jacoco.version>
+        <spotbugs.version>4.9.8.3</spotbugs.version>
+        <jacoco.version>0.8.14</jacoco.version>
         <ta4j.jacoco.line.minimum>0.80</ta4j.jacoco.line.minimum>
         <ta4j.jacoco.branch.minimum>0.80</ta4j.jacoco.branch.minimum>
 
         <!-- Dependencies -->
         <assertj.version>3.27.7</assertj.version>
         <commons-math3.version>3.6.1</commons-math3.version>
-        <gson.version>2.13.2</gson.version>
+        <gson.version>2.14.0</gson.version>
         <jfreechart.version>1.5.6</jfreechart.version>
-        <junit-jupiter.version>6.0.2</junit-jupiter.version>
+        <junit-jupiter.version>6.0.3</junit-jupiter.version>
         <log4j2.version>2.25.4</log4j2.version>
-        <mockito.version>5.21.0</mockito.version>
+        <mockito.version>5.23.0</mockito.version>
         <opencsv.version>5.12.0</opencsv.version>
         <poi.version>5.5.1</poi.version>
-        <slf4j.version>2.0.17</slf4j.version>
+        <slf4j.version>2.0.18</slf4j.version>
     </properties>
 
     <dependencyManagement>
