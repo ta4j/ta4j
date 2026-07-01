@@ -84,7 +84,8 @@ public class SlippageExecutionModel implements TradeExecutionModel {
 
     @Override
     public ExecutionTarget estimateEntryTarget(int signalIndex, BarSeries barSeries, TradeType tradeType) {
-        ExecutionTarget referenceTarget = ExecutionModelSupport.resolveExecutionTarget(signalIndex, barSeries, priceSource);
+        ExecutionTarget referenceTarget = ExecutionModelSupport.resolveExecutionTarget(signalIndex, barSeries,
+                priceSource);
         if (referenceTarget == null) {
             return null;
         }

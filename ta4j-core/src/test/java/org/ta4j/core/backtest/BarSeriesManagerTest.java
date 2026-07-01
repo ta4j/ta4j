@@ -173,7 +173,8 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         series.barBuilder().openPrice(30d).closePrice(31d).volume(10d).add();
         TradeExecutionModel model = new TradeExecutionModel() {
             @Override
-            public TradeExecutionModel.ExecutionTarget estimateEntryTarget(int signalIndex, BarSeries barSeries, TradeType tradeType) {
+            public TradeExecutionModel.ExecutionTarget estimateEntryTarget(int signalIndex, BarSeries barSeries,
+                    TradeType tradeType) {
                 return new TradeExecutionModel.ExecutionTarget(signalIndex,
                         barSeries.getBar(signalIndex).getClosePrice().plus(numFactory.one()));
             }
