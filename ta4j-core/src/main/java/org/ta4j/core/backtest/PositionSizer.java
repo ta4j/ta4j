@@ -27,7 +27,7 @@ import org.ta4j.core.num.NumFactory;
  * thread-safe.
  * </p>
  *
- * @since 0.22.7
+ * @since 0.22.9
  */
 @FunctionalInterface
 public interface PositionSizer {
@@ -44,7 +44,7 @@ public interface PositionSizer {
      *
      * @param context entry sizing context
      * @return amount used for entry execution
-     * @since 0.22.7
+     * @since 0.22.9
      */
     Num amount(Context context);
 
@@ -52,7 +52,7 @@ public interface PositionSizer {
      * Returns a position sizer that opens one unit.
      *
      * @return fixed unit position sizer
-     * @since 0.22.7
+     * @since 0.22.9
      */
     static PositionSizer fixed() {
         return context -> context.numFactory().one();
@@ -63,7 +63,7 @@ public interface PositionSizer {
      *
      * @param amount fixed amount
      * @return fixed amount position sizer
-     * @since 0.22.7
+     * @since 0.22.9
      */
     static PositionSizer fixed(Number amount) {
         validatePositiveNumber(amount, "amount");
@@ -75,7 +75,7 @@ public interface PositionSizer {
      *
      * @param amount fixed amount
      * @return fixed amount position sizer
-     * @since 0.22.7
+     * @since 0.22.9
      */
     static PositionSizer fixed(Num amount) {
         validatePositiveNum(amount, "amount");
@@ -88,7 +88,7 @@ public interface PositionSizer {
      *
      * @param principal starting balance
      * @return balance-based position sizer
-     * @since 0.22.7
+     * @since 0.22.9
      */
     static PositionSizer balance(Number principal) {
         return balance(principal, (context, balance) -> context.maxAffordableAmount(balance));
@@ -101,7 +101,7 @@ public interface PositionSizer {
      * @param principal starting balance
      * @param rule      custom balance sizing rule
      * @return balance-based position sizer
-     * @since 0.22.7
+     * @since 0.22.9
      */
     static PositionSizer balance(Number principal, BalanceRule rule) {
         validatePositiveNumber(principal, "principal");
@@ -119,7 +119,7 @@ public interface PositionSizer {
      * @param winProbability probability of a winning position, in {@code (0, 1)}
      * @param payoffRatio    average win divided by average loss, must be positive
      * @return Kelly position sizer
-     * @since 0.22.7
+     * @since 0.22.9
      */
     static PositionSizer kelly(Number principal, Number winProbability, Number payoffRatio) {
         return kelly(principal, winProbability, payoffRatio, 1);
@@ -139,7 +139,7 @@ public interface PositionSizer {
      * @param coefficient    multiplier applied to the Kelly fraction, must be
      *                       positive
      * @return Kelly position sizer
-     * @since 0.22.7
+     * @since 0.22.9
      */
     static PositionSizer kelly(Number principal, Number winProbability, Number payoffRatio, Number coefficient) {
         validatePositiveNumber(principal, "principal");
@@ -202,7 +202,7 @@ public interface PositionSizer {
     /**
      * Derives an entry amount from the current realized balance.
      *
-     * @since 0.22.7
+     * @since 0.22.9
      */
     @FunctionalInterface
     public interface BalanceRule {
@@ -212,7 +212,7 @@ public interface PositionSizer {
          * @param context current sizing context
          * @param balance current realized balance
          * @return amount used for entry execution
-         * @since 0.22.7
+         * @since 0.22.9
          */
         Num amount(Context context, Num balance);
     }
@@ -229,7 +229,7 @@ public interface PositionSizer {
      * @param tradingRecord        trading record for the current run
      * @param transactionCostModel transaction cost model
      * @param holdingCostModel     holding cost model
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public record Context(int signalIndex, int entryIndex, Num entryPrice, Strategy strategy, BarSeries barSeries,
             TradeType tradeType, TradingRecord tradingRecord, CostModel transactionCostModel,
@@ -240,7 +240,7 @@ public interface PositionSizer {
         /**
          * Creates an entry sizing context.
          *
-         * @since 0.22.7
+         * @since 0.22.9
          */
         public Context {
             Objects.requireNonNull(entryPrice, "entryPrice");
@@ -254,7 +254,7 @@ public interface PositionSizer {
 
         /**
          * @return the number factory backing the series
-         * @since 0.22.7
+         * @since 0.22.9
          */
         public NumFactory numFactory() {
             return barSeries.numFactory();
@@ -265,7 +265,7 @@ public interface PositionSizer {
          *
          * @param number number to convert
          * @return converted number
-         * @since 0.22.7
+         * @since 0.22.9
          */
         public Num numOf(Number number) {
             return numFactory().numOf(number);
@@ -276,7 +276,7 @@ public interface PositionSizer {
          *
          * @param principal starting principal
          * @return current realized balance
-         * @since 0.22.7
+         * @since 0.22.9
          */
         public Num currentBalance(Number principal) {
             return currentBalance(numOf(principal));
@@ -287,7 +287,7 @@ public interface PositionSizer {
          *
          * @param principal starting principal
          * @return current realized balance
-         * @since 0.22.7
+         * @since 0.22.9
          */
         public Num currentBalance(Num principal) {
             validatePositiveNum(principal, "principal");
@@ -304,7 +304,7 @@ public interface PositionSizer {
          *
          * @param amount candidate entry amount
          * @return estimated entry cost
-         * @since 0.22.7
+         * @since 0.22.9
          */
         public Num entryCost(Num amount) {
             validateFiniteNum(amount, "amount");
@@ -320,7 +320,7 @@ public interface PositionSizer {
          * @param budget cash available for entry price and transaction costs
          * @return largest amount affordable by the budget, or zero when none is
          *         affordable
-         * @since 0.22.7
+         * @since 0.22.9
          */
         public Num maxAffordableAmount(Num budget) {
             validateFiniteNum(budget, "budget");

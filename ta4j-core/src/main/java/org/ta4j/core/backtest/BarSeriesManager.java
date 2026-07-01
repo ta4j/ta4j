@@ -271,7 +271,7 @@ public class BarSeriesManager {
      * @param tradeType     the {@link TradeType} used to open the position
      * @param positionSizer dynamic entry position sizer
      * @return the trading record coming from the run
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, PositionSizer positionSizer) {
         return run(strategy, tradeType, positionSizer, barSeries.getBeginIndex(), barSeries.getEndIndex());
@@ -284,7 +284,7 @@ public class BarSeriesManager {
      * @param strategy      strategy to execute
      * @param positionSizer dynamic entry position sizer
      * @return the trading record coming from the run
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public TradingRecord run(Strategy strategy, PositionSizer positionSizer) {
         Objects.requireNonNull(strategy, "strategy");
@@ -301,7 +301,7 @@ public class BarSeriesManager {
      * @param startIndex    the start index for the run (included)
      * @param finishIndex   the finish index for the run (included)
      * @return the trading record coming from the run
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public TradingRecord run(Strategy strategy, PositionSizer positionSizer, int startIndex, int finishIndex) {
         Objects.requireNonNull(strategy, "strategy");
@@ -318,7 +318,7 @@ public class BarSeriesManager {
      * @param startIndex    the start index for the run (included)
      * @param finishIndex   the finish index for the run (included)
      * @return the trading record coming from the run
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public TradingRecord run(Strategy strategy, TradeType tradeType, PositionSizer positionSizer, int startIndex,
             int finishIndex) {
@@ -393,7 +393,7 @@ public class BarSeriesManager {
      * @param tradingRecord the trading record instance to mutate
      * @param positionSizer dynamic entry position sizer
      * @return the supplied trading record after execution
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, PositionSizer positionSizer) {
         return run(strategy, tradingRecord, positionSizer, barSeries.getBeginIndex(), barSeries.getEndIndex());
@@ -410,7 +410,7 @@ public class BarSeriesManager {
      * @param startIndex    the start index for the run (included)
      * @param finishIndex   the finish index for the run (included)
      * @return the supplied trading record after execution
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public TradingRecord run(Strategy strategy, TradingRecord tradingRecord, PositionSizer positionSizer,
             int startIndex, int finishIndex) {
@@ -483,7 +483,7 @@ public class BarSeriesManager {
      * @param positionSizer dynamic entry position sizer
      * @param config        walk-forward configuration
      * @return walk-forward execution result
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, TradeType tradeType,
             PositionSizer positionSizer, WalkForwardConfig config) {
@@ -498,7 +498,7 @@ public class BarSeriesManager {
      * @param positionSizer dynamic entry position sizer
      * @param config        walk-forward configuration
      * @return walk-forward execution result
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, PositionSizer positionSizer,
             WalkForwardConfig config) {
@@ -535,7 +535,7 @@ public class BarSeriesManager {
      * @param config           walk-forward configuration
      * @param progressCallback optional callback receiving completed fold count
      * @return walk-forward execution result
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public StrategyWalkForwardExecutionResult runWalkForward(Strategy strategy, TradeType tradeType,
             PositionSizer positionSizer, WalkForwardConfig config, Consumer<Integer> progressCallback) {

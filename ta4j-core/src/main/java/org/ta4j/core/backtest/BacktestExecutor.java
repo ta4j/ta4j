@@ -184,7 +184,7 @@ public class BacktestExecutor {
      * @param strategies    the strategies
      * @param positionSizer dynamic entry position sizer
      * @return a list of TradingStatements
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public List<TradingStatement> execute(List<Strategy> strategies, PositionSizer positionSizer) {
         return execute(strategies, positionSizer, Trade.TradeType.BUY);
@@ -211,7 +211,7 @@ public class BacktestExecutor {
      * @param positionSizer dynamic entry position sizer
      * @param tradeType     the {@link Trade.TradeType} used to open the position
      * @return a list of TradingStatements
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public List<TradingStatement> execute(List<Strategy> strategies, PositionSizer positionSizer,
             Trade.TradeType tradeType) {
@@ -240,7 +240,7 @@ public class BacktestExecutor {
      * @param strategies    the strategies
      * @param positionSizer dynamic entry position sizer
      * @return execution result with trading statements and runtime report
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, PositionSizer positionSizer) {
         return executeWithRuntimeReport(strategies, positionSizer, Trade.TradeType.BUY);
@@ -271,7 +271,7 @@ public class BacktestExecutor {
      * @param positionSizer dynamic entry position sizer
      * @param tradeType     the {@link Trade.TradeType} used to open the position
      * @return execution result with trading statements and runtime report
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, PositionSizer positionSizer,
             Trade.TradeType tradeType) {
@@ -321,7 +321,7 @@ public class BacktestExecutor {
      *                         completed count). May be null, in which case
      *                         {@link ProgressCompletion#noOp()} is used.
      * @return execution result with trading statements and runtime report
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, PositionSizer positionSizer,
             Trade.TradeType tradeType, Consumer<Integer> progressCallback) {
@@ -371,7 +371,7 @@ public class BacktestExecutor {
      *                         batch. Ignored if strategy count {@literal <=}
      *                         {@value #PARALLEL_THRESHOLD}.
      * @return execution result with trading statements and runtime report
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public BacktestExecutionResult executeWithRuntimeReport(List<Strategy> strategies, PositionSizer positionSizer,
             Trade.TradeType tradeType, Consumer<Integer> progressCallback, int batchSize) {
@@ -513,7 +513,7 @@ public class BacktestExecutor {
      * @param positionSizer dynamic entry position sizer
      * @param config        walk-forward configuration
      * @return walk-forward execution result
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy, PositionSizer positionSizer,
             WalkForwardConfig config) {
@@ -530,7 +530,7 @@ public class BacktestExecutor {
      * @param tradeType     trade type used to open positions
      * @param config        walk-forward configuration
      * @return walk-forward execution result
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy, PositionSizer positionSizer,
             Trade.TradeType tradeType, WalkForwardConfig config) {
@@ -547,7 +547,7 @@ public class BacktestExecutor {
      * @param config           walk-forward configuration
      * @param progressCallback optional callback receiving completed fold count
      * @return walk-forward execution result
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public StrategyWalkForwardExecutionResult executeWalkForward(Strategy strategy, PositionSizer positionSizer,
             Trade.TradeType tradeType, WalkForwardConfig config, Consumer<Integer> progressCallback) {
@@ -621,7 +621,7 @@ public class BacktestExecutor {
      * @param positionSizer dynamic entry position sizer
      * @param config        walk-forward configuration
      * @return combined backtest and walk-forward result
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public BacktestAndWalkForwardResult executeWithWalkForward(Strategy strategy, PositionSizer positionSizer,
             WalkForwardConfig config) {
@@ -637,7 +637,7 @@ public class BacktestExecutor {
      * @param tradeType     trade type used to open positions
      * @param config        walk-forward configuration
      * @return combined backtest and walk-forward result
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public BacktestAndWalkForwardResult executeWithWalkForward(Strategy strategy, PositionSizer positionSizer,
             Trade.TradeType tradeType, WalkForwardConfig config) {
@@ -701,7 +701,7 @@ public class BacktestExecutor {
      *                         completed count). May be null.
      * @return execution result containing only the top K strategies and runtime
      *         report
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public BacktestExecutionResult executeAndKeepTopK(List<Strategy> strategies, PositionSizer positionSizer,
             Trade.TradeType tradeType, AnalysisCriterion criterion, int topK, Consumer<Integer> progressCallback) {

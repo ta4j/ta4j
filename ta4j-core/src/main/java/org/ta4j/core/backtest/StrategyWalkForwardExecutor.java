@@ -152,7 +152,7 @@ public class StrategyWalkForwardExecutor {
      * @param positionSizer dynamic entry position sizer
      * @param config        walk-forward configuration
      * @return execution result
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public StrategyWalkForwardExecutionResult execute(Strategy strategy, Trade.TradeType tradeType,
             PositionSizer positionSizer, WalkForwardConfig config) {
@@ -167,7 +167,7 @@ public class StrategyWalkForwardExecutor {
      * @param positionSizer dynamic entry position sizer
      * @param config        walk-forward configuration
      * @return execution result
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public StrategyWalkForwardExecutionResult execute(Strategy strategy, PositionSizer positionSizer,
             WalkForwardConfig config) {
@@ -206,7 +206,7 @@ public class StrategyWalkForwardExecutor {
      * @param config           walk-forward configuration
      * @param progressCallback optional callback receiving completed fold count
      * @return execution result
-     * @since 0.22.7
+     * @since 0.22.9
      */
     public StrategyWalkForwardExecutionResult execute(Strategy strategy, Trade.TradeType tradeType,
             PositionSizer positionSizer, WalkForwardConfig config, Consumer<Integer> progressCallback) {
