@@ -598,7 +598,19 @@ public class BarSeriesManager {
 
     private Num amountForIndex(PositionSizer positionSizer, int index, Strategy strategy, TradingRecord tradingRecord,
             TradeType tradeType) {
-        return positionSizer.amount(positionSizerContext(index, strategy, tradingRecord, tradeType));
+        Num amount = positionSizer.amount(positionSizerContext(index, strategy, tradingRecord, tradeType));
+        validateAmount(amount);
+        return amount;
+    }
+
+    private static void validateAmount(Num amount) {
+        if (amount == null || amount.isNaN()) {
+            throw new IllegalArgumentException("Amount must be positive and finite");
+        }
+
+        if (amount.isNegativeOrZero() || !Double.isFinite(amount.doubleValue())) {
+            throw new IllegalArgumentException("Amount must be positive and finite");
+        }
     }
 
     private Num amountForNextOperation(PositionSizer positionSizer, int index, Strategy strategy,

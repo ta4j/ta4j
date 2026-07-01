@@ -32,6 +32,7 @@ import org.ta4j.core.analysis.cost.ZeroCostModel;
 import org.ta4j.core.indicators.AbstractIndicatorTest;
 import org.ta4j.core.mocks.MockBarSeriesBuilder;
 import org.ta4j.core.num.DoubleNumFactory;
+import org.ta4j.core.num.DoubleNum;
 import org.ta4j.core.num.Num;
 import org.ta4j.core.num.NumFactory;
 import org.ta4j.core.rules.FixedRule;
@@ -113,6 +114,24 @@ public class BarSeriesManagerTest extends AbstractIndicatorTest<BarSeries, Num> 
         assertEquals(numFactory.one(), position.getEntry().getAmount());
         assertEquals(2, position.getExit().getIndex());
         assertEquals(numFactory.one(), position.getExit().getAmount());
+    }
+
+    @Test
+    public void runWithPositionSizerRejectsNonPositiveAndNonFiniteAmounts() {
+        BarSeries series = new MockBarSeriesBuilder().withNumFactory(numFactory).withData(10, 20, 30, 40).build();
+        BarSeriesManager localManager = new BarSeriesManager(series, new TradeOnCurrentCloseModel());
+        Strategy oneTradeStrategy = new BaseStrategy(new FixedRule(1), new FixedRule(2));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> null));
+        assertThrows(IllegalArgumentException.class,
+                () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> numFactory.zero()));
+        assertThrows(IllegalArgumentException.class,
+                () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> DoubleNum.valueOf(-1)));
+        assertThrows(IllegalArgumentException.class,
+                () -> localManager.run(oneTradeStrategy, TradeType.BUY, context -> DoubleNum.valueOf(Double.NaN)));
+        assertThrows(IllegalArgumentException.class, () -> localManager.run(oneTradeStrategy, TradeType.BUY,
+                context -> DoubleNum.valueOf(Double.POSITIVE_INFINITY)));
     }
 
     @Test
