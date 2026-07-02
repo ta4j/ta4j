@@ -90,6 +90,11 @@ import ta4jexamples.analysis.elliottwave.support.OssifiedElliottWaveSeriesLoader
  * and portability sanity checks on any ossified non-BTC resources that are
  * already large enough for the fixed walk-forward geometry.
  *
+ * <p>
+ * <strong>Warning:</strong> complete calibration runs can run for 8+ hours.
+ * Only run this harness when you really, really want the long-form BTC anchor
+ * calibration artifacts.
+ *
  * @since 0.22.4
  */
 public final class ElliottWaveAnchorCalibrationHarness {

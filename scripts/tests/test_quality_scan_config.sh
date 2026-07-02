@@ -118,7 +118,7 @@ test_ci_runs_verify_for_both_jobs() {
   echo "Running test_ci_runs_verify_for_both_jobs"
 
   expect_file_contains "$WORKFLOW" "xvfb-run ./mvnw -B license:check formatter:validate verify" "default CI job should run verify through Maven Wrapper"
-  expect_file_contains "$WORKFLOW" "xvfb-run ./mvnw -B license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay" "non-demo CI job should run verify through Maven Wrapper"
+  expect_file_contains "$WORKFLOW" "xvfb-run ./mvnw -B license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo" "non-demo CI job should run verify through Maven Wrapper"
 
   pass "test_ci_runs_verify_for_both_jobs"
 }

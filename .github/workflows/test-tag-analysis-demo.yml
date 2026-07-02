@@ -94,7 +94,7 @@ jobs:
         run: >
           xvfb-run ./mvnw -B test
           -Dgroups=analysis-demo
-          -Dta4j.excludedTestTags=elliott-macro-cycle-replay
+          -Dta4j.excludedTestTags=
           -Dta4j.analysisDemoInstrument="${TA4J_ANALYSIS_DEMO_INSTRUMENT}"
           -Dta4j.analysisDemoOutputDir=target/analysis-demos/elliott-wave
 

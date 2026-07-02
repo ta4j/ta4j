@@ -13,7 +13,7 @@ Examples:
   scripts/run-full-build-quiet.ps1
   scripts/run-full-build-quiet.ps1 -- -pl ta4j-core
   scripts/run-full-build-quiet.ps1 --goals "test jacoco:report jacoco:check" -- -pl ta4j-core -am
-  scripts/run-full-build-quiet.ps1 --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay
+  scripts/run-full-build-quiet.ps1 --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo
 "@
 }
 

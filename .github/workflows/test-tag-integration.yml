@@ -51,4 +51,4 @@ jobs:
           cache: maven
 
       - name: Build and run integration tagged tests with Maven Wrapper
-        run: xvfb-run ./mvnw -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay
+        run: xvfb-run ./mvnw -B test -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo

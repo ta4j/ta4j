@@ -131,7 +131,7 @@ Examples:
   scripts/run-full-build-quiet.sh
   scripts/run-full-build-quiet.sh -- -pl ta4j-core
   scripts/run-full-build-quiet.sh --goals "test jacoco:report jacoco:check" -- -pl ta4j-core -am
-  scripts/run-full-build-quiet.sh --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay
+  scripts/run-full-build-quiet.sh --goals test -- -Dgroups=integration -Dta4j.excludedTestTags=analysis-demo
 EOF
 }
 

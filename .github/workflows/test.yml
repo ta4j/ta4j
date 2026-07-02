@@ -68,4 +68,4 @@ jobs:
 
       - name: Build and run verify with demo tags excluded
         run: |
-          xvfb-run ./mvnw -B license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo,elliott-macro-cycle-replay
+          xvfb-run ./mvnw -B license:check formatter:validate verify -Dta4j.excludedTestTags=analysis-demo
