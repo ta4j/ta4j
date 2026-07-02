@@ -1072,18 +1072,6 @@
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="ta4jexamples.charting.builder.ChartBuilder$HorizontalMarkerDefinition"/>
-        <Method name="style"/>
-        <Field name="style"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
-        <Class name="ta4jexamples.charting.builder.ChartBuilder$OverlayDefinition"/>
-        <Method name="style"/>
-        <Field name="style"/>
-    </Match>
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP"/>
         <Class name="ta4jexamples.charting.builder.ChartBuilder$PlotDefinition"/>
         <Method name="series"/>
         <Field name="series"/>

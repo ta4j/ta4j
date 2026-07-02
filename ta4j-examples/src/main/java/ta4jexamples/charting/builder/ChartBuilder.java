@@ -1396,7 +1396,7 @@ public final class ChartBuilder {
             this.indicator = indicator;
             this.tradingRecord = tradingRecord;
             this.axisSlot = axisSlot;
-            this.style = style;
+            this.style = style == null ? null : style.copy();
             this.label = label;
         }
 
@@ -1449,7 +1449,7 @@ public final class ChartBuilder {
          * @return the overlay style
          */
         public OverlayStyle style() {
-            return style;
+            return style == null ? null : style.copy();
         }
 
         /**
@@ -1560,7 +1560,7 @@ public final class ChartBuilder {
 
         private HorizontalMarkerDefinition(double yValue, OverlayStyle style) {
             this.yValue = yValue;
-            this.style = style;
+            this.style = style == null ? null : style.copy();
         }
 
         static HorizontalMarkerDefinition fromContext(HorizontalMarkerContext context) {
@@ -1582,7 +1582,7 @@ public final class ChartBuilder {
          * @return the marker style
          */
         public OverlayStyle style() {
-            return style;
+            return style == null ? null : style.copy();
         }
     }
 
@@ -1887,6 +1887,10 @@ public final class ChartBuilder {
          */
         public void setDashPattern(float[] dashPattern) {
             this.dashPattern = dashPattern == null ? null : dashPattern.clone();
+        }
+
+        private OverlayStyle copy() {
+            return new OverlayStyle(color, lineWidth, connectGaps, opacity, dashPattern);
         }
     }
 

@@ -446,6 +446,41 @@ class ChartBuilderTest {
     }
 
     @Test
+    void overlayDefinitionReturnsDefensiveStyleCopies() {
+        ChartPlan plan = chartWorkflow.builder()
+                .withSeries(series)
+                .withIndicatorOverlay(new ClosePriceIndicator(series))
+                .withLineColor(Color.BLUE)
+                .toPlan();
+        ChartBuilder.OverlayDefinition overlay = plan.definition().basePlot().overlays().get(0);
+
+        ChartBuilder.OverlayStyle firstStyle = overlay.style();
+        ChartBuilder.OverlayStyle secondStyle = overlay.style();
+
+        assertNotSame(firstStyle, secondStyle);
+        firstStyle.setColor(Color.RED);
+        assertEquals(Color.BLUE, overlay.style().color(), "Mutating returned overlay style must not change the plan");
+    }
+
+    @Test
+    void horizontalMarkerDefinitionReturnsDefensiveStyleCopies() {
+        ChartPlan plan = chartWorkflow.builder()
+                .withSeries(series)
+                .withSubChart(new RSIIndicator(new ClosePriceIndicator(series), 14))
+                .withHorizontalMarker(50.0)
+                .withLineColor(Color.GREEN)
+                .toPlan();
+        ChartBuilder.HorizontalMarkerDefinition marker = plan.definition().subplots().get(0).horizontalMarkers().get(0);
+
+        ChartBuilder.OverlayStyle firstStyle = marker.style();
+        ChartBuilder.OverlayStyle secondStyle = marker.style();
+
+        assertNotSame(firstStyle, secondStyle);
+        firstStyle.setColor(Color.RED);
+        assertEquals(Color.GREEN, marker.style().color(), "Mutating returned marker style must not change the plan");
+    }
+
+    @Test
     void toPlanAlsoConsumesBuilder() {
         ChartBuilder.ChartStage stage = chartWorkflow.builder().withSeries(series);
         stage.toPlan();
