@@ -8,10 +8,10 @@
   - uses the ossified BTC daily dataset plus the locked BTC anchor registry
   - scores the candidate profiles against the major macro turns
   - emits the macro-cycle JSON report and regression chart
-- Live BTC preset:
+- Live daily preset:
   - uses only the `BarSeries` you provide at runtime
   - infers the current-cycle start from that supplied window alone
-  - emits the current-cycle JSON summary plus the base case and alternate charts
+  - emits the current-cycle JSON summary, scenario-outlook JSON, and the base case plus four alternate charts
 
 ## Canonical entrypoints
 
@@ -36,6 +36,7 @@ The important line is that the legacy-anchored study is no longer a first-class 
 
 - Use `ElliottWaveBtcMacroCycleDemo` when you want the fixed ossified BTC dataset, the locked BTC truth registry, and the stable BTC artifact names.
 - Use `ElliottWaveMacroCycleDemo` when you already have a `BarSeries` and want the canonical historical study or live preset without BTC-specific resource loading.
+- Use `ElliottWavePresetDemo live <Coinbase|YahooFinance> <ticker> PT1D <lookbackDays>` when you want the live five-outlook snapshot package for any supported daily instrument.
 - Use `ElliottWaveAnchorCalibrationHarness` when you are calibrating, benchmarking, or comparing canonical output against the committed BTC truth target.
 
 ## What changed
@@ -69,6 +70,7 @@ The harness resolves broad committed registry windows against the ossified BTC d
 - Live current-cycle analysis must not depend on the BTC anchor registry.
 - `ElliottWaveMacroCycleDemo` is the canonical runtime controller/view surface.
 - `ElliottWaveBtcMacroCycleDemo` may remain as a thin BTC convenience wrapper, but it must not own distinct structure inference logic.
+- `ElliottWavePresetDemo` routes daily live runs through `ElliottWaveMacroCycleDemo`; non-daily live runs remain on the generic indicator-suite path.
 - The registry is valid only for:
   - offline calibration
   - offline regression
@@ -96,7 +98,7 @@ The harness resolves broad committed registry windows against the ossified BTC d
 Before shipping changes that touch the canonical macro-cycle flow, rerun both the focused BTC regression slice and the quiet full build:
 
 ```bash
-mvn -q -pl ta4j-examples -am -Dsurefire.failIfNoSpecifiedTests=false \
+./mvnw -q -pl ta4j-examples -am -Dsurefire.failIfNoSpecifiedTests=false \
   -Dtest=ElliottWaveBtcMacroCycleDemoTest,ElliottWaveMacroCycleTruthTargetScoringTest,ElliottWaveMacroCycleDetectorTest,ElliottWavePresetDemoTest \
   test
 
