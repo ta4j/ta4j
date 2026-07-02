@@ -720,16 +720,6 @@
         <Field name="timeIndicator"/>
     </Match>
     <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.rules.FixedAmountStopGainRule"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.rules.FixedAmountStopLossRule"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
         <Class name="org.ta4j.core.rules.JustOnceRule"/>
         <Method name="&lt;init&gt;"/>
@@ -792,16 +782,6 @@
         <Class name="org.ta4j.core.rules.OrWithThresholdRule"/>
         <Method name="getRule2"/>
         <Field name="rule2"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.rules.StopGainRule"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.rules.StopLossRule"/>
-        <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
         <Bug pattern="CT_CONSTRUCTOR_THROW"/>
