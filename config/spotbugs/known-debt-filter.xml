@@ -1,0 +1,1388 @@
+<?xml version="1.0" ?>
+<FindBugsFilter>
+    <!--Known SpotBugs debt after CF-207/208/209/210 cleanup. New unbaselined findings fail the build.-->
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.BaseBar"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="NP_LOAD_OF_KNOWN_NULL_VALUE"/>
+        <Class name="org.ta4j.core.BaseBar"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="NP_NONNULL_PARAM_VIOLATION"/>
+        <Class name="org.ta4j.core.BaseBar"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.BaseBarSeries"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EQ_DOESNT_OVERRIDE_EQUALS"/>
+        <Class name="org.ta4j.core.BaseRealtimeBar"/>
+        <Method name="equals"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.BaseStrategy"/>
+        <Method name="getEntryRule"/>
+        <Field name="entryRule"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.BaseStrategy"/>
+        <Method name="getExitRule"/>
+        <Field name="exitRule"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.BaseTrade"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.BaseTradingRecord"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.ConcurrentBarSeries"/>
+        <Method name="tradeBarBuilder"/>
+        <Field name="tradeBarBuilder"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.aggregator.RenkoBarAggregator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.analysis.CashFlow"/>
+        <Method name="getBarSeries"/>
+        <Field name="barSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.analysis.CumulativePnL"/>
+        <Method name="getBarSeries"/>
+        <Field name="barSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.analysis.CumulativePnL"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="barSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.analysis.Returns"/>
+        <Method name="getBarSeries"/>
+        <Field name="barSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.analysis.Returns"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="barSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.backtest.BacktestExecutionResult"/>
+        <Method name="barSeries"/>
+        <Field name="barSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="DM_GC"/>
+        <Class name="org.ta4j.core.backtest.BacktestExecutor"/>
+        <Method name="executeBatched"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.backtest.BacktestRuntimeReport$StrategyRuntime"/>
+        <Method name="strategy"/>
+        <Field name="strategy"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.backtest.BacktestRuntimeReport$StrategyRuntime"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="strategy"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.backtest.BarSeriesManager"/>
+        <Method name="getBarSeries"/>
+        <Field name="barSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.backtest.BarSeriesManager"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="barSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.backtest.PositionSizer$Context"/>
+        <Method name="barSeries"/>
+        <Field name="barSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.backtest.PositionSizer$Context"/>
+        <Method name="strategy"/>
+        <Field name="strategy"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.backtest.PositionSizer$Context"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="barSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.backtest.PositionSizer$Context"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="strategy"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.backtest.SlippageExecutionModel"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.backtest.StopLimitExecutionModel"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.backtest.StrategyWalkForwardExecutionResult"/>
+        <Method name="barSeries"/>
+        <Field name="barSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.backtest.StrategyWalkForwardExecutionResult"/>
+        <Method name="strategy"/>
+        <Field name="strategy"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.bars.AmountBarBuilder"/>
+        <Method name="bindTo"/>
+        <Field name="barSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.bars.AmountBarBuilderFactory"/>
+        <Method name="createBarBuilder"/>
+        <Field name="barBuilder"/>
+    </Match>
+    <Match>
+        <Bug pattern="SE_NO_SERIALVERSIONID"/>
+        <Class name="org.ta4j.core.bars.AmountBarBuilderFactory"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.bars.TickBarBuilder"/>
+        <Method name="bindTo"/>
+        <Field name="barSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.bars.TickBarBuilderFactory"/>
+        <Method name="createBarBuilder"/>
+        <Field name="barBuilder"/>
+    </Match>
+    <Match>
+        <Bug pattern="SE_NO_SERIALVERSIONID"/>
+        <Class name="org.ta4j.core.bars.TickBarBuilderFactory"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.bars.TimeBarBuilder"/>
+        <Method name="bindTo"/>
+        <Field name="baseBarSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.bars.VolumeBarBuilder"/>
+        <Method name="bindTo"/>
+        <Field name="barSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.bars.VolumeBarBuilderFactory"/>
+        <Method name="createBarBuilder"/>
+        <Field name="barBuilder"/>
+    </Match>
+    <Match>
+        <Bug pattern="SE_NO_SERIALVERSIONID"/>
+        <Class name="org.ta4j.core.bars.VolumeBarBuilderFactory"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.criteria.ActiveReturnCriterion"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.criteria.EnterAndHoldCriterion"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+        <Class name="org.ta4j.core.criteria.EnterAndHoldCriterion"/>
+        <Method name="EnterAndHoldReturnCriterion"/>
+    </Match>
+    <Match>
+        <Bug pattern="NM_SAME_SIMPLE_NAME_AS_SUPERCLASS"/>
+        <Class name="org.ta4j.core.criteria.MaximumDrawdownCriterion"/>
+    </Match>
+    <Match>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+        <Class name="org.ta4j.core.criteria.PositionsRatioCriterion"/>
+        <Method name="LosingPositionsRatioCriterion"/>
+    </Match>
+    <Match>
+        <Bug pattern="NM_METHOD_NAMING_CONVENTION"/>
+        <Class name="org.ta4j.core.criteria.PositionsRatioCriterion"/>
+        <Method name="WinningPositionsRatioCriterion"/>
+    </Match>
+    <Match>
+        <Bug pattern="NM_SAME_SIMPLE_NAME_AS_SUPERCLASS"/>
+        <Class name="org.ta4j.core.criteria.ReturnOverMaxDrawdownCriterion"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.criteria.risk.RMultipleCriterion"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.ATRIndicator"/>
+        <Method name="getTRIndicator"/>
+        <Field name="trIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.ATRIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="trIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.AbstractFractalConfirmationIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.AbstractIndicator"/>
+        <Method name="getBarSeries"/>
+        <Field name="series"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.AlligatorIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.CachedIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.CompressionIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.ConnorsRSIIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.DistanceFromMAIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.EdgeDecaySlopeIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.EntryEdgeIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.MACDIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.MACDIndicator"/>
+        <Method name="getLongTermEma"/>
+        <Field name="longTermEma"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.MACDIndicator"/>
+        <Method name="getShortTermEma"/>
+        <Field name="shortTermEma"/>
+    </Match>
+    <Match>
+        <Bug pattern="NM_SAME_SIMPLE_NAME_AS_SUPERCLASS"/>
+        <Class name="org.ta4j.core.indicators.MACDVIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.NetMomentumIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.PPOIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.SchaffTrendCycleIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.StochasticIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.StretchZScoreIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.StretchZScoreIndicator"/>
+        <Method name="getStandardDeviationIndicator"/>
+        <Field name="standardDeviationIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.SwingPointMarkerIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.TrendConclusionIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.TrendScoreIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.TrueStrengthIndexIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.UltimateOscillatorIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.VortexIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.aroon.AroonOscillatorIndicator"/>
+        <Method name="getAroonDownIndicator"/>
+        <Field name="aroonDownIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.aroon.AroonOscillatorIndicator"/>
+        <Method name="getAroonUpIndicator"/>
+        <Field name="aroonUpIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.averages.SGMAIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.averages.VWMAIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.bollinger.BollingerBandWidthIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="bbl"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.bollinger.BollingerBandWidthIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="bbm"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.bollinger.BollingerBandWidthIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="bbu"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.bollinger.BollingerBandsLowerIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="bbm"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.bollinger.BollingerBandsUpperIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="bbm"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.candles.AbstractMarubozuIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.donchian.DonchianChannelMiddleIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="lower"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.donchian.DonchianChannelMiddleIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="upper"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottChannelIndicator"/>
+        <Method name="getSwingIndicator"/>
+        <Field name="swingIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottConfluenceIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottInvalidationIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="phaseIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottInvalidationLevelIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottPhaseIndicator"/>
+        <Method name="getSwingIndicator"/>
+        <Field name="swingIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottPhaseIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="swingIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottRatioIndicator"/>
+        <Method name="getSwingIndicator"/>
+        <Field name="swingIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottScenarioIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottScenarioIndicator"/>
+        <Method name="getChannelIndicator"/>
+        <Field name="channelIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottScenarioIndicator"/>
+        <Method name="getSwingIndicator"/>
+        <Field name="swingIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottSwingCompressor"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottTrendBiasIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottTrendBiasIndicator"/>
+        <Method name="getScenarioIndicator"/>
+        <Field name="scenarioIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveCountIndicator"/>
+        <Method name="getSwingIndicator"/>
+        <Field name="swingIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveCountIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="swingIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveFacade"/>
+        <Method name="channel"/>
+        <Field name="channelIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveFacade"/>
+        <Method name="confluence"/>
+        <Field name="confluenceIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveFacade"/>
+        <Method name="filteredWaveCount"/>
+        <Field name="filteredWaveCountIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveFacade"/>
+        <Method name="invalidation"/>
+        <Field name="invalidationIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveFacade"/>
+        <Method name="invalidationLevel"/>
+        <Field name="invalidationLevelIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveFacade"/>
+        <Method name="phase"/>
+        <Field name="phaseIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveFacade"/>
+        <Method name="projection"/>
+        <Field name="projectionIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveFacade"/>
+        <Method name="ratio"/>
+        <Field name="ratioIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveFacade"/>
+        <Method name="scenarios"/>
+        <Field name="scenarioIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveFacade"/>
+        <Method name="series"/>
+        <Field name="series"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveFacade"/>
+        <Method name="swing"/>
+        <Field name="swingIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveFacade"/>
+        <Method name="trendBias"/>
+        <Field name="trendBiasIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.ElliottWaveFacade"/>
+        <Method name="waveCount"/>
+        <Field name="waveCountIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardContext"/>
+        <Method name="runner"/>
+        <Field name="runner"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.elliott.walkforward.ElliottWaveWalkForwardContext"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="runner"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.helpers.AverageIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.helpers.BandIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.helpers.PercentRankIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.helpers.PreviousValueIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.ichimoku.IchimokuSenkouSpanAIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="baseLine"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.ichimoku.IchimokuSenkouSpanAIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="conversionLine"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.macd.VolatilityNormalizedMACDIndicator"/>
+        <Method name="getFastEma"/>
+        <Field name="fastEma"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.macd.VolatilityNormalizedMACDIndicator"/>
+        <Method name="getSlowEma"/>
+        <Field name="slowEma"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.numeric.BinaryOperationIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.numeric.UnaryOperationIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.pivotpoints.DeMarkReversalIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="pivotPointIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.pivotpoints.FibonacciReversalIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="pivotPointIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.pivotpoints.StandardReversalIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="pivotPointIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.renko.RenkoDownIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.renko.RenkoUpIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.renko.RenkoXIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.supertrend.SuperTrendIndicator"/>
+        <Method name="getSuperTrendLowerBandIndicator"/>
+        <Field name="superTrendLowerBandIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.supertrend.SuperTrendIndicator"/>
+        <Method name="getSuperTrendUpperBandIndicator"/>
+        <Field name="superTrendUpperBandIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.supportresistance.AbstractBounceCountIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.supportresistance.AbstractPriceClusterIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.supportresistance.AbstractTrendLineIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.supportresistance.VolumeProfileKDEIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.volume.EaseOfMovementIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.volume.ForceIndexIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.volume.KlingerVolumeOscillatorIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.volume.VWAPBandIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.volume.VWAPBandIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="vwapIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.volume.VWAPDeviationIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="vwapIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.indicators.volume.VWAPIndicator"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.volume.VWAPStandardDeviationIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="reference"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.wyckoff.WyckoffCycleFacade"/>
+        <Method name="phase"/>
+        <Field name="phaseIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.indicators.wyckoff.WyckoffCycleFacade"/>
+        <Method name="series"/>
+        <Field name="series"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.zigzag.RecentZigZagSwingHighIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="stateIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.zigzag.RecentZigZagSwingLowIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="stateIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.zigzag.ZigZagPivotHighIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="stateIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.indicators.zigzag.ZigZagPivotLowIndicator"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="stateIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EC_UNRELATED_TYPES_USING_POINTER_EQUALITY"/>
+        <Class name="org.ta4j.core.num.DoubleNum"/>
+        <Method name="compareTo"/>
+        <Field name="NaN"/>
+    </Match>
+    <Match>
+        <Bug pattern="SING_SINGLETON_IMPLEMENTS_SERIALIZABLE"/>
+        <Class name="org.ta4j.core.num.DoubleNumFactory"/>
+    </Match>
+    <Match>
+        <Bug pattern="EQ_COMPARETO_USE_OBJECT_EQUALS"/>
+        <Class name="org.ta4j.core.num.NaN"/>
+        <Method name="compareTo"/>
+    </Match>
+    <Match>
+        <Bug pattern="EQ_COMPARETO_USE_OBJECT_EQUALS"/>
+        <Class name="org.ta4j.core.reports.BasePerformanceReport"/>
+        <Method name="compareTo"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.rules.AndRule"/>
+        <Method name="getRule1"/>
+        <Field name="rule1"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.rules.AndRule"/>
+        <Method name="getRule2"/>
+        <Field name="rule2"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.AndWithThresholdRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.rules.AndWithThresholdRule"/>
+        <Method name="getRule1"/>
+        <Field name="rule1"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.rules.AndWithThresholdRule"/>
+        <Method name="getRule2"/>
+        <Field name="rule2"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.AverageTrueRangeTrailingStopGainRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.BaseVolatilityStopGainRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.BaseVolatilityStopLossRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.BaseVolatilityTrailingStopGainRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.BaseVolatilityTrailingStopLossRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.rules.ChainRule"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="initialRule"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.rules.DayOfWeekRule"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="timeIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.FixedAmountStopGainRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.FixedAmountStopLossRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.HourOfDayRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.rules.JustOnceRule"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="rule"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.rules.LossTriggeredCooldownRule"/>
+        <Method name="getResetRule"/>
+        <Field name="resetRule"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.rules.LossTriggeredCooldownRule"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="resetRule"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.MinuteOfHourRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.rules.NotRule"/>
+        <Method name="getRuleToNegate"/>
+        <Field name="ruleToNegate"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.rules.NotRule"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="ruleToNegate"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.OpenedPositionMinimumBarCountRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.rules.OrRule"/>
+        <Method name="getRule1"/>
+        <Field name="rule1"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.rules.OrRule"/>
+        <Method name="getRule2"/>
+        <Field name="rule2"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.OrWithThresholdRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.rules.OrWithThresholdRule"/>
+        <Method name="getRule1"/>
+        <Field name="rule1"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.rules.OrWithThresholdRule"/>
+        <Method name="getRule2"/>
+        <Field name="rule2"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.StopGainRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.StopLossRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.TimeRangeRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.TrailingFixedAmountStopGainRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.TrailingFixedAmountStopLossRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.TrailingStopGainRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.TrailingStopLossRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.TriggeredRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.rules.TriggeredRule"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="explicitResetRule"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.rules.TriggeredRule$Stage"/>
+        <Method name="delegateRule"/>
+        <Field name="delegateRule"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.rules.TriggeredRule$Stage"/>
+        <Method name="triggerRule"/>
+        <Field name="triggerRule"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.rules.TriggeredRule$Stage"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="delegateRule"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.rules.TriggeredRule$Stage"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="triggerRule"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.VolatilityStopGainRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.VoteRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.WaitForRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.rules.XorRule"/>
+        <Method name="getRule1"/>
+        <Field name="rule1"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.rules.XorRule"/>
+        <Method name="getRule2"/>
+        <Field name="rule2"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.rules.XorRule"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="rule1"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.rules.XorRule"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="rule2"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.elliott.ElliottImpulsePhaseRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.elliott.ElliottScenarioAlternationRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.elliott.ElliottScenarioTimeStopRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="org.ta4j.core.rules.elliott.ElliottTrendBiasRule"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="org.ta4j.core.rules.helper.ChainLink"/>
+        <Method name="getRule"/>
+        <Field name="rule"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.rules.helper.ChainLink"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="rule"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="org.ta4j.core.rules.helper.ChainLink"/>
+        <Method name="setRule"/>
+        <Field name="rule"/>
+    </Match>
+    <Match>
+        <Bug pattern="SE_BAD_FIELD"/>
+        <Class name="org.ta4j.core.rules.helper.ChainLink"/>
+        <Field name="rule"/>
+    </Match>
+    <Match>
+        <Bug pattern="WMI_WRONG_MAP_ITERATOR"/>
+        <Class name="org.ta4j.core.walkforward.WalkForwardTuner$CalibrationScores"/>
+        <Method name="from"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="channelIndicator"/>
+        <Field name="channelIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="confluenceIndicator"/>
+        <Field name="confluenceIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="filteredSwingCount"/>
+        <Field name="filteredSwingCount"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="invalidationIndicator"/>
+        <Field name="invalidationIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="phaseIndicator"/>
+        <Field name="phaseIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="ratioIndicator"/>
+        <Field name="ratioIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="scenarioIndicator"/>
+        <Field name="scenarioIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="series"/>
+        <Field name="series"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="swingCount"/>
+        <Field name="swingCount"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="channelIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="confluenceIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="filteredSwingCount"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="invalidationIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="phaseIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="ratioIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="scenarioIndicator"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="series"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="ta4jexamples.analysis.elliottwave.ElliottWaveIndicatorSuiteDemo$AnalysisResult"/>
+        <Method name="&lt;init&gt;"/>
+        <Field name="swingCount"/>
+    </Match>
+    <Match>
+        <Bug pattern="UPM_UNCALLED_PRIVATE_METHOD"/>
+        <Class name="ta4jexamples.analysis.elliottwave.backtest.ElliottWaveMacroCycleDemo"/>
+        <Method name="buildAnchorLabels"/>
+    </Match>
+    <Match>
+        <Bug pattern="UPM_UNCALLED_PRIVATE_METHOD"/>
+        <Class name="ta4jexamples.analysis.elliottwave.backtest.ElliottWaveMacroCycleDemo"/>
+        <Method name="evaluateCanonicalProfile"/>
+    </Match>
+    <Match>
+        <Bug pattern="UPM_UNCALLED_PRIVATE_METHOD"/>
+        <Class name="ta4jexamples.analysis.elliottwave.backtest.ElliottWaveMacroCycleDemo"/>
+        <Method name="latestBottomAnchorIndex"/>
+    </Match>
+    <Match>
+        <Bug pattern="DM_GC"/>
+        <Class name="ta4jexamples.backtesting.BacktestPerformanceTuningHarness"/>
+        <Method name="runTuneInProcess"/>
+    </Match>
+    <Match>
+        <Bug pattern="DM_GC"/>
+        <Class name="ta4jexamples.backtesting.BacktestPerformanceTuningHarness"/>
+        <Method name="warmupOnce"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="ta4jexamples.charting.builder.ChartBuilder"/>
+        <Method name="withSeries"/>
+        <Field name="domainSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="ta4jexamples.charting.builder.ChartBuilder$ChartDefinitionMetadata"/>
+        <Method name="domainSeries"/>
+        <Field name="domainSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="ta4jexamples.charting.builder.ChartBuilder$HorizontalMarkerDefinition"/>
+        <Method name="style"/>
+        <Field name="style"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="ta4jexamples.charting.builder.ChartBuilder$OverlayDefinition"/>
+        <Method name="style"/>
+        <Field name="style"/>
+    </Match>
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP"/>
+        <Class name="ta4jexamples.charting.builder.ChartBuilder$PlotDefinition"/>
+        <Method name="series"/>
+        <Field name="series"/>
+    </Match>
+    <Match>
+        <Bug pattern="ICAST_INT_2_LONG_AS_INSTANT"/>
+        <Class name="ta4jexamples.charting.compose.TradingChartFactory$DatasetFactory"/>
+        <Method name="createChartDataset"/>
+    </Match>
+    <Match>
+        <Bug pattern="ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD"/>
+        <Class name="ta4jexamples.charting.display.SwingChartDisplayer"/>
+        <Method name="display"/>
+        <Field name="windowCounter"/>
+    </Match>
+    <Match>
+        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
+        <Class name="ta4jexamples.charting.storage.FileSystemChartStorage"/>
+        <Method name="save"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="ta4jexamples.charting.workflow.ChartWorkflow"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
+        <Class name="ta4jexamples.datasources.CoinbaseHttpBarSeriesDataSource"/>
+        <Method name="loadSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE"/>
+        <Class name="ta4jexamples.datasources.YahooFinanceHttpBarSeriesDataSource"/>
+        <Method name="loadSeries"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="ta4jexamples.datasources.http.AbstractHttpBarSeriesDataSource"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="ta4jexamples.strategies.HighRewardElliottWaveStrategy"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="ta4jexamples.strategies.HourOfDayStrategy"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="ta4jexamples.strategies.MinuteOfHourStrategy"/>
+        <Method name="&lt;init&gt;"/>
+    </Match>
+</FindBugsFilter>

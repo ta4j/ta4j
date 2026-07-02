@@ -300,6 +300,7 @@ public class BaseBarSeries implements BarSeries {
      *                                   numFactory
      * @throws IndexOutOfBoundsException if the index is outside the current series
      *                                   window
+     * @since 0.22.9
      */
     public void replaceBar(final int index, final Bar bar) {
         Objects.requireNonNull(bar, "bar must not be null");

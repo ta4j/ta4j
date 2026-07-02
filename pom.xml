@@ -291,13 +291,14 @@
                     <configuration>
                         <quiet>true</quiet>
                         <xmlOutput>true</xmlOutput>
+                        <excludeFilterFile>${maven.multiModuleProjectDirectory}/config/spotbugs/known-debt-filter.xml</excludeFilterFile>
                     </configuration>
                     <executions>
                         <execution>
                             <id>spotbugs-check</id>
                             <phase>verify</phase>
                             <configuration>
-                                <failOnError>false</failOnError>
+                                <failOnError>true</failOnError>
                             </configuration>
                             <goals>
                                 <goal>check</goal>
