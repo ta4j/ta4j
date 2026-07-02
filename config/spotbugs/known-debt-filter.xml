@@ -678,31 +678,6 @@
         <Field name="rule2"/>
     </Match>
     <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.rules.AverageTrueRangeTrailingStopGainRule"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.rules.BaseVolatilityStopGainRule"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.rules.BaseVolatilityStopLossRule"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.rules.BaseVolatilityTrailingStopGainRule"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.rules.BaseVolatilityTrailingStopLossRule"/>
-        <Method name="&lt;init&gt;"/>
-    </Match>
-    <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
         <Class name="org.ta4j.core.rules.ChainRule"/>
         <Method name="&lt;init&gt;"/>
@@ -802,11 +777,6 @@
         <Class name="org.ta4j.core.rules.TriggeredRule$Stage"/>
         <Method name="&lt;init&gt;"/>
         <Field name="triggerRule"/>
-    </Match>
-    <Match>
-        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
-        <Class name="org.ta4j.core.rules.VolatilityStopGainRule"/>
-        <Method name="&lt;init&gt;"/>
     </Match>
     <Match>
         <Bug pattern="EI_EXPOSE_REP"/>

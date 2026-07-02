@@ -37,6 +37,19 @@ abstract class BaseVolatilityTrailingStopGainRule extends AbstractRule implement
      */
     protected BaseVolatilityTrailingStopGainRule(Indicator<Num> referencePrice, Indicator<Num> stopGainThreshold,
             int barCount) {
+        this(validatedConfig(referencePrice, stopGainThreshold, barCount));
+    }
+
+    private BaseVolatilityTrailingStopGainRule(Config config) {
+        this.referencePrice = config.referencePrice();
+        this.stopGainThreshold = config.stopGainThreshold();
+        this.barCount = config.barCount();
+        this.highestReferencePriceWithMaxLookback = config.highestReferencePriceWithMaxLookback();
+        this.lowestReferencePriceWithMaxLookback = config.lowestReferencePriceWithMaxLookback();
+    }
+
+    private static Config validatedConfig(Indicator<Num> referencePrice, Indicator<Num> stopGainThreshold,
+            int barCount) {
         if (referencePrice == null) {
             throw new IllegalArgumentException("referencePrice must not be null");
         }
@@ -46,11 +59,9 @@ abstract class BaseVolatilityTrailingStopGainRule extends AbstractRule implement
         if (barCount <= 0) {
             throw new IllegalArgumentException("barCount must be positive");
         }
-        this.referencePrice = referencePrice;
-        this.stopGainThreshold = stopGainThreshold;
-        this.barCount = barCount;
-        this.highestReferencePriceWithMaxLookback = new HighestValueIndicator(referencePrice, barCount);
-        this.lowestReferencePriceWithMaxLookback = new LowestValueIndicator(referencePrice, barCount);
+        return new Config(referencePrice, stopGainThreshold, barCount,
+                new HighestValueIndicator(referencePrice, barCount),
+                new LowestValueIndicator(referencePrice, barCount));
     }
 
     /**
@@ -198,5 +209,10 @@ abstract class BaseVolatilityTrailingStopGainRule extends AbstractRule implement
             return "activationNotReached";
         }
         return buy ? "priceAboveStop" : "priceBelowStop";
+    }
+
+    private record Config(Indicator<Num> referencePrice, Indicator<Num> stopGainThreshold, int barCount,
+            HighestValueIndicator highestReferencePriceWithMaxLookback,
+            LowestValueIndicator lowestReferencePriceWithMaxLookback) {
     }
 }
